@@ -1,3 +1,4 @@
+import java.util.concurrent.TimeUnit ;
 public class Algorithm {
 	public static void main(String[] args){
 		/**
@@ -583,7 +584,7 @@ public class Algorithm {
  24:227514171973736
 		 */
 		// ↓ のコメントアウトを外して実行
-		//new NQueen6();
+		new NQueen6();
 
 	}
 }
@@ -1328,14 +1329,16 @@ class NQueen6 {
 	int UNIQUE ;
 	int TOTAL ;
 	public NQueen6(){
-		System.out.println(" N:        Total       Unique        hh:mm");
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(int SIZE=2; SIZE<MAX+1; SIZE++){
 			long start = System.currentTimeMillis() ;
 			bitmap_rotate(SIZE);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
-			System.out.printf("%2d:%13d%13d%6d:%02d.%03d%n", 
-					SIZE,TOTAL,UNIQUE, diff/6000,diff/1000,diff%1000);
+			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
+					SIZE,TOTAL,UNIQUE,TimeUnit.MILLISECONDS.toHours(diff), 
+                            TimeUnit.MILLISECONDS.toMinutes(diff),
+                            TimeUnit.MILLISECONDS.toSeconds(diff));
 		}
 	}
 	void bitmap_rotate(int SIZE) {
