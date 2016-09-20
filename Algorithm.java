@@ -1,4 +1,8 @@
 import java.util.concurrent.TimeUnit ;
+/**
+ * $ javac Algorighm.java ;
+ * $ java -Xms2048m -Xmx2048m Algorithm ;
+ */
 public class Algorithm {
 	public static void main(String[] args){
 		/**
@@ -166,6 +170,7 @@ public class Algorithm {
 		 * 　3. 配置フラグ		(NQueen3())
 		 * 　4. ビットマップ		(NQueen4())
 		 * 　5. 回転と斜軸		(NQueen5())
+     *   6. ユニーク解から全解への展開(NQueen6())
 		 */
 		/**
 		 * ブルートフォース  
@@ -343,7 +348,7 @@ public class Algorithm {
 		 * }
 		 */
 		// ↓ のコメントアウトを外して実行
-//		new NQueen4();
+		//new NQueen4();
 	
 		/**
 		 * 実行結果 
@@ -496,7 +501,7 @@ public class Algorithm {
 		 *
 		 */
 		// ↓ のコメントアウトを外して実行
-//		new NQueen5();
+		//new NQueen5();
 		/**
 		 * ユニーク解だけが出力されます
 		 * 
@@ -1009,8 +1014,10 @@ class NQueen3{
 			set(0);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
-			System.out.printf("%2d:%13d%13d%6d:%02d.%03d%n", 
-					N,count, 0, diff/6000,diff/1000,diff%1000);
+			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
+					N,count, 0,TimeUnit.MILLISECONDS.toHours(diff), 
+                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
+                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
 		}
 	}
 	void set(int n){
@@ -1036,7 +1043,7 @@ class NQueen4{
 	int SIZE=0;
 	int MASK=0;
 	public NQueen4(){
-		System.out.println(" N:        Total       Unique        hh:mm");
+		System.out.println(" N:        Total       Unique        hh:mm:ss");
 		for(SIZE=0; SIZE<MAX; SIZE++){
 			long start = System.currentTimeMillis() ;
 			COUNT=0;
@@ -1044,8 +1051,10 @@ class NQueen4{
 			backTrackBit(0,0,0,0);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
-			System.out.printf("%2d:%13d%13d%6d:%02d.%03d%n", 
-					SIZE,COUNT, 0, diff/6000,diff/1000,diff%1000);
+			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
+					SIZE,COUNT,0,TimeUnit.MILLISECONDS.toHours(diff), 
+                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
+                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
 		}
 	}
 	void backTrackBit(int y, int left, int down, int right){
@@ -1177,14 +1186,16 @@ class NQueen5 {
 		}
 	}
 	public NQueen5(){
-		System.out.println(" N:        Total       Unique        hh:mm");
+		System.out.println(" N:        Total       Unique        hh:mm:ss");
 		for(int SIZE=2; SIZE<MAX+1; SIZE++){
 			long start = System.currentTimeMillis() ;
 			bitmap_rotate(SIZE);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
-			System.out.printf("%2d:%13d%13d%6d:%02d.%03d%n", 
-					SIZE,0,UNIQUE, diff/6000,diff/1000,diff%1000);
+			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
+					SIZE,0,UNIQUE,TimeUnit.MILLISECONDS.toHours(diff), 
+                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
+                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
 		}
 	}
 	void bitmap_rotate(int SIZE) {
@@ -1337,8 +1348,8 @@ class NQueen6 {
 			long diff = end-start;
 			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
 					SIZE,TOTAL,UNIQUE,TimeUnit.MILLISECONDS.toHours(diff), 
-                            TimeUnit.MILLISECONDS.toMinutes(diff),
-                            TimeUnit.MILLISECONDS.toSeconds(diff));
+                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
+                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
 		}
 	}
 	void bitmap_rotate(int SIZE) {
