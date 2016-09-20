@@ -578,7 +578,7 @@ public class Algorithm {
 		19:    673090552    621012754 170:1022.689
 		 */
 		// ↓ のコメントアウトを外して実行
-//		new NQueen6();
+		new NQueen6();
 
 	}
 }
