@@ -589,7 +589,7 @@ public class Algorithm {
  24:227514171973736
 		 */
 		// ↓ のコメントアウトを外して実行
-		new NQueen6();
+		//new NQueen6();
 
 	}
 }
