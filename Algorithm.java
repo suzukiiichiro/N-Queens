@@ -1,7 +1,7 @@
 import java.util.concurrent.TimeUnit ;
 /**
  * $ javac Algorighm.java ;
- * $ java -Xms2048m -Xmx2048m Algorithm ;
+ * $ java -Xms4g -Xmx4g Algorithm ;
  */
 public class Algorithm {
 	public static void main(String[] args){
@@ -214,29 +214,31 @@ public class Algorithm {
 		 * だけしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず
 		 * 木を降りても解がないと判明した時点で木を引き返すということができます。
 		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
-//		new NQueen3();
+		// new NQueen3();
 
 		/**
 		 * 実行結果
 		 N:        Total       Unique        hh:mm
-		 0:            0            0     0:00.000
-		 1:            1            0     0:00.000
-		 2:            0            0     0:00.000
-		 3:            0            0     0:00.000
-		 4:            2            0     0:00.000
-		 5:           10            0     0:00.000
-		 6:            4            0     0:00.000
-		 7:           40            0     0:00.000
-		 8:           92            0     0:00.001
-		 9:          352            0     0:00.001
-		10:          724            0     0:00.003
-		11:         2680            0     0:00.014
-		12:        14200            0     0:00.068
-		13:        73712            0     0:00.377
-		14:       365596            0     0:02.292
-		15:      2279184            0     2:14.702
-		16:     14772512            0   17:102.344
+		 0:                0            0     0:00:00
+		 1:                1            0     0:00:00
+		 2:                0            0     0:00:00
+		 3:                0            0     0:00:00
+		 4:                2            0     0:00:00
+		 5:               10            0     0:00:00
+		 6:                4            0     0:00:00
+		 7:               40            0     0:00:00
+		 8:               92            0     0:00:00
+		 9:              352            0     0:00:00
+		10:              724            0     0:00:00
+		11:             2680            0     0:00:00
+		12:            14200            0     0:00:00
+		13:            73712            0     0:00:00
+		14:           365596            0     0:00:02
+		15:          2279184            0     0:00:13
+		16:         14772512            0     0:01:34
+		17:         95815104            0     0:11:18
 		*/
 
 		/**
@@ -347,30 +349,32 @@ public class Algorithm {
 		 *     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
 		 * }
 		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
-		//new NQueen4();
+		// new NQueen4();
 	
 		/**
 		 * 実行結果 
-		 N:        Total       Unique        hh:mm
-		 0:            1            0     0:00.000
-		 1:            1            0     0:00.000
-		 2:            0            0     0:00.000
-		 3:            0            0     0:00.000
-		 4:            2            0     0:00.000
-		 5:           10            0     0:00.000
-		 6:            4            0     0:00.000
-		 7:           40            0     0:00.000
-		 8:           92            0     0:00.000
-		 9:          352            0     0:00.000
-		10:          724            0     0:00.001
-		11:         2680            0     0:00.002
-		12:        14200            0     0:00.006
-		13:        73712            0     0:00.034
-		14:       365596            0     0:00.203
-		15:      2279184            0     0:01.255
-		16:     14772512            0     1:08.374
-		17:     95815104            0     9:59.039
+		 N:        Total       Unique        hh:mm:ss
+		 0:                1            0     0:00:00
+		 1:                1            0     0:00:00
+		 2:                0            0     0:00:00
+		 3:                0            0     0:00:00
+		 4:                2            0     0:00:00
+		 5:               10            0     0:00:00
+		 6:                4            0     0:00:00
+		 7:               40            0     0:00:00
+		 8:               92            0     0:00:00
+		 9:              352            0     0:00:00
+		10:              724            0     0:00:00
+		11:             2680            0     0:00:00
+		12:            14200            0     0:00:00
+		13:            73712            0     0:00:00
+		14:           365596            0     0:00:00
+		15:          2279184            0     0:00:01
+		16:         14772512            0     0:00:08
+		17:         95815104            0     0:00:56
+		18:        666090624            0     0:06:58
 		*/
 
 		/**
@@ -500,30 +504,33 @@ public class Algorithm {
 		 * X X B - - x X X
 		 *
 		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
-		//new NQueen5();
+		// new NQueen5();
 		/**
 		 * ユニーク解だけが出力されます
 		 * 
-		 N:        Total       Unique        hh:mm
-		 2:            0            0     0:00.000
-		 3:            0            0     0:00.000
-		 4:            0            1     0:00.001
-		 5:            0            2     0:00.000
-		 6:            0            1     0:00.000
-		 7:            0            6     0:00.000
-		 8:            0           12     0:00.000
-		 9:            0           46     0:00.001
-		10:            0           92     0:00.000
-		11:            0          341     0:00.001
-		12:            0         1787     0:00.005
-		13:            0         9233     0:00.016
-		14:            0        45752     0:00.063
-		15:            0       285053     0:00.388
-		16:            0      1846955     0:02.767
-		17:            0     11977939     3:18.585
+		 N:        Total       Unique        hh:mm:ss
+		 2:                0            0     0:00:00
+		 3:                0            0     0:00:00
+		 4:                0            1     0:00:00
+		 5:                0            2     0:00:00
+		 6:                0            1     0:00:00
+		 7:                0            6     0:00:00
+		 8:                0           12     0:00:00
+		 9:                0           46     0:00:00
+		10:                0           92     0:00:00
+		11:                0          341     0:00:00
+		12:                0         1787     0:00:00
+		13:                0         9233     0:00:00
+		14:                0        45752     0:00:00
+		15:                0       285053     0:00:00
+		16:                0      1846955     0:00:02
+		17:                0     11977939     0:00:14
+		18:                0     83263591     0:01:48
+		19:                0    621012754     0:17:05
 		*/
-		
+
 		 /**
 		 * ■ユニーク解から全解への展開
 		 * 　これまでの考察はユニーク解の個数を求めるためのものでした。全解数を求めるには
@@ -560,37 +567,33 @@ public class Algorithm {
 		 *   UNIQUE  COUNT2      +  COUNT4      +  COUNT8
 		 * 	 TOTAL	(COUNT2 * 2) + (COUNT4 * 4) + (COUNT8 * 8)
 		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		// ↓ のコメントアウトを外して実行
+		new NQueen6();
 		
 		 /**
 		  * 実行結果
-		N:        Total       Unique        hh:mm
-		2:            0            0     0:00.000
-		3:            0            0     0:00.000
-		4:            2            1     0:00.000
-		5:           10            2     0:00.000
-		6:            4            1     0:00.000
-		7:           40            6     0:00.001
-		8:           92           12     0:00.000
-		9:          352           46     0:00.000
-		10:         724           92     0:00.000
-		11:        2680          341     0:00.001
-		12:       14200         1787     0:00.003
-		13:       73712         9233     0:00.010
-		14:      365596        45752     0:00.055
-		15:     2279184       285053     0:00.339
-		16:    14772512      1846955     0:02.172
-		17:    95815104     11977939     2:15.102
-		18:   666090624     83263591    18:08.184
-		19:  4968057848    621012754   144:22.689
-    20: 39029188884   4878666808
-    21:314666222712  39333324973
-   22:2691008701644
-  23:24233937684440
- 24:227514171973736
+		 N:            Total       Unique    hh:mm:ss
+		 2:                0            0     0:00:00
+		 3:                0            0     0:00:00
+		 4:                2            1     0:00:00
+		 5:               10            2     0:00:00
+		 6:                4            1     0:00:00
+		 7:               40            6     0:00:00
+		 8:               92           12     0:00:00
+		 9:              352           46     0:00:00
+		10:              724           92     0:00:00
+		11:             2680          341     0:00:00
+		12:            14200         1787     0:00:00
+		13:            73712         9233     0:00:00
+		14:           365596        45752     0:00:00
+		15:          2279184       285053     0:00:00
+		16:         14772512      1846955     0:00:02
+		17:         95815104     11977939     0:00:14
+		18:        666090624     83263591     0:01:47
+		19:       4968057848    621012754     0:13:35
+		20:      39029188884   4878666808     2:07:34
 		 */
-		// ↓ のコメントアウトを外して実行
-		//new NQueen6();
-
 	}
 }
 class Sort01_BubbleSort{
@@ -996,28 +999,33 @@ class NQueen3{
 	boolean[] fa=null ;
 	boolean[] fb=null ;
 	boolean[] fc=null ;
-	int count=0;
 	int N=0;
-	int max=22 ;
+	int max=27 ;
+
+	long TOTAL=0;
+
 	void print(){
-		count++;
+		TOTAL++;
 	}
 	public NQueen3(){
-		System.out.println(" N:        Total       Unique        hh:mm");
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(this.N=0; N<this.max; N++){
 			pos=new int[N];
 			fa=new boolean[N];
 			fb=new boolean[N*2];
 			fc=new boolean[N*2];
-			count=0;
+			TOTAL=0;
 			long start = System.currentTimeMillis() ;
 			set(0);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
 			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					N,count, 0,TimeUnit.MILLISECONDS.toHours(diff), 
-                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
-                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
+					N,TOTAL,0,
+				    TimeUnit.MILLISECONDS.toHours(diff),
+				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
+				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
+				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
 		}
 	}
 	void set(int n){
@@ -1027,7 +1035,7 @@ class NQueen3{
 			if(fa[i]==false && fb[n+i]==false && fc[n-i+(N-1)]==false){
 				pos[n]=i;
 				if(n==(N-1))
-					count++;
+					TOTAL++;
 				else{
 					fa[i]=fb[n+i]=fc[n-i+(N-1)]=true;
 					set(n+1);
@@ -1037,13 +1045,16 @@ class NQueen3{
 		}
 	}
 }
+
 class NQueen4{
-	int MAX=22 ;
-	int COUNT=0;
+	int MAX=27 ;
 	int SIZE=0;
 	int MASK=0;
+
+	long COUNT=0;
+
 	public NQueen4(){
-		System.out.println(" N:        Total       Unique        hh:mm:ss");
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(SIZE=0; SIZE<MAX; SIZE++){
 			long start = System.currentTimeMillis() ;
 			COUNT=0;
@@ -1052,9 +1063,12 @@ class NQueen4{
 			long end = System.currentTimeMillis();
 			long diff = end-start;
 			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,COUNT,0,TimeUnit.MILLISECONDS.toHours(diff), 
-                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
-                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
+					SIZE,COUNT,0,
+				    TimeUnit.MILLISECONDS.toHours(diff),
+				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
+				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
+				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
 		}
 	}
 	void backTrackBit(int y, int left, int down, int right){
@@ -1082,10 +1096,12 @@ class NQueen5 {
 	int ENDBIT;
 	int BOUND1;
 	int BOUND2;
-	int UNIQUE;
 	int SIZE=0;
-	int MAX=21;
-	int TOTAL ;
+	int MAX=27;
+
+	long TOTAL ;
+	long UNIQUE;
+
 	void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -1186,16 +1202,19 @@ class NQueen5 {
 		}
 	}
 	public NQueen5(){
-		System.out.println(" N:        Total       Unique        hh:mm:ss");
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(int SIZE=2; SIZE<MAX+1; SIZE++){
 			long start = System.currentTimeMillis() ;
 			bitmap_rotate(SIZE);
 			long end = System.currentTimeMillis();
 			long diff = end-start;
 			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,0,UNIQUE,TimeUnit.MILLISECONDS.toHours(diff), 
-                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
-                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
+					SIZE,0,UNIQUE,
+				    TimeUnit.MILLISECONDS.toHours(diff),
+				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
+				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
+				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
 		}
 	}
 	void bitmap_rotate(int SIZE) {
@@ -1232,9 +1251,13 @@ class NQueen6 {
 	int ENDBIT;
 	int BOUND1;
 	int BOUND2;
-	int COUNT8;
-	int COUNT4;
-	int COUNT2;
+
+	long UNIQUE ;
+	long TOTAL ;
+	long COUNT8;
+	long COUNT4;
+	long COUNT2;
+
 	void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -1335,11 +1358,8 @@ class NQueen6 {
 			}
 		}
 	}
-	int SIZE=0;
-	int MAX=21;
-	int UNIQUE ;
-	int TOTAL ;
 	public NQueen6(){
+	int MAX=27;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(int SIZE=2; SIZE<MAX+1; SIZE++){
 			long start = System.currentTimeMillis() ;
@@ -1347,13 +1367,16 @@ class NQueen6 {
 			long end = System.currentTimeMillis();
 			long diff = end-start;
 			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,TOTAL,UNIQUE,TimeUnit.MILLISECONDS.toHours(diff), 
-                            TimeUnit.MILLISECONDS.toMinutes(diff)%60,
-                            TimeUnit.MILLISECONDS.toSeconds(diff)%60);
+					SIZE,TOTAL,UNIQUE,
+				    TimeUnit.MILLISECONDS.toHours(diff),
+				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
+				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
+				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
 		}
 	}
 	void bitmap_rotate(int SIZE) {
-		this.SIZE=SIZE;
+		//this.SIZE=SIZE;
 		SIZEE = SIZE-1;
 		TOPBIT = 1<<SIZEE;
 		MASK=(1<<SIZE)-1;
