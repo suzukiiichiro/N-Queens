@@ -52,6 +52,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		new Sort01_BubbleSort();
+
 		/**
 		 * 選択ソート 3294mm
  		 * https://ja.wikipedia.org/wiki/選択ソート
@@ -63,6 +64,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		new Sort02_SelectionSort();
+
 		/**
 		 * 挿入ソート 3511mm
  		 * https://ja.wikipedia.org/wiki/挿入ソート
@@ -74,6 +76,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		new Sort03_InsertionSort();
+
 		/**
 		 * マージソート 1085mm
  		 * https://ja.wikipedia.org/wiki/マージソート
@@ -92,6 +95,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		new Sort04_MergeSort();
+
 		/**
 		 * シェルソート 1052mm
  		 * https://ja.wikipedia.org/wiki/シェルソート
@@ -103,6 +107,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		new Sort05_ShellSort();
+
 		/**
 		 * クイックソート 1131mm
  		 * https://ja.wikipedia.org/wiki/クイックソート
