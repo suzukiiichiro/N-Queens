@@ -128,12 +128,14 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive01_Triangle().triangle(5));
+
 		/**
 		 * https://ja.wikipedia.org/wiki/階乗
 		 * 5 * 4 * 3 * 2 * 1 = 120 
 		 */
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive02_Factorial().factorial(5));
+
 		/**
 		 * https://ja.wikipedia.org/wiki/ユークリッドの互除法
 		 * (問題) 1071 と 1029 の最大公約数を求める。
@@ -144,6 +146,7 @@ Javaの基本知識があれば習熟可能です。
 		 */
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive03_Euclid().euclid(1071, 1029));
+
 		/**
 		 * https://ja.wikipedia.org/wiki/ハノイの塔
 		 *  古代インドの神話では、遠い秘境のお寺で僧侶達が毎日毎晩、
