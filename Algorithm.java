@@ -165,6 +165,15 @@ public class Algorithm {
 		 * 再帰　Nクイーン問題
 		 * https://ja.wikipedia.org/wiki/エイト・クイーン
 		 * 
+		 * 当方の開発実行環境
+		 * MacOSX Macbook Pro
+		 * プロセッサ：2.5Ghz intel core i7
+		 * メモリ：16G 
+		 * 
+		 * コンパイルおよび実行方法
+		 * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		 *
+		 * 
 		 * 　1. ブルートフォース	(NQueen1())
 		 * 　2. バックトラック 	(NQueen2())
 		 * 　3. 配置フラグ		(NQueen3())
@@ -594,8 +603,8 @@ public class Algorithm {
 		19:       4968057848    621012754  00:13:55
 		20:      39029188884   4878666808  01:50:42
 		21:     314666222712  39333324973  15:34:05
-     *
-		 */
+        *
+		*/
 	}
 }
 class Sort01_BubbleSort{

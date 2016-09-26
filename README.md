@@ -181,6 +181,15 @@ Javaの基本知識があれば習熟可能です。
 		/**
 		 * 再帰　Nクイーン問題
 		 * https://ja.wikipedia.org/wiki/エイト・クイーン
+		 *
+		 * 当方の開発実行環境
+		 * MacOSX Macbook Pro
+		 * プロセッサ：2.5Ghz intel core i7
+		 * メモリ：16G 
+		 * 
+		 * コンパイルおよび実行方法
+		 * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		 *
 		 * 
 		 * 　1. ブルートフォース	(NQueen1())
 		 * 　2. バックトラック 	(NQueen2())
