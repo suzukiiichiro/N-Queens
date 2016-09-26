@@ -1,4 +1,4 @@
-import java.util.concurrent.TimeUnit ;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 /**
  * $ javac Algorighm.java ;
  * $ java -Xms4g -Xmx4g Algorithm ;
@@ -574,25 +574,27 @@ public class Algorithm {
 		 /**
 		  * 実行結果
 		 N:            Total       Unique    hh:mm:ss
-		 2:                0            0     0:00:00
-		 3:                0            0     0:00:00
-		 4:                2            1     0:00:00
-		 5:               10            2     0:00:00
-		 6:                4            1     0:00:00
-		 7:               40            6     0:00:00
-		 8:               92           12     0:00:00
-		 9:              352           46     0:00:00
-		10:              724           92     0:00:00
-		11:             2680          341     0:00:00
-		12:            14200         1787     0:00:00
-		13:            73712         9233     0:00:00
-		14:           365596        45752     0:00:00
-		15:          2279184       285053     0:00:00
-		16:         14772512      1846955     0:00:02
-		17:         95815104     11977939     0:00:14
-		18:        666090624     83263591     0:01:47
-		19:       4968057848    621012754     0:13:35
-		20:      39029188884   4878666808     2:07:34
+		 2:                0            0  00:00:00
+		 3:                0            0  00:00:00
+		 4:                2            1  00:00:00
+		 5:               10            2  00:00:00
+		 6:                4            1  00:00:00
+		 7:               40            6  00:00:00
+		 8:               92           12  00:00:00
+		 9:              352           46  00:00:00
+		10:              724           92  00:00:00
+		11:             2680          341  00:00:00
+		12:            14200         1787  00:00:00
+		13:            73712         9233  00:00:00
+		14:           365596        45752  00:00:00
+		15:          2279184       285053  00:00:00
+		16:         14772512      1846955  00:00:02
+		17:         95815104     11977939  00:00:15
+		18:        666090624     83263591  00:01:49
+		19:       4968057848    621012754  00:13:55
+		20:      39029188884   4878666808  01:50:42
+		21:     314666222712  39333324973  15:34:05
+     *
 		 */
 	}
 }
@@ -1018,14 +1020,8 @@ class NQueen3{
 			long start = System.currentTimeMillis() ;
 			set(0);
 			long end = System.currentTimeMillis();
-			long diff = end-start;
-			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					N,TOTAL,0,
-				    TimeUnit.MILLISECONDS.toHours(diff),
-				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
-				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
-				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
-				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",N,TOTAL,0,TIME); 
 		}
 	}
 	void set(int n){
@@ -1061,14 +1057,8 @@ class NQueen4{
 			MASK=(1<<SIZE)-1;
 			backTrackBit(0,0,0,0);
 			long end = System.currentTimeMillis();
-			long diff = end-start;
-			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,COUNT,0,
-				    TimeUnit.MILLISECONDS.toHours(diff),
-				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
-				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
-				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
-				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,COUNT,0,TIME); 
 		}
 	}
 	void backTrackBit(int y, int left, int down, int right){
@@ -1207,14 +1197,8 @@ class NQueen5 {
 			long start = System.currentTimeMillis() ;
 			bitmap_rotate(SIZE);
 			long end = System.currentTimeMillis();
-			long diff = end-start;
-			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,0,UNIQUE,
-				    TimeUnit.MILLISECONDS.toHours(diff),
-				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
-				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
-				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
-				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,0,UNIQUE,TIME); 
 		}
 	}
 	void bitmap_rotate(int SIZE) {
@@ -1365,14 +1349,8 @@ class NQueen6 {
 			long start = System.currentTimeMillis() ;
 			bitmap_rotate(SIZE);
 			long end = System.currentTimeMillis();
-			long diff = end-start;
-			System.out.printf("%2d:%17d%13d%6d:%02d:%02d%n", 
-					SIZE,TOTAL,UNIQUE,
-				    TimeUnit.MILLISECONDS.toHours(diff),
-				    TimeUnit.MILLISECONDS.toMinutes(diff) - 
-				    TimeUnit.MINUTES.toMinutes(TimeUnit.MILLISECONDS.toHours(diff)),
-				    TimeUnit.MILLISECONDS.toSeconds(diff) - 
-				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(diff)));   
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,TOTAL,UNIQUE,TIME); 
 		}
 	}
 	void bitmap_rotate(int SIZE) {
