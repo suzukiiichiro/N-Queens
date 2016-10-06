@@ -41,6 +41,7 @@ public class Algorithm {
 		 * 　交換回数は「　n^2/2　」
 		 * 　派生系としてシェーカーソートやコムソート
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort01_BubbleSort();
 		/**
@@ -52,6 +53,7 @@ public class Algorithm {
 		 * 　比較回数は「　n(n-1)/2　」
 		 * 　交換回数は「　n-1　」
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort02_SelectionSort();
 		/**
@@ -63,6 +65,7 @@ public class Algorithm {
 		 * 　比較回数は「　n(n-1)/2以下　」
 		 * 　交換回数は「　約n^2/2以下　」
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort03_InsertionSort();
 		/**
@@ -81,6 +84,7 @@ public class Algorithm {
 		 *  マージソートの欠点は、ソートする配列と同サイズの配列をもう一つ必要とする事です。
 		 *  元の配列がかろうじてメモリに治まるという大きさだったら、マージソートは使えません。
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort04_MergeSort();
 		/**
@@ -92,6 +96,7 @@ public class Algorithm {
 		 * 　挿入ソート改造版
 		 *　 ３倍して１を足すという処理を要素を超えるまで行う
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort05_ShellSort();
 		/**
@@ -106,6 +111,7 @@ public class Algorithm {
 		 * データ数が 5 万以下ならマージソート (Merge Sort)
 		 * データ数がそれより多いならクイックソート (Quick Sort)
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Sort06_QuickSort();
 		
@@ -117,12 +123,14 @@ public class Algorithm {
 		 * https://ja.wikipedia.org/wiki/三角数
 		 * 5 + 4 + 3 + 2 + 1 = 15
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive01_Triangle().triangle(5));
 		/**
 		 * https://ja.wikipedia.org/wiki/階乗
 		 * 5 * 4 * 3 * 2 * 1 = 120 
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive02_Factorial().factorial(5));
 		/**
@@ -133,6 +141,7 @@ public class Algorithm {
 		 * 42 を 21 で割った余りは 0
 		 * よって、最大公約数は21である。
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		System.out.println(new Recursive03_Euclid().euclid(1071, 1029));
 		/**
@@ -158,13 +167,61 @@ public class Algorithm {
 		 * n90:1,237,940,039,285,380,000,000,000,000
 		 * n100:1,267,650,600,228,230,000,000,000,000,000
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new Recursive04_Hanoi().hanoi(20, 'A', 'B', 'C');
 
 		/**
 		 * 再帰　Nクイーン問題
 		 * https://ja.wikipedia.org/wiki/エイト・クイーン
+		 * N-Queens問題とは
 		 * 
+		 * 8-Queens は 8x8 のチェス盤を用いる問題。
+		 * 8×8のチェスボードに8個のクイーンを、互いに効きが当たらないように並べよ」という問題。
+		 * クイーンとは、チェスで使われているクイーンを指し、チェス盤の中で、縦、横、斜めにどこまでも進むことができる。
+		 * クイーンは日本の将棋でいう「飛車と角」を合わせた動きとなる。
+		 * 8-Queens問題の解は、問題の条件さえ満たしていればクイーンの置き方に制限はなく、解の総数は92個。対称形を除いたユニーク解は12個となる。
+		 * 
+		 * 比較的単純な問題なので、学部レベルの演習問題として取り上げられることが多い。
+		 * 8-Queens程度であれば、力まかせ探索でも解を求めることができるが、Nが大きくなると解が爆発し、実用的な時間では解けなくなる。
+		 * 
+		 * N-Queens問題は、クイーン(N)をどこまで大きなNまで解を求めることができるかという問題。
+		 * 
+		 * 斜めの制約をしない場合、各行各列に一つずつクイーンを置く総数はN!(N^N)通り。
+		 * 
+		 * ８個のクイーンをチェス盤上に置く置き方が 64Ｃ8 = 4,426,165,368 通り。しかし，１つの行には１個のクイーンしか置けないことを考えると，調べる場合の数を減らすことができる。 すなわち，８つの行それぞれに，１個のクイーンをどこに置くか，ということを考えればいいから， その場合の数は， 8の8乗 = 16,777,216 通りである。
+		 * 
+		 * １．ブルートフォース（力まかせ探索）  O(N^N)
+		 *     全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
+		 *     なるかをチェックする方法
+		 * 
+		 * ２．バックトラック                    O(N!)
+		 *     パターンを生成し終わってからチェックを行うのではなく、途中で制約を満たさな
+		 *     い事が明らかな場合は、それ以降のパターン生成を行わない
+		 * 
+		 * ３．配置フラグ（制約テスト高速化）    O(1)
+		 *     各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満たさ
+		 *     ない事が明らかな場合は、それ以降のパターン生成を行わない。
+		 * 		N16:         14772512            0     0:01:34
+		 * 
+		 * ４．ビット演算（ビットマップ）
+		 *     状態をビットマップにパックし、ビット演算処理をする事で高速化
+		 *     単純なバックトラックよりも２０〜３０倍高速
+		 * 		N16:         14772512            0     0:00:08
+		 * ５．対称解除法
+		 *     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
+		 *     ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
+		 * 		N16:                0      1846955     0:00:02
+		 *     
+		 * ６．ユニーク解から前解への展開 
+		 * 		N16:         14772512      1846955    00:00:02
+		 * 
+		 * ７．枝刈りによる高速化
+		 *     ユニーク解に対する左右対称解をあらかじめ削除する。
+		 * 
+		 * ８．部分解合成法
+		 *      
+		 *      
 		 * 当方の開発実行環境
 		 * MacOSX Macbook Pro
 		 * プロセッサ：2.5Ghz intel core i7
@@ -174,13 +231,16 @@ public class Algorithm {
 		 * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		 *
 		 * 
-		 * 　1. ブルートフォース	(NQueen1())
-		 * 　2. バックトラック 	(NQueen2())
-		 * 　3. 配置フラグ		(NQueen3())
-		 * 　4. ビットマップ		(NQueen4())
-		 * 　5. 回転と斜軸		(NQueen5())
-     *   6. ユニーク解から全解への展開(NQueen6())
+		 * 　1. ブルートフォース			(NQueen1())
+		 * 　2. バックトラック 			(NQueen2())
+		 * 　3. 配置フラグ				(NQueen3())
+		 * 　4. ビットマップ				(NQueen4())
+		 * 　5. 回転と斜軸によるユニーク解	(NQueen5())
+		 * 　6. ユニーク解から全解への展開	(NQueen6())
+		 * 　7. 枝刈りによる最適化			(NQueen7())
 		 */
+		
+		
 		/**
 		 * ブルートフォース  
 		 * 
@@ -194,6 +254,7 @@ public class Algorithm {
 		 * (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだけで
 		 * あって8王妃問題を解いているわけではありません
 		 */
+
 		// ↓ のコメントアウトを外して実行
 //		new NQueen1();
 
@@ -211,8 +272,9 @@ public class Algorithm {
 		 * (※)各行列に一個の王妃配置する組み合わせを再帰的に列挙分枝走査を行っても、組み
 		 * 合わせを列挙するだけであって、8王妃問題を解いているわけではありません。
 		 */
+
 		// ↓ のコメントアウトを外して実行
-//		new NQueen2();
+		//  new NQueen2();
 
 		/**
 		 * 配置フラグによる制約テスト高速化
@@ -223,6 +285,7 @@ public class Algorithm {
 		 * だけしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず
 		 * 木を降りても解がないと判明した時点で木を引き返すということができます。
 		 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
 		// new NQueen3();
@@ -358,10 +421,11 @@ public class Algorithm {
 		 *     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
 		 * }
 		 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
 		// new NQueen4();
-	
+
 		/**
 		 * 実行結果 
 		 N:        Total       Unique        hh:mm:ss
@@ -513,9 +577,11 @@ public class Algorithm {
 		 * X X B - - x X X
 		 *
 		 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
 		// new NQueen5();
+
 		/**
 		 * ユニーク解だけが出力されます
 		 * 
@@ -539,7 +605,7 @@ public class Algorithm {
 		18:                0     83263591     0:01:48
 		19:                0    621012754     0:17:05
 		*/
-
+		
 		 /**
 		 * ■ユニーク解から全解への展開
 		 * 　これまでの考察はユニーク解の個数を求めるためのものでした。全解数を求めるには
@@ -576,10 +642,11 @@ public class Algorithm {
 		 *   UNIQUE  COUNT2      +  COUNT4      +  COUNT8
 		 * 	 TOTAL	(COUNT2 * 2) + (COUNT4 * 4) + (COUNT8 * 8)
 		 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
-		new NQueen6();
-		
+		//  new NQueen6();
+
 		 /**
 		  * 実行結果
 		 N:            Total       Unique    hh:mm:ss
@@ -606,6 +673,14 @@ public class Algorithm {
 		22:    2691008701644 336376244042 136:08:43
         *
 		*/
+
+		/**
+		 * ■
+		 * 
+		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		// ↓ のコメントアウトを外して実行
+		new NQueen7();
 	}
 }
 class Sort01_BubbleSort{
@@ -961,9 +1036,6 @@ class Recursive04_Hanoi{
 class NQueen1{
 	int[] pos=new int[8];
 	int count=1;
-	public NQueen1(){
-		set(0);
-	}
 	void print(){
 		for(int i=0;i<8;i++)
 			System.out.printf("%2d", pos[i]);
@@ -978,14 +1050,14 @@ class NQueen1{
 				set(n+1); //次の行へ
 		}
 	}
+	public NQueen1(){
+		set(0);
+	}
 }
 class NQueen2{
 	int[] pos = new int[8];
 	boolean[] f = new boolean[8];
 	int count=1;
-	public NQueen2(){
-		set(0);
-	}
 	void print(){
 		for(int i=0; i<8; i++)
 			System.out.printf("%2d",  pos[i]);
@@ -1005,6 +1077,9 @@ class NQueen2{
 			}
 		}
 	}
+	public NQueen2(){
+		set(0);
+	}
 }
 class NQueen3{
 	int[] pos=null ;
@@ -1013,26 +1088,9 @@ class NQueen3{
 	boolean[] fc=null ;
 	int N=0;
 	int max=27 ;
-
 	long TOTAL=0;
-
 	void print(){
 		TOTAL++;
-	}
-	public NQueen3(){
-		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(this.N=0; N<this.max; N++){
-			pos=new int[N];
-			fa=new boolean[N];
-			fb=new boolean[N*2];
-			fc=new boolean[N*2];
-			TOTAL=0;
-			long start = System.currentTimeMillis() ;
-			set(0);
-			long end = System.currentTimeMillis();
-			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",N,TOTAL,0,TIME); 
-		}
 	}
 	void set(int n){
 		for(int i=0; i<N; i++){
@@ -1050,15 +1108,40 @@ class NQueen3{
 			}
 		}
 	}
+	public NQueen3(){
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(this.N=0; N<this.max; N++){
+			pos=new int[N];
+			fa=new boolean[N];
+			fb=new boolean[N*2];
+			fc=new boolean[N*2];
+			TOTAL=0;
+			long start = System.currentTimeMillis() ;
+			set(0);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",N,TOTAL,0,TIME); 
+		}
+	}
 }
-
 class NQueen4{
 	int MAX=27 ;
 	int SIZE=0;
 	int MASK=0;
-
 	long COUNT=0;
-
+	void backTrackBit(int y, int left, int down, int right){
+		int bitmap, bit ;
+		if(y==SIZE)
+			COUNT++;
+		else{
+			bitmap=MASK & ~(left|down|right);
+			while(bitmap>0){
+				bit=-bitmap&bitmap; //一番右の１のビットを取り出す
+				backTrackBit( y+1, (left|bit)<<1, (down|bit), (right|bit)>>1);
+				bitmap^=bit; //処理済みビットをOFF
+			}
+		}	
+	}
 	public NQueen4(){
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(SIZE=0; SIZE<MAX; SIZE++){
@@ -1070,19 +1153,6 @@ class NQueen4{
 			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
 			System.out.printf("%2d:%17d%13d%10s%n",SIZE,COUNT,0,TIME); 
 		}
-	}
-	void backTrackBit(int y, int left, int down, int right){
-		int bitmap, bit ;
-		if(y==SIZE)
-			COUNT++;
-		else{
-			bitmap=MASK & ~(left|down|right);
-			while(bitmap>0){
-				bit=-bitmap&bitmap;
-				bitmap^=bit;
-				backTrackBit( y+1, (left|bit)<<1, (down|bit), (right|bit)>>1);
-			}
-		}	
 	}
 }
 class NQueen5 {
@@ -1096,12 +1166,9 @@ class NQueen5 {
 	int ENDBIT;
 	int BOUND1;
 	int BOUND2;
-	int SIZE=0;
 	int MAX=27;
-
 	long TOTAL ;
 	long UNIQUE;
-
 	void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -1201,25 +1268,13 @@ class NQueen5 {
 			}
 		}
 	}
-	public NQueen5(){
-		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int SIZE=2; SIZE<MAX+1; SIZE++){
-			long start = System.currentTimeMillis() ;
-			bitmap_rotate(SIZE);
-			long end = System.currentTimeMillis();
-			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",SIZE,0,UNIQUE,TIME); 
-		}
-	}
 	void bitmap_rotate(int SIZE) {
-		this.SIZE=SIZE;
 		SIZEE = SIZE-1;
 		TOPBIT = 1<<SIZEE;
 		MASK=(1<<SIZE)-1;
 		UNIQUE=0;
 		BOARD = new int[SIZE];
 		BOARD[0] = 1;
-
 		for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
 			BOARD[1]=bit=(1<< BOUND1);
 			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
@@ -1231,6 +1286,16 @@ class NQueen5 {
 			backTrack2(1, bit<<1, bit, bit>>1);
 			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 			ENDBIT>>=1;
+		}
+	}
+	public NQueen5(){
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(int SIZE=2; SIZE<MAX+1; SIZE++){
+			long start = System.currentTimeMillis() ;
+			bitmap_rotate(SIZE);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,0,UNIQUE,TIME); 
 		}
 	}
 }
@@ -1245,13 +1310,11 @@ class NQueen6 {
 	int ENDBIT;
 	int BOUND1;
 	int BOUND2;
-
 	long UNIQUE ;
 	long TOTAL ;
 	long COUNT8;
 	long COUNT4;
 	long COUNT2;
-
 	void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -1311,7 +1374,6 @@ class NQueen6 {
 		int bitmap= ( MASK & ~(left|down|right)) ;
 		if(y==SIZEE){
 			if(bitmap!=0){
-				// ==  or !=
 				if( (bitmap & LASTMASK)==0){ //最下段枝刈り
 					BOARD[y]=bitmap;
 					Check(bitmap);
@@ -1352,28 +1414,13 @@ class NQueen6 {
 			}
 		}
 	}
-	public NQueen6(){
-	int MAX=27;
-		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int SIZE=2; SIZE<MAX+1; SIZE++){
-			long start = System.currentTimeMillis() ;
-			bitmap_rotate(SIZE);
-			long end = System.currentTimeMillis();
-			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",SIZE,TOTAL,UNIQUE,TIME); 
-		}
-	}
 	void bitmap_rotate(int SIZE) {
-		//this.SIZE=SIZE;
 		SIZEE = SIZE-1;
 		TOPBIT = 1<<SIZEE;
 		MASK=(1<<SIZE)-1;
-
 		COUNT8 = COUNT4 = COUNT2 = 0;
-
 		BOARD = new int[SIZE];
 		BOARD[0] = 1;
-
 		for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
 			BOARD[1]=bit=(1<< BOUND1);
 			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
@@ -1388,5 +1435,170 @@ class NQueen6 {
 		}
 		UNIQUE = COUNT8 + COUNT4 + COUNT2;
 		TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
+	}
+	public NQueen6(){
+	int MAX=27;
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(int SIZE=2; SIZE<MAX+1; SIZE++){
+			long start = System.currentTimeMillis() ;
+			bitmap_rotate(SIZE);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,TOTAL,UNIQUE,TIME); 
+		}
+	}
+}
+class NQueen7 {
+	void Check(int SIZE, int ENDBIT, int TOPBIT, 
+				int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
+		//90度回転
+		if (BOARD[BOUND2]==1) {
+			int ptn=2 ; int own ; int bown; 
+			for (own=1 ; own<=SIZE-1; own++) {
+				bit=1;
+				bown=BOARD[own];
+				for(int you=SIZE-1;(BOARD[you] != ptn) && (bown >= bit); you--){
+					bit<<=1;
+				}
+				if (bown>bit) { return; }
+				if (bown<bit) { break; }
+				ptn<<=1 ;
+			}
+			//90度回転して同型なら180度/270度回転も同型である
+			if (own>SIZE-1) {
+				COUNT2++;
+				return;
+			}
+		}
+		//180度回転
+		if (bitmap==ENDBIT) {
+			int own=1;
+			for (int you=(SIZE-1)-1; own<=SIZE-1; own++, you--) {
+				bit=1;
+				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1){
+					bit<<=1;
+				}
+				if (BOARD[own] > bit) { return; }
+				if (BOARD[own] < bit) { break; }
+			}
+			//90度回転が同型でなくても180度回転が同型である事もある
+			if (own>SIZE-1) {
+				COUNT4++;
+				return;
+			}
+		}
+		//270度回転
+		if (BOARD[BOUND1]==TOPBIT) {
+			int own=1;
+			for (int ptn=TOPBIT>>1; own<=SIZE-1; own++, ptn>>=1) {
+				bit=1;
+				for (int you=0; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+					bit<<=1;
+				}
+				if (BOARD[own]>bit) { return; }
+				if (BOARD[own]<bit) { break; }
+			}
+		}
+		COUNT8++;
+	}
+	/**
+	 * 最上段のクイーンが角以外にある場合の探索
+	 */
+	void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, 
+						int ENDBIT, int MASK, int TOPBIT, int bit, 
+						int BOUND1, int BOUND2, int[] BOARD, 
+						int y, int left, int down, int right){
+		int bitmap= ( MASK & ~(left|down|right)) ;
+		if(y==SIZE-1){
+			if(bitmap!=0){
+				if( (bitmap & LASTMASK)==0){ //最下段枝刈り
+					BOARD[y]=bitmap;
+					Check(SIZE, ENDBIT, TOPBIT, bitmap, bit, BOUND1, BOUND2, BOARD);
+				}
+			}
+		}else{
+			if(y<BOUND1){ //上部サイド枝刈り
+				bitmap|=SIDEMASK ;
+				bitmap^=SIDEMASK;
+			}else if(y==BOUND2){ //下部サイド枝刈り
+				if( (down&SIDEMASK) == 0) return ;
+				if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
+			}
+			while(bitmap!=0){
+				bitmap^=BOARD[y]=bit=-bitmap&bitmap;
+				backTrack2(SIZE, SIDEMASK, LASTMASK, 
+							ENDBIT, MASK,  TOPBIT, bit, 
+							BOUND1, BOUND2, BOARD, 
+							(y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
+			}
+		}
+	}
+	/**
+	 * 最上段のクイーンが角にある場合の探索
+	 */
+	void backTrack1(int SIZE, int MASK, int bit, 
+					int BOUND1, int[] BOARD, 
+					int y, int left, int down, int right){
+		int bitmap=( MASK & ~(left|down|right) );
+		if(y==SIZE-1){
+			if(bitmap!=0){
+				BOARD[y]=bitmap;
+				COUNT8++;
+			}
+		}else{
+			if(y<BOUND1){//斜軸反転解の排除
+				bitmap|=2 ;
+				bitmap^=2;
+			}
+			while(bitmap!=0){
+				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
+				backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 
+							y+1, (left|bit)<<1, down|bit, (right|bit)>>1 );
+			}
+		}
+	}
+	void bitmap_rotate(int SIZE) {
+		TOTAL=UNIQUE=COUNT8=COUNT4=COUNT2=0;
+		int[] BOARD = new int[SIZE];
+		int MASK=(1<<SIZE)-1;
+		int bit ;
+		int BOUND1 ;
+		int BOUND2 ;
+		for (BOUND1=2; BOUND1<SIZE-1; BOUND1++) {
+			BOARD[1]=bit=(1<< BOUND1);
+			backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 
+						2, (2|bit)<<1, (1|bit), (bit>>1));
+		}
+		int TOPBIT = 1<<SIZE-1;
+		int SIDEMASK=(TOPBIT|1);
+		int LASTMASK=(TOPBIT|1);
+		int ENDBIT = (TOPBIT>>1);
+		for (BOUND1=1, BOUND2=SIZE-2; BOUND1<BOUND2; BOUND1++, BOUND2--) {
+			BOARD[0]=bit=(1<<BOUND1);
+			backTrack2(SIZE, SIDEMASK, LASTMASK, 
+						ENDBIT, MASK, TOPBIT, bit, 
+						BOUND1, BOUND2, BOARD, 
+						1, bit<<1, bit, bit>>1);
+			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+			ENDBIT>>=1;
+		}
+		UNIQUE = COUNT8 + COUNT4 + COUNT2;
+		TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
+	}
+	long TOTAL ;
+	long UNIQUE ;
+	long COUNT8;
+	long COUNT4;
+	long COUNT2;
+	public NQueen7(){
+		int MAX=27;
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(int SIZE=2; SIZE<MAX+1; SIZE++){
+			long start = System.currentTimeMillis() ;
+			bitmap_rotate(SIZE);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,TOTAL,UNIQUE,TIME); 
+		}
 	}
 }
