@@ -1449,8 +1449,7 @@ class NQueen6 {
 	}
 }
 class NQueen7 {
-	void Check(int SIZE, int ENDBIT, int TOPBIT, 
-				int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
+	void Check(int SIZE, int ENDBIT, int TOPBIT, int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
 		//90度回転
 		if (BOARD[BOUND2]==1) {
 			int ptn=2 ; int own ; int bown; 
@@ -1504,10 +1503,7 @@ class NQueen7 {
 	/**
 	 * 最上段のクイーンが角以外にある場合の探索
 	 */
-	void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, 
-						int ENDBIT, int MASK, int TOPBIT, int bit, 
-						int BOUND1, int BOUND2, int[] BOARD, 
-						int y, int left, int down, int right){
+	void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, int ENDBIT, int MASK, int TOPBIT, int bit, int BOUND1, int BOUND2, int[] BOARD, int y, int left, int down, int right){
 		int bitmap= ( MASK & ~(left|down|right)) ;
 		if(y==SIZE-1){
 			if(bitmap!=0){
@@ -1526,19 +1522,14 @@ class NQueen7 {
 			}
 			while(bitmap!=0){
 				bitmap^=BOARD[y]=bit=-bitmap&bitmap;
-				backTrack2(SIZE, SIDEMASK, LASTMASK, 
-							ENDBIT, MASK,  TOPBIT, bit, 
-							BOUND1, BOUND2, BOARD, 
-							(y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
+				backTrack2(SIZE, SIDEMASK, LASTMASK, ENDBIT, MASK,  TOPBIT, bit, BOUND1, BOUND2, BOARD, (y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
 			}
 		}
 	}
 	/**
 	 * 最上段のクイーンが角にある場合の探索
 	 */
-	void backTrack1(int SIZE, int MASK, int bit, 
-					int BOUND1, int[] BOARD, 
-					int y, int left, int down, int right){
+	void backTrack1(int SIZE, int MASK, int bit, int BOUND1, int[] BOARD, int y, int left, int down, int right){
 		int bitmap=( MASK & ~(left|down|right) );
 		if(y==SIZE-1){
 			if(bitmap!=0){
@@ -1552,8 +1543,7 @@ class NQueen7 {
 			}
 			while(bitmap!=0){
 				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
-				backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 
-							y+1, (left|bit)<<1, down|bit, (right|bit)>>1 );
+				backTrack1(SIZE, MASK, bit, BOUND1, BOARD, y+1, (left|bit)<<1, down|bit, (right|bit)>>1 );
 			}
 		}
 	}
@@ -1561,24 +1551,22 @@ class NQueen7 {
 		TOTAL=UNIQUE=COUNT8=COUNT4=COUNT2=0;
 		int[] BOARD = new int[SIZE];
 		int MASK=(1<<SIZE)-1;
-		int bit ;
-		int BOUND1 ;
-		int BOUND2 ;
+		int bit;
+		int BOUND1;
+		int BOUND2;
+		//	最上段のクイーンが角にある場合の探索
 		for (BOUND1=2; BOUND1<SIZE-1; BOUND1++) {
-			BOARD[1]=bit=(1<< BOUND1);
-			backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 
-						2, (2|bit)<<1, (1|bit), (bit>>1));
+			BOARD[1]=bit=(1<<BOUND1);
+			backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 2, (2|bit)<<1, (1|bit), (bit>>1));
 		}
 		int TOPBIT = 1<<SIZE-1;
 		int SIDEMASK=(TOPBIT|1);
 		int LASTMASK=(TOPBIT|1);
-		int ENDBIT = (TOPBIT>>1);
+		int ENDBIT=  (TOPBIT>>1);
+		//	最上段のクイーンが角にない場合の探索
 		for (BOUND1=1, BOUND2=SIZE-2; BOUND1<BOUND2; BOUND1++, BOUND2--) {
 			BOARD[0]=bit=(1<<BOUND1);
-			backTrack2(SIZE, SIDEMASK, LASTMASK, 
-						ENDBIT, MASK, TOPBIT, bit, 
-						BOUND1, BOUND2, BOARD, 
-						1, bit<<1, bit, bit>>1);
+			backTrack2(SIZE, SIDEMASK, LASTMASK, ENDBIT, MASK, TOPBIT, bit, BOUND1, BOUND2, BOARD, 1, bit<<1, bit, bit>>1);
 			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 			ENDBIT>>=1;
 		}
