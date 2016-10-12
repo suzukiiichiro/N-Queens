@@ -1,5 +1,6 @@
 import org.apache.commons.lang3.time.DurationFormatUtils;
 /**
+ * 
  * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
  */
 public class Algorithm {
