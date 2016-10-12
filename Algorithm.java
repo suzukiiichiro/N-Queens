@@ -2,6 +2,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 /**
  * $ javac Algorighm.java ;
  * $ java -Xms4g -Xmx4g Algorithm ;
+ * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
  */
 public class Algorithm {
 	public static void main(String[] args){
