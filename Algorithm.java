@@ -1,3 +1,5 @@
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 /**
  * 
@@ -175,21 +177,22 @@ public class Algorithm {
 		 * 再帰　Nクイーン問題
 		 * https://ja.wikipedia.org/wiki/エイト・クイーン
 		 * N-Queens問題とは
-		 * 
-		 * 8-Queens は 8x8 のチェス盤を用いる問題。
-		 * 8×8のチェスボードに8個のクイーンを、互いに効きが当たらないように並べよ」という問題。
-		 * クイーンとは、チェスで使われているクイーンを指し、チェス盤の中で、縦、横、斜めにどこまでも進むことができる。
-		 * クイーンは日本の将棋でいう「飛車と角」を合わせた動きとなる。
-		 * 8-Queens問題の解は、問題の条件さえ満たしていればクイーンの置き方に制限はなく、解の総数は92個。対称形を除いたユニーク解は12個となる。
-		 * 
-		 * 比較的単純な問題なので、学部レベルの演習問題として取り上げられることが多い。
-		 * 8-Queens程度であれば、力まかせ探索でも解を求めることができるが、Nが大きくなると解が爆発し、実用的な時間では解けなくなる。
-		 * 
-		 * N-Queens問題は、クイーン(N)をどこまで大きなNまで解を求めることができるかという問題。
-		 * 
-		 * 斜めの制約をしない場合、各行各列に一つずつクイーンを置く総数はN!(N^N)通り。
-		 * 
-		 * ８個のクイーンをチェス盤上に置く置き方が 64Ｃ8 = 4,426,165,368 通り。しかし，１つの行には１個のクイーンしか置けないことを考えると，調べる場合の数を減らすことができる。 すなわち，８つの行それぞれに，１個のクイーンをどこに置くか，ということを考えればいいから， その場合の数は， 8の8乗 = 16,777,216 通りである。
+		 *	　Nクイーン問題とは、「8列×8行のチェスボードに8個のクイーンを、互いに効きが当た
+		 *	らないように並べよ」という８クイーン問題のクイーン(N)を、どこまで大きなNまで解を
+		 *	求めることができるかという問題。
+		 *	　クイーンとは、チェスで使われているクイーンを指し、チェス盤の中で、縦、横、斜め
+		 *	にどこまでも進むことができる駒で、日本の将棋でいう「飛車と角」を合わせた動きとな
+		 *	る。８列×８行で構成される一般的なチェスボードにおける8-Queens問題の解は、解の総
+		 *	数は92個である。比較的単純な問題なので、学部レベルの演習問題として取り上げられる
+		 *	ことが多い。
+		 *	　8-Queens問題程度であれば、人力またはプログラムによる「力まかせ探索」でも解を求
+		 *	めることができるが、Nが大きくなると解が一気に爆発し、実用的な時間では解けなくな
+		 *	る。初学のプログラマに必要なアルゴリズムの習熟を満たした上で、本問題に取り組むこ
+		 *	とで、自身のスキルを把握し、さらに最適化・最速化といった研鑽を続け都度、計測値を
+		 *	確認できることこそがプログラマの問題解決能力を高める唯一の方法であると考えている。
+		 *	　現在すべての解が判明しているものは、2004年に電気通信大学で264CPU×20日をかけて
+		 *	n=24を解決し世界一に、その後2005 年にニッツァ大学でn=25、2016年にドレスデン工科
+		 *	大学でn=27の解を求めることに成功している。
 		 * 
 		 * １．ブルートフォース（力まかせ探索）  O(N^N)
 		 *     全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
@@ -229,6 +232,15 @@ public class Algorithm {
 		 * 
 		 * コンパイルおよび実行方法
 		 * $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		 * 
+		 *	N	         Total解	         Unique解		QJH版	   鈴木版 高橋謙一郎版	   電通大版	Jeff Somers版
+		 *	16		  14,772,512		1,846,955	 00:00:00	00:00:02  	00:00:04  00:00:08	00:00:23
+		 *	17		  95,815,104	   11,977,939	 00:00:07	00:00:15  	00:00:31  00:01:01	00:02:38
+		 *	18	     666,090,624	   83,263,591	 00:00:25	00:01:49  	00:03:48  00:07:00	00:19:26
+		 *	19	   4,968,057,848	  621,012,754	 00:03:17	00:13:55  	00:29:22  00:57:16	02:31:24
+		 *	20	  39,029,188,884	4,878,666,808	 00:24:07	01:50:42  	03:54:10  07:19:24	20:35:06
+		 *	21   314,666,222,712   39,333,324,973	 03:05:28	15:34:05 01:09:17:19	
+		 *	22 2,691,008,701,644  336,376,244,042 01:03:08:20  136:08:43			 
 		 *
 		 * 
 		 * 　1. ブルートフォース			(NQueen1())
@@ -237,7 +249,7 @@ public class Algorithm {
 		 * 　4. ビットマップ				(NQueen4())
 		 * 　5. 回転と斜軸によるユニーク解	(NQueen5())
 		 * 　6. ユニーク解から全解への展開	(NQueen6())
-		 * 　7. 枝刈りによる最適化			(NQueen7())
+		 * 　7. 最適化					(NQueen7())
 		 */
 		
 		
@@ -678,12 +690,31 @@ public class Algorithm {
 		*/
 
 		/**
-		 * ■
+		 * 最適化
 		 * 
 		 */
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// ↓ のコメントアウトを外して実行
-		new NQueen7();
+		// new NQueen7();
+
+		/**
+		 * マルチスレッド 
+     * クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
+     * さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
+     * backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
+     * ただスレッド数を管理する必要がある。
+     *
+		 * ExecutorService exec = Executors.newFixedThreadPool(3);
+		 * exec.execute(new Runnable(){ 
+		 *  	public void run() { 
+		 * 			int bit ;
+		 * 		}
+		 * });
+     *
+		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		// ↓ のコメントアウトを外して実行
+		new NQueen8() ;
 	}
 }
 class Sort01_BubbleSort{
@@ -1452,7 +1483,10 @@ class NQueen6 {
 	}
 }
 class NQueen7 {
-	void Check(int SIZE, int ENDBIT, int TOPBIT, int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
+	/**
+	 * ロジック部分 
+	 */
+	private void Check(int SIZE, int ENDBIT, int TOPBIT, int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
 		//90度回転
 		if (BOARD[BOUND2]==1) {
 			int ptn=2 ; int own ; int bown; 
@@ -1506,7 +1540,7 @@ class NQueen7 {
 	/**
 	 * 最上段のクイーンが角以外にある場合の探索
 	 */
-	void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, int ENDBIT, int MASK, int TOPBIT, int bit, int BOUND1, int BOUND2, int[] BOARD, int y, int left, int down, int right){
+	private void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, int ENDBIT, int MASK, int TOPBIT, int bit, int BOUND1, int BOUND2, int[] BOARD, int y, int left, int down, int right){
 		int bitmap= ( MASK & ~(left|down|right)) ;
 		if(y==SIZE-1){
 			if(bitmap!=0){
@@ -1532,7 +1566,7 @@ class NQueen7 {
 	/**
 	 * 最上段のクイーンが角にある場合の探索
 	 */
-	void backTrack1(int SIZE, int MASK, int bit, int BOUND1, int[] BOARD, int y, int left, int down, int right){
+	private void backTrack1(int SIZE, int MASK, int bit, int BOUND1, int[] BOARD, int y, int left, int down, int right){
 		int bitmap=( MASK & ~(left|down|right) );
 		if(y==SIZE-1){
 			if(bitmap!=0){
@@ -1550,7 +1584,7 @@ class NQueen7 {
 			}
 		}
 	}
-	void bitmap_rotate(int SIZE) {
+	private void bitmap_rotate(int SIZE) {
 		TOTAL=UNIQUE=COUNT8=COUNT4=COUNT2=0;
 		int[] BOARD = new int[SIZE];
 		int MASK=(1<<SIZE)-1;
@@ -1580,6 +1614,10 @@ class NQueen7 {
 		UNIQUE = COUNT8 + COUNT4 + COUNT2;
 		TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
 	}
+	/**
+	 * ↑までロジック部分 
+	 */
+
 	long TOTAL ;
 	long UNIQUE ;
 	long COUNT8;
@@ -1594,6 +1632,210 @@ class NQueen7 {
 			long end = System.currentTimeMillis();
 			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
 			System.out.printf("%2d:%17d%13d%10s%n",SIZE,TOTAL,UNIQUE,TIME); 
+		}
+	}
+}
+class NQ8_th extends Thread {
+	/**
+	 *  ここから下にNQ7のロジック部分を貼り付け
+	 */
+	//ロジック部分 
+	private void Check(int SIZE, int ENDBIT, int TOPBIT, int bitmap, int bit, int BOUND1, int BOUND2, int[] BOARD) {
+		//90度回転
+		if (BOARD[BOUND2]==1) {
+			int ptn=2 ; int own ; int bown; 
+			for (own=1 ; own<=SIZE-1; own++) {
+				bit=1;
+				bown=BOARD[own];
+				for(int you=SIZE-1;(BOARD[you] != ptn) && (bown >= bit); you--){
+					bit<<=1;
+				}
+				if (bown>bit) { return; }
+				if (bown<bit) { break; }
+				ptn<<=1 ;
+			}
+			//90度回転して同型なら180度/270度回転も同型である
+			if (own>SIZE-1) {
+//				COUNT2++;
+				info.setCount(0, 0, 1);
+				return;
+			}
+		}
+		//180度回転
+		if (bitmap==ENDBIT) {
+			int own=1;
+			for (int you=(SIZE-1)-1; own<=SIZE-1; own++, you--) {
+				bit=1;
+				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1){
+					bit<<=1;
+				}
+				if (BOARD[own] > bit) { return; }
+				if (BOARD[own] < bit) { break; }
+			}
+			//90度回転が同型でなくても180度回転が同型である事もある
+			if (own>SIZE-1) {
+//				COUNT4++;
+				info.setCount(0, 1, 0);
+				return;
+			}
+		}
+		//270度回転
+		if (BOARD[BOUND1]==TOPBIT) {
+			int own=1;
+			for (int ptn=TOPBIT>>1; own<=SIZE-1; own++, ptn>>=1) {
+				bit=1;
+				for (int you=0; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+					bit<<=1;
+				}
+				if (BOARD[own]>bit) { return; }
+				if (BOARD[own]<bit) { break; }
+			}
+		}
+//		COUNT8++;
+		info.setCount(1, 0, 0);
+	}
+	/**
+	 * 最上段のクイーンが角以外にある場合の探索
+	 */
+	private void backTrack2(int SIZE, int SIDEMASK, int LASTMASK, int ENDBIT, int MASK, int TOPBIT, int bit, int BOUND1, int BOUND2, int[] BOARD, int y, int left, int down, int right){
+		int bitmap= ( MASK & ~(left|down|right)) ;
+		if(y==SIZE-1){
+			if(bitmap!=0){
+				if( (bitmap & LASTMASK)==0){ //最下段枝刈り
+					BOARD[y]=bitmap;
+					Check(SIZE, ENDBIT, TOPBIT, bitmap, bit, BOUND1, BOUND2, BOARD);
+				}
+			}
+		}else{
+			if(y<BOUND1){ //上部サイド枝刈り
+				bitmap|=SIDEMASK ;
+				bitmap^=SIDEMASK;
+			}else if(y==BOUND2){ //下部サイド枝刈り
+				if( (down&SIDEMASK) == 0) return ;
+				if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
+			}
+			while(bitmap!=0){
+				bitmap^=BOARD[y]=bit=-bitmap&bitmap;
+				backTrack2(SIZE, SIDEMASK, LASTMASK, ENDBIT, MASK,  TOPBIT, bit, BOUND1, BOUND2, BOARD, (y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
+			}
+		}
+	}
+	/**
+	 * 最上段のクイーンが角にある場合の探索
+	 */
+	private void backTrack1(int SIZE, int MASK, int bit, int BOUND1, int[] BOARD, int y, int left, int down, int right){
+		int bitmap=( MASK & ~(left|down|right) );
+		if(y==SIZE-1){
+			if(bitmap!=0){
+				BOARD[y]=bitmap;
+//				COUNT8++;
+				info.setCount(1, 0, 0);
+			}
+		}else{
+			if(y<BOUND1){//斜軸反転解の排除
+				bitmap|=2 ;
+				bitmap^=2;
+			}
+			while(bitmap!=0){
+				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
+				backTrack1(SIZE, MASK, bit, BOUND1, BOARD, y+1, (left|bit)<<1, down|bit, (right|bit)>>1 );
+			}
+		}
+	}
+	private void bitmap_rotate(int SIZE) {
+//		TOTAL=UNIQUE=COUNT8=COUNT4=COUNT2=0;
+		info.resetCount();
+		int[] BOARD = new int[SIZE];
+		int MASK=(1<<SIZE)-1;
+		int bit;
+		int BOUND1;
+	    BOARD[0] = 1;
+		//	最上段のクイーンが角にある場合の探索
+	    /* 0行目:000000001(固定) */
+	    /* 1行目:011111100(選択) */
+		for (BOUND1=2; BOUND1<SIZE-1; BOUND1++) {
+			BOARD[1]=bit=(1<<BOUND1);
+			backTrack1(SIZE, MASK, bit, BOUND1, BOARD, 2, (2|bit)<<1, (1|bit), (bit>>1));
+		}
+	}
+	private void bitmap_rotate2(int SIZE){
+		int BOUND1;
+		int BOUND2;
+		int MASK=(1<<SIZE)-1;
+		int bit;
+		int[] BOARD = new int[SIZE];
+		int TOPBIT = 1<<SIZE-1;
+		int SIDEMASK=(TOPBIT|1);
+		int LASTMASK=(TOPBIT|1);
+		int ENDBIT=  (TOPBIT>>1);
+		//	最上段のクイーンが角にない場合の探索
+	    /* 0行目:000001110(選択) */
+		for (BOUND1=1, BOUND2=SIZE-2; BOUND1<BOUND2; BOUND1++, BOUND2--) {
+			BOARD[0]=bit=(1<<BOUND1);
+			backTrack2(SIZE, SIDEMASK, LASTMASK, ENDBIT, MASK, TOPBIT, bit, BOUND1, BOUND2, BOARD, 1, bit<<1, bit, bit>>1);
+			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+			ENDBIT>>=1;
+		}
+//		UNIQUE = COUNT8 + COUNT4 + COUNT2;
+//		TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
+	}
+	// ↑までロジック部分 
+	/**
+	 * ここから上にNQ8のロジック部分を貼り付け
+	 */
+	private int size ; private Board info  ; private String name ;
+	public NQ8_th(int size, Board info, String name){
+		this.size=size ;
+		this.info=info ;
+		this.name=name ;
+	}
+	public void run(){
+		if(name=="th1"){
+			bitmap_rotate(size);
+		}else if(name=="th2"){
+			bitmap_rotate2(size);
+		}
+	}
+}
+class Board {
+	private long COUNT8 ; private long COUNT4 ; private long COUNT2 ;
+	public Board() {
+		COUNT8=COUNT4=COUNT2=0;
+	}
+	public void resetCount(){
+		COUNT8=COUNT4=COUNT2=0;
+	}
+	public synchronized void setCount(long COUNT8, long COUNT4, long COUNT2){
+		this.COUNT8 += COUNT8 ;
+		this.COUNT4 += COUNT4 ;
+		this.COUNT2 += COUNT2 ;
+	}
+	public long  getTotal() {
+		return COUNT8 * 8 + COUNT4 * 4 + COUNT2 * 2 ;
+	}
+	public long getUnique() {
+		return COUNT8 + COUNT4 + COUNT2 ;
+	}
+}
+class NQueen8{
+	public NQueen8(){
+		int MAX=27; NQ8_th th ; NQ8_th th2 ;
+		Board info = new Board() ;
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(int SIZE=2; SIZE<MAX+1; SIZE++){
+			th  = new NQ8_th(SIZE, info, "th1");
+			th2 = new NQ8_th(SIZE, info, "th2");
+			long start = System.currentTimeMillis() ;
+			try {
+				th.start(); th2.start();
+				th.join(); th2.join();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			th=null ; th2=null ;
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",SIZE,info.getTotal(),info.getUnique(),TIME); 
 		}
 	}
 }

@@ -628,3 +628,30 @@ Javaの基本知識があれば習熟可能です。
     22:    2691008701644 336376244042   136:08:43
 		*/
 
+		/**
+		 * 最適化
+		 * 
+		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		// ↓ のコメントアウトを外して実行
+		// new NQueen7();
+
+		/**
+		 * マルチスレッド 
+     * クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
+     * さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
+     * backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
+     * ただスレッド数を管理する必要がある。
+     *
+		 * ExecutorService exec = Executors.newFixedThreadPool(3);
+		 * exec.execute(new Runnable(){ 
+		 *  	public void run() { 
+		 * 			int bit ;
+		 * 		}
+		 * });
+     *
+		 */
+		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+		// ↓ のコメントアウトを外して実行
+		// new NQueen8() ;
+
