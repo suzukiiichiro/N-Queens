@@ -215,7 +215,7 @@ public class Algorithm {
  *  ７．シンプル版対称解除法＋ビットマップ		NQueen7()
  *  ８． 				 ＋マルチスレッド		NQueen8() 
 */
-		
+
 /** 
  * １．ブルートフォース（力まかせ探索）
  *     全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
@@ -544,7 +544,7 @@ public class Algorithm {
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen6(); 	// マルチスレッド
 
-		
+
 /**
  * ７．シンプルな対称解除法＋ビットマップ
  *  
@@ -1487,12 +1487,12 @@ class NQueen5{
 	}
 }
 
-class NQ6_Board {
+class NQueen6_Board {
 	private int nSoln = 0; // Total solutions for this board
 	private int nUniq = 0; // Unique solutions, rejecting ones equivalent based on rotations.
 	private int limit; // Board mid-point
 	private int nextCol = 0; // Next position to be computed
-	public NQ6_Board(int size) {
+	public NQueen6_Board(int size) {
 		limit = (size + 1) / 2; // Mirror images done automatically
 	}
 	public synchronized int nextJob(long nS, long nU) {
@@ -1504,7 +1504,7 @@ class NQ6_Board {
 	public int getTotal() { return nSoln; }
 	public int getUnique() { return nUniq; }
 }
-class NQ6_WorkEngine extends Thread {
+class NQueen6_WorkEngine extends Thread {
 	private int[] board; // Current state of the board
 	private int[] trial; // Array for symmetry operations
 	private int[] scratch; // Scratch space for rotations
@@ -1513,9 +1513,9 @@ class NQ6_WorkEngine extends Thread {
 	private long nTotal; // for both of these.
 	private boolean[] diagChk; // Diagonals in use
 	private boolean[] antiChk; // Antidiagonals in use
-	private NQ6_WorkEngine child; // Next thread
-	private NQ6_Board info; // Information broker
-	public NQ6_WorkEngine(int size, int nMore, NQ6_Board info) {
+	private NQueen6_WorkEngine child; // Next thread
+	private NQueen6_Board info; // Information broker
+	public NQueen6_WorkEngine(int size, int nMore, NQueen6_Board info) {
 		this.size = size;
 		this.info = info;
 		board = new int[size];
@@ -1525,7 +1525,7 @@ class NQ6_WorkEngine extends Thread {
 		antiChk = new boolean[2 * size - 1];
 		if (nMore > 0){
 			try {
-				child = new NQ6_WorkEngine(size, nMore - 1, info);
+				child = new NQueen6_WorkEngine(size, nMore - 1, info);
 				child.start();
 			} catch (Exception e) {
 				System.out.println(e);
@@ -1710,15 +1710,15 @@ class NQueen6{
 	private int size;
 	private int max ;
 	private int nThreads;
-	private NQ6_Board info ;
-	private NQ6_WorkEngine child;
+	private NQueen6_Board info ;
+	private NQueen6_WorkEngine child;
 	public NQueen6(){
 		max=27 ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(this.size=2; size<max; size++){
 			board=new int[size];
-			info = new NQ6_Board(size);
-			child = new NQ6_WorkEngine(size, nThreads - 1, info);
+			info = new NQueen6_Board(size);
+			child = new NQueen6_WorkEngine(size, nThreads - 1, info);
 			nThreads=size+8;
 			for(int k=0; k<size; k++){ board[k]=k ; }
 			long start = System.currentTimeMillis() ;
@@ -1883,10 +1883,10 @@ class NQueen7 {
 	}
 }
 
-class NQ8_Board {
+class NQueen8_Board {
 	private long COUNT8 ; private long COUNT4 ; private long COUNT2 ;
 	private int limit ; private int nextCol ; private int nextID ;
-	public NQ8_Board(int size) {
+	public NQueen8_Board(int size) {
 		COUNT8=COUNT4=COUNT2=0;
 		nextCol=0; nextID=0;
 		limit=(size+1)/2 ;
@@ -1898,159 +1898,6 @@ class NQ8_Board {
 	public void resetCount(){ COUNT8=COUNT4=COUNT2=0; }
 	public synchronized void setCount(long COUNT8, long COUNT4, long COUNT2){
 		this.COUNT8+=COUNT8 ; this.COUNT4+=COUNT4 ; this.COUNT2+=COUNT2 ;
-	}
-}
-class NQ8_WorkEngine extends Thread {
-	private int size ; private int bit; private int MASK;
-	private int SIZEE; private int[] BOARD;
-	private int TOPBIT; private int ENDBIT;
-	private int SIDEMASK; private int LASTMASK;
-	private int BOUND1; private int BOUND2;
-	private NQ8_Board info  ; 
-	private NQ8_WorkEngine child ; // next thread
-	int nMore ;
-	String name ;
-	public NQ8_WorkEngine(int size, NQ8_Board info, int nMore){
-		this.size=size ;
-		this.info=info ;
-		this.nMore=nMore ;
-//		if (nMore>0){
-//			try {  
-//				child = new NQ8_WorkEngine(size, info, nMore);
-////				child.start();
-//			} catch ( Exception e ) {  
-//				System.out.println(e); 
-//			}
-//		} else { 
-//			child = null; 
-//		}
-	}
-	public void setValue(int BOUND1, int BOUND2, int SIZEE, int[] BOARD, int bit, 
-			int TOPBIT, int SIDEMASK, int LASTMASK, int ENDBIT, int MASK){
-		this.BOUND1=BOUND1 ;
-		this.BOUND2=BOUND2 ;
-		this.SIZEE=SIZEE ;
-		this.BOARD=BOARD ;
-		this.bit=bit ;
-		this.TOPBIT=TOPBIT ;
-		this.LASTMASK=LASTMASK;
-		this.ENDBIT=ENDBIT;
-		this.MASK=MASK ;
-		this.SIDEMASK=SIDEMASK ;
-//		if (nMore>0){
-//			try {  
-//				child = new NQ8_WorkEngine(size, info, nMore);
-//				child.setValue(BOUND1, BOUND2, SIZEE, BOARD, bit, 
-//						TOPBIT, SIDEMASK,LASTMASK, ENDBIT, MASK);
-////				child.start();
-//			} catch ( Exception e ) {  
-//				System.out.println(e); 
-//			}
-//		} else { 
-//			child = null; 
-//		}
-	}
-	public void run(){
-	}
-	
-	private void Check(int bsize) {
-		int _BOARD =0;
-		int _BOARD1=BOUND1;
-		int _BOARD2=BOUND2;
-		int _BOARDE=SIZEE;
-		//90度回転
-		if (BOARD[_BOARD2] == 1) {
-			int own = _BOARD+1;
-			for (int ptn=2 ; own<=_BOARDE; own++, ptn<<=1) {
-				bit=1;
-				int bown = BOARD[own];
-				for (int you=_BOARDE; (BOARD[you] != ptn) && (bown >= bit); you--)
-					bit<<=1;
-				if (bown>bit) { return; }
-				if (bown<bit) { break; }
-			}
-			//90度回転して同型なら180度/270度回転も同型である
-			if (own>_BOARDE) {
-				// COUNT2++;
-				info.setCount(0, 0, 1);
-				return;
-			}
-		}
-		//180度回転
-		if (bsize==ENDBIT) {
-			int own = _BOARD+1;
-			for (int you=_BOARDE-1; own<=_BOARDE; own++, you--) {
-				bit = 1;
-				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1)
-					bit<<=1;
-				if (BOARD[own] > bit) { return; }
-				if (BOARD[own] < bit) { break; }
-			}
-			//90度回転が同型でなくても180度回転が同型である事もある
-			if (own>_BOARDE) {
-				// COUNT4++;
-				info.setCount(0, 1, 0);
-				return;
-			}
-		}
-		//270度回転
-		if (BOARD[_BOARD1]==TOPBIT) {
-			int own=_BOARD+1;
-			for (int ptn=TOPBIT>>1; own<=_BOARDE; own++, ptn>>=1) {
-				bit=1;
-				for (int you=_BOARD; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
-					bit<<=1;
-				}
-				if (BOARD[own]>bit) { return; }
-				if (BOARD[own]<bit) { break; }
-			}
-		}
-		//COUNT8++;
-		info.setCount(1, 0, 0);
-	}
-	// 最上段のクイーンが角以外にある場合の探索
-	public void backTrack2(int y, int left, int down, int right){
-		int bitmap= ( MASK & ~(left|down|right)) ;
-		if(y==SIZEE){
-			if(bitmap!=0){
-				if( (bitmap & LASTMASK)==0){ //最下段枝刈り
-					BOARD[y]=bitmap;
-					Check(bitmap);
-				}
-			}
-		}else{
-			if(y<BOUND1){ //上部サイド枝刈り
-				bitmap|=SIDEMASK ;
-				bitmap^=SIDEMASK;
-			}else if(y==BOUND2){ //下部サイド枝刈り
-				if( (down&SIDEMASK) == 0) return ;
-				if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
-			}
-			while(bitmap!=0){
-				bitmap^=BOARD[y]=bit=-bitmap&bitmap;
-				backTrack2((y+1), (left|bit)<<1, (down|bit), (right|bit)>>1); 
-			}
-		}
-	}
-	// 最上段のクイーンが角にある場合の探索
-	public void backTrack1(int y, int left, int down, int right){
-		int bitmap=( MASK & ~(left|down|right) );
-		if(y==SIZEE){
-			if(bitmap!=0){
-				BOARD[y]=bitmap;
-				// COUNT8++;
-				info.setCount(1, 0, 0);
-			}
-		}else{
-			if(y<BOUND1){//斜軸反転解の排除
-				bitmap|=2 ;
-				bitmap^=2;
-			}
-			while(bitmap!=0){
-				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
-				backTrack1( y+1, (left|bit)<<1, down|bit, (right|bit)>>1) ;
-			}
-		}
 	}
 }
 class NQueen8 extends Thread{
@@ -2164,10 +2011,10 @@ class NQueen8 extends Thread{
 		}
 	}
 	private NQueen8 child  ;
-	private NQ8_Board info;
+	private NQueen8_Board info;
 	private int nMore;
 	private int size ;
-	public NQueen8(int size, int nMore, NQ8_Board info){
+	public NQueen8(int size, int nMore, NQueen8_Board info){
 		this.nMore=nMore ;
 		this.info=info ;
 		this.size=size ;
@@ -2216,11 +2063,11 @@ class NQueen8 extends Thread{
 	public NQueen8(){
 		int max=27;
 		int nThreads=3 ;
-		NQ8_Board info ;
+		NQueen8_Board info ;
 		NQueen8 child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(int size=2; size<max+1; size++){
-			info = new NQ8_Board(size);
+			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;
 			try{
 				child = new NQueen8(size, nThreads, info);
