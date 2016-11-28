@@ -1902,19 +1902,88 @@ class NQueen8_Board {
 }
 
 class NQueen8_WorkEngine extends Thread{
-	int SIZEE;
-	int TOPBIT;
-	int MASK ;
-	int[] BOARD;
-	int BOUND1;
-	int BOUND2;
-	int bit ;
-	int SIDEMASK;
-	int LASTMASK;
-	int ENDBIT;
-	/**
-	 * 
-	 */
+	private int SIZEE;
+	private int TOPBIT;
+	private int MASK ;
+	private int[] BOARD;
+	private int BOUND1;
+	private int BOUND2;
+	private int bit ;
+	private int SIDEMASK;
+	private int LASTMASK;
+	private int ENDBIT;
+	private NQueen8_WorkEngine child  ;
+	private NQueen8_Board info;
+	private int size ;
+	private int B1, B2;
+	private int nMore ;
+	// コンストラクタ
+	public NQueen8_WorkEngine(int size, int nMore, NQueen8_Board info, int B1, int B2){
+		this.size=size;
+		this.info=info ;
+		this.nMore=nMore ;
+		BOARD = new int[size];
+		BOARD[0] = 1;
+		MASK=(1<<size)-1;
+		SIZEE=size-1;
+		TOPBIT = 1<<SIZEE;
+		SIDEMASK=LASTMASK=(TOPBIT|1);
+		ENDBIT = (TOPBIT>>1);
+		if(nMore>0){
+			try{
+				this.B1=B1; 
+				this.B2=B2;
+				//ここのコメントアウトを外せば行数だけスレッドが発生します。
+				child = new NQueen8_WorkEngine(size, nMore-1, info, B1+1, B2-1);
+				child.start();
+			}catch(Exception e){
+				System.out.println(e);
+			}
+		}else{
+			child=null ;
+		}
+	}
+	//スレッド
+	public void run() {
+		if(child==null){
+			B1=2; 
+			while(B1>1 && B1<SIZEE) {
+				BOUND1(B1);
+				B1++;
+			}
+			B1=1; B2=size-2;
+			while(B1>0 && B2<size-1 && B1<B2){
+				BOUND2(B1, B2);
+				B1++ ;B2--;
+			}
+		}
+		//マルチスレッド対応
+		if(child!=null){
+			try{
+				child.join();
+			}catch(Exception e){
+				System.out.println(e);
+			}
+		}
+	}
+	private void BOUND1(int B1){
+		BOUND1=B1 ;
+		if(BOUND1<SIZEE) {
+			BOARD[1]=bit=(1<< BOUND1);
+			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
+		}
+	}
+	private void BOUND2(int B1, int B2){
+		BOUND1=B1 ;
+		BOUND2=B2;
+		if(BOUND1<BOUND2) {
+			BOARD[0]=bit=(1<<BOUND1);
+			backTrack2(1, bit<<1, bit, bit>>1);
+			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+			ENDBIT>>=1;
+		}
+	}
+	//対称解除法
 	private void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -1971,7 +2040,7 @@ class NQueen8_WorkEngine extends Thread{
 		info.setCount(1, 0, 0);
 	}
 	// 最上段のクイーンが角以外にある場合の探索
-	public void backTrack2(int y, int left, int down, int right){
+	private void backTrack2(int y, int left, int down, int right){
 		int bitmap= ( MASK & ~(left|down|right)) ;
 		if(y==SIZEE){
 			if(bitmap!=0){
@@ -1995,7 +2064,7 @@ class NQueen8_WorkEngine extends Thread{
 		}
 	}
 	// 最上段のクイーンが角にある場合の探索
-	public void backTrack1(int y, int left, int down, int right){
+	private void backTrack1(int y, int left, int down, int right){
 		int bitmap=( MASK & ~(left|down|right) );
 		if(y==SIZEE){
 			if(bitmap!=0){
@@ -2012,74 +2081,6 @@ class NQueen8_WorkEngine extends Thread{
 				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
 				backTrack1( y+1, (left|bit)<<1, down|bit, (right|bit)>>1) ;
 			}
-		}
-	}
-	private NQueen8_WorkEngine child  ;
-	private NQueen8_Board info;
-	private int size ;
-	private int B1, B2;
-	private int nMore ;
-	public NQueen8_WorkEngine(int size, int nMore, NQueen8_Board info, int B1, int B2){
-		this.size=size;
-		this.info=info ;
-		this.nMore=nMore ;
-		BOARD = new int[size];
-		BOARD[0] = 1;
-		MASK=(1<<size)-1;
-		SIZEE=size-1;
-		TOPBIT = 1<<SIZEE;
-		SIDEMASK=LASTMASK=(TOPBIT|1);
-		ENDBIT = (TOPBIT>>1);
-		if(nMore>0){
-			try{
-				this.B1=B1; 
-				this.B2=B2;
-				//ここのコメントアウトを外せば行数だけスレッドが発生します。
-//				child = new NQueen8_(size, nMore-1, info, B1+1, B2-1);
-//				child.start();
-			}catch(Exception e){
-				System.out.println(e);
-			}
-		}else{
-			child=null ;
-		}
-	}
-	public void run() {
-		if(child == null){
-			B1=2; 
-			while(B1>1 && B1<SIZEE) {
-				BOUND1(B1);
-				B1++;
-			}
-			B1=1; B2=size-2;
-			while(B1>0 && B2<size-1 && B1<B2){
-				BOUND2(B1, B2);
-				B1++ ;B2--;
-			}
-		}
-		if(child!=null){
-			try{
-				child.join();
-			}catch(Exception e){
-				System.out.println(e);
-			}
-		}
-	}
-	public void BOUND1(int B1){
-		BOUND1=B1 ;
-		if(BOUND1<SIZEE) {
-			BOARD[1]=bit=(1<< BOUND1);
-			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
-		}
-	}
-	public void BOUND2(int B1, int B2){
-		BOUND1=B1 ;
-		BOUND2=B2;
-		if(BOUND1<BOUND2) {
-			BOARD[0]=bit=(1<<BOUND1);
-			backTrack2(1, bit<<1, bit, bit>>1);
-			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-			ENDBIT>>=1;
 		}
 	}
 }
