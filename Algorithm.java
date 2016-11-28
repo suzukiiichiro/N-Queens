@@ -302,7 +302,7 @@ public class Algorithm {
 	16:         14772512            0  00:01:35
 	*/
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-		// new NQueen3();	//配置フラグ
+		/// new NQueen3();	//配置フラグ
 
 /** 
  * ４．対称解除法
@@ -1900,7 +1900,8 @@ class NQueen8_Board {
 		this.COUNT8+=COUNT8 ; this.COUNT4+=COUNT4 ; this.COUNT2+=COUNT2 ;
 	}
 }
-class NQueen8 extends Thread{
+
+class NQueen8_WorkEngine extends Thread{
 	int SIZEE;
 	int TOPBIT;
 	int MASK ;
@@ -1911,6 +1912,9 @@ class NQueen8 extends Thread{
 	int SIDEMASK;
 	int LASTMASK;
 	int ENDBIT;
+	/**
+	 * 
+	 */
 	private void Check(int bsize) {
 		int _BOARD =0;
 		int _BOARD1=BOUND1;
@@ -2010,29 +2014,49 @@ class NQueen8 extends Thread{
 			}
 		}
 	}
-	private NQueen8 child  ;
+	private NQueen8_WorkEngine child  ;
 	private NQueen8_Board info;
-	private int nMore;
 	private int size ;
-	public NQueen8(int size, int nMore, NQueen8_Board info){
-		this.nMore=nMore ;
+	private int B1, B2;
+	private int nMore ;
+	public NQueen8_WorkEngine(int size, int nMore, NQueen8_Board info, int B1, int B2){
+		this.size=size;
 		this.info=info ;
-		this.size=size ;
-//		if(nMore>0){
-//			try{
-	//			child = new NQueen8(size, nMore-1, info);
-	//			child.start();
-//			}catch(Exception e){}
-//		}else{
-//			child=null ;
-//		}
+		this.nMore=nMore ;
+		BOARD = new int[size];
+		BOARD[0] = 1;
+		MASK=(1<<size)-1;
+		SIZEE=size-1;
+		TOPBIT = 1<<SIZEE;
+		SIDEMASK=LASTMASK=(TOPBIT|1);
+		ENDBIT = (TOPBIT>>1);
+		if(nMore>0){
+			try{
+				this.B1=B1; 
+				this.B2=B2;
+				//ここのコメントアウトを外せば行数だけスレッドが発生します。
+//				child = new NQueen8_(size, nMore-1, info, B1+1, B2-1);
+//				child.start();
+			}catch(Exception e){
+				System.out.println(e);
+			}
+		}else{
+			child=null ;
+		}
 	}
 	public void run() {
-//		int nextCol ;
-//        nextCol = info.nextJob();
-//        if ( nextCol < 0 )
-//           break;
-		nQueen();
+		if(child == null){
+			B1=2; 
+			while(B1>1 && B1<SIZEE) {
+				BOUND1(B1);
+				B1++;
+			}
+			B1=1; B2=size-2;
+			while(B1>0 && B2<size-1 && B1<B2){
+				BOUND2(B1, B2);
+				B1++ ;B2--;
+			}
+		}
 		if(child!=null){
 			try{
 				child.join();
@@ -2041,36 +2065,36 @@ class NQueen8 extends Thread{
 			}
 		}
 	}
-	public void nQueen(){
-		SIZEE = size-1;
-		TOPBIT = 1<<SIZEE;
-		MASK=(1<<size)-1;
-		BOARD = new int[size];
-		BOARD[0] = 1;
-		for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
+	public void BOUND1(int B1){
+		BOUND1=B1 ;
+		if(BOUND1<SIZEE) {
 			BOARD[1]=bit=(1<< BOUND1);
 			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
 		}
-		SIDEMASK=LASTMASK=(TOPBIT|1);
-		ENDBIT = (TOPBIT>>1);
-		for (BOUND1=1, BOUND2=size-2; BOUND1<BOUND2; BOUND1++, BOUND2--) {
+	}
+	public void BOUND2(int B1, int B2){
+		BOUND1=B1 ;
+		BOUND2=B2;
+		if(BOUND1<BOUND2) {
 			BOARD[0]=bit=(1<<BOUND1);
 			backTrack2(1, bit<<1, bit, bit>>1);
 			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 			ENDBIT>>=1;
 		}
 	}
+}
+class NQueen8{
 	public NQueen8(){
 		int max=27;
-		int nThreads=3 ;
 		NQueen8_Board info ;
-		NQueen8 child ;
+		NQueen8_WorkEngine child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
 		for(int size=2; size<max+1; size++){
+			int nThreads=size ;
 			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;
 			try{
-				child = new NQueen8(size, nThreads, info);
+				child = new NQueen8_WorkEngine(size, nThreads, info, 1, size-2);
 				child.start();
 				child.join();
 			}catch(Exception e){
