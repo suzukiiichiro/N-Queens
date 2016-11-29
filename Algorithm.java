@@ -1,3 +1,4 @@
+import java.util.Arrays;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
@@ -690,6 +691,14 @@ public class Algorithm {
 
 /**
  * 　８．シンプルな対称解除法＋ビットマップ＋マルチスレッド
+ * 
+ *　　これまでの処理に加えて、Ａ行の一番上から一つずつスレッドを割り当て、Ｎが８列あ
+ *　て８つのスレッドを同時に走らせます。
+ *  　そして処理の最後に合計値を算出する方法をマルチスレッド処理と言います。
+ *　　１Ｘ１，２Ｘ２，３Ｘ３，４Ｘ４，５Ｘ５，６Ｘ６，７ｘ７、８Ｘ８のボートの計算を
+ *　スレッドに割り当てる手法が多く見受けられますが、
+ *　　Ｎが大きくなれば処理時間はむしろ多くなり合理的ではありません。
+ *　　ここでは前者の手法でプログラミングします。
  */
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		 new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
@@ -1922,19 +1931,18 @@ class NQueen8_WorkEngine extends Thread{
 		this.size=size;
 		this.info=info ;
 		this.nMore=nMore ;
-		BOARD = new int[size];
-		BOARD[0] = 1;
-		MASK=(1<<size)-1;
+		this.B1=B1; 
+		this.B2=B2;
 		SIZEE=size-1;
-		TOPBIT = 1<<SIZEE;
+		TOPBIT=1<<SIZEE;
+		MASK=(1<<size)-1;
+		BOARD=new int[size];
+		BOARD[0]=1;
 		SIDEMASK=LASTMASK=(TOPBIT|1);
-		ENDBIT = (TOPBIT>>1);
+		ENDBIT=(TOPBIT>>1);
 		if(nMore>0){
 			try{
-				this.B1=B1; 
-				this.B2=B2;
-				//ここのコメントアウトを外せば行数だけスレッドが発生します。
-				child = new NQueen8_WorkEngine(size, nMore-1, info, B1+1, B2-1);
+				child = new NQueen8_WorkEngine(size, nMore-1, info, B1-1, B2+1);
 				child.start();
 			}catch(Exception e){
 				System.out.println(e);
@@ -1943,22 +1951,46 @@ class NQueen8_WorkEngine extends Thread{
 			child=null ;
 		}
 	}
-	//スレッド
+	//シングルスレッド
 	public void run() {
 		if(child==null){
-			B1=2; 
-			while(B1>1 && B1<SIZEE) {
-				BOUND1(B1);
-				B1++;
-			}
-			B1=1; B2=size-2;
-			while(B1>0 && B2<size-1 && B1<B2){
-				BOUND2(B1, B2);
-				B1++ ;B2--;
+			if(nMore>0){
+				// 最上段のクイーンが角以外にある場合の探索
+				B1=2; 
+				SIZEE=size-1;
+				TOPBIT=1<<SIZEE;
+				MASK=(1<<size)-1;
+				BOARD=new int[size];
+				BOARD[0]=1;
+				while(B1>1 && B1<SIZEE) {
+					BOUND1(B1);
+					B1++;
+				}
+				// 8x9 4x1最上段のクイーンが角にある場合の探索
+				// 2-1-1-3
+				// 76 10
+				B1=1; B2=size-2;
+				SIDEMASK=LASTMASK=(TOPBIT|1);
+				ENDBIT=(TOPBIT>>1);
+				while(B1>0 && B2<size-1 && B1<B2){
+					BOUND2(B1, B2);
+					B1++ ;B2--;
+				}
 			}
 		}
 		//マルチスレッド対応
 		if(child!=null){
+			// btx2 最上段のクイーンが角以外にある場合の探索
+			if(B1>1 && B1<SIZEE) { 
+				BOUND1(B1); 
+			}
+			// 8x11 最上段のクイーンが角にある場合の探索
+			// 2-1-2-4
+			// 88 11
+			// BOUND2() からの check()がおかしい
+			if(B1>0 && B2<size-1 && B1<B2){ 
+				BOUND2(B1, B2); 
+			}
 			try{
 				child.join();
 			}catch(Exception e){
@@ -1966,13 +1998,15 @@ class NQueen8_WorkEngine extends Thread{
 			}
 		}
 	}
+	// 最上段のクイーンが角以外にある場合の探索
 	private void BOUND1(int B1){
 		BOUND1=B1 ;
 		if(BOUND1<SIZEE) {
-			BOARD[1]=bit=(1<< BOUND1);
+			BOARD[1]=bit=(1<<BOUND1);
 			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
 		}
 	}
+	// 最上段のクイーンが角にある場合の探索
 	private void BOUND2(int B1, int B2){
 		BOUND1=B1 ;
 		BOUND2=B2;
@@ -2004,6 +2038,7 @@ class NQueen8_WorkEngine extends Thread{
 			if (own>_BOARDE) {
 				// COUNT2++;
 				info.setCount(0, 0, 1);
+				System.out.println("2");
 				return;
 			}
 		}
@@ -2021,6 +2056,7 @@ class NQueen8_WorkEngine extends Thread{
 			if (own>_BOARDE) {
 				// COUNT4++;
 				info.setCount(0, 1, 0);
+				System.out.println("4");
 				return;
 			}
 		}
@@ -2038,6 +2074,7 @@ class NQueen8_WorkEngine extends Thread{
 		}
 		//COUNT8++;
 		info.setCount(1, 0, 0);
+		System.out.println("8");
 	}
 	// 最上段のクイーンが角以外にある場合の探索
 	private void backTrack2(int y, int left, int down, int right){
@@ -2079,23 +2116,23 @@ class NQueen8_WorkEngine extends Thread{
 			}
 			while(bitmap!=0){
 				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
-				backTrack1( y+1, (left|bit)<<1, down|bit, (right|bit)>>1) ;
+				backTrack1( y+1, (left|bit)<<1, (down|bit), (right|bit)>>1) ;
 			}
 		}
 	}
 }
 class NQueen8{
 	public NQueen8(){
-		int max=27;
+		int max=8;
 		NQueen8_Board info ;
 		NQueen8_WorkEngine child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int size=2; size<max+1; size++){
+		for(int size=8; size<max+1; size++){
 			int nThreads=size ;
 			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;
 			try{
-				child = new NQueen8_WorkEngine(size, nThreads, info, 1, size-2);
+				child = new NQueen8_WorkEngine(size, nThreads, info, size-1, 0);
 				child.start();
 				child.join();
 			}catch(Exception e){
