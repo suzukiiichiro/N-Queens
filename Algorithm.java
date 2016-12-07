@@ -22,7 +22,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  * 　ハノイの塔
  * 
  * 3.　Nクイーン問題
- *  １．ブルートフォース（力まかせ探索）			NQueen1()
+ *  １．ブルートフォース（力まかせ探索）		NQueen1()
  *  ２．バックトラック							NQueen2()
  *  ３．配置フラグ（制約テスト高速化）			NQueen3()
  *  ４．対称解除法(回転と斜軸）					NQueen4()
@@ -700,9 +700,29 @@ public class Algorithm {
  *　　Ｎが大きくなれば処理時間はむしろ多くなり合理的ではありません。
  *　　ここでは前者の手法でプログラミングします。
  */
+	/**
+	 N:            Total       Unique    hh:mm:ss
+	 2:                0            0  00:00:00
+	 3:                0            0  00:00:00
+	 4:                2            1  00:00:00
+	 5:               10            2  00:00:00
+	 6:                4            1  00:00:00
+	 7:               40            6  00:00:00
+	 8:               92           12  00:00:00
+	 9:              352           46  00:00:00
+	10:              724           92  00:00:00
+	11:             2680          341  00:00:00
+	12:            14200         1787  00:00:00
+	13:            73712         9233  00:00:00
+	14:           365596        45752  00:00:00
+	15:          2279184       285053  00:00:00
+	16:         14772512      1846955  00:00:00
+	17:         95815104     11977939  00:00:04
+	18:        666090624     83263591  00:00:34
+	19:       4968057848    621012754  00:04:18
+	 */
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		 new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
-
 	}
 }
 
@@ -1899,7 +1919,26 @@ class NQueen8_Board {
 		COUNT8=COUNT4=COUNT2=0;
 		nextCol=0; nextID=0;
 		limit=(size+1)/2 ;
-	}
+		this.size=size ;
+	}	
+	private int size ;
+	private int ENDBIT ;
+	private int LASTMASK ;
+	private int SIDEMASK ;
+	private int MASK ;
+	private int TOPBIT ;
+	public void setMASK(int MASK){ this.MASK=MASK ; }
+	public int getMASK(){ return this.MASK ; }
+	public void setTOPBIT(int TOPBIT){ this.TOPBIT=TOPBIT ; }
+	public int getTOPBIT(){ return this.TOPBIT ; }
+	public void setSIDEMASK(int SIDEMASK){ this.SIDEMASK=SIDEMASK ; }
+	public int getSIDEMASK(){ return this.SIDEMASK ; }
+	public void setENDBIT(int ENDBIT){ this.ENDBIT=ENDBIT; }
+	
+	
+	public int getENDBIT(){ return ENDBIT ; }
+	public void setLASTMASK(int LASTMASK){ this.LASTMASK=LASTMASK ; }
+	public int getLASTMASK(){ return LASTMASK; }
 	public long  getTotal() { return COUNT8 * 8 + COUNT4 * 4 + COUNT2 * 2 ; }
 	public long getUnique() { return COUNT8 + COUNT4 + COUNT2 ; }
 	public synchronized int threadID(){ return nextID; }
@@ -1917,7 +1956,6 @@ class NQueen8_WorkEngine extends Thread{
 	private int[] BOARD;
 	private int BOUND1;
 	private int BOUND2;
-	private int bit ;
 	private int SIDEMASK;
 	private int LASTMASK;
 	private int ENDBIT;
@@ -1926,6 +1964,8 @@ class NQueen8_WorkEngine extends Thread{
 	private int size ;
 	private int B1, B2;
 	private int nMore ;
+//		boolean bThread=false ; //スレッド処理をするか (Yes=true / No=false) 
+		boolean bThread=true ; //スレッド処理をするか (Yes=true / No=false) 
 	// コンストラクタ
 	public NQueen8_WorkEngine(int size, int nMore, NQueen8_Board info, int B1, int B2){
 		this.size=size;
@@ -1933,17 +1973,14 @@ class NQueen8_WorkEngine extends Thread{
 		this.nMore=nMore ;
 		this.B1=B1; 
 		this.B2=B2;
-		SIZEE=size-1;
-		TOPBIT=1<<SIZEE;
-		MASK=(1<<size)-1;
 		BOARD=new int[size];
-		BOARD[0]=1;
-		SIDEMASK=LASTMASK=(TOPBIT|1);
-		ENDBIT=(TOPBIT>>1);
 		if(nMore>0){
 			try{
-				child = new NQueen8_WorkEngine(size, nMore-1, info, B1-1, B2+1);
-				child.start();
+				if(bThread){
+					child = new NQueen8_WorkEngine(size, nMore-1, info, B1-1, B2+1);
+					child.start();
+//					child.join();
+				}
 			}catch(Exception e){
 				System.out.println(e);
 			}
@@ -1957,49 +1994,62 @@ class NQueen8_WorkEngine extends Thread{
 			if(nMore>0){
 				// 最上段のクイーンが角以外にある場合の探索
 				B1=2; 
-				SIZEE=size-1;
-				TOPBIT=1<<SIZEE;
-				MASK=(1<<size)-1;
-				BOARD=new int[size];
 				BOARD[0]=1;
+				SIZEE=size-1;
+				MASK=(1<<size)-1;
+				TOPBIT=1<<SIZEE;
 				while(B1>1 && B1<SIZEE) {
 					BOUND1(B1);
 					B1++;
 				}
-				// 8x9 4x1最上段のクイーンが角にある場合の探索
-				// 2-1-1-3
-				// 76 10
-				B1=1; B2=size-2;
 				SIDEMASK=LASTMASK=(TOPBIT|1);
 				ENDBIT=(TOPBIT>>1);
+				// 最上段のクイーンが角にある場合の探索
+				B1=1; 
+				B2=size-2;
 				while(B1>0 && B2<size-1 && B1<B2){
 					BOUND2(B1, B2);
 					B1++ ;B2--;
+					ENDBIT>>=1;
+					LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 				}
 			}
 		}
-		//マルチスレッド対応
+		//マルチスレッド
 		if(child!=null){
-			// btx2 最上段のクイーンが角以外にある場合の探索
+			// 最上段のクイーンが角以外にある場合の探索
+			BOARD[0]=1;
+			SIZEE=size-1;
+			MASK=(1<<size)-1;
+			TOPBIT=1<<SIZEE;
 			if(B1>1 && B1<SIZEE) { 
 				BOUND1(B1); 
 			}
-			// 8x11 最上段のクイーンが角にある場合の探索
-			// 2-1-2-4
-			// 88 11
-			// BOUND2() からの check()がおかしい
+			// SIDEMASK=LASTMASK=(TOPBIT|1);
+			// ENDBIT=(TOPBIT>>1);
+			ENDBIT=(TOPBIT>>B1);
+			SIDEMASK=(TOPBIT|1);
+			LASTMASK=(TOPBIT|1);
+			// 最上段のクイーンが角にある場合の探索
 			if(B1>0 && B2<size-1 && B1<B2){ 
+				// LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+				for(int i=1; i<B1; i++){
+					LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1;
+				}
 				BOUND2(B1, B2); 
+				// ENDBIT>>=1;
+				ENDBIT>>=nMore;
 			}
 			try{
 				child.join();
-			}catch(Exception e){
+			} catch (Exception e){
 				System.out.println(e);
 			}
 		}
 	}
 	// 最上段のクイーンが角以外にある場合の探索
 	private void BOUND1(int B1){
+		int bit ;
 		BOUND1=B1 ;
 		if(BOUND1<SIZEE) {
 			BOARD[1]=bit=(1<<BOUND1);
@@ -2008,76 +2058,18 @@ class NQueen8_WorkEngine extends Thread{
 	}
 	// 最上段のクイーンが角にある場合の探索
 	private void BOUND2(int B1, int B2){
+		int bit ;
 		BOUND1=B1 ;
 		BOUND2=B2;
 		if(BOUND1<BOUND2) {
 			BOARD[0]=bit=(1<<BOUND1);
 			backTrack2(1, bit<<1, bit, bit>>1);
-			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-			ENDBIT>>=1;
+//			System.out.println("B1:" + B1 + " B2:" + B2 + " nMore:" + nMore + " TOPBIT:" + TOPBIT + " ENDBIT:" + ENDBIT + " MASK:" + MASK + " SIDEMASK:"+ SIDEMASK + " LASTMASK:" + LASTMASK );
 		}
-	}
-	//対称解除法
-	private void Check(int bsize) {
-		int _BOARD =0;
-		int _BOARD1=BOUND1;
-		int _BOARD2=BOUND2;
-		int _BOARDE=SIZEE;
-		//90度回転
-		if (BOARD[_BOARD2] == 1) {
-			int own = _BOARD+1;
-			for (int ptn=2 ; own<=_BOARDE; own++, ptn<<=1) {
-				bit=1;
-				int bown = BOARD[own];
-				for (int you=_BOARDE; (BOARD[you] != ptn) && (bown >= bit); you--)
-					bit<<=1;
-				if (bown>bit) { return; }
-				if (bown<bit) { break; }
-			}
-			//90度回転して同型なら180度/270度回転も同型である
-			if (own>_BOARDE) {
-				// COUNT2++;
-				info.setCount(0, 0, 1);
-				System.out.println("2");
-				return;
-			}
-		}
-		//180度回転
-		if (bsize==ENDBIT) {
-			int own = _BOARD+1;
-			for (int you=_BOARDE-1; own<=_BOARDE; own++, you--) {
-				bit = 1;
-				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1)
-					bit<<=1;
-				if (BOARD[own] > bit) { return; }
-				if (BOARD[own] < bit) { break; }
-			}
-			//90度回転が同型でなくても180度回転が同型である事もある
-			if (own>_BOARDE) {
-				// COUNT4++;
-				info.setCount(0, 1, 0);
-				System.out.println("4");
-				return;
-			}
-		}
-		//270度回転
-		if (BOARD[_BOARD1]==TOPBIT) {
-			int own=_BOARD+1;
-			for (int ptn=TOPBIT>>1; own<=_BOARDE; own++, ptn>>=1) {
-				bit=1;
-				for (int you=_BOARD; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
-					bit<<=1;
-				}
-				if (BOARD[own]>bit) { return; }
-				if (BOARD[own]<bit) { break; }
-			}
-		}
-		//COUNT8++;
-		info.setCount(1, 0, 0);
-		System.out.println("8");
 	}
 	// 最上段のクイーンが角以外にある場合の探索
 	private void backTrack2(int y, int left, int down, int right){
+		int bit ;
 		int bitmap= ( MASK & ~(left|down|right)) ;
 		if(y==SIZEE){
 			if(bitmap!=0){
@@ -2102,6 +2094,7 @@ class NQueen8_WorkEngine extends Thread{
 	}
 	// 最上段のクイーンが角にある場合の探索
 	private void backTrack1(int y, int left, int down, int right){
+		int bit ;
 		int bitmap=( MASK & ~(left|down|right) );
 		if(y==SIZEE){
 			if(bitmap!=0){
@@ -2120,14 +2113,66 @@ class NQueen8_WorkEngine extends Thread{
 			}
 		}
 	}
+	//対称解除法
+	synchronized private void Check(int bsize) {
+		//90度回転
+		if (BOARD[BOUND2] == 1) {
+			int own=1;
+			for (int ptn=2 ; own<=SIZEE; own++, ptn<<=1) {
+				int bit=1;
+				int bown = BOARD[own];
+				for (int you=SIZEE; (BOARD[you] != ptn) && (bown >= bit); you--)
+					bit<<=1;
+				if (bown>bit) { return; }
+				if (bown<bit) { break; }
+			}
+			//90度回転して同型なら180度/270度回転も同型である
+			if (own>SIZEE) {
+				// COUNT2++;
+				info.setCount(0, 0, 1);
+				return;
+			}
+		}
+		//180度回転
+		if (bsize==ENDBIT) {
+			int own=1;
+			for (int you=SIZEE-1; own<=SIZEE; own++, you--) {
+				int bit = 1;
+				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1)
+					bit<<=1;
+				if (BOARD[own] > bit) { return; }
+				if (BOARD[own] < bit) { break; }
+			}
+			//90度回転が同型でなくても180度回転が同型である事もある
+			if (own>SIZEE) {
+				// COUNT4++;
+				info.setCount(0, 1, 0);
+				return;
+			}
+		}
+		//270度回転
+		if (BOARD[BOUND1]==TOPBIT) {
+			int own=1;
+			for (int ptn=TOPBIT>>1; own<=SIZEE; own++, ptn>>=1) {
+				int bit=1;
+				for (int you=0; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+					bit<<=1;
+				}
+				if (BOARD[own]>bit) { return; }
+				if (BOARD[own]<bit) { break; }
+			}
+		}
+		//COUNT8++;
+		info.setCount(1, 0, 0);
+	}
 }
 class NQueen8{
 	public NQueen8(){
-		int max=8;
+		int max=28;
 		NQueen8_Board info ;
 		NQueen8_WorkEngine child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int size=8; size<max+1; size++){
+		for(int size=2; size<max+1; size++){
 			int nThreads=size ;
 			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;

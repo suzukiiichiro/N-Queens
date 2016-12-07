@@ -46,6 +46,7 @@ public class Algorithm {
  * 　交換回数は「　n^2/2　」
  * 　派生系としてシェーカーソートやコムソート
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort01_BubbleSort();
 		
@@ -58,6 +59,7 @@ public class Algorithm {
  * 　比較回数は「　n(n-1)/2　」
  * 　交換回数は「　n-1　」
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort02_SelectionSort();
 
@@ -70,6 +72,7 @@ public class Algorithm {
  * 　比較回数は「　n(n-1)/2以下　」
  * 　交換回数は「　約n^2/2以下　」
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort03_InsertionSort();
 
@@ -89,6 +92,7 @@ public class Algorithm {
  *  マージソートの欠点は、ソートする配列と同サイズの配列をもう一つ必要とする事です。
  *  元の配列がかろうじてメモリに治まるという大きさだったら、マージソートは使えません。
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort04_MergeSort();
 
@@ -101,6 +105,7 @@ public class Algorithm {
  * 　挿入ソート改造版
  *　 ３倍して１を足すという処理を要素を超えるまで行う
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort05_ShellSort();
 
@@ -116,6 +121,7 @@ public class Algorithm {
  * データ数が 5 万以下ならマージソート (Merge Sort)
  * データ数がそれより多いならクイックソート (Quick Sort)
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Sort06_QuickSort();
 
@@ -127,6 +133,7 @@ public class Algorithm {
  * https://ja.wikipedia.org/wiki/三角数
  * 5 + 4 + 3 + 2 + 1 = 15
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// System.out.println(new Recursive01_Triangle().triangle(5));
 
@@ -135,6 +142,7 @@ public class Algorithm {
  * https://ja.wikipedia.org/wiki/階乗
  * 5 * 4 * 3 * 2 * 1 = 120 
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// System.out.println(new Recursive02_Factorial().factorial(5));
 
@@ -147,6 +155,7 @@ public class Algorithm {
  * 42 を 21 で割った余りは 0
  * よって、最大公約数は21である。
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// System.out.println(new Recursive03_Euclid().euclid(1071, 1029));
 
@@ -174,6 +183,7 @@ public class Algorithm {
  * n90:1,237,940,039,285,380,000,000,000,000
  * n100:1,267,650,600,228,230,000,000,000,000,000
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new Recursive04_Hanoi().hanoi(20, 'A', 'B', 'C');
 
@@ -267,6 +277,7 @@ public class Algorithm {
 7 6 5 4 3 2 0 1 : 40319
 7 6 5 4 3 2 1 0 : 40320
 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen2(8);	//バックトラック
 
@@ -300,6 +311,7 @@ public class Algorithm {
 	15:          2279184            0  00:00:14
 	16:         14772512            0  00:01:35
 	*/
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen3();	//配置フラグ
 
@@ -487,6 +499,7 @@ public class Algorithm {
 15:          2279184       285053  00:00:16
 16:         14772512      1846955  00:01:50
  */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen4(); 	//回転・反転・対称
 
@@ -511,6 +524,7 @@ public class Algorithm {
 15:          2279184       285053  00:00:03
 16:         14772512      1846955  00:00:24
 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen5();	//最適化
 
@@ -684,12 +698,43 @@ public class Algorithm {
 	21:     314666222712  39333324973  15:34:05
 	22:    2691008701644 336376244042 136:08:43
 	*/
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		// new NQueen7() ;    // シンプルな対称解除法＋ビットマップ
 
 /**
  * 　８．シンプルな対称解除法＋ビットマップ＋マルチスレッド
+ * 
+ *　　これまでの処理に加えて、Ａ行の一番上から一つずつスレッドを割り当て、Ｎが８列あ
+ *　て８つのスレッドを同時に走らせます。
+ *  　そして処理の最後に合計値を算出する方法をマルチスレッド処理と言います。
+ *　　１Ｘ１，２Ｘ２，３Ｘ３，４Ｘ４，５Ｘ５，６Ｘ６，７ｘ７、８Ｘ８のボートの計算を
+ *　スレッドに割り当てる手法が多く見受けられますが、
+ *　　Ｎが大きくなれば処理時間はむしろ多くなり合理的ではありません。
+ *　　ここでは前者の手法でプログラミングします。
  */
+	/**
+	 N:            Total       Unique    hh:mm:ss
+	 2:                0            0  00:00:00
+	 3:                0            0  00:00:00
+	 4:                2            1  00:00:00
+	 5:               10            2  00:00:00
+	 6:                4            1  00:00:00
+	 7:               40            6  00:00:00
+	 8:               92           12  00:00:00
+	 9:              352           46  00:00:00
+	10:              724           92  00:00:00
+	11:             2680          341  00:00:00
+	12:            14200         1787  00:00:00
+	13:            73712         9233  00:00:00
+	14:           365596        45752  00:00:00
+	15:          2279184       285053  00:00:00
+	16:         14772512      1846955  00:00:00
+	17:         95815104     11977939  00:00:04
+	18:        666090624     83263591  00:00:34
+	19:       4968057848    621012754  00:04:18
+	 */
+
 		// $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
 		 new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
 
