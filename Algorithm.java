@@ -782,6 +782,7 @@ public class Algorithm {
   19:       4968057848    621012754  00:04:18
   20:      39029188884   4878666808  00:35:07
   21:     314666222712  39333324973  04:41:36
+  22:    2691008701644 336376244042  39:14:59
    */
 
     // $ javac Algorithm.java && java -Xms4g -Xmx8g Algorithm
@@ -2238,7 +2239,7 @@ class NQueen8{
 		NQueen8_Board info ;
 		NQueen8_WorkEngine child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int size=2; size<max+1; size++){
+		for(int size=22; size<max+1; size++){
 			int nThreads=size ;
 			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;
