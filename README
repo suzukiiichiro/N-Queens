@@ -796,7 +796,6 @@ public class Algorithm {
 
     // $ javac Algorithm.java && java -Xms4g -Xmx8g Algorithm
     // new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
-
   }
 }
 
