@@ -2251,7 +2251,7 @@ class NQueen8{
 		NQueen8_Board info ;
 		NQueen8_WorkEngine child ;
 		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(int size=22; size<max+1; size++){
+		for(int size=2; size<max+1; size++){
 			int nThreads=size ;
 			info = new NQueen8_Board(size);
 			long start = System.currentTimeMillis() ;
