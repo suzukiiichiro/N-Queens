@@ -62,9 +62,50 @@ public class Algorithm {
  *   派生系としてシェーカーソートやコムソート
  */
 
+class Sort01_BubbleSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort01_BubbleSort(){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		bubbleSort(a);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("bubble : " + (end-start));
+	}
+	void bubbleSort(int[] a){
+		int out, in;
+		for(out=nElems-1; out>1;out--){
+			for(in=0; in<out; in++){
+				if(a[in]>a[in+1])
+					swap(a, in, in+1);
+			}
+		}
+	}
+}
+
   // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
   // new Sort01_BubbleSort();
-    
+
 /**
  * 選択ソート 3294mm
   * https://ja.wikipedia.org/wiki/選択ソート
@@ -74,6 +115,49 @@ public class Algorithm {
  *   比較回数は「  n(n-1)/2  」
  *   交換回数は「  n-1  」
  */
+
+class Sort02_SelectionSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort02_SelectionSort(){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		selectionSort(a);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("select : " + (end-start));
+	}
+	void selectionSort(int[] a){
+		int out, in, min ;
+		for(out=0; out<nElems; out++){
+			min=out;
+			for(in=out+1; in<nElems; in++){
+				if(a[in]<a[min])
+					min=in;
+			}
+			swap(a, out, min);
+		}
+	}
+}
 
    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
    // new Sort02_SelectionSort();
@@ -87,6 +171,48 @@ public class Algorithm {
  *   比較回数は「  n(n-1)/2以下  」
  *   交換回数は「  約n^2/2以下  」
  */
+
+class Sort03_InsertionSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort03_InsertionSort (){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		insertionSort(a);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("insert : " + (end-start));
+	}
+	void insertionSort(int[] a){
+		int out, in, tmp;
+		for(out=1; out<nElems; out++){
+			tmp=a[out];
+			for(in=out; in>0 && a[in-1]>=tmp; --in){
+				a[in]=a[in-1];
+			}
+			a[in]=tmp ;
+		}
+	}
+}
 
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new Sort03_InsertionSort();
@@ -109,6 +235,66 @@ public class Algorithm {
  *   ません。
  */
 
+class Sort04_MergeSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort04_MergeSort(){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		int[] w = new int[nElems];
+		mergeSort(a, w, 0, nElems-1);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("merge : " + (end-start));
+	}
+	void mergeSort(int[] a, int[] w, int low, int up){
+		if(low==up)
+			return ;
+		else{
+			int mid=(low+up)/2;
+			mergeSort(a, w, low, mid);
+			mergeSort(a, w, mid+1, up);
+			merge(a, w, low, mid+1, up);
+		}
+	}
+	void merge(int[]a, int[]w, int low, int high, int upB){
+		int j=0;
+		int lowB=low;
+		int mid=high-1;
+		int n=upB-lowB+1;
+		while(low<=mid && high<=upB)
+			if(a[low]<a[high])
+				w[j++]=a[low++];
+			else
+				w[j++]=a[high++];
+		while(low<=mid)
+			w[j++]=a[low++];
+		while(high<=upB)
+			w[j++]=a[high++];
+		for(j=0;j<n;j++)
+			a[lowB+j]=w[j];
+	}
+}
+
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new Sort04_MergeSort();
 
@@ -121,6 +307,56 @@ public class Algorithm {
  *   挿入ソート改造版
  *   ３倍して１を足すという処理を要素を越えるまで行う
  */
+
+class Sort05_ShellSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort05_ShellSort(){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		shellSort(a);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("shell : " + (end-start));
+	}
+	void shellSort(int[]a){
+		int out, in, tmp ;
+		int h=1;
+		while(h<=nElems/3)
+			h=h*3+1;
+		while(h>0){
+			for(out=h;out<nElems; out++){
+				tmp=a[out];
+				in=out;
+				while(in>h-1 && a[in-h]>=tmp){
+					a[in]=a[in-h];
+					in-=h;
+				}
+				a[in]=tmp;
+			}
+			h=(h-1)/3;
+		}
+	}
+}
 
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new Sort05_ShellSort();
@@ -138,6 +374,89 @@ public class Algorithm {
  * データ数がそれより多いならクイックソート (Quick Sort)
  */
 
+class Sort06_QuickSort{
+	int[] a = null ;
+	int nElems=0;
+	int maxSize=100000;
+	void setArray(){
+		a = new int[maxSize];
+		for(int i=0; i<maxSize; i++){
+			a[i]=(int)(Math.random()*1000000);
+			nElems++;
+		}
+	}
+	void display(){
+		for(int i=0; i<nElems; i++){
+			System.out.println(a[i]);
+		}
+	}
+	void swap(int[] a, int one, int two){
+		int tmp=a[one];
+		a[one]=a[two];
+		a[two]=tmp;
+	}
+	public Sort06_QuickSort(){
+		long start=System.currentTimeMillis();
+		setArray();
+		display();
+		quickSort(a, 0, nElems-1);
+		insertionSort(a, 0, nElems-1);
+		display();
+		long end=System.currentTimeMillis();
+		System.out.println("quick : " + (end-start));
+	}
+	void quickSort(int[]a, int left, int right){
+		int size=right-left+1;
+		if(size<10)
+			insertionSort(a, left, right);
+		else{
+			int median=medianOf3(left, right);
+			int part=getPart(left, right, median);
+			quickSort(a, left, part-1);
+			quickSort(a, part+1, right);
+		}
+	}
+	int medianOf3(int left, int right){
+		int center=(left+right)/2;
+		if(a[left]>a[center])
+			swap(a, left, center);
+		if(a[left]>a[right])
+			swap(a, left, right);
+		if(a[center]>a[right])
+			swap(a, center, right);
+		swap(a, center, right-1);
+		return a[right-1];
+	}
+	int getPart(int left, int right, int pivot){
+		int leftP=left ;
+		int rightP=right-1;
+		while(true){
+			while(a[++leftP]<pivot)
+				;
+			while(a[--rightP]>pivot)
+				;
+			if(leftP>=rightP)
+				break ;
+			else
+				swap(a, leftP, rightP);
+		}
+		swap(a, leftP, right-1);
+		return leftP;
+	}
+	void insertionSort(int[]a, int left, int right){
+		int in , out ;
+		for(out=left+1; out<=right; out++){
+			int tmp=a[out];
+			in=out;
+			while(in>left && a[in-1]>=tmp){
+				a[in]=a[in-1];
+				--in;
+			}
+			a[in]=tmp;
+		}
+	}
+}
+
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new Sort06_QuickSort();
 
@@ -151,6 +470,14 @@ public class Algorithm {
  * 5 + 4 + 3 + 2 + 1 = 15
  */
 
+class Recursive01_Triangle{
+	int triangle(int n){
+		if(n==1)
+			return 1;
+		else
+			return n+triangle(n-1);
+	}
+}
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // System.out.println(new Recursive01_Triangle().triangle(5));
 
@@ -160,6 +487,14 @@ public class Algorithm {
  * 5 * 4 * 3 * 2 * 1 = 120 
  */
 
+class Recursive02_Factorial{
+	int factorial(int n){
+		if(n==1)
+			return 1;
+		else 
+			return n*factorial(n-1);
+	}
+}
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // System.out.println(new Recursive02_Factorial().factorial(5));
 
@@ -173,6 +508,14 @@ public class Algorithm {
  * よって、最大公約数は21である。
  */
 
+class Recursive03_Euclid{
+	int euclid(int x, int y){
+		if(y==0)
+			return x ;
+		else
+			return euclid(y, x%y);
+	}
+}
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // System.out.println(new Recursive03_Euclid().euclid(1071, 1029));
 
@@ -204,6 +547,18 @@ public class Algorithm {
  *   n100:1,267,650,600,228,230,000,000,000,000,000
  */
 
+class Recursive04_Hanoi{
+	int count=1 ;
+	void hanoi(int n, char src, char inter, char dest){
+		if(n==1)
+			System.out.println("work:" +count++ + " disk1"+src+"to"+dest);
+		else{
+			hanoi(n-1, src, dest, inter);
+			System.out.println("work:" +count++ + " disk"+n+"from"+src+"to"+dest);
+			hanoi(n-1, inter, src, dest);
+		}	
+	}
+}
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new Recursive04_Hanoi().hanoi(20, 'A', 'B', 'C');
 
@@ -268,6 +623,42 @@ public class Algorithm {
   7 7 7 7 7 7 7 7 : 16777216
   */
 
+class NQueen1{
+	// 各列に１個の王妃を配置する組み合わせを再帰的に列挙
+	private int[] board ;
+	private int count;
+	private int size;
+	// コンストラクタ
+	public NQueen1(int size){
+		this.size=size;
+		board=new int[size];
+		// 解数は1からカウント
+		count=1;
+		// ０列目に王妃を配置してスタート
+		nQueens(0);
+	}
+	// 再帰関数
+	private void nQueens(int row){
+		// 全列に配置完了 最後の列で出力
+		if(row==size){
+			print();
+		}else{
+			// 各列にひとつのクイーンを配置する
+			for(int col=0; col<size; col++){
+				board[row]=col; 
+				// 次の列に王妃を配置
+				nQueens(row+1);
+			}
+		}
+	}
+	//出力
+	private void print(){
+		for(int col=0; col<size; col++){
+			System.out.printf("%2d", board[col]);
+		}
+		System.out.println(" : " + count++);
+	}
+}
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new NQueen1(8);  //ブルートフォース
 
@@ -297,6 +688,59 @@ public class Algorithm {
   7 6 5 4 3 2 1 0 : 40320
                          N16: 00:00:01
   */
+
+class NQueen2{
+	private int[] board ;
+	private int count;
+	private int size;
+	//行の配置フラグ
+	private boolean flag[] ;
+	public NQueen2(int size){
+		this.size=size ;
+		// 解数は1からカウント
+		count=1;
+		board=new int[size];
+		//行の配置フラグ
+		flag=new boolean[size];
+		// ０列目に王妃を配置
+		nQueens(0);
+	}
+	private void nQueens(int row){
+		// 全列+各行に一つの王妃を配置完了 最後の列で出力
+		if(row==size){
+			print();
+		}else{
+			// 各列にひとつのクイーンを配置する
+			for(int col=0; col<size; col++){
+				// i行には王妃は未配置 バックトラック
+				if(flag[col]==false){
+					// 王妃をi行に配置
+					board[row]=col; 
+					// i行に王妃を配置したらtrueに
+					/**
+					 * i行に王妃を配置したらtrueに
+					 * これはその行に重複して王妃を配置しないようにするため
+					 * falseである行に対してのみ王妃を配置します
+					 */
+					flag[col]=true;
+					// 次の列に王妃を配置
+					nQueens(row+1);
+					/**
+					 * 再帰的に呼び出したメソッドset()から戻ってきたときは
+					 * flag[i]をfalseに設定することによってi列から王妃を取り除きます。
+					 */
+					flag[col]=false ;
+				}
+			}
+		}
+	}
+	private void print(){
+		for(int col=0; col<size; col++){
+			System.out.printf("%2d", board[col]);
+		}
+		System.out.println(" : " + count++);
+	}
+}
 
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new NQueen2(8);  //バックトラック
@@ -331,6 +775,47 @@ public class Algorithm {
   15:          2279184            0  00:00:14
   16:         14772512            0  00:01:35
   */
+
+class NQueen3{
+	private int[] board ;
+	private long TOTAL ;
+	private int size;
+	private int max ;
+	private boolean[] colChk;    // セル
+    private boolean[] diagChk;   // 対角線
+    private boolean[] antiChk;   // 反対角線
+	public NQueen3(){
+		max=27 ;
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(size=2; size<max; size++){
+			TOTAL=0;
+			board=new int[size];
+			colChk    = new boolean[size];
+			diagChk   = new boolean[2*size-1];
+			antiChk   = new boolean[2*size-1];
+			for(int k=0; k<size; k++){ board[k]=k ; }
+			long start = System.currentTimeMillis() ;
+			nQueens(0);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",size,TOTAL,0,TIME); 
+		}
+	}
+	private void nQueens(int row){
+		if(row==size){
+			TOTAL++ ;
+		}else{
+			for(int col=0; col<size; col++){
+				board[row]=col; 
+				if(	colChk[col]==false && antiChk[row+col]==false && diagChk[row-col+(size-1)]==false){
+					colChk[col]=diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = true;
+					nQueens(row+1);
+					colChk[col]=diagChk[row-board[row]+size-1] = antiChk[row+board[row]] =false;
+				}
+			}
+		}
+	}
+}
 
     // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
     // new NQueen3(); //配置フラグ
@@ -536,764 +1021,6 @@ public class Algorithm {
   16:         14772512      1846955  00:01:50
    */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen4();   //回転・反転・対称
-
-/**
- * ５．枝刈りと最適化
- * 　単純ですのでソースのコメントを見比べて下さい。
- *   単純ではありますが、枝刈りの効果は絶大です。
- */
-
-  /**
-   N:            Total       Unique    hh:mm:ss
-   2:                0            0  00:00:00
-   3:                0            0  00:00:00
-   4:                2            1  00:00:00
-   5:               10            2  00:00:00
-   6:                4            1  00:00:00
-   7:               40            6  00:00:00
-   8:               92           12  00:00:00
-   9:              352           46  00:00:00
-  10:              724           92  00:00:00
-  11:             2680          341  00:00:00
-  12:            14200         1787  00:00:00
-  13:            73712         9233  00:00:00
-  14:           365596        45752  00:00:00
-  15:          2279184       285053  00:00:03
-  16:         14772512      1846955  00:00:24
-  */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen5(); //最適化
-
-/**
- * ６．マルチスレッド1
- * 
- * 　クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
- * さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
- * 　backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
- * 　ただしスレッド数を管理する必要がある。
- */
-
-  /**
-   N:            Total       Unique    hh:mm:ss
-   2:                0            0  00:00:00
-   3:                0            0  00:00:00
-   4:                2            1  00:00:00
-   5:               10            2  00:00:00
-   6:                4            1  00:00:00
-   7:               40            6  00:00:00
-   8:               92           12  00:00:00
-   9:              352           46  00:00:00
-  10:              724           92  00:00:00
-  11:             2680          341  00:00:00
-  12:            14200         1787  00:00:00
-  13:            73712         9233  00:00:00
-  14:           365596        45752  00:00:00
-  15:          2279184       285053  00:00:00
-  16:         14772512      1846955  00:00:05
-  */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen6();   // マルチスレッド
-
-    
-/**
- * ７．ビットマップ
- *
- *   ビット演算を使って高速化 状態をビットマップにパックし、処理する
- *   単純なバックトラックよりも２０〜３０倍高速
- * 
- * 　ビットマップであれば、シフトにより高速にデータを移動できる。
- *  フラグ配列ではデータの移動にO(N)の時間がかかるが、ビットマップであればO(1)
- *  フラグ配列のように、斜め方向に 2*N-1の要素を用意するのではなく、Nビットで充
- *  分。
- *
- * 　配置可能なビット列を flags に入れ、-flags & flags で順にビットを取り出し処理。
- * 　バックトラックよりも２０−３０倍高速。
- * 
- * ===================
- * 考え方 1
- * ===================
- *
- * 　Ｎ×ＮのチェスボードをＮ個のビットフィールドで表し、ひとつの横列の状態をひと
- * つのビットフィールドに対応させます。(クイーンが置いてある位置のビットをONに
- * する)
- * 　そしてバックトラッキングは0番目のビットフィールドから「下に向かって」順にい
- * ずれかのビット位置をひとつだけONにして進めていきます。
- *
- * 
- *- - - - - Q - -    00000100 0番目のビットフィールド
- *- - - Q - - - -    00010000 1番目のビットフィールド
- *- - - - - - Q -    00000010 2番目のビットフィールド
- *Q - - - - - - -    10000000 3番目のビットフィールド
- *- - - - - - - Q    00000001 4番目のビットフィールド
- *- Q - - - - - -    01000000 5番目のビットフィールド
- *- - - - Q - - -    00001000 6番目のビットフィールド
- *- - Q - - - - -    00100000 7番目のビットフィールド
- *
- *
- * ===================
- * 考え方 2
- * ===================
- *
- * 次に、効き筋をチェックするためにさらに３つのビットフィールドを用意します。
- *
- * 1. 左下に効き筋が進むもの: left 
- * 2. 真下に効き筋が進むもの: down
- * 3. 右下に効き筋が進むもの: right
- *
- *次に、斜めの利き筋を考えます。
- * 上図の場合、
- * 1列目の右斜め上の利き筋は 3 番目 (0x08)
- * 2列目の右斜め上の利き筋は 2 番目 (0x04) になります。
- * この値は 0 列目のクイーンの位置 0x10 を 1 ビットずつ「右シフト」すれば求める
- * ことができます。
- * また、左斜め上の利き筋の場合、1 列目では 5 番目 (0x20) で 2 列目では 6 番目 (0x40)
- *になるので、今度は 1 ビットずつ「左シフト」すれば求めることができます。
- *
- *つまり、右シフトの利き筋を right、左シフトの利き筋を left で表すことで、クイー
- *ンの効き筋はrightとleftを1 ビットシフトするだけで求めることができるわけです。
- *
- *  *-------------
- *  | . . . . . .
- *  | . . . -3. .  0x02 -|
- *  | . . -2. . .  0x04  |(1 bit 右シフト right)
- *  | . -1. . . .  0x08 -|
- *  | Q . . . . .  0x10 ←(Q の位置は 4   down)
- *  | . +1. . . .  0x20 -| 
- *  | . . +2. . .  0x40  |(1 bit 左シフト left)  
- *  | . . . +3. .  0x80 -|
- *  *-------------
- *  図：斜めの利き筋のチェック
- *
- * n番目のビットフィールドからn+1番目のビットフィールドに探索を進めるときに、そ
- * の３つのビットフィールドとn番目のビットフィールド(bit)とのOR演算をそれぞれ行
- * います。leftは左にひとつシフトし、downはそのまま、rightは右にひとつシフトして
- * n+1番目のビットフィールド探索に渡してやります。
- *
- * left : (left |bit)<<1
- * right: (right|bit)>>1
- * down :   down|bit
- *
- *
- * ===================
- * 考え方 3
- * ===================
- *
- *   n+1番目のビットフィールドの探索では、この３つのビットフィールドをOR演算した
- * ビットフィールドを作り、それがONになっている位置は効き筋に当たるので置くことが
- * できない位置ということになります。次にその３つのビットフィールドをORしたビッ
- * トフィールドをビット反転させます。つまり「配置可能なビットがONになったビットフィー
- * ルド」に変換します。そしてこの配置可能なビットフィールドを bitmap と呼ぶとして、
- * 次の演算を行なってみます。
- * 
- * bit = -bitmap & bitmap; //一番右のビットを取り出す
- * 
- *   この演算式の意味を理解するには負の値がコンピュータにおける２進法ではどのよう
- * に表現されているのかを知る必要があります。負の値を２進法で具体的に表わしてみる
- * と次のようになります。
- * 
- *  00000011   3
- *  00000010   2
- *  00000001   1
- *  00000000   0
- *  11111111  -1
- *  11111110  -2
- *  11111101  -3
- * 
- *   正の値nを負の値-nにするときは、nをビット反転してから+1されています。そして、
- * 例えばn=22としてnと-nをAND演算すると下のようになります。nを２進法で表したときの
- * 一番下位のONビットがひとつだけ抽出される結果が得られるのです。極めて簡単な演算
- * によって1ビット抽出を実現させていることが重要です。
- * 
- *      00010110   22
- *  AND 11101010  -22
- * ------------------
- *      00000010
- * 
- *   さて、そこで下のようなwhile文を書けば、このループは bitmap のONビットの数の
- * 回数だけループすることになります。配置可能なパターンをひとつずつ全く無駄がなく
- * 生成されることになります。
- * 
- * while (bitmap) {
- *     bit = -bitmap & bitmap;
- *     bitmap ^= bit;
- *     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
- * }
- */
-
-   /**
-    * 実行結果
-   N:            Total       Unique    hh:mm:ss
-   2:                0            0  00:00:00
-   3:                0            0  00:00:00
-   4:                2            1  00:00:00
-   5:               10            2  00:00:00
-   6:                4            1  00:00:00
-   7:               40            6  00:00:00
-   8:               92           12  00:00:00
-   9:              352           46  00:00:00
-  10:              724           92  00:00:00
-  11:             2680          341  00:00:00
-  12:            14200         1787  00:00:00
-  13:            73712         9233  00:00:00
-  14:           365596        45752  00:00:00
-  15:          2279184       285053  00:00:00
-  16:         14772512      1846955  00:00:02
-	17:         95815104     11977939  00:00:15
-	18:        666090624     83263591  00:01:49
-	19:       4968057848    621012754  00:13:55
-	20:      39029188884   4878666808  01:50:42
-	21:     314666222712  39333324973  15:34:05
-	22:    2691008701644 336376244042 136:08:43
-  */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen7() ;    // シンプルな対称解除法＋ビットマップ
-
-
-/**
- *   ８．マルチスレッド2
- * 
- * ここまでの処理は、一つのスレッドが順番にＡ行の１列目から順を追って処理判定をし
- * てきました。この節では、Ａ行の列それぞれに別々のスレッドを割り当て、全てのス
- * レッドを同時に処理判定させます。Ａ行それぞれの列の処理判定結果はBoardクラスで
- * 管理し、処理完了とともに結果を出力します。スレッドはWorkEngineクラスがNの数だ
- * け生成されます。WorkEngineクラスは自身の持ち場のＡ行＊列の処理だけを担当しま
- * す。これらはマルチスレッド処理と言い、並列処理のための同期、排他、ロック、集計
- * など複雑な処理を理解する知識が必要です。そして処理の最後に合計値を算出する方法
- * をマルチスレッド処理と言います。
- * １Ｘ１，２Ｘ２，３Ｘ３，４Ｘ４，５Ｘ５，６Ｘ６，７ｘ７、８Ｘ８のボートごとの計
- * 算をスレッドに割り当てる手法がちまたでは多く見受けられます。これらの手法は、
- * 実装は簡単ですが、Ｎが７の計算をしながら別スレッドでＮが８の計算を並列処理する
- * といった矛盾が原因で、Ｎが大きくなるとむしろ処理時間がかかります。
- *   ここでは理想的なアルゴリズムとして前者の手法でプログラミングします。
- */
-
-  /**
-   N:            Total       Unique    hh:mm:ss
-   2:                0            0  00:00:00
-   3:                0            0  00:00:00
-   4:                2            1  00:00:00
-   5:               10            2  00:00:00
-   6:                4            1  00:00:00
-   7:               40            6  00:00:00
-   8:               92           12  00:00:00
-   9:              352           46  00:00:00
-  10:              724           92  00:00:00
-  11:             2680          341  00:00:00
-  12:            14200         1787  00:00:00
-  13:            73712         9233  00:00:00
-  14:           365596        45752  00:00:00
-  15:          2279184       285053  00:00:00
-  16:         14772512      1846955  00:00:00
-  17:         95815104     11977939  00:00:04
-  18:        666090624     83263591  00:00:34
-  19:       4968057848    621012754  00:04:18
-  20:      39029188884   4878666808  00:35:07
-  21:     314666222712  39333324973  04:41:36
-  22:    2691008701644 336376244042  39:14:59
-   */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx8g Algorithm
-    new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
-
-  }
-}
-
-class Sort01_BubbleSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort01_BubbleSort(){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		bubbleSort(a);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("bubble : " + (end-start));
-	}
-	void bubbleSort(int[] a){
-		int out, in;
-		for(out=nElems-1; out>1;out--){
-			for(in=0; in<out; in++){
-				if(a[in]>a[in+1])
-					swap(a, in, in+1);
-			}
-		}
-	}
-}
-
-class Sort02_SelectionSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort02_SelectionSort(){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		selectionSort(a);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("select : " + (end-start));
-	}
-	void selectionSort(int[] a){
-		int out, in, min ;
-		for(out=0; out<nElems; out++){
-			min=out;
-			for(in=out+1; in<nElems; in++){
-				if(a[in]<a[min])
-					min=in;
-			}
-			swap(a, out, min);
-		}
-	}
-}
-
-class Sort03_InsertionSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort03_InsertionSort (){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		insertionSort(a);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("insert : " + (end-start));
-	}
-	void insertionSort(int[] a){
-		int out, in, tmp;
-		for(out=1; out<nElems; out++){
-			tmp=a[out];
-			for(in=out; in>0 && a[in-1]>=tmp; --in){
-				a[in]=a[in-1];
-			}
-			a[in]=tmp ;
-		}
-	}
-}
-
-class Sort04_MergeSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort04_MergeSort(){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		int[] w = new int[nElems];
-		mergeSort(a, w, 0, nElems-1);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("merge : " + (end-start));
-	}
-	void mergeSort(int[] a, int[] w, int low, int up){
-		if(low==up)
-			return ;
-		else{
-			int mid=(low+up)/2;
-			mergeSort(a, w, low, mid);
-			mergeSort(a, w, mid+1, up);
-			merge(a, w, low, mid+1, up);
-		}
-	}
-	void merge(int[]a, int[]w, int low, int high, int upB){
-		int j=0;
-		int lowB=low;
-		int mid=high-1;
-		int n=upB-lowB+1;
-		while(low<=mid && high<=upB)
-			if(a[low]<a[high])
-				w[j++]=a[low++];
-			else
-				w[j++]=a[high++];
-		while(low<=mid)
-			w[j++]=a[low++];
-		while(high<=upB)
-			w[j++]=a[high++];
-		for(j=0;j<n;j++)
-			a[lowB+j]=w[j];
-	}
-}
-
-class Sort05_ShellSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort05_ShellSort(){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		shellSort(a);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("shell : " + (end-start));
-	}
-	void shellSort(int[]a){
-		int out, in, tmp ;
-		int h=1;
-		while(h<=nElems/3)
-			h=h*3+1;
-		while(h>0){
-			for(out=h;out<nElems; out++){
-				tmp=a[out];
-				in=out;
-				while(in>h-1 && a[in-h]>=tmp){
-					a[in]=a[in-h];
-					in-=h;
-				}
-				a[in]=tmp;
-			}
-			h=(h-1)/3;
-		}
-	}
-}
-
-class Sort06_QuickSort{
-	int[] a = null ;
-	int nElems=0;
-	int maxSize=100000;
-	void setArray(){
-		a = new int[maxSize];
-		for(int i=0; i<maxSize; i++){
-			a[i]=(int)(Math.random()*1000000);
-			nElems++;
-		}
-	}
-	void display(){
-		for(int i=0; i<nElems; i++){
-			System.out.println(a[i]);
-		}
-	}
-	void swap(int[] a, int one, int two){
-		int tmp=a[one];
-		a[one]=a[two];
-		a[two]=tmp;
-	}
-	public Sort06_QuickSort(){
-		long start=System.currentTimeMillis();
-		setArray();
-		display();
-		quickSort(a, 0, nElems-1);
-		insertionSort(a, 0, nElems-1);
-		display();
-		long end=System.currentTimeMillis();
-		System.out.println("quick : " + (end-start));
-	}
-	void quickSort(int[]a, int left, int right){
-		int size=right-left+1;
-		if(size<10)
-			insertionSort(a, left, right);
-		else{
-			int median=medianOf3(left, right);
-			int part=getPart(left, right, median);
-			quickSort(a, left, part-1);
-			quickSort(a, part+1, right);
-		}
-			
-	}
-	int medianOf3(int left, int right){
-		int center=(left+right)/2;
-		if(a[left]>a[center])
-			swap(a, left, center);
-		if(a[left]>a[right])
-			swap(a, left, right);
-		if(a[center]>a[right])
-			swap(a, center, right);
-		swap(a, center, right-1);
-		return a[right-1];
-	}
-	int getPart(int left, int right, int pivot){
-		int leftP=left ;
-		int rightP=right-1;
-		while(true){
-			while(a[++leftP]<pivot)
-				;
-			while(a[--rightP]>pivot)
-				;
-			if(leftP>=rightP)
-				break ;
-			else
-				swap(a, leftP, rightP);
-		}
-		swap(a, leftP, right-1);
-		return leftP;
-	}
-	void insertionSort(int[]a, int left, int right){
-		int in , out ;
-		for(out=left+1; out<=right; out++){
-			int tmp=a[out];
-			in=out;
-			while(in>left && a[in-1]>=tmp){
-				a[in]=a[in-1];
-				--in;
-			}
-			a[in]=tmp;
-		}
-	}
-}
-
-class Recursive01_Triangle{
-	int triangle(int n){
-		if(n==1)
-			return 1;
-		else
-			return n+triangle(n-1);
-	}
-}
-
-class Recursive02_Factorial{
-	int factorial(int n){
-		if(n==1)
-			return 1;
-		else 
-			return n*factorial(n-1);
-	}
-}
-
-class Recursive03_Euclid{
-	int euclid(int x, int y){
-		if(y==0)
-			return x ;
-		else
-			return euclid(y, x%y);
-	}
-}
-
-class Recursive04_Hanoi{
-	int count=1 ;
-	void hanoi(int n, char src, char inter, char dest){
-		if(n==1)
-			System.out.println("work:" +count++ + " disk1"+src+"to"+dest);
-		else{
-			hanoi(n-1, src, dest, inter);
-			System.out.println("work:" +count++ + " disk"+n+"from"+src+"to"+dest);
-			hanoi(n-1, inter, src, dest);
-		}	
-	}
-}
-
-class NQueen1{
-	// 各列に１個の王妃を配置する組み合わせを再帰的に列挙
-	private int[] board ;
-	private int count;
-	private int size;
-	// コンストラクタ
-	public NQueen1(int size){
-		this.size=size;
-		board=new int[size];
-		// 解数は1からカウント
-		count=1;
-		// ０列目に王妃を配置してスタート
-		nQueens(0);
-	}
-	// 再帰関数
-	private void nQueens(int row){
-		// 全列に配置完了 最後の列で出力
-		if(row==size){
-			print();
-		}else{
-			// 各列にひとつのクイーンを配置する
-			for(int col=0; col<size; col++){
-				board[row]=col; 
-				// 次の列に王妃を配置
-				nQueens(row+1);
-			}
-		}
-	}
-	//出力
-	private void print(){
-		for(int col=0; col<size; col++){
-			System.out.printf("%2d", board[col]);
-		}
-		System.out.println(" : " + count++);
-	}
-}
-
-class NQueen2{
-	private int[] board ;
-	private int count;
-	private int size;
-	//行の配置フラグ
-	private boolean flag[] ;
-	public NQueen2(int size){
-		this.size=size ;
-		// 解数は1からカウント
-		count=1;
-		board=new int[size];
-		//行の配置フラグ
-		flag=new boolean[size];
-		// ０列目に王妃を配置
-		nQueens(0);
-	}
-	private void nQueens(int row){
-		// 全列+各行に一つの王妃を配置完了 最後の列で出力
-		if(row==size){
-			print();
-		}else{
-			// 各列にひとつのクイーンを配置する
-			for(int col=0; col<size; col++){
-				// i行には王妃は未配置 バックトラック
-				if(flag[col]==false){
-					// 王妃をi行に配置
-					board[row]=col; 
-					// i行に王妃を配置したらtrueに
-					/**
-					 * i行に王妃を配置したらtrueに
-					 * これはその行に重複して王妃を配置しないようにするため
-					 * falseである行に対してのみ王妃を配置します
-					 */
-					flag[col]=true;
-					// 次の列に王妃を配置
-					nQueens(row+1);
-					/**
-					 * 再帰的に呼び出したメソッドset()から戻ってきたときは
-					 * flag[i]をfalseに設定することによってi列から王妃を取り除きます。
-					 */
-					flag[col]=false ;
-				}
-			}
-		}
-	}
-	private void print(){
-		for(int col=0; col<size; col++){
-			System.out.printf("%2d", board[col]);
-		}
-		System.out.println(" : " + count++);
-	}
-}
-
-class NQueen3{
-	private int[] board ;
-	private long TOTAL ;
-	private int size;
-	private int max ;
-	private boolean[] colChk;    // セル
-    private boolean[] diagChk;   // 対角線
-    private boolean[] antiChk;   // 反対角線
-	public NQueen3(){
-		max=27 ;
-		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(size=2; size<max; size++){
-			TOTAL=0;
-			board=new int[size];
-			colChk    = new boolean[size];
-			diagChk   = new boolean[2*size-1];
-			antiChk   = new boolean[2*size-1];
-			for(int k=0; k<size; k++){ board[k]=k ; }
-			long start = System.currentTimeMillis() ;
-			nQueens(0);
-			long end = System.currentTimeMillis();
-			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",size,TOTAL,0,TIME); 
-		}
-	}
-	private void nQueens(int row){
-		if(row==size){
-			TOTAL++ ;
-		}else{
-			for(int col=0; col<size; col++){
-				board[row]=col; 
-				if(	colChk[col]==false && antiChk[row+col]==false && diagChk[row-col+(size-1)]==false){
-					colChk[col]=diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = true;
-					nQueens(row+1);
-					colChk[col]=diagChk[row-board[row]+size-1] = antiChk[row+board[row]] =false;
-				}
-			}
-		}
-	}
-}
-
 class NQueen4{
 	private int[] board ;
 	private long nUnique ; //ユニーク解
@@ -1368,7 +1095,6 @@ class NQueen4{
          if ( k == 0 )
             nEquiv = 2;
          else {
-        	 /* 270 degrees */
         	//時計回りに270度回転
             rotate (trial, scratch, size, false);
             k = intncmp (board, trial, size);
@@ -1423,6 +1149,34 @@ class NQueen4{
       return;
 	}
 }
+    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+    // new NQueen4();   //回転・反転・対称
+
+
+/**
+ * ５．枝刈りと最適化
+ * 　単純ですのでソースのコメントを見比べて下さい。
+ *   単純ではありますが、枝刈りの効果は絶大です。
+ */
+  /**
+   N:            Total       Unique    hh:mm:ss
+   2:                0            0  00:00:00
+   3:                0            0  00:00:00
+   4:                2            1  00:00:00
+   5:               10            2  00:00:00
+   6:                4            1  00:00:00
+   7:               40            6  00:00:00
+   8:               92           12  00:00:00
+   9:              352           46  00:00:00
+  10:              724           92  00:00:00
+  11:             2680          341  00:00:00
+  12:            14200         1787  00:00:00
+  13:            73712         9233  00:00:00
+  14:           365596        45752  00:00:00
+  15:          2279184       285053  00:00:03
+  16:         14772512      1846955  00:00:24
+  */
+
 class NQueen5{
 	private int[] board ;
 	private long nUnique ;
@@ -1594,6 +1348,36 @@ class NQueen5{
       return;
 	}
 }
+    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+    // new NQueen5(); //最適化
+
+/**
+ * ６．マルチスレッド1
+ * 
+ * 　クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
+ * さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
+ * 　backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
+ * 　ただしスレッド数を管理する必要がある。
+ */
+
+  /**
+   N:            Total       Unique    hh:mm:ss
+   2:                0            0  00:00:00
+   3:                0            0  00:00:00
+   4:                2            1  00:00:00
+   5:               10            2  00:00:00
+   6:                4            1  00:00:00
+   7:               40            6  00:00:00
+   8:               92           12  00:00:00
+   9:              352           46  00:00:00
+  10:              724           92  00:00:00
+  11:             2680          341  00:00:00
+  12:            14200         1787  00:00:00
+  13:            73712         9233  00:00:00
+  14:           365596        45752  00:00:00
+  15:          2279184       285053  00:00:00
+  16:         14772512      1846955  00:00:05
+  */
 
 class NQueen6_Board {
 	private int nSoln = 0; // Total solutions for this board
@@ -1840,6 +1624,160 @@ class NQueen6{
 		}
 	}
 }
+    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+    // new NQueen6();   // マルチスレッド
+
+    
+/**
+ * ７．ビットマップ
+ *
+ *   ビット演算を使って高速化 状態をビットマップにパックし、処理する
+ *   単純なバックトラックよりも２０〜３０倍高速
+ * 
+ * 　ビットマップであれば、シフトにより高速にデータを移動できる。
+ *  フラグ配列ではデータの移動にO(N)の時間がかかるが、ビットマップであればO(1)
+ *  フラグ配列のように、斜め方向に 2*N-1の要素を用意するのではなく、Nビットで充
+ *  分。
+ *
+ * 　配置可能なビット列を flags に入れ、-flags & flags で順にビットを取り出し処理。
+ * 　バックトラックよりも２０−３０倍高速。
+ * 
+ * ===================
+ * 考え方 1
+ * ===================
+ *
+ * 　Ｎ×ＮのチェスボードをＮ個のビットフィールドで表し、ひとつの横列の状態をひと
+ * つのビットフィールドに対応させます。(クイーンが置いてある位置のビットをONに
+ * する)
+ * 　そしてバックトラッキングは0番目のビットフィールドから「下に向かって」順にい
+ * ずれかのビット位置をひとつだけONにして進めていきます。
+ *
+ * 
+ *- - - - - Q - -    00000100 0番目のビットフィールド
+ *- - - Q - - - -    00010000 1番目のビットフィールド
+ *- - - - - - Q -    00000010 2番目のビットフィールド
+ *Q - - - - - - -    10000000 3番目のビットフィールド
+ *- - - - - - - Q    00000001 4番目のビットフィールド
+ *- Q - - - - - -    01000000 5番目のビットフィールド
+ *- - - - Q - - -    00001000 6番目のビットフィールド
+ *- - Q - - - - -    00100000 7番目のビットフィールド
+ *
+ *
+ * ===================
+ * 考え方 2
+ * ===================
+ *
+ * 次に、効き筋をチェックするためにさらに３つのビットフィールドを用意します。
+ *
+ * 1. 左下に効き筋が進むもの: left 
+ * 2. 真下に効き筋が進むもの: down
+ * 3. 右下に効き筋が進むもの: right
+ *
+ *次に、斜めの利き筋を考えます。
+ * 上図の場合、
+ * 1列目の右斜め上の利き筋は 3 番目 (0x08)
+ * 2列目の右斜め上の利き筋は 2 番目 (0x04) になります。
+ * この値は 0 列目のクイーンの位置 0x10 を 1 ビットずつ「右シフト」すれば求める
+ * ことができます。
+ * また、左斜め上の利き筋の場合、1 列目では 5 番目 (0x20) で 2 列目では 6 番目 (0x40)
+ *になるので、今度は 1 ビットずつ「左シフト」すれば求めることができます。
+ *
+ *つまり、右シフトの利き筋を right、左シフトの利き筋を left で表すことで、クイー
+ *ンの効き筋はrightとleftを1 ビットシフトするだけで求めることができるわけです。
+ *
+ *  *-------------
+ *  | . . . . . .
+ *  | . . . -3. .  0x02 -|
+ *  | . . -2. . .  0x04  |(1 bit 右シフト right)
+ *  | . -1. . . .  0x08 -|
+ *  | Q . . . . .  0x10 ←(Q の位置は 4   down)
+ *  | . +1. . . .  0x20 -| 
+ *  | . . +2. . .  0x40  |(1 bit 左シフト left)  
+ *  | . . . +3. .  0x80 -|
+ *  *-------------
+ *  図：斜めの利き筋のチェック
+ *
+ * n番目のビットフィールドからn+1番目のビットフィールドに探索を進めるときに、そ
+ * の３つのビットフィールドとn番目のビットフィールド(bit)とのOR演算をそれぞれ行
+ * います。leftは左にひとつシフトし、downはそのまま、rightは右にひとつシフトして
+ * n+1番目のビットフィールド探索に渡してやります。
+ *
+ * left : (left |bit)<<1
+ * right: (right|bit)>>1
+ * down :   down|bit
+ *
+ *
+ * ===================
+ * 考え方 3
+ * ===================
+ *
+ *   n+1番目のビットフィールドの探索では、この３つのビットフィールドをOR演算した
+ * ビットフィールドを作り、それがONになっている位置は効き筋に当たるので置くことが
+ * できない位置ということになります。次にその３つのビットフィールドをORしたビッ
+ * トフィールドをビット反転させます。つまり「配置可能なビットがONになったビットフィー
+ * ルド」に変換します。そしてこの配置可能なビットフィールドを bitmap と呼ぶとして、
+ * 次の演算を行なってみます。
+ * 
+ * bit = -bitmap & bitmap; //一番右のビットを取り出す
+ * 
+ *   この演算式の意味を理解するには負の値がコンピュータにおける２進法ではどのよう
+ * に表現されているのかを知る必要があります。負の値を２進法で具体的に表わしてみる
+ * と次のようになります。
+ * 
+ *  00000011   3
+ *  00000010   2
+ *  00000001   1
+ *  00000000   0
+ *  11111111  -1
+ *  11111110  -2
+ *  11111101  -3
+ * 
+ *   正の値nを負の値-nにするときは、nをビット反転してから+1されています。そして、
+ * 例えばn=22としてnと-nをAND演算すると下のようになります。nを２進法で表したときの
+ * 一番下位のONビットがひとつだけ抽出される結果が得られるのです。極めて簡単な演算
+ * によって1ビット抽出を実現させていることが重要です。
+ * 
+ *      00010110   22
+ *  AND 11101010  -22
+ * ------------------
+ *      00000010
+ * 
+ *   さて、そこで下のようなwhile文を書けば、このループは bitmap のONビットの数の
+ * 回数だけループすることになります。配置可能なパターンをひとつずつ全く無駄がなく
+ * 生成されることになります。
+ * 
+ * while (bitmap) {
+ *     bit = -bitmap & bitmap;
+ *     bitmap ^= bit;
+ *     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
+ * }
+ */
+
+   /**
+    * 実行結果
+   N:            Total       Unique    hh:mm:ss
+   2:                0            0  00:00:00
+   3:                0            0  00:00:00
+   4:                2            1  00:00:00
+   5:               10            2  00:00:00
+   6:                4            1  00:00:00
+   7:               40            6  00:00:00
+   8:               92           12  00:00:00
+   9:              352           46  00:00:00
+  10:              724           92  00:00:00
+  11:             2680          341  00:00:00
+  12:            14200         1787  00:00:00
+  13:            73712         9233  00:00:00
+  14:           365596        45752  00:00:00
+  15:          2279184       285053  00:00:00
+  16:         14772512      1846955  00:00:02
+	17:         95815104     11977939  00:00:15
+	18:        666090624     83263591  00:01:49
+	19:       4968057848    621012754  00:13:55
+	20:      39029188884   4878666808  01:50:42
+	21:     314666222712  39333324973  15:34:05
+	22:    2691008701644 336376244042 136:08:43
+  */
 
 class NQueen7 {
 	private int bit;
@@ -1990,6 +1928,52 @@ class NQueen7 {
 		}
 	}
 }
+    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
+    // new NQueen7() ;    // シンプルな対称解除法＋ビットマップ
+
+
+/**
+ *   ８．マルチスレッド2
+ * 
+ * ここまでの処理は、一つのスレッドが順番にＡ行の１列目から順を追って処理判定をし
+ * てきました。この節では、Ａ行の列それぞれに別々のスレッドを割り当て、全てのス
+ * レッドを同時に処理判定させます。Ａ行それぞれの列の処理判定結果はBoardクラスで
+ * 管理し、処理完了とともに結果を出力します。スレッドはWorkEngineクラスがNの数だ
+ * け生成されます。WorkEngineクラスは自身の持ち場のＡ行＊列の処理だけを担当しま
+ * す。これらはマルチスレッド処理と言い、並列処理のための同期、排他、ロック、集計
+ * など複雑な処理を理解する知識が必要です。そして処理の最後に合計値を算出する方法
+ * をマルチスレッド処理と言います。
+ * １Ｘ１，２Ｘ２，３Ｘ３，４Ｘ４，５Ｘ５，６Ｘ６，７ｘ７、８Ｘ８のボートごとの計
+ * 算をスレッドに割り当てる手法がちまたでは多く見受けられます。これらの手法は、
+ * 実装は簡単ですが、Ｎが７の計算をしながら別スレッドでＮが８の計算を並列処理する
+ * といった矛盾が原因で、Ｎが大きくなるとむしろ処理時間がかかります。
+ *   ここでは理想的なアルゴリズムとして前者の手法でプログラミングします。
+ */
+
+  /**
+   N:            Total       Unique    hh:mm:ss
+   2:                0            0  00:00:00
+   3:                0            0  00:00:00
+   4:                2            1  00:00:00
+   5:               10            2  00:00:00
+   6:                4            1  00:00:00
+   7:               40            6  00:00:00
+   8:               92           12  00:00:00
+   9:              352           46  00:00:00
+  10:              724           92  00:00:00
+  11:             2680          341  00:00:00
+  12:            14200         1787  00:00:00
+  13:            73712         9233  00:00:00
+  14:           365596        45752  00:00:00
+  15:          2279184       285053  00:00:00
+  16:         14772512      1846955  00:00:00
+  17:         95815104     11977939  00:00:04
+  18:        666090624     83263591  00:00:34
+  19:       4968057848    621012754  00:04:18
+  20:      39029188884   4878666808  00:35:07
+  21:     314666222712  39333324973  04:41:36
+  22:    2691008701644 336376244042  39:14:59
+   */
 
 class NQueen8_Board {
 	private long COUNT8 ; private long COUNT4 ; private long COUNT2 ;
@@ -2264,7 +2248,13 @@ class NQueen8{
 			}
 			long end = System.currentTimeMillis();
 			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",size,info.getTotal(),info.getUnique(),TIME); 
+			System.out.printf("%2d:%17d%13d%10s%n",size,info.getTotal(),info.getUnique(),TIME);
 		}
 	}
 }
+    // $ javac Algorithm.java && java -Xms4g -Xmx8g Algorithm
+    new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
+
+  }
+}
+
