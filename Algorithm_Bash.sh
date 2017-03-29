@@ -459,12 +459,12 @@ S=0; # S:size
 M=;  # M:mask
 N-Queen4_rec(){
 	#y: l:left d:down r:right b:bit bm:bitmap
-  local y="$1" l="$2" d="$3" r="$4" bitmap= bit=;
+  local y="$1" l="$2" d="$3" r="$4" bm= b=;
   ((y==S))&&((T++))||{
-    bitmap=$((M&~(l|d|r)));
-    while ((bitmap)); do
-      b=$((-bitmap&bitmap)) ;
-      bitmap=$((bitmap^b)) ;
+    bm=$((M&~(l|d|r)));
+    while ((bm)); do
+      b=$((-bm&bm)) ;
+      bm=$((bm^b)) ;
       N-Queen4_rec "$((y+1))" "$(((l|b)<<1))" "$((d|b))" "$(((r|b)>>1))"  ;
     done
   }
