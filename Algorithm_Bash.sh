@@ -480,157 +480,11 @@ N-Queen4(){
   } 
 }
 
-
-function N-Queen(){
-#  N-Queen1 0 8;      # ブルートフォース
-#  N-Queen2 0 8;      # 配置フラグ
-#  N-Queen3 		      # バックトラック
-  N-Queen4  ;				# ビットマップ
-#  N-Queen5 ; 				# ユニーク解
-  :
-}
-
-N-Queen ;
-exit ;
-
 ##
-# ビット演算に加えてユニーク解(回転・反転）を使って高速化
+# 5. ビット演算に加えてユニーク解(回転・反転）を使って高速化
 # ユニーク解の判定とユニーク解の種類の判定 
-COUNT0=0;
-Check_Qset5(){
-	_BOARD=0 ;
-	_BOARD1=$BOUND1;
-	_BOARD2=$BOUND2;
-	_BOARDE=$SIZEE ;
-	 ((BOARD[_BOARD2]==1)) && {
-		for ((ptn=2, own=_BOARD+1; own<=_BOARDE; own++, ptn<<=1)) {
-			bit=1;
-			for ((you=_BOARDE; (BOARD[you]!=ptn) && (BOARD[own]>=bit); you--)) {
-				 ((bit<<=1)) ;
-			}
-			((BOARD[own]>bit)) && return ;
-			((BOARD[own]<bit)) && break ;
-		}
-		#90度回転して同型なら180度回転も270度回転も同型である
-		((own>_BOARDE)) && {
-				((COUNT2++));
-				return;
-		}
-	}
-	#180度回転
-	((BOARD[_BOARDE]==ENDBIT)) && {
-		for ((you=_BOARDE-1,own=_BOARD+1; own<=_BOARDE; own++,you--)) {
-			bit=1;
-			for ((ptn=TOPBIT; (ptn!=BOARD[you]) && (BOARD[own]>=bit); ptn>>=1)) {
-					((bit<<=1)) ;
-			}
-			((BOARD[own]>bit)) && return ;
-			((BOARD[own]<bit)) && break ;
-		}
-		#90度回転が同型でなくても180度回転が同型であることもある
-		((own>_BOARDE)) && {
-		  ((COUNT4++));
-			return;
-		}
-	}
-	#270度回転
-	((BOARD[_BOARD1]==TOPBIT)) && {
-		for ((ptn=TOPBIT>>1,own=_BOARD+1; own<=_BOARDE; own++,ptn>>=1)) {
-			bit=1;
-			for ((you=_BOARD; (BOARD[you]!=ptn)&&(BOARD[own]>=bit); you++)) {
-					 ((bit<<=1)) ;
-			}
-			((BOARD[own]>bit)) && return;
-			((BOARD[own]<bit)) && break;
-		}
-	}
-	((COUNT8++));
-}
-
-# 最上段行のクイーンが角以外にある場合の探索 */
-Backtrack2_Qset5(){
-	local y=$1 left=$2 down=$3 right=$4;
-	local bitmap=$((MASK & ~(left|down|right)));
-	((y==SIZEE)) && {
-		((bitmap)) && {
-			((! (bitmap&LASTMASK))) && {
-					BOARD[y]=$bitmap;
-					Check_Qset5 ;
-			}
-		}
-	} || {
-		((y<BOUND1)) && {  #上部サイド枝刈り
-			((bitmap|=SIDEMASK));
-			((bitmap^=SIDEMASK));
-		} 
-	 ((y==BOUND2)) && { #下部サイド枝刈り
-			((! (down&SIDEMASK))) && return ;
-			(((down&SIDEMASK)!=SIDEMASK)) && ((bitmap&=SIDEMASK));
-		}
-		while ((bitmap)); do
-			((bitmap^=BOARD[$y]=bit=-bitmap&bitmap)); 
-			Backtrack2_Qset5 $((y+1)) $(((left|bit)<<1)) $(((down|bit)))  $(((right|bit)>>1)) ;
-		done
-	}
-}
-
-# 最上段行のクイーンが角にある場合の探索
-Backtrack1_Qset5(){
-	local y=$1 left=$2 down=$3 right=$4;
-	local bitmap=$((MASK & ~(left|down|right)));
-	((y==SIZEE)) && {
-		 ((bitmap)) && {
-			 	BOARD[y]=$bitmap;
-				((COUNT8++)) ;
-		 }
-	} || {
-		 ((y<BOUND1)) && {
-			 	((bitmap|=2));
-			 	((bitmap^=2));
-		 }
-		 while ((bitmap)) ;do
-			((bitmap^=BOARD[y]=bit=(-bitmap&bitmap))) ;
-			Backtrack1_Qset5 $((y+1)) $(((left|bit)<<1))  $((down|bit)) $(((right|bit)>>1)) ;
-		 done
-	}
-}
-
-N-Queen5_logic(){
-	local SIZEE=$((SIZE-1));
-	local TOPBIT=$((1<<SIZEE));
-	local MASK=$(( (1<<SIZE)-1 ));
-	BOARD[0]=1;
-	for ((BOUND1=2; BOUND1<SIZEE; BOUND1++)) {
-			((BOARD[1]=bit=1<<BOUND1));
-			Backtrack1_Qset5 2 $(((2|bit)<<1)) $((1|bit)) $((bit>>1));
-	}
-	((SIDEMASK=LASTMASK=(TOPBIT|1)));
-	local ENDBIT=$((TOPBIT>>1));
-	for ((BOUND1=1,BOUND2=SIZE-2; BOUND1<BOUND2; BOUND1++,BOUND2--)) {
-			((BOARD[0]=bit=1<<BOUND1));
-			Backtrack2_Qset5 1 $((bit<<1)) $bit $((bit>>1)) ;
-			((LASTMASK|=LASTMASK>>1|LASTMASK<<1)) ;
-			((ENDBIT>>=1));
-	}
-	UNIQUE=$((COUNT8 + COUNT4 + COUNT2)) ;
-	TOTAL=$(( COUNT8*8 + COUNT4*4 + COUNT2*2));
-}
-
+##
 #
-N-Queen5(){
-  MAXSIZE=15 ;
-  MINSIZE=2 ;
-  SIZE=$MINSIZE ;
-  echo " N:        Total       Unique        hh:mm" ;
-  for (( SIZE=MINSIZE; SIZE<=MAXSIZE; SIZE++ ));do
-    COUNT2=0; COUNT4=0; COUNT8=0; 
-    local starttime=`date +%s` ;
-    N-Queen5_logic ;
-    local time=$((`date +%s` - starttime)) ;
-    printf "%2d:%13d%13d%13d\n" $SIZE $TOTAL $UNIQUE $time ;
-  done
-}
-
 # N:        Total       Unique        hh:mm
 # 2:            0            0            0
 # 3:            0            0            0
@@ -640,11 +494,153 @@ N-Queen5(){
 # 7:           40            6            0
 # 8:           92           12            0
 # 9:          352           46            1
-#10:          724           92            1
+#10:          724           92            0
 #11:         2680          341            4
-#12:        14200         1787           20
-#13:        73712         9233          111
-#14:       365596        45752          638
+#12:        14200         1787           18
+#13:        73712         9233           99
+#14:       365596        45752          573
+#15:      2279184       285053         3560
+#
+##
+Check_Qset5(){
+	((aB[B2]==1))&&{
+		for ((p=2,o=1;o<=SE;o++,p<<=1)){
+			for ((B=1,y=SE;(aB[y]!=p)&&(aB[o]>=B);y--)){
+				 ((B<<=1)) ;
+			}
+			((aB[o]>B))&& return ;
+			((aB[o]<B))&& break ;
+		}
+		#90度回転して同型なら180度回転も270度回転も同型である
+		((o>SE))&&{
+			((C2++));
+			return;
+		}
+	}
+	#180度回転
+	((aB[SE]==EB))&&{
+		for ((y=SE-1,o=1;o<=SE;o++,y--)){
+			for ((B=1,p=TB;(p!=aB[y])&&(aB[o]>=B);p>>=1)){
+					((B<<=1)) ;
+			}
+			((aB[o]>B))&& return ;
+			((aB[o]<B))&& break ;
+		}
+		#90度回転が同型でなくても180度回転が同型であることもある
+		((o>SE))&&{
+			((C4++));
+			return;
+		}
+	}
+	#270度回転
+	((aB[B1]==TB))&&{
+		for((p=TB>>1,o=1;o<=SE;o++,p>>=1)){
+			for((B=1,y=0;(aB[y]!=p)&&(aB[o]>=B);y++)){
+					((B<<=1)) ;
+			}
+			((aB[o]>B))&& return ;
+			((aB[o]<B))&& break ;
+		}
+	}
+	((C8++));
+}
+# 最上段行のクイーンが角以外にある場合の探索 */
+Backtrack2_Qset5(){
+	local v=$1 l=$2 d=$3 r=$4; # v:virtical l:left d:down r:right
+	local bm=$((M & ~(l|d|r)));
+	((v==SE))&&{ 
+		((bm))&&{
+			((!(bm&LM)))&&{
+					aB[v]=$bm;
+					Check_Qset5 ;
+			}
+		}
+	}||{
+		((v<B1))&&{  #上部サイド枝刈り
+			((bm|=SM));
+			((bm^=SM));
+		} 
+	 ((v==B2))&&{ #下部サイド枝刈り
+			((!(d&SM)))&& return ;
+			(((d&SM)!=SM))&&((bm&=SM));
+		}
+		while ((bm)); do
+			((bm^=aB[v]=B=-bm&bm)); 
+			Backtrack2_Qset5 $((v+1)) $(((l|B)<<1)) $(((d|B)))  $(((r|B)>>1)) ;
+		done
+	}
+}
+# 最上段行のクイーンが角にある場合の探索
+Backtrack1_Qset5(){
+	local y=$1 l=$2 d=$3 r=$4; #y: l:left d:down r:right bm:bitmap
+	local bm=$((M & ~(l|d|r)));
+	((y==SE))&&{
+		 ((bm))&&{
+			 	aB[y]=$bm;
+				((C8++)) ;
+		 }
+	}||{
+		 ((y<B1))&&{
+			 	((bm|=2));
+			 	((bm^=2));
+		 }
+		 while ((bm)) ;do
+			((bm^=aB[y]=B=(-bm&bm))) ;
+			Backtrack1_Qset5 $((y+1)) $(((l|B)<<1))  $((d|B)) $(((r|B)>>1)) ;
+		 done
+	}
+}
+#
+N-Queen5_logic(){
+	aB[0]=1; 	# aB:BOARD[]
+	SE=$((S-1));
+	M=$(((1<<S)-1));
+	TB=$((1<<SE)); # TB:topbit
+	#
+	for ((B1=2;B1<SE;B1++)){
+			((aB[1]=B=1<<B1));
+			Backtrack1_Qset5 2 $(((2|B)<<1)) $((1|B)) $((B>>1));
+	}
+	((SM=LM=(TB|1)));
+	local EB=$((TB>>1));
+	for ((B1=1,B2=S-2;B1<B2;B1++,B2--)){
+			((aB[0]=B=1<<B1));
+			Backtrack2_Qset5 1 $((B<<1)) $B $((B>>1)) ;
+			((LM|=LM>>1|LM<<1)) ;
+			((EB>>=1));
+	}
+	U=$((C8+C4+C2)) ;
+	T=$((C8*8+C4*4+C2*2));
+}
+# グローバル
+U= T= ;				# U:unique T:total
+C2= C4= C8= ; # C2:count2 C4:count4 C8:count8
+S= SE=; 			# S:size SE:sizee(size-1)
+M= SM= LM= ;  # M:mask SM:sidemask LM:lastmask
+B= TB= EB=;  	# B:bit TB:topbit EB:endbit
+B1= B2=; 			# B1:bound1 B2:bound2
+N-Queen5(){
+	# m:max mi:min st:starttime t:time s:S
+  local m=15 mi=2 st= t= s=; 
+  echo " N:        Total       Unique        hh:mm" ;
+  for ((S=mi;S<=m;S++));do
+    C2=0; C4=0; C8=0 st=`date +%s` ;
+    N-Queen5_logic ;
+    t=$((`date +%s` - st)) ;
+    printf "%2d:%13d%13d%13d\n" $S $T $U $t ;
+  done
+}
+
+function N-Queen(){
+#  N-Queen1 0 8;      # ブルートフォース
+#  N-Queen2 0 8;      # 配置フラグ
+#  N-Queen3 		      # バックトラック
+#  N-Queen4  ;				# ビットマップ
+  N-Queen5 ; 				# ユニーク解
+}
+
+N-Queen ;
+exit ;
 
 
 
