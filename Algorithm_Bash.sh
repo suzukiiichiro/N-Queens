@@ -495,14 +495,22 @@ N-Queen4(){
 # 8:           92           12            0
 # 9:          352           46            1
 #10:          724           92            0
-#11:         2680          341            4
+#11:         2680          341            3
 #12:        14200         1787           18
 #13:        73712         9233           99
 #14:       365596        45752          573
-#15:      2279184       285053         3560
+#15:      2279184       285053         3511
 #
 ##
-Check_Qset5(){
+#---------------------ここから共通部分 ------------------------
+# グローバル
+U= T= ;				# U:unique T:total
+C2= C4= C8= ; # C2:count2 C4:count4 C8:count8
+S= SE=; 			# S:size SE:sizee(size-1)
+M= SM= LM= ;  # M:mask SM:sidemask LM:lastmask
+B= TB= EB=;  	# B:bit TB:topbit EB:endbit
+B1= B2=; 			# B1:bound1 B2:bound2
+function Check_Qset(){
 	((aB[B2]==1))&&{
 		for ((p=2,o=1;o<=SE;o++,p<<=1)){
 			for ((B=1,y=SE;(aB[y]!=p)&&(aB[o]>=B);y--)){
@@ -511,14 +519,12 @@ Check_Qset5(){
 			((aB[o]>B))&& return ;
 			((aB[o]<B))&& break ;
 		}
-		#90度回転して同型なら180度回転も270度回転も同型である
-		((o>SE))&&{
+		((o>SE))&&{ #90度回転して同型なら180度回転も270度回転も同型である
 			((C2++));
 			return;
 		}
 	}
-	#180度回転
-	((aB[SE]==EB))&&{
+	((aB[SE]==EB))&&{ #180度回転
 		for ((y=SE-1,o=1;o<=SE;o++,y--)){
 			for ((B=1,p=TB;(p!=aB[y])&&(aB[o]>=B);p>>=1)){
 					((B<<=1)) ;
@@ -526,14 +532,12 @@ Check_Qset5(){
 			((aB[o]>B))&& return ;
 			((aB[o]<B))&& break ;
 		}
-		#90度回転が同型でなくても180度回転が同型であることもある
-		((o>SE))&&{
+		((o>SE))&&{ #90度回転が同型でなくても180度回転が同型であることもある
 			((C4++));
 			return;
 		}
 	}
-	#270度回転
-	((aB[B1]==TB))&&{
+	((aB[B1]==TB))&&{ #270度回転
 		for((p=TB>>1,o=1;o<=SE;o++,p>>=1)){
 			for((B=1,y=0;(aB[y]!=p)&&(aB[o]>=B);y++)){
 					((B<<=1)) ;
@@ -545,14 +549,14 @@ Check_Qset5(){
 	((C8++));
 }
 # 最上段行のクイーンが角以外にある場合の探索 */
-Backtrack2_Qset5(){
+function Backtrack2(){
 	local v=$1 l=$2 d=$3 r=$4; # v:virtical l:left d:down r:right
 	local bm=$((M & ~(l|d|r)));
 	((v==SE))&&{ 
 		((bm))&&{
 			((!(bm&LM)))&&{
 					aB[v]=$bm;
-					Check_Qset5 ;
+					Check_Qset ;
 			}
 		}
 	}||{
@@ -566,12 +570,12 @@ Backtrack2_Qset5(){
 		}
 		while ((bm)); do
 			((bm^=aB[v]=B=-bm&bm)); 
-			Backtrack2_Qset5 $((v+1)) $(((l|B)<<1)) $(((d|B)))  $(((r|B)>>1)) ;
+			Backtrack2 $((v+1)) $(((l|B)<<1)) $(((d|B)))  $(((r|B)>>1)) ;
 		done
 	}
 }
 # 最上段行のクイーンが角にある場合の探索
-Backtrack1_Qset5(){
+function Backtrack1(){
 	local y=$1 l=$2 d=$3 r=$4; #y: l:left d:down r:right bm:bitmap
 	local bm=$((M & ~(l|d|r)));
 	((y==SE))&&{
@@ -585,47 +589,140 @@ Backtrack1_Qset5(){
 			 	((bm^=2));
 		 }
 		 while ((bm)) ;do
-			((bm^=aB[y]=B=(-bm&bm))) ;
-			Backtrack1_Qset5 $((y+1)) $(((l|B)<<1))  $((d|B)) $(((r|B)>>1)) ;
+			(( bm^=aB[y]=B=(-bm&bm) )) ;
+			Backtrack1 $((y+1)) $(((l|B)<<1))  $((d|B)) $(((r|B)>>1)) ;
 		 done
 	}
 }
-#
-N-Queen5_logic(){
-	aB[0]=1; 	# aB:BOARD[]
-	SE=$((S-1));
-	M=$(((1<<S)-1));
-	TB=$((1<<SE)); # TB:topbit
-	#
-	for ((B1=2;B1<SE;B1++)){
-			((aB[1]=B=1<<B1));
-			Backtrack1_Qset5 2 $(((2|B)<<1)) $((1|B)) $((B>>1));
+function BOUND1(){
+	(($1<SE))&&{
+		(( aB[1]=B=1<<B1 ));
+		Backtrack1 2 $(((2|B)<<1)) $((1|B)) $((B>>1));
 	}
-	((SM=LM=(TB|1)));
-	local EB=$((TB>>1));
-	for ((B1=1,B2=S-2;B1<B2;B1++,B2--)){
-			((aB[0]=B=1<<B1));
-			Backtrack2_Qset5 1 $((B<<1)) $B $((B>>1)) ;
-			((LM|=LM>>1|LM<<1)) ;
-			((EB>>=1));
-	}
-	U=$((C8+C4+C2)) ;
-	T=$((C8*8+C4*4+C2*2));
 }
-# グローバル
-U= T= ;				# U:unique T:total
-C2= C4= C8= ; # C2:count2 C4:count4 C8:count8
-S= SE=; 			# S:size SE:sizee(size-1)
-M= SM= LM= ;  # M:mask SM:sidemask LM:lastmask
-B= TB= EB=;  	# B:bit TB:topbit EB:endbit
-B1= B2=; 			# B1:bound1 B2:bound2
+function BOUND2(){
+	(($1<$2))&&{
+		(( aB[0]=B=1<<B1 ));
+		Backtrack2 1 $((B<<1)) $B $((B>>1)) ;
+	}
+}
+#---------------------ここまで共通部分 ------------------------
+function BOUND1_Q5(){
+	(($1<SE))&&{
+		(( aB[1]=B=1<<B1 ));
+		Backtrack1 2 $(((2|B)<<1)) $((1|B)) $((B>>1));
+	}
+}
+function BOUND2_Q5(){
+	(( $1<$2 ))&&{
+		(( aB[0]=B=1<<B1 ));
+		Backtrack2 1 $((B<<1)) $B $((B>>1)) ;
+	}
+}
+function N-QueenLogic_Q5(){
+	aB[0]=1; 					# aB:BOARD[]
+	((SE=(S-1))); 	# SE:sizee
+	((M=(1<<S)-1)); # m:mask
+	((TB=1<<SE)); 	# TB:topbit
+	B1=2;
+	while((B1>1&&B1<SE));do
+		BOUND1 B1;
+		((B1++));
+	done
+	((SM=LM=(TB|1)));
+	((EB=TB>>1));
+	B1=1;
+	B2=S-2;
+	while((B1>0&&B2<B2<SE&&B1<B2));do
+		BOUND2 B1 B2;
+		((B1++,B2--));
+		((EB>>=1));
+		((LM|=LM>>1|LM<<1)) ;
+	done
+	((U=C8+C4+C2)) ;
+	((T=C8*8+C4*4+C2*2));
+}
 N-Queen5(){
 	# m:max mi:min st:starttime t:time s:S
   local m=15 mi=2 st= t= s=; 
   echo " N:        Total       Unique        hh:mm" ;
   for ((S=mi;S<=m;S++));do
     C2=0; C4=0; C8=0 st=`date +%s` ;
-    N-Queen5_logic ;
+    N-QueenLogic_Q5 ;
+    t=$((`date +%s` - st)) ;
+    printf "%2d:%13d%13d%13d\n" $S $T $U $t ;
+  done
+}
+
+##   6．マルチスレッド
+ # 
+ # ここまでの処理は、一つのスレッドが順番にＡ行の１列目から順を追って処理判定をし
+ # てきました。この節では、Ａ行の列それぞれに別々のスレッドを割り当て、全てのス
+ # レッドを同時に処理判定させます。Ａ行それぞれの列の処理判定結果はBoardクラスで
+ # 管理し、処理完了とともに結果を出力します。スレッドはWorkEngineクラスがNの数だ
+ # け生成されます。WorkEngineクラスは自身の持ち場のＡ行＊列の処理だけを担当しま
+ # す。これらはマルチスレッド処理と言い、並列処理のための同期、排他、ロック、集計
+ # など複雑な処理を理解する知識が必要です。そして処理の最後に合計値を算出する方法
+ # をマルチスレッド処理と言います。
+ # １Ｘ１，２Ｘ２，３Ｘ３，４Ｘ４，５Ｘ５，６Ｘ６，７ｘ７、８Ｘ８のボートごとの計
+ # 算をスレッドに割り当てる手法がちまたでは多く見受けられます。これらの手法は、
+ # 実装は簡単ですが、Ｎが７の計算をしながら別スレッドでＮが８の計算を並列処理する
+ # といった矛盾が原因で、Ｎが大きくなるとむしろ処理時間がかかります。
+ #   ここでは理想的なアルゴリズムとして前者の手法でプログラミングします。
+##
+ # 共通メソッドは 5.ビット演算に加えてユニーク解(回転・反転）を使って高速化 を参照
+##
+
+function N-QueenLogic_Q6(){
+	aB[0]=1; 				# aB:BOARD[]
+	((SE=(S-1))); 	# SE:sizee
+	((M=(1<<S)-1)); # m:mask
+	((TB=1<<SE)); 	# TB:topbit
+#	B1=2;
+#	while((B1>1&&B1<SE));do
+#		BOUND1_Q6 B1;
+#		((B1++));
+#	done
+	((B1>1&&B1<SE))&&{
+		BOUND1 B1;
+	}
+
+	((SM=LM=(TB|1)));
+	((EB=TB>>1));
+#	B1=1;
+#	B2=S-2;
+#	while((B1>0&&B2<B2<SE&&B1<B2));do
+#		BOUND2_Q6 B1 B2;
+#		((B1++,B2--));
+#		((EB>>=1));
+#		((LM|=LM>>1|LM<<1)) ;
+#	done
+	((B1>0&&B2<SE&&B1<B2))&&{
+		for((i=1;i<B1;i++)){
+			((LM|=LM>>1|LM<<1)) ;
+		}
+		BOUND2 B1 B2 ;
+		((EB>>=nT));
+	}
+	((U=C8+C4+C2)) ;
+	((T=C8*8+C4*4+C2*2));
+}
+function N-Queen6_thread(){
+	nT=$1 B1=$2 B2=$3; 
+	while((nT>0)); do
+		N-QueenLogic_Q6;
+		((nT--));
+		((B1--));
+		((B2++));
+	done
+}
+function N-Queen6(){
+	# m:max mi:min st:starttime t:time s:S
+  local m=15 mi=2 st= t= s=; 
+  echo " N:        Total       Unique        hh:mm" ;
+  for ((S=mi;S<=m;S++));do
+    C2=0; C4=0; C8=0 st=`date +%s` ;
+		N-Queen6_thread S $((S-1)) 0; # size B1 B2
     t=$((`date +%s` - st)) ;
     printf "%2d:%13d%13d%13d\n" $S $T $U $t ;
   done
@@ -636,7 +733,9 @@ function N-Queen(){
 #  N-Queen2 0 8;      # 配置フラグ
 #  N-Queen3 		      # バックトラック
 #  N-Queen4  ;				# ビットマップ
-  N-Queen5 ; 				# ユニーク解
+#  N-Queen5 ; 				# ユニーク解
+  # 作業中です。すみません
+  N-Queen6 ; 				# マルチスレッド
 }
 
 N-Queen ;
