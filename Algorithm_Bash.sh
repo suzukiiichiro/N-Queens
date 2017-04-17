@@ -733,9 +733,9 @@ function N-Queen(){
 #  N-Queen2 0 8;      # 配置フラグ
 #  N-Queen3 		      # バックトラック
 #  N-Queen4  ;				# ビットマップ
-#  N-Queen5 ; 				# ユニーク解
+  N-Queen5 ; 				# ユニーク解
   # 作業中です。すみません
-  N-Queen6 ; 				# マルチスレッド
+#  N-Queen6 ; 				# マルチスレッド
 }
 
 N-Queen ;
