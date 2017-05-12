@@ -3,24 +3,7 @@
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
- * Bash版（シェルスクリプト版）は Algorithm_Bash.shです。
- * 
- * 目次
- * 1. ソートアルゴリズム
- *   バブルソート
- *   選択ソート
- *   挿入ソート
- *   マージソート
- *   シェルソート
- *   クイックソート
- * 
- * 2. 再帰
- *   三角数
- *   階乗
- *   ユークリッドの互除法
- *   ハノイの塔
- * 
- * 3.  Nクイーン問題
+ *  Nクイーン問題
  *  １．ブルートフォース（力まかせ探索） NQueen1() * N 8: 00:04:15
  *  ２．バックトラック                   NQueen2() * N 8: 00:00:01
  *  ３．配置フラグ（制約テスト高速化）   NQueen3() * N16: 00:01:35
@@ -28,7 +11,7 @@
  *  ５．枝刈りと最適化                   NQueen5() * N16: 00:00:24
  *  ６．マルチスレッド1                  NQueen6() * N16: 00:00:05
  *  ７．ビットマップ                     NQueen7() * N16: 00:00:02
- *  ８．マルチスレッド2                  NQueen9() * N16: 00:00:00
+ *  ８．マルチスレッド2                  NQueen8() * N16: 00:00:00
  *  
  */
 /**
@@ -44,175 +27,7 @@
 */
 
 
-public class Algorithm {
-  public static void main(String[] args){
-
-/************************************************************
- * １．ソート
- */
-
 /**
- * 1. ソート  バブルソート 13404mm
- * https://ja.wikipedia.org/wiki/バブルソート
- * https://www.youtube.com/watch?v=8Kp-8OGwphY
- *   平均計算時間が O(ｎ^2)
- *   安定ソート
- *   比較回数は「  n(n-1)/2  」
- *   交換回数は「  n^2/2  」
- *   派生系としてシェーカーソートやコムソート
- */
-
-  // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-  // new Sort01_BubbleSort();
-    
-/**
- * 選択ソート 3294mm
-  * https://ja.wikipedia.org/wiki/選択ソート
- * https://www.youtube.com/watch?v=f8hXR_Hvybo
- *   平均計算時間が O(ｎ^2)
- *   安定ソートではない
- *   比較回数は「  n(n-1)/2  」
- *   交換回数は「  n-1  」
- */
-
-   // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-   // new Sort02_SelectionSort();
-
-/**
- * 挿入ソート 3511mm
-  * https://ja.wikipedia.org/wiki/挿入ソート
- * https://www.youtube.com/watch?v=DFG-XuyPYUQ
- *   平均計算時間が O(ｎ^2)
- *   安定ソート
- *   比較回数は「  n(n-1)/2以下  」
- *   交換回数は「  約n^2/2以下  」
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new Sort03_InsertionSort();
-
-/**
- * マージソート 1085mm
-  * https://ja.wikipedia.org/wiki/マージソート
- * https://www.youtube.com/watch?v=EeQ8pwjQxTM
- *   平均計算時間が O(n Log n)
- *   安定ソート
- *   50以下は挿入ソート、5万以下はマージソート、あとはクイックソートがおすすめ。
- *   バブルソート、挿入ソート、選択ソートがO(N^2)の時間を要するのに対し、マージ
- *   ソートはO(N*logN)です。
- *   例えば、N(ソートする項目の数）が10,000ですと、N^2は100,000,000ですが、
- *   n*logNは40,000です。別の言い方をすると、マージソートで４０秒を要するソート
- *   は、挿入ソートでは約２８時間かかります。
- *   マージソートの欠点は、ソートする配列と同サイズの配列をもう一つ必要とする事
- *   です。
- *   元の配列がかろうじてメモリに治まるという大きさだったら、マージソートは使え
- *   ません。
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new Sort04_MergeSort();
-
-/**
- * シェルソート 1052mm
-  * https://ja.wikipedia.org/wiki/シェルソート
- * https://www.youtube.com/watch?v=M9YCh-ZeC7Y
- *   平均計算時間が O(ｎ^1.25)
- *   安定ソートではない
- *   挿入ソート改造版
- *   ３倍して１を足すという処理を要素を越えるまで行う
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new Sort05_ShellSort();
-
-/**
- * クイックソート 1131mm
-  * https://ja.wikipedia.org/wiki/クイックソート
- * https://www.youtube.com/watch?v=aQiWF4E8flQ
- *   平均計算時間が O(n Log n)
- *   安定ソートではない
- *   最大計算時間が O(n^2)
- *
- * データ数が 50 以下なら挿入ソート (Insertion Sort)
- * データ数が 5 万以下ならマージソート (Merge Sort)
- * データ数がそれより多いならクイックソート (Quick Sort)
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new Sort06_QuickSort();
-
-/************************************************************
- * ２．再帰
- */
-
-/**
- * 三角数
- * https://ja.wikipedia.org/wiki/三角数
- * 5 + 4 + 3 + 2 + 1 = 15
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // System.out.println(new Recursive01_Triangle().triangle(5));
-
-/**
- * 階乗
- * https://ja.wikipedia.org/wiki/階乗
- * 5 * 4 * 3 * 2 * 1 = 120 
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // System.out.println(new Recursive02_Factorial().factorial(5));
-
-/**
- * ユークリッドの互除法
- * https://ja.wikipedia.org/wiki/ユークリッドの互除法
- * (問題) 1071 と 1029 の最大公約数を求める。
- * 1071 を 1029 で割った余りは 42
- * 1029 を 42 で割った余りは 21
- * 42 を 21 で割った余りは 0
- * よって、最大公約数は21である。
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // System.out.println(new Recursive03_Euclid().euclid(1071, 1029));
-
-/**
- * ハノイの塔
- * https://ja.wikipedia.org/wiki/ハノイの塔
- *  古代インドの神話では、遠い秘境のお寺で僧侶達が毎日毎晩、
- *  ６４枚の黄金の円盤をダイヤモンドをちりばめた３つの塔の間で移し替え作業をし
- *  ている。その移し替え作業が完了したら世界の終末が訪れるのだそうだ。
- */
-
- /**
- *   n3: 7
- *   n4: 15 
- *   n5: 31
- *   n6: 63
- *   n7: 127
- *   n8: 255
- *   n9: 511
- *   n10:1,023
- *   n20:1,048,575
- *   n30:1,073,741,823
- *   n40:1,099,511,627,775
- *   n50:1,125,899,906,842,620
- *   n60:1,152,921,504,606,850,000
- *   n70:1,180,591,620,717,410,000,000
- *   n80:1,208,925,819,614,630,000,000,000
- *   n90:1,237,940,039,285,380,000,000,000,000
- *   n100:1,267,650,600,228,230,000,000,000,000,000
- */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new Recursive04_Hanoi().hanoi(20, 'A', 'B', 'C');
-
-/************************************************************
- * ３．再帰  N-クイーン問題
- */
-
-/**
- * 再帰  Nクイーン問題
  *
  * https://ja.wikipedia.org/wiki/エイト・クイーン
  *
@@ -243,7 +58,7 @@ public class Algorithm {
  *  ５．枝刈りと最適化                   NQueen5() * N16: 00:00:24
  *  ６．マルチスレッド1                  NQueen6() * N16: 00:00:05
  *  ７．ビットマップ                     NQueen7() * N16: 00:00:02
- *  ８．マルチスレッド2                  NQueen9() * N16: 00:00:00
+ *  ８．マルチスレッド2                  NQueen8() * N16: 00:00:00
 */
     
 /** 
@@ -268,8 +83,6 @@ public class Algorithm {
   7 7 7 7 7 7 7 7 : 16777216
   */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen1(8);  //ブルートフォース
 
 /** 
  * ２．バックトラック
@@ -298,8 +111,6 @@ public class Algorithm {
                          N16: 00:00:01
   */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen2(8);  //バックトラック
 
 /**
  * ３．配置フラグ（制約テスト高速化）
@@ -332,8 +143,6 @@ public class Algorithm {
   16:         14772512            0  00:01:35
   */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen3(); //配置フラグ
 
 /** 
  * ４．対称解除法
@@ -536,8 +345,6 @@ public class Algorithm {
   16:         14772512      1846955  00:01:50
    */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen4();   //回転・反転・対称
 
 /**
  * ５．枝刈りと最適化
@@ -564,8 +371,6 @@ public class Algorithm {
   16:         14772512      1846955  00:00:24
   */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen5(); //最適化
 
 /**
  * ６．マルチスレッド1
@@ -594,9 +399,6 @@ public class Algorithm {
   15:          2279184       285053  00:00:00
   16:         14772512      1846955  00:00:05
   */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen6();   // マルチスレッド
 
     
 /**
@@ -750,9 +552,6 @@ public class Algorithm {
 	22:    2691008701644 336376244042 136:08:43
   */
 
-    // $ javac Algorithm.java && java -Xms4g -Xmx4g Algorithm
-    // new NQueen7() ;    // シンプルな対称解除法＋ビットマップ
-
 
 /**
  *   ８．マルチスレッド2
@@ -796,11 +595,6 @@ public class Algorithm {
   21:     314666222712  39333324973  04:41:36
   22:    2691008701644 336376244042  39:14:59
    */
-
-    // $ javac Algorithm.java && java -Xms4g -Xmx8g Algorithm
-    // new NQueen8() ;    // シンプルな対称解除法＋ビットマップ＋マルチスレッド
-  }
-}
 
 
 
