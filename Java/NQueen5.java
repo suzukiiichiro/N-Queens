@@ -5,6 +5,12 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
+ * Java版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+ * Bash版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Bash
+ * Lua版  N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Lua
  * https://ja.wikipedia.org/wiki/エイト・クイーン
  *
  * N-Queens問題とは
@@ -29,22 +35,17 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  *  ２．バックトラック                   NQueen2() * N 8: 00:00:01
  *  ３．配置フラグ（制約テスト高速化）   NQueen3() * N16: 00:01:35
  *  ４．対称解除法(回転と斜軸）          NQueen4() * N16: 00:01:50
- *  ５．枝刈りと最適化                   NQueen5() * N16: 00:00:24
- *<>６．マルチスレッド1                  NQueen6() * N16: 00:00:05
+ *<>５．枝刈りと最適化                   NQueen5() * N16: 00:00:24
+ *  ６．マルチスレッド1                  NQueen6() * N16: 00:00:05
  *  ７．ビットマップ                     NQueen7() * N16: 00:00:02
  *  ８．マルチスレッド2                  NQueen8() * N16: 00:00:00
 */
 
 /**
- * ６．マルチスレッド1
- * 
- * 　クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
- * さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
- * 　backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
- * 　ただしスレッド数を管理する必要がある。
- */
+ * ５．枝刈りと最適化
+ * 　単純ですのでソースのコメントを見比べて下さい。
+ *   単純ではありますが、枝刈りの効果は絶大です。
 
-  /**
    N:            Total       Unique    hh:mm:ss
    2:                0            0  00:00:00
    3:                0            0  00:00:00
@@ -59,116 +60,67 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
   12:            14200         1787  00:00:00
   13:            73712         9233  00:00:00
   14:           365596        45752  00:00:00
-  15:          2279184       285053  00:00:00
-  16:         14772512      1846955  00:00:05
+  15:          2279184       285053  00:00:03
+  16:         14772512      1846955  00:00:24
   */
 
-public class NQueen6 {
+class NQueen5 {
   public static void main(String[] args){
-    // javac -cp .:commons-lang3-3.4.jar: NQueen6.java ;
-    // java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC NQueen6  ;
-    new NQueen();   // マルチスレッド
+    // javac -cp .:commons-lang3-3.4.jar: NQueen5.java ;
+    // java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC NQueen5  ;
+    new NQueen(); //最適化
   }
 }
 
-
-
-class NQueen6_Board {
-	private int nSoln = 0; // Total solutions for this board
-	private int nUniq = 0; // Unique solutions, rejecting ones equivalent based on rotations.
-	private int limit; // Board mid-point
-	private int nextCol = 0; // Next position to be computed
-	public NQueen6_Board(int size) {
-		limit = (size + 1) / 2; // Mirror images done automatically
-	}
-	public synchronized int nextJob(long nS, long nU) {
-		nSoln += nS;
-		nUniq += nU;
-		// If all columns have been assigned, return the exit flag
-		return nextCol < limit ? nextCol++ : -1;
-	}
-	public int getTotal() { return nSoln; }
-	public int getUnique() { return nUniq; }
-}
-class NQueen6_WorkEngine extends Thread {
-	private int[] board; // Current state of the board
-	private int[] trial; // Array for symmetry operations
-	private int[] scratch; // Scratch space for rotations
-	private int size; // Filled in constructor
-	private long nUnique; // Default initialization is zero
-	private long nTotal; // for both of these.
-	private boolean[] diagChk; // Diagonals in use
-	private boolean[] antiChk; // Antidiagonals in use
-	private NQueen6_WorkEngine child; // Next thread
-	private NQueen6_Board info; // Information broker
-	public NQueen6_WorkEngine(int size, int nMore, NQueen6_Board info) {
-		this.size = size;
-		this.info = info;
-		board = new int[size];
-		trial = new int[size];
-		scratch = new int[size];
-		diagChk = new boolean[2 * size - 1];
-		antiChk = new boolean[2 * size - 1];
-		if (nMore > 0){
-			try {
-				child = new NQueen6_WorkEngine(size, nMore - 1, info);
-				child.start();
-			} catch (Exception e) {
-				System.out.println(e);
-			}
-		} else {
-			child = null;
+class NQueen{
+	private int[] board ;
+	private long nUnique ;
+	private long nTotal ;
+	private int size;
+	private int max ;
+//	private boolean[] colChk;
+  private boolean[] diagChk;
+  private boolean[] antiChk;
+	private int[] trial ;
+	private int[] scratch ;
+  // コンストラクタ
+	public NQueen(){
+		max=27 ;
+		System.out.println(" N:            Total       Unique    hh:mm:ss");
+		for(this.size=2; size<max; size++){
+			board=new int[size];
+			trial     = new int[size];
+			scratch   = new int[size];
+//			colChk    = new boolean[size];
+			diagChk   = new boolean[2*size-1];
+			antiChk   = new boolean[2*size-1];
+			nTotal=0; 
+			nUnique=0;
+			for(int k=0; k<size; k++){ board[k]=k ; }
+			long start = System.currentTimeMillis() ;
+			nQueens(0);
+			long end = System.currentTimeMillis();
+			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
+			System.out.printf("%2d:%17d%13d%10s%n",size,getTotal(),getUnique(),TIME); 
 		}
 	}
-	public void run() {
-		int nextCol;
-		while (true) { // Will break out on -1 for column posn.
-			int row, col;
-			// On the first call, nTotal and nUnique hold zeroes.
-			nextCol = info.nextJob(nTotal, nUnique);
-			if (nextCol < 0){
-				break;
-			}
-			// Empty out counts from the last board processed
-			nTotal = nUnique = 0;
-			// Generate the initial permutation vector, given nextCol
-			board[0] = nextCol;
-			for (row = 1, col = 0; row < size; row++, col++){
-				board[row] = col == nextCol ? ++col : col;
-			}
-			// Empty out the diagChk and antiChk vectors
-			for (row = 0; row < 2 * size - 1; row++){
-				diagChk[row] = antiChk[row] = false;
-			}
-			diagChk[size - 1 - nextCol] = antiChk[nextCol] = true;
-			// Now compute from row 1 on down.
-			nQueens(1);
-		}
-		if (child != null){
-			try {
-				child.join();
-			} catch (Exception e) {
-				System.out.println(e);
-			}
-		}
-	}
-	private void nQueens(int row) {
+	void nQueens(int row) {
 		int k, lim, vTemp;
-		if (row < size - 1) {
+		if (row < size-1) {
 		    if ( !(diagChk[row-board[row]+size-1] || antiChk[row+board[row]]) ){
 	            diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = true;
 				nQueens(row + 1);
 	            diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = false;
 			}
 			lim = (row != 0) ? size : (size + 1) / 2;
-			for (k = row + 1; k < lim; k++) {
+			for (k=row+1; k<lim; k++) {
 				vTemp = board[k];
 				board[k] = board[row];
 				board[row] = vTemp;
 				if ( !(diagChk[row-board[row]+size-1] || antiChk[row+board[row]]) ){
-					diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = true;
+		            diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = true;
 					nQueens(row + 1);
-					diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = false;
+		            diagChk[row-board[row]+size-1] = antiChk[row+board[row]] = false;
 				}
 			}
 			vTemp = board[row];
@@ -179,7 +131,7 @@ class NQueen6_WorkEngine extends Thread {
 		} else { 
 	        if ( (diagChk[row-board[row]+size-1] || antiChk[row+board[row]]) ){
 				return;
-	        }
+			}
 			k = symmetryOps();
 			if (k != 0) {
 				nUnique++;
@@ -188,7 +140,8 @@ class NQueen6_WorkEngine extends Thread {
 		}
 		return;
 	}
-
+	private long getUnique(){ return nUnique ; }
+	private long getTotal(){ return nTotal ; }
 	//
 	//以下は以降のステップで使い回します
 	private int symmetryOps() {
@@ -291,31 +244,4 @@ class NQueen6_WorkEngine extends Thread {
       return;
 	}
 }
-class NQueen{
-	private int[] board ;
-	private int size;
-	private int max ;
-	private int nThreads;
-	private NQueen6_Board info ;
-	private NQueen6_WorkEngine child;
-  // コンストラクタ
-	public NQueen(){
-		max=27 ;
-		System.out.println(" N:            Total       Unique    hh:mm:ss");
-		for(this.size=2; size<max; size++){
-			board=new int[size];
-			info = new NQueen6_Board(size);
-			child = new NQueen6_WorkEngine(size, nThreads - 1, info);
-			nThreads=size+8;
-			for(int k=0; k<size; k++){ board[k]=k ; }
-			long start = System.currentTimeMillis() ;
-			try {
-				child.start() ;
-				child.join();
-			}catch(Exception e){ System.out.println(e); }
-			long end = System.currentTimeMillis();
-			String TIME = DurationFormatUtils.formatPeriod(start, end, "HH:mm:ss");
-			System.out.printf("%2d:%17d%13d%10s%n",size,info.getTotal(),info.getUnique(),TIME); 
-		}
-	}
-}
+

@@ -1,10 +1,18 @@
-import org.apache.commons.lang3.time.DurationFormatUtils;
+#!/usr/bin/env luajit
 
-/**
+--[[ /**
  * Luaで学ぶアルゴリズムとデータ構造  
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
+ * Java版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+ * Bash版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Bash
+ * Lua版  N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ *
+ * エイト・クイーンについて
  * https://ja.wikipedia.org/wiki/エイト・クイーン
  *
  * N-Queens問題とは
@@ -25,14 +33,14 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  *
  * 目次
  *  Nクイーン問題
- *<>１．ブルートフォース（力まかせ探索） NQueen1() * N 8: 00:04:15
- *  ２．バックトラック                   NQueen2() * N 8: 00:00:01
- *  ３．配置フラグ（制約テスト高速化）   NQueen3() * N16: 00:01:35
- *  ４．対称解除法(回転と斜軸）          NQueen4() * N16: 00:01:50
- *  ５．枝刈りと最適化                   NQueen5() * N16: 00:00:24
- *  ６．マルチスレッド1                  NQueen6() * N16: 00:00:05
- *  ７．ビットマップ                     NQueen7() * N16: 00:00:02
- *  ８．マルチスレッド2                  NQueen8() * N16: 00:00:00
+ *<>１．ブルートフォース（力まかせ探索） NQueen1() 
+ *  ２．バックトラック                   NQueen2()
+ *  ３．配置フラグ（制約テスト高速化）   NQueen3()
+ *  ４．対称解除法(回転と斜軸）          NQueen4()
+ *  ５．枝刈りと最適化                   NQueen5()
+ *  ６．スレッド                         NQueen6()
+ *  ７．ビットマップ                     NQueen7()
+ *  ８．マルチスレッド                   NQueen8()
 */
 
 /** 
@@ -53,48 +61,36 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
   7 7 7 7 7 7 7 6 : 16777215
   7 7 7 7 7 7 7 7 : 16777216
   */
+]]--
 
-class NQueen1 {
-  public static void main(String[] args){
-    // javac -cp .:commons-lang3-3.4.jar: NQueen1.java ;
-    // java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC NQueen1  ;
-    new NQueen(8);  //ブルートフォース
-  }
-}
-class NQueen{
-  // 各列に１個の王妃を配置する組み合わせを再帰的に列挙
-  private int[] board ;
-  private int count;
-  private int size;
-  // コンストラクタ
-  public NQueen(int size){
-    this.size=size;
-    board=new int[size];
-    // 解数は1からカウント
+NQueen={}; NQueen.new=function()
+
+  local this={
+    board={};
+    size=8;
     count=1;
-    // ０列目に王妃を配置してスタート
-    nQueens(0);
-  }
-  // 再帰関数
-  private void nQueens(int row){
-    // 全列に配置完了 最後の列で出力
-    if(row==size){
-      print();
-    }else{
-      // 各列にひとつのクイーンを配置する
-      for(int col=0; col<size; col++){
-        board[row]=col;
-        // 次の列に王妃を配置
-        nQueens(row+1);
-      }
-    }
-  }
-  //出力
-  private void print(){
-    for(int col=0; col<size; col++){
-      System.out.printf("%2d", board[col]);
-    }
-    System.out.println(" : " + count++);
-  }
-}
+  };
+
+  function NQueen:display()
+      for col=0,self.size-1,1 do
+        io.write(string.format('%2d', self.board[col]));
+      end
+      print(" : "..self.count);
+      self.count=self.count+1;
+  end
+
+  function NQueen:NQueen(row) 
+      if row==self.size then --全列に配置完了 最後の列で出力
+        self:display();
+      else
+        for col=0,self.size-1,1 do -- 各列にひとつのクイーンを配置する
+          self.board[row]=col;
+          self:NQueen(row+1); -- 次の列に王妃を配置
+        end
+      end
+  end
+  return setmetatable( this,{__index=NQueen} );
+end
+
+NQueen.new():NQueen(0); -- ０列目に王妃を配置してスタート
 

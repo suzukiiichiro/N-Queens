@@ -1,12 +1,15 @@
 
 --[[ /**
- * Bash/Java/Luaで学ぶアルゴリズムとデータ構造  
+ * Luaで学ぶアルゴリズムとデータ構造  
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
- * Java版 N-Queen Javaディレクトリにあります。
- * Bash版 N-Queen Bashディレクトリにあります。
- * Lua版  N-Queen Luaディレクトリにあります。
+ * Java版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+ * Bash版 N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Bash
+ * Lua版  N-Queen
+ * https://github.com/suzukiiichiro/AI_Algorithm_Lua
  *
  * エイト・クイーンについて
  * https://ja.wikipedia.org/wiki/エイト・クイーン
@@ -27,8 +30,7 @@
  *    けてn=24を解決し世界一に、その後2005 年にニッツァ大学でn=25、2016年にドレ
  *    スデン工科大学でn=27の解を求めることに成功している。
  *
-
- * 目次 (Lua版)
+ * 目次
  *  Nクイーン問題
  *<>１．ブルートフォース（力まかせ探索） NQueen1() 
  *  ２．バックトラック                   NQueen2()
