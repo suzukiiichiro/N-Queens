@@ -7,6 +7,10 @@ RM=rm -fr
 CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
 LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 
+APP07_5=07_5NQueen
+nq07_5: $(APP07_5).c 
+	$(CC) $(CFLAGS) -o $(APP07_5) $(APP07_5).c 
+
 APP07_4=07_4NQueen
 nq07_4: $(APP07_4).c 
 	$(CC) $(CFLAGS) -o $(APP07_4) $(APP07_4).c 
