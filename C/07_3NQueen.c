@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #define MAXSIZE 12
+// 日本語
 
 int T=1 ;
 int U;
