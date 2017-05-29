@@ -217,64 +217,35 @@ int aBoard[MAXSIZE];
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 
-void TimeFormat(clock_t utime, char *form) {
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(float)(mm * 60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-    else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
-    else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
-    else sprintf(form, "           %5.2f",ss);
-}
-void NQueen3(int row){
-  if(row==iSize){
-    //lTotal++;
-    //回転・反転・対象のチェック
-    int tst = symmetryOps ();
-    if (tst != 0) {
-     lUnique++;
-     lTotal+=tst;
-    }
-  }else{
-    for(int col=0;col<iSize;col++){
-      aBoard[row]=col ;
-      if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1; 
-        NQueen3(row+1); 
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0; 
-      }
-    }  
-  }
-}
-int main(void) {
-  clock_t st; 
-  char t[20];
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  for(int i=2;i<=MAXSIZE;i++){
-    iSize=i;
-    lTotal=0; 
-    lUnique=0; 
-    for(int j=0;j<iSize;j++){
-      aBoard[j]=j;
-    }
-    st=clock();
-    NQueen3(0);
-    TimeFormat(clock()-st,t);
-    //printf("%2d:%13d%16d%s\n",iSize,lTotal,lUnique,t) ;
-    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t) ;
-  } 
-}
 long getUnique(){ 
 		return lUnique ; 
 	}
 long getTotal(){ 
   return lTotal ; 
+}
+void rotate(int check[] , int scr[] , int n, int neg) {
+      int j;
+      int k;
+      int incr;
+      k = neg ? 0 : n-1;
+      incr = (neg ? +1 : -1);
+      for (j = 0; j < n; k += incr ){ scr[j++] = check[k];}
+      k = neg ? n-1 : 0;
+      for (j = 0; j < n; k -= incr ){ check[scr[j++]] = k;}
+}
+void vMirror(int check[], int n) {
+      int j;
+      for (j = 0; j < n; j++){ check[j] = (n-1) - check[j];}
+      return;
+}
+int intncmp (int lt[], int rt[], int n) {
+      int k=0;
+      int rtn = 0;
+      for (k = 0; k < n; k++) {
+    	  rtn = lt[k]-rt[k];
+    	  if ( rtn != 0 ){ break;}
+      }
+      return rtn;
 }
 int symmetryOps() {
     int     k;
@@ -326,26 +297,57 @@ int symmetryOps() {
     }
     return nEquiv * 2;
 }
-int intncmp (int[] lt, int[] rt, int n) {
-      int k, rtn = 0;
-      for (k = 0; k < n; k++) {
-    	  rtn = lt[k]-rt[k];
-    	  if ( rtn != 0 ){ break;}
+void TimeFormat(clock_t utime, char *form) {
+    int dd,hh,mm;
+    float ftime,ss;
+    ftime=(float)utime/CLOCKS_PER_SEC;
+    mm=(int)ftime/60;
+    ss=ftime-(float)(mm * 60);
+    dd=mm/(24*60);
+    mm=mm%(24*60);
+    hh=mm/60;
+    mm=mm%60;
+    if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+    else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
+    else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
+    else sprintf(form, "           %5.2f",ss);
+}
+void NQueen3(int row){
+  if(row==iSize){
+    //lTotal++;
+    //回転・反転・対象のチェック
+    int tst = symmetryOps();
+    if (tst != 0) {
+     lUnique++;
+     lTotal+=tst;
+    }
+  }else{
+    for(int col=0;col<iSize;col++){
+      aBoard[row]=col ;
+      if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
+        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1; 
+        NQueen3(row+1); 
+        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0; 
       }
-      return rtn;
+    }  
+  }
 }
-void rotate(int[] check, int[] scr, int n, boolean neg) {
-      int j, k;
-      int incr;
-      k = neg ? 0 : n-1;
-      incr = (neg ? +1 : -1);
-      for (j = 0; j < n; k += incr ){ scr[j++] = check[k];}
-      k = neg ? n-1 : 0;
-      for (j = 0; j < n; k -= incr ){ check[scr[j++]] = k;}
-}
-void vMirror(int[] check, int n) {
-      int j;
-      for (j = 0; j < n; j++){ check[j] = (n-1) - check[j];}
-      return;
+int main(void) {
+  clock_t st; 
+  char t[20];
+  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  for(int i=2;i<=MAXSIZE;i++){
+    iSize=i;
+    lTotal=0; 
+    lUnique=0; 
+    for(int j=0;j<iSize;j++){
+      aBoard[j]=j;
+    }
+    st=clock();
+    NQueen3(0);
+    TimeFormat(clock()-st,t);
+    //printf("%2d:%13d%16d%s\n",iSize,lTotal,lUnique,t) ;
+    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t) ;
+  } 
 }
 
