@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #define  MINSIZE 2 
-#define  MAXSIZE 8
+#define  MAXSIZE 27 
 
 
 int  SIZE, SIZEE;
@@ -245,7 +245,7 @@ int main(void)
         TimeFormat(clock() - starttime, form);
         //printf("%2d:%16I64d%16I64d %s\n", SIZE, TOTAL, UNIQUE, form);
         printf("%2d:%13d%13d%s\n", SIZE, TOTAL, UNIQUE, form);
-        printf("COUNT2:%2d COUNT4:%2d COUNT8:%2d", COUNT2, COUNT4, COUNT8) ;
+//        printf("COUNT2:%2d COUNT4:%2d COUNT8:%2d", COUNT2, COUNT4, COUNT8) ;
     }
     return 0;
 }
