@@ -205,13 +205,17 @@
 
 #define MAXSIZE 27
 
-int iTotal=1 ;
-int iUnique=0;
+//int iTotal=1 ;
+////int lUnique=0;
+long lTotal=1;
+long lUnique=0;
 int iSize;
 int colChk [2*MAXSIZE-1];
 int diagChk[2*MAXSIZE-1];
 int antiChk[2*MAXSIZE-1];
 int aBoard[MAXSIZE];
+int aTrial[MAXSIZE];
+int aScratch[MAXSIZE];
 
 void TimeFormat(clock_t utime, char *form) {
     int dd,hh,mm;
@@ -230,7 +234,13 @@ void TimeFormat(clock_t utime, char *form) {
 }
 void NQueen3(int row){
   if(row==iSize){
-    iTotal++;
+    //lTotal++;
+    //回転・反転・対象のチェック
+    int tst = symmetryOps ();
+    if (tst != 0) {
+     lUnique++;
+     lTotal+=tst;
+    }
   }else{
     for(int col=0;col<iSize;col++){
       aBoard[row]=col ;
@@ -248,15 +258,94 @@ int main(void) {
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=2;i<=MAXSIZE;i++){
     iSize=i;
-    iTotal=0; 
-    iUnique=0; 
+    lTotal=0; 
+    lUnique=0; 
     for(int j=0;j<iSize;j++){
       aBoard[j]=j;
     }
     st=clock();
     NQueen3(0);
     TimeFormat(clock()-st,t);
-    printf("%2d:%13d%16d%s\n",iSize,iTotal,iUnique,t) ;
+    //printf("%2d:%13d%16d%s\n",iSize,lTotal,lUnique,t) ;
+    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t) ;
   } 
+}
+long getUnique(){ 
+		return lUnique ; 
+	}
+long getTotal(){ 
+  return lTotal ; 
+}
+int symmetryOps() {
+    int     k;
+    int     nEquiv;
+    // 回転・反転・対称チェックのためにboard配列をコピー
+    for (k = 0; k < iSize; k++){ aTrial[k] = aBoard[k];}
+    //時計回りに90度回転
+    rotate (aTrial,aScratch,iSize,0);
+    k = intncmp (aBoard,aTrial,iSize);
+    if (k > 0) return 0;
+    if ( k == 0 )
+       nEquiv = 1;
+    else {
+     //時計回りに180度回転
+       rotate (aTrial, aScratch,iSize,0);
+       k = intncmp (aBoard,aTrial,iSize);
+       if (k > 0) return 0;
+       if ( k == 0 )
+          nEquiv = 2;
+       else {
+        //時計回りに270度回転
+          rotate (aTrial,aScratch,iSize,0);
+          k = intncmp (aBoard,aTrial,iSize);
+          if (k > 0) return 0;
+          nEquiv = 4;
+       }
+    }
+    // 回転・反転・対称チェックのためにboard配列をコピー
+    for (k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+    //垂直反転
+    vMirror (aTrial,iSize);
+    k = intncmp (aBoard,aTrial,iSize);
+    if (k > 0) return 0;
+    if (nEquiv > 1) {        // 4回転とは異なる場合
+     // -90度回転 対角鏡と同等
+       rotate (aTrial,aScratch,iSize,1);
+       k = intncmp (aBoard,aTrial,iSize);
+       if (k > 0) return 0;
+       if (nEquiv > 2){     // 2回転とは異なる場合
+        // -180度回転 水平鏡像と同等
+          rotate (aTrial,aScratch,iSize,1);
+          k = intncmp (aBoard,aTrial,iSize);
+          if (k > 0) return 0;
+          // -270度回転 反対角鏡と同等
+          rotate (aTrial,aScratch,iSize,1);
+          k = intncmp (aBoard,aTrial,iSize);
+          if (k > 0) return 0;
+       }
+    }
+    return nEquiv * 2;
+}
+int intncmp (int[] lt, int[] rt, int n) {
+      int k, rtn = 0;
+      for (k = 0; k < n; k++) {
+    	  rtn = lt[k]-rt[k];
+    	  if ( rtn != 0 ){ break;}
+      }
+      return rtn;
+}
+void rotate(int[] check, int[] scr, int n, boolean neg) {
+      int j, k;
+      int incr;
+      k = neg ? 0 : n-1;
+      incr = (neg ? +1 : -1);
+      for (j = 0; j < n; k += incr ){ scr[j++] = check[k];}
+      k = neg ? n-1 : 0;
+      for (j = 0; j < n; k -= incr ){ check[scr[j++]] = k;}
+}
+void vMirror(int[] check, int n) {
+      int j;
+      for (j = 0; j < n; j++){ check[j] = (n-1) - check[j];}
+      return;
 }
 
