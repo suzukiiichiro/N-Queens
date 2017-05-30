@@ -131,24 +131,43 @@ void TimeFormat(clock_t utime,char *form){
     mm=mm%60;
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
-void NQueen3(int row){
-  if(row==iSize){
-    //回転・反転・対象のチェック
-    int tst=symmetryOps();
-    if(tst!=0){
-     lUnique++;
-     lTotal+=tst;
+void NQueen5(int row){
+  int lim;
+  int k;
+  int vTemp;
+  if(row < iSize-1){
+		if ( !(diagChk[row-aBoard[row]+iSize-1] || antiChk[row+aBoard[row]]) ){
+	    diagChk[row-aBoard[row]+iSize-1] = antiChk[row+aBoard[row]] = 1;
+			NQueen5(row + 1);
+	    diagChk[row-aBoard[row]+iSize-1] = antiChk[row+aBoard[row]] = 0;
+		}
+		lim = (row != 0) ? iSize : (iSize + 1) / 2;
+    for(k=row+1;k<lim;k++){
+			vTemp = aBoard[k];
+			aBoard[k] = aBoard[row];
+			aBoard[row] = vTemp;
+			if ( !(diagChk[row-aBoard[row]+iSize-1] || antiChk[row+aBoard[row]]) ){
+	      diagChk[row-aBoard[row]+iSize-1] = antiChk[row+aBoard[row]] = 1;
+	  		NQueen5(row + 1);
+	      diagChk[row-aBoard[row]+iSize-1] = antiChk[row+aBoard[row]] = 0;
+			}
     }
-  }else{
-    for(int col=0;col<iSize;col++){
-      aBoard[row]=col;
-      if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen3(row+1);
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-      }
-    }  
-  }
+		vTemp = aBoard[row];
+		for (k = row + 1; k < iSize; k++){
+			aBoard[k - 1] = aBoard[k];
+		}
+		aBoard[k - 1] = vTemp;
+ }else{
+   if ( (diagChk[row-aBoard[row]+iSize-1] || antiChk[row+aBoard[row]]) ){
+      return;
+   }
+   k=symmetryOps();
+   if(k!=0){
+     lUnique++;
+     lTotal+=k;
+   }
+ }
+ return; 
 }
 int main(void){
   clock_t st;
@@ -162,7 +181,7 @@ int main(void){
       aBoard[j]=j;
     }
     st=clock();
-    NQueen3(0);
+    NQueen5(0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
