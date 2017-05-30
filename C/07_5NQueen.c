@@ -17,12 +17,31 @@
    ４．対称解除法(回転と斜軸）          NQueen4()
  <>５．枝刈りと最適化                   NQueen5()
    ６．ビットマップ                     NQueen6()
-   ７．マルチスレッド                   NQueen7()
+   ７．ビットマップによる枝刈り         NQueen7()
+   ８．マルチスレッド                   NQueen8()
 
  * ５．枝刈りと最適化
  * 　単純ですのでソースのコメントを見比べて下さい。
  *   単純ではありますが、枝刈りの効果は絶大です。
 
+   実行結果
+	 N:        Total       Unique        dd:hh:mm:ss
+	 2:            0               0      0 00:00:00
+	 3:            0               0      0 00:00:00
+	 4:            2               1      0 00:00:00
+	 5:           10               2      0 00:00:00
+	 6:            4               1      0 00:00:00
+	 7:           40               6      0 00:00:00
+	 8:           92              12      0 00:00:00
+	 9:          352              46      0 00:00:00
+	10:          724              92      0 00:00:00
+	11:         2680             341      0 00:00:00
+	12:        14200            1787      0 00:00:00
+	13:        73712            9233      0 00:00:00
+	14:       365596           45752      0 00:00:00
+	15:      2279184          285053      0 00:00:03
+	16:     14772512         1846955      0 00:00:18
+	17:     95815104        11977939      0 00:02:20
  */
 #include<stdio.h>
 #include<time.h>
@@ -122,8 +141,9 @@ int symmetryOps(){
 void NQueen5(int row){
   int vTemp;
   if(row==iSize-1){
-    if ((diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-      return; //枝刈り
+    // 枝刈り antiChk:右斜め上 dianChk:左斜め上
+    if ((diagChk[row-aBoard[row]+iSize-1] ||antiChk[row+aBoard[row]])){   
+      return; 
     }
     int k=symmetryOps();
     if(k!=0){
@@ -131,16 +151,11 @@ void NQueen5(int row){
       lTotal+=k;
     }
   }else{
-		if (!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-	    diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-			NQueen5(row+1);
-	    diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-		}
 		int lim=(row!=0)?iSize:(iSize+1)/2;
-    for(int col=row+1;col<lim;col++){
-			vTemp=aBoard[col];
-			aBoard[col]=aBoard[row];
-			aBoard[row]=vTemp;
+    for(int col=row;col<lim;col++){
+      //未使用の数字（クイーン）と交換する
+			vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
+      // 枝刈り antiChk:右斜め上 dianChk:左斜め上
 			if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
 	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
 	  		NQueen5(row+1);
@@ -158,7 +173,8 @@ int main(void){
   clock_t st;
   char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  for(int i=2;i<=MAXSIZE;i++){
+  //for(int i=2;i<=MAXSIZE;i++){
+  for(int i=2;i<=17;i++){
     iSize=i;
     lTotal=0;
     lUnique=0;
