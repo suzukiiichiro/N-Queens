@@ -10,7 +10,7 @@
   Lua版  N-Queen
   https://github.com/suzukiiichiro/AI_Algorithm_Lua
  
- 	ステップバイステップでＮ−クイーン問題を最適化
+  ステップバイステップでＮ−クイーン問題を最適化
    １．ブルートフォース（力まかせ探索） NQueen1()
    ２．配置フラグ（制約テスト高速化）   NQueen2()
    ３．バックトラック                   NQueen3()
@@ -173,7 +173,7 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
 long getUnique(){ 
-	return lUnique;
+  return lUnique;
 }
 long getTotal(){ 
   return lTotal;
@@ -253,23 +253,23 @@ void NQueen5(int row){
       lTotal+=k;
     }
   }else{
-		int lim=(row!=0)?iSize:(iSize+1)/2;
+    int lim=(row!=0)?iSize:(iSize+1)/2;
     for(int col=row;col<lim;col++){
       //未使用の数字（クイーン）と交換する
-			vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
-      // 枝刈り：antiChk:右斜め上 dianChk:左斜め上
-			if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-	  		NQueen5(row+1);
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-			}
+      vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
+      // 枝刈り antiChk:右斜め上 dianChk:左斜め上
+      if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
+        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
+        NQueen5(row+1);
+        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
+      }
     }
-		vTemp=aBoard[row];
+    vTemp=aBoard[row];
     for (int i=row+1;i<iSize;i++){
-			aBoard[i-1]=aBoard[i];
-		}
-		aBoard[iSize-1]=vTemp;
- }
+      aBoard[i-1]=aBoard[i];
+    }
+    aBoard[iSize-1]=vTemp;
+  }
 }
 int main(void){
   clock_t st;

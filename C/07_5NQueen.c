@@ -10,7 +10,7 @@
   Lua版  N-Queen
   https://github.com/suzukiiichiro/AI_Algorithm_Lua
  
- 	ステップバイステップでＮ−クイーン問題を最適化
+  ステップバイステップでＮ−クイーン問題を最適化
    １．ブルートフォース（力まかせ探索） NQueen1()
    ２．配置フラグ（制約テスト高速化）   NQueen2()
    ３．バックトラック                   NQueen3()
@@ -25,23 +25,23 @@
  *   単純ではありますが、枝刈りの効果は絶大です。
 
    実行結果
-	 N:        Total       Unique        dd:hh:mm:ss
-	 2:            0               0      0 00:00:00
-	 3:            0               0      0 00:00:00
-	 4:            2               1      0 00:00:00
-	 5:           10               2      0 00:00:00
-	 6:            4               1      0 00:00:00
-	 7:           40               6      0 00:00:00
-	 8:           92              12      0 00:00:00
-	 9:          352              46      0 00:00:00
-	10:          724              92      0 00:00:00
-	11:         2680             341      0 00:00:00
-	12:        14200            1787      0 00:00:00
-	13:        73712            9233      0 00:00:00
-	14:       365596           45752      0 00:00:00
-	15:      2279184          285053      0 00:00:03
-	16:     14772512         1846955      0 00:00:18
-	17:     95815104        11977939      0 00:02:20
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:03
+  16:     14772512         1846955      0 00:00:18
+  17:     95815104        11977939      0 00:02:20
  */
 #include<stdio.h>
 #include<time.h>
@@ -71,7 +71,7 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
 long getUnique(){ 
-	return lUnique;
+  return lUnique;
 }
 long getTotal(){ 
   return lTotal;
@@ -151,23 +151,23 @@ void NQueen5(int row){
       lTotal+=k;
     }
   }else{
-		int lim=(row!=0)?iSize:(iSize+1)/2;
+    int lim=(row!=0)?iSize:(iSize+1)/2;
     for(int col=row;col<lim;col++){
       //未使用の数字（クイーン）と交換する
-			vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
+      vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
       // 枝刈り antiChk:右斜め上 dianChk:左斜め上
-			if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-	  		NQueen5(row+1);
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-			}
+      if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
+        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
+        NQueen5(row+1);
+        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
+      }
     }
-		vTemp=aBoard[row];
+    vTemp=aBoard[row];
     for (int i=row+1;i<iSize;i++){
-			aBoard[i-1]=aBoard[i];
-		}
-		aBoard[iSize-1]=vTemp;
- }
+      aBoard[i-1]=aBoard[i];
+    }
+    aBoard[iSize-1]=vTemp;
+  }
 }
 int main(void){
   clock_t st;
