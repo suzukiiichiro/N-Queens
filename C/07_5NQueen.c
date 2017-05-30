@@ -137,10 +137,9 @@ void NQueen5(int row){
 	    diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
 		}
 		int lim=(row!=0)?iSize:(iSize+1)/2;
-    int i=0;
-    for(i=row+1;i<lim;i++){
-			vTemp=aBoard[i];
-			aBoard[i]=aBoard[row];
+    for(int col=row+1;col<lim;col++){
+			vTemp=aBoard[col];
+			aBoard[col]=aBoard[row];
 			aBoard[row]=vTemp;
 			if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
 	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
@@ -149,10 +148,11 @@ void NQueen5(int row){
 			}
     }
 		vTemp=aBoard[row];
-    for (i=row+1;i<iSize;i++){
+    for (int i=row+1;i<iSize;i++){
 			aBoard[i-1]=aBoard[i];
 		}
-		aBoard[i-1]=vTemp;
+		//aBoard[i-1]=vTemp;
+		aBoard[iSize-1]=vTemp;
  }
  /**
   if(row<iSize-1){
