@@ -233,6 +233,18 @@ int aBoard[MAXSIZE];
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 
+void TimeFormat(clock_t utime,char *form){
+    int dd,hh,mm;
+    float ftime,ss;
+    ftime=(float)utime/CLOCKS_PER_SEC;
+    mm=(int)ftime/60;
+    ss=ftime-(int)(mm*60);
+    dd=mm/(24*60);
+    mm=mm%(24*60);
+    hh=mm/60;
+    mm=mm%60;
+    sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
+}
 long getUnique(){ 
 	return lUnique;
 }
@@ -264,66 +276,42 @@ int intncmp(int lt[],int rt[],int n){
   return rtn;
 }
 int symmetryOps(){
-    int k;
-    int nEquiv;
-    // 回転・反転・対称チェックのためにboard配列をコピー
-    for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
-    //時計回りに90度回転
-    rotate(aTrial,aScratch,iSize,0);
+  int k ,nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
+  k=intncmp(aBoard,aTrial,iSize);
+  if(k>0)return 0;
+  if(k==0){ nEquiv=1; }else{
+    rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
     k=intncmp(aBoard,aTrial,iSize);
     if(k>0)return 0;
-    if(k==0)
-       nEquiv=1;
-    else {
-     //時計回りに180度回転
-       rotate(aTrial,aScratch,iSize,0);
-       k=intncmp(aBoard,aTrial,iSize);
-       if(k>0)return 0;
-       if(k==0)
-          nEquiv=2;
-       else {
-        //時計回りに270度回転
-          rotate(aTrial,aScratch,iSize,0);
-          k=intncmp(aBoard,aTrial,iSize);
-          if(k>0)return 0;
-          nEquiv=4;
-       }
+    if(k==0){ nEquiv=2; }else{
+      rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
+      k=intncmp(aBoard,aTrial,iSize);
+      if(k>0){ return 0; }
+      nEquiv=4;
     }
-    // 回転・反転・対称チェックのためにboard配列をコピー
-    for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
-    //垂直反転
-    vMirror(aTrial,iSize);
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  vMirror(aTrial,iSize);    //垂直反転
+  k=intncmp(aBoard,aTrial,iSize);
+  if(k>0){ return 0; }
+  if(nEquiv>1){             //-90度回転 対角鏡と同等       
+    rotate(aTrial,aScratch,iSize,1);
     k=intncmp(aBoard,aTrial,iSize);
-    if(k>0)return 0;
-    if(nEquiv>1){        // 4回転とは異なる場合
-     //-90度回転 対角鏡と同等
-       rotate(aTrial,aScratch,iSize,1);
-       k=intncmp(aBoard,aTrial,iSize);
-       if(k>0)return 0;
-       if(nEquiv>2){     // 2回転とは異なる場合
-        //-180度回転 水平鏡像と同等
-          rotate(aTrial,aScratch,iSize,1);
-          k=intncmp(aBoard,aTrial,iSize);
-          if(k>0)return 0;
-          //-270度回転 反対角鏡と同等
-          rotate(aTrial,aScratch,iSize,1);
-          k=intncmp(aBoard,aTrial,iSize);
-          if(k>0)return 0;
-       }
+    if(k>0){return 0; }
+    if(nEquiv>2){           //-180度回転 水平鏡像と同等
+      rotate(aTrial,aScratch,iSize,1);
+      k=intncmp(aBoard,aTrial,iSize);
+      if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
+      rotate(aTrial,aScratch,iSize,1);
+      k=intncmp(aBoard,aTrial,iSize);
+      if(k>0){ return 0; }
     }
-    return nEquiv * 2;
-}
-void TimeFormat(clock_t utime,char *form){
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(int)(mm*60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
+  }
+  return nEquiv * 2;
 }
 void NQueen3(int row){
   if(row==iSize){
