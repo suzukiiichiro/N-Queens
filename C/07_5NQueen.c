@@ -151,44 +151,8 @@ void NQueen5(int row){
     for (int i=row+1;i<iSize;i++){
 			aBoard[i-1]=aBoard[i];
 		}
-		//aBoard[i-1]=vTemp;
 		aBoard[iSize-1]=vTemp;
  }
- /**
-  if(row<iSize-1){
-		if (!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-	    diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-			NQueen5(row+1);
-	    diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-		}
-		lim=(row!=0)?iSize:(iSize+1)/2;
-    for(k=row+1;k<lim;k++){
-			vTemp=aBoard[k];
-			aBoard[k]=aBoard[row];
-			aBoard[row]=vTemp;
-			if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-	  		NQueen5(row+1);
-	      diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-			}
-    }
-		vTemp=aBoard[row];
-		for (k=row+1;k<iSize;k++){
-			aBoard[k-1]=aBoard[k];
-		}
-		aBoard[k-1]=vTemp;
- }else{
-   if ((diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-      return;
-   }
-   k=symmetryOps();
-   if(k!=0){
-     lUnique++;
-     lTotal+=k;
-   }
- }
- return; 
- */
 }
 int main(void){
   clock_t st;
