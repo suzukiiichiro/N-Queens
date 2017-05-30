@@ -281,10 +281,10 @@ class NQueen {
 				}
 			}
 		}else{
-			if(y<BOUND1){ //上部サイド枝刈り
+			if(y<BOUND1){         //上部サイド枝刈り
 				bitmap|=SIDEMASK ;
 				bitmap^=SIDEMASK;
-			}else if(y==BOUND2){ //下部サイド枝刈り
+			}else if(y==BOUND2){  //下部サイド枝刈り
 				if( (down&SIDEMASK) == 0) return ;
 				if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
 			}
@@ -321,11 +321,14 @@ class NQueen {
 		MASK=(1<<SIZE)-1;
 		COUNT8 = COUNT4 = COUNT2 = 0;
 		BOARD = new int[SIZE];
+    /* 0行目:000000001(固定) */
+    /* 1行目:011111100(選択) */
 		BOARD[0] = 1;
 		for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
 			BOARD[1]=bit=(1<< BOUND1);
 			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
 		}
+    /* 0行目:000001110(選択) */
 		SIDEMASK=LASTMASK=(TOPBIT|1);
 		ENDBIT = (TOPBIT>>1);
 		for (BOUND1=1, BOUND2=SIZE-2; BOUND1<BOUND2; BOUND1++, BOUND2--) {
