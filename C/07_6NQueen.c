@@ -151,15 +151,24 @@
 
 #define MAXSIZE 27
 
-int lTotal=1 ; //合計解
-int lUnique=0; //ユニーク解
-int iSize;     //Ｎ
-int aBoard[MAXSIZE];  //チェス盤の横一列
+long TOTAL=1 ; //合計解
+long UNIQUE=0; //ユニーク解
+long COUNT2;
+long COUNT4;
+long COUNT8;
+int SIZE;     //Ｎ
+int BOARD[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
-int iMask;
+int MASK;
+int SIDEMASK;
+int LASTMASK;
 int bit;
-
+int TOPBIT;
+int ENDBIT;
+int SIZEE;
+int BOUND1;
+int BOUND2;
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
     float ftime,ss;
@@ -171,12 +180,6 @@ void TimeFormat(clock_t utime,char *form){
     hh=mm/60;
     mm=mm%60;
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
-}
-long getUnique(){ 
-  return lUnique;
-}
-long getTotal(){ 
-  return lTotal;
 }
 void rotate(int check[],int scr[],int n,int neg){
   int k=neg?0:n-1;
@@ -196,77 +199,138 @@ int intncmp(int lt[],int rt[],int n){
   }
   return rtn;
 }
-int symmetryOps(int bitmap){
-  int nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  int k=intncmp(aBoard,aTrial,iSize);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=1; }else{
-    rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
-    k=intncmp(aBoard,aTrial,iSize);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=2; }else{
-      rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }
-      nEquiv=4;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  vMirror(aTrial,iSize);    //垂直反転
-  k=intncmp(aBoard,aTrial,iSize);
-  if(k>0){ return 0; }
-  if(nEquiv>1){             //-90度回転 対角鏡と同等       
-    rotate(aTrial,aScratch,iSize,1);
-    k=intncmp(aBoard,aTrial,iSize);
-    if(k>0){return 0; }
-    if(nEquiv>2){           //-180度回転 水平鏡像と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }
-    }
-  }
-  return nEquiv * 2;
+void symmetryOps(int bsize){
+		//int _BOARD =0;
+		//int _BOARD1=BOUND1;
+		//int _BOARD2=BOUND2;
+		//int SIZEE=SIZEE;
+		//90度回転
+		//if (BOARD[_BOARD2] == 1) {
+		if (BOARD[BOUND2] == 1) {
+			//int own = _BOARD+1;
+			int own = 1;
+			for (int ptn=2 ; own<=SIZEE; own++, ptn<<=1) {
+				bit=1;
+				int bown = BOARD[own];
+				for (int you=SIZEE; (BOARD[you] != ptn) && (bown >= bit); you--)
+					bit<<=1;
+				if (bown>bit) { return; }
+				if (bown<bit) { break; }
+			}
+			//90度回転して同型なら180度/270度回転も同型である
+			if (own>SIZEE) {
+				COUNT2++;
+				return;
+			}
+		}
+		//180度回転
+		if (bsize==ENDBIT) {
+			//int own = _BOARD+1;
+			int own =1;
+			for (int you=SIZEE-1; own<=SIZEE; own++, you--) {
+				bit = 1;
+				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1)
+					bit<<=1;
+				if (BOARD[own] > bit) { return; }
+				if (BOARD[own] < bit) { break; }
+			}
+			//90度回転が同型でなくても180度回転が同型である事もある
+			if (own>SIZEE) {
+				COUNT4++;
+				return;
+			}
+		}
+		//270度回転
+		if (BOARD[BOUND1]==TOPBIT) {
+			//int own=_BOARD+1;
+			int own=1;
+			for (int ptn=TOPBIT>>1; own<=SIZEE; own++, ptn>>=1) {
+				bit=1;
+				//for (int you=_BOARD; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+				for (int you=0; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+					bit<<=1;
+				}
+				if (BOARD[own]>bit) { return; }
+				if (BOARD[own]<bit) { break; }
+			}
+		}
+		COUNT8++;
 }
-void NQueen6(int y, int left, int down, int right){
-  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
-  if (y==iSize) {
-    if(bitmap==0){
-	    aBoard[y]=bitmap;
-		  lTotal++;
+void backTrack2(int y, int left, int down, int right){
+  int bitmap=MASK&~(left|down|right); /* 配置可能フィールド */
+  if (y==SIZE-1) {
+    if(bitmap!=0){
+      if( (bitmap&LASTMASK)==0){  //枝刈り：最下段枝刈り
+	      BOARD[y]=bitmap;
+        symmetryOps(bitmap);
+      }
     }
-  //  int k=symmetryOps(bitmap);
-  //  if(k!=0){
-  //    lUnique++;
-  //    lTotal+=k;
-  //  }
   }else{
+    if(y<BOUND1){                 //枝刈り：上部サイド枝刈り
+      bitmap|=SIDEMASK ;
+      bitmap^=SIDEMASK;
+    }else if(y==BOUND2){          //枝刈り：下部サイド枝刈り
+      if( (down&SIDEMASK) == 0) return ;
+      if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
+    }
     while(bitmap!=0){
-      //aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
-      //bitmap^=bit;
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-     }
+      bitmap^=BOARD[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+			backTrack2((y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
+    }
   } 
+}
+void backTrack1(int y, int left, int down, int right){
+  int bitmap=MASK&~(left|down|right); /* 配置可能フィールド */
+  if (y==SIZE-1) {
+    if(bitmap!=0){
+	    BOARD[y]=bitmap;
+      COUNT8++;
+    }
+  }else{
+			if(y<BOUND1){             //枝刈り：斜軸反転解の排除
+				bitmap|=2 ;
+				bitmap^=2;
+			}
+    while(bitmap!=0){
+      bitmap^=BOARD[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  } 
+}
+void NQueen6(int SIZE){
+    SIZEE=SIZE-1;
+		TOPBIT=1<<SIZEE;
+    MASK=(1<<SIZE)-1;
+    COUNT2=COUNT4=COUNT8=0;
+    /* 0行目:000000001(固定) */
+    /* 1行目:011111100(選択) */
+    BOARD[0]=1;
+    for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
+      BOARD[1]=bit=(1<<BOUND1);
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+    }
+    /* 0行目:000001110(選択) */
+		SIDEMASK=LASTMASK=(TOPBIT|1);
+		ENDBIT=(TOPBIT>>1);
+    for(BOUND1=1,BOUND2=SIZE-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+      BOARD[0]=bit=(1<<BOUND1);
+      backTrack2(1,bit<<1,bit,bit>>1);
+			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+			ENDBIT>>=1;
+    }
+		UNIQUE=COUNT8+COUNT4+COUNT2;
+		TOTAL=(COUNT8*8)+(COUNT4*4)+(COUNT2*2);
 }
 int main(void){
   clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  //for(int i=2;i<=MAXSIZE;i++){
   for(int i=2;i<=17;i++){
-    iSize=i; lTotal=0; lUnique=0;
-    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
+    SIZE=i; TOTAL=0; UNIQUE=0;
+    for(int j=0;j<SIZE;j++){ BOARD[j]=j; }
     st=clock();
-    iMask=(1<<iSize)-1; // 初期化
-    NQueen6(0,0,0,0);
+    NQueen6(SIZE);
     TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
+    printf("%2d:%13ld%16ld%s\n",SIZE,TOTAL,UNIQUE,t);
   } 
 }
 
