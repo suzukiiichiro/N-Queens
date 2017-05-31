@@ -50,7 +50,7 @@
 
 int iCount=1 ; //# c:count
 int aBoard[MAXSIZE];
-int fA[MAXSIZE];
+int fA[MAXSIZE]; //配置フラグ
 
 void NQueen2(int iMin,int iMax) {
   for(int i=0;i<iMax;i++){

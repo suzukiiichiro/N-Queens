@@ -197,11 +197,11 @@
 
  　これらを実現すると、前回のNQueen3()よりも実行速度が遅くなります。
  　なぜなら、対称・反転・斜軸を反転するための処理が加わっているからです。
- ですが、今回の処理を行うことによって、さらにNQueen5()では、処理スピードが飛
- 躍的に高速化されます。そのためにも今回のアルゴリズム実装は必要なのです。
+ ですが、今回の処理を行うことによって、さらにNQueen5()では、処理スピードが飛躍的に高速化されます。そのためにも今回のアルゴリズム実装は必要なのです。
 
 実行結果
 N:        Total       Unique        dd:hh:mm:ss
+ N:        Total       Unique        dd:hh:mm:ss
  2:            0               0      0 00:00:00
  3:            0               0      0 00:00:00
  4:            2               1      0 00:00:00
@@ -213,24 +213,23 @@ N:        Total       Unique        dd:hh:mm:ss
 10:          724              92      0 00:00:00
 11:         2680             341      0 00:00:00
 12:        14200            1787      0 00:00:00
-13:        73712            9233      0 00:00:01
-14:       365596           45752      0 00:00:03
-15:      2279184          285053      0 00:00:19
-16:     14772512         1846955      0 00:02:09
-
+13:        73712            9233      0 00:00:00
+14:       365596           45752      0 00:00:02
+15:      2279184          285053      0 00:00:10
+16:     14772512         1846955      0 00:01:09
  */
 #include<stdio.h>
 #include<time.h>
 
 #define MAXSIZE 27
 
-long lTotal=1;
-long lUnique=0;
-int iSize;
-int colChk [2*MAXSIZE-1];
-int diagChk[2*MAXSIZE-1];
-int antiChk[2*MAXSIZE-1];
-int aBoard[MAXSIZE];
+int lTotal=1 ; //合計解
+int lUnique=0; //ユニーク解
+int iSize;     //Ｎ
+int colChk [2*MAXSIZE-1]; //縦 配置フラグ　
+int diagChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int antiChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 
@@ -253,35 +252,29 @@ long getTotal(){
   return lTotal;
 }
 void rotate(int check[],int scr[],int n,int neg){
-  int j;
-  int k;
-  int incr;
-  k=neg?0:n-1;
-  incr=(neg?+1:-1);
-  for(j=0;j<n;k+=incr){ scr[j++]=check[k];}
+  int k=neg?0:n-1;
+  int incr=(neg?+1:-1);
+  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
   k=neg?n-1:0;
-  for(j=0;j<n;k-=incr){ check[scr[j++]]=k;}
+  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
 }
 void vMirror(int check[],int n){
-  int j;
-  for(j=0;j<n;j++){ check[j]=(n-1)- check[j];}
-  return;
+  for(int j=0;j<n;j++){ check[j]=(n-1)- check[j];}
 }
 int intncmp(int lt[],int rt[],int n){
-  int k=0;
   int rtn=0;
-  for(k=0;k<n;k++){
+  for(int k=0;k<n;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
   return rtn;
 }
 int symmetryOps(){
-  int k ,nEquiv;
+  int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  k=intncmp(aBoard,aTrial,iSize);
+  int k=intncmp(aBoard,aTrial,iSize);
   if(k>0)return 0;
   if(k==0){ nEquiv=1; }else{
     rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
@@ -295,7 +288,7 @@ int symmetryOps(){
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   vMirror(aTrial,iSize);    //垂直反転
   k=intncmp(aBoard,aTrial,iSize);
   if(k>0){ return 0; }
@@ -314,10 +307,9 @@ int symmetryOps(){
   }
   return nEquiv * 2;
 }
-void NQueen3(int row){
+void NQueen4(int row){
   if(row==iSize){
-    //回転・反転・対象のチェック
-    int tst=symmetryOps();
+    int tst=symmetryOps();//対称解除法
     if(tst!=0){
      lUnique++;
      lTotal+=tst;
@@ -325,9 +317,10 @@ void NQueen3(int row){
   }else{
     for(int col=0;col<iSize;col++){
       aBoard[row]=col;
+      //配置フラグによるバックトラック
       if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen3(row+1);
+        NQueen4(row+1);
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
       }
     }  

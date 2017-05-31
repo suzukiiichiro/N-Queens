@@ -13,9 +13,9 @@
   ステップバイステップでＮ−クイーン問題を最適化
    １．ブルートフォース（力まかせ探索） NQueen1()
    ２．配置フラグ（制約テスト高速化）   NQueen2()
-   ３．バックトラック                   NQueen3()
-   ４．対称解除法(回転と斜軸）          NQueen4()
- <>５．枝刈りと最適化                   NQueen5()
+   ３．バックトラック                   NQueen3() N16: 1:07
+   ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
+ <>５．枝刈りと最適化                   NQueen5() N16: 0:18
    ６．ビットマップ                     NQueen6()
    ７．ビットマップによる枝刈り         NQueen7()
    ８．マルチスレッド                   NQueen8()
@@ -48,13 +48,13 @@
 
 #define MAXSIZE 27
 
-long lTotal=1;
-long lUnique=0;
-int iSize;
-int colChk [2*MAXSIZE-1];
-int diagChk[2*MAXSIZE-1];
-int antiChk[2*MAXSIZE-1];
-int aBoard[MAXSIZE];
+int lTotal=1 ; //合計解
+int lUnique=0; //ユニーク解
+int iSize;     //Ｎ
+int colChk [2*MAXSIZE-1]; //縦 配置フラグ　
+int diagChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int antiChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 
@@ -77,35 +77,29 @@ long getTotal(){
   return lTotal;
 }
 void rotate(int check[],int scr[],int n,int neg){
-  int j;
-  int k;
-  int incr;
-  k=neg?0:n-1;
-  incr=(neg?+1:-1);
-  for(j=0;j<n;k+=incr){ scr[j++]=check[k];}
+  int k=neg?0:n-1;
+  int incr=(neg?+1:-1);
+  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
   k=neg?n-1:0;
-  for(j=0;j<n;k-=incr){ check[scr[j++]]=k;}
+  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
 }
 void vMirror(int check[],int n){
-  int j;
-  for(j=0;j<n;j++){ check[j]=(n-1)- check[j];}
-  return;
+  for(int j=0;j<n;j++){ check[j]=(n-1)- check[j];}
 }
 int intncmp(int lt[],int rt[],int n){
-  int k=0;
   int rtn=0;
-  for(k=0;k<n;k++){
+  for(int k=0;k<n;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
   return rtn;
 }
 int symmetryOps(){
-  int k ,nEquiv;
+  int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  k=intncmp(aBoard,aTrial,iSize);
+  int k=intncmp(aBoard,aTrial,iSize);
   if(k>0)return 0;
   if(k==0){ nEquiv=1; }else{
     rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
@@ -119,7 +113,7 @@ int symmetryOps(){
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   vMirror(aTrial,iSize);    //垂直反転
   k=intncmp(aBoard,aTrial,iSize);
   if(k>0){ return 0; }
@@ -145,7 +139,7 @@ void NQueen5(int row){
     if ((diagChk[row-aBoard[row]+iSize-1] ||antiChk[row+aBoard[row]])){   
       return; 
     }
-    int k=symmetryOps();
+    int k=symmetryOps();//対称解除法
     if(k!=0){
       lUnique++;
       lTotal+=k;
