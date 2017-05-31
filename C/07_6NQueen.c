@@ -14,8 +14,9 @@
    １．ブルートフォース（力まかせ探索） NQueen1()
    ２．配置フラグ（制約テスト高速化）   NQueen2()
    ３．バックトラック                   NQueen3()
-   ４．対称解除法(回転と斜軸）          NQueen4()
-   ５．枝刈りと最適化                   NQueen5()
+   ３．バックトラック                   NQueen3() N16: 1:07
+   ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
+   ５．枝刈りと最適化                   NQueen5() N16: 0:18
  <>６．ビットマップ                     NQueen6()
    ７．ビットマップによる枝刈り         NQueen7()
    ８．マルチスレッド                   NQueen8()
@@ -150,10 +151,10 @@
 
 #define MAXSIZE 27
 
-long lTotal=1;
-long lUnique=0;
-int iSize;
-int aBoard[MAXSIZE];
+int lTotal=1 ; //合計解
+int lUnique=0; //ユニーク解
+int iSize;     //Ｎ
+int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 int iMask;
@@ -177,35 +178,29 @@ long getTotal(){
   return lTotal;
 }
 void rotate(int check[],int scr[],int n,int neg){
-  int j;
-  int k;
-  int incr;
-  k=neg?0:n-1;
-  incr=(neg?+1:-1);
-  for(j=0;j<n;k+=incr){ scr[j++]=check[k];}
+  int k=neg?0:n-1;
+  int incr=(neg?+1:-1);
+  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
   k=neg?n-1:0;
-  for(j=0;j<n;k-=incr){ check[scr[j++]]=k;}
+  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
 }
 void vMirror(int check[],int n){
-  int j;
-  for(j=0;j<n;j++){ check[j]=(n-1)- check[j];}
-  return;
+  for(int j=0;j<n;j++){ check[j]=(n-1)- check[j];}
 }
 int intncmp(int lt[],int rt[],int n){
-  int k=0;
   int rtn=0;
-  for(k=0;k<n;k++){
+  for(int k=0;k<n;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
   return rtn;
 }
-int symmetryOps(int bsize){
-  int k ,nEquiv;
+int symmetryOps(int bitmap){
+  int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  k=intncmp(aBoard,aTrial,iSize);
+  int k=intncmp(aBoard,aTrial,iSize);
   if(k>0)return 0;
   if(k==0){ nEquiv=1; }else{
     rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
@@ -219,7 +214,7 @@ int symmetryOps(int bsize){
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   vMirror(aTrial,iSize);    //垂直反転
   k=intncmp(aBoard,aTrial,iSize);
   if(k>0){ return 0; }
@@ -239,9 +234,9 @@ int symmetryOps(int bsize){
   return nEquiv * 2;
 }
 void NQueen6(int y, int left, int down, int right){
-  int  bitmap, bit;
-  bitmap = iMask & ~(left | down | right); /* 配置可能フィールド */
-  if (y == iSize) {
+  int bit;
+  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
+  if (y==iSize) {
 	  aBoard[y]=bitmap;
 		lTotal++;
   //  int k=symmetryOps(bitmap);
@@ -251,26 +246,21 @@ void NQueen6(int y, int left, int down, int right){
   //  }
   }else{
     while (bitmap) {
-      aBoard[y]=bit = -bitmap & bitmap;       /* 最も下位の１ビットを抽出 */
-      bitmap ^= bit;
-      NQueen6(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+      aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
+      bitmap^=bit;
+      NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
   } 
 }
 int main(void){
-  clock_t st;
-  char t[20];
+  clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   //for(int i=2;i<=MAXSIZE;i++){
   for(int i=2;i<=17;i++){
-    iSize=i;
-    lTotal=0;
-    lUnique=0;
-    for(int j=0;j<iSize;j++){
-      aBoard[j]=j;
-    }
+    iSize=i; lTotal=0; lUnique=0;
+    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
-    iMask = (1 << iSize) - 1;
+    iMask=(1<<iSize)-1; // 初期化
     NQueen6(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
