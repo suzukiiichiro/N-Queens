@@ -158,6 +158,7 @@ int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 int iMask;
+int bit;
 
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -234,11 +235,12 @@ int symmetryOps(int bitmap){
   return nEquiv * 2;
 }
 void NQueen6(int y, int left, int down, int right){
-  int bit;
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
   if (y==iSize) {
-	  aBoard[y]=bitmap;
-		lTotal++;
+    if(!bitmap){
+	    aBoard[y]=bitmap;
+		   lTotal++;
+    }
   //  int k=symmetryOps(bitmap);
   //  if(k!=0){
   //    lUnique++;
@@ -246,8 +248,9 @@ void NQueen6(int y, int left, int down, int right){
   //  }
   }else{
     while (bitmap) {
-      aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
-      bitmap^=bit;
+      //aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
+      //bitmap^=bit;
+      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
       NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
   } 
