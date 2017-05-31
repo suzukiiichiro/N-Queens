@@ -153,12 +153,10 @@
 long lTotal=1;
 long lUnique=0;
 int iSize;
-int colChk [2*MAXSIZE-1];
-int diagChk[2*MAXSIZE-1];
-int antiChk[2*MAXSIZE-1];
 int aBoard[MAXSIZE];
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
+int iMask;
 
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -202,7 +200,7 @@ int intncmp(int lt[],int rt[],int n){
   }
   return rtn;
 }
-int symmetryOps(){
+int symmetryOps(int bsize){
   int k ,nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(k=0;k<iSize;k++){ aTrial[k]=aBoard[k];}
@@ -240,36 +238,24 @@ int symmetryOps(){
   }
   return nEquiv * 2;
 }
-void NQueen5(int row){
-  int vTemp;
-  if(row==iSize-1){
-    // 枝刈り：antiChk:右斜め上 dianChk:左斜め上
-    if ((diagChk[row-aBoard[row]+iSize-1] ||antiChk[row+aBoard[row]])){   
-      return; //どちらかが１であれば枝刈り
-    }
-    int k=symmetryOps();
-    if(k!=0){
-      lUnique++;
-      lTotal+=k;
-    }
+void NQueen6(int y, int left, int down, int right){
+  int  bitmap, bit;
+  bitmap = iMask & ~(left | down | right); /* 配置可能フィールド */
+  if (y == iSize) {
+	  aBoard[y]=bitmap;
+		lTotal++;
+  //  int k=symmetryOps(bitmap);
+  //  if(k!=0){
+  //    lUnique++;
+  //    lTotal+=k;
+  //  }
   }else{
-    int lim=(row!=0)?iSize:(iSize+1)/2;
-    for(int col=row;col<lim;col++){
-      //未使用の数字（クイーン）と交換する
-      vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
-      // 枝刈り antiChk:右斜め上 dianChk:左斜め上
-      if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen5(row+1);
-        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-      }
-    }
-    vTemp=aBoard[row];
-    for (int i=row+1;i<iSize;i++){
-      aBoard[i-1]=aBoard[i];
-    }
-    aBoard[iSize-1]=vTemp;
-  }
+    while (bitmap) {
+      aBoard[y]=bit = -bitmap & bitmap;       /* 最も下位の１ビットを抽出 */
+      bitmap ^= bit;
+      NQueen6(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+     }
+  } 
 }
 int main(void){
   clock_t st;
@@ -284,7 +270,8 @@ int main(void){
       aBoard[j]=j;
     }
     st=clock();
-    NQueen5(0);
+    iMask = (1 << iSize) - 1;
+    NQueen6(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
