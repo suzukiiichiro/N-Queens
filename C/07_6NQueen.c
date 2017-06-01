@@ -256,29 +256,23 @@ void NQueen6(int y, int left, int down, int right){
   if (y==iSize) {
     if(!bitmap){
 	    aBoard[y]=bitmap;
-    //ベタにビットの配列を 元のaBoardにいったん戻してみた 
-    int v[MAXSIZE];
-    for (int i=0;i<iSize;i++){
-      //printf("%d\n",iSize);
-      v[i]=aBoard[i];
-      //printf("before:%d\n",aBoard[i]);
-      aBoard[i]=iSize-1-log2(aBoard[i]);
-      //printf("after:%d\n",aBoard[i]);
-    }
-    int k=symmetryOps(bitmap);
-    //処理が終わったら元のビットの配列に戻す
-    for (int i=0;i<iSize;i++){
-      aBoard[i]=v[i];
-    }
-    if(k!=0){
-      lUnique++;
-      lTotal+=k;
-    }
+			//ベタにビットの配列を 元のaBoardにいったん戻してみた 
+			int v[MAXSIZE];
+			for (int i=0;i<iSize;i++){
+				v[i]=aBoard[i];
+				aBoard[i]=iSize-1-log2(aBoard[i]);
+			}
+      //対称解除法による解析
+			int k=symmetryOps(bitmap);
+			//処理が終わったら元のビットの配列に戻す
+			for (int i=0;i<iSize;i++){ aBoard[i]=v[i]; }
+			if(k!=0){
+				lUnique++;
+				lTotal+=k;
+			}
     }
   }else{
     while (bitmap) {
-      //aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
-      //bitmap^=bit;
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
       NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
