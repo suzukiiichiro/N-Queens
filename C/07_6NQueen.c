@@ -18,7 +18,7 @@
    ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
    ５．枝刈りと最適化                   NQueen5() N16: 0:18
  <>６．ビットマップ                     NQueen6()
-   ７．ビットマップによる枝刈り         NQueen7()
+   ７．ビットマップによる枝刈り         NQueen7() N16: 0:02
    ８．マルチスレッド                   NQueen8()
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
@@ -144,7 +144,23 @@
 
 
   実行結果
-
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:00
+  16:     14772512         1846955      0 00:00:02
+  17:     95815104        11977939      0 00:00:15
  */
 #include<stdio.h>
 #include<time.h>
@@ -199,85 +215,71 @@ int intncmp(int lt[],int rt[],int n){
   }
   return rtn;
 }
-void symmetryOps(int bsize){
-		//int _BOARD =0;
-		//int _BOARD1=BOUND1;
-		//int _BOARD2=BOUND2;
-		//int SIZEE=SIZEE;
+void symmetryOps(int bitmap){
 		//90度回転
-		//if (BOARD[_BOARD2] == 1) {
-		if (BOARD[BOUND2] == 1) {
-			//int own = _BOARD+1;
-			int own = 1;
-			for (int ptn=2 ; own<=SIZEE; own++, ptn<<=1) {
+		if(BOARD[BOUND2]==1){
+			int own=1;
+			for(int ptn=2;own<=SIZEE;own++,ptn<<=1){
 				bit=1;
-				int bown = BOARD[own];
-				for (int you=SIZEE; (BOARD[you] != ptn) && (bown >= bit); you--)
-					bit<<=1;
-				if (bown>bit) { return; }
-				if (bown<bit) { break; }
+				for (int you=SIZEE;(BOARD[you]!=ptn)&&(BOARD[own]>=bit);you--){ bit<<=1; }
+				if(BOARD[own]>bit){ return; }
+				if(BOARD[own]<bit){ break; }
 			}
-			//90度回転して同型なら180度/270度回転も同型である
-			if (own>SIZEE) {
-				COUNT2++;
-				return;
-			}
+			/** 90度回転して同型なら180度/270度回転も同型である */
+			if (own>SIZEE) { COUNT2++; return; }
 		}
 		//180度回転
-		if (bsize==ENDBIT) {
-			//int own = _BOARD+1;
-			int own =1;
-			for (int you=SIZEE-1; own<=SIZEE; own++, you--) {
-				bit = 1;
-				for (int ptn=TOPBIT; (ptn!=BOARD[you])&&(BOARD[own]>=bit); ptn>>=1)
-					bit<<=1;
-				if (BOARD[own] > bit) { return; }
-				if (BOARD[own] < bit) { break; }
+		if(bitmap==ENDBIT){
+			int own=1;
+			for(int you=SIZEE-1;own<=SIZEE;own++,you--){
+				bit =1;
+				for(int ptn=TOPBIT;(ptn!=BOARD[you])&&(BOARD[own]>=bit);ptn>>=1){ bit<<=1; }
+				if(BOARD[own]>bit){ return; }
+				if(BOARD[own]<bit){ break; }
 			}
-			//90度回転が同型でなくても180度回転が同型である事もある
-			if (own>SIZEE) {
+			/** 90度回転が同型でなくても180度回転が同型である事もある */
+			if(own>SIZEE){
 				COUNT4++;
 				return;
 			}
 		}
 		//270度回転
-		if (BOARD[BOUND1]==TOPBIT) {
-			//int own=_BOARD+1;
+		if(BOARD[BOUND1]==TOPBIT){
 			int own=1;
-			for (int ptn=TOPBIT>>1; own<=SIZEE; own++, ptn>>=1) {
+			for(int ptn=TOPBIT>>1;own<=SIZEE;own++,ptn>>=1){
 				bit=1;
-				//for (int you=_BOARD; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
-				for (int you=0; BOARD[you]!=ptn && BOARD[own]>=bit; you++) {
+				for(int you=0;BOARD[you]!=ptn&&BOARD[own]>=bit;you++){
 					bit<<=1;
 				}
-				if (BOARD[own]>bit) { return; }
-				if (BOARD[own]<bit) { break; }
+				if(BOARD[own]>bit){ return; }
+				if (BOARD[own]<bit){ break; }
 			}
 		}
 		COUNT8++;
 }
 void backTrack2(int y, int left, int down, int right){
-  int bitmap=MASK&~(left|down|right); /* 配置可能フィールド */
-  if (y==SIZE-1) {
+  int bitmap=MASK&~(left|down|right); //配置可能フィールド
+  if (y==SIZE-1){
     if(bitmap!=0){
-      if( (bitmap&LASTMASK)==0){  //枝刈り：最下段枝刈り
+      if((bitmap&LASTMASK)==0){  //枝刈り：最下段枝刈り
 	      BOARD[y]=bitmap;
         symmetryOps(bitmap);
-      }
+      } 
     }
   }else{
-    if(y<BOUND1){                 //枝刈り：上部サイド枝刈り
-      bitmap|=SIDEMASK ;
+    if(y<BOUND1){                //枝刈り：上部サイド枝刈り
+      bitmap|=SIDEMASK;
       bitmap^=SIDEMASK;
-    }else if(y==BOUND2){          //枝刈り：下部サイド枝刈り
-      if( (down&SIDEMASK) == 0) return ;
-      if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
+    }
+    if(y==BOUND2){               //枝刈り：下部サイド枝刈り
+      if((down&SIDEMASK)==0){ return ;}
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK;}
     }
     while(bitmap!=0){
-      bitmap^=BOARD[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-			backTrack2((y+1), (left|bit)<<1, (down|bit), (right|bit)>>1 )	;	
+      bitmap^=BOARD[y]=bit=(-bitmap&bitmap);//最も下位の１ビットを抽出
+			backTrack2((y+1),(left|bit)<<1,(down|bit),(right|bit)>>1)	;	
     }
-  } 
+  }
 }
 void backTrack1(int y, int left, int down, int right){
   int bitmap=MASK&~(left|down|right); /* 配置可能フィールド */
@@ -287,12 +289,12 @@ void backTrack1(int y, int left, int down, int right){
       COUNT8++;
     }
   }else{
-			if(y<BOUND1){             //枝刈り：斜軸反転解の排除
-				bitmap|=2 ;
-				bitmap^=2;
-			}
+    if(y<BOUND1){               //枝刈り：斜軸反転解の排除
+      bitmap|=2;
+      bitmap^=2;
+    }
     while(bitmap!=0){
-      bitmap^=BOARD[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+      bitmap^=BOARD[y]=bit=(-bitmap&bitmap);//最も下位の１ビットを抽出
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   } 
@@ -324,8 +326,8 @@ void NQueen6(int SIZE){
 int main(void){
   clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  for(int i=2;i<=17;i++){
-    SIZE=i; TOTAL=0; UNIQUE=0;
+  for(int i=2;i<=MAXSIZE;i++){
+    SIZE=i;TOTAL=0;UNIQUE=0;
     for(int j=0;j<SIZE;j++){ BOARD[j]=j; }
     st=clock();
     NQueen6(SIZE);
