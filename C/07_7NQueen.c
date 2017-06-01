@@ -15,50 +15,31 @@
    ２．配置フラグ（制約テスト高速化）   NQueen2()
    ３．バックトラック                   NQueen3() N16: 1:07
    ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
- <>５．枝刈りと最適化                   NQueen5() N16: 0:18
+   ５．枝刈りと最適化                   NQueen5() N16: 0:18
    ６．ビットマップ                     NQueen6() N16: 0:13
-   ７．                                 NQueen7()
+ <>７．                                 NQueen7()
    ８．                                 NQueen8()
    ９．完成型                           NQueen9() N16: 0:02
    10．マルチスレッド                   NQueen10()
 
- * ５．枝刈りと最適化
- * 　単純ですのでソースのコメントを見比べて下さい。
- *   単純ではありますが、枝刈りの効果は絶大です。
+  実行結果
 
-   実行結果
-   N:        Total       Unique        dd:hh:mm:ss
-   2:            0               0      0 00:00:00
-   3:            0               0      0 00:00:00
-   4:            2               1      0 00:00:00
-   5:           10               2      0 00:00:00
-   6:            4               1      0 00:00:00
-   7:           40               6      0 00:00:00
-   8:           92              12      0 00:00:00
-   9:          352              46      0 00:00:00
-  10:          724              92      0 00:00:00
-  11:         2680             341      0 00:00:00
-  12:        14200            1787      0 00:00:00
-  13:        73712            9233      0 00:00:00
-  14:       365596           45752      0 00:00:00
-  15:      2279184          285053      0 00:00:03
-  16:     14772512         1846955      0 00:00:18
-  17:     95815104        11977939      0 00:02:20
+
  */
 #include<stdio.h>
 #include<time.h>
+#include <math.h>
 
 #define MAXSIZE 27
 
 int lTotal=1 ; //合計解
 int lUnique=0; //ユニーク解
 int iSize;     //Ｎ
-int colChk [2*MAXSIZE-1]; //縦 配置フラグ　
-int diagChk[2*MAXSIZE-1]; //斜め配置フラグ　
-int antiChk[2*MAXSIZE-1]; //斜め配置フラグ　
 int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
+int iMask;
+int bit;
 
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -96,7 +77,7 @@ int intncmp(int lt[],int rt[],int n){
   }
   return rtn;
 }
-int symmetryOps(){
+int symmetryOps(int bitmap){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
@@ -134,51 +115,50 @@ int symmetryOps(){
   }
   return nEquiv * 2;
 }
-void NQueen5(int row){
-  int vTemp;
-  if(row==iSize-1){
-    // 枝刈り antiChk:右斜め上 dianChk:左斜め上
-    if ((diagChk[row-aBoard[row]+iSize-1] ||antiChk[row+aBoard[row]])){   
-      return; 
+void NQueen6(int y, int left, int down, int right){
+  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
+  if (y==iSize) {
+    if(!bitmap){
+	    aBoard[y]=bitmap;
+    //ベタにビットの配列を 元のaBoardにいったん戻してみた 
+    int v[MAXSIZE];
+    for (int i=0;i<iSize;i++){
+      //printf("%d\n",iSize);
+      v[i]=aBoard[i];
+      //printf("before:%d\n",aBoard[i]);
+      aBoard[i]=iSize-1-log2(aBoard[i]);
+      //printf("after:%d\n",aBoard[i]);
     }
-    int k=symmetryOps();//対称解除法
+    int k=symmetryOps(bitmap);
+    //処理が終わったら元のビットの配列に戻す
+    for (int i=0;i<iSize;i++){
+      aBoard[i]=v[i];
+    }
     if(k!=0){
       lUnique++;
       lTotal+=k;
     }
+    }
   }else{
-    int lim=(row!=0)?iSize:(iSize+1)/2;
-    for(int col=row;col<lim;col++){
-      //未使用の数字（クイーン）と交換する
-      vTemp=aBoard[col]; aBoard[col]=aBoard[row]; aBoard[row]=vTemp;
-      // 枝刈り antiChk:右斜め上 dianChk:左斜め上
-      if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
-        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen5(row+1);
-        diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
-      }
-    }
-    vTemp=aBoard[row];
-    for (int i=row+1;i<iSize;i++){
-      aBoard[i-1]=aBoard[i];
-    }
-    aBoard[iSize-1]=vTemp;
-  }
+    while (bitmap) {
+      //aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
+      //bitmap^=bit;
+      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+      NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+     }
+
+  } 
 }
 int main(void){
-  clock_t st;
-  char t[20];
+  clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   //for(int i=2;i<=MAXSIZE;i++){
   for(int i=2;i<=17;i++){
-    iSize=i;
-    lTotal=0;
-    lUnique=0;
-    for(int j=0;j<iSize;j++){
-      aBoard[j]=j;
-    }
+    iSize=i; lTotal=0; lUnique=0;
+    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
-    NQueen5(0);
+    iMask=(1<<iSize)-1; // 初期化
+    NQueen6(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
