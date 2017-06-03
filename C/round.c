@@ -53,6 +53,16 @@ void rotateBitmap90(int abefore[],int aafter[]){
     aafter[i] = t;                        // y[i] の j ビット目にする
   }
 }
+int less(int cgd[],int org[]){
+  for(int i=0;i<iSize;i++) {
+    if(cgd[i] < org[i]){
+     return 0;
+    }else if(cgd[i] > org[i]){
+     return 1;
+    } 
+  }
+  return 1;
+}
 int main(void) {
 int x[iSize];
 int y[iSize]; // x が元のデータ、y が回転後のデータ.
@@ -74,4 +84,7 @@ revHorzBitmap(y,z);
 for(int i=0;i< iSize;i++) {
       dtob(z[i],iSize);
 }
+int rst=less(z,x);
+printf("%d",rst);
+
 }
