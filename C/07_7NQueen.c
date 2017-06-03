@@ -115,29 +115,76 @@ int symmetryOps(int bitmap){
   }
   return nEquiv * 2;
 }
+int rh(int a,int sz){
+  int tmp;
+  int i;
+  sz=sz-1;
+  /* ビット入替 */
+  tmp = 0;
+  for( i = 0; i <= sz; i++ )
+  {
+    if( a & ( 1 << i ) )
+    {
+      tmp |= ( 1 << ( sz - i ) );
+    }
+  }
+  a = tmp;
+  return tmp;
+}
+void revHorzBitmap(int abefore[],int aafter[]){
+  for(int i=0;i< iSize;i++) {
+    int score=abefore[i];
+    aafter[i]=rh(score,iSize);
+  }
+}
+
+void rotateBitmap90(int abefore[],int aafter[]){
+  for(int i=0;i<iSize;i++) {
+    int t = 0;
+    for (int j = 0; j < iSize; j++)
+        t |= ((abefore[j] >> i) & 1) << j; // x[j] の i ビット目を
+    aafter[i] = t;                        // y[i] の j ビット目にする
+  }
+}
+int less(int cgd[],int org[]){
+  for(int i=0;i<iSize;i++) {
+    if(cgd[i] > org[i]){
+     return 0;
+    }else if(cgd[i] < org[i]){
+     return 1;
+    } 
+  }
+  return 1;
+}
+int checkSymmetryBitmap(int aorg[]){
+  int t[iSize];
+  int t2[iSize];
+  revHorzBitmap(aorg,t2);
+  if(less(t2,aorg)==0) return 0;
+	rotateBitmap90(aorg,t);
+	if(less(t,aorg)==0) return 0;
+	revHorzBitmap(t,t2);
+	if(less(t2,aorg)==0) return 0;
+	rotateBitmap90(t,t2);
+	if(less(t2,aorg)==0) return 0;
+	revHorzBitmap(t2,t);
+	if(less(t,aorg)==0) return 0;
+	rotateBitmap90(t2,t);
+	if(less(t,aorg)==0) return 0;
+	revHorzBitmap(t,t2);
+	if(less(t2,aorg)==0) return 0;
+	return 1;
+}
 void NQueen6(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
   if (y==iSize) {
     if(!bitmap){
 	    aBoard[y]=bitmap;
-    //ベタにビットの配列を 元のaBoardにいったん戻してみた 
-    int v[MAXSIZE];
-    for (int i=0;i<iSize;i++){
-      //printf("%d\n",iSize);
-      v[i]=aBoard[i];
-      //printf("before:%d\n",aBoard[i]);
-      aBoard[i]=iSize-1-log2(aBoard[i]);
-      //printf("after:%d\n",aBoard[i]);
-    }
-    int k=symmetryOps(bitmap);
-    //処理が終わったら元のビットの配列に戻す
-    for (int i=0;i<iSize;i++){
-      aBoard[i]=v[i];
-    }
-    if(k!=0){
-      lUnique++;
-      lTotal+=k;
-    }
+      lTotal++;
+    //int k=symmetryOps(bitmap);
+      if(checkSymmetryBitmap(aBoard) == 1) {
+        lUnique++;
+      }
     }
   }else{
     while (bitmap) {
@@ -146,7 +193,6 @@ void NQueen6(int y, int left, int down, int right){
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
       NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
-
   } 
 }
 int main(void){
