@@ -159,14 +159,17 @@ void rotateBitmap90(int abefore[],int aafter[]){
   for(int i=0;i<iSize;i++) {
     int t = 0;
     for (int j = 0; j < iSize; j++)
-        t |= ((abefore[j] >> i) & 1) << j; // x[j] の i ビット目を
+   //     t |= ((abefore[j] >> i) & 1) << j; // x[j] の i ビット目を
+        t |= ((abefore[j] >> i) & 1) << (iSize -j -1); // x[j] の i ビット目を
     aafter[i] = t;                        // y[i] の j ビット目にする
   }
+  /*
   int ta[iSize];
   for(int i=0;i<iSize;i++) {
     ta[i]=aafter[i];
   }
   revHorzBitmap(ta,aafter);
+  */
 }
 int less(int cgd[],int org[]){
   for(int i=0;i<iSize;i++) {
