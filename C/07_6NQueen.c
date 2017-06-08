@@ -158,7 +158,7 @@
 11:         2680             341      0 00:00:00
 12:        14200            1787      0 00:00:00
 13:        73712            9233      0 00:00:00
-14:       365596           45752      0 00:00:00
+14:       365596           45752      0 00:00:01
 15:      2279184          285053      0 00:00:02
 16:     14772512         1846955      0 00:00:13
  */
@@ -176,6 +176,7 @@ int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 int iMask;
 int bit;
+int COUNT2=0; int COUNT4=0; int COUNT8=0;
 
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -190,10 +191,10 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
 long getUnique(){ 
-  return lUnique;
+  return COUNT2+COUNT4+COUNT8;
 }
 long getTotal(){ 
-  return lTotal;
+  return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 void rotate(int check[],int scr[],int n,int neg){
   int k=neg?0:n-1;
@@ -213,43 +214,45 @@ int intncmp(int lt[],int rt[],int n){
   }
   return rtn;
 }
-int symmetryOps(int bitmap){
+void symmetryOps(int bitmap){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
   int k=intncmp(aBoard,aTrial,iSize);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=1; }else{
+  if(k>0)return;
+  if(k==0){ nEquiv=2;}else{
     rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
     k=intncmp(aBoard,aTrial,iSize);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=2; }else{
+    if(k>0)return;
+    if(k==0){ nEquiv=4;}else{
       rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
       k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }
-      nEquiv=4;
+      if(k>0){ return;}
+      nEquiv=8;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   vMirror(aTrial,iSize);    //垂直反転
   k=intncmp(aBoard,aTrial,iSize);
-  if(k>0){ return 0; }
-  if(nEquiv>1){             //-90度回転 対角鏡と同等       
+  if(k>0){ return; }
+  if(nEquiv>2){             //-90度回転 対角鏡と同等       
     rotate(aTrial,aScratch,iSize,1);
     k=intncmp(aBoard,aTrial,iSize);
-    if(k>0){return 0; }
-    if(nEquiv>2){           //-180度回転 水平鏡像と同等
+    if(k>0){return;}
+    if(nEquiv>4){           //-180度回転 水平鏡像と同等
       rotate(aTrial,aScratch,iSize,1);
       k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
+      if(k>0){ return;}  //-270度回転 反対角鏡と同等
       rotate(aTrial,aScratch,iSize,1);
       k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return 0; }
+      if(k>0){ return;}
     }
   }
-  return nEquiv * 2;
+  if(nEquiv==2){ COUNT2++; }
+  if(nEquiv==4){ COUNT4++; }
+  if(nEquiv==8){ COUNT8++; }
 }
 void NQueen6(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
@@ -262,21 +265,16 @@ void NQueen6(int y, int left, int down, int right){
 				v[i]=aBoard[i];
 				aBoard[i]=iSize-1-log2(aBoard[i]);
 			}
-      //対称解除法による解析
-			int k=symmetryOps(bitmap);
+      //対称解除法による解析(まだビット対応してない）
+			symmetryOps(bitmap);
 			//処理が終わったら元のビットの配列に戻す
 			for (int i=0;i<iSize;i++){ aBoard[i]=v[i]; }
-			if(k!=0){
-				lUnique++;
-				lTotal+=k;
-			}
     }
   }else{
     while (bitmap) {
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
       NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
-
   } 
 }
 int main(void){
@@ -285,6 +283,7 @@ int main(void){
   //for(int i=2;i<=MAXSIZE;i++){
   for(int i=2;i<=17;i++){
     iSize=i; lTotal=0; lUnique=0;
+    COUNT2=0;COUNT4=0;COUNT8=0;
     for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
     iMask=(1<<iSize)-1; // 初期化
