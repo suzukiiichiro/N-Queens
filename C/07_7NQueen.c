@@ -17,7 +17,7 @@
    ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
    ５．枝刈りと最適化                   NQueen5() N16: 0:18
    ６．ビットマップ                     NQueen6() N16: 0:13
- <>７．ビットマップ+対称解除法          NQueen7() N16: 0:22
+ <>７．ビットマップ+対称解除法          NQueen7() N16: 0:20
    ８．ビットマップ+枝刈りと最適化      NQueen8()
    ９．完成型                           NQueen9() N16: 0:02
    10．マルチスレッド                   NQueen10()
@@ -38,7 +38,7 @@
 13:        73712            9233      0 00:00:00
 14:       365596           45752      0 00:00:00
 15:      2279184          285053      0 00:00:03
-16:     14772512         1846955      0 00:00:22
+16:     14772512         1846955      0 00:00:20
  */
 
 #include<stdio.h>
@@ -89,13 +89,6 @@ long getUnique(){
 long getTotal(){ 
   return COUNT2*2+COUNT4*4+COUNT8*8;
 }
-void rotate(int check[],int scr[],int n,int neg){
-  int k=neg?0:n-1;
-  int incr=(neg?+1:-1);
-  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
-  k=neg?n-1:0;
-  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
-}
 void rotate_bitmap(int abefore[],int aafter[]){
   for(int i=0;i<iSize;i++){
     int t=0;
@@ -104,11 +97,6 @@ void rotate_bitmap(int abefore[],int aafter[]){
 		}
     aafter[i]=t;                        // y[i] の j ビット目にする
   }
-}
-void vMirror(int check[],int n){
-  for(int j=0;j<n;j++){ 
-		check[j]=(n-1)-check[j];
-	}
 }
 int rh(int a,int sz){
 	int tmp=0;
@@ -123,23 +111,13 @@ void vMirror_bitmap(int abefore[],int aafter[]){
     aafter[i]=rh(score,iSize-1);
   }
 }
-int intncmp(int lt[],int rt[],int n){
+int intncmp(int lt[],int rt[]){
   int rtn=0;
-  for(int k=0;k<n;k++){
+  for(int k=0;k<iSize;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
   return rtn;
-}
-int intncmp_bitmap(int org[],int cgd[]){
-  for(int i=0;i<iSize;i++) {
-    if(cgd[i]>org[i]){
-     return 0;
-    }else if(cgd[i]<org[i]){
-     return 1;
-    } 
-  }
-  return 1;
 }
 void symmetryOps_bitmap(){
   int nEquiv;
@@ -147,22 +125,16 @@ void symmetryOps_bitmap(){
   int aScratch[iSize];
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  //rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
   rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
-  //int k=intncmp(aBoard,aTrial,iSize);
-  int k=intncmp_bitmap(aBoard,aScratch);
+  int k=intncmp(aBoard,aScratch);
   if(k>0)return;
   if(k==0){ nEquiv=2;}else{
-    //rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
     rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
-    //k=intncmp(aBoard,aTrial,iSize);
-    k=intncmp_bitmap(aBoard,aTrial);
+    k=intncmp(aBoard,aTrial);
     if(k>0)return;
     if(k==0){ nEquiv=4;}else{
-      //rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
       rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
-      //k=intncmp(aBoard,aTrial,iSize);
-      k=intncmp_bitmap(aBoard,aScratch);
+      k=intncmp(aBoard,aScratch);
       if(k>0){ return;}
       nEquiv=8;
     }
@@ -170,25 +142,18 @@ void symmetryOps_bitmap(){
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aScratch[i]=aBoard[i];}
   vMirror_bitmap(aScratch,aTrial);    //垂直反転
-  //k=intncmp(aBoard,aTrial,iSize);
-  k=intncmp_bitmap(aBoard,aTrial);
+  k=intncmp(aBoard,aTrial);
   if(k>0){ return; }
   if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    //rotate(aTrial,aScratch,iSize,1);
     rotate_bitmap(aTrial,aScratch);
-    //k=intncmp(aBoard,aTrial,iSize);
-    k=intncmp_bitmap(aBoard,aScratch);
+    k=intncmp(aBoard,aScratch);
     if(k>0){return;}
     if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      //rotate(aTrial,aScratch,iSize,1);
       rotate_bitmap(aScratch,aTrial);
-      //k=intncmp(aBoard,aTrial,iSize);
-      k=intncmp_bitmap(aBoard,aTrial);
+      k=intncmp(aBoard,aTrial);
       if(k>0){ return;}  //-270度回転 反対角鏡と同等
-      //rotate(aTrial,aScratch,iSize,1);
       rotate_bitmap(aTrial,aScratch);
-      //k=intncmp(aBoard,aTrial,iSize);
-      k=intncmp_bitmap(aBoard,aScratch);
+      k=intncmp(aBoard,aScratch);
       if(k>0){ return;}
     }
   }
@@ -196,92 +161,12 @@ void symmetryOps_bitmap(){
   if(nEquiv==4){ COUNT4++; }
   if(nEquiv==8){ COUNT8++; }
 }
-void symmetryOps(int bitmap){
-  int nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  int k=intncmp(aBoard,aTrial,iSize);
-  if(k>0)return;
-  if(k==0){ nEquiv=2;}else{
-    rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
-    k=intncmp(aBoard,aTrial,iSize);
-    if(k>0)return;
-    if(k==0){ nEquiv=4;}else{
-      rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return;}
-      nEquiv=8;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  vMirror(aTrial,iSize);    //垂直反転
-  k=intncmp(aBoard,aTrial,iSize);
-  if(k>0){ return; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    rotate(aTrial,aScratch,iSize,1);
-    k=intncmp(aBoard,aTrial,iSize);
-    if(k>0){return;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return;}  //-270度回転 反対角鏡と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
-      if(k>0){ return;}
-    }
-  }
-  if(nEquiv==2){ COUNT2++; }
-  if(nEquiv==4){ COUNT4++; }
-  if(nEquiv==8){ COUNT8++; }
-}
-/**
-int symmetryOps_bitmapbak(int aorg[]){
-  int t[iSize];
-  int t2[iSize];
-  revHorzBitmap(aorg,t2);//左右対称
-  if(less(t2,aorg)==0) return 0;
-	rotate_bitmap(aorg,t);//９０度回転
-	if(less(t,aorg)==0) return 0;
-	revHorzBitmap(t,t2);//左右対称
-	if(less(t2,aorg)==0) return 0;
-	rotate_bitmap(t,t2);//９０度回転（１８０度）
-	if(less(t2,aorg)==0) return 0;
-	revHorzBitmap(t2,t);//左右対称
-	if(less(t,aorg)==0) return 0;
-	rotate_bitmap(t2,t);//９０度回転（２７０度）
-	if(less(t,aorg)==0) return 0;
-	revHorzBitmap(t,t2);//左右対称
-	if(less(t2,aorg)==0) return 0;
-	return 1;
-}
-*/
 void NQueen6(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
   if (y==iSize) {
     if(!bitmap){
 	    aBoard[y]=bitmap;
-			/**
-			// 07_6 を実行する場合
-			//ベタにビットの配列を 元のaBoardにいったん戻してみた 
-			int v[MAXSIZE];
-			for (int i=0;i<iSize;i++){
-				v[i]=aBoard[i];
-				aBoard[i]=iSize-1-log2(aBoard[i]);
-			}
-      //対称解除法による解析(ビット対応はまだ）
-			symmetryOps(bitmap);
-			//処理が終わったら元のビットの配列に戻す
-			for (int i=0;i<iSize;i++){ aBoard[i]=v[i]; }
-			*/
-			// 07_7 を実行する場合
-			//lTotal++; // <- ? nEquiv を使おう。数えてる
-			//symmetryOps_bitmap(aBoard);
 			symmetryOps_bitmap();
-			//if(k!=0) {
-			// lUnique++;
-			//}
     }
   }else{
     while (bitmap) {
@@ -293,8 +178,7 @@ void NQueen6(int y, int left, int down, int right){
 int main(void){
   clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  //for(int i=2;i<=MAXSIZE;i++){
-  for(int i=2;i<=17;i++){
+  for(int i=2;i<=MAXSIZE;i++){
     iSize=i; lTotal=0; lUnique=0;
 		COUNT2=0;COUNT4=0;COUNT8=0;
     for(int j=0;j<iSize;j++){ aBoard[j]=j; }

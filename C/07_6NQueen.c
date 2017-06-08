@@ -203,12 +203,12 @@ void rotate(int check[],int scr[],int n,int neg){
   k=neg?n-1:0;
   for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
 }
-void vMirror(int check[],int n){
-  for(int j=0;j<n;j++){ check[j]=(n-1)- check[j];}
+void vMirror(int check[]){
+  for(int j=0;j<iSize;j++){ check[j]=(iSize-1)- check[j];}
 }
-int intncmp(int lt[],int rt[],int n){
+int intncmp(int lt[],int rt[]){
   int rtn=0;
-  for(int k=0;k<n;k++){
+  for(int k=0;k<iSize;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
@@ -219,34 +219,34 @@ void symmetryOps(int bitmap){
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
   rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  int k=intncmp(aBoard,aTrial,iSize);
+  int k=intncmp(aBoard,aTrial);
   if(k>0)return;
   if(k==0){ nEquiv=2;}else{
     rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
-    k=intncmp(aBoard,aTrial,iSize);
+    k=intncmp(aBoard,aTrial);
     if(k>0)return;
     if(k==0){ nEquiv=4;}else{
       rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
-      k=intncmp(aBoard,aTrial,iSize);
+      k=intncmp(aBoard,aTrial);
       if(k>0){ return;}
       nEquiv=8;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  vMirror(aTrial,iSize);    //垂直反転
-  k=intncmp(aBoard,aTrial,iSize);
+  vMirror(aTrial);    //垂直反転
+  k=intncmp(aBoard,aTrial);
   if(k>0){ return; }
   if(nEquiv>2){             //-90度回転 対角鏡と同等       
     rotate(aTrial,aScratch,iSize,1);
-    k=intncmp(aBoard,aTrial,iSize);
+    k=intncmp(aBoard,aTrial);
     if(k>0){return;}
     if(nEquiv>4){           //-180度回転 水平鏡像と同等
       rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
+      k=intncmp(aBoard,aTrial);
       if(k>0){ return;}  //-270度回転 反対角鏡と同等
       rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial,iSize);
+      k=intncmp(aBoard,aTrial);
       if(k>0){ return;}
     }
   }
