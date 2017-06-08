@@ -17,15 +17,30 @@
    ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
    ５．枝刈りと最適化                   NQueen5() N16: 0:18
    ６．ビットマップ                     NQueen6() N16: 0:13
- <>７．                                 NQueen7()
-   ８．                                 NQueen8()
+ <>７．ビットマップ+対称解除法          NQueen7() N16: 0:22
+   ８．ビットマップ+枝刈りと最適化      NQueen8()
    ９．完成型                           NQueen9() N16: 0:02
    10．マルチスレッド                   NQueen10()
 
   実行結果
-
-
+ N:        Total       Unique        dd:hh:mm:ss
+ 2:            0               0      0 00:00:00
+ 3:            0               0      0 00:00:00
+ 4:            2               1      0 00:00:00
+ 5:           10               2      0 00:00:00
+ 6:            4               1      0 00:00:00
+ 7:           40               6      0 00:00:00
+ 8:           92              12      0 00:00:00
+ 9:          352              46      0 00:00:00
+10:          724              92      0 00:00:00
+11:         2680             341      0 00:00:00
+12:        14200            1787      0 00:00:00
+13:        73712            9233      0 00:00:00
+14:       365596           45752      0 00:00:00
+15:      2279184          285053      0 00:00:03
+16:     14772512         1846955      0 00:00:22
  */
+
 #include<stdio.h>
 #include<time.h>
 #include <math.h>
@@ -42,20 +57,16 @@ int iMask;
 int bit;
 
 void dtob(int score,int size) {
-  int bit = 1, i;
+  //int bit=1,i;
+	int bit=1;
   char c[size];
- 
-  for (i = 0; i < size; i++) {
-    if (score & bit)
-      c[i] = '1';
-    else
-      c[i] = '0';
-    bit <<= 1;
+  //for (i=0;i<size;i++) {
+  for (int i=0;i<size;i++) {
+    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
+    bit<<=1;
   }
   // 計算結果の表示
-  for ( i = size - 1; i >= 0; i-- ) {
-      putchar(c[i]);
-  }
+  for (int i=size-1;i>=0;i--){ putchar(c[i]); }
   printf("\n");
 }
 void TimeFormat(clock_t utime,char *form){
@@ -133,10 +144,16 @@ int symmetryOps(int bitmap){
   return nEquiv * 2;
 }
 int rh(int a,int sz){
+	int tmp=0;
+	//sz=sz-1; //revhorzBitmapの中で-1する
+	for(int i=0;i<=sz;i++){
+		if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+	}
+	return tmp;
+/**
   int tmp;
   int i;
   sz=sz-1;
-  /* ビット入替 */
   tmp = 0;
   for( i = 0; i <= sz; i++ )
   {
@@ -145,23 +162,24 @@ int rh(int a,int sz){
       tmp |= ( 1 << ( sz - i ) );
     }
   }
-  a = tmp;
+  //a = tmp;
   return tmp;
+*/
 }
 void revHorzBitmap(int abefore[],int aafter[]){
   for(int i=0;i< iSize;i++) {
     int score=abefore[i];
-    aafter[i]=rh(score,iSize);
+    aafter[i]=rh(score,iSize-1);
   }
 }
-
 void rotateBitmap90(int abefore[],int aafter[]){
-  for(int i=0;i<iSize;i++) {
-    int t = 0;
-    for (int j = 0; j < iSize; j++)
+  for(int i=0;i<iSize;i++){
+    int t=0;
+    for(int j=0;j<iSize;j++){
    //     t |= ((abefore[j] >> i) & 1) << j; // x[j] の i ビット目を
-        t |= ((abefore[j] >> i) & 1) << (iSize -j -1); // x[j] の i ビット目を
-    aafter[i] = t;                        // y[i] の j ビット目にする
+        t|=((abefore[j]>>i)&1)<<(iSize-j-1); // x[j] の i ビット目を
+		}
+    aafter[i]=t;                        // y[i] の j ビット目にする
   }
   /*
   int ta[iSize];
@@ -173,100 +191,58 @@ void rotateBitmap90(int abefore[],int aafter[]){
 }
 int less(int cgd[],int org[]){
   for(int i=0;i<iSize;i++) {
-    if(cgd[i] > org[i]){
+    if(cgd[i]>org[i]){
      return 0;
-    }else if(cgd[i] < org[i]){
+    }else if(cgd[i]<org[i]){
      return 1;
     } 
   }
   return 1;
 }
-int checkSymmetryBitmap(int aorg[]){
+int symmetryOps_bitmap(int aorg[]){
   int t[iSize];
   int t2[iSize];
   revHorzBitmap(aorg,t2);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(aorg[i],iSize);
-}
-printf("左右対称\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(aorg[i],iSize); }
+	printf("左右対称\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	*/
   if(less(t2,aorg)==0) return 0;
 	rotateBitmap90(aorg,t);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(aorg[i],iSize);
-}
-printf("90度回転\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(aorg[i],iSize); }
+	printf("90度回転\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	*/
 	if(less(t,aorg)==0) return 0;
 	revHorzBitmap(t,t2);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-printf("左右対称\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	printf("左右対称\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	*/
 	if(less(t2,aorg)==0) return 0;
 	rotateBitmap90(t,t2);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-printf("９０度回転\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	printf("９０度回転\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	*/
 	if(less(t2,aorg)==0) return 0;
 	revHorzBitmap(t2,t);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-printf("左右対称\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	printf("左右対称\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	*/
 	if(less(t,aorg)==0) return 0;
 	rotateBitmap90(t2,t);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-printf("９０度回転\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	printf("９０度回転\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	*/
 	if(less(t,aorg)==0) return 0;
 	revHorzBitmap(t,t2);
-/*
-printf("元の配列\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t[i],iSize);
-}
-printf("左右対称\n");
-for(int i=0;i< iSize;i++) {
-      dtob(t2[i],iSize);
-}
-*/
+	/*
+	printf("元の配列\n"); for(int i=0;i< iSize;i++) { dtob(t[i],iSize); }
+	printf("左右対称\n"); for(int i=0;i< iSize;i++) { dtob(t2[i],iSize); }
+	*/
 	if(less(t2,aorg)==0) return 0;
 	return 1;
 }
@@ -275,17 +251,32 @@ void NQueen6(int y, int left, int down, int right){
   if (y==iSize) {
     if(!bitmap){
 	    aBoard[y]=bitmap;
-      lTotal++;
-    //int k=symmetryOps(bitmap);
-      if(checkSymmetryBitmap(aBoard) == 1) {
-        lUnique++;
-      }
-//      printf("check終了\n");
+			/** 
+			// 07_6 を実行する場合
+			//ベタにビットの配列を 元のaBoardにいったん戻してみた 
+			int v[MAXSIZE];
+			for (int i=0;i<iSize;i++){
+				v[i]=aBoard[i];
+				aBoard[i]=iSize-1-log2(aBoard[i]);
+			}
+      //対称解除法による解析
+			int k=symmetryOps(bitmap);
+			//処理が終わったら元のビットの配列に戻す
+			for (int i=0;i<iSize;i++){ aBoard[i]=v[i]; }
+			if(k!=0){
+				lUnique++;
+				lTotal+=k;
+			}
+			*/
+			// 07_7 を実行する場合
+			lTotal++; // <- ? nEquiv を使おう。数えてる
+			int k=symmetryOps_bitmap(aBoard);
+			if(k!=0) {
+			 lUnique++;
+			}
     }
   }else{
     while (bitmap) {
-      //aBoard[y]=bit=-bitmap&bitmap;       /* 最も下位の１ビットを抽出 */
-      //bitmap^=bit;
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
       NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
