@@ -19,8 +19,9 @@
    ６．ビットマップ                     NQueen6() N16: 0:13
    ７．ビットマップ+対称解除法          NQueen7() N16: 0:20
  <>８．ビットマップ+クイーンの場所で分岐NQueen8() N16: 0:20
-   ９．完成型                           NQueen9() N16: 0:02
-   10．マルチスレッド                   NQueen10()
+   ９．ビットマップ+枝刈りと最適化      NQueen8() 
+   10．完成型                           NQueen9() 
+   11．マルチスレッド                   NQueen10()
 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
@@ -197,7 +198,6 @@ int SIDEMASK;
 int LASTMASK;
 int ENDBIT;
 void NQueen6(int y, int left, int down, int right){
-/*
   SIZEE=iSize-1;
 	TOPBIT=1<<SIZEE;
 
@@ -215,26 +215,8 @@ void NQueen6(int y, int left, int down, int right){
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
     ENDBIT>>=1;
   }
-*/
-  backTrack1(0,0,0,0);
-  /**
-   aBoard[0]=1;
-   for(BOUND1=2;BOUND1<iSize-1;BOUND1++){
-     aBoard[1]=bit=(1<<BOUND1);
-     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
-   }
-   */
-   /* 0行目:000001110(選択) */
-  /**
-	 SIDEMASK=LASTMASK=(TOPBIT|1);
-	 ENDBIT=(TOPBIT>>1);
-   for(BOUND1=1,BOUND2=iSize-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-     aBoard[0]=bit=(1<<BOUND1);
-     backTrack2(1,bit<<1,bit,bit>>1);
-	 	LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-	 	ENDBIT>>=1;
-   }
-   */
+  // 07_7
+  //backTrack1(0,0,0,0);
 }
 int main(void){
   clock_t st; char t[20];

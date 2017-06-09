@@ -340,7 +340,7 @@ int main(void){
       aBoard[j]=j;
     }
     st=clock();
-    NQueen3(0);
+    NQueen4(0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
