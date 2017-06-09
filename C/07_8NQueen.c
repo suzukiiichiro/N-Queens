@@ -18,11 +18,27 @@
    ５．枝刈りと最適化                   NQueen5() N16: 0:18
    ６．ビットマップ                     NQueen6() N16: 0:13
    ７．ビットマップ+対称解除法          NQueen7() N16: 0:20
- <>８．ビットマップ+枝刈りと最適化      NQueen8()
+ <>８．ビットマップ+クイーンの場所で分岐NQueen8() N16: 0:20
    ９．完成型                           NQueen9() N16: 0:02
    10．マルチスレッド                   NQueen10()
 
   実行結果
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:02
+  16:     14772512         1846955      0 00:00:20
  */
 
 #include<stdio.h>
@@ -173,8 +189,34 @@ void backTrack1(int y, int left, int down, int right){
      }
   } 
 }
+int BOUND1;
+int BOUND2;
+int TOPBIT;
+int SIZEE;
+int SIDEMASK;
+int LASTMASK;
+int ENDBIT;
 void NQueen6(int y, int left, int down, int right){
-   backTrack1(0,0,0,0);
+/*
+  SIZEE=iSize-1;
+	TOPBIT=1<<SIZEE;
+
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<iSize-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=iSize-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    backTrack2(1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
+*/
+  backTrack1(0,0,0,0);
   /**
    aBoard[0]=1;
    for(BOUND1=2;BOUND1<iSize-1;BOUND1++){
@@ -199,10 +241,10 @@ int main(void){
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   for(int i=2;i<=MAXSIZE;i++){
     iSize=i; lTotal=0; lUnique=0;
-		COUNT2=0;COUNT4=0;COUNT8=0;
+	  COUNT2=COUNT4=COUNT8=0;
+    iMask=(1<<iSize)-1; // 初期化
     for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
-    iMask=(1<<iSize)-1; // 初期化
     NQueen6(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
