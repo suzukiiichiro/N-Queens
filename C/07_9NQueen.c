@@ -41,6 +41,13 @@ int aScratch[MAXSIZE];
 int iMask;
 int bit;
 int COUNT2=0; int COUNT4=0; int COUNT8=0;
+int BOUND1;
+int BOUND2;
+int TOPBIT;
+int SIZEE;
+int SIDEMASK;
+int LASTMASK;
+int ENDBIT;
 
 
 void dtob(int score,int size) {
@@ -104,7 +111,49 @@ int intncmp(int lt[],int rt[]){
   }
   return rtn;
 }
-void symmetryOps_bitmap(){
+void symmetryOps_bitmap(int bm){
+		//90度回転
+		if(aBoard[BOUND2]==1){
+			int own=1;
+			for(int ptn=2;own<=iSize-1;own++,ptn<<=1){
+				bit=1;
+				for (int you=iSize-1;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you--){ bit<<=1; }
+				if(aBoard[own]>bit){ return; }
+				if(aBoard[own]<bit){ break; }
+			}
+			/** 90度回転して同型なら180度/270度回転も同型である */
+			if (own>iSize-1) { COUNT2++; return; }
+		}
+		//180度回転
+		if(bm==ENDBIT){
+			int own=1;
+			for(int you=iSize-2;own<=iSize-1;own++,you--){
+				bit =1;
+				for(int ptn=TOPBIT;(ptn!=aBoard[you])&&(aBoard[own]>=bit);ptn>>=1){ bit<<=1; }
+				if(aBoard[own]>bit){ return; }
+				if(aBoard[own]<bit){ break; }
+			}
+			/** 90度回転が同型でなくても180度回転が同型である事もある */
+			if(own>iSize-1){
+				COUNT4++;
+				return;
+			}
+		}
+		//270度回転
+		if(aBoard[BOUND1]==TOPBIT){
+			int own=1;
+			for(int ptn=TOPBIT>>1;own<=iSize-1;own++,ptn>>=1){
+				bit=1;
+				for(int you=0;aBoard[you]!=ptn&&aBoard[own]>=bit;you++){
+					bit<<=1;
+				}
+				if(aBoard[own]>bit){ return; }
+				if (aBoard[own]<bit){ break; }
+			}
+		}
+		COUNT8++;
+}
+void symmetryOps_bitmap_old(){
   int nEquiv;
   int aTrial[iSize];
   int aScratch[iSize];
@@ -148,39 +197,46 @@ void symmetryOps_bitmap(){
 }
 void backTrack2(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
-  if (y==iSize) {
-    if(!bitmap){
-	    aBoard[y]=bitmap;
-			symmetryOps_bitmap();
+    if (y == iSize-1) {
+        if (bitmap) {
+            if (!(bitmap & LASTMASK)) { /* 最下段枝刈り */
+                aBoard[y] = bitmap;
+                symmetryOps_bitmap(bitmap);
+                //symmetryOps_bitmap_old();
+            }
+        }
+    } else {
+        if (y < BOUND1) {           /* 上部サイド枝刈り */
+            bitmap |= SIDEMASK;
+            bitmap ^= SIDEMASK;
+        } else if (y == BOUND2) {   /* 下部サイド枝刈り */
+            if (!(down & SIDEMASK)) return;
+            if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
+        }
+        while (bitmap) {
+            bitmap ^= aBoard[y] = bit = -bitmap & bitmap;
+            backTrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+        }
     }
-  }else{
-    while(bitmap) {
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-     }
-  } 
 }
 void backTrack1(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
-  if (y==iSize) {
-    if(!bitmap){
-	    aBoard[y]=bitmap;
-			symmetryOps_bitmap();
+  if (y==iSize-1) {
+    if(bitmap){
+      aBoard[y]=bitmap;
+      COUNT8++;
     }
   }else{
-    while(bitmap) {
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-     }
+    if (y < BOUND1) {   /* 斜軸反転解の排除 */
+      bitmap |= 2;
+      bitmap ^= 2;
+    }
+    while (bitmap) {
+      bitmap ^= aBoard[y] = bit = -bitmap & bitmap;
+      backTrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+    }
   } 
 }
-int BOUND1;
-int BOUND2;
-int TOPBIT;
-int SIZEE;
-int SIDEMASK;
-int LASTMASK;
-int ENDBIT;
 void NQueen6(int y, int left, int down, int right){
   SIZEE=iSize-1;
 	TOPBIT=1<<SIZEE;
