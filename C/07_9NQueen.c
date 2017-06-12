@@ -262,12 +262,10 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
 void backTrack2(int y,int left,int down,int right){
   int bitmap=MASK&~(left|down|right); 
   if(y==SIZEE){
-    if(bitmap>0){
-      if(!(bitmap&LASTMASK)){ //【枝刈り】最下段枝刈り
-        aBoard[y]=bitmap;
-        symmetryOps_bitmap(); // takakenの移植版の移植版
-        //symmetryOps_bitmap_old();// 兄が作成した労作
-      }
+    if(bitmap>0 && (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      aBoard[y]=bitmap;
+      symmetryOps_bitmap(); // takakenの移植版の移植版
+      //symmetryOps_bitmap_old();// 兄が作成した労作
     }
   }else{
     if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
