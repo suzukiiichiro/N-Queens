@@ -143,10 +143,8 @@ int intncmp(int lt[],int rt[]){
 void symmetryOps_bitmap(){
   int own,ptn,you;
   //90度回転
-  if(aBoard[BOUND2]==1){
-    own=1; ptn=2;
-    while(own<=SIZEE){
-      bit=1; you=SIZEE;
+  if(aBoard[BOUND2]==1){ own=1; ptn=2;
+    while(own<=SIZEE){ bit=1; you=SIZEE;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
       own++; ptn<<=1;
@@ -155,10 +153,8 @@ void symmetryOps_bitmap(){
     if(own>SIZEE){ COUNT2++; return; }
   }
   //180度回転
-  if(aBoard[SIZEE]==ENDBIT){ 
-    own=1; you=SIZEE-1;
-    while(own<=SIZEE){
-      bit=1; ptn=TOPBIT;
+  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
+    while(own<=SIZEE){ bit=1; ptn=TOPBIT;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
       own++; you--;
@@ -167,10 +163,8 @@ void symmetryOps_bitmap(){
     if(own>SIZEE){ COUNT4++; return; }
   }
   //270度回転
-  if(aBoard[BOUND1]==TOPBIT){ 
-    own=1; ptn=TOPBIT>>1;
-    while(own<=SIZEE){
-      bit=1; you=0;
+  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+    while(own<=SIZEE){ bit=1; you=0;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
       own++; ptn>>=1;
