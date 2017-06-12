@@ -272,8 +272,7 @@ void backTrack2(int y,int left,int down,int right){
     }
   }else{
     if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap|=SIDEMASK;
-      bitmap^=SIDEMASK;
+      bitmap&=~SIDEMASK; // bitmap|=SIDEMASK; bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
     }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
       if(!(down&SIDEMASK)){ return; }
       if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
