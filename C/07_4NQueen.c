@@ -310,7 +310,7 @@ int symmetryOps(){
   }
   return nEquiv * 2;
 }
-void NQueen4(int row){
+void NQueen(int row){
   if(row==iSize){
     int tst=symmetryOps();//対称解除法
     if(tst!=0){
@@ -323,7 +323,7 @@ void NQueen4(int row){
       //配置フラグによるバックトラック
       if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen4(row+1);
+        NQueen(row+1);
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
       }
     }  
@@ -341,7 +341,7 @@ int main(void){
       aBoard[j]=j;
     }
     st=clock();
-    NQueen4(0);
+    NQueen(0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 

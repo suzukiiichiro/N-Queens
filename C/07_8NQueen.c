@@ -197,7 +197,7 @@ int SIZEE;
 int SIDEMASK;
 int LASTMASK;
 int ENDBIT;
-void NQueen6(int y, int left, int down, int right){
+void NQueen(int y, int left, int down, int right){
   SIZEE=iSize-1;
 	TOPBIT=1<<SIZEE;
 
@@ -227,7 +227,7 @@ int main(void){
     iMask=(1<<iSize)-1; // 初期化
     for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
-    NQueen6(0,0,0,0);
+    NQueen(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 

@@ -73,7 +73,7 @@
 int iCount=1 ; //# c:count
 int aBoard[MAXSIZE];
 
-void NQueen1(int iMin,int iMax) {
+void NQueen(int iMin,int iMax) {
   for(int i=0;i<iMax;i++){
       aBoard[iMin]=i ;
       if (iMin==iMax-1){ 
@@ -83,11 +83,11 @@ void NQueen1(int iMin,int iMax) {
         }
         printf("\n");
       }else{
-        NQueen1(iMin+1,iMax);
+        NQueen(iMin+1,iMax);
       }
   }  
 }
 int main(void) {
-  NQueen1(MINSIZE,MAXSIZE);
+  NQueen(MINSIZE,MAXSIZE);
 }
 

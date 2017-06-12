@@ -80,7 +80,7 @@ void TimeFormat(clock_t utime, char *form) {
     else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
     else sprintf(form, "           %5.2f",ss);
 }
-void NQueen3(int row){
+void NQueen(int row){
   if(row==iSize){
     iTotal++; //解を発見
   }else{
@@ -89,7 +89,7 @@ void NQueen3(int row){
       //バックトラック 制約を満たしているときだけ進む
       if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1; 
-        NQueen3(row+1);//再帰
+        NQueen(row+1);//再帰
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0; 
       }
     }  
@@ -102,7 +102,7 @@ int main(void) {
     iSize=i; iTotal=0; iUnique=0; 
     for(int j=0;j<iSize;j++){ aBoard[j]=j; } //aBoardを初期化
     st=clock();
-    NQueen3(0);
+    NQueen(0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13d%16d%s\n",iSize,iTotal,iUnique,t) ;
   } 

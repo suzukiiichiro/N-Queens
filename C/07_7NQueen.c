@@ -162,7 +162,7 @@ void symmetryOps_bitmap(){
   if(nEquiv==4){ COUNT4++; }
   if(nEquiv==8){ COUNT8++; }
 }
-void NQueen6(int y, int left, int down, int right){
+void NQueen(int y, int left, int down, int right){
   int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
   if (y==iSize) {
     if(!bitmap){
@@ -172,7 +172,7 @@ void NQueen6(int y, int left, int down, int right){
   }else{
     while (bitmap) {
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      NQueen6(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      NQueen(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
   } 
 }
@@ -185,7 +185,7 @@ int main(void){
     for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
     iMask=(1<<iSize)-1; // 初期化
-    NQueen6(0,0,0,0);
+    NQueen(0,0,0,0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 

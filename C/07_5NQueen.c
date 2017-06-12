@@ -135,7 +135,7 @@ int symmetryOps(){
   }
   return nEquiv * 2;
 }
-void NQueen5(int row){
+void NQueen(int row){
   int vTemp;
   if(row==iSize-1){
     // 枝刈り antiChk:右斜め上 dianChk:左斜め上
@@ -155,7 +155,7 @@ void NQueen5(int row){
       // 枝刈り antiChk:右斜め上 dianChk:左斜め上
       if(!(diagChk[row-aBoard[row]+iSize-1]||antiChk[row+aBoard[row]])){
         diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1;
-        NQueen5(row+1);
+        NQueen(row+1);
         diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0;
       }
     }
@@ -179,7 +179,7 @@ int main(void){
       aBoard[j]=j;
     }
     st=clock();
-    NQueen5(0);
+    NQueen(0);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
