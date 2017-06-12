@@ -185,7 +185,7 @@ void symmetryOps_bitmap_old(){
     if(nEquiv>4){           //-180度回転 水平鏡像と同等
       rotate_bitmap(aScratch,aTrial);
       k=intncmp(aBoard,aTrial);
-      if(k>0){ return;}  //-270度回転 反対角鏡と同等
+      if(k>0){ return;}     //-270度回転 反対角鏡と同等
       rotate_bitmap(aTrial,aScratch);
       k=intncmp(aBoard,aScratch);
       if(k>0){ return;}
@@ -195,49 +195,64 @@ void symmetryOps_bitmap_old(){
   if(nEquiv==4){ COUNT4++; }
   if(nEquiv==8){ COUNT8++; }
 }
-void backTrack2(int y, int left, int down, int right){
+void backTrack2(int y,int left,int down,int right){
   int bitmap=iMask&~(left|down|right); 
-    if (y == iSize-1) {
-        if (bitmap) {
-            // 最下段枝刈り
-            if (!(bitmap & LASTMASK)) {   
-                aBoard[y] = bitmap;
-                symmetryOps_bitmap(bitmap); // takakenの移植版の移植版
-                //symmetryOps_bitmap_old();// 兄が作成した労作
-            }
-        }
-    } else {
-        // 上部サイド枝刈り
-        if (y < BOUND1) {                 
-            bitmap |= SIDEMASK;
-            bitmap ^= SIDEMASK;
-        // 下部サイド枝刈り
-        } else if (y == BOUND2) {   
-            if (!(down & SIDEMASK)) return;
-            if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
-        }
-        while (bitmap) {
-            bitmap ^= aBoard[y] = bit = -bitmap & bitmap;
-            backTrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-        }
+  if(y==iSize-1){
+    if(bitmap){
+      /**【枝刈り】最下段枝刈り
+       *
+       *
+       */
+      if(!(bitmap&LASTMASK)){
+        aBoard[y]=bitmap;
+        symmetryOps_bitmap(bitmap); // takakenの移植版の移植版
+        //symmetryOps_bitmap_old();// 兄が作成した労作
+      }
     }
+  }else{
+    /**【枝刈り】上部サイド枝刈り
+     *
+     *
+     */
+    if(y<BOUND1){                 
+      bitmap|=SIDEMASK;
+      bitmap^=SIDEMASK;
+    /**【枝刈り】下部サイド枝刈り
+     *
+     *
+     */
+    }else if(y==BOUND2) {   
+      if(!(down&SIDEMASK)){ return; }
+      if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
+    }
+    while(bitmap) {
+      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
 }
-void backTrack1(int y, int left, int down, int right){
+void backTrack1(int y,int left,int down,int right){
   int bitmap=iMask&~(left|down|right); 
-  if (y==iSize-1) {
+  if(y==iSize-1) {
     if(bitmap){
       aBoard[y]=bitmap;
+      /**【枝刈り】斜軸反転解の排除
+       *
+       */
       COUNT8++;
     }
   }else{
-    // 斜軸反転解の排除
-    if (y < BOUND1) {   
-      bitmap |= 2;
-      bitmap ^= 2;
+    /**【枝刈り】斜軸反転解の排除
+     *
+     *
+     */
+    if(y<BOUND1) {   
+      bitmap|=2;
+      bitmap^=2;
     }
-    while (bitmap) {
-      bitmap ^= aBoard[y] = bit = -bitmap & bitmap;
-      backTrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+    while(bitmap) {
+      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   } 
 }
