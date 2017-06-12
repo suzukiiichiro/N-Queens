@@ -196,20 +196,23 @@ void symmetryOps_bitmap_old(){
   if(nEquiv==8){ COUNT8++; }
 }
 void backTrack2(int y, int left, int down, int right){
-  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
+  int bitmap=iMask&~(left|down|right); 
     if (y == iSize-1) {
         if (bitmap) {
-            if (!(bitmap & LASTMASK)) { /* 最下段枝刈り */
+            // 最下段枝刈り
+            if (!(bitmap & LASTMASK)) {   
                 aBoard[y] = bitmap;
-                symmetryOps_bitmap(bitmap);
-                //symmetryOps_bitmap_old();
+                symmetryOps_bitmap(bitmap); // takakenの移植版の移植版
+                //symmetryOps_bitmap_old();// 兄が作成した労作
             }
         }
     } else {
-        if (y < BOUND1) {           /* 上部サイド枝刈り */
+        // 上部サイド枝刈り
+        if (y < BOUND1) {                 
             bitmap |= SIDEMASK;
             bitmap ^= SIDEMASK;
-        } else if (y == BOUND2) {   /* 下部サイド枝刈り */
+        // 下部サイド枝刈り
+        } else if (y == BOUND2) {   
             if (!(down & SIDEMASK)) return;
             if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
         }
@@ -220,14 +223,15 @@ void backTrack2(int y, int left, int down, int right){
     }
 }
 void backTrack1(int y, int left, int down, int right){
-  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
+  int bitmap=iMask&~(left|down|right); 
   if (y==iSize-1) {
     if(bitmap){
       aBoard[y]=bitmap;
       COUNT8++;
     }
   }else{
-    if (y < BOUND1) {   /* 斜軸反転解の排除 */
+    // 斜軸反転解の排除
+    if (y < BOUND1) {   
       bitmap |= 2;
       bitmap ^= 2;
     }
