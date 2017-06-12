@@ -4,8 +4,8 @@ CC=gcc
 CFLAGS=-Wall -O2
 RM=rm -fr
 
-#CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
-#LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
+CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
+LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 
 APP07_8=07_8NQueen
 nq8: $(APP07_8).c 
