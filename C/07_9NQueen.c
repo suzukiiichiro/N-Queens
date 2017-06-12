@@ -40,6 +40,9 @@
 14:       365596           45752      0 00:00:00
 15:      2279184          285053      0 00:00:00
 16:     14772512         1846955      0 00:00:02
+17:     95815104        11977939      0 00:00:15
+18:    666090624        83263591      0 00:01:49
+19:   4968057848       621012754      0 00:13:53
  */
 
 #include<stdio.h>
@@ -54,7 +57,7 @@ int iSize;     //Ｎ
 int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
-int iMask;
+int MASK;
 int bit;
 int BOUND1;
 int BOUND2;
@@ -104,7 +107,7 @@ int rh(int a,int sz){
 }
 /** 鏡像 */
 void vMirror_bitmap(int abefore[],int aafter[]){
-  for(int i=0;i< iSize;i++) {
+  for(int i=0;i<iSize;i++) {
     int score=abefore[i];
     aafter[i]=rh(score,iSize-1);
   }
@@ -137,44 +140,36 @@ int intncmp(int lt[],int rt[]){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int bm){
-		//90度回転
-		if(aBoard[BOUND2]==1){
+void symmetryOps_bitmap(){
+		if(aBoard[BOUND2]==1){    //90度回転
 			int own=1;
-			for(int ptn=2;own<=iSize-1;own++,ptn<<=1){
+			for(int ptn=2;own<=SIZEE;own++,ptn<<=1){
 				bit=1;
-				for (int you=iSize-1;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you--){ bit<<=1; }
+				for (int you=SIZEE;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you--){ bit<<=1; }
 				if(aBoard[own]>bit){ return; }
 				if(aBoard[own]<bit){ break; }
 			}
 			/** 90度回転して同型なら180度/270度回転も同型である */
-			if (own>iSize-1) { COUNT2++; return; }
+			if(own>SIZEE){ COUNT2++; return; }
 		}
-		//180度回転
-		if(bm==ENDBIT){
+		if(aBoard[SIZEE]==ENDBIT){ //180度回転
 			int own=1;
-			for(int you=iSize-2;own<=iSize-1;own++,you--){
-				bit =1;
-				for(int ptn=TOPBIT;(ptn!=aBoard[you])&&(aBoard[own]>=bit);ptn>>=1){ bit<<=1; }
+			for(int you=SIZEE-1;own<=SIZEE;own++,you--){
+				bit=1;
+				for(int ptn=TOPBIT;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);ptn>>=1){ bit<<=1; }
 				if(aBoard[own]>bit){ return; }
 				if(aBoard[own]<bit){ break; }
 			}
 			/** 90度回転が同型でなくても180度回転が同型である事もある */
-			if(own>iSize-1){
-				COUNT4++;
-				return;
-			}
+			if(own>SIZEE){ COUNT4++; return; }
 		}
-		//270度回転
-		if(aBoard[BOUND1]==TOPBIT){
+		if(aBoard[BOUND1]==TOPBIT){ //270度回転
 			int own=1;
-			for(int ptn=TOPBIT>>1;own<=iSize-1;own++,ptn>>=1){
+			for(int ptn=TOPBIT>>1;own<=SIZEE;own++,ptn>>=1){
 				bit=1;
-				for(int you=0;aBoard[you]!=ptn&&aBoard[own]>=bit;you++){
-					bit<<=1;
-				}
+				for(int you=0;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you++){ bit<<=1; }
 				if(aBoard[own]>bit){ return; }
-				if (aBoard[own]<bit){ break; }
+				if(aBoard[own]<bit){ break; }
 			}
 		}
 		COUNT8++;
@@ -261,23 +256,25 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right){
-  int bitmap=iMask&~(left|down|right); 
-  if(y==iSize-1){
-    if(bitmap){
+  int bitmap=MASK&~(left|down|right); 
+  if(y==SIZEE){
+    if(bitmap>0){
       if(!(bitmap&LASTMASK)){ //【枝刈り】最下段枝刈り
         aBoard[y]=bitmap;
-        symmetryOps_bitmap(bitmap); // takakenの移植版の移植版
+        symmetryOps_bitmap(); // takakenの移植版の移植版
         //symmetryOps_bitmap_old();// 兄が作成した労作
       }
     }
   }else{
     if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap&=~SIDEMASK; // bitmap|=SIDEMASK; bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
+      bitmap&=~SIDEMASK; 
+      // bitmap|=SIDEMASK; 
+      // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
     }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
-      if(!(down&SIDEMASK)){ return; }
-      if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
+      if((down&SIDEMASK)==0){ return; }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
     }
-    while(bitmap) {
+    while(bitmap>0) {
       bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
@@ -293,9 +290,9 @@ void backTrack2(int y,int left,int down,int right){
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
 void backTrack1(int y,int left,int down,int right){
-  int bitmap=iMask&~(left|down|right); 
-  if(y==iSize-1) {
-    if(bitmap){
+  int bitmap=MASK&~(left|down|right); 
+  if(y==SIZEE) {
+    if(bitmap>0){
       aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       COUNT8++;
@@ -306,7 +303,7 @@ void backTrack1(int y,int left,int down,int right){
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
       bitmap&=~2; // bitmap|=2; bitmap^=2; (bitmap&=~2と同等)
     }
-    while(bitmap) {
+    while(bitmap>0) {
       bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
@@ -326,12 +323,13 @@ Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
 は互いの効きになるので、配置することが出来ない
 */
 void NQueen(int y, int left, int down, int right){
-  iMask=(1<<iSize)-1;
+  MASK=(1<<iSize)-1;
   SIZEE=iSize-1;
 	TOPBIT=1<<SIZEE;
 
   /* 最上段行のクイーンが角にある場合の探索 */
-  for(BOUND1=2;BOUND1<iSize-1;BOUND1++){
+  //for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
+  for(BOUND1=2;BOUND1<SIZEE-1;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1); // 角にクイーンを配置 
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); //２行目から探索
   }
@@ -342,7 +340,7 @@ void NQueen(int y, int left, int down, int right){
   /* 最上段行のクイーンが角以外にある場合の探索 
      ユニーク解に対する左右対称解を予め削除するには、
      左半分だけにクイーンを配置するようにすればよい */
-  for(BOUND1=1,BOUND2=iSize-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+  for(BOUND1=1,BOUND2=SIZEE-1;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1);
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
