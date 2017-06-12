@@ -141,38 +141,42 @@ int intncmp(int lt[],int rt[]){
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
 void symmetryOps_bitmap(){
-		if(aBoard[BOUND2]==1){    //90度回転
-			int own=1;
-			for(int ptn=2;own<=SIZEE;own++,ptn<<=1){
-				bit=1;
-				for (int you=SIZEE;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you--){ bit<<=1; }
-				if(aBoard[own]>bit){ return; }
-				if(aBoard[own]<bit){ break; }
-			}
-			/** 90度回転して同型なら180度/270度回転も同型である */
-			if(own>SIZEE){ COUNT2++; return; }
-		}
-		if(aBoard[SIZEE]==ENDBIT){ //180度回転
-			int own=1;
-			for(int you=SIZEE-1;own<=SIZEE;own++,you--){
-				bit=1;
-				for(int ptn=TOPBIT;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);ptn>>=1){ bit<<=1; }
-				if(aBoard[own]>bit){ return; }
-				if(aBoard[own]<bit){ break; }
-			}
-			/** 90度回転が同型でなくても180度回転が同型である事もある */
-			if(own>SIZEE){ COUNT4++; return; }
-		}
-		if(aBoard[BOUND1]==TOPBIT){ //270度回転
-			int own=1;
-			for(int ptn=TOPBIT>>1;own<=SIZEE;own++,ptn>>=1){
-				bit=1;
-				for(int you=0;(aBoard[you]!=ptn)&&(aBoard[own]>=bit);you++){ bit<<=1; }
-				if(aBoard[own]>bit){ return; }
-				if(aBoard[own]<bit){ break; }
-			}
-		}
-		COUNT8++;
+  int own,ptn,you;
+  //90度回転
+  if(aBoard[BOUND2]==1){
+    own=1; ptn=2;
+    while(own<=SIZEE){
+      bit=1; you=SIZEE;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>SIZEE){ COUNT2++; return; }
+  }
+  //180度回転
+  if(aBoard[SIZEE]==ENDBIT){ 
+    own=1; you=SIZEE-1;
+    while(own<=SIZEE){
+      bit=1; ptn=TOPBIT;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>SIZEE){ COUNT4++; return; }
+  }
+  //270度回転
+  if(aBoard[BOUND1]==TOPBIT){ 
+    own=1; ptn=TOPBIT>>1;
+    while(own<=SIZEE){
+      bit=1; you=0;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn>>=1;
+    }
+  }
+  COUNT8++;
 }
 /**********************************************/
 /** 対称解除法                               **/
