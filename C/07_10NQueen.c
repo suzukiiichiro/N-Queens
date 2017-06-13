@@ -1,44 +1,31 @@
-//**************************************************************************
-// N-Queens Solutions  ver3.2               takaken 2011
-// 
-// Open MPI
-// http://qiita.com/kaityo256/items/ae9329dae24ea8828ae0
-//
-// $ brew install gcc
-// $ brew install openmpi
-// $ cd /usr/local/bin
-// $ ln -s gcc-6 gcc
-// $ ln -s g++-6 g++
-// $ export PATH=/usr/local/bin:$PATH
-//
-//.bash_profile
-//export MPIPATH=/usr/local/opt/open-mpi
-//export C_INCLUDE_PATH=$MPIPATH/include:$C_INCLUDE_PATH
-//export CPLUS_INCLUDE_PATH=$MPIPATH/include:$CPLUS_INCLUDE_PATH
-//export LIBRARY_PATH=$MPIPATH/lib:$LIBRARY_PATH
-//
-// ===========================
-// 今回のやり方
-//※ http://www.open-mpi.org/ にある最新バージョンを使って下さい
-//
-//コンパイルの設定ファイル(Makefile)を生成
-//cd openmpi-1.8.3
-//./configure CC=gcc CXX=g++ F77=gfortran FC=gfortran --enable-mpi-thread-multiple --prefix=/usr/local/
-//
-//コンパイルしてインストール
-//sudo make
-//sudo make install
-//
-//pathを通す
-// ~/.bashrc
-//export MANPATH=インストールしたディレクトリ/share/man:$MANPATH
-//export LD_LIBRARY_PATH=インストールしたディレクトリ/lib:$LD_LIBRARY_PATH
-//export PATH="インストールしたディレクトリ/bin:$PATH"
-//パスの確認
-//ターミナルを再起動
-//
-//mpic++ --version
-//**************************************************************************
+/**
+  Cで学ぶアルゴリズムとデータ構造  
+  ステップバイステップでＮ−クイーン問題を最適化
+  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
+  
+  Java版 N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+  Bash版 N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash
+  Lua版  N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ 
+  ステップバイステップでＮ−クイーン問題を最適化
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+   ３．バックトラック                   NQueen03() N16: 1:07
+   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
+   ５．枝刈りと最適化                   NQueen05() N16: 0:18
+   ６．ビットマップ                     NQueen06() N16: 0:13
+   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
+   ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
+ <>10．もっとビットマップ               NQueen10()
+   11．マルチスレッド                   NQueen11()
+
+  実行結果
+
+*/
 #include <stdio.h>
 #include <time.h>
 
