@@ -1,340 +1,443 @@
-/**
-  Cで学ぶアルゴリズムとデータ構造  
-  ステップバイステップでＮ−クイーン問題を最適化
-  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-  
-  Java版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-  Bash版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-  Lua版  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
- 
-  ステップバイステップでＮ−クイーン問題を最適化
-   １．ブルートフォース（力まかせ探索） NQueen01()
-   ２．配置フラグ（制約テスト高速化）   NQueen02()
-   ３．バックトラック                   NQueen03() N16: 1:07
-   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
-   ５．枝刈りと最適化                   NQueen05() N16: 0:18
-   ６．ビットマップ                     NQueen06() N16: 0:13
-   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
-   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
-   ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
- <>10．ビットマップ+部分解合成法        NQueen10()
-   11．マルチスレッド                   NQueen11()
+//**************************************************************************
+// N-Queens Solutions  ver3.2               takaken 2011
+// 
+// Open MPI
+// http://qiita.com/kaityo256/items/ae9329dae24ea8828ae0
+//
+// $ brew install gcc
+// $ brew install openmpi
+// $ cd /usr/local/bin
+// $ ln -s gcc-6 gcc
+// $ ln -s g++-6 g++
+// $ export PATH=/usr/local/bin:$PATH
+//
+//.bash_profile
+//export MPIPATH=/usr/local/opt/open-mpi
+//export C_INCLUDE_PATH=$MPIPATH/include:$C_INCLUDE_PATH
+//export CPLUS_INCLUDE_PATH=$MPIPATH/include:$CPLUS_INCLUDE_PATH
+//export LIBRARY_PATH=$MPIPATH/lib:$LIBRARY_PATH
+//
+// ===========================
+// $B:#2s$N$d$jJ}(B
+//$B"((B http://www.open-mpi.org/ $B$K$"$k:G?7%P!<%8%g%s$r;H$C$F2<$5$$(B
+//
+//$B%3%s%Q%$%k$N@_Dj%U%!%$%k(B(Makefile)$B$r@8@.(B
+//cd openmpi-1.8.3
+//./configure CC=gcc CXX=g++ F77=gfortran FC=gfortran --enable-mpi-thread-multiple --prefix=/usr/local/
+//
+//$B%3%s%Q%$%k$7$F%$%s%9%H!<%k(B
+//sudo make
+//sudo make install
+//
+//path$B$rDL$9(B
+// ~/.bashrc
+//export MANPATH=$B%$%s%9%H!<%k$7$?%G%#%l%/%H%j(B/share/man:$MANPATH
+//export LD_LIBRARY_PATH=$B%$%s%9%H!<%k$7$?%G%#%l%/%H%j(B/lib:$LD_LIBRARY_PATH
+//export PATH="$B%$%s%9%H!<%k$7$?%G%#%l%/%H%j(B/bin:$PATH"
+//$B%Q%9$N3NG'(B
+//$B%?!<%_%J%k$r:F5/F0(B
+//
+//mpic++ --version
+//**************************************************************************
+#include <stdio.h>
+#include <time.h>
+// OpenMP
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-  実行結果
- N:        Total       Unique        dd:hh:mm:ss
- */
+#define  MAXSIZE   30
+#define  MINSIZE    5
+//#define  i64  __int64
+#define  i64  int
 
-#include<stdio.h>
-#include<time.h>
-#include <math.h>
-#define MAXSIZE 27
+//**********************************************
+// Display the Board Image
+//**********************************************
+void Display(int n, int *board)
+{
+    int  y, bit, topb = 1 << (n - 1);
 
-long lTotal=1 ; //合計解
-long lUnique=0; //ユニーク解
-long COUNT2=0; long COUNT4=0; long COUNT8=0;
-int iSize;     //Ｎ
-int aBoard[MAXSIZE];  //チェス盤の横一列
-int aTrial[MAXSIZE];
-int aScratch[MAXSIZE];
-int MASK;
-int bit;
-int BOUND1;
-int BOUND2;
-int TOPBIT;
-int SIZEE;
-int SIDEMASK;
-int LASTMASK;
-int ENDBIT;
-
-/** 時刻のフォーマット変換 */
-void TimeFormat(clock_t utime,char *form){
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(int)(mm*60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
-}
-/** ユニーク解のget */
-long getUnique(){ 
-  return COUNT2+COUNT4+COUNT8;
-}
-/** 総合計のget */
-long getTotal(){ 
-  return COUNT2*2+COUNT4*4+COUNT8*8;
-}
-/** 回転 */
-void rotate_bitmap(int abefore[],int aafter[]){
-  for(int i=0;i<iSize;i++){
-    int t=0;
-    for(int j=0;j<iSize;j++){
-			t|=((abefore[j]>>i)&1)<<(iSize-j-1); // x[j] の i ビット目を
-		}
-    aafter[i]=t;                        // y[i] の j ビット目にする
-  }
-}
-int rh(int a,int sz){
-	int tmp=0;
-	for(int i=0;i<=sz;i++){
-		if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-	}
-	return tmp;
-}
-/** 鏡像 */
-void vMirror_bitmap(int abefore[],int aafter[]){
-  for(int i=0;i<iSize;i++) {
-    int score=abefore[i];
-    aafter[i]=rh(score,iSize-1);
-  }
-}
-int intncmp(int lt[],int rt[]){
-  int rtn=0;
-  for(int k=0;k<iSize;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
-}
-/**********************************************/
-/** 対称解除法                               **/
-/** ユニーク解から全解への展開               **/
-/**********************************************/
-/**
-クイーンが右上角にあるユニーク解を考えます。
-斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
-右上角のクイーンを他の３つの角に写像させることができるので(×４)、
-このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
-
-(1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
-　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
-(2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
-　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
-
-　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
-２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
-て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
-場合は８個になります。(左右反転×縦横回転×上下反転)
-*/
-void symmetryOps_bitmap(){
-  int own,ptn,you;
-  //90度回転
-  if(aBoard[BOUND2]==1){ own=1; ptn=2;
-    while(own<=SIZEE){ bit=1; you=SIZEE;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; ptn<<=1;
+    printf("N= %d\n", n);
+    for (y=0; y<n; y++) {
+        for (bit=topb; bit; bit>>=1)
+            printf("%s ", (board[y] & bit)? "Q": "-");
+        printf("\n");
     }
-    /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>SIZEE){ COUNT2++; return; }
-  }
-  //180度回転
-  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
-    while(own<=SIZEE){ bit=1; ptn=TOPBIT;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; you--;
-    }
-    /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>SIZEE){ COUNT4++; return; }
-  }
-  //270度回転
-  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
-    while(own<=SIZEE){ bit=1; you=0;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; ptn>>=1;
-    }
-  }
-  COUNT8++;
+    printf("\n");
 }
-/**********************************************/
-/** 対称解除法                               **/
-/**********************************************/
-/**
-ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
+//**********************************************
+// Check Unique Solutions
+//**********************************************
+void Check(int *board, int size, int last, int topb, int posa, int posb, int posc, i64 *cnt8, i64 *cnt4, i64 *cnt2)
+{
+    int  pos1, pos2, bit1, bit2;
 
-    １２ ４１ ３４ ２３
-    ４３ ３２ ２１ １４
+    // 90-degree rotation
+    if (board[posa] == 1) {
+        for (pos1=1,bit2=2; pos1<size; pos1++,bit2<<=1) {
+            for (pos2=last,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; pos2--,bit1<<=1);
+            if (board[pos1] != bit1) return;
+            if (board[pos2] != bit2) break;
+        }
+        if (pos1 == size) {
+            (*cnt2)++;
+            //Display(size, board);
+            return;
+        }
+    }
 
-    ２１ １４ ４３ ３２
-    ３４ ２３ １２ ４１
-    
-上図左上がユニーク解。
-1行目はユニーク解を90度、180度、270度回転したもの
-2行目は1行目のそれぞれを左右反転したもの。
-2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
-ただし、 回転・線対称な解もある
-**/
-void symmetryOps_bitmap_old(){
-  int aTrial[iSize];
-  int aScratch[iSize];
-  int k;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  // 1行目のクイーンのある位置を基準にこれを 90度回転 180度回転 270度回転させた時に重なるかどうか判定する
-  // Aの場合 １行目のクイーンのある場所の左端からの列数が1の時（９０度回転したところ）
-  if(aBoard[BOUND2]==1){
-    rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
-    k=intncmp(aBoard,aScratch);
-    if(k>0)return;
-    if(k==0){ COUNT2++; return;}
-  }
-  // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
-  if(aBoard[SIZEE]==ENDBIT){
-    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
-    if(aBoard[BOUND2]!=1){
-      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    // 180-degree rotation
+    if (board[last] == posb) {
+        for (pos1=1,pos2=size-2; pos1<size; pos1++,pos2--) {
+            for (bit2=topb,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; bit2>>=1,bit1<<=1);
+            if (board[pos1] != bit1) return;
+            if (board[pos2] != bit2) break;
+        }
+        if (pos1 == size) {
+            (*cnt4)++;
+            //Display(size, board);
+            return;
+        }
     }
-    rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
-    k=intncmp(aBoard,aTrial);
-    if(k>0)return;
-    if(k==0){ COUNT4++; return;}
-  }
-  //Cの場合 1行目のクイーンのある位置の右端からの列数の行の左端が1の時 270度回転
-  if(aBoard[BOUND1]==TOPBIT){
-    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
-    if(aBoard[BOUND2]!=1){
-      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+
+    // 270-degree rotation
+    if (board[posc] == topb) {
+        for (pos1=1,bit2=topb>>1; pos1<size; pos1++,bit2>>=1) {
+            for (pos2=0,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; pos2++,bit1<<=1);
+            if (board[pos1] != bit1) return;
+            if (board[pos2] != bit2) break;
+        }
     }
-    //aBoard[SIZEE]!=ENDBITのif 文に入っていない場合は180度回転させてあげる
-    if(aBoard[SIZEE]!=ENDBIT){
-      rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
-    }
-    rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
-    k=intncmp(aBoard,aScratch);
-    if(k>0){ return;}
-  }
-  COUNT8++;
+
+    (*cnt8)++;
+    //Display(size, board);
 }
-/**********************************************/
-/* 最上段行のクイーンが角以外にある場合の探索 */
-/**********************************************/
-/**
-１行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを
-置くことはできない
-１行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
-lt, dn, lt 位置は効きチェックで配置不可能となる
-回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、 
-90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+//**********************************************
+// First queen is inside
+//**********************************************
+void Inside(int n, int x0, int x1, i64 *uniq, i64 *allc)
+{
+    int  size, last, y, i;
+    int  bits, bit, mask, left, rigt;
+    int  posa, posb, posc, topb, side, gate;
+    int  board[MAXSIZE];
+    int  s_mask[MAXSIZE];
+    int  s_left[MAXSIZE];
+    int  s_rigt[MAXSIZE];
+    int  s_bits[MAXSIZE];
+    i64  cnt8, cnt4, cnt2;
 
-【枝刈り図】
-  x x - - - Q x x    
-  x - - - / | ＼x    
-  c - - / - | -rt    
-  - - / - - | - -    
-  - / - - - | - -    
-  lt- - - - | - a    
-  x - - - - | - x    
-  x x b - - dnx x    
-*/
-void backTrack2(int y,int left,int down,int right){
-  int bitmap=MASK&~(left|down|right); 
-  if(y==SIZEE){
-    if(bitmap>0 && (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
-      aBoard[y]=bitmap;
-      symmetryOps_bitmap(); // takakenの移植版の移植版
-      //symmetryOps_bitmap_old();// 兄が作成した労作
+    // Initialize
+    size = n;
+    last = n - 1;
+    mask = (1 << n) - 1;
+    cnt8 = cnt4 = cnt2 = 0;
+
+    // ControlValue
+    topb = 1 << last;
+    side = topb | 1;
+    gate = (mask >> x0) & (mask << x0);
+    posa = last - x0;
+    posb = topb >> x0;
+    posc = x0;
+
+    // y=0: 000001110 (select)
+    // y=1: 111111111 (select)
+    board[0] = 1 << x0;
+    board[1] = bit = 1 << x1;
+    mask = mask ^ (board[0] | bit);
+    left = board[0] << 2 | bit << 1;
+    rigt = board[0] >> 2 | bit >> 1;
+    y = i = 2;
+
+    // y -> posc
+    if (posc == 1) goto NEXT2;
+    mask = mask ^ side;
+NEXT1:
+    if (i == posc) {
+        mask |= side;
+        goto NEXT2;
     }
-  }else{
-    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap&=~SIDEMASK; 
-      // bitmap|=SIDEMASK; 
-      // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
-    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
-      if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
+    bits = mask & ~(left | rigt);
+    if (bits) {
+        s_mask[i] = mask;
+        s_left[i] = left;
+        s_rigt[i] = rigt;
+PROC1:
+        bits ^= bit = -bits & bits;
+        board[i] = bit;
+        s_bits[i++] = bits;
+        mask = mask ^ bit;
+        left = (left | bit) << 1;
+        rigt = (rigt | bit) >> 1;
+        goto NEXT1;
+BACK1:
+        bits = s_bits[--i];
+        if (bits) {
+            mask = s_mask[i];
+            left = s_left[i];
+            rigt = s_rigt[i];
+            goto PROC1;
+        }
     }
-    while(bitmap>0) {
-      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    if (i == y) goto FINISH;
+    goto BACK1;
+
+    // posc -> posa
+NEXT2:
+    bits = mask & ~(left | rigt);
+    if (bits) {
+        s_mask[i] = mask;
+        s_left[i] = left;
+        s_rigt[i] = rigt;
+PROC2:
+        bits ^= bit = -bits & bits;
+        board[i] = bit;
+        s_bits[i++] = bits;
+        mask = mask ^ bit;
+        left = (left | bit) << 1;
+        rigt = (rigt | bit) >> 1;
+        if (i == posa) {
+            if (mask & topb) goto BACK2;
+            if (mask & 1) {
+                if ((left | rigt) & 1) goto BACK2;
+                bits = 1;
+            } else {
+                bits = mask & ~(left | rigt);
+                if (!bits) goto BACK2;
+            }
+            goto NEXT3;
+        } else {
+            goto NEXT2;
+        }
+BACK2:
+        bits = s_bits[--i];
+        if (bits) {
+            mask = s_mask[i];
+            left = s_left[i];
+            rigt = s_rigt[i];
+            goto PROC2;
+        }
     }
-  }
+    if (i == y) goto FINISH;
+    if (i > posc) goto BACK2;
+    goto BACK1;
+
+    // posa -> last
+NEXT3:
+    if (i == last) {
+        if (bits & gate) {
+            board[i] = bits;
+            Check(board, size, last, topb, posa, posb, posc, &cnt8, &cnt4, &cnt2);
+        }
+        goto BACK3;
+    }
+    s_mask[i] = mask;
+    s_left[i] = left;
+    s_rigt[i] = rigt;
+PROC3:
+    bits ^= bit = -bits & bits;
+    board[i] = bit;
+    s_bits[i++] = bits;
+    mask = mask ^ bit;
+    left = (left | bit) << 1;
+    rigt = (rigt | bit) >> 1;
+    bits = mask & ~(left | rigt);
+    if (bits) goto NEXT3;
+BACK3:
+    bits = s_bits[--i];
+    if (bits) {
+        mask = s_mask[i];
+        left = s_left[i];
+        rigt = s_rigt[i];
+        goto PROC3;
+    }
+    if (i > posa) goto BACK3;
+    goto BACK2;
+
+FINISH:
+    *uniq = cnt8     + cnt4     + cnt2;
+    *allc = cnt8 * 8 + cnt4 * 4 + cnt2 * 2;
 }
-/**********************************************/
-/* 最上段行のクイーンが角にある場合の探索     */
-/**********************************************/
-/* 
-１行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
-１行目角にクイーンがある場合、他の角にクイーンを配置することは不可
-鏡像についても、主対角線鏡像のみを判定すればよい
-２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
-*/
-void backTrack1(int y,int left,int down,int right){
-  int bitmap=MASK&~(left|down|right); 
-  if(y==SIZEE) {
-    if(bitmap>0){
-      aBoard[y]=bitmap;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      COUNT8++;
+//**********************************************
+// First queen is in the corner
+//**********************************************
+void Corner(int n, int x1, i64 *uniq, i64 *allc)
+{
+    int  size, last, y, i;
+    int  bits, bit, mask, left, rigt;
+    int  posa;
+    int  board[MAXSIZE];
+    int  s_mask[MAXSIZE];
+    int  s_left[MAXSIZE];
+    int  s_rigt[MAXSIZE];
+    int  s_bits[MAXSIZE];
+    i64  cnt8;
+
+    // Initialize
+    size = n;
+    last = n - 1;
+    mask = (1 << n) - 1;
+    cnt8 = 0;
+
+    // ControlValue
+    posa = x1;
+
+    // y=0: 000000001 (static)
+    // y=1: 011111100 (select)
+    board[0] = 1;
+    board[1] = bit = 1 << x1;
+    mask = mask ^ (1 | bit);
+    left = 1 << 2 | bit << 1;
+    rigt = 1 >> 2 | bit >> 1;
+    y = i = 2;
+
+    // y -> posa
+    mask = mask ^ 2;
+NEXT1:
+    if (i == posa) {
+        mask |= 2;
+        goto NEXT2;
     }
-  }else{
-    if(y<BOUND1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bitmap&=~2; // bitmap|=2; bitmap^=2; (bitmap&=~2と同等)
+    bits = mask & ~(left | rigt);
+    if (bits) {
+        s_mask[i] = mask;
+        s_left[i] = left;
+        s_rigt[i] = rigt;
+PROC1:
+        bits ^= bit = -bits & bits;
+        board[i] = bit;
+        s_bits[i++] = bits;
+        mask = mask ^ bit;
+        left = (left | bit) << 1;
+        rigt = (rigt | bit) >> 1;
+        goto NEXT1;
+BACK1:
+        bits = s_bits[--i];
+        if (bits) {
+            mask = s_mask[i];
+            left = s_left[i];
+            rigt = s_rigt[i];
+            goto PROC1;
+        }
     }
-    while(bitmap>0) {
-      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    if (i == y) goto FINISH;
+    goto BACK1;
+
+    // posa -> last
+NEXT2:
+    bits = mask & ~(left | rigt);
+    if (bits) {
+        if (i == last) {
+            board[i] = bits;
+            cnt8++;
+            //Display(size, board);
+            goto BACK2;
+        }
+        s_mask[i] = mask;
+        s_left[i] = left;
+        s_rigt[i] = rigt;
+PROC2:
+        bits ^= bit = -bits & bits;
+        board[i] = bit;
+        s_bits[i++] = bits;
+        mask = mask ^ bit;
+        left = (left | bit) << 1;
+        rigt = (rigt | bit) >> 1;
+        goto NEXT2;
+BACK2:
+        bits = s_bits[--i];
+        if (bits) {
+            mask = s_mask[i];
+            left = s_left[i];
+            rigt = s_rigt[i];
+            goto PROC2;
+        }
     }
-  } 
+    if (i == y) goto FINISH;
+    if (i > posa) goto BACK2;
+    goto BACK1;
+
+FINISH:
+    *uniq = cnt8;
+    *allc = cnt8 * 8;
 }
-/**********************************************/
-/** 枝刈りによる高速化 
-             最上段の行のクイーンの位置に着目 */
-/**********************************************/
-/**
-ユニーク解に対する左右対称解を予め削除するには、1行目のループのところで、
-右半分だけにクイーンを配置するようにすればよい
-Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
-他の3辺のクィーンが中央に無い場合、その辺が上辺に来るよう回転し、場合に
-より左右反転することで、 最小値解とすることが可能だから、中央に配置した
-ものしかユニーク解には成り得ないしかし、上辺とその他の辺の中央にクィーン
-は互いの効きになるので、配置することが出来ない
-*/
-void NQueen(int y, int left, int down, int right){
-  MASK=(1<<iSize)-1;
-  SIZEE=iSize-1;
-	TOPBIT=1<<SIZEE;
+//**********************************************
+// Search of N-Queens
+//**********************************************
+void NQueens(int n, i64 *unique, i64 *allcnt)
+{
+    int  x0, x1;
+    i64  uniq, allc;
 
-  /* 最上段行のクイーンが角にある場合の探索 */
-  //for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
-  for(BOUND1=2;BOUND1<SIZEE-1;BOUND1++){
-    aBoard[1]=bit=(1<<BOUND1); // 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); //２行目から探索
-  }
+    *unique = *allcnt = 0;
 
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-
-  /* 最上段行のクイーンが角以外にある場合の探索 
-     ユニーク解に対する左右対称解を予め削除するには、
-     左半分だけにクイーンを配置するようにすればよい */
-  for(BOUND1=1,BOUND2=SIZEE-1;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
-  }
+    for (x0=0; x0<n/2; x0++) {
+// OpenMP
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+        for (x1=0; x1<n; x1++) {
+            if (x0 == 0) {
+                // y=0: 000000001 (static)
+                // y=1: 011111100 (select)
+                if (x1<2 || x1==n-1) continue;
+                Corner(n, x1, &uniq, &allc);
+            } else {
+                // y=0: 000001110 (select)
+                // y=1: 111111111 (select)
+                if (x1>=x0-1 && x1<=x0+1) continue;
+                if (x0>1 && (x1==0 || x1==n-1)) continue;
+                Inside(n, x0, x1, &uniq, &allc);
+            }
+            *unique += uniq;
+            *allcnt += allc;
+        }
+    }
 }
-int main(void){
-  clock_t st; char t[20];
-  printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  for(int i=2;i<=MAXSIZE;i++){
-    iSize=i; lTotal=0; lUnique=0;
-	  COUNT2=COUNT4=COUNT8=0;
-    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
-    st=clock();
-    NQueen(0,0,0,0);
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
-  } 
-}
+//**********************************************
+// Format of Used Time
+//**********************************************
+void TimeFormat(clock_t utime, char *form)
+{
+    int  dd, hh, mm;
+    double ftime, ss;
 
+    ftime = (double)utime / CLOCKS_PER_SEC;
+
+    mm = (int)ftime / 60;
+    ss = ftime - (double)(mm * 60);
+    dd = mm / (24 * 60);
+    mm = mm % (24 * 60);
+    hh = mm / 60;
+    mm = mm % 60;
+
+    if (dd) sprintf(form, "%4d %02d:%02d:%05.2f", dd, hh, mm, ss);
+    else if (hh) sprintf(form, "     %2d:%02d:%05.2f", hh, mm, ss);
+    else if (mm) sprintf(form, "        %2d:%05.2f", mm, ss);
+    else sprintf(form, "           %5.2f", ss);
+}
+//**********************************************
+// N-Queens Solutions MAIN
+//**********************************************
+int main(void)
+{
+    int  n;
+    i64  unique, allcnt;
+    clock_t starttime;
+    char form[20], line[100];
+
+    printf("<------  N-Queens Solutions  -----> <---- time ---->\n");
+    printf(" N:           Total          Unique days hh:mm:ss.--\n");
+    for (n=MINSIZE; n<=MAXSIZE; n++) {
+        starttime = clock();
+        NQueens(n, &unique, &allcnt);
+        TimeFormat(clock() - starttime, form);
+        // sprintf(line, "%2d:%16I64d%16I64d %s\n", n, allcnt, unique, form);
+        sprintf(line, "%2d:%16d%16d %s\n", n, allcnt, unique, form);
+        printf("%s", line);
+    }
+
+    return 0;
+}
