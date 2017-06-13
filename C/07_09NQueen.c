@@ -90,6 +90,15 @@ long getUnique(){
 long getTotal(){ 
   return COUNT2*2+COUNT4*4+COUNT8*8;
 }
+void rotate_bitmap_180(int abefore[],int aafter[]){
+  for(int i=0;i<iSize;i++){
+    int t=0;
+    for(int j=0;j<iSize;j++){
+			t|=((abefore[iSize-i-1]>>j)&1)<<(iSize-j-1); // x[j] の i ビット目を
+		}
+    aafter[i]=t;                        // y[i] の j ビット目にする
+  }
+}
 /** 回転 */
 void rotate_bitmap(int abefore[],int aafter[]){
   for(int i=0;i<iSize;i++){
@@ -209,10 +218,11 @@ void symmetryOps_bitmap_old(){
   // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
   if(aBoard[SIZEE]==ENDBIT){
     //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
-    if(aBoard[BOUND2]!=1){
-      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
-    }
-    rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
+ //   if(aBoard[BOUND2]!=1){
+ //     rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+ //   }
+    //rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
+    rotate_bitmap_180(aBoard,aTrial);    //時計回りに180度回転
     k=intncmp(aBoard,aTrial);
     if(k>0)return;
     if(k==0){ COUNT4++; return;}
@@ -259,8 +269,8 @@ void backTrack2(int y,int left,int down,int right){
   if(y==SIZEE){
     if(bitmap>0 && (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
       aBoard[y]=bitmap;
-      symmetryOps_bitmap(); // takakenの移植版の移植版
-      //symmetryOps_bitmap_old();// 兄が作成した労作
+      //symmetryOps_bitmap(); // takakenの移植版の移植版
+      symmetryOps_bitmap_old();// 兄が作成した労作
     }
   }else{
     if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
