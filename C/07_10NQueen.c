@@ -41,10 +41,6 @@
 //**************************************************************************
 #include <stdio.h>
 #include <time.h>
-// OpenMP
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 #define  MAXSIZE   30
 #define  MINSIZE    5
@@ -374,10 +370,6 @@ void NQueens(int n, i64 *unique, i64 *allcnt)
     *unique = *allcnt = 0;
 
     for (x0=0; x0<n/2; x0++) {
-// OpenMP
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
         for (x1=0; x1<n; x1++) {
             if (x0 == 0) {
                 // y=0: 000000001 (static)
