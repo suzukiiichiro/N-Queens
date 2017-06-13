@@ -4,16 +4,19 @@ CC=gcc
 CFLAGS=-Wall -O2
 RM=rm -fr
 
-CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
-LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
+#CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
+CPPFLAGS=-fopenmp -I/usr/local/Cellar/open-mpi/2.1.1/include
+#LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
+LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
 
-nq9=07_09NQueen
-nq9: $(nq9).c 
-	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
 nq10=07_10NQueen
 nq10: $(nq10).c 
 	$(CC) $(CFLAGS) -o $(nq10) $(nq10).c 
+
+nq9=07_09NQueen
+nq9: $(nq9).c 
+	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
 all: nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1 nq02 nq01
 
