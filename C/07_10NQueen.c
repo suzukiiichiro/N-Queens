@@ -11,182 +11,45 @@
   https://github.com/suzukiiichiro/AI_Algorithm_Lua
  
   ステップバイステップでＮ−クイーン問題を最適化
-   １．ブルートフォース（力まかせ探索） NQueen1()
-   ２．配置フラグ（制約テスト高速化）   NQueen2()
-   ３．バックトラック                   NQueen3() N16: 1:07
-   ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
-   ５．枝刈りと最適化                   NQueen5() N16: 0:18
-   ６．ビットマップ                     NQueen6() N16: 0:13
-   ７．ビットマップ+対称解除法          NQueen7() N16: 0:21
-   ８．ビットマップ+クイーンの場所で分岐NQueen8() N16: 0:13
-   ９．ビットマップ+枝刈りと最適化      NQueen9() 
- <>10．完成型                           NQueen10() N16: 0:02
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+   ３．バックトラック                   NQueen03() N16: 1:07
+   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
+   ５．枝刈りと最適化                   NQueen05() N16: 0:18
+   ６．ビットマップ                     NQueen06() N16: 0:13
+   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
+   ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
+ <>10．ビットマップ+部分解合成法        NQueen10()
    11．マルチスレッド                   NQueen11()
 
-   ビット演算を使って高速化 状態をビットマップにパックし、処理する
-   単純なバックトラックよりも２０〜３０倍高速
- 
- 　ビットマップであれば、シフトにより高速にデータを移動できる。
-  フラグ配列ではデータの移動にO(N)の時間がかかるが、ビットマップであればO(1)
-  フラグ配列のように、斜め方向に 2*N-1の要素を用意するのではなく、Nビットで充
-  分。
-
- 　配置可能なビット列を flags に入れ、-flags & flags で順にビットを取り出し処理。
- 　バックトラックよりも２０−３０倍高速。
- 
- ===================
- 考え方 1
- ===================
-
- 　Ｎ×ＮのチェスボードをＮ個のビットフィールドで表し、ひとつの横列の状態をひと
- つのビットフィールドに対応させます。(クイーンが置いてある位置のビットをONに
- する)
- 　そしてバックトラッキングは0番目のビットフィールドから「下に向かって」順にい
- ずれかのビット位置をひとつだけONにして進めていきます。
-
- 
-  - - - - - Q - -    00000100 0番目のビットフィールド
-  - - - Q - - - -    00010000 1番目のビットフィールド
-  - - - - - - Q -    00000010 2番目のビットフィールド
-  Q - - - - - - -    10000000 3番目のビットフィールド
-  - - - - - - - Q    00000001 4番目のビットフィールド
-  - Q - - - - - -    01000000 5番目のビットフィールド
-  - - - - Q - - -    00001000 6番目のビットフィールド
-  - - Q - - - - -    00100000 7番目のビットフィールド
-
-
- ===================
- 考え方 2
- ===================
-
- 次に、効き筋をチェックするためにさらに３つのビットフィールドを用意します。
-
- 1. 左下に効き筋が進むもの: left 
- 2. 真下に効き筋が進むもの: down
- 3. 右下に効き筋が進むもの: right
-
-次に、斜めの利き筋を考えます。
- 上図の場合、
- 1列目の右斜め上の利き筋は 3 番目 (0x08)
- 2列目の右斜め上の利き筋は 2 番目 (0x04) になります。
- この値は 0 列目のクイーンの位置 0x10 を 1 ビットずつ「右シフト」すれば求める
- ことができます。
- また、左斜め上の利き筋の場合、1 列目では 5 番目 (0x20) で 2 列目では 6 番目 (0x40)
-になるので、今度は 1 ビットずつ「左シフト」すれば求めることができます。
-
-つまり、右シフトの利き筋を right、左シフトの利き筋を left で表すことで、クイー
-ンの効き筋はrightとleftを1 ビットシフトするだけで求めることができるわけです。
-
-  *-------------
-  | . . . . . .
-  | . . . -3. .  0x02 -|
-  | . . -2. . .  0x04  |(1 bit 右シフト right)
-  | . -1. . . .  0x08 -|
-  | Q . . . . .  0x10 ←(Q の位置は 4   down)
-  | . +1. . . .  0x20 -| 
-  | . . +2. . .  0x40  |(1 bit 左シフト left)  
-  | . . . +3. .  0x80 -|
-  *-------------
-  図：斜めの利き筋のチェック
-
- n番目のビットフィールドからn+1番目のビットフィールドに探索を進めるときに、そ
- の３つのビットフィールドとn番目のビットフィールド(bit)とのOR演算をそれぞれ行
- います。leftは左にひとつシフトし、downはそのまま、rightは右にひとつシフトして
- n+1番目のビットフィールド探索に渡してやります。
-
- left : (left |bit)<<1
- right: (right|bit)>>1
- down :   down|bit
-
-
- ===================
- 考え方 3
- ===================
-
-   n+1番目のビットフィールドの探索では、この３つのビットフィールドをOR演算した
- ビットフィールドを作り、それがONになっている位置は効き筋に当たるので置くことが
- できない位置ということになります。次にその３つのビットフィールドをORしたビッ
- トフィールドをビット反転させます。つまり「配置可能なビットがONになったビットフィー
- ルド」に変換します。そしてこの配置可能なビットフィールドを bitmap と呼ぶとして、
- 次の演算を行なってみます。
- 
- bit = -bitmap & bitmap; //一番右のビットを取り出す
- 
-   この演算式の意味を理解するには負の値がコンピュータにおける２進法ではどのよう
- に表現されているのかを知る必要があります。負の値を２進法で具体的に表わしてみる
- と次のようになります。
- 
-  00000011   3
-  00000010   2
-  00000001   1
-  00000000   0
-  11111111  -1
-  11111110  -2
-  11111101  -3
- 
-   正の値nを負の値-nにするときは、nをビット反転してから+1されています。そして、
- 例えばn=22としてnと-nをAND演算すると下のようになります。nを２進法で表したときの
- 一番下位のONビットがひとつだけ抽出される結果が得られるのです。極めて簡単な演算
- によって1ビット抽出を実現させていることが重要です。
- 
-      00010110   22
-  AND 11101010  -22
- ------------------
-      00000010
- 
-   さて、そこで下のようなwhile文を書けば、このループは bitmap のONビットの数の
- 回数だけループすることになります。配置可能なパターンをひとつずつ全く無駄がなく
- 生成されることになります。
- 
- while (bitmap) {
-     bit = -bitmap & bitmap;
-     bitmap ^= bit;
-     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
- }
-
-
   実行結果
-   N:        Total       Unique        dd:hh:mm:ss
-   2:            0               0      0 00:00:00
-   3:            0               0      0 00:00:00
-   4:            2               1      0 00:00:00
-   5:           10               2      0 00:00:00
-   6:            4               1      0 00:00:00
-   7:           40               6      0 00:00:00
-   8:           92              12      0 00:00:00
-   9:          352              46      0 00:00:00
-  10:          724              92      0 00:00:00
-  11:         2680             341      0 00:00:00
-  12:        14200            1787      0 00:00:00
-  13:        73712            9233      0 00:00:00
-  14:       365596           45752      0 00:00:00
-  15:      2279184          285053      0 00:00:00
-  16:     14772512         1846955      0 00:00:02
-  17:     95815104        11977939      0 00:00:15
+ N:        Total       Unique        dd:hh:mm:ss
  */
+
 #include<stdio.h>
 #include<time.h>
-
+#include <math.h>
 #define MAXSIZE 27
 
-long TOTAL=1 ; //合計解
-long UNIQUE=0; //ユニーク解
-long COUNT2;
-long COUNT4;
-long COUNT8;
-int SIZE;     //Ｎ
-int BOARD[MAXSIZE];  //チェス盤の横一列
+long lTotal=1 ; //合計解
+long lUnique=0; //ユニーク解
+long COUNT2=0; long COUNT4=0; long COUNT8=0;
+int iSize;     //Ｎ
+int aBoard[MAXSIZE];  //チェス盤の横一列
 int aTrial[MAXSIZE];
 int aScratch[MAXSIZE];
 int MASK;
-int SIDEMASK;
-int LASTMASK;
 int bit;
-int TOPBIT;
-int ENDBIT;
-int SIZEE;
 int BOUND1;
 int BOUND2;
+int TOPBIT;
+int SIZEE;
+int SIDEMASK;
+int LASTMASK;
+int ENDBIT;
+
+/** 時刻のフォーマット変換 */
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
     float ftime,ss;
@@ -199,142 +62,279 @@ void TimeFormat(clock_t utime,char *form){
     mm=mm%60;
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
-void rotate(int check[],int scr[],int n,int neg){
-  int k=neg?0:n-1;
-  int incr=(neg?+1:-1);
-  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
-  k=neg?n-1:0;
-  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
+/** ユニーク解のget */
+long getUnique(){ 
+  return COUNT2+COUNT4+COUNT8;
 }
-void vMirror(int check[],int n){
-  for(int j=0;j<n;j++){ check[j]=(n-1)- check[j];}
+/** 総合計のget */
+long getTotal(){ 
+  return COUNT2*2+COUNT4*4+COUNT8*8;
 }
-int intncmp(int lt[],int rt[],int n){
+/** 回転 */
+void rotate_bitmap(int abefore[],int aafter[]){
+  for(int i=0;i<iSize;i++){
+    int t=0;
+    for(int j=0;j<iSize;j++){
+			t|=((abefore[j]>>i)&1)<<(iSize-j-1); // x[j] の i ビット目を
+		}
+    aafter[i]=t;                        // y[i] の j ビット目にする
+  }
+}
+int rh(int a,int sz){
+	int tmp=0;
+	for(int i=0;i<=sz;i++){
+		if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+	}
+	return tmp;
+}
+/** 鏡像 */
+void vMirror_bitmap(int abefore[],int aafter[]){
+  for(int i=0;i<iSize;i++) {
+    int score=abefore[i];
+    aafter[i]=rh(score,iSize-1);
+  }
+}
+int intncmp(int lt[],int rt[]){
   int rtn=0;
-  for(int k=0;k<n;k++){
+  for(int k=0;k<iSize;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }
   return rtn;
 }
-void symmetryOps(int bitmap){
-		//90度回転
-		if(BOARD[BOUND2]==1){
-			int own=1;
-			for(int ptn=2;own<=SIZEE;own++,ptn<<=1){
-				bit=1;
-				for (int you=SIZEE;(BOARD[you]!=ptn)&&(BOARD[own]>=bit);you--){ bit<<=1; }
-				if(BOARD[own]>bit){ return; }
-				if(BOARD[own]<bit){ break; }
-			}
-			/** 90度回転して同型なら180度/270度回転も同型である */
-			if (own>SIZEE) { COUNT2++; return; }
-		}
-		//180度回転
-		if(bitmap==ENDBIT){
-			int own=1;
-			for(int you=SIZEE-1;own<=SIZEE;own++,you--){
-				bit =1;
-				for(int ptn=TOPBIT;(ptn!=BOARD[you])&&(BOARD[own]>=bit);ptn>>=1){ bit<<=1; }
-				if(BOARD[own]>bit){ return; }
-				if(BOARD[own]<bit){ break; }
-			}
-			/** 90度回転が同型でなくても180度回転が同型である事もある */
-			if(own>SIZEE){
-				COUNT4++;
-				return;
-			}
-		}
-		//270度回転
-		if(BOARD[BOUND1]==TOPBIT){
-			int own=1;
-			for(int ptn=TOPBIT>>1;own<=SIZEE;own++,ptn>>=1){
-				bit=1;
-				for(int you=0;BOARD[you]!=ptn&&BOARD[own]>=bit;you++){
-					bit<<=1;
-				}
-				if(BOARD[own]>bit){ return; }
-				if (BOARD[own]<bit){ break; }
-			}
-		}
-		COUNT8++;
+/**********************************************/
+/** 対称解除法                               **/
+/** ユニーク解から全解への展開               **/
+/**********************************************/
+/**
+クイーンが右上角にあるユニーク解を考えます。
+斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
+右上角のクイーンを他の３つの角に写像させることができるので(×４)、
+このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
+
+(1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
+　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
+(2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
+　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
+
+　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
+２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
+て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
+場合は８個になります。(左右反転×縦横回転×上下反転)
+*/
+void symmetryOps_bitmap(){
+  int own,ptn,you;
+  //90度回転
+  if(aBoard[BOUND2]==1){ own=1; ptn=2;
+    while(own<=SIZEE){ bit=1; you=SIZEE;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>SIZEE){ COUNT2++; return; }
+  }
+  //180度回転
+  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
+    while(own<=SIZEE){ bit=1; ptn=TOPBIT;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>SIZEE){ COUNT4++; return; }
+  }
+  //270度回転
+  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+    while(own<=SIZEE){ bit=1; you=0;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn>>=1;
+    }
+  }
+  COUNT8++;
 }
-void backTrack2(int y, int left, int down, int right){
-  int bitmap=MASK&~(left|down|right); //配置可能フィールド
-  if (y==SIZE-1){
-    if(bitmap!=0){
-      if((bitmap&LASTMASK)==0){  //枝刈り：最下段枝刈り
-	      BOARD[y]=bitmap;
-        symmetryOps(bitmap);
-      } 
+/**********************************************/
+/** 対称解除法                               **/
+/**********************************************/
+/**
+ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
+
+    １２ ４１ ３４ ２３
+    ４３ ３２ ２１ １４
+
+    ２１ １４ ４３ ３２
+    ３４ ２３ １２ ４１
+    
+上図左上がユニーク解。
+1行目はユニーク解を90度、180度、270度回転したもの
+2行目は1行目のそれぞれを左右反転したもの。
+2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
+ただし、 回転・線対称な解もある
+**/
+void symmetryOps_bitmap_old(){
+  int aTrial[iSize];
+  int aScratch[iSize];
+  int k;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
+  // 1行目のクイーンのある位置を基準にこれを 90度回転 180度回転 270度回転させた時に重なるかどうか判定する
+  // Aの場合 １行目のクイーンのある場所の左端からの列数が1の時（９０度回転したところ）
+  if(aBoard[BOUND2]==1){
+    rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    k=intncmp(aBoard,aScratch);
+    if(k>0)return;
+    if(k==0){ COUNT2++; return;}
+  }
+  // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
+  if(aBoard[SIZEE]==ENDBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
+    k=intncmp(aBoard,aTrial);
+    if(k>0)return;
+    if(k==0){ COUNT4++; return;}
+  }
+  //Cの場合 1行目のクイーンのある位置の右端からの列数の行の左端が1の時 270度回転
+  if(aBoard[BOUND1]==TOPBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    //aBoard[SIZEE]!=ENDBITのif 文に入っていない場合は180度回転させてあげる
+    if(aBoard[SIZEE]!=ENDBIT){
+      rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
+    }
+    rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
+    k=intncmp(aBoard,aScratch);
+    if(k>0){ return;}
+  }
+  COUNT8++;
+}
+/**********************************************/
+/* 最上段行のクイーンが角以外にある場合の探索 */
+/**********************************************/
+/**
+１行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを
+置くことはできない
+１行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
+lt, dn, lt 位置は効きチェックで配置不可能となる
+回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、 
+90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+
+【枝刈り図】
+  x x - - - Q x x    
+  x - - - / | ＼x    
+  c - - / - | -rt    
+  - - / - - | - -    
+  - / - - - | - -    
+  lt- - - - | - a    
+  x - - - - | - x    
+  x x b - - dnx x    
+*/
+void backTrack2(int y,int left,int down,int right){
+  int bitmap=MASK&~(left|down|right); 
+  if(y==SIZEE){
+    if(bitmap>0 && (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      aBoard[y]=bitmap;
+      symmetryOps_bitmap(); // takakenの移植版の移植版
+      //symmetryOps_bitmap_old();// 兄が作成した労作
     }
   }else{
-    if(y<BOUND1){                //枝刈り：上部サイド枝刈り
-      bitmap|=SIDEMASK;
-      bitmap^=SIDEMASK;
+    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+      bitmap&=~SIDEMASK; 
+      // bitmap|=SIDEMASK; 
+      // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
+    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+      if((down&SIDEMASK)==0){ return; }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
     }
-    if(y==BOUND2){               //枝刈り：下部サイド枝刈り
-      if((down&SIDEMASK)==0){ return ;}
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK;}
-    }
-    while(bitmap!=0){
-      bitmap^=BOARD[y]=bit=(-bitmap&bitmap);//最も下位の１ビットを抽出
-			backTrack2((y+1),(left|bit)<<1,(down|bit),(right|bit)>>1)	;	
+    while(bitmap>0) {
+      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
-void backTrack1(int y, int left, int down, int right){
-  int bitmap=MASK&~(left|down|right); /* 配置可能フィールド */
-  if (y==SIZE-1) {
-    if(bitmap!=0){
-	    BOARD[y]=bitmap;
+/**********************************************/
+/* 最上段行のクイーンが角にある場合の探索     */
+/**********************************************/
+/* 
+１行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
+１行目角にクイーンがある場合、他の角にクイーンを配置することは不可
+鏡像についても、主対角線鏡像のみを判定すればよい
+２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
+*/
+void backTrack1(int y,int left,int down,int right){
+  int bitmap=MASK&~(left|down|right); 
+  if(y==SIZEE) {
+    if(bitmap>0){
+      aBoard[y]=bitmap;
+      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       COUNT8++;
     }
   }else{
-    if(y<BOUND1){               //枝刈り：斜軸反転解の排除
-      bitmap|=2;
-      bitmap^=2;
+    if(y<BOUND1) {   
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      bitmap&=~2; // bitmap|=2; bitmap^=2; (bitmap&=~2と同等)
     }
-    while(bitmap!=0){
-      bitmap^=BOARD[y]=bit=(-bitmap&bitmap);//最も下位の１ビットを抽出
+    while(bitmap>0) {
+      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   } 
 }
-void NQueen6(int SIZE){
-    SIZEE=SIZE-1;
-		TOPBIT=1<<SIZEE;
-    MASK=(1<<SIZE)-1;
-    COUNT2=COUNT4=COUNT8=0;
-    /* 0行目:000000001(固定) */
-    /* 1行目:011111100(選択) */
-    BOARD[0]=1;
-    for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
-      BOARD[1]=bit=(1<<BOUND1);
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
-    }
-    /* 0行目:000001110(選択) */
-		SIDEMASK=LASTMASK=(TOPBIT|1);
-		ENDBIT=(TOPBIT>>1);
-    for(BOUND1=1,BOUND2=SIZE-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-      BOARD[0]=bit=(1<<BOUND1);
-      backTrack2(1,bit<<1,bit,bit>>1);
-			LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-			ENDBIT>>=1;
-    }
-		UNIQUE=COUNT8+COUNT4+COUNT2;
-		TOTAL=(COUNT8*8)+(COUNT4*4)+(COUNT2*2);
+/**********************************************/
+/** 枝刈りによる高速化 
+             最上段の行のクイーンの位置に着目 */
+/**********************************************/
+/**
+ユニーク解に対する左右対称解を予め削除するには、1行目のループのところで、
+右半分だけにクイーンを配置するようにすればよい
+Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
+他の3辺のクィーンが中央に無い場合、その辺が上辺に来るよう回転し、場合に
+より左右反転することで、 最小値解とすることが可能だから、中央に配置した
+ものしかユニーク解には成り得ないしかし、上辺とその他の辺の中央にクィーン
+は互いの効きになるので、配置することが出来ない
+*/
+void NQueen(int y, int left, int down, int right){
+  MASK=(1<<iSize)-1;
+  SIZEE=iSize-1;
+	TOPBIT=1<<SIZEE;
+
+  /* 最上段行のクイーンが角にある場合の探索 */
+  //for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
+  for(BOUND1=2;BOUND1<SIZEE-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1); // 角にクイーンを配置 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); //２行目から探索
+  }
+
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+
+  /* 最上段行のクイーンが角以外にある場合の探索 
+     ユニーク解に対する左右対称解を予め削除するには、
+     左半分だけにクイーンを配置するようにすればよい */
+  for(BOUND1=1,BOUND2=SIZEE-1;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    backTrack2(1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
 }
 int main(void){
   clock_t st; char t[20];
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   for(int i=2;i<=MAXSIZE;i++){
-    SIZE=i;TOTAL=0;UNIQUE=0;
-    for(int j=0;j<SIZE;j++){ BOARD[j]=j; }
+    iSize=i; lTotal=0; lUnique=0;
+	  COUNT2=COUNT4=COUNT8=0;
+    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
     st=clock();
-    NQueen6(SIZE);
+    NQueen(0,0,0,0);
     TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",SIZE,TOTAL,UNIQUE,t);
+    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
   } 
 }
 

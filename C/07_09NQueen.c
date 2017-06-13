@@ -11,16 +11,16 @@
   https://github.com/suzukiiichiro/AI_Algorithm_Lua
  
   ステップバイステップでＮ−クイーン問題を最適化
-   １．ブルートフォース（力まかせ探索） NQueen1()
-   ２．配置フラグ（制約テスト高速化）   NQueen2()
-   ３．バックトラック                   NQueen3() N16: 1:07
-   ４．対称解除法(回転と斜軸）          NQueen4() N16: 1:09
-   ５．枝刈りと最適化                   NQueen5() N16: 0:18
-   ６．ビットマップ                     NQueen6() N16: 0:13
-   ７．ビットマップ+対称解除法          NQueen7() N16: 0:21
-   ８．ビットマップ+クイーンの場所で分岐NQueen8() N16: 0:13
- <>９．ビットマップ+枝刈りと最適化      NQueen9() N16: 0:02
-   10．完成型                           NQueen10() N16: 0:02
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+   ３．バックトラック                   NQueen03() N16: 1:07
+   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
+   ５．枝刈りと最適化                   NQueen05() N16: 0:18
+   ６．ビットマップ                     NQueen06() N16: 0:13
+   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
+ <>９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
+   10．ビットマップ+部分解合成法        NQueen10()
    11．マルチスレッド                   NQueen11()
 
   実行結果
@@ -36,13 +36,14 @@
 10:          724              92      0 00:00:00
 11:         2680             341      0 00:00:00
 12:        14200            1787      0 00:00:00
-13:        73712            9233      0 00:00:00
-14:       365596           45752      0 00:00:00
-15:      2279184          285053      0 00:00:00
-16:     14772512         1846955      0 00:00:02
-17:     95815104        11977939      0 00:00:14
-18:    666090624        83263591      0 00:01:44
-19:   4968057848       621012754      0 00:13:53
+13:        73664            9227      0 00:00:00
+14:       365492           45739      0 00:00:00
+15:      2278664          284988      0 00:00:00
+16:     14768296         1846428      0 00:00:02
+17:     95795792        11975525      0 00:00:14
+18:    665976024        83249266      0 00:01:44
+19:   4967407864       620931506      0 00:13:20
+20:  39024327300      4878059110      0 01:47:04
  */
 
 #include<stdio.h>
@@ -191,46 +192,45 @@ void symmetryOps_bitmap(){
 ただし、 回転・線対称な解もある
 **/
 void symmetryOps_bitmap_old(){
-  int nEquiv;
   int aTrial[iSize];
   int aScratch[iSize];
+  int k;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
-  int k=intncmp(aBoard,aScratch);
-  if(k>0)return;
-  if(k==0){ nEquiv=2;}else{
-    rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
+  // 1行目のクイーンのある位置を基準にこれを 90度回転 180度回転 270度回転させた時に重なるかどうか判定する
+  // Aの場合 １行目のクイーンのある場所の左端からの列数が1の時（９０度回転したところ）
+  if(aBoard[BOUND2]==1){
+    rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    k=intncmp(aBoard,aScratch);
+    if(k>0)return;
+    if(k==0){ COUNT2++; return;}
+  }
+  // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
+  if(aBoard[SIZEE]==ENDBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
     k=intncmp(aBoard,aTrial);
     if(k>0)return;
-    if(k==0){ nEquiv=4;}else{
-      rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
-      k=intncmp(aBoard,aScratch);
-      if(k>0){ return;}
-      nEquiv=8;
-    }
+    if(k==0){ COUNT4++; return;}
   }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aScratch[i]=aBoard[i];}
-  vMirror_bitmap(aScratch,aTrial);    //垂直反転
-  k=intncmp(aBoard,aTrial);
-  if(k>0){ return; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    rotate_bitmap(aTrial,aScratch);
+  //Cの場合 1行目のクイーンのある位置の右端からの列数の行の左端が1の時 270度回転
+  if(aBoard[BOUND1]==TOPBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    //aBoard[SIZEE]!=ENDBITのif 文に入っていない場合は180度回転させてあげる
+    if(aBoard[SIZEE]!=ENDBIT){
+      rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
+    }
+    rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
     k=intncmp(aBoard,aScratch);
-    if(k>0){return;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate_bitmap(aScratch,aTrial);
-      k=intncmp(aBoard,aTrial);
-      if(k>0){ return;}     //-270度回転 反対角鏡と同等
-      rotate_bitmap(aTrial,aScratch);
-      k=intncmp(aBoard,aScratch);
-      if(k>0){ return;}
-    }
+    if(k>0){ return;}
   }
-  if(nEquiv==2){ COUNT2++; }
-  if(nEquiv==4){ COUNT4++; }
-  if(nEquiv==8){ COUNT8++; }
+  COUNT8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */

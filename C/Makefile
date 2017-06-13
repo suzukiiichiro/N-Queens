@@ -7,46 +7,50 @@ RM=rm -fr
 CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
 LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 
-APP07_9=07_9NQueen
-nq9: $(APP07_9).c 
-	$(CC) $(CFLAGS) -o $(APP07_9) $(APP07_9).c 
+nq9=07_09NQueen
+nq9: $(nq9).c 
+	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
-APP07_8=07_8NQueen
-nq8: $(APP07_8).c 
-	$(CC) $(CFLAGS) -o $(APP07_8) $(APP07_8).c 
+nq10=07_10NQueen
+nq10: $(nq10).c 
+	$(CC) $(CFLAGS) -o $(nq10) $(nq10).c 
 
-all: nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1 nq02 nq01
+all: nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1 nq02 nq01
 
 clean:
-	$(RM) a.out nq01 nq02 $(APP07_1) $(APP07_2) $(APP07_3) $(APP07_4) $(APP07_5) $(APP07_6) $(APP07_7) $(APP07_8) $(APP07_9)
+	$(RM) a.out nq01 nq02 $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10)
 
-APP07_7=07_7NQueen
-nq7: $(APP07_7).c 
-	$(CC) $(CFLAGS) -o $(APP07_7) $(APP07_7).c 
+nq8=07_08NQueen
+nq8: $(nq8).c 
+	$(CC) $(CFLAGS) -o $(nq8) $(nq8).c 
 
-APP07_6=07_6NQueen
-nq6: $(APP07_6).c 
-	$(CC) $(CFLAGS) -o $(APP07_6) $(APP07_6).c 
+nq7=07_07NQueen
+nq7: $(nq7).c 
+	$(CC) $(CFLAGS) -o $(nq7) $(nq7).c 
 
-APP07_5=07_5NQueen
-nq5: $(APP07_5).c 
-	$(CC) $(CFLAGS) -o $(APP07_5) $(APP07_5).c 
+nq6=07_06NQueen
+nq6: $(nq6).c 
+	$(CC) $(CFLAGS) -o $(nq6) $(nq6).c 
 
-APP07_4=07_4NQueen
-nq4: $(APP07_4).c 
-	$(CC) $(CFLAGS) -o $(APP07_4) $(APP07_4).c 
+nq5=07_05NQueen
+nq5: $(nq5).c 
+	$(CC) $(CFLAGS) -o $(nq5) $(nq5).c 
 
-APP07_3=07_3NQueen
-nq3: $(APP07_3).c 
-	$(CC) $(CFLAGS) -o $(APP07_3) $(APP07_3).c 
+nq4=07_04NQueen
+nq4: $(nq4).c 
+	$(CC) $(CFLAGS) -o $(nq4) $(nq4).c 
 
-APP07_2=07_2NQueen
-nq2: $(APP07_2).c 
-	$(CC) $(CFLAGS) -o $(APP07_2) $(APP07_2).c 
+nq3=07_03NQueen
+nq3: $(nq3).c 
+	$(CC) $(CFLAGS) -o $(nq3) $(nq3).c 
 
-APP07_1=07_1NQueen
-nq1: $(APP07_1).c 
-	$(CC) $(CFLAGS) -o $(APP07_1) $(APP07_1).c 
+nq2=07_02NQueen
+nq2: $(nq2).c 
+	$(CC) $(CFLAGS) -o $(nq2) $(nq2).c 
+
+nq1=07_01NQueen
+nq1: $(nq1).c 
+	$(CC) $(CFLAGS) -o $(nq1) $(nq1).c 
 	
 nq02: nqueens2.c
 	$(CC) $(CFLAGS) -o nq02  nqueens2.c
