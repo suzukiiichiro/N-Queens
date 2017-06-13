@@ -154,48 +154,45 @@ void symmetryOps_bitmap(int bm){
 		COUNT8++;
 }
 void symmetryOps_bitmap_old(){
-  int nEquiv;
   int aTrial[iSize];
   int aScratch[iSize];
+  int k;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
-  int k=intncmp(aBoard,aScratch);
-  if(k>0)return;
-  if(k==0){ nEquiv=2;}else{
-    rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
+  // 1行目のクイーンのある位置を基準にこれを 90度回転 180度回転 270度回転させた時に重なるかどうか判定する
+  // Aの場合 １行目のクイーンのある場所の左端からの列数が1の時（９０度回転したところ）
+  if(aBoard[BOUND2]==1){
+    rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    k=intncmp(aBoard,aScratch);
+    if(k>0)return;
+    if(k==0){ COUNT2++; return;}
+  }
+  // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
+  if(aBoard[SIZEE]==ENDBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    rotate_bitmap(aScratch,aTrial);    //時計回りに180度回転
     k=intncmp(aBoard,aTrial);
     if(k>0)return;
-    if(k==0){ nEquiv=4;}else{
-      rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
-      k=intncmp(aBoard,aScratch);
-      if(k>0){ return;}
-      nEquiv=8;
-    }
+    if(k==0){ COUNT4++; return;}
   }
-  /*
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aScratch[i]=aBoard[i];}
-  vMirror_bitmap(aScratch,aTrial);    //垂直反転
-  k=intncmp(aBoard,aTrial);
-  if(k>0){ return; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    rotate_bitmap(aTrial,aScratch);
+  //Cの場合 1行目のクイーンのある位置の右端からの列数の行の左端が1の時 270度回転
+  if(aBoard[BOUND1]==TOPBIT){
+    //aBoard[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
+    if(aBoard[BOUND2]!=1){
+      rotate_bitmap(aTrial,aScratch);  //時計回りに90度回転
+    }
+    //aBoard[SIZEE]!=ENDBITのif 文に入っていない場合は180度回転させてあげる
+    if(aBoard[SIZEE]!=ENDBIT){
+      rotate_bitmap(aScratch,aTrial);//時計回りに180度回転
+    }
+    rotate_bitmap(aTrial,aScratch);//時計回りに270度回転
     k=intncmp(aBoard,aScratch);
-    if(k>0){return;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate_bitmap(aScratch,aTrial);
-      k=intncmp(aBoard,aTrial);
-      if(k>0){ return;}     //-270度回転 反対角鏡と同等
-      rotate_bitmap(aTrial,aScratch);
-      k=intncmp(aBoard,aScratch);
-      if(k>0){ return;}
-    }
+    if(k>0){ return;}
   }
-  */
-  if(nEquiv==2){ COUNT2++; }
-  if(nEquiv==4){ COUNT4++; }
-  if(nEquiv==8){ COUNT8++; }
+  COUNT8++;
 }
 void backTrack2(int y,int left,int down,int right){
   int bitmap=iMask&~(left|down|right); 
@@ -276,21 +273,37 @@ void NQueen6(int y, int left, int down, int right){
 
   aBoard[0]=1;
   //printf("aBoard[0]:%d\n",aBoard[0]);
-  //dtob(aBoard[0],iSize-1);
+  //dtob(aBoard[0],iSize);
   for(BOUND1=2;BOUND1<iSize-1;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1);
     //printf("aBoard[1]:%d\n",aBoard[1]);
-    //dtob(aBoard[1],iSize-1);
+    //dtob(aBoard[1],iSize);
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
   }
-
+  //SIDEMASK LASTMASK 左端、右端が 1 例: 10000001
   SIDEMASK=LASTMASK=(TOPBIT|1);
+  //TOPBIT 左端が 1 例: 1000000
+  //ENDBIT 左端から2番目が1 例: 0100000
   ENDBIT=(TOPBIT>>1);
+  //printf("LASTMASK:%d\n",LASTMASK);
+  //dtob(LASTMASK,iSize);
+  //printf("SIDEMASK:%d\n",SIDEMASK);
+  //dtob(SIDEMASK,iSize);
+  //printf("TOPBIT:%d\n",TOPBIT);
+  //dtob(TOPBIT,iSize);
+  //printf("ENDBIT:%d\n",ENDBIT);
+  //dtob(ENDBIT,iSize);
   for(BOUND1=1,BOUND2=iSize-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1);
+    //両端の1を増やす 1000001 -> 1100011
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    //ENDBITを右にシフトする 01000000 -> 00100000
     ENDBIT>>=1;
+    //printf("CHANGELASTMASK:%d\n",LASTMASK);
+    //dtob(LASTMASK,iSize);
+    //printf("CHANGEENDBIT:%d\n",ENDBIT);
+    //dtob(ENDBIT,iSize);
   }
   // 07_7
   // backTrack1(0,0,0,0);
