@@ -324,9 +324,10 @@ void NQueen(int y, int left, int down, int right){
   SIZEE=iSize-1;
 	TOPBIT=1<<SIZEE;
 
+  aBoard[0]=1;
   /* 最上段行のクイーンが角にある場合の探索 */
   //for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
-  for(BOUND1=2;BOUND1<SIZEE-1;BOUND1++){
+  for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1); // 角にクイーンを配置 
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); //２行目から探索
   }
