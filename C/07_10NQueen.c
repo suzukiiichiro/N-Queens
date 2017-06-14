@@ -246,60 +246,56 @@ FINISH:
 //**********************************************
 // First queen is in the corner
 //**********************************************
-void backTrack1(int n, int x1, i64 *uniq, i64 *allc)
+void backTrack1(int y, int BOUND1, i64 *uniq, i64 *allc)
 {
-    int  size, last, y, i;
-    int  bits, bit, mask, left, rigt;
-    int  posa;
+    int  size, last, i;
+    int  bitmap, bit, MASK, left, rigt;
     int  board[MAXSIZE];
     int  s_mask[MAXSIZE];
     int  s_left[MAXSIZE];
     int  s_rigt[MAXSIZE];
-    int  s_bits[MAXSIZE];
-    i64  cnt8;
+    int  s_bitmap[MAXSIZE];
+    i64  COUNT8;
 
     // Initialize
-    size = n;
-    last = n - 1;
-    mask = (1 << n) - 1;
-    cnt8 = 0;
-
-    // ControlValue
-    posa = x1;
+    size = y;
+    last = y - 1;
+    MASK = (1 << y) - 1;
+    COUNT8 = 0;
 
     // y=0: 000000001 (static)
     // y=1: 011111100 (select)
     board[0] = 1;
-    board[1] = bit = 1 << x1;
-    mask = mask ^ (1 | bit);
+    board[1] = bit = 1 << BOUND1;
+    MASK = MASK ^ (1 | bit);
     left = 1 << 2 | bit << 1;
     rigt = 1 >> 2 | bit >> 1;
     y = i = 2;
 
     // y -> posa
-    mask = mask ^ 2;
+    MASK = MASK ^ 2;
 NEXT1:
-    if (i == posa) {
-        mask |= 2;
+    if (i == BOUND1) {
+        MASK |= 2;
         goto NEXT2;
     }
-    bits = mask & ~(left | rigt);
-    if (bits) {
-        s_mask[i] = mask;
+    bitmap = MASK & ~(left | rigt);
+    if (bitmap) {
+        s_mask[i] = MASK;
         s_left[i] = left;
         s_rigt[i] = rigt;
 PROC1:
-        bits ^= bit = -bits & bits;
+        bitmap ^= bit = -bitmap & bitmap;
         board[i] = bit;
-        s_bits[i++] = bits;
-        mask = mask ^ bit;
+        s_bitmap[i++] = bitmap;
+        MASK = MASK ^ bit;
         left = (left | bit) << 1;
         rigt = (rigt | bit) >> 1;
         goto NEXT1;
 BACK1:
-        bits = s_bits[--i];
-        if (bits) {
-            mask = s_mask[i];
+        bitmap = s_bitmap[--i];
+        if (bitmap) {
+            MASK = s_mask[i];
             left = s_left[i];
             rigt = s_rigt[i];
             goto PROC1;
@@ -310,41 +306,41 @@ BACK1:
 
     // posa -> last
 NEXT2:
-    bits = mask & ~(left | rigt);
-    if (bits) {
+    bitmap = MASK & ~(left | rigt);
+    if (bitmap) {
         if (i == last) {
-            board[i] = bits;
-            cnt8++;
+            board[i] = bitmap;
+            COUNT8++;
             //Display(size, board);
             goto BACK2;
         }
-        s_mask[i] = mask;
+        s_mask[i] = MASK;
         s_left[i] = left;
         s_rigt[i] = rigt;
 PROC2:
-        bits ^= bit = -bits & bits;
+        bitmap ^= bit = -bitmap & bitmap;
         board[i] = bit;
-        s_bits[i++] = bits;
-        mask = mask ^ bit;
+        s_bitmap[i++] = bitmap;
+        MASK = MASK ^ bit;
         left = (left | bit) << 1;
         rigt = (rigt | bit) >> 1;
         goto NEXT2;
 BACK2:
-        bits = s_bits[--i];
-        if (bits) {
-            mask = s_mask[i];
+        bitmap = s_bitmap[--i];
+        if (bitmap) {
+            MASK = s_mask[i];
             left = s_left[i];
             rigt = s_rigt[i];
             goto PROC2;
         }
     }
     if (i == y) goto FINISH;
-    if (i > posa) goto BACK2;
+    if (i > BOUND1) goto BACK2;
     goto BACK1;
 
 FINISH:
-    *uniq = cnt8;
-    *allc = cnt8 * 8;
+    *uniq = COUNT8;
+    *allc = COUNT8 * 8;
 }
 //**********************************************
 // Search of N-Queens
