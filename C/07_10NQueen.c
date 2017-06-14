@@ -52,7 +52,7 @@ void Display(int n, int *board)
 //**********************************************
 // Check Unique Solutions
 //**********************************************
-void Check(int *board, int size, int last, int topb, int posa, int posb, int posc, i64 *cnt8, i64 *cnt4, i64 *cnt2)
+void symmetryOps_bitmap(int *board, int size, int last, int topb, int posa, int posb, int posc, i64 *cnt8, i64 *cnt4, i64 *cnt2)
 {
     int  pos1, pos2, bit1, bit2;
 
@@ -99,11 +99,11 @@ void Check(int *board, int size, int last, int topb, int posa, int posb, int pos
 //**********************************************
 // First queen is inside
 //**********************************************
-void Inside(int n, int x0, int x1, i64 *uniq, i64 *allc)
+void backTrack2(int y, int BOUND1, int x1, i64 *uniq, i64 *allc)
 {
-    int  size, last, y, i;
+    int  size, last, i;
     int  bits, bit, mask, left, rigt;
-    int  posa, posb, posc, topb, side, gate;
+    int  posa, posb, topb, side, gate;
     int  board[MAXSIZE];
     int  s_mask[MAXSIZE];
     int  s_left[MAXSIZE];
@@ -112,22 +112,21 @@ void Inside(int n, int x0, int x1, i64 *uniq, i64 *allc)
     i64  cnt8, cnt4, cnt2;
 
     // Initialize
-    size = n;
-    last = n - 1;
-    mask = (1 << n) - 1;
+    size = y;
+    last = y - 1;
+    mask = (1 << y) - 1;
     cnt8 = cnt4 = cnt2 = 0;
 
     // ControlValue
     topb = 1 << last;
     side = topb | 1;
-    gate = (mask >> x0) & (mask << x0);
-    posa = last - x0;
-    posb = topb >> x0;
-    posc = x0;
+    gate = (mask >> BOUND1) & (mask << BOUND1);
+    posa = last - BOUND1;
+    posb = topb >> BOUND1;
 
     // y=0: 000001110 (select)
     // y=1: 111111111 (select)
-    board[0] = 1 << x0;
+    board[0] = 1 << BOUND1;
     board[1] = bit = 1 << x1;
     mask = mask ^ (board[0] | bit);
     left = board[0] << 2 | bit << 1;
@@ -135,10 +134,10 @@ void Inside(int n, int x0, int x1, i64 *uniq, i64 *allc)
     y = i = 2;
 
     // y -> posc
-    if (posc == 1) goto NEXT2;
+    if (BOUND1 == 1) goto NEXT2;
     mask = mask ^ side;
 NEXT1:
-    if (i == posc) {
+    if (i == BOUND1) {
         mask |= side;
         goto NEXT2;
     }
@@ -204,7 +203,7 @@ BACK2:
         }
     }
     if (i == y) goto FINISH;
-    if (i > posc) goto BACK2;
+    if (i > BOUND1) goto BACK2;
     goto BACK1;
 
     // posa -> last
@@ -212,7 +211,7 @@ NEXT3:
     if (i == last) {
         if (bits & gate) {
             board[i] = bits;
-            Check(board, size, last, topb, posa, posb, posc, &cnt8, &cnt4, &cnt2);
+            symmetryOps_bitmap(board, size, last, topb, posa, posb, BOUND1, &cnt8, &cnt4, &cnt2);
         }
         goto BACK3;
     }
@@ -246,60 +245,56 @@ FINISH:
 //**********************************************
 // First queen is in the corner
 //**********************************************
-void Corner(int n, int x1, i64 *uniq, i64 *allc)
+void backTrack1(int y, int BOUND1, i64 *uniq, i64 *allc)
 {
-    int  size, last, y, i;
-    int  bits, bit, mask, left, rigt;
-    int  posa;
+    int  size, last, i;
+    int  bitmap, bit, MASK, left, rigt;
     int  board[MAXSIZE];
     int  s_mask[MAXSIZE];
     int  s_left[MAXSIZE];
     int  s_rigt[MAXSIZE];
-    int  s_bits[MAXSIZE];
-    i64  cnt8;
+    int  s_bitmap[MAXSIZE];
+    i64  COUNT8;
 
     // Initialize
-    size = n;
-    last = n - 1;
-    mask = (1 << n) - 1;
-    cnt8 = 0;
-
-    // ControlValue
-    posa = x1;
+    size = y;
+    last = y - 1;
+    MASK = (1 << y) - 1;
+    COUNT8 = 0;
 
     // y=0: 000000001 (static)
     // y=1: 011111100 (select)
     board[0] = 1;
-    board[1] = bit = 1 << x1;
-    mask = mask ^ (1 | bit);
+    board[1] = bit = 1 << BOUND1;
+    MASK = MASK ^ (1 | bit);
     left = 1 << 2 | bit << 1;
     rigt = 1 >> 2 | bit >> 1;
     y = i = 2;
 
     // y -> posa
-    mask = mask ^ 2;
+    MASK = MASK ^ 2;
 NEXT1:
-    if (i == posa) {
-        mask |= 2;
+    if (i == BOUND1) {
+        MASK |= 2;
         goto NEXT2;
     }
-    bits = mask & ~(left | rigt);
-    if (bits) {
-        s_mask[i] = mask;
+    bitmap = MASK & ~(left | rigt);
+    if (bitmap) {
+        s_mask[i] = MASK;
         s_left[i] = left;
         s_rigt[i] = rigt;
 PROC1:
-        bits ^= bit = -bits & bits;
+        bitmap ^= bit = -bitmap & bitmap;
         board[i] = bit;
-        s_bits[i++] = bits;
-        mask = mask ^ bit;
+        s_bitmap[i++] = bitmap;
+        MASK = MASK ^ bit;
         left = (left | bit) << 1;
         rigt = (rigt | bit) >> 1;
         goto NEXT1;
 BACK1:
-        bits = s_bits[--i];
-        if (bits) {
-            mask = s_mask[i];
+        bitmap = s_bitmap[--i];
+        if (bitmap) {
+            MASK = s_mask[i];
             left = s_left[i];
             rigt = s_rigt[i];
             goto PROC1;
@@ -310,65 +305,65 @@ BACK1:
 
     // posa -> last
 NEXT2:
-    bits = mask & ~(left | rigt);
-    if (bits) {
+    bitmap = MASK & ~(left | rigt);
+    if (bitmap) {
         if (i == last) {
-            board[i] = bits;
-            cnt8++;
+            board[i] = bitmap;
+            COUNT8++;
             //Display(size, board);
             goto BACK2;
         }
-        s_mask[i] = mask;
+        s_mask[i] = MASK;
         s_left[i] = left;
         s_rigt[i] = rigt;
 PROC2:
-        bits ^= bit = -bits & bits;
+        bitmap ^= bit = -bitmap & bitmap;
         board[i] = bit;
-        s_bits[i++] = bits;
-        mask = mask ^ bit;
+        s_bitmap[i++] = bitmap;
+        MASK = MASK ^ bit;
         left = (left | bit) << 1;
         rigt = (rigt | bit) >> 1;
         goto NEXT2;
 BACK2:
-        bits = s_bits[--i];
-        if (bits) {
-            mask = s_mask[i];
+        bitmap = s_bitmap[--i];
+        if (bitmap) {
+            MASK = s_mask[i];
             left = s_left[i];
             rigt = s_rigt[i];
             goto PROC2;
         }
     }
     if (i == y) goto FINISH;
-    if (i > posa) goto BACK2;
+    if (i > BOUND1) goto BACK2;
     goto BACK1;
 
 FINISH:
-    *uniq = cnt8;
-    *allc = cnt8 * 8;
+    *uniq = COUNT8;
+    *allc = COUNT8 * 8;
 }
 //**********************************************
 // Search of N-Queens
 //**********************************************
-void NQueens(int n, i64 *unique, i64 *allcnt)
+void NQueen(int iSize, i64 *unique, i64 *allcnt)
 {
-    int  x0, x1;
+    int  y, BOUND1;
     i64  uniq, allc;
 
     *unique = *allcnt = 0;
 
-    for (x0=0; x0<n/2; x0++) {
-        for (x1=0; x1<n; x1++) {
-            if (x0 == 0) {
+    for (y=0; y<iSize/2; y++) {
+        for (BOUND1=0; BOUND1<iSize; BOUND1++) {
+            if (y == 0) {
                 // y=0: 000000001 (static)
                 // y=1: 011111100 (select)
-                if (x1<2 || x1==n-1) continue;
-                Corner(n, x1, &uniq, &allc);
+                if (BOUND1<2 || BOUND1==iSize-1) continue;
+                backTrack1(iSize, BOUND1, &uniq, &allc);
             } else {
                 // y=0: 000001110 (select)
                 // y=1: 111111111 (select)
-                if (x1>=x0-1 && x1<=x0+1) continue;
-                if (x0>1 && (x1==0 || x1==n-1)) continue;
-                Inside(n, x0, x1, &uniq, &allc);
+                if (BOUND1>=y-1 && BOUND1<=y+1) continue;
+                if (y>1 && (BOUND1==0 || BOUND1==iSize-1)) continue;
+                backTrack2(iSize, y, BOUND1, &uniq, &allc);
             }
             *unique += uniq;
             *allcnt += allc;
@@ -402,19 +397,18 @@ void TimeFormat(clock_t utime, char *form)
 //**********************************************
 int main(void)
 {
-    int  n;
     i64  unique, allcnt;
     clock_t starttime;
     char form[20], line[100];
 
     printf("<------  N-Queens Solutions  -----> <---- time ---->\n");
     printf(" N:           Total          Unique days hh:mm:ss.--\n");
-    for (n=MINSIZE; n<=MAXSIZE; n++) {
+    for (int i=MINSIZE; i<=MAXSIZE; i++) {
         starttime = clock();
-        NQueens(n, &unique, &allcnt);
+        NQueen(i, &unique, &allcnt);
         TimeFormat(clock() - starttime, form);
         // sprintf(line, "%2d:%16I64d%16I64d %s\n", n, allcnt, unique, form);
-        sprintf(line, "%2d:%16d%16d %s\n", n, allcnt, unique, form);
+        sprintf(line, "%2d:%16d%16d %s\n", i, allcnt, unique, form);
         printf("%s", line);
     }
 
