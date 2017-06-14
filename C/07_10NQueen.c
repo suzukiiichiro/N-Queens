@@ -99,11 +99,11 @@ void symmetryOps_bitmap(int *board, int size, int last, int topb, int posa, int 
 //**********************************************
 // First queen is inside
 //**********************************************
-void backTrack2(int n, int x0, int x1, i64 *uniq, i64 *allc)
+void backTrack2(int y, int BOUND1, int x1, i64 *uniq, i64 *allc)
 {
-    int  size, last, y, i;
+    int  size, last, i;
     int  bits, bit, mask, left, rigt;
-    int  posa, posb, posc, topb, side, gate;
+    int  posa, posb, topb, side, gate;
     int  board[MAXSIZE];
     int  s_mask[MAXSIZE];
     int  s_left[MAXSIZE];
@@ -112,22 +112,21 @@ void backTrack2(int n, int x0, int x1, i64 *uniq, i64 *allc)
     i64  cnt8, cnt4, cnt2;
 
     // Initialize
-    size = n;
-    last = n - 1;
-    mask = (1 << n) - 1;
+    size = y;
+    last = y - 1;
+    mask = (1 << y) - 1;
     cnt8 = cnt4 = cnt2 = 0;
 
     // ControlValue
     topb = 1 << last;
     side = topb | 1;
-    gate = (mask >> x0) & (mask << x0);
-    posa = last - x0;
-    posb = topb >> x0;
-    posc = x0;
+    gate = (mask >> BOUND1) & (mask << BOUND1);
+    posa = last - BOUND1;
+    posb = topb >> BOUND1;
 
     // y=0: 000001110 (select)
     // y=1: 111111111 (select)
-    board[0] = 1 << x0;
+    board[0] = 1 << BOUND1;
     board[1] = bit = 1 << x1;
     mask = mask ^ (board[0] | bit);
     left = board[0] << 2 | bit << 1;
@@ -135,10 +134,10 @@ void backTrack2(int n, int x0, int x1, i64 *uniq, i64 *allc)
     y = i = 2;
 
     // y -> posc
-    if (posc == 1) goto NEXT2;
+    if (BOUND1 == 1) goto NEXT2;
     mask = mask ^ side;
 NEXT1:
-    if (i == posc) {
+    if (i == BOUND1) {
         mask |= side;
         goto NEXT2;
     }
@@ -204,7 +203,7 @@ BACK2:
         }
     }
     if (i == y) goto FINISH;
-    if (i > posc) goto BACK2;
+    if (i > BOUND1) goto BACK2;
     goto BACK1;
 
     // posa -> last
@@ -212,7 +211,7 @@ NEXT3:
     if (i == last) {
         if (bits & gate) {
             board[i] = bits;
-            symmetryOps_bitmap(board, size, last, topb, posa, posb, posc, &cnt8, &cnt4, &cnt2);
+            symmetryOps_bitmap(board, size, last, topb, posa, posb, BOUND1, &cnt8, &cnt4, &cnt2);
         }
         goto BACK3;
     }
