@@ -52,7 +52,7 @@ void Display(int n, int *board)
 //**********************************************
 // Check Unique Solutions
 //**********************************************
-void Check(int *board, int size, int last, int topb, int posa, int posb, int posc, i64 *cnt8, i64 *cnt4, i64 *cnt2)
+void symmetryOps_bitmap(int *board, int size, int last, int topb, int posa, int posb, int posc, i64 *cnt8, i64 *cnt4, i64 *cnt2)
 {
     int  pos1, pos2, bit1, bit2;
 
@@ -99,7 +99,7 @@ void Check(int *board, int size, int last, int topb, int posa, int posb, int pos
 //**********************************************
 // First queen is inside
 //**********************************************
-void Inside(int n, int x0, int x1, i64 *uniq, i64 *allc)
+void backTrack2(int n, int x0, int x1, i64 *uniq, i64 *allc)
 {
     int  size, last, y, i;
     int  bits, bit, mask, left, rigt;
@@ -212,7 +212,7 @@ NEXT3:
     if (i == last) {
         if (bits & gate) {
             board[i] = bits;
-            Check(board, size, last, topb, posa, posb, posc, &cnt8, &cnt4, &cnt2);
+            symmetryOps_bitmap(board, size, last, topb, posa, posb, posc, &cnt8, &cnt4, &cnt2);
         }
         goto BACK3;
     }
@@ -246,7 +246,7 @@ FINISH:
 //**********************************************
 // First queen is in the corner
 //**********************************************
-void Corner(int n, int x1, i64 *uniq, i64 *allc)
+void backTrack1(int n, int x1, i64 *uniq, i64 *allc)
 {
     int  size, last, y, i;
     int  bits, bit, mask, left, rigt;
@@ -349,26 +349,26 @@ FINISH:
 //**********************************************
 // Search of N-Queens
 //**********************************************
-void NQueens(int n, i64 *unique, i64 *allcnt)
+void NQueen(int iSize, i64 *unique, i64 *allcnt)
 {
-    int  x0, x1;
+    int  y, BOUND1;
     i64  uniq, allc;
 
     *unique = *allcnt = 0;
 
-    for (x0=0; x0<n/2; x0++) {
-        for (x1=0; x1<n; x1++) {
-            if (x0 == 0) {
+    for (y=0; y<iSize/2; y++) {
+        for (BOUND1=0; BOUND1<iSize; BOUND1++) {
+            if (y == 0) {
                 // y=0: 000000001 (static)
                 // y=1: 011111100 (select)
-                if (x1<2 || x1==n-1) continue;
-                Corner(n, x1, &uniq, &allc);
+                if (BOUND1<2 || BOUND1==iSize-1) continue;
+                backTrack1(iSize, BOUND1, &uniq, &allc);
             } else {
                 // y=0: 000001110 (select)
                 // y=1: 111111111 (select)
-                if (x1>=x0-1 && x1<=x0+1) continue;
-                if (x0>1 && (x1==0 || x1==n-1)) continue;
-                Inside(n, x0, x1, &uniq, &allc);
+                if (BOUND1>=y-1 && BOUND1<=y+1) continue;
+                if (y>1 && (BOUND1==0 || BOUND1==iSize-1)) continue;
+                backTrack2(iSize, y, BOUND1, &uniq, &allc);
             }
             *unique += uniq;
             *allcnt += allc;
@@ -402,19 +402,18 @@ void TimeFormat(clock_t utime, char *form)
 //**********************************************
 int main(void)
 {
-    int  n;
     i64  unique, allcnt;
     clock_t starttime;
     char form[20], line[100];
 
     printf("<------  N-Queens Solutions  -----> <---- time ---->\n");
     printf(" N:           Total          Unique days hh:mm:ss.--\n");
-    for (n=MINSIZE; n<=MAXSIZE; n++) {
+    for (int i=MINSIZE; i<=MAXSIZE; i++) {
         starttime = clock();
-        NQueens(n, &unique, &allcnt);
+        NQueen(i, &unique, &allcnt);
         TimeFormat(clock() - starttime, form);
         // sprintf(line, "%2d:%16I64d%16I64d %s\n", n, allcnt, unique, form);
-        sprintf(line, "%2d:%16d%16d %s\n", n, allcnt, unique, form);
+        sprintf(line, "%2d:%16d%16d %s\n", i, allcnt, unique, form);
         printf("%s", line);
     }
 
