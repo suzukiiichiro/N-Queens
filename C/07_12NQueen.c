@@ -26,6 +26,23 @@
 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73664            9227      0 00:00:00
+  14:       365492           45739      0 00:00:00
+  15:      2278664          284988      0 00:00:00
+  16:     14768296         1846428      0 00:00:02
+  17:     95795792        11975525      0 00:00:14
  *
 */
 
@@ -220,7 +237,7 @@ void backTrack1(int y,int left,int down,int right){
     }
   } 
 }
-void run(){
+void *run(){
   C.aBoard[0]=1;
   C.MASK=(1<<C.SIZE)-1;
   C.TOPBIT=1<<C.SIZEE;
@@ -245,21 +262,34 @@ void run(){
     }
     C.ENDBIT>>=C.SIZE;
   }
+  return 0;
 }
-void NQueenThread(){
+void *NQueenThread(){
+  pthread_t pt[C.SIZEE];
   for(C.BOUND1=C.SIZE-1,C.BOUND2=0;C.BOUND2<C.SIZE-1;C.BOUND1--,C.BOUND2++){
-     run();
+     // run();
+     pthread_create(&pt[C.BOUND1],NULL,&run,NULL);
+     /** 未完成版 排他制御をしない場合　前の処理が終わったら次の処理へ移る */
+     /** 07_13で排他処理を実現 今はこれでよし*/
+     pthread_join(pt[C.BOUND1],NULL);
   }
+  /** 本来はここでjoinしたいが排他制御をしないと処理が流れてしまう */
+  //pthread_join(pt[C.BOUND1],NULL);
+  return 0;
 }
 int main(void){
   clock_t st; char t[20];
+  pthread_t ptN;
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   for(int i=2;i<=MAXSIZE;i++){
     C.SIZEE=i-1;C.SIZE=i;C.lTotal=0; C.lUnique=0;
 	  C.COUNT2=C.COUNT4=C.COUNT8=0;
     for(int j=0;j<i;j++){ C.aBoard[j]=j; }
     st=clock();
-    NQueenThread();
+    //NQueenThread();
+    /** N に関しては順序正しく現在の処理が終わってから次の処理へ移る */
+    pthread_create(&ptN,NULL,&NQueenThread,NULL);
+    pthread_join(ptN,NULL); /* いちいちjoinをする */
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
   } 
