@@ -22,7 +22,7 @@
    ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
    10．もっとビットマップ               NQueen10()
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
-   12．マルチスレッド()                 NQueen12()
+   12．マルチスレッド(pthread)          NQueen12()
 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
