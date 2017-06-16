@@ -92,59 +92,59 @@ void symmetryOps_bitmap(int *board,int size,int last,int topb,int posa,int posb,
 // First queen is inside
 //**********************************************
 void backTrack2(int y,int BOUND1,int x1,i64 *uniq,i64 *allc) {
-  int  size,last,i;
-  int  bits,bit,mask,left,rigt;
-  int  posa,posb,topb,side,gate;
+  int  iSize,SIZEE,i;
+  int  bitmap,bit,MASK,left,rigt;
+  int  posa,posb,TOPBIT,SIDEMASK,gate;
   int  board[MAXSIZE];
   int  s_mask[MAXSIZE];
   int  s_left[MAXSIZE];
   int  s_rigt[MAXSIZE];
   int  s_bits[MAXSIZE];
-  i64  cnt8,cnt4,cnt2;
+  i64  COUNT8,COUNT4,COUNT2;
   // Initialize
-  size=y;
-  last=y-1;
-  mask=(1<<y)-1;
-  cnt8=cnt4=cnt2=0;
+  iSize=y;
+  SIZEE=y-1;
+  MASK=(1<<y)-1;
+  COUNT8=COUNT4=COUNT2=0;
   // ControlValue
-  topb=1<<last;
-  side=topb|1;
-  gate=(mask>>BOUND1)& (mask<<BOUND1);
-  posa=last-BOUND1;
-  posb=topb>>BOUND1;
+  TOPBIT=1<<SIZEE;
+  SIDEMASK=TOPBIT|1;
+  gate=(MASK>>BOUND1)& (MASK<<BOUND1);
+  posa=SIZEE-BOUND1;
+  posb=TOPBIT>>BOUND1;
   // y=0: 000001110 (select)
   // y=1: 111111111 (select)
   board[0]=1<<BOUND1;
   board[1]=bit=1<<x1;
-  mask=mask ^ (board[0]|bit);
+  MASK=MASK ^ (board[0]|bit);
   left=board[0]<<2|bit<<1;
   rigt=board[0]>>2|bit>>1;
   y=i=2;
   // y -> posc
   if (BOUND1==1)goto NEXT2;
-  mask=mask ^ side;
+  MASK=MASK ^ SIDEMASK;
 NEXT1:
   if (i==BOUND1){
-    mask |= side;
+    MASK |= SIDEMASK;
     goto NEXT2;
   }
-  bits=mask & ~(left|rigt);
-  if (bits){
-    s_mask[i]=mask;
+  bitmap=MASK & ~(left|rigt);
+  if (bitmap){
+    s_mask[i]=MASK;
     s_left[i]=left;
     s_rigt[i]=rigt;
 PROC1:
-    bits^=bit=-bits & bits;
+    bitmap^=bit=-bitmap & bitmap;
     board[i]=bit;
-    s_bits[i++]=bits;
-    mask=mask ^ bit;
+    s_bits[i++]=bitmap;
+    MASK=MASK ^ bit;
     left=(left|bit)<<1;
     rigt=(rigt|bit)>>1;
     goto NEXT1;
 BACK1:
-    bits=s_bits[--i];
-    if (bits){
-      mask=s_mask[i];
+    bitmap=s_bits[--i];
+    if (bitmap){
+      MASK=s_mask[i];
       left=s_left[i];
       rigt=s_rigt[i];
       goto PROC1;
@@ -154,35 +154,35 @@ BACK1:
   goto BACK1;
   // posc -> posa
 NEXT2:
-  bits=mask & ~(left|rigt);
-  if (bits){
-    s_mask[i]=mask;
+  bitmap=MASK & ~(left|rigt);
+  if (bitmap){
+    s_mask[i]=MASK;
     s_left[i]=left;
     s_rigt[i]=rigt;
 PROC2:
-    bits^=bit=-bits & bits;
+    bitmap^=bit=-bitmap & bitmap;
     board[i]=bit;
-    s_bits[i++]=bits;
-    mask=mask ^ bit;
+    s_bits[i++]=bitmap;
+    MASK=MASK ^ bit;
     left=(left|bit)<<1;
     rigt=(rigt|bit)>>1;
     if (i==posa){
-      if (mask & topb)goto BACK2;
-      if (mask & 1){
+      if (MASK & TOPBIT)goto BACK2;
+      if (MASK & 1){
         if ((left|rigt)& 1)goto BACK2;
-        bits=1;
+        bitmap=1;
       } else {
-        bits=mask & ~(left|rigt);
-        if (!bits)goto BACK2;
+        bitmap=MASK & ~(left|rigt);
+        if (!bitmap)goto BACK2;
       }
       goto NEXT3;
     } else {
       goto NEXT2;
     }
 BACK2:
-    bits=s_bits[--i];
-    if (bits){
-      mask=s_mask[i];
+    bitmap=s_bits[--i];
+    if (bitmap){
+      MASK=s_mask[i];
       left=s_left[i];
       rigt=s_rigt[i];
       goto PROC2;
@@ -193,29 +193,29 @@ BACK2:
   goto BACK1;
   // posa -> last
 NEXT3:
-  if (i==last){
-    if (bits & gate){
-      board[i]=bits;
-      symmetryOps_bitmap(board,size,last,topb,posa,posb,BOUND1,&cnt8,&cnt4,&cnt2);
+  if (i==SIZEE){
+    if (bitmap & gate){
+      board[i]=bitmap;
+      symmetryOps_bitmap(board,iSize,SIZEE,TOPBIT,posa,posb,BOUND1,&COUNT8,&COUNT4,&COUNT2);
     }
     goto BACK3;
   }
-  s_mask[i]=mask;
+  s_mask[i]=MASK;
   s_left[i]=left;
   s_rigt[i]=rigt;
 PROC3:
-  bits^=bit=-bits & bits;
+  bitmap^=bit=-bitmap & bitmap;
   board[i]=bit;
-  s_bits[i++]=bits;
-  mask=mask ^ bit;
+  s_bits[i++]=bitmap;
+  MASK=MASK ^ bit;
   left=(left|bit)<<1;
   rigt=(rigt|bit)>>1;
-  bits=mask & ~(left|rigt);
-  if (bits)goto NEXT3;
+  bitmap=MASK & ~(left|rigt);
+  if (bitmap)goto NEXT3;
 BACK3:
-  bits=s_bits[--i];
-  if (bits){
-    mask=s_mask[i];
+  bitmap=s_bits[--i];
+  if (bitmap){
+    MASK=s_mask[i];
     left=s_left[i];
     rigt=s_rigt[i];
     goto PROC3;
@@ -223,8 +223,8 @@ BACK3:
   if (i>posa)goto BACK3;
   goto BACK2;
 FINISH:
-  *uniq=cnt8     + cnt4     + cnt2;
-  *allc=cnt8*8 + cnt4*4 + cnt2*2;
+  *uniq=COUNT8     + COUNT4     + COUNT2;
+  *allc=COUNT8*8 + COUNT4*4 + COUNT2*2;
 }
 //**********************************************
 // First queen is in the corner
