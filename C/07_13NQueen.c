@@ -37,6 +37,7 @@
 #include "pthread.h"
 #define MAXSIZE 27
 // pthreadはパラメータを１つしか渡せないので構造体に格納
+/** スレッドローカル */
 typedef struct {
   int nThread;
   int SIZE;
@@ -56,7 +57,28 @@ typedef struct {
   long COUNT8;
   int aBoard[MAXSIZE];
 }CLASS, *Class;
-CLASS G; //グローバル構造体
+
+/** グローバル **/
+typedef struct {
+  int nThread;
+  int SIZE;
+  int SIZEE;
+  // int BOUND1;
+  // int BOUND2;
+  // int bit;
+  // int TOPBIT;
+  // int ENDBIT;
+  // int MASK;
+  // int SIDEMASK;
+  // int LASTMASK;
+  long lTotal;
+  long lUnique;
+  long COUNT2;
+  long COUNT4;
+  long COUNT8;
+  int aBoard[MAXSIZE];
+}GCLASS, *GClass;
+GCLASS G; //グローバル構造体
 /** 時刻のフォーマット変換 */
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -265,7 +287,7 @@ void *NQueenThread(){
     //pthread_cond_init(&gCondThrNum, NULL);
     //pthread_mutex_lock(&gMutexThrNum);
     int iFbRet=pthread_create(&tId[C[BOUND2].BOUND2],NULL,&run,&C[BOUND2]);
-    //printf("[mainThread] pthread_create #%d: %d\n", C.BOUND2, iFbRet);
+    printf("[mainThread] pthread_create #%d: %d\n", C[BOUND2].BOUND2, iFbRet);
     pthread_join(tId[C[BOUND2].BOUND2],NULL);  
     //pthread_join(tId[C.BOUND2],NULL);
     //pthread_mutex_unlock(&gMutexThrNum);
