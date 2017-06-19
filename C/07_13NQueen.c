@@ -36,9 +36,9 @@
 #include <math.h>
 #include "pthread.h"
 #define MAXSIZE 27
-
 // pthreadはパラメータを１つしか渡せないので構造体に格納
 typedef struct {
+  int nThread;
   int SIZE;
   int SIZEE;
   int BOUND1;
@@ -56,8 +56,7 @@ typedef struct {
   long COUNT8;
   int aBoard[MAXSIZE];
 }CLASS, *Class;
-CLASS C; //構造体
-
+CLASS G; //グローバル構造体
 /** 時刻のフォーマット変換 */
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
@@ -73,11 +72,11 @@ void TimeFormat(clock_t utime,char *form){
 }
 /** ユニーク解のget */
 long getUnique(){ 
-  return C.COUNT2+C.COUNT4+C.COUNT8;
+  return G.COUNT2+G.COUNT4+G.COUNT8;
 }
 /** 総合計のget */
 long getTotal(){ 
-  return C.COUNT2*2+C.COUNT4*4+C.COUNT8*8;
+  return G.COUNT2*2+G.COUNT4*4+G.COUNT8*8;
 }
 /**********************************************/
 /** 対称解除法                               **/
@@ -114,37 +113,38 @@ long getTotal(){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(){
+void symmetryOps_bitmap(void *args){
+  Class C=(Class)args;
   int own,ptn,you,bit;
   //90度回転
-  if(C.aBoard[C.BOUND2]==1){ own=1; ptn=2;
-    while(own<=C.SIZEE){ bit=1; you=C.SIZEE;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C->aBoard[C->BOUND2]==1){ own=1; ptn=2;
+    while(own<=C->SIZEE){ bit=1; you=C->SIZEE;
+      while((C->aBoard[you]!=ptn)&&(C->aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(C->aBoard[own]>bit){ return; } if(C->aBoard[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>C.SIZEE){ C.COUNT2++; return; }
+    if(own>C->SIZEE){ G.COUNT2++; return; }
   }
   //180度回転
-  if(C.aBoard[C.SIZEE]==C.ENDBIT){ own=1; you=C.SIZEE-1;
-    while(own<=C.SIZEE){ bit=1; ptn=C.TOPBIT;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C->aBoard[C->SIZEE]==C->ENDBIT){ own=1; you=C->SIZEE-1;
+    while(own<=C->SIZEE){ bit=1; ptn=C->TOPBIT;
+      while((C->aBoard[you]!=ptn)&&(C->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(C->aBoard[own]>bit){ return; } if(C->aBoard[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>C.SIZEE){ C.COUNT4++; return; }
+    if(own>C->SIZEE){ G.COUNT4++; return; }
   }
   //270度回転
-  if(C.aBoard[C.BOUND1]==C.TOPBIT){ own=1; ptn=C.TOPBIT>>1;
-    while(own<=C.SIZEE){ bit=1; you=0;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C->aBoard[C->BOUND1]==C->TOPBIT){ own=1; ptn=C->TOPBIT>>1;
+    while(own<=C->SIZEE){ bit=1; you=0;
+      while((C->aBoard[you]!=ptn)&&(C->aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(C->aBoard[own]>bit){ return; } if(C->aBoard[own]<bit){ break; }
       own++; ptn>>=1;
     }
   }
-  C.COUNT8++;
+  G.COUNT8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -168,27 +168,28 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 //void backTrack2(int y,int left,int down,int right){
-void backTrack2(int y,int left,int down,int right){
-  int bitmap=C.MASK&~(left|down|right); 
+void backTrack2(int y,int left,int down,int right,void *args){
+  Class C=(Class)args;
+  int bitmap=C->MASK&~(left|down|right); 
   int bit=0;
-  if(y==C.SIZEE){
-    if(bitmap>0&&(bitmap&C.LASTMASK)==0){ //【枝刈り】最下段枝刈り
-      C.aBoard[y]=bitmap;
-      symmetryOps_bitmap(); //  takakenの移植版の移植版
+  if(y==C->SIZEE){
+    if(bitmap>0&&(bitmap&C->LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      C->aBoard[y]=bitmap;
+      symmetryOps_bitmap(&C); //  takakenの移植版の移植版
     }
   }else{
-    if(y<C.BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap&=~C.SIDEMASK; 
+    if(y<C->BOUND1){             //【枝刈り】上部サイド枝刈り
+      bitmap&=~C->SIDEMASK; 
       // bitmap|=SIDEMASK; 
       // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
-    }else if(y==C.BOUND2) {     //【枝刈り】下部サイド枝刈り
-      if((down&C.SIDEMASK)==0){ return; }
-      if((down&C.SIDEMASK)!=C.SIDEMASK){ bitmap&=C.SIDEMASK; }
+    }else if(y==C->BOUND2) {     //【枝刈り】下部サイド枝刈り
+      if((down&C->SIDEMASK)==0){ return; }
+      if((down&C->SIDEMASK)!=C->SIDEMASK){ bitmap&=C->SIDEMASK; }
     }
     while(bitmap>0) {
-      bitmap^=C.aBoard[y]=bit=-bitmap&bitmap;
+      bitmap^=C->aBoard[y]=bit=-bitmap&bitmap;
       //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,&C);
     }
   }
 }
@@ -201,80 +202,94 @@ void backTrack2(int y,int left,int down,int right){
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right){
-  int bitmap=C.MASK&~(left|down|right); 
+void backTrack1(int y,int left,int down,int right,void *args){
+  Class C=(Class)args;
+  int bitmap=C->MASK&~(left|down|right); 
   int bit;
-  if(y==C.SIZEE) {
+  if(y==C->SIZEE) {
     if(bitmap>0){
-      C.aBoard[y]=bitmap;
+      C->aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C.COUNT8++;
+      G.COUNT8++;
     }
   }else{
-    if(y<C.BOUND1) {   
+    if(y<C->BOUND1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
       bitmap&=~2; // bitmap|=2; bitmap^=2; (bitmap&=~2と同等)
     }
     while(bitmap>0) {
-      bitmap^=C.aBoard[y]=bit=-bitmap&bitmap;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      bitmap^=C->aBoard[y]=bit=-bitmap&bitmap;
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,&C);
     }
   } 
 }
-void *run(){
-  C.aBoard[0]=1;
-  C.MASK=(1<<C.SIZE)-1;
-  C.TOPBIT=1<<C.SIZEE;
+void *run(void *args){
+  Class C=(Class)args;
+  C->aBoard[0]=1;
+  C->MASK=(1<<C->SIZE)-1;
+  C->TOPBIT=1<<C->SIZEE;
   int bit ;
   // 最上段のクイーンが角にある場合の探索
-  if(C.BOUND1>1&&C.BOUND1<C.SIZEE) { 
-    if(C.BOUND1<C.SIZEE) {
-      C.aBoard[1]=bit=(1<<C.BOUND1);
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+  if(C->BOUND1>1&&C->BOUND1<C->SIZEE) { 
+    if(C->BOUND1<C->SIZEE) {
+      C->aBoard[1]=bit=(1<<C->BOUND1);
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),&C);
     }
   }
-  C.ENDBIT=(C.TOPBIT>>C.BOUND1);
-  C.SIDEMASK=C.LASTMASK=(C.TOPBIT|1);
+  C->ENDBIT=(C->TOPBIT>>C->BOUND1);
+  C->SIDEMASK=C->LASTMASK=(C->TOPBIT|1);
   // 最上段のクイーンが角以外にある場合の探索
-  if(C.BOUND1>0&&C.BOUND2<C.SIZE-1&&C.BOUND1<C.BOUND2){ 
-    for(int i=1; i<C.BOUND1; i++){
-      C.LASTMASK=C.LASTMASK|C.LASTMASK>>1|C.LASTMASK<<1;
+  if(C->BOUND1>0&&C->BOUND2<C->SIZE-1&&C->BOUND1<C->BOUND2){ 
+    for(int i=1; i<C->BOUND1; i++){
+      C->LASTMASK=C->LASTMASK|C->LASTMASK>>1|C->LASTMASK<<1;
     }
-    if(C.BOUND1<C.BOUND2) {
-      C.aBoard[0]=bit=(1<<C.BOUND1);
-      backTrack2(1,bit<<1,bit,bit>>1);
+    if(C->BOUND1<C->BOUND2) {
+      C->aBoard[0]=bit=(1<<C->BOUND1);
+      backTrack2(1,bit<<1,bit,bit>>1,&C);
     }
-    C.ENDBIT>>=C.SIZE;
+    C->ENDBIT>>=C->SIZE;
   }
   return 0;
 }
+pthread_mutex_t gMutexThrNum;   // condition variable
+pthread_cond_t gCondThrNum;     // mutex varable
 void *NQueenThread(){
-  pthread_t pt[C.SIZEE];
-  for(C.BOUND1=C.SIZE-1,C.BOUND2=0;C.BOUND2<C.SIZE-1;C.BOUND1--,C.BOUND2++){
-     // run();
-     pthread_create(&pt[C.BOUND1],NULL,&run,NULL);
-     /** 未完成版 排他制御をしない場合　前の処理が終わったら次の処理へ移る */
-     /** 07_13で排他処理を実現 今はこれでよし*/
-     pthread_join(pt[C.BOUND1],NULL);
+  pthread_t tId[G.SIZE];        // thread ID
+  CLASS C[MAXSIZE]; //構造体
+  int BOUND2=0;
+  //for(C.BOUND1=C.SIZE-1,C.BOUND2=0;C.BOUND2<C.SIZE-1;C.BOUND1--,C.BOUND2++){
+  for(C[BOUND2].BOUND1=C[BOUND2].SIZE-1;BOUND2<C[BOUND2].SIZE-1;C[BOUND2].BOUND1--){
+    for(int j=0;j<G.SIZE;j++){ C[BOUND2].aBoard[j]=j; }
+    //pthread_mutex_init(&gMutexThrNum, NULL);
+    //pthread_cond_init(&gCondThrNum, NULL);
+    //pthread_mutex_lock(&gMutexThrNum);
+    int iFbRet=pthread_create(&tId[C[BOUND2].BOUND2],NULL,&run,&C[BOUND2]);
+    //printf("[mainThread] pthread_create #%d: %d\n", C.BOUND2, iFbRet);
+    pthread_join(tId[C[BOUND2].BOUND2],NULL);  
+    //pthread_join(tId[C.BOUND2],NULL);
+    //pthread_mutex_unlock(&gMutexThrNum);
+    //pthread_cond_signal(&gCondThrNum);
+    //pthread_mutex_destroy( &gMutexThrNum);
+    //pthread_exit(NULL);
+    BOUND2++;
   }
-  /** 本来はここでjoinしたいが排他制御をしないと処理が流れてしまう */
-  //pthread_join(pt[C.BOUND1],NULL);
   return 0;
+}
+void NQueen(){
+  pthread_t tId;
+  int iFbRet = pthread_create(&tId, NULL, &NQueenThread, NULL);
+  //printf("[main] pthread_create: %d\n", iFbRet);
+  pthread_join(tId, NULL);
 }
 int main(void){
   clock_t st; char t[20];
-  pthread_t ptN;
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
   for(int i=2;i<=MAXSIZE;i++){
-    C.SIZEE=i-1;C.SIZE=i;C.lTotal=0; C.lUnique=0;
-	  C.COUNT2=C.COUNT4=C.COUNT8=0;
-    for(int j=0;j<i;j++){ C.aBoard[j]=j; }
+    G.SIZE=i; G.SIZEE=i-1;G.SIZE=i;G.lTotal=0; G.lUnique=0;
+	  G.COUNT2=G.COUNT4=G.COUNT8=0;
     st=clock();
-    //NQueenThread();
-    /** N に関しては順序正しく現在の処理が終わってから次の処理へ移る */
-    pthread_create(&ptN,NULL,&NQueenThread,NULL);
-    pthread_join(ptN,NULL); /* いちいちjoinをする */
+    NQueen(); 
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
   } 
