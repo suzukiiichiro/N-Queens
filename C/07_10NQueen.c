@@ -29,19 +29,24 @@
 */
 #include <stdio.h>
 #include <time.h>
+// OpenMP
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #define  MAXSIZE   30
 #define  MINSIZE    5
 //#define  i64  __int64
-#define  i64  int
+#include <stdint.h>
+#define  i64  uint64_t
 //**********************************************
-// Display the Board Image
+// Display the aBoard Image
 //**********************************************
-void Display(int n,int *board) {
+void Display(int n,int *aBoard) {
   int  y,bit,topb=1<<(n-1);
   printf("N= %d\n",n);
   for(y=0; y<n; y++){
     for(bit=topb; bit; bit>>=1)
-      printf("%s ",(board[y] & bit)? "Q": "-");
+      printf("%s ",(aBoard[y] & bit)? "Q": "-");
     printf("\n");
   }
   printf("\n");
@@ -49,82 +54,82 @@ void Display(int n,int *board) {
 //**********************************************
 // Check Unique Solutions
 //**********************************************
-void symmetryOps_bitmap(int *board,int size,int last,int topb,int posa,int posb,int posc,i64 *cnt8,i64 *cnt4,i64 *cnt2) {
-  int  pos1,pos2,bit1,bit2;
+void symmetryOps_bitmap(int *aBoard,int iSize,int SIZEE,int TOPBIT,int BOUND2,int ENDBIT,int BOUND1,i64 *COUNT8,i64 *COUNT4,i64 *COUNT2) {
+  int  own,you,bit,ptn;
   // 90-degree rotation
-  if (board[posa]==1){
-    for(pos1=1,bit2=2; pos1<size; pos1++,bit2<<=1){
-      for(pos2=last,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; pos2--,bit1<<=1);
-      if (board[pos1] != bit1)return;
-      if (board[pos2] != bit2)break;
+  if (aBoard[BOUND2]==1){
+    for(own=1,ptn=2; own<iSize; own++,ptn<<=1){
+      for(you=SIZEE,bit=1; aBoard[own]!=bit && aBoard[you]!=ptn; you--,bit<<=1);
+      if (aBoard[own] != bit)return;
+      if (aBoard[you] != ptn)break;
     }
-    if (pos1==size){
-      (*cnt2)++;
-      //Display(size,board);
+    if (own==iSize){
+      (*COUNT2)++;
+      //Display(iSize,aBoard);
       return;
     }
   }
   // 180-degree rotation
-  if (board[last]==posb){
-    for(pos1=1,pos2=size-2; pos1<size; pos1++,pos2--){
-      for(bit2=topb,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; bit2>>=1,bit1<<=1);
-      if (board[pos1] != bit1)return;
-      if (board[pos2] != bit2)break;
+  if (aBoard[SIZEE]==ENDBIT){
+    for(own=1,you=iSize-2; own<iSize; own++,you--){
+      for(ptn=TOPBIT,bit=1; aBoard[own]!=bit && aBoard[you]!=ptn; ptn>>=1,bit<<=1);
+      if (aBoard[own] != bit)return;
+      if (aBoard[you] != ptn)break;
     }
-    if (pos1==size){
-      (*cnt4)++;
-      //Display(size,board);
+    if (own==iSize){
+      (*COUNT4)++;
+      //Display(iSize,aBoard);
       return;
     }
   }
   // 270-degree rotation
-  if (board[posc]==topb){
-    for(pos1=1,bit2=topb>>1; pos1<size; pos1++,bit2>>=1){
-      for(pos2=0,bit1=1; board[pos1]!=bit1 && board[pos2]!=bit2; pos2++,bit1<<=1);
-      if (board[pos1] != bit1)return;
-      if (board[pos2] != bit2)break;
+  if (aBoard[BOUND1]==TOPBIT){
+    for(own=1,ptn=TOPBIT>>1; own<iSize; own++,ptn>>=1){
+      for(you=0,bit=1; aBoard[own]!=bit && aBoard[you]!=ptn; you++,bit<<=1);
+      if (aBoard[own] != bit)return;
+      if (aBoard[you] != ptn)break;
     }
   }
-  (*cnt8)++;
-  //Display(size,board);
+  (*COUNT8)++;
+  //Display(iSize,aBoard);
 }
 //**********************************************
 // First queen is inside
 //**********************************************
-void backTrack2(int y,int BOUND1,int x1,i64 *uniq,i64 *allc) {
+void backTrack2(int iSize_v,int y,int BOUND1,i64 *uniq,i64 *allc) {
   int  iSize,SIZEE,i;
   int  bitmap,bit,MASK,left,rigt;
-  int  posa,posb,TOPBIT,SIDEMASK,gate;
-  int  board[MAXSIZE];
+  int  BOUND2,ENDBIT,TOPBIT,SIDEMASK,gate;
+  int  aBoard[MAXSIZE];
   int  s_mask[MAXSIZE];
   int  s_left[MAXSIZE];
   int  s_rigt[MAXSIZE];
   int  s_bits[MAXSIZE];
   i64  COUNT8,COUNT4,COUNT2;
   // Initialize
-  iSize=y;
-  SIZEE=y-1;
-  MASK=(1<<y)-1;
+  iSize=iSize_v;
+  SIZEE=iSize_v-1;
+  MASK=(1<<iSize_v)-1;
   COUNT8=COUNT4=COUNT2=0;
   // ControlValue
   TOPBIT=1<<SIZEE;
   SIDEMASK=TOPBIT|1;
-  gate=(MASK>>BOUND1)& (MASK<<BOUND1);
-  posa=SIZEE-BOUND1;
-  posb=TOPBIT>>BOUND1;
+  gate=(MASK>>y)& (MASK<<y);
+  BOUND2=SIZEE-y;
+  ENDBIT=TOPBIT>>y;
   // y=0: 000001110 (select)
   // y=1: 111111111 (select)
-  board[0]=1<<BOUND1;
-  board[1]=bit=1<<x1;
-  MASK=MASK ^ (board[0]|bit);
-  left=board[0]<<2|bit<<1;
-  rigt=board[0]>>2|bit>>1;
-  y=i=2;
+  aBoard[0]=1<<y;
+  aBoard[1]=bit=1<<BOUND1;
+  MASK=MASK ^ (aBoard[0]|bit);
+  left=aBoard[0]<<2|bit<<1;
+  rigt=aBoard[0]>>2|bit>>1;
+  iSize_v=i=2;
   // y -> posc
-  if (BOUND1==1)goto NEXT2;
+  if (y==1)goto NEXT2;
   MASK=MASK ^ SIDEMASK;
 NEXT1:
-  if (i==BOUND1){
+  if (i==y){
     MASK |= SIDEMASK;
     goto NEXT2;
   }
@@ -135,7 +140,7 @@ NEXT1:
     s_rigt[i]=rigt;
 PROC1:
     bitmap^=bit=-bitmap & bitmap;
-    board[i]=bit;
+    aBoard[i]=bit;
     s_bits[i++]=bitmap;
     MASK=MASK ^ bit;
     left=(left|bit)<<1;
@@ -150,9 +155,9 @@ BACK1:
       goto PROC1;
     }
   }
-  if (i==y)goto FINISH;
+  if (i==iSize_v)goto FINISH;
   goto BACK1;
-  // posc -> posa
+  // posc -> BOUND2
 NEXT2:
   bitmap=MASK & ~(left|rigt);
   if (bitmap){
@@ -161,12 +166,12 @@ NEXT2:
     s_rigt[i]=rigt;
 PROC2:
     bitmap^=bit=-bitmap & bitmap;
-    board[i]=bit;
+    aBoard[i]=bit;
     s_bits[i++]=bitmap;
     MASK=MASK ^ bit;
     left=(left|bit)<<1;
     rigt=(rigt|bit)>>1;
-    if (i==posa){
+    if (i==BOUND2){
       if (MASK & TOPBIT)goto BACK2;
       if (MASK & 1){
         if ((left|rigt)& 1)goto BACK2;
@@ -188,15 +193,15 @@ BACK2:
       goto PROC2;
     }
   }
-  if (i==y)goto FINISH;
-  if (i>BOUND1)goto BACK2;
+  if (i==iSize_v)goto FINISH;
+  if (i>y)goto BACK2;
   goto BACK1;
-  // posa -> last
+  // BOUND2 -> last
 NEXT3:
   if (i==SIZEE){
     if (bitmap & gate){
-      board[i]=bitmap;
-      symmetryOps_bitmap(board,iSize,SIZEE,TOPBIT,posa,posb,BOUND1,&COUNT8,&COUNT4,&COUNT2);
+      aBoard[i]=bitmap;
+      symmetryOps_bitmap(aBoard,iSize,SIZEE,TOPBIT,BOUND2,ENDBIT,y,&COUNT8,&COUNT4,&COUNT2);
     }
     goto BACK3;
   }
@@ -205,7 +210,7 @@ NEXT3:
   s_rigt[i]=rigt;
 PROC3:
   bitmap^=bit=-bitmap & bitmap;
-  board[i]=bit;
+  aBoard[i]=bit;
   s_bits[i++]=bitmap;
   MASK=MASK ^ bit;
   left=(left|bit)<<1;
@@ -220,7 +225,7 @@ BACK3:
     rigt=s_rigt[i];
     goto PROC3;
   }
-  if (i>posa)goto BACK3;
+  if (i>BOUND2)goto BACK3;
   goto BACK2;
 FINISH:
   *uniq=COUNT8     + COUNT4     + COUNT2;
@@ -232,7 +237,7 @@ FINISH:
 void backTrack1(int y,int BOUND1,i64 *uniq,i64 *allc) {
   int  size,last,i;
   int  bitmap,bit,MASK,left,rigt;
-  int  board[MAXSIZE];
+  int  aBoard[MAXSIZE];
   int  s_mask[MAXSIZE];
   int  s_left[MAXSIZE];
   int  s_rigt[MAXSIZE];
@@ -245,13 +250,13 @@ void backTrack1(int y,int BOUND1,i64 *uniq,i64 *allc) {
   COUNT8=0;
   // y=0: 000000001 (static)
   // y=1: 011111100 (select)
-  board[0]=1;
-  board[1]=bit=1<<BOUND1;
+  aBoard[0]=1;
+  aBoard[1]=bit=1<<BOUND1;
   MASK=MASK ^ (1|bit);
   left=1<<2|bit<<1;
   rigt=1>>2|bit>>1;
   y=i=2;
-  // y -> posa
+  // y -> BOUND2
   MASK=MASK ^ 2;
 NEXT1:
   if (i==BOUND1){
@@ -265,7 +270,7 @@ NEXT1:
     s_rigt[i]=rigt;
 PROC1:
     bitmap^=bit=-bitmap & bitmap;
-    board[i]=bit;
+    aBoard[i]=bit;
     s_bitmap[i++]=bitmap;
     MASK=MASK ^ bit;
     left=(left|bit)<<1;
@@ -282,14 +287,14 @@ BACK1:
   }
   if (i==y)goto FINISH;
   goto BACK1;
-  // posa -> last
+  // BOUND2 -> last
 NEXT2:
   bitmap=MASK & ~(left|rigt);
   if (bitmap){
     if (i==last){
-      board[i]=bitmap;
+      aBoard[i]=bitmap;
       COUNT8++;
-      //Display(size,board);
+      //Display(size,aBoard);
       goto BACK2;
     }
     s_mask[i]=MASK;
@@ -297,7 +302,7 @@ NEXT2:
     s_rigt[i]=rigt;
 PROC2:
     bitmap^=bit=-bitmap & bitmap;
-    board[i]=bit;
+    aBoard[i]=bit;
     s_bitmap[i++]=bitmap;
     MASK=MASK ^ bit;
     left=(left|bit)<<1;
@@ -327,6 +332,10 @@ void NQueen(int iSize,i64 *unique,i64 *allcnt) {
   i64  uniq,allc;
   *unique=*allcnt=0;
   for(y=0; y<iSize/2; y++){
+// OpenMP
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(BOUND1=0; BOUND1<iSize; BOUND1++){
       if (y==0){
         // y=0: 000000001 (static)
@@ -377,7 +386,7 @@ int main(void) {
     NQueen(i,&unique,&allcnt);
     TimeFormat(clock()-starttime,form);
     // sprintf(line,"%2d:%16I64d%16I64d %s\n",n,allcnt,unique,form);
-    sprintf(line,"%2d:%16d%16d %s\n",i,allcnt,unique,form);
+    sprintf(line,"%2d:%16llu%16llu%s\n",i,allcnt,unique,form);
     printf("%s",line);
   }
   return 0;
