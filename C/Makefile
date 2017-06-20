@@ -1,7 +1,8 @@
 # Makefile for nqueens2.c
 
 CC=gcc
-CFLAGS=-Wall -O2
+#CFLAGS=-Wall -O3
+CFLAGS=-Wall -Og
 RM=rm -fr
 
 #CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
@@ -9,17 +10,21 @@ RM=rm -fr
 #LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 #LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
 
+nq14=07_14NQueen
+nq14: $(nq14).c 
+	$(CC) -lpthread $(CFLAGS) -o $(nq14) $(nq14).c 
+
 nq13=07_13NQueen
 nq13: $(nq13).c 
-	$(CC) -pthread $(CFLAGS) -o $(nq13) $(nq13).c 
+	$(CC) -lpthread $(CFLAGS) -o $(nq13) $(nq13).c 
 
 nq12=07_12NQueen
 nq12: $(nq12).c 
-	$(CC) -pthread $(CFLAGS) -o $(nq12) $(nq12).c 
+	$(CC) -lpthread $(CFLAGS) -o $(nq12) $(nq12).c 
 
 nq11=07_11NQueen
 nq11: $(nq11).c 
-	$(CC) $(CFLAGS) -o $(nq11) $(nq11).c 
+	$(CC) -lpthread $(CFLAGS) -o $(nq11) $(nq11).c 
 
 nq10=07_10NQueen
 nq10: $(nq10).c 
@@ -29,10 +34,10 @@ nq9=07_09NQueen
 nq9: $(nq9).c 
 	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
-all: nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1 nq02 nq01
+all: nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out nq01 nq02 $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13)
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14)
 
 nq8=07_08NQueen
 nq8: $(nq8).c 
@@ -66,9 +71,9 @@ nq1=07_01NQueen
 nq1: $(nq1).c 
 	$(CC) $(CFLAGS) -o $(nq1) $(nq1).c 
 	
-nq02: nqueens2.c
-	$(CC) $(CFLAGS) -o nq02  nqueens2.c
-
-nq01: nqueens1.c
-	$(CC) $(CFLAGS) -o nq01  nqueens1.c
+#nq02: nqueens2.c
+#	$(CC) $(CFLAGS) -o nq02  nqueens2.c
+#
+#nq01: nqueens1.c
+#	$(CC) $(CFLAGS) -o nq01  nqueens1.c
 

@@ -24,6 +24,7 @@
    11．マルチスレッド(構造体)           NQueen11() 
    12．マルチスレッド(pthread)          NQueen12()
    13．マルチスレッド(排他処理)         NQueen13()
+   14．マルチスレッド(join)             NQueen14()
 
   実行結果
  N:        Total       Unique        dd:hh:mm:ss
@@ -165,7 +166,8 @@ void symmetryOps_bitmap(){
   if(nEquiv==8){ COUNT8++; }
 }
 void NQueen(int y, int left, int down, int right){
-  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
+  //配置可能フィールド
+  int bitmap=iMask&~(left|down|right); 
   if (y==iSize) {
     if(!bitmap){
 	    aBoard[y]=bitmap;
@@ -173,7 +175,8 @@ void NQueen(int y, int left, int down, int right){
     }
   }else{
     while (bitmap) {
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+      //最も下位の１ビットを抽出
+      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); 
       NQueen(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
      }
   } 

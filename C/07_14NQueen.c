@@ -43,7 +43,7 @@
    10．もっとビットマップ               NQueen10()
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
    12．マルチスレッド(pthread)          NQueen12() N16: 0:02
- <>13．マルチスレッド(排他処理)         NQueen13()
+   13．マルチスレッド(排他処理)         NQueen13() N16: 0:02
    14．マルチスレッド(join)             NQueen14()
 
  1. ブルートフォース　力任せ探索
@@ -552,7 +552,11 @@
 
   13.マルチスレッド（排他処理 mutex）
   実行結果 9と同じ   N16:02 N17:14
- 
+
+  14．マルチスレッド(join) 
+  実行結果 
+
+
  *
 */
 
@@ -595,6 +599,7 @@ GCLASS G; //グローバル構造体
 void TimeFormat(clock_t utime,char *form){
     int dd,hh,mm;
     float ftime,ss;
+    //ftime=(float)utime/CLOCKS_PER_SEC;
     ftime=(float)utime/CLOCKS_PER_SEC;
     mm=(int)ftime/60;
     ss=ftime-(int)(mm*60);
@@ -604,7 +609,7 @@ void TimeFormat(clock_t utime,char *form){
     mm=mm%60;
     sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
-/** ユニーク解のget */
+/** ユニーク解のset */
 void setCount(long C2,long C4,long C8){
   G.COUNT2+=C2;
   G.COUNT4+=C4;
@@ -653,8 +658,6 @@ long getTotal(){
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
 void symmetryOps_bitmap(int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[]){
-  //Class C=(Class)args;
-  //struct local *l=(struct local *)args;
   int own,ptn,you,bit;
   //90度回転
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
@@ -762,7 +765,7 @@ void backTrack2(int y,int left,int down,int right,int BOUND1,int BOUND2,int MASK
 */
 //void backTrack1(int y,int left,int down,int right,void *args){
 void backTrack1(int y,int left,int down,int right,int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[]){
-//  printf("bt1. BOUND1:%d BOUND2:%d MASK:%d SIDEMASK:%d LASTMAK:%d TOPBIT:%d ENDBIT:%d\n",BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT);
+  //printf("bt1. BOUND1:%d BOUND2:%d MASK:%d SIDEMASK:%d LASTMAK:%d TOPBIT:%d ENDBIT:%d\n",BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT);
   //配置可能フィールド
   int bitmap=MASK&~(left|down|right); 
   int bit;
@@ -803,10 +806,7 @@ void *run(void *args){
     if(l->BOUND1<G.SIZEE) {
       // 角にクイーンを配置 
       l->aBoard[1]=bit=(1<<l->BOUND1);
-//      printf("  1. l->BOUND1:%d l->BOUND2:%d l->MASK:%d l->SIDEMASK:%d l->LASTMAK:%d l->TOPBIT:%d l->ENDBIT:%d\n",l->BOUND1,l->BOUND2,l->MASK,l->SIDEMASK,l->LASTMASK,l->TOPBIT,l->ENDBIT);
-      /**
-       *
-       */
+      //printf("  1. l->BOUND1:%d l->BOUND2:%d l->MASK:%d l->SIDEMASK:%d l->LASTMAK:%d l->TOPBIT:%d l->ENDBIT:%d\n",l->BOUND1,l->BOUND2,l->MASK,l->SIDEMASK,l->LASTMASK,l->TOPBIT,l->ENDBIT);
       //２行目から探索
       backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l->BOUND1,l->BOUND2,l->MASK,l->SIDEMASK,l->LASTMASK,l->TOPBIT,l->ENDBIT,l->aBoard);
     }
@@ -822,6 +822,9 @@ void *run(void *args){
     }
     if(l->BOUND1<l->BOUND2) {
       l->aBoard[0]=bit=(1<<l->BOUND1);
+      /**
+       *
+       */
       //backTrack2(1,bit<<1,bit,bit>>1,&l);
       backTrack2(1,bit<<1,bit,bit>>1,l->BOUND1,l->BOUND2,l->MASK,l->SIDEMASK,l->LASTMASK,l->TOPBIT,l->ENDBIT,l->aBoard);
     }
@@ -910,7 +913,14 @@ void *NQueenThread(){
       printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
     }
     //処理を待って次の処理へ
+    //BOUND1の順次処理の度にjoinせずに並行処理する
     pthread_join(cth[BOUND1],NULL);  
+  }
+  /**
+   * 処理が終わったら 全ての処理をjoinする
+  */
+  for(int i=G.SIZE-1;i>0;i--){
+    pthread_join(cth[i],NULL);  
   }
   //nutexの破棄
   pthread_mutex_destroy(&mutex);        
@@ -964,19 +974,42 @@ void NQueen(){
   NQueen()実行関数は forの中の値iがインクリメントする度に
   Nのサイズが大きくなりクイーンの数を解法します。 
  */
+#include <time.h>
+#include <sys/time.h>
 int main(void){
   clock_t st;  // 計測開始時刻
   char t[20];  // 計測結果出力
-  printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
+  printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss.ms");
+  struct timeval t0;
+  struct timeval t1;
   for(int i=2;i<=MAXSIZE;i++){
   //for(int i=2;i<=8;i++){
     G.SIZE=i;     // サイズ N
     G.SIZEE=i-1;  // サイズ N から -1　を差し引いたサイズ
     G.COUNT2=G.COUNT4=G.COUNT8=0;   // ユニークカウント格納用変数 long 型
     st=clock();   // 計測開始
+
+    //マルチスレッドの場合、これまでの計測方法ではマルチコアで処理される
+    //全てのスレッドの処理時間の合計となるため、gettimeofday()で計測する
+    gettimeofday(&t0, NULL);
     NQueen();     // 実行関数
-    TimeFormat(clock()-st,t); //計測時間のフォーマット変換
-    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t); // 出力
+    gettimeofday(&t1, NULL);
+    int ss,ms;
+    if (t1.tv_usec < t0.tv_usec) {
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    }
+    else {
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec - t0.tv_usec+500)/10000;
+    }
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    // これまでの出力
+    //TimeFormat(clock()-st,t); //計測時間のフォーマット変換
+    //printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t); 
+    printf("%2d:%13ld%16ld%10.2d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
   } 
 }
 

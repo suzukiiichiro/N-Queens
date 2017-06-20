@@ -24,6 +24,10 @@
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
  <>12．マルチスレッド(pthread)          NQueen12() N16: 0:02
    13．マルチスレッド(排他処理)         NQueen13()
+   14．マルチスレッド(join)             NQueen14()
+
+
+   12.マルチスレッド（pthread)
 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss

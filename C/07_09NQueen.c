@@ -24,6 +24,9 @@
    11．マルチスレッド(構造体)           NQueen11() 
    12．マルチスレッド(pthread)          NQueen12()
    13．マルチスレッド(排他処理)         NQueen13()
+   14．マルチスレッド(join)             NQueen14()
+
+  ９．ビットマップ＋枝刈りと最適化
 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
@@ -338,10 +341,11 @@ void NQueen(int y, int left, int down, int right){
 
   aBoard[0]=1;
   /* 最上段行のクイーンが角にある場合の探索 */
-  //for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
   for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
-    aBoard[1]=bit=(1<<BOUND1); // 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); //２行目から探索
+    // 角にクイーンを配置 
+    aBoard[1]=bit=(1<<BOUND1); 
+    //２行目から探索
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1)); 
   }
 
   SIDEMASK=LASTMASK=(TOPBIT|1);
