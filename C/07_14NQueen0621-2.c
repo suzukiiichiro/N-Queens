@@ -126,14 +126,12 @@ $ ./NQueen
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
    12．マルチスレッド(pthread)          NQueen12() N16: 0:02
    13．マルチスレッド(join)             NQueen13() N16: 0:02
-   14．マルチスレッド(mutex)            NQueen14() N16: 0:04
-   14．マルチスレッド(mutex)            NQueen14() N16: 0:04
-   15．マルチスレッド()                 NQueen15() N16: 0:00
+   14．マルチスレッド(mutex)            NQueen14() N16: 0:00
 
 Nクイーンの解決には処理を分解して一つ一つ丁寧に理解すべくステップが必要だ。
 最初はステップ１のソースを何度も見て書いて理解するしかない。
 もちろん、簡単なだけに解決時間も相当かかる。処理が終わるまでにコーヒーが飲み終わってしまうかもしれない。
-ステップ15までくると、およそ１秒もかからずに処理が終了する。１分かかっていたことが１秒で終わることに
+ステップ14までくると、およそ１秒もかからずに処理が終了する。１分かかっていたことが１秒で終わることに
 興味がわかないかもしれない。がしかし、１００年かかることが１年かからないとしたらどうだろう。
 人工知能AI技術は、デバイスの進化、処理の高速化、解法の最適化（アルゴリズム）の三位一体だ。
 順番に、とばすことなくじっくりと読み進めて欲しい。たぶん、日本中のNクイーンプログラムをここまで分解して
@@ -751,26 +749,16 @@ Lua版
   13.マルチスレッド（排他処理 mutex）
   実行結果 9と同じ   N16:02 N17:14
 
-  14．C版マルチスレッド(mutex) 
-  mutexによるロックとロック解除がボトルネックになり、
-　並行処理のメリットが出ません。
+  14．C版マルチスレッド(join) 
+  実行結果 
+   N:           Total          Uniquei  days hh:mm:ss.--
+  14:          365596            45752              0.01
+  15:         2279184           285053              0.10
+  16:        14772512          1846955              0.62
+  17:        95815104         11977939              3.80
+  18:       666090624         83263591             28.62
+  19:      4968057848        621012754          03:44.91
 
-   N:           Total           Unique          hh:mm:ss
-   2:               0                0        0000:00:00
-   3:               0                0        0000:00:00
-   4:               2                1        0000:00:00
-   5:              10                2        0000:00:00
-   6:               4                1        0000:00:00
-   7:              40                6        0000:00:00
-   8:              92               12        0000:00:00
-   9:             352               46        0000:00:00
-  10:             724               92        0000:00:00
-  11:            2680              341        0000:00:00
-  12:           14200             1787        0000:00:00
-  13:           73712             9233        0000:00:00
-  14:          365596            45752        0000:00:00
-  15:         2279184           285053        0000:00:00
-  16:        14772512          1846955        0000:00:04
 
   参考（Bash版 07_8NQueen.lua）
   10:             724               92                 0
@@ -793,6 +781,8 @@ Lua版
   20:     39029188884       4878666808          00:35:07
   21:    314666222712      39333324973          04:41:36
   22:   2691008701644     336376244042          39:14:59
+
+
  *
 */
 
@@ -800,7 +790,6 @@ Lua版
 #include<time.h>
 #include <math.h>
 #include "pthread.h"
-#include <sys/time.h>
 #define MAXSIZE 27
 
 // pthreadはパラメータを１つしか渡せないので構造体に格納
@@ -816,11 +805,12 @@ struct local{
   int aBoard[MAXSIZE];
   int SIZE;
   int SIZEE;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
 };
 
-//排他処理 mutex
 pthread_mutex_t mutex;
-
+pthread_cond_t cond;
 //グローバル構造体
 typedef struct {
   int SIZE; //SIZEはスレッドローカルにコピーします。
@@ -846,28 +836,24 @@ void TimeFormat(clock_t utime,char *form){
   sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
 
-// /** ユニーク解のset */
-void setCount2(){
-  pthread_mutex_lock(&mutex);//ロックします
-  G.COUNT2++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
+/** ユニーク解のset */
+void setCount(long C2,long C4,long C8,pthread_mutex_t mutex){
+  pthread_mutex_lock(&mutex);
+  G.COUNT2+=C2;
+  G.COUNT4+=C4;
+  G.COUNT8+=C8;
+  pthread_mutex_unlock(&mutex);
 }
-void setCount4(){
-  pthread_mutex_lock(&mutex);//ロックします
-  G.COUNT4++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
-}
-void setCount8(){
-  pthread_mutex_lock(&mutex);//ロックします
-  G.COUNT8++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
-}
-long getTotal(){
-  long sum=G.COUNT2*2+G.COUNT4*4+G.COUNT8*8;
+
+/** ユニーク解のget */
+long getUnique(){ 
+  long sum=G.COUNT2+G.COUNT4+G.COUNT8;
   return sum;
 }
-long getUnique(){
-  long sum=G.COUNT2+G.COUNT4+G.COUNT8;
+
+/** 総合計のget */
+long getTotal(){ 
+  long sum= G.COUNT2*2+G.COUNT4*4+G.COUNT8*8;
   return sum;
 }
 /**********************************************/
@@ -905,36 +891,96 @@ long getUnique(){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int SIZEE){
+void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,
+    int TOPBIT,int ENDBIT,int aBoard[],int SIZEE,pthread_mutex_t mutex,pthread_cond_t cond){
   int own,ptn,you,bit;
   //90度回転
-  if(aBoard[BOUND2]==1){ own=1; ptn=2;
-    while(own<=SIZEE){ bit=1; you=SIZEE;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1;
+  if(aBoard[BOUND2]==1){ 
+    pthread_mutex_lock(&mutex);
+    own=1; ptn=2;
+    pthread_mutex_unlock(&mutex);
+    while(own<=SIZEE){ 
+      pthread_mutex_lock(&mutex);
+        bit=1; 
+        you=SIZEE;
+      pthread_mutex_unlock(&mutex);
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ 
+        pthread_mutex_lock(&mutex);
+          bit<<=1; 
+          you--; 
+        pthread_mutex_unlock(&mutex);
+      }
+      if(aBoard[own]>bit){ return; } 
+      if(aBoard[own]<bit){ break; }
+      pthread_mutex_lock(&mutex);
+        own++; 
+        ptn<<=1;
+      pthread_mutex_unlock(&mutex);
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>SIZEE){ setCount2(); return; }
-    // if(own>SIZEE){ G.COUNT2++; return; }
+    if(own>SIZEE){ 
+      //COUNT2++; 
+      setCount(1,0,0,mutex);
+      return; }
   }
   //180度回転
   //if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
-  if(bitmap==ENDBIT){ own=1; you=SIZEE-1;
-    while(own<=SIZEE){ bit=1; ptn=TOPBIT;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
+  if(bitmap==ENDBIT){ 
+    pthread_mutex_lock(&mutex);
+      own=1; 
+      you=SIZEE-1;
+    pthread_mutex_unlock(&mutex);
+    while(own<=SIZEE){ 
+      pthread_mutex_lock(&mutex);
+        bit=1; ptn=TOPBIT;
+      pthread_mutex_unlock(&mutex);
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ 
+        pthread_mutex_lock(&mutex);
+          bit<<=1; 
+          ptn>>=1; 
+        pthread_mutex_unlock(&mutex);
+      }
+      if(aBoard[own]>bit){ return; } 
+      if(aBoard[own]<bit){ break; }
+      pthread_mutex_lock(&mutex);
+        own++; 
+        you--;
+      pthread_mutex_unlock(&mutex);
+    }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>SIZEE){ setCount4(); return; }
-    // if(own>SIZEE){ G.COUNT4++; return; }
+    if(own>SIZEE){ 
+      //COUNT4++; 
+      setCount(0,1,0,mutex);
+      return; 
+    }
   }
   //270度回転
-  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
-    while(own<=SIZEE){ bit=1; you=0;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; }
+  if(aBoard[BOUND1]==TOPBIT){ 
+    pthread_mutex_lock(&mutex);
+      own=1; 
+      ptn=TOPBIT>>1;
+    pthread_mutex_unlock(&mutex);
+    while(own<=SIZEE){ 
+      pthread_mutex_lock(&mutex);
+        bit=1; 
+        you=0;
+      pthread_mutex_unlock(&mutex);
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ 
+        pthread_mutex_lock(&mutex);
+          bit<<=1; 
+          you++; 
+        pthread_mutex_unlock(&mutex);
+      }
+      if(aBoard[own]>bit){ return; } 
+      if(aBoard[own]<bit){ break; }
+      pthread_mutex_lock(&mutex);
+        own++; 
+        ptn>>=1;
+      pthread_mutex_unlock(&mutex);
+    }
   }
-  setCount8();
-  // G.COUNT8++;
+  //COUNT8++;
+  setCount(0,0,1,mutex);
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -960,31 +1006,46 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
 //void backTrack2(int y,int left,int down,int right){
 void backTrack2(int y,int left,int down,int right,
     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,
-    int TOPBIT,int ENDBIT,int aBoard[],int SIZE,int SIZEE){
+    int TOPBIT,int ENDBIT,int aBoard[],int SIZE,int SIZEE,pthread_mutex_t mutex,pthread_cond_t cond){
   //配置可能フィールド
-  int bitmap=MASK&~(left|down|right); 
+  pthread_mutex_lock(&mutex);
+    int bitmap=MASK&~(left|down|right); 
+  pthread_mutex_unlock(&mutex);
   int bit=0;
   if(y==SIZEE){
     if(bitmap!=0){
       if( (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
-        aBoard[y]=bitmap;
+        pthread_mutex_lock(&mutex);
+          aBoard[y]=bitmap;
+        pthread_mutex_unlock(&mutex);
         //対称解除法
-        symmetryOps_bitmap(bitmap,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE); 
+        symmetryOps_bitmap(bitmap,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE,mutex,cond); 
       }
     }
   }else{
     if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap&=~SIDEMASK; 
-      // bitmap|=SIDEMASK; bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
+      pthread_mutex_lock(&mutex);
+        bitmap&=~SIDEMASK; 
+      pthread_mutex_unlock(&mutex);
+      // bitmap|=SIDEMASK; 
+      // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
     }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
       if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
+      if((down&SIDEMASK)!=SIDEMASK){ 
+        pthread_mutex_lock(&mutex);
+          bitmap&=SIDEMASK; 
+        pthread_mutex_unlock(&mutex);
+      }
     }
     while(bitmap!=0) {
       //最も下位の１ビットを抽出
-      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      pthread_mutex_lock(&mutex);
+        bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      pthread_mutex_unlock(&mutex);
+      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+          TOPBIT,ENDBIT,aBoard,SIZE,SIZEE,mutex,cond);
     }
   }
 }
@@ -1000,39 +1061,59 @@ void backTrack2(int y,int left,int down,int right,
 //void backTrack1(int y,int left,int down,int right,void *args){
 void backTrack1(int y,int left,int down,int right,
     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,
-    int TOPBIT,int ENDBIT,int aBoard[],int SIZE,int SIZEE){
+    int TOPBIT,int ENDBIT,int aBoard[],int SIZE,int SIZEE,pthread_mutex_t mutex,pthread_cond_t cond){
   //配置可能フィールド
   int bit;
-  int bitmap=MASK&~(left|down|right); 
+  pthread_mutex_lock(&mutex);
+    int bitmap=MASK&~(left|down|right); 
+  pthread_mutex_unlock(&mutex);
   if(y==SIZEE) {
     if(bitmap!=0){
-      aBoard[y]=bitmap;
+      pthread_mutex_lock(&mutex);
+        aBoard[y]=bitmap;
+      pthread_mutex_unlock(&mutex);
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      // G.COUNT8++;
-      setCount8();
+      setCount(0,0,1,mutex);
     }
   }else{
     if(y<BOUND1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bitmap&=~2; 
+      pthread_mutex_lock(&mutex);
+        bitmap&=~2; 
       // bitmap|=2; 
       // bitmap^=2; //(bitmap&=~2と同等)
+      pthread_mutex_unlock(&mutex);
     }
     while(bitmap!=0) {
       //最も下位の１ビットを抽出
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
+      pthread_mutex_lock(&mutex);
+        bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
+      pthread_mutex_unlock(&mutex);
+      //backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,&l);
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+          TOPBIT,ENDBIT,aBoard,SIZE,SIZEE,mutex,cond);
     }
   } 
 }
 void *run(void *args){
   struct local *l=(struct local *)args;
-  int bit ; int SIZEE=l->SIZEE; int SIZE=l->SIZE; int aBoard[MAXSIZE]; aBoard[0]=1;
-  int BOUND1=l->BOUND1; int BOUND2=l->BOUND2;
-  int MASK=(1<<l->SIZE)-1; int SIDEMASK=l->SIDEMASK; int LASTMASK=l->LASTMASK;
-  int TOPBIT=1<<l->SIZEE; int ENDBIT=l->ENDBIT;
+   // pthread_mutex_t mutex=l->mutex;
+   // pthread_cond_t cond=l->cond;
+
+    int bit ;
+    int SIZEE=l->SIZEE;
+    int SIZE=l->SIZE;
+    int aBoard[MAXSIZE]; aBoard[0]=1;
+    int BOUND1=l->BOUND1;
+    int BOUND2=l->BOUND2;
+    int MASK=(1<<l->SIZE)-1;
+    int SIDEMASK=l->SIDEMASK;
+    int LASTMASK=l->LASTMASK;
+    int TOPBIT=1<<l->SIZEE;
+    int ENDBIT=l->ENDBIT;
+
   // 最上段のクイーンが角にある場合の探索
   if(BOUND1>1 && BOUND1<SIZEE) { 
     // 角にクイーンを配置 
@@ -1041,7 +1122,8 @@ void *run(void *args){
     //
     //２行目から探索
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),
-        BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
+        BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+        TOPBIT,ENDBIT,aBoard,SIZE,SIZEE,mutex,cond);
   }
   ENDBIT=(TOPBIT>>BOUND1);
   SIDEMASK=(TOPBIT|1);
@@ -1056,61 +1138,33 @@ void *run(void *args){
     if(BOUND1<BOUND2) {
       aBoard[0]=bit=(1<<BOUND1);
       backTrack2(1,bit<<1,bit,bit>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+          TOPBIT,ENDBIT,aBoard,SIZE,SIZEE,mutex,cond);
     }
     //ENDBIT>>1;
     ENDBIT>>=SIZE;
   }
-  //lTotal=COUNT2*2+COUNT4*4+COUNT8*8;
-  //lUnique=COUNT2+COUNT4+COUNT8;
   return 0;
 }
 /**********************************************/
-/* マルチスレッド　排他処理  mutex            */
+/* マルチスレッド　排他処理                   */
 /**********************************************/
 /**
- * マルチスレッド pthreadには排他処理 mutexがあります。
+ * マルチスレッド pthreadには排他処理をします。
    まずmutexの宣言は以下の通りです。
 
-      // mutexの宣言
-      pthread_mutex_t mutex;   
-      //pthread_mutexattr_t 変数を用意します。
-      pthread_mutexattr_t mutexattr;
-      // pthread_mutexattr_t 変数にロック方式を設定します。
-      pthread_mutexattr_init(&mutexattr);
-      //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
-        PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内でのロックもブロック、その代り動作が速い）
+      pthread_mutex_t mutex;   // mutexの宣言
 
-        PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内での２度目以降のロックは素通り）
-
-        PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
-        誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
-        （同一スレッド内で 2 度目のロックがあったことを検出できる）      
-
-        <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
-
-      pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
-      // ミューテックスを初期化します。
-      pthread_mutex_init(&mutex, &mutexattr);
-      //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
-
-      実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
-      //pthread_mutex_lock(&mutex);
-      //pthread_mutex_unlock(&mutex);
+ * さらにmutexは以下の方法のいずれかで初期化します。
+    pthread_mutex_t m=PTHREAD_MUTEX_INITIALIZER;//mutexの初期化
+    pthread_mutex_init(&mutex, NULL);     //pthread 排他処理
  
  * 実行部分は以下のようにロックとロック解除で処理を挟みます。
       pthread_mutex_lock(&mutex);     //ロックの開始
-        COUNT2+=C2;                //保護されている処理
-        COUNT4+=C4;                //保護されている処理
-        COUNT8+=C8;                //保護されている処理
+      setCount(0,0,1);                //保護されている処理
       pthread_mutex_unlock(&mutex);   //ロックの終了
  *
   使い終わったら破棄します。
-    pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
     pthread_mutex_destroy(&mutex);        //nutexの破棄
  *
  */
@@ -1158,26 +1212,33 @@ void *NQueenThread( void *args){
         l[BOUND1].BOUND2=BOUND2;
    *
    */
-  // pthread_mutexattr_t 変数を用意します。
-  pthread_mutexattr_t mutexattr;
-  // pthread_mutexattr_t 変数にロック方式を設定します。
-  pthread_mutexattr_init(&mutexattr);
-  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
-  // ミューテックスを初期化します。
-  pthread_mutex_init(&mutex, &mutexattr);
-  //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
-
-    //pthread_mutex_lock(&mutex);
-    //pthread_mutex_unlock(&mutex);
-
+  // スレッドローカルな構造体
+  G.COUNT2=0;
+  G.COUNT4=0;
+  G.COUNT8=0;
   // BOUND1から順にスレッドを生成しながら処理を分担する 
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;
-    l[BOUND1].SIZE=SIZE; l[BOUND1].SIZEE=SIZEE;
-    l[BOUND1].TOPBIT=0; l[BOUND1].ENDBIT=0;
-    l[BOUND1].MASK=0; l[BOUND1].SIDEMASK=0; l[BOUND1].LASTMASK=0;
+    //初期化
+    // pthread_mutex_init(&l[BOUND1].mutex, NULL);
+    pthread_mutex_init(&mutex, NULL);
+    // pthread_cond_init(&l[BOUND1].cond,NULL);
+    // pthread_mutex_lock(&l[BOUND1].mutex);
+    pthread_mutex_lock(&mutex);
+    l[BOUND1].BOUND1=BOUND1; 
+    l[BOUND1].BOUND2=BOUND2;
+    l[BOUND1].SIZE=SIZE;
+    l[BOUND1].SIZEE=SIZEE;
+    l[BOUND1].TOPBIT=0;
+    l[BOUND1].ENDBIT=0;
+    l[BOUND1].MASK=0;
+    l[BOUND1].SIDEMASK=0;
+    l[BOUND1].LASTMASK=0;
     for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
-    // マルチスレッドの生成
+    pthread_mutex_unlock(&mutex);
+    // pthread_mutex_unlock(&l[BOUND1].mutex);
+    //ここまで初期化
+    
+    // チルドスレッドの生成
     int iFbRet=pthread_create(&cth[BOUND1],NULL,run, (void *) &l[BOUND1]);
     if(iFbRet>0){
       printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
@@ -1189,9 +1250,8 @@ void *NQueenThread( void *args){
   }
   for(int i=SIZEE;i>0;i--){
     pthread_join(cth[i],NULL);//処理が終わったら 全ての処理をjoinする
+    pthread_mutex_destroy(&l[i].mutex); //nutexの破棄       
   }
-  pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
-  pthread_mutex_destroy(&mutex); //nutexの破棄       
   return 0;
 }
 /**********************************************/
@@ -1242,20 +1302,24 @@ void NQueen(int SIZE){
   NQueen()実行関数は forの中の値iがインクリメントする度に
   Nのサイズが大きくなりクイーンの数を解法します。 
  */
+#include <time.h>
+#include <sys/time.h>
 int main(void){
-  printf("%s\n"," N:           Total           Unique          hh:mm:ss");
+  clock_t st;  // 計測開始時刻
+  char t[20];  // 計測結果出力
+  printf("%s\n"," N:        Total       Unique           hh:mm:ss.ms");
   struct timeval t0;
   struct timeval t1;
   for(int i=2;i<=MAXSIZE;i++){
   //for(int i=12;i<=12;i++){
+    st=clock();   // 計測開始
+
     //マルチスレッドの場合、これまでの計測方法ではマルチコアで処理される
     //全てのスレッドの処理時間の合計となるため、gettimeofday()で計測する
-    G.COUNT2=G.COUNT4=G.COUNT8=0;
     gettimeofday(&t0, NULL);
     NQueen(i);     // 実行関数
     gettimeofday(&t1, NULL);
-    int ss;
-    int ms;
+    int ss,ms;
     if (t1.tv_usec < t0.tv_usec) {
       ss=(t1.tv_sec-t0.tv_sec-1)%86400;
       ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
@@ -1267,7 +1331,7 @@ int main(void){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%16ld%17ld%12.4d:%02d:%02d\n", i,getTotal(),getUnique(),hh,mm,ss); 
+    printf("%2d:%13ld%16ld%10.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
   } 
 }
 

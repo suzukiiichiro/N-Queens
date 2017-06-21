@@ -2,7 +2,7 @@
 
 CC=gcc
 #CFLAGS=-Wall -O3
-CFLAGS=-Wall -Og
+CFLAGS=-Wall -W -O3
 RM=rm -fr
 
 #CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
