@@ -127,7 +127,7 @@ $ ./NQueen
    12．マルチスレッド(pthread)          NQueen12() N16: 0:02
    13．マルチスレッド(join)             NQueen13() N16: 0:02
    14．マルチスレッド(mutex)            NQueen14() N16: 0:04
- <>15．マルチスレッド()                 NQueen15() N16: 0:00
+ <>15．マルチスレッド(アトミック対応)   NQueen15() N16: 0:00
 
 Nクイーンの解決には処理を分解して一つ一つ丁寧に理解すべくステップが必要だ。
 最初はステップ１のソースを何度も見て書いて理解するしかない。
@@ -773,6 +773,14 @@ Lua版
   17:        95815104         11977939        0000:00:27
   18:       666090624         83263591        0000:03:14
 
+
+ 15．マルチスレッド(アトミック対応) 
+ mutexをスレッド文だけ生成し、スレッド毎にロックすることでオーバーヘッドを
+ 減らすことができますが、mutexをスレッド数分用意するよりも、アトミックに
+ メモリアクセスする方法がより高速化が期待できます。
+ 具体的にはCOUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+ 
+
   参考（Bash版 07_8NQueen.lua）
   10:             724               92                 0
   11:            2680              341                 3
@@ -818,19 +826,18 @@ struct local{
   int SIZE;
   int SIZEE;
 };
-
-//排他処理 mutex
-//pthread_mutex_t mutex;
 // mutexの配列
-pthread_mutex_t mutex[MAXSIZE];
+// pthread_mutex_t mutex[MAXSIZE];
 
 //グローバル構造体
 typedef struct {
   int SIZE; //SIZEはスレッドローカルにコピーします。
   int SIZEE;//SIZEEはスレッドローカルにコピーします。
-  long COUNT2;
-  long COUNT4;
-  long COUNT8;
+  long COUNT2[MAXSIZE];
+  long COUNT4[MAXSIZE];
+  long COUNT8[MAXSIZE];
+  long lTotal;
+  long lUnique;
 }GCLASS, *GClass;
 GCLASS G; //グローバル構造体
 
@@ -848,30 +855,21 @@ void TimeFormat(clock_t utime,char *form){
   mm=mm%60;
   sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
-
 // /** ユニーク解のset */
 void setCount2(int BOUND1){
-  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  G.COUNT2++;
-  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
+  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  G.COUNT2[BOUND1]++;
+  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 void setCount4(int BOUND1){
-  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  G.COUNT4++;
-  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
+  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  G.COUNT4[BOUND1]++;
+  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 void setCount8(int BOUND1){
-  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  G.COUNT8++;
-  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
-long getTotal(){
-  long sum=G.COUNT2*2+G.COUNT4*4+G.COUNT8*8;
-  return sum;
-}
-long getUnique(){
-  long sum=G.COUNT2+G.COUNT4+G.COUNT8;
-  return sum;
+  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  G.COUNT8[BOUND1]++;
+  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 /**********************************************/
 /** 対称解除法                               **/
@@ -908,7 +906,7 @@ long getUnique(){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int SIZEE){
+void symmetryOps_bitmap(int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int SIZEE){
   int own,ptn,you,bit;
   //90度回転
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
@@ -918,17 +916,14 @@ void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,i
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(own>SIZEE){ setCount2(BOUND1); return; }
-    // if(own>SIZEE){ G.COUNT2++; return; }
   }
   //180度回転
-  //if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
-  if(bitmap==ENDBIT){ own=1; you=SIZEE-1;
+  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
     while(own<=SIZEE){ bit=1; ptn=TOPBIT;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(own>SIZEE){ setCount4(BOUND1); return; }
-    // if(own>SIZEE){ G.COUNT4++; return; }
   }
   //270度回転
   if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
@@ -937,7 +932,6 @@ void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,i
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; }
   }
   setCount8(BOUND1);
-  // G.COUNT8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -972,7 +966,7 @@ void backTrack2(int y,int left,int down,int right,
       if( (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
         aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(bitmap,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE); 
+        symmetryOps_bitmap(BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE); 
       }
     }
   }else{
@@ -1000,7 +994,6 @@ void backTrack2(int y,int left,int down,int right,
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-//void backTrack1(int y,int left,int down,int right,void *args){
 void backTrack1(int y,int left,int down,int right,
     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,
     int TOPBIT,int ENDBIT,int aBoard[],int SIZE,int SIZEE){
@@ -1011,7 +1004,6 @@ void backTrack1(int y,int left,int down,int right,
     if(bitmap!=0){
       aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      // G.COUNT8++;
       setCount8(BOUND1);
     }
   }else{
@@ -1061,11 +1053,8 @@ void *run(void *args){
       backTrack2(1,bit<<1,bit,bit>>1,
           BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
     }
-    //ENDBIT>>1;
     ENDBIT>>=SIZE;
   }
-  //lTotal=COUNT2*2+COUNT4*4+COUNT8*8;
-  //lUnique=COUNT2+COUNT4+COUNT8;
   return 0;
 }
 /**********************************************/
@@ -1162,28 +1151,23 @@ void *NQueenThread( void *args){
    *
    */
   // pthread_mutexattr_t 変数を用意します。
-  pthread_mutexattr_t mutexattr;
+  // pthread_mutexattr_t mutexattr;
   // pthread_mutexattr_t 変数にロック方式を設定します。
-  pthread_mutexattr_init(&mutexattr);
-  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
-  // ミューテックスを初期化します。
-  //pthread_mutex_init(&mutex, &mutexattr);
-  
-  //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
-
-    //pthread_mutex_lock(&mutex);
-    //pthread_mutex_unlock(&mutex);
-
+  // pthread_mutexattr_init(&mutexattr);
+  // pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
   // BOUND1から順にスレッドを生成しながら処理を分担する 
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
+    //スレッド毎の変数の初期化
     l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;
     l[BOUND1].SIZE=SIZE; l[BOUND1].SIZEE=SIZEE;
     l[BOUND1].TOPBIT=0; l[BOUND1].ENDBIT=0;
     l[BOUND1].MASK=0; l[BOUND1].SIDEMASK=0; l[BOUND1].LASTMASK=0;
     for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
-    // マルチスレッドの生成
-    // ミューテックスを初期化します。
-    pthread_mutex_init(&mutex[BOUND1], &mutexattr);
+    //カウンターの初期化
+    G.COUNT2[BOUND1]=G.COUNT4[BOUND1]=G.COUNT8[BOUND1]=0;
+    //mutex配列の初期化します。
+    // pthread_mutex_init(&mutex[BOUND1], &mutexattr);
+    // マルチスレッドの生成 
     int iFbRet=pthread_create(&cth[BOUND1],NULL,run, (void *) &l[BOUND1]);
     if(iFbRet>0){
       printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
@@ -1193,15 +1177,20 @@ void *NQueenThread( void *args){
     //コメントを外すとシングルスレッドになります。
     //pthread_join(cth[BOUND1],NULL);  
   }
+  //処理が終わったら 全ての処理をjoinする
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    pthread_join(cth[BOUND1],NULL);//処理が終わったら 全ての処理をjoinする
+    pthread_join(cth[BOUND1],NULL);
   }
+  //不要なmutexとmutexattrを破棄
+  // for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
+    // pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
+    // pthread_mutex_destroy(&mutex[BOUND1]); //mutexの破棄       
+  // }
+  //スレッド毎のカウンターを合計
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
-    pthread_mutex_destroy(&mutex[BOUND1]); //nutexの破棄       
+    G.lTotal+=G.COUNT2[BOUND1]*2+G.COUNT4[BOUND1]*4+G.COUNT8[BOUND1]*8;
+    G.lUnique+=G.COUNT2[BOUND1]+G.COUNT4[BOUND1]+G.COUNT8[BOUND1];
   }
-  // pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
-  // pthread_mutex_destroy(&mutex[i]); //nutexの破棄       
   return 0;
 }
 /**********************************************/
@@ -1224,7 +1213,8 @@ void NQueen(int SIZE){
   if(iFbRet>0){
     printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
   }
-  pthread_join(pth, NULL); //スレッドの終了を待つ
+  //スレッドの終了を待つ
+  pthread_join(pth, NULL); 
 }
 /**********************************************/
 /*  メイン関数                                */
@@ -1257,10 +1247,9 @@ int main(void){
   struct timeval t0;
   struct timeval t1;
   for(int i=2;i<=MAXSIZE;i++){
-  //for(int i=12;i<=12;i++){
     //マルチスレッドの場合、これまでの計測方法ではマルチコアで処理される
     //全てのスレッドの処理時間の合計となるため、gettimeofday()で計測する
-    G.COUNT2=G.COUNT4=G.COUNT8=0;
+    G.lTotal=G.lUnique=0;
     gettimeofday(&t0, NULL);
     NQueen(i);     // 実行関数
     gettimeofday(&t1, NULL);
@@ -1277,7 +1266,8 @@ int main(void){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
+    //printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
+    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); 
   } 
 }
 
