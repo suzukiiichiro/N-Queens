@@ -126,8 +126,8 @@ $ ./NQueen
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
    12．マルチスレッド(pthread)          NQueen12() N16: 0:02
    13．マルチスレッド(join)             NQueen13() N16: 0:02
- <>14．マルチスレッド(mutex)            NQueen14() N16: 0:04
-   15．マルチスレッド()                 NQueen15() N16: 0:00
+   14．マルチスレッド(mutex)            NQueen14() N16: 0:04
+ <>15．マルチスレッド()                 NQueen15() N16: 0:00
 
 Nクイーンの解決には処理を分解して一つ一つ丁寧に理解すべくステップが必要だ。
 最初はステップ１のソースを何度も見て書いて理解するしかない。
@@ -1244,7 +1244,7 @@ void NQueen(int SIZE){
   Nのサイズが大きくなりクイーンの数を解法します。 
  */
 int main(void){
-  printf("%s\n"," N:           Total           Unique          hh:mm:ss");
+  printf("%s\n"," N:           Total           Unique          hh:mm:ss.ms");
   struct timeval t0;
   struct timeval t1;
   for(int i=2;i<=MAXSIZE;i++){
@@ -1268,7 +1268,7 @@ int main(void){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%16ld%17ld%12.4d:%02d:%02d\n", i,getTotal(),getUnique(),hh,mm,ss); 
+    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
   } 
 }
 
