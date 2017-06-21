@@ -820,7 +820,9 @@ struct local{
 };
 
 //排他処理 mutex
-pthread_mutex_t mutex;
+//pthread_mutex_t mutex;
+// mutexの配列
+pthread_mutex_t mutex[MAXSIZE];
 
 //グローバル構造体
 typedef struct {
@@ -848,20 +850,20 @@ void TimeFormat(clock_t utime,char *form){
 }
 
 // /** ユニーク解のset */
-void setCount2(){
-  pthread_mutex_lock(&mutex);//ロックします
+void setCount2(int BOUND1){
+  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
   G.COUNT2++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
+  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
-void setCount4(){
-  pthread_mutex_lock(&mutex);//ロックします
+void setCount4(int BOUND1){
+  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
   G.COUNT4++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
+  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
-void setCount8(){
-  pthread_mutex_lock(&mutex);//ロックします
+void setCount8(int BOUND1){
+  pthread_mutex_lock(&mutex[BOUND1]);//ロックします
   G.COUNT8++;
-  pthread_mutex_unlock(&mutex);//ロック解除します
+  pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 long getTotal(){
   long sum=G.COUNT2*2+G.COUNT4*4+G.COUNT8*8;
@@ -915,7 +917,7 @@ void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,i
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>SIZEE){ setCount2(); return; }
+    if(own>SIZEE){ setCount2(BOUND1); return; }
     // if(own>SIZEE){ G.COUNT2++; return; }
   }
   //180度回転
@@ -925,7 +927,7 @@ void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,i
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>SIZEE){ setCount4(); return; }
+    if(own>SIZEE){ setCount4(BOUND1); return; }
     // if(own>SIZEE){ G.COUNT4++; return; }
   }
   //270度回転
@@ -934,7 +936,7 @@ void symmetryOps_bitmap(int bitmap,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,i
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; }
   }
-  setCount8();
+  setCount8(BOUND1);
   // G.COUNT8++;
 }
 /**********************************************/
@@ -1010,7 +1012,7 @@ void backTrack1(int y,int left,int down,int right,
       aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       // G.COUNT8++;
-      setCount8();
+      setCount8(BOUND1);
     }
   }else{
     if(y<BOUND1) {   
@@ -1165,7 +1167,8 @@ void *NQueenThread( void *args){
   pthread_mutexattr_init(&mutexattr);
   pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
   // ミューテックスを初期化します。
-  pthread_mutex_init(&mutex, &mutexattr);
+  //pthread_mutex_init(&mutex, &mutexattr);
+  
   //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
 
     //pthread_mutex_lock(&mutex);
@@ -1179,6 +1182,8 @@ void *NQueenThread( void *args){
     l[BOUND1].MASK=0; l[BOUND1].SIDEMASK=0; l[BOUND1].LASTMASK=0;
     for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
     // マルチスレッドの生成
+    // ミューテックスを初期化します。
+    pthread_mutex_init(&mutex[BOUND1], &mutexattr);
     int iFbRet=pthread_create(&cth[BOUND1],NULL,run, (void *) &l[BOUND1]);
     if(iFbRet>0){
       printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
@@ -1188,11 +1193,15 @@ void *NQueenThread( void *args){
     //コメントを外すとシングルスレッドになります。
     //pthread_join(cth[BOUND1],NULL);  
   }
-  for(int i=SIZEE;i>0;i--){
-    pthread_join(cth[i],NULL);//処理が終わったら 全ての処理をjoinする
+  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
+    pthread_join(cth[BOUND1],NULL);//処理が終わったら 全ての処理をjoinする
   }
-  pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
-  pthread_mutex_destroy(&mutex); //nutexの破棄       
+  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
+    pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
+    pthread_mutex_destroy(&mutex[BOUND1]); //nutexの破棄       
+  }
+  // pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
+  // pthread_mutex_destroy(&mutex[i]); //nutexの破棄       
   return 0;
 }
 /**********************************************/
