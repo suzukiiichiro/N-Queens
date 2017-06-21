@@ -102,4 +102,5 @@
 
 --lanes = require "lanes".configure()
 
-
+-- マルチスレッドは現在開発進行中です。。。すんません。
+--
