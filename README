@@ -2,6 +2,15 @@
   Cで学ぶアルゴリズムとデータ構造  
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
+
+  Java版 N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+  Bash版 N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash
+  Lua版  N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+  C版  N-Queen(このページがそう）
+  https://github.com/suzukiiichiro/AI_Algorithm_C
   
 *************************
 はじめに
@@ -125,8 +134,9 @@ $ ./NQueen
    10．もっとビットマップ               NQueen10()
    11．マルチスレッド(構造体)           NQueen11() N16: 0:02
    12．マルチスレッド(pthread)          NQueen12() N16: 0:02
-   13．マルチスレッド(排他処理)         NQueen13() N16: 0:02
-   14．マルチスレッド(join)             NQueen14() N16: 0:00
+   13．マルチスレッド(join)         NQueen13() N16: 0:02
+   14．マルチスレッド(mutex)             NQueen14() N16: 0:00
+   15．マルチスレッド(アトミック対応)   NQueen15() N16: 0:00
 
 Nクイーンの解決するにもステップが必要だ。
 最初はステップ１のソースを何度も見て書いて理解するしかない。
