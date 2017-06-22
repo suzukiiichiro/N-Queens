@@ -259,15 +259,14 @@ class NQueen8_WorkEngine extends Thread{
 			}
 		}else{
 			if(y<BOUND1){ //上部サイド枝刈り
-				bitmap|=SIDEMASK ;
-				bitmap^=SIDEMASK;
+        bitmap&=~SIDEMASK; //bitmap|=SIDEMASK ; bitmap^=SIDEMASK;
 			}else if(y==BOUND2){ //下部サイド枝刈り
 				if( (down&SIDEMASK) == 0) return ;
 				if( (down&SIDEMASK) !=SIDEMASK) bitmap&=SIDEMASK;
 			}
 			while(bitmap!=0){
 				bitmap^=BOARD[y]=bit=-bitmap&bitmap;
-				backTrack2((y+1), (left|bit)<<1, (down|bit), (right|bit)>>1); 
+				backTrack2((y+1), (left|bit)<<1, (down|bit), (right|bit)>>1);
 			}
 		}
 	}
@@ -283,8 +282,7 @@ class NQueen8_WorkEngine extends Thread{
 			}
 		}else{
 			if(y<BOUND1){//斜軸反転解の排除
-				bitmap|=2 ;
-				bitmap^=2;
+        bitmap&=~2; //bitmap|=2 ; bitmap^=2;
 			}
 			while(bitmap!=0){
 				bitmap^=BOARD[y]=bit=(-bitmap&bitmap);
