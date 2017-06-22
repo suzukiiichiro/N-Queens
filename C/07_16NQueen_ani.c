@@ -943,28 +943,6 @@ void TimeFormat(clock_t utime,char *form){
   mm=mm%60;
   sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
 }
-// /** ユニーク解のset */
-void setCount2(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT2[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
-void setCount4(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT4[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
-void setCount8(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT8[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
 /**********************************************/
 /** 対称解除法                               **/
 /** ユニーク解から全解への展開               **/
@@ -1008,19 +986,19 @@ void symmetryOps_bitmap(struct local *l){
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>l->SIZEE){ setCount2(l->BOUND1); return; } }
+    if(own>l->SIZEE){ l->COUNT2++; return; } }
   //180度回転
   if(l->aBoard[l->SIZEE]==l->ENDBIT){ own=1; you=l->SIZEE-1;
     while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ setCount4(l->BOUND1); return; } }
+    if(own>l->SIZEE){ l->COUNT4++; return; } }
   //270度回転
   if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
     while(own<=l->SIZEE){ bit=1; you=0;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } } setCount8(l->BOUND1);
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }l->COUNT8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -1088,7 +1066,8 @@ void backTrack1(int y,int left,int down,int right,struct local *l){
     if(bitmap!=0){
       l->aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      setCount8(l->BOUND1); }
+      l->COUNT8++;
+      }
   }else{
     if(y<l->BOUND1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
@@ -1103,6 +1082,9 @@ void backTrack1(int y,int left,int down,int right,struct local *l){
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;l->aBoard[0]=1;
+  l->COUNT2=0;
+  l->COUNT4=0;
+  l->COUNT8=0;
   l->MASK=(1<<l->SIZE)-1;
   l->TOPBIT=1<<l->SIZEE;
   // 最上段のクイーンが角にある場合の探索
@@ -1125,6 +1107,9 @@ void *run(void *args){
       l->aBoard[0]=bit=(1<<l->BOUND1);
       backTrack2(1,bit<<1,bit,bit>>1,l); }
     l->ENDBIT>>=l->SIZE; }
+    G.COUNT2[l->BOUND1]=l->COUNT2;
+    G.COUNT4[l->BOUND1]=l->COUNT4;
+    G.COUNT8[l->BOUND1]=l->COUNT8;
   return 0;
 }
 /**********************************************/
