@@ -209,8 +209,7 @@ class NQueen8_WorkEngine extends Thread{
 			// SIDEMASK=LASTMASK=(TOPBIT|1);
 			// ENDBIT=(TOPBIT>>1);
 			ENDBIT=(TOPBIT>>B1);
-			SIDEMASK=(TOPBIT|1);
-			LASTMASK=(TOPBIT|1);
+			SIDEMASK=LASTMASK=(TOPBIT|1);
 			// 最上段のクイーンが角にある場合の探索
 			if(B1>0 && B2<size-1 && B1<B2){ 
 				// LASTMASK|=LASTMASK>>1|LASTMASK<<1;
@@ -232,21 +231,20 @@ class NQueen8_WorkEngine extends Thread{
 	private void BOUND1(int B1){
 		int bit ;
 		BOUND1=B1 ;
-		if(BOUND1<SIZEE) {
+//		if(BOUND1<SIZEE) {
 			BOARD[1]=bit=(1<<BOUND1);
-			backTrack1(2, (2|bit)<<1, (1|bit), (bit>>1));
-		}
+			backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+//		}
 	}
 	// 最上段のクイーンが角にある場合の探索
 	private void BOUND2(int B1, int B2){
 		int bit ;
 		BOUND1=B1 ;
 		BOUND2=B2;
-		if(BOUND1<BOUND2) {
+//		if(BOUND1<BOUND2) {
 			BOARD[0]=bit=(1<<BOUND1);
 			backTrack2(1, bit<<1, bit, bit>>1);
-//			System.out.println("B1:" + B1 + " B2:" + B2 + " nMore:" + nMore + " TOPBIT:" + TOPBIT + " ENDBIT:" + ENDBIT + " MASK:" + MASK + " SIDEMASK:"+ SIDEMASK + " LASTMASK:" + LASTMASK );
-		}
+//		}
 	}
 	// 最上段のクイーンが角以外にある場合の探索
 	private void backTrack2(int y, int left, int down, int right){
