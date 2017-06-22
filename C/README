@@ -3,6 +3,23 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+   ３．バックトラック                   NQueen03() N17: 8:05
+   ４．対称解除法(回転と斜軸）          NQueen04() N17: 7:54
+   ５．枝刈りと最適化                   NQueen05() N17: 2:14
+   ６．ビットマップ                     NQueen06() N17: 1:30
+   ７．ビットマップ+対称解除法          NQueen07() N17: 2:24
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N17: 1:26
+   ９．ビットマップ+枝刈りと最適化      NQueen09() N17: 0:16
+   10．もっとビットマップ(takaken版)    NQueen10() N17: 0:10
+   11．マルチスレッド(構造体)           NQueen11() N17: 0:14
+   12．マルチスレッド(pthread)          NQueen12() N17: 0:13
+   13．マルチスレッド(join)             NQueen13() N17: 0:17
+   14．マルチスレッド(mutex)            NQueen14() N17: 0:27
+ <>15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
+
+
 *************************
 はじめに
 *************************
@@ -112,23 +129,6 @@ $ ./NQueen
 
 を試して欲しい。実はこのページは 07の14ステップ目のソースである。ではそのステップを以下に示す。
 
-  ステップバイステップでＮ−クイーン問題を最適化
-   １．ブルートフォース（力まかせ探索） NQueen01()
-   ２．配置フラグ（制約テスト高速化）   NQueen02()
-   ３．バックトラック                   NQueen03() N16: 1:07
-   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
-   ５．枝刈りと最適化                   NQueen05() N16: 0:18
-   ６．ビットマップ                     NQueen06() N16: 0:13
-   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
-   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
-   ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
-   10．もっとビットマップ               NQueen10()
-   11．マルチスレッド(構造体)           NQueen11() N16: 0:02
-   12．マルチスレッド(pthread)          NQueen12() N16: 0:02
-   13．マルチスレッド(join)             NQueen13() N16: 0:02
-   14．マルチスレッド(mutex)            NQueen14() N16: 0:04
- <>15．マルチスレッド(アトミック対応)   NQueen15() N16: 0:00
-
 Nクイーンの解決には処理を分解して一つ一つ丁寧に理解すべくステップが必要だ。
 最初はステップ１のソースを何度も見て書いて理解するしかない。
 もちろん、簡単なだけに解決時間も相当かかる。処理が終わるまでにコーヒーが飲み終わってしまうかもしれない。
@@ -225,23 +225,6 @@ Lua版
   ステップバイステップでＮ−クイーン問題を最適化
 ************************************************
 
-   １．ブルートフォース（力まかせ探索） NQueen01()
-   ２．配置フラグ（制約テスト高速化）   NQueen02()
-   ３．バックトラック                   NQueen03() N16: 1:07
-   ４．対称解除法(回転と斜軸）          NQueen04() N16: 1:09
-   ５．枝刈りと最適化                   NQueen05() N16: 0:18
-   ６．ビットマップ                     NQueen06() N16: 0:13
-   ７．ビットマップ+対称解除法          NQueen07() N16: 0:21
-   ８．ビットマップ+クイーンの場所で分岐NQueen08() N16: 0:13
-   ９．ビットマップ+枝刈りと最適化      NQueen09() N16: 0:02
-   10．もっとビットマップ               NQueen10()
-   11．マルチスレッド(構造体)           NQueen11() N16: 0:02
-   12．マルチスレッド(pthread)          NQueen12() N16: 0:02
-   13．マルチスレッド(排他処理)         NQueen13() N16: 0:02
-   14．マルチスレッド(join)             NQueen14() N16: 0:00
-
-
-
  1. ブルートフォース　力任せ探索
 
  　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
@@ -297,22 +280,23 @@ Lua版
  
  
   実行結果
-  N:        Total       Unique        hh:mm:ss.ms
-  2:            0               0            0.00
-  3:            0               0            0.00
-  4:            2               0            0.00
-  5:           10               0            0.00
-  6:            4               0            0.00
-  7:           40               0            0.00
-  8:           92               0            0.00
-  9:          352               0            0.00
- 10:          724               0            0.00
- 11:         2680               0            0.01
- 12:        14200               0            0.05
- 13:        73712               0            0.26
- 14:       365596               0            1.54
- 15:      2279184               0            9.85
- 16:     14772512               0         1:07.42
+   N:        Total       Unique        hh:mm:ss.ms
+   2:            0               0            0.00
+   3:            0               0            0.00
+   4:            2               0            0.00
+   5:           10               0            0.00
+   6:            4               0            0.00
+   7:           40               0            0.00
+   8:           92               0            0.00
+   9:          352               0            0.00
+  10:          724               0            0.00
+  11:         2680               0            0.01
+  12:        14200               0            0.05
+  13:        73712               0            0.25
+  14:       365596               0            1.53
+  15:      2279184               0            9.90
+  16:     14772512               0         1:08.03
+  17:     95815104               0         8:05.27
 
 
  ４．対称解除法
@@ -493,8 +477,7 @@ Lua版
  　なぜなら、対称・反転・斜軸を反転するための処理が加わっているからです。
  ですが、今回の処理を行うことによって、さらにNQueen5()では、処理スピードが飛躍的に高速化されます。そのためにも今回のアルゴリズム実装は必要なのです。
 
-実行結果
-  N:        Total       Unique        dd:hh:mm:ss
+  実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
    3:            0               0      0 00:00:00
@@ -510,7 +493,9 @@ Lua版
   13:        73712            9233      0 00:00:00
   14:       365596           45752      0 00:00:02
   15:      2279184          285053      0 00:00:10
-  16:     14772512         1846955      0 00:01:09
+  16:     14772512         1846955      0 00:01:06
+  17:     95815104        11977939      0 00:07:54
+
 
 
  * ５．枝刈りと最適化
@@ -534,7 +519,7 @@ Lua版
   14:       365596           45752      0 00:00:00
   15:      2279184          285053      0 00:00:03
   16:     14772512         1846955      0 00:00:18
-  17:     95815104        11977939      0 00:02:20
+  17:     95815104        11977939      0 00:02:14
 
 
  ６．ビットマップ
@@ -660,28 +645,8 @@ Lua版
  }
 
 
+ ６．ビットマップ
   実行結果
-   N:        Total       Unique        dd:hh:mm:ss
-   2:            0               0      0 00:00:00
-   3:            0               0      0 00:00:00
-   4:            2               1      0 00:00:00
-   5:           10               2      0 00:00:00
-   6:            4               1      0 00:00:00
-   7:           40               6      0 00:00:00
-   8:           92              12      0 00:00:00
-   9:          352              46      0 00:00:00
-  10:          724              92      0 00:00:00
-  11:         2680             341      0 00:00:00
-  12:        14200            1787      0 00:00:00
-  13:        73712            9233      0 00:00:00
-  14:       365596           45752      0 00:00:01
-  15:      2279184          285053      0 00:00:02
-  16:     14772512         1846955      0 00:00:13
-
-
-  ８．ビットマップ＋クイーンの場所で分岐
-
-    実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
    3:            0               0      0 00:00:00
@@ -698,10 +663,10 @@ Lua版
   14:       365596           45752      0 00:00:00
   15:      2279184          285053      0 00:00:02
   16:     14772512         1846955      0 00:00:13
+  17:     95815104        11977939      0 00:01:30
 
 
-  ９．ビットマップ＋枝刈りと最適化
-
+ ７．ビットマップ＋対称解除法
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
@@ -715,45 +680,143 @@ Lua版
   10:          724              92      0 00:00:00
   11:         2680             341      0 00:00:00
   12:        14200            1787      0 00:00:00
-  13:        73664            9227      0 00:00:00
-  14:       365492           45739      0 00:00:00
-  15:      2278664          284988      0 00:00:00
-  16:     14768296         1846428      0 00:00:02
-  17:     95795792        11975525      0 00:00:14
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:03
+  16:     14772512         1846955      0 00:00:20
+  17:     95815104        11977939      0 00:02:24
 
 
-  １０．もっとビットマップ(takaken版) すごく速い！
+ ８．ビットマップ＋クイーンの場所で分岐
   実行結果
-   N:           Total          Uniquei  days hh:mm:ss.--
-   5:          10               2             0.00
-   6:           4               1             0.00
-   7:          40               6             0.00
-   8:          92              12             0.00
-   9:         352              46             0.00
-  10:         724              92             0.00
-  11:        2680             341             0.00
-  12:       14200            1787             0.00
-  13:       73712            9233             0.01
-  14:      365596           45752             0.04
-  15:     2279184          285053             0.26
-  16:    14772512         1846955             1.70
-  17:    95815104        11977939            11.69
-  18:   666090624        83263591          1:24.96
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:02
+  16:     14772512         1846955      0 00:00:13
+  17:     95815104        11977939      0 00:01:26 
+
+
+  ９．ビットマップ＋枝刈りと最適化
+  実行結果
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:00
+  16:     14772512         1846955      0 00:00:02
+  17:     95815104        11977939      0 00:00:16
+
+
+  １０．もっとビットマップ すごく速い！ 高橋謙一郎様（takaken版）の労作
+  実行結果
+   N:           Total          Unique days hh:mm:ss.--
+   2:               0               0            0.00
+   3:               0               0            0.00
+   4:               0               0            0.00
+   5:              10               2            0.00
+   6:               4               1            0.00
+   7:              40               6            0.00
+   8:              92              12            0.00
+   9:             352              46            0.00
+  10:             724              92            0.00
+  11:            2680             341            0.00
+  12:           14200            1787            0.00
+  13:           73712            9233            0.01
+  14:          365596           45752            0.04
+  15:         2279184          285053            0.24
+  16:        14772512         1846955            1.56
+  17:        95815104        11977939           10.81
 
 
   11.マルチスレッド（構造体）
-  実行結果 9と同じ。 N16:02 N17:14
+  実行結果 
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:00
+  16:     14772512         1846955      0 00:00:02
+  17:     95815104        11977939      0 00:00:14
+
 
   12.マルチスレッド（pthread)
-  実行結果 9と同じ   N16:02 N17:14
+  実行結果 
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:00
+  16:     14772512         1846955      0 00:00:02
+  17:     95815104        11977939      0 00:00:13
 
-  13.マルチスレッド（排他処理 mutex）
-  実行結果 9と同じ   N16:02 N17:14
 
-  14．C版マルチスレッド(mutex) 
-  mutexによるロックとロック解除がボトルネックになり、
-　並行処理のメリットが出ません。
+  13.マルチスレッド(join）
+  実行結果 
+   N:        Total       Unique        dd:hh:mm:ss
+   2:            0               0      0 00:00:00
+   3:            0               0      0 00:00:00
+   4:            2               1      0 00:00:00
+   5:           10               2      0 00:00:00
+   6:            4               1      0 00:00:00
+   7:           40               6      0 00:00:00
+   8:           92              12      0 00:00:00
+   9:          352              46      0 00:00:00
+  10:          724              92      0 00:00:00
+  11:         2680             341      0 00:00:00
+  12:        14200            1787      0 00:00:00
+  13:        73712            9233      0 00:00:00
+  14:       365596           45752      0 00:00:00
+  15:      2279184          285053      0 00:00:00
+  16:     14772512         1846955      0 00:00:02
+  17:     95815104        11977939      0 00:00:17
 
+
+  14．マルチスレッド(mutex) 
+  mutexによるロックとロック解除の頻発がボトルネックとなり、
+  並行処理のメリットが出ません。
+  実行結果 
    N:           Total           Unique          hh:mm:ss
    2:               0                0        0000:00:00
    3:               0                0        0000:00:00
@@ -771,20 +834,39 @@ Lua版
   15:         2279184           285053        0000:00:00
   16:        14772512          1846955        0000:00:04
   17:        95815104         11977939        0000:00:27
-  18:       666090624         83263591        0000:03:14
 
 
  15．マルチスレッド(アトミック対応) 
- mutexをスレッド文だけ生成し、スレッド毎にロックすることでオーバーヘッドを
- 減らすことができますが、mutexをスレッド数分用意するよりも、アトミックに
- メモリアクセスする方法がより高速化が期待できます。
- 具体的にはCOUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+ mutex１つをロック・ロック解除で使い回すことでボトルネックが発生しました。
+ また、mutexをスレッドの数だけ生成し、スレッド毎にロック/ロック解除を
+ 繰り返すことでオーバーヘッドは少なくなったものの、依然としてシングルスレッ
+ ドよりも速度は遅くなることとなりました。
+ 高速化を実現するならばmutexで排他処理を行うよりも、アトミックに
+ メモリアクセスする方が良さそうです。
+ 排他処理に必要な箇所はCOUNT++する箇所となります。
+ 具体的にはカウントする変数をスレッド毎の配列に格納し、
+ COUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+ 実行結果 
  
+   N:           Total           Unique          hh:mm:ss.ms
+   2:               0                0        0000:00:00.00
+   3:               0                0        0000:00:00.00
+   4:               2                1        0000:00:00.00
+   5:              10                2        0000:00:00.00
+   6:               4                1        0000:00:00.00
+   7:              40                6        0000:00:00.00
+   8:              92               12        0000:00:00.00
+   9:             352               46        0000:00:00.00
+  10:             724               92        0000:00:00.00
+  11:            2680              341        0000:00:00.00
+  12:           14200             1787        0000:00:00.00
+  13:           73712             9233        0000:00:00.00
+  14:          365596            45752        0000:00:00.02
+  15:         2279184           285053        0000:00:00.12
+  16:        14772512          1846955        0000:00:00.80
+  17:        95815104         11977939        0000:00:05.32
 
   参考（Bash版 07_8NQueen.lua）
-  10:             724               92                 0
-  11:            2680              341                 3
-  12:           14200             1787                18
   13:           73712             9233                99
   14:          365596            45752               573
   15:         2279184           285053              3511
@@ -833,12 +915,14 @@ struct local{
 typedef struct {
   int SIZE; //SIZEはスレッドローカルにコピーします。
   int SIZEE;//SIZEEはスレッドローカルにコピーします。
+  //カウントをスレッド毎に管理する配列 アトミック対応
   long COUNT2[MAXSIZE];
   long COUNT4[MAXSIZE];
   long COUNT8[MAXSIZE];
   long lTotal;
   long lUnique;
 }GCLASS, *GClass;
+
 GCLASS G; //グローバル構造体
 
 /** 時刻のフォーマット変換 */
@@ -858,17 +942,23 @@ void TimeFormat(clock_t utime,char *form){
 // /** ユニーク解のset */
 void setCount2(int BOUND1){
   // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  //こういったことが必要なくなったのです ↑
   G.COUNT2[BOUND1]++;
+  //こういったことが必要なくなったのです ↓
   // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 void setCount4(int BOUND1){
   // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  //こういったことが必要なくなったのです ↑
   G.COUNT4[BOUND1]++;
+  //こういったことが必要なくなったのです ↓
   // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 void setCount8(int BOUND1){
   // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
+  //こういったことが必要なくなったのです ↑
   G.COUNT8[BOUND1]++;
+  //こういったことが必要なくなったのです ↓
   // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 /**********************************************/
@@ -912,26 +1002,21 @@ void symmetryOps_bitmap(int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[]
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
     while(own<=SIZEE){ bit=1; you=SIZEE;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1;
-    }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>SIZEE){ setCount2(BOUND1); return; }
-  }
+    if(own>SIZEE){ setCount2(BOUND1); return; } }
   //180度回転
   if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
     while(own<=SIZEE){ bit=1; ptn=TOPBIT;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>SIZEE){ setCount4(BOUND1); return; }
-  }
+    if(own>SIZEE){ setCount4(BOUND1); return; } }
   //270度回転
   if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
     while(own<=SIZEE){ bit=1; you=0;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; }
-  }
-  setCount8(BOUND1);
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; } } setCount8(BOUND1);
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -963,27 +1048,25 @@ void backTrack2(int y,int left,int down,int right,
   int bit=0;
   if(y==SIZEE){
     if(bitmap!=0){
-      if( (bitmap&LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      //【枝刈り】最下段枝刈り
+      if( (bitmap&LASTMASK)==0){ 
         aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE); 
-      }
-    }
+        symmetryOps_bitmap(BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,SIZEE); } }
   }else{
-    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+    //【枝刈り】上部サイド枝刈り
+    if(y<BOUND1){             
       bitmap&=~SIDEMASK; 
       // bitmap|=SIDEMASK; bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
-    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+    }else if(y==BOUND2) {     
+      //【枝刈り】下部サイド枝刈り
       if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
-    }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; } }
     while(bitmap!=0) {
       //最も下位の１ビットを抽出
       bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
-    }
-  }
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE); } }
 }
 /**********************************************/
 /* 最上段行のクイーンが角にある場合の探索     */
@@ -1004,23 +1087,18 @@ void backTrack1(int y,int left,int down,int right,
     if(bitmap!=0){
       aBoard[y]=bitmap;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      setCount8(BOUND1);
-    }
+      setCount8(BOUND1); }
   }else{
     if(y<BOUND1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bitmap&=~2; 
-      // bitmap|=2; 
-      // bitmap^=2; //(bitmap&=~2と同等)
-    }
+      // bitmap|=2; // bitmap^=2; //(bitmap&=~2と同等)
+      bitmap&=~2; }
     while(bitmap!=0) {
       //最も下位の１ビットを抽出
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
-    }
-  } 
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE); } } 
 }
 void *run(void *args){
   struct local *l=(struct local *)args;
@@ -1033,11 +1111,9 @@ void *run(void *args){
     // 角にクイーンを配置 
     aBoard[1]=(1<<BOUND1);
     bit=(1<<BOUND1);
-    //
     //２行目から探索
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),
-        BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
-  }
+        BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE); }
   ENDBIT=(TOPBIT>>BOUND1);
   SIDEMASK=(TOPBIT|1);
   LASTMASK=(TOPBIT|1);
@@ -1046,15 +1122,12 @@ void *run(void *args){
      左半分だけにクイーンを配置するようにすればよい */
   if(BOUND1>0 && BOUND2<SIZE-1 && BOUND1<BOUND2){ 
     for(int i=1; i<BOUND1; i++){
-      LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1;
-    }
+      LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
     if(BOUND1<BOUND2) {
       aBoard[0]=bit=(1<<BOUND1);
       backTrack2(1,bit<<1,bit,bit>>1,
-          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE);
-    }
-    ENDBIT>>=SIZE;
-  }
+          BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,SIZE,SIZEE); }
+    ENDBIT>>=SIZE; }
   return 0;
 }
 /**********************************************/
@@ -1150,42 +1223,46 @@ void *NQueenThread( void *args){
         l[BOUND1].BOUND2=BOUND2;
    *
    */
-  // pthread_mutexattr_t 変数を用意します。
-  // pthread_mutexattr_t mutexattr;
-  // pthread_mutexattr_t 変数にロック方式を設定します。
-  // pthread_mutexattr_init(&mutexattr);
-  // pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
+  /**
+  // mutexを廃止したことで以下の宣言が不要となりました。
+     //pthread_mutexattr_t 変数を用意します。
+     pthread_mutexattr_t mutexattr;
+     //pthread_mutexattr_t 変数にロック方式を設定します。
+     pthread_mutexattr_init(&mutexattr);
+     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
+  */
   // BOUND1から順にスレッドを生成しながら処理を分担する 
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
     //スレッド毎の変数の初期化
     l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;
     l[BOUND1].SIZE=SIZE; l[BOUND1].SIZEE=SIZEE;
-    l[BOUND1].TOPBIT=0; l[BOUND1].ENDBIT=0;
-    l[BOUND1].MASK=0; l[BOUND1].SIDEMASK=0; l[BOUND1].LASTMASK=0;
     for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
     //カウンターの初期化
     G.COUNT2[BOUND1]=G.COUNT4[BOUND1]=G.COUNT8[BOUND1]=0;
-    //mutex配列の初期化します。
-    // pthread_mutex_init(&mutex[BOUND1], &mutexattr);
+    /**
+     * mutexの廃止により以下の初期化は不要となりました
+      //mutex配列の初期化します。
+      // pthread_mutex_init(&mutex[BOUND1], &mutexattr);
+    */ 
     // マルチスレッドの生成 
     int iFbRet=pthread_create(&cth[BOUND1],NULL,run, (void *) &l[BOUND1]);
-    if(iFbRet>0){
-      printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
-    }
+    //エラー出力デバッグ用
+    if(iFbRet>0){ printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet); }
     //処理を待って次の処理へ
     //以下をコメントアウトすることによってBOUND1の順次処理の度にjoinせずに並行処理する
-    //コメントを外すとシングルスレッドになります。
+    //コメントを外すとシングルスレッドになります。マルチスレッドではコメントアウトしておきます
     //pthread_join(cth[BOUND1],NULL);  
   }
   //処理が終わったら 全ての処理をjoinする
-  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    pthread_join(cth[BOUND1],NULL);
-  }
+  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){ pthread_join(cth[BOUND1],NULL); }
+  /**
+  //mutexの廃止によりmutexとmutexattrを破棄する処理が不要となりました。
   //不要なmutexとmutexattrを破棄
   // for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
     // pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
     // pthread_mutex_destroy(&mutex[BOUND1]); //mutexの破棄       
   // }
+  */
   //スレッド毎のカウンターを合計
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
     G.lTotal+=G.COUNT2[BOUND1]*2+G.COUNT4[BOUND1]*4+G.COUNT8[BOUND1]*8;
@@ -1207,12 +1284,12 @@ void *NQueenThread( void *args){
     pthread_join()はスレッドの終了を待ちます。
  */
 void NQueen(int SIZE){
-  pthread_t pth;  //スレッド変数
+  //スレッド変数
+  pthread_t pth;  
   // メインスレッドの生成
   int iFbRet = pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE);
-  if(iFbRet>0){
-    printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
-  }
+  //エラー出力デバッグ用
+  if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); }
   //スレッドの終了を待つ
   pthread_join(pth, NULL); 
 }
@@ -1266,7 +1343,6 @@ int main(void){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    //printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms); 
     printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); 
   } 
 }
