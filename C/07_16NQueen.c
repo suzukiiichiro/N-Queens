@@ -225,6 +225,9 @@ Lua版
 26 ２００９年７月１１日 tu-dresden     FPGA ( *1 : 8*22 2.5 GHz-QuadCore systemsに相当（約176 * 4CPU = 704 CPU))  x ２４０日
 27 ２０１６年　月　　日 tu-dresden
 
+
+
+
 ************************************************
   ステップバイステップでＮ−クイーン問題を最適化
 ************************************************
@@ -871,11 +874,25 @@ Lua版
   17:        95815104         11977939        0000:00:05.32
 
 
- 16．マルチスレッド(アドレスとポインタ) 
-
- 実行結果 
-
-
+   16．マルチスレッド(アドレスとポインタ) 
+  実行結果 
+   N:           Total           Unique          hh:mm:ss.ms
+   2:               0                0        0000:00:00.00
+   3:               0                0        0000:00:00.00
+   4:               2                1        0000:00:00.00
+   5:              10                2        0000:00:00.00
+   6:               4                1        0000:00:00.00
+   7:              40                6        0000:00:00.00
+   8:              92               12        0000:00:00.00
+   9:             352               46        0000:00:00.00
+  10:             724               92        0000:00:00.00
+  11:            2680              341        0000:00:00.00
+  12:           14200             1787        0000:00:00.00
+  13:           73712             9233        0000:00:00.00
+  14:          365596            45752        0000:00:00.01
+  15:         2279184           285053        0000:00:00.11
+  16:        14772512          1846955        0000:00:00.73
+  17:        95815104         11977939        0000:00:04.90
 
   参考（Bash版 07_8NQueen.lua）
   13:           73712             9233                99
@@ -929,10 +946,6 @@ struct local{
 typedef struct {
   int SIZE; //SIZEはスレッドローカルにコピーします。
   int SIZEE;//SIZEEはスレッドローカルにコピーします。
-  //カウントをスレッド毎に管理する配列 アトミック対応
-  long COUNT2[MAXSIZE];
-  long COUNT4[MAXSIZE];
-  long COUNT8[MAXSIZE];
   long lTotal;
   long lUnique;
 }GCLASS, *GClass;
@@ -952,28 +965,6 @@ void TimeFormat(clock_t utime,char *form){
   hh=mm/60;
   mm=mm%60;
   sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
-}
-// /** ユニーク解のset */
-void setCount2(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT2[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
-void setCount4(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT4[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
-}
-void setCount8(int BOUND1){
-  // pthread_mutex_lock(&mutex[BOUND1]);//ロックします
-  //こういったことが必要なくなったのです ↑
-  G.COUNT8[BOUND1]++;
-  //こういったことが必要なくなったのです ↓
-  // pthread_mutex_unlock(&mutex[BOUND1]);//ロック解除します
 }
 /**********************************************/
 /** 対称解除法                               **/
@@ -1018,19 +1009,20 @@ void symmetryOps_bitmap(struct local *l){
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>l->SIZEE){ setCount2(l->BOUND1); return; } }
+    if(own>l->SIZEE){ l->COUNT2++; return; } }
   //180度回転
   if(l->aBoard[l->SIZEE]==l->ENDBIT){ own=1; you=l->SIZEE-1;
     while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ setCount4(l->BOUND1); return; } }
+    if(own>l->SIZEE){ l->COUNT4++; return; } }
   //270度回転
   if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
     while(own<=l->SIZEE){ bit=1; you=0;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } } setCount8(l->BOUND1);
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }
+  l->COUNT8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -1056,11 +1048,11 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
 //void backTrack2(int y,int left,int down,int right){
 void backTrack2(int y,int left,int down,int right,struct local *l){
   //配置可能フィールド
-  int bitmap=l->MASK&~(left|down|right); 
   int bit=0;
+  int bitmap=l->MASK&~(left|down|right); 
   if(y==l->SIZEE){
+    //【枝刈り】最下段枝刈り
     if(bitmap!=0){
-      //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
         l->aBoard[y]=bitmap;
         //対称解除法
@@ -1069,13 +1061,12 @@ void backTrack2(int y,int left,int down,int right,struct local *l){
     //【枝刈り】上部サイド枝刈り
     if(y<l->BOUND1){             
       bitmap&=~l->SIDEMASK; 
-      // bitmap|=SIDEMASK; bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
     }else if(y==l->BOUND2) {     
       //【枝刈り】下部サイド枝刈り
       if((down&l->SIDEMASK)==0){ return; }
       if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; } }
+    //最も下位の１ビットを抽出
     while(bitmap!=0) {
-      //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } }
 }
@@ -1093,51 +1084,98 @@ void backTrack1(int y,int left,int down,int right,struct local *l){
   int bit;
   int bitmap=l->MASK&~(left|down|right); 
   if(y==l->SIZEE) {
-    if(bitmap!=0){
-      l->aBoard[y]=bitmap;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      setCount8(l->BOUND1); }
+    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+    //if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
+    if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
   }else{
-    if(y<l->BOUND1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      // bitmap|=2; // bitmap^=2; //(bitmap&=~2と同等)
-      bitmap&=~2; }
+    //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+    // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+    // bitmap|=2; // bitmap^=2; //(bitmap&=~2と同等)
+    if(y<l->BOUND1) { bitmap&=~2; }
+    //最も下位の１ビットを抽出
     while(bitmap!=0) {
-      //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=(-bitmap&bitmap);
       backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } } 
 }
 void *run(void *args){
   struct local *l=(struct local *)args;
-  int bit ;l->aBoard[0]=1;
+  int bit ;
+  l->aBoard[0]=1;
+  l->COUNT2=l->COUNT4=l->COUNT8=0;
   l->MASK=(1<<l->SIZE)-1;
   l->TOPBIT=1<<l->SIZEE;
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<l->SIZEE) { 
     // 角にクイーンを配置 
-    l->aBoard[1]=(1<<l->BOUND1);
-    bit=(1<<l->BOUND1);
+    l->aBoard[1]=bit=(1<<l->BOUND1);
     //２行目から探索
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l); }
   l->ENDBIT=(l->TOPBIT>>l->BOUND1);
-  l->SIDEMASK=(l->TOPBIT|1);
-  l->LASTMASK=(l->TOPBIT|1);
+  l->SIDEMASK=l->LASTMASK=(l->TOPBIT|1);
   /* 最上段行のクイーンが角以外にある場合の探索 
      ユニーク解に対する左右対称解を予め削除するには、
      左半分だけにクイーンを配置するようにすればよい */
   if(l->BOUND1>0 && l->BOUND2<l->SIZE-1 && l->BOUND1<l->BOUND2){ 
     for(int i=1; i<l->BOUND1; i++){
       l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
-    if(l->BOUND1<l->BOUND2) {
       l->aBoard[0]=bit=(1<<l->BOUND1);
-      backTrack2(1,bit<<1,bit,bit>>1,l); }
-    l->ENDBIT>>=l->SIZE; }
+      backTrack2(1,bit<<1,bit,bit>>1,l); 
+    l->ENDBIT>>=1; }
   return 0;
 }
-/**********************************************/
-/* マルチスレッド　排他処理  mutex            */
-/**********************************************/
+  /**********************************************/
+  /*　構造体*/
+  /**********************************************/
+  /**
+   *
+   * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
+
+        メインスレッド  N=8
+            +--BOUND1=7----- run()
+            +--BOUND1=6----- run()
+            +--BOUND1=5----- run()
+            +--BOUND1=4----- run()
+            +--BOUND1=3----- run()
+            +--BOUND1=2----- run()
+            +--BOUND1=1----- run()
+            +--BOUND1=0----- run()
+    
+   * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
+   *
+        // スレッドローカル構造体 
+        struct local{
+          int bit;
+          int BOUND1;
+          int BOUND2;
+          int TOPBIT;
+          int ENDBIT;
+          int MASK;
+          int SIDEMASK;
+          int LASTMASK;
+          int aBoard[MAXSIZE];
+        };
+   * 
+   * スレッドローカルな構造体の宣言は以下の通りです。
+   *
+   *    //スレッドローカルな構造体
+   *    struct local l[MAXSIZE];
+   *
+   * アクセスはグローバル構造体同様 . ドットでアクセスします。
+        l[BOUND1].BOUND1=BOUND1;
+        l[BOUND1].BOUND2=BOUND2;
+   *
+   */
+  /**********************************************/
+  /* マルチスレッド　排他処理  mutex            */
+  /**********************************************/
+  /**
+  // mutexを廃止したことで以下の宣言が不要となりました。
+     //pthread_mutexattr_t 変数を用意します。
+     pthread_mutexattr_t mutexattr;
+     //pthread_mutexattr_t 変数にロック方式を設定します。
+     pthread_mutexattr_init(&mutexattr);
+     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
+  */
 /**
  * マルチスレッド pthreadには排他処理 mutexがあります。
    まずmutexの宣言は以下の通りです。
@@ -1189,53 +1227,6 @@ void *NQueenThread( void *args){
   int SIZE=*(int *)args;
   int SIZEE=SIZE-1;
   pthread_t cth[SIZE];                //スレッド childThread
-  /**
-   *
-   * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
-
-        メインスレッド  N=8
-            +--BOUND1=7----- run()
-            +--BOUND1=6----- run()
-            +--BOUND1=5----- run()
-            +--BOUND1=4----- run()
-            +--BOUND1=3----- run()
-            +--BOUND1=2----- run()
-            +--BOUND1=1----- run()
-            +--BOUND1=0----- run()
-    
-   * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
-   *
-        // スレッドローカル構造体 
-        struct local{
-          int bit;
-          int BOUND1;
-          int BOUND2;
-          int TOPBIT;
-          int ENDBIT;
-          int MASK;
-          int SIDEMASK;
-          int LASTMASK;
-          int aBoard[MAXSIZE];
-        };
-   * 
-   * スレッドローカルな構造体の宣言は以下の通りです。
-   *
-   *    //スレッドローカルな構造体
-   *    struct local l[MAXSIZE];
-   *
-   * アクセスはグローバル構造体同様 . ドットでアクセスします。
-        l[BOUND1].BOUND1=BOUND1;
-        l[BOUND1].BOUND2=BOUND2;
-   *
-   */
-  /**
-  // mutexを廃止したことで以下の宣言が不要となりました。
-     //pthread_mutexattr_t 変数を用意します。
-     pthread_mutexattr_t mutexattr;
-     //pthread_mutexattr_t 変数にロック方式を設定します。
-     pthread_mutexattr_init(&mutexattr);
-     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
-  */
   // BOUND1から順にスレッドを生成しながら処理を分担する 
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
     //スレッド毎の変数の初期化
@@ -1243,7 +1234,7 @@ void *NQueenThread( void *args){
     l[BOUND1].SIZE=SIZE; l[BOUND1].SIZEE=SIZEE;
     for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
     //カウンターの初期化
-    G.COUNT2[BOUND1]=G.COUNT4[BOUND1]=G.COUNT8[BOUND1]=0;
+    // G.COUNT2[BOUND1]=G.COUNT4[BOUND1]=G.COUNT8[BOUND1]=0;
     /**
      * mutexの廃止により以下の初期化は不要となりました
       //mutex配列の初期化します。
@@ -1270,8 +1261,8 @@ void *NQueenThread( void *args){
   */
   //スレッド毎のカウンターを合計
   for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    G.lTotal+=G.COUNT2[BOUND1]*2+G.COUNT4[BOUND1]*4+G.COUNT8[BOUND1]*8;
-    G.lUnique+=G.COUNT2[BOUND1]+G.COUNT4[BOUND1]+G.COUNT8[BOUND1];
+    G.lTotal+=l[BOUND1].COUNT2*2+l[BOUND1].COUNT4*4+l[BOUND1].COUNT8*8;
+    G.lUnique+=l[BOUND1].COUNT2+l[BOUND1].COUNT4+l[BOUND1].COUNT8;
   }
   return 0;
 }
