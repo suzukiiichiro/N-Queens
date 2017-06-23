@@ -19,7 +19,7 @@
    14．マルチスレッド(mutex)            NQueen14() N17: 0:27
    15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
    16．アドレスとポインタ               NQueen16() N17: 0:04
- <>17．アドレスとポインタ(多重配列)     NQueen17() N17: 
+ <>17．アドレスとポインタ(脱構造体)     NQueen17() N17: 0:03
 
 
   Java版 N-Queen
@@ -686,7 +686,67 @@ Lua版
   17:     95815104        11977939      0 00:01:30
 
 
- ７．ビットマップ＋対称解除法
+ <>７．ビットマップ+対称解除法          NQueen07() N17: 2:24
+ *
+ *     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
+ *     ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
+ * 
+ * ■ユニーク解の判定方法
+ *   全探索によって得られたある１つの解が、回転・反転などによる本質的に変わること
+ * のない変換によって他の解と同型となるものが存在する場合、それを別の解とはしない
+ * とする解の数え方で得られる解を「ユニーク解」といいます。つまり、ユニーク解とは、
+ * 全解の中から回転・反転などによる変換によって同型になるもの同士をグループ化する
+ * ことを意味しています。
+ * 
+ *   従って、ユニーク解はその「個数のみ」に着目され、この解はユニーク解であり、こ
+ * の解はユニーク解ではないという定まった判定方法はありません。ユニーク解であるか
+ * どうかの判断はユニーク解の個数を数える目的の為だけに各個人が自由に定義すること
+ * になります。もちろん、どのような定義をしたとしてもユニーク解の個数それ自体は変
+ * わりません。
+ * 
+ *   さて、Ｎクイーン問題は正方形のボードで形成されるので回転・反転による変換パター
+ * ンはぜんぶで８通りあります。だからといって「全解数＝ユニーク解数×８」と単純には
+ * いきません。ひとつのグループの要素数が必ず８個あるとは限らないのです。Ｎ＝５の
+ * 下の例では要素数が２個のものと８個のものがあります。
+ *
+ *
+ * Ｎ＝５の全解は１０、ユニーク解は２なのです。
+ * 
+ * グループ１: ユニーク解１つ目
+ * - - - Q -   - Q - - -
+ * Q - - - -   - - - - Q
+ * - - Q - -   - - Q - -
+ * - - - - Q   Q - - - -
+ * - Q - - -   - - - Q -
+ * 
+ * グループ２: ユニーク解２つ目
+ * - - - - Q   Q - - - -   - - Q - -   - - Q - -   - - - Q -   - Q - - -   Q - - - -   - - - - Q
+ * - - Q - -   - - Q - -   Q - - - -   - - - - Q   - Q - - -   - - - Q -   - - - Q -   - Q - - -
+ * Q - - - -   - - - - Q   - - - Q -   - Q - - -   - - - - Q   Q - - - -   - Q - - -   - - - Q -
+ * - - - Q -   - Q - - -   - Q - - -   - - - Q -   - - Q - -   - - Q - -   - - - - Q   Q - - - -
+ * - Q - - -   - - - Q -   - - - - Q   Q - - - -   Q - - - -   - - - - Q   - - Q - -   - - Q - -
+ *
+ * 
+ *   それでは、ユニーク解を判定するための定義付けを行いますが、次のように定義する
+ * ことにします。各行のクイーンが右から何番目にあるかを調べて、最上段の行から下
+ * の行へ順番に列挙します。そしてそれをＮ桁の数値として見た場合に最小値になるもの
+ * をユニーク解として数えることにします。尚、このＮ桁の数を以後は「ユニーク判定値」
+ * と呼ぶことにします。
+ * 
+ * - - - - Q   0
+ * - - Q - -   2
+ * Q - - - -   4   --->  0 2 4 1 3  (ユニーク判定値)
+ * - - - Q -   1
+ * - Q - - -   3
+ * 
+ * 
+ *   探索によって得られたある１つの解(オリジナル)がユニーク解であるかどうかを判定
+ * するには「８通りの変換を試み、その中でオリジナルのユニーク判定値が最小であるか
+ * を調べる」ことになります。しかし結論から先にいえば、ユニーク解とは成り得ないこ
+ * とが明確なパターンを探索中に切り捨てるある枝刈りを組み込むことにより、３通りの
+ * 変換を試みるだけでユニーク解の判定が可能になります。
+ *  
+ * 
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
@@ -708,6 +768,126 @@ Lua版
 
 
  ８．ビットマップ＋クイーンの場所で分岐
+ *
+ * ■ユニーク解の個数を求める
+ *   先ず最上段の行のクイーンの位置に着目します。その位置が左半分の領域にあればユ
+ * ニーク解には成り得ません。何故なら左右反転によって得られるパターンのユニーク判
+ * 定値の方が確実に小さくなるからです。また、Ｎが奇数の場合に中央にあった場合はど
+ * うでしょう。これもユニーク解には成り得ません。何故なら仮に中央にあった場合、そ
+ * れがユニーク解であるためには少なくとも他の外側の３辺におけるクイーンの位置も中
+ * 央になければならず、それは互いの効き筋にあたるので有り得ません。
+ *
+ *
+ * ***********************************************************************
+ * 最上段の行のクイーンの位置は中央を除く右側の領域に限定されます。(ただし、N ≧ 2)
+ * ***********************************************************************
+ * 
+ *   次にその中でも一番右端(右上の角)にクイーンがある場合を考えてみます。他の３つ
+ * の角にクイーンを置くことはできないので(効き筋だから）、ユニーク解であるかどうか
+ * を判定するには、右上角から左下角を通る斜軸で反転させたパターンとの比較だけになり
+ * ます。突き詰めれば、
+ * 
+ * [上から２行目のクイーンの位置が右から何番目にあるか]
+ * [右から２列目のクイーンの位置が上から何番目にあるか]
+ * 
+ *
+ * を比較するだけで判定することができます。この２つの値が同じになることはないからです。
+ * 
+ *       3 0
+ *       ↓↓
+ * - - - - Q ←0
+ * - Q - - - ←3
+ * - - - - -         上から２行目のクイーンの位置が右から４番目にある。
+ * - - - Q -         右から２列目のクイーンの位置が上から４番目にある。
+ * - - - - -         しかし、互いの効き筋にあたるのでこれは有り得ない。
+ * 
+ *   結局、再帰探索中において下図の X への配置を禁止する枝刈りを入れておけば、得
+ * られる解は総てユニーク解であることが保証されます。
+ * 
+ * - - - - X Q
+ * - Q - - X -
+ * - - - - X -
+ * - - - - X -
+ * - - - - - -
+ * - - - - - -
+ * 
+ *   次に右端以外にクイーンがある場合を考えてみます。オリジナルがユニーク解である
+ * ためには先ず下図の X への配置は禁止されます。よって、その枝刈りを先ず入れておき
+ * ます。
+ * 
+ * X X - - - Q X X
+ * X - - - - - - X
+ * - - - - - - - -
+ * - - - - - - - -
+ * - - - - - - - -
+ * - - - - - - - -
+ * X - - - - - - X
+ * X X - - - - X X
+ * 
+ *   次にクイーンの利き筋を辿っていくと、結局、オリジナルがユニーク解ではない可能
+ * 性があるのは、下図の A,B,C の位置のどこかにクイーンがある場合に限られます。従っ
+ * て、90度回転、180度回転、270度回転の３通りの変換パターンだけを調べれはよいこと
+ * になります。
+ * 
+ * X X x x x Q X X
+ * X - - - x x x X
+ * C - - x - x - x
+ * - - x - - x - -
+ * - x - - - x - -
+ * x - - - - x - A
+ * X - - - - x - X
+ * X X B - - x X X
+ *
+ *
+ * ■ユニーク解から全解への展開
+ *   これまでの考察はユニーク解の個数を求めるためのものでした。全解数を求めるには
+ * ユニーク解を求めるための枝刈りを取り除いて全探索する必要があります。したがって
+ * 探索時間を犠牲にしてしまうことになります。そこで「ユニーク解の個数から全解数を
+ * 導いてしまおう」という試みが考えられます。これは、左右反転によるパターンの探索
+ * を省略して最後に結果を２倍するというアイデアの拡張版といえるものです。そしてそ
+ * れを実現させるには「あるユニーク解が属するグループの要素数はいくつあるのか」と
+ * いう考察が必要になってきます。
+ * 
+ *   最初に、クイーンが右上角にあるユニーク解を考えます。斜軸で反転したパターンが
+ * オリジナルと同型になることは有り得ないことと(×２)、右上角のクイーンを他の３つの
+ * 角に写像させることができるので(×４)、このユニーク解が属するグループの要素数は必
+ * ず８個(＝２×４)になります。
+ * 
+ *   次に、クイーンが右上角以外にある場合は少し複雑になりますが、考察を簡潔にする
+ * ために次の事柄を確認します。
+ *
+ * TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
+ *   (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルか
+ *    ら180度回転)させても、さらに90度回転(オリジナルから270度回転)させてもオリ
+ *    ジナルと同型になる。  
+ *
+ *    COUNT2 * 2
+ * 
+ *   (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナ
+ *    ルとは異なる。ただし、180度回転させた場合はオリジナルと同型になることも有
+ *    り得る。 
+ *
+ *    COUNT4 * 4
+ * 
+ *   (3) (1) に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを
+ *       加えて２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、
+ *       180度回転させて同型になる場合は４個(左右反転×縦横回転)、そして180度回転させても
+ *       オリジナルと異なる場合は８個になります。(左右反転×縦横回転×上下反転)
+ * 
+ *    COUNT8 * 8 
+ *
+ *   以上のことから、ひとつひとつのユニーク解が上のどの種類に該当するのかを調べる
+ * ことにより全解数を計算で導き出すことができます。探索時間を短縮させてくれる枝刈
+ * りを外す必要がなくなったというわけです。 
+ * 
+ *   UNIQUE  COUNT2      +  COUNT4      +  COUNT8
+ *   TOTAL  (COUNT2 * 2) + (COUNT4 * 4) + (COUNT8 * 8)
+ *
+ * 　これらを実現すると、前回のNQueen3()よりも実行速度が遅くなります。
+ * 　なぜなら、対称・反転・斜軸を反転するための処理が加わっているからです。
+ * ですが、今回の処理を行うことによって、さらにNQueen5()では、処理スピードが飛
+ * 躍的に高速化されます。そのためにも今回のアルゴリズム実装は必要なのです。
+ *
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
@@ -729,6 +909,41 @@ Lua版
 
 
   ９．ビットマップ＋枝刈りと最適化
+
+  前章のコードは全ての解を求めた後に、ユニーク解以外の対称解を除去していた
+  ある意味、「生成検査法（generate ＆ test）」と同じである
+  問題の性質を分析し、バックトラッキング/前方検査法と同じように、無駄な探索を省略することを考える
+  ユニーク解に対する左右対称解を予め削除するには、1行目のループのところで、
+  右半分だけにクイーンを配置するようにすればよい
+  Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
+  他の3辺のクィーンが中央に無い場合、その辺が上辺に来るよう回転し、場合により左右反転することで、
+  最小値解とすることが可能だから、中央に配置したものしかユニーク解には成り得ない
+  しかし、上辺とその他の辺の中央にクィーンは互いの効きになるので、配置することが出来ない
+
+
+  1. １行目角にクイーンがある場合、とそうでない場合で処理を分ける
+    １行目かどうかの条件判断はループ外に出してもよい
+    処理時間的に有意な差はないので、分かりやすいコードを示した
+  2.１行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
+    １行目角にクイーンがある場合、他の角にクイーンを配置することは不可
+    鏡像についても、主対角線鏡像のみを判定すればよい
+    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+
+  １行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを置くことはできない
+  置いた場合、回転・鏡像変換により得られる状態のユニーク判定値が明らかに大きくなる
+    ☓☓・・・Ｑ☓☓
+    ☓・・・／｜＼☓
+    ｃ・・／・｜・rt
+    ・・／・・｜・・
+    ・／・・・｜・・
+    lt・・・・｜・ａ
+    ☓・・・・｜・☓
+    ☓☓ｂ・・dn☓☓
+    
+  １行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
+  lt, dn, lt 位置は効きチェックで配置不可能となる
+  回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
+  90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
   実行結果
    N:        Total       Unique        dd:hh:mm:ss
    2:            0               0      0 00:00:00
@@ -907,9 +1122,31 @@ Lua版
   16:        14772512          1846955        0000:00:00.69
   17:        95815104         11977939        0000:00:04.22
   18:       666090624         83263591        0000:00:31.61
-  19:      4968057848        621012754        0000:04:01.56
-  20:     39029188884       4878666808        0000:31:35.66
-  21:    314666222712      39333324973        0004:15:20.11
+  19:      4968057848        621012754        0000:04:01.56 やっとJavaより高速に！
+
+  
+ 17．アドレスとポインタ(脱構造体)     NQueen17() N17: 00:03
+  実行結果 
+   N:           Total           Unique          hh:mm:ss.ms
+   2:               0                0        0000:00:00.00
+   3:               0                0        0000:00:00.00
+   4:               2                1        0000:00:00.00
+   5:              10                2        0000:00:00.00
+   6:               4                1        0000:00:00.00
+   7:              40                6        0000:00:00.00
+   8:              92               12        0000:00:00.00
+   9:             352               46        0000:00:00.00
+  10:             724               92        0000:00:00.00
+  11:            2680              341        0000:00:00.00
+  12:           14200             1787        0000:00:00.00
+  13:           73712             9233        0000:00:00.00
+  14:          365596            45752        0000:00:00.02
+  15:         2279184           285053        0000:00:00.10
+  16:        14772512          1846955        0000:00:00.67
+  17:        95815104         11977939        0000:00:03.75
+  18:       666090624         83263591        0000:00:26.48
+  19:      4968057848        621012754        0000:03:17.33
+
 
   参考（Bash版 07_8NQueen.lua）
   13:           73712             9233                99
@@ -944,11 +1181,6 @@ Lua版
 struct local{
   int BOUND1;
   int BOUND2;
-  int TOPBIT;
-  int ENDBIT;
-  int MASK;
-  int SIDEMASK;
-  int LASTMASK;
   int aBoard[MAXSIZE];
   int SIZE;
   int SIZEE;
@@ -956,9 +1188,6 @@ struct local{
   long COUNT4;
   long COUNT8;
 };
-// mutexの配列
-// pthread_mutex_t mutex[MAXSIZE];
-
 //グローバル構造体
 typedef struct {
   int SIZE; //SIZEはスレッドローカルにコピーします。
@@ -966,23 +1195,8 @@ typedef struct {
   long lTotal;
   long lUnique;
 }GCLASS, *GClass;
-
 GCLASS G; //グローバル構造体
 
-/** 時刻のフォーマット変換 */
-void TimeFormat(clock_t utime,char *form){
-  int dd,hh,mm;
-  float ftime,ss;
-  //ftime=(float)utime/CLOCKS_PER_SEC;
-  ftime=(float)utime/CLOCKS_PER_SEC;
-  mm=(int)ftime/60;
-  ss=ftime-(int)(mm*60);
-  dd=mm/(24*60);
-  mm=mm%(24*60);
-  hh=mm/60;
-  mm=mm%60;
-  sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
-}
 /**********************************************/
 /** 対称解除法                               **/
 /** ユニーク解から全解への展開               **/
@@ -1018,29 +1232,30 @@ void TimeFormat(clock_t utime,char *form){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(struct local *l){
+void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
   int own,ptn,you,bit;
   //90度回転
-  if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
-    while(own<=l->SIZEE){ bit=1; you=l->SIZEE;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn<<=1; }
+  if(aBoard[BOUND2]==1){ own=1; ptn=2;
+    while(own<=SIZEE){ bit=1; you=SIZEE;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>l->SIZEE){ l->COUNT2++; return; } }
+    if(own>SIZEE){ (*COUNT2)++; return; } }
   //180度回転
-  if(l->aBoard[l->SIZEE]==l->ENDBIT){ own=1; you=l->SIZEE-1;
-    while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
+  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
+    while(own<=SIZEE){ bit=1; ptn=TOPBIT;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ l->COUNT4++; return; } }
+    if(own>SIZEE){ (*COUNT4)++; return; } }
   //270度回転
-  if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
-    while(own<=l->SIZEE){ bit=1; you=0;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }
-  l->COUNT8++;
+  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+    while(own<=SIZEE){ bit=1; you=0;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; } }
+  (*COUNT8)++;
 }
+
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
 /**********************************************/
@@ -1062,31 +1277,67 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x - - - - | - x    
   x x b - - dnx x    
 */
-//void backTrack2(int y,int left,int down,int right){
-void backTrack2(int y,int left,int down,int right,struct local *l){
-  //配置可能フィールド
-  int bit=0;
-  int bitmap=l->MASK&~(left|down|right); 
-  if(y==l->SIZEE){
-    //【枝刈り】最下段枝刈り
-    if(bitmap!=0){
-      if( (bitmap&l->LASTMASK)==0){ 
-        l->aBoard[y]=bitmap;
+void backTrack2(int y,int left,int down,int right,int SIZEE,
+     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
+  int bit=0; int bitmap=MASK&~(left|down|right); //配置可能フィールド
+  if(y==SIZEE){
+    if(bitmap!=0){ //【枝刈り】最下段枝刈り
+      if( (bitmap&LASTMASK)==0){ 
+        aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(l); } }
+        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,&*COUNT2,&*COUNT4,&*COUNT8); } }
   }else{
-    //【枝刈り】上部サイド枝刈り
-    if(y<l->BOUND1){             
-      bitmap&=~l->SIDEMASK; 
-    }else if(y==l->BOUND2) {     
-      //【枝刈り】下部サイド枝刈り
-      if((down&l->SIDEMASK)==0){ return; }
-      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; } }
-    //最も下位の１ビットを抽出
-    while(bitmap!=0) {
-      bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } }
+    if(y<BOUND1){ //【枝刈り】上部サイド枝刈り
+      bitmap&=~SIDEMASK; 
+    }else if(y==BOUND2) { //【枝刈り】下部サイド枝刈り
+      if((down&SIDEMASK)==0){ return; }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; } }
+    while(bitmap!=0) { //最も下位の１ビットを抽出
+      bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
+                                  SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,COUNT2,COUNT4,COUNT8); } }
 }
+/**********************************************/
+/*  枝刈りと最適化                            */
+/**********************************************/
+/**
+ *
+  前章のコードは全ての解を求めた後に、ユニーク解以外の対称解を除去していた
+  ある意味、「生成検査法（generate ＆ test）」と同じである
+  問題の性質を分析し、バックトラッキング/前方検査法と同じように、無駄な探索を省略することを考える
+  ユニーク解に対する左右対称解を予め削除するには、1行目のループのところで、
+  右半分だけにクイーンを配置するようにすればよい
+  Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
+  他の3辺のクィーンが中央に無い場合、その辺が上辺に来るよう回転し、場合により左右反転することで、
+  最小値解とすることが可能だから、中央に配置したものしかユニーク解には成り得ない
+  しかし、上辺とその他の辺の中央にクィーンは互いの効きになるので、配置することが出来ない
+
+
+  1. １行目角にクイーンがある場合、とそうでない場合で処理を分ける
+    １行目かどうかの条件判断はループ外に出してもよい
+    処理時間的に有意な差はないので、分かりやすいコードを示した
+  2.１行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
+    １行目角にクイーンがある場合、他の角にクイーンを配置することは不可
+    鏡像についても、主対角線鏡像のみを判定すればよい
+    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+
+  １行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを置くことはできない
+  置いた場合、回転・鏡像変換により得られる状態のユニーク判定値が明らかに大きくなる
+    ☓☓・・・Ｑ☓☓
+    ☓・・・／｜＼☓
+    ｃ・・／・｜・rt
+    ・・／・・｜・・
+    ・／・・・｜・・
+    lt・・・・｜・ａ
+    ☓・・・・｜・☓
+    ☓☓ｂ・・dn☓☓
+    
+  １行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
+  lt, dn, lt 位置は効きチェックで配置不可能となる
+  回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
+  90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+*/
+
 /**********************************************/
 /* 最上段行のクイーンが角にある場合の探索     */
 /**********************************************/
@@ -1096,136 +1347,256 @@ void backTrack2(int y,int left,int down,int right,struct local *l){
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right,struct local *l){
-  //配置可能フィールド
-  int bit;
-  int bitmap=l->MASK&~(left|down|right); 
-  if(y==l->SIZEE) {
-    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-    //if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
-    if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
+void backTrack1(int y,int left,int down,int right,int SIZEE,int BOUND1,int MASK,int aBoard[],int *COUNT8){
+  int bit; int bitmap=MASK&~(left|down|right);  //配置可能フィールド
+  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+  if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; (*COUNT8)++; }
   }else{
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
     // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
     // bitmap|=2; // bitmap^=2; //(bitmap&=~2と同等)
-    if(y<l->BOUND1) { bitmap&=~2; }
+    if(y<BOUND1) { bitmap&=~2; }
     //最も下位の１ビットを抽出
     while(bitmap!=0) {
-      bitmap^=l->aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } } 
+      bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,SIZEE,BOUND1,MASK,aBoard,&*COUNT8); } } 
 }
+/**
+  クイーンの場所で分岐
+ *
+ * ■ユニーク解の個数を求める
+ *   先ず最上段の行のクイーンの位置に着目します。その位置が左半分の領域にあればユ
+ * ニーク解には成り得ません。何故なら左右反転によって得られるパターンのユニーク判
+ * 定値の方が確実に小さくなるからです。また、Ｎが奇数の場合に中央にあった場合はど
+ * うでしょう。これもユニーク解には成り得ません。何故なら仮に中央にあった場合、そ
+ * れがユニーク解であるためには少なくとも他の外側の３辺におけるクイーンの位置も中
+ * 央になければならず、それは互いの効き筋にあたるので有り得ません。
+ *
+ *
+ * ***********************************************************************
+ * 最上段の行のクイーンの位置は中央を除く右側の領域に限定されます。(ただし、N ≧ 2)
+ * ***********************************************************************
+ * 
+ *   次にその中でも一番右端(右上の角)にクイーンがある場合を考えてみます。他の３つ
+ * の角にクイーンを置くことはできないので(効き筋だから）、ユニーク解であるかどうか
+ * を判定するには、右上角から左下角を通る斜軸で反転させたパターンとの比較だけになり
+ * ます。突き詰めれば、
+ * 
+ * [上から２行目のクイーンの位置が右から何番目にあるか]
+ * [右から２列目のクイーンの位置が上から何番目にあるか]
+ * 
+ *
+ * を比較するだけで判定することができます。この２つの値が同じになることはないからです。
+ * 
+ *       3 0
+ *       ↓↓
+ * - - - - Q ←0
+ * - Q - - - ←3
+ * - - - - -         上から２行目のクイーンの位置が右から４番目にある。
+ * - - - Q -         右から２列目のクイーンの位置が上から４番目にある。
+ * - - - - -         しかし、互いの効き筋にあたるのでこれは有り得ない。
+ * 
+ *   結局、再帰探索中において下図の X への配置を禁止する枝刈りを入れておけば、得
+ * られる解は総てユニーク解であることが保証されます。
+ * 
+ * - - - - X Q
+ * - Q - - X -
+ * - - - - X -
+ * - - - - X -
+ * - - - - - -
+ * - - - - - -
+ * 
+ *   次に右端以外にクイーンがある場合を考えてみます。オリジナルがユニーク解である
+ * ためには先ず下図の X への配置は禁止されます。よって、その枝刈りを先ず入れておき
+ * ます。
+ * 
+ * X X - - - Q X X
+ * X - - - - - - X
+ * - - - - - - - -
+ * - - - - - - - -
+ * - - - - - - - -
+ * - - - - - - - -
+ * X - - - - - - X
+ * X X - - - - X X
+ * 
+ *   次にクイーンの利き筋を辿っていくと、結局、オリジナルがユニーク解ではない可能
+ * 性があるのは、下図の A,B,C の位置のどこかにクイーンがある場合に限られます。従っ
+ * て、90度回転、180度回転、270度回転の３通りの変換パターンだけを調べれはよいこと
+ * になります。
+ * 
+ * X X x x x Q X X
+ * X - - - x x x X
+ * C - - x - x - x
+ * - - x - - x - -
+ * - x - - - x - -
+ * x - - - - x - A
+ * X - - - - x - X
+ * X X B - - x X X
+ *
+ *
+ * ■ユニーク解から全解への展開
+ *   これまでの考察はユニーク解の個数を求めるためのものでした。全解数を求めるには
+ * ユニーク解を求めるための枝刈りを取り除いて全探索する必要があります。したがって
+ * 探索時間を犠牲にしてしまうことになります。そこで「ユニーク解の個数から全解数を
+ * 導いてしまおう」という試みが考えられます。これは、左右反転によるパターンの探索
+ * を省略して最後に結果を２倍するというアイデアの拡張版といえるものです。そしてそ
+ * れを実現させるには「あるユニーク解が属するグループの要素数はいくつあるのか」と
+ * いう考察が必要になってきます。
+ * 
+ *   最初に、クイーンが右上角にあるユニーク解を考えます。斜軸で反転したパターンが
+ * オリジナルと同型になることは有り得ないことと(×２)、右上角のクイーンを他の３つの
+ * 角に写像させることができるので(×４)、このユニーク解が属するグループの要素数は必
+ * ず８個(＝２×４)になります。
+ * 
+ *   次に、クイーンが右上角以外にある場合は少し複雑になりますが、考察を簡潔にする
+ * ために次の事柄を確認します。
+ *
+ * TOTAL = (COUNT8 * 8) + (COUNT4 * 4) + (COUNT2 * 2);
+ *   (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルか
+ *    ら180度回転)させても、さらに90度回転(オリジナルから270度回転)させてもオリ
+ *    ジナルと同型になる。  
+ *
+ *    COUNT2 * 2
+ * 
+ *   (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナ
+ *    ルとは異なる。ただし、180度回転させた場合はオリジナルと同型になることも有
+ *    り得る。 
+ *
+ *    COUNT4 * 4
+ * 
+ *   (3) (1) に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを
+ *       加えて２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、
+ *       180度回転させて同型になる場合は４個(左右反転×縦横回転)、そして180度回転させても
+ *       オリジナルと異なる場合は８個になります。(左右反転×縦横回転×上下反転)
+ * 
+ *    COUNT8 * 8 
+ *
+ *   以上のことから、ひとつひとつのユニーク解が上のどの種類に該当するのかを調べる
+ * ことにより全解数を計算で導き出すことができます。探索時間を短縮させてくれる枝刈
+ * りを外す必要がなくなったというわけです。 
+ * 
+ *   UNIQUE  COUNT2      +  COUNT4      +  COUNT8
+ *   TOTAL  (COUNT2 * 2) + (COUNT4 * 4) + (COUNT8 * 8)
+ *
+ * 　これらを実現すると、前回のNQueen3()よりも実行速度が遅くなります。
+ * 　なぜなら、対称・反転・斜軸を反転するための処理が加わっているからです。
+ * ですが、今回の処理を行うことによって、さらにNQueen5()では、処理スピードが飛
+ * 躍的に高速化されます。そのためにも今回のアルゴリズム実装は必要なのです。
+*/
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
-  l->aBoard[0]=1;
-  l->COUNT2=l->COUNT4=l->COUNT8=0;
-  l->MASK=(1<<l->SIZE)-1;
-  l->TOPBIT=1<<l->SIZEE;
-  // 最上段のクイーンが角にある場合の探索
-  if(l->BOUND1>1 && l->BOUND1<l->SIZEE) { 
-    // 角にクイーンを配置 
-    l->aBoard[1]=bit=(1<<l->BOUND1);
-    //２行目から探索
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l); }
-  l->ENDBIT=(l->TOPBIT>>l->BOUND1);
-  l->SIDEMASK=l->LASTMASK=(l->TOPBIT|1);
-  /* 最上段行のクイーンが角以外にある場合の探索 
-     ユニーク解に対する左右対称解を予め削除するには、
-     左半分だけにクイーンを配置するようにすればよい */
-  if(l->BOUND1>0 && l->BOUND2<l->SIZE-1 && l->BOUND1<l->BOUND2){ 
-    for(int i=1; i<l->BOUND1; i++){
-      l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
-      l->aBoard[0]=bit=(1<<l->BOUND1);
-      backTrack2(1,bit<<1,bit,bit>>1,l); 
-    l->ENDBIT>>=1; }
+  int COUNT2=l->COUNT2=0;
+  int COUNT4=l->COUNT4=0;
+  int COUNT8=l->COUNT8=0;
+  int SIZE=l->SIZE;
+  int SIZEE =l->SIZEE;
+  int MASK=(1<<SIZE)-1;
+  int BOUND1=l->BOUND1;
+  int BOUND2=l->BOUND2;
+  int *aBoard=l->aBoard;
+  /* 最上段のクイーンが角にある場合の探索 */
+  if(BOUND1>1 && BOUND1<SIZEE) { 
+    aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),SIZEE,BOUND1,MASK,aBoard,&COUNT8); 
+  }//２行目から探索
+  int TOPBIT=1<<SIZEE;
+  int ENDBIT=(TOPBIT>>l->BOUND1);
+  int SIDEMASK=(TOPBIT|1);
+  int LASTMASK=(TOPBIT|1);
+  /* 最上段行のクイーンが角以外にある場合の探索 */
+  //   ユニーク解に対する左右対称解を予め削除するため片半分だけにクイーンを配置する
+  if(BOUND1>0 && BOUND2<SIZEE && BOUND1<BOUND2){ 
+    for(int i=1; i<BOUND1; i++){
+      LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
+    aBoard[0]=bit=(1<<BOUND1);
+    backTrack2(1,bit<<1,bit,bit>>1,
+      SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+      TOPBIT,ENDBIT,aBoard,&COUNT2,&COUNT4,&COUNT8); 
+    ENDBIT>>=1; }
+  l->COUNT2=COUNT2;
+  l->COUNT4=COUNT4;
+  l->COUNT8=COUNT8;
   return 0;
 }
-  /**********************************************/
-  /*　構造体*/
-  /**********************************************/
-  /**
-   *
-   * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
+/**********************************************/
+/*　マルチスレッド　*/
+/**********************************************/
+/**
+ *
+ * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
 
-        メインスレッド  N=8
-            +--BOUND1=7----- run()
-            +--BOUND1=6----- run()
-            +--BOUND1=5----- run()
-            +--BOUND1=4----- run()
-            +--BOUND1=3----- run()
-            +--BOUND1=2----- run()
-            +--BOUND1=1----- run()
-            +--BOUND1=0----- run()
-    
-   * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
-   *
-        // スレッドローカル構造体 
-        struct local{
-          int bit;
-          int BOUND1;
-          int BOUND2;
-          int TOPBIT;
-          int ENDBIT;
-          int MASK;
-          int SIDEMASK;
-          int LASTMASK;
-          int aBoard[MAXSIZE];
-        };
-   * 
-   * スレッドローカルな構造体の宣言は以下の通りです。
-   *
-   *    //スレッドローカルな構造体
-   *    struct local l[MAXSIZE];
-   *
-   * アクセスはグローバル構造体同様 . ドットでアクセスします。
-        l[BOUND1].BOUND1=BOUND1;
-        l[BOUND1].BOUND2=BOUND2;
-   *
-   */
-  /**********************************************/
-  /* マルチスレッド　排他処理  mutex            */
-  /**********************************************/
-  /**
-  // mutexを廃止したことで以下の宣言が不要となりました。
-     //pthread_mutexattr_t 変数を用意します。
-     pthread_mutexattr_t mutexattr;
-     //pthread_mutexattr_t 変数にロック方式を設定します。
-     pthread_mutexattr_init(&mutexattr);
-     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
-  */
+      メインスレッド  N=8
+          +--BOUND1=7----- run()
+          +--BOUND1=6----- run()
+          +--BOUND1=5----- run()
+          +--BOUND1=4----- run()
+          +--BOUND1=3----- run()
+          +--BOUND1=2----- run()
+          +--BOUND1=1----- run()
+          +--BOUND1=0----- run()
+  
+ * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
+ *
+      // スレッドローカル構造体 
+      struct local{
+        int bit;
+        int BOUND1;
+        int BOUND2;
+        int TOPBIT;
+        int ENDBIT;
+        int MASK;
+        int SIDEMASK;
+        int LASTMASK;
+        int aBoard[MAXSIZE];
+      };
+ * 
+ * スレッドローカルな構造体の宣言は以下の通りです。
+ *
+ *    //スレッドローカルな構造体
+ *    struct local l[MAXSIZE];
+ *
+ * アクセスはグローバル構造体同様 . ドットでアクセスします。
+      l[BOUND1].BOUND1=BOUND1;
+      l[BOUND1].BOUND2=BOUND2;
+ *
+ */
+/**********************************************/
+/* マルチスレッド　排他処理  mutex            */
+/**********************************************/
 /**
  * マルチスレッド pthreadには排他処理 mutexがあります。
    まずmutexの宣言は以下の通りです。
 
-      // mutexの宣言
-      pthread_mutex_t mutex;   
-      //pthread_mutexattr_t 変数を用意します。
-      pthread_mutexattr_t mutexattr;
-      // pthread_mutexattr_t 変数にロック方式を設定します。
-      pthread_mutexattr_init(&mutexattr);
-      //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
-        PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内でのロックもブロック、その代り動作が速い）
+  // mutexの宣言
+  pthread_mutex_t mutex;   
+  //pthread_mutexattr_t 変数を用意します。
+  pthread_mutexattr_t mutexattr;
+  // pthread_mutexattr_t 変数にロック方式を設定します。
+  pthread_mutexattr_init(&mutexattr);
+  //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
+    PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内でのロックもブロック、その代り動作が速い）
 
-        PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内での２度目以降のロックは素通り）
+    PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内での２度目以降のロックは素通り）
 
-        PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
-        誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
-        （同一スレッド内で 2 度目のロックがあったことを検出できる）      
+    PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
+    誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
+    （同一スレッド内で 2 度目のロックがあったことを検出できる）      
 
-        <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
+    <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
 
-      pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
-      // ミューテックスを初期化します。
-      pthread_mutex_init(&mutex, &mutexattr);
-      //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
+  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+  // ミューテックスを初期化します。
+  pthread_mutex_init(&mutex, &mutexattr);
+  //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
 
-      実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
-      //pthread_mutex_lock(&mutex);
-      //pthread_mutex_unlock(&mutex);
+  実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
+  //pthread_mutex_lock(&mutex);
+  //pthread_mutex_unlock(&mutex);
  
  * 実行部分は以下のようにロックとロック解除で処理を挟みます。
       pthread_mutex_lock(&mutex);     //ロックの開始
@@ -1239,48 +1610,44 @@ void *run(void *args){
     pthread_mutex_destroy(&mutex);        //nutexの破棄
  *
  */
+/**
+  ですが、mutexのロックとロック解除は処理の中断と開始が頻繁に走り、
+　速度が著しく低下します。
+  そこで、スレッド毎に独立した配列にそれぞれに変数を格納し、
+　スレッドセーフなアトミック対応を行います。
+
+   mutex１つをロック・ロック解除で使い回すことでボトルネックが発生しました。
+   また、mutexをスレッドの数だけ生成し、スレッド毎にロック/ロック解除を
+   繰り返すことでオーバーヘッドは少なくなったものの、依然としてシングルスレッ
+   ドよりも速度は遅くなることとなりました。
+
+   高速化を実現するならばmutexで排他処理を行うよりも、アトミックに
+   メモリアクセスする方が良さそうです。
+   排他処理に必要な箇所はCOUNT++する箇所となります。
+   具体的にはカウントする変数をスレッド毎の配列に格納し、
+   COUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+
+  // mutexを廃止したことで以下の宣言が不要となりました。
+   //pthread_mutexattr_t 変数を用意します。
+   pthread_mutexattr_t mutexattr;
+   //pthread_mutexattr_t 変数にロック方式を設定します。
+   pthread_mutexattr_init(&mutexattr);
+   pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
+*/
 void *NQueenThread( void *args){
-  struct local l[MAXSIZE];              //構造体 local型 
-  int SIZE=*(int *)args;
-  int SIZEE=SIZE-1;
-  pthread_t cth[SIZE];                //スレッド childThread
-  // BOUND1から順にスレッドを生成しながら処理を分担する 
-  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    //スレッド毎の変数の初期化
-    l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;
-    l[BOUND1].SIZE=SIZE; l[BOUND1].SIZEE=SIZEE;
-    for(int j=0;j<SIZE;j++){ l[BOUND1].aBoard[j]=j; } 
-    //カウンターの初期化
-    // G.COUNT2[BOUND1]=G.COUNT4[BOUND1]=G.COUNT8[BOUND1]=0;
-    /**
-     * mutexの廃止により以下の初期化は不要となりました
-      //mutex配列の初期化します。
-      // pthread_mutex_init(&mutex[BOUND1], &mutexattr);
-    */ 
-    // マルチスレッドの生成 
-    int iFbRet=pthread_create(&cth[BOUND1],NULL,run, (void *) &l[BOUND1]);
-    //エラー出力デバッグ用
-    if(iFbRet>0){ printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet); }
-    //処理を待って次の処理へ
-    //以下をコメントアウトすることによってBOUND1の順次処理の度にjoinせずに並行処理する
-    //コメントを外すとシングルスレッドになります。マルチスレッドではコメントアウトしておきます
-    //pthread_join(cth[BOUND1],NULL);  
+  struct local l[MAXSIZE]; //構造体 local型 
+  int SIZE=*(int *)args; int SIZEE=SIZE-1; //argsで引き渡されたパラメータをSIZEに格納
+  pthread_t cth[SIZE]; //スレッド childThread
+  // B1から順にスレッドを生成しながら処理を分担する 
+  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ 
+    l[B1].BOUND1=B1; l[B1].BOUND2=B2; l[B1].SIZE=SIZE; l[B1].SIZEE=SIZEE; //スレッド毎の変数の初期化
+    for(int j=0;j<SIZE;j++){ l[B1].aBoard[j]=j; } 
+    pthread_create(&cth[B1],NULL,run, (void *) &l[B1]); // マルチスレッドの生成 
   }
-  //処理が終わったら 全ての処理をjoinする
-  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){ pthread_join(cth[BOUND1],NULL); }
-  /**
-  //mutexの廃止によりmutexとmutexattrを破棄する処理が不要となりました。
-  //不要なmutexとmutexattrを破棄
-  // for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    // pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
-    // pthread_mutex_destroy(&mutex[BOUND1]); //mutexの破棄       
-  // }
-  */
-  //スレッド毎のカウンターを合計
-  for(int BOUND1=SIZEE,BOUND2=0;BOUND2<SIZEE;BOUND1--,BOUND2++){
-    G.lTotal+=l[BOUND1].COUNT2*2+l[BOUND1].COUNT4*4+l[BOUND1].COUNT8*8;
-    G.lUnique+=l[BOUND1].COUNT2+l[BOUND1].COUNT4+l[BOUND1].COUNT8;
-  }
+  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ pthread_join(cth[B1],NULL); } //処理が終わったら 全てjoin
+  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ //スレッド毎のカウンターを合計
+    G.lTotal+=l[B1].COUNT2*2+l[B1].COUNT4*4+l[B1].COUNT8*8;
+    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; }
   return 0;
 }
 /**********************************************/
@@ -1290,21 +1657,40 @@ void *NQueenThread( void *args){
  *  マルチスレッドには pthreadを使います。
  *  pthread を宣言するには pthread_t 型の変数を宣言します。
  *
-      pthread_t tId;  //スレッド変数
+      pthread_t pth;  //スレッド変数
+      
+      マルチスレッドの生成
+      pthread_create(&pth, NULL, スレッドしたい関数,渡したい構造体または変数); 
     
-    スレッドを生成するには pthread_create()を呼び出します。
-    戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
-    pthread_join()はスレッドの終了を待ちます。
+    pthread_create()は渡したい関数に１つしか変数を渡せません。
+    ですから、複数の変数を渡したい場合は、構造体にまとめて渡します。
+
+  //構造体
+  struct local{
+    int BOUND1;
+    int BOUND2;
+    int aBoard[MAXSIZE];
+    int SIZE;
+    int SIZEE;
+    long COUNT2;
+    long COUNT4;
+    long COUNT8;
+  };
+
+  渡された関数側
+  void *run(void *args){
+    struct local *l=(struct local *)args;
+    int SIZE=l->SIZEE; //こんな感じで
+  }  
+
+  スレッドを生成するには pthread_create()を呼び出します。
+  戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
+  pthread_join()はスレッドの終了を待ちます。
  */
 void NQueen(int SIZE){
-  //スレッド変数
-  pthread_t pth;  
-  // メインスレッドの生成
-  int iFbRet = pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE);
-  //エラー出力デバッグ用
-  if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); }
-  //スレッドの終了を待つ
-  pthread_join(pth, NULL); 
+  pthread_t pth;  //スレッド変数
+  pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE); // メインスレッドの生成
+  pthread_join(pth, NULL); //スレッドの終了を待つ
 }
 /**********************************************/
 /*  メイン関数                                */
@@ -1334,29 +1720,14 @@ void NQueen(int SIZE){
  */
 int main(void){
   printf("%s\n"," N:           Total           Unique          hh:mm:ss.ms");
-  struct timeval t0;
-  struct timeval t1;
+  struct timeval t0; struct timeval t1;
   for(int i=2;i<=MAXSIZE;i++){
-    //マルチスレッドの場合、これまでの計測方法ではマルチコアで処理される
-    //全てのスレッドの処理時間の合計となるため、gettimeofday()で計測する
     G.lTotal=G.lUnique=0;
-    gettimeofday(&t0, NULL);
-    NQueen(i);     // 実行関数
-    gettimeofday(&t1, NULL);
-    int ss;
-    int ms;
-    if (t1.tv_usec < t0.tv_usec) {
-      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-    }
-    else {
-      ss=(t1.tv_sec-t0.tv_sec)%86400;
-      ms=(t1.tv_usec - t0.tv_usec+500)/10000;
-    }
-    int hh=ss/3600;
-    int mm=(ss-hh*3600)/60;
-    ss%=60;
-    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); 
-  } 
+    gettimeofday(&t0, NULL);NQueen(i);gettimeofday(&t1, NULL);
+    int ss;int ms;
+    if (t1.tv_usec<t0.tv_usec) {
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400; ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; }
+    else { ss=(t1.tv_sec-t0.tv_sec)%86400; ms=(t1.tv_usec-t0.tv_usec+500)/10000; }
+    int hh=ss/3600; int mm=(ss-hh*3600)/60; ss%=60;
+    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); } 
 }
-

@@ -19,7 +19,7 @@
    14．マルチスレッド(mutex)            NQueen14() N17: 0:27
    15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
    16．アドレスとポインタ               NQueen16() N17: 0:04
- <>17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
+ <>17．アドレスとポインタ(脱構造体)     NQueen17() N17: 0:03
 
 
   Java版 N-Queen
@@ -1125,7 +1125,7 @@ Lua版
   19:      4968057848        621012754        0000:04:01.56 やっとJavaより高速に！
 
   
- 17．アドレスとポインタ(多重配列)     NQueen17() N17: 
+ 17．アドレスとポインタ(脱構造体)     NQueen17() N17: 00:03
   実行結果 
    N:           Total           Unique          hh:mm:ss.ms
    2:               0                0        0000:00:00.00
@@ -1140,12 +1140,12 @@ Lua版
   11:            2680              341        0000:00:00.00
   12:           14200             1787        0000:00:00.00
   13:           73712             9233        0000:00:00.00
-  14:          365596            45752        0000:00:00.01
+  14:          365596            45752        0000:00:00.02
   15:         2279184           285053        0000:00:00.10
-  16:        14772512          1846955        0000:00:00.61
-  17:        95815104         11977939        0000:00:03.89
-  18:       666090624         83263591        0000:00:29.61
-  19:      4968057848        621012754        0000:03:38.38
+  16:        14772512          1846955        0000:00:00.67
+  17:        95815104         11977939        0000:00:03.75
+  18:       666090624         83263591        0000:00:26.48
+  19:      4968057848        621012754        0000:03:17.33
 
 
   参考（Bash版 07_8NQueen.lua）
@@ -1232,7 +1232,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8,struct local *l){
+void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
   int own,ptn,you,bit;
   //90度回転
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
@@ -1240,27 +1240,20 @@ void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,in
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>SIZEE){ 
-l->COUNT2++; 
-(*COUNT2++);
-return; } }
+    if(own>SIZEE){ (*COUNT2)++; return; } }
   //180度回転
   if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
     while(own<=SIZEE){ bit=1; ptn=TOPBIT;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>SIZEE){ 
-l->COUNT4++; 
-(*COUNT4++);
-return; } }
+    if(own>SIZEE){ (*COUNT4)++; return; } }
   //270度回転
   if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
     while(own<=SIZEE){ bit=1; you=0;
       while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
       if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; } }
-l->COUNT8++;
-(*COUNT8++);
+  (*COUNT8)++;
 }
 
 /**********************************************/
@@ -1285,14 +1278,14 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,int SIZEE,
-     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8,struct local *l){
+     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
   int bit=0; int bitmap=MASK&~(left|down|right); //配置可能フィールド
   if(y==SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&LASTMASK)==0){ 
         aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,&*COUNT2,&*COUNT4,&*COUNT8,l); } }
+        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,&*COUNT2,&*COUNT4,&*COUNT8); } }
   }else{
     if(y<BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~SIDEMASK; 
@@ -1302,7 +1295,7 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,COUNT2,COUNT4,COUNT8,l); } }
+                                  SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,COUNT2,COUNT4,COUNT8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1354,14 +1347,10 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right,int SIZEE,
-                                        int BOUND1,int MASK,int aBoard[],int *COUNT8,struct local *l){
+void backTrack1(int y,int left,int down,int right,int SIZEE,int BOUND1,int MASK,int aBoard[],int *COUNT8){
   int bit; int bitmap=MASK&~(left|down|right);  //配置可能フィールド
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; 
-    //l->COUNT8++; 
-    (*COUNT8)++;
-    }
+  if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; (*COUNT8)++; }
   }else{
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
     // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
@@ -1370,7 +1359,7 @@ void backTrack1(int y,int left,int down,int right,int SIZEE,
     //最も下位の１ビットを抽出
     while(bitmap!=0) {
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,SIZEE,BOUND1,MASK,aBoard,&*COUNT8,l); } } 
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,SIZEE,BOUND1,MASK,aBoard,&*COUNT8); } } 
 }
 /**
   クイーンの場所で分岐
@@ -1497,11 +1486,9 @@ void backTrack1(int y,int left,int down,int right,int SIZEE,
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
-
   int COUNT2=l->COUNT2=0;
   int COUNT4=l->COUNT4=0;
   int COUNT8=l->COUNT8=0;
-
   int SIZE=l->SIZE;
   int SIZEE =l->SIZEE;
   int MASK=(1<<SIZE)-1;
@@ -1511,7 +1498,7 @@ void *run(void *args){
   /* 最上段のクイーンが角にある場合の探索 */
   if(BOUND1>1 && BOUND1<SIZEE) { 
     aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),SIZEE,BOUND1,MASK,aBoard,&COUNT8,l); 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),SIZEE,BOUND1,MASK,aBoard,&COUNT8); 
   }//２行目から探索
   int TOPBIT=1<<SIZEE;
   int ENDBIT=(TOPBIT>>l->BOUND1);
@@ -1523,8 +1510,13 @@ void *run(void *args){
     for(int i=1; i<BOUND1; i++){
       LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
     aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(1,bit<<1,bit,bit>>1,SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,&COUNT2,&COUNT4,&COUNT8,l); 
+    backTrack2(1,bit<<1,bit,bit>>1,
+      SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,
+      TOPBIT,ENDBIT,aBoard,&COUNT2,&COUNT4,&COUNT8); 
     ENDBIT>>=1; }
+  l->COUNT2=COUNT2;
+  l->COUNT4=COUNT4;
+  l->COUNT8=COUNT8;
   return 0;
 }
 /**********************************************/
@@ -1697,8 +1689,7 @@ void *NQueenThread( void *args){
  */
 void NQueen(int SIZE){
   pthread_t pth;  //スレッド変数
-  int iFbRet = pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE); // メインスレッドの生成
-  if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); } //エラー出力デバッグ用
+  pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE); // メインスレッドの生成
   pthread_join(pth, NULL); //スレッドの終了を待つ
 }
 /**********************************************/
