@@ -1146,6 +1146,8 @@ Lua版
   17:        95815104         11977939        0000:00:03.89
   18:       666090624         83263591        0000:00:29.61
   19:      4968057848        621012754        0000:03:38.38
+
+
   参考（Bash版 07_8NQueen.lua）
   13:           73712             9233                99
   14:          365596            45752               573
@@ -1179,11 +1181,6 @@ Lua版
 struct local{
   int BOUND1;
   int BOUND2;
-  // int TOPBIT;
-  // int ENDBIT;
-  // int MASK;
-  // int SIDEMASK;
-  // int LASTMASK;
   int aBoard[MAXSIZE];
   int SIZE;
   int SIZEE;
@@ -1353,9 +1350,6 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
 void backTrack1(int y,int left,int down,int right,int SIZEE,
                                         int BOUND1,int MASK,int aBoard[],struct local *l){
   int bit; int bitmap=MASK&~(left|down|right);  //配置可能フィールド
-  //参照のみの変数を構造体からローカル変数へ
-  // int SIZEE=l->SIZEE;
-  // int BOUND1=l->BOUND1;
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; l->COUNT8++; }
   }else{
@@ -1518,6 +1512,121 @@ void *run(void *args){
     ENDBIT>>=1; }
   return 0;
 }
+/**********************************************/
+/*　マルチスレッド　*/
+/**********************************************/
+/**
+ *
+ * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
+
+      メインスレッド  N=8
+          +--BOUND1=7----- run()
+          +--BOUND1=6----- run()
+          +--BOUND1=5----- run()
+          +--BOUND1=4----- run()
+          +--BOUND1=3----- run()
+          +--BOUND1=2----- run()
+          +--BOUND1=1----- run()
+          +--BOUND1=0----- run()
+  
+ * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
+ *
+      // スレッドローカル構造体 
+      struct local{
+        int bit;
+        int BOUND1;
+        int BOUND2;
+        int TOPBIT;
+        int ENDBIT;
+        int MASK;
+        int SIDEMASK;
+        int LASTMASK;
+        int aBoard[MAXSIZE];
+      };
+ * 
+ * スレッドローカルな構造体の宣言は以下の通りです。
+ *
+ *    //スレッドローカルな構造体
+ *    struct local l[MAXSIZE];
+ *
+ * アクセスはグローバル構造体同様 . ドットでアクセスします。
+      l[BOUND1].BOUND1=BOUND1;
+      l[BOUND1].BOUND2=BOUND2;
+ *
+ */
+/**********************************************/
+/* マルチスレッド　排他処理  mutex            */
+/**********************************************/
+/**
+ * マルチスレッド pthreadには排他処理 mutexがあります。
+   まずmutexの宣言は以下の通りです。
+
+  // mutexの宣言
+  pthread_mutex_t mutex;   
+  //pthread_mutexattr_t 変数を用意します。
+  pthread_mutexattr_t mutexattr;
+  // pthread_mutexattr_t 変数にロック方式を設定します。
+  pthread_mutexattr_init(&mutexattr);
+  //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
+    PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内でのロックもブロック、その代り動作が速い）
+
+    PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内での２度目以降のロックは素通り）
+
+    PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
+    誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
+    （同一スレッド内で 2 度目のロックがあったことを検出できる）      
+
+    <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
+
+  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+  // ミューテックスを初期化します。
+  pthread_mutex_init(&mutex, &mutexattr);
+  //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
+
+  実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
+  //pthread_mutex_lock(&mutex);
+  //pthread_mutex_unlock(&mutex);
+ 
+ * 実行部分は以下のようにロックとロック解除で処理を挟みます。
+      pthread_mutex_lock(&mutex);     //ロックの開始
+        COUNT2+=C2;                //保護されている処理
+        COUNT4+=C4;                //保護されている処理
+        COUNT8+=C8;                //保護されている処理
+      pthread_mutex_unlock(&mutex);   //ロックの終了
+ *
+  使い終わったら破棄します。
+    pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
+    pthread_mutex_destroy(&mutex);        //nutexの破棄
+ *
+ */
+/**
+  ですが、mutexのロックとロック解除は処理の中断と開始が頻繁に走り、
+　速度が著しく低下します。
+  そこで、スレッド毎に独立した配列にそれぞれに変数を格納し、
+　スレッドセーフなアトミック対応を行います。
+
+   mutex１つをロック・ロック解除で使い回すことでボトルネックが発生しました。
+   また、mutexをスレッドの数だけ生成し、スレッド毎にロック/ロック解除を
+   繰り返すことでオーバーヘッドは少なくなったものの、依然としてシングルスレッ
+   ドよりも速度は遅くなることとなりました。
+
+   高速化を実現するならばmutexで排他処理を行うよりも、アトミックに
+   メモリアクセスする方が良さそうです。
+   排他処理に必要な箇所はCOUNT++する箇所となります。
+   具体的にはカウントする変数をスレッド毎の配列に格納し、
+   COUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+
+  // mutexを廃止したことで以下の宣言が不要となりました。
+   //pthread_mutexattr_t 変数を用意します。
+   pthread_mutexattr_t mutexattr;
+   //pthread_mutexattr_t 変数にロック方式を設定します。
+   pthread_mutexattr_init(&mutexattr);
+   pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
+*/
 void *NQueenThread( void *args){
   struct local l[MAXSIZE]; //構造体 local型 
   int SIZE=*(int *)args; int SIZEE=SIZE-1; //argsで引き渡されたパラメータをSIZEに格納
@@ -1534,12 +1643,75 @@ void *NQueenThread( void *args){
     G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; }
   return 0;
 }
+/**********************************************/
+/*  マルチスレッド pthread                    */
+/**********************************************/
+/**
+ *  マルチスレッドには pthreadを使います。
+ *  pthread を宣言するには pthread_t 型の変数を宣言します。
+ *
+      pthread_t pth;  //スレッド変数
+      
+      マルチスレッドの生成
+      pthread_create(&pth, NULL, スレッドしたい関数,渡したい構造体または変数); 
+    
+    pthread_create()は渡したい関数に１つしか変数を渡せません。
+    ですから、複数の変数を渡したい場合は、構造体にまとめて渡します。
+
+  //構造体
+  struct local{
+    int BOUND1;
+    int BOUND2;
+    int aBoard[MAXSIZE];
+    int SIZE;
+    int SIZEE;
+    long COUNT2;
+    long COUNT4;
+    long COUNT8;
+  };
+
+  渡された関数側
+  void *run(void *args){
+    struct local *l=(struct local *)args;
+    int SIZE=l->SIZEE; //こんな感じで
+  }  
+
+  スレッドを生成するには pthread_create()を呼び出します。
+  戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
+  pthread_join()はスレッドの終了を待ちます。
+ */
 void NQueen(int SIZE){
   pthread_t pth;  //スレッド変数
   int iFbRet = pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE); // メインスレッドの生成
   if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); } //エラー出力デバッグ用
   pthread_join(pth, NULL); //スレッドの終了を待つ
 }
+/**********************************************/
+/*  メイン関数                                */
+/**********************************************/
+/**
+ * N=2 から順を追って 実行関数 NQueen()を呼び出します。
+ * 最大値は 先頭行でMAXSIZEをdefineしています。
+ * G は グローバル構造体で宣言しています。
+
+    //グローバル構造体
+    typedef struct {
+      int nThread;
+      int SIZE;
+      int SIZEE;
+      long COUNT2;
+      long COUNT4;
+      long COUNT8;
+    }GCLASS, *GClass;
+    GCLASS G; //グローバル構造体
+
+グローバル構造体を使う場合は
+  G.SIZE=i ; 
+  のようにドットを使ってアクセスします。
+ 
+  NQueen()実行関数は forの中の値iがインクリメントする度に
+  Nのサイズが大きくなりクイーンの数を解法します。 
+ */
 int main(void){
   printf("%s\n"," N:           Total           Unique          hh:mm:ss.ms");
   struct timeval t0; struct timeval t1;
