@@ -1353,7 +1353,7 @@ void backTrack1(int y,int left,int down,int right,int SIZEE,
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; 
     //l->COUNT8++; 
-    *COUNT8++;
+    *(COUNT8)++;
     }
   }else{
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
