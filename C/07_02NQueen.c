@@ -1,5 +1,4 @@
 /**
-
   Cで学ぶアルゴリズムとデータ構造  
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  
@@ -18,6 +17,8 @@
    13．マルチスレッド(join)             NQueen13() N17: 0:17
    14．マルチスレッド(mutex)            NQueen14() N17: 0:27
    15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
+   16．アドレスとポインタ               NQueen16() N17: 0:04
+   17．アドレスとポインタ(多重配列)     NQueen17() N17: 
 
   Java版はこちらを
   https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Java

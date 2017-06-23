@@ -18,6 +18,8 @@
    13．マルチスレッド(join)             NQueen13() N17: 0:17
    14．マルチスレッド(mutex)            NQueen14() N17: 0:27
    15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
+   16．アドレスとポインタ               NQueen16() N17: 0:04
+   17．アドレスとポインタ(多重配列)     NQueen17() N17: 
 
   Java版 N-Queen
   https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
