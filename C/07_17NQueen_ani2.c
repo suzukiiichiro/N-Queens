@@ -1232,7 +1232,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],struct local *l,int *COUNT2,int *COUNT4,int *COUNT8){
+void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
   int own,ptn,you,bit;
   //90度回転
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
@@ -1278,14 +1278,14 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,int SIZEE,
-     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8,struct local *l){
+     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
   int bit=0; int bitmap=MASK&~(left|down|right); //配置可能フィールド
   if(y==SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&LASTMASK)==0){ 
         aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,l,&*COUNT2,&*COUNT4,&*COUNT8); } }
+        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,&*COUNT2,&*COUNT4,&*COUNT8); } }
   }else{
     if(y<BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~SIDEMASK; 
@@ -1295,7 +1295,7 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,COUNT2,COUNT4,COUNT8,l); } }
+                                  SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,COUNT2,COUNT4,COUNT8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1348,7 +1348,7 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
 void backTrack1(int y,int left,int down,int right,int SIZEE,
-                                        int BOUND1,int MASK,int aBoard[],int *COUNT8,struct local *l){
+                                        int BOUND1,int MASK,int aBoard[],int *COUNT8){
   int bit; int bitmap=MASK&~(left|down|right);  //配置可能フィールド
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; 
@@ -1363,7 +1363,7 @@ void backTrack1(int y,int left,int down,int right,int SIZEE,
     //最も下位の１ビットを抽出
     while(bitmap!=0) {
       bitmap^=aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,SIZEE,BOUND1,MASK,aBoard,&*COUNT8,l); } } 
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,SIZEE,BOUND1,MASK,aBoard,&*COUNT8); } } 
 }
 /**
   クイーンの場所で分岐
@@ -1502,7 +1502,7 @@ void *run(void *args){
   /* 最上段のクイーンが角にある場合の探索 */
   if(BOUND1>1 && BOUND1<SIZEE) { 
     aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),SIZEE,BOUND1,MASK,aBoard,&COUNT8,l); 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),SIZEE,BOUND1,MASK,aBoard,&COUNT8); 
   }//２行目から探索
   int TOPBIT=1<<SIZEE;
   int ENDBIT=(TOPBIT>>l->BOUND1);
@@ -1514,7 +1514,7 @@ void *run(void *args){
     for(int i=1; i<BOUND1; i++){
       LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
     aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(1,bit<<1,bit,bit>>1,SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,&COUNT2,&COUNT4,&COUNT8,l); 
+    backTrack2(1,bit<<1,bit,bit>>1,SIZEE,BOUND1,BOUND2,MASK,SIDEMASK,LASTMASK,TOPBIT,ENDBIT,aBoard,&COUNT2,&COUNT4,&COUNT8); 
     ENDBIT>>=1; }
   l->COUNT2=COUNT2;
   l->COUNT4=COUNT4;
