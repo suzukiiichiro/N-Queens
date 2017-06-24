@@ -1170,6 +1170,7 @@ Lua版
 */
 
 #include<stdio.h>
+#include<stdlib.h>
 #include<time.h>
 #include <math.h>
 #include "pthread.h"
@@ -1232,7 +1233,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
+void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],long *COUNT2,long *COUNT4,long *COUNT8){
   int own,ptn,you,bit;
   //90度回転
   if(aBoard[BOUND2]==1){ own=1; ptn=2;
@@ -1278,7 +1279,7 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,int SIZEE,
-     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],int *COUNT2,int *COUNT4,int *COUNT8){
+     int BOUND1,int BOUND2,int MASK,int SIDEMASK,int LASTMASK,int TOPBIT,int ENDBIT,int aBoard[],long *COUNT2,long *COUNT4,long *COUNT8){
   int bit=0; int bitmap=MASK&~(left|down|right); //配置可能フィールド
   if(y==SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
@@ -1347,7 +1348,7 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right,int SIZEE,int BOUND1,int MASK,int aBoard[],int *COUNT8){
+void backTrack1(int y,int left,int down,int right,int SIZEE,int BOUND1,int MASK,int aBoard[],long *COUNT8){
   int bit; int bitmap=MASK&~(left|down|right);  //配置可能フィールド
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(y==SIZEE) { if(bitmap!=0){ aBoard[y]=bitmap; (*COUNT8)++; }
@@ -1486,9 +1487,9 @@ void backTrack1(int y,int left,int down,int right,int SIZEE,int BOUND1,int MASK,
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
-  int COUNT2=l->COUNT2=0;
-  int COUNT4=l->COUNT4=0;
-  int COUNT8=l->COUNT8=0;
+  long COUNT2=l->COUNT2=0;
+  long COUNT4=l->COUNT4=0;
+  long COUNT8=l->COUNT8=0;
   int SIZE=l->SIZE;
   int SIZEE =l->SIZEE;
   int MASK=(1<<SIZE)-1;
