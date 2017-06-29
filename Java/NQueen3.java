@@ -5,13 +5,8 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
- * Java版 N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
- * Bash版 N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_Bash
- * Lua版  N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_Lua
- * https://ja.wikipedia.org/wiki/エイト・クイーン
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  *
  * N-Queens問題とは
  *    Nクイーン問題とは、「8列×8行のチェスボードに8個のクイーンを、互いに効きが
