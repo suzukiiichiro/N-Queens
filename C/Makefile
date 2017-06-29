@@ -1,9 +1,9 @@
 # Makefile for nqueens2.c
 
 CC=gcc
-#$B%G%P%C%0;~(B
+#デバッグ時
 CFLAGS=-Wall -W -O3
-#$B:G=*=hM}7k2L<B9TMQ(B
+#最終処理結果実行用
 #CFLAGS=-O3
 RM=rm -fr
 
