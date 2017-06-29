@@ -6,12 +6,8 @@
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
- * Java版 N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
- * Bash版 N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_Bash
- * Lua版  N-Queen
- * https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  *
  * エイト・クイーンについて
  * https://ja.wikipedia.org/wiki/エイト・クイーン
