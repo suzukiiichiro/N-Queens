@@ -20,12 +20,8 @@
    16．アドレスとポインタ               NQueen16() N17: 0:04
    17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
 
-  Java版はこちらを
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Java
-  Lua版
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Lua
-  Bash版
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Bash
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
 
   ２．配置フラグ（制約テスト高速化）

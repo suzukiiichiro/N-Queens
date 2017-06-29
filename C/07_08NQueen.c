@@ -21,12 +21,8 @@
    16．アドレスとポインタ               NQueen16() N17: 0:04
    17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
 
-  Java版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-  Bash版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-  Lua版  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
 
   ８．ビットマップ＋クイーンの場所で分岐

@@ -20,12 +20,8 @@
    16．アドレスとポインタ               NQueen16() N17: 0:04
    17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
 
-  Java版はこちらを
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Java
-  Lua版
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Lua
-  Bash版
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen/Bash
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
  1. ブルートフォース　力任せ探索
  　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と

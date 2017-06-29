@@ -1,37 +1,33 @@
 /**
-  C$B$G3X$V%"%k%4%j%:%`$H%G!<%?9=B$(B  
-  $B%9%F%C%W%P%$%9%F%C%W$G#N!]%/%$!<%sLdBj$r:GE,2=(B
-  $B0lHL<RCDK!?M(B  $B6&F1DL?.<R(B  $B>pJs5;=Q6I(B  $BNkLZ(B  $B0]0lO:(B(suzuki.iichiro@kyodonews.jp)
+  Cで学ぶアルゴリズムとデータ構造  
+  ステップバイステップでＮ−クイーン問題を最適化
+  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
-   $B#1!%%V%k!<%H%U%)!<%9!JNO$^$+$;C5:w!K(B NQueen01()
-   $B#2!%G[CV%U%i%0!J@)Ls%F%9%H9bB.2=!K(B   NQueen02()
-   $B#3!%%P%C%/%H%i%C%/(B                   NQueen03() N17: 8:05
-   $B#4!%BP>N2r=|K!(B($B2sE>$H<P<4!K(B          NQueen04() N17: 7:54
-   $B#5!%;^4"$j$H:GE,2=(B                   NQueen05() N17: 2:14
-   $B#6!%%S%C%H%^%C%W(B                     NQueen06() N17: 1:30
-   $B#7!%%S%C%H%^%C%W(B+$BBP>N2r=|K!(B          NQueen07() N17: 2:24
-   $B#8!%%S%C%H%^%C%W(B+$B%/%$!<%s$N>l=j$GJ,4t(BNQueen08() N17: 1:26
-   $B#9!%%S%C%H%^%C%W(B+$B;^4"$j$H:GE,2=(B      NQueen09() N17: 0:16
- <>10$B!%$b$C$H%S%C%H%^%C%W(B(takaken$BHG(B)    NQueen10() N17: 0:10
-   11$B!%%^%k%A%9%l%C%I(B($B9=B$BN(B)           NQueen11() N17: 0:14
-   12$B!%%^%k%A%9%l%C%I(B(pthread)          NQueen12() N17: 0:13
-   13$B!%%^%k%A%9%l%C%I(B(join)             NQueen13() N17: 0:17
-   14$B!%%^%k%A%9%l%C%I(B(mutex)            NQueen14() N17: 0:27
-   15$B!%%^%k%A%9%l%C%I(B($B%"%H%_%C%/BP1~(B)   NQueen15() N17: 0:05
-   16$B!%%"%I%l%9$H%]%$%s%?(B               NQueen16() N17: 0:04
-   17$B!%%"%I%l%9$H%]%$%s%?(B($BC&9=B$BN(B)     NQueen17() N17: 
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+   ３．バックトラック                   NQueen03() N17: 8:05
+   ４．対称解除法(回転と斜軸）          NQueen04() N17: 7:54
+   ５．枝刈りと最適化                   NQueen05() N17: 2:14
+   ６．ビットマップ                     NQueen06() N17: 1:30
+   ７．ビットマップ+対称解除法          NQueen07() N17: 2:24
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N17: 1:26
+   ９．ビットマップ+枝刈りと最適化      NQueen09() N17: 0:16
+ <>10．もっとビットマップ(takaken版)    NQueen10() N17: 0:10
+   11．マルチスレッド(構造体)           NQueen11() N17: 0:14
+   12．マルチスレッド(pthread)          NQueen12() N17: 0:13
+   13．マルチスレッド(join)             NQueen13() N17: 0:17
+   14．マルチスレッド(mutex)            NQueen14() N17: 0:27
+   15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
+   16．アドレスとポインタ               NQueen16() N17: 0:04
+   17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
 
-  Java$BHG(B N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-  Bash$BHG(B N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-  Lua$BHG(B  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
 
-  $B#1#0!%$b$C$H%S%C%H%^%C%W(B(takaken$BHG(B)
+  １０．もっとビットマップ(takaken版)
 
-  $B<B9T7k2L(B
+  実行結果
    N:           Total          Uniquei  days hh:mm:ss.--
    5:              10               2               0.00
    6:               4               1               0.00

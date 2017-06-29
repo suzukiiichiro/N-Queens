@@ -1,45 +1,41 @@
 /**
-  C$B$G3X$V%"%k%4%j%:%`$H%G!<%?9=B$(B  
-  $B%9%F%C%W%P%$%9%F%C%W$G#N!]%/%$!<%sLdBj$r:GE,2=(B
-  $B0lHL<RCDK!?M(B  $B6&F1DL?.<R(B  $B>pJs5;=Q6I(B  $BNkLZ(B  $B0]0lO:(B(suzuki.iichiro@kyodonews.jp)
+  Cで学ぶアルゴリズムとデータ構造  
+  ステップバイステップでＮ−クイーン問題を最適化
+  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
-   $B#1!%%V%k!<%H%U%)!<%9!JNO$^$+$;C5:w!K(B NQueen01()
-   $B#2!%G[CV%U%i%0!J@)Ls%F%9%H9bB.2=!K(B   NQueen02()
- <>$B#3!%%P%C%/%H%i%C%/(B                   NQueen03() N17: 8:05
-   $B#4!%BP>N2r=|K!(B($B2sE>$H<P<4!K(B          NQueen04() N17: 7:54
-   $B#5!%;^4"$j$H:GE,2=(B                   NQueen05() N17: 2:14
-   $B#6!%%S%C%H%^%C%W(B                     NQueen06() N17: 1:30
-   $B#7!%%S%C%H%^%C%W(B+$BBP>N2r=|K!(B          NQueen07() N17: 2:24
-   $B#8!%%S%C%H%^%C%W(B+$B%/%$!<%s$N>l=j$GJ,4t(BNQueen08() N17: 1:26
-   $B#9!%%S%C%H%^%C%W(B+$B;^4"$j$H:GE,2=(B      NQueen09() N17: 0:16
-   10$B!%$b$C$H%S%C%H%^%C%W(B(takaken$BHG(B)    NQueen10() N17: 0:10
-   11$B!%%^%k%A%9%l%C%I(B($B9=B$BN(B)           NQueen11() N17: 0:14
-   12$B!%%^%k%A%9%l%C%I(B(pthread)          NQueen12() N17: 0:13
-   13$B!%%^%k%A%9%l%C%I(B(join)             NQueen13() N17: 0:17
-   14$B!%%^%k%A%9%l%C%I(B(mutex)            NQueen14() N17: 0:27
-   15$B!%%^%k%A%9%l%C%I(B($B%"%H%_%C%/BP1~(B)   NQueen15() N17: 0:05
-   16$B!%%"%I%l%9$H%]%$%s%?(B               NQueen16() N17: 0:04
-   17$B!%%"%I%l%9$H%]%$%s%?(B($BC&9=B$BN(B)     NQueen17() N17: 
+   １．ブルートフォース（力まかせ探索） NQueen01()
+   ２．配置フラグ（制約テスト高速化）   NQueen02()
+ <>３．バックトラック                   NQueen03() N17: 8:05
+   ４．対称解除法(回転と斜軸）          NQueen04() N17: 7:54
+   ５．枝刈りと最適化                   NQueen05() N17: 2:14
+   ６．ビットマップ                     NQueen06() N17: 1:30
+   ７．ビットマップ+対称解除法          NQueen07() N17: 2:24
+   ８．ビットマップ+クイーンの場所で分岐NQueen08() N17: 1:26
+   ９．ビットマップ+枝刈りと最適化      NQueen09() N17: 0:16
+   10．もっとビットマップ(takaken版)    NQueen10() N17: 0:10
+   11．マルチスレッド(構造体)           NQueen11() N17: 0:14
+   12．マルチスレッド(pthread)          NQueen12() N17: 0:13
+   13．マルチスレッド(join)             NQueen13() N17: 0:17
+   14．マルチスレッド(mutex)            NQueen14() N17: 0:27
+   15．マルチスレッド(アトミック対応)   NQueen15() N17: 0:05
+   16．アドレスとポインタ               NQueen16() N17: 0:04
+   17．アドレスとポインタ(脱構造体)     NQueen17() N17: 
 
-  Java$BHG(B N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-  Bash$BHG(B N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-  Lua$BHG(B  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
 
-  $B#3!%%P%C%/%H%i%C%/(B
-   $B!!3FNs!"BP3Q@~>e$K%/%$!<%s$,$"$k$+$I$&$+$N%U%i%0$rMQ0U$7!"ESCf$G@)Ls$rK~$?(B
-   $B$5$J$$;v$,L@$i$+$J>l9g$O!"$=$l0J9_$N%Q%?!<%s@8@.$r9T$o$J$$!#(B
-   $B!!3FNs!"BP3Q@~>e$K%/%$!<%s$,$"$k$+$I$&$+$N%U%i%0$rMQ0U$9$k$3$H$G9bB.2=$r?^$k!#(B
-   $B!!$3$l$^$G$O9TJ}8~$HNsJ}8~$K=EJ#$7$J$$AH$_9g$o$;$rNs5s$9$k$b$N$G$9$,!"2&H^(B
-   $B$O<P$aJ}8~$N%3%^$r$H$k$3$H$,$G$-$k$N$G!"$I$N<P$a%i%$%s>e$K$b2&H^$r$R$H$D$@(B
-   $B$1$7$+G[CV$G$-$J$$@)8B$r2C$($k;v$K$h$j!"?<$5M%@hC5:w$GA4$F$NMU$rK,Ld$;$:LZ(B
-   $B$r9_$j$F$b2r$,$J$$$HH=L@$7$?;~E@$GLZ$r0z$-JV$9$H$$$&$3$H$,$G$-$^$9!#(B
+  ３．バックトラック
+   　各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
+   さない事が明らかな場合は、それ以降のパターン生成を行わない。
+   　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
+   　これまでは行方向と列方向に重複しない組み合わせを列挙するものですが、王妃
+   は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
+   けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
+   を降りても解がないと判明した時点で木を引き返すということができます。
  
  
-  $B<B9T7k2L(B
+  実行結果
   N:        Total       Unique        hh:mm:ss.ms
   2:            0               0            0.00
   3:            0               0            0.00
@@ -63,13 +59,13 @@
 
 #define MAXSIZE 27
 
-int iTotal=1 ; //$B9g7W2r(B
-int iUnique=0; //$B%f%K!<%/2r(B
-int iSize;     //$B#N(B
-int colChk [2*MAXSIZE-1]; //$B=D(B $BG[CV%U%i%0!!(B
-int diagChk[2*MAXSIZE-1]; //$B<P$aG[CV%U%i%0!!(B
-int antiChk[2*MAXSIZE-1]; //$B<P$aG[CV%U%i%0!!(B
-int aBoard[MAXSIZE];  //$B%A%'%9HW$N2#0lNs(B
+int iTotal=1 ; //合計解
+int iUnique=0; //ユニーク解
+int iSize;     //Ｎ
+int colChk [2*MAXSIZE-1]; //縦 配置フラグ　
+int diagChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int antiChk[2*MAXSIZE-1]; //斜め配置フラグ　
+int aBoard[MAXSIZE];  //チェス盤の横一列
 
 void TimeFormat(clock_t utime, char *form) {
     int dd,hh,mm;
@@ -88,14 +84,14 @@ void TimeFormat(clock_t utime, char *form) {
 }
 void NQueen(int row){
   if(row==iSize){
-    iTotal++; //$B2r$rH/8+(B
+    iTotal++; //解を発見
   }else{
     for(int col=0;col<iSize;col++){
       aBoard[row]=col ;
-      //$B%P%C%/%H%i%C%/(B $B@)Ls$rK~$?$7$F$$$k$H$-$@$1?J$`(B
+      //バックトラック 制約を満たしているときだけ進む
       if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1; 
-        NQueen(row+1);//$B:F5"(B
+        NQueen(row+1);//再帰
         colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0; 
       }
     }  
@@ -106,7 +102,7 @@ int main(void) {
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=2;i<=MAXSIZE;i++){
     iSize=i; iTotal=0; iUnique=0; 
-    for(int j=0;j<iSize;j++){ aBoard[j]=j; } //aBoard$B$r=i4|2=(B
+    for(int j=0;j<iSize;j++){ aBoard[j]=j; } //aBoardを初期化
     st=clock();
     NQueen(0);
     TimeFormat(clock()-st,t);

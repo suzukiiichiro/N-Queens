@@ -22,18 +22,10 @@
  <>17．アドレスとポインタ(脱構造体)     NQueen17() N17: 0:03
 
 
-  Java版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-
-  Bash版 N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-
-  Lua版  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
-
-  C版  N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_C
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  
+
 *************************
 はじめに
 *************************
