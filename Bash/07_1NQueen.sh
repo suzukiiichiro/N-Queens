@@ -4,8 +4,8 @@
  # Bash(シェルスクリプト)で学ぶアルゴリズムとデータ構造  
  # 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  #
- # Java版はこちらを
- # https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+ # Java/C/Lua/Bash版
+ # https://github.com/suzukiiichiro/N-Queen
  #
  # ステップバイステップでＮ−クイーン問題を最適化
  #<>１．ブルートフォース（力まかせ探索） NQueen1()
