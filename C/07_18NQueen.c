@@ -1225,27 +1225,27 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int aBoard[],long *COUNT2,long *COUNT4,long *COUNT8){
+void symmetryOps_bitmap(int SIZEE,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT,int *p,long *COUNT2,long *COUNT4,long *COUNT8){
   int own,ptn,you,bit;
   //90度回転
-  if(aBoard[BOUND2]==1){ own=1; ptn=2;
+  if(*(p+BOUND2)==1){ own=1; ptn=2;
     while(own<=SIZEE){ bit=1; you=SIZEE;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn<<=1; }
+      while(*(p+you)!=ptn&&*(p+own)>=bit){ bit<<=1; you--; }
+      if(*(p+own)>bit){ return; } if(*(p+own)<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(own>SIZEE){ (*COUNT2)++; return; } }
   //180度回転
-  if(aBoard[SIZEE]==ENDBIT){ own=1; you=SIZEE-1;
+  if(*(p+SIZEE)==ENDBIT){ own=1; you=SIZEE-1;
     while(own<=SIZEE){ bit=1; ptn=TOPBIT;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; you--; }
+      while((*(p+you)!=ptn)&&(*(p+own)>=bit)){ bit<<=1; ptn>>=1; }
+      if(*(p+own)>bit){ return; } if(*(p+own)<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(own>SIZEE){ (*COUNT4)++; return; } }
   //270度回転
-  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+  if(*(p+BOUND1)==TOPBIT){ own=1; ptn=TOPBIT>>1;
     while(own<=SIZEE){ bit=1; you=0;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; } own++; ptn>>=1; } }
+      while((*(p+you)!=ptn)&&(*(p+own)>=bit)){ bit<<=1; you++; }
+      if(*(p+own)>bit){ return; } if(*(p+own)<bit){ break; } own++; ptn>>=1; } }
   (*COUNT8)++;
 }
 
@@ -1278,7 +1278,8 @@ void backTrack2(int y,int left,int down,int right,int SIZEE,
       if( (bitmap&LASTMASK)==0){ 
         aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,aBoard,&*COUNT2,&*COUNT4,&*COUNT8); } }
+        int *p=aBoard;
+        symmetryOps_bitmap(SIZEE,BOUND1,BOUND2,TOPBIT,ENDBIT,p,&*COUNT2,&*COUNT4,&*COUNT8); } }
   }else{
     if(y<BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~SIDEMASK; 
