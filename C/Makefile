@@ -2,7 +2,7 @@
 
 CC=gcc
 #デバッグ時
-CFLAGS=-Wall -W -O3
+CFLAGS=-Wall -W -O3 -std=c99 -pthread
 #最終処理結果実行用
 #CFLAGS=-O3
 RM=rm -fr
