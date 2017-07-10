@@ -59,56 +59,60 @@
 #include <stdio.h>
 #include <time.h>
 
-#define MAXSIZE 27
+#define MAX 27
 
-int iTotal=1 ; //合計解
-int iUnique=0; //ユニーク解
-int iSize;     //Ｎ
-int colChk [2*MAXSIZE-1]; //縦 配置フラグ　
-int diagChk[2*MAXSIZE-1]; //斜め配置フラグ　
-int antiChk[2*MAXSIZE-1]; //斜め配置フラグ　
-int aBoard[MAXSIZE];  //チェス盤の横一列
+long Total=1 ;        //合計解
+long Unique=0;        //ユニーク解
+int fA[2*MAX-1]; //fA:flagA 縦 配置フラグ　
+int fB[2*MAX-1];  //fB:flagB 斜め配置フラグ　
+int fC[2*MAX-1];  //fC:flagC 斜め配置フラグ　
+int aB[MAX];      //aB:aBoard[] チェス盤の横一列
 
-void TimeFormat(clock_t utime, char *form) {
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(float)(mm * 60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-    else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
-    else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
-    else sprintf(form, "           %5.2f",ss);
-}
-void NQueen(int row){
-  if(row==iSize){
-    iTotal++; //解を発見
+void TimeFormat(clock_t utime, char *form);
+void NQueen(int r,int si);
+
+// i:col si:size r:row fA:縦 fB:斜め fC:斜め
+void NQueen(int r,int si){
+  if(r==si){
+    Total++; //解を発見
   }else{
-    for(int col=0;col<iSize;col++){
-      aBoard[row]=col ;
+    for(int i=0;i<si;i++){
+      aB[r]=i ;
       //バックトラック 制約を満たしているときだけ進む
-      if(colChk[col]==0 && diagChk[row-col+(iSize-1)]==0 && antiChk[row+col]==0){
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=1; 
-        NQueen(row+1);//再帰
-        colChk[col]=diagChk[row-aBoard[row]+iSize-1]=antiChk[row+aBoard[row]]=0; 
+      if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
+        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1; 
+        NQueen(r+1,si);//再帰
+        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0; 
       }
     }  
   }
 }
 int main(void) {
   clock_t st; char t[20];
+  int min=2;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  for(int i=2;i<=MAXSIZE;i++){
-    iSize=i; iTotal=0; iUnique=0; 
-    for(int j=0;j<iSize;j++){ aBoard[j]=j; } //aBoardを初期化
+  for(int i=min;i<=MAX;i++){
+    Total=0; Unique=0; 
+    for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
-    NQueen(0);
+    NQueen(0,i);
     TimeFormat(clock()-st,t);
-    printf("%2d:%13d%16d%s\n",iSize,iTotal,iUnique,t) ;
+    printf("%2d:%13ld%16ld%s\n",i,Total,Unique,t) ;
   } 
+  return 0;
 }
-
+void TimeFormat(clock_t utime, char *form) {
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(float)(mm * 60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
+  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
+  else sprintf(form, "           %5.2f",ss);
+}

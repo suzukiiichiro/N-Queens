@@ -48,27 +48,26 @@
 #include <stdio.h>
 #include <time.h>
 
-#define MINSIZE 0
-#define MAXSIZE 8
+int c=1 ;   // c:count
+int aB[8];  // aB:aBboard[] 
 
-int iCount=1 ; //# c:count
-int aBoard[MAXSIZE];
-
-void NQueen(int iMin,int iMax) {
-  for(int i=0;i<iMax;i++){
-      aBoard[iMin]=i ;
-      if (iMin==iMax-1){ 
-        printf("%d: ",iCount++);
-        for(int j=0;j<iMax;j++){
-          printf("%d ",aBoard[j]);
-        }
-        printf("\n");
-      }else{
-        NQueen(iMin+1,iMax);
+// mi:min ma:max
+void NQueen(int mi,int ma) {
+  for(int i=0;i<ma;i++){
+    aB[mi]=i ;
+    if (mi==ma-1){ 
+      printf("%d: ",c++);
+      for(int j=0;j<ma;j++){
+        printf("%d ",aB[j]);
       }
+      printf("\n");
+    }else{
+      NQueen(mi+1,ma);
+    }
   }  
 }
 int main(void) {
-  NQueen(MINSIZE,MAXSIZE);
+  NQueen(0,8);
+  return 0;
 }
 
