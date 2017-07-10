@@ -220,8 +220,7 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
 }
 int main(void){
   clock_t st; char t[20];
-  int min=2;
-  int msk; // msk:mask
+  int min=2; int msk; // msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     Total=0; Unique=0; C2=0;C4=0;C8=0; msk=(1<<i)-1; // 初期化
