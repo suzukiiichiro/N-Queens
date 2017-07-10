@@ -16,6 +16,10 @@ RM=rm -fr
 LDFLAGS=  -L/usr/local/opt/llvm/lib
 CPPFLAGS= -I/usr/local/opt/llvm/include
 
+nq18ani=07_18NQueen_ani
+nq18ani: $(nq18ani).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18ani) $(nq18ani).c 
+
 nq18=07_18NQueen
 nq18: $(nq18).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18) $(nq18).c 
