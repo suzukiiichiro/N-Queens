@@ -172,129 +172,144 @@
 #include<time.h>
 #include <math.h>
 
-#define MAXSIZE 27
+#define MAX 27
 
-int lTotal=1 ; //合計解
-int lUnique=0; //ユニーク解
-int iSize;     //Ｎ
-int aBoard[MAXSIZE];  //チェス盤の横一列
-int aTrial[MAXSIZE];
-int aScratch[MAXSIZE];
-int iMask;
+long Total=1; //合計解
+long Unique=0;//ユニーク解
+int aB[MAX];  //aB:aBoard[] チェス盤の横一列
+int aT[MAX];  //aT:aTrial[]
+int aS[MAX];  //aS:aScrath[]
+
 int bit;
-int COUNT2=0; int COUNT4=0; int COUNT8=0;
+int C2=0;  //C2:COUNT2
+int C4=0;  //C4:COUNT4
+int C8=0;  //C8:COUNT8
 
+void NQueen(int si,int msk,int y,int l,int d,int r);
+void TimeFormat(clock_t utime,char *form);
+void symmetryOps(int si);
+void rotate(int chk[],int scr[],int n,int neg);
+void vMirror(int chk[],int si);
+int intncmp(int lt[],int rt[],int si);
+long getUnique();
+long getTotal();
+
+// si:size y:row l:left d:down r:right
+void NQueen(int si,int msk,int y,int l,int d,int r){
+  int bm=msk&~(l|d|r); /* 配置可能フィールド */
+  if (y==si) {
+    if(!bm){
+      aB[y]=bm;
+      //ベタにビットの配列を 元のaBにいったん戻してみた 
+      int v[MAX];
+      for (int i=0;i<si;i++){
+        v[i]=aB[i];
+        aB[i]=si-1-log2(aB[i]); // log2:math.hが必要
+      }
+      //対称解除法による解析(まだビット対応してない）
+      symmetryOps(si);
+      //処理が終わったら元のビットの配列に戻す
+      for (int i=0;i<si;i++){ aB[i]=v[i]; }
+    }
+  }else{
+    while (bm) {
+      bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+      NQueen(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  } 
+}
+int main(void){
+  clock_t st; char t[20];
+  int min=2;
+  int msk; // msk:mask
+  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  for(int i=min;i<=MAX;i++){
+    Total=0; Unique=0; C2=0;C4=0;C8=0; msk=(1<<i)-1; // 初期化
+    for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+    st=clock();
+    NQueen(i,msk,0,0,0,0);
+    TimeFormat(clock()-st,t);
+    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+  } 
+  return 0;
+}
 void TimeFormat(clock_t utime,char *form){
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(int)(mm*60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
+  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
+  else sprintf(form, "           %5.2f",ss);
 }
-long getUnique(){ 
-  return COUNT2+COUNT4+COUNT8;
-}
-long getTotal(){ 
-  return COUNT2*2+COUNT4*4+COUNT8*8;
-}
-void rotate(int check[],int scr[],int n,int neg){
-  int k=neg?0:n-1;
-  int incr=(neg?+1:-1);
-  for(int j=0;j<n;k+=incr){ scr[j++]=check[k];}
-  k=neg?n-1:0;
-  for(int j=0;j<n;k-=incr){ check[scr[j++]]=k;}
-}
-void vMirror(int check[]){
-  for(int j=0;j<iSize;j++){ check[j]=(iSize-1)- check[j];}
-}
-int intncmp(int lt[],int rt[]){
-  int rtn=0;
-  for(int k=0;k<iSize;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
-}
-void symmetryOps(int bitmap){
+// si:size
+void symmetryOps(int si){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  rotate(aTrial,aScratch,iSize,0);  //時計回りに90度回転
-  int k=intncmp(aBoard,aTrial);
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  rotate(aT,aS,si,0);  //時計回りに90度回転
+  int k=intncmp(aB,aT,si);
   if(k>0)return;
   if(k==0){ nEquiv=2;}else{
-    rotate(aTrial,aScratch,iSize,0);//時計回りに180度回転
-    k=intncmp(aBoard,aTrial);
+    rotate(aT,aS,si,0);//時計回りに180度回転
+    k=intncmp(aB,aT,si);
     if(k>0)return;
     if(k==0){ nEquiv=4;}else{
-      rotate(aTrial,aScratch,iSize,0);//時計回りに270度回転
-      k=intncmp(aBoard,aTrial);
+      rotate(aT,aS,si,0);//時計回りに270度回転
+      k=intncmp(aB,aT,si);
       if(k>0){ return;}
       nEquiv=8;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<iSize;i++){ aTrial[i]=aBoard[i];}
-  vMirror(aTrial);    //垂直反転
-  k=intncmp(aBoard,aTrial);
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  vMirror(aT,si);    //垂直反転
+  k=intncmp(aB,aT,si);
   if(k>0){ return; }
   if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    rotate(aTrial,aScratch,iSize,1);
-    k=intncmp(aBoard,aTrial);
+    rotate(aT,aS,si,1);
+    k=intncmp(aB,aT,si);
     if(k>0){return;}
     if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial);
+      rotate(aT,aS,si,1);
+      k=intncmp(aB,aT,si);
       if(k>0){ return;}  //-270度回転 反対角鏡と同等
-      rotate(aTrial,aScratch,iSize,1);
-      k=intncmp(aBoard,aTrial);
+      rotate(aT,aS,si,1);
+      k=intncmp(aB,aT,si);
       if(k>0){ return;}
     }
   }
-  if(nEquiv==2){ COUNT2++; }
-  if(nEquiv==4){ COUNT4++; }
-  if(nEquiv==8){ COUNT8++; }
+  if(nEquiv==2){ C2++; }
+  if(nEquiv==4){ C4++; }
+  if(nEquiv==8){ C8++; }
 }
-void NQueen(int y, int left, int down, int right){
-  int bitmap=iMask&~(left|down|right); /* 配置可能フィールド */
-  if (y==iSize) {
-    if(!bitmap){
-	    aBoard[y]=bitmap;
-			//ベタにビットの配列を 元のaBoardにいったん戻してみた 
-			int v[MAXSIZE];
-			for (int i=0;i<iSize;i++){
-				v[i]=aBoard[i];
-				aBoard[i]=iSize-1-log2(aBoard[i]);
-			}
-      //対称解除法による解析(まだビット対応してない）
-			symmetryOps(bitmap);
-			//処理が終わったら元のビットの配列に戻す
-			for (int i=0;i<iSize;i++){ aBoard[i]=v[i]; }
-    }
-  }else{
-    while (bitmap) {
-      bitmap^=aBoard[y]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      NQueen(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-     }
-  } 
+void rotate(int chk[],int scr[],int n,int neg){
+  int k=neg?0:n-1;
+  int incr=(neg?+1:-1);
+  for(int j=0;j<n;k+=incr){ scr[j++]=chk[k];}
+  k=neg?n-1:0;
+  for(int j=0;j<n;k-=incr){ chk[scr[j++]]=k;}
 }
-int main(void){
-  clock_t st; char t[20];
-  printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  for(int i=2;i<=MAXSIZE;i++){
-    iSize=i; lTotal=0; lUnique=0;
-    COUNT2=0;COUNT4=0;COUNT8=0;
-    for(int j=0;j<iSize;j++){ aBoard[j]=j; }
-    st=clock();
-    iMask=(1<<iSize)-1; // 初期化
-    NQueen(0,0,0,0);
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",iSize,getTotal(),getUnique(),t);
-  } 
+void vMirror(int chk[],int si){
+  for(int j=0;j<si;j++){ chk[j]=(si-1)- chk[j];}
 }
-
+int intncmp(int lt[],int rt[],int si){
+  int rtn=0;
+  for(int k=0;k<si;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){ break;}
+  }
+  return rtn;
+}
+long getUnique(){ 
+  return C2+C4+C8;
+}
+long getTotal(){ 
+  return C2*2+C4*4+C8*8;
+}
