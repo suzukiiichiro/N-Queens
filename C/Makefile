@@ -1,6 +1,6 @@
 # Makefile for nqueens2.c
 
-CC=gcc
+CC=/usr/bin/gcc
 #デバッグ時
 CFLAGS=-Wall -W -O3 -std=c99 -pthread -lpthread -lm
 
@@ -13,37 +13,40 @@ RM=rm -fr
 #LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 #LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
 
+LDFLAGS=  -L/usr/local/opt/llvm/lib
+CPPFLAGS= -I/usr/local/opt/llvm/include
+
 nq18=07_18NQueen
 nq18: $(nq18).c 
-	$(CC) $(CFLAGS) -o $(nq18) $(nq18).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18) $(nq18).c 
 
 nq17=07_17NQueen
 nq17: $(nq17).c 
-	$(CC) $(CFLAGS) -o $(nq17) $(nq17).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq17) $(nq17).c 
 
 nq16=07_16NQueen
 nq16: $(nq16).c 
-	$(CC) $(CFLAGS) -o $(nq16) $(nq16).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq16) $(nq16).c 
 
 nq15=07_15NQueen
 nq15: $(nq15).c 
-	$(CC) $(CFLAGS) -o $(nq15) $(nq15).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq15) $(nq15).c 
 
 nq14=07_14NQueen
 nq14: $(nq14).c 
-	$(CC) $(CFLAGS) -o $(nq14) $(nq14).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq14) $(nq14).c 
 
 nq13=07_13NQueen
 nq13: $(nq13).c 
-	$(CC) $(CFLAGS) -o $(nq13) $(nq13).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq13) $(nq13).c 
 
 nq12=07_12NQueen
 nq12: $(nq12).c 
-	$(CC) $(CFLAGS) -o $(nq12) $(nq12).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq12) $(nq12).c 
 
 nq11=07_11NQueen
 nq11: $(nq11).c 
-	$(CC) $(CFLAGS) -o $(nq11) $(nq11).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq11) $(nq11).c 
 
 nq10=07_10NQueen
 nq10: $(nq10).c 
