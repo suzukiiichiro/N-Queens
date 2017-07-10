@@ -179,7 +179,6 @@ long Unique=0; //ユニーク解
 int aB[MAX];  //チェス盤の横一列
 int aT[MAX];
 int aS[MAX];
-int bit;
 int C2=0;int C4=0;int C8=0;
 
 int BOUND1;
@@ -203,6 +202,7 @@ void backTrack1(int si,int msk,int y, int l, int d, int r);
 void NQueen(int si,int msk);
 
 void backTrack2(int si,int msk,int y,int l,int d,int r){
+  int bit;
   int bm=msk&~(l|d|r); /* 配置可能フィールド */
   if (y==si) {
     if(!bm){
@@ -217,6 +217,7 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
   } 
 }
 void backTrack1(int si,int msk,int y,int l,int d,int r){
+  int bit;
   int bm=msk&~(l|d|r); /* 配置可能フィールド */
   if (y==si) {
     if(!bm){
@@ -231,6 +232,7 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
   } 
 }
 void NQueen(int si,int msk){
+  int bit;
   TOPBIT=1<<si-1;
   aB[0]=1;
   for(BOUND1=2;BOUND1<si-1;BOUND1++){
