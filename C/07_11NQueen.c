@@ -50,51 +50,32 @@
 
 #include<stdio.h>
 #include<time.h>
-#include <math.h>
+
 #define MAXSIZE 27
 
 // pthreadはパラメータを１つしか渡せないので構造体に格納
 typedef struct {
-  int SIZE;
-  int SIZEE;
   int BOUND1;
   int BOUND2;
-  int bit;
   int TOPBIT;
   int ENDBIT;
-  int MASK;
   int SIDEMASK;
   int LASTMASK;
-  long lTotal;
-  long lUnique;
-  long COUNT2;
-  long COUNT4;
-  long COUNT8;
-  int aBoard[MAXSIZE];
+  long C2;
+  long C4;
+  long C8;
+  int aB[MAXSIZE];
 }CLASS, *Class;
 CLASS C; //構造体
 
-/** 時刻のフォーマット変換 */
-void TimeFormat(clock_t utime,char *form){
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(int)(mm*60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    sprintf(form,"%7d %02d:%02d:%02.0f",dd,hh,mm,ss);
-}
-/** ユニーク解のget */
-long getUnique(){ 
-  return C.COUNT2+C.COUNT4+C.COUNT8;
-}
-/** 総合計のget */
-long getTotal(){ 
-  return C.COUNT2*2+C.COUNT4*4+C.COUNT8*8;
-}
+void TimeFormat(clock_t utime,char *form);
+long getUnique();
+long getTotal();
+void backTrack2(int si,int msk,int y,int l,int d,int r);
+void backTrack1(int si,int msk,int y,int left,int down,int right);
+void run(int si,int msk);
+void NQueenThread(int si,int msk);
+
 /**********************************************/
 /** 対称解除法                               **/
 /** ユニーク解から全解への展開               **/
@@ -130,37 +111,37 @@ long getTotal(){
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(){
+void symmetryOps_bm(int si){
   int own,ptn,you,bit;
   //90度回転
-  if(C.aBoard[C.BOUND2]==1){ own=1; ptn=2;
-    while(own<=C.SIZEE){ bit=1; you=C.SIZEE;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C.aB[C.BOUND2]==1){ own=1; ptn=2;
+    while(own<=(si-1)){ bit=1; you=(si-1);
+      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; you--; }
+      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>C.SIZEE){ C.COUNT2++; return; }
+    if(own>(si-1)){ C.C2++; return; }
   }
   //180度回転
-  if(C.aBoard[C.SIZEE]==C.ENDBIT){ own=1; you=C.SIZEE-1;
-    while(own<=C.SIZEE){ bit=1; ptn=C.TOPBIT;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C.aB[(si-1)]==C.ENDBIT){ own=1; you=(si-1)-1;
+    while(own<=(si-1)){ bit=1; ptn=C.TOPBIT;
+      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>C.SIZEE){ C.COUNT4++; return; }
+    if(own>(si-1)){ C.C4++; return; }
   }
   //270度回転
-  if(C.aBoard[C.BOUND1]==C.TOPBIT){ own=1; ptn=C.TOPBIT>>1;
-    while(own<=C.SIZEE){ bit=1; you=0;
-      while((C.aBoard[you]!=ptn)&&(C.aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(C.aBoard[own]>bit){ return; } if(C.aBoard[own]<bit){ break; }
+  if(C.aB[C.BOUND1]==C.TOPBIT){ own=1; ptn=C.TOPBIT>>1;
+    while(own<=(si-1)){ bit=1; you=0;
+      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; you++; }
+      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
       own++; ptn>>=1;
     }
   }
-  C.COUNT8++;
+  C.C8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -184,27 +165,27 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 //void backTrack2(int y,int left,int down,int right){
-void backTrack2(int y,int left,int down,int right){
-  int bitmap=C.MASK&~(left|down|right); 
+void backTrack2(int si,int msk,int y,int l,int d,int r){
   int bit=0;
-  if(y==C.SIZEE){
-    if(bitmap>0&&(bitmap&C.LASTMASK)==0){ //【枝刈り】最下段枝刈り
-      C.aBoard[y]=bitmap;
-      symmetryOps_bitmap(); //  takakenの移植版の移植版
+  int bm=msk&~(l|d|r); 
+  if(y==(si-1)){
+    if(bm>0&&(bm&C.LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      C.aB[y]=bm;
+      symmetryOps_bm(si); //  takakenの移植版の移植版
     }
   }else{
     if(y<C.BOUND1){             //【枝刈り】上部サイド枝刈り
-      bitmap&=~C.SIDEMASK; 
-      // bitmap|=SIDEMASK; 
-      // bitmap^=SIDEMASK;(bitmap&=~SIDEMASKと同等)
+      bm&=~C.SIDEMASK; 
+      // bm|=SIDEMASK; 
+      // bm^=SIDEMASK;(bm&=~SIDEMASKと同等)
     }else if(y==C.BOUND2) {     //【枝刈り】下部サイド枝刈り
-      if((down&C.SIDEMASK)==0){ return; }
-      if((down&C.SIDEMASK)!=C.SIDEMASK){ bitmap&=C.SIDEMASK; }
+      if((d&C.SIDEMASK)==0){ return; }
+      if((d&C.SIDEMASK)!=C.SIDEMASK){ bm&=C.SIDEMASK; }
     }
-    while(bitmap>0) {
-      bitmap^=C.aBoard[y]=bit=-bitmap&bitmap;
-      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    while(bm>0) {
+      bm^=C.aB[y]=bit=-bm&bm;
+      //backTrack2(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   }
 }
@@ -217,69 +198,89 @@ void backTrack2(int y,int left,int down,int right){
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right){
-  int bitmap=C.MASK&~(left|down|right); 
+void backTrack1(int si,int msk,int y,int l,int d,int r){
+  int bm=msk&~(l|d|r); 
   int bit;
-  if(y==C.SIZEE) {
-    if(bitmap>0){
-      C.aBoard[y]=bitmap;
+  if(y==(si-1)) {
+    if(bm>0){
+      C.aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C.COUNT8++;
+      C.C8++;
     }
   }else{
     if(y<C.BOUND1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bitmap&=~2; // bitmap|=2; bitmap^=2; (bitmap&=~2と同等)
+      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
     }
-    while(bitmap>0) {
-      bitmap^=C.aBoard[y]=bit=-bitmap&bitmap;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    while(bm>0) {
+      bm^=C.aB[y]=bit=-bm&bm;
+      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
-void run(){
-  C.aBoard[0]=1;
-  C.MASK=(1<<C.SIZE)-1;
-  C.TOPBIT=1<<C.SIZEE;
+void run(int si,int msk){
   int bit ;
+  C.aB[0]=1;
+  C.TOPBIT=1<<(si-1);
   // 最上段のクイーンが角にある場合の探索
-  if(C.BOUND1>1&&C.BOUND1<C.SIZEE) { 
-    if(C.BOUND1<C.SIZEE) {
-      C.aBoard[1]=bit=(1<<C.BOUND1);
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+  if(C.BOUND1>1&&C.BOUND1<(si-1)) { 
+    if(C.BOUND1<(si-1)) {
+      C.aB[1]=bit=(1<<C.BOUND1);
+      backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
     }
   }
   C.ENDBIT=(C.TOPBIT>>C.BOUND1);
   C.SIDEMASK=C.LASTMASK=(C.TOPBIT|1);
   // 最上段のクイーンが角以外にある場合の探索
-  if(C.BOUND1>0&&C.BOUND2<C.SIZE-1&&C.BOUND1<C.BOUND2){ 
-    for(int i=1; i<C.BOUND1; i++){
+  if(C.BOUND1>0&&C.BOUND2<si-1&&C.BOUND1<C.BOUND2){ 
+    for(int i=1;i<C.BOUND1;i++){
       C.LASTMASK=C.LASTMASK|C.LASTMASK>>1|C.LASTMASK<<1;
     }
     if(C.BOUND1<C.BOUND2) {
-      C.aBoard[0]=bit=(1<<C.BOUND1);
-      backTrack2(1,bit<<1,bit,bit>>1);
+      C.aB[0]=bit=(1<<C.BOUND1);
+      backTrack2(si,msk,1,bit<<1,bit,bit>>1);
     }
-    C.ENDBIT>>=C.SIZE;
+    C.ENDBIT>>=si;
   }
 }
-void NQueenThread(){
-  for(C.BOUND1=C.SIZE-1,C.BOUND2=0;C.BOUND2<C.SIZE-1;C.BOUND1--,C.BOUND2++){
-     run();
+void NQueenThread(int si,int msk){
+  for(C.BOUND1=si-1,C.BOUND2=0;C.BOUND2<si-1;C.BOUND1--,C.BOUND2++){
+     run(si,msk);
   }
 }
 int main(void){
   clock_t st; char t[20];
+  int min=2;int msk;
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss");
-  for(int i=2;i<=MAXSIZE;i++){
-    C.SIZEE=i-1;C.SIZE=i;C.lTotal=0; C.lUnique=0;
-	  C.COUNT2=C.COUNT4=C.COUNT8=0;
-    for(int j=0;j<i;j++){ C.aBoard[j]=j; }
+  for(int i=min;i<=MAXSIZE;i++){
+    C.C2=C.C4=C.C8=0;
+    for(int j=0;j<i;j++){ C.aB[j]=j; }
+    msk=(1<<i)-1; // 初期化
     st=clock();
-    NQueenThread();
+    NQueenThread(i,msk);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
   } 
 }
-
+void TimeFormat(clock_t utime,char *form){
+    int dd,hh,mm;
+    float ftime,ss;
+    ftime=(float)utime/CLOCKS_PER_SEC;
+    mm=(int)ftime/60;
+    ss=ftime-(int)(mm*60);
+    dd=mm/(24*60);
+    mm=mm%(24*60);
+    hh=mm/60;
+    mm=mm%60;
+  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
+  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
+  else sprintf(form, "           %5.2f",ss);
+}
+long getUnique(){ 
+  return C.C2+C.C4+C.C8;
+}
+long getTotal(){ 
+  return C.C2*2+C.C4*4+C.C8*8;
+}
