@@ -50,31 +50,30 @@
 #include <stdio.h>
 #include <time.h>
 
-#define MINSIZE 0
-#define MAXSIZE 8
+int c=1 ;   // c:count
+int aB[8];  // aB:aBoard[]
+int fA[8];  // fA:flagArray[] 配置フラグ
 
-int iCount=1 ; //# c:count
-int aBoard[MAXSIZE];
-int fA[MAXSIZE]; //配置フラグ
-
-void NQueen(int iMin,int iMax) {
-  for(int i=0;i<iMax;i++){
-    if(! fA[i]){
-      aBoard[iMin]=i ;
-      if(iMin==iMax-1){
-        printf("%d: ",iCount++);
-        for(int j=0;j<iMax;j++){
-          printf("%d ",aBoard[j]);
+// mi:min ma:max
+void NQueen(int mi,int ma) {
+  for(int i=0;i<ma;i++){
+    if(fA[i]==0){
+      aB[mi]=i ;
+      if(mi==ma-1){
+        printf("%d: ",c++);
+        for(int j=0;j<ma;j++){
+          printf("%d ",aB[j]);
         }
         printf("\n");
       }else{
         fA[i]=1;         
-        NQueen(iMin+1,iMax);
+        NQueen(mi+1,ma);
         fA[i]=0; 
       }
     }
   }
 }
 int main(void) {
-  NQueen(MINSIZE,MAXSIZE);
+  NQueen(0,8);
+  return 0;
 }
