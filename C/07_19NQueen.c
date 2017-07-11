@@ -1256,7 +1256,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.66
 18:       666090624         83263591        0000:00:24.70
-
+#
 */
 
 #include<stdio.h>
