@@ -1247,7 +1247,10 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 12,COUNT8を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      ){
-
+15:         2279184           285053        0000:00:00.11
+16:        14772512          1846955        0000:00:00.65
+17:        95815104         11977939        0000:00:04.21
+18:       666090624         83263591        0000:00:28.76
 */
 
 #include<stdio.h>
