@@ -1212,6 +1212,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 8,TOPBITを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *en,int *p,long *c2,long *c4,long *c8){
+15:         2279184           285053        0000:00:00.14
+16:        14772512          1846955        0000:00:00.70
+17:        95815104         11977939        0000:00:04.50
+18:       666090624         83263591        0000:00:30.82
+9,ENDBITを移動
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     int *p,long *c2,long *c4,long *c8){
 
 */
 
@@ -1284,7 +1291,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(struct local *l,int *en,int *p,long *c2,long *c4,long *c8){
+void symmetryOps_bitmap(struct local *l,int *p,long *c2,long *c4,long *c8){
   int own,ptn,you,bit;
   //90度回転
   if(*(p+l->BOUND2)==1){ own=1; ptn=2;
@@ -1294,7 +1301,7 @@ void symmetryOps_bitmap(struct local *l,int *en,int *p,long *c2,long *c4,long *c
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(own>l->SIZEE){ (*c2)++; return; } }
   //180度回転
-  if(*(p+l->SIZEE)==*en){ own=1; you=l->SIZEE-1;
+  if(*(p+l->SIZEE)==l->ENDBIT){ own=1; you=l->SIZEE-1;
     while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
       while((*(p+you)!=ptn)&&(*(p+own)>=bit)){ bit<<=1; ptn>>=1; }
       if(*(p+own)>bit){ return; } if(*(p+own)<bit){ break; } own++; you--; }
@@ -1330,14 +1337,14 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,struct local *l,
-     int *en,int *p,long *c2,long *c4,long *c8){
+     int *p,long *c2,long *c4,long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
         *(p+y)=bitmap;
         //対称解除法
-        symmetryOps_bitmap(l,en,p,c2,c4,c8); } }
+        symmetryOps_bitmap(l,p,c2,c4,c8); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~l->SIDEMASK; 
@@ -1347,7 +1354,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=*(p+y)=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,en,p,c2,c4,c8); } }
+                                  l,p,c2,c4,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1556,8 +1563,7 @@ void *run(void *args){
     backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,p,c8); 
   }//２行目から探索
   l->TOPBIT=1<<SIZEE;
-  int ENDBIT=(l->TOPBIT>>l->BOUND1);
-  int *en=&(ENDBIT);
+  l->ENDBIT=(l->TOPBIT>>l->BOUND1);
   l->SIDEMASK=(l->TOPBIT|1);
   l->LASTMASK=(l->TOPBIT|1);
   /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -1568,8 +1574,8 @@ void *run(void *args){
     *(p)=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
       l,
-      en,p,c2,c4,c8); 
-    ENDBIT>>=1; }
+      p,c2,c4,c8); 
+    l->ENDBIT>>=1; }
   l->COUNT2=*c2;
   l->COUNT4=*c4;
   l->COUNT8=*c8;
