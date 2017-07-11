@@ -1357,9 +1357,10 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x - - - - | - x    
   x x b - - dnx x    
 */
-void backTrack2(int y,int left,int down,int right,struct local *l,int *sm,
+void backTrack2(int y,int left,int down,int right,struct local *l,
      long *c2,long *c4,long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
+  int sm=l->SIDEMASK;
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
@@ -1368,14 +1369,14 @@ void backTrack2(int y,int left,int down,int right,struct local *l,int *sm,
         symmetryOps_bitmap(l,c2,c4,c8); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
-      bitmap&=~*sm; 
+      bitmap&=~sm; 
     }else if(y==l->BOUND2) { //【枝刈り】下部サイド枝刈り
-      if((down&*sm)==0){ return; }
-      if((down&*sm)!=*sm){ bitmap&=*sm; } }
+      if((down&sm)==0){ return; }
+      if((down&sm)!=sm){ bitmap&=sm; } }
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,sm,c2,c4,c8); } }
+                                  l,c2,c4,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1584,8 +1585,7 @@ void *run(void *args){
   }//２行目から探索
   l->TOPBIT=1<<SIZEE;
   l->ENDBIT=(l->TOPBIT>>l->BOUND1);
-  int SIDEMASK=(l->TOPBIT|1);
-  int *sm=&(SIDEMASK);
+  l->SIDEMASK=(l->TOPBIT|1);
   l->LASTMASK=(l->TOPBIT|1);
   /* 最上段行のクイーンが角以外にある場合の探索 */
   //   ユニーク解に対する左右対称解を予め削除するため片半分だけにクイーンを配置する
@@ -1595,7 +1595,7 @@ void *run(void *args){
     l->aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
       l,
-      sm,c2,c4,c8); 
+      c2,c4,c8); 
     l->ENDBIT>>=1; }
   l->COUNT2=*c2;
   l->COUNT4=*c4;
@@ -1730,7 +1730,8 @@ void *NQueenThread( void *args){
   for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ pthread_join(cth[B1],NULL); } //処理が終わったら 全てjoin
   for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ //スレッド毎のカウンターを合計
     G.lTotal+=l[B1].COUNT2*2+l[B1].COUNT4*4+l[B1].COUNT8*8;
-    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; }
+    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; 
+  }
   return 0;
 }
 /**********************************************/
