@@ -1191,6 +1191,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 5,MASKを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
+15:         2279184           285053        0000:00:00.15
+16:        14772512          1846955        0000:00:00.79
+17:        95815104         11977939        0000:00:05.10
+18:       666090624         83263591        0000:00:34.74
+6,SIDEMASKを移動
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 
 */
 
@@ -1309,7 +1316,7 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,struct local *l,
-     int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
+     int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
@@ -1319,14 +1326,14 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
         symmetryOps_bitmap(l,to,en,p,c2,c4,c8); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
-      bitmap&=~*sm; 
+      bitmap&=~l->SIDEMASK; 
     }else if(y==l->BOUND2) { //【枝刈り】下部サイド枝刈り
-      if((down&*sm)==0){ return; }
-      if((down&*sm)!=*sm){ bitmap&=*sm; } }
+      if((down&l->SIDEMASK)==0){ return; }
+      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; } }
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=*(p+y)=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,sm,lm,to,en,p,c2,c4,c8); } }
+                                  l,lm,to,en,p,c2,c4,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1538,8 +1545,7 @@ void *run(void *args){
   int *to=&(TOPBIT);
   int ENDBIT=(TOPBIT>>l->BOUND1);
   int *en=&(ENDBIT);
-  int SIDEMASK=(TOPBIT|1);
-  int *sm=&(SIDEMASK);
+  l->SIDEMASK=(TOPBIT|1);
   int LASTMASK=(TOPBIT|1);
   int *lm=&(LASTMASK);
   /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -1549,7 +1555,7 @@ void *run(void *args){
       LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
     *(p)=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
-      l,sm,lm,
+      l,lm,
       to,en,p,c2,c4,c8); 
     ENDBIT>>=1; }
   l->COUNT2=*c2;
