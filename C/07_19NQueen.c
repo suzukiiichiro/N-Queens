@@ -1251,6 +1251,12 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 16:        14772512          1846955        0000:00:00.65
 17:        95815104         11977939        0000:00:04.21
 18:       666090624         83263591        0000:00:28.76
+13,COUNT2,COUNT4,COUNT8を外出しにする。SIDEMASKを変数に入れて使う
+15:         2279184           285053        0000:00:00.10
+16:        14772512          1846955        0000:00:00.57
+17:        95815104         11977939        0000:00:03.66
+18:       666090624         83263591        0000:00:24.70
+
 */
 
 #include<stdio.h>
@@ -1322,7 +1328,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(struct local *l){
+void symmetryOps_bitmap(struct local *l,long *c2,long *c4,long *c8){
   int own,ptn,you,bit;
   //90度回転
   if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
@@ -1330,20 +1336,20 @@ void symmetryOps_bitmap(struct local *l){
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn<<=1; }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>l->SIZEE){ l->COUNT2++; return; } }
+    if(own>l->SIZEE){ (*c2)++; return; } }
   //180度回転
   if(l->aBoard[l->SIZEE]==l->ENDBIT){ own=1; you=l->SIZEE-1;
     while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ l->COUNT4++; return; } }
+    if(own>l->SIZEE){ (*c4)++; return; } }
   //270度回転
   if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
     while(own<=l->SIZEE){ bit=1; you=0;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }
-  l->COUNT8++;
+  (*c8)++;
 }
 
 /**********************************************/
@@ -1367,24 +1373,26 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x - - - - | - x    
   x x b - - dnx x    
 */
-void backTrack2(int y,int left,int down,int right,struct local *l){
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     long *c2,long *c4,long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
+  int sm=l->SIDEMASK;
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
         l->aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(l); } }
+        symmetryOps_bitmap(l,c2,c4,c8); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
-      bitmap&=~l->SIDEMASK; 
+      bitmap&=~sm; 
     }else if(y==l->BOUND2) { //【枝刈り】下部サイド枝刈り
-      if((down&l->SIDEMASK)==0){ return; }
-      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; } }
+      if((down&sm)==0){ return; }
+      if((down&sm)!=sm){ bitmap&=sm; } }
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l); } }
+                                  l,c2,c4,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1436,10 +1444,10 @@ void backTrack2(int y,int left,int down,int right,struct local *l){
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right,struct local *l){
+void backTrack1(int y,int left,int down,int right,struct local *l,long *c8){
   int bit; int bitmap=l->MASK&~(left|down|right);  //配置可能フィールド
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(y==l->SIZEE) { if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
+  if(y==l->SIZEE) { if(bitmap!=0){ l->aBoard[y]=bitmap; (*c8)++; }
   }else{
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
     // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
@@ -1448,7 +1456,7 @@ void backTrack1(int y,int left,int down,int right,struct local *l){
     //最も下位の１ビットを抽出
     while(bitmap!=0) {
       bitmap^=l->aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } } 
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,c8); } } 
 }
 /**
   クイーンの場所で分岐
@@ -1575,9 +1583,12 @@ void backTrack1(int y,int left,int down,int right,struct local *l){
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
-  l->COUNT2=0;
-  l->COUNT4=0;
-  l->COUNT8=0;
+  long COUNT2=l->COUNT2=0;
+  long COUNT4=l->COUNT4=0;
+  long COUNT8=l->COUNT8=0;
+  long *c2=&(COUNT2);
+  long *c4=&(COUNT4);
+  long *c8=&(COUNT8);
   int SIZE=l->SIZE;
   int SIZEE =l->SIZEE;
   l->MASK=(1<<SIZE)-1;
@@ -1586,7 +1597,7 @@ void *run(void *args){
   /* 最上段のクイーンが角にある場合の探索 */
   if(BOUND1>1 && BOUND1<SIZEE) { 
     l->aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l); 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,c8); 
   }//２行目から探索
   l->TOPBIT=1<<SIZEE;
   l->ENDBIT=(l->TOPBIT>>l->BOUND1);
@@ -1599,8 +1610,12 @@ void *run(void *args){
       l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
     l->aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
-      l); 
+      l,
+      c2,c4,c8); 
     l->ENDBIT>>=1; }
+  l->COUNT2=*c2;
+  l->COUNT4=*c4;
+  l->COUNT8=*c8;
   return 0;
 }
 /**********************************************/
@@ -1731,7 +1746,8 @@ void *NQueenThread( void *args){
   for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ pthread_join(cth[B1],NULL); } //処理が終わったら 全てjoin
   for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ //スレッド毎のカウンターを合計
     G.lTotal+=l[B1].COUNT2*2+l[B1].COUNT4*4+l[B1].COUNT8*8;
-    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; }
+    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; 
+  }
   return 0;
 }
 /**********************************************/
