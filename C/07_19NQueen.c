@@ -1240,6 +1240,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 11,COUNT4を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      long *c8){
+15:         2279184           285053        0000:00:00.09
+16:        14772512          1846955        0000:00:00.56
+17:        95815104         11977939        0000:00:03.65
+18:       666090624         83263591        0000:00:24.94
+12,COUNT8を移動
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     ){
 
 */
 
@@ -1312,7 +1319,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(struct local *l,long *c8){
+void symmetryOps_bitmap(struct local *l){
   int own,ptn,you,bit;
   //90度回転
   if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
@@ -1333,7 +1340,7 @@ void symmetryOps_bitmap(struct local *l,long *c8){
     while(own<=l->SIZEE){ bit=1; you=0;
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }
-  (*c8)++;
+  l->COUNT8++;
 }
 
 /**********************************************/
@@ -1357,15 +1364,14 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x - - - - | - x    
   x x b - - dnx x    
 */
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c8){
+void backTrack2(int y,int left,int down,int right,struct local *l){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
         l->aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(l,c8); } }
+        symmetryOps_bitmap(l); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~l->SIDEMASK; 
@@ -1375,7 +1381,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,c8); } }
+                                  l); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1427,10 +1433,10 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 鏡像についても、主対角線鏡像のみを判定すればよい
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
-void backTrack1(int y,int left,int down,int right,struct local *l,long *c8){
+void backTrack1(int y,int left,int down,int right,struct local *l){
   int bit; int bitmap=l->MASK&~(left|down|right);  //配置可能フィールド
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(y==l->SIZEE) { if(bitmap!=0){ l->aBoard[y]=bitmap; (*c8)++; }
+  if(y==l->SIZEE) { if(bitmap!=0){ l->aBoard[y]=bitmap; l->COUNT8++; }
   }else{
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
     // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
@@ -1439,7 +1445,7 @@ void backTrack1(int y,int left,int down,int right,struct local *l,long *c8){
     //最も下位の１ビットを抽出
     while(bitmap!=0) {
       bitmap^=l->aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,c8); } } 
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l); } } 
 }
 /**
   クイーンの場所で分岐
@@ -1568,8 +1574,7 @@ void *run(void *args){
   int bit ;
   l->COUNT2=0;
   l->COUNT4=0;
-  long COUNT8=l->COUNT8=0;
-  long *c8=&(COUNT8);
+  l->COUNT8=0;
   int SIZE=l->SIZE;
   int SIZEE =l->SIZEE;
   l->MASK=(1<<SIZE)-1;
@@ -1578,7 +1583,7 @@ void *run(void *args){
   /* 最上段のクイーンが角にある場合の探索 */
   if(BOUND1>1 && BOUND1<SIZEE) { 
     l->aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,c8); 
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l); 
   }//２行目から探索
   l->TOPBIT=1<<SIZEE;
   l->ENDBIT=(l->TOPBIT>>l->BOUND1);
@@ -1591,10 +1596,8 @@ void *run(void *args){
       l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
     l->aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
-      l,
-      c8); 
+      l); 
     l->ENDBIT>>=1; }
-  l->COUNT8=*c8;
   return 0;
 }
 /**********************************************/
