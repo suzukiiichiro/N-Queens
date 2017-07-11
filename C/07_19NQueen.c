@@ -1198,7 +1198,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 6,SIDEMASKを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
-
+15:         2279184           285053        0000:00:00.12
+16:        14772512          1846955        0000:00:00.82
+17:        95815104         11977939        0000:00:05.10
+18:       666090624         83263591        0000:00:35.18
+7,LASTMASKを移動
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     int *to,int *en,int *p,long *c2,long *c4,long *c8){
 */
 
 #include<stdio.h>
@@ -1316,11 +1322,11 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,struct local *l,
-     int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
+     int *to,int *en,int *p,long *c2,long *c4,long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
-      if( (bitmap&*lm)==0){ 
+      if( (bitmap&l->LASTMASK)==0){ 
         *(p+y)=bitmap;
         //対称解除法
         symmetryOps_bitmap(l,to,en,p,c2,c4,c8); } }
@@ -1333,7 +1339,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=*(p+y)=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,lm,to,en,p,c2,c4,c8); } }
+                                  l,to,en,p,c2,c4,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1546,16 +1552,15 @@ void *run(void *args){
   int ENDBIT=(TOPBIT>>l->BOUND1);
   int *en=&(ENDBIT);
   l->SIDEMASK=(TOPBIT|1);
-  int LASTMASK=(TOPBIT|1);
-  int *lm=&(LASTMASK);
+  l->LASTMASK=(TOPBIT|1);
   /* 最上段行のクイーンが角以外にある場合の探索 */
   //   ユニーク解に対する左右対称解を予め削除するため片半分だけにクイーンを配置する
   if(BOUND1>0 && BOUND2<SIZEE && BOUND1<BOUND2){ 
     for(int i=1; i<BOUND1; i++){
-      LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1; }
+      l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
     *(p)=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
-      l,lm,
+      l,
       to,en,p,c2,c4,c8); 
     ENDBIT>>=1; }
   l->COUNT2=*c2;
