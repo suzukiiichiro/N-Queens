@@ -1233,7 +1233,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 10,COUNT2を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      long *c4,long *c8){
-
+15:         2279184           285053        0000:00:00.11
+16:        14772512          1846955        0000:00:00.56
+17:        95815104         11977939        0000:00:03.68
+18:       666090624         83263591        0000:00:24.65
+11,COUNT4を移動
+void backTrack2(int y,int left,int down,int right,struct local *l,
+     long *c8){
 
 */
 
@@ -1306,7 +1312,7 @@ GCLASS G; //グローバル構造体
 て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
 場合は８個になります。(左右反転×縦横回転×上下反転)
 */
-void symmetryOps_bitmap(struct local *l,long *c4,long *c8){
+void symmetryOps_bitmap(struct local *l,long *c8){
   int own,ptn,you,bit;
   //90度回転
   if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
@@ -1321,7 +1327,7 @@ void symmetryOps_bitmap(struct local *l,long *c4,long *c8){
       while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ (*c4)++; return; } }
+    if(own>l->SIZEE){ l->COUNT4++; return; } }
   //270度回転
   if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
     while(own<=l->SIZEE){ bit=1; you=0;
@@ -1352,14 +1358,14 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x x b - - dnx x    
 */
 void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c4,long *c8){
+     long *c8){
   int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
   if(y==l->SIZEE){
     if(bitmap!=0){ //【枝刈り】最下段枝刈り
       if( (bitmap&l->LASTMASK)==0){ 
         l->aBoard[y]=bitmap;
         //対称解除法
-        symmetryOps_bitmap(l,c4,c8); } }
+        symmetryOps_bitmap(l,c8); } }
   }else{
     if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
       bitmap&=~l->SIDEMASK; 
@@ -1369,7 +1375,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
     while(bitmap!=0) { //最も下位の１ビットを抽出
       bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,c4,c8); } }
+                                  l,c8); } }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -1561,9 +1567,8 @@ void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
   l->COUNT2=0;
-  long COUNT4=l->COUNT4=0;
+  l->COUNT4=0;
   long COUNT8=l->COUNT8=0;
-  long *c4=&(COUNT4);
   long *c8=&(COUNT8);
   int SIZE=l->SIZE;
   int SIZEE =l->SIZEE;
@@ -1587,9 +1592,8 @@ void *run(void *args){
     l->aBoard[0]=bit=(1<<BOUND1);
     backTrack2(1,bit<<1,bit,bit>>1,
       l,
-      c4,c8); 
+      c8); 
     l->ENDBIT>>=1; }
-  l->COUNT4=*c4;
   l->COUNT8=*c8;
   return 0;
 }
