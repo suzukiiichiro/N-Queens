@@ -16,21 +16,22 @@ RM=rm -fr
 LDFLAGS=  -L/usr/local/opt/llvm/lib
 CPPFLAGS= -I/usr/local/opt/llvm/include
 
-nq18ani=07_18NQueen_ani
-nq18ani: $(nq18ani).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18ani) $(nq18ani).c 
+
+nq19=07_19NQueen
+nq19: $(nq19).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq19) $(nq19).c -lpthread
 
 nq18=07_18NQueen
 nq18: $(nq18).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18) $(nq18).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq18) $(nq18).c -lpthread
 
 nq17=07_17NQueen
 nq17: $(nq17).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq17) $(nq17).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq17) $(nq17).c -lpthread
 
 nq16=07_16NQueen
 nq16: $(nq16).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq16) $(nq16).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq16) $(nq16).c -lpthread
 
 nq15=07_15NQueen
 nq15: $(nq15).c 
@@ -60,10 +61,10 @@ nq9=07_09NQueen
 nq9: $(nq9).c 
 	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
-all: nq18 nq17 nq16 nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all: nq19 nq18 nq17 nq16 nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15) $(nq16) $(nq17) $(nq18)
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19)
 
 nq8=07_08NQueen
 nq8: $(nq8).c 
