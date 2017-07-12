@@ -1173,7 +1173,7 @@ Lua版
 #define MAX 27
 
 /** スレッドローカル構造体 */
-struct local{
+typedef struct{
   int B1;
   int B2;
   int TB;
@@ -1188,7 +1188,7 @@ struct local{
   long C2;
   long C4;
   long C8;
-};
+}local;
 
 //グローバル構造体
 typedef struct {
@@ -1244,7 +1244,7 @@ long getTotal();
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
 void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
-  struct local *l=(struct local *)args;
+  local *l=(local *)args;
   int own,ptn,you,bit;
   //90度回転
   if(l->aB[l->B2]==1){ own=1; ptn=2;
@@ -1311,7 +1311,7 @@ void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
   x x b - - dnx x    
   */
 void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8){
-  struct local *l=(struct local *)args;
+  local *l=(local *)args;
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
   int bit=0;
@@ -1344,7 +1344,7 @@ void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,l
    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
    */
 void backTrack1(int y,int left,int down,int right,void *args,long *C8){
-  struct local *l=(struct local *)args;
+  local *l=(local *)args;
   int bit;
   int bm=l->msk&~(left|down|right); 
   if(y==G.siE) {
@@ -1368,7 +1368,7 @@ void backTrack1(int y,int left,int down,int right,void *args,long *C8){
   } 
 }
 void *run(void *args){
-  struct local *l=(struct local *)args;
+  local *l=(local *)args;
   int bit ;
   l->aB[0]=1;
   l->msk=(1<<G.si)-1;
@@ -1455,7 +1455,7 @@ void *NQueenThread(){
   pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;//mutexの初期化
   pthread_mutex_init(&mutex, NULL);     //pthread 排他処理
   // スレッドローカルな構造体
-  struct local l[MAX];              //構造体 local型 
+  local l[MAX];              //構造体 local型 
   // B1から順にスレッドを生成しながら処理を分担する 
   for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
     //B1 と B2を初期化
