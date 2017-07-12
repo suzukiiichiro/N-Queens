@@ -51,6 +51,7 @@
 
 #include<stdio.h>
 #include<time.h>
+#include <sys/time.h>
 // add
 #include <pthread.h>
 
@@ -58,7 +59,6 @@
 
 long getUnique();
 long getTotal();
-void TimeFormat(clock_t utime,char *form);
 void symmetryOps_bm();
 void backTrack2(int y,int l,int d,int r);
 void backTrack1(int y,int l,int d,int r);
@@ -81,8 +81,8 @@ typedef struct {
   long C4; //COUNT4
   long C8; //COUNT8
   int aB[MAX]; //aBoard[]
-}CLASS, *Class;
-CLASS C; //構造体
+}GCLASS, *GClass;
+GCLASS G; //構造体
 
 /**********************************************/
 /** 対称解除法                               **/
@@ -122,34 +122,34 @@ CLASS C; //構造体
 void symmetryOps_bm(){
   int own,ptn,you,bit;
   //90度回転
-  if(C.aB[C.B2]==1){ own=1; ptn=2;
-    while(own<=C.siE){ bit=1; you=C.siE;
-      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; you--; }
-      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
+  if(G.aB[G.B2]==1){ own=1; ptn=2;
+    while(own<=G.siE){ bit=1; you=G.siE;
+      while((G.aB[you]!=ptn)&&(G.aB[own]>=bit)){ bit<<=1; you--; }
+      if(G.aB[own]>bit){ return; } if(G.aB[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>C.siE){ C.C2++; return; }
+    if(own>G.siE){ G.C2++; return; }
   }
   //180度回転
-  if(C.aB[C.siE]==C.EB){ own=1; you=C.siE-1;
-    while(own<=C.siE){ bit=1; ptn=C.TB;
-      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
+  if(G.aB[G.siE]==G.EB){ own=1; you=G.siE-1;
+    while(own<=G.siE){ bit=1; ptn=G.TB;
+      while((G.aB[you]!=ptn)&&(G.aB[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(G.aB[own]>bit){ return; } if(G.aB[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>C.siE){ C.C4++; return; }
+    if(own>G.siE){ G.C4++; return; }
   }
   //270度回転
-  if(C.aB[C.B1]==C.TB){ own=1; ptn=C.TB>>1;
-    while(own<=C.siE){ bit=1; you=0;
-      while((C.aB[you]!=ptn)&&(C.aB[own]>=bit)){ bit<<=1; you++; }
-      if(C.aB[own]>bit){ return; } if(C.aB[own]<bit){ break; }
+  if(G.aB[G.B1]==G.TB){ own=1; ptn=G.TB>>1;
+    while(own<=G.siE){ bit=1; you=0;
+      while((G.aB[you]!=ptn)&&(G.aB[own]>=bit)){ bit<<=1; you++; }
+      if(G.aB[own]>bit){ return; } if(G.aB[own]<bit){ break; }
       own++; ptn>>=1;
     }
   }
-  C.C8++;
+  G.C8++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -174,21 +174,21 @@ void symmetryOps_bm(){
   */
 void backTrack2(int y,int l,int d,int r){
   int bit=0;
-  int bm=C.msk&~(l|d|r); 
-  if(y==C.siE){
-    if(bm>0&&(bm&C.LM)==0){ //【枝刈り】最下段枝刈り
-      C.aB[y]=bm;
-      symmetryOps_bm(); //  takakenの移植版の移植版
+  int bm=G.msk&~(l|d|r); 
+  if(y==G.siE){
+    if(bm>0&&(bm&G.LM)==0){ //【枝刈り】最下段枝刈り
+      G.aB[y]=bm;
+      symmetryOps_bm();//対称解除法
     }
   }else{
-    if(y<C.B1){             //【枝刈り】上部サイド枝刈り
-      bm&=~C.SM; 
-    }else if(y==C.B2) {     //【枝刈り】下部サイド枝刈り
-      if((d&C.SM)==0){ return; }
-      if((d&C.SM)!=C.SM){ bm&=C.SM; }
+    if(y<G.B1){             //【枝刈り】上部サイド枝刈り
+      bm&=~G.SM; 
+    }else if(y==G.B2) {     //【枝刈り】下部サイド枝刈り
+      if((d&G.SM)==0){ return; }
+      if((d&G.SM)!=G.SM){ bm&=G.SM; }
     }
     while(bm>0) {
-      bm^=C.aB[y]=bit=-bm&bm;
+      bm^=G.aB[y]=bit=-bm&bm;
       backTrack2(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   }
@@ -204,98 +204,104 @@ void backTrack2(int y,int l,int d,int r){
    */
 void backTrack1(int y,int l,int d,int r){
   int bit=0;
-  int bm=C.msk&~(l|d|r); 
-  if(y==C.siE) {
+  int bm=G.msk&~(l|d|r); 
+  if(y==G.siE) {
     if(bm>0){
-      C.aB[y]=bm;
+      G.aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C.C8++;
+      G.C8++;
     }
   }else{
-    if(y<C.B1) {   
+    if(y<G.B1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
       bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
     }
     while(bm>0) {
-      bm^=C.aB[y]=bit=-bm&bm;
+      bm^=G.aB[y]=bit=-bm&bm;
       backTrack1(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
 void *run(){
   int bit=0;
-  C.aB[0]=1;
-  C.TB=1<<C.siE;
+  G.aB[0]=1;
+  G.TB=1<<G.siE;
   // 最上段のクイーンが角にある場合の探索
-  if(C.B1>1&&C.B1<C.siE) { 
-    if(C.B1<C.siE) {
-      C.aB[1]=bit=(1<<C.B1);
+  if(G.B1>1&&G.B1<G.siE) { 
+    if(G.B1<G.siE) {
+      // 角にクイーンを配置 
+      G.aB[1]=bit=(1<<G.B1);
+      //２行目から探索
       backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
     }
   }
-  C.EB=(C.TB>>C.B1);
-  C.SM=C.LM=(C.TB|1);
+  G.EB=(G.TB>>G.B1);
+  G.SM=G.LM=(G.TB|1);
   // 最上段のクイーンが角以外にある場合の探索
-  if(C.B1>0&&C.B2<C.siE&&C.B1<C.B2){ 
-    for(int i=1; i<C.B1; i++){
-      C.LM=C.LM|C.LM>>1|C.LM<<1;
+  if(G.B1>0&&G.B2<G.siE&&G.B1<G.B2){ 
+    for(int i=1; i<G.B1; i++){
+      G.LM=G.LM|G.LM>>1|G.LM<<1;
     }
-    if(C.B1<C.B2) {
-      C.aB[0]=bit=(1<<C.B1);
+    if(G.B1<G.B2) {
+      G.aB[0]=bit=(1<<G.B1);
       backTrack2(1,bit<<1,bit,bit>>1);
     }
-    C.EB>>=C.si;
+    G.EB>>=G.si;
   }
   return 0;
 }
 void *NQueenThread(){
-  pthread_t pt[C.siE];
-  for(C.B1=C.siE,C.B2=0;C.B2<C.siE;C.B1--,C.B2++){
-    pthread_create(&pt[C.B1],NULL,&run,NULL);
+  pthread_t pt[G.siE];
+  for(G.B1=G.siE,G.B2=0;G.B2<G.siE;G.B1--,G.B2++){
+    pthread_create(&pt[G.B1],NULL,&run,NULL);
     /** 排他制御をしない場合　前の処理が終わったら次の処理へ移る */
     /** 07_13で排他処理を実現 今はこれでよし*/
-    pthread_join(pt[C.B1],NULL);
+    pthread_join(pt[G.B1],NULL);
   }
   /** 本来はここでjoinしたいが排他制御をしないと処理が流れてしまう */
-  //pthread_join(pt[C.B1],NULL);
+  //pthread_join(pt[G.B1],NULL);
   return 0;
 }
+void NQueen(){
+  pthread_t pth;  //スレッド変数
+  // メインスレッドの生成
+  int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);
+  if(iFbRet>0){
+    printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
+  }
+  pthread_join(pth,NULL); /* いちいちjoinをする */
+}
 int main(void){
-  clock_t st; char t[20];
   int min=2;
-  pthread_t ptN;
+  struct timeval t0;
+  struct timeval t1;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-    C.si=i;C.siE=i-1;C.C2=0;C.C4=0;C.C8=0; C.msk=(1<<C.si)-1;
-    for(int j=0;j<i;j++){ C.aB[j]=j; }
-    st=clock();
-    //NQueenThread();
-    /** N に関しては順序正しく現在の処理が終わってから次の処理へ移る */
-    pthread_create(&ptN,NULL,&NQueenThread,NULL);
-    pthread_join(ptN,NULL); /* いちいちjoinをする */
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+    G.si=i;G.siE=i-1;G.C2=0;G.C4=0;G.C8=0; G.msk=(1<<G.si)-1;
+    for(int j=0;j<i;j++){ G.aB[j]=j; }
+    gettimeofday(&t0, NULL);
+    NQueen();
+    gettimeofday(&t1, NULL);
+    //---- TimeFormat2
+    int ss;int ms;
+    if (t1.tv_usec<t0.tv_usec) {
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
+    } else { 
+      ss=(t1.tv_sec-t0.tv_sec)%86400; 
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
+    }
+    int hh=ss/3600; 
+    int mm=(ss-hh*3600)/60; 
+    ss%=60;
+    //---- TimeFormat2
+    printf("%2d:%13ld%16ld%7.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms);
   } 
 }
-void TimeFormat(clock_t utime,char *form){
-  int dd,hh,mm;
-  float ftime,ss;
-  ftime=(float)utime/CLOCKS_PER_SEC;
-  mm=(int)ftime/60;
-  ss=ftime-(int)(mm*60);
-  dd=mm/(24*60);
-  mm=mm%(24*60);
-  hh=mm/60;
-  mm=mm%60;
-  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
-  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
-  else sprintf(form, "           %5.2f",ss);
-}
 long getUnique(){ 
-  return C.C2+C.C4+C.C8;
+  return G.C2+G.C4+G.C8;
 }
 long getTotal(){ 
-  return C.C2*2+C.C4*4+C.C8*8;
+  return G.C2*2+G.C4*4+G.C8*8;
 }
