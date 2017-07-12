@@ -18,6 +18,7 @@
    13．マルチスレッド(mutex)            NQueen13() 
    14．マルチスレッド(mutexattr)        NQueen14() 
    15．マルチスレッド(脱mutex COUNT強化)NQueen15() 
+   15t.もっとマルチスレッド(takaken版) NQueen15_t() 
    16．アドレスとポインタ(考察１)       NQueen16() 
    17．アドレスとポインタ(考察２)       NQueen17() 
    18．アドレスとポインタ(考察３)       NQueen18()
