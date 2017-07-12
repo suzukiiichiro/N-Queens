@@ -51,10 +51,10 @@
 #include<time.h>
 #include <sys/time.h>
 #include "pthread.h"
+
 #define MAX 27
 
 pthread_mutex_t mutex;   //マルチスレッド排他処理mutexの宣言
-pthread_cond_t cond;     // mutex varable
 
 //
 // pthreadはパラメータを１つしか渡せないので構造体に格納
