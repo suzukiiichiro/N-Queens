@@ -61,7 +61,6 @@ pthread_cond_t cond;     // mutex varable
 
 /** スレッドローカル構造体 */
 struct local{
-  int bit;
   int B1;
   int B2;
   int TB;
