@@ -13,8 +13,13 @@ RM=rm -fr
 #LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
 #LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
 
+#mac
 LDFLAGS=  -L/usr/local/opt/llvm/lib
 CPPFLAGS= -I/usr/local/opt/llvm/include
+
+nq22=07_22NQueen
+nq22: $(nq22).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq22) $(nq22).c -lpthread
 
 nq21=07_21NQueen
 nq21: $(nq21).c 
@@ -72,10 +77,10 @@ nq9=07_09NQueen
 nq9: $(nq9).c 
 	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
-all:nq21 nq20 nq19 nq18 nq17 nq16 nq15 nq14 nq13 nq12 nq11 nq15t nq10t nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15 nq14 nq13 nq12 nq11 nq15t nq10t nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq15t) $(nq10t) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21)
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq15t) $(nq10t) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22)
 
 nq8=07_08NQueen
 nq8: $(nq8).c 
