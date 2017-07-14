@@ -1362,6 +1362,7 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 
 
  <>23．アドレスとポインタ(考察８) 
+	SIDEMASKをCOUNT同様にグローバル変数に外だし
 	不要なループを除去
 　不明な最大値を見直し
 
@@ -1430,6 +1431,7 @@ typedef struct{
 long C2[MAX];
 long C4[MAX];
 long C8[MAX];
+int  SM[MAX]; // 追加
 
 //グローバル構造体
 typedef struct {
@@ -1441,7 +1443,8 @@ typedef struct {
 GCLASS G; 
 
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
-void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8,int *SM);
+//void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8,int SM[]);
 void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 void *run(void *args);
 void *NQueenThread();
@@ -1543,6 +1546,7 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   x - - - - | - x    
   x x b - - dnx x    
   */
+//void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
 void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8,int *SM){
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
@@ -1565,6 +1569,7 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
     while(bm>0) {
       //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
+      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
       backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8,SM);
     }
   }
@@ -1618,7 +1623,8 @@ void *run(void *args){
     //}
   }
   l->EB=(l->TB>>l->B1);
-  l->SM=l->LM=(l->TB|1);
+  //l->SM=l->LM=(l->TB|1);
+  SM[l->B1]=l->LM=(l->TB|1);
   /* 最上段行のクイーンが角以外にある場合の探索 
      ユニーク解に対する左右対称解を予め削除するには、
      左半分だけにクイーンを配置するようにすればよい */
@@ -1628,7 +1634,7 @@ void *run(void *args){
     }
     //if(l->B1<l->B2) {
       l->aB[0]=bit=(1<<l->B1);
-      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8,l->SM);
+      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8,SM);
     //}
     l->EB>>=G.si;
   }
