@@ -27,6 +27,7 @@
    21．アドレスとポインタ(考察６)       NQueen21() 
    22．アドレスとポインタ(考察７)       NQueen22()
    23．アドレスとポインタ(考察８)       NQueen23()
+   24．アドレスとポインタ(完結)         NQueen24() 
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen

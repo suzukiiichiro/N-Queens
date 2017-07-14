@@ -27,6 +27,7 @@
    21．アドレスとポインタ(考察６)       NQueen21() N17=    03.66
    22．アドレスとポインタ(考察７)       NQueen22() N17=    03.66
  <>23．アドレスとポインタ(考察８)       NQueen23() N17=    03.66
+   24．アドレスとポインタ(完結)         NQueen24() N17=    03.66
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
