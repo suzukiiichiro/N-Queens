@@ -1358,7 +1358,7 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 14:          365596            45752        0000:00:00.01
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
-17:        95815104         11977939        0000:00:03.73
+17:        95815104         11977939        0000:00:03.77
 
 
  <>23．アドレスとポインタ(考察８) 
@@ -1441,7 +1441,7 @@ typedef struct {
 GCLASS G; 
 
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
-void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8,int *SM);
 void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 void *run(void *args);
 void *NQueenThread();
@@ -1543,7 +1543,7 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   x - - - - | - x    
   x x b - - dnx x    
   */
-void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8,int *SM){
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
   int bit=0;
@@ -1554,15 +1554,18 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
     }
   }else{
     if(y<l->B1){             //【枝刈り】上部サイド枝刈り
-      bm&=~l->SM; 
+      //bm&=~l->SM; 
+      bm&=~SM[l->B1]; 
     }else if(y==l->B2) {     //【枝刈り】下部サイド枝刈り
-      if((down&l->SM)==0){ return; }
-      if((down&l->SM)!=l->SM){ bm&=l->SM; }
+      //if((down&l->SM)==0){ return; }
+      if((down&SM[l->B1])==0){ return; }
+      //if((down&l->SM)!=l->SM){ bm&=l->SM; }
+      if((down&SM[l->B1])!=SM[l->B1]){ bm&=SM[l->B1]; }
     }
     while(bm>0) {
       //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8,SM);
     }
   }
 }
@@ -1625,7 +1628,7 @@ void *run(void *args){
     }
     //if(l->B1<l->B2) {
       l->aB[0]=bit=(1<<l->B1);
-      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8);
+      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8,l->SM);
     //}
     l->EB>>=G.si;
   }
