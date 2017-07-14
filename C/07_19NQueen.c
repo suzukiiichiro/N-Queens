@@ -48,7 +48,6 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.16
 16:        14772512          1846955        0000:00:00.93
 17:        95815104         11977939        0000:00:05.74
-18:       666090624         83263591        0000:00:39.43
 
 3,BOUND1を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
@@ -56,14 +55,13 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.14
 16:        14772512          1846955        0000:00:00.88
 17:        95815104         11977939        0000:00:05.55
-18:       666090624         83263591        0000:00:38.07
+
 4,BOUND2を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *ma,int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.13
 16:        14772512          1846955        0000:00:00.80
 17:        95815104         11977939        0000:00:05.23
-18:       666090624         83263591        0000:00:35.71
 
 5,MASKを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
@@ -71,7 +69,6 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.15
 16:        14772512          1846955        0000:00:00.79
 17:        95815104         11977939        0000:00:05.10
-18:       666090624         83263591        0000:00:34.74
 
 6,SIDEMASKを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
@@ -87,15 +84,12 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.11
 16:        14772512          1846955        0000:00:00.74
 17:        95815104         11977939        0000:00:04.71
-18:       666090624         83263591        0000:00:32.08
 
 8,TOPBITを移動
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     int *en,int *p,long *c2,long *c4,long *c8){
+void backTrack2(int y,int left,int down,int right,struct local *l,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.14
 16:        14772512          1846955        0000:00:00.70
 17:        95815104         11977939        0000:00:04.50
-18:       666090624         83263591        0000:00:30.82
 
 9,ENDBITを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
@@ -103,45 +97,35 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.65
 17:        95815104         11977939        0000:00:04.31
-18:       666090624         83263591        0000:00:29.26
 
 10,aBoardを移動
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c2,long *c4,long *c8){
+void backTrack2(int y,int left,int down,int right,struct local *l,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.58
 17:        95815104         11977939        0000:00:03.69
-18:       666090624         83263591        0000:00:24.89
 
 10,COUNT2を移動
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c4,long *c8){
+void backTrack2(int y,int left,int down,int right,struct local *l,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.11
 16:        14772512          1846955        0000:00:00.56
 17:        95815104         11977939        0000:00:03.68
-18:       666090624         83263591        0000:00:24.65
 
 11,COUNT4を移動
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c8){
+void backTrack2(int y,int left,int down,int right,struct local *l, long *c8){
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.56
 17:        95815104         11977939        0000:00:03.65
-18:       666090624         83263591        0000:00:24.94
 
 12,COUNT8を移動
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     ){
+void backTrack2(int y,int left,int down,int right,struct local *l,){
 15:         2279184           285053        0000:00:00.11
 16:        14772512          1846955        0000:00:00.65
 17:        95815104         11977939        0000:00:04.21
-18:       666090624         83263591        0000:00:28.76
 
 13,COUNT2,COUNT4,COUNT8を外出しにする。SIDEMASKを変数に入れて使う
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.66
-18:       666090624         83263591        0000:00:24.70
 */
 
 #include<stdio.h>
