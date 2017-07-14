@@ -1362,6 +1362,9 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 
 
  <>23．アドレスとポインタ(考察８) 
+	不要なループを除去
+　不明な最大値を見直し
+
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
  2:               0                0        0000:00:00.00
@@ -1379,7 +1382,7 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 14:          365596            45752        0000:00:00.01
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.58
-17:        95815104         11977939        0000:00:03.79
+17:        95815104         11977939        0000:00:03.77
 
 
   参考（Bash版 07_8NQueen.lua）
@@ -1540,9 +1543,7 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   x - - - - | - x    
   x x b - - dnx x    
   */
-//void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8){
 void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
-  //local *l=(local *)args;
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
   int bit=0;
