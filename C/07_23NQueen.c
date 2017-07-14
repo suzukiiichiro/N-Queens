@@ -1265,8 +1265,6 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 #
 
  <>22．アドレスとポインタ(考察７)
-
-
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
  2:               0                0        0000:00:00.00
@@ -1285,10 +1283,10 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.73
-18:       666090624         83263591        0000:00:25.78
-19:      4968057848        621012754        0000:03:15.99
-20:     39029188884       4878666808        0000:26:28.89
-21:    314666222712      39333324973        0004:13:08.98
+
+ <>23．アドレスとポインタ(考察８)  
+  実行結果 
+
 
 
   参考（Bash版 07_8NQueen.lua）
@@ -1323,6 +1321,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 
 /** スレッドローカル構造体 */
 typedef struct{
+	int bit;
   int B1;
   int B2;
   int TB;
@@ -1346,11 +1345,8 @@ typedef struct {
 }GCLASS, *GClass;
 GCLASS G; 
 
-//void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
-//void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8);
 void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
-//void backTrack1(int y,int left,int down,int right,void *args,long *C8);
 void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 void *run(void *args);
 void *NQueenThread();
@@ -1393,54 +1389,38 @@ long getTotal();
   て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
-//void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
-  //local *l=(local *)args;
   int own,ptn,you,bit;
-  int _siE=G.siE;
   //90度回転
   if(l->aB[l->B2]==1){ own=1; ptn=2;
     //while(own<=G.siE){ bit=1; you=G.siE;
-    while(own<=_siE){ bit=1; you=_siE;
+    while(own<=G.siE){ bit=1; you=G.siE;
       while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; you--; }
       if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    //if(own>G.siE){ 
-    if(own>_siE){ 
-    //  pthread_mutex_lock(&mutex);
-    //  G.C2[l->B1]++;
-    //  (*C2)++;
+    if(own>G.siE){ 
 			C2[l->B1]++;
-    //  G.C2++; 
-    //  pthread_mutex_unlock(&mutex);
       return; }
   }
   //180度回転
   //if(l->aB[G.siE]==l->EB){ own=1; you=G.siE-1;
-  if(l->aB[_siE]==l->EB){ own=1; you=_siE-1;
+  if(l->aB[G.siE]==l->EB){ own=1; you=G.siE-1;
     //while(own<=G.siE){ bit=1; ptn=l->TB;
-    while(own<=_siE){ bit=1; ptn=l->TB;
+    while(own<=G.siE){ bit=1; ptn=l->TB;
       while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    //if(own>G.siE){ 
-    if(own>_siE){ 
-    //  pthread_mutex_lock(&mutex);
-    //  G.C4++; 
-    //   G.C4[l->B1]++;
-    //  (*C4)++;
+    if(own>G.siE){ 
 			C4[l->B1]++;
-    //  pthread_mutex_unlock(&mutex);
       return; }
   }
   //270度回転
   if(l->aB[l->B1]==l->TB){ own=1; ptn=l->TB>>1;
-    //while(own<=G.siE){ bit=1; you=0;
-    while(own<=_siE){ bit=1; you=0;
+    while(own<=G.siE){ bit=1; you=0;
       while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; you++; }
       if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; }
       own++; ptn>>=1;
@@ -1476,10 +1456,8 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
   //local *l=(local *)args;
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
-  int bit=0;
-  int _siE=G.siE;
-  //if(y==G.siE){
-  if(y==_siE){
+  //int bit=0;
+  if(y==G.siE){
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
       l->aB[y]=bm;
       symmetryOps_bm(l,C2,C4,C8);//対称解除法
@@ -1493,8 +1471,8 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
     }
     while(bm>0) {
       //最も下位の１ビットを抽出
-      bm^=l->aB[y]=bit=-bm&bm;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
+      bm^=l->aB[y]=l->bit=-bm&bm;
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l,C2,C4,C8);
     }
   }
 }
@@ -1510,16 +1488,12 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
 //void backTrack1(int y,int left,int down,int right,void *args,long *C8){
 void backTrack1(int y,int left,int down,int right,local *l,long *C8){
   //local *l=(local *)args;
-  int bit;
+  //int bit;
   int bm=l->msk&~(left|down|right); 
-  int _siE=G.siE;
-  //if(y==G.siE) {
-  if(y==_siE) {
+  if(y==G.siE) {
     if(bm>0){
       l->aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      //G.C8[l->B1]++;
-      //(*C8)++;
 			C8[l->B1]++;
     }
   }else{
@@ -1530,52 +1504,39 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
     }
     while(bm>0) {
       //最も下位の１ビットを抽出
-      bm^=l->aB[y]=bit=-bm&bm;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C8);
+      bm^=l->aB[y]=l->bit=-bm&bm;
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l,C8);
     }
   } 
 }
 void *run(void *args){
   local *l=(local *)args;
-  int bit ;
+  //int bit;
   l->aB[0]=1;
   l->msk=(1<<G.si)-1;
-  int _siE=G.siE;
-  //l->TB=1<<G.siE;
-  l->TB=1<<_siE;
-/**
-  long c2=l->C2=0;
-  long c4=l->C4=0;
-  long c8=l->C8=0;
-  long *C2=&(c2);
-  long *C4=&(c4);
-  long *C8=&(c8);
-*/
+  l->TB=1<<G.siE;
   // 最上段のクイーンが角にある場合の探索
-  //if(l->B1>1 && l->B1<G.siE) { 
-  if(l->B1>1 && l->B1<_siE) { 
+  if(l->B1>1 && l->B1<G.siE) { 
     //if(l->B1<G.siE) {
-    if(l->B1<_siE) {
       // 角にクイーンを配置 
-      l->aB[1]=bit=(1<<l->B1);
+      l->aB[1]=l->bit=(1<<l->B1);
       //２行目から探索
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,C8);
-    }
+      backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),l,C8);
+    //}
   }
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
   /* 最上段行のクイーンが角以外にある場合の探索 
      ユニーク解に対する左右対称解を予め削除するには、
      左半分だけにクイーンを配置するようにすればよい */
-  //if(l->B1>0&&l->B2<G.siE&&l->B1<l->B2){ 
-  if(l->B1>0&&l->B2<_siE&&l->B1<l->B2){ 
+  if(l->B1>0&&l->B2<G.siE&&l->B1<l->B2){ 
     for(int i=1; i<l->B1; i++){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
-    if(l->B1<l->B2) {
-      l->aB[0]=bit=(1<<l->B1);
-      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8);
-    }
+    //if(l->B1<l->B2) {
+      l->aB[0]=l->bit=(1<<l->B1);
+      backTrack2(1,l->bit<<1,l->bit,l->bit>>1,l,C2,C4,C8);
+    //}
     l->EB>>=G.si;
   }
 /**
@@ -1631,19 +1592,15 @@ void *NQueenThread(){
   pthread_t pt[G.si];                //スレッド childThread
   // スレッドローカルな構造体
   local l[MAX];              //構造体 local型 
-  int _siE=G.siE;
   // B1から順にスレッドを生成しながら処理を分担する 
-  //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
-  for(int B1=_siE,B2=0;B2<_siE;B1--,B2++){
+  for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
     //B1 と B2を初期化
     l[B1].B1=B1; 
     l[B1].B2=B2;
     // aB[]の初期化
     //for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
-    //for(int j=0;j<G.siE;j++){ l[l->B1].aB[j]=j; } 
-    for(int j=0;j<_siE;j++){ l[l->B1].aB[j]=j; } 
+    for(int j=0;j<G.siE;j++){ l[l->B1].aB[j]=j; } 
     //カウンターの初期化
-    //G.C2[B1]=G.C4[B1]=G.C8[B1]=0;
 	  C2[B1]=C4[B1]=C8[B1]=0;	
     // チルドスレッドの生成
     int iFbRet=pthread_create(&pt[B1],NULL,&run,&l[B1]);
@@ -1651,13 +1608,11 @@ void *NQueenThread(){
       printf("[mainThread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
   }
-  //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){ 
-  for(int B1=_siE,B2=0;B2<_siE;B1--,B2++){ 
+  for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){ 
     pthread_join(pt[B1],NULL); 
   }
   //スレッド毎のカウンターを合計
-  //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
-  for(int B1=_siE,B2=0;B2<_siE;B1--,B2++){
+  for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
     G.lTotal+=C2[B1]*2+C4[B1]*4+C8[B1]*8;
     G.lUnique+=C2[B1]+C4[B1]+C8[B1]; 
   }
