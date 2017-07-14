@@ -12,18 +12,21 @@
    ７．ビットマップ+対称解除法          NQueen07() 
    ８．ビットマップ+クイーンの場所で分岐NQueen08() 
    ９．ビットマップ+枝刈りと最適化      NQueen09() 
-   10t．もっとビットマップ(takaken版)   NQueen10_s() 
+   10．もっとビットマップ(takaken版)    NQueen10() 
    11．マルチスレッド(構造体)           NQueen11() 
    12．マルチスレッド(pthread)          NQueen12() 
    13．マルチスレッド(mutex)            NQueen13() 
    14．マルチスレッド(mutexattr)        NQueen14() 
    15．マルチスレッド(脱mutex COUNT強化)NQueen15() 
- <>15t．もっとマルチスレッド(takaken版) NQueen15_t() 
+ <>15t.もっとマルチスレッド(takaken版) NQueen15_t() 
    16．アドレスとポインタ(考察１)       NQueen16() 
    17．アドレスとポインタ(考察２)       NQueen17() 
    18．アドレスとポインタ(考察３)       NQueen18()
    19．アドレスとポインタ(考察４)       NQueen19()
    20．アドレスとポインタ(考察５)       NQueen20()
+   21．アドレスとポインタ(考察６)       NQueen21() 
+   22．アドレスとポインタ(考察７)       NQueen22() 
+   23．アドレスとポインタ(考察８)       NQueen23() 
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen

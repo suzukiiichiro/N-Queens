@@ -1,5 +1,6 @@
 /**
   Cで学ぶアルゴリズムとデータ構造  
+  ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  
  <>１．ブルートフォース（力まかせ探索） NQueen01()
@@ -23,6 +24,9 @@
    18．アドレスとポインタ(考察３)       NQueen18()
    19．アドレスとポインタ(考察４)       NQueen19()
    20．アドレスとポインタ(考察５)       NQueen20()
+   21．アドレスとポインタ(考察６)       NQueen21() 
+   22．アドレスとポインタ(考察７)       NQueen22()
+   23．アドレスとポインタ(考察８)       NQueen23()
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
