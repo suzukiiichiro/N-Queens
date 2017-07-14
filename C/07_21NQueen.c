@@ -23,20 +23,25 @@
    17．アドレスとポインタ(考察２)       NQueen17() N17=    05.48
    18．アドレスとポインタ(考察３)       NQueen18() N17=    05.71
    19．アドレスとポインタ(考察４)       NQueen19() N17=    03.66
- <>20．アドレスとポインタ(考察５)       NQueen20() N17=    03.66
+   20．アドレスとポインタ(考察５)       NQueen20() N17=    03.66
+ <>21．アドレスとポインタ(考察６)       NQueen21() N17=    03.66
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
  
+ <>21．アドレスとポインタ(考察６) 
 
- <>20．アドレスとポインタ(考察５)       NQueen20()
- 配列カウンターはアクセスが多いので構造体から出して
- グローバル変数に。さらにスレッド対応にするため、
- カウンター配列とした。
+void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
+  ↓
+void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
 
-long C2[MAX];
-long C4[MAX];
-long C8[MAX];
+  こうすることによって以下の宣言が不要となった
+  local *l=(local *)args;
+
+対象関数は以下の通り
+void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
+void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
@@ -56,6 +61,10 @@ long C8[MAX];
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.73
+18:       666090624         83263591        0000:00:25.78
+19:      4968057848        621012754        0000:03:15.99
+20:     39029188884       4878666808        0000:26:28.89
+21:    314666222712      39333324973        0004:13:08.98
 
 
   参考（Bash版 07_8NQueen.lua）
@@ -113,9 +122,12 @@ typedef struct {
 }GCLASS, *GClass;
 GCLASS G; 
 
-void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
-void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8);
-void backTrack1(int y,int left,int down,int right,void *args,long *C8);
+//void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
+void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
+//void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8);
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
+//void backTrack1(int y,int left,int down,int right,void *args,long *C8);
+void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -157,8 +169,9 @@ long getTotal();
   て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
-void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
-  local *l=(local *)args;
+//void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
+void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
+  //local *l=(local *)args;
   int own,ptn,you,bit;
   //90度回転
   if(l->aB[l->B2]==1){ own=1; ptn=2;
@@ -227,8 +240,9 @@ void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
   x - - - - | - x    
   x x b - - dnx x    
   */
-void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8){
-  local *l=(local *)args;
+//void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8){
+void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
+  //local *l=(local *)args;
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
   int bit=0;
@@ -260,8 +274,9 @@ void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,l
    鏡像についても、主対角線鏡像のみを判定すればよい
    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
    */
-void backTrack1(int y,int left,int down,int right,void *args,long *C8){
-  local *l=(local *)args;
+//void backTrack1(int y,int left,int down,int right,void *args,long *C8){
+void backTrack1(int y,int left,int down,int right,local *l,long *C8){
+  //local *l=(local *)args;
   int bit;
   int bm=l->msk&~(left|down|right); 
   if(y==G.siE) {
@@ -382,6 +397,7 @@ void *NQueenThread(){
     l[B1].B1=B1; 
     l[B1].B2=B2;
     // aB[]の初期化
+    //for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
     for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
     //カウンターの初期化
     //G.C2[B1]=G.C4[B1]=G.C8[B1]=0;
