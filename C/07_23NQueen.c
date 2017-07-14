@@ -1265,6 +1265,8 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 #
 
  <>22．アドレスとポインタ(考察７)
+
+
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
  2:               0                0        0000:00:00.00
@@ -1283,10 +1285,10 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.73
-
- <>23．アドレスとポインタ(考察８)  
-  実行結果 
-
+18:       666090624         83263591        0000:00:25.78
+19:      4968057848        621012754        0000:03:15.99
+20:     39029188884       4878666808        0000:26:28.89
+21:    314666222712      39333324973        0004:13:08.98
 
 
   参考（Bash版 07_8NQueen.lua）
@@ -1321,7 +1323,6 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 
 /** スレッドローカル構造体 */
 typedef struct{
-	int bit;
   int B1;
   int B2;
   int TB;
@@ -1393,7 +1394,6 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   int own,ptn,you,bit;
   //90度回転
   if(l->aB[l->B2]==1){ own=1; ptn=2;
-    //while(own<=G.siE){ bit=1; you=G.siE;
     while(own<=G.siE){ bit=1; you=G.siE;
       while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; you--; }
       if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; }
@@ -1405,9 +1405,7 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
       return; }
   }
   //180度回転
-  //if(l->aB[G.siE]==l->EB){ own=1; you=G.siE-1;
   if(l->aB[G.siE]==l->EB){ own=1; you=G.siE-1;
-    //while(own<=G.siE){ bit=1; ptn=l->TB;
     while(own<=G.siE){ bit=1; ptn=l->TB;
       while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
       if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; }
@@ -1456,7 +1454,7 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
   //local *l=(local *)args;
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
-  //int bit=0;
+  int bit=0;
   if(y==G.siE){
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
       l->aB[y]=bm;
@@ -1471,8 +1469,8 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
     }
     while(bm>0) {
       //最も下位の１ビットを抽出
-      bm^=l->aB[y]=l->bit=-bm&bm;
-      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l,C2,C4,C8);
+      bm^=l->aB[y]=bit=-bm&bm;
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
     }
   }
 }
@@ -1488,7 +1486,7 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
 //void backTrack1(int y,int left,int down,int right,void *args,long *C8){
 void backTrack1(int y,int left,int down,int right,local *l,long *C8){
   //local *l=(local *)args;
-  //int bit;
+  int bit;
   int bm=l->msk&~(left|down|right); 
   if(y==G.siE) {
     if(bm>0){
@@ -1504,14 +1502,14 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
     }
     while(bm>0) {
       //最も下位の１ビットを抽出
-      bm^=l->aB[y]=l->bit=-bm&bm;
-      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l,C8);
+      bm^=l->aB[y]=bit=-bm&bm;
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C8);
     }
   } 
 }
 void *run(void *args){
   local *l=(local *)args;
-  //int bit;
+  int bit ;
   l->aB[0]=1;
   l->msk=(1<<G.si)-1;
   l->TB=1<<G.siE;
@@ -1519,9 +1517,9 @@ void *run(void *args){
   if(l->B1>1 && l->B1<G.siE) { 
     //if(l->B1<G.siE) {
       // 角にクイーンを配置 
-      l->aB[1]=l->bit=(1<<l->B1);
+      l->aB[1]=bit=(1<<l->B1);
       //２行目から探索
-      backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),l,C8);
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,C8);
     //}
   }
   l->EB=(l->TB>>l->B1);
@@ -1534,8 +1532,8 @@ void *run(void *args){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     //if(l->B1<l->B2) {
-      l->aB[0]=l->bit=(1<<l->B1);
-      backTrack2(1,l->bit<<1,l->bit,l->bit>>1,l,C2,C4,C8);
+      l->aB[0]=bit=(1<<l->B1);
+      backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8);
     //}
     l->EB>>=G.si;
   }
