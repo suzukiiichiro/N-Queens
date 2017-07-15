@@ -14,8 +14,8 @@ RM=rm -fr
 #LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
 
 #mac
-LDFLAGS=  -L/usr/local/opt/llvm/lib
-CPPFLAGS= -I/usr/local/opt/llvm/include
+LDFLAGS=-L/usr/local/opt/llvm/lib
+CPPFLAGS=-I/usr/local/opt/llvm/include
 
 nq24=07_24NQueen
 nq24: $(nq24).c 
