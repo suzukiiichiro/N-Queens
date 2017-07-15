@@ -1397,6 +1397,9 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 　ほどの効果を得ることはできなかった。
 　なので、ソースの可読性を含めカウンター以外は構造体に含める。
   NQ24はNQ21のソースを拡張して展開することとした。
+  さらに外だしすると硬貨があるように見えた配列カウンターも
+  構造体の中に含める方がよりNが大きくなると最適化されること
+  がわかったので構造体に戻した。
 
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
@@ -1458,11 +1461,14 @@ typedef struct{
   int SM;
   int LM;
   int aB[MAX];
+  long C2[MAX];
+  long C4[MAX];
+  long C8[MAX];
 }local ;
 
-long C2[MAX];
-long C4[MAX];
-long C8[MAX];
+// long C2[MAX];
+// long C4[MAX];
+// long C8[MAX];
 
 //グローバル構造体
 typedef struct {
@@ -1473,9 +1479,12 @@ typedef struct {
 }GCLASS, *GClass;
 GCLASS G; 
 
-void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
-void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
-void backTrack1(int y,int left,int down,int right,local *l,long *C8);
+//void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
+void symmetryOps_bm(local *l);
+//void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8);
+void backTrack2(int y,int left,int down,int right,local *l);
+//void backTrack1(int y,int left,int down,int right,local *l,long *C8);
+void backTrack1(int y,int left,int down,int right,local *l);
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -1517,7 +1526,8 @@ long getTotal();
   て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
-void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
+//void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
+void symmetryOps_bm(local *l){
   int own,ptn,you,bit;
   //90度回転
   if(l->aB[l->B2]==1){ own=1; ptn=2;
@@ -1528,7 +1538,8 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(own>G.siE){ 
-			C2[l->B1]++;
+			//C2[l->B1]++;
+			l->C2[l->B1]++;
       return; }
   }
   //180度回転
@@ -1540,7 +1551,8 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(own>G.siE){ 
-			C4[l->B1]++;
+			//C4[l->B1]++;
+			l->C4[l->B1]++;
       return; }
   }
   //270度回転
@@ -1553,7 +1565,8 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   }
   // G.C8[l->B1]++;
   //(*C8)++;
-	C8[l->B1]++;
+	//C8[l->B1]++;
+	l->C8[l->B1]++;
 }
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -1576,14 +1589,16 @@ void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   x - - - - | - x    
   x x b - - dnx x    
   */
-void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
+//void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,long *C8){
+void backTrack2(int y,int left,int down,int right,local *l){
   //配置可能フィールド
   int bm=l->msk&~(left|down|right); 
   int bit=0;
   if(y==G.siE){
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
       l->aB[y]=bm;
-      symmetryOps_bm(l,C2,C4,C8);//対称解除法
+      //symmetryOps_bm(l,C2,C4,C8);//対称解除法
+      symmetryOps_bm(l);//対称解除法
     }
   }else{
     if(y<l->B1){             //【枝刈り】上部サイド枝刈り
@@ -1595,7 +1610,8 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
     while(bm>0) {
       //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
+      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C2,C4,C8);
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
@@ -1608,14 +1624,16 @@ void backTrack2(int y,int left,int down,int right,local *l,long *C2,long *C4,lon
    鏡像についても、主対角線鏡像のみを判定すればよい
    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
    */
-void backTrack1(int y,int left,int down,int right,local *l,long *C8){
+//void backTrack1(int y,int left,int down,int right,local *l,long *C8){
+void backTrack1(int y,int left,int down,int right,local *l){
   int bit;
   int bm=l->msk&~(left|down|right); 
   if(y==G.siE) {
     if(bm>0){
       l->aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-			C8[l->B1]++;
+			//C8[l->B1]++;
+			l->C8[l->B1]++;
     }
   }else{
     if(y<l->B1) {   
@@ -1626,7 +1644,8 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
     while(bm>0) {
       //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C8);
+      //backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,C8);
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   } 
 }
@@ -1641,7 +1660,8 @@ void *run(void *args){
     // 角にクイーンを配置 
     l->aB[1]=bit=(1<<l->B1);
     //２行目から探索
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,C8);
+    //backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,C8);
+    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
   }
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
@@ -1653,7 +1673,8 @@ void *run(void *args){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     l->aB[0]=bit=(1<<l->B1);
-    backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8);
+    //backTrack2(1,bit<<1,bit,bit>>1,l,C2,C4,C8);
+    backTrack2(1,bit<<1,bit,bit>>1,l);
     l->EB>>=G.si;
   }
   return 0;
@@ -1713,7 +1734,7 @@ void *NQueenThread(){
     //for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
     for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
     //カウンターの初期化
-	  C2[B1]=C4[B1]=C8[B1]=0;	
+	  l->C2[B1]=l->C4[B1]=l->C8[B1]=0;	
     // チルドスレッドの生成
     int iFbRet=pthread_create(&pt[B1],NULL,&run,&l[B1]);
     if(iFbRet>0){
@@ -1725,8 +1746,8 @@ void *NQueenThread(){
   }
   //スレッド毎のカウンターを合計
   for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){
-    G.lTotal+=C2[B1]*2+C4[B1]*4+C8[B1]*8;
-    G.lUnique+=C2[B1]+C4[B1]+C8[B1]; 
+    G.lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
+    G.lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
   }
   return 0;
 }
