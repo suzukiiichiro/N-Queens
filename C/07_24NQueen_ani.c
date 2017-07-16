@@ -1737,7 +1737,7 @@ void *NQueenThread(){
     // aB[]の初期化
     //for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
     l[B1].aB=calloc(G.si,sizeof(int));
-    for(int j=0;j<G.si;j++){ l[B1].aB[j]=j; } 
+    //for(int j=0;j<G.si;j++){ l[B1].aB[j]=j; } 
     //カウンターの初期化
 	  l->C2[B1]=l->C4[B1]=l->C8[B1]=0;	
     // チルドスレッドの生成
