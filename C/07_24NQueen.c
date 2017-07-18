@@ -1735,9 +1735,9 @@ void *NQueenThread(){
     l[B1].B2=B2;
     // aB[]の初期化
     //for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
-    for(int j=0;j<G.si;j++){ l[l->B1].aB[j]=j; } 
+    for(int j=0;j<G.siE;j++){ l[l->B1].aB[j]=j; } 
     //カウンターの初期化
-	  l->C2[B1]=l->C4[B1]=l->C8[B1]=0;	
+	  l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	
     // チルドスレッドの生成
     int iFbRet=pthread_create(&pt[B1],NULL,&run,&l[B1]);
     if(iFbRet>0){

@@ -1739,7 +1739,7 @@ void *NQueenThread(){
     l[B1].aB=calloc(G.si,sizeof(int));
     //for(int j=0;j<G.si;j++){ l[B1].aB[j]=j; } 
     //カウンターの初期化
-	  l->C2[B1]=l->C4[B1]=l->C8[B1]=0;	
+	  l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	
     // チルドスレッドの生成
     int iFbRet=pthread_create(&pt[B1],NULL,&run,&l[B1]);
     if(iFbRet>0){
