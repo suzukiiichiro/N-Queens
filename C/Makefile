@@ -17,6 +17,10 @@ RM=rm -fr
 LDFLAGS=-L/usr/local/opt/llvm/lib
 CPPFLAGS=-I/usr/local/opt/llvm/include
 
+nq26=07_26NQueen
+nq26: $(nq26).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq26) $(nq26).c -lpthread
+
 nq25=07_25NQueen
 nq25: $(nq25).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq25) $(nq25).c -lpthread
