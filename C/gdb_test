@@ -1,0 +1,91 @@
+attach 11578 
+info threads
+thread 3 
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 4
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 5
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 6
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 7
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 8
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 9
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+thread 10
+shell echo -n "B1->"
+p l->B1
+shell echo -n "B2->"
+p l->B2
+shell echo -n "C2->"
+p l->C2
+shell echo -n "C4->"
+p l->C4
+shell echo -n "C8->"
+p l->C8
+q
