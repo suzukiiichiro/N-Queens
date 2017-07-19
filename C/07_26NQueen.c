@@ -1467,18 +1467,17 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
   22:   2691008701644     336376244042          39:14:59
  *
 */
-
+//CPU affinity
+#define _GNU_SOURCE 1
+#include <sched.h> 
+#include <unistd.h>
+#include <sys/syscall.h>
+//CPU affinity
 #include<stdio.h>
 #include<time.h>
 #include <sys/time.h>
 #include <pthread.h> //pthread
-//CPU affinity
-#define _GNU_SOURCE 
-#include <sched.h> 
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-//CPU affinity
+
 #define MAX 27
 
 int si;  //si siE lTotal lUnique をグローバルに置くと N=17: 04.26
@@ -1645,18 +1644,15 @@ pid_t gettid(void) {
 void *run(void *args){
   local *l=(local *)args;
   // CPU affinity
-  pid_t pid;
-  cpu_set_t cpu_set;
-  int result;
+  pid_t pid; 
   pid = gettid();
+  cpu_set_t cpu_set;
   CPU_ZERO(&cpu_set);
   CPU_SET(l->B1, &cpu_set);
-  result = sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set);
-  if (result != 0) {
-  	printf("l->B1:%d",l->B1);
+  if(sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set)==-1){;
+    printf("l->B1:%d",l->B1);
   }
-  // CPU affinity
-  
+  // CPU affinity  
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
