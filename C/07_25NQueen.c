@@ -1491,23 +1491,27 @@ void *NQueenThread(){
 	CPU affinity
 	論理CPUにスレッドを割り当てる
 
-#ifdef _GNU_SOURCE
+#if _GNU_SOURCE
+#define _GNU_SOURCE
 #include <sched.h> 
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <errno.h>
+#define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 #endif
 
-void *run(void *args){
 
+# run ソース部分：
 #ifdef _GNU_SOURCE
-  pid_t pid; 
-  pid = gettid();
-  cpu_set_t cpu_set;
-  CPU_ZERO(&cpu_set);
-  CPU_SET(l->B1, &cpu_set);
-  if(sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set)==-1){;
-    printf("l->B1:%d",l->B1);
-  }
+  pthread_t thread = pthread_self();
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(l->B1, &cpuset);
+  int s=pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+  if (s != 0){ handle_error_en(s, "pthread_setaffinity_np"); }
+  s=pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+  if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
+  //printf("pid:%10d#l->B1:%2d#cpuset:%d\n",thread,l->B1,&cpuset);
 #endif
 
   実行結果 
@@ -1550,14 +1554,14 @@ void *run(void *args){
  *
 */
 
-//#ifdef _GNU_SOURCE
+#if _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h> 
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <errno.h>
 #define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
-//#endif
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -1742,6 +1746,7 @@ void *run(void *args){
   if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
   //printf("pid:%10d#l->B1:%2d#cpuset:%d\n",thread,l->B1,&cpuset);
 #endif
+
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
   //if(l->B1>1 && l->B1<G.siE) { // 最上段のクイーンが角にある場合の探索
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
