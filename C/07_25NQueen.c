@@ -1486,7 +1486,6 @@ typedef struct{
   int own;
 	int ptn;
 	int you;
-	int bm;
   int B1;
   int B2;
   int TB;
@@ -1520,8 +1519,8 @@ typedef struct{
 
 
 void symmetryOps_bm(local *l);
-void backTrack2(int y,int left,int down,int right,local *l);
-void backTrack1(int y,int left,int down,int right,local *l);
+void backTrack2(int y,int left,int down,int right,int bm,local *l);
+void backTrack1(int y,int left,int down,int right,int bm,local *l);
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -1575,10 +1574,11 @@ void symmetryOps_bm(local *l){
 	l->C8[l->B1]++;
 }
 
-void backTrack2(int y,int left,int down,int right,local *l){
+void backTrack2(int y,int left,int down,int right,int bm,local *l){
   //配置可能フィールド
   //int bit=0;
-  int bm=l->msk&~(left|down|right); 
+  //int bm=l->msk&~(left|down|right); 
+  bm=l->msk&~(left|down|right); 
   l->bit=0;
   //if(y==G.siE){
   if(y==siE){
@@ -1602,13 +1602,14 @@ void backTrack2(int y,int left,int down,int right,local *l){
       //bm^=l->aB[y]=bit=-bm&bm;
       bm^=l->aB[y]=l->bit=-bm&bm;
       //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l);
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
 }
-void backTrack1(int y,int left,int down,int right,local *l){
+void backTrack1(int y,int left,int down,int right,int bm,local *l){
   //int bit;
-  int bm=l->msk&~(left|down|right); 
+  //int bm=l->msk&~(left|down|right); 
+  bm=l->msk&~(left|down|right); 
   l->bit=0;
   //if(y==G.siE) {
   if(y==siE) {
@@ -1621,6 +1622,8 @@ void backTrack1(int y,int left,int down,int right,local *l){
   }else{
     if(y<l->B1) {   
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      //bm|=2; 
+      //bm^=2;
       bm&=~2; 
     }
     while(bm>0) {
@@ -1628,7 +1631,7 @@ void backTrack1(int y,int left,int down,int right,local *l){
       //bm^=l->aB[y]=bit=-bm&bm;
       bm^=l->aB[y]=l->bit=-bm&bm;
       //backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,l);
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   } 
 }
@@ -1641,7 +1644,7 @@ void *run(void *args){
   //if(l->B1>1 && l->B1<G.siE) { // 最上段のクイーンが角にある場合の探索
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
-    backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),l);//２行目から探索
+    backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
   }
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
@@ -1651,7 +1654,7 @@ void *run(void *args){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     l->aB[0]=l->bit=(1<<l->B1);
-    backTrack2(1,l->bit<<1,l->bit,l->bit>>1,l);
+    backTrack2(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     //l->EB>>=G.si;
     l->EB>>=si;
   }
