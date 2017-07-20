@@ -1295,7 +1295,6 @@ long C8[MAX];
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.58
 17:        95815104         11977939        0000:00:03.82
-18:       666090624         83263591        0000:00:26.42
 
 
  <>21．アドレスとポインタ(考察６) 
@@ -1330,7 +1329,6 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.58
 17:        95815104         11977939        0000:00:03.80
-18:       666090624         83263591        0000:00:26.00
 
 
 
@@ -1365,7 +1363,6 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.59
 17:        95815104         11977939        0000:00:03.85
-18:       666090624         83263591        0000:00:26.46
 
 
  <>23．アドレスとポインタ(考察８) 
@@ -1391,7 +1388,6 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.73
-18:       666090624         83263591        0000:00:26.09
 
  <>24．アドレスとポインタ(完結) 
   カウンター以外の変数を外だししてみたが、カウンター外だし
@@ -1420,14 +1416,100 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 15:         2279184           285053        0000:00:00.09
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.73
-18:       666090624         83263591        0000:00:25.78
-19:      4968057848        621012754        0000:03:15.99
-20:     39029188884       4878666808        0000:26:28.89
-21:    314666222712      39333324973        0004:13:08.98
-22:   2691008701644     336376244042        0006:05:54.97
 
 
  <>25．最適化 									        NQueen25() N17=03:70
+=== 1 ===
+ G構造体に格納していた int si int siE int lTotal int lUniqueを
+ グローバル変数に置き換えました。ちょっと速くなりました。
+
+=== 2 ===
+ L構造体に格納していたC2/C4/C8カウンターの置き場所を変えて比較
+
+1.
+// long C2[MAX]; //グローバル環境に置くと N=17: 08.04
+// long C4[MAX];
+// long C8[MAX];
+
+2.
+//  long C2; // 構造体の中の配列をなくすとN=17: 05.24
+//  long C4;
+//  long C8;
+
+3. 構造体の中でポインタアクセスにしてみる // N=17 : 05.87
+   さらにcallocにより、宣言時に適切なメモリサイズを割り当てる
+// int *ab; 
+//  l[B1].aB=calloc(G.si,sizeof(int));
+
+4.
+  long C2[MAX];//構造体の中の配列を活かすと   N=17: 04.33
+  long C4[MAX];
+  long C8[MAX];
+
+ よって、カウンターはL構造体の中に配置し、スレッド毎にカウンター
+を管理する配列で構築しました。
+同様に、カウントする箇所は以下のように書き換えました。
+
+			l->C4[l->B1]++;
+
+これによりちょっと速くなりました。
+
+=== 3 ===
+　symmetryOps_bm()/trackBack1()/trackBack2()のメソッドないで宣言されている
+ローカル変数を撲滅しました。
+　symmetryOps_bm()の中では以下の通りです。
+
+  int own,ptn,you,bit;
+
+こちらは全てL構造体でもち、
+　l->own などでアクセスするようにしました。構造体に配置すると遅くなる
+　という本をよく見ますが、激しく呼び出されるメソッドで変数が都度生成される
+　コストと比べると計測から見れば、構造体で持った方が速いと言うことがわかりました。
+これによりちょっと速くなりました。
+
+=== 4 ===
+ backTrack1()/backTrack2()のbm以外の変数はbitだけです。こちらは簡単に構造体に
+　格納して実装することができました。問題はbm(bitmap)です。
+　こちらは、再帰で変化する変数で、スレッド毎に値も変わることから値渡しである
+　必要があります。よって関数の引数の中に格納することとしました。
+
+void backTrack2(int y,int left,int down,int right,int bm,local *l){
+void backTrack1(int y,int left,int down,int right,int bm,local *l){
+これによりちょっと速くなりました。
+
+=== 5 ===
+pthreadや構造体 lは　#defineで宣言されるMAX=27を使って初期化していました。
+si siEをグローバル変数としたことで、これらもNの値で初期化することとしました。
+
+void *NQueenThread(){
+  //pthread_t pt[G.si];//スレッド childThread
+  pthread_t pt[si];//スレッド childThread
+  //local l[MAX];//構造体 local型 
+  local l[si];//構造体 local型 
+
+=== 5 ===
+	CPU affinity
+	論理CPUにスレッドを割り当てる
+
+#ifdef _GNU_SOURCE
+#include <sched.h> 
+#include <unistd.h>
+#include <sys/syscall.h>
+#endif
+
+void *run(void *args){
+
+#ifdef _GNU_SOURCE
+  pid_t pid; 
+  pid = gettid();
+  cpu_set_t cpu_set;
+  CPU_ZERO(&cpu_set);
+  CPU_SET(l->B1, &cpu_set);
+  if(sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set)==-1){;
+    printf("l->B1:%d",l->B1);
+  }
+#endif
+
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
  2:               0                0        0000:00:00.00
@@ -1443,9 +1525,9 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
 12:           14200             1787        0000:00:00.00
 13:           73712             9233        0000:00:00.00
 14:          365596            45752        0000:00:00.01
-15:         2279184           285053        0000:00:00.11
-16:        14772512          1846955        0000:00:00.59
-17:        95815104         11977939        0000:00:03.70
+15:         2279184           285053        0000:00:00.10
+16:        14772512          1846955        0000:00:00.58
+17:        95815104         11977939        0000:00:03.52
 
   参考（Bash版 07_8NQueen.lua）
   13:           73712             9233                99
@@ -1468,6 +1550,11 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8);
  *
 */
 
+#ifdef _GNU_SOURCE
+#include <sched.h> 
+#include <unistd.h>
+#include <sys/syscall.h>
+#endif
 #include<stdio.h>
 #include<time.h>
 #include <sys/time.h>
@@ -1493,9 +1580,9 @@ typedef struct{
   int msk;
   int SM;
   int LM;
+  int aB[MAX]; 
 	// int *ab; // N=17 : 05.87
   //  l[B1].aB=calloc(G.si,sizeof(int));
-  int aB[MAX]; 
   long C2[MAX];//構造体の中の配列を活かすと   N=17: 04.33
   long C4[MAX];
   long C8[MAX];
@@ -1640,6 +1727,17 @@ void *run(void *args){
   local *l=(local *)args;
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
+
+#ifdef _GNU_SOURCE
+  pid_t pid; 
+  pid = gettid();
+  cpu_set_t cpu_set;
+  CPU_ZERO(&cpu_set);
+  CPU_SET(l->B1, &cpu_set);
+  if(sched_setaffinity(pid, sizeof(cpu_set_t), &cpu_set)==-1){;
+    printf("l->B1:%d",l->B1);
+  }
+#endif
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
   //if(l->B1>1 && l->B1<G.siE) { // 最上段のクイーンが角にある場合の探索
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
