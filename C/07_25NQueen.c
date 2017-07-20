@@ -1554,14 +1554,13 @@ void *NQueenThread(){
  *
 */
 
-#if !defined _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h> 
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <errno.h>
 #define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
-#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -1735,7 +1734,7 @@ void *run(void *args){
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
 
-#if ! defined _GNU_SOURCE
+#if deffine _GNU_SOURCE
 //#ifdef _GNU_SOURCE
   pthread_t thread = pthread_self();
   cpu_set_t cpuset;
