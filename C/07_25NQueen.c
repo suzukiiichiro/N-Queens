@@ -1735,7 +1735,8 @@ void *run(void *args){
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
 
-#ifdef _GNU_SOURCE
+#if ! defined _GNU_SOURCE
+//#ifdef _GNU_SOURCE
   pthread_t thread = pthread_self();
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
