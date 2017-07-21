@@ -1756,7 +1756,7 @@ void *run(void *args){
   if (s != 0){ handle_error_en(s, "pthread_setaffinity_np"); }
   s=pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
   if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
-  printf("pid:%10ld#l->B1:%2d#cpuset:%d\n",thread,l->B1,&cpuset);
+  printf("pid:%10ld#l->B1:%2p#cpuset:%d\n",thread,l->B1,&cpuset);
 #endif
 
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
