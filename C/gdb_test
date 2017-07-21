@@ -18,4 +18,4 @@ thread 9
 p l[0]
 thread 10 
 p l[0]
-q
+detach
