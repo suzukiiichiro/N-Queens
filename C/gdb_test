@@ -1,4 +1,6 @@
-attach 11925 
+attach 21021 
+set print pretty on 
+set print elements 0
 info threads
 thread 3 
 p l[0]
