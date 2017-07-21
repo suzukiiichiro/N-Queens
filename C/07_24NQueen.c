@@ -28,6 +28,8 @@
    22．アドレスとポインタ(考察７)       NQueen22() N17=    03.85
    23．アドレスとポインタ(考察８)       NQueen23() N17=    03.73
  <>24．アドレスとポインタ(完結)         NQueen24() N17=    03.66
+   25．最適化 									        NQueen25() N17=    03.69
+   26．CPUアフィニティ 					        NQueen26() N17=    03.59
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
