@@ -28,6 +28,8 @@
    22．アドレスとポインタ(考察７)       NQueen22() 
    23．アドレスとポインタ(考察８)       NQueen23() 
    24．アドレスとポインタ(完結)         NQueen24() 
+   25．最適化 									        NQueen25()
+   26．CPUアフィニティ 					        NQueen26()
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
@@ -226,7 +228,7 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
   } 
 }
 int main(void){
-  clock_t st; char t[20];
+  time_t st; char t[20];
   int min=2; int msk; // msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){

@@ -28,6 +28,8 @@
    22．アドレスとポインタ(考察７)       NQueen22() 
    23．アドレスとポインタ(考察８)       NQueen23() 
    24．アドレスとポインタ(完結)         NQueen24() 
+   25．最適化 									        NQueen25()
+   26．CPUアフィニティ 					        NQueen26()
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
@@ -290,20 +292,20 @@ int main(void){
     gettimeofday(&t0, NULL);
     NQueen();
     gettimeofday(&t1, NULL);
-    //---- TimeFormat2
-    int ss;int ms;
+    int ss;int ms;int dd;
     if (t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
       ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
       ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
     } else { 
+      dd=(t1.tv_sec-t0.tv_sec)/86400; 
       ss=(t1.tv_sec-t0.tv_sec)%86400; 
       ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
     }
     int hh=ss/3600; 
     int mm=(ss-hh*3600)/60; 
     ss%=60;
-    //---- TimeFormat2
-    printf("%2d:%13ld%16ld%7.4d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),hh,mm,ss,ms);
+    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),dd,hh,mm,ss,ms); 
   } 
 }
 long getUnique(){ 
