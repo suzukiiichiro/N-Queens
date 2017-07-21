@@ -226,7 +226,7 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
   } 
 }
 int main(void){
-  clock_t st; char t[20];
+  time_t st; char t[20];
   int min=2; int msk; // msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){

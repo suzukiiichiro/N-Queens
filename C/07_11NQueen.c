@@ -57,7 +57,7 @@
 
 #include<stdio.h>
 #include<time.h>
-
+#include<sys/time.h>
 #define MAX 27
 
 long getUnique();
@@ -261,32 +261,31 @@ void NQueenThread(){
   }
 }
 int main(void){
-  clock_t st; char t[20];
+  struct timeval t0;
+  struct timeval t1;
   int min=2;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     C.C2=C.C4=C.C8=0; C.si=i; C.siE=i-1; C.msk=(1<<i)-1; // 初期化
     for(int j=0;j<i;j++){ C.aB[j]=j; }
-    st=clock();
+    gettimeofday(&t0, NULL);
     NQueenThread();
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+    gettimeofday(&t1, NULL);
+    int ss;int ms;int dd;
+    if (t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
+    } else { 
+      dd=(t1.tv_sec-t0.tv_sec)/86400; 
+      ss=(t1.tv_sec-t0.tv_sec)%86400; 
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
+    }
+    int hh=ss/3600; 
+    int mm=(ss-hh*3600)/60; 
+    ss%=60;
+    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),dd,hh,mm,ss,ms); 
   } 
-}
-void TimeFormat(clock_t utime,char *form){
-  int dd,hh,mm;
-  float ftime,ss;
-  ftime=(float)utime/CLOCKS_PER_SEC;
-  mm=(int)ftime/60;
-  ss=ftime-(int)(mm*60);
-  dd=mm/(24*60);
-  mm=mm%(24*60);
-  hh=mm/60;
-  mm=mm%60;
-  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
-  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
-  else sprintf(form, "           %5.2f",ss);
 }
 long getUnique(){ 
   return C.C2+C.C4+C.C8;
