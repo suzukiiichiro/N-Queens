@@ -1813,7 +1813,7 @@ int main(void){
   int min=2;
   struct timeval t0;
   struct timeval t1;
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     //G.si=i; G.siE=i-1; 
     si=i; siE=i-1; 
@@ -1822,11 +1822,13 @@ int main(void){
     gettimeofday(&t0, NULL);
     NQueen();
     gettimeofday(&t1, NULL);
-    int ss;int ms;
+    int ss;int ms;int dd;
     if (t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
       ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
       ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
     } else { 
+      dd=(t1.tv_sec-t0.tv_sec)/86400; 
       ss=(t1.tv_sec-t0.tv_sec)%86400; 
       ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
     }
@@ -1834,7 +1836,7 @@ int main(void){
     int mm=(ss-hh*3600)/60; 
     ss%=60;
     //printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); 
-    printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,lTotal,lUnique,hh,mm,ss,ms); 
+    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
 	return 0;
 }
