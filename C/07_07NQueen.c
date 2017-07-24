@@ -2,38 +2,6 @@
   Cで学ぶアルゴリズムとデータ構造  
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-  
-   １．ブルートフォース（力まかせ探索） NQueen01()
-   ２．配置フラグ（制約テスト高速化）   NQueen02()
-   ３．バックトラック                   NQueen03() 
-   ４．対称解除法(回転と斜軸）          NQueen04() 
-   ５．枝刈りと最適化                   NQueen05() 
-   ６．ビットマップ                     NQueen06() 
- <>７．ビットマップ+対称解除法          NQueen07() 
-   ８．ビットマップ+クイーンの場所で分岐NQueen08() 
-   ９．ビットマップ+枝刈りと最適化      NQueen09() 
-   10．もっとビットマップ(takaken版)    NQueen10() 
-   11．マルチスレッド(構造体)           NQueen11() 
-   12．マルチスレッド(pthread)          NQueen12() 
-   13．マルチスレッド(mutex)            NQueen13() 
-   14．マルチスレッド(mutexattr)        NQueen14() 
-   15．マルチスレッド(脱mutex COUNT強化)NQueen15() 
-   15t.もっとマルチスレッド(takaken版) NQueen15_t() 
-   16．アドレスとポインタ(考察１)       NQueen16() 
-   17．アドレスとポインタ(考察２)       NQueen17() 
-   18．アドレスとポインタ(考察３)       NQueen18()
-   19．アドレスとポインタ(考察４)       NQueen19()
-   20．アドレスとポインタ(考察５)       NQueen20()
-   21．アドレスとポインタ(考察６)       NQueen21() 
-   22．アドレスとポインタ(考察７)       NQueen22() 
-   23．アドレスとポインタ(考察８)       NQueen23() 
-   24．アドレスとポインタ(完結)         NQueen24() 
-   25．最適化 									        NQueen25()
-   26．CPUアフィニティ 					        NQueen26()
-
- # Java/C/Lua/Bash版
- # https://github.com/suzukiiichiro/N-Queen
- 
 
  <>７．ビットマップ+対称解除法          NQueen07() N17: 2:24
  *
