@@ -1,21 +1,6 @@
-attach 21021 
+attach 2546 
 set print pretty on 
 set print elements 0
 info threads
-thread 3 
-p l[0]
-thread 4 
-p l[0]
-thread 5 
-p l[0]
-thread 6 
-p l[0]
-thread 7 
-p l[0]
-thread 8 
-p l[0]
-thread 9 
-p l[0]
-thread 10 
-p l[0]
+thread apply all p l[0] 
 detach
