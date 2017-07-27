@@ -11,8 +11,8 @@ tmp2="tmp2.txt";
 tmp3="tmp3.txt";
 ct="count.txt";
 #pi=$(ps |grep -i nqueen|grep -v grep|awk '{print $1;}');
-pi=$(ps |grep -i nqueen|grep -v "grep"|grep -v "smon"|awk '{print $1;}');
-tm=$(ps |grep -i nqueen|grep -v "grep"|grep -v "smon"|awk '{print $3;}');
+pi=$(ps |grep -i nqueen|grep -v "grep"|grep -v "smon"|grep -v "vim"|awk '{print $1;}');
+tm=$(ps |grep -i nqueen|grep -v "grep"|grep -v "smon"|grep -v "vim"|awk '{print $3;}');
 cat << EOT > gdb_test
 attach $pi 
 set print pretty on 
@@ -20,6 +20,8 @@ set print elements 0
 shell echo -n "<size>"
 p si
 shell echo -n "</size>"
+p lTotal
+p lUnique
 shell echo "<threadid>"
 info threads
 shell echo "</threadid>"
