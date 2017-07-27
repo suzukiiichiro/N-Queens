@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 1
 
 int si;  
 int siE;
@@ -60,6 +60,9 @@ void *run(void *args);
 void *NQueenThread();
 void NQueen();
 //Debug
+
+
+#ifdef DEBUG
 const int spc[]={'/', '-', '\\', '|'};
 const int spl=sizeof(spc)/sizeof(spc[0]);
 void thMonitor(local *l,int i);
@@ -69,6 +72,7 @@ void hoge(){
   t = clock() + CLOCKS_PER_SEC/10;
   while(t>clock());
 }
+#endif
 
 void thMonitor(local *l,int i){
   printf("\033[G");
@@ -97,8 +101,8 @@ void symmetryOps_bm(local *l){
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(l->own>siE){ 
 			l->C2[l->B1]++;
-      if(DEBUG>0){ thMonitor(l,2); return; } 
-  } }
+      if(DEBUG>0) thMonitor(l,2);
+      return ; } }
   //180度回転
   if(l->aB[siE]==l->EB){ l->own=1; l->you=siE-1;
     while(l->own<=siE){ l->bit=1; l->ptn=l->TB;
@@ -108,8 +112,8 @@ void symmetryOps_bm(local *l){
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(l->own>siE){ 
 			l->C4[l->B1]++;
-      if(DEBUG>0){ thMonitor(l,4); return; } 
-  } }
+      if(DEBUG>0) thMonitor(l,4); 
+      return; } }
   //270度回転
   if(l->aB[l->B1]==l->TB){ l->own=1; l->ptn=l->TB>>1;
     while(l->own<=siE){ l->bit=1; l->you=0;
@@ -119,7 +123,7 @@ void symmetryOps_bm(local *l){
     }
   }
 	l->C8[l->B1]++;
-  if(DEBUG>0){ thMonitor(l,8); }
+  if(DEBUG>0) thMonitor(l,8); 
 }
 
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
@@ -156,7 +160,7 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
       l->aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
 			l->C8[l->B1]++;
-      if(DEBUG>0){ thMonitor(l,82); }
+      if(DEBUG>0) thMonitor(l,82);
     }
   }else{
     if(y<l->B1) {   
@@ -192,7 +196,8 @@ void *run(void *args){
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
   if(l->B1>0&&l->B2<siE&&l->B1<l->B2){ // 最上段行のクイーンが角以外にある場合の探索 
-    for(int i=1; i<l->B1; i++){
+    int i;
+    for(i=1;i<l->B1;i++){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     l->aB[0]=l->bit=(1<<l->B1);
@@ -204,26 +209,27 @@ void *run(void *args){
 void *NQueenThread(){
   pthread_t pt[si];//スレッド childThread
   local l[si];//構造体 local型 
-
   //for(int B1=siE,B2=0;B2<siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
-  for(int B1=0,B2=siE;B1<si;B1++,B2--){
+  int B1; int B2=siE; int j; int iFbRet;
+  for(B1=0;B1<si;B1++){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
-    for(int j=0;j<siE;j++){ l[l->B1].aB[j]=j; } // aB[]の初期化
+    for(j=0;j<siE;j++){ l[l->B1].aB[j]=j; } // aB[]の初期化
 	  l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	//カウンターの初期化
-    int iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
+    iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     if(DEBUG>0){
       printf("\r\033[2K[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
+    B2--;
   }
   //for(int B1=siE,B2=0;B2<siE;B1--,B2++){ 
-  for(int B1=0;B1<si;B1++){ 
+  for(B1=0;B1<si;B1++){ 
     pthread_join(pt[B1],NULL); 
   }
-  for(int B1=0;B1<si;B1++){ 
+  for(B1=0;B1<si;B1++){ 
     pthread_detach(pt[B1]);
   }
   //for(int B1=siE,B2=0;B2<siE;B1--,B2++){//スレッド毎のカウンターを合計
-  for(int B1=0;B1<si;B1++){//スレッド毎のカウンターを合計
+  for(B1=0;B1<si;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
     lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
   }
@@ -231,7 +237,7 @@ void *NQueenThread(){
 }
 void NQueen(){
   pthread_t pth;//スレッド変数
-  int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);// メインスレッドの生成
+  int iFbRet=pthread_create(&pth, NULL, &NQueenThread, NULL);// メインスレッドの生成
   if(DEBUG>0){
     printf("\r\033[2K[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
   }
@@ -243,7 +249,8 @@ int main(void){
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
-  for(int i=min;i<=MAX;i++){
+  int i;
+  for(i=min;i<=MAX;i++){
     si=i; siE=i-1; 
     lTotal=lUnique=0;
     gettimeofday(&t0, NULL);
