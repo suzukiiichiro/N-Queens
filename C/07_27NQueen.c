@@ -26,7 +26,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define MAX 18
+#define MAX 17 
 #define DEBUG 0
 
 int si;  
@@ -107,6 +107,8 @@ void thMonitor(local *l,int i){
 
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
+	l->C8[l->B1]++;
+  if(DEBUG>0) thMonitor(l,8); 
   //90度回転
   if(l->aB[l->B2]==1){ 
     //l->own=1; l->ptn=2;
@@ -118,7 +120,7 @@ void symmetryOps_bm(local *l){
       //{
       //   l->bit<<=1; l->you--; 
       //}
-      if(l->aB[l->own]>l->bit){ return; } 
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1]--; return; } 
       //if(l->aB[l->own]<l->bit){ break; }
       else if(l->aB[l->own]<l->bit){ break; }
       //l->own++; l->ptn<<=1; 
@@ -126,6 +128,7 @@ void symmetryOps_bm(local *l){
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(l->own>siE){ 
 			l->C2[l->B1]++;
+      l->C8[l->B1]--;
       if(DEBUG>0) thMonitor(l,2);
       return ; 
     } 
@@ -140,7 +143,7 @@ void symmetryOps_bm(local *l){
       for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1);;
         //l->bit<<=1; l->ptn>>=1; 
       //}
-      if(l->aB[l->own]>l->bit){ return; } 
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1]--; return; } 
       //if(l->aB[l->own]<l->bit){ break; }
       else if(l->aB[l->own]<l->bit){ break; }
       //l->own++; l->you--;
@@ -148,6 +151,7 @@ void symmetryOps_bm(local *l){
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(l->own>siE){ 
       l->C4[l->B1]++;
+      l->C8[l->B1]--;
       if(DEBUG>0) thMonitor(l,4); 
       return; 
     } 
@@ -163,14 +167,12 @@ void symmetryOps_bm(local *l){
      // { 
      //   l->bit<<=1; l->you++; 
      // }
-      if(l->aB[l->own]>l->bit){ return; } 
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1]--; return; } 
       //if(l->aB[l->own]<l->bit){ break; }
       else if(l->aB[l->own]<l->bit){ break; }
       //l->own++; l->ptn>>=1;
     }
   }
-	l->C8[l->B1]++;
-  if(DEBUG>0) thMonitor(l,8); 
 }
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
@@ -246,7 +248,10 @@ void *run(void *args){
 void *NQueenThread(){
   pthread_t pt[si];//スレッド childThread
   local l[si];//構造体 local型 
-  for(int B1=1,B2=siE-1;B1<siE-1;B1++,B2--){
+  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
+  //int B1; int B2=siE; 
+  //int j; int iFbRet;
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
     for(int j=0;j<siE;j++){ l[l->B1].aB[j]=j; } // aB[]の初期化
 	  l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	//カウンターの初期化
@@ -255,13 +260,15 @@ void *NQueenThread(){
       printf("\r\033[2K[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
   }
-  for(int B1=1;B1<siE-1;B1++){ 
+  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){ 
+  for(int B1=1;B1<siE;B1++){ 
     pthread_join(pt[B1],NULL); 
   }
-  for(int B1=0;B1<siE-1;B1++){ 
+  for(int B1=1;B1<siE;B1++){ 
     pthread_detach(pt[B1]);
   }
-  for(int B1=1;B1<siE-1;B1++){//スレッド毎のカウンターを合計
+  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){//スレッド毎のカウンターを合計
+  for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
     lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
   }
