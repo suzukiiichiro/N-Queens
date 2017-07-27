@@ -26,8 +26,8 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define MAX 27
-#define DEBUG 1
+#define MAX 18
+#define DEBUG 0
 
 int si;  
 int siE;
@@ -89,65 +89,106 @@ void thMonitor(local *l,int i){
     printf("\rN:%2d C2[ ] C4[ ] C8[ ] C8BT[%c] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1]%spl],l->B1,l->B2);
   }
   printf("\033[G");
+  printf("\n");
+  for (int y=0;y<si;y++) {
+    for (l->bit=l->TB; l->bit; l->bit>>=1){
+        char c;
+        if(l->aB[y]==l->bit){
+          c='Q';
+        }else{
+          c='-';
+        }
+        putchar(c);
+    }
+    printf("|\n");
+  }
+  printf("\n\n");
 }
+
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
   //90度回転
-  if(l->aB[l->B2]==1){ l->own=1; l->ptn=2;
-    while(l->own<=siE){ l->bit=1; l->you=siE;
-      while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){ l->bit<<=1; l->you--; }
-      if(l->aB[l->own]>l->bit){ return; } if(l->aB[l->own]<l->bit){ break; }
-      l->own++; l->ptn<<=1; }
+  if(l->aB[l->B2]==1){ 
+    //l->own=1; l->ptn=2;
+    //while(l->own<=siE){ 
+    for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
+      //l->bit=1; l->you=siE;
+      //while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){
+      for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--);;
+      //{
+      //   l->bit<<=1; l->you--; 
+      //}
+      if(l->aB[l->own]>l->bit){ return; } 
+      //if(l->aB[l->own]<l->bit){ break; }
+      else if(l->aB[l->own]<l->bit){ break; }
+      //l->own++; l->ptn<<=1; 
+    }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(l->own>siE){ 
 			l->C2[l->B1]++;
       if(DEBUG>0) thMonitor(l,2);
-      return ; } }
+      return ; 
+    } 
+  }
   //180度回転
-  if(l->aB[siE]==l->EB){ l->own=1; l->you=siE-1;
-    while(l->own<=siE){ l->bit=1; l->ptn=l->TB;
-      while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){ l->bit<<=1; l->ptn>>=1; }
-      if(l->aB[l->own]>l->bit){ return; } if(l->aB[l->own]<l->bit){ break; }
-      l->own++; l->you--; }
+  if(l->aB[siE]==l->EB){ 
+    //l->own=1; l->you=siE-1;
+    //while(l->own<=siE){ 
+    for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
+      //l->bit=1; l->ptn=l->TB;
+      //while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){ 
+      for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1);;
+        //l->bit<<=1; l->ptn>>=1; 
+      //}
+      if(l->aB[l->own]>l->bit){ return; } 
+      //if(l->aB[l->own]<l->bit){ break; }
+      else if(l->aB[l->own]<l->bit){ break; }
+      //l->own++; l->you--;
+    }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(l->own>siE){ 
-			l->C4[l->B1]++;
+      l->C4[l->B1]++;
       if(DEBUG>0) thMonitor(l,4); 
-      return; } }
+      return; 
+    } 
+  }
   //270度回転
-  if(l->aB[l->B1]==l->TB){ l->own=1; l->ptn=l->TB>>1;
-    while(l->own<=siE){ l->bit=1; l->you=0;
-      while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){ l->bit<<=1; l->you++; }
-      if(l->aB[l->own]>l->bit){ return; } if(l->aB[l->own]<l->bit){ break; }
-      l->own++; l->ptn>>=1;
+  if(l->aB[l->B1]==l->TB){ 
+    //l->own=1; l->ptn=l->TB>>1;
+    //while(l->own<=siE){ 
+    for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
+      //l->bit=1; l->you=0;
+      //while((l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit)){ 
+      for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++);;
+     // { 
+     //   l->bit<<=1; l->you++; 
+     // }
+      if(l->aB[l->own]>l->bit){ return; } 
+      //if(l->aB[l->own]<l->bit){ break; }
+      else if(l->aB[l->own]<l->bit){ break; }
+      //l->own++; l->ptn>>=1;
     }
   }
 	l->C8[l->B1]++;
   if(DEBUG>0) thMonitor(l,8); 
 }
-
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
-  //配置可能フィールド
-  bm=l->msk&~(left|down|right); 
+  bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE){
-    if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
+    if(bm>0 && (bm&l->LM)==0){  //【枝刈り】最下段枝刈り
       l->aB[y]=bm;
-      //対称解除法
-      symmetryOps_bm(l);
+      symmetryOps_bm(l);        //対称解除法
     }
   }else{
-    //【枝刈り】上部サイド枝刈り
-    if(y<l->B1){             
+    if(y<l->B1){                //【枝刈り】上部サイド枝刈り
       bm&=~l->SM; 
-    //【枝刈り】下部サイド枝刈り
-    }else if(y==l->B2) {     
+    }else if(y==l->B2) {        //【枝刈り】下部サイド枝刈り
       if((down&l->SM)==0){ return; }
       if((down&l->SM)!=l->SM){ bm&=l->SM; }
     }
     while(bm>0) {
-      //最も下位の１ビットを抽出
-      bm^=l->aB[y]=l->bit=-bm&bm;
+      bm^=l->aB[y]=l->bit=-bm&bm;//最も下位の１ビットを抽出
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
@@ -156,19 +197,16 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); 
   l->bit=0;
   if(y==siE) {
-    if(bm>0){
+    if(bm>0){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       l->aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
 			l->C8[l->B1]++;
       if(DEBUG>0) thMonitor(l,82);
     }
   }else{
-    if(y<l->B1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+    if(y<l->B1) {   //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       bm&=~2; 
     }
-    while(bm>0) {
-      //最も下位の１ビットを抽出
+    while(bm>0) {   //最も下位の１ビットを抽出
       bm^=l->aB[y]=l->bit=-bm&bm;
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
@@ -187,7 +225,6 @@ void *run(void *args){
   if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
   printf("pid:%10ld#l->B1:%2d#cpuset:%p\n",thread,l->B1,&cpuset);
 #endif
-
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
@@ -209,27 +246,22 @@ void *run(void *args){
 void *NQueenThread(){
   pthread_t pt[si];//スレッド childThread
   local l[si];//構造体 local型 
-  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
-  int B1; int B2=siE; int j; int iFbRet;
-  for(B1=0;B1<si;B1++){
+  for(int B1=1,B2=siE-1;B1<siE-1;B1++,B2--){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
-    for(j=0;j<siE;j++){ l[l->B1].aB[j]=j; } // aB[]の初期化
+    for(int j=0;j<siE;j++){ l[l->B1].aB[j]=j; } // aB[]の初期化
 	  l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	//カウンターの初期化
-    iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
+    int iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     if(DEBUG>0){
       printf("\r\033[2K[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
-    B2--;
   }
-  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){ 
-  for(B1=0;B1<si;B1++){ 
+  for(int B1=1;B1<siE-1;B1++){ 
     pthread_join(pt[B1],NULL); 
   }
-  for(B1=0;B1<si;B1++){ 
+  for(int B1=0;B1<siE-1;B1++){ 
     pthread_detach(pt[B1]);
   }
-  //for(int B1=siE,B2=0;B2<siE;B1--,B2++){//スレッド毎のカウンターを合計
-  for(B1=0;B1<si;B1++){//スレッド毎のカウンターを合計
+  for(int B1=1;B1<siE-1;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
     lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
   }
