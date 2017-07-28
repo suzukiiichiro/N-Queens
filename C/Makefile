@@ -1,6 +1,37 @@
 # Makefile for nqueens2.c
 
+# Linux ###
 CC=/usr/bin/gcc
+
+# mac #######################################################
+# llvm
+#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
+#LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
+#CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
+
+#CC=/usr/local/Cellar/llvm/4.0.1/bin/clang
+#LDFLAGS=-L/usr/local/Cellar/llvm/4.0.1/lib
+#CPPFLAGS=-I/usr/local/Cellar/llvm/4.0.1/include
+# 忘れずに
+# export LLVM_CONFIG="/usr/local/Cellar/llvm/4.0.1/bin/llvm-config";
+
+# gcc-7
+#CC=/opt/local/bin/gcc-mp-7
+
+# gcc-6
+CC=/opt/local/bin/gcc-mp-6
+
+# gcc-5
+#CC=/usr/local/Cellar/gcc\@5/5.4.0_1/bin/gcc-5
+#LDFLAGS=-L/usr/local/Cellar/gcc\@5/5.4.0_1/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc\@5/5.4.0_1/include
+
+# gcc-4
+#CC=/usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9
+#LDFLAGS=-L/usr/local/Cellar/gcc@4.9/4.9.4/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc@4.9/4.9.4/include
+
+
 #デバッグ時
 CFLAGS=-Wall -W -O3 -std=c99 -pthread -lpthread -lm
 
@@ -8,22 +39,19 @@ CFLAGS=-Wall -W -O3 -std=c99 -pthread -lpthread -lm
 #CFLAGS=-O3
 RM=rm -fr
 
-#CPPFLAGS=-fopenmp -I/usr/local/opt/open-mpi/include
-#CPPFLAGS=-fopenmp -I/usr/local/Cellar/open-mpi/2.1.1/include
-#LDFLAGS= -L/usr/local/opt/open-mpi/lib -lmpi
-#LDFLAGS= -L/usr/local/Cellar/open-mpi/2.1.1/lib -lmpi
+# gcc-4
+#LDFLAGS=-L
+#CPPFLAGS=-I
 
-#mac
-LDFLAGS=-L/usr/local/opt/llvm/lib
-CPPFLAGS=-I/usr/local/opt/llvm/include
+# Linux #######################################################
+#LDFLAGS=-L
+#CPPFLAGS=-I
 
-nq26=07_26NQueen
-nq26: $(nq26).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq26) $(nq26).c -lpthread
 
 nq25=07_25NQueen
 nq25: $(nq25).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq25) $(nq25).c -lpthread
+	./$(nq25)
 
 nq24=07_24NQueen
 nq24: $(nq24).c 
@@ -93,10 +121,10 @@ nq9=07_09NQueen
 nq9: $(nq9).c 
 	$(CC) $(CFLAGS) -o $(nq9) $(nq9).c 
 
-all:nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25)
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26)
 
 nq8=07_08NQueen
 nq8: $(nq8).c 
