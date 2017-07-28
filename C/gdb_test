@@ -1,6 +1,0 @@
-attach 2546 
-set print pretty on 
-set print elements 0
-info threads
-thread apply all p l[0] 
-detach
