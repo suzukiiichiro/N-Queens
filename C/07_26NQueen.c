@@ -314,7 +314,7 @@ gcc version 4.9.4 (Homebrew GCC 4.9.4)
 #include <pthread.h>
 
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 0 
 
 #ifdef _GNU_SOURCE
 /** cpu affinityを有効にするときは以下の１行（#define _GNU_SOURCE)を、
@@ -350,12 +350,13 @@ typedef struct{
   int aB[MAX]; 
 	// int *ab; // N=17 : 05.87
   //  l[B1].aB=calloc(G.si,sizeof(int));
-  long C2[MAX];//構造体の中の配列を活かすと   N=17: 04.33
-  long C4[MAX];
-  long C8[MAX];
+  long C2[MAX][MAX];//構造体の中の配列を活かすと   N=17: 04.33
+  long C4[MAX][MAX];
+  long C8[MAX][MAX];
 //  long C2; // 構造体の中の配列をなくすとN=17: 05.24
 //  long C4;
 //  long C8;
+  int BK;
 }local ;
 
 // long C2[MAX]; //グローバル環境に置くと N=17: 08.04
@@ -366,6 +367,7 @@ void symmetryOps_bm(local *l);
 void backTrack2(int y,int left,int down,int right,int bm,local *l);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
 void *run(void *args);
+void *run2(void *args);
 void *NQueenThread();
 void NQueen();
 
@@ -384,16 +386,16 @@ void hoge(){
 void thMonitor(local *l,int i){
   printf("\033[G");
   if(i==2){
-    printf("\rN:%2d C2[%c] C4[ ] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C2[l->B1]%spl],l->B1,l->B2);
+    printf("\rN:%2d C2[%c] C4[ ] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C2[l->B1][l->BK]%spl],l->B1,l->B2);
   }
   else if(i==4){
-    printf("\rN:%2d C2[ ] C4[%c] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C4[l->B1]%spl],l->B1,l->B2);
+    printf("\rN:%2d C2[ ] C4[%c] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C4[l->B1][l->BK]%spl],l->B1,l->B2);
   }
   else if(i==8){
-    printf("\rN:%2d C2[ ] C4[ ] C8[%c] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1]%spl],l->B1,l->B2);
+    printf("\rN:%2d C2[ ] C4[ ] C8[%c] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1][l->BK]%spl],l->B1,l->B2);
   }
   else if(i==82){ 
-    printf("\rN:%2d C2[ ] C4[ ] C8[ ] C8BT[%c] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1]%spl],l->B1,l->B2);
+    printf("\rN:%2d C2[ ] C4[ ] C8[ ] C8BT[%c] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1][l->BK]%spl],l->B1,l->B2);
   }
   printf("\033[G");
 /*
@@ -415,7 +417,7 @@ void thMonitor(local *l,int i){
 }
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
-  l->C8[l->B1]++;
+  l->C8[l->B1][l->BK]++;
   if(DEBUG>0) thMonitor(l,8); 
   //90度回転
   if(l->aB[l->B2]==1){ 
@@ -429,7 +431,7 @@ void symmetryOps_bm(local *l){
       //   l->bit<<=1; l->you--; 
       //}
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1]--; 
+        l->C8[l->B1][l->BK]--; 
         return; 
       }else if(l->aB[l->own]<l->bit){ 
         break; 
@@ -438,8 +440,8 @@ void symmetryOps_bm(local *l){
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(l->own>siE){ 
-      l->C2[l->B1]++;
-      l->C8[l->B1]--;
+      l->C2[l->B1][l->BK]++;
+      l->C8[l->B1][l->BK]--;
       if(DEBUG>0) thMonitor(l,2);
       return ; 
     } 
@@ -455,7 +457,7 @@ void symmetryOps_bm(local *l){
       //l->bit<<=1; l->ptn>>=1; 
       //}
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1]--; 
+        l->C8[l->B1][l->BK]--; 
         return; 
       } 
       //if(l->aB[l->own]<l->bit){ break; }
@@ -466,8 +468,8 @@ void symmetryOps_bm(local *l){
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(l->own>siE){ 
-      l->C4[l->B1]++;
-      l->C8[l->B1]--;
+      l->C4[l->B1][l->BK]++;
+      l->C8[l->B1][l->BK]--;
       if(DEBUG>0) thMonitor(l,4); 
       return; 
     } 
@@ -484,7 +486,7 @@ void symmetryOps_bm(local *l){
       //   l->bit<<=1; l->you++; 
       // }
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1]--; 
+        l->C8[l->B1][l->BK]--; 
         return; 
       } 
       //if(l->aB[l->own]<l->bit){ break; }
@@ -542,7 +544,7 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
       l->aB[y]=bm;
       //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       //C8[l->B1]++;
-      l->C8[l->B1]++;
+      l->C8[l->B1][l->BK]++;
       if(DEBUG>0) thMonitor(l,82);
     }
   }else{
@@ -577,6 +579,7 @@ void *run(void *args){
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
+  l->BK=0;
   //if(l->B1>1 && l->B1<G.siE) { // 最上段のクイーンが角にある場合の探索
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
@@ -600,6 +603,7 @@ void *run2(void *args){
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
+  l->BK=1;
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
   //if(l->B1>0&&l->B2<G.siE&&l->B1<l->B2){ // 最上段行のクイーンが角以外にある場合の探索 
@@ -620,20 +624,24 @@ void *NQueenThread(){
   pthread_t pt2[si];//スレッド childThread
   //local l[MAX];//構造体 local型 
   local l[si];//構造体 local型 
+  local l2[si];//構造体 local型 
   //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
+    l2[B1].B1=B1; l2[B1].B2=B2; //B1 と B2を初期化
     for(int j=0;j<siE;j++){ 
       l[l->B1].aB[j]=j; // aB[]の初期化
+      l2[l2->B1].aB[j]=j; // aB[]の初期化
     } 
-    l[B1].C2[B1]=l[B1].C4[B1]=l[B1].C8[B1]=0;	//カウンターの初期化
+    l[B1].C2[B1][0]=l[B1].C4[B1][0]=l[B1].C8[B1][0]=0;	//カウンターの初期化
     int iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     if(iFbRet>0){
       printf("[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
-    iFbRet=pthread_create(&pt2[B1],NULL,&run2,(void*)&l[B1]);// チルドスレッドの生成
+    l2[B1].C2[B1][1]=l2[B1].C4[B1][1]=l2[B1].C8[B1][1]=0;	//カウンターの初期化
+    iFbRet=pthread_create(&pt2[B1],NULL,&run2,(void*)&l2[B1]);// チルドスレッドの生成
     if(iFbRet>0){
-      printf("[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
+      printf("[Thread] pthread_create #%d: %d\n", l2[B1].B1, iFbRet);
     }
   }
   for(int B1=1;B1<siE;B1++){ 
@@ -649,8 +657,10 @@ void *NQueenThread(){
     pthread_detach(pt2[B1]);
   }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
-    lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
-    lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
+    lTotal+=l[B1].C2[B1][0]*2+l[B1].C4[B1][0]*4+l[B1].C8[B1][0]*8;
+    lUnique+=l[B1].C2[B1][0]+l[B1].C4[B1][0]+l[B1].C8[B1][0]; 
+    lTotal+=l2[B1].C2[B1][1]*2+l2[B1].C4[B1][1]*4+l2[B1].C8[B1][1]*8;
+    lUnique+=l2[B1].C2[B1][1]+l2[B1].C4[B1][1]+l2[B1].C8[B1][1]; 
   }
   return 0;
 }
