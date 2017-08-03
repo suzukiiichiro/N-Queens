@@ -350,9 +350,9 @@ typedef struct{
   int aB[MAX]; 
 	// int *ab; // N=17 : 05.87
   //  l[B1].aB=calloc(G.si,sizeof(int));
-  long C2[MAX][MAX];//構造体の中の配列を活かすと   N=17: 04.33
-  long C4[MAX][MAX];
-  long C8[MAX][MAX];
+  long C2[MAX][2];//構造体の中の配列を活かすと   N=17: 04.33
+  long C4[MAX][2];
+  long C8[MAX][2];
 //  long C2; // 構造体の中の配列をなくすとN=17: 05.24
 //  long C4;
 //  long C8;
@@ -364,7 +364,7 @@ typedef struct{
 // long C8[MAX];
 
 void symmetryOps_bm(local *l);
-void backTrack2(int y,int left,int down,int right,int bm,local *l);
+void backTrack2(int y,int left,int down,int right,int bm,local *l2);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
 void *run(void *args);
 void *run2(void *args);
@@ -565,17 +565,6 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
 }
 void *run(void *args){
   local *l=(local *)args;
-#ifdef _GNU_SOURCE
-  pthread_t thread = pthread_self();
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);
-  CPU_SET(l->B1, &cpuset);
-  int s=pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-  if (s != 0){ handle_error_en(s, "pthread_setaffinity_np"); }
-  s=pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-  if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
-  printf("pid:%10ld#l->B1:%2d#cpuset:%p\n",thread,l->B1,&cpuset);
-#endif
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
@@ -589,17 +578,6 @@ void *run(void *args){
 }
 void *run2(void *args){
   local *l=(local *)args;
-#ifdef _GNU_SOURCE
-  pthread_t thread = pthread_self();
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);
-  CPU_SET(l->B1, &cpuset);
-  int s=pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-  if (s != 0){ handle_error_en(s, "pthread_setaffinity_np"); }
-  s=pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-  if (s != 0){ handle_error_en(s, "pthread_getaffinity_np"); }
-  printf("pid:%10ld#l->B1:%2d#cpuset:%p\n",thread,l->B1,&cpuset);
-#endif
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
@@ -620,8 +598,7 @@ void *run2(void *args){
 }
 void *NQueenThread(){
   //pthread_t pt[G.si];//スレッド childThread
-  pthread_t pt[si];//スレッド childThread
-  pthread_t pt2[si];//スレッド childThread
+  pthread_t pt[si*2];//スレッド childThread
   //local l[MAX];//構造体 local型 
   local l[si];//構造体 local型 
   local l2[si];//構造体 local型 
@@ -630,8 +607,8 @@ void *NQueenThread(){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
     l2[B1].B1=B1; l2[B1].B2=B2; //B1 と B2を初期化
     for(int j=0;j<siE;j++){ 
-      l[l->B1].aB[j]=j; // aB[]の初期化
-      l2[l2->B1].aB[j]=j; // aB[]の初期化
+      l[B1].aB[j]=j; // aB[]の初期化
+      l2[B1].aB[j]=j; // aB[]の初期化
     } 
     l[B1].C2[B1][0]=l[B1].C4[B1][0]=l[B1].C8[B1][0]=0;	//カウンターの初期化
     int iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
@@ -639,22 +616,22 @@ void *NQueenThread(){
       printf("[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
     l2[B1].C2[B1][1]=l2[B1].C4[B1][1]=l2[B1].C8[B1][1]=0;	//カウンターの初期化
-    iFbRet=pthread_create(&pt2[B1],NULL,&run2,(void*)&l2[B1]);// チルドスレッドの生成
-    if(iFbRet>0){
-      printf("[Thread] pthread_create #%d: %d\n", l2[B1].B1, iFbRet);
+    int iFbRet2=pthread_create(&pt[si+B1],NULL,&run2,(void*)&l2[B1]);// チルドスレッドの生成
+    if(iFbRet2>0){
+      printf("[Thread] pthread_create #%d: %d\n", l2[B1].B1, iFbRet2);
     }
   }
   for(int B1=1;B1<siE;B1++){ 
     pthread_join(pt[B1],NULL); 
   }
   for(int B1=1;B1<siE;B1++){ 
+    pthread_join(pt[si+B1],NULL); 
+  }
+  for(int B1=1;B1<siE;B1++){ 
     pthread_detach(pt[B1]);
   }
   for(int B1=1;B1<siE;B1++){ 
-    pthread_join(pt2[B1],NULL); 
-  }
-  for(int B1=1;B1<siE;B1++){ 
-    pthread_detach(pt2[B1]);
+    pthread_detach(pt[si+B1]);
   }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1][0]*2+l[B1].C4[B1][0]*4+l[B1].C8[B1][0]*8;
