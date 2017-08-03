@@ -3,7 +3,7 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
- <>25．最適化 									        NQueen25() N17=03:70
+ <>25．最適化 									        NQueen25() N17=03:63
 
 === 1 ===
  G構造体に格納していた int si int siE int lTotal int lUniqueを
