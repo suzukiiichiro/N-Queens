@@ -28,8 +28,8 @@
    22．アドレスとポインタ(考察７)       NQueen22() N17=    03.85
    23．アドレスとポインタ(考察８)       NQueen23() N17=    03.73
    24．アドレスとポインタ(完結)         NQueen24() N17=    03.73
-   25．最適化 									        NQueen26() N17=    03.70
-   26．CPUアフィニティ 					        NQueen26() N17=    03.63
+   25．最適化 									        NQueen25() N17=    03.70
+   26．マルチスレッド再び 			        NQueen26() N17=    03.63
 
  # Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
@@ -1539,54 +1539,85 @@ pid:139811075630848#l->B1: 3#cpuset:1300209264
 pid:139811194939136#l->B1: 8#cpuset:1419517552
 17:        95815104         11977939          00:00:00:03.63
 
-   実行結果
- N:        Total       Unique                 dd:hh:mm:ss.ms
- 2:               0                0          00:00:00:00.00
- 3:               0                0          00:00:00:00.00
- 4:               2                1          00:00:00:00.00
- 5:              10                2          00:00:00:00.00
- 6:               4                1          00:00:00:00.00
- 7:              40                6          00:00:00:00.00
- 8:              92               12          00:00:00:00.00
- 9:             352               46          00:00:00:00.00
-10:             724               92          00:00:00:00.00
-11:            2680              341          00:00:00:00.00
-12:           14200             1787          00:00:00:00.00
-13:           73712             9233          00:00:00:00.00
-14:          365596            45752          00:00:00:00.01
-15:         2279184           285053          00:00:00:00.09
-16:        14772512          1846955          00:00:00:00.56
-17:        95815104         11977939          00:00:00:03.63
-18:       666090624         83263591          00:00:00:24.75
-19:      4968057848        621012754          00:00:02:58.81
-20:     39029188884       4878666808          00:00:22:23.29
-21:    314666222712      39333324973          00:02:55:11.88
-22:   2691008701644     336376244042          01:00:59:21.78
+=== 11 ===
+コンパイラ比較
+$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v
+Apple LLVM version 8.1.0 (clang-802.0.42)
+Target: x86_64-apple-darwin16.6.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
 
+15:         2279184           285053          00:00:00:00.16
+16:        14772512          1846955          00:00:00:01.02
+17:        95815104         11977939          00:00:00:06.55
 
-MacBookProでも凄く速い！
- N:        Total       Unique                 dd:hh:mm:ss.ms
- 2:               0                0          00:00:00:00.00
- 3:               0                0          00:00:00:00.00
- 4:               2                1          00:00:00:00.00
- 5:              10                2          00:00:00:00.00
- 6:               4                1          00:00:00:00.00
- 7:              40                6          00:00:00:00.00
- 8:              92               12          00:00:00:00.00
- 9:             352               46          00:00:00:00.00
-10:             724               92          00:00:00:00.00
-11:            2680              341          00:00:00:00.00
-12:           14200             1787          00:00:00:00.00
-13:           73712             9233          00:00:00:00.00
-14:          365596            45752          00:00:00:00.01
+$ /usr/local/Cellar/llvm/4.0.1/bin/clang -v
+clang version 4.0.1 (tags/RELEASE_401/final)
+Target: x86_64-apple-darwin16.6.0
+Thread model: posix
+InstalledDir: /usr/local/bin
+Found CUDA installation: /usr/local/cuda, version 7.5
+
+15:         2279184           285053          00:00:00:00.15
+16:        14772512          1846955          00:00:00:00.95
+17:        95815104         11977939          00:00:00:06.27
+
+$ /opt/local/bin/gcc-mp-7 -v
+Using built-in specs.
+COLLECT_GCC=/opt/local/bin/gcc-mp-7
+COLLECT_LTO_WRAPPER=/opt/local/libexec/gcc/x86_64-apple-darwin16/7.1.1/lto-wrapper
+Target: x86_64-apple-darwin16
+Configured with: /opt/local/var/macports/build/_opt_bblocal_var_buildworker_ports_build_ports_lang_gcc7/gcc7/work/gcc-7-20170622/configure --prefix=/opt/local --build=x86_64-apple-darwin16 --enable-languages=c,c++,objc,obj-c++,lto,fortran --libdir=/opt/local/lib/gcc7 --includedir=/opt/local/include/gcc7 --infodir=/opt/local/share/info --mandir=/opt/local/share/man --datarootdir=/opt/local/share/gcc-7 --with-local-prefix=/opt/local --with-system-zlib --disable-nls --program-suffix=-mp-7 --with-gxx-include-dir=/opt/local/include/gcc7/c++/ --with-gmp=/opt/local --with-mpfr=/opt/local --with-mpc=/opt/local --with-isl=/opt/local --enable-stage1-checking --disable-multilib --enable-lto --enable-libstdcxx-time --with-build-config=bootstrap-debug --with-as=/opt/local/bin/as --with-ld=/opt/local/bin/ld --with-ar=/opt/local/bin/ar --with-bugurl=https://trac.macports.org/newticket --with-pkgversion='MacPorts gcc7 7-20170622_0'
+Thread model: posix
+gcc version 7.1.1 20170622 (MacPorts gcc7 7-20170622_0)
+
+15:         2279184           285053          00:00:00:00.12
+16:        14772512          1846955          00:00:00:00.71
+17:        95815104         11977939          00:00:00:04.64
+
+$ /opt/local/bin/gcc-mp-6 -v
+Using built-in specs.
+COLLECT_GCC=/opt/local/bin/gcc-mp-6
+COLLECT_LTO_WRAPPER=/opt/local/libexec/gcc/x86_64-apple-darwin16/6.3.0/lto-wrapper
+Target: x86_64-apple-darwin16
+Configured with: /opt/local/var/macports/build/_opt_bblocal_var_buildworker_ports_build_ports_lang_gcc6/gcc6/work/gcc-6.3.0/configure --prefix=/opt/local --build=x86_64-apple-darwin16 --enable-languages=c,c++,objc,obj-c++,lto,fortran --libdir=/opt/local/lib/gcc6 --includedir=/opt/local/include/gcc6 --infodir=/opt/local/share/info --mandir=/opt/local/share/man --datarootdir=/opt/local/share/gcc-6 --with-local-prefix=/opt/local --with-system-zlib --disable-nls --program-suffix=-mp-6 --with-gxx-include-dir=/opt/local/include/gcc6/c++/ --with-gmp=/opt/local --with-mpfr=/opt/local --with-mpc=/opt/local --with-isl=/opt/local --enable-stage1-checking --disable-multilib --enable-lto --enable-libstdcxx-time --with-build-config=bootstrap-debug --with-as=/opt/local/bin/as --with-ld=/opt/local/bin/ld --with-ar=/opt/local/bin/ar --with-bugurl=https://trac.macports.org/newticket --with-pkgversion='MacPorts gcc6 6.3.0_2'
+Thread model: posix
+gcc version 6.3.0 (MacPorts gcc6 6.3.0_2)
+
 15:         2279184           285053          00:00:00:00.11
-16:        14772512          1846955          00:00:00:00.67
-17:        95815104         11977939          00:00:00:04.41
-18:       666090624         83263591          00:00:00:33.88
-19:      4968057848        621012754          00:00:04:22.25
-20:     39029188884       4878666808          00:00:34:26.79
-21:    314666222712      39333324973          00:04:44:55.30
-22:   2691008701644     336376244042          01:17:12:40.88
+16:        14772512          1846955          00:00:00:00.69
+17:        95815104         11977939          00:00:00:04.61
+
+
+$ /usr/local/Cellar/gcc\@5/5.4.0_1/bin/gcc-5 -v
+Using built-in specs.
+COLLECT_GCC=/usr/local/Cellar/gcc@5/5.4.0_1/bin/gcc-5
+COLLECT_LTO_WRAPPER=/usr/local/Cellar/gcc@5/5.4.0_1/libexec/gcc/x86_64-apple-darwin16.3.0/5.4.0/lto-wrapper
+Target: x86_64-apple-darwin16.3.0
+Configured with: ../configure --build=x86_64-apple-darwin16.3.0 --prefix=/usr/local/Cellar/gcc@5/5.4.0_1 --libdir=/usr/local/Cellar/gcc@5/5.4.0_1/lib/gcc/5 --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-5 --with-gmp=/usr/local/opt/gmp --with-mpfr=/usr/local/opt/mpfr --with-mpc=/usr/local/opt/libmpc --with-isl=/usr/local/opt/isl@0.14 --with-system-zlib --enable-libstdcxx-time=yes --enable-stage1-checking --enable-checking=release --enable-lto --disable-werror --with-pkgversion='Homebrew GCC 5.4.0_1' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues --enable-plugin --disable-nls --enable-multilib
+Thread model: posix
+gcc version 5.4.0 (Homebrew GCC 5.4.0_1)
+
+15:         2279184           285053          00:00:00:00.11
+16:        14772512          1846955          00:00:00:00.69
+17:        95815104         11977939          00:00:00:04.62
+
+$ /usr/local/Cellar/gcc\@4.9/4.9.4/bin/gcc-4.9 -v
+Using built-in specs.
+COLLECT_GCC=/usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9
+COLLECT_LTO_WRAPPER=/usr/local/Cellar/gcc@4.9/4.9.4/libexec/gcc/x86_64-apple-darwin16.4.0/4.9.4/lto-wrapper
+Target: x86_64-apple-darwin16.4.0
+Configured with: ../configure --build=x86_64-apple-darwin16.4.0 --prefix=/usr/local/Cellar/gcc@4.9/4.9.4 --libdir=/usr/local/Cellar/gcc@4.9/4.9.4/lib/gcc/4.9 --enable-languages=c,c++,objc,obj-c++,fortran --program-suffix=-4.9 --with-gmp=/usr/local/opt/gmp@4 --with-mpfr=/usr/local/opt/mpfr@2 --with-mpc=/usr/local/opt/libmpc@0.8 --with-cloog=/usr/local/opt/cloog --with-isl=/usr/local/opt/isl@0.12 --with-system-zlib --enable-libstdcxx-time=yes --enable-stage1-checking --enable-checking=release --enable-lto --with-build-config=bootstrap-debug --disable-werror --with-pkgversion='Homebrew GCC 4.9.4' --with-bugurl=https://github.com/Homebrew/homebrew-core/issues MAKEINFO=missing --enable-plugin --disable-nls --enable-multilib
+Thread model: posix
+gcc version 4.9.4 (Homebrew GCC 4.9.4)
+
+15:         2279184           285053          00:00:00:00.11
+16:        14772512          1846955          00:00:00:00.71
+17:        95815104         11977939          00:00:00:04.63
+
+
+  実行結果 
+ N:        Total       Unique                 dd:hh:mm:ss.ms
 
 
   参考（Bash版 07_8NQueen.lua）

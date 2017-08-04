@@ -47,6 +47,10 @@ RM=rm -fr
 #LDFLAGS=-L
 #CPPFLAGS=-I
 
+nq26=07_26NQueen
+nq26: $(nq26).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq26) $(nq26).c -lpthread
+	./$(nq26)
 
 nq25=07_25NQueen
 nq25: $(nq25).c 
