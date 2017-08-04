@@ -598,7 +598,6 @@ void *NQueenThread(){
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1]*2+l[B1].C4[B1]*4+l[B1].C8[B1]*8;
     lUnique+=l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]; 
-    printf("%2d:lUnique %8ld\n",B1,l[B1].C2[B1]+l[B1].C4[B1]+l[B1].C8[B1]); 
   }
   return 0;
 }
@@ -637,7 +636,6 @@ int main(void){
     int hh=ss/3600; 
     int mm=(ss-hh*3600)/60; 
     ss%=60;
-    //printf("%2d:%16ld%17ld%12.4d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,hh,mm,ss,ms); 
     printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
   return 0;
