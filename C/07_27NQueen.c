@@ -313,7 +313,7 @@ gcc version 4.9.4 (Homebrew GCC 4.9.4)
 #include <sys/time.h>
 #include <pthread.h>
 
-#define MAX 27
+#define MAX 27 
 #define DEBUG 0 
 
 #ifdef _GNU_SOURCE
@@ -441,6 +441,7 @@ void symmetryOps_bm(local *l){
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(l->own>siE){ 
+        //printf("BK2:C2:si:%d:B1:%d:y:2:k:%d:aB[1]:%d\n",siE,l->B1,l->k,l->aB[1]);
       l->C2[l->B1][l->BK]++;
       l->C8[l->B1][l->BK]--;
       if(DEBUG>0) thMonitor(l,2);
@@ -469,6 +470,7 @@ void symmetryOps_bm(local *l){
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(l->own>siE){ 
+        //printf("BK2:C4:si:%d:B1:%d:y:2:k:%d:aB[1]:%d\n",siE,l->B1,l->k,l->aB[1]);
       l->C4[l->B1][l->BK]++;
       l->C8[l->B1][l->BK]--;
       if(DEBUG>0) thMonitor(l,4); 
@@ -497,6 +499,48 @@ void symmetryOps_bm(local *l){
       //l->own++; l->ptn>>=1;
     }
   }
+        //printf("BK2:C8:si:%d:B1:%d:y:2:k:%d:aB[1]:%d\n",siE,l->B1,l->k,l->aB[1]);
+}
+void backTrack3(int y,int left,int down,int right,int bm,local *l){
+  //配置可能フィールド
+  //int bit=0;
+  //int bm=l->msk&~(left|down|right); 
+  bm=l->msk&~(left|down|right); 
+  l->bit=0;
+  //if(y==G.siE){
+  if(y==siE){
+    if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
+      l->aB[y]=bm;
+      //対称解除法
+      //symmetryOps_bm(l,C2,C4,C8);//対称解除法
+      //printf("BK2:Y=SIE:si:%d:B1:%d:y:%d:bm:%d:aB[y]:%d:aB[1]:%d\n",siE,l->B1,y,bm,l->aB[y],l->aB[1]);
+      symmetryOps_bm(l);
+    }
+  }else{
+    //【枝刈り】上部サイド枝刈り
+    if(y<l->B1){             
+      bm&=~l->SM; 
+      //【枝刈り】下部サイド枝刈り
+    }else if(y==l->B2) {     
+      if((down&l->SM)==0){ 
+        return; 
+      }
+      if((down&l->SM)!=l->SM){ 
+        bm&=l->SM; 
+      }
+    }
+      //最も下位の１ビットを抽出
+      //bm^=l->aB[y]=bit=-bm&bm;
+      //printf("bm:%d:k:%d\n",bm,1<<l->k);
+      if(bm & (1<<l->k)){
+        l->aB[y]=l->bit=1<<l->k;
+      }else{
+        return;
+      }
+      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      //printf("BK2:si:%d:B1:%d:y:%d:bm:%d:aB[y]:%d\n",siE,l->B1,y,bm,l->aB[y]);
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+  }
 }
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
   //配置可能フィールド
@@ -510,6 +554,7 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
       l->aB[y]=bm;
       //対称解除法
       //symmetryOps_bm(l,C2,C4,C8);//対称解除法
+      //printf("BK2:Y=SIE:si:%d:B1:%d:y:%d:bm:%d:aB[y]:%d:aB[1]:%d\n",siE,l->B1,y,bm,l->aB[y],l->aB[1]);
       symmetryOps_bm(l);
     }
   }else{
@@ -530,7 +575,7 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
       //bm^=l->aB[y]=bit=-bm&bm;
       bm^=l->aB[y]=l->bit=-bm&bm;
       //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      //printf("si:%d:y:%d:bm:%d\n",siE,y,bm);
+      //printf("BK2:si:%d:B1:%d:y:%d:bm:%d:aB[y]:%d\n",siE,l->B1,y,bm,l->aB[y]);
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
@@ -561,6 +606,7 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
       //bm^=l->aB[y]=bit=-bm&bm;
       bm^=l->aB[y]=l->bit=-bm&bm;
       //backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      //printf("BK1:si:%d:B1:%d:y:%d:bm:%d:aB[y]:%d\n",siE,l->B1,y,bm,l->aB[y]);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   } 
@@ -574,7 +620,7 @@ void *run(void *args){
   //if(l->B1>1 && l->B1<G.siE) { // 最上段のクイーンが角にある場合の探索
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
-    //printf("BK1:si:%d:B1:%d:l->aB[0]:%d:l->aB[1]:%d\n",siE,l->B1,l->aB[0],l->aB[1]);
+    //printf("BK1run:si:%d:B1:%d:l->aB[0]:%d:l->aB[1]:%d\n",siE,l->B1,l->aB[0],l->aB[1]);
     backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
   }
   return 0;
@@ -583,7 +629,8 @@ void *run2(void *args){
   local *l=(local *)args;
   //int bit ;
   //l->bit=0 ; l->aB[0]=1; l->msk=(1<<G.si)-1; l->TB=1<<G.siE;
-  l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE;
+  //l->bit=0 ; l->aB[0]=1; 
+  l->msk=(1<<si)-1; l->TB=1<<siE;
   l->BK=1;
   l->EB=(l->TB>>l->B1);
   l->SM=l->LM=(l->TB|1);
@@ -593,16 +640,7 @@ void *run2(void *args){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     l->aB[0]=l->bit=(1<<l->B1);
-    int left=l->bit<<1;
-    int down=l->bit;
-    int right=l->bit>>1;
-    if(l->k==l->B1||l->k==l->B1-1||l->k==l->B1+1){
-     return 0;
-    }
-    l->aB[1]=l->bit=(1<<l->k);
-    //printf("BK2:si:%d:B1:%d:k:%d\n",siE,l->B1,l->k);
-    backTrack2(2,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,0,l);
-    //l->EB>>=G.si;
+    backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
   return 0;
@@ -616,12 +654,12 @@ void *NQueenThread(){
   //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
-    for(int k=1;k<siE;k++){
+    for(int k=1;k<=si;k++){
     l2[si*(B1-1)+k].B1=B1; l2[si*(B1-1)+k].B2=B2; //B1 と B2を初期化
     }
     for(int j=0;j<siE;j++){ 
       l[B1].aB[j]=j; // aB[]の初期化
-      for(int k=1;k<siE;k++){
+      for(int k=1;k<=si;k++){
         l2[si*(B1-1)+k].aB[j]=j; // aB[]の初期化
       }
     } 
@@ -630,10 +668,10 @@ void *NQueenThread(){
     if(iFbRet>0){
       printf("[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
     }
-    for(int k=1;k<siE;k++){
+    for(int k=1;k<=si;k++){
     l2[si*(B1-1)+k].C2[B1][1]=l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	//カウンターの初期化
     }
-    for(int k=1;k<siE;k++){
+    for(int k=1;k<=si;k++){
         l2[si*(B1-1)+k].k=k;
         int iFbRet2=pthread_create(&pt[si+si*(B1-1)+k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
         if(iFbRet2>0){
@@ -645,24 +683,24 @@ void *NQueenThread(){
     pthread_join(pt[B1],NULL); 
   }
   for(int B1=1;B1<siE;B1++){ 
-    for(int k=0;k<si;k++){
+    for(int k=1;k<=si;k++){
       pthread_join(pt[si+si*(B1-1)+k],NULL); 
     }
   }
   for(int B1=1;B1<siE;B1++){ 
-    for(int k=0;k<si;k++){
+    for(int k=1;k<=si;k++){
       pthread_detach(pt[B1+k]);
     }
   }
   for(int B1=1;B1<siE;B1++){ 
-    for(int k=0;k<si;k++){
+    for(int k=1;k<=si;k++){
       pthread_detach(pt[si+si*(B1-1)+k]);
     }
   }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1][0]*2+l[B1].C4[B1][0]*4+l[B1].C8[B1][0]*8;
     lUnique+=l[B1].C2[B1][0]+l[B1].C4[B1][0]+l[B1].C8[B1][0]; 
-    for(int k=1;k<siE;k++){
+    for(int k=1;k<=si;k++){
       lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
       lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
     }
