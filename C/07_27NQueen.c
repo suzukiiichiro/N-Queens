@@ -593,12 +593,15 @@ void *run2(void *args){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     l->aB[0]=l->bit=(1<<l->B1);
+    int left=l->bit<<1;
+    int down=l->bit;
+    int right=l->bit>>1;
     if(l->k==l->B1||l->k==l->B1-1||l->k==l->B1+1){
      return 0;
     }
     l->aB[1]=l->bit=(1<<l->k);
     //printf("BK2:si:%d:B1:%d:k:%d\n",siE,l->B1,l->k);
-    backTrack2(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);
+    backTrack2(2,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,0,l);
     //l->EB>>=G.si;
     l->EB>>=si;
   }
