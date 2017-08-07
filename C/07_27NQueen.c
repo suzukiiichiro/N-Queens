@@ -646,11 +646,21 @@ void *run2(void *args){
   return 0;
 }
 void *NQueenThread(){
+  //printf("4\n");
   //pthread_t pt[G.si];//スレッド childThread
   pthread_t pt[si*si+si];//スレッド childThread
+  //printf("5\n");
   //local l[MAX];//構造体 local型 
   local l[si];//構造体 local型 
-  local l2[si*si];//構造体 local型 
+  //printf("6\n");
+  int th=0;
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
+    for(int k=1;k<=si;k++){
+      th++;
+    }
+  }
+  local l2[th];//構造体 local型 
+  //printf("7\n");
   //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
@@ -708,6 +718,7 @@ void *NQueenThread(){
   return 0;
 }
 void NQueen(){
+  //printf("3\n");
   pthread_t pth;//スレッド変数
   int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);// メインスレッドの生成
   if(iFbRet>0){
@@ -722,11 +733,13 @@ int main(void){
   struct timeval t1;
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
+    //printf("1\n");
     //G.si=i; G.siE=i-1; 
     si=i; siE=i-1; 
     //G.lTotal=G.lUnique=0;
     lTotal=lUnique=0;
     gettimeofday(&t0, NULL);
+    //printf("2\n");
     NQueen();
     gettimeofday(&t1, NULL);
     int ss;int ms;int dd;
