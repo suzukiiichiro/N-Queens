@@ -19,7 +19,7 @@ CC=/usr/bin/gcc
 #CC=/opt/local/bin/gcc-mp-7
 
 # gcc-6
-CC=/opt/local/bin/gcc-mp-6
+#CC=/opt/local/bin/gcc-mp-6
 
 # gcc-5
 #CC=/usr/local/Cellar/gcc\@5/5.4.0_1/bin/gcc-5
@@ -27,9 +27,9 @@ CC=/opt/local/bin/gcc-mp-6
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@5/5.4.0_1/include
 
 # gcc-4
-#CC=/usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9
-#LDFLAGS=-L/usr/local/Cellar/gcc@4.9/4.9.4/lib
-#CPPFLAGS=-I/usr/local/Cellar/gcc@4.9/4.9.4/include
+CC=/usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9
+LDFLAGS=-L/usr/local/Cellar/gcc@4.9/4.9.4/lib
+CPPFLAGS=-I/usr/local/Cellar/gcc@4.9/4.9.4/include
 
 
 #デバッグ時
@@ -46,6 +46,11 @@ RM=rm -fr
 # Linux #######################################################
 #LDFLAGS=-L
 #CPPFLAGS=-I
+
+nq27=07_27NQueen
+nq27: $(nq27).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq27) $(nq27).c -lpthread
+	./$(nq27)
 
 nq26=07_26NQueen
 nq26: $(nq26).c 
