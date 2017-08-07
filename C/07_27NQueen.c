@@ -663,17 +663,21 @@ void *NQueenThread(){
   //printf("7\n");
   //for(int B1=G.siE,B2=0;B2<G.siE;B1--,B2++){// B1から順にスレッドを生成しながら処理を分担する 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
+  //printf("8\n");
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
     for(int k=1;k<=si;k++){
+  //printf("9\n");
     l2[si*(B1-1)+k].B1=B1; l2[si*(B1-1)+k].B2=B2; //B1 と B2を初期化
     }
     for(int j=0;j<siE;j++){ 
       l[B1].aB[j]=j; // aB[]の初期化
+  //printf("10\n");
       for(int k=1;k<=si;k++){
         l2[si*(B1-1)+k].aB[j]=j; // aB[]の初期化
       }
     } 
     l[B1].C2[B1][0]=l[B1].C4[B1][0]=l[B1].C8[B1][0]=0;	//カウンターの初期化
+  //printf("11\n");
     int iFbRet=pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     if(iFbRet>0){
       printf("[Thread] pthread_create #%d: %d\n", l[B1].B1, iFbRet);
@@ -683,6 +687,7 @@ void *NQueenThread(){
     }
     for(int k=1;k<=si;k++){
         l2[si*(B1-1)+k].k=k;
+  //printf("12\n");
         int iFbRet2=pthread_create(&pt[si+si*(B1-1)+k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
         if(iFbRet2>0){
           printf("[Thread] pthread_create #%d: %d\n", l2[si*(B1-1)+k].B1, iFbRet2);
@@ -690,27 +695,31 @@ void *NQueenThread(){
     }
   }
   for(int B1=1;B1<siE;B1++){ 
+  //printf("100\n");
     pthread_join(pt[B1],NULL); 
   }
   for(int B1=1;B1<siE;B1++){ 
     for(int k=1;k<=si;k++){
+  //printf("101\n");
       pthread_join(pt[si+si*(B1-1)+k],NULL); 
     }
   }
-  for(int B1=1;B1<siE;B1++){ 
-    for(int k=1;k<=si;k++){
-      pthread_detach(pt[B1+k]);
-    }
-  }
-  for(int B1=1;B1<siE;B1++){ 
-    for(int k=1;k<=si;k++){
-      pthread_detach(pt[si+si*(B1-1)+k]);
-    }
-  }
+//  for(int B1=1;B1<siE;B1++){ 
+//     pthread_detach(pt[B1]);
+  //printf("102\n");
+// }
+ //for(int B1=1;B1<siE;B1++){ 
+  //  for(int k=1;k<=si;k++){
+ // printf("103\n");
+   //   pthread_detach(pt[si+si*(B1-1)+k]);
+    //}
+ // }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
+  //printf("104\n");
     lTotal+=l[B1].C2[B1][0]*2+l[B1].C4[B1][0]*4+l[B1].C8[B1][0]*8;
     lUnique+=l[B1].C2[B1][0]+l[B1].C4[B1][0]+l[B1].C8[B1][0]; 
     for(int k=1;k<=si;k++){
+  //printf("105\n");
       lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
       lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
     }
