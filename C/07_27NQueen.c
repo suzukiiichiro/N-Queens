@@ -207,6 +207,7 @@ void symmetryOps_bm(local *l){
     }
   }
 }
+//backtrack2の2行目の列数を固定して場合分けすることによりスレッドを分割する
 void backTrack3(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
@@ -226,12 +227,15 @@ void backTrack3(int y,int left,int down,int right,int bm,local *l){
         bm&=l->SM; 
       }
     }
-    if(bm & (1<<l->k)){//最も下位の１ビットを抽出
+    if(bm & (1<<l->k)){
+      //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
       l->aB[y]=l->bit=1<<l->k;
     }else{
+      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       return;
     }
     //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+    //3行目以降は通常のbacktrack2の処理に渡す
     backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
@@ -280,6 +284,7 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
     }
   } 
 }
+//backtrack1のマルチスレッド処理
 void *run(void *args){
   local *l=(local *)args;
   l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE; l->BK=0;
@@ -289,6 +294,9 @@ void *run(void *args){
   }
   return 0;
 }
+//backtrack2のマルチスレッド処理
+//今までは１行目にクイーンを置ける可能性のある数分スレッドが立っていたが
+//１行目のクイーンが配置可能数*２行目のクイーンが配置可能数分スレッドがたつ
 void *run2(void *args){
   local *l=(local *)args;
   l->msk=(1<<si)-1; l->TB=1<<siE;
@@ -299,7 +307,9 @@ void *run2(void *args){
     for(int i=1; i<l->B1; i++){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
+    //１行目のクイーンの位置はB1の値によって決まる
     l->aB[0]=l->bit=(1<<l->B1);
+    //２行目のクイーンの位置を固定することによってN分スレッドを分割する
     backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
@@ -308,6 +318,10 @@ void *run2(void *args){
 void *NQueenThread(){
   pthread_t pt[si*si+si];//スレッド childThread
   local l[si];//構造体 local型 
+  //backtrack2の処理に必要な構造体の数を算定する
+  //1行目のクイーンのパタン*2行目のクイーンのパタン
+  //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
+  //2行目 N個
   int th=0;
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     for(int k=1;k<=si;k++){
