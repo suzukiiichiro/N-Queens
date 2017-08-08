@@ -16,11 +16,15 @@ CC=/usr/bin/gcc
 # export LLVM_CONFIG="/usr/local/Cellar/llvm/4.0.1/bin/llvm-config";
 
 # gcc-7
-#CC=/opt/local/bin/gcc-mp-7
+#CC=/usr/local/Celler/gcc/7.1.0/bin/gcc-7
+#LDFLAGS=-L/usr/local/Celler/gcc/7.1.0/lib
+#CPPFLAGS=-I/usr/local/Celler/gcc/7.1.0/include
 
 # gcc-6
-#CC=/opt/local/bin/gcc-mp-6
-
+#CC=/usr/local/Cellar/gcc\@6/6.4.0/bin/gcc-6
+#LDFLAGS=-L/usr/local/Cellar/gcc\@6/6.4.0/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc\@6/6.4.0/include
+#
 # gcc-5
 #CC=/usr/local/Cellar/gcc\@5/5.4.0_1/bin/gcc-5
 #LDFLAGS=-L/usr/local/Cellar/gcc\@5/5.4.0_1/lib
@@ -47,20 +51,21 @@ RM=rm -fr
 #LDFLAGS=-L
 #CPPFLAGS=-I
 
+nq28=07_28NQueen
+nq28: $(nq28).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq28) $(nq28).c -lpthread
+
 nq27=07_27NQueen
 nq27: $(nq27).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq27) $(nq27).c -lpthread
-	./$(nq27)
 
 nq26=07_26NQueen
 nq26: $(nq26).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq26) $(nq26).c -lpthread
-	./$(nq26)
 
 nq25=07_25NQueen
 nq25: $(nq25).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq25) $(nq25).c -lpthread
-	./$(nq25)
 
 nq24=07_24NQueen
 nq24: $(nq24).c 
