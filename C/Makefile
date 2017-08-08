@@ -16,9 +16,9 @@ CC=/usr/bin/gcc
 # export LLVM_CONFIG="/usr/local/Cellar/llvm/4.0.1/bin/llvm-config";
 
 # gcc-7
-#CC=/usr/local/Celler/gcc/7.1.0/bin/gcc-7
-#LDFLAGS=-L/usr/local/Celler/gcc/7.1.0/lib
-#CPPFLAGS=-I/usr/local/Celler/gcc/7.1.0/include
+#CC=/usr/local/Cellar/gcc/7.1.0/bin/gcc-7
+#LDFLAGS=-L/usr/local/Cellar/gcc/7.1.0/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc/7.1.0/include
 
 # gcc-6
 #CC=/usr/local/Cellar/gcc\@6/6.4.0/bin/gcc-6
