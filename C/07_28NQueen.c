@@ -325,7 +325,7 @@ void *NQueenThread(){
   pthread_t pt1[si];    //上から１段目のスレッド childThread
   pthread_t pt2[si][si];//上から２段目のスレッド childThread
   pthread_t pt3[si][si][si];//上から２段目のスレッド childThread
-  local l[si];          //上から１段目の構造体 local型 
+
   //backtrack2の処理に必要な構造体の数を算定する
   //1行目のクイーンのパタン*2行目のクイーンのパタン
   //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
@@ -344,11 +344,32 @@ void *NQueenThread(){
   */
   //local l2[th2];//上から２行目の構造体 local型 
   //local l2[th2];//上から２行目の構造体 local型 
-  local l2[si][si];   //上から２行目の構造体 local型 
-  local l3[si][si][si];   //上から２行目の構造体 local型 
+
+  //local l[si];          //上から１段目の構造体 local型 
+  local *l=(local*)malloc(sizeof(local*)); //B1xk
+  if( l == NULL ) { printf( "memory cannot alloc!\n" ); }
   
+  //local l2[si][si];   //上から２行目の構造体 local型 
+  local **l2=(local**)malloc(sizeof(local*)*si); //B1xk
+  for(int j=1;j<si;j++){
+    l2[j]=(local*)malloc(sizeof(local)*si);
+    //if( l2[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+  }
+  
+  //local l3[si][si][si];   //上から２行目の構造体 local型 
+  local ***l3=(local***)malloc(sizeof(local*)*si*si); //B1xkxj
+  for(int j=0;j<si;j++){
+      l3[j]=(local**)malloc(sizeof(local)*si);
+      if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+    for(int k=0;k<si;k++){
+      l3[j][k]=(local*)malloc(sizeof(local)*si);
+      if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); }
+    }
+  }
+
 //  local l3[th3];//上から３行目の構造体 local型 
   //for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+  
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     l[B1].B1=B1; 
     l[B1].B2=B2; //B1 と B2を初期化
@@ -372,7 +393,6 @@ void *NQueenThread(){
       for(int k=1;k<=si;k++){
         //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
         //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
-        l2[B1][k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
         l2[B1][k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
         for(int j=1;j<=si;j++){
           /**/
@@ -399,7 +419,7 @@ void *NQueenThread(){
         l3[B1][k][j].C2[B1][1]=
           l3[B1][k][j].C4[B1][1]=
           l3[B1][k][j].C8[B1][1]=0;	//上から２行目のスレッドに使うカウンターの初期化
-          */
+        */
       }
     }
     //pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
