@@ -208,8 +208,7 @@ void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
     //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     //3行目以降は通常のbacktrack2の処理に渡す
     //backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    //NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
 //上から１行目角にクイーンがない場合の処理
@@ -281,6 +280,7 @@ void *run3(void *args){
     //２行目のクイーンの位置を固定することによってN分スレッドを分割する
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
+    //backTrack3rdLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
   return 0;
@@ -302,9 +302,16 @@ void *run2(void *args){
     l->aB[0]=l->bit=(1<<l->B1);
     //２行目のクイーンの位置を固定することによってN分スレッドを分割する
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
+
+
+
     /**/
     backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
+    //backTrack3rdLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     /**/
+
+
+
     l->EB>>=si;
   }
   return 0;
