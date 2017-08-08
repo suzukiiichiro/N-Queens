@@ -164,7 +164,7 @@ void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
         bm&=l->SM; 
       }
     }
-    if(bm & (1<<l->k)){
+    if(bm & (1<<l->j)){
       //スレッドの引数として指定した3行目のクイーンの位置jを固定で指定する
       l->aB[y]=l->bit=1<<l->j;
     }else{
@@ -208,7 +208,8 @@ void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
     //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     //3行目以降は通常のbacktrack2の処理に渡す
     //backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
 //上から１行目角にクイーンがない場合の処理
@@ -303,7 +304,6 @@ void *run2(void *args){
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     /**/
     backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
-    //backTrack3rdLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     /**/
     l->EB>>=si;
   }
@@ -346,60 +346,64 @@ void *NQueenThread(){
   //local l2[th2];//上から２行目の構造体 local型 
 
   //local l[si];          //上から１段目の構造体 local型 
-  local *l=(local*)malloc(sizeof(local*)); //B1xk
-  if( l == NULL ) { printf( "memory cannot alloc!\n" ); }
-  
-  //local l2[si][si];   //上から２行目の構造体 local型 
-  local **l2=(local**)malloc(sizeof(local*)*si); //B1xk
-  for(int j=1;j<si;j++){
-    l2[j]=(local*)malloc(sizeof(local)*si);
-    //if( l2[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+  local *l=(local*)malloc(sizeof(local*)*si); //B1xk
+  for(int B1=1;B1<si;B1++){
+    l=(local*)malloc(sizeof(local)*si);
+    if( l == NULL ) { printf( "memory cannot alloc!\n" ); }
   }
-  
+  //local l2[si][si];   //上から２行目の構造体 local型 
+  local **l2=(local**)malloc(sizeof(local*)*si*si); //B1xk
+  for(int B1=1;B1<si;B1++){
+      l2=(local**)malloc(sizeof(local)*si);
+      if( l2 == NULL ) { printf( "memory cannot alloc!\n" ); }
+    for(int j=1;j<si;j++){
+      l2[j]=(local*)malloc(sizeof(local)*si);
+      if( l2[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+    }
+  } 
   //local l3[si][si][si];   //上から２行目の構造体 local型 
-  local ***l3=(local***)malloc(sizeof(local*)*si*si); //B1xkxj
-  for(int j=0;j<si;j++){
-      l3[j]=(local**)malloc(sizeof(local)*si);
-      if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
-    for(int k=0;k<si;k++){
-      l3[j][k]=(local*)malloc(sizeof(local)*si);
-      if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); }
+  local ***l3=(local***)malloc(sizeof(local*)*si*si*si); //B1xkxj
+  for(int B1=1;B1<si;B1++){
+      l3=(local***)malloc(sizeof(local)*si);
+    for(int j=0;j<si;j++){
+        l3[j]=(local**)malloc(sizeof(local)*si);
+        if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+      for(int k=0;k<si;k++){
+        l3[j][k]=(local*)malloc(sizeof(local)*si);
+        if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); }
+      }
     }
   }
-
 //  local l3[th3];//上から３行目の構造体 local型 
   //for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
   
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     l[B1].B1=B1; 
     l[B1].B2=B2; //B1 と B2を初期化
-    for(int k=1;k<=si;k++){
+    for(int k=1;k<=siE;k++){
       //l2[si*(B1-1)+k].B1=B1; 
       //l2[si*(B1-1)+k].B2=B2;     // 上から２行目のスレッドに使う構造体B1 と B2を初期化
       l2[B1][k].B1=B1; 
       l2[B1][k].B2=B2;     // 上から２行目のスレッドに使う構造体B1 と B2を初期化
-      for(int j=1;j<=si;j++){
+      l3[B1][0][0].B2=B2;
+      for(int j=1;j<=siE;j++){
         /**/
 //        l3[si*(B1-1)+j].B1=B1; 
 //        l3[si*(B1-1)+j].B2=B2;   // 上から３行目のスレッドに使う構造体B1 と B2を初期化
-        /**
         l3[B1][k][j].B1=B1;
         l3[B1][k][j].B2=B2;
-        */
       }
     }
     for(int i=0;i<siE;i++){ 
       l[B1].aB[i]=i; // aB[]の初期化
-      for(int k=1;k<=si;k++){
+      for(int k=1;k<=siE;k++){
         //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
         //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
         l2[B1][k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
-        for(int j=1;j<=si;j++){
+        for(int j=1;j<=siE;j++){
           /**/
 //          l3[si*(B1-1)+j].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
-          /**
           l3[B1][k][j].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
-          */
         }
       }
     } 
@@ -407,36 +411,32 @@ void *NQueenThread(){
     l[B1].C2[B1][0]= 
     l[B1].C4[B1][0]=
     l[B1].C8[B1][0]=0;	//カウンターの初期化
-    for(int k=1;k<=si;k++){
+    for(int k=1;k<=siE;k++){
       //l2[si*(B1-1)+k].C2[B1][1]=l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	  //上から２行目のスレッドに使うカウンターの初期化
       l2[B1][k].C2[B1][1]=
       l2[B1][k].C4[B1][1]=
       l2[B1][k].C8[B1][1]=0;	  //上から２行目のスレッドに使うカウンターの初期化
-      for(int j=1;j<=si;j++){
+      for(int j=1;j<=siE;j++){
         /**/
 //        l3[si*(B1-1)+j].C2[B1][1]=l3[si*(B1-1)+j].C4[B1][1]=l3[si*(B1-1)+j].C8[B1][1]=0;	//上から２行目のスレッドに使うカウンターの初期化
-        /**
         l3[B1][k][j].C2[B1][1]=
           l3[B1][k][j].C4[B1][1]=
           l3[B1][k][j].C8[B1][1]=0;	//上から２行目のスレッドに使うカウンターの初期化
-        */
       }
     }
     //pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
-    for(int k=1;k<=si;k++){
+    for(int k=1;k<=siE;k++){
       //l2[si*(B1-1)+k].k=k;
       l2[B1][k].k=k;
       //pthread_create(&pt[si+si*(B1-1)+k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
       //pthread_create(&pt2[B1][k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
       pthread_create(&pt2[B1][k],NULL,&run2,(void*)&l2[B1][k]);// チルドスレッドの生成
-      for(int j=1;j<=si;j++){
+      for(int j=1;j<=siE;j++){
 //        l3[si*(B1-1)+j].j=j;
-        /**
         l3[B1][k][j].j=j;
 //        pthread_create(&pt[si+si*(B1-1)+j],NULL,&run3,(void*)&l3[si*(B1-1)+j]);// チルドスレッドの生成
         pthread_create(&pt3[B1][k][j],NULL,&run3,(void*)&l3[B1][k][j]);// チルドスレッドの生成
-        **/
       }
     }
   }
@@ -444,13 +444,11 @@ void *NQueenThread(){
     pthread_join(pt1[B1],NULL); 
   //}
   //for(int B1=1;B1<siE;B1++){ 
-    for(int k=1;k<=si;k++){
+    for(int k=1;k<=siE;k++){
       pthread_join(pt2[B1][k],NULL); 
-      for(int j=1;j<=si;j++){
+      for(int j=1;j<=siE;j++){
         //pthread_join(pt[si+si*(B1-1)+j],NULL); 
-        /**
         pthread_join(pt3[B1][k][j],NULL); 
-        */
       }
     }
   }
@@ -463,7 +461,7 @@ void *NQueenThread(){
       l[B1].C2[B1][0]+
       l[B1].C4[B1][0]+
       l[B1].C8[B1][0]; 
-    for(int k=1;k<=si;k++){
+    for(int k=1;k<=siE;k++){
       //lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
       //lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
       lTotal+=
@@ -474,11 +472,10 @@ void *NQueenThread(){
         l2[B1][k].C2[B1][1]+
         l2[B1][k].C4[B1][1]+
         l2[B1][k].C8[B1][1]; 
-      for(int j=1;j<=si;j++){
+      for(int j=1;j<=siE;j++){
         /**/
 //        lTotal+=l3[si*(B1-1)+j].C2[B1][1]*2+l3[si*(B1-1)+j].C4[B1][1]*4+l3[si*(B1-1)+j].C8[B1][1]*8;
 //        lUnique+=l3[si*(B1-1)+j].C2[B1][1]+l3[si*(B1-1)+j].C4[B1][1]+l3[si*(B1-1)+j].C8[B1][1]; 
-        /**
         lTotal+=
           l3[B1][k][j].C2[B1][1]*2+
           l3[B1][k][j].C4[B1][1]*4+
@@ -487,7 +484,6 @@ void *NQueenThread(){
           l3[B1][k][j].C2[B1][1]+
           l3[B1][k][j].C4[B1][1]+
           l3[B1][k][j].C8[B1][1]; 
-        */
       }
     }
   }
