@@ -11,8 +11,8 @@
       ロジック的にはN数倍高速化されるはず。（今回も兄の労作）
 			以下の通り、マウントされているCPUが全てフルに稼働していることがわかる。
 
-top - 05:01:06 up 3 days,  1:46,  6 users,  load average: 62.99, 49.02, 22.10
-Tasks: 305 total,   1 running, 304 sleeping,   0 stopped,   0 zombie
+top - 00:43:00 up 3 days, 21:28,  2 users,  load average: 161.01, 161.03, 161.00
+Tasks: 296 total,   1 running, 295 sleeping,   0 stopped,   0 zombie
 %Cpu0  :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
 %Cpu1  :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
 %Cpu2  :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
@@ -49,33 +49,33 @@ Tasks: 305 total,   1 running, 304 sleeping,   0 stopped,   0 zombie
 %Cpu33 :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
 %Cpu34 :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
 %Cpu35 :100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-KiB Mem : 61403004 total, 60444136 free,   557748 used,   401120 buff/cache
-KiB Swap:        0 total,        0 free,        0 used. 60330112 avail Mem 
-
+KiB Mem : 61403004 total, 60445832 free,   485444 used,   471728 buff/cache
+KiB Swap:        0 total,        0 free,        0 used. 60359736 avail Mem 
 
 
     実行結果
-   N:        Total       Unique                 dd:hh:mm:ss.ms
-   2:               0                0          00:00:00:00.00
-   3:               0                0          00:00:00:00.00
-   4:               2                1          00:00:00:00.00
-   5:              10                2          00:00:00:00.00
-   6:               4                1          00:00:00:00.00
-   7:              40                6          00:00:00:00.00
-   8:              92               12          00:00:00:00.00
-   9:             352               46          00:00:00:00.00
-  10:             724               92          00:00:00:00.00
-  11:            2680              341          00:00:00:00.00
-  12:           14200             1787          00:00:00:00.00
-  13:           73712             9233          00:00:00:00.00
-  14:          365596            45752          00:00:00:00.00
-  15:         2279184           285053          00:00:00:00.02
-  16:        14772512          1846955          00:00:00:00.12
-  17:        95815104         11977939          00:00:00:00.78
-  18:       666090624         83263591          00:00:00:05.32
-  19:      4968057848        621012754          00:00:00:39.64
-  20:     39029188884       4878666808          00:00:05:05.33
-  21:    314666222712      39333324973          00:00:41:31.41
+ N:        Total       Unique                 dd:hh:mm:ss.ms
+ 2:               0                0          00:00:00:00.00
+ 3:               0                0          00:00:00:00.00
+ 4:               2                1          00:00:00:00.00
+ 5:              10                2          00:00:00:00.00
+ 6:               4                1          00:00:00:00.00
+ 7:              40                6          00:00:00:00.00
+ 8:              92               12          00:00:00:00.00
+ 9:             352               46          00:00:00:00.00
+10:             724               92          00:00:00:00.00
+11:            2680              341          00:00:00:00.00
+12:           14200             1787          00:00:00:00.00
+13:           73712             9233          00:00:00:00.00
+14:          365596            45752          00:00:00:00.00
+15:         2279184           285053          00:00:00:00.02
+16:        14772512          1846955          00:00:00:00.12
+17:        95815104         11977939          00:00:00:00.78
+18:       666090624         83263591          00:00:00:05.32
+19:      4968057848        621012754          00:00:00:39.64
+20:     39029188884       4878666808          00:00:05:05.33
+21:    314666222712      39333324973          00:00:41:31.41
+22:   2691008701644     336376244042          00:06:01:35.36
 
   参考（Bash版 07_8NQueen.lua）
   13:           73712             9233                99
@@ -146,6 +146,7 @@ typedef struct{
 }local ;
 
 void symmetryOps_bm(local *l);
+void backTrack3(int y,int left,int down,int right,int bm,local *l);
 void backTrack2(int y,int left,int down,int right,int bm,local *l2);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
 void *run(void *args);
@@ -316,12 +317,15 @@ void *run2(void *args){
   return 0;
 }
 void *NQueenThread(){
-  pthread_t pt[si*si+si];//スレッド childThread
+  //pthread_t pt[si*si+si];//スレッド childThread
+  pthread_t pt1[si];//スレッド childThread
+  pthread_t pt2[si][si];//スレッド childThread
   local l[si];//構造体 local型 
   //backtrack2の処理に必要な構造体の数を算定する
   //1行目のクイーンのパタン*2行目のクイーンのパタン
   //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
   //2行目 N個
+/*
   int th=0;
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
     for(int k=1;k<=si;k++){
@@ -329,33 +333,46 @@ void *NQueenThread(){
     }
   }
   local l2[th];//構造体 local型 
+*/
+  local l2[si][si];
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
     for(int k=1;k<=si;k++){
-      l2[si*(B1-1)+k].B1=B1; l2[si*(B1-1)+k].B2=B2; //B1 と B2を初期化
+      //l2[si*(B1-1)+k].B1=B1; l2[si*(B1-1)+k].B2=B2; //B1 と B2を初期化
+      l2[B1][k].B1=B1; l2[B1][k].B2=B2; //B1 と B2を初期化
     }
     for(int j=0;j<siE;j++){ 
       l[B1].aB[j]=j; // aB[]の初期化
       for(int k=1;k<=si;k++){
-        l2[si*(B1-1)+k].aB[j]=j; // aB[]の初期化
+        //l2[si*(B1-1)+k].aB[j]=j; // aB[]の初期化
+        l2[B1][k].aB[j]=j; // aB[]の初期化
       }
     } 
-    l[B1].C2[B1][0]=l[B1].C4[B1][0]=l[B1].C8[B1][0]=0;	//カウンターの初期化
-    pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
+    l[B1].C2[B1][0]=
+      l[B1].C4[B1][0]=
+      l[B1].C8[B1][0]=0;	//カウンターの初期化
+    pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     for(int k=1;k<=si;k++){
-    l2[si*(B1-1)+k].C2[B1][1]=l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	//カウンターの初期化
+    //l2[si*(B1-1)+k].C2[B1][1]=l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	//カウンターの初期化
+    l2[B1][k].C2[B1][1]=
+      //l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	//カウンターの初期化
+      l2[B1][k].C4[B1][1]=
+      l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
     }
     for(int k=1;k<=si;k++){
-      l2[si*(B1-1)+k].k=k;
-      pthread_create(&pt[si+si*(B1-1)+k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
+      //l2[si*(B1-1)+k].k=k;
+      l2[B1][k].k=k;
+      //pthread_create(&pt[si+si*(B1-1)+k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
+      pthread_create(&pt2[B1][k],NULL,&run2,(void*)&l2[B1][k]);// チルドスレッドの生成
     }
   }
   for(int B1=1;B1<siE;B1++){ 
-    pthread_join(pt[B1],NULL); 
-  }
-  for(int B1=1;B1<siE;B1++){ 
+    pthread_join(pt1[B1],NULL); 
+  //}
+  //for(int B1=1;B1<siE;B1++){ 
     for(int k=1;k<=si;k++){
-      pthread_join(pt[si+si*(B1-1)+k],NULL); 
+      //pthread_join(pt[si+si*(B1-1)+k],NULL); 
+      pthread_join(pt2[B1][k],NULL); 
     }
   }
 /**
@@ -369,11 +386,21 @@ void *NQueenThread(){
   }
 */
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
-    lTotal+=l[B1].C2[B1][0]*2+l[B1].C4[B1][0]*4+l[B1].C8[B1][0]*8;
-    lUnique+=l[B1].C2[B1][0]+l[B1].C4[B1][0]+l[B1].C8[B1][0]; 
+    lTotal+=l[B1].C2[B1][0]*2+
+      l[B1].C4[B1][0]*4+
+      l[B1].C8[B1][0]*8;
+    lUnique+=l[B1].C2[B1][0]+
+      l[B1].C4[B1][0]+
+      l[B1].C8[B1][0]; 
     for(int k=1;k<=si;k++){
-      lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
-      lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
+      //lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
+      lTotal+=l2[B1][k].C2[B1][1]*2+
+        l2[B1][k].C4[B1][1]*4+
+        l2[B1][k].C8[B1][1]*8;
+      //lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
+      lUnique+=l2[B1][k].C2[B1][1]+
+        l2[B1][k].C4[B1][1]+
+        l2[B1][k].C8[B1][1]; 
     }
   }
   return 0;
