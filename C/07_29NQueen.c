@@ -172,9 +172,7 @@ void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       return;
     }
-    //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     //4行目以降は通常のbacktrack2の処理に渡す
-    //backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
@@ -206,9 +204,7 @@ void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       return;
     }
-    //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-    //3行目以降は通常のbacktrack2の処理に渡す
-    //backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
     backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
@@ -241,6 +237,7 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
     }
   }
 }
+//backtrack1の3行目のクイーンの値を固定
 void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); 
   l->bit=0;
@@ -254,12 +251,13 @@ void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
       bm&=~2; 
     }
     if(bm & (1<<l->k)){
-      //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
+      //スレッドの引数として指定した3行目のクイーンの位置kを固定で指定する
       l->aB[y]=l->bit=1<<l->k;
     }else{
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       return;
     }
+    //4行目以降はbacktrack1の処理
       cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   } 
 }
@@ -286,8 +284,8 @@ void cornerQ(int y,int left,int down,int right,int bm,local *l){
   } 
 }
 //backtrack2のマルチスレッド処理
-//今までは１行目にクイーンを置ける可能性のある数分スレッドが立っていたが
-//１行目のクイーンが配置可能数*２行目のクイーンが配置可能数分スレッドがたつ
+//３行目のクイーンの位置まで固定して別スレッドで走らせる
+//NXNXNスレッドが立っている
 void *run3(void *args){
   local *l=(local *)args;
   l->msk=(1<<si)-1; l->TB=1<<siE;
@@ -303,7 +301,6 @@ void *run3(void *args){
     //２行目のクイーンの位置を固定することによってN分スレッドを分割する
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
-    //backTrack3rdLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
   return 0;
@@ -311,38 +308,105 @@ void *run3(void *args){
 //backtrack1のマルチスレッド処理
 void *run(void *args){
   local *l=(local *)args;
-  l->bit=0 ; l->aB[0]=1; l->msk=(1<<si)-1; l->TB=1<<siE; l->BK=0;
+  l->bit=0 ; 
+  //backtrack1は1行目のクイーンの位置を右端に固定
+  l->aB[0]=1; 
+  l->msk=(1<<si)-1; l->TB=1<<siE; l->BK=0;
   if(l->B1>1 && l->B1<siE) { // 最上段のクイーンが角にある場合の探索
+    //backtrack1は2行目のクイーンの位置はl->B1
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
-    //backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
+    //3行目をkの値に固定する
     backTrack1stLine(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
   }
   return 0;
 }
 void *NQueenThread(){
-  //pthread_t pt[si*si+si];//スレッド childThread
+  //Nの数だけスレッドをもたせて同時並列処理をする
+  //backtrack1
+  //スレッド数は1xNxN
+  //1行目 クイーンは右端に固定
+  //2行目 B1の値によってスレッドを分割する
+  //3行目 kの値によってスレッドを分割する
+  //N=4の場合のスレッドの例
+  //aB[0]は１行目のクイーンの位置、aB[1]は２行目のクイーンの位置、aB[2]は３行目のクイーンの位置
+  //backtrack1の場合は１行目のクイーンの位置は右端1に固定
+  //aB[0]=1,aB[1]=1,aB[2]=1
+  //aB[0]=1,aB[1]=1,aB[2]=2
+  //aB[0]=1,aB[1]=1,aB[2]=3
+  //aB[0]=1,aB[1]=1,aB[2]=4
+  //aB[0]=1,aB[1]=2,aB[2]=1
+  //aB[0]=1,aB[1]=2,aB[2]=2
+  //aB[0]=1,aB[1]=2,aB[2]=3
+  //aB[0]=1,aB[1]=2,aB[2]=4
+  //aB[0]=1,aB[1]=3,aB[2]=1
+  //aB[0]=1,aB[1]=3,aB[2]=2
+  //aB[0]=1,aB[1]=3,aB[2]=3
+  //aB[0]=1,aB[1]=3,aB[2]=4
+  //aB[0]=1,aB[1]=4,aB[2]=1
+  //aB[0]=1,aB[1]=4,aB[2]=2
+  //aB[0]=1,aB[1]=4,aB[2]=3
+  //aB[0]=1,aB[1]=4,aB[2]=4
   pthread_t pt1[si][si];    //上から１段目のスレッド childThread
+  //backtrack2
+  //スレッド数はNxNxN
+  //1行目 B1の値によってスレッドを分割する
+  //2行目 kの値によってスレッドを分割する
+  //3行目 jの値によってスレッドを分割する
+  //N=4の場合のスレッドの例
+  //aB[0]は１行目のクイーンの位置、aB[1]は２行目のクイーンの位置
+  //backtrack2の場合は１行目のクイーンの位置は右端以外2~4
+  //２行目、３行目は1~4
+  //aB[0]=2,aB[1]=1,aB[2]=1
+  //aB[0]=2,aB[1]=1,aB[2]=2
+  //aB[0]=2,aB[1]=1,aB[2]=3
+  //aB[0]=2,aB[1]=1,aB[2]=4
+  //aB[0]=2,aB[1]=2,aB[2]=1
+  //aB[0]=2,aB[1]=2,aB[2]=2
+  //aB[0]=2,aB[1]=2,aB[2]=3
+  //aB[0]=2,aB[1]=2,aB[2]=4
+  //aB[0]=2,aB[1]=3,aB[2]=1
+  //aB[0]=2,aB[1]=3,aB[2]=2
+  //aB[0]=2,aB[1]=3,aB[2]=3
+  //aB[0]=2,aB[1]=3,aB[2]=4
+  //aB[0]=2,aB[1]=4,aB[2]=1
+  //aB[0]=2,aB[1]=4,aB[2]=2
+  //aB[0]=2,aB[1]=4,aB[2]=3
+  //aB[0]=2,aB[1]=4,aB[2]=4
+  //aB[0]=3,aB[1]=1,aB[2]=1
+  //aB[0]=3,aB[1]=1,aB[2]=2
+  //aB[0]=3,aB[1]=1,aB[2]=3
+  //aB[0]=3,aB[1]=1,aB[2]=4
+  //aB[0]=3,aB[1]=2,aB[2]=1
+  //aB[0]=3,aB[1]=2,aB[2]=2
+  //aB[0]=3,aB[1]=2,aB[2]=3
+  //aB[0]=3,aB[1]=2,aB[2]=4
+  //aB[0]=3,aB[1]=3,aB[2]=1
+  //aB[0]=3,aB[1]=3,aB[2]=2
+  //aB[0]=3,aB[1]=3,aB[2]=3
+  //aB[0]=3,aB[1]=3,aB[2]=4
+  //aB[0]=3,aB[1]=4,aB[2]=1
+  //aB[0]=3,aB[1]=4,aB[2]=2
+  //aB[0]=3,aB[1]=4,aB[2]=3
+  //aB[0]=3,aB[1]=4,aB[2]=4
+  //aB[0]=4,aB[1]=1,aB[2]=1
+  //aB[0]=4,aB[1]=1,aB[2]=2
+  //aB[0]=4,aB[1]=1,aB[2]=3
+  //aB[0]=4,aB[1]=1,aB[2]=4
+  //aB[0]=4,aB[1]=2,aB[2]=1
+  //aB[0]=4,aB[1]=2,aB[2]=2
+  //aB[0]=4,aB[1]=2,aB[2]=3
+  //aB[0]=4,aB[1]=2,aB[2]=4
+  //aB[0]=4,aB[1]=3,aB[2]=1
+  //aB[0]=4,aB[1]=3,aB[2]=2
+  //aB[0]=4,aB[1]=3,aB[2]=3
+  //aB[0]=4,aB[1]=3,aB[2]=4
+  //aB[0]=4,aB[1]=4,aB[2]=1
+  //aB[0]=4,aB[1]=4,aB[2]=2
+  //aB[0]=4,aB[1]=4,aB[2]=3
+  //aB[0]=4,aB[1]=4,aB[2]=4
   pthread_t pt3[si][si][si];//上から２段目のスレッド childThread
 
-  //backtrack2の処理に必要な構造体の数を算定する
-  //1行目のクイーンのパタン*2行目のクイーンのパタン
-  //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
-  //2行目 N個
-  /**
-  int th2=0; //上から２行目に必要な構造体の数
-  int th3=0; //上から３行目に必要な構造体の数
-  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
-    for(int k=1;k<=si;k++){
-      th2++;  //上から２行目に必要な構造体の数
-      for(int j=1;j<=si;j++){
-        th3++;//上から３行目に必要な構造体の数
-      }
-    }
-  }
-  */
-  //local l2[th2];//上から２行目の構造体 local型 
-  //local l2[th2];//上から２行目の構造体 local型 
-
+  //local l[si];   //構造体 local型 
   local **l=(local**)malloc(sizeof(local*)*si*si); //B1xk
   for(int B1=1;B1<si;B1++){
       l=(local**)malloc(sizeof(local)*si);
@@ -352,7 +416,7 @@ void *NQueenThread(){
       if( l[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
     }
   } 
-  //local l3[si][si][si];   //上から２行目の構造体 local型 
+  //local l3[si][si][si];   //構造体 local型 
   local ***l3=(local***)malloc(sizeof(local*)*si*si*si); //B1xkxj
   for(int B1=1;B1<=si;B1++){
       l3=(local***)malloc(sizeof(local)*si);
@@ -365,64 +429,56 @@ void *NQueenThread(){
       }
     }
   }
-//  local l3[th3];//上から３行目の構造体 local型 
-  //for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
   
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+  //1行目のクイーンのパタン*2行目のクイーンのパタン
+  //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
+  //B1 と B2を初期化
     for(int k=0;k<si;k++){
+      //backtrack1のB1
       l[B1][k].B1=B1; 
-      l[B1][k].B2=B2;     // 上から２行目のスレッドに使う構造体B1 と B2を初期化
+      l[B1][k].B2=B2;     
       for(int j=0;j<si;j++){
-        /**/
-//        l3[si*(B1-1)+j].B1=B1; 
-//        l3[si*(B1-1)+j].B2=B2;   // 上から３行目のスレッドに使う構造体B1 と B2を初期化
         l3[B1][k][j].B1=B1;
         l3[B1][k][j].B2=B2;
       }
     }
+  //aB[]の初期化
     for(int i=0;i<siE;i++){ 
       for(int k=0;k<si;k++){
-          l[B1][k].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
-        //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
-        //l2[si*(B1-1)+k].aB[i]=i;    // 上から２行目のスレッドに使う構造体aB[]の初期化
-        for(int j=0;j<si;j++){
-          /**/
-//          l3[si*(B1-1)+j].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
+          l[B1][k].aB[i]=i;
+          for(int j=0;j<si;j++){
           l3[B1][k][j].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
         }
       }
     } 
-
+   //カウンターの初期化
     for(int k=0;k<si;k++){
-      //l2[si*(B1-1)+k].C2[B1][1]=l2[si*(B1-1)+k].C4[B1][1]=l2[si*(B1-1)+k].C8[B1][1]=0;	  //上から２行目のスレッドに使うカウンターの初期化
         l[B1][k].C2[B1][0]=
           l[B1][k].C4[B1][0]=
-          l[B1][k].C8[B1][0]=0;	//上から２行目のスレッドに使うカウンターの初期化
+          l[B1][k].C8[B1][0]=0;	
       for(int j=0;j<si;j++){
-        /**/
-//        l3[si*(B1-1)+j].C2[B1][1]=l3[si*(B1-1)+j].C4[B1][1]=l3[si*(B1-1)+j].C8[B1][1]=0;	//上から２行目のスレッドに使うカウンターの初期化
         l3[B1][k][j].C2[B1][1]=
           l3[B1][k][j].C4[B1][1]=
-          l3[B1][k][j].C8[B1][1]=0;	//上から２行目のスレッドに使うカウンターの初期化
+          l3[B1][k][j].C8[B1][1]=0;	
       }
     }
-    //pthread_create(&pt[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
+    //backtrack1のチルドスレッドの生成
+    //B,kのfor文の中で回っているのでスレッド数はNxN
     for(int k=0;k<si;k++){
       l[B1][k].k=k;
       pthread_create(&pt1[B1][k],NULL,&run,(void*)&l[B1][k]);// チルドスレッドの生成
-      //pthread_create(&pt2[B1][k],NULL,&run2,(void*)&l2[si*(B1-1)+k]);// チルドスレッドの生成
+    //backtrack2のチルドスレッドの生成
+    //B,k,jのfor文の中で回っているのでスレッド数はNxNXN
       for(int j=0;j<si;j++){
-//        l3[si*(B1-1)+j].j=j;
         l3[B1][k][j].k=k;
         l3[B1][k][j].j=j;
-//        pthread_create(&pt[si+si*(B1-1)+j],NULL,&run3,(void*)&l3[si*(B1-1)+j]);// チルドスレッドの生成
         pthread_create(&pt3[B1][k][j],NULL,&run3,(void*)&l3[B1][k][j]);// チルドスレッドの生成
       }
     }
   }
+  //スレッドのjoin
   for(int B1=1;B1<siE;B1++){ 
-  //}
-  //for(int B1=1;B1<siE;B1++){ 
     for(int k=0;k<si;k++){
         pthread_join(pt1[B1][k],NULL); 
       for(int j=0;j<si;j++){
@@ -430,8 +486,10 @@ void *NQueenThread(){
       }
     }
   }
-  for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
+  //スレッド毎のカウンターを合計
+  for(int B1=1;B1<siE;B1++){
     for(int k=0;k<si;k++){
+    //backtrack1の集計
     lTotal+=
       l[B1][k].C2[B1][0]*2+
       l[B1][k].C4[B1][0]*4+
@@ -440,12 +498,8 @@ void *NQueenThread(){
       l[B1][k].C2[B1][0]+
       l[B1][k].C4[B1][0]+
       l[B1][k].C8[B1][0]; 
-      //lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
-      //lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
       for(int j=0;j<si;j++){
-        /**/
-//        lTotal+=l3[si*(B1-1)+j].C2[B1][1]*2+l3[si*(B1-1)+j].C4[B1][1]*4+l3[si*(B1-1)+j].C8[B1][1]*8;
-//        lUnique+=l3[si*(B1-1)+j].C2[B1][1]+l3[si*(B1-1)+j].C4[B1][1]+l3[si*(B1-1)+j].C8[B1][1]; 
+    //backtrack2の集計
         lTotal+=
           l3[B1][k][j].C2[B1][1]*2+
           l3[B1][k][j].C4[B1][1]*4+
