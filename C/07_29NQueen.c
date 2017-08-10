@@ -3,27 +3,52 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
- <>28．さらにマルチスレッド 			        NQueen28() N17=
+ <>29．マルチスレッドもっと最適化    			        NQueen29() N17=
+ 実行結果は次に期待。  
   
+ 07_27NQueen
+ ------------
+       87654321 backtrack1        
+ 1行目□□□□□□□□               backtrack1は1行目が右端の場合の処理  
+ 2行目□□□□□□□□            □  1行目は右端固定  
+ 3行目□□□□□□□□    □□□□□□□□□  2行目はB1の値に配置
+ 4行目□□□□□□□□               スレッド数は 1xN=N個        
+ 5行目□□□□□□□□   
+ 6行目□□□□□□□□  backtrack2
+ 7行目□□□□□□□□               backtrack2は1行目のクイーン位置が右端の場合以外 
+ 8行目□□□□□□□□  □□□□□□□□     1行目が右端以外 B1の値に配置
+                             スレッド数は N-1個
+ 
+ 07_28NQueen
+ ------------
+ スレッド数を増加させるために
+ 3行目までクイーンの位置を固定値で設定し別スレッドで処理するようにした
+ 暫定的に3行目まで位置を指定しているが、PCのリソースが許せば、3行目以降も
+ 位置を指定してスレッド数を増加させることが可能。
+ 1行追加されるたびにN倍スレッドが細分化されることになる。
 
-  参考（Bash版 07_8NQueen.lua）
-  13:           73712             9233                99
-  14:          365596            45752               573
-  15:         2279184           285053              3511
+       87654321 backtrack1        
+ 1行目□□□□□□□□              backtrack1は1行目が右端の場合の処理  
+ 2行目□□□□□□□□          □   1行目は右端固定  
+ 3行目□□□□□□□□  □□□□□□□□□   2行目はB1の値に配置
+ 4行目□□□□□□□□  |     |     |         |     3行目はkの値に配置      
+ 5行目□□□□□□□□  □□□□  □□□□  □□□□  ・・□□□□       
+ 6行目□□□□□□□□ □□□□  □□□□  □□□□     □□□□ 
+ 7行目□□□□□□□□       
+ 8行目□□□□□□□□              スレッド数は 1xNxN=NxN個            
 
-  参考（Lua版 07_8NQueen.lua）
-  14:          365596            45752          00:00:00
-  15:         2279184           285053          00:00:03
-  16:        14772512          1846955          00:00:20
 
-  参考（Java版 NQueen8.java マルチスレット）
-  16:        14772512          1846955          00:00:00
-  17:        95815104         11977939          00:00:04
-  18:       666090624         83263591          00:00:34
-  19:      4968057848        621012754          00:04:18
-  20:     39029188884       4878666808          00:35:07
-  21:    314666222712      39333324973          04:41:36
-  22:   2691008701644     336376244042          39:14:59
+                backtrack2
+                           backtrack2は1行目が右端以外の処理             
+                □□□□□□□□   1行目が右端以外 B1の値に配置    
+                |    |     |          |
+               □□□□  □□□□  □□□□  ・・ □□□□  2行目はkの値に配置
+              □□□□  □□□□  □□□□       □□□□
+          |   |     |     |      |     |         |
+        □□□□  □□□□  □□□□  □□□□   □□□□  □□□□  ・・□□□□  3行目はjの値に配置
+       □□□□  □□□□  □□□□  □□□□   □□□□  □□□□      □□□□   
+                           スレッド数は (N-1)xNxN個
+
  *
 */
 
@@ -208,6 +233,30 @@ void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
     backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
+//backtrack1の3行目のクイーンの値を固定
+void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
+  bm=l->msk&~(left|down|right); 
+  l->bit=0;
+  if(y==siE) {
+    if(bm>0){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      l->aB[y]=bm;
+      l->C8[l->B1][l->BK]++;
+    }
+  }else{
+    if(y<l->B1) { //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい  
+      bm&=~2; 
+    }
+    if(bm & (1<<l->k)){
+      //スレッドの引数として指定した3行目のクイーンの位置kを固定で指定する
+      l->aB[y]=l->bit=1<<l->k;
+    }else{
+      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      return;
+    }
+    //4行目以降はbacktrack1の処理
+      cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+  } 
+}
 //上から１行目角にクイーンがない場合の処理
 //void backTrack2(int y,int left,int down,int right,int bm,local *l){
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
@@ -236,30 +285,6 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
       NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
-}
-//backtrack1の3行目のクイーンの値を固定
-void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
-  bm=l->msk&~(left|down|right); 
-  l->bit=0;
-  if(y==siE) {
-    if(bm>0){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      l->aB[y]=bm;
-      l->C8[l->B1][l->BK]++;
-    }
-  }else{
-    if(y<l->B1) { //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい  
-      bm&=~2; 
-    }
-    if(bm & (1<<l->k)){
-      //スレッドの引数として指定した3行目のクイーンの位置kを固定で指定する
-      l->aB[y]=l->bit=1<<l->k;
-    }else{
-      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
-      return;
-    }
-    //4行目以降はbacktrack1の処理
-      cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-  } 
 }
 //上から１行目角にクイーンがある場合の処理
 //void backTrack1(int y,int left,int down,int right,int bm,local *l){
