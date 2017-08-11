@@ -46,6 +46,15 @@ void symmetryOps_bm(local *l);
 void backTrack2(int y,int left,int down,int right,int bm,local *l);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
 void NQueen();
+void dtob(int score,int si) {
+  int bit=1; char c[si];
+  for (int i=0;i<si;i++) {
+    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
+    bit<<=1;
+  }
+  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
+  printf("\n");
+}
 
 
 #ifdef DEBUG
@@ -161,7 +170,20 @@ void symmetryOps_bm(local *l){
   }
 }
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
-  bm=l->msk&~(left|down|right); //配置可能フィールド
+  printf("si:%d:B1:%d:y:%d:bk2\n",si,l->B1,y);
+  printf("msk\n");
+  dtob(l->msk,si);
+  printf("left\n");
+  dtob(left,si);
+  printf("down\n");
+  dtob(down,si);
+  printf("right\n");
+  dtob(right,si);
+  printf("bbm\n");
+  dtob(bm,si);
+  bm=l->msk&~(left|down|right); 
+  printf("abm:%d\n",bm);
+  dtob(bm,si);
   l->bit=0;
   if(y==siE){
     if(bm>0 && (bm&l->LM)==0){  //【枝刈り】最下段枝刈り
@@ -170,19 +192,65 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
     }
   }else{
     if(y<l->B1){                //【枝刈り】上部サイド枝刈り
+      printf("y<l->B1\n");
+      printf("y:%d\n",y);
+      printf("B1:%d\n",l->B1);
+      printf("bbm\n");
+      dtob(bm,si);
+      printf("SM\n");
+      dtob(l->SM,si);
       bm&=~l->SM; 
+      printf("abm:%d\n",bm);
+      dtob(bm,si);
     }else if(y==l->B2) {        //【枝刈り】下部サイド枝刈り
-      if((down&l->SM)==0){ return; }
-      if((down&l->SM)!=l->SM){ bm&=l->SM; }
+      printf("y==l->B2\n");
+      printf("y:%d\n",y);
+      printf("B2:%d\n",l->B2);
+      if((down&l->SM)==0){ 
+        printf("down:%d\n",down);
+        dtob(down,si);
+        printf("SM:%d\n",l->SM);
+        dtob(l->SM,si);
+        return; 
+      }
+      if((down&l->SM)!=l->SM){ 
+        printf("down:%d\n",down);
+        dtob(down,si);
+        printf("SM:%d\n",l->SM);
+        dtob(l->SM,si);
+        printf("bbm\n");
+        dtob(bm,si);
+        bm&=l->SM; 
+        printf("abm:%d\n",bm);
+        dtob(bm,si);
+      }
     }
     while(bm>0) {
+      printf("bm>0:bm^=l->aB[y]=l->bit=-bm&bm\n");
+      printf("bbm\n");
+      dtob(bm,si);
       bm^=l->aB[y]=l->bit=-bm&bm;//最も下位の１ビットを抽出
+      printf("abm:%d\n",bm);
+      dtob(bm,si);
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
 }
 void backTrack1(int y,int left,int down,int right,int bm,local *l){
+  printf("si:%d:B1:%d:y:%d:bk1\n",si,l->B1,y);
+  printf("msk\n");
+  dtob(l->msk,si);
+  printf("left\n");
+  dtob(left,si);
+  printf("down\n");
+  dtob(down,si);
+  printf("right\n");
+  dtob(right,si);
+  printf("bbm\n");
+  dtob(bm,si);
   bm=l->msk&~(left|down|right); 
+  printf("abm:%d\n",bm);
+  dtob(bm,si);
   l->bit=0;
   if(y==siE) {
     if(bm>0){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
@@ -192,10 +260,22 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
     }
   }else{
     if(y<l->B1) {   //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      printf("y<l->B1\n");
+      printf("y:%d\n",y);
+      printf("B1:%d\n",l->B1);
+      printf("bbm\n");
+      dtob(bm,si);
       bm&=~2; 
+      printf("abm:%d\n",bm);
+      dtob(bm,si);
     }
     while(bm>0) {   //最も下位の１ビットを抽出
+      printf("bm>0:bm^=l->aB[y]=l->bit=-bm&bm\n");
+      printf("bbm\n");
+      dtob(bm,si);
       bm^=l->aB[y]=l->bit=-bm&bm;
+      printf("abm:%d\n",bm);
+      dtob(bm,si);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   } 
@@ -231,7 +311,7 @@ int main(int argc, char *argv[]){
   siE=si-1;
   B1=atoi(argv[2]);
   B2=atoi(argv[3]);
-  printf("si:%d:B1:%d:B2:%d",si,B1,B2);
+  printf("########si:%d:B1:%d:B2:%d\n",si,B1,B2);
   NQueen();
   return 0;
 }
