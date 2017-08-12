@@ -14,7 +14,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#define MAX 17 
+#define MAX 8
 #define DEBUG 1
 
 #ifdef _GNU_SOURCE
