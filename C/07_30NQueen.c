@@ -120,14 +120,14 @@ void NQueen();
 
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
-  l->C8[l->B1][l->BK]++;
-  if(DEBUG>0) thMonitor(l,8); 
+  //l->C8[l->B1][l->BK]++;
+  //if(DEBUG>0) thMonitor(l,8); 
   //90度回転
   if(l->aB[l->B2]==1){ 
     for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
       for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1][l->BK]--; 
+        //l->C8[l->B1][l->BK]--; 
         return; 
       }else if(l->aB[l->own]<l->bit){ 
         break; 
@@ -137,7 +137,7 @@ void symmetryOps_bm(local *l){
     if(l->own>siE){ 
       l->C2[l->B1][l->BK]++;
       if(DEBUG>0) thMonitor(l,2); 
-      l->C8[l->B1][l->BK]--;
+      //l->C8[l->B1][l->BK]--;
       return ; 
     } 
   }
@@ -146,7 +146,7 @@ void symmetryOps_bm(local *l){
     for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
       for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1][l->BK]--; 
+        //l->C8[l->B1][l->BK]--; 
         return; 
       } 
       else if(l->aB[l->own]<l->bit){ 
@@ -157,7 +157,7 @@ void symmetryOps_bm(local *l){
     if(l->own>siE){ 
       l->C4[l->B1][l->BK]++;
       if(DEBUG>0) thMonitor(l,4); 
-      l->C8[l->B1][l->BK]--;
+      //l->C8[l->B1][l->BK]--;
       return; 
     } 
   }
@@ -166,7 +166,7 @@ void symmetryOps_bm(local *l){
     for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
       for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
       if(l->aB[l->own]>l->bit){ 
-        l->C8[l->B1][l->BK]--; 
+        //l->C8[l->B1][l->BK]--; 
         return; 
       } 
       else if(l->aB[l->own]<l->bit){ 
@@ -174,6 +174,8 @@ void symmetryOps_bm(local *l){
       }
     }
   }
+  l->C8[l->B1][l->BK]++;
+  if(DEBUG>0) thMonitor(l,8); 
 }
 //backtrack2の3行目の列数を固定して場合分けすることによりスレッドを分割する
 //void backTrack3(int y,int left,int down,int right,int bm,local *l){
