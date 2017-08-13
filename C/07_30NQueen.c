@@ -271,9 +271,29 @@ void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
 //void backTrack2(int y,int left,int down,int right,int bm,local *l){
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
+  //bmはクイーンが置ける場所
+  //l->msk はsi分1が並んでいる
+  //そこから引数に渡されてきたleft,right,downを取り除く。
+  //msk
+  //11111111
+  //left
+  //00011000
+  //down
+  //00001010
+  //right
+  //00000100
+  //bmp
+  //11100001
   l->bit=0;
   if(y==siE){
+  //yが1番下に来たら
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
+      //1番下の行にクイーンを置けるか判定する
+      //bmは残り1個しか残っていないので bm>0かどうかだけ判定し
+      //0だったら配置する場所がないので抜ける
+      //0より大きければ最下位のビットを抽出するまでものくその値がaB[y]になる
+      //bm:   00001000
+      //l->aB:00001000
       l->aB[y]=bm;
       symmetryOps_bm(l);//対称解除法
     }
@@ -289,9 +309,36 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
       }
     }
     while(bm>0) {
-      bm^=l->aB[y]=l->bit=-bm&bm;//最も下位の１ビットを抽出
-      //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      //backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+      //bmが0になると抜ける
+      //最も下位の1をとってaB[y],l->bitに設定する
+      //bmが0になるとクイーンを置ける可能性がある場所がなくなるので抜ける
+      //yが最後まで行っていなくてもbmが0になれば抜ける
+      bm^=l->aB[y]=l->bit=-bm&bm;
+      //最も下位の１ビットを抽出
+      //bmの中で1番桁数が少ない1を0にする
+      //aB[y],l->bitにその値を設定する
+      //11100001
+      //この場合1番桁数の低い右端の1が選択される
+      //aB[y]
+      //00000001
+      //bm
+      //11100000
+      //次のbacktrackに渡すleft,down,rightを設定する
+      //left,down,rightは、y1から蓄積されていく
+      //left はleft(今までのleftライン)とl->bit(今回選択されたクイーンの位置)を左に1ビットシフト
+      //left        00110010
+      //l->bit      00000100
+      //left|l->bit 00110110
+      //1bit左シフト01101100
+      //downはdown(今までのdownライン) と l->bit(今回選択されたクイーンの位置)
+      //down        00001011
+      //l->bit      00000100
+      //down|l->bit 00001111
+      //rightはright(今までのrightライン)とl->bit(今回選択されたクイーンの位置)を右に1ビットシフト
+      //right       00000010
+      //l->bit      00000100
+      //right|l->bit00000110
+      //1bit右シフト00000011
       NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
