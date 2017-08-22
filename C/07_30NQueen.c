@@ -15,8 +15,14 @@
 #include <pthread.h>
 #include "unistd.h"
 
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/cl.h>
+#endif
+
 #define MAX 8
-#define DEBUG 1
+#define DEBUG 0
 
 #ifdef _GNU_SOURCE
 /** cpu affinityを有効にするときは以下の１行（#define _GNU_SOURCE)を、
@@ -71,7 +77,6 @@ void hoge(){
 #endif
 
 void thMonitor(local *l,int i){
-  /**
   printf("\033[G");
   if(i==2){
     printf("\rN:%2d C2[%c] C4[ ] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C2[l->B1][l->BK]%spl],l->B1,l->B2);
@@ -85,7 +90,6 @@ void thMonitor(local *l,int i){
   else if(i==82){ 
     printf("\rN:%2d C2[ ] C4[ ] C8[ ] C8BT[%c] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1][l->BK]%spl],l->B1,l->B2);
   }
-  */
   printf("\033[G");
   for (int y=0;y<si;y++) {
     for (l->bit=l->TB; l->bit; l->bit>>=1){

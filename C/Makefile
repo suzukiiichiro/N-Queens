@@ -3,8 +3,11 @@
 # Linux ###
 CC=/usr/bin/gcc
 
+
 # mac #######################################################
 # llvm
+CC=/Library/Developer/CommandLineTools/usr/bin/gcc
+#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
 #CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
 #LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
 #CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
@@ -16,9 +19,9 @@ CC=/usr/bin/gcc
 # export LLVM_CONFIG="/usr/local/Cellar/llvm/4.0.1/bin/llvm-config";
 
 # gcc-7
-#CC=/usr/local/Cellar/gcc/7.1.0/bin/gcc-7
-#LDFLAGS=-L/usr/local/Cellar/gcc/7.1.0/lib
-#CPPFLAGS=-I/usr/local/Cellar/gcc/7.1.0/include
+#CC=/usr/local/Cellar/gcc/7.2.0/bin/gcc-7
+#LDFLAGS=-L/usr/local/Cellar/gcc/7.2.0/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc/7.2.0/include
 
 # gcc-6
 #CC=/usr/local/Cellar/gcc\@6/6.4.0/bin/gcc-6
@@ -31,9 +34,9 @@ CC=/usr/bin/gcc
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@5/5.4.0_1/include
 
 # gcc-4
-CC=/usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9
-LDFLAGS=-L/usr/local/Cellar/gcc@4.9/4.9.4/lib
-CPPFLAGS=-I/usr/local/Cellar/gcc@4.9/4.9.4/include
+#CC=/usr/local/Cellar/gcc\@4.9/4.9.4/bin/gcc-4.9
+#LDFLAGS=-L/usr/local/Cellar/gcc\@4.9/4.9.4/lib
+#CPPFLAGS=-I/usr/local/Cellar/gcc\@4.9/4.9.4/include
 
 
 #デバッグ時
@@ -50,6 +53,11 @@ RM=rm -fr
 # Linux #######################################################
 #LDFLAGS=-L
 #CPPFLAGS=-I
+
+nq30=07_30NQueen
+nq30: $(nq30).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq30) $(nq30).c -lpthread
+	./$(nq30)
 
 nq29=07_29NQueen
 nq29: $(nq29).c 
