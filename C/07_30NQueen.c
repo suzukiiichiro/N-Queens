@@ -22,7 +22,7 @@
 #endif
 
 #define MAX 8
-#define DEBUG 0
+#define DEBUG 1
 
 #ifdef _GNU_SOURCE
 /** cpu affinityを有効にするときは以下の１行（#define _GNU_SOURCE)を、
@@ -74,9 +74,30 @@ void hoge(){
   t = clock() + CLOCKS_PER_SEC/10;
   while(t>clock());
 }
+FILE *f;
+int db=0;
 #endif
 
 void thMonitor(local *l,int i){
+  db++;
+  for(int i=0;i<MAX;i++){
+    printf("\b");
+  }
+  printf("%d",db);
+  fprintf(f,"%d\n",db);
+  for (int y=0;y<si;y++) {
+    for (l->bit=l->TB; l->bit; l->bit>>=1){
+      if(l->aB[y]==l->bit){
+        fprintf(f,"Q ");
+      }else{
+        fprintf(f,". ");
+      }
+    }
+    fprintf(f,"\n");
+  }
+  fprintf(f,"\n");
+
+/*
   printf("\033[G");
   if(i==2){
     printf("\rN:%2d C2[%c] C4[ ] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C2[l->B1][l->BK]%spl],l->B1,l->B2);
@@ -97,7 +118,7 @@ void thMonitor(local *l,int i){
         if(l->aB[y]==l->bit){
           c='Q';
         }else{
-          c='-';
+          c='.';
         }
         putchar(c);
     }
@@ -105,6 +126,7 @@ void thMonitor(local *l,int i){
   }
   printf("\n\n");
   sleep(1);
+*/
 }
 
 
@@ -697,6 +719,7 @@ int main(void){
   int min=8;
   struct timeval t0;
   struct timeval t1;
+  f = fopen("out", "w");
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     si=i; siE=i-1; 
