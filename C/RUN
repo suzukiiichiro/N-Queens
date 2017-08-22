@@ -1,7 +1,0 @@
-#!/bin/bash
-
-make nq26 ;
-date > out ;
-# unbuffer : sudo yum install expect
-unbuffer ./07_26NQueen >> out ;
-
