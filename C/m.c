@@ -15,13 +15,7 @@
 #include <pthread.h>
 #include "unistd.h"
 
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#else
-#include <CL/cl.h>
-#endif
-
-#define MAX 8
+#define MAX 24
 #define DEBUG 0
 
 #ifdef _GNU_SOURCE
@@ -74,37 +68,28 @@ void hoge(){
   t = clock() + CLOCKS_PER_SEC/10;
   while(t>clock());
 }
+FILE *f;
+int db=0;
 #endif
 
 void thMonitor(local *l,int i){
-  printf("\033[G");
-  if(i==2){
-    printf("\rN:%2d C2[%c] C4[ ] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C2[l->B1][l->BK]%spl],l->B1,l->B2);
+  db++;
+  for(int i=0;i<MAX;i++){
+    printf("\b");
   }
-  else if(i==4){
-    printf("\rN:%2d C2[ ] C4[%c] C8[ ] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C4[l->B1][l->BK]%spl],l->B1,l->B2);
-  }
-  else if(i==8){
-    printf("\rN:%2d C2[ ] C4[ ] C8[%c] C8BT[ ] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1][l->BK]%spl],l->B1,l->B2);
-  }
-  else if(i==82){ 
-    printf("\rN:%2d C2[ ] C4[ ] C8[ ] C8BT[%c] B1[%2d] B2[%2d]",si,spc[l->C8[l->B1][l->BK]%spl],l->B1,l->B2);
-  }
-  printf("\033[G");
+  printf("%d",db);
+  fprintf(f,"%d\n",db);
   for (int y=0;y<si;y++) {
     for (l->bit=l->TB; l->bit; l->bit>>=1){
-        char c;
-        if(l->aB[y]==l->bit){
-          c='Q';
-        }else{
-          c='-';
-        }
-        putchar(c);
+      if(l->aB[y]==l->bit){
+        fprintf(f,"Q ");
+      }else{
+        fprintf(f,". ");
+      }
     }
-    putchar('\n');
+    fprintf(f,"\n");
   }
-  printf("\n\n");
-  sleep(1);
+  fprintf(f,"\n");
 }
 
 
@@ -246,7 +231,7 @@ void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
     backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
-//backtrack1の3行目のクイーンの値を固定
+//backtrack1の1行目のクイーンの値を固定
 void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); 
   l->bit=0;
@@ -261,7 +246,7 @@ void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
       bm&=~2; 
     }
     if(bm & (1<<l->k)){
-      //スレッドの引数として指定した3行目のクイーンの位置kを固定で指定する
+      //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
       l->aB[y]=l->bit=1<<l->k;
     }else{
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
@@ -520,7 +505,7 @@ void *NQueenThread(){
   //aB[0]=1,aB[1]=4,aB[2]=2
   //aB[0]=1,aB[1]=4,aB[2]=3
   //aB[0]=1,aB[1]=4,aB[2]=4
-  pthread_t pt1[si][si];    //上から１段目のスレッド childThread
+  pthread_t pt1[si][si];    //上から2段目のスレッド childThread
   //backtrack2
   //スレッド数はNxNxN
   //1行目 B1の値によってスレッドを分割する
@@ -578,113 +563,77 @@ void *NQueenThread(){
   //aB[0]=4,aB[1]=4,aB[2]=2
   //aB[0]=4,aB[1]=4,aB[2]=3
   //aB[0]=4,aB[1]=4,aB[2]=4
-  pthread_t pt3[si][si][si];//上から２段目のスレッド childThread
+  pthread_t pt3[si][si][si];//上から3段目のスレッド childThread
 
+  //-- メモリ領域の確保 -------------------------------------------------//
   //local l[si];   //構造体 local型 
   local **l=(local**)malloc(sizeof(local*)*si*si); //B1xk
-  for(int B1=1;B1<si;B1++){
-      l=(local**)malloc(sizeof(local)*si);
+  for(int B1=1;B1<si;B1++){ l=(local**)malloc(sizeof(local)*si);
       if( l == NULL ) { printf( "memory cannot alloc!\n" ); }
-    for(int j=0;j<si;j++){
-      l[j]=(local*)malloc(sizeof(local)*si);
-      if( l[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
-    }
-  } 
+    for(int j=0;j<si;j++){ l[j]=(local*)malloc(sizeof(local)*si);
+      if( l[j] == NULL ) { printf( "memory cannot alloc!\n" ); } } } 
   //local l3[si][si][si];   //構造体 local型 
   local ***l3=(local***)malloc(sizeof(local*)*si*si*si); //B1xkxj
-  for(int B1=1;B1<=si;B1++){
-      l3=(local***)malloc(sizeof(local)*si);
-    for(int j=0;j<si;j++){
-        l3[j]=(local**)malloc(sizeof(local)*si);
+  for(int B1=1;B1<=si;B1++){ l3=(local***)malloc(sizeof(local)*si);
+    for(int j=0;j<si;j++){ l3[j]=(local**)malloc(sizeof(local)*si);
         if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
-      for(int k=0;k<si;k++){
-        l3[j][k]=(local*)malloc(sizeof(local)*si);
-        if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); }
-      }
-    }
-  }
-  
-  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+      for(int k=0;k<si;k++){ l3[j][k]=(local*)malloc(sizeof(local)*si);
+        if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); } } } }
+  //-- 構造体の初期化 -------------------------------------------------//
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){
+    for(int k=0;k<si;k++){ l[B1][k].B1=B1; l[B1][k].B2=B2;     
+      for(int j=0;j<si;j++){ l3[B1][k][j].B1=B1; l3[B1][k][j].B2=B2; } }
+    for(int i=0;i<siE;i++){ 
+      for(int k=0;k<si;k++){ l[B1][k].aB[i]=i; 
+        for(int j=0;j<si;j++){ l3[B1][k][j].aB[i]=i;  } } } }
+  //--カウンターの初期化-----------------------------------------------//
+  for(int B1=1;B1<siE;B1++){
+    for(int k=0;k<si;k++){ l[B1][k].C2[B1][0]= l[B1][k].C4[B1][0]= l[B1][k].C8[B1][0]=0;	
+      for(int j=0;j<si;j++){
+        l3[B1][k][j].C2[B1][1]= l3[B1][k][j].C4[B1][1]= l3[B1][k][j].C8[B1][1]=0;	} } }
+  //--backtrack1のチルドスレッドの生成----------------------------------//
+  //B,kのfor文の中で回っているのでスレッド数はNxN
   //1行目のクイーンのパタン*2行目のクイーンのパタン
   //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
-  //B1 と B2を初期化
-    for(int k=0;k<si;k++){
-      //backtrack1のB1
-      l[B1][k].B1=B1; 
-      l[B1][k].B2=B2;     
-      for(int j=0;j<si;j++){
-        l3[B1][k][j].B1=B1;
-        l3[B1][k][j].B2=B2;
-      }
-    }
-  //aB[]の初期化
-    for(int i=0;i<siE;i++){ 
-      for(int k=0;k<si;k++){
-          l[B1][k].aB[i]=i;
-          for(int j=0;j<si;j++){
-          l3[B1][k][j].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
-        }
-      }
-    } 
-   //カウンターの初期化
-    for(int k=0;k<si;k++){
-        l[B1][k].C2[B1][0]=
-          l[B1][k].C4[B1][0]=
-          l[B1][k].C8[B1][0]=0;	
-      for(int j=0;j<si;j++){
-        l3[B1][k][j].C2[B1][1]=
-          l3[B1][k][j].C4[B1][1]=
-          l3[B1][k][j].C8[B1][1]=0;	
-      }
-    }
-    //backtrack1のチルドスレッドの生成
-    //B,kのfor文の中で回っているのでスレッド数はNxN
+  for(int B1=1;B1<siE;B1++){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       l[B1][k].k=k;
-      pthread_create(&pt1[B1][k],NULL,&run,(void*)&l[B1][k]);// チルドスレッドの生成
-    //backtrack2のチルドスレッドの生成
-    //B,k,jのfor文の中で回っているのでスレッド数はNxNXN
+      //pthread_create(&pt1[B1][k],NULL,&run,(void*)&l[B1][k]);// チルドスレッドの生成
+      //backtrack2のチルドスレッドの生成
+      //B,k,jのfor文の中で回っているのでスレッド数はNxNXN
       for(int j=0;j<si;j++){
         l3[B1][k][j].k=k;
         l3[B1][k][j].j=j;
-        pthread_create(&pt3[B1][k][j],NULL,&run3,(void*)&l3[B1][k][j]);// チルドスレッドの生成
+        pthread_create(&pt3[B1][k][j],NULL,&run3,(void*)&l3[B1][k][j]);
       }
-    }
-  }
-  //スレッドのjoin
-  for(int B1=1;B1<siE;B1++){ 
-    for(int k=0;k<si;k++){
-        pthread_join(pt1[B1][k],NULL); 
       for(int j=0;j<si;j++){
         pthread_join(pt3[B1][k][j],NULL); 
+        pthread_detach(pt3[B1][k][j]); 
       }
+      pthread_create(&pt1[B1][k],NULL,&run,(void*)&l[B1][k]);
     }
-  }
-  //スレッド毎のカウンターを合計
-  for(int B1=1;B1<siE;B1++){
     for(int k=0;k<si;k++){
-    //backtrack1の集計
-    lTotal+=
-      l[B1][k].C2[B1][0]*2+
-      l[B1][k].C4[B1][0]*4+
-      l[B1][k].C8[B1][0]*8;
-    lUnique+=
-      l[B1][k].C2[B1][0]+
-      l[B1][k].C4[B1][0]+
-      l[B1][k].C8[B1][0]; 
-      for(int j=0;j<si;j++){
-    //backtrack2の集計
-        lTotal+=
-          l3[B1][k][j].C2[B1][1]*2+
-          l3[B1][k][j].C4[B1][1]*4+
-          l3[B1][k][j].C8[B1][1]*8;
-        lUnique+=
-          l3[B1][k][j].C2[B1][1]+
-          l3[B1][k][j].C4[B1][1]+
-          l3[B1][k][j].C8[B1][1]; 
-      }
+        pthread_join(pt1[B1][k],NULL); 
+        pthread_detach(pt1[B1][k]); 
     }
   }
+  //--スレッドのjoin----------------------------------------------//
+//  for(int B1=1;B1<siE;B1++){ 
+//    for(int k=0;k<si;k++){
+//        pthread_join(pt1[B1][k],NULL); 
+      //for(int j=0;j<si;j++){
+      //  pthread_join(pt3[B1][k][j],NULL); 
+      //}
+//    }
+//  }
+  //--スレッド毎のカウンターを合計--------------------------------//
+  for(int B1=1;B1<siE;B1++){
+    for(int k=0;k<si;k++){ //backtrack1の集計
+      lTotal+= l[B1][k].C2[B1][0]*2+ l[B1][k].C4[B1][0]*4+ l[B1][k].C8[B1][0]*8;
+      lUnique+= l[B1][k].C2[B1][0]+ l[B1][k].C4[B1][0]+ l[B1][k].C8[B1][0]; 
+      for(int j=0;j<si;j++){//backtrack2の集計
+        lTotal+= l3[B1][k][j].C2[B1][1]*2+ l3[B1][k][j].C4[B1][1]*4+ l3[B1][k][j].C8[B1][1]*8;
+        lUnique+= l3[B1][k][j].C2[B1][1]+ l3[B1][k][j].C4[B1][1]+ l3[B1][k][j].C8[B1][1]; } } }
   return 0;
 }
 void NQueen(){
@@ -693,31 +642,22 @@ void NQueen(){
   pthread_join(pth, NULL); //スレッドの終了を待つ
   pthread_detach(pth);
 }
-int main(void){
-  int min=8;
-  struct timeval t0;
-  struct timeval t1;
-  printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
-  for(int i=min;i<=MAX;i++){
-    si=i; siE=i-1; 
-    lTotal=lUnique=0;
-    gettimeofday(&t0, NULL);
-    NQueen();
-    gettimeofday(&t1, NULL);
-    int ss;int ms;int dd;
-    if (t1.tv_usec<t0.tv_usec) {
-      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
-      ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
-      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
-    } else { 
-      dd=(t1.tv_sec-t0.tv_sec)/86400; 
-      ss=(t1.tv_sec-t0.tv_sec)%86400; 
-      ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
+void create(int y,int si,int d){
+ if(y==d){
+      for(int j=0;j<si;j++){//backtrack2の集計
+        printf("create:%d:%d\n",y,j);
+      }
+      for(int j=0;j<si;j++){//backtrack2の集計
+        printf("join:%d:%d\n",y,j);
+      }
+ }else{
+    for(int j=0;j<si;j++){//backtrack2の集計
+      create(y+1,si,d); 
     }
-    int hh=ss/3600; 
-    int mm=(ss-hh*3600)/60; 
-    ss%=60;
-    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
-  } 
+ } 
+
+}
+int main(void){
+  create(1,8,3);
   return 0;
 }
