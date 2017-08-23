@@ -50,8 +50,8 @@
 #include <pthread.h>
 #include "unistd.h"
 
-#define MAX 27 
-#define DEBUG 1
+#define MAX 27
+#define DEBUG 0
 
 int si;  
 int siE;
@@ -97,20 +97,24 @@ FILE *f;
 
 void thMonitor(local *l,int i){
 	db++;
-	printf("HOE");
-	fprintf(f,"HOE");
-	fprintf(f,"%d\n",db);
+	fprintf(f,"N%d =%d C%d\n",si,db,i);
+	printf("N%d =%d C%d\n",si,db,i);
   for (int y=0;y<si;y++) {
     for (l->bit=l->TB; l->bit; l->bit>>=1){
 			if(l->aB[y]==l->bit){
 				fprintf(f, "Q ");
+				printf("Q ");
 			}else{
 				fprintf(f, ". ");
+				printf(". ");
 			}
     }
 		fprintf(f,"\n");
+		printf("\n");
   }
-  sleep(1);
+	fprintf(f,"\n");
+	printf("\n");
+ sleep(1);
 }
 
 
@@ -131,7 +135,7 @@ void NQueen();
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
   //l->C8[l->B1][l->BK]++;
-  if(DEBUG>0) thMonitor(l,8); 
+  //if(DEBUG>0) thMonitor(l,8); 
   //90度回転
   if(l->aB[l->B2]==1){ 
     for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
@@ -834,9 +838,10 @@ int main(void){
   int min=2;
   struct timeval t0;
   struct timeval t1;
-	f=fopen("out","w");
+	f=fopen("out","w"); 
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
+		db=0;
     si=i; siE=i-1; 
     lTotal=lUnique=0;
     gettimeofday(&t0, NULL);
@@ -857,5 +862,6 @@ int main(void){
     ss%=60;
     printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
+	fclose(f);
   return 0;
 }
