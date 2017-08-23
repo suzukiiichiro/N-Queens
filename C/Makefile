@@ -57,7 +57,6 @@ RM=rm -fr
 nq30=07_30NQueen
 nq30: $(nq30).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq30) $(nq30).c -lpthread
-	./$(nq30)
 
 nq29=07_29NQueen
 nq29: $(nq29).c 
