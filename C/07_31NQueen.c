@@ -729,8 +729,8 @@ void *NQueenThread(){
 
   pthread_t ****pt1=(pthread_t****)malloc(sizeof(pthread_t*)*si*si*si*si); //B1xk
   for(int B1=1;B1<=si;B1++){
-      pt1=(pthread_t****)malloc(sizeof(pthread_t)*si);
-      if( pt1 == NULL ) { printf( "memory cannot alloc!\n" ); }
+    pt1=(pthread_t****)malloc(sizeof(pthread_t)*si);
+    if( pt1 == NULL ) { printf( "memory cannot alloc!\n" ); }
     for(int j=0;j<si;j++){
       pt1[j]=(pthread_t***)malloc(sizeof(pthread_t)*si);
       if( pt1[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
@@ -785,10 +785,10 @@ void *NQueenThread(){
   //local l3[si][si][si];   //構造体 local型  backtrack2
   local *****l3=(local*****)malloc(sizeof(local*)*si*si*si*si*si); //1xkxj
   for(int B1=1;B1<=si;B1++){
-      l3=(local*****)malloc(sizeof(local)*si);
+    l3=(local*****)malloc(sizeof(local)*si);
     for(int j=0;j<si;j++){
-        l3[j]=(local****)malloc(sizeof(local)*si);
-        if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
+      l3[j]=(local****)malloc(sizeof(local)*si);
+      if( l3[j] == NULL ) { printf( "memory cannot alloc!\n" ); }
       for(int k=0;k<si;k++){
         l3[j][k]=(local***)malloc(sizeof(local)*si);
         if( l3[j][k] == NULL ) { printf( "memory cannot alloc!\n" ); }
@@ -799,9 +799,9 @@ void *NQueenThread(){
             l3[j][k][kj4][kj5]=(local*)malloc(sizeof(local)*si);
             if( l3[j][k][kj4][kj5] == NULL ) { printf( "memory cannot alloc!\n" ); }
           }
+        }
       }
     }
-  }
   } 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
   //1行目のクイーンのパタン*2行目のクイーンのパタン
@@ -864,7 +864,7 @@ void *NQueenThread(){
                 l3[B1][k][j][kj4][kj5].j=j;
                 l3[B1][k][j][kj4][kj5].kj4=kj4;
                 l3[B1][k][j][kj4][kj5].kj5=kj5;
-                pthread_create(&pt3[B1][k][j][kj4][kj5],NULL,&run3,(void*)&l3[B1][k][j][kj4]);// チルドスレッドの生成
+                pthread_create(&pt3[B1][k][j][kj4][kj5],NULL,&run3,(void*)&l3[B1][k][j][kj4][kj5]);// チルドスレッドの生成
                 if(THREAD<1){ // not Thread
                   pthread_join(pt3[B1][k][j][kj4][kj5],NULL); 
                   pthread_detach(pt3[B1][k][j][kj4][kj5]);
