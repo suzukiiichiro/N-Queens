@@ -9,8 +9,8 @@ CC=/usr/bin/gcc
 CC=/Library/Developer/CommandLineTools/usr/bin/gcc
 #CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
 #CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
-#LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
-#CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/
+LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
+CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
 
 #CC=/usr/local/Cellar/llvm/4.0.1/bin/clang
 #LDFLAGS=-L/usr/local/Cellar/llvm/4.0.1/lib

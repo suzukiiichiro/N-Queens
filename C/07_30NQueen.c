@@ -857,7 +857,7 @@ void NQueen(){
   pthread_detach(pth);
 }
 int main(void){
-  int min=2;
+  int min=8;
   struct timeval t0;
   struct timeval t1;
 //	f=fopen("out","w"); 
