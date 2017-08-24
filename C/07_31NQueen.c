@@ -60,7 +60,7 @@
 #include "unistd.h"
 
 #define MAX 27      //求めるNの最大値
-#define DEBUG 1     //TRUE:1 FALSE:0
+#define DEBUG 0     //TRUE:1 FALSE:0
 #define THREAD 0    //TRUE:1 FALSE:0
 
 int si;             //size
@@ -731,7 +731,7 @@ void *NQueenThread(){
         for(int kj4=0;kj4<si;kj4++){
           l[B1][k][j][kj4].B1=B1; 
           l[B1][k][j][kj4].B2=B2;     
-          for(int kj5=0;kj5<si&&B1<si/2;kj4++){
+          for(int kj5=0;kj5<si&&B1<si/2;kj5++){
             l3[B1][k][j][kj4][kj5].B1=B1;
             l3[B1][k][j][kj4][kj5].B2=B2;
           }
