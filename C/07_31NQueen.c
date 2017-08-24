@@ -565,12 +565,13 @@ void *NQueenThread(){
 //  pthread_t ******pt3=(pthread_t******)malloc(sizeof(pthread_t*)*si*si*si*si*si*si); //1xkxj
 //  local     ******l3=(local******)malloc(sizeof(local*)*si*si*si*si*si*si); //1xkxj
 
-  pthread_t ****pt1=(pthread_t****)malloc(sizeof(pthread_t*)*si*si*si*si); //B1xk
-  local     ****l=(local****)malloc(sizeof(local*)*si*si*si*si); //B1xk
-  pthread_t *****pt3=(pthread_t*****)malloc(sizeof(pthread_t*)*si*si*si*si*si); //1xkxj
-  local     *****l3=(local*****)malloc(sizeof(local*)*si*si*si*si*si); //1xkxj
 
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+    pthread_t ****pt1=(pthread_t****)malloc(sizeof(pthread_t*)*si*si*si*si); //B1xk
+    local     ****l=(local****)malloc(sizeof(local*)*si*si*si*si); //B1xk
+    pthread_t *****pt3=(pthread_t*****)malloc(sizeof(pthread_t*)*si*si*si*si*si); //1xkxj
+    local     *****l3=(local*****)malloc(sizeof(local*)*si*si*si*si*si); //1xkxj
+
     pt1[B1]=(pthread_t***)malloc(sizeof(pthread_t)*si);
     pt3[B1]=(pthread_t****)malloc(sizeof(pthread_t)*si);
     l[B1]=(local***)malloc(sizeof(local)*si);
@@ -597,8 +598,8 @@ void *NQueenThread(){
         }
       }
     }
-  }  
-  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+//  }  
+//  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     //1行目のクイーンのパタン*2行目のクイーンのパタン
     //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
     //B1 と B2を初期化
@@ -637,11 +638,11 @@ void *NQueenThread(){
         }
       }
     }
-  }
+//  }
   //if(B1>0&&B1<siE&&B1<B2){// B1から順にスレッドを生成しながら処理を分担する 
   //backtrack1のチルドスレッドの生成
   //B,kのfor文の中で回っているのでスレッド数はNxN
-  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+//  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     if(B1<si/2){
       for(int k=0;k<si;k++){
         for(int j=0;j<si;j++){
@@ -694,11 +695,11 @@ void *NQueenThread(){
         }
       }
     }
-  }
   free(pt1);
   free(pt3);
   free(l);
   free(l3);
+  }
   return 0;
 }
 /**
