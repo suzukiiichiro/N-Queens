@@ -22,6 +22,12 @@
   4       Q   Q   Q   Q
         +   +   +   +   *                    
 
+  補助機能として、THREAD フラグのトグルで、シングルスレッドモード、スレッドモードへの
+  切り替えを可能とした。
+
+  シングルスレッドモードで、Debugフラグを( 1=TRUE ) にすると、チェスボードのクイーンＱ
+  配置を確認できる機能を実装した。
+
  N:        Total       Unique                 dd:hh:mm:ss.ms
  2:               0                0          00:00:00:00.00
  3:               0                0          00:00:00:00.00
@@ -37,9 +43,12 @@
 13:           73712             9233          00:00:00:00.17
 14:          365596            45752          00:00:00:00.25
 15:         2279184           285053          00:00:00:00.36
-16:        14772512          1846955          00:00:00:00.96
-17:        95815104         11977939          00:00:00:04.41
-18:       666090624         83263591          00:00:00:29.99
+16:        14772512          1846955          00:00:00:00.95
+17:        95815104         11977939          00:00:00:04.53
+18:       666090624         83263591          00:00:00:31.91
+19:      4968057848        621012754          00:00:04:13.62
+20:     39029188884       4878666808          00:00:31:20.65
+21:    314666222712      39333324973          00:04:15:55.95 
 
 */
 
@@ -51,7 +60,8 @@
 #include "unistd.h"
 
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 1   // TRUE:1 FALSE:0
+#define THREAD 0  // TRUE:1 FALSE:0
 
 int si;  
 int siE;
@@ -91,30 +101,34 @@ void hoge(){
   t = clock() + CLOCKS_PER_SEC/10;
   while(t>clock());
 }
-int db=0;
-FILE *f;
+//FILE *f;
 #endif
 
+int db=0;
 void thMonitor(local *l,int i){
-	db++;
-	fprintf(f,"N%d =%d C%d\n",si,db,i);
-	printf("N%d =%d C%d\n",si,db,i);
-  for (int y=0;y<si;y++) {
-    for (l->bit=l->TB; l->bit; l->bit>>=1){
-			if(l->aB[y]==l->bit){
-				fprintf(f, "Q ");
-				printf("Q ");
-			}else{
-				fprintf(f, ". ");
-				printf(". ");
-			}
+  if(THREAD>0){
+    //
+  }else{
+    db++;
+  //	fprintf(f,"N%d =%d C%d\n",si,db,i);
+    printf("N%d =%d C%d\n",si,db,i);
+    for (int y=0;y<si;y++) {
+      for (l->bit=l->TB; l->bit; l->bit>>=1){
+        if(l->aB[y]==l->bit){
+  //				fprintf(f, "Q ");
+          printf("Q ");
+        }else{
+  //				fprintf(f, ". ");
+          printf(". ");
+        }
+      }
+  //		fprintf(f,"\n");
+      printf("\n");
     }
-		fprintf(f,"\n");
-		printf("\n");
-  }
-	fprintf(f,"\n");
-	printf("\n");
- sleep(1);
+  //	fprintf(f,"\n");
+    printf("\n");
+  // sleep(1);
+  } 
 }
 
 
@@ -766,10 +780,14 @@ void *NQueenThread(){
               l3[B1][k][j][kj4].j=j;
               l3[B1][k][j][kj4].kj4=kj4;
               pthread_create(&pt3[B1][k][j][kj4],NULL,&run3,(void*)&l3[B1][k][j][kj4]);// チルドスレッドの生成
+              if(THREAD<1){ // not Thread
+                pthread_join(pt3[B1][k][j][kj4],NULL); 
+                pthread_detach(pt3[B1][k][j][kj4]);
+              }
             }
             for(int kj4=0;kj4<si;kj4++){
               pthread_join(pt3[B1][k][j][kj4],NULL); 
-             // pthread_detach(pt3[B1][k][j][kj4]);
+              pthread_detach(pt3[B1][k][j][kj4]);
             }
           }
         }
@@ -779,10 +797,14 @@ void *NQueenThread(){
           l[B1][k][j].k=k;
           l[B1][k][j].j=j;
           pthread_create(&pt1[B1][k][j],NULL,&run,(void*)&l[B1][k][j]);// チルドスレッドの生成
+          if(THREAD<1){ // not Thread
+            pthread_join(pt1[B1][k][j],NULL); 
+            pthread_detach(pt1[B1][k][j]);
+          }
         }
         for(int j=0;j<si;j++){
           pthread_join(pt1[B1][k][j],NULL); 
-          //pthread_detach(pt1[B1][k][j]);
+          pthread_detach(pt1[B1][k][j]);
         }
       }
   }
@@ -838,7 +860,7 @@ int main(void){
   int min=2;
   struct timeval t0;
   struct timeval t1;
-	f=fopen("out","w"); 
+//	f=fopen("out","w"); 
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
 		db=0;
@@ -862,6 +884,6 @@ int main(void){
     ss%=60;
     printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
-	fclose(f);
+//	fclose(f);
   return 0;
 }
