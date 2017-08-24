@@ -61,8 +61,9 @@
 
 #define MAX 27      //求めるNの最大値
 #define DEBUG 1     //TRUE:1 FALSE:0
-#define THREAD 0    //TRUE:1 FALSE:0
+#define THREAD 1    //TRUE:1 FALSE:0
 
+/** グローバル変数 */
 int si;             //size
 int siE;            //size-1
 long lTotal;        //解の総合計
@@ -105,15 +106,19 @@ void hoge(){
 //FILE *f;
 #endif
 
+/**
+ * 関数定義
+ */
 void thMonitor(local *l,int i);
 void symmetryOps_bm(local *l);
-void backTrack1stLine(int y,int left,int down,int right,int bm,local *l);
-void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l);
-void backTrack1stLine3(int y,int left,int down,int right,int bm,local *l);
-void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l);
-void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l);
-void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l);
-void backTrack3rdLine3(int y,int left,int down,int right,int bm,local *l);
+void backTrack1_2ndLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack1_3rdLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack1_4thLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack1_5thLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack2_2ndLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack2_3rdLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack2_4thLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack2_5thLine(int y,int left,int down,int right,int bm,local *l);
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l2);
 void cornerQ(int y,int left,int down,int right,int bm,local *l);
 void *run(void *args);
@@ -172,10 +177,33 @@ void symmetryOps_bm(local *l){
   if(DEBUG>0) thMonitor(l,8); 
 }
 /**
+ *backtrack2の3行目の列数を固定して場合分けすることによりスレッドを分割する
+*/
+//void backTrack3(int y,int left,int down,int right,int bm,local *l){
+void backTrack2_2ndLine(int y,int left,int down,int right,int bm,local *l){
+  bm=l->msk&~(left|down|right); //配置可能フィールド
+  l->bit=0;
+  if(y==siE){
+    //【枝刈り】最下段枝刈り
+    if(bm>0 && (bm&l->LM)==0){ l->aB[y]=bm; symmetryOps_bm(l); }
+  }else{
+    //【枝刈り】上部サイド枝刈り            
+    if(y<l->B1){ bm&=~l->SM; }
+    //【枝刈り】下部サイド枝刈り    
+    else if(y==l->B2) { if((down&l->SM)==0){ return; } if((down&l->SM)!=l->SM){ bm&=l->SM; } }
+    //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
+    if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
+    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+    else{ return; }
+    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
+    backTrack2_3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+  }
+}
+/**
  * backtrack2の3行目の列数を固定して場合分けすることによりスレッドを分割する
 */
 //void backTrack3(int y,int left,int down,int right,int bm,local *l){
-void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
+void backTrack2_3rdLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE){ 
@@ -192,13 +220,15 @@ void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
     else{ return; }
     //4行目以降
     //NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    backTrack3rdLine2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //backTrack3rdLine2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    backTrack2_4thLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
 /**
  * backtrack2の4行目の列数を固定して場合分けすることによりスレッドを分割する
 */
-void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l){
+//void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l){
+void backTrack2_4thLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE){
@@ -216,13 +246,14 @@ void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l){
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
     else{ return; }
     //5行目以降
-    backTrack3rdLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //backTrack3rdLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    backTrack2_5thLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
 /**
  * backtrack2の5行目の列数を固定して場合分けすることによりスレッドを分割する
 */
-void backTrack3rdLine3(int y,int left,int down,int right,int bm,local *l){
+void backTrack2_5thLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE){
@@ -239,37 +270,14 @@ void backTrack3rdLine3(int y,int left,int down,int right,int bm,local *l){
     if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
     else{ return; }
-    //6行目以降は通常のbacktrack2の処理に渡す
+    //6行目以降は通常のNoCornerQの処理に渡す
     NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
 /**
- *backtrack2の3行目の列数を固定して場合分けすることによりスレッドを分割する
+ * backtrack1の2行目のクイーンの値を固定
 */
-//void backTrack3(int y,int left,int down,int right,int bm,local *l){
-void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
-  bm=l->msk&~(left|down|right); //配置可能フィールド
-  l->bit=0;
-  if(y==siE){
-    //【枝刈り】最下段枝刈り
-    if(bm>0 && (bm&l->LM)==0){ l->aB[y]=bm; symmetryOps_bm(l); }
-  }else{
-    //【枝刈り】上部サイド枝刈り            
-    if(y<l->B1){ bm&=~l->SM; }
-    //【枝刈り】下部サイド枝刈り    
-    else if(y==l->B2) { if((down&l->SM)==0){ return; } if((down&l->SM)!=l->SM){ bm&=l->SM; } }
-    //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
-    if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
-    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
-    else{ return; }
-    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
-    backTrack3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-  }
-}
-/**
- * backtrack1の3行目のクイーンの値を固定
-*/
-void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
+void backTrack1_2ndLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE) {
@@ -284,13 +292,14 @@ void backTrack1stLine(int y,int left,int down,int right,int bm,local *l){
     else{ return; }
     //4行目以降
     //cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    backTrack1stLine2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //backTrack1stLine2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    backTrack1_3rdLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   } 
 }
 /**
- * backtrack1の4行目のクイーンの値を固定
+ * backtrack1の3行目のクイーンの値を固定
 */
-void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l){
+void backTrack1_3rdLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE) {
@@ -306,13 +315,14 @@ void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l){
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
     else{ return; }
     //5行目以降
-    backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    backTrack1_4thLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   } 
 }
 /**
- * backtrack1の5行目のクイーンの値を固定
+ * backtrack1の4行目のクイーンの値を固定
 */
-void backTrack1stLine3(int y,int left,int down,int right,int bm,local *l){
+void backTrack1_4thLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
   if(y==siE) {
@@ -327,7 +337,29 @@ void backTrack1stLine3(int y,int left,int down,int right,int bm,local *l){
     if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
     else{ return; }
-    //6行目以降
+    //5行目以降
+    backTrack1_5thLine(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+  } 
+}
+/**
+ * backtrack1の5行目のクイーンの値を固定
+*/
+void backTrack1_5thLine(int y,int left,int down,int right,int bm,local *l){
+  bm=l->msk&~(left|down|right); //配置可能フィールド
+  l->bit=0;
+  if(y==siE) {
+    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+    if(bm>0){ l->aB[y]=bm; l->C8[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,8); }
+  }else{
+    //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい  
+    if(y<l->B1) { bm&=~2; }
+    //スレッドの引数として指定した3行目のクイーンの位置kを固定で指定する
+    //if(bm & (1<<l->k)){
+    //l->aB[y]=l->bit=1<<l->k;
+    if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
+    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+    else{ return; }
+    //6行目以降はCornerQの処理に戻す
     cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   } 
 }
@@ -535,7 +567,7 @@ void *run3(void *args){
     l->aB[0]=l->bit=(1<<l->B1);
     //2行目のクイーンの位置を固定することによってN分スレッドを分割する
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
-    backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
+    backTrack2_2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
   return 0;
@@ -552,7 +584,11 @@ void *run(void *args){
     //backtrack1は2行目のクイーンの位置はl->B1
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
     //3行目のクイーンの位置を固定することによってN分スレッドを分割する
-    backTrack1stLine(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
+    /**
+     *  backTrack2は2ndLineに飛ぶけど
+     *  backTrack1は3rdLineに飛ぶのででいいの？
+     */
+    backTrack1_3rdLine(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
   }
   return 0;
 }
