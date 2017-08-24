@@ -609,17 +609,15 @@ void *NQueenThread(){
   }  
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     //1行目のクイーンのパタン*2行目のクイーンのパタン
-    1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
+    //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
     //B1 と B2を初期化
     for(int k=0;k<si;k++){
       //backtrack1のB1
       for(int j=0;j<si;j++){
         for(int kj4=0;kj4<si;kj4++){
-          l[B1][k][j][kj4].B1=B1; 
-          l[B1][k][j][kj4].B2=B2;     
+          l[B1][k][j][kj4].B1=B1; l[B1][k][j][kj4].B2=B2;     
           for(int kj5=0;kj5<si&&B1<si/2;kj5++){
-            l3[B1][k][j][kj4][kj5].B1=B1;
-            l3[B1][k][j][kj4][kj5].B2=B2;
+            l3[B1][k][j][kj4][kj5].B1=B1; l3[B1][k][j][kj4][kj5].B2=B2;
           }
         }
       }
@@ -641,13 +639,9 @@ void *NQueenThread(){
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){
         for(int kj4=0;kj4<si;kj4++){
-          l[B1][k][j][kj4].C2[B1][0]=
-          l[B1][k][j][kj4].C4[B1][0]= 
-          l[B1][k][j][kj4].C8[B1][0]=0;	
+          l[B1][k][j][kj4].C2[B1][0]= l[B1][k][j][kj4].C4[B1][0]= l[B1][k][j][kj4].C8[B1][0]=0;	
           for(int kj5=0;kj5<si&&B1<si/2;kj5++){
-            l3[B1][k][j][kj4][kj5].C2[B1][1]= 
-            l3[B1][k][j][kj4][kj5].C4[B1][1]= 
-            l3[B1][k][j][kj4][kj5].C8[B1][1]=0;	
+            l3[B1][k][j][kj4][kj5].C2[B1][1]= l3[B1][k][j][kj4][kj5].C4[B1][1]= l3[B1][k][j][kj4][kj5].C8[B1][1]=0;	
           }
         }
       }
@@ -662,19 +656,15 @@ void *NQueenThread(){
         for(int j=0;j<si;j++){
           for(int kj4=0;kj4<si;kj4++){
             for(int kj5=0;kj5<si;kj5++){
-              l3[B1][k][j][kj4][kj5].k=k;
-              l3[B1][k][j][kj4][kj5].j=j;
-              l3[B1][k][j][kj4][kj5].kj4=kj4;
-              l3[B1][k][j][kj4][kj5].kj5=kj5;
+              l3[B1][k][j][kj4][kj5].k=k; l3[B1][k][j][kj4][kj5].j=j;
+              l3[B1][k][j][kj4][kj5].kj4=kj4; l3[B1][k][j][kj4][kj5].kj5=kj5;
               pthread_create(&pt3[B1][k][j][kj4][kj5],NULL,&run3,(void*)&l3[B1][k][j][kj4][kj5]);// チルドスレッドの生成
               if(THREAD<1){ // not Thread
-                pthread_join(pt3[B1][k][j][kj4][kj5],NULL); 
-                pthread_detach(pt3[B1][k][j][kj4][kj5]);
+                pthread_join(pt3[B1][k][j][kj4][kj5],NULL); pthread_detach(pt3[B1][k][j][kj4][kj5]);
               }
             }
             for(int kj5=0;kj5<si;kj5++){
-              pthread_join(pt3[B1][k][j][kj4][kj5],NULL); 
-              pthread_detach(pt3[B1][k][j][kj4][kj5]);
+              pthread_join(pt3[B1][k][j][kj4][kj5],NULL); pthread_detach(pt3[B1][k][j][kj4][kj5]);
             }
           }
         }
@@ -683,9 +673,7 @@ void *NQueenThread(){
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){
         for(int kj4=0;kj4<si;kj4++){
-          l[B1][k][j][kj4].k=k;
-          l[B1][k][j][kj4].j=j;
-          l[B1][k][j][kj4].kj4=kj4;
+          l[B1][k][j][kj4].k=k; l[B1][k][j][kj4].j=j; l[B1][k][j][kj4].kj4=kj4;
           pthread_create(&pt1[B1][k][j][kj4],NULL,&run,(void*)&l[B1][k][j][kj4]);// チルドスレッドの生成
           if(THREAD<1){ // not Thread
             pthread_join(pt1[B1][k][j][kj4],NULL); 
@@ -703,24 +691,12 @@ void *NQueenThread(){
       //backtrack1の集計
       for(int j=0;j<si;j++){
         for(int kj4=0;kj4<si;kj4++){
-          lTotal+=
-            l[B1][k][j][kj4].C2[B1][0]*2+
-            l[B1][k][j][kj4].C4[B1][0]*4+
-            l[B1][k][j][kj4].C8[B1][0]*8;
-          lUnique+=
-            l[B1][k][j][kj4].C2[B1][0]+
-            l[B1][k][j][kj4].C4[B1][0]+
-            l[B1][k][j][kj4].C8[B1][0]; 
+          lTotal+= l[B1][k][j][kj4].C2[B1][0]*2+ l[B1][k][j][kj4].C4[B1][0]*4+ l[B1][k][j][kj4].C8[B1][0]*8;
+          lUnique+= l[B1][k][j][kj4].C2[B1][0]+ l[B1][k][j][kj4].C4[B1][0]+ l[B1][k][j][kj4].C8[B1][0]; 
             //backtrack2の集計
           for(int kj5=0;kj5<si&&B1<si/2;kj5++){
-            lTotal+=
-              l3[B1][k][j][kj4][kj5].C2[B1][1]*2+
-              l3[B1][k][j][kj4][kj5].C4[B1][1]*4+
-              l3[B1][k][j][kj4][kj5].C8[B1][1]*8;
-            lUnique+=
-              l3[B1][k][j][kj4][kj5].C2[B1][1]+
-              l3[B1][k][j][kj4][kj5].C4[B1][1]+
-              l3[B1][k][j][kj4][kj5].C8[B1][1]; 
+            lTotal+= l3[B1][k][j][kj4][kj5].C2[B1][1]*2+ l3[B1][k][j][kj4][kj5].C4[B1][1]*4+ l3[B1][k][j][kj4][kj5].C8[B1][1]*8;
+            lUnique+= l3[B1][k][j][kj4][kj5].C2[B1][1]+ l3[B1][k][j][kj4][kj5].C4[B1][1]+ l3[B1][k][j][kj4][kj5].C8[B1][1]; 
           }
         }
       }
