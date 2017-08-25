@@ -540,25 +540,25 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
         bm&=l->SM; 
       }
     }
-    if(y==1 && l->k>0){
+    if(y==1 && l->k>=0){
       if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
     //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    }else if(y==2 && l->j>0){
+    }else if(y==2 && l->j>=0){
       if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
     //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    }else if(y==3 && l->kj4>0){
+    }else if(y==3 && l->kj4>=0){
       if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
     //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    }else if(y==4 && l->kj5>0){
+    }else if(y==4 && l->kj5>=0){
       if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
     //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
@@ -596,21 +596,21 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
       //bm^=2;
       bm&=~2; 
     }
-    if(y==2 && l->k>0){
+    if(y==2 && l->k>=0){
       if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
       //5行目以降
       //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    }else if(y==3 && l->j>0){
+    }else if(y==3 && l->j>=0){
       if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
       //5行目以降
       //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-    }else if(y==4 && l->kj4>0){
+    }else if(y==4 && l->kj4>=0){
       if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
@@ -695,12 +695,20 @@ if(si<=18){ //07_27NQueen.c
         l2[B1][k].aB[j]=j; // aB[]の初期化
       }
     } 
+    l[B1].k=-1;	
+    l[B1].j=-1;	
+    l[B1].kj4=-1;	
+    l[B1].kj5=-1;	
     l[B1].C2[B1][0]=
       l[B1].C4[B1][0]=
       l[B1].C8[B1][0]=0;	//カウンターの初期化
     pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     for(int k=1;k<=si;k++){
-    l2[B1][k].C2[B1][1]=
+      l2[B1][k].k=-1;	
+      l2[B1][k].j=-1;	
+      l2[B1][k].kj4=-1;	
+      l2[B1][k].kj5=-1;	
+      l2[B1][k].C2[B1][1]=
       l2[B1][k].C4[B1][1]=
       l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
     }
@@ -766,8 +774,16 @@ else if(si==19){
         }
       } 
       for(int k=0;k<si;k++){//カウンターの初期化
+        l[B1][k].k=-1;	
+        l[B1][k].j=-1;	
+        l[B1][k].kj4=-1;	
+        l[B1][k].kj5=-1;	
             l[B1][k].C2[B1][0]= l[B1][k].C4[B1][0]= l[B1][k].C8[B1][0]=0;	
         for(int j=0;j<si;j++){
+              l3[B1][k][j].k=-1;
+              l3[B1][k][j].j=-1;
+              l3[B1][k][j].kj4=-1;
+              l3[B1][k][j].kj5=-1;
               l3[B1][k][j].C2[B1][1]= l3[B1][k][j].C4[B1][1]= l3[B1][k][j].C8[B1][1]=0;	
         }
       }
@@ -861,7 +877,15 @@ else if(si==20){
       for(int k=0;k<si;k++){//カウンターの初期化
         for(int j=0;j<si;j++){
             l[B1][k][j].C2[B1][0]= l[B1][k][j].C4[B1][0]= l[B1][k][j].C8[B1][0]=0;	
+            l[B1][k][j].k=-1;	
+            l[B1][k][j].j=-1;	
+            l[B1][k][j].kj4=-1;	
+            l[B1][k][j].kj5=-1;	
           for(int kj4=0;kj4<si;kj4++){
+              l3[B1][k][j][kj4].k=-1;
+              l3[B1][k][j][kj4].j=-1;
+              l3[B1][k][j][kj4].kj4=-1;
+              l3[B1][k][j][kj4].kj5=-1;
               l3[B1][k][j][kj4].C2[B1][1]= l3[B1][k][j][kj4].C4[B1][1]= l3[B1][k][j][kj4].C8[B1][1]=0;	
           }
         }
@@ -974,8 +998,16 @@ else if(si>=21){  //07_31NQueen.c
         for(int j=0;j<si;j++){
           for(int kj4=0;kj4<si;kj4++){
             l[B1][k][j][kj4].C2[B1][0]= l[B1][k][j][kj4].C4[B1][0]= l[B1][k][j][kj4].C8[B1][0]=0;	
+            l[B1][k][j][kj4].k=-1;	
+            l[B1][k][j][kj4].j=-1;	
+            l[B1][k][j][kj4].kj4=-1;	
+            l[B1][k][j][kj4].kj5=-1;	
             for(int kj5=0;kj5<si&&B1<si/2;kj5++){
               l3[B1][k][j][kj4][kj5].C2[B1][1]= l3[B1][k][j][kj4][kj5].C4[B1][1]= l3[B1][k][j][kj4][kj5].C8[B1][1]=0;	
+              l3[B1][k][j][kj4][kj5].k=-1;
+              l3[B1][k][j][kj4][kj5].j=-1;
+              l3[B1][k][j][kj4][kj5].kj4=-1;
+              l3[B1][k][j][kj4][kj5].kj5=-1;
             }
           }
         }
