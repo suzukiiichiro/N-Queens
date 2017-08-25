@@ -1104,30 +1104,15 @@ else if(si==20){ //07_30NQueen.c
           }
         }
     }
-    //スレッド毎のカウンターを合計
-    for(int B1=1;B1<siE;B1++){
+    for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
       for(int k=0;k<si;k++){
-        //backtrack1の集計
-        for(int j=0;j<si;j++){
-          lTotal+=
-            l[B1][k][j].C2[B1][0]*2+
-            l[B1][k][j].C4[B1][0]*4+
-            l[B1][k][j].C8[B1][0]*8;
-          lUnique+=
-            l[B1][k][j].C2[B1][0]+
-            l[B1][k][j].C4[B1][0]+
-            l[B1][k][j].C8[B1][0]; 
-          for(int kj4=0;kj4<si&&B1<si/2;kj4++){
-            //backtrack2の集計
-            lTotal+=
-              l3[B1][k][j][kj4].C2[B1][1]*2+
-              l3[B1][k][j][kj4].C4[B1][1]*4+
-              l3[B1][k][j][kj4].C8[B1][1]*8;
-            lUnique+=
-              l3[B1][k][j][kj4].C2[B1][1]+
-              l3[B1][k][j][kj4].C4[B1][1]+
-              l3[B1][k][j][kj4].C8[B1][1]; 
-            }
+        for(int j=0;j<si;j++){//backtrack1の集計
+          lTotal+= l[B1][k][j].C2[B1][0]*2+ l[B1][k][j].C4[B1][0]*4+ l[B1][k][j].C8[B1][0]*8;
+          lUnique+= l[B1][k][j].C2[B1][0]+ l[B1][k][j].C4[B1][0]+ l[B1][k][j].C8[B1][0]; 
+          for(int kj4=0;kj4<si&&B1<si/2;kj4++){//backtrack2の集計
+            lTotal+= l3[B1][k][j][kj4].C2[B1][1]*2+ l3[B1][k][j][kj4].C4[B1][1]*4+ l3[B1][k][j][kj4].C8[B1][1]*8;
+            lUnique+= l3[B1][k][j][kj4].C2[B1][1]+ l3[B1][k][j][kj4].C4[B1][1]+ l3[B1][k][j][kj4].C8[B1][1]; 
+          }
         }
       }
     }
@@ -1165,10 +1150,8 @@ else if(si==21){  //07_31NQueen.c
       }
       //1行目のクイーンのパタン*2行目のクイーンのパタン
       //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
-      //B1 と B2を初期化
-      for(int k=0;k<si;k++){
-        //backtrack1のB1
-        for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){//B1 と B2を初期化
+        for(int j=0;j<si;j++){//backtrack1のB1
           for(int kj4=0;kj4<si;kj4++){
             l[B1][k][j][kj4].B1=B1; l[B1][k][j][kj4].B2=B2;     
             for(int kj5=0;kj5<si&&B1<si/2;kj5++){
@@ -1177,8 +1160,7 @@ else if(si==21){  //07_31NQueen.c
           }
         }
       }
-      //aB[]の初期化
-      for(int i=0;i<siE;i++){ 
+      for(int i=0;i<siE;i++){ //aB[]の初期化
         for(int k=0;k<si;k++){
           for(int j=0;j<si;j++){
             for(int kj4=0;kj4<si;kj4++){
@@ -1190,8 +1172,7 @@ else if(si==21){  //07_31NQueen.c
           }
         }
       } 
-      //カウンターの初期化
-      for(int k=0;k<si;k++){
+      for(int k=0;k<si;k++){//カウンターの初期化
         for(int j=0;j<si;j++){
           for(int kj4=0;kj4<si;kj4++){
             l[B1][k][j][kj4].C2[B1][0]= l[B1][k][j][kj4].C4[B1][0]= l[B1][k][j][kj4].C8[B1][0]=0;	
@@ -1241,25 +1222,22 @@ else if(si==21){  //07_31NQueen.c
           }
         }
       }
-      //スレッド毎のカウンターを合計
-      for(int k=0;k<si;k++){
-        //backtrack1の集計
-        for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){//スレッド毎のカウンターを合計
+        for(int j=0;j<si;j++){//backtrack1の集計
           for(int kj4=0;kj4<si;kj4++){
             lTotal+= l[B1][k][j][kj4].C2[B1][0]*2+ l[B1][k][j][kj4].C4[B1][0]*4+ l[B1][k][j][kj4].C8[B1][0]*8;
             lUnique+= l[B1][k][j][kj4].C2[B1][0]+ l[B1][k][j][kj4].C4[B1][0]+ l[B1][k][j][kj4].C8[B1][0]; 
-              //backtrack2の集計
-            for(int kj5=0;kj5<si&&B1<si/2;kj5++){
+            for(int kj5=0;kj5<si&&B1<si/2;kj5++){//backtrack2の集計
               lTotal+= l3[B1][k][j][kj4][kj5].C2[B1][1]*2+ l3[B1][k][j][kj4][kj5].C4[B1][1]*4+ l3[B1][k][j][kj4][kj5].C8[B1][1]*8;
               lUnique+= l3[B1][k][j][kj4][kj5].C2[B1][1]+ l3[B1][k][j][kj4][kj5].C4[B1][1]+ l3[B1][k][j][kj4][kj5].C8[B1][1]; 
             }
           }
         }
       }
-    free(pt1);
-    free(pt3);
-    free(l);
-    free(l3);
+      free(pt1);
+      free(pt3);
+      free(l);
+      free(l3);
     }
   }
   return 0;
