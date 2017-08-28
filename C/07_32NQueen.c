@@ -1085,7 +1085,7 @@ void NQueen(){
  * メイン
  */
 int main(void){
-  int min=2;
+  int min=19;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
