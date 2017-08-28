@@ -59,6 +59,9 @@ typedef struct{
   int j;            //上から3行目のスレッドに使う
   int kj4;          //上から4行目のスレッドに使う
   int kj5;          //上から5行目のスレッドに使う
+  int kj6;          //上から6行目のスレッドに使う
+  int kj7;          //上から7行目のスレッドに使う
+  int kj8;          //上から8行目のスレッドに使う
   int B1;           //BOUND1
   int B2;           //BOUND2
   int TB;           //TOPBIT
@@ -564,6 +567,24 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
       else{ return; }
     //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==5 && l->kj6>=0){
+      if(bm & (1<<l->kj6)){ l->aB[y]=l->bit=1<<l->kj6; }
+    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==6 && l->kj7>=0){
+      if(bm & (1<<l->kj7)){ l->aB[y]=l->bit=1<<l->kj7; }
+    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==7 && l->kj8>=0){
+      if(bm & (1<<l->kj8)){ l->aB[y]=l->bit=1<<l->kj8; }
+    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
       while(bm>0) {
         //最も下位の１ビットを抽出
@@ -614,7 +635,28 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
       if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
       //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-      //5行目以降
+      //6行目以降
+      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==5 && l->kj5>=0){
+      if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
+      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+      //7行目以降
+      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==6 && l->kj6>=0){
+      if(bm & (1<<l->kj6)){ l->aB[y]=l->bit=1<<l->kj6; }
+      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+      //8行目以降
+      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==7 && l->kj7>=0){
+      if(bm & (1<<l->kj7)){ l->aB[y]=l->bit=1<<l->kj7; }
+      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
+      else{ return; }
+      //9行目以降
       //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
@@ -644,7 +686,7 @@ void *run3(void *args){
     l->aB[0]=l->bit=(1<<l->B1);
     //2行目のクイーンの位置を固定することによってN分スレッドを分割する
     //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
-    if(si<21){
+    if(si<25){
       backTrack2(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     }else{
       backTrack2_2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
@@ -665,7 +707,7 @@ void *run(void *args){
     //backtrack1は2行目のクイーンの位置はl->B1
     l->aB[1]=l->bit=(1<<l->B1);// 角にクイーンを配置 
     //3行目のクイーンの位置を固定することによってN分スレッドを分割する
-    if(si<21){
+    if(si<25){
       backTrack1(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
     }else{
       backTrack1_3rdLine(2,(2|l->bit)<<1,(1|l->bit),(l->bit>>1),0,l);//２行目から探索
@@ -704,12 +746,18 @@ if(si<=18){ //07_27NQueen.c
         l.j=-1;	
         l.kj4=-1;	
         l.kj5=-1;	
+        l.kj6=-1;	
+        l.kj7=-1;	
+        l.kj8=-1;	
         l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
         for(int k=0;k<si;k++){
           l3[k].k=-1;
           l3[k].j=-1;
           l3[k].kj4=-1;
           l3[k].kj5=-1;
+          l3[k].kj6=-1;
+          l3[k].kj7=-1;
+          l3[k].kj8=-1;
           l3[k].C2[B1][1]= l3[k].C4[B1][1]= l3[k].C8[B1][1]=0;	
         }
         if(B1<si/2){
@@ -777,12 +825,18 @@ else if(si==19){
         l.j=-1;	
         l.kj4=-1;	
         l.kj5=-1;	
+        l.kj6=-1;	
+        l.kj7=-1;	
+        l.kj8=-1;	
         l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
         for(int j=0;j<si;j++){
           l3[j].k=-1;
           l3[j].j=-1;
           l3[j].kj4=-1;
           l3[j].kj5=-1;
+          l3[j].kj6=-1;
+          l3[j].kj7=-1;
+          l3[j].kj8=-1;
           l3[j].C2[B1][1]= l3[j].C4[B1][1]= l3[j].C8[B1][1]=0;	
         }
         if(B1<si/2){
@@ -848,12 +902,18 @@ else if(si==20){
         l.j=-1;	
         l.kj4=-1;	
         l.kj5=-1;	
+        l.kj6=-1;	
+        l.kj7=-1;	
+        l.kj8=-1;	
         l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
         for(int kj4=0;kj4<si;kj4++){
           l3[kj4].k=-1;
           l3[kj4].j=-1;
           l3[kj4].kj4=-1;
           l3[kj4].kj5=-1;
+          l3[kj4].kj6=-1;
+          l3[kj4].kj7=-1;
+          l3[kj4].kj8=-1;
           l3[kj4].C2[B1][1]= l3[kj4].C4[B1][1]= l3[kj4].C8[B1][1]=0;	
         }
         if(B1<si/2){
@@ -922,12 +982,18 @@ else if(si>=21){  //07_31NQueen.c
           l.j=-1;	
           l.kj4=-1;	
           l.kj5=-1;	
+          l.kj6=-1;	
+          l.kj7=-1;	
+          l.kj8=-1;	
           l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
           for(int kj5=0;kj5<si;kj5++){
             l3[kj5].k=-1;
             l3[kj5].j=-1;
             l3[kj5].kj4=-1;
             l3[kj5].kj5=-1;
+            l3[kj5].kj6=-1;
+            l3[kj5].kj7=-1;
+            l3[kj5].kj8=-1;
             l3[kj5].C2[B1][1]= l3[kj5].C4[B1][1]= l3[kj5].C8[B1][1]=0;	
           }
           if(B1<si/2){
@@ -969,6 +1035,279 @@ else if(si>=21){  //07_31NQueen.c
           //free(l3);
 
           //この中で回す
+        }
+      }
+    }
+  }
+}
+else if(si>=22){  //07_31NQueen.c
+  //printf("si>=22");
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+    for(int k=0;k<si;k++){
+      for(int j=0;j<si;j++){//backtrack1のB1
+        for(int kj4=0;kj4<si;kj4++){//backtrack1のB1
+          for(int kj5=0;kj5<si;kj5++){//backtrack1のB1
+            //この中で回す
+            pthread_t pt1;//スレッド childThread
+            pthread_t pt3[si];//スレッド childThread
+            local l;//構造体 local型 
+            local l3[si];
+            l.B1=B1; l.B2=B2;     
+            for(int kj6=0;kj6<si;kj6++){//backtrack1のB1
+              l3[kj6].B1=B1; l3[kj6].B2=B2;
+            }
+            for(int i=0;i<siE;i++){ //aB[]の初期化
+              l.aB[i]=i;
+              for(int kj6=0;kj6<si;kj6++){
+                l3[kj6].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
+              }
+            }
+            l.k=-1;	
+            l.j=-1;	
+            l.kj4=-1;	
+            l.kj5=-1;	
+            l.kj6=-1;	
+            l.kj7=-1;	
+            l.kj8=-1;	
+            l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
+            for(int kj6=0;kj6<si;kj6++){
+              l3[kj6].k=-1;
+              l3[kj6].j=-1;
+              l3[kj6].kj4=-1;
+              l3[kj6].kj5=-1;
+              l3[kj6].kj6=-1;
+              l3[kj6].kj7=-1;
+              l3[kj6].kj8=-1;
+              l3[kj6].C2[B1][1]= l3[kj6].C4[B1][1]= l3[kj6].C8[B1][1]=0;	
+            }
+            if(B1<si/2){
+
+              for(int kj6=0;kj6<si;kj6++){
+                l3[kj6].k=k; l3[kj6].j=j;
+                l3[kj6].kj4=kj4;
+                l3[kj6].kj5=kj5;
+                l3[kj6].kj6=kj6;
+                pthread_create(&pt3[kj6],NULL,&run3,(void*)&l3[kj6]);// チルドスレッドの生成
+                if(THREAD<1){ // not Thread
+                  pthread_join(pt3[kj6],NULL); 
+                  pthread_detach(pt3[kj6]);
+                }
+              }
+              for(int kj6=0;kj6<si;kj6++){
+                pthread_join(pt3[kj6],NULL); 
+                pthread_detach(pt3[kj6]);
+              }
+            }
+            l.k=k; 
+            l.j=j;
+            l.kj4=kj4;
+            l.kj5=kj5;
+            pthread_create(&pt1,NULL,&run,(void*)&l);// チルドスレッドの生成
+            if(THREAD<1){ // not Thread
+              pthread_join(pt1,NULL); 
+              pthread_detach(pt1);
+            }
+            pthread_join(pt1,NULL); 
+            pthread_detach(pt1);
+            lTotal+= l.C2[B1][0]*2+ l.C4[B1][0]*4+ l.C8[B1][0]*8;
+            lUnique+= l.C2[B1][0]+ l.C4[B1][0]+ l.C8[B1][0]; 
+            for(int kj6=0;kj6<si;kj6++){//backtrack1の集計
+              lTotal+= l3[kj6].C2[B1][1]*2+ l3[kj6].C4[B1][1]*4+ l3[kj6].C8[B1][1]*8;
+              lUnique+= l3[kj6].C2[B1][1]+ l3[kj6].C4[B1][1]+ l3[kj6].C8[B1][1]; 
+            }
+            //free(pt1);
+            //free(pt3);
+            //free(l);
+            //free(l3);
+
+            //この中で回す
+          }
+        }
+      }
+    }
+  }
+}
+else if(si>=23){  //07_31NQueen.c
+  //printf("si>=23");
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+    for(int k=0;k<si;k++){
+      for(int j=0;j<si;j++){//backtrack1のB1
+        for(int kj4=0;kj4<si;kj4++){//backtrack1のB1
+          for(int kj5=0;kj5<si;kj5++){//backtrack1のB1
+            for(int kj6=0;kj6<si;kj6++){//backtrack1のB1
+              //この中で回す
+              pthread_t pt1;//スレッド childThread
+              pthread_t pt3[si];//スレッド childThread
+              local l;//構造体 local型 
+              local l3[si];
+              l.B1=B1; l.B2=B2;     
+              for(int kj7=0;kj7<si;kj7++){//backtrack1のB1
+                l3[kj7].B1=B1; l3[kj7].B2=B2;
+              }
+              for(int i=0;i<siE;i++){ //aB[]の初期化
+                l.aB[i]=i;
+                for(int kj7=0;kj7<si;kj7++){
+                  l3[kj7].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
+                }
+              }
+              l.k=-1;	
+              l.j=-1;	
+              l.kj4=-1;	
+              l.kj5=-1;	
+              l.kj6=-1;	
+              l.kj7=-1;	
+              l.kj8=-1;	
+              l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
+              for(int kj7=0;kj7<si;kj7++){
+                l3[kj7].k=-1;
+                l3[kj7].j=-1;
+                l3[kj7].kj4=-1;
+                l3[kj7].kj5=-1;
+                l3[kj7].kj6=-1;
+                l3[kj7].kj7=-1;
+                l3[kj7].kj8=-1;
+                l3[kj7].C2[B1][1]= l3[kj7].C4[B1][1]= l3[kj7].C8[B1][1]=0;	
+              }
+              if(B1<si/2){
+
+                for(int kj7=0;kj7<si;kj7++){
+                  l3[kj7].k=k; l3[kj7].j=j;
+                  l3[kj7].kj4=kj4;
+                  l3[kj7].kj5=kj5;
+                  l3[kj7].kj6=kj6;
+                  l3[kj7].kj7=kj7;
+                  pthread_create(&pt3[kj7],NULL,&run3,(void*)&l3[kj7]);// チルドスレッドの生成
+                  if(THREAD<1){ // not Thread
+                    pthread_join(pt3[kj7],NULL); 
+                    pthread_detach(pt3[kj7]);
+                  }
+                }
+                for(int kj7=0;kj7<si;kj7++){
+                  pthread_join(pt3[kj7],NULL); 
+                  pthread_detach(pt3[kj7]);
+                }
+              }
+              l.k=k; 
+              l.j=j;
+              l.kj4=kj4;
+              l.kj5=kj5;
+              l.kj6=kj6;
+              pthread_create(&pt1,NULL,&run,(void*)&l);// チルドスレッドの生成
+              if(THREAD<1){ // not Thread
+                pthread_join(pt1,NULL); 
+                pthread_detach(pt1);
+              }
+              pthread_join(pt1,NULL); 
+              pthread_detach(pt1);
+              lTotal+= l.C2[B1][0]*2+ l.C4[B1][0]*4+ l.C8[B1][0]*8;
+              lUnique+= l.C2[B1][0]+ l.C4[B1][0]+ l.C8[B1][0]; 
+              for(int kj7=0;kj7<si;kj7++){//backtrack1の集計
+                lTotal+= l3[kj7].C2[B1][1]*2+ l3[kj7].C4[B1][1]*4+ l3[kj7].C8[B1][1]*8;
+                lUnique+= l3[kj7].C2[B1][1]+ l3[kj7].C4[B1][1]+ l3[kj7].C8[B1][1]; 
+              }
+              //free(pt1);
+              //free(pt3);
+              //free(l);
+              //free(l3);
+
+              //この中で回す
+            }
+          }
+        }
+      }
+    }
+  }
+}
+else if(si>=24){  //07_31NQueen.c
+  //printf("si>=24");
+  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+    for(int k=0;k<si;k++){
+      for(int j=0;j<si;j++){//backtrack1のB1
+        for(int kj4=0;kj4<si;kj4++){//backtrack1のB1
+          for(int kj5=0;kj5<si;kj5++){//backtrack1のB1
+            for(int kj6=0;kj6<si;kj6++){//backtrack1のB1
+              for(int kj7=0;kj7<si;kj7++){//backtrack1のB1
+                //この中で回す
+                pthread_t pt1;//スレッド childThread
+                pthread_t pt3[si];//スレッド childThread
+                local l;//構造体 local型 
+                local l3[si];
+                l.B1=B1; l.B2=B2;     
+                for(int kj8=0;kj8<si;kj8++){//backtrack1のB1
+                  l3[kj8].B1=B1; l3[kj8].B2=B2;
+                }
+                for(int i=0;i<siE;i++){ //aB[]の初期化
+                  l.aB[i]=i;
+                  for(int kj8=0;kj8<si;kj8++){
+                    l3[kj8].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
+                  }
+                }
+                l.k=-1;	
+                l.j=-1;	
+                l.kj4=-1;	
+                l.kj5=-1;	
+                l.kj6=-1;	
+                l.kj7=-1;	
+                l.kj8=-1;	
+                l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
+                for(int kj8=0;kj8<si;kj8++){
+                  l3[kj8].k=-1;
+                  l3[kj8].j=-1;
+                  l3[kj8].kj4=-1;
+                  l3[kj8].kj5=-1;
+                  l3[kj8].kj6=-1;
+                  l3[kj8].kj7=-1;
+                  l3[kj8].kj8=-1;
+                  l3[kj8].C2[B1][1]= l3[kj8].C4[B1][1]= l3[kj8].C8[B1][1]=0;	
+                }
+                if(B1<si/2){
+
+                  for(int kj8=0;kj8<si;kj8++){
+                    l3[kj8].k=k; l3[kj8].j=j;
+                    l3[kj8].kj4=kj4;
+                    l3[kj8].kj5=kj5;
+                    l3[kj8].kj6=kj6;
+                    l3[kj8].kj7=kj7;
+                    l3[kj8].kj8=kj8;
+                    pthread_create(&pt3[kj8],NULL,&run3,(void*)&l3[kj8]);// チルドスレッドの生成
+                    if(THREAD<1){ // not Thread
+                      pthread_join(pt3[kj8],NULL); 
+                      pthread_detach(pt3[kj8]);
+                    }
+                  }
+                  for(int kj8=0;kj8<si;kj8++){
+                    pthread_join(pt3[kj8],NULL); 
+                    pthread_detach(pt3[kj8]);
+                  }
+                }
+                l.k=k; 
+                l.j=j;
+                l.kj4=kj4;
+                l.kj5=kj5;
+                l.kj6=kj6;
+                l.kj7=kj7;
+                pthread_create(&pt1,NULL,&run,(void*)&l);// チルドスレッドの生成
+                if(THREAD<1){ // not Thread
+                  pthread_join(pt1,NULL); 
+                  pthread_detach(pt1);
+                }
+                pthread_join(pt1,NULL); 
+                pthread_detach(pt1);
+                lTotal+= l.C2[B1][0]*2+ l.C4[B1][0]*4+ l.C8[B1][0]*8;
+                lUnique+= l.C2[B1][0]+ l.C4[B1][0]+ l.C8[B1][0]; 
+                for(int kj8=0;kj8<si;kj8++){//backtrack1の集計
+                  lTotal+= l3[kj8].C2[B1][1]*2+ l3[kj8].C4[B1][1]*4+ l3[kj8].C8[B1][1]*8;
+                  lUnique+= l3[kj8].C2[B1][1]+ l3[kj8].C4[B1][1]+ l3[kj8].C8[B1][1]; 
+                }
+                //free(pt1);
+                //free(pt3);
+                //free(l);
+                //free(l3);
+
+                //この中で回す
+              }
+            }
+          }
         }
       }
     }
