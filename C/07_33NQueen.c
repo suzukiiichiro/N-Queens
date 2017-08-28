@@ -11,6 +11,7 @@
  N21以降はは07_31で実装した５段階で処理するようにした。
  Nが大きくなればなるほど不均衡で偏りが出て遅くなる傾向にあった処理速度は、
  改善され、Nが大きくなればなるほど、これまでの計測値よりも高速となっている。 
+ の、malloc卒業版
 
  N:          Total        Unique                 dd:hh:mm:ss.ms
  2:                 0                 0          00:00:00:00.00
@@ -31,30 +32,6 @@
 17:          95815104          11977939          00:00:00:03.58
 18:         666090624          83263591          00:00:00:29.47
 19:        4968057848         621012754          00:00:05:05.23
-
- 07_32NQueen.c 
- N:        Total       Unique                 dd:hh:mm:ss.ms
- 2:               0                0          00:00:00:00.00
- 3:               0                0          00:00:00:00.00
- 4:               2                1          00:00:00:00.00
- 5:              10                2          00:00:00:00.00
- 6:               4                1          00:00:00:00.00
- 7:              40                6          00:00:00:00.00
- 8:              92               12          00:00:00:00.00
- 9:             352               46          00:00:00:00.00
-10:             724               92          00:00:00:00.00
-11:            2680              341          00:00:00:00.00
-12:           14200             1787          00:00:00:00.00
-13:           73712             9233          00:00:00:00.00
-14:          365596            45752          00:00:00:00.01
-15:         2279184           285053          00:00:00:00.08
-16:        14772512          1846955          00:00:00:00.49
-17:        95815104         11977939          00:00:00:03.61
-18:       666090624         83263591          00:00:00:29.67
-19:     18835885144       2354507712          00:00:34:22.35
-20:    294381164672      36797790608          00:09:07:36.92
-21:    314666222712      39333324973          00:04:26:10.53
-22:   2691008701644     336376244042          01:15:23:38.01
 */
 
 #include <stdio.h>
@@ -63,6 +40,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include "unistd.h"
+
 // OpenCL
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -73,6 +51,7 @@
 #define MAX 27      //求めるNの最大値
 #define DEBUG 0     //TRUE:1 FALSE:0
 #define THREAD 1    //TRUE:1 FALSE:0
+
 
 /** グローバル変数 */
 int si;             //size
@@ -107,6 +86,26 @@ typedef struct{
   int BK;
 }local ;
 
+/**
+ * 関数定義
+ */
+void thMonitor(local *l,int i);
+void symmetryOps_bm(local *l);
+void backTrack1(int y,int left,int down,int right,int bm,local *l);
+void backTrack2(int y,int left,int down,int right,int bm,local *l);
+void *run(void *args);
+void *run3(void *args);
+void *NQueenThread();
+void NQueen();
+void NQueenThread_18();
+void NQueenThread_19();
+void NQueenThread_20();
+void NQueenThread_21();
+void NQueenThread_22();
+void NQueenThread_23();
+void NQueenThread_24();
+void NQueenThread_25();
+
 #ifdef DEBUG
 const int spc[]={'/', '-', '\\', '|'};
 const int spl=sizeof(spc)/sizeof(spc[0]);
@@ -119,27 +118,6 @@ void hoge(){
 }
 //FILE *f;
 #endif
-
-/**
- * 関数定義
- */
-void thMonitor(local *l,int i);
-void symmetryOps_bm(local *l);
-void backTrack1(int y,int left,int down,int right,int bm,local *l);
-void backTrack2(int y,int left,int down,int right,int bm,local *l);
-void *run(void *args);
-void *run3(void *args);
-void *NQueenThread();
-void NQueen();
-
-void NQueenThread_18();
-void NQueenThread_19();
-void NQueenThread_20();
-void NQueenThread_21();
-void NQueenThread_22();
-void NQueenThread_23();
-void NQueenThread_24();
-void NQueenThread_25();
 
 /**
  * チェスボードのクイーンの場所を確認
@@ -172,21 +150,18 @@ void symmetryOps_bm(local *l){
       for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
       if(l->aB[l->own]>l->bit){ return; }else if(l->aB[l->own]<l->bit){ break; } }
     //90度回転して同型なら180度/270度回転も同型である
-    if(l->own>siE){ l->C2[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,2); return ; } 
-  }
+    if(l->own>siE){ l->C2[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,2); return ; } }
   if(l->aB[siE]==l->EB){ //180度回転
     for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
       for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
       if(l->aB[l->own]>l->bit){ return; } 
       else if(l->aB[l->own]<l->bit){ break; } }
     //90度回転が同型でなくても180度回転が同型である事もある
-    if(l->own>siE){ l->C4[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,4); return; } 
-  }
+    if(l->own>siE){ l->C4[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,4); return; } }
   if(l->aB[l->B1]==l->TB){ //270度回転
     for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
       for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
-      if(l->aB[l->own]>l->bit){ return; } else if(l->aB[l->own]<l->bit){ break; } }
-  }
+      if(l->aB[l->own]>l->bit){ return; } else if(l->aB[l->own]<l->bit){ break; } } }
   l->C8[l->B1][l->BK]++;
   if(DEBUG>0) thMonitor(l,8); 
 }
@@ -203,27 +178,26 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
     //【枝刈り】下部サイド枝刈り 
     else if(y==l->B2) { if((down&l->SM)==0){ return; } if((down&l->SM)!=l->SM){ bm&=l->SM; } }
     if(y==1 && l->k>=0){
-      if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
-      else{ return; }
+      if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; } else{ return; }
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==2 && l->j>=0){
-      if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
-      else{ return; }
+      if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; } else{ return; }
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==3 && l->kj4>=0){
-      if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
-      else{ return; }
+      if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; } else{ return; }
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==4 && l->kj5>=0){
-      if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
-      else{ return; }
+      if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; } else{ return; }
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-
-
-		/** ここについきすると解がおかしくなる */
-
-
-
+    }else if(y==5 && l->kj6>=0){
+      if(bm & (1<<l->kj6)){ l->aB[y]=l->bit=1<<l->kj6; } else{ return; }
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==6 && l->kj7>=0){
+      if(bm & (1<<l->kj7)){ l->aB[y]=l->bit=1<<l->kj7; } else{ return; }
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==7 && l->kj8>=0){
+      if(bm & (1<<l->kj8)){ l->aB[y]=l->bit=1<<l->kj8; } else{ return; }
+      backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
       while(bm>0) {
         bm^=l->aB[y]=l->bit=-bm&bm;
@@ -240,26 +214,23 @@ void backTrack1(int y,int left,int down,int right,int bm,local *l){
     //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
     else{ if(y<l->B1) { bm&=~2; }
     if(y==2 && l->k>=0){
-      if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
-      else{ return; }
+      if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; } else{ return; }
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==3 && l->j>=0){
-      if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
-      else{ return; }
+      if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; } else{ return; }
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==4 && l->kj4>=0){
-      if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
-      else{ return; }
+      if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; } else{ return; }
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-
-
-
-
-		/** ここについきすると解がおかしくなる */
-
-
-
-
+    }else if(y==5 && l->kj5>=0){
+      if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; } else{ return; }
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==6 && l->kj6>=0){
+      if(bm & (1<<l->kj6)){ l->aB[y]=l->bit=1<<l->kj6; } else{ return; }
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
+    }else if(y==7 && l->kj7>=0){
+      if(bm & (1<<l->kj7)){ l->aB[y]=l->bit=1<<l->kj7; } else{ return; }
+      backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
       while(bm>0) {
         bm^=l->aB[y]=l->bit=-bm&bm;
@@ -308,12 +279,11 @@ void *run(void *args){
  * Nの数だけスレッドをもたせて同時並列処理をする
 */
 void *NQueenThread(){
-  
   if(si<=18){ NQueenThread_18(); } //07_27NQueen.c
   else if(si==19){ NQueenThread_19(); }
   else if(si==20){ NQueenThread_20(); }
   else if(si==21){ NQueenThread_21(); }
-  else if(si>=22){ NQueenThread_22(); }
+  else if(si==22){ NQueenThread_22(); }
   else if(si==23){ NQueenThread_23(); }
   else if(si==24){ NQueenThread_24(); }
   else if(si>=25){ NQueenThread_25(); }
@@ -381,10 +351,16 @@ void NQueenThread_18(){
       }
     } 
     l[B1].k=-1;	l[B1].j=-1;	l[B1].kj4=-1;	l[B1].kj5=-1;	
+    l[B1].kj6=-1;
+    l[B1].kj7=-1;
+    l[B1].kj8=-1;
     l[B1].C2[B1][0]= l[B1].C4[B1][0]= l[B1].C8[B1][0]=0;	//カウンターの初期化
     pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     for(int k=1;k<=si;k++){
       l2[B1][k].k=-1;	l2[B1][k].j=-1;	l2[B1][k].kj4=-1;	l2[B1][k].kj5=-1;	
+      l2[B1][k].kj6=-1;
+      l2[B1][k].kj7=-1;
+      l2[B1][k].kj8=-1;
       l2[B1][k].C2[B1][1]= l2[B1][k].C4[B1][1]= l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
     }
     for(int k=1;k<=si;k++){
