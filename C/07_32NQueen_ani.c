@@ -679,68 +679,75 @@ void *run(void *args){
 void *NQueenThread(){
 if(si<=18){ //07_27NQueen.c
   //printf("si<=18");
-  //pthread_t pt[si*si+si];//スレッド childThread
-  pthread_t pt1[si];//スレッド childThread
-  pthread_t pt2[si][si];//スレッド childThread
-  local l[si];//構造体 local型 
-  local l2[si][si];
-  for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
-    l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
-    for(int k=1;k<=si;k++){
-      l2[B1][k].B1=B1; l2[B1][k].B2=B2; //B1 と B2を初期化
+    for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
+      //1行目のクイーンのパタン*2行目のクイーンのパタン
+      //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
+    //if(B1>0&&B1<siE&&B1<B2){// B1から順にスレッドを生成しながら処理を分担する 
+    //backtrack1のチルドスレッドの生成
+    //B,kのfor文の中で回っているのでスレッド数はNxN
+        //この中で回す
+        pthread_t pt1;//スレッド childThread
+        pthread_t pt3[si];//スレッド childThread
+        local l;//構造体 local型 
+        local l3[si];
+        l.B1=B1; l.B2=B2;     
+        for(int k=0;k<si;k++){//backtrack1のB1
+          l3[k].B1=B1; l3[k].B2=B2;
+        }
+        for(int i=0;i<siE;i++){ //aB[]の初期化
+          l.aB[i]=i;
+          for(int k=0;k<si;k++){
+            l3[k].aB[i]=i;  // 上から３行目のスレッドに使う構造体aB[]の初期化
+          }
+        }
+        l.k=-1;	
+        l.j=-1;	
+        l.kj4=-1;	
+        l.kj5=-1;	
+        l.C2[B1][0]= l.C4[B1][0]= l.C8[B1][0]=0;	
+        for(int k=0;k<si;k++){
+          l3[k].k=-1;
+          l3[k].j=-1;
+          l3[k].kj4=-1;
+          l3[k].kj5=-1;
+          l3[k].C2[B1][1]= l3[k].C4[B1][1]= l3[k].C8[B1][1]=0;	
+        }
+        if(B1<si/2){
+
+          for(int k=0;k<si;k++){
+            l3[k].k=k;
+            pthread_create(&pt3[k],NULL,&run3,(void*)&l3[k]);// チルドスレッドの生成
+            if(THREAD<1){ // not Thread
+              pthread_join(pt3[k],NULL); 
+              pthread_detach(pt3[k]);
+            }
+          }
+          for(int k=0;k<si;k++){
+            pthread_join(pt3[k],NULL); 
+            pthread_detach(pt3[k]);
+          }
+        }
+        pthread_create(&pt1,NULL,&run,(void*)&l);// チルドスレッドの生成
+        if(THREAD<1){ // not Thread
+          pthread_join(pt1,NULL); 
+          pthread_detach(pt1);
+        }
+        pthread_join(pt1,NULL); 
+        pthread_detach(pt1);
+        lTotal+= l.C2[B1][0]*2+ l.C4[B1][0]*4+ l.C8[B1][0]*8;
+        lUnique+= l.C2[B1][0]+ l.C4[B1][0]+ l.C8[B1][0]; 
+        for(int k=0;k<si;k++){//backtrack1の集計
+          lTotal+= l3[k].C2[B1][1]*2+ l3[k].C4[B1][1]*4+ l3[k].C8[B1][1]*8;
+          lUnique+= l3[k].C2[B1][1]+ l3[k].C4[B1][1]+ l3[k].C8[B1][1]; 
+        }
+        //free(pt1);
+        //free(pt3);
+        //free(l);
+        //free(l3);
+
+        //この中で回す
     }
-    for(int j=0;j<siE;j++){ 
-      l[B1].aB[j]=j; // aB[]の初期化
-      for(int k=1;k<=si;k++){
-        l2[B1][k].aB[j]=j; // aB[]の初期化
-      }
-    } 
-    l[B1].k=-1;	
-    l[B1].j=-1;	
-    l[B1].kj4=-1;	
-    l[B1].kj5=-1;	
-    l[B1].C2[B1][0]=
-      l[B1].C4[B1][0]=
-      l[B1].C8[B1][0]=0;	//カウンターの初期化
-    pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
-    for(int k=1;k<=si;k++){
-      l2[B1][k].k=-1;	
-      l2[B1][k].j=-1;	
-      l2[B1][k].kj4=-1;	
-      l2[B1][k].kj5=-1;	
-      l2[B1][k].C2[B1][1]=
-      l2[B1][k].C4[B1][1]=
-      l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
-    }
-    for(int k=1;k<=si;k++){
-      l2[B1][k].k=k;
-      pthread_create(&pt2[B1][k],NULL,&run3,(void*)&l2[B1][k]);// チルドスレッドの生成
-    }
-  }
-  for(int B1=1;B1<siE;B1++){ 
-    pthread_join(pt1[B1],NULL); 
-    for(int k=1;k<=si;k++){
-      pthread_join(pt2[B1][k],NULL); 
-    }
-  }
-  for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
-    lTotal+=l[B1].C2[B1][0]*2+
-      l[B1].C4[B1][0]*4+
-      l[B1].C8[B1][0]*8;
-    lUnique+=l[B1].C2[B1][0]+
-      l[B1].C4[B1][0]+
-      l[B1].C8[B1][0]; 
-    for(int k=1;k<=si;k++){
-      //lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
-      lTotal+=l2[B1][k].C2[B1][1]*2+
-        l2[B1][k].C4[B1][1]*4+
-        l2[B1][k].C8[B1][1]*8;
-      //lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
-      lUnique+=l2[B1][k].C2[B1][1]+
-        l2[B1][k].C4[B1][1]+
-        l2[B1][k].C8[B1][1]; 
-    }
-  }
+
 }
 else if(si==19){ 
     //printf("si==19");
@@ -1069,7 +1076,7 @@ void NQueen(){
  * メイン
  */
 int main(void){
-  int min=19;
+  int min=2;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
