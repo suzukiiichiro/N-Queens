@@ -97,6 +97,7 @@ void *run(void *args);
 void *run3(void *args);
 void *NQueenThread();
 void NQueen();
+void NQueenThread_18();
 void NQueenThread_19();
 void NQueenThread_20();
 void NQueenThread_21();
@@ -104,7 +105,6 @@ void NQueenThread_22();
 void NQueenThread_23();
 void NQueenThread_24();
 void NQueenThread_25();
-void NQueenThread_26();
 
 #ifdef DEBUG
 const int spc[]={'/', '-', '\\', '|'};
@@ -279,14 +279,14 @@ void *run(void *args){
  * Nの数だけスレッドをもたせて同時並列処理をする
 */
 void *NQueenThread(){
-  if(si<=19){ NQueenThread_19();  } //07_27NQueen.c
+  if(si<=18){ NQueenThread_18();  } //07_27NQueen.c
+  else if(si==19){ NQueenThread_19(); }
   else if(si==20){ NQueenThread_20(); }
   else if(si==21){ NQueenThread_21(); }
   else if(si==22){ NQueenThread_22(); }
   else if(si==23){ NQueenThread_23(); }
   else if(si==24){ NQueenThread_24(); }
-  else if(si==25){ NQueenThread_25(); }
-  else if(si>=26){ NQueenThread_26(); }
+  else if(si>=25){ NQueenThread_25(); }
   return 0;
 }
 /**
@@ -333,7 +333,7 @@ int main(void){
 /**
  *
  */
-void NQueenThread_19(){
+void NQueenThread_18(){
   //printf("si==18");
   pthread_t pt1[si];//スレッド childThread
   pthread_t pt2[si][si];//スレッド childThread
@@ -341,59 +341,46 @@ void NQueenThread_19(){
   local l2[si][si];
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     l[B1].B1=B1; l[B1].B2=B2; //B1 と B2を初期化
-    for(int k=1;k<=si;k++){
+    for(int k=0;k<si;k++){
       l2[B1][k].B1=B1; l2[B1][k].B2=B2; //B1 と B2を初期化
     }
     for(int j=0;j<siE;j++){ 
       l[B1].aB[j]=j; // aB[]の初期化
-      for(int k=1;k<=si;k++){
+      for(int k=0;k<si;k++){
         l2[B1][k].aB[j]=j; // aB[]の初期化
       }
     } 
-    l[B1].k=-1;	
-		l[B1].j=-1;	
-		l[B1].kj4=-1;	
-		l[B1].kj5=-1;	
-    l[B1].kj6=-1;
-    l[B1].kj7=-1;
-    l[B1].kj8=-1;
-    l[B1].C2[B1][0]=0;
-		l[B1].C4[B1][0]=0;
-		l[B1].C8[B1][0]=0;	//カウンターの初期化
+    l[B1].k=-1;	l[B1].j=-1;	l[B1].kj4=-1;	l[B1].kj5=-1;	l[B1].kj6=-1; l[B1].kj7=-1; l[B1].kj8=-1;
+    l[B1].C2[B1][0]=0; l[B1].C4[B1][0]=0; l[B1].C8[B1][0]=0;	//カウンターの初期化 
+    for(int k=0;k<si;k++){
+      l2[B1][k].k=-1;	l2[B1][k].j=-1;	l2[B1][k].kj4=-1;	l2[B1][k].kj5=-1;	l2[B1][k].kj6=-1; l2[B1][k].kj7=-1; l2[B1][k].kj8=-1;
+      l2[B1][k].C2[B1][1]=0; l2[B1][k].C4[B1][1]=0; l2[B1][k].C8[B1][1]=0;	//カウンターの初期化 
+    }
+    if(B1<si/2){
+      for(int k=0;k<si;k++){
+        l2[B1][k].k=k;
+        pthread_create(&pt2[B1][k],NULL,&run3,(void*)&l2[B1][k]);// チルドスレッドの生成
+      }
+    }
     pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
-    for(int k=1;k<=si;k++){
-      l2[B1][k].k=-1;	
-			l2[B1][k].j=-1;	
-			l2[B1][k].kj4=-1;	
-			l2[B1][k].kj5=-1;	
-      l2[B1][k].kj6=-1;
-      l2[B1][k].kj7=-1;
-      l2[B1][k].kj8=-1;
-      l2[B1][k].C2[B1][1]=0;
-			l2[B1][k].C4[B1][1]=0;
-			l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
-    }
-    for(int k=1;k<=si;k++){
-      l2[B1][k].k=k;
-      pthread_create(&pt2[B1][k],NULL,&run3,(void*)&l2[B1][k]);// チルドスレッドの生成
-    }
+
   }
-  for(int B1=1;B1<siE;B1++){ 
+  for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     pthread_join(pt1[B1],NULL); 
-    for(int k=1;k<=si;k++){
+    for(int k=0;k<si;k++){
       pthread_join(pt2[B1][k],NULL); 
     }
   }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
     lTotal+=l[B1].C2[B1][0]*2+ l[B1].C4[B1][0]*4+ l[B1].C8[B1][0]*8;
     lUnique+=l[B1].C2[B1][0]+ l[B1].C4[B1][0]+ l[B1].C8[B1][0]; 
-    for(int k=1;k<=si;k++){
+    for(int k=0;k<si;k++){
       lTotal+=l2[B1][k].C2[B1][1]*2+ l2[B1][k].C4[B1][1]*4+ l2[B1][k].C8[B1][1]*8;
       lUnique+=l2[B1][k].C2[B1][1]+ l2[B1][k].C4[B1][1]+ l2[B1][k].C8[B1][1]; 
     }
   }
 }
-void NQueenThread_20(){
+void NQueenThread_19(){
   //printf("si==19");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     pthread_t pt1;//スレッド childThread
@@ -463,7 +450,7 @@ void NQueenThread_20(){
     }
   }
 }
-void NQueenThread_21(){
+void NQueenThread_20(){
   //printf("si==20");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
@@ -537,7 +524,7 @@ void NQueenThread_21(){
     }
   }
 }
-void NQueenThread_22(){
+void NQueenThread_21(){
   //printf("si==21");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
@@ -610,7 +597,7 @@ void NQueenThread_22(){
     }
   }
 }
-void NQueenThread_23(){
+void NQueenThread_22(){
   //printf("si==22");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
@@ -687,7 +674,7 @@ void NQueenThread_23(){
     }
   }
 }
-void NQueenThread_24(){
+void NQueenThread_23(){
   //printf("si==23");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
@@ -767,7 +754,7 @@ void NQueenThread_24(){
     }
   }
 }
-void NQueenThread_25(){
+void NQueenThread_24(){
   //printf("si==24");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
@@ -852,7 +839,7 @@ void NQueenThread_25(){
     }
   }
 }
-void NQueenThread_26(){
+void NQueenThread_25(){
   //printf("si>=25");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
