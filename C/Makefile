@@ -54,10 +54,10 @@ RM=rm -fr
 #LDFLAGS=-L
 #CPPFLAGS=-I
 
-all:nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31)
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33)
 
 nq33=07_33NQueen
 nq33: $(nq33).c 
