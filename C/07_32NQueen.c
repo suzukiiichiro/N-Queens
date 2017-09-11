@@ -27,9 +27,13 @@
 13:           73712             9233          00:00:00:00.00
 14:          365596            45752          00:00:00:00.01
 15:         2279184           285053          00:00:00:00.08
-16:        14772512          1846955          00:00:00:00.50
-17:        95815104         11977939          00:00:00:03.72
-18:       666090624         83263591          00:00:00:29.43
+16:        14772512          1846955          00:00:00:00.49
+17:        95815104         11977939          00:00:00:03.61
+18:       666090624         83263591          00:00:00:29.67
+19:     18835885144       2354507712          00:00:34:22.35
+20:    294381164672      36797790608          00:09:07:36.92
+21:    314666222712      39333324973          00:04:26:10.53
+22:   2691008701644     336376244042          01:15:23:38.01
 */
 
 #include <stdio.h>
@@ -328,108 +332,27 @@ void backTrack1_5thLine(int y,int left,int down,int right,int bm,local *l){
 /**
  上から１行目角にクイーンがない場合の処理
 */
-//void backTrack2(int y,int left,int down,int right,int bm,local *l){
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
-  //bmはクイーンが置ける場所
-  //l->msk はsi分1が並んでいる
-  //そこから引数に渡されてきたleft,right,downを取り除く。
-  //msk
-  //11111111
-  //left
-  //00011000
-  //down
-  //00001010
-  //right
-  //00000100
-  //bmp
-  //11100001
   l->bit=0;
   if(y==siE){
-  //yが1番下に来たら
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
-      //1番下の行にクイーンを置けるか判定する
-      //bm>0について
-      //bmは残り1個しか残っていないので bm>0かどうかだけ判定し
-      //0だったら配置する場所がないので抜ける
-      //0より大きければ最下位のビットを抽出するまでものくその値がaB[y]になる
-      //bm:   00001000
-      //l->aB:00001000
-      //(bm&l->LM)==0について
-      //最下段でLMにひっかかるものはここで刈り取られる
-      //最下段はLMに当たる場所にクイーンはおけない
-      //両端どちらかが1
-      //この場合はOK
-      //bm      :00100000
-      //LM      :11000011
-      //bm&l->LM:00000000
-      //この場合は刈り取られる
-      //bm      :00000010
-      //LM      :11000011
-      //bm&l->LM:00000010
       l->aB[y]=bm;
       symmetryOps_bm(l);//対称解除法
     }
   }else{
     if(y<l->B1){ //【枝刈り】上部サイド枝刈り            
       bm&=~l->SM; 
-      //SMは左右両端が1 10000001
-      //左右両端を刈り込む
-      //bm:11110001
-      //SM:10000001
-      //bm:01110000
     }else if(y==l->B2) { //【枝刈り】下部サイド枝刈り    
       if((down&l->SM)==0){ 
-      //downの両端が0の場合にdown&SM=0になる
-      //down   :10011110
-      //SM     :10000001
-      //down&SM:10000000
-      //down   :01011110
-      //SM     :10000001
-      //down&SM:00000000
         return; 
       }
       if((down&l->SM)!=l->SM){ 
-      //(down&l->SM)!=l->SM
-      //両端どちらも1の場合は(down&l->SM)==l->SM
         bm&=l->SM; 
-        //両端の1だけ残す
-        //bm:00000001
-        //SM:10000001
-        //bm:00000001
       }
     }
     while(bm>0) {
-      //bmが0になると抜ける
-      //最も下位の1をとってaB[y],l->bitに設定する
-      //bmが0になるとクイーンを置ける可能性がある場所がなくなるので抜ける
-      //yが最後まで行っていなくてもbmが0になれば抜ける
       bm^=l->aB[y]=l->bit=-bm&bm;
-      //最も下位の１ビットを抽出
-      //bmの中で1番桁数が少ない1を0にする
-      //aB[y],l->bitにその値を設定する
-      //11100001
-      //この場合1番桁数の低い右端の1が選択される
-      //aB[y]
-      //00000001
-      //bm
-      //11100000
-      //次のbacktrackに渡すleft,down,rightを設定する
-      //left,down,rightは、y1から蓄積されていく
-      //left はleft(今までのleftライン)とl->bit(今回選択されたクイーンの位置)を左に1ビットシフト
-      //left        00110010
-      //l->bit      00000100
-      //left|l->bit 00110110
-      //1bit左シフト01101100
-      //downはdown(今までのdownライン) と l->bit(今回選択されたクイーンの位置)
-      //down        00001011
-      //l->bit      00000100
-      //down|l->bit 00001111
-      //rightはright(今までのrightライン)とl->bit(今回選択されたクイーンの位置)を右に1ビットシフト
-      //right       00000010
-      //l->bit      00000100
-      //right|l->bit00000110
-      //1bit右シフト00000011
       NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }
   }
@@ -437,192 +360,84 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
 /**
  上から１行目角にクイーンがある場合の処理
 */
-//void backTrack1(int y,int left,int down,int right,int bm,local *l){
 void cornerQ(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); 
-  //bmはクイーンが置ける場所
-  //l->msk はsi分1が並んでいる
-  //そこから引数に渡されてきたleft,right,downを取り除く。
-  //msk
-  //11111111
-  //left
-  //00011000
-  //down
-  //00001010
-  //right
-  //00000100
-  //bmp
-  //11100001
   l->bit=0;
   if(y==siE) {
-  //yが1番下に来たら
     if(bm>0){
-      //1番下の行にクイーンを置けるか判定する
-      //bmは残り1個しか残っていないので bm>0かどうかだけ判定し
-      //0だったら配置する場所がないので抜ける
-      //0より大きければ最下位のビットを抽出するまでものくその値がaB[y]になる
-      //bm:   00001000
-      //l->aB:00001000
       l->aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      //y<B1の時に右から2列目を刈り込んでおけばいい
       l->C8[l->B1][l->BK]++;
       if(DEBUG>0) thMonitor(l,8); 
     }
   }else{
     if(y<l->B1) { //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい  
-      //backtrack1ではy<B1の間は右から2個目にクイーンを配置しない。
-      //これでユニーク解であることが保証される
-      //bm:10001010
-      // 2:00000010
-      //bm:10001000 
       bm&=~2; 
     }
     while(bm>0) {
-      //bmが0になると抜ける
-      //最も下位の1をとってaB[y],l->bitに設定する
-      //bmが0になるとクイーンを置ける可能性がある場所がなくなるので抜ける
-      //yが最後まで行っていなくてもbmが0になれば抜ける
       bm^=l->aB[y]=l->bit=-bm&bm;
-      //最も下位の１ビットを抽出
-      //bmの中で1番桁数が少ない1を0にする
-      //aB[y],l->bitにその値を設定する
-      //11100001
-      //この場合1番桁数の低い右端の1が選択される
-      //aB[y]
-      //00000001
-      //bm
-      //11100000
       cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
-      //次のbacktrackに渡すleft,down,rightを設定する
-      //left,down,rightは、y1から蓄積されていく
-      //left はleft(今までのleftライン)とl->bit(今回選択されたクイーンの位置)を左に1ビットシフト
-      //left        00110010
-      //l->bit      00000100
-      //left|l->bit 00110110
-      //1bit左シフト01101100
-      //downはdown(今までのdownライン) と l->bit(今回選択されたクイーンの位置)
-      //down        00001011
-      //l->bit      00000100
-      //down|l->bit 00001111
-      //rightはright(今までのrightライン)とl->bit(今回選択されたクイーンの位置)を右に1ビットシフト
-      //right       00000010
-      //l->bit      00000100
-      //right|l->bit00000110
-      //1bit右シフト00000011
     }
   } 
 }
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
   //配置可能フィールド
-  //int bit=0;
-  //int bm=l->msk&~(left|down|right); 
   bm=l->msk&~(left|down|right); 
   l->bit=0;
-  //if(y==G.siE){
   if(y==siE){
-    if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
-      l->aB[y]=bm;
-      //対称解除法
-      //symmetryOps_bm(l,C2,C4,C8);//対称解除法
-      symmetryOps_bm(l);
-    }
+    //【枝刈り】最下段枝刈り
+    if(bm>0 && (bm&l->LM)==0){ l->aB[y]=bm; symmetryOps_bm(l); }
   }else{
     //【枝刈り】上部サイド枝刈り
-    if(y<l->B1){             
-      bm&=~l->SM; 
-      //【枝刈り】下部サイド枝刈り
-    }else if(y==l->B2) {     
-      if((down&l->SM)==0){ 
-        return; 
-      }
-      if((down&l->SM)!=l->SM){ 
-        bm&=l->SM; 
-      }
-    }
+    if(y<l->B1){ bm&=~l->SM; }
+    //【枝刈り】下部サイド枝刈り 
+    else if(y==l->B2) { if((down&l->SM)==0){ return; } if((down&l->SM)!=l->SM){ bm&=l->SM; } }
     if(y==1 && l->k>=0){
       if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
-    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==2 && l->j>=0){
       if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
-    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==3 && l->kj4>=0){
       if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
-    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==4 && l->kj5>=0){
       if(bm & (1<<l->kj5)){ l->aB[y]=l->bit=1<<l->kj5; }
-    //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-    //backtrack2に行かず、backtrack3rdlineに行き3行目のクイーンの位置も固定する
       backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
       while(bm>0) {
-        //最も下位の１ビットを抽出
-        //bm^=l->aB[y]=bit=-bm&bm;
         bm^=l->aB[y]=l->bit=-bm&bm;
-        //backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
         backTrack2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       }
     }
   }
 }
 void backTrack1(int y,int left,int down,int right,int bm,local *l){
-  //int bit;
-  //int bm=l->msk&~(left|down|right); 
   bm=l->msk&~(left|down|right); 
   l->bit=0;
-  //if(y==G.siE) {
   if(y==siE) {
-    if(bm>0){
-      l->aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      //C8[l->B1]++;
-      l->C8[l->B1][l->BK]++;
-      if(DEBUG>0) thMonitor(l,82);
-    }
-  }else{
-    if(y<l->B1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      //bm|=2; 
-      //bm^=2;
-      bm&=~2; 
-    }
+    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+    if(bm>0){ l->aB[y]=bm; l->C8[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,82); } }
+    //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+    else{ if(y<l->B1) { bm&=~2; }
     if(y==2 && l->k>=0){
       if(bm & (1<<l->k)){ l->aB[y]=l->bit=1<<l->k; }
-      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-      //5行目以降
-      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==3 && l->j>=0){
       if(bm & (1<<l->j)){ l->aB[y]=l->bit=1<<l->j; }
-      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-      //5行目以降
-      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else if(y==4 && l->kj4>=0){
       if(bm & (1<<l->kj4)){ l->aB[y]=l->bit=1<<l->kj4; }
-      //left,down,rightなどkの値がクイーンの位置として指定できない場合はスレッド終了させる
       else{ return; }
-      //5行目以降
-      //backTrack1stLine3(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     }else{
       while(bm>0) {
-        //最も下位の１ビットを抽出
-        //bm^=l->aB[y]=bit=-bm&bm;
         bm^=l->aB[y]=l->bit=-bm&bm;
-        //backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
         backTrack1(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
       }
     }
@@ -643,7 +458,6 @@ void *run3(void *args){
     //１行目のクイーンの位置はB1の値によって決まる
     l->aB[0]=l->bit=(1<<l->B1);
     //2行目のクイーンの位置を固定することによってN分スレッドを分割する
-    //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     if(si<21){
       backTrack2(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     }else{
@@ -678,8 +492,6 @@ void *run(void *args){
 */
 void *NQueenThread(){
 if(si<=18){ //07_27NQueen.c
-  //printf("si<=18");
-  //pthread_t pt[si*si+si];//スレッド childThread
   pthread_t pt1[si];//スレッド childThread
   pthread_t pt2[si][si];//スレッド childThread
   local l[si];//構造体 local型 
@@ -695,22 +507,12 @@ if(si<=18){ //07_27NQueen.c
         l2[B1][k].aB[j]=j; // aB[]の初期化
       }
     } 
-    l[B1].k=-1;	
-    l[B1].j=-1;	
-    l[B1].kj4=-1;	
-    l[B1].kj5=-1;	
-    l[B1].C2[B1][0]=
-      l[B1].C4[B1][0]=
-      l[B1].C8[B1][0]=0;	//カウンターの初期化
+    l[B1].k=-1;	l[B1].j=-1;	l[B1].kj4=-1;	l[B1].kj5=-1;	
+    l[B1].C2[B1][0]= l[B1].C4[B1][0]= l[B1].C8[B1][0]=0;	//カウンターの初期化
     pthread_create(&pt1[B1],NULL,&run,(void*)&l[B1]);// チルドスレッドの生成
     for(int k=1;k<=si;k++){
-      l2[B1][k].k=-1;	
-      l2[B1][k].j=-1;	
-      l2[B1][k].kj4=-1;	
-      l2[B1][k].kj5=-1;	
-      l2[B1][k].C2[B1][1]=
-      l2[B1][k].C4[B1][1]=
-      l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
+      l2[B1][k].k=-1;	l2[B1][k].j=-1;	l2[B1][k].kj4=-1;	l2[B1][k].kj5=-1;	
+      l2[B1][k].C2[B1][1]= l2[B1][k].C4[B1][1]= l2[B1][k].C8[B1][1]=0;	//カウンターの初期化
     }
     for(int k=1;k<=si;k++){
       l2[B1][k].k=k;
@@ -724,26 +526,15 @@ if(si<=18){ //07_27NQueen.c
     }
   }
   for(int B1=1;B1<siE;B1++){//スレッド毎のカウンターを合計
-    lTotal+=l[B1].C2[B1][0]*2+
-      l[B1].C4[B1][0]*4+
-      l[B1].C8[B1][0]*8;
-    lUnique+=l[B1].C2[B1][0]+
-      l[B1].C4[B1][0]+
-      l[B1].C8[B1][0]; 
+    lTotal+=l[B1].C2[B1][0]*2+ l[B1].C4[B1][0]*4+ l[B1].C8[B1][0]*8;
+    lUnique+=l[B1].C2[B1][0]+ l[B1].C4[B1][0]+ l[B1].C8[B1][0]; 
     for(int k=1;k<=si;k++){
-      //lTotal+=l2[si*(B1-1)+k].C2[B1][1]*2+l2[si*(B1-1)+k].C4[B1][1]*4+l2[si*(B1-1)+k].C8[B1][1]*8;
-      lTotal+=l2[B1][k].C2[B1][1]*2+
-        l2[B1][k].C4[B1][1]*4+
-        l2[B1][k].C8[B1][1]*8;
-      //lUnique+=l2[si*(B1-1)+k].C2[B1][1]+l2[si*(B1-1)+k].C4[B1][1]+l2[si*(B1-1)+k].C8[B1][1]; 
-      lUnique+=l2[B1][k].C2[B1][1]+
-        l2[B1][k].C4[B1][1]+
-        l2[B1][k].C8[B1][1]; 
+      lTotal+=l2[B1][k].C2[B1][1]*2+ l2[B1][k].C4[B1][1]*4+ l2[B1][k].C8[B1][1]*8;
+      lUnique+=l2[B1][k].C2[B1][1]+ l2[B1][k].C4[B1][1]+ l2[B1][k].C8[B1][1]; 
     }
   }
 }
 else if(si==19){ 
-    //printf("si==19");
     for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
       pthread_t **pt1=(pthread_t**)malloc(sizeof(pthread_t*)*si*si); //B1xk
       local     **l=(local**)malloc(sizeof(local*)*si*si); //B1xk
@@ -757,8 +548,6 @@ else if(si==19){
         pt3[B1][j]=(pthread_t*)malloc(sizeof(pthread_t)*si);
         l3[B1][j]=(local*)malloc(sizeof(local)*si);
       }
-      //1行目のクイーンのパタン*2行目のクイーンのパタン
-      //1行目 最上段の行のクイーンの位置は中央を除く右側の領域に限定。
       for(int k=0;k<si;k++){//B1 と B2を初期化
             l[B1][k].B1=B1; l[B1][k].B2=B2;     
         for(int j=0;j<si;j++){//backtrack1のB1
@@ -787,9 +576,6 @@ else if(si==19){
               l3[B1][k][j].C2[B1][1]= l3[B1][k][j].C4[B1][1]= l3[B1][k][j].C8[B1][1]=0;	
         }
       }
-    //if(B1>0&&B1<siE&&B1<B2){// B1から順にスレッドを生成しながら処理を分担する 
-    //backtrack1のチルドスレッドの生成
-    //B,kのfor文の中で回っているのでスレッド数はNxN
       if(B1<si/2){
         for(int k=0;k<si;k++){
           for(int j=0;j<si;j++){
@@ -1085,10 +871,10 @@ void NQueen(){
  * メイン
  */
 int main(void){
-  int min=19;
+  int min=2;
   struct timeval t0;
   struct timeval t1;
-  printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
+  printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
 		db=0;
     si=i; siE=i-1; 
@@ -1109,7 +895,7 @@ int main(void){
     int hh=ss/3600; 
     int mm=(ss-hh*3600)/60; 
     ss%=60;
-    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
+    printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
   return 0;
 }

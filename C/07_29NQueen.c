@@ -3,7 +3,7 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
- <>29．マルチスレッドもっと最適化    			        NQueen29() N17=00.52
+ <>29．マルチスレッドもっと最適化 ３段目   			        NQueen29() N17=00.52
   BarckTrack1について修正。
   現行の処理ではすでに最上段と上から２段目のクイーンまでは固定化してスレッドかしている。
   今回は、上記に加えて上から３段目のクイーンまでを固定化してスレッド化（1XNxN)
@@ -473,7 +473,6 @@ void *NQueenThread(){
   //aB[0]=1,aB[1]=4,aB[2]=2
   //aB[0]=1,aB[1]=4,aB[2]=3
   //aB[0]=1,aB[1]=4,aB[2]=4
-  pthread_t pt1[si][si];    //上から１段目のスレッド childThread
   //backtrack2
   //スレッド数はNxNxN
   //1行目 B1の値によってスレッドを分割する
@@ -531,6 +530,7 @@ void *NQueenThread(){
   //aB[0]=4,aB[1]=4,aB[2]=2
   //aB[0]=4,aB[1]=4,aB[2]=3
   //aB[0]=4,aB[1]=4,aB[2]=4
+  pthread_t pt1[si][si];    //上から１段目のスレッド childThread
   pthread_t pt3[si][si][si];//上から２段目のスレッド childThread
 
   //local l[si];   //構造体 local型 
