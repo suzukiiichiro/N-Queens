@@ -84,7 +84,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
       if (col == startCol)
       {
         step = DONE;
-        break;
+        break;//while文抜ける
       }
       //１個前に戻る？
       --col;
@@ -109,6 +109,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
         //dodgeは l->mskと同じ
         //配置可能フィールド
         mask = dodge & ~(rook | (add >> col) | (sub >> ((NUM_QUEENS - 1) - col)));
+  //bm=l->msk&~(left|down|right);と同じ 
 
         if (mask == 0)
           //配置可能フィールドがなければ終了
