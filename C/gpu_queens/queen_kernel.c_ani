@@ -49,6 +49,10 @@ CL_CONSTANT_KEYWORD const qint dodge = (1 << NUM_QUEENS) - 1;
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 {
+  //inProgress配列から1個取り出す
+  //CPU->GPUに渡す値は配列になる
+  //ワークアイテムを識別する数値を取得する
+  //取得した数値に対応するデータに対して処理を行う
   int index = get_global_id(0);
 
   qint masks[NUM_QUEENS];
