@@ -64,7 +64,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   int r=0;
   for(int j=0;j<si;j++){ aB[j]=j; } //aBを初期化
   uint64_t Total=0;
-  uint64_t solutions = state[index].solutions;
   if(r==si){
     Total++; //解を発見
   }else{
@@ -79,5 +78,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
     }  
   }
   state[index].solutions = Total;
+  state[index].step = DONE;
 }
 
