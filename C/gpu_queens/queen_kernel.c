@@ -1,7 +1,6 @@
 ﻿// Without OPENCL_STYLE defined, this program will compile with gcc/clang,
 // which facilitates testing and experimentation. Without it defined, it
 // compiles as an OpenCL shader.
-
 #ifndef OPENCL_STYLE
   // Declarations appropriate to this program being compiled with gcc.
   #include "stdio.h"
@@ -13,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 14
+  #define si 14
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -27,120 +26,84 @@
   #define CL_CONSTANT_KEYWORD __constant
   #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-
 enum { PLACE, REMOVE, DONE };
-
 // State of individual computation
-struct CL_PACKED_KEYWORD queenState
-{
+struct CL_PACKED_KEYWORD queenState {
   int id;
-  qint masks[NUM_QUEENS];
-  uint64_t solutions; // Number of solutinos found so far.
+  qint aB[si];
+  uint64_t lTotal; // Number of solutinos found so far.
   char step;
-  char col;
-  char startCol; // First column this individual computation was tasked with filling.
-  qint mask;
-  qint rook;
-  qint add;
-  qint sub;
+  char y;
+  char startCol; // First yumn this individual computation was tasked with filling.
+  qint bm;
+  qint down;
+  qint right;
+  qint left;
 };
-
-CL_CONSTANT_KEYWORD const qint dodge = (1 << NUM_QUEENS) - 1;
-
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
-{
-  int index = get_global_id(0);
-
-  qint masks[NUM_QUEENS];
-  for (int i = 0; i < NUM_QUEENS; i++)
-    masks[i] = state[index].masks[i];
-
-  uint64_t solutions = state[index].solutions;
-  char step      = state[index].step;
-  int col       = state[index].col;
-  int startCol  = state[index].startCol;
-  qint mask     = state[index].mask;
-  qint rook     = state[index].rook;
-  qint add      = state[index].add;
-  qint sub      = state[index].sub;
-
-  uint16_t i = 1;
-  while (i != 0)
-  {
+CL_CONSTANT_KEYWORD const qint msk=(1<<si)-1;
+CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
+  int index=get_global_id(0);
+  qint aB[si];
+  for (int i=0; i < si; i++)
+    aB[i]=state[index].aB[i];
+  uint64_t lTotal=state[index].lTotal;
+  char step     =state[index].step;
+  int y      =state[index].y;
+  int startCol =state[index].startCol;
+  qint bm    =state[index].bm;
+  qint down    =state[index].down;
+  qint right     =state[index].right;
+  qint left     =state[index].left;
+  uint16_t i=1;
+  while (i!=0) {
   	i++;
-
-    if (step == REMOVE)
-    {
-      if (col == startCol)
-      {
-        step = DONE;
+    if (step==REMOVE) {
+      if (y==startCol) {
+        step=DONE;
         break;
       }
-
-      --col;
-      mask = masks[col];
+      bm=aB[--y];
     }
-
-    qint rext = mask & -mask;
-    rook ^= rext;
-    add  ^= rext << col;
-    sub  ^= rext << (NUM_QUEENS - 1 - col);
-
-    if (step == PLACE)
-    {
-      masks[col] = mask;
-      ++col;
-
-      if (col != NUM_QUEENS)
-      {
-        mask = dodge & ~(rook | (add >> col) | (sub >> ((NUM_QUEENS - 1) - col)));
-
-        if (mask == 0)
-          step = REMOVE;
+    qint  bit=bm & -bm;
+          down ^= bit;
+          right  ^= bit<<y;
+          left  ^= bit<<(si-1-y);
+    if (step==PLACE) {
+      aB[y++]=bm;
+      if (y==si) {
+        lTotal += 1;
+        step=REMOVE;
+      } else {
+        bm=msk & ~(down | (right>>y) | (left>>((si-1)-y)));
+        if (bm==0)
+          step=REMOVE;
       }
+    } else {
+      bm ^= bit;
+      if (bm==0)
+        step=REMOVE;
       else
-      {
-        solutions += 1;
-        step = REMOVE;
-      }
-    }
-    else
-    {
-      mask ^= rext;
-
-      if (mask == 0)
-        step = REMOVE;
-      else
-        step = PLACE;
+        step=PLACE;
     }
   }
-
   // Save kernel state for next round.
-  state[index].step      = step;
-  state[index].col       = col;
-  state[index].startCol  = startCol;
-  state[index].mask      = mask;
-  state[index].rook      = rook;
-  state[index].add       = add;
-  state[index].sub       = sub;
-  state[index].solutions = solutions;
-
-  for (int i = 0; i < NUM_QUEENS; i++)
-    state[index].masks[i] = masks[i];
+  state[index].step     =step;
+  state[index].y      =y;
+  state[index].startCol =startCol;
+  state[index].bm     =bm;
+  state[index].down     =down;
+  state[index].right      =right;
+  state[index].left      =left;
+  state[index].lTotal=lTotal;
+  for (int i=0; i < si; i++)
+    state[index].aB[i]=aB[i];
 }
-
 #ifdef GCC_STYLE
-
-int main()
-{
-    struct queenState state = { };
-    state.mask = dodge;
-
+int main() {
+    struct queenState state={ };
+    state.bm=msk;
     place(&state);
-
-    printf("%llu\n", state.solutions);
-
+    printf("%llu\n", state.lTotal);
     return 0;
 }
-
 #endif
