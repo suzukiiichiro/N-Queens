@@ -29,6 +29,7 @@
 enum { PLACE, REMOVE, DONE };
 // State of individual computation
 struct CL_PACKED_KEYWORD queenState {
+  int BOUND1;
   int id;
   qint aB[si];
   uint64_t lTotal; // Number of solutinos found so far.
@@ -46,6 +47,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
   qint aB[si];
   for (int i=0; i < si; i++)
     aB[i]=state[index].aB[i];
+  int BOUND1=state[index].BOUND1;
   uint64_t lTotal=state[index].lTotal;
   char step     =state[index].step;
   int y      =state[index].y;
@@ -55,6 +57,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
   qint right     =state[index].right;
   qint left     =state[index].left;
   uint16_t i=1;
+  printf("BOUND1: %d\n",BOUND1);
   while (i!=0) {
   	i++;
     if (step==REMOVE) {
@@ -87,6 +90,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
     }
   }
   // Save kernel state for next round.
+  state[index].BOUND1=BOUND1;
   state[index].step     =step;
   state[index].y      =y;
   state[index].startCol =startCol;
