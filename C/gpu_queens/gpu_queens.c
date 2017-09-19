@@ -113,6 +113,9 @@ int main(){
 	// &deviceCount : 第３引数device_typeに適合したOpenCLデバイスの数を取得するためのポインタ。
   cl_uint num_devices;
 
+
+
+
 	//デバイスのカウント
  	status=clGetDeviceIDs(platform,USE_GPU?CL_DEVICE_TYPE_GPU:CL_DEVICE_TYPE_ALL,0,NULL,&num_devices);
 	printf("CL_DEVICE COUNT:%d\n",num_devices);
