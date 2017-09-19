@@ -92,9 +92,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
         bm=msk & ~(down | (right>>y) | (left>>((si-1)-y)));
         if (bm==0)
           step=REMOVE;
+//
       }
     } else {
+      if(y>0){
       bm ^= bit;
+      }
       if (bm==0)
         step=REMOVE;
       else
