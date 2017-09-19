@@ -71,14 +71,14 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
     if(y==0){
       if(bm & (1<<BOUND1)){
         bit=1<<BOUND1;
-        aB[y]=bit;
+        //aB[y]=bit;
       }else{
         step=DONE;
         break;
       }
     }else{
       bit=bm&-bm;
-      aB[y]=bit;
+      //aB[y]=bit;
     }
     //qint  bit=bm & -bm;
           down ^= bit;
