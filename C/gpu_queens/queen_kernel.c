@@ -78,6 +78,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
       }
     }else{
       bit=bm&-bm;
+      aB[y]=bit;
     }
     //qint  bit=bm & -bm;
           down ^= bit;
