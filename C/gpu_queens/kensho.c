@@ -25,18 +25,19 @@ void place(local *l) {
   //int index=get_global_id(0);
   int aB[si];
   for (int i=0; i < si; i++)
-    aB[i]=l->aB[i];
+    aB[i]=i;
   int BOUND1=l->BOUND1;
-  long lTotal=l->lTotal;
+  //long lTotal=l->lTotal;
+  long lTotal=0;
   char step=l->step;
-  int y=l->y;
-  int startCol =l->startCol;
-  int bm    =l->bm;
-  int down    =l->down;
-  int right     =l->right;
-  int left     =l->left;
+  int y=0;
+  int startCol =0;
+  int bm=l->bm;
+  int down=0;
+  int right=0;
+  int left=0;
   int i=1;
-  printf("BOUND1: %d\n",BOUND1);
+  printf("bound:%d:bm:%d:step:%c:donw:%d:right:%d:left:%d\n",BOUND1,bm,step,down,right,left);
   while (i!=0) {
   	i++;
     if (step==REMOVE) {
