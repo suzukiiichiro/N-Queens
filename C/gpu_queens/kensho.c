@@ -14,8 +14,8 @@ typedef struct{
   int aB[si];
   long lTotal;
   char step;
-  char y;
-  char startCol;
+  int y;
+  int startCol;
   int bm;
   int down;
   int right;
@@ -29,7 +29,8 @@ void place(local *l) {
   int BOUND1=l->BOUND1;
   //long lTotal=l->lTotal;
   long lTotal=0;
-  char step=l->step;
+  //char step=l->step;
+  char step=0;
   int y=0;
   int startCol =0;
   int bm=l->bm;
@@ -99,11 +100,9 @@ int main(void) {
 		l[i].BOUND1=i;
     l[i].id=i;
     l[i].bm=(1<<si)-1;
-  }
-  for(int i=0; i < si; i++){
     place(&l[i]);
   }
   for(int i=0; i < si; i++){
     printf("%d: %ld\n",l[i].id,l[i].lTotal);
-	}
+  }
 }
