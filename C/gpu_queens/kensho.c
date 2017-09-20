@@ -32,7 +32,7 @@ void place(local *l) {
   //char step=l->step;
   char step=0;
   int y=0;
-  int startCol =0;
+  int startCol =1;
   int bm=l->bm;
   int down=0;
   int right=0;
@@ -50,24 +50,19 @@ void place(local *l) {
       bm=aB[--y];
     }
     int bit;
-    bit=bm&-bm;
-    //if(y==0){
-    //  if(bm & (1<<BOUND1)){
-    //    bit=1<<BOUND1;
-        //aB[y]=bit;
-    //  }else{
-    //    step=DONE;
-    //    break;
-    //  }
-   // }else{
-    //  bit=bm&-bm;
-      //aB[y]=bit;
-    //}
-    //
-    //
-    //
-    //
-    //qint  bit=bm & -bm;
+    //bit=bm&-bm;
+    if(y==0){
+      if(bm & (1<<BOUND1)){
+        bit=1<<BOUND1;
+        aB[y]=bit;
+      }else{
+        step=DONE;
+        break;
+      }
+    }else{
+      bit=bm&-bm;
+      aB[y]=bit;
+    }
           down ^= bit;
           right  ^= bit<<y;
           left  ^= bit<<(si-1-y);
