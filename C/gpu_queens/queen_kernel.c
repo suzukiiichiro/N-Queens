@@ -58,8 +58,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
   qint left     =state[index].left;
   uint16_t i=1;
   printf("BOUND1: %d\n",BOUND1);
-  while (i!=0) {
+  while(i!=0){
   	i++;
+    if(i==y){
+      step=DONE;
+      break;
+    }
     if (step==REMOVE) {
       if (y==startCol) {
         step=DONE;
@@ -80,14 +84,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
       bit=bm&-bm;
       //aB[y]=bit;
     }
-    //
-    //
-    //
-    //
     //qint  bit=bm & -bm;
-          down ^= bit;
-          right  ^= bit<<y;
-          left  ^= bit<<(si-1-y);
+    down ^= bit;
+    right  ^= bit<<y;
+    left  ^= bit<<(si-1-y);
     if (step==PLACE) {
       aB[y++]=bm;
       if (y==si) {
@@ -97,7 +97,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state) {
         bm=msk & ~(down | (right>>y) | (left>>((si-1)-y)));
         if (bm==0)
           step=REMOVE;
-//
       }
     } else {
       if(y>0){

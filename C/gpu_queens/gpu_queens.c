@@ -75,7 +75,7 @@ clReleaseProgram();
 clReleaseCommandQueue();
 clReleaseContext();
 */
-#define USE_GPU 0
+#define USE_GPU 1
 #define BUFFER_SIZE 4096
 int main(){
   cl_int status;
@@ -294,9 +294,12 @@ int main(){
   }//end while
 
 	//結果の印字
+  long lGTotal=0;
   for(int i=0; i < spread; i++){
     printf("%d: %llu\n",inProgress[i].id,inProgress[i].lTotal);
+    lGTotal+=inProgress[i].lTotal;
 	}
+  printf("lGTotal:%ld\n",lGTotal);
   free(devices);
   return 0;
 }
