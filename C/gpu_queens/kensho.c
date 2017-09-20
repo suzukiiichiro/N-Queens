@@ -97,7 +97,10 @@ int main(void) {
     l[i].bm=(1<<si)-1;
     place(&l[i]);
   }
+  long Gtotal=0;
   for(int i=0; i < si; i++){
     printf("%d: %ld\n",l[i].id,l[i].lTotal);
+    Gtotal +=l[i].lTotal;
   }
+  printf("Gtotal:%ld\n",Gtotal);
 }
