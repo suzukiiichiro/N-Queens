@@ -19,8 +19,8 @@ struct queenState {
   qint aB[si];
   uint64_t lTotal;
   char step;
-  char y;
-  char startCol;
+  int y;
+  int startCol;
   qint bm;
   qint down;
   qint right;
@@ -89,7 +89,6 @@ int main(){
 
 	char value[BUFFER_SIZE];
 	size_t size;
-	cl_event profile_event;
   /**
 	プラットフォーム一覧を取得
 	clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
@@ -276,7 +275,6 @@ int main(){
 		s.BOUND1=i; //BOUND1の初期化
     s.id=i;
     s.bm=(1<<si)-1;
-    inProgress[i]=s;
 		for (int i=0; i < si; i++){
 			s.aB[i]=i;
 		}
@@ -287,6 +285,7 @@ int main(){
 		s.down=0;
 		s.right=0;
 		s.left=0;
+    inProgress[i]=s;
   }
 	// デバイスメモリを確保しつつデータをコピー
 	// clCreateBuffer()バッファオブジェクトを作成する。
@@ -331,7 +330,7 @@ int main(){
     }
 		//カーネルの実行
     size_t globalSizes[]={ spread };
-   	status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,&profile_event);
+   	status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,NULL);
 		/**
     for(int i=0;i<num_devices;i++){
    	  status=clEnqueueNDRangeKernel(cmd_queue[i],kernel,1,0,globalSizes,NULL,0,NULL,&profile_event);
@@ -372,15 +371,6 @@ int main(){
     lGTotal+=inProgress[i].lTotal;
 	}
   printf("lGTotal:%ld\n",lGTotal);
-
-	cl_ulong ev_start_time=(cl_ulong)0;
-	cl_ulong ev_end_time=(cl_ulong)0;
-	double execution_time=0.0;
-	status=clGetEventProfilingInfo(profile_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&ev_start_time,NULL);
-	status=clGetEventProfilingInfo(profile_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&ev_end_time,NULL);
-	execution_time=ev_end_time-ev_start_time;
-  printf("Exe time in seconds: %0.3e\n",execution_time/1000000000);
-
 
   free(devices);
   clReleaseProgram(program);
