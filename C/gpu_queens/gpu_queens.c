@@ -1,54 +1,75 @@
+/**
+ N:        Total       Unique        hh:mm:ss.ms
+ 2:            0               0            0.00
+ 3:            0               0            0.00
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.01
+12:        14200               0            0.05
+13:        73712               0            0.30
+14:       365596               0            1.93
+15:      2279184               0           13.50
+16:     14772512               0         1:39.30
+17:     95815104               0        12:29.59
+*/
 
 #include "stdio.h"
 #include "string.h"
-#ifdef __APPLE__ // MacOS$B$G$"$k$+$r3NG'(B
-#include "OpenCL/cl.h" //MacOS$B$N>l9g$O%$%s%/%k!<%I(B
+#ifdef __APPLE__ // MacOSであるかを確認
+#include "OpenCL/cl.h" //MacOSの場合はインクルード
 #else
-#include <CL/cl.h> //Windows/Unix/Linux$B$N>l9g$O%$%s%/%k!<%I(B
+#include <CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./queen_kernel.c" //$B%+!<%M%k%=!<%9%3!<%I(B
-#define FUNC "place" //$B%+!<%M%k4X?t$NL>>N$r@_Dj(B
+#define PROGRAM_FILE "./queen_kernel.c" //カーネルソースコード
+#define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 
-const int32_t si=13;
+//const int32_t si=13;
+const int si=14;
 long lGTotal;
 long lGUnique;
-typedef int64_t qint;
+//typedef int64_t qint;
 enum { Place,Remove,Done };
 struct queenState {
 	int BOUND1;
   int id;
-  qint aB[si];
-  uint64_t lTotal;
-  char step;
+  int aB[si];
+  int step;
   int y;
   int startCol;
-  qint bm;
-  qint down;
-  qint right;
-  qint left;
+  int bm;
+  int down;
+  int right;
+  int left;
+  long lTotal;
 } __attribute__((packed));
 void get_queens_code(char ** buffer);
-int all_tasks_done(struct queenState * tasks,size_t num_tasks);
+//int all_tasks_done(struct queenState * tasks,size_t num_tasks);
+int all_tasks_done(struct queenState *tasks,int num_tasks);
 /**
-main()OpenCL $B<g$JN.$l(B 
-	clGetPlatformIDs();         // $B%W%i%C%H%U%)!<%`0lMw$r<hF@(B
-	clGetDeviceIDs();           // $B%G%P%$%90lMw$r<hF@(B
-	clCreateContext();          // $B%3%s%F%-%9%H$N:n@.(B
-	clCreateCommandQueue();     // $B%3%^%s%I%-%e!<:n@.(B
-	clCreateProgramWithSource();// $B%=!<%9%3!<%I$+$i%+!<%M%k%W%m%0%i%`:n@.(B
-	clBuildProgram();						// $B%+!<%M%k%W%m%0%i%`$N%S%k%I(B
-	clGetProgramBuildInfo();		// $B%W%m%0%i%`$N%S%k%I>pJs$r<hF@(B
-	clCreateKernel();						// $B%+!<%M%k$N:n@.(B
-	clCreateBuffer();           // $B=q$-9~$_!&FI$_9~$_%a%b%j%P%C%U%!$N:n@.(B
-	clSetKernelArg();           // $B%+!<%M%k0z?t$N@_Dj(B
-	clEnqueueWriteBuffer();     // $B%a%b%j%P%C%U%!$X$N=q$-9~$_(B
-	clEnqueueNDRangeKernel();   // $B%+!<%M%k<B9T(B
-	clEnqueueReadBuffer();      // $B%a%b%j%P%C%U%!$+$i7k2LFI$_=P$7(B
-	clFinish();                 // $B<B9T$,=*$o$k$^$GBT5!(B
+main()OpenCL 主な流れ 
+	clGetPlatformIDs();         // プラットフォーム一覧を取得
+	clGetDeviceIDs();           // デバイス一覧を取得
+	clCreateContext();          // コンテキストの作成
+	clCreateCommandQueue();     // コマンドキュー作成
+	clCreateProgramWithSource();// ソースコードからカーネルプログラム作成
+	clBuildProgram();						// カーネルプログラムのビルド
+	clGetProgramBuildInfo();		// プログラムのビルド情報を取得
+	clCreateKernel();						// カーネルの作成
+	clCreateBuffer();           // 書き込み・読み込みメモリバッファの作成
+	clSetKernelArg();           // カーネル引数の設定
+	clEnqueueWriteBuffer();     // メモリバッファへの書き込み
+	clEnqueueNDRangeKernel();   // カーネル実行
+	clEnqueueReadBuffer();      // メモリバッファから結果読み出し
+	clFinish();                 // 実行が終わるまで待機
 	clReleaseMemObject();
 	clReleaseKernel();
 	clReleaseProgram();
@@ -56,12 +77,11 @@ main()OpenCL $B<g$JN.$l(B
 	clReleaseContext();
 */
 /**
- * $B%+!<%M%k%3!<%I$NFI$_9~$_(B
+ * カーネルコードの読み込み
  */
-void get_queens_code(char ** buffer){
+void get_queens_code(char **buffer){
   char prefix[256];
-  int prefixLength =
-    snprintf(prefix,256,"#define OPENCL_STYLE\n#define si %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n#define si %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
   if(!f){
     *buffer=NULL;
@@ -74,8 +94,7 @@ void get_queens_code(char ** buffer){
   long totalLength=prefixLength + fileLength + 1;
   *buffer=malloc(totalLength);
   strcpy(*buffer,prefix);
-  if(buffer)
-    fread(*buffer + prefixLength,1,fileLength,f);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f); }
   fclose(f);
   // Replace BOM with space
  (*buffer)[prefixLength]=' ';
@@ -83,12 +102,15 @@ void get_queens_code(char ** buffer){
  (*buffer)[prefixLength + 2]=' ';
 }
 /**
- * $B%?%9%/$N=*N;$rBT5!$9$k(B
+ * タスクの終了を待機する
  */
-int all_tasks_done(struct queenState * tasks,size_t num_tasks){
-  for(int i=0; i <(int)num_tasks; i++)
-    if(tasks[i].step==Done)
+//int all_tasks_done(struct queenState * tasks,size_t num_tasks){
+int all_tasks_done(struct queenState *tasks,int num_tasks){
+  for(int i=0;i<num_tasks;i++){
+    if(tasks[i].step==Done){
       return 1;
+    }
+  }
   return 0;
 }
 int main(){
@@ -97,41 +119,41 @@ int main(){
   gettimeofday(&t0, NULL);
 	char value[BUFFER_SIZE];
 	size_t size;
-  cl_platform_id platform; 	//$B%W%i%C%H%U%)!<%`(B
- 	cl_device_id devices;			//$B%G%P%$%90lMw(B
-  cl_uint num_devices;			//$B%G%P%$%9?t(B
-	cl_context context;				//$B%3%s%F%-%9%H(B
-  cl_program program;				//$B%W%m%0%i%`(B
-	cl_command_queue cmd_queue;//$B%3%^%s%I%-%e!<(B
-	cl_kernel kernel;					//$B%+!<%M%k(B
+  cl_platform_id platform; 	//プラットフォーム
+ 	cl_device_id devices;			//デバイス一覧
+  cl_uint num_devices;			//デバイス数
+	cl_context context;				//コンテキスト
+  cl_program program;				//プログラム
+	cl_command_queue cmd_queue;//コマンドキュー
+	cl_kernel kernel;					//カーネル
 	/**
-	$B%W%i%C%H%U%)!<%`0lMw$r<hF@(B
-	$B8=:_MxMQ2DG=$J(BOpenCL$B$N%W%i%C%H%U%)!<%`$N>pJs$r<hF@(B
-	clGetPlatformIDs()$B;HMQ$G$-$k%W%i%C%H%U%)!<%`$N?t$H(BID$B0lMw$r<hF@$9$k4X?t(B
-	numEntries:$BDI2C2DG=$J%(%s%H%j!<$N?t(B
-	platforms : $B8+$D$+$C$?%W%i%C%H%U%)!<%`$N0lMw$,BeF~$5$l$k%]%$%s%?(B
-	numPlatforms : $B;HMQ$G$-$k%W%i%C%H%U%)!<%`$N?t$,BeF~$5$l$k%]%$%s%?(B  
-	$BLa$jCM!!(BCL_SUCCESS $B@.8y(B CL_INVALID_VALUE $B<:GT(B
+	プラットフォーム一覧を取得
+	現在利用可能なOpenCLのプラットフォームの情報を取得
+	clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
+	numEntries:追加可能なエントリーの数
+	platforms : 見つかったプラットフォームの一覧が代入されるポインタ
+	numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
+	戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
   */
-  cl_int status=clGetPlatformIDs(1,&platform,NULL); //$B%W%i%C%H%U%)!<%`$r<hF@(B
+  cl_int status=clGetPlatformIDs(1,&platform,NULL); //プラットフォームを取得
 	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
  	printf("CL_PLATFORM_NAME:%s\n",value);
 	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
   printf("CL_PLATFORM_VERSION:%s\n",value);
   if(status!=CL_SUCCESS){ printf("Couldn't get platform info."); return 1; }
 	/*
-	$B%G%P%$%90lMw$r<hF@(B
-	clGetDeviceIds()$B;HMQ$G$-$k%G%P%$%9$N?t$H(BID$B0lMw$r<hF@$9$k4X?t(B
-	platform : platform$B$r;XDj(B
-	CL_DEVICE_TYPE_CPU$B!'%[%9%H%W%m%;%C%5$r;XDj$9$k(B
-	CL_DEVICE_TYPE_GPU$B!'(BGPU$B%G%P%$%9$r;XDj$9$k!#(B
-	CL_DEVICE_TYPE_ACCELERATOR$B!'(BOpenCL$B@lMQ%G%P%$%9$r;XDj$9$k(B
-	CL_DEVICE_TYPE_CUSTOM$B!'(BOpenCL C$B8@8l$G<BAu$5$l$?%W%m%0%i%`$KBP1~$7$F$$$J$$%G%P%$%9$r;XDj$9$k!#(B
-	CL_DEVICE_TYPE_DEFAULT$B!'%7%9%F%`>e$G@_Dj$5$l$F$$$k%G%U%)%k%H$N(BOpenCL$B%G%P%$%9!#(B
-	CL_DEVICE_TYPE_ALL$B!'(BC$B8@8l$G<BAu$5$l$?%W$9$Y$F$N;HMQ2DG=$J(BOpenCL$B%G%P%$%9$r;XDj$9$k!#(B
-	DEVICE_MAX : $B<hF@$9$k%G%P%$%9$N@)8B?t!#(B
-	devices : $B8+$D$+$C$?(BOpenCL$B%G%P%$%9(BID$B0lMw$r<hF@$9$k$?$a$N%]%$%s%?!#(B
-	&deviceCount : $BBh#30z?t(Bdevice_type$B$KE,9g$7$?(BOpenCL$B%G%P%$%9$N?t$r<hF@$9$k$?$a$N%]%$%s%?!#(B
+	デバイス一覧を取得
+	clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
+	platform : platformを指定
+	CL_DEVICE_TYPE_CPU：ホストプロセッサを指定する
+	CL_DEVICE_TYPE_GPU：GPUデバイスを指定する。
+	CL_DEVICE_TYPE_ACCELERATOR：OpenCL専用デバイスを指定する
+	CL_DEVICE_TYPE_CUSTOM：OpenCL C言語で実装されたプログラムに対応していないデバイスを指定する。
+	CL_DEVICE_TYPE_DEFAULT：システム上で設定されているデフォルトのOpenCLデバイス。
+	CL_DEVICE_TYPE_ALL：C言語で実装されたプすべての使用可能なOpenCLデバイスを指定する。
+	DEVICE_MAX : 取得するデバイスの制限数。
+	devices : 見つかったOpenCLデバイスID一覧を取得するためのポインタ。
+	&deviceCount : 第３引数device_typeに適合したOpenCLデバイスの数を取得するためのポインタ。
 	*/
  	devices=malloc(num_devices * sizeof(cl_device_id));
  	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,&devices,&num_devices);
@@ -142,34 +164,34 @@ int main(){
   if(status!=CL_SUCCESS){ printf("Couldn't get device count."); return 2; 
   }else{ printf("CL_DEVICE COUNT:%d\n",num_devices); }
 	/**
-	$B%3%s%F%-%9%H%*%V%8%'%/%H$N:n@.(B
-	clCreateContext()$B$R$H$D0J>e$N%G%P%$%9$G;HMQ$9$k$?$a$N%3%s%F%-%9%H$r:n@.$9$k!#(B
-	nullptr $B%3%s%F%-%9%H%W%m%Q%F%#$r;XDj$9$k!#(B
-	$B3F%W%m%Q%F%#L>$K$O$=$l$>$l$KBP1~$7$?MW5a$5$l$kCM$,B3$/!#$3$N0lMw$N=*C<$K$O(B0$B$,$D$1(B
-	$B$i$l$k!#0z?t(Bporperties$B$K$O!"=hM}0MB8$N%W%i%C%H%U%)!<%`$N>l9g$K8B$j(BNULL$B$r;XDj$9$k(B
-	$B$3$H$,$G$-$k!#(B
-	num_devices : $BBP1~$9$k%G%P%$%9$N?t(B
-	devices : $B0l0U$KDj$^$k!"(BclGetDeviceIDs$B4X?t$G<hF@$5$l$?%G%P%$%9(B
-	nullptr : $B%"%W%j%1!<%7%g%s$K$h$C$FEPO?$9$k$3$H$,2DG=$J%3!<%k%P%C%/4X?t!#(B
-	nullptr : $B0z?t(Bpfn_notify$B$G@_Dj$7$?%3!<%k%P%C%/4X?t$,8F$S=P$5$l$?$H$-!"%G!<%?$,(B
-	$BEO$5$l$k%]%$%s%?!#$3$N0z?t$O(BNULL$B$K$7$?>l9g!"L5;k$5$l$k(B
-	&err $B%(%i!<$,H/@8$7$?>l9g!"$=$N%(%i!<$K9g$o$;$?%(%i!<%3!<%I$,JV$5$l$k!#(B
+	コンテキストオブジェクトの作成
+	clCreateContext()ひとつ以上のデバイスで使用するためのコンテキストを作成する。
+	nullptr コンテキストプロパティを指定する。
+	各プロパティ名にはそれぞれに対応した要求される値が続く。この一覧の終端には0がつけ
+	られる。引数porpertiesには、処理依存のプラットフォームの場合に限りNULLを指定する
+	ことができる。
+	num_devices : 対応するデバイスの数
+	devices : 一意に定まる、clGetDeviceIDs関数で取得されたデバイス
+	nullptr : アプリケーションによって登録することが可能なコールバック関数。
+	nullptr : 引数pfn_notifyで設定したコールバック関数が呼び出されたとき、データが
+	渡されるポインタ。この引数はNULLにした場合、無視される
+	&err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
 	*/
   context=clCreateContext(NULL,num_devices,&devices,NULL,NULL,&status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n"); return 4; 
   }else{ printf("Creating context.\n"); }
 	/**
-	$B%3%^%s%I%-%e!<$N@8@.(B
-	clCreateCommandQueue()$B;XDj$7$?%G%P%$%9$N%3%^%s%I%-%e!<$r:n@.$9$k!#(B
-	context   $B%3%s%F%-%9%H!#(B
-	device    $BBh#10z?t$N(Bcontext$B$K4XO"$E$1$i$l$?%G%P%$%9!#(B
-	properties    $B%3%^%s%I%-%e!<$KE,MQ$9$k%W%m%Q%F%#$N%j%9%H!#(B
-	errcode_ret    $B%(%i!<%3!<%I$r3JG<$9$kJQ?t!#(B
+	コマンドキューの生成
+	clCreateCommandQueue()指定したデバイスのコマンドキューを作成する。
+	context   コンテキスト。
+	device    第１引数のcontextに関連づけられたデバイス。
+	properties    コマンドキューに適用するプロパティのリスト。
+	errcode_ret    エラーコードを格納する変数。
 	*/
  	cmd_queue=clCreateCommandQueue(context,devices,0,&status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); return 5; 
   }else{ printf("Creating command queue.\n"); }
-	/** $B%=!<%9%3!<%I$+$i%+!<%M%k%3!<%I%W%m%0%i%`$r:n@.(B */
+	/** ソースコードからカーネルコードプログラムを作成 */
   char *code;
   get_queens_code(&code);
   if(code==NULL){ printf("Couldn't load the code."); return 5;
@@ -179,11 +201,11 @@ int main(){
   if(status!=CL_SUCCESS){ printf("Couldn't creating program."); return 6; 
   }else{ printf("Creating program.\n"); }
 	/**
-	$B%W%m%0%i%`$N%S%k%I(B
-	clBuildProgram()$B%+!<%M%k%*%V%8%'%/%H$r:n@.$9$k!#(B
-	program    $B<B9T%U%!%$%k$r:n@.$9$k$b$H$K$J$k%W%m%0%i%`(B
-	kernel_name    __kernel$B$G;vA0$K;XDj$9$k4X?tL>!#(B
-	errcode_ret    $B<B9T7k2L$K4XO"$E$1$i$l$?%(%i!<%3!<%I$r3JG<$9$k%]%$%s%?!#(B
+	プログラムのビルド
+	clBuildProgram()カーネルオブジェクトを作成する。
+	program    実行ファイルを作成するもとになるプログラム
+	kernel_name    __kernelで事前に指定する関数名。
+	errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 	*/
   status=clBuildProgram(program,num_devices,&devices,NULL,NULL,NULL);
   if(status!=CL_SUCCESS){
@@ -191,17 +213,17 @@ int main(){
    	status=clGetProgramBuildInfo(program,devices,CL_PROGRAM_BUILD_LOG,2048,log,NULL);
     printf("%s",log); printf("Couldn't building program."); return 7;
   }else{ printf("Building program.\n"); }
-	/** $B%+!<%M%k%*%V%8%'%/%H$N@k8@(B */
+	/** カーネルオブジェクトの宣言 */
   kernel=clCreateKernel(program,FUNC,&status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating kernel."); return 8; 
   }else{ printf("Creating kernel.\n"); }
   /**
-   * $B=i4|2=(B $B%+!<%M%k%*%V%8%'%/%H$KEO$99=B$BN(B
+   * 初期化 カーネルオブジェクトに渡す構造体
    */
   struct queenState inProgress[si]={0};
   for(int i=0; i <si; i++){
     struct queenState s={0};
-		s.BOUND1=i; //BOUND1$B$N=i4|2=(B
+		s.BOUND1=i; //BOUND1の初期化
     s.id=i;
     s.bm=(1<<si)-1;
 		for (int i=0; i < si; i++){ s.aB[i]=i; }
@@ -215,39 +237,39 @@ int main(){
     inProgress[i]=s;
   }
 	/**
-	$B%+!<%M%k%*%V%8%'%/%H$r%-%e!<$KF~$l$k(B
-	$B%G%P%$%9%a%b%j$r3NJ]$7$D$D%G!<%?$r%3%T!<(B
-	clCreateBuffer()$B%P%C%U%!%*%V%8%'%/%H$r:n@.$9$k!#(B
-	context $B%P%C%U%!%*%V%8%'%/%H$r:n@.$9$k$?$a$KI,MW$J(BOpenCL$B%3%s%F%-%9%H!#(B
-	flags    $B!V%P%C%U%!%*%V%8%'%/%H$r$I$N$h$&$J%a%b%jNN0h$K3d$jEv$F$k$+!W!V%a%b%jNN0h(B
-	$B$r$I$N$h$&$K;HMQ$9$k$+!W$N$h$&$J3d$jEv$F$d(Busage$B$K4X$9$k>pJs$r;XDj$9$k%S%C%H%U%#!<%k%I!#(B
-	CL_MEM_READ_WRITE $B%+!<%M%k$K%a%b%jNN0h$X$N(BRead/Write$B$r5v2D$9$k@_Dj!#(B
-	CL_MEM_USE_HOST_PTR $B%G%P%$%9%a%b%jFb$G(Bhost_ptr$B$r;XDj$9$k$3$H$K$h$j!"(BOpsnCL$B=hM}$K(B
-	$B%P%C%U%!$r%-%c%C%7%e$9$k$3$H$r5v2D$9$k!#(B
-	size    $B3d$jEv$F$i$l$?%P%C%U%!%a%b%j%*%V%8%'%/%H$N%P%$%H%5%$%:(B
-	host_ptr    $B%"%W%j%1!<%7%g%s$K$h$j4{$K3d$jEv$F$i$l$F$$$k%P%C%U%!%G!<%?$X$N%]%$%s%?!#(B
-	errcode_ret    $B<B9T7k2L$K4XO"$E$1$i$l$?%(%i!<%3!<%I$r3JG<$9$k%]%$%s%?!#(B
+	カーネルオブジェクトをキューに入れる
+	デバイスメモリを確保しつつデータをコピー
+	clCreateBuffer()バッファオブジェクトを作成する。
+	context バッファオブジェクトを作成するために必要なOpenCLコンテキスト。
+	flags    「バッファオブジェクトをどのようなメモリ領域に割り当てるか」「メモリ領域
+	をどのように使用するか」のような割り当てやusageに関する情報を指定するビットフィールド。
+	CL_MEM_READ_WRITE カーネルにメモリ領域へのRead/Writeを許可する設定。
+	CL_MEM_USE_HOST_PTR デバイスメモリ内でhost_ptrを指定することにより、OpsnCL処理に
+	バッファをキャッシュすることを許可する。
+	size    割り当てられたバッファメモリオブジェクトのバイトサイズ
+	host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
+	errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 	*/
   printf("Starting computation of Q(%d)\n",si);
   while(!all_tasks_done(inProgress,si)){
     cl_mem buffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
     if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 9; }
-		/** $B%a%b%j%P%C%U%!$X$N=q$-9~$_(B */
+		/** メモリバッファへの書き込み */
     status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
     if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 10; }
 		/**
-    $B%+!<%M%k$N0z?t$r%;%C%H(B
-    clSetKernelArg()$B%+!<%M%k$NFCDj$N0z?t$KCM$r%;%C%H$9$k!#(B
-    kernel    $BCM$r%;%C%H$9$k%+!<%M%k!#(B
-    arg_index    $B0z?t$N%$%s%G%C%/%9!#(B
-    arg_size    $B0z?t$H$7$FEO$9$N%G!<%?$N%5%$%:!#(B
-    arg_value    $BBh#20z?t(Barg_index$B$G;XDj$7$?0z?t$K$o$?$9%G!<%?$X$N%]%$%s%?!#(B
+    カーネルの引数をセット
+    clSetKernelArg()カーネルの特定の引数に値をセットする。
+    kernel    値をセットするカーネル。
+    arg_index    引数のインデックス。
+    arg_size    引数として渡すのデータのサイズ。
+    arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
 		*/
     status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
     if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 11; }
-		//$B%+!<%M%k$N<B9T(B $B%+!<%M%k$r<B9T$9$k%3%^%s%I$r%-%e!<$KF~$l$F!"%+!<%M%k4X?t$r%G%P%$%9$G<B9T(B
+		//カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
 		/** 
-     * $B@_Dj9`L\(B
+     * 設定項目
 		 */
 		size_t dim=1;
 		size_t global_offset[]={0};
@@ -255,23 +277,23 @@ int main(){
 		size_t local_work_size[]={si};
    	status=clEnqueueNDRangeKernel(cmd_queue,kernel,dim,global_offset,global_work_size,local_work_size,0,NULL,NULL);
     if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 12; }
-		//$B7k2L$rFI$_9~$_(B
+		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 13; }
-		//$B<B9T$,=*$o$k$^$GBT5!(B
+		//実行が終わるまで待機
     status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
-		//$B2rJ|(B
+		//解放
 		clReleaseProgram(program);
 		clReleaseKernel(kernel);
 		clReleaseCommandQueue(cmd_queue);
 		clReleaseContext(context);
   }//end while
-	//$B7k2L$N0u;z(B
+	//結果の印字
   long lGTotal=0;
 	long lGUnique=0;
   for(int i=0; i <si; i++){
-    printf("%d: %llu\n",inProgress[i].id,inProgress[i].lTotal);
+    printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
 	}
 	gettimeofday(&t1, NULL);
