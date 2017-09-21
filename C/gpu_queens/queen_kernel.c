@@ -16,7 +16,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define si  13
+  #define si  17
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -49,8 +49,9 @@ CL_CONSTANT_KEYWORD const qint msk=(1<<si)-1;
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state) {
   int index=get_global_id(0);
   qint aB[si];
-  for (int i=0; i < si; i++)
+  for (int i=0; i < si/2; i++){
     aB[i]       =state[index].aB[i];
+  }
   int BOUND1    =state[index].BOUND1;
   uint64_t lTotal=state[index].lTotal;
   char step     =state[index].step;
