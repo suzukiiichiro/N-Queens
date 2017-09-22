@@ -16,7 +16,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define SIZE 14
+  #define SIZE 8
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -29,21 +29,20 @@
   #define CL_GLOBAL_KEYWORD __global
   #define CL_CONSTANT_KEYWORD __constant
   #define CL_PACKED_KEYWORD  __attribute__ ((packed))
-  #define SIZE 14
 #endif
 
 #define MAX 27  
 enum { PLACE, REMOVE, DONE };
 struct CL_PACKED_KEYWORD queenState {
-  int msk;
-//  int si;
-  int aB[MAX];
+  int si;
   int BOUND1;
   int id;
+  int aB[MAX];
   //int aB[si];
   int step;
   int y;
   int startCol;
+  int msk;
   int bm;
   int down;
   int right;
@@ -54,22 +53,22 @@ struct CL_PACKED_KEYWORD queenState {
 //CL_CONSTANT_KEYWORD const int msk=(1<<si)-1;
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
-  //int aB[si];
-  int msk       =state[index].msk;
-//  int si        =state[index].si;
+  int si        =state[index].si;
   int BOUND1    =state[index].BOUND1;
+//  int id        =state[index].id;
+  int aB[MAX];
+  for (int i=0;i<si;i++){ 
+    aB[i]=state[index].aB[i];
+  }
   int step      =state[index].step;
   int y         =state[index].y;
   int startCol  =state[index].startCol;
+  int msk       =state[index].msk;
   int bm        =state[index].bm;
   int down      =state[index].down;
   int right     =state[index].right;
   int left      =state[index].left;
   long lTotal   =state[index].lTotal;
-  int aB[SIZE];
-  for (int i=0;i<SIZE/2;i++){ 
-    aB[i]=state[index].aB[i];
-  }
   //uint16_t i=1;
 //  int i=1;
 //  printf("bound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", BOUND1,bm,startCol,step,down,right,left);
@@ -97,14 +96,14 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     }
     down  ^= bit;
     right ^= bit<<y;
-    left  ^= bit<<(SIZE-1-y);
+    left  ^= bit<<(si-1-y);
     if(step==PLACE){
       aB[y++]=bm;
-      if(y==SIZE){
+      if(y==si){
         lTotal += 1;
         step=REMOVE;
       }else{
-        bm=msk&~(down|(right>>y)|(left>>((SIZE-1)-y)));
+        bm=msk&~(down|(right>>y)|(left>>((si-1)-y)));
         if(bm==0)
           step=REMOVE;
       }
@@ -116,38 +115,38 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=PLACE;
     }
   }
-  // Save kernel state for next round.
-//  state[index].si       =si;
-  state[index].msk      =msk;
+  state[index].si       =si;
   state[index].BOUND1   =BOUND1;
+  //state[index].id       =id;
+  for(int i=0;i<si;i++){ 
+    state[index].aB[i]=aB[i];
+  }
   state[index].step     =step;
   state[index].y        =y;
   state[index].startCol =startCol;
+  state[index].msk      =msk;
   state[index].bm       =bm;
   state[index].down     =down;
   state[index].right    =right;
   state[index].left     =left;
   state[index].lTotal   =lTotal;
-  for(int i=0;i<SIZE;i++){ 
-    state[index].aB[i]=aB[i];
-  }
 }
 #ifdef GCC_STYLE
 int main(){
 //  struct queenState state={ };
-//  int si=15;
+  int si=8; //とりあえず8で
   struct queenState l[SIZE];
   long gTotal=0;
   for (int i=0;i<SIZE;i++){
-    l[i].msk=(1<<SIZE)-1;
-//    l[i].si=si;
-    l[i].aB[i]=i;
-    l[i].id=i;
+    l[i].si=si;
     l[i].BOUND1=i;
-    l[i].bm=(1<<SIZE)-1;
-    l[i].y=0;
+//    l[i].id=i;
+    l[i].aB[i]=i;
     l[i].step=0;
+    l[i].y=0;
     l[i].startCol=1;
+    l[i].msk=(1<<SIZE)-1;
+    l[i].bm=(1<<SIZE)-1;
     l[i].down=0;
     l[i].right=0;
     l[i].left=0;

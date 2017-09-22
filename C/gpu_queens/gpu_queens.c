@@ -32,6 +32,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
+#define DEBUG 0
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -39,6 +40,7 @@
 //int si;
 //const int si=14;
 //const int si=15;
+int spread;
 long lGTotal;
 long lGUnique;
 //typedef int64_t qint;
@@ -89,6 +91,7 @@ main()OpenCL 主な流れ
 void get_queens_code(char **buffer,int si){
   char prefix[256];
   int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n// #define SIZE %d\n",si);
+//  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
   if(!f){ *buffer=NULL;return;}
   long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
@@ -109,12 +112,7 @@ int all_tasks_done(struct queenState *tasks,int num_tasks){
 int NQueens(int si){
 	char value[BUFFER_SIZE];
 	size_t size;
-  cl_platform_id platform;	//プラットフォーム
-  cl_uint num_devices;			//デバイス数
-	cl_context context;				//コンテキスト
-  cl_program program;				//プログラム
-	cl_command_queue cmd_queue;//コマンドキュー
-	cl_kernel kernel;					//カーネル
+  cl_int status;
 	/**
 	プラットフォーム一覧を取得
 	現在利用可能なOpenCLのプラットフォームの情報を取得
@@ -124,12 +122,27 @@ int NQueens(int si){
 	numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
 	戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
   */
-  cl_int status=clGetPlatformIDs(1,&platform,NULL);//プラットフォームを取得
+  /** プラットフォームオブジェクトの宣言 */
+  cl_platform_id platform;
+  status=clGetPlatformIDs(1,&platform,NULL);//プラットフォームを取得
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform ID.");
+    return 1; 
+  }
 	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
- 	printf("CL_PLATFORM_NAME:%s\n",value);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 2; 
+  }else{
+    if(DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+  }
 	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
-  printf("CL_PLATFORM_VERSION:%s\n",value);
-  if(status!=CL_SUCCESS){ printf("Couldn't get platform info.");return 1;}
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 3; 
+  }else{
+    if(DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+  }
 	/*
 	デバイス一覧を取得
 	clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
@@ -144,14 +157,50 @@ int NQueens(int si){
 	devices : 見つかったOpenCLデバイスID一覧を取得するためのポインタ。
 	&deviceCount : 第３引数device_typeに適合したOpenCLデバイスの数を取得するためのポインタ。
 	*/
-  cl_device_id * devices=malloc(num_devices*sizeof(cl_device_id));
- 	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,&num_devices);
+	//デバイスのカウント
+  cl_uint num_devices;
+ 	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
 	if(status==CL_DEVICE_NOT_FOUND){
- 		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,&num_devices);
-		printf("CL_DEVICE_TYPE_ALL\n");
-	}else{ printf("CL_DEVICE_TYPE_GPU\n");}
-  if(status!=CL_SUCCESS){ printf("Couldn't get device count.");return 2;
-  }else{ printf("CL_DEVICE COUNT:%d\n",num_devices);}
+ 		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,0,NULL,&num_devices);
+    if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
+	}
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get device count.");
+    return 4; 
+  }else{
+    if(DEBUG>0) printf("CL_DEVICE COUNT:%d\n",num_devices);
+  }
+  /** デバイスオブジェクトの宣言 */
+ 	cl_device_id * devices=malloc(num_devices * sizeof(cl_device_id));
+	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
+	if(status==CL_DEVICE_NOT_FOUND){
+		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,NULL);
+    if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
+	}else{
+    if(DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n");
+	}
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform device count.");
+    return 5; 
+  }else{
+    if(DEBUG>0) printf("CL_DEVICE INFO\n");
+  }
+	for(int didx=0;didx<(int)num_devices;didx++){
+		status=clGetDeviceInfo(devices[didx],CL_DEVICE_NAME,BUFFER_SIZE,value,&size);	
+    if(status!=CL_SUCCESS){
+      printf("Couldn't get device name.");
+      return 6;
+    }else{
+      if(DEBUG>0) printf(" +CL_DEVICE_NAME:%s\n",value);
+    }
+		status=clGetDeviceInfo(devices[didx],CL_DEVICE_VERSION,BUFFER_SIZE,value,&size);
+    if(status!=CL_SUCCESS){
+      printf("Couldn's get device version.");
+      return 7;
+    }else{
+      if(DEBUG>0) printf("  CL_DEVICE_VERSION:%s\n",value);
+    }
+	}
 	/**
 	コンテキストオブジェクトの作成
 	clCreateContext()ひとつ以上のデバイスで使用するためのコンテキストを作成する。
@@ -166,18 +215,32 @@ int NQueens(int si){
 	渡されるポインタ。この引数はNULLにした場合、無視される
 	&err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
 	*/
-  context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n");return 4;
-  }else{ printf("Creating context.\n");}
-	/** ソースコードからカーネルコードプログラムを作成 */
-  char *code;
+  /** コンテキストオブジェクトの宣言 */
+  cl_context context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't creating context.\n");
+    return 8; 
+  }else{
+    if(DEBUG>0) printf("Creating context.\n");
+  }
+  //カーネルコードの読み込み
+  char * code;
   get_queens_code(&code,si);
-  if(code==NULL){ printf("Couldn't load the code.");return 5;
-  }else{ printf("Loading kernel code.\n");}
-  program=clCreateProgramWithSource(context,1,(const char **)&code,NULL,&status);
+  if(code==NULL){
+    printf("Couldn't load the code.");
+    return 9;
+  }else{
+    if(DEBUG>0) printf("Loading kernel code.\n");
+  }
+	/** プログラムオブジェクトの宣言 */
+  cl_program program=clCreateProgramWithSource(context,1,(const char **)&code,NULL,&status);
   free(code);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating program.");return 6;
-  }else{ printf("Creating program.\n");}
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't creating program.");
+    return 10; 
+  }else{
+    if(DEBUG>0) printf("Creating program.\n");
+  }
 	/**
 	プログラムのビルド
 	clBuildProgram()カーネルオブジェクトを作成する。
@@ -188,13 +251,21 @@ int NQueens(int si){
   status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
   if(status!=CL_SUCCESS){
     char log[2048];
-   	status=clGetProgramBuildInfo(program,devices[1],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
-    printf("%s",log);printf("Couldn't building program.");return 7;
-  }else{ printf("Building program.\n");}
+   	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
+    printf("%s",log);
+    if(DEBUG>0) printf("Couldn't building program.");
+    return 11;
+  }else{
+    if(DEBUG>0) printf("Building program.\n");
+  }
 	/** カーネルオブジェクトの宣言 */
-  kernel=clCreateKernel(program,FUNC,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating kernel.");return 8;
-  }else{ printf("Creating kernel.\n");}
+  cl_kernel kernel=clCreateKernel(program,FUNC,&status);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't creating kernel.");
+    return 12; 
+  }else{
+    if(DEBUG>0) printf("Creating kernel.\n");
+  }
 	/**
 	コマンドキューの生成
 	clCreateCommandQueue()指定したデバイスのコマンドキューを作成する。
@@ -203,9 +274,14 @@ int NQueens(int si){
 	properties    コマンドキューに適用するプロパティのリスト。
 	errcode_ret    エラーコードを格納する変数。
 	*/
- 	cmd_queue=clCreateCommandQueue(context,devices[1],0,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating command queue.");return 5;
-  }else{ printf("Creating command queue.\n");}
+	cl_command_queue cmd_queue=clCreateCommandQueue(context,devices[1],0,&status);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't creating command queue.");
+    return 13; 
+  }else{
+    if(DEBUG>0)
+    printf("Creating command queue.\n");
+  }
   /**
    * 初期化 カーネルオブジェクトに渡す構造体
    */
@@ -218,18 +294,17 @@ int NQueens(int si){
     struct queenState s;
     s.si=si;
 		s.BOUND1=i;//BOUND1の初期化
-    s.msk=(1<<si)-1;
     s.id=i;
-    s.bm=(1<<si)-1;
 		for (int i=0;i< si;i++){ s.aB[i]=i;}
-		//for(int i=0;i<SPREAD;i++){ s.aB[i]=i;}
-		s.lTotal=0;
 		s.step=0;
 		s.y=0;
 		s.startCol =1;
+    s.msk=(1<<si)-1;
+    s.bm=(1<<si)-1;
 		s.down=0;
 		s.right=0;
 		s.left=0;
+		s.lTotal=0;
     inProgress[i]=s;
   }
 	/**
@@ -246,12 +321,14 @@ int NQueens(int si){
 	host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 	errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 	*/
-  printf("Starting computation of Q(%d)\n",si);
+  if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   //while(!all_tasks_done(inProgress,SPREAD)){
   while(!all_tasks_done(inProgress,si)){
-    printf("loop\n");
     cl_mem buffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
-    if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n");return 9;}
+    if(status!=CL_SUCCESS){
+      printf("Couldn't create buffer.\n");
+      return 14;
+    }
 		/**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -261,42 +338,53 @@ int NQueens(int si){
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
 		*/
     status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-    if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg.");return 11;}
+    if(status!=CL_SUCCESS){
+      printf("Couldn't set kernel arg.");
+      return 15;
+    }
 		/** メモリバッファへの書き込み */
     status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
-    if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command.");return 10;}
+    if(status!=CL_SUCCESS){
+      printf("Couldn't enque write buffer command.");
+      return 16;
+    }
 		//カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
-		/** 
-     * 設定項目
-		 */
-		size_t dim=1;
-		size_t global_offset[]={0};
-    size_t global_work_size[]={si};
-		size_t local_work_size[]={si};
-    //status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, global_work_size, NULL, 0, NULL, NULL);
-   	status=clEnqueueNDRangeKernel(cmd_queue,kernel,dim,global_offset,global_work_size,local_work_size,0,NULL,NULL);
-    if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command.");return 12;}
+    //size_t globalSizes[]={ spread*spread };
+    //size_t globalSizes[]={ si*si };
+    size_t globalSizes[]={ si };
+    //printf("17\n");
+   	status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,NULL);
+    if(status!=CL_SUCCESS){
+      printf("Couldn't enque kernel execution command.");
+      return 17;
+    }
 		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-    if(status!=CL_SUCCESS){ printf("Couldn't enque read command.");return 13;}
+    if(status!=CL_SUCCESS){
+      printf("Couldn't enque read command.");
+      return 18;
+    }
 		//実行が終わるまで待機
     status=clFinish(cmd_queue);
-    if(status!=CL_SUCCESS){ printf("Couldn't finish command queue.");return 14;}
-		//解放
-		clReleaseProgram(program);
-		clReleaseKernel(kernel);
-		clReleaseCommandQueue(cmd_queue);
-		clReleaseContext(context);
+    if(status!=CL_SUCCESS){ 
+      printf("Couldn't finish command queue.");
+      return 14;
+    }
   }//end while
 	//結果の印字
   lGTotal=0;
   lGUnique=0;
   for(int i=0;i<si;i++){
   //for(int i=0;i<SPREAD;i++){
-    printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+    if(DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
 	}
+	//解放
   free(devices);
+  clReleaseProgram(program);
+  clReleaseKernel(kernel);
+  clReleaseCommandQueue(cmd_queue);
+  clReleaseContext(context);
   return 0;
 }
 int main(void){
@@ -304,9 +392,8 @@ int main(void){
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
-  //for(int i=min;i<=MAX;i++){
-  for(int i=8;i<=8;i++){
-//    si=i;
+  for(int i=min;i<=15;i++){
+    spread=i;
     lGTotal=0; lGUnique=0;
     gettimeofday(&t0, NULL);
     NQueens(i);
@@ -324,7 +411,6 @@ int main(void){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", i,lGTotal,lGUnique,dd,hh,mm,ss,ms);
   }
   return 0;
