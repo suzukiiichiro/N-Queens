@@ -5,6 +5,11 @@
   
   10a．もっとビットマップ(takaken版)   NQueen10_s() 
 
+		コンパイルと実行
+		$ make nq10t && ./07_10NQueen_t
+
+
+
   実行結果
  N:           Total          Unique days hh:mm:ss.--
  2:               0                0            0.00

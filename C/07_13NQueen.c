@@ -5,6 +5,10 @@
  
   13.マルチスレッド(join）
 
+		コンパイルと実行
+		$ make nq13 && ./07_13NQueen
+
+
   実行結果 
  N:        Total       Unique        hh:mm:ss.ms
  2:               0                0          00:00:00:00.00

@@ -5,6 +5,9 @@
 
  <>25．最適化 									        NQueen25() N17=03:63
 
+		コンパイルと実行
+		$ make nq25 && ./07_25NQueen
+
 === 1 ===
  G構造体に格納していた int si int siE int lTotal int lUniqueを
  グローバル変数に置き換えました。ちょっと速くなりました。

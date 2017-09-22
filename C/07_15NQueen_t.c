@@ -5,6 +5,10 @@
 
   10b．もっとマルチスレッド(takaken版) NQueen10_t() 
 
+		コンパイルと実行
+		$ make nq15t && ./07_15NQueen_t
+
+
   実行結果
  N:           Total          Unique days hh:mm:ss.--
  2:               0               0            0.00

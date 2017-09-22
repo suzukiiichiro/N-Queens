@@ -4,6 +4,10 @@
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  <>26．マルチスレッド再び 							        NQueen26() N17=03.58
+
+		コンパイルと実行
+		$ make nq26 && ./07_26NQueen
+
   BackTrack1とBackTrack2を独立したスレッドで動作させるため、
   BackTrack1にrun()、BarckTrack2にrun2()とした。
   run()とrun2()は、NQueenThread()から個別に並行処理起動する。

@@ -4,6 +4,10 @@
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  <>28．さらにマルチスレッド(NxNxN)			        NQueen28() N17=00.75
+
+		コンパイルと実行
+		$ make nq28 && ./07_28NQueen
+
   BackTrack2について修正。
   BackTrack2の処理を最上段のクイーン、上から２段目のクイーンに加えて、
   上から３段目のクイーンも固定しスレッド化。((N-1)xNXN)

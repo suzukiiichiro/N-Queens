@@ -4,6 +4,10 @@
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  <>15．マルチスレッド(脱mutex COUNT強化)NQueen15() 
+
+		コンパイルと実行
+		$ make nq15 && ./07_15NQueen
+
   mutexによるロックとロック解除がボトルネックになり、
 　並行処理のメリットが出ません。
   そこで、pthreadの排他処理mutexを廃止し、スレッドごとに配列を準備します。

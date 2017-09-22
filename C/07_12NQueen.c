@@ -5,6 +5,10 @@
 
    12.マルチスレッド（pthread)
 
+		コンパイルと実行
+		$ make nq12 && ./07_12NQueen
+
+
  *  マルチスレッドには pthreadを使います。
  *  pthread を宣言するには pthread_t 型の変数を宣言します。
  *

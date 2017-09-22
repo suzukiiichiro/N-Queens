@@ -5,6 +5,10 @@
  
  <>21．アドレスとポインタ(考察６) 
 
+		コンパイルと実行
+		$ make nq21 && ./07_21NQueen
+
+
 void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
   ↓
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8);
