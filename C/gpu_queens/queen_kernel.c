@@ -11,12 +11,12 @@
   #include "stdint.h"
 //  typedef int64_t qint;
   // A stub for OpenCL's get_global_id function.
-  int get_global_id(int dimension) { return 0; }
+  int get_global_id(int dimension){ return 0;}
   #define CL_KERNEL_KEYWORD
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define si  17
+  #define SIZE 14
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -29,48 +29,60 @@
   #define CL_GLOBAL_KEYWORD __global
   #define CL_CONSTANT_KEYWORD __constant
   #define CL_PACKED_KEYWORD  __attribute__ ((packed))
+  #define SIZE 14
 #endif
+
+#define MAX 27  
 enum { PLACE, REMOVE, DONE };
 struct CL_PACKED_KEYWORD queenState {
+  int msk;
+//  int si;
+  int aB[MAX];
   int BOUND1;
   int id;
-  int aB[si];
+  //int aB[si];
   int step;
   int y;
-  int startCol; 
+  int startCol;
   int bm;
   int down;
   int right;
   int left;
-  long lTotal; 
+  long lTotal;
 };
 //CL_CONSTANT_KEYWORD const qint msk=(1<<si)-1;
-CL_CONSTANT_KEYWORD const int msk=(1<<si)-1;
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state) {
+//CL_CONSTANT_KEYWORD const int msk=(1<<si)-1;
+CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
-  int aB[si];
-  for (int i=0;i<si/2;i++){ aB[i]=state[index].aB[i]; }
+  //int aB[si];
+  int msk       =state[index].msk;
+//  int si        =state[index].si;
   int BOUND1    =state[index].BOUND1;
-  int step     =state[index].step;
+  int step      =state[index].step;
   int y         =state[index].y;
   int startCol  =state[index].startCol;
-  int bm       =state[index].bm;
-  int down     =state[index].down;
-  int right    =state[index].right;
-  int left     =state[index].left;
-  long lTotal=state[index].lTotal;
+  int bm        =state[index].bm;
+  int down      =state[index].down;
+  int right     =state[index].right;
+  int left      =state[index].left;
+  long lTotal   =state[index].lTotal;
+  int aB[SIZE];
+  for (int i=0;i<SIZE/2;i++){ 
+    aB[i]=state[index].aB[i];
+  }
   //uint16_t i=1;
 //  int i=1;
 //  printf("bound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", BOUND1,bm,startCol,step,down,right,left);
+  int bit;
   while(1){
-    if (step==REMOVE) {
-      if (y==startCol) {
+//    i++;
+    if(step==REMOVE){
+      if(y==startCol){
         step=DONE;
         break;
       }
       bm=aB[--y];
     }
-    int bit;
     if(y==0){
       if(bm & (1<<BOUND1)){
         bit=1<<BOUND1;
@@ -85,26 +97,28 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state) {
     }
     down  ^= bit;
     right ^= bit<<y;
-    left  ^= bit<<(si-1-y);
-    if (step==PLACE) {
+    left  ^= bit<<(SIZE-1-y);
+    if(step==PLACE){
       aB[y++]=bm;
-      if(y==si){
+      if(y==SIZE){
         lTotal += 1;
         step=REMOVE;
       }else{
-        bm=msk & ~(down | (right>>y) | (left>>((si-1)-y)));
-        if (bm==0)
+        bm=msk&~(down|(right>>y)|(left>>((SIZE-1)-y)));
+        if(bm==0)
           step=REMOVE;
       }
     }else{
       bm ^= bit;
-      if (bm==0)
+      if(bm==0)
         step=REMOVE;
       else
         step=PLACE;
     }
   }
   // Save kernel state for next round.
+//  state[index].si       =si;
+  state[index].msk      =msk;
   state[index].BOUND1   =BOUND1;
   state[index].step     =step;
   state[index].y        =y;
@@ -114,20 +128,23 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state) {
   state[index].right    =right;
   state[index].left     =left;
   state[index].lTotal   =lTotal;
-  for(int i=0; i < si; i++){ state[index].aB[i]=aB[i]; }
+  for(int i=0;i<SIZE;i++){ 
+    state[index].aB[i]=aB[i];
+  }
 }
 #ifdef GCC_STYLE
-int main() {
+int main(){
 //  struct queenState state={ };
-  struct queenState l[si];
-	for (int i=0; i < si; i++){
-    l[i].aB[i]=i;
-	}
+//  int si=15;
+  struct queenState l[SIZE];
   long gTotal=0;
-  for (int i=0; i < si; i++){
+  for (int i=0;i<SIZE;i++){
+    l[i].msk=(1<<SIZE)-1;
+//    l[i].si=si;
+    l[i].aB[i]=i;
     l[i].id=i;
     l[i].BOUND1=i;
-    l[i].bm=(1<<si)-1;
+    l[i].bm=(1<<SIZE)-1;
     l[i].y=0;
     l[i].step=0;
     l[i].startCol=1;
