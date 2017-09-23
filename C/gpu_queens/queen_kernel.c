@@ -34,6 +34,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   int si        =state[index].si;
   int BOUND1    =state[index].BOUND1;
+  int id    =state[index].id;
   int aB[MAX];
   for (int i=0;i<si;i++)
     aB[i]=state[index].aB[i];
@@ -90,6 +91,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   state[index].si       =si;
   state[index].BOUND1   =BOUND1;
+  state[index].id   =id;
   for(int i=0;i<si;i++)
     state[index].aB[i]=aB[i];
   state[index].step     =step;
