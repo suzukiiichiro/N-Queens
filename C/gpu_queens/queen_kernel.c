@@ -1,36 +1,18 @@
-﻿// Without OPENCL_STYLE defined, this program will compile with gcc/clang,
-// which facilitates testing and experimentation. Without it defined, it
-// compiles as an OpenCL shader.
-
-//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
-
-#ifndef OPENCL_STYLE
-  // Declarations appropriate to this program being compiled with gcc.
-  #include "stdio.h"
-  #include "stdint.h"
-//  typedef int64_t qint;
-  // A stub for OpenCL's get_global_id function.
-  int get_global_id(int dimension){ return 0;}
-  #define CL_KERNEL_KEYWORD
-  #define CL_GLOBAL_KEYWORD
-  #define CL_CONSTANT_KEYWORD
-  #define CL_PACKED_KEYWORD
-  #define SIZE 8
+﻿#ifndef OPENCL_STYLE
+#include "stdio.h"
+#include "stdint.h"
+int get_global_id(int dimension){ return 0;}
+#define CL_KERNEL_KEYWORD
+#define CL_GLOBAL_KEYWORD
+#define CL_CONSTANT_KEYWORD
+#define CL_PACKED_KEYWORD
+#define SIZE 8
 #else
-  // Declarations appropriate to this program being compiled as an OpenCL
-  // kernel. OpenCL has a 64 bit long and requires special keywords to designate
-  // where and how different objects are stored in memory.
-//  typedef long qint;
-//  typedef long int64_t;
-//  typedef ulong uint64_t;
-//  typedef ushort uint16_t;
-  #define CL_KERNEL_KEYWORD __kernel
-  #define CL_GLOBAL_KEYWORD __global
-  #define CL_CONSTANT_KEYWORD __constant
-  #define CL_PACKED_KEYWORD  __attribute__ ((packed))
+#define CL_KERNEL_KEYWORD __kernel
+#define CL_GLOBAL_KEYWORD __global
+#define CL_CONSTANT_KEYWORD __constant
+#define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-
 #define MAX 27  
 enum { PLACE, REMOVE, DONE };
 struct CL_PACKED_KEYWORD queenState {
@@ -38,7 +20,6 @@ struct CL_PACKED_KEYWORD queenState {
   int BOUND1;
   int id;
   int aB[MAX];
-  //int aB[si];
   int step;
   int y;
   int startCol;
@@ -49,17 +30,13 @@ struct CL_PACKED_KEYWORD queenState {
   int left;
   long lTotal;
 };
-//CL_CONSTANT_KEYWORD const qint msk=(1<<si)-1;
-//CL_CONSTANT_KEYWORD const int msk=(1<<si)-1;
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   int si        =state[index].si;
   int BOUND1    =state[index].BOUND1;
-//  int id        =state[index].id;
   int aB[MAX];
-  for (int i=0;i<si;i++){ 
+  for (int i=0;i<si;i++)
     aB[i]=state[index].aB[i];
-  }
   int step      =state[index].step;
   int y         =state[index].y;
   int startCol  =state[index].startCol;
@@ -69,12 +46,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int right     =state[index].right;
   int left      =state[index].left;
   long lTotal   =state[index].lTotal;
-  //uint16_t i=1;
-//  int i=1;
-//  printf("bound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", BOUND1,bm,startCol,step,down,right,left);
   int bit;
   while(1){
-//    i++;
     if(step==REMOVE){
       if(y==startCol){
         step=DONE;
@@ -117,10 +90,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   state[index].si       =si;
   state[index].BOUND1   =BOUND1;
-  //state[index].id       =id;
-  for(int i=0;i<si;i++){ 
+  for(int i=0;i<si;i++)
     state[index].aB[i]=aB[i];
-  }
   state[index].step     =step;
   state[index].y        =y;
   state[index].startCol =startCol;
@@ -133,14 +104,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 }
 #ifdef GCC_STYLE
 int main(){
-//  struct queenState state={ };
-  int si=8; //とりあえず8で
+  int si=8; 
   struct queenState l[SIZE];
   long gTotal=0;
   for (int i=0;i<SIZE;i++){
     l[i].si=si;
     l[i].BOUND1=i;
-//    l[i].id=i;
     l[i].aB[i]=i;
     l[i].step=0;
     l[i].y=0;
