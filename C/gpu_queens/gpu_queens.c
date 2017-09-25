@@ -255,13 +255,13 @@ int buildProgram(){
   if(status!=CL_SUCCESS){
     char log[2048];
    	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
-    printf("%s",log);
+    //printf("%s",log);
     if(DEBUG>0) printf("Couldn't building program.");
     return 11;
   }else{
     if(DEBUG>0) printf("Building program.\n");
   }
-  return 0;
+  return status;
 }
 /** カーネルオブジェクトの宣言 */
 int createKernel(){
@@ -402,6 +402,17 @@ int finalFree(){
   clReleaseCommandQueue(cmd_queue);
   return 0;
 }
+int create(){
+  while (1){
+    createProgramWithSource();  // ソースコードからカーネルプログラム作成
+    int rst=buildProgram();             // カーネルプログラムのビルド
+    //printf("status:%d:::",rst);
+    if(rst==0){
+      break;
+    }
+  }
+  return 0;
+}
 /**
 	clGetProgramBuildInfo();		// プログラムのビルド情報を取得
 */
@@ -412,8 +423,7 @@ int NQueens(int si){
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
   createContext();            // コンテキストの作成
-  createProgramWithSource();  // ソースコードからカーネルプログラム作成
-  buildProgram();             // カーネルプログラムのビルド
+  create();
   createKernel();             // カーネルの作成
   commandQueue();             // コマンドキュー作成
   gettimeofday(&t0, NULL);    // 計測開始
