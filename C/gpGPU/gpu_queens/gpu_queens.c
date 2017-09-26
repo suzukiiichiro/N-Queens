@@ -341,6 +341,12 @@ int makeInProgress(int si){
       printf("Couldn't create buffer.\n");
       return 14;
     }
+		/** メモリバッファへの書き込み */
+    status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+    if(status!=CL_SUCCESS){
+      printf("Couldn't enque write buffer command.");
+      return 16;
+    }
 		/**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -353,12 +359,6 @@ int makeInProgress(int si){
     if(status!=CL_SUCCESS){
       printf("Couldn't set kernel arg.");
       return 15;
-    }
-		/** メモリバッファへの書き込み */
-    status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
-    if(status!=CL_SUCCESS){
-      printf("Couldn't enque write buffer command.");
-      return 16;
     }
 		//カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
     //size_t globalSizes[]={ spread*spread };
@@ -453,7 +453,7 @@ int NQueens(int si){
 }
 int main(void){
   int min=2;
-  int targetN=17;
+  int targetN=12;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){
