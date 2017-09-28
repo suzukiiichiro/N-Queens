@@ -269,14 +269,14 @@ void *run(void *args){
  * Nの数だけスレッドをもたせて同時並列処理をする
 */
 void *NQueenThread(){
-  if(si<=18){ NQueenThread_21();  } //07_27NQueen.c
-  else if(si==19){ NQueenThread_22(); }
-  else if(si==19){ NQueenThread_23(); }
-  else if(si==20){ NQueenThread_24(); }
-  else if(si==21){ NQueenThread_25(); }
-  else if(si==22){ NQueenThread_26(); }
-  else if(si==23){ NQueenThread_27(); }
-  else if(si>=24){ NQueenThread_28(); }
+  if(si<=21){ NQueenThread_21();  } //07_27NQueen.c
+  else if(si==22){ NQueenThread_22(); }
+  else if(si==23){ NQueenThread_23(); }
+  else if(si==24){ NQueenThread_24(); }
+  else if(si==25){ NQueenThread_25(); }
+  else if(si==26){ NQueenThread_26(); }
+  else if(si==27){ NQueenThread_27(); }
+  else if(si>=28){ NQueenThread_28(); }
   return 0;
 }
 /**
