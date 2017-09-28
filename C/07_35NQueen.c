@@ -329,7 +329,7 @@ int main(void){
  *
  */
 void NQueenThread_21(){
-  printf("si==21\n");
+  //printf("si==21\n");
   pthread_t pt1[si];//スレッド childThread
   pthread_t pt2[si][si];//スレッド childThread
   local l[si];//構造体 local型 
@@ -382,7 +382,7 @@ void NQueenThread_21(){
   }
 }
 void NQueenThread_22(){
-  printf("si==22\n");
+  //printf("si==22\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     pthread_t pt1;//スレッド childThread
     pthread_t pt3[si];//スレッド childThread
@@ -444,7 +444,7 @@ void NQueenThread_22(){
   }
 }
 void NQueenThread_23(){
-  printf("si==23\n");
+  //printf("si==23\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
 			pthread_t pt1;//スレッド childThread
@@ -510,7 +510,7 @@ void NQueenThread_23(){
   }
 }
 void NQueenThread_24(){
-  //printf("si==21");
+  //printf("si==24\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){//backtrack1のB1
@@ -575,7 +575,7 @@ void NQueenThread_24(){
   }
 }
 void NQueenThread_25(){
-  //printf("si==22");
+  //printf("si==25\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){//backtrack1のB1
@@ -644,7 +644,7 @@ void NQueenThread_25(){
   }
 }
 void NQueenThread_26(){
-  //printf("si==23");
+  //printf("si==26\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){//backtrack1のB1
@@ -716,7 +716,7 @@ void NQueenThread_26(){
   }
 }
 void NQueenThread_27(){
-  //printf("si==24");
+  //printf("si==27\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){//backtrack1のB1
@@ -793,7 +793,7 @@ void NQueenThread_27(){
   }
 }
 void NQueenThread_28(){
-  //printf("si>=25");
+  //printf("si==28\n");
   for(int B1=1,B2=siE-1;B1<siE;B1++,B2--){// B1から順にスレッドを生成しながら処理を分担する 
     for(int k=0;k<si;k++){
       for(int j=0;j<si;j++){//backtrack1のB1
