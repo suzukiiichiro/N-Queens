@@ -54,7 +54,6 @@ int spread;
 long lGTotal;
 long lGUnique;
 //typedef int64_t qint;
-enum { Place,Remove,Done };
 struct queenState {
   int si;
 	int BOUND1;
@@ -93,7 +92,7 @@ void get_queens_code(char **buffer){
  */
 //int all_tasks_done(struct queenState * tasks,size_t num_tasks){
 int all_tasks_done(struct queenState *tasks,int num_tasks){
-  for(int i=0;i<num_tasks;i++){ if(tasks[i].step==Done){ return 1; } }
+  for(int i=0;i<num_tasks;i++){ if(tasks[i].step==2){ return 1; } }
   return 0;
 }
 
@@ -370,17 +369,17 @@ int makeInProgress(int si){
       printf("Couldn't enque kernel execution command.");
       return 17;
     }
-		//結果を読み込み
-   	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-    if(status!=CL_SUCCESS){
-      printf("Couldn't enque read command.");
-      return 18;
-    }
 		//実行が終わるまで待機
     status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ 
       printf("Couldn't finish command queue.");
       return 14;
+    }
+		//結果を読み込み
+   	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    if(status!=CL_SUCCESS){
+      printf("Couldn't enque read command.");
+      return 18;
     }
   }//end while
 	//結果の印字

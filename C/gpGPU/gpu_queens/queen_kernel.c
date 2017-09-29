@@ -14,7 +14,6 @@ int get_global_id(int dimension){ return 0;}
 #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
 #define MAX 27  
-enum { PLACE, REMOVE, DONE };
 struct CL_PACKED_KEYWORD queenState {
   int si;
   int BOUND1;
@@ -49,9 +48,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   long lTotal   =state[index].lTotal;
   int bit;
   while(1){
-    if(step==REMOVE){
+    if(step==1){
       if(y==startCol){
-        step=DONE;
+        step=2;
         break;
       }
       bm=aB[--y];
@@ -61,7 +60,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         bit=1<<BOUND1;
         aB[y]=bit;
       }else{
-        step=DONE;
+        step=2;
         break;
       }
     }else{
@@ -71,22 +70,22 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     down  ^= bit;
     right ^= bit<<y;
     left  ^= bit<<(si-1-y);
-    if(step==PLACE){
+    if(step==0){
       aB[y++]=bm;
       if(y==si){
         lTotal += 1;
-        step=REMOVE;
+        step=1;
       }else{
         bm=msk&~(down|(right>>y)|(left>>((si-1)-y)));
         if(bm==0)
-          step=REMOVE;
+          step=1;
       }
     }else{
       bm ^= bit;
       if(bm==0)
-        step=REMOVE;
+        step=1;
       else
-        step=PLACE;
+        step=0;
     }
   }
   state[index].si       =si;
