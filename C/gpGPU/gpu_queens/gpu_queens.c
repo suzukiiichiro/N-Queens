@@ -54,19 +54,14 @@ int spread;
 long lGTotal;
 long lGUnique;
 //typedef int64_t qint;
+enum { Place,Remove,Done };
 struct queenState {
   int si;
 	int BOUND1;
   int id;
   int aB[MAX];
   int step;
-  int y;
   int startCol;
-  int msk;
-  int bm;
-  int down;
-  int right;
-  int left;
   long lTotal;
 } __attribute__((packed));
 
@@ -92,7 +87,7 @@ void get_queens_code(char **buffer){
  */
 //int all_tasks_done(struct queenState * tasks,size_t num_tasks){
 int all_tasks_done(struct queenState *tasks,int num_tasks){
-  for(int i=0;i<num_tasks;i++){ if(tasks[i].step==2){ return 1; } }
+  for(int i=0;i<num_tasks;i++){ if(tasks[i].step==Done){ return 1; } }
   return 0;
 }
 
@@ -322,13 +317,7 @@ int makeInProgress(int si){
     s.id=i;
 		for (int i=0;i< si;i++){ s.aB[i]=i;}
 		s.step=0;
-		s.y=0;
 		s.startCol =1;
-    s.msk=(1<<si)-1;
-    s.bm=(1<<si)-1;
-		s.down=0;
-		s.right=0;
-		s.left=0;
 		s.lTotal=0;
     inProgress[i]=s;
   }
@@ -452,7 +441,7 @@ int NQueens(int si){
 }
 int main(void){
   int min=2;
-  int targetN=12;
+  int targetN=15;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){
