@@ -272,8 +272,8 @@ void *run(void *args){
  * Nの数だけスレッドをもたせて同時並列処理をする
 */
 void *NQueenThread(){
-  if(si<=18){ NQueenThread_1();  } //07_27NQueen.c
-  else if(si<=22){ NQueenThread_2(); } //19,20,21,22
+  if(si<=17){ NQueenThread_1();  } //07_27NQueen.c
+  else if(si<=22){ NQueenThread_2(); } //18,19,20,21,22
   else if(si==23){ NQueenThread_3(); } //23
   else if(si==24){ NQueenThread_4(); } //24
   else if(si==25){ NQueenThread_5(); } //25
