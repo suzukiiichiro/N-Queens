@@ -20,13 +20,7 @@ struct CL_PACKED_KEYWORD queenState {
   int id;
   int aB[MAX];
   int step;
-  int y;
   int startCol;
-  int msk;
-  int bm;
-  int down;
-  int right;
-  int left;
   long lTotal;
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
@@ -38,14 +32,14 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   for (int i=0;i<si;i++)
     aB[i]=state[index].aB[i];
   int step      =state[index].step;
-  int y         =state[index].y;
   int startCol  =state[index].startCol;
-  int msk       =state[index].msk;
-  int bm        =state[index].bm;
-  int down      =state[index].down;
-  int right     =state[index].right;
-  int left      =state[index].left;
   long lTotal   =state[index].lTotal;
+  int y         =0;
+  int msk       =(1<<si)-1;
+  int bm        =(1<<si)-1;
+  int down      =0;
+  int right     =0;
+  int left      =0;
   int bit;
   while(1){
     if(step==1){
@@ -94,13 +88,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   for(int i=0;i<si;i++)
     state[index].aB[i]=aB[i];
   state[index].step     =step;
-  state[index].y        =y;
   state[index].startCol =startCol;
-  state[index].msk      =msk;
-  state[index].bm       =bm;
-  state[index].down     =down;
-  state[index].right    =right;
-  state[index].left     =left;
   state[index].lTotal   =lTotal;
 }
 #ifdef GCC_STYLE
