@@ -38,7 +38,7 @@
    32. マルチスレッド  ハイブリッド版   NQueen32() N17=    03.72 N18=29.43 k,j,kj4,kj5
    33. マルチスレッド 脱malloc          NQueen33() N17=    03.58 N18=      k,j,kj4,kj5,kj6,kj7,kj8
    34. ボードレイアウト機能追加         NQueen34() N17=    03.58 N18=
-   35. ボードレイアウト機能追加+N33     NQueen35() N17=    03.50 N18=30.77
+   35. マルチスレッド　完               NQueen35() N17=    03.50 N18=30.77
 
 
 
@@ -2396,9 +2396,9 @@ Q . . . . . . .
 
  35. マルチスレッド　完
 
-  if(si<=17){ NQueenThread_1();  }      //07_27NQueen.c k 構造体1段
-  else if(si<=22){ NQueenThread_2(); }  //07_28NQueen.c 19,20,21,22 k 構造体２段
-  else if(si==23){ NQueenThread_3(); }  //23 kj
+  if(si<=17){ NQueenThread_1();  }      //07_27NQueen.c k 構造体1段 NxN
+  else if(si<=22){ NQueenThread_2(); }  //07_29NQueen.c 18,19,20,21,22 kj 構造体２段 NxNxN
+  else if(si==23){ NQueenThread_3(); }  //23 kj NxNxN
   else if(si==24){ NQueenThread_4(); }  //24 kjkj4
   else if(si==25){ NQueenThread_5(); }  //25 kjkj4kj5
   else if(si==26){ NQueenThread_6(); }  //26 kjkj4kj5kj6
