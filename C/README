@@ -2404,3 +2404,4 @@ Q . . . . . . .
   else if(si==26){ NQueenThread_6(); }  //26 kjkj4kj5kj6
   else if(si==27){ NQueenThread_7(); }  //27 kjkj4kj5kj6kj7
   else if(si==28){ NQueenThread_8(); }  //28 kjkj4kj5kj6kj7kj8
+
