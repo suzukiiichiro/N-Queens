@@ -15,13 +15,13 @@ struct queenState {
 	qint masks[numQueens];
 	uint64_t solutions;
 	char step;
-	int col;
-	int startCol;
+	char col;
+	char startCol;
 	qint mask;
 	qint rook;
 	qint add;
 	qint sub;
-	qint BOUND1;
+  qint BOUND1;
 }__attribute__((packed));
 /**
  * カーネルコードの読み込み
@@ -183,15 +183,9 @@ int main() {
 	for (int i = 0; i < spread; i++) {
 		struct queenState s = { 0 };
 		s.id = i;
-		for(int i=0;i<spread;i++){s.masks[i]=i;}
-		s.step=0;
-		s.col=0;
-		s.startCol=1;
+    s.startCol=1;
 		s.mask = (1 << numQueens) - 1;
-		s.rook=0;
-		s.add=0;
-		s.sub=0;
-		s.BOUND1=i;
+    s.BOUND1=i;
 		inProgress[i] = s;
 	}
 	// デバイスメモリを確保しつつデータをコピー
@@ -233,10 +227,10 @@ int main() {
 		//カーネルの実行
 		size_t globalSizes[] = { spread };
 		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
 		if (status != CL_SUCCESS) {
 			printf("Couldn't enque kernel execution command.");
 			return 1;
