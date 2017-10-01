@@ -2,8 +2,8 @@
 #include "string.h"
 #include "OpenCL/cl.h"
 
-const int32_t numQueens = 13;
-const int32_t spread = 13;
+const int32_t numQueens = 12;
+const int32_t spread = 12;
 typedef int64_t qint;
 uint64_t lGTotal;
 uint64_t lGUnique;
@@ -12,14 +12,14 @@ enum {
 };
 struct queenState {
 	int id;
-	qint masks[numQueens];
-	uint64_t solutions;
+	qint aB[numQueens];
+	uint64_t lTotal;
 	int step;
-	int col;
+	int y;
 	int startCol;
-	qint mask;
-	qint rook;
-	qint add;
+	qint bm;
+	qint down;
+	qint right;
 	qint sub;
   qint BOUND1;
 }__attribute__((packed));
@@ -184,15 +184,15 @@ int main() {
 		struct queenState s ;
 		s.id = i;
     for(int i=0; i<spread; i++){
-      s.masks[i]=i;
+      s.aB[i]=i;
     }
-    s.solutions=0;
+    s.lTotal=0;
     s.step=0;
-    s.col=0;
+    s.y=0;
     s.startCol=1;
-		s.mask = (1 << numQueens) - 1;
-	  s.rook=0;
-	  s.add=0;
+		s.bm = (1 << numQueens) - 1;
+	  s.down=0;
+	  s.right=0;
 	  s.sub=0;
     s.BOUND1=i;
 		inProgress[i] = s;
@@ -261,8 +261,8 @@ int main() {
   	lGTotal=0;
   	lGUnique=0;
 	for (int i = 0; i < spread; i++){
-		printf("%d: %llu\n", inProgress[i].id, inProgress[i].solutions);
-    		lGTotal+=inProgress[i].solutions;
+		printf("%d: %llu\n", inProgress[i].id, inProgress[i].lTotal);
+    		lGTotal+=inProgress[i].lTotal;
 	}
 	printf("lGTotal:%llu\n",lGTotal);
 	free(devices);

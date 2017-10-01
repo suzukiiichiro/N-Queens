@@ -12,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 13
+  #define NUM_QUEENS 12
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -33,36 +33,36 @@ enum { PLACE, REMOVE, DONE };
 struct CL_PACKED_KEYWORD queenState
 {
   int id;
-  qint masks[NUM_QUEENS];
-  uint64_t solutions; // Number of solutinos found so far.
+  qint aB[NUM_QUEENS];
+  uint64_t lTotal; // Number of solutinos found so far.
   int step;
-  int col;
+  int y;
   int startCol; // First column this individual computation was tasked with filling.
-  qint mask;
-  qint rook;
-  qint add;
-  qint sub;
+  qint bm;
+  qint down;
+  qint right;
+  qint left;
   qint BOUND1;
 };
 
-CL_CONSTANT_KEYWORD const qint dodge = (1 << NUM_QUEENS) - 1;
+CL_CONSTANT_KEYWORD const qint msk = (1 << NUM_QUEENS) - 1;
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 {
   int index = get_global_id(0);
   int id= state[index].id;
-  qint masks[NUM_QUEENS];
+  qint aB[NUM_QUEENS];
   for (int i = 0; i < NUM_QUEENS; i++)
-    masks[i] = state[index].masks[i];
+    aB[i] = state[index].aB[i];
 
-  uint64_t solutions = state[index].solutions;
+  uint64_t lTotal = state[index].lTotal;
   int step      = state[index].step;
-  int col       = state[index].col;
+  int y       = state[index].y;
   int startCol  = state[index].startCol;
-  qint mask     = state[index].mask;
-  qint rook     = state[index].rook;
-  qint add      = state[index].add;
-  qint sub      = state[index].sub;
+  qint bm     = state[index].bm;
+  qint down     = state[index].down;
+  qint right      = state[index].right;
+  qint left      = state[index].left;
   qint BOUND1   = state[index].BOUND1;
 
   //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
@@ -73,52 +73,52 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 
     if (step == REMOVE)
     {
-      if (col == startCol)
+      if (y == startCol)
       {
         step = DONE;
         break;
       }
-      --col;
-      mask = masks[col];
+      --y;
+      bm = aB[y];
     }
-    qint rext;
-    if(col==0){
-      if(mask & (1<<BOUND1)){
-        rext=1<<BOUND1;
+    qint bit;
+    if(y==0){
+      if(bm & (1<<BOUND1)){
+        bit=1<<BOUND1;
       }else{
         step=DONE;
         break;
       }
     }else{
-      rext = mask & -mask;
+      bit = bm & -bm;
     }
-    rook ^= rext;
-    add  ^= rext << col;
-    sub  ^= rext << (NUM_QUEENS - 1 - col);
+    down ^= bit;
+    right  ^= bit << y;
+    left  ^= bit << (NUM_QUEENS - 1 - y);
 
     if (step == PLACE)
     {
-      masks[col] = mask;
-      ++col;
+      aB[y] = bm;
+      ++y;
 
-      if (col != NUM_QUEENS)
+      if (y != NUM_QUEENS)
       {
-        mask = dodge & ~(rook | (add >> col) | (sub >> ((NUM_QUEENS - 1) - col)));
+        bm = msk & ~(down | (right >> y) | (left >> ((NUM_QUEENS - 1) - y)));
 
-        if (mask == 0)
+        if (bm == 0)
           step = REMOVE;
       }
       else
       {
-        solutions += 1;
+        lTotal += 1;
         step = REMOVE;
       }
     }
     else
     {
-      mask ^= rext;
+      bm ^= bit;
 
-      if (mask == 0)
+      if (bm == 0)
         step = REMOVE;
       else
         step = PLACE;
@@ -128,15 +128,15 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   // Save kernel state for next round.
   state[index].id      = id;
   for (int i = 0; i < NUM_QUEENS; i++)
-    state[index].masks[i] = masks[i];
-    state[index].solutions = solutions;
+    state[index].aB[i] = aB[i];
+    state[index].lTotal = lTotal;
     state[index].step      = step;
-    state[index].col       = col;
+    state[index].y       = y;
     state[index].startCol  = startCol;
-    state[index].mask      = mask;
-    state[index].rook      = rook;
-    state[index].add       = add;
-    state[index].sub       = sub;
+    state[index].bm      = bm;
+    state[index].down      = down;
+    state[index].right       = right;
+    state[index].left       = left;
     state[index].BOUND1 = BOUND1;
 }
 
@@ -145,11 +145,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 int main()
 {
     struct queenState state = { };
-    state.mask = dodge;
+    state.bm = msk;
 
     place(&state);
 
-    printf("%llu\n", state.solutions);
+    printf("%llu\n", state.lTotal);
 
     return 0;
 }
