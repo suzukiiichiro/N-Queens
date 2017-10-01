@@ -14,9 +14,9 @@ struct queenState {
 	int id;
 	qint masks[numQueens];
 	uint64_t solutions;
-	char step;
-	char col;
-	char startCol;
+	int step;
+	int col;
+	int startCol;
 	qint mask;
 	qint rook;
 	qint add;

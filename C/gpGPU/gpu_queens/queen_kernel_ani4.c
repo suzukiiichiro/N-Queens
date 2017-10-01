@@ -35,9 +35,9 @@ struct CL_PACKED_KEYWORD queenState
   int id;
   qint masks[NUM_QUEENS];
   uint64_t solutions; // Number of solutinos found so far.
-  char step;
-  char col;
-  char startCol; // First column this individual computation was tasked with filling.
+  int step;
+  int col;
+  int startCol; // First column this individual computation was tasked with filling.
   qint mask;
   qint rook;
   qint add;
@@ -78,7 +78,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
         step = DONE;
         break;
       }
-
       --col;
       mask = masks[col];
     }
@@ -130,16 +129,15 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   state[index].id      = id;
   for (int i = 0; i < NUM_QUEENS; i++)
     state[index].masks[i] = masks[i];
-  state[index].solutions = solutions;
-  state[index].step      = step;
-  state[index].col       = col;
-  state[index].startCol  = startCol;
-  state[index].mask      = mask;
-  state[index].rook      = rook;
-  state[index].add       = add;
-  state[index].sub       = sub;
-
-  state[index].BOUND1 = BOUND1;
+    state[index].solutions = solutions;
+    state[index].step      = step;
+    state[index].col       = col;
+    state[index].startCol  = startCol;
+    state[index].mask      = mask;
+    state[index].rook      = rook;
+    state[index].add       = add;
+    state[index].sub       = sub;
+    state[index].BOUND1 = BOUND1;
 }
 
 #ifdef GCC_STYLE
