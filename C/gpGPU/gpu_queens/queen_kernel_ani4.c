@@ -12,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 15
+  #define NUM_QUEENS 12
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -50,7 +50,7 @@ CL_CONSTANT_KEYWORD const qint dodge = (1 << NUM_QUEENS) - 1;
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 {
   int index = get_global_id(0);
-
+  int id= state[index].id;
   qint masks[NUM_QUEENS];
   for (int i = 0; i < NUM_QUEENS; i++)
     masks[i] = state[index].masks[i];
@@ -127,6 +127,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   }
 
   // Save kernel state for next round.
+  state[index].id      = id;
+  for (int i = 0; i < NUM_QUEENS; i++)
+    state[index].masks[i] = masks[i];
+  state[index].solutions = solutions;
   state[index].step      = step;
   state[index].col       = col;
   state[index].startCol  = startCol;
@@ -134,10 +138,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   state[index].rook      = rook;
   state[index].add       = add;
   state[index].sub       = sub;
-  state[index].solutions = solutions;
 
-  for (int i = 0; i < NUM_QUEENS; i++)
-    state[index].masks[i] = masks[i];
   state[index].BOUND1 = BOUND1;
 }
 

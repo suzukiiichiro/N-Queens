@@ -1,8 +1,9 @@
 #include "stdio.h"
 #include "string.h"
 #include "OpenCL/cl.h"
-const int32_t numQueens = 15;
-const int32_t spread = 15;
+
+const int32_t numQueens = 12;
+const int32_t spread = 12;
 typedef int64_t qint;
 uint64_t lGTotal;
 uint64_t lGUnique;
@@ -182,8 +183,17 @@ int main() {
 	for (int i = 0; i < spread; i++) {
 		struct queenState s = { 0 };
 		s.id = i;
+    for(int i=0; i<spread; i++){
+      s.masks[i]=i;
+    }
+    s.solutions=0;
+    s.step=0;
+    s.col=0;
     s.startCol=1;
 		s.mask = (1 << numQueens) - 1;
+	  s.rook=0;
+	  s.add=0;
+	  s.sub=0;
     s.BOUND1=i;
 		inProgress[i] = s;
 	}
@@ -226,10 +236,10 @@ int main() {
 		//カーネルの実行
 		size_t globalSizes[] = { spread };
 		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-//		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
 		if (status != CL_SUCCESS) {
 			printf("Couldn't enque kernel execution command.");
 			return 1;
