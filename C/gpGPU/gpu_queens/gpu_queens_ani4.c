@@ -2,8 +2,8 @@
 #include "string.h"
 #include "OpenCL/cl.h"
 
-const int32_t numQueens = 12;
-const int32_t spread = 12;
+const int32_t numQueens = 13;
+const int32_t spread = 13;
 typedef int64_t qint;
 uint64_t lGTotal;
 uint64_t lGUnique;
@@ -50,7 +50,7 @@ void get_queens_code(char ** buffer) {
 	(*buffer)[prefixLength + 2] = ' ';
 }
 
-int all_tasks_done(struct queenState * tasks, size_t num_tasks) {
+int all_tasks_done(struct queenState * tasks, int32_t num_tasks) {
 	for (int i = 0; i < num_tasks; i++)
 		if (tasks[i].step == Done)
 			return 1;
@@ -179,9 +179,9 @@ int main() {
 	cl_command_queue cmd_queue = clCreateCommandQueue(context, devices[1], 0, &status);
 	if (status != CL_SUCCESS){ return 1;}
 	// List of in-progress tasks
-	struct queenState inProgress[spread] = { 0 };
+	struct queenState inProgress[spread];
 	for (int i = 0; i < spread; i++) {
-		struct queenState s = { 0 };
+		struct queenState s ;
 		s.id = i;
     for(int i=0; i<spread; i++){
       s.masks[i]=i;

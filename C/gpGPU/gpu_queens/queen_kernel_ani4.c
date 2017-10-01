@@ -12,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 12
+  #define NUM_QUEENS 13
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -56,7 +56,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
     masks[i] = state[index].masks[i];
 
   uint64_t solutions = state[index].solutions;
-  char step      = state[index].step;
+  int step      = state[index].step;
   int col       = state[index].col;
   int startCol  = state[index].startCol;
   qint mask     = state[index].mask;
