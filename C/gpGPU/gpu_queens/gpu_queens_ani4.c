@@ -2,8 +2,8 @@
 #include "string.h"
 #include "OpenCL/cl.h"
 
-const int32_t numQueens = 12;
-const int32_t spread = 12;
+const int32_t numQueens = 13;
+const int32_t spread = 13;
 typedef int64_t qint;
 uint64_t lGTotal;
 uint64_t lGUnique;
@@ -20,7 +20,7 @@ struct queenState {
 	qint bm;
 	qint down;
 	qint right;
-	qint sub;
+	qint left;
   qint BOUND1;
 }__attribute__((packed));
 /**
@@ -193,7 +193,7 @@ int main() {
 		s.bm = (1 << numQueens) - 1;
 	  s.down=0;
 	  s.right=0;
-	  s.sub=0;
+	  s.left=0;
     s.BOUND1=i;
 		inProgress[i] = s;
 	}

@@ -12,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 12
+  #define NUM_QUEENS 13
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -66,11 +66,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   qint BOUND1   = state[index].BOUND1;
 
   //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
-  uint16_t i = 1;
+  long i = 1;
   while (i != 0)
   {
   	i++;
-
     if (step == REMOVE)
     {
       if (y == startCol)
