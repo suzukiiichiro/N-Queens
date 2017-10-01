@@ -1,7 +1,6 @@
 ﻿// Without OPENCL_STYLE defined, this program will compile with gcc/clang,
 // which facilitates testing and experimentation. Without it defined, it
 // compiles as an OpenCL shader.
-
 #ifndef OPENCL_STYLE
   // Declarations appropriate to this program being compiled with gcc.
   #include "stdio.h"

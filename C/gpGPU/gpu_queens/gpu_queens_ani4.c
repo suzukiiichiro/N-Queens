@@ -1,7 +1,6 @@
 #include "stdio.h"
 #include "string.h"
 #include "OpenCL/cl.h"
-
 const int32_t numQueens = 15;
 const int32_t spread = 15;
 typedef int64_t qint;
