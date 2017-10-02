@@ -51,9 +51,9 @@ void get_queens_code(char ** buffer) {
 
 int all_tasks_done(struct queenState * tasks, int32_t num_tasks) {
 	for (int i = 0; i < num_tasks; i++)
-		if (tasks[i].step == Done)
-			return 1;
-	return 0;
+		if (tasks[i].step != Done)
+			return 0;
+	return 1;
 }
 /**
 main() OpenCL 主な流れ 
@@ -326,24 +326,24 @@ int main() {
 		//カーネルの実行
 		size_t globalSizes[] = { spread };
 		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
-		status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
+		//status = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, 0, globalSizes, NULL, 0, NULL, NULL);
 		if (status != CL_SUCCESS) {
 			printf("Couldn't enque kernel execution command.");
-			return 1;
-		}
-		//結果を読み込み
-		status = clEnqueueReadBuffer(cmd_queue, buffer, CL_TRUE, 0, sizeof(inProgress), inProgress, 0, NULL, NULL);
-		if (status != CL_SUCCESS) {
-			printf("Couldn't enque read command.");
 			return 1;
 		}
 		//実行が終わるまで待機
 		status = clFinish(cmd_queue);
 		if (status != CL_SUCCESS) {
 			printf("Couldn't finish command queue.");
+			return 1;
+		}
+		//結果を読み込み
+		status = clEnqueueReadBuffer(cmd_queue, buffer, CL_TRUE, 0, sizeof(inProgress), inProgress, 0, NULL, NULL);
+		if (status != CL_SUCCESS) {
+			printf("Couldn't enque read command.");
 			return 1;
 		}
 	}

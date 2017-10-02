@@ -44,7 +44,7 @@ struct CL_PACKED_KEYWORD queenState
   qint left;
 };
 
-CL_CONSTANT_KEYWORD const qint msk = (1 << NUM_QUEENS) - 1;
+//CL_CONSTANT_KEYWORD const qint msk = (1 << NUM_QUEENS) - 1;
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
 {
@@ -62,9 +62,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   qint down     = state[index].down;
   qint right      = state[index].right;
   qint left      = state[index].left;
+  qint msk = (1 << NUM_QUEENS) - 1;
   //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
   uint16_t i = 1;
-  //long i = 1;
   while (i != 0)
   //while (1)
   {
@@ -72,7 +72,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
     if (step == REMOVE)
     {
       //if (y == startCol)
-      if (y == 1)
+      if (y <= 1)
       {
         step = DONE;
         break;
