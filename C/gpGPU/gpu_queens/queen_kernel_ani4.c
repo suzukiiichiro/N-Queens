@@ -12,7 +12,7 @@
   #define CL_GLOBAL_KEYWORD
   #define CL_CONSTANT_KEYWORD
   #define CL_PACKED_KEYWORD
-  #define NUM_QUEENS 13
+  #define NUM_QUEENS 15
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -42,7 +42,6 @@ struct CL_PACKED_KEYWORD queenState
   qint down;
   qint right;
   qint left;
-  qint BOUND1;
 };
 
 CL_CONSTANT_KEYWORD const qint msk = (1 << NUM_QUEENS) - 1;
@@ -63,16 +62,17 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
   qint down     = state[index].down;
   qint right      = state[index].right;
   qint left      = state[index].left;
-  qint BOUND1   = state[index].BOUND1;
-
-  //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
-  long i = 1;
+  //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
+  uint16_t i = 1;
+  //long i = 1;
   while (i != 0)
+  //while (1)
   {
   	i++;
     if (step == REMOVE)
     {
-      if (y == startCol)
+      //if (y == startCol)
+      if (y == 1)
       {
         step = DONE;
         break;
@@ -81,16 +81,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
       bm = aB[y];
     }
     qint bit;
-    if(y==0){
-      if(bm & (1<<BOUND1)){
-        bit=1<<BOUND1;
-      }else{
-        step=DONE;
-        break;
-      }
-    }else{
-      bit = bm & -bm;
-    }
+    bit = bm & -bm;
     down ^= bit;
     right  ^= bit << y;
     left  ^= bit << (NUM_QUEENS - 1 - y);
@@ -103,7 +94,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
       if (y != NUM_QUEENS)
       {
         bm = msk & ~(down | (right >> y) | (left >> ((NUM_QUEENS - 1) - y)));
-
         if (bm == 0)
           step = REMOVE;
       }
@@ -116,14 +106,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
     else
     {
       bm ^= bit;
-
       if (bm == 0)
         step = REMOVE;
       else
         step = PLACE;
     }
   }
-
   // Save kernel state for next round.
   state[index].id      = id;
   for (int i = 0; i < NUM_QUEENS; i++)
@@ -136,7 +124,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState * state)
     state[index].down      = down;
     state[index].right       = right;
     state[index].left       = left;
-    state[index].BOUND1 = BOUND1;
 }
 
 #ifdef GCC_STYLE

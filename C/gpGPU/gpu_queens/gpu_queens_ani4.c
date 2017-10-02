@@ -2,8 +2,8 @@
 #include "string.h"
 #include "OpenCL/cl.h"
 
-const int32_t numQueens = 13;
-const int32_t spread = 13;
+const int32_t numQueens = 15;
+const int32_t spread = 15;
 typedef int64_t qint;
 uint64_t lGTotal;
 uint64_t lGUnique;
@@ -21,7 +21,6 @@ struct queenState {
 	qint down;
 	qint right;
 	qint left;
-  qint BOUND1;
 }__attribute__((packed));
 /**
  * カーネルコードの読み込み
@@ -183,19 +182,110 @@ int main() {
 	for (int i = 0; i < spread; i++) {
 		struct queenState s ;
 		s.id = i;
-    for(int i=0; i<spread; i++){
-      s.aB[i]=i;
+    for(int j=0; j<spread; j++){
+      s.aB[j]=j;
     }
     s.lTotal=0;
     s.step=0;
     s.y=0;
-    s.startCol=1;
+    s.startCol=0;
 		s.bm = (1 << numQueens) - 1;
 	  s.down=0;
 	  s.right=0;
 	  s.left=0;
-    s.BOUND1=i;
+//
+    int id=s.id;
+    qint aB[numQueens];
+    for (int j = 0; j < numQueens; j++)
+    aB[j] = s.aB[j];
+
+  uint64_t lTotal = s.lTotal;
+  int step      = s.step;
+  int y       = s.y;
+  int startCol  = s.startCol;
+  int endCol  = 1;
+  qint bm     = s.bm;
+  qint down     = s.down;
+  qint right      = s.right;
+  qint left      = s.left;
+  qint BOUND1   = i;
+  qint msk = (1 << numQueens) - 1;
+  //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
+  uint16_t j = 1;
+  while (j != 0)
+  {
+  	j++;
+    if (y == endCol){
+        step = 0;
+        break;
+    }
+    if (step == Remove)
+    {
+      if (y == startCol)
+      {
+        step = Done;
+        break;
+      }
+      --y;
+      bm = aB[y];
+    }
+    qint bit;
+    if(y==0){
+      if(bm & (1<<BOUND1)){
+        bit=1<<BOUND1;
+      }else{
+        step=Done;
+        break;
+      }
+    }else{
+      bit = bm & -bm;
+    }
+    down ^= bit;
+    right  ^= bit << y;
+    left  ^= bit << (numQueens - 1 - y);
+
+    if (step == Place)
+    {
+      aB[y] = bm;
+      ++y;
+
+      if (y != numQueens)
+      {
+        bm = msk & ~(down | (right >> y) | (left >> ((numQueens - 1) - y)));
+
+        if (bm == 0)
+          step = Remove;
+      }
+      else
+      {
+        lTotal += 1;
+        step = Remove;
+      }
+    }
+    else
+    {
+      bm ^= bit;
+      if (bm == 0)
+        step = Remove;
+      else
+        step = Place;
+    }
+  }
+  // Save kernel state for next round.
+    s.id      = id;
+  for (int j = 0; j < numQueens; j++)
+    s.aB[j] = aB[j];
+    s.lTotal = lTotal;
+    s.step      = step;
+    s.y       = y;
+    s.startCol  = endCol;
+    s.bm      = bm;
+    s.down      = down;
+    s.right       = right;
+    s.left       = left;
+   // printf("id:%d:ltotal:%ld:step:%d:y:%d:startCol:%d:bm:%d:down:%d:right:%d:left:%d:BOUND1:%d\n",s.id,s.lTotal,s.step,s.y,s.startCol,s.bm,s.down,s.right,s.left,s.BOUND1);
 		inProgress[i] = s;
+
 	}
 	// デバイスメモリを確保しつつデータをコピー
 	// clCreateBuffer() バッファオブジェクトを作成する。
