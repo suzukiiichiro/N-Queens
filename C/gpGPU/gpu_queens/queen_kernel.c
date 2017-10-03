@@ -50,7 +50,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int bit;
   int msk = (1 << si) - 1;
   //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
-  int16_t i = 1;
+  uint16_t i = 1;
   //long i=0;
   while (i != 0)
   //while (i <300000)
