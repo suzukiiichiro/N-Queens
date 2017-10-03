@@ -286,7 +286,7 @@ errcode_ret    エラーコードを格納する変数。
 */
 int commandQueue(){
   cl_int status;
-	cmd_queue=clCreateCommandQueue(context,devices[1],0,&status);
+	cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
     return 13; 
