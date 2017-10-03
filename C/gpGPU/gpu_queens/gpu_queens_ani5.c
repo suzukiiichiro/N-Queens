@@ -32,7 +32,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 1 
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -311,17 +311,16 @@ errcode_ret    実行結果に関連づけられたエラーコードを格納�
 */
 int makeInProgress(int si){
   cl_int status;
-  struct queenState inProgress[si*si*si*si];
+  struct queenState inProgress[si*si*si];
   //struct queenState inProgress[SIZE]={0};
   //struct queenState inProgress[SPREAD]={0};
   //struct queenState inProgress[SPREAD];
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        for(int l=0;l<si;l++){
           //for(int i=0;i<SPREAD;i++){
           struct queenState s;
-          s.id=i*si*si*si+j*si*si+k*si+l;
+          s.id=i*si*si+j*si+k;
           s.si=si;
           for (int m=0;m< si;m++){ s.aB[m]=m;}
           s.lTotal=0;
@@ -343,7 +342,7 @@ int makeInProgress(int si){
           int step      = s.step;
           int y       = s.y;
           int startCol  = s.startCol;
-          int endCol  = 4;
+          int endCol  = 3;
           int bm     = s.bm;
           int down     = s.down;
           int right      = s.right;
@@ -351,7 +350,6 @@ int makeInProgress(int si){
           int BOUND1   = i;
           int BOUND2   = j;
           int BOUND3   = k;
-          int BOUND4   = l;
           int msk = (1 << si) - 1;
           //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
           uint16_t m = 1;
@@ -379,13 +377,6 @@ int makeInProgress(int si){
             }else if(y==2){
               if(bm & (1<<BOUND3)){
                 bit=1<<BOUND3;
-              }else{
-                step=Done;
-                break;
-              }
-            }else if(y==3){
-              if(bm & (1<<BOUND4)){
-                bit=1<<BOUND4;
               }else{
                 step=Done;
                 break;
@@ -441,14 +432,13 @@ int makeInProgress(int si){
           s.right       = right;
           s.left       = left;
            //printf("id:%d:ltotal:%ld:step:%d:y:%d:startCol:%d:bm:%d:down:%d:right:%d:left:%d:BOUND1:%d:BOUND2:%d:BOUND3:%d:BOUND4:%d\n",s.id,s.lTotal,s.step,s.y,s.startCol,s.bm,s.down,s.right,s.left,BOUND1,BOUND2,BOUND3,BOUND4);
-          inProgress[i*si*si*si+j*si*si+k*si+l]=s;
-        }
+          inProgress[i*si*si+j*si+k]=s;
         }
       }
     }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   //while(!all_tasks_done(inProgress,SPREAD)){
-  while(!all_tasks_done(inProgress,si*si*si*si)){
+  while(!all_tasks_done(inProgress,si*si*si)){
     //printf("loop\n");
     buffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
     if(status!=CL_SUCCESS){
@@ -477,7 +467,7 @@ int makeInProgress(int si){
 		//カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
     //size_t globalSizes[]={ spread*spread };
     //size_t globalSizes[]={ si*si };
-    size_t globalSizes[]={ si*si*si*si };
+    size_t globalSizes[]={ si*si*si };
     //printf("17\n");
    	status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,NULL);
     if(status!=CL_SUCCESS){
@@ -503,11 +493,9 @@ int makeInProgress(int si){
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        for(int l=0;l<si;l++){
           //for(int i=0;i<SPREAD;i++){
-          if(DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si*si+j*si*si+k*si+l].id,inProgress[i*si*si*si+j*si*si+k*si+l].lTotal);
-          lGTotal+=inProgress[i*si*si*si+j*si*si+k*si+l].lTotal;
-        }
+          if(DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
+          lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
         }
       }
     }
@@ -573,8 +561,8 @@ int NQueens(int si){
   return 0;
 }
 int main(void){
-  int min=7;
-  int targetN=15;
+  int min=16;
+  int targetN=18;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){
