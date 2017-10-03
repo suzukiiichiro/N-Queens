@@ -64,9 +64,9 @@ struct queenState {
   int y;
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  int down;
-  int right;
-  int left;
+  long down;
+  long right;
+  long left;
 } __attribute__((packed));
 
 /**
@@ -342,9 +342,9 @@ int makeInProgress(int si){
   int startCol  = s.startCol;
   int endCol  = 1;
   int bm     = s.bm;
-  int down     = s.down;
-  int right      = s.right;
-  int left      = s.left;
+  long down     = s.down;
+  long right      = s.right;
+  long left      = s.left;
   int BOUND1   = i;
   int msk = (1 << si) - 1;
   //printf("bound:%d:startCol:%d\n", BOUND1,startCol);

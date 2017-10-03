@@ -64,9 +64,9 @@ struct queenState {
   int y;
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  int down;
-  int right;
-  int left;
+  long down;
+  long right;
+  long left;
 } __attribute__((packed));
 
 /**
@@ -90,7 +90,7 @@ void get_queens_code(char **buffer){
  * タスクの終了を待機する
  */
 //int all_tasks_done(struct queenState * tasks,size_t num_tasks){
-int all_tasks_done(struct queenState * tasks, int32_t num_tasks) {
+int all_tasks_done(struct queenState * tasks, int num_tasks) {
 	for (int i = 0; i < num_tasks; i++)
 		if (tasks[i].step != 2)
 			return 0;
@@ -338,15 +338,15 @@ int makeInProgress(int si){
           for (int m = 0; m < si; m++)
             aB[m] = s.aB[m];
 
-          uint64_t lTotal = s.lTotal;
+          long lTotal = s.lTotal;
           int step      = s.step;
           int y       = s.y;
           int startCol  = s.startCol;
           int endCol  = 3;
           int bm     = s.bm;
-          int down     = s.down;
-          int right      = s.right;
-          int left      = s.left;
+          long down     = s.down;
+          long right      = s.right;
+          long left      = s.left;
           int BOUND1   = i;
           int BOUND2   = j;
           int BOUND3   = k;
@@ -359,7 +359,7 @@ int makeInProgress(int si){
             if (y == endCol){
               break;
             }
-            int bit;
+            long bit;
             if(y==0){
               if(bm & (1<<BOUND1)){
                 bit=1<<BOUND1;
@@ -561,7 +561,7 @@ int NQueens(int si){
   return 0;
 }
 int main(void){
-  int min=16;
+  int min=18;
   int targetN=18;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
