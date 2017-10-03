@@ -57,7 +57,6 @@ long lGUnique;
 enum { Place,Remove,Done };
 struct queenState {
   int si;
-  int BOUND1;
   int id;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
@@ -320,17 +319,109 @@ int makeInProgress(int si){
   //for(int i=0;i<SPREAD;i++){
     struct queenState s;
     s.si=si;
-		s.BOUND1=i;//BOUND1の初期化
     s.id=i;
 		for (int j=0;j< si;j++){ s.aB[j]=j;}
 		s.lTotal=0;
 		s.step=0;
     s.y=0;
-		s.startCol =1;
+		s.startCol =0;
     s.bm= (1 << si) - 1;
     s.down=0;
     s.right=0;
     s.left=0;
+//
+    int si=s.si;
+    int id=s.id;
+    int aB[MAX];
+    for (int j = 0; j < si; j++)
+    aB[j] = s.aB[j];
+
+  uint64_t lTotal = s.lTotal;
+  int step      = s.step;
+  int y       = s.y;
+  int startCol  = s.startCol;
+  int endCol  = 1;
+  int bm     = s.bm;
+  int down     = s.down;
+  int right      = s.right;
+  int left      = s.left;
+  int BOUND1   = i;
+  int msk = (1 << si) - 1;
+  //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
+  uint16_t j = 1;
+  while (j != 0)
+  {
+  	j++;
+    if (y == endCol){
+        step = 0;
+        break;
+    }
+    if (step == Remove)
+    {
+      if (y == startCol)
+      {
+        step = Done;
+        break;
+      }
+      --y;
+      bm = aB[y];
+    }
+    int bit;
+    if(y==0){
+      if(bm & (1<<BOUND1)){
+        bit=1<<BOUND1;
+      }else{
+        step=Done;
+        break;
+      }
+    }else{
+      bit = bm & -bm;
+    }
+    down ^= bit;
+    right  ^= bit << y;
+    left  ^= bit << (si - 1 - y);
+
+    if (step == Place)
+    {
+      aB[y] = bm;
+      ++y;
+
+      if (y != si)
+      {
+        bm = msk & ~(down | (right >> y) | (left >> ((si - 1) - y)));
+
+        if (bm == 0)
+          step = Remove;
+      }
+      else
+      {
+        lTotal += 1;
+        step = Remove;
+      }
+    }
+    else
+    {
+      bm ^= bit;
+      if (bm == 0)
+        step = Remove;
+      else
+        step = Place;
+    }
+  }
+  // Save kernel state for next round.
+    s.si      =si;
+    s.id      = id;
+  for (int j = 0; j < si; j++)
+    s.aB[j] = aB[j];
+    s.lTotal = lTotal;
+    s.step      = step;
+    s.y       = y;
+    s.startCol  = endCol;
+    s.bm      = bm;
+    s.down      = down;
+    s.right       = right;
+    s.left       = left;
+   // printf("id:%d:ltotal:%ld:step:%d:y:%d:startCol:%d:bm:%d:down:%d:right:%d:left:%d:BOUND1:%d\n",s.id,s.lTotal,s.step,s.y,s.startCol,s.bm,s.down,s.right,s.left,s.BOUND1);
     inProgress[i]=s;
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -454,8 +545,8 @@ int NQueens(int si){
   return 0;
 }
 int main(void){
-  int min=2;
-  int targetN=17;
+  int min=4;
+  int targetN=19;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){

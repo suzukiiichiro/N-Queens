@@ -21,7 +21,6 @@ typedef ushort uint16_t;
 #define MAX 27  
 struct CL_PACKED_KEYWORD queenState {
   int si;
-  int BOUND1;
   int id;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
@@ -36,7 +35,6 @@ struct CL_PACKED_KEYWORD queenState {
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   int si= state[index].si;
-  int BOUND1=state[index].BOUND1; 
   int id= state[index].id;
   int aB[MAX];
   for (int i = 0; i < si; i++)
@@ -52,8 +50,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int bit;
   int msk = (1 << si) - 1;
   //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
-  uint16_t i = 1;
+  int16_t i = 1;
+  //long i=0;
   while (i != 0)
+  //while (i <300000)
   {
   	i++;
     if(step==1){
@@ -63,18 +63,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       }
       bm=aB[--y];
     }
-    if(y==0){
-      if(bm & (1<<BOUND1)){
-        bit=1<<BOUND1;
-        aB[y]=bit;
-      }else{
-        step=2;
-        break;
-      }
-    }else{
-      bit=bm&-bm;
-      aB[y]=bit;
-    }
+    bit=bm&-bm;
+    aB[y]=bit;
     down  ^= bit;
     right ^= bit<<y;
     left  ^= bit<<(si-1-y);
@@ -97,7 +87,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     }
   }
   state[index].si      = si;
-  state[index].BOUND1      = BOUND1;
   state[index].id      = id;
   for (int i = 0; i < si; i++)
     state[index].aB[i] = aB[i];
@@ -117,7 +106,6 @@ int main(){
   long gTotal=0;
   for (int i=0;i<SIZE;i++){
     l[i].si=si;
-    l[i].BOUND1=i;
     l[i].aB[i]=i;
     l[i].step=0;
     l[i].y=0;
