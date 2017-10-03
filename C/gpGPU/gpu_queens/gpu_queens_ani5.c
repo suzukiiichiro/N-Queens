@@ -32,7 +32,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 1 
+#define DEBUG 0 
 //#define SPREAD 1024
 //
 //const int32_t si=13;
