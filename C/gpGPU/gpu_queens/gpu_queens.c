@@ -57,12 +57,17 @@ long lGUnique;
 enum { Place,Remove,Done };
 struct queenState {
   int si;
-	int BOUND1;
+  int BOUND1;
   int id;
   int aB[MAX];
+  long lTotal; // Number of solutinos found so far.
   int step;
-  int startCol;
-  long lTotal;
+  int y;
+  int startCol; // First column this individual computation was tasked with filling.
+  int bm;
+  int down;
+  int right;
+  int left;
 } __attribute__((packed));
 
 /**
@@ -86,9 +91,11 @@ void get_queens_code(char **buffer){
  * タスクの終了を待機する
  */
 //int all_tasks_done(struct queenState * tasks,size_t num_tasks){
-int all_tasks_done(struct queenState *tasks,int num_tasks){
-  for(int i=0;i<num_tasks;i++){ if(tasks[i].step==Done){ return 1; } }
-  return 0;
+int all_tasks_done(struct queenState * tasks, int32_t num_tasks) {
+	for (int i = 0; i < num_tasks; i++)
+		if (tasks[i].step != 2)
+			return 0;
+	return 1;
 }
 
 /**
@@ -315,15 +322,21 @@ int makeInProgress(int si){
     s.si=si;
 		s.BOUND1=i;//BOUND1の初期化
     s.id=i;
-		for (int i=0;i< si;i++){ s.aB[i]=i;}
-		s.step=0;
-		s.startCol =1;
+		for (int j=0;j< si;j++){ s.aB[j]=j;}
 		s.lTotal=0;
+		s.step=0;
+    s.y=0;
+		s.startCol =1;
+    s.bm= (1 << si) - 1;
+    s.down=0;
+    s.right=0;
+    s.left=0;
     inProgress[i]=s;
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   //while(!all_tasks_done(inProgress,SPREAD)){
   while(!all_tasks_done(inProgress,si)){
+    //printf("loop\n");
     buffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
     if(status!=CL_SUCCESS){
       printf("Couldn't create buffer.\n");
@@ -391,6 +404,7 @@ int finalFree(){
   return 0;
 }
 int create(){
+  //printf("create\n");
   while (1){
     createProgramWithSource();  // ソースコードからカーネルプログラム作成
     int rst=buildProgram();             // カーネルプログラムのビルド
@@ -441,7 +455,7 @@ int NQueens(int si){
 }
 int main(void){
   int min=2;
-  int targetN=15;
+  int targetN=17;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){

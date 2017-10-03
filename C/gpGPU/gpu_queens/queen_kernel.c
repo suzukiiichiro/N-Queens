@@ -1,6 +1,7 @@
 ﻿#ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
+typedef int64_t qint;
 int get_global_id(int dimension){ return 0;}
 #define CL_KERNEL_KEYWORD
 #define CL_GLOBAL_KEYWORD
@@ -8,6 +9,10 @@ int get_global_id(int dimension){ return 0;}
 #define CL_PACKED_KEYWORD
 #define SIZE 8
 #else
+typedef long qint;
+typedef long int64_t;
+typedef ulong uint64_t;
+typedef ushort uint16_t;
 #define CL_KERNEL_KEYWORD __kernel
 #define CL_GLOBAL_KEYWORD __global
 #define CL_CONSTANT_KEYWORD __constant
@@ -19,31 +24,40 @@ struct CL_PACKED_KEYWORD queenState {
   int BOUND1;
   int id;
   int aB[MAX];
+  long lTotal; // Number of solutinos found so far.
   int step;
-  int startCol;
-  long lTotal;
+  int y;
+  int startCol; // First column this individual computation was tasked with filling.
+  int bm;
+  int down;
+  int right;
+  int left;
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
-  int index=get_global_id(0);
-  int si        =state[index].si;
-  int BOUND1    =state[index].BOUND1;
-  int id    =state[index].id;
+  int index = get_global_id(0);
+  int si= state[index].si;
+  int BOUND1=state[index].BOUND1; 
+  int id= state[index].id;
   int aB[MAX];
-  for (int i=0;i<si;i++)
-    aB[i]=state[index].aB[i];
-  int step      =state[index].step;
-  int startCol  =state[index].startCol;
-  long lTotal   =state[index].lTotal;
-  int y         =0;
-  int msk       =(1<<si)-1;
-  int bm        =(1<<si)-1;
-  int down      =0;
-  int right     =0;
-  int left      =0;
+  for (int i = 0; i < si; i++)
+    aB[i] = state[index].aB[i];
+  long lTotal = state[index].lTotal;
+  int step      = state[index].step;
+  int y       = state[index].y;
+  int startCol  = state[index].startCol;
+  int bm     = state[index].bm;
+  int down     = state[index].down;
+  int right      = state[index].right;
+  int left      = state[index].left;
   int bit;
-  while(1){
+  int msk = (1 << si) - 1;
+  //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
+  uint16_t i = 1;
+  while (i != 0)
+  {
+  	i++;
     if(step==1){
-      if(y==startCol){
+      if(y<=startCol){
         step=2;
         break;
       }
@@ -82,14 +96,19 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=0;
     }
   }
-  state[index].si       =si;
-  state[index].BOUND1   =BOUND1;
-  state[index].id   =id;
-  for(int i=0;i<si;i++)
-    state[index].aB[i]=aB[i];
-  state[index].step     =step;
-  state[index].startCol =startCol;
-  state[index].lTotal   =lTotal;
+  state[index].si      = si;
+  state[index].BOUND1      = BOUND1;
+  state[index].id      = id;
+  for (int i = 0; i < si; i++)
+    state[index].aB[i] = aB[i];
+    state[index].lTotal = lTotal;
+    state[index].step      = step;
+    state[index].y       = y;
+    state[index].startCol  = startCol;
+    state[index].bm      = bm;
+    state[index].down      = down;
+    state[index].right       = right;
+    state[index].left       = left;
 }
 #ifdef GCC_STYLE
 int main(){
