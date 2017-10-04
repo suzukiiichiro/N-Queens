@@ -428,7 +428,7 @@ int makeInProgress(int si){
   //while(!all_tasks_done(inProgress,SPREAD)){
   while(!all_tasks_done(inProgress,si)){
     //printf("loop\n");
-    buffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
+    buffer=clCreateBuffer(context,CL_MEM_ALLOC_HOST_PTR,sizeof(inProgress),NULL,&status);
     if(status!=CL_SUCCESS){
       printf("Couldn't create buffer.\n");
       return 14;
@@ -463,11 +463,11 @@ int makeInProgress(int si){
       return 17;
     }
 		//実行が終わるまで待機
-    status=clFinish(cmd_queue);
-    if(status!=CL_SUCCESS){ 
-      printf("Couldn't finish command queue.");
-      return 14;
-    }
+    //status=clFinish(cmd_queue);
+   // if(status!=CL_SUCCESS){ 
+    //  printf("Couldn't finish command queue.");
+     // return 14;
+    //}
 		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(status!=CL_SUCCESS){
