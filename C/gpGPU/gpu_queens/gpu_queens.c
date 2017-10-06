@@ -434,7 +434,7 @@ int makeInProgress(int si){
       return 14;
     }
 		/** メモリバッファへの書き込み */
-    status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+    status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
     if(status!=CL_SUCCESS){
       printf("Couldn't enque write buffer command.");
       return 16;
