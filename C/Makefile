@@ -53,6 +53,9 @@ RM=rm -fr
 # Linux #######################################################
 #LDFLAGS=-L
 #CPPFLAGS=-I
+nq37=07_37NQueen
+nq37: 07_37gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq37) 07_37gpu_queens.c -lpthread -framework OpenCL
 
 nq36=07_36NQueen
 nq36: 07_36gpu_queens.c 
@@ -66,10 +69,10 @@ nq34=07_34NQueen
 nq34: $(nq34).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq34) $(nq34).c -lpthread
 
-all:nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen
 
 
 nq33=07_33NQueen
