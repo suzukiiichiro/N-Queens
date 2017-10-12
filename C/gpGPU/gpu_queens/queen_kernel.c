@@ -1,4 +1,6 @@
-﻿#ifndef OPENCL_STYLE
+﻿//  単体で動かすときは以下のコメントを外す
+//#define GCC_STYLE
+#ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
 typedef int64_t qint;
@@ -7,11 +9,11 @@ int get_global_id(int dimension){ return 0;}
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 8
+#define SIZE 10
 #else
-typedef long qint;
-typedef long int64_t;
-typedef ulong uint64_t;
+//typedef long qint;
+//typedef long int64_t;
+//typedef ulong uint64_t;
 typedef ushort uint16_t;
 #define CL_KERNEL_KEYWORD __kernel
 #define CL_GLOBAL_KEYWORD __global
@@ -20,6 +22,7 @@ typedef ushort uint16_t;
 #endif
 #define MAX 27  
 struct CL_PACKED_KEYWORD queenState {
+  int BOUND1;
   int si;
   int id;
   int aB[MAX];
@@ -34,6 +37,7 @@ struct CL_PACKED_KEYWORD queenState {
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
+  int BOUND1=state[index].BOUND1;
   int si= state[index].si;
   int id= state[index].id;
   int aB[MAX];
@@ -52,9 +56,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
   uint16_t i = 1;
   //long i=0;
-  while (i != 0)
   //while (i <300000)
-  {
+  while (i != 0) {
   	i++;
     if(step==1){
       if(y<=startCol){
@@ -63,8 +66,18 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       }
       bm=aB[--y];
     }
-    bit=bm&-bm;
-    aB[y]=bit;
+    if(y==0){
+      if(bm & (1<<BOUND1)){
+        bit=1<<BOUND1;
+        aB[y]=bit;
+      }else{
+        step=2;
+        break;
+      }
+    }else{
+      bit=bm&-bm;
+      aB[y]=bit;
+    }
     down  ^= bit;
     right ^= bit<<y;
     left  ^= bit<<(si-1-y);
@@ -86,31 +99,33 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=0;
     }
   }
+  state[index].BOUND1   =BOUND1;
   state[index].si      = si;
   state[index].id      = id;
   for (int i = 0; i < si; i++)
     state[index].aB[i] = aB[i];
-    state[index].lTotal = lTotal;
-    state[index].step      = step;
-    state[index].y       = y;
-    state[index].startCol  = startCol;
-    state[index].bm      = bm;
-    state[index].down      = down;
-    state[index].right       = right;
-    state[index].left       = left;
+  state[index].lTotal = lTotal;
+  state[index].step      = step;
+  state[index].y       = y;
+  state[index].startCol  = startCol;
+  state[index].bm      = bm;
+  state[index].down      = down;
+  state[index].right       = right;
+  state[index].left       = left;
 }
 #ifdef GCC_STYLE
 int main(){
-  int si=8; 
+  int si=10; 
   struct queenState l[SIZE];
   long gTotal=0;
   for (int i=0;i<SIZE;i++){
+    l[i].BOUND1=i;
     l[i].si=si;
     l[i].aB[i]=i;
     l[i].step=0;
     l[i].y=0;
     l[i].startCol=1;
-    l[i].msk=(1<<SIZE)-1;
+//    l[i].msk=(1<<SIZE)-1;
     l[i].bm=(1<<SIZE)-1;
     l[i].down=0;
     l[i].right=0;

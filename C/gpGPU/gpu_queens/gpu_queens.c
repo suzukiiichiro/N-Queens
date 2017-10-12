@@ -32,7 +32,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 1
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -56,6 +56,7 @@ long lGUnique;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
 struct queenState {
+  int BOUND1;
   int si;
   int id;
   int aB[MAX];
@@ -110,6 +111,8 @@ int getPlatform(){
 	char value[BUFFER_SIZE];
 	size_t size;
   cl_int status;
+	// 0というのもある。
+  //status=clGetPlatformIDs(0,&platform,NULL);
   status=clGetPlatformIDs(1,&platform,NULL);
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform ID.");
@@ -318,126 +321,61 @@ int makeInProgress(int si){
   for(int i=0;i<si;i++){
   //for(int i=0;i<SPREAD;i++){
     struct queenState s;
+    s.BOUND1=i;
     s.si=si;
     s.id=i;
 		for (int j=0;j< si;j++){ s.aB[j]=j;}
 		s.lTotal=0;
 		s.step=0;
     s.y=0;
-		s.startCol =0;
+		//s.startCol =0;
+		s.startCol =1;
     s.bm= (1 << si) - 1;
     s.down=0;
     s.right=0;
     s.left=0;
-//
-    int si=s.si;
-    int id=s.id;
-    int aB[MAX];
-    for (int j = 0; j < si; j++)
-    aB[j] = s.aB[j];
-
-  uint64_t lTotal = s.lTotal;
-  int step      = s.step;
-  int y       = s.y;
-  int startCol  = s.startCol;
-  int endCol  = 1;
-  int bm     = s.bm;
-  long down     = s.down;
-  long right      = s.right;
-  long left      = s.left;
-  int BOUND1   = i;
-  int msk = (1 << si) - 1;
-  //printf("bound:%d:startCol:%d\n", BOUND1,startCol);
-  uint16_t j = 1;
-  while (j != 0)
-  {
-  	j++;
-    if (y == endCol){
-        step = 0;
-        break;
-    }
-    if (step == Remove)
-    {
-      if (y == startCol)
-      {
-        step = Done;
-        break;
-      }
-      --y;
-      bm = aB[y];
-    }
-    int bit;
-    if(y==0){
-      if(bm & (1<<BOUND1)){
-        bit=1<<BOUND1;
-      }else{
-        step=Done;
-        break;
-      }
-    }else{
-      bit = bm & -bm;
-    }
-    down ^= bit;
-    right  ^= bit << y;
-    left  ^= bit << (si - 1 - y);
-
-    if (step == Place)
-    {
-      aB[y] = bm;
-      ++y;
-
-      if (y != si)
-      {
-        bm = msk & ~(down | (right >> y) | (left >> ((si - 1) - y)));
-
-        if (bm == 0)
-          step = Remove;
-      }
-      else
-      {
-        lTotal += 1;
-        step = Remove;
-      }
-    }
-    else
-    {
-      bm ^= bit;
-      if (bm == 0)
-        step = Remove;
-      else
-        step = Place;
-    }
-  }
-  // Save kernel state for next round.
-    s.si      =si;
-    s.id      = id;
-  for (int j = 0; j < si; j++)
-    s.aB[j] = aB[j];
-    s.lTotal = lTotal;
-    s.step      = step;
-    s.y       = y;
-    s.startCol  = endCol;
-    s.bm      = bm;
-    s.down      = down;
-    s.right       = right;
-    s.left       = left;
-   // printf("id:%d:ltotal:%ld:step:%d:y:%d:startCol:%d:bm:%d:down:%d:right:%d:left:%d:BOUND1:%d\n",s.id,s.lTotal,s.step,s.y,s.startCol,s.bm,s.down,s.right,s.left,s.BOUND1);
     inProgress[i]=s;
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   //while(!all_tasks_done(inProgress,SPREAD)){
   while(!all_tasks_done(inProgress,si)){
-    //printf("loop\n");
+    printf("loop\n");
     buffer=clCreateBuffer(context,CL_MEM_ALLOC_HOST_PTR,sizeof(inProgress),NULL,&status);
     if(status!=CL_SUCCESS){
       printf("Couldn't create buffer.\n");
       return 14;
     }
 		/** メモリバッファへの書き込み */
-    status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+    //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+		//対応するホスト側のポインタを取得する
+		cl_int *ptrMappedA = (cl_int *)clEnqueueMapBuffer(
+				cmd_queue, //投入キュー
+				buffer,         //対象のOpenCLバッファ
+				CL_FALSE,         //終了までブロックするか -> しない
+				CL_MAP_READ|CL_MAP_WRITE,     //CPUが書き込むためにMapする //(読み込みならCL_MAP_READ) //(両方ならCL_MAP_READ | CL_MAP_WRITE)
+				0,                //オフセット
+				sizeof(inProgress), //マップするサイズ
+				0,      //この関数が待機すべきeventの数
+				NULL,   //この関数が待機すべき関数のリストへのポインタ
+				NULL,   //この関数の返すevent
+				&status);
+		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){
       printf("Couldn't enque write buffer command.");
       return 16;
+    }
+		status = clEnqueueUnmapMemObject(
+			cmd_queue, //投入キュー
+			buffer,//対象のOpenCLバッファ
+			ptrMappedA, //取得したホスト側のポインタ
+			0, //この関数が待機すべきeventの数
+			NULL, //この関数が待機すべき関数のリストへのポインタ
+			NULL);//この関数の返すevent
+			//終了を待機
+	  status = clFinish(cmd_queue);
+    if(status!=CL_SUCCESS){ 
+      printf("Couldn't finish command queue.");
+      return 14;
     }
 		/**
     カーネルの引数をセット
@@ -453,23 +391,24 @@ int makeInProgress(int si){
       return 15;
     }
 		//カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
-    //size_t globalSizes[]={ spread*spread };
-    //size_t globalSizes[]={ si*si };
-    size_t globalSizes[]={ si };
-    //printf("17\n");
-   	status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,NULL);
+		size_t dim=1;
+		size_t global_offset[]={0};
+    size_t global_size[]={si*si};
+   	status=clEnqueueNDRangeKernel(cmd_queue,
+															kernel,
+															dim,
+															global_offset,
+															global_size,
+															NULL,
+															0,NULL,NULL);
+    status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){
       printf("Couldn't enque kernel execution command.");
       return 17;
     }
-		//実行が終わるまで待機
-    //status=clFinish(cmd_queue);
-   // if(status!=CL_SUCCESS){ 
-    //  printf("Couldn't finish command queue.");
-     // return 14;
-    //}
 		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){
       printf("Couldn't enque read command.");
       return 18;
