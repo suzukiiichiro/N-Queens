@@ -28,9 +28,9 @@ struct CL_PACKED_KEYWORD queenState {
   int y;
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  long down;
-  long right;
-  long left;
+  int down;
+  int right;
+  int left;
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
@@ -44,10 +44,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int y       = state[index].y;
   int startCol  = state[index].startCol;
   int bm     = state[index].bm;
-  long down     = state[index].down;
-  long right      = state[index].right;
-  long left      = state[index].left;
-  long bit;
+  int down     = state[index].down;
+  int right      = state[index].right;
+  int left      = state[index].left;
+  int bit;
   int msk = (1 << si) - 1;
   //printf("startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", startCol,lTotal,step,y,bm,down,right,left);
   uint16_t i = 1;
