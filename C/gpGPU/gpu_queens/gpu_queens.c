@@ -32,7 +32,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 1
+#define DEBUG 0
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -229,7 +229,7 @@ int createProgramWithSource(){
   char * code;
   get_queens_code(&code);
   if(code==NULL){
-    printf("Couldn't load the code.");
+    printf("Couldn't load the code.\n");
     return 9;
   }else{
     if(DEBUG>0) printf("Loading kernel code.\n");
@@ -254,12 +254,14 @@ errcode_ret    実行結果に関連づけられたエラーコードを格納�
 */
 int buildProgram(){
   cl_int status;
-  status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+  //status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+  status=clBuildProgram(program,1,devices,"",NULL,NULL);
   if(status!=CL_SUCCESS){
     char log[2048];
-   	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
-    //printf("%s",log);
-    if(DEBUG>0) printf("Couldn't building program.");
+   	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,0);
+		/***/
+    if(DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
+		/***/
     return 11;
   }else{
     if(DEBUG>0) printf("Building program.\n");
@@ -288,7 +290,9 @@ errcode_ret    エラーコードを格納する変数。
 */
 int commandQueue(){
   cl_int status;
-	cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
+	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
+	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
     return 13; 
@@ -312,6 +316,23 @@ size    割り当てられたバッファメモリオブジェクトのバイト
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
+int ceil_int_div(int i, int div) {
+    return (i + div - 1) / div;
+}
+int ceil_int(int i, int div) {
+    return ceil_int_div(i, div) * div;
+}
+void* aligned_malloc(size_t required_bytes, size_t alignment) {
+    void* p1; // original block
+    void** p2; // aligned block
+    int offset = alignment - 1 + sizeof(void*);
+    if ((p1 = (void*)malloc(required_bytes + offset)) == NULL) {
+       return NULL;
+    }
+    p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
+    p2[-1] = p1;
+    return p2;
+}
 int makeInProgress(int si){
   cl_int status;
   struct queenState inProgress[si];
@@ -337,10 +358,16 @@ int makeInProgress(int si){
     inProgress[i]=s;
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
+  //  cl_uint arrayWidth  = 2048;
+  //  cl_uint arrayHeight = 2048;
   //while(!all_tasks_done(inProgress,SPREAD)){
   while(!all_tasks_done(inProgress,si)){
-    printf("loop\n");
-    buffer=clCreateBuffer(context,CL_MEM_ALLOC_HOST_PTR,sizeof(inProgress),NULL,&status);
+    //printf("loop\n");
+		cl_uint optimizedSize = ceil_int(sizeof(inProgress) * si * si, 64);
+		cl_int* inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
+    //cl_uint optimizedSize = ceil_int(sizeof(inProgress) * si*si, 64);
+    buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+    //buffer=clCreateBuffer(context,CL_MEM_ALLOC_HOST_PTR,sizeof(optimizedSize),NULL,&status);
     if(status!=CL_SUCCESS){
       printf("Couldn't create buffer.\n");
       return 14;
@@ -348,7 +375,8 @@ int makeInProgress(int si){
 		/** メモリバッファへの書き込み */
     //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
 		//対応するホスト側のポインタを取得する
-		cl_int *ptrMappedA = (cl_int *)clEnqueueMapBuffer(
+
+		struct queenState *ptrMappedA = clEnqueueMapBuffer(
 				cmd_queue, //投入キュー
 				buffer,         //対象のOpenCLバッファ
 				CL_FALSE,         //終了までブロックするか -> しない
@@ -364,6 +392,13 @@ int makeInProgress(int si){
       printf("Couldn't enque write buffer command.");
       return 16;
     }
+		//メモリバッファへコピー
+		for(int i=0;i<si;i++){
+			ptrMappedA[i]=inProgress[i];
+		}
+
+	  //ptrMappedA=&inProgress;
+
 		status = clEnqueueUnmapMemObject(
 			cmd_queue, //投入キュー
 			buffer,//対象のOpenCLバッファ
