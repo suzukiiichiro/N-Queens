@@ -55,7 +55,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   long down     = state[index].down;
   long right      = state[index].right;
   long left      = state[index].left;
-  int bit;
+  long bit;
   int msk = (1 << si) - 1;
 //  printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
   uint16_t i = 1;

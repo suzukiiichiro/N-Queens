@@ -363,7 +363,7 @@ int makeInProgress(int si){
     }
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-	cl_uint optimizedSize=ceil_int(sizeof(inProgress)*si*si, 64);
+	cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
 	cl_int* inputA ;
   while(!all_tasks_done(inProgress,si*si*si)){
     //printf("loop\n");
