@@ -1,21 +1,28 @@
 /**
- N:        Total       Unique        hh:mm:ss.ms
- 2:            0               0            0.00
- 3:            0               0            0.00
- 4:            2               0            0.00
- 5:           10               0            0.00
- 6:            4               0            0.00
- 7:           40               0            0.00
- 8:           92               0            0.00
- 9:          352               0            0.00
-10:          724               0            0.00
-11:         2680               0            0.01
-12:        14200               0            0.05
-13:        73712               0            0.30
-14:       365596               0            1.93
-15:      2279184               0           13.50
-16:     14772512               0         1:39.30
-17:     95815104               0        12:29.59
+
+   37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:35.33 N18=
+
+   実行方法
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_37NQueen 07_37gpu_queens.c -framework OpenCL
+   $ ./07_37NQueen 
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.01
+13:             73712                 0          00:00:00:00.05
+14:            365596                 0          00:00:00:00.21
+15:           2279184                 0          00:00:00:01.04
+16:          14772512                 0          00:00:00:06.26
+17:          95815104                 0          00:00:00:47.33
+
+ 
 */
 
 #include "stdio.h"
@@ -356,7 +363,7 @@ int makeInProgress(int si){
     }
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-	cl_uint optimizedSize=ceil_int(sizeof(inProgress) *si *si * si * si, 64);
+	cl_uint optimizedSize=ceil_int(sizeof(inProgress)*si*si, 64);
 	cl_int* inputA ;
   while(!all_tasks_done(inProgress,si*si*si)){
     //printf("loop\n");
@@ -376,7 +383,8 @@ int makeInProgress(int si){
 																			//(読み込みならCL_MAP_READ) 
 																			//(両方ならCL_MAP_READ | CL_MAP_WRITE)
 				0,                //オフセット
-				sizeof(inProgress), //マップするサイズ
+				//sizeof(inProgress)*si*si, //マップするサイズ
+				optimizedSize, //マップするサイズ
 				0,      //この関数が待機すべきeventの数
 				NULL,   //この関数が待機すべき関数のリストへのポインタ
 				NULL,   //この関数の返すevent
@@ -385,16 +393,16 @@ int makeInProgress(int si){
     if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 
 		//メモリバッファへコピー
-//		memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+    memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+    /**
     for(int i=0;i<si;i++){
       for(int j=0;j<si;j++){
         for(int k=0;k<si;k++){
-        ptrMappedA[i*si*si+j*si+k]=inProgress[i*si*si+j*si+k];
-          
-
+          ptrMappedA[i*si*si+j*si+k]=inProgress[i*si*si+j*si+k];
         }
       }
     }
+    */
 		//マップオブジェクトの解放
 		status = clEnqueueUnmapMemObject(
 					cmd_queue, //投入キュー
@@ -424,8 +432,12 @@ int makeInProgress(int si){
 			width * heightの2次元でwork itemを作成
 		*/
 		size_t dim=1;
-		size_t globalWorkSize[] = {si*si*si*si};
-		size_t localWorkSize[] = { si*si*si };
+		//size_t globalWorkSize[] = {si*si*si*si};
+		size_t globalWorkSize[] = {si*si*si};
+		//size_t globalWorkSize[] = {si*si*si,0,0};
+		size_t localWorkSize[] = { si };
+		//size_t localWorkSize[] = {1};
+		//size_t localWorkSize[] = { CL_DEVICE_MAX_WORK_ITEM_SIZES };
 		//タスクをキューに積む
 		status=clEnqueueNDRangeKernel(
 				cmd_queue, //タスクを投入するキュー
@@ -448,9 +460,20 @@ int makeInProgress(int si){
   lGTotal=0;
   lGUnique=0;
   for(int i=0;i<si;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+          //for(int i=0;i<SPREAD;i++){
+          if(DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
+          lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
+        }
+      }
+    }
+  /*
+  for(int i=0;i<si;i++){
     if(DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
 	}
+  */
   return 0;
 }
 int finalFree(){
@@ -484,7 +507,6 @@ int NQueens(int si){
   createContext();            // コンテキストの作成
   create();
   createKernel();             // カーネルの作成
-  printf("test\n");
   commandQueue();             // コマンドキュー作成
   gettimeofday(&t0, NULL);    // 計測開始
   makeInProgress(si);
@@ -513,7 +535,7 @@ int NQueens(int si){
 }
 int main(void){
   int min=4;
-  int targetN=19;
+  int targetN=18;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){
