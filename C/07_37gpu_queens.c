@@ -370,17 +370,11 @@ int makeInProgress(int si){
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
 	cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
 
-
-  while(!all_tasks_done(inProgress,si*si*si)){
-    //printf("loop\n");
 		inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
-    buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+    //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+		buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
+    clRetainMemObject(buffer);
     if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
-		/** 
-			メモリバッファへの書き込み 
-		  対応するホスト側のポインタを取得する
-		*/
-    //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
 		ptrMappedA = clEnqueueMapBuffer(
 				cmd_queue, //投入キュー
 				buffer,         //対象のOpenCLバッファ
@@ -420,6 +414,14 @@ int makeInProgress(int si){
 		//終了を待機
 //	  status = clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
+
+  while(!all_tasks_done(inProgress,si*si*si)){
+    //printf("loop\n");
+		/** 
+			メモリバッファへの書き込み 
+		  対応するホスト側のポインタを取得する
+		*/
+    //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
 		/**
 			カーネルの引数をセット
 			clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -540,7 +542,7 @@ int NQueens(int si){
   return 0;
 }
 int main(void){
-  int min=4;
+  int min=10;
   int targetN=22;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
