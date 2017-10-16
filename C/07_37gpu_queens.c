@@ -16,12 +16,13 @@
 10:               724                 0          00:00:00:00.00
 11:              2680                 0          00:00:00:00.00
 12:             14200                 0          00:00:00:00.01
-13:             73712                 0          00:00:00:00.05
-14:            365596                 0          00:00:00:00.21
-15:           2279184                 0          00:00:00:01.04
-16:          14772512                 0          00:00:00:06.26
-17:          95815104                 0          00:00:00:47.33
-
+13:             73712                 0          00:00:00:00.06
+14:            365596                 0          00:00:00:00.28
+15:           2279184                 0          00:00:00:01.37
+16:          14772512                 0          00:00:00:08.19
+17:          95815104                 0          00:00:00:55.14
+18:         666090624                 0          00:00:06:31.63
+19:        4968057848                 0          00:00:48:07.87
  
 */
 
@@ -339,32 +340,37 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 }
 int makeInProgress(int si){
   cl_int status;
+	cl_int* inputA ;
+
   struct queenState inProgress[si*si*si];
+//  struct queenState s;
+	struct queenState *ptrMappedA ;
+
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        struct queenState s;
-        s.BOUND1=i;
-        s.BOUND2=j;
-        s.BOUND3=k;
-        s.si=si;
-        s.id=i*si*si+j*si+k;
-        for (int m=0;m< si;m++){ s.aB[m]=m;}
-        s.lTotal=0;
-        s.step=0;
-        s.y=0;
-        s.startCol =1;
-        s.bm= (1 << si) - 1;
-        s.down=0;
-        s.right=0;
-        s.left=0;
-        inProgress[i*si*si+j*si+k]=s;
+        inProgress[i*si*si+j*si+k].BOUND1=i;
+        inProgress[i*si*si+j*si+k].BOUND2=j;
+        inProgress[i*si*si+j*si+k].BOUND3=k;
+        inProgress[i*si*si+j*si+k].si=si;
+        inProgress[i*si*si+j*si+k].id=i*si*si+j*si+k;
+        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+        inProgress[i*si*si+j*si+k].lTotal=0;
+        inProgress[i*si*si+j*si+k].step=0;
+        inProgress[i*si*si+j*si+k].y=0;
+        inProgress[i*si*si+j*si+k].startCol =1;
+        inProgress[i*si*si+j*si+k].bm= (1 << si) - 1;
+        inProgress[i*si*si+j*si+k].down=0;
+        inProgress[i*si*si+j*si+k].right=0;
+        inProgress[i*si*si+j*si+k].left=0;
+        //inProgress[i*si*si+j*si+k]=s;
       }
     }
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
 	cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
-	cl_int* inputA ;
+
+
   while(!all_tasks_done(inProgress,si*si*si)){
     //printf("loop\n");
 		inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
@@ -375,7 +381,7 @@ int makeInProgress(int si){
 		  対応するホスト側のポインタを取得する
 		*/
     //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
-		struct queenState *ptrMappedA = clEnqueueMapBuffer(
+		ptrMappedA = clEnqueueMapBuffer(
 				cmd_queue, //投入キュー
 				buffer,         //対象のOpenCLバッファ
 				CL_FALSE,         //終了までブロックするか -> しない
@@ -389,7 +395,7 @@ int makeInProgress(int si){
 				NULL,   //この関数が待機すべき関数のリストへのポインタ
 				NULL,   //この関数の返すevent
 				&status);
-		status=clFinish(cmd_queue);
+//		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 
 		//メモリバッファへコピー
@@ -412,7 +418,7 @@ int makeInProgress(int si){
 					NULL, //この関数が待機すべき関数のリストへのポインタ
 					NULL);//この関数の返すevent
 		//終了を待機
-	  status = clFinish(cmd_queue);
+//	  status = clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
 		/**
 			カーネルの引数をセット
@@ -449,11 +455,11 @@ int makeInProgress(int si){
 				0,                 //この関数が待機すべきeventの数
 				NULL,              //この関数が待機すべき関数のリストへのポインタ
 				NULL);             //この関数の返すevent
-    status=clFinish(cmd_queue);
+//    status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
 		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-		status=clFinish(cmd_queue);
+//		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   }//end while
 	//結果の印字
@@ -535,7 +541,7 @@ int NQueens(int si){
 }
 int main(void){
   int min=4;
-  int targetN=18;
+  int targetN=22;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){
