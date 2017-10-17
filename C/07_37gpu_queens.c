@@ -415,6 +415,8 @@ int makeInProgress(int si){
 //	  status = clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
 
+    status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
+    if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
   while(!all_tasks_done(inProgress,si*si*si)){
     //printf("loop\n");
 		/** 
@@ -430,8 +432,6 @@ int makeInProgress(int si){
 			arg_size    引数として渡すのデータのサイズ。
 			arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
 		*/
-    status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-    if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 		/**
 			カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
 			work sizeの指定
