@@ -351,13 +351,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  *
  *
  */
-int makeInProgress(int si){
+int makeInProgress(int si,struct queenState *inProgress){
   cl_int status;
-  struct queenState inProgress[si*si*si];
-  /**
-   *
-   *
-   */
+//  struct queenState inProgress[si*si*si];
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
@@ -383,7 +379,7 @@ int makeInProgress(int si){
    *
    *
    */
-	cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
+  //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
   //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
   //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
   buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
@@ -401,18 +397,20 @@ int makeInProgress(int si){
                       //(読み込みならCL_MAP_READ) 
                       //(両方ならCL_MAP_READ | CL_MAP_WRITE)
       0,              //オフセット
-      optimizedSize,  //マップするサイズ
+      //optimizedSize,  //マップするサイズ
+      ceil_int(sizeof(inProgress), 64),
       0,              //この関数が待機すべきeventの数
       NULL,           //この関数が待機すべき関数のリストへのポインタ
       NULL,           //この関数の返すevent
       &status);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
-
   /**
    *  メモリバッファへコピー
    *
    */
-  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  memcpy(ptrMappedA,inProgress,sizeof(*inProgress));
+  //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -444,19 +442,20 @@ int makeInProgress(int si){
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
-  /**
-   *
-   *
-   */
+
+  return 0;
+}
+/**
+  カーネルの実行 
+  カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
+  work sizeの指定
+  ここでは1要素に対して1 work item
+  またグループあたり1 work item (実は効率的でない)
+  width * heightの2次元でwork itemを作成
+*/
+int execKernel(int si,struct queenState *inProgress){
+  cl_int status;
   while(!all_tasks_done(inProgress,si*si*si)){
-    /**
-      カーネルの実行 
-      カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
-      work sizeの指定
-      ここでは1要素に対して1 work item
-      またグループあたり1 work item (実は効率的でない)
-      width * heightの2次元でwork itemを作成
-    */
     size_t dim=1;
     size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { si };
@@ -473,7 +472,6 @@ int makeInProgress(int si){
     if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
     /**
      * 結果を読み込み
-     *
      */
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
@@ -535,9 +533,14 @@ int NQueens(int si){
   create();
   createKernel();             // カーネルの作成
   commandQueue();             // コマンドキュー作成
+
+  struct queenState inProgress[si*si*si];
+  makeInProgress(si, &inProgress[si*si*si]);
   gettimeofday(&t0, NULL);    // 計測開始
-  makeInProgress(si);
+  execKernel(si,&inProgress[si*si*si]);
   gettimeofday(&t1, NULL);    // 計測終了
+
+
   finalFree();                // 解放
   if (t1.tv_usec<t0.tv_usec) {
     dd=(t1.tv_sec-t0.tv_sec-1)/86400;
