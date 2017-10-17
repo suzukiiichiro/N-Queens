@@ -80,6 +80,7 @@ struct queenState {
   long left;
 } __attribute__((packed));
 
+struct queenState inProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -342,7 +343,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  *
  *
  */
-int makeInProgress(int si,struct queenState *inProgress){
+int makeInProgress(int si){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
   for(int i=0;i<si;i++){
@@ -397,11 +398,7 @@ int makeInProgress(int si,struct queenState *inProgress){
   /**
    *  メモリバッファへコピー
    */
-  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
-  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
-  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
-  memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
-  //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
+  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -437,9 +434,11 @@ int makeInProgress(int si,struct queenState *inProgress){
 /**
  * タスクの終了を待機する
  */
-int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
+//int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
+int all_tasks_done(int32_t num_tasks) {
 	for (int i = 0; i < num_tasks; i++)
-		if (tasks[i].step != 2)
+		//if (tasks[i].step != 2)
+		if (inProgress[i].step != 2)
 			return 0;
 	return 1;
 }
@@ -451,9 +450,10 @@ int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
   またグループあたり1 work item (実は効率的でない)
   width * heightの2次元でwork itemを作成
 */
-int execKernel(int si,struct queenState *inProgress){
+int execKernel(int si){
   cl_int status;
-  while(!all_tasks_done(inProgress,si*si*si)){
+  //while(!all_tasks_done(inProgress,si*si*si)){
+  while(!all_tasks_done(si*si*si)){
     size_t dim=1;
     size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { si };
@@ -480,7 +480,7 @@ int execKernel(int si,struct queenState *inProgress){
  * 結果の印字
  *
  */
-int execPrint(int si,struct queenState *inProgress){
+int execPrint(int si){
   lGTotal=0;
   lGUnique=0;
   for(int i=0;i<si;i++){
@@ -532,12 +532,12 @@ int NQueens(int si){
   create();
   createKernel();             // カーネルの作成
   commandQueue();             // コマンドキュー作成
-  struct queenState inProgress[si*si*si];
-  makeInProgress(si,inProgress);
+  //struct queenState inProgress[si*si*si];
+  makeInProgress(si);
   gettimeofday(&t0,NULL);    // 計測開始
-  //execKernel(si,inProgress);
+  execKernel(si);
   gettimeofday(&t1,NULL);    // 計測終了
-  execPrint(si,inProgress);
+  execPrint(si);
   finalFree();                // 解放
   if (t1.tv_usec<t0.tv_usec) {
     dd=(t1.tv_sec-t0.tv_sec-1)/86400;
