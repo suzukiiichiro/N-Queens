@@ -49,14 +49,14 @@
 //const int si=14;
 //const int si=15;
 
-cl_platform_id platform;
-cl_uint num_devices;
 cl_device_id *devices;
+cl_mem buffer;
 cl_context context;
 cl_program program;
 cl_kernel kernel;
 cl_command_queue cmd_queue;
-cl_mem buffer;
+cl_platform_id platform;
+cl_uint num_devices;
 
 int spread;
 long lGTotal;
@@ -100,7 +100,7 @@ void get_queens_code(char **buffer){
 /**
  * タスクの終了を待機する
  */
-int all_tasks_done(struct queenState * tasks, int32_t num_tasks) {
+int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
 	for (int i = 0; i < num_tasks; i++)
 		if (tasks[i].step != 2)
 			return 0;
@@ -387,7 +387,6 @@ int makeInProgress(int si,struct queenState *inProgress){
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
   /**
    *
-   *
    */
 	struct queenState *ptrMappedA = clEnqueueMapBuffer(
       cmd_queue,      //投入キュー
@@ -406,12 +405,12 @@ int makeInProgress(int si,struct queenState *inProgress){
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
   /**
    *  メモリバッファへコピー
-   *
    */
   //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
-  memcpy(ptrMappedA,inProgress,sizeof(*inProgress));
+  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
-  /**
+  //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
@@ -419,10 +418,8 @@ int makeInProgress(int si,struct queenState *inProgress){
       }
     }
   }
-  */
   /**
    * マップオブジェクトの解放
-   *
    */
   status = clEnqueueUnmapMemObject(
         cmd_queue,  //投入キュー
@@ -442,7 +439,6 @@ int makeInProgress(int si,struct queenState *inProgress){
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
-
   return 0;
 }
 /**
@@ -476,10 +472,13 @@ int execKernel(int si,struct queenState *inProgress){
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   } //end while
-  /**
-   * 結果の印字
-   *
-   */
+  return 0;
+}
+/**
+ * 結果の印字
+ *
+ */
+int execPrint(int si,struct queenState *inProgress){
   lGTotal=0;
   lGUnique=0;
   for(int i=0;i<si;i++){
@@ -493,8 +492,7 @@ int execKernel(int si,struct queenState *inProgress){
   return 0;
 }
 /**
- *
- *
+ * メモリオブジェクトの解放
  */
 int finalFree(){
   free(devices);
@@ -506,7 +504,6 @@ int finalFree(){
   return 0;
 }
 /**
- *
  *
  */
 int create(){
@@ -533,14 +530,12 @@ int NQueens(int si){
   create();
   createKernel();             // カーネルの作成
   commandQueue();             // コマンドキュー作成
-
   struct queenState inProgress[si*si*si];
-  makeInProgress(si, &inProgress[si*si*si]);
-  gettimeofday(&t0, NULL);    // 計測開始
-  execKernel(si,&inProgress[si*si*si]);
-  gettimeofday(&t1, NULL);    // 計測終了
-
-
+  makeInProgress(si,inProgress);
+  gettimeofday(&t0,NULL);    // 計測開始
+  execKernel(si,inProgress);
+  gettimeofday(&t1,NULL);    // 計測終了
+  execPrint(si,inProgress);
   finalFree();                // 解放
   if (t1.tv_usec<t0.tv_usec) {
     dd=(t1.tv_sec-t0.tv_sec-1)/86400;
