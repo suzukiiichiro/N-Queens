@@ -98,15 +98,6 @@ void get_queens_code(char **buffer){
   (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
 }
 /**
- * タスクの終了を待機する
- */
-int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
-	for (int i = 0; i < num_tasks; i++)
-		if (tasks[i].step != 2)
-			return 0;
-	return 1;
-}
-/**
   プラットフォーム一覧を取得
   現在利用可能なOpenCLのプラットフォームの情報を取得
   clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
@@ -409,8 +400,9 @@ int makeInProgress(int si,struct queenState *inProgress){
   //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   //memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
   //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
-  //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
+  /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
@@ -418,6 +410,7 @@ int makeInProgress(int si,struct queenState *inProgress){
       }
     }
   }
+  */
   /**
    * マップオブジェクトの解放
    */
@@ -440,6 +433,15 @@ int makeInProgress(int si,struct queenState *inProgress){
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
   return 0;
+}
+/**
+ * タスクの終了を待機する
+ */
+int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
+	for (int i = 0; i < num_tasks; i++)
+		if (tasks[i].step != 2)
+			return 0;
+	return 1;
 }
 /**
   カーネルの実行 
@@ -533,7 +535,7 @@ int NQueens(int si){
   struct queenState inProgress[si*si*si];
   makeInProgress(si,inProgress);
   gettimeofday(&t0,NULL);    // 計測開始
-  execKernel(si,inProgress);
+  //execKernel(si,inProgress);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si,inProgress);
   finalFree();                // 解放
