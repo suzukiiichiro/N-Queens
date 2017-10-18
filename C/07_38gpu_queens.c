@@ -1,10 +1,10 @@
 /**
 
-   37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:35.33 N18=
+   38. GPU 最上段クイーンの位置         NQueen37() N17= 00:35.33 N18=
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_37NQueen 07_37gpu_queens.c -framework OpenCL
-   $ ./07_37NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_38NQueen 07_38gpu_queens.c -framework OpenCL
+   $ ./07_38NQueen 
 
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
@@ -31,7 +31,7 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_37queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_38queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"

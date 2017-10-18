@@ -38,7 +38,9 @@
    32. マルチスレッド  ハイブリッド版   NQueen32() N17=    03.72 N18=29.43 k,j,kj4,kj5
    33. マルチスレッド 脱malloc          NQueen33() N17=    03.58 N18=      k,j,kj4,kj5,kj6,kj7,kj8
    34. ボードレイアウト機能追加         NQueen34() N17=    03.58 N18=
-   35. ボードレイアウト機能追加+N33     NQueen35() N17=    03.50 N18=30.77
+   35. マルチスレッド　完               NQueen35() N17=    03.50 N18=30.77
+   36. GPU 基本形                       NQueen36() N17= 27:41.88 N18=
+   37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:47.33 N18=
 
 
 
@@ -2396,11 +2398,60 @@ Q . . . . . . .
 
  35. マルチスレッド　完
 
-  if(si<=17){ NQueenThread_1();  }      //07_27NQueen.c k 構造体1段
-  else if(si<=22){ NQueenThread_2(); }  //07_28NQueen.c 19,20,21,22 k 構造体２段
-  else if(si==23){ NQueenThread_3(); }  //23 kj
+  if(si<=17){ NQueenThread_1();  }      //07_27NQueen.c k 構造体1段 NxN
+  else if(si<=22){ NQueenThread_2(); }  //07_29NQueen.c 18,19,20,21,22 kj 構造体２段 NxNxN
+  else if(si==23){ NQueenThread_3(); }  //23 kj NxNxN
   else if(si==24){ NQueenThread_4(); }  //24 kjkj4
   else if(si==25){ NQueenThread_5(); }  //25 kjkj4kj5
   else if(si==26){ NQueenThread_6(); }  //26 kjkj4kj5kj6
   else if(si==27){ NQueenThread_7(); }  //27 kjkj4kj5kj6kj7
   else if(si==28){ NQueenThread_8(); }  //28 kjkj4kj5kj6kj7kj8
+
+
+ 36. GPU 基本形                       NQueen36() N17=27:41.88    N18=
+
+   実行方法
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_36NQueen 07_36gpu_queens.c -framework OpenCL
+   $ ./07_36NQueen 
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.02
+11:              2680                 0          00:00:00:00.08
+12:             14200                 0          00:00:00:00.32
+13:             73712                 0          00:00:00:01.24
+14:            365596                 0          00:00:00:06.69
+15:           2279184                 0          00:00:00:38.86
+16:          14772512                 0          00:00:04:12.96
+17:          95815104                 0          00:00:27:41.88
+
+
+
+  37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:35.33 N18=
+
+   実行方法
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_37NQueen 07_37gpu_queens.c -framework OpenCL
+   $ ./07_37NQueen 
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.01
+13:             73712                 0          00:00:00:00.05
+14:            365596                 0          00:00:00:00.21
+15:           2279184                 0          00:00:00:01.04
+16:          14772512                 0          00:00:00:06.26
+17:          95815104                 0          00:00:00:47.33
+
+ 
