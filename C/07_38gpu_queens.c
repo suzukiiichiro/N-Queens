@@ -38,7 +38,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0 
+#define DEBUG 0
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -133,7 +133,6 @@ int NQGPU(int si, int BOUND1){
 	char value[BUFFER_SIZE]; 
 	size_t size;
 
-	cl_command_queue cmd_queue;
 
 	/**
 		プラットフォーム一覧を取得
@@ -267,11 +266,22 @@ int NQGPU(int si, int BOUND1){
   //}
   //  return 0;
   //}
-		status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+		//status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+		status=clBuildProgram(program,0,NULL,NULL,NULL,NULL);
 		if(status!=CL_SUCCESS){
-			char log[2048];
-			status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
-			if(DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
+//			char log[2048];
+//			status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,0,log,NULL);
+//			if(DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
+
+		  char  *program_log;
+		  size_t log_size;
+      clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+      program_log = (char*) malloc(log_size + 1);
+      program_log[log_size] = '\0';
+      clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size + 1, program_log, NULL);
+      if(DEBUG>0) printf("%s\n", program_log);
+      free(program_log);
+      //
 			//return 11;
 		}else{
 			if(DEBUG>0) printf("Building program.\n");
@@ -315,7 +325,7 @@ int NQGPU(int si, int BOUND1){
 //  cl_int status;
 	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
 	cl_command_queue_properties properties= CL_QUEUE_PROFILING_ENABLE;
-	cmd_queue=clCreateCommandQueue(context, devices[0], properties, &status);
+	cl_command_queue cmd_queue=clCreateCommandQueue(context, devices[0], properties, &status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); 
 	//return 13; 
 	}
@@ -409,8 +419,8 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
   /**
    *  メモリバッファへコピー
    */
-  //memcpy(ptrMappedA[BOUND1],inProgress,sizeof(inProgress));
-  memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
+  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  //memcpy(ptrMappedA,inProgress,sizeof(struct queenState));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -449,6 +459,8 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
+  status=clSetKernelArg(kernel,1,sizeof(cl_mem),&buffer);
+  status=clSetKernelArg(kernel,2,sizeof(cl_mem),&buffer);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); 
 	//return 15; 
 	}
@@ -507,12 +519,12 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
         }
       }
 //    }
-//	free(devices);
-//	clReleaseContext(context);
-//	clReleaseMemObject(buffer);
-//	clReleaseProgram(program);
-//	clReleaseKernel(kernel);
-//	clReleaseCommandQueue(cmd_queue);
+	free(devices);
+	clReleaseContext(context);
+	clReleaseMemObject(buffer);
+	clReleaseProgram(program);
+	clReleaseKernel(kernel);
+	clReleaseCommandQueue(cmd_queue);
   return 0;
 }
 
@@ -522,49 +534,6 @@ void *NQThread(void *args){
 	return 0;
 }
 /**
- * clGetProgramBuildInfo();		// プログラムのビルド情報を取得
-*/
-int NQueens(int si){
-  struct timeval t0;
-  struct timeval t1;
-  int ss;int ms;int dd;
-	pthread_t pth[si];
- 	local l[si];//構造体 local型 
-  lGTotal=0;
-  lGUnique=0;
-  gettimeofday(&t0,NULL);    // 計測開始
-  for(int i=0;i<si;i++){
-		l[i].size=si;
-		l[i].BOUND1=i;
-		l[i].total=0;
-		pthread_create(&pth[i], NULL, &NQThread, &l[i]);
-  }
-  for(int i=0;i<si;i++){
-		pthread_join(pth[i], NULL); 
-//		pthread_detach(pth[i]);
-	}	
-  gettimeofday(&t1,NULL);    // 計測終了
-	for(int i=0;i<si;i++){
-		lGTotal+=arrTotal[i];
-	}	
-  //free(devices);
-  if (t1.tv_usec<t0.tv_usec) {
-    dd=(t1.tv_sec-t0.tv_sec-1)/86400;
-    ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-    ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-  } else { 
-    dd=(t1.tv_sec-t0.tv_sec)/86400;
-    ss=(t1.tv_sec-t0.tv_sec)%86400;
-    ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-  }
-  int hh=ss/3600;
-  int mm=(ss-hh*3600)/60;
-  ss%=60;
-  //printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
-  printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
-  return 0;
-}
-/**
  *
  *
  */
@@ -572,9 +541,46 @@ int main(void){
   int min=4;
   int targetN=22;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
-  for(int i=min;i<=targetN;i++){
+  for(int si=min;si<=targetN;si++){
     lGTotal=0; lGUnique=0;
-    NQueens(i);
-  }
+    struct timeval t0;
+    struct timeval t1;
+    int ss;int ms;int dd;
+    pthread_t pth[si];
+    local l[si];//構造体 local型 
+    lGTotal=0;
+    lGUnique=0;
+    gettimeofday(&t0,NULL);    // 計測開始
+    for(int i=0;i<si;i++){
+      arrTotal[i]=0;
+      l[i].size=si;
+      l[i].BOUND1=i;
+      l[i].total=0;
+      pthread_create(&pth[i], NULL, &NQThread, &l[i]);
+ //     pthread_join(pth[i], NULL); 
+    }
+    for(int i=0;i<si;i++){
+  		pthread_join(pth[i], NULL); 
+  //		pthread_detach(pth[i]);
+    }	
+    gettimeofday(&t1,NULL);    // 計測終了
+    for(int i=0;i<si;i++){
+      lGTotal+=arrTotal[i];
+    }	
+    if (t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    } else { 
+      dd=(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    //printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+    printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+    }
   return 0;
 }
