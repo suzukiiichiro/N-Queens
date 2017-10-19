@@ -65,6 +65,7 @@ struct queenState {
   qint BOUND2;
   //int BOUND3;
   qint BOUND3;
+  qint BOUND4;
 //  int si;
   int id;
   //int aB[MAX];
@@ -361,27 +362,30 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  */
 //int makeInProgress(int si,int BOUND1,struct queenState *inProgress){
 //  cl_int status;
-  struct queenState inProgress[si*si];
+  struct queenState inProgress[si*si*si];
 //  for(int i=0;i<si;i++){
-    for(int j=0;j<si;j++){
-      for(int k=0;k<si;k++){
-//        inProgress[BOUND1*si*si+j*si+k].BOUND1=i;
-        inProgress[j*si+k].BOUND2=j;
-        inProgress[j*si+k].BOUND3=k;
+  for(int j=0;j<si;j++){
+    for(int k=0;k<si;k++){
+      for(int k2=0;k2<si;k2++){
+        //        inProgress[BOUND1*si*si+j*si+k].BOUND1=i;
+        inProgress[j*si*si+k*si+k2].BOUND2=j;
+        inProgress[j*si*si+k*si+k2].BOUND3=k;
+        inProgress[j*si*si+k*si+k2].BOUND4=k2;
         //inProgress[i*si*si+j*si+k].si=si;
-        inProgress[j*si+k].id=BOUND1;
-        for (int m=0;m< si;m++){ inProgress[j*si+k].aB[m]=m;}
-        inProgress[j*si+k].lTotal=0;
-        inProgress[j*si+k].step=0;
-        inProgress[j*si+k].y=0;
-        inProgress[j*si+k].startCol =1;
-        inProgress[j*si+k].bm= (1<<si) - 1;
-        inProgress[j*si+k].down=0;
-        inProgress[j*si+k].right=0;
-        inProgress[j*si+k].left=0;
-  //printf("INPbound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", inProgress[j*si+k].BOUND2,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left);
+        inProgress[j*si*si+k*si+k2].id=BOUND1;
+        for (int m=0;m< si;m++){ inProgress[j*si*si+k*si+k2].aB[m]=m;}
+        inProgress[j*si*si+k*si+k2].lTotal=0;
+        inProgress[j*si*si+k*si+k2].step=0;
+        inProgress[j*si*si+k*si+k2].y=0;
+        inProgress[j*si*si+k*si+k2].startCol =1;
+        inProgress[j*si*si+k*si+k2].bm= (1<<si) - 1;
+        inProgress[j*si*si+k*si+k2].down=0;
+        inProgress[j*si*si+k*si+k2].right=0;
+        inProgress[j*si*si+k*si+k2].left=0;
+        //printf("INPbound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", inProgress[j*si+k].BOUND2,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left);
       }
     }
+  }
 //  }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -476,9 +480,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 */
 //int execKernel(int si,int BOUND1,struct queenState *inProgress){
 //  cl_int status;
-  while(!all_tasks_done(si*si,inProgress)){
+  while(!all_tasks_done(si*si*si,inProgress)){
     size_t dim=1;
-    size_t globalWorkSize[]={si*si};
+    size_t globalWorkSize[]={si*si*si};
     //size_t localWorkSize[] = {si};
     size_t localWorkSize[]={1};
     status=clEnqueueNDRangeKernel(
@@ -512,10 +516,12 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 //  for(int BOUND1=0;BOUND1<si;BOUND1++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-          if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si+k].id,inProgress[j*si+k].lTotal);
+        for(int k2=0;k2<si;k2++){
+          if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si*si+k*si+k2].id,inProgress[j*si*si+k*si+k2].lTotal);
           //lGTotal+=inProgress[j*si+k].lTotal;
-          arrTotal[BOUND1]+=inProgress[j*si+k].lTotal;
+          arrTotal[BOUND1]+=inProgress[j*si*si+k*si+k2].lTotal;
 //printf("FIN:step:%lld:bound2:%lld:bound3:%lld:bm:%lld:startCol:%lld:step:%c:donw:%lld:right:%lld:left:%lld:lTotal:%lld\n", inProgress[j*si+k].step,inProgress[j*si+k].BOUND2,inProgress[j*si+k].BOUND3,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left,inProgress[j*si+k].lTotal);
+         }
         }
       }
 //    }
