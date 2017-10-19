@@ -50,16 +50,17 @@
 cl_device_id *devices;
 cl_platform_id platform;
 cl_uint num_devices;
-cl_context context;
+cl_context context[MAX];
 cl_mem buffer[MAX];
 cl_program program[MAX];
 cl_kernel kernel[MAX];
-cl_command_queue cmd_queue;
-cl_command_queue_properties properties;
+cl_command_queue cmd_queue[MAX];
+cl_command_queue_properties properties[MAX];
 
 //int spread;
 //long lGTotal;
 //long lGTotal;
+uint64_t arrTotal[MAX];
 uint64_t lGTotal;
 //long lGUnique;
 uint64_t lGUnique;
@@ -171,9 +172,9 @@ int getDeviceID(){
   渡されるポインタ。この引数はNULLにした場合、無視される
   &err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
 */
-int createContext(){
+int createContext(int BOUND1){
   cl_int status;
-  context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
+  context[BOUND1]=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n"); return 8; }
 	else{ if(DEBUG>0) printf("Creating context.\n"); }
   return 0;
@@ -204,7 +205,7 @@ int createProgramWithSource(int si,int BOUND1){
   get_queens_code(&code,si,BOUND1); //カーネルソースの読み込み
   if(code==NULL){ printf("Couldn't load the code.\n"); return 9; }
 	else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
-  program[BOUND1]=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
+  program[BOUND1]=clCreateProgramWithSource(context[BOUND1],1,(const char **) &code,NULL,&status);
   free(code);
   if(status!=CL_SUCCESS){ printf("Couldn't creating program."); return 10; }
 	else{ if(DEBUG>0) printf("Creating program.\n"); }
@@ -260,11 +261,11 @@ int createKernel(int BOUND1){
  * properties    コマンドキューに適用するプロパティのリスト。
  * errcode_ret    エラーコードを格納する変数。
 */
-int commandQueue(){
+int commandQueue(int BOUND1){
   cl_int status;
 	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
-  properties= CL_QUEUE_PROFILING_ENABLE;
-	cmd_queue=clCreateCommandQueue(context, devices[0], properties, &status);
+  properties[BOUND1]= CL_QUEUE_PROFILING_ENABLE;
+	cmd_queue[BOUND1]=clCreateCommandQueue(context[BOUND1], devices[0], properties[BOUND1], &status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); return 13; }
 	else{ if(DEBUG>0) printf("Creating command queue.\n"); }
   return 0;
@@ -335,7 +336,7 @@ int makeInProgress(int si,int BOUND1){
   //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
   //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
   //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
-  buffer[BOUND1] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
+  buffer[BOUND1] = clCreateBuffer(context[BOUND1], CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
   clRetainMemObject(buffer[BOUND1]);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
   /**
@@ -343,7 +344,7 @@ int makeInProgress(int si,int BOUND1){
    */
 	struct queenState *ptrMappedA[si];
 	ptrMappedA[BOUND1] = clEnqueueMapBuffer(
-      cmd_queue,      //投入キュー
+      cmd_queue[BOUND1],      //投入キュー
       buffer[BOUND1],         //対象のOpenCLバッファ
       CL_FALSE,       //終了までブロックするか -> しない
       CL_MAP_READ|CL_MAP_WRITE, //CPUが書き込むためにMapする 
@@ -375,7 +376,7 @@ int makeInProgress(int si,int BOUND1){
    * マップオブジェクトの解放
    */
   status = clEnqueueUnmapMemObject(
-        cmd_queue,  //投入キュー
+        cmd_queue[BOUND1],  //投入キュー
         buffer[BOUND1],     //対象のOpenCLバッファ
         ptrMappedA[BOUND1], //取得したホスト側のポインタ
         0,          //この関数が待機すべきeventの数
@@ -420,7 +421,7 @@ int execKernel(int si,int BOUND1){
     size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { si };
     status=clEnqueueNDRangeKernel(
-        cmd_queue,         //タスクを投入するキュー
+        cmd_queue[BOUND1],         //タスクを投入するキュー
         kernel[BOUND1],            //実行するカーネル
         dim,               //work sizeの次元
         NULL,              //NULLを指定すること
@@ -433,7 +434,7 @@ int execKernel(int si,int BOUND1){
     /**
      * 結果を読み込み
      */
-    status=clEnqueueReadBuffer(cmd_queue,buffer[BOUND1],CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue[BOUND1],buffer[BOUND1],CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   } //end while
   return 0;
@@ -442,12 +443,13 @@ int execKernel(int si,int BOUND1){
  * 結果の印字
  *
  */
-int execPrint(int si){
+int execPrint(int si,int BOUND1){
 //  for(int BOUND1=0;BOUND1<si;BOUND1++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
           if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si+k].id,inProgress[j*si+k].lTotal);
-          lGTotal+=inProgress[j*si+k].lTotal;
+          //lGTotal+=inProgress[j*si+k].lTotal;
+          arrTotal[BOUND1]+=inProgress[j*si+k].lTotal;
         }
       }
 //    }
@@ -456,15 +458,18 @@ int execPrint(int si){
 int size;
 int BOUND1;
 void *NQThread(){
+  	createContext(BOUND1);            // コンテキストの作成
     create(size,BOUND1);
     createKernel(BOUND1);             // カーネルの作成
-    commandQueue();             // コマンドキュー作成
+    commandQueue(BOUND1);             // コマンドキュー作成
     makeInProgress(size,BOUND1);
     execKernel(size,BOUND1);
-    execPrint(size);
+    execPrint(size,BOUND1);
+		clReleaseContext(context[BOUND1]);
 		clReleaseMemObject(buffer[BOUND1]);
 		clReleaseProgram(program[BOUND1]);
 		clReleaseKernel(kernel[BOUND1]);
+		clReleaseCommandQueue(cmd_queue[BOUND1]);
 	return 0;
 }
 /**
@@ -480,19 +485,20 @@ int NQueens(int si){
   lGUnique=0;
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
-  createContext();            // コンテキストの作成
   gettimeofday(&t0,NULL);    // 計測開始
   for(int i=0;i<si;i++){
 		size=si;BOUND1=i;
+		arrTotal[i]=0;
 		pthread_create(&pth[i], NULL, &NQThread, NULL);
   }
   for(int i=0;i<si;i++){
 		pthread_join(pth[i], NULL); 
-		pthread_detach(pth[i]);
+//		pthread_detach(pth[i]);
 	}	
   gettimeofday(&t1,NULL);    // 計測終了
-	clReleaseContext(context);
-	clReleaseCommandQueue(cmd_queue);
+	for(int i=0;i<si;i++){
+		lGTotal+=arrTotal[i];
+	}	
   free(devices);
 
   if (t1.tv_usec<t0.tv_usec) {
