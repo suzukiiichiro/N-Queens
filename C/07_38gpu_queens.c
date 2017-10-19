@@ -25,6 +25,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include <pthread.h>
 #ifdef __APPLE__ // MacOSであるかを確認
 #include "OpenCL/cl.h" //MacOSの場合はインクルード
 #else
@@ -37,7 +38,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 1
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -47,14 +48,14 @@
 //const int si=15;
 
 cl_device_id *devices;
-cl_mem buffer;
 cl_platform_id platform;
 cl_uint num_devices;
-cl_context context[MAX];
+cl_context context;
+cl_mem buffer[MAX];
 cl_program program[MAX];
 cl_kernel kernel[MAX];
-cl_command_queue cmd_queue[MAX];
-cl_command_queue_properties properties[MAX];
+cl_command_queue cmd_queue;
+cl_command_queue_properties properties;
 
 //int spread;
 //long lGTotal;
@@ -92,7 +93,8 @@ struct queenState {
   qint left;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX*MAX];
+//struct queenState inProgress[MAX*MAX*MAX];
+struct queenState inProgress[MAX*MAX];
 /**
   プラットフォーム一覧を取得
   現在利用可能なOpenCLのプラットフォームの情報を取得
@@ -169,9 +171,9 @@ int getDeviceID(){
   渡されるポインタ。この引数はNULLにした場合、無視される
   &err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
 */
-int createContext(int BOUND1){
+int createContext(){
   cl_int status;
-  context[BOUND1]=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
+  context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n"); return 8; }
 	else{ if(DEBUG>0) printf("Creating context.\n"); }
   return 0;
@@ -202,7 +204,7 @@ int createProgramWithSource(int si,int BOUND1){
   get_queens_code(&code,si,BOUND1); //カーネルソースの読み込み
   if(code==NULL){ printf("Couldn't load the code.\n"); return 9; }
 	else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
-  program[BOUND1]=clCreateProgramWithSource(context[BOUND1],1,(const char **) &code,NULL,&status);
+  program[BOUND1]=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
   free(code);
   if(status!=CL_SUCCESS){ printf("Couldn't creating program."); return 10; }
 	else{ if(DEBUG>0) printf("Creating program.\n"); }
@@ -258,11 +260,11 @@ int createKernel(int BOUND1){
  * properties    コマンドキューに適用するプロパティのリスト。
  * errcode_ret    エラーコードを格納する変数。
 */
-int commandQueue(int si,int BOUND1){
+int commandQueue(){
   cl_int status;
 	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
-  properties[BOUND1]= CL_QUEUE_PROFILING_ENABLE;
-	cmd_queue[BOUND1]=clCreateCommandQueue(context[BOUND1], devices[0], properties[BOUND1], &status);
+  properties= CL_QUEUE_PROFILING_ENABLE;
+	cmd_queue=clCreateCommandQueue(context, devices[0], properties, &status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); return 13; }
 	else{ if(DEBUG>0) printf("Creating command queue.\n"); }
   return 0;
@@ -310,19 +312,19 @@ int makeInProgress(int si,int BOUND1){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
 //        inProgress[BOUND1*si*si+j*si+k].BOUND1=i;
-        inProgress[BOUND1*si*si+j*si+k].BOUND2=j;
-        inProgress[BOUND1*si*si+j*si+k].BOUND3=k;
+        inProgress[j*si+k].BOUND2=j;
+        inProgress[j*si+k].BOUND3=k;
         //inProgress[i*si*si+j*si+k].si=si;
-        inProgress[BOUND1*si*si+j*si+k].id=BOUND1*si*si+j*si+k;
-        for (int m=0;m< si;m++){ inProgress[BOUND1*si*si+j*si+k].aB[m]=m;}
-        inProgress[BOUND1*si*si+j*si+k].lTotal=0;
-        inProgress[BOUND1*si*si+j*si+k].step=0;
-        inProgress[BOUND1*si*si+j*si+k].y=0;
-        inProgress[BOUND1*si*si+j*si+k].startCol =1;
-        inProgress[BOUND1*si*si+j*si+k].bm= (1 << si) - 1;
-        inProgress[BOUND1*si*si+j*si+k].down=0;
-        inProgress[BOUND1*si*si+j*si+k].right=0;
-        inProgress[BOUND1*si*si+j*si+k].left=0;
+        inProgress[j*si+k].id=BOUND1*si*si+j*si+k;
+        for (int m=0;m< si;m++){ inProgress[j*si+k].aB[m]=m;}
+        inProgress[j*si+k].lTotal=0;
+        inProgress[j*si+k].step=0;
+        inProgress[j*si+k].y=0;
+        inProgress[j*si+k].startCol =1;
+        inProgress[j*si+k].bm= (1 << si) - 1;
+        inProgress[j*si+k].down=0;
+        inProgress[j*si+k].right=0;
+        inProgress[j*si+k].left=0;
       }
     }
 //  }
@@ -333,16 +335,16 @@ int makeInProgress(int si,int BOUND1){
   //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
   //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
   //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
-  buffer = clCreateBuffer(context[BOUND1], CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
-  clRetainMemObject(buffer);
+  buffer[BOUND1] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
+  clRetainMemObject(buffer[BOUND1]);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
   /**
    *
    */
 	struct queenState *ptrMappedA[si];
 	ptrMappedA[BOUND1] = clEnqueueMapBuffer(
-      cmd_queue[BOUND1],      //投入キュー
-      buffer,         //対象のOpenCLバッファ
+      cmd_queue,      //投入キュー
+      buffer[BOUND1],         //対象のOpenCLバッファ
       CL_FALSE,       //終了までブロックするか -> しない
       CL_MAP_READ|CL_MAP_WRITE, //CPUが書き込むためにMapする 
                       //(読み込みならCL_MAP_READ) 
@@ -373,8 +375,8 @@ int makeInProgress(int si,int BOUND1){
    * マップオブジェクトの解放
    */
   status = clEnqueueUnmapMemObject(
-        cmd_queue[BOUND1],  //投入キュー
-        buffer,     //対象のOpenCLバッファ
+        cmd_queue,  //投入キュー
+        buffer[BOUND1],     //対象のOpenCLバッファ
         ptrMappedA[BOUND1], //取得したホスト側のポインタ
         0,          //この関数が待機すべきeventの数
         NULL,       //この関数が待機すべき関数のリストへのポインタ
@@ -388,7 +390,7 @@ int makeInProgress(int si,int BOUND1){
     arg_size    引数として渡すのデータのサイズ。
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
-  status=clSetKernelArg(kernel[BOUND1],0,sizeof(cl_mem),&buffer);
+  status=clSetKernelArg(kernel[BOUND1],0,sizeof(cl_mem),&buffer[BOUND1]);
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
   return 0;
 }
@@ -418,7 +420,7 @@ int execKernel(int si,int BOUND1){
     size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { si };
     status=clEnqueueNDRangeKernel(
-        cmd_queue[BOUND1],         //タスクを投入するキュー
+        cmd_queue,         //タスクを投入するキュー
         kernel[BOUND1],            //実行するカーネル
         dim,               //work sizeの次元
         NULL,              //NULLを指定すること
@@ -431,7 +433,7 @@ int execKernel(int si,int BOUND1){
     /**
      * 結果を読み込み
      */
-    status=clEnqueueReadBuffer(cmd_queue[BOUND1],buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,buffer[BOUND1],CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   } //end while
   return 0;
@@ -440,18 +442,30 @@ int execKernel(int si,int BOUND1){
  * 結果の印字
  *
  */
-int execPrint(int si,int BOUND1){
-  lGTotal=0;
-  lGUnique=0;
+int execPrint(int si){
 //  for(int BOUND1=0;BOUND1<si;BOUND1++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-          if(DEBUG>0) printf("%d: %ld\n",inProgress[BOUND1*si*si+j*si+k].id,inProgress[BOUND1*si*si+j*si+k].lTotal);
-          lGTotal+=inProgress[BOUND1*si*si+j*si+k].lTotal;
+          if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si+k].id,inProgress[j*si+k].lTotal);
+          lGTotal+=inProgress[j*si+k].lTotal;
         }
       }
 //    }
   return 0;
+}
+int size;
+int BOUND1;
+void *NQThread(){
+    create(size,BOUND1);
+    createKernel(BOUND1);             // カーネルの作成
+    commandQueue();             // コマンドキュー作成
+    makeInProgress(size,BOUND1);
+    execKernel(size,BOUND1);
+    execPrint(size);
+		clReleaseMemObject(buffer[BOUND1]);
+		clReleaseProgram(program[BOUND1]);
+		clReleaseKernel(kernel[BOUND1]);
+	return 0;
 }
 /**
  * clGetProgramBuildInfo();		// プログラムのビルド情報を取得
@@ -461,27 +475,25 @@ int NQueens(int si){
   struct timeval t0;
   struct timeval t1;
   int ss;int ms;int dd;
+	pthread_t pth[si];
+  lGTotal=0;
+  lGUnique=0;
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
-
+  createContext();            // コンテキストの作成
   gettimeofday(&t0,NULL);    // 計測開始
   for(int i=0;i<si;i++){
-    createContext(i);            // コンテキストの作成
-    create(si,i);
-    createKernel(i);             // カーネルの作成
-    commandQueue(si,i);             // コマンドキュー作成
-    //struct queenState inProgress[si*si*si];
-    makeInProgress(si,i);
-    execKernel(si,i);
-    execPrint(si,i);
-		clReleaseContext(context[i]);
-		clReleaseProgram(program[i]);
-		clReleaseKernel(kernel[i]);
-		clReleaseCommandQueue(cmd_queue[i]);
+		size=si;BOUND1=i;
+		pthread_create(&pth[i], NULL, &NQThread, NULL);
   }
+  for(int i=0;i<si;i++){
+		pthread_join(pth[i], NULL); 
+		pthread_detach(pth[i]);
+	}	
   gettimeofday(&t1,NULL);    // 計測終了
+	clReleaseContext(context);
+	clReleaseCommandQueue(cmd_queue);
   free(devices);
-	clReleaseMemObject(buffer);
 
   if (t1.tv_usec<t0.tv_usec) {
     dd=(t1.tv_sec-t0.tv_sec-1)/86400;
