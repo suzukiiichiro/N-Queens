@@ -104,7 +104,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   uint16_t i = 1;
   //long i=0;
   //while (i <300000)
-  printf("#######BOUND1:%d\n",BOUND1);
+//  printf("#######BOUND1:%d\n",BOUND1);
   while (i != 0) {
   	i++;
     if(step==1){

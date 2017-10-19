@@ -37,7 +37,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 1
+#define DEBUG 0
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -265,7 +265,6 @@ int commandQueue(int si,int BOUND1){
 	cmd_queue[BOUND1]=clCreateCommandQueue(context[BOUND1], devices[0], properties[BOUND1], &status);
   if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); return 13; }
 	else{ if(DEBUG>0) printf("Creating command queue.\n"); }
-  free(properties);
   return 0;
 } 
 /**
