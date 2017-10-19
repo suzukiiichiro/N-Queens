@@ -84,6 +84,7 @@ struct queenState {
   qint right;
   qint left;
 } __attribute__((packed));
+
 typedef struct{
 	int size ;
 	int BOUND1;
@@ -126,20 +127,15 @@ int all_tasks_done(int32_t num_tasks,struct queenState *inProgress) {
 }
 
 int NQGPU(int si, int BOUND1){
+	
+	printf("#BOUND1: %d\n", BOUND1);
+	printf("#size: %d\n", si);
 
   cl_int status; 
 	char value[BUFFER_SIZE]; 
 	size_t size;
 
-	cl_platform_id platform;
-	cl_device_id *devices;
-	cl_uint num_devices;
-	cl_context context;
-	cl_mem buffer;
-	cl_program program;
-	cl_kernel kernel;
 	cl_command_queue cmd_queue;
-	cl_command_queue_properties properties;
 
 	/**
 		プラットフォーム一覧を取得
@@ -150,7 +146,7 @@ int NQGPU(int si, int BOUND1){
 		numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
 		戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
 	*/
-//	printf("Pl#################### TEST #####################\n");
+	cl_platform_id platform;
   status=clGetPlatformIDs(1,&platform,NULL);
   if(status!=CL_SUCCESS){ printf("Couldn't get platform ID."); return 1; }
 	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
@@ -159,6 +155,7 @@ int NQGPU(int si, int BOUND1){
 	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
   if(status!=CL_SUCCESS){ printf("Couldn't get platform info."); return 3; }
   else{ if(DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value); }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
 //  return 0;
 //}
 
@@ -180,32 +177,63 @@ int NQGPU(int si, int BOUND1){
 //  cl_int status; 
 //	char value[BUFFER_SIZE]; 
 //	size_t size;
+	cl_uint num_devices;
  	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
-	printf("1#################### TEST #####################");
 	if(status==CL_DEVICE_NOT_FOUND){
  		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,0,NULL,&num_devices);
     if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
 	}
-  if(status!=CL_SUCCESS){ printf("Couldn't get device count."); return 4; }
+  if(status!=CL_SUCCESS){ printf("Couldn't get device count."); 
+//	return 4; 
+	}
   else{ if(DEBUG>0) printf("CL_DEVICE COUNT:%d\n",num_devices); }
-  devices=malloc(num_devices * sizeof(cl_device_id));
+
+	cl_device_id *devices=malloc(num_devices * sizeof(cl_device_id));
 	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
 	if(status==CL_DEVICE_NOT_FOUND){
 		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,NULL);
     if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
 	}else{ if(DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n"); }
-  if(status!=CL_SUCCESS){ printf("Couldn't get platform device count."); return 5; }
+  if(status!=CL_SUCCESS){ printf("Couldn't get platform device count."); 
+	//return 5; 
+	}
   else{ if(DEBUG>0) printf("CL_DEVICE INFO\n"); }
 	for(int didx=0;didx<(int)num_devices;didx++){
 		status=clGetDeviceInfo(devices[didx],CL_DEVICE_NAME,BUFFER_SIZE,value,&size);	
-    if(status!=CL_SUCCESS){ printf("Couldn't get device name."); return 6; }
+    if(status!=CL_SUCCESS){ printf("Couldn't get device name."); 
+		//return 6; 
+		}
     else{ if(DEBUG>0) printf(" +CL_DEVICE_NAME:%s\n",value); }
 		status=clGetDeviceInfo(devices[didx],CL_DEVICE_VERSION,BUFFER_SIZE,value,&size);
-    if(status!=CL_SUCCESS){ printf("Couldn's get device version."); return 7; }
+    if(status!=CL_SUCCESS){ printf("Couldn's get device version."); 
+		//return 7; 
+		}
     else{ if(DEBUG>0) printf("  CL_DEVICE_VERSION:%s\n",value); }
 	}
 	
-	printf("#################### TEST #####################");
+/**
+  コンテキストオブジェクトの作成
+  clCreateContext()ひとつ以上のデバイスで使用するためのコンテキストを作成する。
+  nullptr コンテキストプロパティを指定する。
+  各プロパティ名にはそれぞれに対応した要求される値が続く。この一覧の終端には0がつけ
+  られる。引数porpertiesには、処理依存のプラットフォームの場合に限りNULLを指定する
+  ことができる。
+  num_devices : 対応するデバイスの数
+  devices : 一意に定まる、clGetDeviceIDs関数で取得されたデバイス
+  nullptr : アプリケーションによって登録することが可能なコールバック関数。
+  nullptr : 引数pfn_notifyで設定したコールバック関数が呼び出されたとき、データが
+  渡されるポインタ。この引数はNULLにした場合、無視される
+  &err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
+*/
+//int createContext(int BOUND1){
+//  cl_int status;
+	cl_context context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
+  if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n"); 
+	//return 8; 
+	}
+	else{ if(DEBUG>0) printf("Creating context.\n"); }
+//  return 0;
+//}
 /**
  * カーネルソースの読み込み
  */
@@ -213,11 +241,15 @@ int NQGPU(int si, int BOUND1){
 //  cl_int status; 
 	char *code;
   get_queens_code(&code,si,BOUND1); //カーネルソースの読み込み
-  if(code==NULL){ printf("Couldn't load the code.\n"); return 9; }
+  if(code==NULL){ printf("Couldn't load the code.\n"); 
+	//return 9; 
+	}
 	else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
-  program=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
+	cl_program program=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
   //free(code);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating program.\n"); return 10; }
+  if(status!=CL_SUCCESS){ printf("Couldn't creating program.\n"); 
+	//return 10; 
+	}
 	else{ if(DEBUG>0) printf("Creating program.\n"); }
  // return 0;
 //}
@@ -241,34 +273,13 @@ int NQGPU(int si, int BOUND1){
 			char log[2048];
 			status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,NULL);
 			if(DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
-			return 11;
+			//return 11;
 		}else{
 			if(DEBUG>0) printf("Building program.\n");
 			break ;
 		}
 	}
 //  return status;
-//}
-/**
-  コンテキストオブジェクトの作成
-  clCreateContext()ひとつ以上のデバイスで使用するためのコンテキストを作成する。
-  nullptr コンテキストプロパティを指定する。
-  各プロパティ名にはそれぞれに対応した要求される値が続く。この一覧の終端には0がつけ
-  られる。引数porpertiesには、処理依存のプラットフォームの場合に限りNULLを指定する
-  ことができる。
-  num_devices : 対応するデバイスの数
-  devices : 一意に定まる、clGetDeviceIDs関数で取得されたデバイス
-  nullptr : アプリケーションによって登録することが可能なコールバック関数。
-  nullptr : 引数pfn_notifyで設定したコールバック関数が呼び出されたとき、データが
-  渡されるポインタ。この引数はNULLにした場合、無視される
-  &err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
-*/
-//int createContext(int BOUND1){
-//  cl_int status;
-  context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating context.\n"); return 8; }
-	else{ if(DEBUG>0) printf("Creating context.\n"); }
-//  return 0;
 //}
 /**
  *
@@ -286,8 +297,10 @@ int NQGPU(int si, int BOUND1){
 /** * カーネルオブジェクトの宣言 */
 //int createKernel(int BOUND1){
 //  cl_int status;
-  kernel=clCreateKernel(program,FUNC,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating kernel.\n"); return 12; }
+	cl_kernel kernel=clCreateKernel(program,FUNC,&status);
+  if(status!=CL_SUCCESS){ printf("Couldn't creating kernel.\n"); 
+	//return 12; 
+	}
 	else{ if(DEBUG>0) printf("Creating kernel.\n"); }
 //  return 0;
 //}
@@ -302,9 +315,11 @@ int NQGPU(int si, int BOUND1){
 //int commandQueue(int BOUND1){
 //  cl_int status;
 	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
-  properties= CL_QUEUE_PROFILING_ENABLE;
+	cl_command_queue_properties properties= CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue=clCreateCommandQueue(context, devices[0], properties, &status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); return 13; }
+  if(status!=CL_SUCCESS){ printf("Couldn't creating command queue."); 
+	//return 13; 
+	}
 	else{ if(DEBUG>0) printf("Creating command queue.\n"); }
 //  return 0;
 //} 
@@ -365,14 +380,15 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
   //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
   //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
   //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
-  buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
+	cl_mem buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
   clRetainMemObject(buffer);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
+  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); 
+	//return 14; 
+	}
   /**
    *
    */
-	struct queenState *ptrMappedA;
-	ptrMappedA = clEnqueueMapBuffer(
+	struct queenState *ptrMappedA = clEnqueueMapBuffer(
       cmd_queue,      //投入キュー
       buffer,         //対象のOpenCLバッファ
       CL_FALSE,       //終了までブロックするか -> しない
@@ -387,7 +403,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
       NULL,           //この関数が待機すべき関数のリストへのポインタ
       NULL,           //この関数の返すevent
       &status);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); 
+	//return 16; 
+	}
   /**
    *  メモリバッファへコピー
    */
@@ -412,7 +430,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
         0,          //この関数が待機すべきeventの数
         NULL,       //この関数が待機すべき関数のリストへのポインタ
         NULL);      //この関数の返すevent
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
+  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); 
+	//return 14; 
+	}
  /**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -422,7 +442,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); 
+	//return 15; 
+	}
 //  return 0;
 //}
 /**
@@ -450,12 +472,16 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
-    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
+    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); 
+		//return 17; 
+		}
     /**
      * 結果を読み込み
      */
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
+    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); 
+		//return 18; 
+		}
   } //end while
 //  return 0;
 //}
@@ -484,6 +510,8 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 
 void *NQThread(void *args){
   local *l=(local *)args;
+	printf("BOUND1: %d\n", l->BOUND1);
+	printf("size: %d\n", l->size);
 	NQGPU(l->size,l->BOUND1);
 	return 0;
 }
@@ -503,10 +531,10 @@ int NQueens(int si){
 		l[i].size=si;
 		l[i].BOUND1=i;
 		l[i].total=0;
-		pthread_create(&pth[i], NULL, &NQThread, &l);
+		pthread_create(&pth[i], NULL, &NQThread, &l[i]);
   }
   for(int i=0;i<si;i++){
-//		pthread_join(pth[i], NULL); 
+		pthread_join(pth[i], NULL); 
 //		pthread_detach(pth[i]);
 	}	
   gettimeofday(&t1,NULL);    // 計測終了
