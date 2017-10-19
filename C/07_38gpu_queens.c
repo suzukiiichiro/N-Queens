@@ -38,7 +38,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 1
+#define DEBUG 0 
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -128,8 +128,6 @@ int all_tasks_done(int32_t num_tasks,struct queenState *inProgress) {
 
 int NQGPU(int si, int BOUND1){
 	
-	printf("#BOUND1: %d\n", BOUND1);
-	printf("#size: %d\n", si);
 
   cl_int status; 
 	char value[BUFFER_SIZE]; 
@@ -370,6 +368,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
         inProgress[j*si+k].down=0;
         inProgress[j*si+k].right=0;
         inProgress[j*si+k].left=0;
+  //printf("INPbound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", inProgress[j*si+k].BOUND2,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left);
       }
     }
 //  }
@@ -416,10 +415,17 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
         ptrMappedA[i*si*si+j*si+k]=inProgress[i*si*si+j*si+k];
+  printf("bound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", BOUND1,bm,startCol,step,down,right,left);
       }
     }
   }
   */
+ //   for(int j=0;j<si;j++){
+ //     for(int k=0;k<si;k++){
+ // printf("INPbound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", inProgress[j*si+k].BOUND2,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left);
+ // printf("bound:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d\n", ptrMappedA[j*si+k].BOUND2,ptrMappedA[j*si+k].bm,ptrMappedA[j*si+k].startCol,ptrMappedA[j*si+k].step,ptrMappedA[j*si+k].down,ptrMappedA[j*si+k].right,ptrMappedA[j*si+k].left);
+  //    }
+  //  }
   /**
    * マップオブジェクトの解放
    */
@@ -496,6 +502,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
           if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si+k].id,inProgress[j*si+k].lTotal);
           //lGTotal+=inProgress[j*si+k].lTotal;
           arrTotal[BOUND1]+=inProgress[j*si+k].lTotal;
+  printf("FIN:step:%d:bound2:%d:bound3:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d:lTotal:%d\n", inProgress[j*si+k].step,inProgress[j*si+k].BOUND2,inProgress[j*si+k].BOUND3,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left,inProgress[j*si+k].lTotal);
         }
       }
 //    }
@@ -510,8 +517,6 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 
 void *NQThread(void *args){
   local *l=(local *)args;
-	printf("BOUND1: %d\n", l->BOUND1);
-	printf("size: %d\n", l->size);
 	NQGPU(l->size,l->BOUND1);
 	return 0;
 }
