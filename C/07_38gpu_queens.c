@@ -232,27 +232,6 @@ int NQGPU(int si, int BOUND1){
 	else{ if(DEBUG>0) printf("Creating context.\n"); }
 //  return 0;
 //}
-/**
- * カーネルソースの読み込み
- */
-//int createProgramWithSource(int si,int BOUND1){
-//  cl_int status; 
-	char *code;
-  get_queens_code(&code,si,BOUND1); //カーネルソースの読み込み
-  if(code==NULL){ printf("Couldn't load the code.\n"); 
-	//return 9; 
-	}
-	else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
-	cl_program program=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
-  //free(code);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating program.\n"); 
-	//return 10; 
-	}
-	else{ if(DEBUG>0) printf("Creating program.\n"); }
- // return 0;
-//}
-//  return 0;
-//}
 
 /**
   プログラムのビルドとロギング
@@ -265,7 +244,29 @@ int NQGPU(int si, int BOUND1){
 //int buildProgram(int BOUND1){
 //  cl_int status;
   //status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+  cl_program program ;
 	while(1){
+  /**
+   * カーネルソースの読み込み
+   */
+  //int createProgramWithSource(int si,int BOUND1){
+  //  cl_int status; 
+    char *code;
+    get_queens_code(&code,si,BOUND1); //カーネルソースの読み込み
+    if(code==NULL){ printf("Couldn't load the code.\n"); 
+    //return 9; 
+    }
+    else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
+    program=clCreateProgramWithSource(context,1,(const char **) &code,NULL,&status);
+    //free(code);
+    if(status!=CL_SUCCESS){ printf("Couldn't creating program.\n"); 
+    //return 10; 
+    }
+    else{ if(DEBUG>0) printf("Creating program.\n"); }
+   // return 0;
+  //}
+  //  return 0;
+  //}
 		status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
 		if(status!=CL_SUCCESS){
 			char log[2048];
@@ -502,7 +503,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
           if(DEBUG>0) printf("%d: %ld\n",inProgress[j*si+k].id,inProgress[j*si+k].lTotal);
           //lGTotal+=inProgress[j*si+k].lTotal;
           arrTotal[BOUND1]+=inProgress[j*si+k].lTotal;
-  printf("FIN:step:%d:bound2:%d:bound3:%d:bm:%d:startCol:%d:step:%c:donw:%d:right:%d:left:%d:lTotal:%d\n", inProgress[j*si+k].step,inProgress[j*si+k].BOUND2,inProgress[j*si+k].BOUND3,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left,inProgress[j*si+k].lTotal);
+//printf("FIN:step:%lld:bound2:%lld:bound3:%lld:bm:%lld:startCol:%lld:step:%c:donw:%lld:right:%lld:left:%lld:lTotal:%lld\n", inProgress[j*si+k].step,inProgress[j*si+k].BOUND2,inProgress[j*si+k].BOUND3,inProgress[j*si+k].bm,inProgress[j*si+k].startCol,inProgress[j*si+k].step,inProgress[j*si+k].down,inProgress[j*si+k].right,inProgress[j*si+k].left,inProgress[j*si+k].lTotal);
         }
       }
 //    }
