@@ -1,0 +1,244 @@
+﻿//  単体で動かすときは以下のコメントを外す
+//#define GCC_STYLE
+#ifndef OPENCL_STYLE
+#include "stdio.h"
+#include "stdint.h"
+typedef int64_t qint;
+int get_global_id(int dimension){ return 0;}
+#define CL_KERNEL_KEYWORD
+#define CL_GLOBAL_KEYWORD
+#define CL_CONSTANT_KEYWORD
+#define CL_PACKED_KEYWORD
+#define SIZE 10
+#else
+//typedef long qint;
+//typedef long int64_t;
+//typedef ulong uint64_t;
+typedef ushort uint16_t;
+#define CL_KERNEL_KEYWORD __kernel
+#define CL_GLOBAL_KEYWORD __global
+#define CL_CONSTANT_KEYWORD __constant
+#define CL_PACKED_KEYWORD  __attribute__ ((packed))
+#endif
+#define MAX 27  
+struct CL_PACKED_KEYWORD queenState {
+  int BOUND1;
+  int BOUND2;
+  int BOUND3;
+  int si;
+  int id;
+  int aB[MAX];
+  long lTotal; // Number of solutinos found so far.
+  int step;
+  int y;
+  int startCol; // First column this individual computation was tasked with filling.
+  int bm;
+  long down;
+  long right;
+  long left;
+};
+void backtrack1(struct queenState *s){
+
+  int msk = (1 << s->si) - 1;
+  long bit;
+  uint16_t i = 1;
+  //long i=0;
+  //while (i <300000)
+  while (i != 0) {
+  	i++;
+    if(s->step==1){
+      if(s->y<=s->startCol){
+        s->step=2;
+        break;
+      }
+      s->bm=s->aB[--s->y];
+    }
+    if(s->y==0){
+      if(s->bm & (1<<s->BOUND1)){
+        bit=1<<s->BOUND1;
+        s->aB[s->y]=bit;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else if(s->y==1){
+      if(s->bm & (1<<s->BOUND2)){
+        bit=1<<s->BOUND2;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else if(s->y==2){
+      if(s->bm & (1<<s->BOUND3)){
+        bit=1<<s->BOUND3;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else{
+      bit=s->bm&-s->bm;
+      s->aB[s->y]=bit;
+    }
+    s->down  ^= bit;
+    s->right ^= bit<<s->y;
+    s->left  ^= bit<<(s->si-1-s->y);
+    if(s->step==0){
+      s->aB[s->y++]=s->bm;
+      if(s->y==s->si){
+        s->lTotal += 1;
+        s->step=1;
+      }else{
+        s->bm=msk&~(s->down|(s->right>>s->y)|(s->left>>((s->si-1)-s->y)));
+        if(s->bm==0)
+          s->step=1;
+      }
+    }else{
+      s->bm ^= bit;
+      if(s->bm==0)
+        s->step=1;
+      else
+        s->step=0;
+    }
+  }
+}
+void backtrack2(struct queenState *s){
+
+  int msk = (1 << s->si) - 1;
+  long bit;
+  uint16_t i = 1;
+  //long i=0;
+  //while (i <300000)
+  while (i != 0) {
+  	i++;
+    if(s->step==1){
+      if(s->y<=s->startCol){
+        s->step=2;
+        break;
+      }
+      s->bm=s->aB[--s->y];
+    }
+    if(s->y==0){
+      if(s->bm & (1<<s->BOUND1)){
+        bit=1<<s->BOUND1;
+        s->aB[s->y]=bit;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else if(s->y==1){
+      if(s->bm & (1<<s->BOUND2)){
+        bit=1<<s->BOUND2;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else if(s->y==2){
+      if(s->bm & (1<<s->BOUND3)){
+        bit=1<<s->BOUND3;
+      }else{
+        s->step=2;
+        break;
+      }
+    }else{
+      bit=s->bm&-s->bm;
+      s->aB[s->y]=bit;
+    }
+    s->down  ^= bit;
+    s->right ^= bit<<s->y;
+    s->left  ^= bit<<(s->si-1-s->y);
+    if(s->step==0){
+      s->aB[s->y++]=s->bm;
+      if(s->y==s->si){
+        s->lTotal += 1;
+        s->step=1;
+      }else{
+        s->bm=msk&~(s->down|(s->right>>s->y)|(s->left>>((s->si-1)-s->y)));
+        if(s->bm==0)
+          s->step=1;
+      }
+    }else{
+      s->bm ^= bit;
+      if(s->bm==0)
+        s->step=1;
+      else
+        s->step=0;
+    }
+  }
+}
+CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
+  int index = get_global_id(0);
+	struct queenState s ;
+  s.BOUND1=state[index].BOUND1;
+  s.BOUND2=state[index].BOUND2;
+  s.BOUND3=state[index].BOUND3;
+  s.si= state[index].si;
+  s.id= state[index].id;
+  //int aB[MAX];
+  for (int i = 0; i < s.si; i++)
+    s.aB[i] = state[index].aB[i];
+  s.lTotal = state[index].lTotal;
+  s.step      = state[index].step;
+  s.y       = state[index].y;
+  s.startCol  = state[index].startCol;
+  s.bm     = state[index].bm;
+  s.down     = state[index].down;
+  s.right      = state[index].right;
+  s.left      = state[index].left;
+//  printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
+  if(s.step !=2){//step がDONEの時は処理してもしょうがないので抜ける
+    if(s.BOUND1==0){
+      backtrack1(&s);
+    }else{
+      backtrack2(&s);
+    } 
+  }
+  state[index].BOUND1   =s.BOUND1;
+  state[index].BOUND2   =s.BOUND2;
+  state[index].BOUND3   =s.BOUND3;
+  state[index].si      = s.si;
+  state[index].id      = s.id;
+  for (int i = 0; i < s.si; i++)
+    state[index].aB[i] = s.aB[i];
+  state[index].lTotal = s.lTotal;
+  state[index].step      = s.step;
+  state[index].y       = s.y;
+  state[index].startCol  = s.startCol;
+  state[index].bm      = s.bm;
+  state[index].down      = s.down;
+  state[index].right       = s.right;
+  state[index].left       = s.left;
+}
+#ifdef GCC_STYLE
+int main(){
+  int si=10; 
+  struct queenState l[SIZE*SIZE*SIZE];
+  long gTotal=0;
+  for (int i=0;i<SIZE;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+    l[i*si*si+j*si+k].BOUND1=i;
+    l[i*si*si+j*si+k].BOUND2=j;
+    l[i*si*si+j*si+k].BOUND3=k;
+    l[i*si*si+j*si+k].si=si;
+    for (int m=0;m< si;m++){
+      l[i*si*si+j*si+k].aB[m]=m;
+    }
+    l[i*si*si+j*si+k].step=0;
+    l[i*si*si+j*si+k].y=0;
+    l[i*si*si+j*si+k].startCol=3;
+//    l[i].msk=(1<<SIZE)-1;
+    l[i*si*si+j*si+k].bm=(1<<SIZE)-1;
+    l[i*si*si+j*si+k].down=0;
+    l[i*si*si+j*si+k].right=0;
+    l[i*si*si+j*si+k].left=0;
+    l[i*si*si+j*si+k].lTotal=0;
+    place(&l[i*si*si+j*si+k]);
+    gTotal+=l[i*si*si+j*si+k].lTotal;
+    printf("%ld\n", l[i*si*si+j*si+k].lTotal);
+      }
+    }
+  }
+  printf("%ld\n", gTotal);
+  return 0;
+}
+#endif
