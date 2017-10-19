@@ -55,35 +55,49 @@ cl_command_queue cmd_queue;
 cl_platform_id platform;
 cl_uint num_devices;
 
-int spread;
-long lGTotal;
-long lGUnique;
+//int spread;
+//long lGTotal;
+//long lGTotal;
+uint64_t lGTotal;
+//long lGUnique;
+uint64_t lGUnique;
+typedef int64_t qint;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
 struct queenState {
-  int BOUND1;
-  int BOUND2;
-  int BOUND3;
-  int si;
+  //int BOUND1;
+  qint BOUND1;
+  //int BOUND2;
+  qint BOUND2;
+  //int BOUND3;
+  qint BOUND3;
+//  int si;
   int id;
-  int aB[MAX];
+  //int aB[MAX];
+  qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  int step;
-  int y;
-  int startCol; // First column this individual computation was tasked with filling.
-  int bm;
-  long down;
-  long right;
-  long left;
+  //int step;
+  char step;
+  //int y;
+  char y;
+  //int startCol; // First column this individual computation was tasked with filling.
+  char startCol; // First column this individual computation was tasked with filling.
+  //int bm;
+  qint bm;
+  //long down;
+  qint down;
+  //long right;
+  qint right;
+  qint left;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
-void get_queens_code(char **buffer){
+void get_queens_code(char **buffer,int si){
   char prefix[256];
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
   //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
@@ -218,10 +232,10 @@ int createContext(){
 /**
  * カーネルソースの読み込み
  */
-int createProgramWithSource(){
+int createProgramWithSource(int si){
   cl_int status;
   char * code;
-  get_queens_code(&code);
+  get_queens_code(&code,si);
   if(code==NULL){
     printf("Couldn't load the code.\n");
     return 9;
@@ -349,7 +363,7 @@ int makeInProgress(int si){
         inProgress[i*si*si+j*si+k].BOUND1=i;
         inProgress[i*si*si+j*si+k].BOUND2=j;
         inProgress[i*si*si+j*si+k].BOUND3=k;
-        inProgress[i*si*si+j*si+k].si=si;
+        //inProgress[i*si*si+j*si+k].si=si;
         inProgress[i*si*si+j*si+k].id=i*si*si+j*si+k;
         for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
         inProgress[i*si*si+j*si+k].lTotal=0;
@@ -416,7 +430,7 @@ int makeInProgress(int si){
         NULL,       //この関数が待機すべき関数のリストへのポインタ
         NULL);      //この関数の返すevent
   if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
-  /**
+ /**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
     kernel    値をセットするカーネル。
@@ -449,7 +463,6 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   cl_int status;
-  //while(!all_tasks_done(inProgress,si*si*si)){
   while(!all_tasks_done(si*si*si)){
     size_t dim=1;
     size_t globalWorkSize[] = {si*si*si};
@@ -505,10 +518,10 @@ int finalFree(){
 /**
  *
  */
-int create(){
+int create(int si){
   int rst;
   while (1){
-    createProgramWithSource();  
+    createProgramWithSource(si);  
     //int rst=buildProgram();    
     rst=buildProgram();    
     if(rst==0){ break; }
@@ -526,7 +539,7 @@ int NQueens(int si){
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
   createContext();            // コンテキストの作成
-  create();
+  create(si);
   createKernel();             // カーネルの作成
   commandQueue();             // コマンドキュー作成
   //struct queenState inProgress[si*si*si];
@@ -548,7 +561,8 @@ int NQueens(int si){
   int hh=ss/3600;
   int mm=(ss-hh*3600)/60;
   ss%=60;
-  printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+  //printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+  printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
   return 0;
 }
 /**
