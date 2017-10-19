@@ -50,6 +50,7 @@
 cl_device_id *devices;
 cl_platform_id platform;
 cl_uint num_devices;
+
 cl_context context[MAX];
 cl_mem buffer[MAX];
 cl_program program[MAX];
@@ -95,7 +96,7 @@ struct queenState {
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX*MAX*MAX];
-struct queenState inProgress[MAX*MAX];
+//struct queenState inProgress[MAX*MAX];
 /**
   プラットフォーム一覧を取得
   現在利用可能なOpenCLのプラットフォームの情報を取得
@@ -206,8 +207,8 @@ int createProgramWithSource(int si,int BOUND1){
   if(code==NULL){ printf("Couldn't load the code.\n"); return 9; }
 	else{ if(DEBUG>0) printf("Loading kernel code.\n"); }
   program[BOUND1]=clCreateProgramWithSource(context[BOUND1],1,(const char **) &code,NULL,&status);
-  free(code);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating program."); return 10; }
+  //free(code);
+  if(status!=CL_SUCCESS){ printf("Couldn't creating program.\n"); return 10; }
 	else{ if(DEBUG>0) printf("Creating program.\n"); }
   return 0;
 }
@@ -249,7 +250,7 @@ int create(int si,int BOUND1){
 int createKernel(int BOUND1){
   cl_int status;
   kernel[BOUND1]=clCreateKernel(program[BOUND1],FUNC,&status);
-  if(status!=CL_SUCCESS){ printf("Couldn't creating kernel."); return 12; }
+  if(status!=CL_SUCCESS){ printf("Couldn't creating kernel.\n"); return 12; }
 	else{ if(DEBUG>0) printf("Creating kernel.\n"); }
   return 0;
 }
@@ -303,10 +304,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 	return p2;
 }
  */
-/**
- *
- */
-int makeInProgress(int si,int BOUND1){
+int makeInProgress(int si,int BOUND1,struct queenState *inProgress){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
 //  for(int i=0;i<si;i++){
@@ -316,13 +314,13 @@ int makeInProgress(int si,int BOUND1){
         inProgress[j*si+k].BOUND2=j;
         inProgress[j*si+k].BOUND3=k;
         //inProgress[i*si*si+j*si+k].si=si;
-        inProgress[j*si+k].id=BOUND1*si*si+j*si+k;
+        inProgress[j*si+k].id=BOUND1;
         for (int m=0;m< si;m++){ inProgress[j*si+k].aB[m]=m;}
         inProgress[j*si+k].lTotal=0;
         inProgress[j*si+k].step=0;
         inProgress[j*si+k].y=0;
         inProgress[j*si+k].startCol =1;
-        inProgress[j*si+k].bm= (1 << si) - 1;
+        inProgress[j*si+k].bm= (1<<si) - 1;
         inProgress[j*si+k].down=0;
         inProgress[j*si+k].right=0;
         inProgress[j*si+k].left=0;
@@ -362,7 +360,8 @@ int makeInProgress(int si,int BOUND1){
   /**
    *  メモリバッファへコピー
    */
-  memcpy(ptrMappedA[BOUND1],inProgress,sizeof(inProgress));
+  //memcpy(ptrMappedA[BOUND1],inProgress,sizeof(inProgress));
+  memcpy(ptrMappedA[BOUND1],inProgress,sizeof(struct queenState));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -396,17 +395,6 @@ int makeInProgress(int si,int BOUND1){
   return 0;
 }
 /**
- * タスクの終了を待機する
- */
-//int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
-int all_tasks_done(int32_t num_tasks) {
-	for (int i = 0; i < num_tasks; i++)
-		//if (tasks[i].step != 2)
-		if (inProgress[i].step != 2)
-			return 0;
-	return 1;
-}
-/**
   カーネルの実行 
   カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
   work sizeの指定
@@ -414,12 +402,20 @@ int all_tasks_done(int32_t num_tasks) {
   またグループあたり1 work item (実は効率的でない)
   width * heightの2次元でwork itemを作成
 */
-int execKernel(int si,int BOUND1){
+int all_tasks_done(int32_t num_tasks,struct queenState *inProgress) {
+	for (int i = 0; i < num_tasks; i++)
+		//if (tasks[i].step != 2)
+		if (inProgress[i].step != 2)
+			return 0;
+	return 1;
+}
+int execKernel(int si,int BOUND1,struct queenState *inProgress){
   cl_int status;
-  while(!all_tasks_done(si*si*si)){
+  while(!all_tasks_done(si*si,inProgress)){
     size_t dim=1;
-    size_t globalWorkSize[] = {si*si*si};
-    size_t localWorkSize[] = { si };
+    size_t globalWorkSize[]={si*si};
+    //size_t localWorkSize[] = {si};
+    size_t localWorkSize[]={1};
     status=clEnqueueNDRangeKernel(
         cmd_queue[BOUND1],         //タスクを投入するキュー
         kernel[BOUND1],            //実行するカーネル
@@ -443,7 +439,7 @@ int execKernel(int si,int BOUND1){
  * 結果の印字
  *
  */
-int execPrint(int si,int BOUND1){
+int execPrint(int si,int BOUND1,struct queenState *inProgress){
 //  for(int BOUND1=0;BOUND1<si;BOUND1++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
@@ -458,23 +454,23 @@ int execPrint(int si,int BOUND1){
 int size;
 int BOUND1;
 void *NQThread(){
+		struct queenState inProgress[size*size];
   	createContext(BOUND1);            // コンテキストの作成
     create(size,BOUND1);
     createKernel(BOUND1);             // カーネルの作成
     commandQueue(BOUND1);             // コマンドキュー作成
-    makeInProgress(size,BOUND1);
-    execKernel(size,BOUND1);
-    execPrint(size,BOUND1);
-		clReleaseContext(context[BOUND1]);
-		clReleaseMemObject(buffer[BOUND1]);
-		clReleaseProgram(program[BOUND1]);
-		clReleaseKernel(kernel[BOUND1]);
-		clReleaseCommandQueue(cmd_queue[BOUND1]);
+    makeInProgress(size,BOUND1,inProgress);
+    execKernel(size,BOUND1,inProgress);
+    execPrint(size,BOUND1,inProgress);
+//		clReleaseContext(context[BOUND1]);
+//		clReleaseMemObject(buffer[BOUND1]);
+//		clReleaseProgram(program[BOUND1]);
+//		clReleaseKernel(kernel[BOUND1]);
+//		clReleaseCommandQueue(cmd_queue[BOUND1]);
 	return 0;
 }
 /**
  * clGetProgramBuildInfo();		// プログラムのビルド情報を取得
- *
 */
 int NQueens(int si){
   struct timeval t0;
@@ -499,8 +495,7 @@ int NQueens(int si){
 	for(int i=0;i<si;i++){
 		lGTotal+=arrTotal[i];
 	}	
-  free(devices);
-
+  //free(devices);
   if (t1.tv_usec<t0.tv_usec) {
     dd=(t1.tv_sec-t0.tv_sec-1)/86400;
     ss=(t1.tv_sec-t0.tv_sec-1)%86400;
