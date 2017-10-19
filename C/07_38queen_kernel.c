@@ -41,7 +41,6 @@ struct CL_PACKED_KEYWORD queenState {
   qint BOUND2;
   //int BOUND3;
   qint BOUND3;
-  qint BOUND4;
 //  int si;
   int id;
   //int aB[MAX];
@@ -75,7 +74,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   qint BOUND2=state[index].BOUND2;
   //int BOUND3=state[index].BOUND3;
   qint BOUND3=state[index].BOUND3;
-  qint BOUND4=state[index].BOUND4;
 //  int si= state[index].si;
   int id= state[index].id;
   //int aB[MAX];
@@ -138,13 +136,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=2;
         break;
       }
-    }else if(y==3){
-      if(bm & (1<<BOUND4)){
-        bit=1<<BOUND4;
-      }else{
-        step=2;
-        break;
-      }
     }else{
       bit=bm&-bm;
       aB[y]=bit;
@@ -176,7 +167,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 //  state[index].BOUND1   =BOUND1;
   state[index].BOUND2   =BOUND2;
   state[index].BOUND3   =BOUND3;
-  state[index].BOUND4   =BOUND4;
   //state[index].si      = si;
   state[index].id      = id;
   //for (int i = 0; i < si; i++)
@@ -203,7 +193,6 @@ int main(){
 //    l[i*SIZE*SIZE+j*SIZE+k].BOUND1=i;
     l[i*SIZE*SIZE+j*SIZE+k].BOUND2=j;
     l[i*SIZE*SIZE+j*SIZE+k].BOUND3=k;
-    l[i*SIZE*SIZE+j*SIZE+k].BOUND4=k;
     l[i*SIZE*SIZE+j*SIZE+k].SIZE=SIZE;
     for (int m=0;m< SIZE;m++){
       l[i*SIZE*SIZE+j*SIZE+k].aB[m]=m;
