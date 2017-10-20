@@ -75,7 +75,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   qint BOUND3=state[index].BOUND3;
   int si= state[index].si;
   int id= state[index].id;
-  int aB[MAX];
+  //int aB[MAX];
+  qint aB[MAX];
   //qint aB[SIZE];
   for (int i = 0; i < si; i++)
   //for (int i = 0; i < SIZE; i++)
