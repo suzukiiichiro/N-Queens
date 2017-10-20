@@ -25,6 +25,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include <stdlib.h>
 #ifdef __APPLE__ // MacOSであるかを確認
 #include "OpenCL/cl.h" //MacOSの場合はインクルード
 #else
@@ -37,7 +38,8 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0 
+#define USE_DEBUG 0
+//
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -71,7 +73,7 @@ struct queenState {
   qint BOUND2;
   //int BOUND3;
   qint BOUND3;
-//  int si;
+  int si;
   int id;
   //int aB[MAX];
   qint aB[MAX];
@@ -95,9 +97,11 @@ struct queenState inProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
-void get_queens_code(char **buffer,int si){
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
   char prefix[256];
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
   //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
   //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
@@ -122,7 +126,7 @@ int getPlatform(){
 	char value[BUFFER_SIZE];
 	size_t size;
   cl_int status;
-  status=clGetPlatformIDs(1,&platform,NULL);
+  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform ID.");
     return 1; 
@@ -132,14 +136,14 @@ int getPlatform(){
     printf("Couldn't get platform info.");
     return 2; 
   }else{
-    if(DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
   }
 	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform info.");
     return 3; 
   }else{
-    if(DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
   }
   return 0;
 }
@@ -164,27 +168,27 @@ int getDeviceID(){
  	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
 	if(status==CL_DEVICE_NOT_FOUND){
  		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,0,NULL,&num_devices);
-    if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
+    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
 	}
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get device count.");
     return 4; 
   }else{
-    if(DEBUG>0) printf("CL_DEVICE COUNT:%d\n",num_devices);
+    if(USE_DEBUG>0) printf("CL_DEVICE COUNT:%d\n",num_devices);
   }
   devices=malloc(num_devices * sizeof(cl_device_id));
 	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
 	if(status==CL_DEVICE_NOT_FOUND){
 		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,NULL);
-    if(DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
+    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
 	}else{
-    if(DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n");
+    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n");
 	}
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform device count.");
     return 5; 
   }else{
-    if(DEBUG>0) printf("CL_DEVICE INFO\n");
+    if(USE_DEBUG>0) printf("CL_DEVICE INFO\n");
   }
 	for(int didx=0;didx<(int)num_devices;didx++){
 		status=clGetDeviceInfo(devices[didx],CL_DEVICE_NAME,BUFFER_SIZE,value,&size);	
@@ -192,14 +196,22 @@ int getDeviceID(){
       printf("Couldn't get device name.");
       return 6;
     }else{
-      if(DEBUG>0) printf(" +CL_DEVICE_NAME:%s\n",value);
+      if(USE_DEBUG>0) printf(" +CL_DEVICE_NAME:%s\n",value);
     }
 		status=clGetDeviceInfo(devices[didx],CL_DEVICE_VERSION,BUFFER_SIZE,value,&size);
     if(status!=CL_SUCCESS){
       printf("Couldn's get device version.");
       return 7;
     }else{
-      if(DEBUG>0) printf("  CL_DEVICE_VERSION:%s\n",value);
+      if(USE_DEBUG>0) printf("  CL_DEVICE_VERSION:%s\n",value);
+    }
+    cl_uint units;
+    status=clGetDeviceInfo(devices[didx],CL_DEVICE_MAX_COMPUTE_UNITS,sizeof(units),&units,NULL);
+    if(status!=CL_SUCCESS){
+      printf("Couldn's get units in device.");
+      return 7;
+    }else{
+      if(USE_DEBUG>0) printf("  CL_DEVICE_MAX_COMPUTE_UNITS:%d\n",units);
     }
 	}
   return 0;
@@ -225,22 +237,24 @@ int createContext(){
     printf("Couldn't creating context.\n");
     return 8; 
   }else{
-    if(DEBUG>0) printf("Creating context.\n");
+    if(USE_DEBUG>0) printf("Creating context.\n");
   }
   return 0;
 }
 /**
  * カーネルソースの読み込み
  */
-int createProgramWithSource(int si){
+//int createProgramWithSource(int si){
+int createProgramWithSource(){
   cl_int status;
   char * code;
-  get_queens_code(&code,si);
+  //get_queens_code(&code,si);
+  get_queens_code(&code);
   if(code==NULL){
     printf("Couldn't load the code.\n");
     return 9;
   }else{
-    if(DEBUG>0) printf("Loading kernel code.\n");
+    if(USE_DEBUG>0) printf("Loading kernel code.\n");
   }
   program=clCreateProgramWithSource(context,1,(const char **)&code,NULL,&status);
   free(code);
@@ -248,7 +262,7 @@ int createProgramWithSource(int si){
     printf("Couldn't creating program.");
     return 10; 
   }else{
-    if(DEBUG>0) printf("Creating program.\n");
+    if(USE_DEBUG>0) printf("Creating program.\n");
   }
   return 0;
 }
@@ -266,11 +280,12 @@ int buildProgram(){
   status=clBuildProgram(program,1,devices,"",NULL,NULL);
   if(status!=CL_SUCCESS){
     char log[2048];
-   	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,0);
-    if(DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
+    size_t logSize;
+   	status=clGetProgramBuildInfo(program,devices[0],CL_PROGRAM_BUILD_LOG,2048,log,&logSize);
+    if(USE_DEBUG>0) printf("##### ERROR MESSAGE \n%s\n#####\n",log);
     return 11;
   }else{
-    if(DEBUG>0) printf("Building program.\n");
+    if(USE_DEBUG>0) printf("Building program.\n");
   }
   return status;
 }
@@ -285,7 +300,7 @@ int createKernel(){
     printf("Couldn't creating kernel.");
     return 12; 
   }else{
-    if(DEBUG>0) printf("Creating kernel.\n");
+    if(USE_DEBUG>0) printf("Creating kernel.\n");
   }
   return 0;
 }
@@ -306,7 +321,7 @@ int commandQueue(){
     printf("Couldn't creating command queue.");
     return 13; 
   }else{
-    if(DEBUG>0)
+    if(USE_DEBUG>0)
     printf("Creating command queue.\n");
   }
   return 0;
@@ -342,7 +357,7 @@ int ceil_int(int i, int div) {
 void* aligned_malloc(size_t required_bytes, size_t alignment) {
 	void* p1; 	// original block
 	void** p2; 	// aligned block
-	int offset = alignment - 1 + sizeof(void*);
+	int offset = (int)alignment - 1 + sizeof(void*);
 	if ((p1 = (void*)malloc(required_bytes + offset)) == NULL) {
 		 return NULL;
 	}
@@ -363,7 +378,7 @@ int makeInProgress(int si){
         inProgress[i*si*si+j*si+k].BOUND1=i;
         inProgress[i*si*si+j*si+k].BOUND2=j;
         inProgress[i*si*si+j*si+k].BOUND3=k;
-        //inProgress[i*si*si+j*si+k].si=si;
+        inProgress[i*si*si+j*si+k].si=si;
         inProgress[i*si*si+j*si+k].id=i*si*si+j*si+k;
         for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
         inProgress[i*si*si+j*si+k].lTotal=0;
@@ -377,20 +392,25 @@ int makeInProgress(int si){
       }
     }
   }
-  if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
+  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
    *
    *
    */
   //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
   //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
-  //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+//  buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,sizeof(inProgress),NULL,&status);
   buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
   clRetainMemObject(buffer);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
   /**
    *
+   *
    */
+	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+
+  /**
 	struct queenState *ptrMappedA = clEnqueueMapBuffer(
       cmd_queue,      //投入キュー
       buffer,         //対象のOpenCLバッファ
@@ -405,11 +425,13 @@ int makeInProgress(int si){
       NULL,           //この関数が待機すべき関数のリストへのポインタ
       NULL,           //この関数の返すevent
       &status);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+   *
+   */
   /**
    *  メモリバッファへコピー
    */
-  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+//  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -422,6 +444,7 @@ int makeInProgress(int si){
   /**
    * マップオブジェクトの解放
    */
+/**
   status = clEnqueueUnmapMemObject(
         cmd_queue,  //投入キュー
         buffer,     //対象のOpenCLバッファ
@@ -429,7 +452,8 @@ int makeInProgress(int si){
         0,          //この関数が待機すべきeventの数
         NULL,       //この関数が待機すべき関数のリストへのポインタ
         NULL);      //この関数の返すevent
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
+*/
  /**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -439,7 +463,7 @@ int makeInProgress(int si){
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-  if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
   return 0;
 }
 /**
@@ -447,7 +471,7 @@ int makeInProgress(int si){
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
 int all_tasks_done(int32_t num_tasks) {
-	for (int i = 0; i < num_tasks; i++)
+	for (int i = 0;i<num_tasks;i++)
 		//if (tasks[i].step != 2)
 		if (inProgress[i].step != 2)
 			return 0;
@@ -464,7 +488,8 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
   while(!all_tasks_done(si*si*si)){
-    size_t dim=1;
+    //size_t dim=1;
+    cl_uint dim=1;
     size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { si };
     status=clEnqueueNDRangeKernel(
@@ -477,12 +502,12 @@ int execKernel(int si){
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
-    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
+    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
     /**
      * 結果を読み込み
      */
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-    if(DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
+    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   } //end while
   return 0;
 }
@@ -496,7 +521,7 @@ int execPrint(int si){
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-          if(DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
+          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
           lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
         }
       }
@@ -504,24 +529,14 @@ int execPrint(int si){
   return 0;
 }
 /**
- * メモリオブジェクトの解放
- */
-int finalFree(){
-  free(devices);
-	clReleaseMemObject(buffer);
-  clReleaseContext(context);
-  clReleaseProgram(program);
-  clReleaseKernel(kernel);
-  clReleaseCommandQueue(cmd_queue);
-  return 0;
-}
-/**
  *
  */
-int create(int si){
+//int create(int si){
+int create(){
   int rst;
   while (1){
-    createProgramWithSource(si);  
+    //createProgramWithSource(si);  
+    createProgramWithSource();  
     //int rst=buildProgram();    
     rst=buildProgram();    
     if(rst==0){ break; }
@@ -533,28 +548,20 @@ int create(int si){
  *
 */
 int NQueens(int si){
-  struct timeval t0;
-  struct timeval t1;
-  int ss;int ms;int dd;
-  getPlatform();              // プラットフォーム一覧を取得
-  getDeviceID();              // デバイス一覧を取得
-  createContext();            // コンテキストの作成
-  create(si);
-  createKernel();             // カーネルの作成
-  commandQueue();             // コマンドキュー作成
-  //struct queenState inProgress[si*si*si];
+  struct timeval t0; struct timeval t1; int ss;int ms;int dd;
   makeInProgress(si);
   gettimeofday(&t0,NULL);    // 計測開始
   execKernel(si);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
-  finalFree();                // 解放
+	clReleaseMemObject(buffer);
+  clReleaseContext(context);
   if (t1.tv_usec<t0.tv_usec) {
-    dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+    dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
     ss=(t1.tv_sec-t0.tv_sec-1)%86400;
     ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
   } else { 
-    dd=(t1.tv_sec-t0.tv_sec)/86400;
+    dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
     ss=(t1.tv_sec-t0.tv_sec)%86400;
     ms=(t1.tv_usec-t0.tv_usec+500)/10000;
   }
@@ -572,10 +579,22 @@ int NQueens(int si){
 int main(void){
   int min=4;
   int targetN=22;
+  //Nが変化しても変動のないメソッドを１回だけ実行
+  getPlatform();              // プラットフォーム一覧を取得
+  getDeviceID();              // デバイス一覧を取得
+  createContext();            // コンテキストの作成
+  commandQueue();             // コマンドキュー作成
+  create();
+  createKernel();             // カーネルの作成
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=targetN;i++){
-    lGTotal=0; lGUnique=0;
-    NQueens(i);
+    lGTotal=0; 
+    lGUnique=0;
+    NQueens(i); //スレッド実行
   }
+  clReleaseProgram(program);
+  clReleaseKernel(kernel);
+  clReleaseCommandQueue(cmd_queue);
+  free(devices);
   return 0;
 }
