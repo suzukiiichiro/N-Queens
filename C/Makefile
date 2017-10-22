@@ -1,28 +1,28 @@
-# Makefile for nqueens2.c
+# Makefile
 
-# Linux ###
-CC=/usr/bin/gcc
+OS=${shell uname}
+ifeq ($(OS),Linux)
+CC=/usr/bin/clang
+CFLAGS=-W -Wall -O3 -std=c99 -lm
+FUNCTION=`pkg-config --libs --cflags OpenCL`
+CPPFLAGS=-I/usr/include/CL
+LDFLAGS=-L/usr/lib64
+endif
 
-
-# mac #######################################################
-# llvm
-CC=/Library/Developer/CommandLineTools/usr/bin/gcc
-#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
-#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
-LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
-CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
-
+ifeq ($(OS),Darwin)
+#clang
+CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
 #CC=/usr/local/Cellar/llvm/4.0.1/bin/clang
 #LDFLAGS=-L/usr/local/Cellar/llvm/4.0.1/lib
 #CPPFLAGS=-I/usr/local/Cellar/llvm/4.0.1/include
 # 忘れずに
 # export LLVM_CONFIG="/usr/local/Cellar/llvm/4.0.1/bin/llvm-config";
-
+#gcc
+#CC=/Library/Developer/CommandLineTools/usr/bin/gcc
 # gcc-7
 #CC=/usr/local/Cellar/gcc/7.2.0/bin/gcc-7
 #LDFLAGS=-L/usr/local/Cellar/gcc/7.2.0/lib
 #CPPFLAGS=-I/usr/local/Cellar/gcc/7.2.0/include
-
 # gcc-6
 #CC=/usr/local/Cellar/gcc\@6/6.4.0/bin/gcc-6
 #LDFLAGS=-L/usr/local/Cellar/gcc\@6/6.4.0/lib
@@ -32,27 +32,18 @@ CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xc
 #CC=/usr/local/Cellar/gcc\@5/5.4.0_1/bin/gcc-5
 #LDFLAGS=-L/usr/local/Cellar/gcc\@5/5.4.0_1/lib
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@5/5.4.0_1/include
-
 # gcc-4
 #CC=/usr/local/Cellar/gcc\@4.9/4.9.4/bin/gcc-4.9
 #LDFLAGS=-L/usr/local/Cellar/gcc\@4.9/4.9.4/lib
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@4.9/4.9.4/include
-
-
-#デバッグ時
 CFLAGS=-Wall -W -O3 -std=c99 -lm
 FUNCTION=-lpthread -framework OpenCL
-#最終処理結果実行用
-#CFLAGS=-O3
+LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
+CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
+endif
 RM=rm -fr
 
-# gcc-4
-#LDFLAGS=-L
-#CPPFLAGS=-I
 
-# Linux #######################################################
-#LDFLAGS=-L
-#CPPFLAGS=-I
 nq38=07_38NQueen
 nq38: 07_38gpu_queens.c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq38) 07_38gpu_queens.c 
