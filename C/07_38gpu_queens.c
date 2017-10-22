@@ -317,6 +317,8 @@ int commandQueue(){
 	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
+  //OpenCL2.0
+  //cmd_queue = clCreateCommandQueueWithProperties(context, devices[0], properties, &status);
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
     return 13; 
