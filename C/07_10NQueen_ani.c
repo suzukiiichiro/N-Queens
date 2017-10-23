@@ -36,8 +36,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define  MAXSIZE   6
-#define  MINSIZE   6
+#define  MAXSIZE   7
+#define  MINSIZE   7
 
 int  SIZE, SIZEE;
 int  BOARD[MAXSIZE], *BOARDE, *BOARD1, *BOARD2;
@@ -190,7 +190,7 @@ void Backtrack1(int y, int left, int down, int right)
             Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
         }
         
-        printf("}\n");
+        printf("}#while(bitmap)end#\n");
         printf("#pop#y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
     }
     printf("##methodend}\n");

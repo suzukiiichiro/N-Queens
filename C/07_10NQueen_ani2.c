@@ -95,7 +95,14 @@ int pop(STACK* pStack,int* pValue)
         //  まだデータが格納できるのなら、データを格納し、一つずらす。
         pStack->current--;
         *pValue = pStack->array[pStack->current];
-        return 1;
+        return *pValue;
+    }
+    return 0;
+}
+int leng(STACK* pStack)
+{
+    if(pStack->current > 0){
+     return 1;
     }
     return 0;
 }
@@ -286,16 +293,13 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
   init(&LE);
   init(&DO);
   init(&RI);
-  push(&Y,y); 
-  push(&LE,left);
-  push(&DO,down);
-  push(&RI,right);
-  
+  int sy=y;
+  int sl=left;
+  int sd=down;
+  int sr=right; 
   while(1){
-  y=pop(&Y,&y);
-  left=pop(&LE,&left);
-  down=pop(&DO,&down);
-  right=pop(&RI,&right);
+  start:
+  printf("");
   //local *l=(local *)args;
   int bit;
   int bm=l->msk&~(left|down|right); 
@@ -306,9 +310,7 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
       //G.C8[l->B1]++;
       //(*C8)++;
 			C8[l->B1]++;
-      break;
-    }else{
-      break;
+      printf("after:y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
     }
   }else{
     if(y<l->B1) {   
@@ -319,15 +321,30 @@ void backTrack1(int y,int left,int down,int right,local *l,long *C8){
     while(bm>0) {
       //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
-      push(&Y,y+1); 
-      push(&LE,(left|bit)<<1);
-      push(&DO,down|bit);
-      push(&RI,(right|bit)>>1);
-    }
-    if(bm==0){
-      break;
+      push(&Y,y); 
+      push(&LE,left);
+      push(&DO,down);
+      push(&RI,right);
+      y=y+1;
+      left=(left|bit)<<1;
+      down=(down|bit);
+      right=(right|bit)>>1; 
+      goto start;
+      ret:
+        y=pop(&Y,&y);
+        left=pop(&LE,&left);
+        down=pop(&DO,&down);
+        right=pop(&RI,&right);
+      goto start;
     }
   } 
+      //printf("before:y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+      printf("after:y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+      if(y==sy && left==sl && down == sd && right==sr){
+       break;
+      }else{
+       goto ret;
+      }
  }
 }
 void *run(void *args){
