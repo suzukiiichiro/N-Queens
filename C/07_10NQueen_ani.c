@@ -36,8 +36,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define  MAXSIZE   7
-#define  MINSIZE   7
+#define  MAXSIZE   8
+#define  MINSIZE   8
 
 int  SIZE, SIZEE;
 int  BOARD[MAXSIZE], *BOARDE, *BOARD1, *BOARD2;
@@ -187,11 +187,16 @@ void Backtrack1(int y, int left, int down, int right)
       printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
         printf("Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);\n");
         printf("###rec:y+1:%d:(left|bit)<<1:%d:down|bit:%d:(right|bit)>>1:%d\n",y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+        printf("#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
             Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
         }
         
         printf("}#while(bitmap)end#\n");
         printf("#pop#y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+        printf("#pop#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
+        for (int i=0; i<SIZE; i++) {
+          printf("BOARD[%d]:%d\n",i,BOARD[i]);
+        }
     }
     printf("##methodend}\n");
 }
@@ -214,7 +219,9 @@ void NQueens(void)
     BOARD[0] = 1;
     for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
         BOARD[1] = bit = 1 << BOUND1;
+        printf("backtrack1_start\n");
         Backtrack1(2, (2 | bit)<<1, 1 | bit, bit>>1);
+        printf("backtrack1_end\n");
     }
 
     /* 0çsñ⁄:000001110(ëIë) */
