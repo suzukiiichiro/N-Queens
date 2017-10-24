@@ -36,8 +36,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define  MAXSIZE   8
-#define  MINSIZE   8
+#define  MAXSIZE   27
+#define  MINSIZE   2
 
 int  SIZE, SIZEE;
 int  BOARD[MAXSIZE], *BOARDE, *BOARD1, *BOARD2;
@@ -176,29 +176,92 @@ void Check(void)
 /**********************************************/
 void Backtrack2(int y, int left, int down, int right)
 {
-    int  bitmap, bit;
+  STACK Y2;
+  STACK LE2;
+  STACK DO2;
+  STACK RI2;
+  STACK BM2;
+  init(&Y2);
+  init(&LE2);
+  init(&DO2);
+  init(&RI2);
+  init(&BM2);
+  int sy=y;
+  int sl=left;
+  int sd=down;
+  int sr=right; 
+  while(1){
+    start2:
+    printf("");
+    //printf("#######method_start#####\n");
+    //printf("y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+    int  bitmap;
+    int  bit;
+    //printf("int  bitmap, bit;\n");
 
     bitmap = MASK & ~(left | down | right);
+    //printf("bitmap = MASK & ~(left | down | right);\n");
     if (y == SIZEE) {
-        if (bitmap) {
-            if (!(bitmap & LASTMASK)) { /* 最下段枝刈り */
-                BOARD[y] = bitmap;
-                Check();
-            }
+    //printf("if (y == SIZEE) {\n");
+      if (bitmap) {
+        //printf("if (bitmap) {\n");
+        if (!(bitmap & LASTMASK)) { /* 最下段枝刈り */
+          BOARD[y] = bitmap;
+          //printf("BOARD[y] = bitmap;\n");
+          Check();
         }
+      }
+      //printf("}\n");
     } else {
-        if (y < BOUND1) {           /* 上部サイド枝刈り */
-            bitmap |= SIDEMASK;
-            bitmap ^= SIDEMASK;
-        } else if (y == BOUND2) {   /* 下部サイド枝刈り */
-            if (!(down & SIDEMASK)) return;
-            if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
+      //printf("} else { #y !=SIZEE\n");
+      if (y < BOUND1) {           /* 上部サイド枝刈り */
+        //printf("if (y < BOUND1) { \n");
+        bitmap |= SIDEMASK;
+        //printf("bitmap |= SIDEMASK;\n");
+        bitmap ^= SIDEMASK;
+        //printf("bitmap ^= SIDEMASK;\n");
+      } else if (y == BOUND2) {   /* 下部サイド枝刈り */
+        //printf("y== BOUND2;\n");
+        if (!(down & SIDEMASK)){ 
+          //printf("if (!(down & SIDEMASK)){\n");
+          goto ret2;
         }
-        while (bitmap) {
-            bitmap ^= BOARD[y] = bit = -bitmap & bitmap;
-            Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+        //printf("}\n");
+        if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
+        //printf("if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;\n");
+      }
+      //printf("}\n");
+      while (bitmap) {
+        //printf("while (bitmap) {\n");
+        bitmap ^= BOARD[y] = bit = -bitmap & bitmap;
+        //printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
+        //  Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+        push(&Y2,y); 
+        push(&LE2,left);
+        push(&DO2,down);
+        push(&RI2,right);
+        push(&BM2,bitmap);
+        y=y+1;
+        left=(left|bit)<<1;
+        down=(down|bit);
+        right=(right|bit)>>1; 
+        goto start2;
+        ret2:
+        if(leng(&Y2)!=0){
+          y=pop(&Y2,&y);
+          left=pop(&LE2,&left);
+          down=pop(&DO2,&down);
+          right=pop(&RI2,&right);
+          bitmap=pop(&BM2,&bitmap);
         }
+      }
     }
+    if(y==sy && left==sl && down == sd && right==sr){
+      break;
+    }else{
+      goto ret2;
+    }
+  }
 }
 /**********************************************/
 /* 最上段行のクイーンが角にある場合の探索     */
@@ -209,86 +272,90 @@ void Backtrack1(int y, int left, int down, int right)
   STACK LE;
   STACK DO;
   STACK RI;
+  STACK BM;
   init(&Y);
   init(&LE);
   init(&DO);
   init(&RI);
+  init(&BM);
   int sy=y;
   int sl=left;
   int sd=down;
   int sr=right; 
   while(1){
   start:
-    printf("#######method_start#####\n");
-    printf("y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+    //printf("#######method_start#####\n");
+    //printf("y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
   printf("");
   int  bitmap;
   int bit;
-    printf("int  bitmap, bit;\n");
+    //printf("int  bitmap, bit;\n");
 
     bitmap = MASK & ~(left | down | right);
-    printf("bitmap = MASK & ~(left | down | right);\n");
+    //printf("bitmap = MASK & ~(left | down | right);\n");
     
     if (y == SIZEE) {
-    printf("if (y == SIZEE) {\n");
+    //printf("if (y == SIZEE) {\n");
         if (bitmap) {
-        printf("if (bitmap) {\n");
+        //printf("if (bitmap) {\n");
             BOARD[y] = bitmap;
-            printf("BOARD[y] = bitmap;\n");
+            //printf("BOARD[y] = bitmap;\n");
             COUNT8++;
-            printf("COUNT8++;\n");
+            //printf("COUNT8++;\n");
             //Display();
         }
-        printf("}\n");
+        //printf("}\n");
     } else {
-        printf("} else { #y !=SIZEE\n");
+        //printf("} else { #y !=SIZEE\n");
         if (y < BOUND1) {   /* 斜軸反転解の排除 */
-        printf("if (y < BOUND1) { \n");
+        //printf("if (y < BOUND1) { \n");
             bitmap |= 2;
-            printf("bitmap |= 2;\n");
+            //printf("bitmap |= 2;\n");
             bitmap ^= 2;
-            printf("bitmap ^= 2;\n");
+            //printf("bitmap ^= 2;\n");
         }
-        printf("}\n");
+        //printf("}\n");
         while (bitmap) {
-          printf("while (bitmap) {\n");
+          //printf("while (bitmap) {\n");
           bitmap ^= BOARD[y] = bit = -bitmap & bitmap;
-          printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
-          printf("Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);\n");
-          printf("###rec:y+1:%d:(left|bit)<<1:%d:down|bit:%d:(right|bit)>>1:%d\n",y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-          printf("#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
+          //printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
+          //printf("Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);\n");
+          //printf("###rec:y+1:%d:(left|bit)<<1:%d:down|bit:%d:(right|bit)>>1:%d\n",y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+          //printf("#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
           //      Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
           push(&Y,y); 
           push(&LE,left);
           push(&DO,down);
           push(&RI,right);
+          push(&BM,bitmap);
           y=y+1;
           left=(left|bit)<<1;
           down=(down|bit);
           right=(right|bit)>>1; 
           goto start;
-ret:
+          ret:
           if(leng(&Y)!=0){
             y=pop(&Y,&y);
             left=pop(&LE,&left);
             down=pop(&DO,&down);
             right=pop(&RI,&right);
+            bitmap=pop(&BM,&bitmap);
           }
         }
-        printf("}#while(bitmap)end#\n");
-        printf("#pop#y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
-        printf("#pop#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
-        for (int i=0; i<SIZE; i++) {
-          printf("BOARD[%d]:%d\n",i,BOARD[i]);
-        }
+        //printf("}#while(bitmap)end#\n");
+        //printf("#pop#y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
+        //printf("#pop#bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
+        //for (int i=0; i<SIZE; i++) {
+        //  printf("BOARD[%d]:%d\n",i,BOARD[i]);
+        //}
     }
+    //printf("##methodend}\n");
       if(y==sy && left==sl && down == sd && right==sr){
        break;
       }else{
        goto ret;
       }
  }
-    printf("##methodend}\n");
 }
 /**********************************************/
 /* 初期化と最上段行における探索の切り分け     */
@@ -309,9 +376,9 @@ void NQueens(void)
     BOARD[0] = 1;
     for (BOUND1=2; BOUND1<SIZEE; BOUND1++) {
         BOARD[1] = bit = 1 << BOUND1;
-        printf("backtrack1_start\n");
+        //printf("backtrack1_start\n");
         Backtrack1(2, (2 | bit)<<1, 1 | bit, bit>>1);
-        printf("backtrack1_end\n");
+        //printf("backtrack1_end\n");
     }
 
     /* 0行目:000001110(選択) */
