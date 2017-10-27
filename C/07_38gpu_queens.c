@@ -318,9 +318,9 @@ int commandQueue(){
 	//cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueueWithProperties(context, devices[0], NULL, &status);
 #else
-	//cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
-	//cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
-	cmd_queue = clCreateCommandQueue(context, devices[0], NULL, &status);
+	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
+	//cmd_queue = clCreateCommandQueue(context, devices[0], NULL, &status);
 #endif
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
