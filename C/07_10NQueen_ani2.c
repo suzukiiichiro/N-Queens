@@ -190,18 +190,21 @@ void Backtrack2(int y, int left, int down, int right)
   int sl=left;
   int sd=down;
   int sr=right; 
+  int bend=0;
+  int rflg=0;
+  int bitmap;
+  int bit;
   while(1){
-    start2:
-    printf("");
+    //start2:
     //printf("#######method_start#####\n");
     //printf("y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
-    int  bitmap;
-    int  bit;
+    if(rflg==0){
+    bit;
     //printf("int  bitmap, bit;\n");
-
     bitmap = MASK & ~(left | down | right);
+    }
     //printf("bitmap = MASK & ~(left | down | right);\n");
-    if (y == SIZEE) {
+    if (y == SIZEE && rflg==0) {
     //printf("if (y == SIZEE) {\n");
       if (bitmap) {
         //printf("if (bitmap) {\n");
@@ -214,25 +217,29 @@ void Backtrack2(int y, int left, int down, int right)
       //printf("}\n");
     } else {
       //printf("} else { #y !=SIZEE\n");
-      if (y < BOUND1) {           /* ã•”ƒTƒCƒhŽ}Š ‚è */
+      if (y < BOUND1 && rflg==0) {           /* ã•”ƒTƒCƒhŽ}Š ‚è */
         //printf("if (y < BOUND1) { \n");
         bitmap |= SIDEMASK;
         //printf("bitmap |= SIDEMASK;\n");
         bitmap ^= SIDEMASK;
         //printf("bitmap ^= SIDEMASK;\n");
-      } else if (y == BOUND2) {   /* ‰º•”ƒTƒCƒhŽ}Š ‚è */
+      } else if (y == BOUND2 && rflg==0) {   /* ‰º•”ƒTƒCƒhŽ}Š ‚è */
         //printf("y== BOUND2;\n");
         if (!(down & SIDEMASK)){ 
           //printf("if (!(down & SIDEMASK)){\n");
-          goto ret2;
+          //goto ret2;
+          rflg=1;
         }
         //printf("}\n");
+        if(rflg==0){
         if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;
         //printf("if ((down & SIDEMASK) != SIDEMASK) bitmap &= SIDEMASK;\n");
+        }
       }
       //printf("}\n");
-      while (bitmap) {
+      while (bitmap||rflg==1) {
         //printf("while (bitmap) {\n");
+        if(rflg==0){
         bitmap ^= BOARD[y] = bit = -bitmap & bitmap;
         //printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
         //  Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
@@ -245,21 +252,32 @@ void Backtrack2(int y, int left, int down, int right)
         left=(left|bit)<<1;
         down=(down|bit);
         right=(right|bit)>>1; 
-        goto start2;
-        ret2:
+        //goto start2;
+        //ret2:
+        bend=1;
+        break;
+        }
+        if(rflg==1){
         if(leng(&Y2)!=0){
           y=pop(&Y2,&y);
           left=pop(&LE2,&left);
           down=pop(&DO2,&down);
           right=pop(&RI2,&right);
           bitmap=pop(&BM2,&bitmap);
+          rflg=0;
+        }
         }
       }
+        if(bend==1 && rflg==0){
+          bend=0;
+          continue;
+        }
     }
     if(y==sy && left==sl && down == sd && right==sr){
       break;
     }else{
-      goto ret2;
+      //goto ret2;
+       rflg=1;
     }
   }
 }
@@ -282,19 +300,24 @@ void Backtrack1(int y, int left, int down, int right)
   int sl=left;
   int sd=down;
   int sr=right; 
+  int bend=0;
+  int rflg=0;
+  int bitmap;
+  int bit;
   while(1){
-  start:
+  //start:
+    //printf("rflg:%d\n",rflg);
+    if(rflg==0){
     //printf("#######method_start#####\n");
     //printf("y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
-  printf("");
-  int  bitmap;
-  int bit;
+    bit;
     //printf("int  bitmap, bit;\n");
 
     bitmap = MASK & ~(left | down | right);
     //printf("bitmap = MASK & ~(left | down | right);\n");
+    }
     
-    if (y == SIZEE) {
+    if (y == SIZEE && rflg==0) {
     //printf("if (y == SIZEE) {\n");
         if (bitmap) {
         //printf("if (bitmap) {\n");
@@ -306,17 +329,18 @@ void Backtrack1(int y, int left, int down, int right)
         }
         //printf("}\n");
     } else {
+        if (y < BOUND1 && rflg==0) {   /* ŽÎŽ²”½“]‰ð‚Ì”rœ */
         //printf("} else { #y !=SIZEE\n");
-        if (y < BOUND1) {   /* ŽÎŽ²”½“]‰ð‚Ì”rœ */
         //printf("if (y < BOUND1) { \n");
             bitmap |= 2;
             //printf("bitmap |= 2;\n");
             bitmap ^= 2;
             //printf("bitmap ^= 2;\n");
-        }
         //printf("}\n");
-        while (bitmap) {
+        }
+        while (bitmap||rflg==1) {
           //printf("while (bitmap) {\n");
+          if(rflg==0){
           bitmap ^= BOARD[y] = bit = -bitmap & bitmap;
           //printf("bitmap ^= BOARD[y] = bit = -bitmap & bitmap;\n");
           //printf("Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);\n");
@@ -332,15 +356,30 @@ void Backtrack1(int y, int left, int down, int right)
           left=(left|bit)<<1;
           down=(down|bit);
           right=(right|bit)>>1; 
-          goto start;
-          ret:
+          //goto start;
+          bend=1;
+          break;
+          }
+          //ret:
+          if(rflg==1){
           if(leng(&Y)!=0){
             y=pop(&Y,&y);
             left=pop(&LE,&left);
             down=pop(&DO,&down);
             right=pop(&RI,&right);
             bitmap=pop(&BM,&bitmap);
+            rflg=0;
+          //printf("#after_backtrack1\n");
+          //printf("#after:bit:%d:bitmap:%d:BOUND1:%d\n",bit,bitmap,BOUND1);
+          //for (int i=0; i<SIZE; i++) {
+          //  printf("after_BOARD[%d]:%d\n",i,BOARD[i]);
+          //}
           }
+          }
+        }
+        if(bend==1 && rflg==0){
+          bend=0;
+          continue;
         }
         //printf("}#while(bitmap)end#\n");
         //printf("#pop#y:%d:left:%d:down:%d:right:%d\n",y,left,down,right);
@@ -353,7 +392,8 @@ void Backtrack1(int y, int left, int down, int right)
       if(y==sy && left==sl && down == sd && right==sr){
        break;
       }else{
-       goto ret;
+       //goto ret;
+       rflg=1;
       }
  }
 }
