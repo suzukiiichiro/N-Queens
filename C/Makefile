@@ -43,6 +43,9 @@ CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xc
 endif
 RM=rm -fr
 
+nq40=07_40NQueen
+nq40: 07_40gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq40) 07_40gpu_queens.c 
 
 nq38=07_38NQueen
 nq38: 07_38gpu_queens.c 
