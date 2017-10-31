@@ -38,7 +38,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0 
+#define USE_DEBUG 1 
 //
 //#define SPREAD 1024
 //
@@ -68,7 +68,6 @@ typedef int64_t qint;
 enum { Place,Remove,Done };
 struct queenState {
   //int BOUND1;
-  qint BOUND1;
   //int BOUND2;
   int si;
   int id;
@@ -79,18 +78,10 @@ struct queenState {
   char step;
   //int y;
   char y;
-  //int startCol; // First column this individual computation was tasked with filling.
-  char startCol; // First column this individual computation was tasked with filling.
-  //int bm;
-  qint bm;
-  //long down;
-  qint down;
-  //long right;
-  qint right;
-  qint left;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX];
+//struct queenState inProgress[MAX];
+struct queenState inProgress[1];
 /**
  * カーネルコードの読み込み
  */
@@ -374,19 +365,13 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 int makeInProgress(int si){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
-  for(int i=0;i<si;i++){
-        inProgress[i].BOUND1=i;
+  for(int i=0;i<1;i++){
         inProgress[i].si=si;
         inProgress[i].id=i;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
         inProgress[i].step=0;
         inProgress[i].y=0;
-        inProgress[i].startCol =1;
-        inProgress[i].bm= (1 << si) - 1;
-        inProgress[i].down=0;
-        inProgress[i].right=0;
-        inProgress[i].left=0;
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -483,10 +468,12 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   cl_int status;
-  while(!all_tasks_done(si)){
+  //while(!all_tasks_done(si)){
+  while(!all_tasks_done(1)){
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si};
+    //size_t globalWorkSize[] = {si};
+    size_t globalWorkSize[] = {1};
     size_t localWorkSize[] = { 1 };
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
@@ -514,7 +501,8 @@ int execKernel(int si){
 int execPrint(int si){
   lGTotal=0;
   lGUnique=0;
-  for(int i=0;i<si;i++){
+  //for(int i=0;i<si;i++){
+  for(int i=0;i<1;i++){
           if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
     }
