@@ -111,8 +111,10 @@ void NQueen(int r,int si){
   STACK I;
   init(&R);
   init(&I);
+  int bend=0;
+  int rflg=0;
   while(1){
-  start:
+  //start:
   //printf("methodstart\n");
   //printf("###r:%d\n",r);
   //for(int k=0;k<si;k++){
@@ -121,7 +123,7 @@ void NQueen(int r,int si){
   //  printf("###fB[k]:%d\n",fB[k]);
   //  printf("###fC[k]:%d\n",fC[k]);
   //}
-  if(r==si){
+  if(r==si && rflg==0){
   //printf("if(r==si){\n");
     Total++; //解を発見
    // printf("Total++;\n");
@@ -129,8 +131,9 @@ void NQueen(int r,int si){
     //printf("}else{\n");
     for(int i=0;i<si;i++){
      // printf("for(int i=0;i<si;i++){\n");
-      aB[r]=i ;
-
+      if(rflg==0){
+        aB[r]=i ;
+      }
       //printf("aB[r]=i ;\n");
       //printf("###i:%d\n",i);
       //printf("###r:%d\n",r);
@@ -143,6 +146,7 @@ void NQueen(int r,int si){
       //バックトラック 制約を満たしているときだけ進む
       if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
         //printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+      if(rflg==0){
         fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1; 
         //printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
         //printf("###before_nqueen\n");
@@ -157,9 +161,13 @@ void NQueen(int r,int si){
           push(&R,r); 
           push(&I,i); 
           r=r+1;
-          goto start;
+          bend=1;
+          break;
+        //  goto start;
+        }
         //NQueen(r+1,si);//再帰
-          ret:
+         // ret:
+      if(rflg==1){
           r=pop(&R,&r);
           i=pop(&I,&i);
         //printf("###after_nqueen\n");
@@ -171,10 +179,16 @@ void NQueen(int r,int si){
         //  printf("###fB[k]:%d\n",fB[k]);
         //  printf("###fC[k]:%d\n",fC[k]);
         //}
-        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0; 
+          fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0; 
+          rflg=0;
+        }
         //printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
       }
       //printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+        if(bend==1 && rflg==0){
+          bend=0;
+          continue;
+        }
     }  
     //printf("after:for\n");
   }
@@ -182,7 +196,8 @@ void NQueen(int r,int si){
     if(r==0){
       break;
     }else{
-      goto ret;
+      //goto ret;
+      rflg=1;
     }
   }
 }
