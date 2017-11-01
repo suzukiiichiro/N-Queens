@@ -32,9 +32,9 @@ int push(STACK*,int);
 int pop(STACK*,int*);
 void init(STACK* pStack)
 {
-    int i;
-    for(i = 0; i < MAX; i++){
-        pStack->array[i] = 0;
+    int j;
+    for(j = 0; j < MAX; j++){
+        pStack->array[j] = 0;
     }
     pStack->current = 0;
 }
@@ -76,8 +76,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   struct queenState s ;
   s.si= state[index].si;
   s.id= state[index].id;
-  for (int i = 0; i < s.si; i++)
-    s.aB[i] = state[index].aB[i];
+  for (int j = 0; j < s.si; j++)
+    s.aB[j] = state[index].aB[j];
   s.lTotal = state[index].lTotal;
   s.step      = state[index].step;
   s.y       = state[index].y;
@@ -93,19 +93,51 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     int fA[MAX];
     int fB[MAX];
     int fC[MAX];
-    uint16_t i = 1;
-  while (i != 0) {
-  	i++;
+    uint16_t j = 1;
+  while (j != 0) {
+  	j++;
+    printf("methodstart\n");
+    printf("###r:%d\n",r);
+    for(int k=0;k<si;k++){
+      printf("###i:%d\n",k);
+      printf("###fa[k]:%d\n",fA[k]);
+      printf("###fB[k]:%d\n",fB[k]);
+      printf("###fC[k]:%d\n",fC[k]);
+    }
       if(r==si && rflg==0){
+        printf("if(r==si){\n");
         s.lTotal++;
+        printf("Total++;\n");
       }else{
+        printf("}else{\n");
         for(int i=0;i<si;i++){
+        printf("for(int i=0;i<si;i++){\n");
           if(rflg==0){
             s.aB[r]=i ;
           }
-          if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
+          printf("aB[r]=i ;\n");
+          printf("###i:%d\n",i);
+          printf("###r:%d\n",r);
+          for(int k=0;k<si;k++){
+            printf("###i:%d\n",k);
+            printf("###fa[k]:%d\n",fA[k]);
+            printf("###fB[k]:%d\n",fB[k]);
+            printf("###fC[k]:%d\n",fC[k]);
+          }
+          if((fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0) || rflg==1){
+            printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
             if(rflg==0){
               fA[i]=fB[r-s.aB[r]+si-1]=fC[r+s.aB[r]]=1; 
+              printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
+              printf("###before_nqueen\n");
+              printf("###i:%d\n",i);
+              printf("###r:%d\n",r);
+              for(int k=0;k<si;k++){
+                printf("###i:%d\n",k);
+                printf("###fa[k]:%d\n",fA[k]);
+                printf("###fB[k]:%d\n",fB[k]);
+                printf("###fC[k]:%d\n",fC[k]);
+              }
               push(&R,r); 
               push(&I,i); 
               r=r+1;
@@ -115,16 +147,32 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             if(rflg==1){
               r=pop(&R,&r);
               i=pop(&I,&i);
+              printf("###after_nqueen\n");
+              printf("###i:%d\n",i);
+              printf("###r:%d\n",r);
+              for(int k=0;k<si;k++){
+                printf("###i:%d\n",k);
+                printf("###fa[k]:%d\n",fA[k]);
+                printf("###fB[k]:%d\n",fB[k]);
+                printf("###fC[k]:%d\n",fC[k]);
+              }
               fA[i]=fB[r-s.aB[r]+si-1]=fC[r+s.aB[r]]=0; 
               rflg=0;
+              printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
             }
-          }
-          if(bend==1 && rflg==0){
+          }else{
             bend=0;
-            continue;
           }
+          printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+          printf("###bend:%d\n",bend);
+        }
+        printf("after:for\n");
+        if(bend==1 && rflg==0){
+          bend=0;
+          continue;
         }
       }
+      printf("after:else\n");
       if(r==0){
         s.step=2;
         break;
@@ -135,8 +183,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   state[index].si      = s.si;
   state[index].id      = s.id;
-  for (int i = 0; i < s.si; i++)
-    state[index].aB[i] = s.aB[i];
+  for (int j = 0; j < s.si; j++)
+    state[index].aB[j] = s.aB[j];
   state[index].lTotal = s.lTotal;
   state[index].step= s.step;
   state[index].y= s.y;
