@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define MAX 27 
+#define MAX 8 
 
 long Total=1 ;        //合計解
 long Unique=0;        //ユニーク解
@@ -115,84 +115,86 @@ void NQueen(int r,int si){
   int rflg=0;
   while(1){
   //start:
-  //printf("methodstart\n");
-  //printf("###r:%d\n",r);
-  //for(int k=0;k<si;k++){
-  //  printf("###i:%d\n",k);
-  //  printf("###fa[k]:%d\n",fA[k]);
-  //  printf("###fB[k]:%d\n",fB[k]);
-  //  printf("###fC[k]:%d\n",fC[k]);
-  //}
+  printf("methodstart\n");
+  printf("###r:%d\n",r);
+  for(int k=0;k<si;k++){
+    printf("###i:%d\n",k);
+    printf("###fa[k]:%d\n",fA[k]);
+    printf("###fB[k]:%d\n",fB[k]);
+    printf("###fC[k]:%d\n",fC[k]);
+  }
   if(r==si && rflg==0){
-  //printf("if(r==si){\n");
+  printf("if(r==si){\n");
     Total++; //解を発見
-   // printf("Total++;\n");
+    printf("Total++;\n");
   }else{
-    //printf("}else{\n");
+    printf("}else{\n");
     for(int i=0;i<si;i++){
-     // printf("for(int i=0;i<si;i++){\n");
+      printf("for(int i=0;i<si;i++){\n");
       if(rflg==0){
         aB[r]=i ;
       }
-      //printf("aB[r]=i ;\n");
-      //printf("###i:%d\n",i);
-      //printf("###r:%d\n",r);
-      //for(int k=0;k<si;k++){
-      //  printf("###i:%d\n",k);
-      //  printf("###fa[k]:%d\n",fA[k]);
-      //  printf("###fB[k]:%d\n",fB[k]);
-      //  printf("###fC[k]:%d\n",fC[k]);
-      //}
+      printf("aB[r]=i ;\n");
+      printf("###i:%d\n",i);
+      printf("###r:%d\n",r);
+      for(int k=0;k<si;k++){
+        printf("###i:%d\n",k);
+        printf("###fa[k]:%d\n",fA[k]);
+        printf("###fB[k]:%d\n",fB[k]);
+        printf("###fC[k]:%d\n",fC[k]);
+      }
       //バックトラック 制約を満たしているときだけ進む
-      if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
-        //printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
-      if(rflg==0){
-        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1; 
-        //printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
-        //printf("###before_nqueen\n");
-        //printf("###i:%d\n",i);
-        //printf("###r:%d\n",r);
-        //for(int k=0;k<si;k++){
-        //  printf("###i:%d\n",k);
-        //  printf("###fa[k]:%d\n",fA[k]);
-        //  printf("###fB[k]:%d\n",fB[k]);
-        //  printf("###fC[k]:%d\n",fC[k]);
-        //}
+      if((fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0)  || rflg==1){
+        printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+        if(rflg==0){
+          fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1; 
+          printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
+          printf("###before_nqueen\n");
+          printf("###i:%d\n",i);
+          printf("###r:%d\n",r);
+          for(int k=0;k<si;k++){
+            printf("###i:%d\n",k);
+            printf("###fa[k]:%d\n",fA[k]);
+            printf("###fB[k]:%d\n",fB[k]);
+            printf("###fC[k]:%d\n",fC[k]);
+          }
           push(&R,r); 
           push(&I,i); 
           r=r+1;
           bend=1;
           break;
-        //  goto start;
+          //  goto start;
         }
         //NQueen(r+1,si);//再帰
-         // ret:
-      if(rflg==1){
+        // ret:
+        if(rflg==1){
           r=pop(&R,&r);
           i=pop(&I,&i);
-        //printf("###after_nqueen\n");
-        //printf("###i:%d\n",i);
-        //printf("###r:%d\n",r);
-        //for(int k=0;k<si;k++){
-        //  printf("###i:%d\n",k);
-        //  printf("###fa[k]:%d\n",fA[k]);
-        //  printf("###fB[k]:%d\n",fB[k]);
-        //  printf("###fC[k]:%d\n",fC[k]);
-        //}
+          printf("###after_nqueen\n");
+          printf("###i:%d\n",i);
+          printf("###r:%d\n",r);
+          for(int k=0;k<si;k++){
+            printf("###i:%d\n",k);
+            printf("###fa[k]:%d\n",fA[k]);
+            printf("###fB[k]:%d\n",fB[k]);
+            printf("###fC[k]:%d\n",fC[k]);
+          }
           fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0; 
           rflg=0;
         }
-        //printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
+        printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
+      }else{
+        bend=0;
       }
-      //printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
-        if(bend==1 && rflg==0){
-          bend=0;
-          continue;
-        }
+      printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
     }  
-    //printf("after:for\n");
+    printf("after:for\n");
+    if(bend==1 && rflg==0){
+      bend=0;
+      continue;
+    }
   }
-  //printf("after:else\n");
+  printf("after:else\n");
     if(r==0){
       break;
     }else{
@@ -203,7 +205,7 @@ void NQueen(int r,int si){
 }
 int main(void) {
   clock_t st; char t[20];
-  int min=2;
+  int min=8;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     Total=0; Unique=0; 
