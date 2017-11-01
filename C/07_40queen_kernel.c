@@ -92,7 +92,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     int fA[MAX];
     int fB[MAX];
     int fC[MAX];
-    while (1) {
+    uint16_t j = 1;
+    while (j != 0) {
       if(r==si && rflg==0){
         s.lTotal++;
       }else{
@@ -130,6 +131,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       }else{
         rflg=1;
       }
+  	j++;
     }
   state[index].si      = s.si;
   state[index].id      = s.id;
