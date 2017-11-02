@@ -112,49 +112,90 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int current ;
 
   while (j!=0) {
+    if(USE_DEBUG>0) printf("methodstart\n");
+    if(USE_DEBUG>0) printf("###y:%d\n",s.r);
+    if(USE_DEBUG>0) printf("###si:%d\n",s.si);
+    for(int k=0;k<s.si;k++){
+      if(USE_DEBUG>0) printf("###i:%d\n",k);
+      if(USE_DEBUG>0) printf("###fa[k]:%d\n",s.fA[k]);
+      if(USE_DEBUG>0) printf("###fB[k]:%d\n",s.fB[k]);
+      if(USE_DEBUG>0) printf("###fC[k]:%d\n",s.fC[k]);
+    }
     if(s.r==s.si && s.rflg==0){
+      if(USE_DEBUG>0) printf("if(r==si){\n");
       s.lTotal++;
-      if(USE_DEBUG>0) printf(": %d\n",current);
+      if(USE_DEBUG>0) printf("Total++;\n");
     }else{
+      if(USE_DEBUG>0) printf("}else{\n");
       for(int i=0;i<s.si;i++){
+      if(USE_DEBUG>0) printf("for(int i=0;i<si;i++){\n");
         if(s.rflg==0){
-          if(USE_DEBUG>0) printf(": %d\n",current);
           s.aB[s.r]=i ;
         }
+         if(USE_DEBUG>0) printf("aB[r]=i ;\n");
+          if(USE_DEBUG>0) printf("###i:%d\n",i);
+          if(USE_DEBUG>0) printf("###r:%d\n",s.r);
+          for(int k=0;k<s.si;k++){
+            if(USE_DEBUG>0) printf("###i:%d\n",k);
+            if(USE_DEBUG>0) printf("###fa[k]:%d\n",s.fA[k]);
+            if(USE_DEBUG>0) printf("###fB[k]:%d\n",s.fB[k]);
+            if(USE_DEBUG>0) printf("###fC[k]:%d\n",s.fC[k]);
+          }
         if((s.fA[i]==0&&s.fB[s.r-i+(s.si-1)]==0&&s.fC[s.r+i]==0) || s.rflg==1){
+            if(USE_DEBUG>0) printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
           if(s.rflg==0){
             if(USE_DEBUG>0) printf(": %d\n",current);
             s.fA[i]=s.fB[s.r-s.aB[s.r]+s.si-1]=s.fC[s.r+s.aB[s.r]]=1; 
+              if(USE_DEBUG>0) printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
+              if(USE_DEBUG>0) printf("###before_nqueen\n");
+              if(USE_DEBUG>0) printf("###i:%d\n",i);
+              if(USE_DEBUG>0) printf("###r:%d\n",s.r);
+              for(int k=0;k<s.si;k++){
+                if(USE_DEBUG>0) printf("###i:%d\n",k);
+                if(USE_DEBUG>0) printf("###fa[k]:%d\n",s.fA[k]);
+                if(USE_DEBUG>0) printf("###fB[k]:%d\n",s.fB[k]);
+                if(USE_DEBUG>0) printf("###fC[k]:%d\n",s.fC[k]);
+              }
             push(&s.stParam,i,s.r); 
             s.r=s.r+1;
             s.bend=1;
             break;
           }
           if(s.rflg==1){
-            if(USE_DEBUG>0) printf(": %d\n",current);
             current =pop(&s.stParam);
             s.r=s.stParam.param[current].R;
             i=s.stParam.param[current].I;
+              if(USE_DEBUG>0) printf("###after_nqueen\n");
+              if(USE_DEBUG>0) printf("###i:%d\n",i);
+              if(USE_DEBUG>0) printf("###r:%d\n",s.r);
+              for(int k=0;k<s.si;k++){
+                if(USE_DEBUG>0) printf("###i:%d\n",k);
+                if(USE_DEBUG>0) printf("###fa[k]:%d\n",s.fA[k]);
+                if(USE_DEBUG>0) printf("###fB[k]:%d\n",s.fB[k]);
+                if(USE_DEBUG>0) printf("###fC[k]:%d\n",s.fC[k]);
+              }
             s.fA[i]=s.fB[s.r-s.aB[s.r]+s.si-1]=s.fC[s.r+s.aB[s.r]]=0; 
             s.rflg=0;
+              if(USE_DEBUG>0) printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
           }
         }else{
-          if(USE_DEBUG>0) printf(": %d\n",current);
           s.bend=0;
         }
+          if(USE_DEBUG>0) printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+          if(USE_DEBUG>0) printf("###bend:%d\n",s.bend);
       }
+        if(USE_DEBUG>0) printf("after:for\n");
       if(s.bend==1 && s.rflg==0){
         if(USE_DEBUG>0) printf(": %d\n",current);
         s.bend=0;
         continue;
       }
     }
+      if(USE_DEBUG>0) printf("after:else\n");
     if(s.r==0){
-      if(USE_DEBUG>0) printf(": %d\n",current);
       s.step=2;
       break;
     }else{
-      if(USE_DEBUG>0) printf(": %d\n",current);
       s.rflg=1;
     }
     j++;
