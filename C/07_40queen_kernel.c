@@ -59,21 +59,26 @@ struct CL_PACKED_KEYWORD queenState {
   struct STACK stParam;
 };
 //
-int push(struct STACK* pStack,int I,int R){
+//int push(struct STACK *pStack,int I,int R){
+void push(struct STACK *pStack,int I,int R){
+  if(USE_DEBUG>0) printf("####################I: %d R: %d\n", I,R);
   if(pStack->current<MAX){
     pStack->param[pStack->current].I=I;
     pStack->param[pStack->current].R=R;
-    pStack->current++;
-    return 1;
+    if(USE_DEBUG>0) printf("pStack->current:%d\n",pStack->current);
+    if(USE_DEBUG>0) printf("#########END###########I: %d R: %d\n",pStack->param[pStack->current].I,pStack->param[pStack->current].R);
+    (pStack->current)++;
   }
-  return 0;
 }
 //
 int pop(struct STACK *pStack){
+  int v;
   if(pStack->current>0){
 //    pStack->current--;
 //    *pValue = pStack->param[pStack->current];
-    return pStack->current--;
+    v=(pStack->current)--;
+    return v;
+    //return --(pStack->current);
   }
   return 0;
 }
@@ -163,6 +168,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           }
           if(s.rflg==1){
             current =pop(&s.stParam);
+            if(USE_DEBUG>0) printf("###############current : %d\n",current);
             s.r=s.stParam.param[current].R;
             i=s.stParam.param[current].I;
               if(USE_DEBUG>0) printf("###after_nqueen\n");
