@@ -61,26 +61,27 @@ struct CL_PACKED_KEYWORD queenState {
 //
 //int push(struct STACK *pStack,int I,int R){
 void push(struct STACK *pStack,int I,int R){
-  if(USE_DEBUG>0) printf("####################I: %d R: %d\n", I,R);
+  //if(USE_DEBUG>0) printf("####################I: %d R: %d\n", I,R);
   if(pStack->current<MAX){
     pStack->param[pStack->current].I=I;
     pStack->param[pStack->current].R=R;
-    if(USE_DEBUG>0) printf("pStack->current:%d\n",pStack->current);
-    if(USE_DEBUG>0) printf("#########END###########I: %d R: %d\n",pStack->param[pStack->current].I,pStack->param[pStack->current].R);
+    //if(USE_DEBUG>0) printf("pStack->current:%d\n",pStack->current);
+    //if(USE_DEBUG>0) printf("#########END###########I: %d R: %d\n",pStack->param[pStack->current].I,pStack->param[pStack->current].R);
     (pStack->current)++;
   }
 }
 //
-int pop(struct STACK *pStack){
-  int v;
+void pop(struct STACK *pStack){
   if(pStack->current>0){
 //    pStack->current--;
 //    *pValue = pStack->param[pStack->current];
-    v=(pStack->current)--;
-    return v;
+    for(int i=0;i<=pStack->current;i++){
+      printf("#####pstackcurrent:%d\n",i);
+      printf("#####pstack:I%d:R:%d\n",pStack->param[i].I,pStack->param[i].R);
+    }
+    pStack->current--;
     //return --(pStack->current);
   }
-  return 0;
 }
 //
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
@@ -167,10 +168,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             break;
           }
           if(s.rflg==1){
-            current =pop(&s.stParam);
-            if(USE_DEBUG>0) printf("###############current : %d\n",current);
-            s.r=s.stParam.param[current].R;
-            i=s.stParam.param[current].I;
+            pop(&s.stParam);
+            s.r=s.stParam.param[s.stParam.current].R;
+            i=s.stParam.param[s.stParam.current].I;
               if(USE_DEBUG>0) printf("###after_nqueen\n");
               if(USE_DEBUG>0) printf("###i:%d\n",i);
               if(USE_DEBUG>0) printf("###r:%d\n",s.r);
