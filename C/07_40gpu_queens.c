@@ -1,26 +1,22 @@
 /**
 
-   38. GPU バックトラック               NQueen38() N17= 00:35.33 N18=
+   40. GPU バックトラック(07_03GPU版)     
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_38NQueen 07_38gpu_queens.c -framework OpenCL
-   $ ./07_38NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_40NQueen 07_40gpu_queens.c -framework OpenCL
+   $ ./07_40NQueen 
 
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
  5:                10                 0          00:00:00:00.00
  6:                 4                 0          00:00:00:00.00
  7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.02
-13:             73712                 0          00:00:00:00.07
-14:            365596                 0          00:00:00:00.30
-15:           2279184                 0          00:00:00:01.58
-16:          14772512                 0          00:00:00:09.48
-17:          95815104                 0          00:00:01:09.54 
+ 8:                92                 0          00:00:00:00.02
+ 9:               352                 0          00:00:00:00.09
+10:               724                 0          00:00:00:00.40
+11:              2680                 0          00:00:00:01.99
+12:             14200                 0          00:00:00:10.85
+13:             73712                 0          00:00:01:02.31 
 */
 
 #include "stdio.h"
@@ -38,7 +34,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1 
+#define USE_DEBUG 0
 //
 //#define SPREAD 1024
 //
@@ -68,7 +64,7 @@ typedef int64_t qint;
 enum { Place,Remove,Done };
 //
 struct HIKISU{
-  int R;
+  int Y;
   int I;
 };
 struct STACK{
@@ -87,6 +83,11 @@ struct queenState {
   char step;
   //int y;
   char y;
+  int bend;
+  int rflg;
+  int fA[MAX];
+  int fB[MAX];
+  int fC[MAX];
   struct STACK stParam;
 } __attribute__((packed));
 
@@ -382,8 +383,15 @@ int makeInProgress(int si){
     inProgress[i].lTotal=0;
     inProgress[i].step=0;
     inProgress[i].y=0;
+    inProgress[i].bend=0;
+    inProgress[i].rflg=0;
     for (int m=0;m<si;m++){ 
-      inProgress[i].stParam.param[m].R=0;
+      inProgress[i].fA[m]=0;
+      inProgress[i].fB[m]=0;
+      inProgress[i].fC[m]=0;
+    }
+    for (int m=0;m<si;m++){ 
+      inProgress[i].stParam.param[m].Y=0;
       inProgress[i].stParam.param[m].I=0;
     }
     inProgress[i].stParam.current=0;
@@ -573,8 +581,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=8;
-  int targetN=8;
+  int min=4;
+  int targetN=17;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
