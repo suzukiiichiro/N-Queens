@@ -66,6 +66,15 @@ uint64_t lGUnique;
 typedef int64_t qint;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
+//
+struct HIKISU{
+  int R;
+  int I;
+};
+struct STACK{
+  struct HIKISU param[MAX];
+  int current ;
+};
 struct queenState {
   //int BOUND1;
   //int BOUND2;
@@ -78,6 +87,7 @@ struct queenState {
   char step;
   //int y;
   char y;
+  struct STACK stParam;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
@@ -366,12 +376,17 @@ int makeInProgress(int si){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
   for(int i=0;i<1;i++){
-        inProgress[i].si=si;
-        inProgress[i].id=i;
-        for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
-        inProgress[i].lTotal=0;
-        inProgress[i].step=0;
-        inProgress[i].y=0;
+    inProgress[i].si=si;
+    inProgress[i].id=i;
+    for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
+    inProgress[i].lTotal=0;
+    inProgress[i].step=0;
+    inProgress[i].y=0;
+    for (int m=0;m<si;m++){ 
+      inProgress[i].stParam.param[m].R=0;
+      inProgress[i].stParam.param[m].I=0;
+    }
+    inProgress[i].stParam.current=0;
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -452,7 +467,7 @@ int makeInProgress(int si){
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
 int all_tasks_done(int32_t num_tasks) {
-	for (int i = 0;i<num_tasks;i++)
+	for (int i=0;i<num_tasks;i++)
 		//if (tasks[i].step != 2)
 		if (inProgress[i].step != 2)
 			return 0;
@@ -558,8 +573,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=2;
-  int targetN=27;
+  int min=8;
+  int targetN=8;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
