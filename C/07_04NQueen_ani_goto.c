@@ -158,60 +158,30 @@ int fC[2*MAX-1];    //fC:flagC[] 斜め配置フラグ　
 int aB[MAX];        //aB:aBoard[] チェス盤の横一列
 int aT[MAX];        //aT:aTrial[]
 int aS[MAX];        //aS:aScrath[]
-typedef struct{
-    //  データを格納数る配列
-    int array[MAX];
-    //  現在の位置
-    int current;
-}STACK;
+//
+struct HIKISU{
+  int Y;
+  int I;
+};
+//
+struct STACK {
+  struct HIKISU param[MAX];
+  int current;
+};
  
-//  スタックの初期化
-void init(STACK*);
-//  値のプッシュ
-int push(STACK*,int);
-//  値のポップ
-int pop(STACK*,int*);
-//  スタックの初期化
-void init(STACK* pStack)
-{
-    int i;
-    for(i = 0; i < MAX; i++){
-        pStack->array[i] = 0;
-    }
-    //  カレントの値を0に。
-    pStack->current = 0;
+void push(struct STACK *pStack,int I,int Y){
+  if(pStack->current<MAX){
+    pStack->param[pStack->current].I=I;
+    pStack->param[pStack->current].Y=Y;
+    (pStack->current)++;
+  }
 }
-//  値のプッシュ
-int push(STACK* pStack,int value)
-{
-    if(pStack->current < MAX){
-        //  まだデータが格納できるのなら、データを格納し、一つずらす。
-        pStack->array[pStack->current] = value;
-        pStack->current++;
-        return 1;
-    }
-    //  データを格納しきれなかった
-    return 0;
+//
+void pop(struct STACK *pStack){
+  if(pStack->current>0){
+    pStack->current--;
+  }
 }
-//  値のポップ
-int pop(STACK* pStack,int* pValue)
-{
-    if(pStack->current > 0){
-        //  まだデータが格納できるのなら、データを格納し、一つずらす。
-        pStack->current--;
-        *pValue = pStack->array[pStack->current];
-        return *pValue;
-    }
-    return 0;
-}
-int leng(STACK* pStack)
-{
-    if(pStack->current > 0){
-     return 1;
-    }
-    return 0;
-}
-
 
 void NQueen(int row, int si);
 void TimeFormat(clock_t utime,char *form);
@@ -221,23 +191,25 @@ void vMirror(int chk[],int n);
 int intncmp(int lt[],int rt[],int n);
 
 // i:col si:size r:row fA:縦 fB:斜め fC:斜め
-void NQueen(int r,int si){
-  STACK R;
-  STACK I;
-  init(&R);
-  init(&I);
+void NQueen(int y,int si){
+  struct STACK stParam;
+  for (int m=0;m<si;m++){ 
+    stParam.param[m].Y=0;
+    stParam.param[m].I=0;
+  }
+  stParam.current=0;
   while(1){
   start:
   printf("methodstart\n");
-  printf("###r:%d\n",r);
+  printf("###y:%d\n",y);
   for(int k=0;k<si;k++){
     printf("###i:%d\n",k);
     printf("###fa[k]:%d\n",fA[k]);
     printf("###fB[k]:%d\n",fB[k]);
     printf("###fC[k]:%d\n",fC[k]);
   }
-    if(r==si){
-    printf("if(r==si){\n");
+    if(y==si){
+    printf("if(y==si){\n");
       int s=symmetryOps(si);//対称解除法
       if(s!=0){ Unique++; Total+=s; } //解を発見
     printf("Total++;\n");
@@ -246,10 +218,10 @@ void NQueen(int r,int si){
       //i:col
       for(int i=0;i<si;i++){
         printf("for(int i=0;i<si;i++){\n");
-        aB[r]=i;
-        printf("aB[r]=i ;\n");
+        aB[y]=i;
+        printf("aB[y]=i ;\n");
         printf("###i:%d\n",i);
-        printf("###r:%d\n",r);
+        printf("###y:%d\n",y);
         for(int k=0;k<si;k++){
           printf("###i:%d\n",k);
           printf("###fa[k]:%d\n",fA[k]);
@@ -257,45 +229,45 @@ void NQueen(int r,int si){
           printf("###fC[k]:%d\n",fC[k]);
         } 
         //バックトラック 制約を満たしているときだけ進む
-        if(fA[i]==0 && fB[r-i+(si-1)]==0 && fC[r+i]==0){
-        printf("if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
-          fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;
-        printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
+        if(fA[i]==0 && fB[y-i+(si-1)]==0 && fC[y+i]==0){
+        printf("if(fA[i]==0&&fB[y-i+(si-1)]==0&&fC[y+i]==0){\n");
+          fA[i]=fB[y-aB[y]+si-1]=fC[y+aB[y]]=1;
+        printf("fA[i]=fB[y-aB[y]+si-1]=fC[y+aB[y]]=1;\n");
         printf("###before_nqueen\n");
         printf("###i:%d\n",i);
-        printf("###r:%d\n",r);
+        printf("###y:%d\n",y);
         for(int k=0;k<si;k++){
           printf("###i:%d\n",k);
           printf("###fa[k]:%d\n",fA[k]);
           printf("###fB[k]:%d\n",fB[k]);
           printf("###fC[k]:%d\n",fC[k]);
         }
-          push(&R,r); 
-          push(&I,i); 
-          r=r+1;
+          push(&stParam,i,y); 
+          y=y+1;
           goto start;
           //NQueen(r+1,si); //再帰
           ret:
-          r=pop(&R,&r);
-          i=pop(&I,&i);
+          pop(&stParam);
+          y=stParam.param[stParam.current].Y;
+          i=stParam.param[stParam.current].I;
         printf("###after_nqueen\n");
         printf("###i:%d\n",i);
-        printf("###r:%d\n",r);
+        printf("###y:%d\n",y);
         for(int k=0;k<si;k++){
           printf("###i:%d\n",k);
           printf("###fa[k]:%d\n",fA[k]);
           printf("###fB[k]:%d\n",fB[k]);
           printf("###fC[k]:%d\n",fC[k]);
         }
-          fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;
-        printf("fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
+          fA[i]=fB[y-aB[y]+si-1]=fC[y+aB[y]]=0;
+        printf("fA[i]=fB[y-aB[y]+si-1]=fC[y+aB[y]]=0;\n");
         }
-      printf("}#after:if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){\n");
+      printf("}#after:if(fA[i]==0&&fB[y-i+(si-1)]==0&&fC[y+i]==0){\n");
       }  
     printf("after:for\n");
     }
   printf("after:else\n");
-    if(r==0){
+    if(y==0){
       break;
     }else{
       goto ret;
