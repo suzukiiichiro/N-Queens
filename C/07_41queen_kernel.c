@@ -109,7 +109,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   while (j<200000) {
     if(s.y==s.si && s.rflg==0){
       s.lTotal++;
-      int sum=symmetryOps(si);//対称解除法
+      int sum=symmetryOps(si,s.aB,s.aT,s.aS);//対称解除法
       if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
     }else{
       for(int i=0;i<s.si;i++){
