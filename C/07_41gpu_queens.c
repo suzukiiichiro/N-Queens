@@ -28,7 +28,7 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_40queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_41queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
@@ -79,7 +79,7 @@ struct queenState {
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  long Unique;
+  long lUnique; // Number of solutinos found so far.
   //int step;
   char step;
   //int y;
@@ -89,9 +89,9 @@ struct queenState {
   int fA[MAX];
   int fB[MAX];
   int fC[MAX];
-  struct STACK stParam;
   qint aT[MAX];        //aT:aTrial[]
   qint aS[MAX];        //aS:aScrath[]
+  struct STACK stParam;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
@@ -384,7 +384,7 @@ int makeInProgress(int si){
     inProgress[i].id=i;
     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
     inProgress[i].lTotal=0;
-    inProgress[i].Unique=0;
+    inProgress[i].lUnique=0;
     inProgress[i].step=0;
     inProgress[i].y=0;
     inProgress[i].bend=0;
@@ -393,6 +393,8 @@ int makeInProgress(int si){
       inProgress[i].fA[m]=0;
       inProgress[i].fB[m]=0;
       inProgress[i].fC[m]=0;
+      inProgress[i].aT[m]=0;
+      inProgress[i].aS[m]=0;
     }
     for (int m=0;m<si;m++){ 
       inProgress[i].stParam.param[m].Y=0;
@@ -532,7 +534,7 @@ int execPrint(int si){
   for(int i=0;i<1;i++){
           if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
-          lGUnique+=inProgress[i].Unique;
+          lGUnique+=inProgress[i].lUnique;
     }
   return 0;
 }

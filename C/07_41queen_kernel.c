@@ -8,9 +8,6 @@
   typedef int64_t qint;
   // A stub for OpenCL's get_global_id function.
   int get_global_id(int dimension){ return 0;}
-  void rotate(qint chk[],qint scr[],int n,int neg);
-  void vMirror(qint chk[],int n);
-  int intncmp(qint lt[],qint rt[],int n);
 #define CL_KERNEL_KEYWORD
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
@@ -35,6 +32,10 @@
 
 #define MAX 27  
 //
+int symmetryOps(int si,qint aB[],qint aT[],qint aS[]);
+void nrotate(qint chk[],qint scr[],int n,int neg);
+void vMirror(qint chk[],int n);
+int intncmp(qint lt[],qint rt[],int n);
 struct HIKISU{
   int Y;
   int I;
@@ -49,8 +50,8 @@ struct CL_PACKED_KEYWORD queenState {
   int si;
   int id;
   qint aB[MAX];
-  uint64_t lTotal;
-  uint64_t Unique;
+  long lTotal;
+  long lUnique; // Number of solutinos found so far.
   char step;
   char y;
   int bend;
@@ -58,9 +59,9 @@ struct CL_PACKED_KEYWORD queenState {
   int fA[MAX];
   int fB[MAX];
   int fC[MAX];
-  struct STACK stParam;
   qint aT[MAX];        //aT:aTrial[]
   qint aS[MAX];        //aS:aScrath[]
+  struct STACK stParam;
 };
 void push(struct STACK *pStack,int I,int Y){
   if(pStack->current<MAX){
@@ -85,7 +86,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.aB[j]=state[index].aB[j];
   }
   s.lTotal=state[index].lTotal;
-  s.Unique=state[index].Unique;
+  s.lUnique=state[index].lUnique;
   s.step=state[index].step;
   s.y=state[index].y;
   s.bend=state[index].bend;
@@ -94,6 +95,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.fA[j]=state[index].fA[j];
     s.fB[j]=state[index].fB[j];
     s.fC[j]=state[index].fC[j];
+    s.aT[j]=state[index].aT[j];
+    s.aS[j]=state[index].aS[j];
   }
   s.stParam=state[index].stParam;
 
@@ -105,8 +108,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //while (1) {
   while (j<200000) {
     if(s.y==s.si && s.rflg==0){
-      int sum=symmetryOps(s.si,&s);//対称解除法
-      if(sum!=0){ s.Unique++; s.lTotal+=sum; } //解を発見
+      s.lTotal++;
+      int sum=symmetryOps(si);//対称解除法
+      if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
     }else{
       for(int i=0;i<s.si;i++){
         if(s.rflg==0){
@@ -150,7 +154,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].aB[j] = s.aB[j];
   }
   state[index].lTotal=s.lTotal;
-  state[index].Unique=s.Unique;
+  state[index].lUnique=s.lUnique;
   state[index].step=s.step;
   state[index].y=s.y;
   state[index].bend=s.bend;
@@ -159,48 +163,50 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].fA[j]=s.fA[j];
     state[index].fB[j]=s.fB[j];
     state[index].fC[j]=s.fC[j];
+    state[index].aT[j]=s.aT[j];
+    state[index].aS[j]=s.aS[j];
   }
   state[index].stParam=s.stParam;
 }
-int symmetryOps(int si ,struct queenState *s){
+int symmetryOps(int si,qint aB[],qint aT[],qint aS[]){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ s->aT[i]=s->aB[i];}
-  rotate(s->aT,s->aS,si,0);       //時計回りに90度回転
-  int k=intncmp(s->aB,s->aT,si);
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  nrotate(aT,aS,si,0);       //時計回りに90度回転
+  int k=intncmp(aB,aT,si);
   if(k>0)return 0;
   if(k==0){ nEquiv=1; }else{
-    rotate(s->aT,s->aS,si,0);     //時計回りに180度回転
-    k=intncmp(s->aB,s->aT,si);
+    nrotate(aT,aS,si,0);     //時計回りに180度回転
+    k=intncmp(aB,aT,si);
     if(k>0)return 0;
     if(k==0){ nEquiv=2; }else{
-      rotate(s->aT,s->aS,si,0);   //時計回りに270度回転
-      k=intncmp(s->aB,s->aT,si);
+      nrotate(aT,aS,si,0);   //時計回りに270度回転
+      k=intncmp(aB,aT,si);
       if(k>0){ return 0; }
       nEquiv=4;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ s->aT[i]=s->aB[i];}
-  vMirror(s->aT,si);           //垂直反転
-  k=intncmp(s->aB,s->aT,si);
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  vMirror(aT,si);           //垂直反転
+  k=intncmp(aB,aT,si);
   if(k>0){ return 0; }
   if(nEquiv>1){             //-90度回転 対角鏡と同等       
-    rotate(s->aT,s->aS,si,1);
-    k=intncmp(s->aB,s->aT,si);
+    nrotate(aT,aS,si,1);
+    k=intncmp(aB,aT,si);
     if(k>0){return 0; }
     if(nEquiv>2){           //-180度回転 水平鏡像と同等
-      rotate(s->aT,s->aS,si,1);
-      k=intncmp(s->aB,s->aT,si);
+      nrotate(aT,aS,si,1);
+      k=intncmp(aB,aT,si);
       if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
-      rotate(s->aT,s->aS,si,1);
-      k=intncmp(s->aB,s->aT,si);
+      nrotate(aT,aS,si,1);
+      k=intncmp(aB,aT,si);
       if(k>0){ return 0; }
     }
   }
   return nEquiv*2;
 }
-void rotate(qint chk[],qint scr[],int n,int neg){
+void nrotate(qint chk[],qint scr[],int n,int neg){
   int k=neg?0:n-1;
   int incr=(neg?+1:-1);
   for(int j=0;j<n;k+=incr){ scr[j++]=chk[k];}
