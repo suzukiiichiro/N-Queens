@@ -32,10 +32,6 @@
 
 #define MAX 27  
 //
-int symmetryOps(int si,qint aB[],qint aT[],qint aS[]);
-void nrotate(qint chk[],qint scr[],int n,int neg);
-void vMirror(qint chk[],int n);
-int intncmp(qint lt[],qint rt[],int n);
 struct HIKISU{
   int Y;
   int I;
@@ -63,6 +59,78 @@ struct CL_PACKED_KEYWORD queenState {
   qint aS[MAX];        //aS:aScrath[]
   struct STACK stParam;
 };
+//void nrotate(qint chk[],qint scr[],int n,int neg){
+//void nrotate(qint *chk,qint *scr,int n,int neg){
+void nrotate(struct queenState *s,int neg){
+  int k=neg?0:s->si-1;
+  int incr=(neg?+1:-1);
+  //for(int i=0;i<s->si;i++){ 
+  //  printf("chk[%d]=%lld\n",i,s->aT[i]);
+  //  printf("scr[%d]=%lld\n",i,s->aS[i]);
+  //}
+  //for(int j=0;j<s.si;k+=incr){ scr[j++]=chk[k];}
+  for(int j=0;j<s->si;k+=incr){ s->aS[j++]=s->aT[k];}
+  k=neg?s->si-1:0;
+  //for(int j=0;j<s.si;k-=incr){ chk[scr[j++]]=k;}
+  for(int j=0;j<s->si;k-=incr){ s->aT[s->aS[j++]]=k;}
+}
+
+void vMirror(struct queenState *s){
+  //for(int j=0;j<s.si;j++){ chk[j]=(n-1)- chk[j];}
+  for(int j=0;j<s->si;j++){ s->aT[j]=(s->si-1)-s->aT[j];}
+}
+int intncmp(struct queenState *s){
+  int rtn=0;
+  for(int k=0;k<s->si;k++){
+    //rtn=lt[k]-rt[k];
+    rtn=s->aB[k]-s->aT[k];
+    if(rtn!=0){ break;}
+  }
+  return rtn;
+}
+//int symmetryOps(int si,qint aB[],qint aT,qint aS[]){
+int symmetryOps(struct queenState *s){
+  int nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  //for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];
+  //  printf("aT[%d]=%lld\n",i,s->aT[i]);
+  //}
+  nrotate(s,0);       //時計回りに90度回転
+  //int k=intncmp(aB,aT,si);
+  int k=intncmp(s);
+  if(k>0)return 0;
+  if(k==0){ nEquiv=1; }else{
+    nrotate(s,0);     //時計回りに180度回転
+    k=intncmp(s);
+    if(k>0)return 0;
+    if(k==0){ nEquiv=2; }else{
+      nrotate(s,0);   //時計回りに270度回転
+      k=intncmp(s);
+      if(k>0){ return 0; }
+      nEquiv=4;
+    }
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];}
+  vMirror(s);           //垂直反転
+  k=intncmp(s);
+  if(k>0){ return 0; }
+  if(nEquiv>1){             //-90度回転 対角鏡と同等       
+    nrotate(s,1);
+    k=intncmp(s);
+    if(k>0){return 0; }
+    if(nEquiv>2){           //-180度回転 水平鏡像と同等
+      nrotate(s,1);
+      k=intncmp(s);
+      if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
+      nrotate(s,1);
+      k=intncmp(s);
+      if(k>0){ return 0; }
+    }
+  }
+  return nEquiv*2;
+}
+
 void push(struct STACK *pStack,int I,int Y){
   if(pStack->current<MAX){
     pStack->param[pStack->current].I=I;
@@ -103,13 +171,17 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //uint16_t j=1;
   //unsigned long j=1;
   unsigned long j=1;
-
+  int sum;
   //while (j!=0) {
   //while (1) {
+  //printf("while:%d\n",sum);
   while (j<200000) {
     if(s.y==s.si && s.rflg==0){
-      s.lTotal++;
-      int sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
+   //   s.lTotal++;
+      //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
+   //   printf("return:%d\n",sum);
+      sum=symmetryOps(&s);//対称解除法
+   //   printf("sum:%d\n",sum);
       if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
     }else{
       for(int i=0;i<s.si;i++){
@@ -167,62 +239,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].aS[j]=s.aS[j];
   }
   state[index].stParam=s.stParam;
-}
-int symmetryOps(int si,qint aB[],qint aT[],qint aS[]){
-  int nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  nrotate(aT,aS,si,0);       //時計回りに90度回転
-  int k=intncmp(aB,aT,si);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=1; }else{
-    nrotate(aT,aS,si,0);     //時計回りに180度回転
-    k=intncmp(aB,aT,si);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=2; }else{
-      nrotate(aT,aS,si,0);   //時計回りに270度回転
-      k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }
-      nEquiv=4;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  vMirror(aT,si);           //垂直反転
-  k=intncmp(aB,aT,si);
-  if(k>0){ return 0; }
-  if(nEquiv>1){             //-90度回転 対角鏡と同等       
-    nrotate(aT,aS,si,1);
-    k=intncmp(aB,aT,si);
-    if(k>0){return 0; }
-    if(nEquiv>2){           //-180度回転 水平鏡像と同等
-      nrotate(aT,aS,si,1);
-      k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }  //-270度回転 反対角鏡と同等
-      nrotate(aT,aS,si,1);
-      k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }
-    }
-  }
-  return nEquiv*2;
-}
-void nrotate(qint chk[],qint scr[],int n,int neg){
-  int k=neg?0:n-1;
-  int incr=(neg?+1:-1);
-  for(int j=0;j<n;k+=incr){ scr[j++]=chk[k];}
-  k=neg?n-1:0;
-  for(int j=0;j<n;k-=incr){ chk[scr[j++]]=k;}
-}
-void vMirror(qint chk[],int n){
-  for(int j=0;j<n;j++){ chk[j]=(n-1)- chk[j];}
-}
-int intncmp(qint lt[],qint rt[],int n){
-  int rtn=0;
-  for(int k=0;k<n;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
 }
 #ifdef GCC_STYLE
 int main(){
