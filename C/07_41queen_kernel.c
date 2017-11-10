@@ -74,7 +74,6 @@ void nrotate(struct queenState *s,int neg){
   //for(int j=0;j<s.si;k-=incr){ chk[scr[j++]]=k;}
   for(int j=0;j<s->si;k-=incr){ s->aT[s->aS[j++]]=k;}
 }
-
 void vMirror(struct queenState *s){
   //for(int j=0;j<s.si;j++){ chk[j]=(n-1)- chk[j];}
   for(int j=0;j<s->si;j++){ s->aT[j]=(s->si-1)-s->aT[j];}
@@ -130,20 +129,29 @@ int symmetryOps(struct queenState *s){
   }
   return nEquiv*2;
 }
-
-void push(struct STACK *pStack,int I,int Y){
-  if(pStack->current<MAX){
-    pStack->param[pStack->current].I=I;
-    pStack->param[pStack->current].Y=Y;
-    (pStack->current)++;
+/**
+//void push(struct STACK *pStack,int I,int Y){
+void push(struct queenState *s,int I){
+  //if(pStack->current<MAX){
+  if(s->stParam.current<MAX){
+    //pStack->param[pStack->current].I=I;
+    s->stParam.param[s->stParam.current].I=I;
+    //pStack->param[pStack->current].Y=Y;
+    s->stParam.param[s->stParam.current].Y=s->y;
+    //(pStack->current)++;
+    (s->stParam.current)++;
   }
 }
 //
-void pop(struct STACK *pStack){
-  if(pStack->current>0){
-    pStack->current--;
+//void pop(struct STACK *pStack){
+void pop(struct queenState *s){
+  //if(pStack->current>0){
+  if(s->stParam.current>0){
+    //pStack->current--;
+    s->stParam.current--;
   }
 }
+*/
 //
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -171,7 +179,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //uint16_t j=1;
   //unsigned long j=1;
   unsigned long j=1;
-  //int sum;
+  int sum;
   //while (j!=0) {
   //while (1) {
   //printf("while:%d\n",sum);
@@ -179,33 +187,53 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     if(s.y==s.si && s.rflg==0){
    //   s.lTotal++;
       //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
-   //   printf("return:%d\n",sum);
-      int sum=symmetryOps(&s);//対称解除法
-   //   printf("sum:%d\n",sum);
-      if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+      //sum=symmetryOps(&s);//対称解除法
+      //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+      s.lUnique++; 
+			s.lTotal+=symmetryOps(&s);  //解を発見
     }else{
       for(int i=0;i<s.si;i++){
-        if(s.rflg==0){
-          s.aB[s.y]=i ;
-        }
-        if((s.fA[i]==0&&s.fB[s.y-i+(s.si-1)]==0&&s.fC[s.y+i]==0) || s.rflg==1){
+//        if(s.rflg==0){
+//          s.aB[s.y]=i ;
+//        }
+        //if((s.fA[i]==0&&s.fB[s.y-i+(s.si-1)]==0&&s.fC[s.y+i]==0) || s.rflg==1){
+        if((s.fA[i]==0&&s.fB[s.y-i+(s.si-1)]==0&&s.fC[s.y+i]==0)){
           if(s.rflg==0){
+          	s.aB[s.y]=i ;
             s.fA[i]=s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=1; 
-            push(&s.stParam,i,s.y); 
-            s.y=s.y+1;
+            //push(&s.stParam,i,s.y); 
+            //push(&s,i); 
+						if(s.stParam.current<MAX){
+							//pStack->param[pStack->current].I=I;
+							s.stParam.param[s.stParam.current].I=i;
+							//pStack->param[pStack->current].Y=Y;
+							s.stParam.param[s.stParam.current].Y=s.y;
+							//(pStack->current)++;
+							(s.stParam.current)++;
+						}
+            //s.y=s.y+1;
+            s.y+=1;
             s.bend=1;
             break;
-          }
-          if(s.rflg==1){
-            pop(&s.stParam);
-            s.y=s.stParam.param[s.stParam.current].Y;
-            i=s.stParam.param[s.stParam.current].I;
-            s.fA[i]=s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=0; 
-            s.rflg=0;
           }
         }else{
           s.bend=0;
         }
+				if(s.rflg==1){
+					//pop(&s.stParam);
+					//pop(&s);
+					if(s.stParam.current>0){
+						//pStack->current--;
+						s.stParam.current--;
+					}
+					s.y=s.stParam.param[s.stParam.current].Y;
+					i=s.stParam.param[s.stParam.current].I;
+					s.fA[i]=s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=0; 
+					s.rflg=0;
+				}
+//        }else{
+//          s.bend=0;
+//        }
       }
       if(s.bend==1 && s.rflg==0){
         s.bend=0;
