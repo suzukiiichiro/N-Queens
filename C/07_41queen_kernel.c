@@ -92,9 +92,9 @@ int intncmp(struct queenState *s){
 int symmetryOps(struct queenState *s){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  //for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];
+  for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];
   //  printf("aT[%d]=%lld\n",i,s->aT[i]);
-  //}
+  }
   nrotate(s,0);       //時計回りに90度回転
   //int k=intncmp(aB,aT,si);
   int k=intncmp(s);
@@ -171,7 +171,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //uint16_t j=1;
   //unsigned long j=1;
   unsigned long j=1;
-  int sum;
+  //int sum;
   //while (j!=0) {
   //while (1) {
   //printf("while:%d\n",sum);
@@ -180,7 +180,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
    //   s.lTotal++;
       //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
    //   printf("return:%d\n",sum);
-      sum=symmetryOps(&s);//対称解除法
+      int sum=symmetryOps(&s);//対称解除法
    //   printf("sum:%d\n",sum);
       if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
     }else{

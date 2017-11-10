@@ -1,11 +1,24 @@
 /**
 
-   40. GPU バックトラック(07_03GPU版)     
+   41. GPU 対称解除法(07_04GPU版)     
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_40NQueen 07_40gpu_queens.c -framework OpenCL
-   $ ./07_40NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_41NQueen 07_41gpu_queens.c -framework OpenCL
+   $ ./07_41NQueen 
 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.02
+ 9:               352                46          00:00:00:00.09
+10:               724                92          00:00:00:00.38
+11:              2680               341          00:00:00:01.90
+12:             14200              1787          00:00:00:10.37
+13:             73712              9233          00:00:00:59.70
+
+ 07_40
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
  5:                10                 0          00:00:00:00.00
