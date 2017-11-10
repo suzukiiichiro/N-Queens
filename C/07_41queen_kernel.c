@@ -32,17 +32,17 @@
 
 #define MAX 27  
 //
-struct HIKISU{
+CL_PACKED_KEYWORD struct HIKISU{
   int Y;
   int I;
 };
 //
-struct CL_PACKED_KEYWORD STACK {
+CL_PACKED_KEYWORD struct STACK {
   struct HIKISU param[MAX];
   int current;
 };
 //
-struct CL_PACKED_KEYWORD queenState {
+CL_PACKED_KEYWORD struct queenState {
   int si;
   int id;
   qint aB[MAX];
