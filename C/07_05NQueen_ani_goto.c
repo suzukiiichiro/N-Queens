@@ -52,8 +52,8 @@ void vMirror(int chk[],int n);
 int intncmp(int lt[],int rt[],int n);
 
 struct HIKISU{
-  int SI;
   int Y;
+  int I;
 };
 struct STACK {
   struct HIKISU param[MAX];
@@ -63,25 +63,30 @@ struct STACK {
 void NQueen(int si,int r){
   struct STACK stParam;
   for (int m=0;m<si;m++){ 
-    stParam.param[m].SI=si;
+    stParam.param[m].I=0;
     stParam.param[m].Y=0;
   }
   stParam.current=0;
   int t; //t:temp
   while(1){
-  start:
-  printf("methodstart\n");
-  printf("###r:%d\n",r);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###fa[k]:%d\n",fA[k]);
-    printf("###fB[k]:%d\n",fB[k]);
-    printf("###fC[k]:%d\n",fC[k]);
-  }
+    start:
+    printf("methodstart\n");
+    printf("###r:%d\n",r);
+    for(int k=0;k<si;k++){
+      printf("###i:%d\n",k);
+      printf("###fa[k]:%d\n",fA[k]);
+      printf("###fB[k]:%d\n",fB[k]);
+      printf("###fC[k]:%d\n",fC[k]);
+    }
     if(r==si-1){
-    printf("if(r==si-1){\n");
+      printf("if(r==si-1){\n");
       // 枝刈り 
-      //if ((fB[r-aB[r]+si-1]||fC[r+aB[r]])){ return; }
+      if ((fB[r-aB[r]+si-1]||fC[r+aB[r]])){ 
+
+        //return; 
+        printf("skip\n");
+        goto ret;
+      }
       int s=symmetryOps(si);//対称解除法
       if(s!=0){ Unique++; Total+=s; } //解を発見
       printf("Total++;\n");
@@ -89,6 +94,7 @@ void NQueen(int si,int r){
       printf("}else{\n");
       // 枝刈り 半分だけ捜査
       int lim=(r!=0)?si:(si+1)/2; 
+      printf("lim:%d\n",lim);
       // i:col
       for(int i=r;i<lim;i++){
         printf("for(int i=r;i<lim;i++){\n");
@@ -104,11 +110,11 @@ void NQueen(int si,int r){
         } 
         // 枝刈り バックトラック 制約を満たしているときだけ進む
         if(!(fB[r-aB[r]+si-1]||fC[r+aB[r]])){
-        printf("if(!(fB[r-aB[r]+si-1]||fC[r+aB[r]])){\n");
+          printf("if(!(fB[r-aB[r]+si-1]||fC[r+aB[r]])){\n");
           fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;
-        printf("fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
+          printf("fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;\n");
           if(stParam.current<MAX){
-            stParam.param[stParam.current].SI=si;
+            stParam.param[stParam.current].I=i;
             stParam.param[stParam.current].Y=r;
             (stParam.current)++;
           }
@@ -119,6 +125,8 @@ void NQueen(int si,int r){
           if(stParam.current>0){
             stParam.current--;
           }
+          i=stParam.param[stParam.current].I;
+          r=stParam.param[stParam.current].Y;
           printf("###after_nqueen\n");
           printf("###i:%d\n",i);
           printf("###r:%d\n",r);
@@ -127,6 +135,8 @@ void NQueen(int si,int r){
             printf("###fa[k]:%d\n",fA[k]);
             printf("###fB[k]:%d\n",fB[k]);
             printf("###fC[k]:%d\n",fC[k]);
+            //printf("stParam.parm.si:%d\n",stParam.param[k].SI);
+            //printf("stParam.parm.Y:%d\n",stParam.param[k].Y);
           }
           fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;
           printf("fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;\n");
@@ -134,13 +144,14 @@ void NQueen(int si,int r){
       }
       printf("after:for\n");
       t=aB[r];
-      for(int i=r+1;i<si;i++){ aB[i-1]=aB[i]; }
+      for(int k=r+1;k<si;k++){ aB[k-1]=aB[k]; }
       aB[si-1]=t;
     }
     printf("after:else\n");
     if(r==0){
       break;
     }else{
+      printf("gotoreturn\n");
       goto ret;
     }
   }
