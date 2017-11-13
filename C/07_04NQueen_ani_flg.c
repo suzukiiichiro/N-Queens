@@ -168,20 +168,6 @@ struct STACK {
   struct HIKISU param[MAX];
   int current;
 };
- 
-void push(struct STACK *pStack,int I,int Y){
-  if(pStack->current<MAX){
-    pStack->param[pStack->current].I=I;
-    pStack->param[pStack->current].Y=Y;
-    (pStack->current)++;
-  }
-}
-//
-void pop(struct STACK *pStack){
-  if(pStack->current>0){
-    pStack->current--;
-  }
-}
 
 void NQueen(int row, int si);
 void TimeFormat(clock_t utime,char *form);
@@ -247,7 +233,12 @@ void NQueen(int y,int si){
               printf("###fB[k]:%d\n",fB[k]);
               printf("###fC[k]:%d\n",fC[k]);
             }
-            push(&stParam,i,y); 
+            //push(&stParam,i,y); 
+						if(stParam.current<MAX){
+							stParam.param[stParam.current].I=i;
+							stParam.param[stParam.current].Y=y;
+							(stParam.current)++;
+						}
             y=y+1;
             bend=1;
             break;
@@ -255,8 +246,11 @@ void NQueen(int y,int si){
           //  goto start;
           //NQueen(r+1,si); //再帰
           //  ret:
-          if(rflg==1){
-            pop(&stParam);
+          if(rflg==1){ 
+          //pop(&stParam);
+            if(stParam.current>0){
+              stParam.current--;
+            }
             y=stParam.param[stParam.current].Y;
             i=stParam.param[stParam.current].I;
             printf("###after_nqueen\n");
@@ -324,12 +318,16 @@ void TimeFormat(clock_t utime,char *form){
 // si:size
 int symmetryOps(int si){
   int nEquiv;
+  printf("symmetryOps\n");
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aB[i];}
   rotate(aT,aS,si,0);       //時計回りに90度回転
   int k=intncmp(aB,aT,si);
+  printf("k:%d\n",k);
   if(k>0)return 0;
-  if(k==0){ nEquiv=1; }else{
+  if(k==0){ 
+    nEquiv=1; 
+  }else{
     rotate(aT,aS,si,0);     //時計回りに180度回転
     k=intncmp(aB,aT,si);
     if(k>0)return 0;
