@@ -187,10 +187,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     if(s.y==s.si && s.rflg==0){
    //   s.lTotal++;
       //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
-      //sum=symmetryOps(&s);//対称解除法
-      //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-      s.lUnique++; 
-			s.lTotal+=symmetryOps(&s);  //解を発見
+      sum=symmetryOps(&s);//対称解除法
+      if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+      //s.lUnique++; 
+			//s.lTotal+=symmetryOps(&s);  //解を発見
     }else{
       for(int i=0;i<s.si;i++){
 //        if(s.rflg==0){
