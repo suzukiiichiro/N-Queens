@@ -190,6 +190,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
       //sum=symmetryOps(&s);//対称解除法
       //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+      // 枝刈り
       if ((s.fB[s.y-s.aB[s.y]+s.si-1]||s.fC[s.y+s.aB[s.y]])){ 
         s.rflg=1;
       }
@@ -198,6 +199,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
       }
     }else{
+      // 枝刈り
       int lim=(s.y!=0)?s.si:(s.si+1)/2; 
       for(int i=s.y;i<lim;i++){
 //        if(s.rflg==0){
@@ -207,6 +209,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         if(s.rflg==0){
           t=s.aB[i]; s.aB[i]=s.aB[s.y]; s.aB[s.y]=t; // swap
         }
+        // 枝刈り
         if(!(s.fB[s.y-s.aB[s.y]+s.si-1]||s.fC[s.y+s.aB[s.y]])||s.rflg==1){
           if(s.rflg==0){
           s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=1;
