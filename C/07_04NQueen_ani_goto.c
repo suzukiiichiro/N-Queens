@@ -169,19 +169,6 @@ struct STACK {
   int current;
 };
  
-void push(struct STACK *pStack,int I,int Y){
-  if(pStack->current<MAX){
-    pStack->param[pStack->current].I=I;
-    pStack->param[pStack->current].Y=Y;
-    (pStack->current)++;
-  }
-}
-//
-void pop(struct STACK *pStack){
-  if(pStack->current>0){
-    pStack->current--;
-  }
-}
 
 void NQueen(int row, int si);
 void TimeFormat(clock_t utime,char *form);
@@ -242,12 +229,20 @@ void NQueen(int y,int si){
           printf("###fB[k]:%d\n",fB[k]);
           printf("###fC[k]:%d\n",fC[k]);
         }
-          push(&stParam,i,y); 
+        // push(&stParam,i,y); 
+        if(stParam.current<MAX){
+          stParam.param[stParam.current].I=i;
+          stParam.param[stParam.current].Y=y;
+          (stParam.current)++;
+        }
           y=y+1;
           goto start;
           //NQueen(r+1,si); //再帰
           ret:
-          pop(&stParam);
+          //pop(&stParam);
+          if(stParam.current>0){
+            stParam.current--;
+          }
           y=stParam.param[stParam.current].Y;
           i=stParam.param[stParam.current].I;
         printf("###after_nqueen\n");
