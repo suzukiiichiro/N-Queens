@@ -58,6 +58,7 @@
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
+
 #define BUFFER_SIZE 4096
 #define MAX 27
 #define USE_DEBUG 0
@@ -105,25 +106,10 @@ struct queenState {
   struct STACK stParam;
 } __attribute__((packed));
 
-//struct queenState inProgress[MAX];
-struct queenState inProgress[1]; //Single
+struct queenState inProgress[MAX];
+//struct queenState inProgress[1]; //Single
 
 
-/**
- * カーネルコードの読み込み
- */
-//void get_queens_code(char **buffer,int si){
-void get_queens_code(char **buffer){
-  char prefix[256];
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
-  FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
-  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
-  long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
-}
 /**
   プラットフォーム一覧を取得
   現在利用可能なOpenCLのプラットフォームの情報を取得
@@ -133,9 +119,13 @@ void get_queens_code(char **buffer){
   numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
   戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
 */
+#define MAX_PLATFORM_IDS 8
+#define MAX_DEVICE_IDS 8
+
 int getPlatform(){
 	char value[BUFFER_SIZE];
 	size_t size;
+  //プラットフォーム一覧を取得
   status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform ID.");
@@ -174,27 +164,18 @@ int getPlatform(){
 int getDeviceID(){
 	char value[BUFFER_SIZE];
 	size_t size;
- 	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
-	if(status==CL_DEVICE_NOT_FOUND){
- 		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,0,NULL,&num_devices);
-    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
-	}
-  if(status!=CL_SUCCESS){ 
+ 	  status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
+	if(status==CL_DEVICE_NOT_FOUND){ 
+    status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices); 
     printf("Couldn't get device count.");
     return 4; 
   }else{
     if(USE_DEBUG>0) printf("CL_DEVICE COUNT:%d\n",num_devices);
   }
   devices=malloc(num_devices * sizeof(cl_device_id));
-	status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
-	if(status==CL_DEVICE_NOT_FOUND){
-		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,NULL);
-    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
-	}else{
-    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n");
-	}
+  status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
   if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform device count.");
+    printf("Couldn't get platform device count.\n");
     return 5; 
   }else{
     if(USE_DEBUG>0) printf("CL_DEVICE INFO\n");
@@ -240,7 +221,13 @@ int getDeviceID(){
   &err エラーが発生した場合、そのエラーに合わせたエラーコードが返される。
 */
 int createContext(){
-  context=clCreateContext(NULL,num_devices,devices,NULL,NULL,&status);
+  context=clCreateContext(
+      NULL, //プロパティ
+      num_devices, //デバイス数
+      devices, //clGetDeviceIDsで取得されたデバイス
+      NULL,
+      NULL,
+      &status);
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating context.\n");
     return 8; 
@@ -261,8 +248,15 @@ int commandQueue(){
 #ifdef CL_VERSION_2_0
 	cmd_queue = clCreateCommandQueueWithProperties(context, devices[0], NULL, &status);
 #else
+  //以下の二つから選択できる
+  //CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+  //CL_QUEUE_PROFILING_ENABLE
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
-	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
+	cmd_queue = clCreateCommandQueue(
+      context, 
+      devices[0], 
+      properties, 
+      &status);
 #endif
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
@@ -273,6 +267,21 @@ int commandQueue(){
   }
   return 0;
 } 
+/**
+ * カーネルコードの読み込み
+ */
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
+  char prefix[256];
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  FILE * f=fopen(PROGRAM_FILE,"rb");
+  if(!f){ *buffer=NULL;return;}
+  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
+  long totalLength=prefixLength + fileLength + 1;
+  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+}
 /**
  * カーネルソースの読み込み
  */
@@ -404,6 +413,7 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
+  printf("num_tasks:%d\n",num_tasks);
 	for (int i=0;i<num_tasks;i++)
 		if (inProgress[i].step != 2)
 			return 0;
@@ -422,15 +432,18 @@ int execKernel(int si){
   while(!all_tasks_done(1)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    size_t globalWorkSize[] = {1}; //Single
-    size_t localWorkSize[] = {1};
+    //size_t globalWorkSize[] = {1}; //Single
+    //size_t localWorkSize[] = {1};  //Single
+    size_t localWorkSize=si;
+    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
         dim,               //work sizeの次元
-        NULL,              //NULLを指定すること
-        globalWorkSize,    //全スレッド数
-        localWorkSize,     //1グループのスレッド数
+        //global_work_offset,//NULLを指定すること
+        NULL,//NULLを指定すること
+        &globalWorkSize,    //ワークアイテムの総数
+        &localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
@@ -438,7 +451,16 @@ int execKernel(int si){
     /**
      * 結果を読み込み
      */
-    status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(
+				cmd_queue,
+				buffer,
+				CL_TRUE,
+				0,
+				sizeof(inProgress),
+				inProgress,
+				0,
+				NULL,
+				NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   } //end while
   return 0;
