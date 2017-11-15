@@ -1,10 +1,24 @@
 /**
 
-   42. GPU 対称解除法(07_05GPU版)　枝刈り
+   43. GPU ビットマップ(07_07GPU版)
+
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_42NQueen 07_42gpu_queens.c -framework OpenCL
-   $ ./07_42NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
+   $ ./07_43NQueen 
+
+07_43
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.01
+ 9:               352                46          00:00:00:00.07
+10:               724                92          00:00:00:00.24
+11:              2680               341          00:00:00:01.15
+12:             14200              1787          00:00:00:06.19
+13:             73712              9233          00:00:00:34.70
 
 07_42
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -116,8 +130,8 @@ struct queenState {
   int bm;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX];
-//struct queenState inProgress[1]; //Single
+//struct queenState inProgress[MAX];
+struct queenState inProgress[1]; //Single
 
 
 /**
@@ -403,7 +417,8 @@ int makeInProgress(int si){
       inProgress[i].stParam.param[m].B=0;
     }
     inProgress[i].stParam.current=0;
-    inProgress[i].msk=0;
+    inProgress[i].msk=(1<<si)-1;
+    // printf("inProgress[i].msk%d\n",inProgress[i].msk);
     inProgress[i].l=0;
     inProgress[i].d=0;
     inProgress[i].r=0;
@@ -452,10 +467,10 @@ int execKernel(int si){
   while(!all_tasks_done(1)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    //size_t globalWorkSize[] = {1}; //Single
-    //size_t localWorkSize[] = {1};  //Single
-    size_t localWorkSize=si;
-    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
+    size_t globalWorkSize[] = {1}; //Single
+    size_t localWorkSize[] = {1};  //Single
+//    size_t localWorkSize=si;
+//    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
 
     status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
     if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
@@ -465,8 +480,8 @@ int execKernel(int si){
         dim,               //work sizeの次元
         //global_work_offset,//NULLを指定すること
         NULL,//NULLを指定すること
-        &globalWorkSize,    //ワークアイテムの総数
-        &localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
+        globalWorkSize,    //ワークアイテムの総数
+        localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent

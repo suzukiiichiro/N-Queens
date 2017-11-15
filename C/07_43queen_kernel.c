@@ -66,10 +66,19 @@ CL_PACKED_KEYWORD struct queenState {
   int d;
   int r;
   int bm;
+  int bit;
 };
+int rh(int a,int sz){
+  int tmp=0;
+  for(int i=0;i<=sz;i++){
+    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+  }
+  return tmp;
+}
 //void nrotate(qint chk[],qint scr[],int n,int neg){
 //void nrotate(qint *chk,qint *scr,int n,int neg){
 int intncmp(qint lt[],qint rt[],int si){
+  // printf("lt[]:%lld\n",lt[2]);
   int rtn=0;
   for(int k=0;k<si;k++){
     rtn=lt[k]-rt[k];
@@ -80,18 +89,23 @@ int intncmp(qint lt[],qint rt[],int si){
 //void symmetryOps_bm(int si){
 int symmetryOps_bm(struct queenState *s){
   int nEquiv;
+  // printf("s->si:%d\n",s->si);
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];}
   //rotate_bitmap(s);    //時計回りに90度回転
   //rotate_bitmap(aT,aS,si);    //時計回りに90度回転
+
   for(int i=0;i<s->si;i++){
     int t=0;
     for(int j=0;j<s->si;j++){
       t|=((s->aT[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
     }
     s->aS[i]=t;                        // y[i] の j ビット目にする
+    // printf("2####\n");
   }
+  // printf("s->aB:%lld\n",s->aB[0]);
   int k=intncmp(s->aB,s->aS,s->si);
+  // printf("intcmp:%d\n",k);
   if(k>0)return 0;
   if(k==0){ nEquiv=2;}else{
     //rotate_bitmap(s);  //時計回りに180度回転
@@ -133,6 +147,7 @@ int symmetryOps_bm(struct queenState *s){
   }
   //k=intncmp(s);
   k=intncmp(s->aB,s->aT,s->si);
+  // printf("#k:%d\n",k);
   if(k>0){ return 0; }
   if(nEquiv>2){               //-90度回転 対角鏡と同等       
     //rotate_bitmap(s);
@@ -146,7 +161,10 @@ int symmetryOps_bm(struct queenState *s){
     }
     //k=intncmp(s);
     k=intncmp(s->aB,s->aS,s->si);
+    // printf("#k:%d\n",k);
     if(k>0){return 0;}
+
+
     if(nEquiv>4){             //-180度回転 水平鏡像と同等
       //rotate_bitmap(s);
       //rotate_bitmap(aS,aT,si);
@@ -159,6 +177,7 @@ int symmetryOps_bm(struct queenState *s){
       }
       //k=intncmp(s);
       k=intncmp(s->aB,s->aT,s->si);
+      //printf("#k:%d\n",k);
       if(k>0){ return 0;}       //-270度回転 反対角鏡と同等
       //rotate_bitmap(s);
       //rotate_bitmap(aT,aS,si);
@@ -178,13 +197,6 @@ int symmetryOps_bm(struct queenState *s){
   //if(nEquiv==4){ C4++; }
   //if(nEquiv==8){ C8++; }
   return nEquiv;
-}
-int rh(int a,int sz){
-  int tmp=0;
-  for(int i=0;i<=sz;i++){
-    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-  }
-  return tmp;
 }
 /**
 //void push(struct STACK *pStack,int I,int Y){
@@ -214,6 +226,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   struct queenState s ;
   s.si=state[index].si;
+  // printf("#state[index].si:%d\n",state[index].si);
+  // printf("#s.si:%d\n",s.si);
+
+
   s.id=state[index].id;
   for (int j=0;j<s.si;j++){
     s.aB[j]=state[index].aB[j];
@@ -229,7 +245,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.aS[j]=state[index].aS[j];
   }
   s.stParam=state[index].stParam;
-  s.msk=state[index].msk;
+  // s.msk=state[index].msk;
+  s.msk=(1<<s.si)-1;
+  // printf("kernel:s.msk:%lld\n",s.msk);
   s.l=state[index].l;
   s.d=state[index].d;
   s.r=state[index].r;
@@ -238,21 +256,29 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //uint16_t j=1;
   //unsigned long j=1;
   unsigned long j=1;
-  int sum;
+  // int sum;
   int bit;
 
   while (j<200000) {
     //  start:
     if(s.rflg==0){
       s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
+      // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
     }
-    if (s.y==s.si && s.rflg==0) {
-      if(!s.bm){
+    // printf("s.si:%d\n",s.si);
+    if (s.y==s.si && !s.bm && s.rflg==0) {
+      // printf("s.si:%d\n",s.si);
+      // if(!s.bm){
         s.aB[s.y]=s.bm;
+        // printf("s.si:%d\n",s.si);
         int sum=symmetryOps_bm(&s);//対称解除法
+        // printf("sum:%d\n",sum);
         if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-      }
+//        printf("lTotal:%ld\n",s.lTotal);
+        // printf("lUnique:%ld\n",s.lUnique);
+      // }
     }else{
+      // printf("s.bm:%d\n",s.bm);
       while (s.bm || s.rflg==1) {
         if(s.rflg==0){
           s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
@@ -310,6 +336,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].aB[j] = s.aB[j];
   }
   state[index].lTotal=s.lTotal;
+  // printf("lTotal:%ld\n",s.lTotal);
   state[index].lUnique=s.lUnique;
   state[index].step=s.step;
   state[index].y=s.y;
