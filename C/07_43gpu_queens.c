@@ -54,7 +54,7 @@
 #else
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
-#define PROGRAM_FILE "./07_42queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_43queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
@@ -83,6 +83,11 @@ enum { Place,Remove,Done };
 struct HIKISU{
   int Y;
   int I;
+  int M;
+  int L;
+  int D;
+  int R;
+  int B;
 };
 struct STACK{
   struct HIKISU param[MAX];
@@ -98,12 +103,17 @@ struct queenState {
   char y;
   int bend;
   int rflg;
-  int fA[MAX];
-  int fB[MAX];
-  int fC[MAX];
+//  int fA[MAX];
+//  int fB[MAX];
+//  int fC[MAX];
   qint aT[MAX];        //aT:aTrial[]
   qint aS[MAX];        //aS:aScrath[]
   struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
+  int bm;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX];
@@ -377,17 +387,28 @@ int makeInProgress(int si){
     inProgress[i].bend=0;
     inProgress[i].rflg=0;
     for (int m=0;m<si;m++){ 
-      inProgress[i].fA[m]=0;
-      inProgress[i].fB[m]=0;
-      inProgress[i].fC[m]=0;
+//      inProgress[i].fA[m]=0;
+//      inProgress[i].fB[m]=0;
+//      inProgress[i].fC[m]=0;
       inProgress[i].aT[m]=0;
       inProgress[i].aS[m]=0;
     }
     for (int m=0;m<si;m++){ 
       inProgress[i].stParam.param[m].Y=0;
-      inProgress[i].stParam.param[m].I=0;
+      inProgress[i].stParam.param[m].I=si;
+      inProgress[i].stParam.param[m].M=0;
+      inProgress[i].stParam.param[m].L=0;
+      inProgress[i].stParam.param[m].D=0;
+      inProgress[i].stParam.param[m].R=0;
+      inProgress[i].stParam.param[m].B=0;
     }
     inProgress[i].stParam.current=0;
+    inProgress[i].msk=0;
+    inProgress[i].l=0;
+    inProgress[i].d=0;
+    inProgress[i].r=0;
+    inProgress[i].bm=0;
+
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -413,7 +434,6 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
-  printf("num_tasks:%d\n",num_tasks);
 	for (int i=0;i<num_tasks;i++)
 		if (inProgress[i].step != 2)
 			return 0;
@@ -436,7 +456,10 @@ int execKernel(int si){
     //size_t localWorkSize[] = {1};  //Single
     size_t localWorkSize=si;
     size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
-    status=clEnqueueNDRangeKernel(
+
+    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
+    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
+		status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
         dim,               //work sizeの次元
