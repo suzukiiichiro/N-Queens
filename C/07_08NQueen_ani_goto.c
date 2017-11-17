@@ -187,7 +187,6 @@ struct HIKISU{
   int L;
   int D;
   int R;
-  int B;
 };
 struct STACK {
   struct HIKISU param[MAX];
@@ -196,15 +195,14 @@ struct STACK {
 void NQueen(int si,int msk);
 
 void backTrack2(int si,int msk,int y,int l,int d,int r){
-  struct STACK stParam;
+  struct STACK stParam_2;
   for (int m=0;m<si;m++){ 
-    stParam.param[m].Y=0;
-    stParam.param[m].I=si;
-    stParam.param[m].M=0;
-    stParam.param[m].L=0;
-    stParam.param[m].D=0;
-    stParam.param[m].R=0;
-    stParam.param[m].B=0;
+    stParam_2.param[m].Y=0;
+    stParam_2.param[m].I=si;
+    stParam_2.param[m].M=0;
+    stParam_2.param[m].L=0;
+    stParam_2.param[m].D=0;
+    stParam_2.param[m].R=0;
   }
   stParam.current=0;
   while(1){
@@ -241,15 +239,14 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     printf("###i:%d\n",k);
     printf("###aB[k]:%d\n",aB[k]);
   }
-          if(stParam.current<MAX){
-            stParam.param[stParam.current].Y=y;
-            stParam.param[stParam.current].I=si;
-            stParam.param[stParam.current].M=msk;
-            stParam.param[stParam.current].L=l;
-            stParam.param[stParam.current].D=d;
-            stParam.param[stParam.current].R=r;
-            stParam.param[stParam.current].B=bm;
-            (stParam.current)++;
+          if(stParam_2.current<MAX){
+            stParam.param_2[stParam_2.current].Y=y;
+            stParam_2.param[stParam_2.current].I=si;
+            stParam_2.param[stParam_2.current].M=msk;
+            stParam_2.param[stParam_2.current].L=l;
+            stParam_2.param[stParam_2.current].D=d;
+            stParam_2.param[stParam_2.current].R=r;
+            (stParam_2.current)++;
           }
       y=y+1;
       l=(l|bit)<<1;
@@ -258,16 +255,15 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
       goto start;
       //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
       ret:
-          if(stParam.current>0){
-            stParam.current--;
+          if(stParam_2.current>0){
+            stParam_2.current--;
           }
-          si=stParam.param[stParam.current].I;
-          y=stParam.param[stParam.current].Y;
-          msk=stParam.param[stParam.current].M;
-          l=stParam.param[stParam.current].L;
-          d=stParam.param[stParam.current].D;
-          r=stParam.param[stParam.current].R;
-          bm=stParam.param[stParam.current].B;
+          si=stParam_2.param[stParam_2.current].I;
+          y=stParam_2.param[stParam_2.current].Y;
+          msk=stParam_2.param[stParam_2.current].M;
+          l=stParam_2.param[stParam_2.current].L;
+          d=stParam_2.param[stParam_2.current].D;
+          r=stParam_2.param[stParam_2.current].R;
   printf("afterbitmap\n");
   printf("###y:%d\n",y);
   printf("###l:%d\n",l);
@@ -291,51 +287,96 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
   }
 }
 void backTrack1(int si,int msk,int y,int l,int d,int r){
-  printf("methodstart:backtrack1\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
+  struct STACK stParam_1;
+  for (int m=0;m<si;m++){ 
+    stParam_1.param[m].Y=0;
+    stParam_1.param[m].I=si;
+    stParam_1.param[m].M=0;
+    stParam_1.param[m].L=0;
+    stParam_1.param[m].D=0;
+    stParam_1.param[m].R=0;
   }
-  int bit;
-  int bm=msk&~(l|d|r); /* 配置可能フィールド */
-  if (y==si) {
-  printf("if(y==si){\n");
-    if(!bm){
-      aB[y]=bm;
-      symmetryOps_bm(si);
+  stParam_1.current=0;
+  while(1){
+start:
+    printf("methodstart:backtrack1\n");
+    printf("###y:%d\n",y);
+    printf("###l:%d\n",l);
+    printf("###d:%d\n",d);
+    printf("###r:%d\n",r);
+    for(int k=0;k<si;k++){
+      printf("###i:%d\n",k);
+      printf("###aB[k]:%d\n",aB[k]);
     }
-  }else{
-  printf("}else{#y==si\n");
-    while(bm) {
-  printf("while(bm){\n");
-      bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
-  printf("beforebitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
-  }
-      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-  printf("afterbitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
-  }
+    int bit;
+    int bm=msk&~(l|d|r); /* 配置可能フィールド */
+    if (y==si) {
+      printf("if(y==si){\n");
+      if(!bm){
+        aB[y]=bm;
+        symmetryOps_bm(si);
+      }
+    }else{
+      printf("}else{#y==si\n");
+      while(bm) {
+        printf("while(bm){\n");
+        bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+        printf("beforebitmap\n");
+        printf("###y:%d\n",y);
+        printf("###l:%d\n",l);
+        printf("###d:%d\n",d);
+        printf("###r:%d\n",r);
+        printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+          printf("###i:%d\n",k);
+          printf("###aB[k]:%d\n",aB[k]);
+        }
+        if(stParam_1.current<MAX){
+          stParam_1.param[stParam_1.current].Y=y;
+          stParam_1.param[stParam_1.current].I=si;
+          stParam_1.param[stParam_1.current].M=msk;
+          stParam_1.param[stParam_1.current].L=l;
+          stParam_1.param[stParam_1.current].D=d;
+          stParam_1.param[stParam_1.current].R=r;
+          (stParam_1.current)++;
+        }
+        y=y+1;
+        l=(l|bit)<<1;
+        d=(d|bit);
+        r=(r|bit)>>1;
+        goto start;
+        //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+ret:
+        if(stParam_1.current>0){
+          stParam_1.current--;
+        }
+        si=stParam_1.param[stParam_1.current].I;
+        y=stParam_1.param[stParam_1.current].Y;
+        msk=stParam_1.param[stParam_1.current].M;
+        l=stParam_1.param[stParam_1.current].L;
+        d=stParam_1.param[stParam_1.current].D;
+        r=stParam_1.param[stParam_1.current].R;
+        printf("afterbitmap\n");
+        printf("###y:%d\n",y);
+        printf("###l:%d\n",l);
+        printf("###d:%d\n",d);
+        printf("###r:%d\n",r);
+        printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+          printf("###i:%d\n",k);
+          printf("###aB[k]:%d\n",aB[k]);
+        }
+      }
+      printf("}:end while(bm){\n");
+    } 
+    printf("}:end else\n");
+    if(y==0){
+      break;
+    }else{
+      printf("gotoreturn\n");
+      goto ret;
     }
-  } 
+  }
 }
 void NQueen(int si,int msk){
   int bit;
