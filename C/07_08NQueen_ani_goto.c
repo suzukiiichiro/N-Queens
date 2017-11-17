@@ -187,6 +187,7 @@ struct HIKISU{
   int L;
   int D;
   int R;
+  int B;
 };
 struct STACK {
   struct HIKISU param[MAX];
@@ -203,8 +204,9 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     stParam_2.param[m].L=0;
     stParam_2.param[m].D=0;
     stParam_2.param[m].R=0;
+    stParam_2.param[m].B=0;
   }
-  stParam.current=0;
+  stParam_2.current=0;
   while(1){
     start:
   printf("methodstart:backtrack2\n");
@@ -240,12 +242,13 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     printf("###aB[k]:%d\n",aB[k]);
   }
           if(stParam_2.current<MAX){
-            stParam.param_2[stParam_2.current].Y=y;
+            stParam_2.param[stParam_2.current].Y=y;
             stParam_2.param[stParam_2.current].I=si;
             stParam_2.param[stParam_2.current].M=msk;
             stParam_2.param[stParam_2.current].L=l;
             stParam_2.param[stParam_2.current].D=d;
             stParam_2.param[stParam_2.current].R=r;
+            stParam_2.param[stParam_2.current].B=bm;
             (stParam_2.current)++;
           }
       y=y+1;
@@ -264,6 +267,7 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
           l=stParam_2.param[stParam_2.current].L;
           d=stParam_2.param[stParam_2.current].D;
           r=stParam_2.param[stParam_2.current].R;
+          bm=stParam_2.param[stParam_2.current].B;
   printf("afterbitmap\n");
   printf("###y:%d\n",y);
   printf("###l:%d\n",l);
@@ -295,6 +299,7 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
     stParam_1.param[m].L=0;
     stParam_1.param[m].D=0;
     stParam_1.param[m].R=0;
+    stParam_1.param[m].B=0;
   }
   stParam_1.current=0;
   while(1){
@@ -338,6 +343,7 @@ start:
           stParam_1.param[stParam_1.current].L=l;
           stParam_1.param[stParam_1.current].D=d;
           stParam_1.param[stParam_1.current].R=r;
+          stParam_1.param[stParam_1.current].B=bm;
           (stParam_1.current)++;
         }
         y=y+1;
@@ -356,6 +362,7 @@ ret:
         l=stParam_1.param[stParam_1.current].L;
         d=stParam_1.param[stParam_1.current].D;
         r=stParam_1.param[stParam_1.current].R;
+        bm=stParam_1.param[stParam_1.current].B;
         printf("afterbitmap\n");
         printf("###y:%d\n",y);
         printf("###l:%d\n",l);
@@ -373,7 +380,7 @@ ret:
     if(y==0){
       break;
     }else{
-      printf("gotoreturn\n");
+      //printf("gotoreturn\n");
       goto ret;
     }
   }
