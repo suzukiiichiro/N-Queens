@@ -282,7 +282,7 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
   printf("}:end while(bm){\n");
   } 
   printf("}:end else\n");
-  if(y==0){
+  if(y==1){
     break;
   }else{
     printf("gotoreturn\n");
@@ -377,7 +377,7 @@ ret:
       printf("}:end while(bm){\n");
     } 
     printf("}:end else\n");
-    if(y==0){
+    if(y==2){
       break;
     }else{
       //printf("gotoreturn\n");
