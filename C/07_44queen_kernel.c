@@ -251,6 +251,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.d=state[index].d;
   s.r=state[index].r;
   s.bm=state[index].bm;
+  s.BOUND1=state[index].BOUND1;
 
   if (s.BOUND1==0){
     //backtrack1;
@@ -469,6 +470,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].d=s.d;
     state[index].r=s.r;
     state[index].bm=s.bm;
+    state[index].BOUND1=s.BOUND1;
   }
 #ifdef GCC_STYLE
 int main(){
