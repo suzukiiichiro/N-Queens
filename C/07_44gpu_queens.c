@@ -128,10 +128,11 @@ struct queenState {
   int d;
   int r;
   int bm;
+  int BOUND1;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
-struct queenState inProgress[1]; //Single
+struct queenState inProgress[MAX]; //Single
 
 
 /**
@@ -386,7 +387,6 @@ int createKernel(){
  * バッファをキャッシュすることを許可する。
  * size    割り当てられたバッファメモリオブジェクトのバイトサイズ
  * host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
- * errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
 int makeInProgress(int si){
   //for(int i=0;i<si;i++){
@@ -423,6 +423,7 @@ int makeInProgress(int si){
     inProgress[i].d=0;
     inProgress[i].r=0;
     inProgress[i].bm=0;
+    inProgress[i].BOUND1=i;
 
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -464,10 +465,10 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   //while(!all_tasks_done(si)){
-  while(!all_tasks_done(1)){ //Single
+  while(!all_tasks_done(si)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    size_t globalWorkSize[] = {1}; //Single
+    size_t globalWorkSize[] = {si}; //Single
     size_t localWorkSize[] = {1};  //Single
 //    size_t localWorkSize=si;
 //    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
@@ -508,7 +509,7 @@ int execKernel(int si){
  */
 int execPrint(int si){
   //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){ // Single
+  for(int i=0;i<si;i++){ // Single
     if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
     lGUnique+=inProgress[i].lUnique;
