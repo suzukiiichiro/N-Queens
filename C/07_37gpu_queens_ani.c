@@ -1,10 +1,10 @@
 /**
 
-   36. GPU 基本形                       NQueen36() N17=27:41.88    N18=
+   37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:35.33 N18=
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_36NQueen 07_36gpu_queens.c -framework OpenCL
-   $ ./07_36NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_37NQueen 07_37gpu_queens.c -framework OpenCL
+   $ ./07_37NQueen 
 
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
@@ -13,14 +13,17 @@
  7:                40                 0          00:00:00:00.00
  8:                92                 0          00:00:00:00.00
  9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.02
-11:              2680                 0          00:00:00:00.08
-12:             14200                 0          00:00:00:00.32
-13:             73712                 0          00:00:00:01.24
-14:            365596                 0          00:00:00:06.69
-15:           2279184                 0          00:00:00:38.86
-16:          14772512                 0          00:00:04:12.96
-17:          95815104                 0          00:00:27:41.88
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.01
+13:             73712                 0          00:00:00:00.06
+14:            365596                 0          00:00:00:00.28
+15:           2279184                 0          00:00:00:01.37
+16:          14772512                 0          00:00:00:08.19
+17:          95815104                 0          00:00:00:55.14
+18:         666090624                 0          00:00:06:31.63
+19:        4968057848                 0          00:00:48:07.87
+ 
 */
 
 #include "stdio.h"
@@ -31,13 +34,13 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_36queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_37queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define DEBUG 0
+#define DEBUG 0 
 //#define SPREAD 1024
 //
 //const int32_t si=13;
@@ -62,6 +65,8 @@ long lGUnique;
 enum { Place,Remove,Done };
 struct queenState {
   int BOUND1;
+  int BOUND2;
+  int BOUND3;
   int si;
   int id;
   int aB[MAX];
@@ -335,37 +340,42 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 }
 int makeInProgress(int si){
   cl_int status;
-  struct queenState inProgress[si];
-  struct queenState s;
+	cl_int* inputA ;
+
+  struct queenState inProgress[si*si*si];
+//  struct queenState s;
+	struct queenState *ptrMappedA ;
+
   for(int i=0;i<si;i++){
-    s.BOUND1=i;
-    s.si=si;
-    s.id=i;
-		for (int j=0;j< si;j++){ s.aB[j]=j;}
-		s.lTotal=0;
-		s.step=0;
-    s.y=0;
-		s.startCol =1;
-    s.bm= (1 << si) - 1;
-    s.down=0;
-    s.right=0;
-    s.left=0;
-    inProgress[i]=s;
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+        inProgress[i*si*si+j*si+k].BOUND1=i;
+        inProgress[i*si*si+j*si+k].BOUND2=j;
+        inProgress[i*si*si+j*si+k].BOUND3=k;
+        inProgress[i*si*si+j*si+k].si=si;
+        inProgress[i*si*si+j*si+k].id=i*si*si+j*si+k;
+        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+        inProgress[i*si*si+j*si+k].lTotal=0;
+        inProgress[i*si*si+j*si+k].step=0;
+        inProgress[i*si*si+j*si+k].y=0;
+        inProgress[i*si*si+j*si+k].startCol =1;
+        inProgress[i*si*si+j*si+k].bm= (1 << si) - 1;
+        inProgress[i*si*si+j*si+k].down=0;
+        inProgress[i*si*si+j*si+k].right=0;
+        inProgress[i*si*si+j*si+k].left=0;
+        //inProgress[i*si*si+j*si+k]=s;
+      }
+    }
   }
   if(DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-	cl_uint optimizedSize=ceil_int(sizeof(inProgress) *si *si, 64);
-	cl_int* inputA ;
-  while(!all_tasks_done(inProgress,si)){
-    //printf("loop\n");
+	cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
+
 		inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
-    buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+    //buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,optimizedSize,inputA,&status);
+		buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
+    clRetainMemObject(buffer);
     if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
-		/** 
-			メモリバッファへの書き込み 
-		  対応するホスト側のポインタを取得する
-		*/
-    //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
-		struct queenState *ptrMappedA = clEnqueueMapBuffer(
+		ptrMappedA = clEnqueueMapBuffer(
 				cmd_queue, //投入キュー
 				buffer,         //対象のOpenCLバッファ
 				CL_FALSE,         //終了までブロックするか -> しない
@@ -373,17 +383,26 @@ int makeInProgress(int si){
 																			//(読み込みならCL_MAP_READ) 
 																			//(両方ならCL_MAP_READ | CL_MAP_WRITE)
 				0,                //オフセット
-				sizeof(inProgress), //マップするサイズ
+				//sizeof(inProgress)*si*si, //マップするサイズ
+				optimizedSize, //マップするサイズ
 				0,      //この関数が待機すべきeventの数
 				NULL,   //この関数が待機すべき関数のリストへのポインタ
 				NULL,   //この関数の返すevent
 				&status);
-		status=clFinish(cmd_queue);
+//		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 
 		//メモリバッファへコピー
-		memcpy(ptrMappedA,inProgress,sizeof(inProgress));
-
+    memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+    /**
+    for(int i=0;i<si;i++){
+      for(int j=0;j<si;j++){
+        for(int k=0;k<si;k++){
+          ptrMappedA[i*si*si+j*si+k]=inProgress[i*si*si+j*si+k];
+        }
+      }
+    }
+    */
 		//マップオブジェクトの解放
 		status = clEnqueueUnmapMemObject(
 					cmd_queue, //投入キュー
@@ -393,8 +412,18 @@ int makeInProgress(int si){
 					NULL, //この関数が待機すべき関数のリストへのポインタ
 					NULL);//この関数の返すevent
 		//終了を待機
-	  status = clFinish(cmd_queue);
+//	  status = clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
+
+    status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
+    if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+  while(!all_tasks_done(inProgress,si*si*si)){
+    //printf("loop\n");
+		/** 
+			メモリバッファへの書き込み 
+		  対応するホスト側のポインタを取得する
+		*/
+    //status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
 		/**
 			カーネルの引数をセット
 			clSetKernelArg()カーネルの特定の引数に値をセットする。
@@ -403,8 +432,6 @@ int makeInProgress(int si){
 			arg_size    引数として渡すのデータのサイズ。
 			arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
 		*/
-    status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-    if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 		/**
 			カーネルの実行 カーネルを実行するコマンドをキューに入れて、カーネル関数をデバイスで実行
 			work sizeの指定
@@ -413,8 +440,12 @@ int makeInProgress(int si){
 			width * heightの2次元でwork itemを作成
 		*/
 		size_t dim=1;
-		size_t globalWorkSize[] = {si*si};
-//		size_t localWorkSize[] = { si };
+		//size_t globalWorkSize[] = {si*si*si*si};
+		size_t globalWorkSize[] = {si*si*si};
+		//size_t globalWorkSize[] = {si*si*si,0,0};
+		size_t localWorkSize[] = { si };
+		//size_t localWorkSize[] = {1};
+		//size_t localWorkSize[] = { CL_DEVICE_MAX_WORK_ITEM_SIZES };
 		//タスクをキューに積む
 		status=clEnqueueNDRangeKernel(
 				cmd_queue, //タスクを投入するキュー
@@ -422,25 +453,35 @@ int makeInProgress(int si){
 				dim,               //work sizeの次元
 				NULL,              //NULLを指定すること
 				globalWorkSize,    //全スレッド数
-				//localWorkSize,     //1グループのスレッド数
-				NULL,     //1グループのスレッド数
+				localWorkSize,     //1グループのスレッド数
 				0,                 //この関数が待機すべきeventの数
 				NULL,              //この関数が待機すべき関数のリストへのポインタ
 				NULL);             //この関数の返すevent
-    status=clFinish(cmd_queue);
+//    status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
 		//結果を読み込み
    	status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
-		status=clFinish(cmd_queue);
+//		status=clFinish(cmd_queue);
     if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
   }//end while
 	//結果の印字
   lGTotal=0;
   lGUnique=0;
   for(int i=0;i<si;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+          //for(int i=0;i<SPREAD;i++){
+          if(DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
+          lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
+        }
+      }
+    }
+  /*
+  for(int i=0;i<si;i++){
     if(DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
 	}
+  */
   return 0;
 }
 int finalFree(){
@@ -501,8 +542,8 @@ int NQueens(int si){
   return 0;
 }
 int main(void){
-  int min=4;
-  int targetN=19;
+  int min=10;
+  int targetN=22;
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   //for(int i=min;i<=MAX;i++){
   for(int i=min;i<=targetN;i++){

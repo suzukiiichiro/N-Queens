@@ -413,7 +413,6 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
-  printf("num_tasks:%d\n",num_tasks);
 	for (int i=0;i<num_tasks;i++)
 		if (inProgress[i].step != 2)
 			return 0;
@@ -436,6 +435,8 @@ int execKernel(int si){
     //size_t localWorkSize[] = {1};  //Single
     size_t localWorkSize=si;
     size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
+    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
+    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル

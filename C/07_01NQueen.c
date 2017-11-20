@@ -51,7 +51,7 @@ void NQueen(int mi,int ma) {
   }  
 }
 int main(void) {
-  NQueen(0,8);
+  NQueen(0,17);
   return 0;
 }
 

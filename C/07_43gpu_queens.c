@@ -1,11 +1,13 @@
 /**
 
-   43. GPU ビットマップ(07_07GPU版)
+   44. GPU クイーンの位置による振り分け(07_08GPU版)
 
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
-   $ ./07_43NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_44NQueen 07_44gpu_queens.c -framework OpenCL
+   $ ./07_44NQueen 
+
+07_44 
 
 07_43
  N:          Total        Unique                 dd:hh:mm:ss.ms
