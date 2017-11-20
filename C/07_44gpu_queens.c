@@ -69,8 +69,7 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 #define PROGRAM_FILE "./07_44queen_kernel.c" //カーネルソースコード
-#define FUNC "backtrack1" //カーネル関数の名称を設定
-#define FUNC2 "backtrack2" //カーネル関数の名称を設定
+#define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 
@@ -87,7 +86,6 @@ cl_mem buffer_C;
 cl_context context;
 cl_program program;
 cl_kernel kernel;
-cl_kernel kernel2;
 cl_command_queue cmd_queue;
 cl_platform_id platform;
 cl_uint num_devices;
@@ -130,12 +128,10 @@ struct queenState {
   int d;
   int r;
   int bm;
-  int BOUND1;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
-struct queenState inProgress[MAX]; //Single
-struct queenState inProgress2[MAX]; //Single
+struct queenState inProgress[1]; //Single
 
 
 /**
@@ -376,13 +372,6 @@ int createKernel(){
   }else{
     if(USE_DEBUG>0) printf("Creating kernel.\n");
   }
-  kernel2=clCreateKernel(program,FUNC2,&status);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't creating kernel.");
-    return 12; 
-  }else{
-    if(USE_DEBUG>0) printf("Creating kernel.\n");
-  }
   return 0;
 }
 /**
@@ -401,18 +390,16 @@ int createKernel(){
 */
 int makeInProgress(int si){
   //for(int i=0;i<si;i++){
-  for(int i=2;i<si-1;i++){ //Single
+  for(int i=0;i<1;i++){ //Single
     inProgress[i].si=si;
     inProgress[i].id=i;
     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
-    inProgress[i].aB[0]=1;
     inProgress[i].lTotal=0;
     inProgress[i].lUnique=0;
     inProgress[i].step=0;
-    inProgress[i].y=1;
+    inProgress[i].y=0;
     inProgress[i].bend=0;
     inProgress[i].rflg=0;
-    inProgress[i].BOUND1=i;
     for (int m=0;m<si;m++){ 
 //      inProgress[i].fA[m]=0;
 //      inProgress[i].fB[m]=0;
@@ -458,77 +445,12 @@ int makeInProgress(int si){
 
   return 0;
 }
-int makeInProgress2(int si){
-  //for(int i=0;i<si;i++){
-  int BOUND2=si-2;
-  for(int i=1;i<BOUND2;i++){ //Single
-    inProgress2[i].si=si;
-    inProgress2[i].id=i;
-    for (int m=0;m<si;m++){ inProgress2[i].aB[m]=m;}
-    inProgress2[i].lTotal=0;
-    inProgress2[i].lUnique=0;
-    inProgress2[i].step=0;
-    inProgress2[i].y=0;
-    inProgress2[i].bend=0;
-    inProgress2[i].rflg=0;
-    for (int m=0;m<si;m++){ 
-//      inProgress[i].fA[m]=0;
-//      inProgress[i].fB[m]=0;
-//      inProgress[i].fC[m]=0;
-      inProgress2[i].aT[m]=0;
-      inProgress2[i].aS[m]=0;
-    }
-    for (int m=0;m<si;m++){ 
-      inProgress2[i].stParam.param[m].Y=0;
-      inProgress2[i].stParam.param[m].I=si;
-      inProgress2[i].stParam.param[m].M=0;
-      inProgress2[i].stParam.param[m].L=0;
-      inProgress2[i].stParam.param[m].D=0;
-      inProgress2[i].stParam.param[m].R=0;
-      inProgress2[i].stParam.param[m].B=0;
-    }
-    inProgress2[i].stParam.current=0;
-    inProgress2[i].msk=(1<<si)-1;
-    // printf("inProgress[i].msk%d\n",inProgress[i].msk);
-    inProgress2[i].l=0;
-    inProgress2[i].d=0;
-    inProgress2[i].r=0;
-    inProgress2[i].bm=0;
-    inProgress2[i].BOUND1=i;
-    BOUND2--;
-  }
-  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-  /**
-   *
-   */
-  buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress2), NULL, &status);
-  clRetainMemObject(buffer);
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
-  /**
-   *
-   */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress2),&inProgress2,0,NULL,NULL); 
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
-  /**
-   *
-   */
-  status=clSetKernelArg(kernel2,0,sizeof(cl_mem),&buffer);
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
-
-  return 0;
-}
 /**
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
 	for (int i=0;i<num_tasks;i++)
 		if (inProgress[i].step != 2)
-			return 0;
-	return 1;
-}
-int all_tasks_done2(int32_t num_tasks) {
-	for (int i=0;i<num_tasks;i++)
-		if (inProgress2[i].step != 2)
 			return 0;
 	return 1;
 }
@@ -542,10 +464,10 @@ int all_tasks_done2(int32_t num_tasks) {
 */
 int execKernel(int si){
   //while(!all_tasks_done(si)){
-  while(!all_tasks_done(si)){ //Single
+  while(!all_tasks_done(1)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    size_t globalWorkSize[] = {si}; //Single
+    size_t globalWorkSize[] = {1}; //Single
     size_t localWorkSize[] = {1};  //Single
 //    size_t localWorkSize=si;
 //    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
@@ -581,47 +503,6 @@ int execKernel(int si){
   } //end while
   return 0;
 }
-int execKernel2(int si){
-  //while(!all_tasks_done(si)){
-  while(!all_tasks_done2(si)){ //Single
-    cl_uint dim=1;
-    //size_t globalWorkSize[] = {si};
-    size_t globalWorkSize[] = {si}; //Single
-    size_t localWorkSize[] = {1};  //Single
-//    size_t localWorkSize=si;
-//    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
-
-    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
-    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
-		status=clEnqueueNDRangeKernel(
-        cmd_queue,         //タスクを投入するキュー
-        kernel,            //実行するカーネル
-        dim,               //work sizeの次元
-        //global_work_offset,//NULLを指定すること
-        NULL,//NULLを指定すること
-        globalWorkSize,    //ワークアイテムの総数
-        localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
-        0,                 //この関数が待機すべきeventの数
-        NULL,              //この関数が待機すべき関数のリストへのポインタ
-        NULL);             //この関数の返すevent
-    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
-    /**
-     * 結果を読み込み
-     */
-    status=clEnqueueReadBuffer(
-				cmd_queue,
-				buffer,
-				CL_TRUE,
-				0,
-				sizeof(inProgress2),
-				inProgress2,
-				0,
-				NULL,
-				NULL);
-    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
-  } //end while
-  return 0;
-}
 /**
  * 結果の印字
  */
@@ -631,12 +512,6 @@ int execPrint(int si){
     if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
     lGUnique+=inProgress[i].lUnique;
-    }
-//backtrack2追加
-  for(int i=0;i<1;i++){ // Single
-    if(USE_DEBUG>0) printf("%d: %ld\n",inProgress2[i].id,inProgress2[i].lTotal);
-    lGTotal+=inProgress2[i].lTotal;
-    lGUnique+=inProgress2[i].lUnique;
     }
   return 0;
 }
@@ -648,10 +523,6 @@ int NQueens(int si){
   makeInProgress(si);
   gettimeofday(&t0,NULL);    // 計測開始
   execKernel(si);
-  gettimeofday(&t1,NULL);    // 計測終了
-  makeInProgress2(si);
-  gettimeofday(&t0,NULL);    // 計測開始
-  execKernel2(si);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
 	clReleaseMemObject(buffer);
