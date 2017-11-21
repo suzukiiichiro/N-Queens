@@ -252,9 +252,132 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.r=state[index].r;
   s.bm=state[index].bm;
   s.BOUND1=state[index].BOUND1;
+  printf("BOUND1:%d\n",s.BOUND1);
 
   if (s.BOUND1==0){
     //backtrack1;
+    unsigned long j=1;
+    // int sum;
+    int bit;
+    while (j<200000){
+      printf("methodstart:backtrack1\n");
+      printf("###y:%d\n",s.y);
+      printf("###l:%d\n",s.l);
+      printf("###d:%d\n",s.d);
+      printf("###r:%d\n",s.r);
+      //  start:
+      if(s.rflg==0){
+        s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
+        // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
+      }
+      // printf("s.si:%d\n",s.si);
+      if (s.y==s.si && !s.bm && s.rflg==0) {
+        printf("if(y==si){\n");
+        // printf("s.si:%d\n",s.si);
+        // if(!s.bm){
+        s.aB[s.y]=s.bm;
+        // printf("s.si:%d\n",s.si);
+        int sum=symmetryOps_bm(&s);//対称解除法
+        // printf("sum:%d\n",sum);
+        if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+        //        printf("lTotal:%ld\n",s.lTotal);
+        // printf("lUnique:%ld\n",s.lUnique);
+        // }
+      }else{
+      printf("}else{#y==si\n");
+        if(s.y==0){
+        printf("if(s.y==0){\n");
+          s.aB[0]=bit=(1<<s.BOUND1);
+          printf("beforebitmap\n");
+          printf("###y:%d\n",s.y);
+          printf("###l:%d\n",s.l);
+          printf("###d:%d\n",s.d);
+          printf("###r:%d\n",s.r);
+          printf("###bm:%d\n",s.bm);
+          if(s.stParam.current<MAX){
+            s.stParam.param[s.stParam.current].Y=s.y;
+            s.stParam.param[s.stParam.current].I=s.si;
+            s.stParam.param[s.stParam.current].M=s.msk;
+            s.stParam.param[s.stParam.current].L=s.l;
+            s.stParam.param[s.stParam.current].D=s.d;
+            s.stParam.param[s.stParam.current].R=s.r;
+            s.stParam.param[s.stParam.current].B=s.bm;
+            (s.stParam.current)++;
+          }
+          s.y=s.y+1;
+          s.l=bit<<1;
+          s.d=bit;
+          s.r=bit>>1;
+          s.bend=1;
+          // printf("s.bm:%d\n",s.bm);
+        }else{
+          while (s.bm || s.rflg==1) {
+            if(s.rflg==0){
+          printf("beforebitmap\n");
+          printf("###y:%d\n",s.y);
+          printf("###l:%d\n",s.l);
+          printf("###d:%d\n",s.d);
+          printf("###r:%d\n",s.r);
+          printf("###bm:%d\n",s.bm);
+              s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+              if(s.stParam.current<MAX){
+                s.stParam.param[s.stParam.current].Y=s.y;
+                s.stParam.param[s.stParam.current].I=s.si;
+                s.stParam.param[s.stParam.current].M=s.msk;
+                s.stParam.param[s.stParam.current].L=s.l;
+                s.stParam.param[s.stParam.current].D=s.d;
+                s.stParam.param[s.stParam.current].R=s.r;
+                s.stParam.param[s.stParam.current].B=s.bm;
+                (s.stParam.current)++;
+              }
+              s.y=s.y+1;
+              s.l=(s.l|bit)<<1;
+              s.d=(s.d|bit);
+              s.r=(s.r|bit)>>1;
+              s.bend=1;
+              break;
+            }
+            //goto start;
+            //NQueen(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+            //ret:
+            if(s.rflg==1){ 
+              if(s.stParam.current>0){
+                s.stParam.current--;
+              }
+              s.si=s.stParam.param[s.stParam.current].I;
+              s.y=s.stParam.param[s.stParam.current].Y;
+              s.msk=s.stParam.param[s.stParam.current].M;
+              s.l=s.stParam.param[s.stParam.current].L;
+              s.d=s.stParam.param[s.stParam.current].D;
+              s.r=s.stParam.param[s.stParam.current].R;
+              s.bm=s.stParam.param[s.stParam.current].B;
+              s.rflg=0;
+              printf("afterbitmap\n");
+              printf("###y:%d\n",s.y);
+              printf("###l:%d\n",s.l);
+              printf("###d:%d\n",s.d);
+              printf("###r:%d\n",s.r);
+              printf("###bm:%d\n",s.bm);
+            }
+          }
+          printf("}:end while(bm){\n");
+        }
+        if(s.bend==1 && s.rflg==0){
+          s.bend=0;
+          continue;
+        }
+      } 
+      printf("}:end else\n");
+      if(s.y==0){
+        s.step=2;
+        break;
+      }else{
+        s.rflg=1;
+      }
+      j++;
+    }
+  }else{
+    //backtrack2;
     unsigned long j=1;
     // int sum;
     int bit;
@@ -278,101 +401,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // printf("lUnique:%ld\n",s.lUnique);
         // }
       }else{
-        if(s.y==0){
-          s.aB[0]=bit=(1<<s.BOUND1);
-          if(s.stParam.current<MAX){
-            s.stParam.param[s.stParam.current].Y=s.y;
-            s.stParam.param[s.stParam.current].I=s.si;
-            s.stParam.param[s.stParam.current].M=s.msk;
-            s.stParam.param[s.stParam.current].L=s.l;
-            s.stParam.param[s.stParam.current].D=s.d;
-            s.stParam.param[s.stParam.current].R=s.r;
-            s.stParam.param[s.stParam.current].B=s.bm;
-            (s.stParam.current)++;
-          }
-          s.y=s.y+1;
-          s.l=bit<<1;
-          s.d=bit;
-          s.r=bit>>1;
-          s.bend=1;
-          // printf("s.bm:%d\n",s.bm);
-        }else{
-        while (s.bm || s.rflg==1) {
-          if(s.rflg==0){
-            s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-            if(s.stParam.current<MAX){
-              s.stParam.param[s.stParam.current].Y=s.y;
-              s.stParam.param[s.stParam.current].I=s.si;
-              s.stParam.param[s.stParam.current].M=s.msk;
-              s.stParam.param[s.stParam.current].L=s.l;
-              s.stParam.param[s.stParam.current].D=s.d;
-              s.stParam.param[s.stParam.current].R=s.r;
-              s.stParam.param[s.stParam.current].B=s.bm;
-              (s.stParam.current)++;
-            }
-            s.y=s.y+1;
-            s.l=(s.l|bit)<<1;
-            s.d=(s.d|bit);
-            s.r=(s.r|bit)>>1;
-            s.bend=1;
-            break;
-          }
-          //goto start;
-          //NQueen(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-          //ret:
-          if(s.rflg==1){ 
-            if(s.stParam.current>0){
-              s.stParam.current--;
-            }
-            s.si=s.stParam.param[s.stParam.current].I;
-            s.y=s.stParam.param[s.stParam.current].Y;
-            s.msk=s.stParam.param[s.stParam.current].M;
-            s.l=s.stParam.param[s.stParam.current].L;
-            s.d=s.stParam.param[s.stParam.current].D;
-            s.r=s.stParam.param[s.stParam.current].R;
-            s.bm=s.stParam.param[s.stParam.current].B;
-            s.rflg=0;
-          }
-        }
-        }
-        if(s.bend==1 && s.rflg==0){
-          s.bend=0;
-          continue;
-        }
-      } 
-      if(s.y==0){
-        s.step=2;
-        break;
-      }else{
-        s.rflg=1;
-      }
-      j++;
-    }
-    }else{
-      //backtrack2;
-      unsigned long j=1;
-      // int sum;
-      int bit;
-
-      while (j<200000) {
-        //  start:
-        if(s.rflg==0){
-          s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-          // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
-        }
-        // printf("s.si:%d\n",s.si);
-        if (s.y==s.si && !s.bm && s.rflg==0) {
-          // printf("s.si:%d\n",s.si);
-          // if(!s.bm){
-          s.aB[s.y]=s.bm;
-          // printf("s.si:%d\n",s.si);
-          int sum=symmetryOps_bm(&s);//対称解除法
-          // printf("sum:%d\n",sum);
-          if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-          //        printf("lTotal:%ld\n",s.lTotal);
-          // printf("lUnique:%ld\n",s.lUnique);
-          // }
-        }else{
         if(s.y==0){
           s.aB[0]=bit=(1<<s.BOUND1);
           if(s.stParam.current<MAX){
@@ -431,47 +459,47 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             }
           }
         }
-          if(s.bend==1 && s.rflg==0){
-            s.bend=0;
-            continue;
-          }
-        } 
-        if(s.y==0){
-          s.step=2;
-          break;
-        }else{
-          s.rflg=1;
+        if(s.bend==1 && s.rflg==0){
+          s.bend=0;
+          continue;
         }
-        j++;
+      } 
+      if(s.y==0){
+        s.step=2;
+        break;
+      }else{
+        s.rflg=1;
       }
+      j++;
     }
-    //uint16_t j=1;
-    //unsigned long j=1;
-
-    state[index].si=s.si;
-    state[index].id=s.id;
-    for (int j=0;j<s.si;j++){
-      state[index].aB[j] = s.aB[j];
-    }
-    state[index].lTotal=s.lTotal;
-    // printf("lTotal:%ld\n",s.lTotal);
-    state[index].lUnique=s.lUnique;
-    state[index].step=s.step;
-    state[index].y=s.y;
-    state[index].bend=s.bend;
-    state[index].rflg=s.rflg;
-    for (int j=0;j<s.si;j++){
-      state[index].aT[j]=s.aT[j];
-      state[index].aS[j]=s.aS[j];
-    }
-    state[index].stParam=s.stParam;
-    state[index].msk=s.msk;
-    state[index].l=s.l;
-    state[index].d=s.d;
-    state[index].r=s.r;
-    state[index].bm=s.bm;
-    state[index].BOUND1=s.BOUND1;
   }
+  //uint16_t j=1;
+  //unsigned long j=1;
+
+  state[index].si=s.si;
+  state[index].id=s.id;
+  for (int j=0;j<s.si;j++){
+    state[index].aB[j] = s.aB[j];
+  }
+  state[index].lTotal=s.lTotal;
+  // printf("lTotal:%ld\n",s.lTotal);
+  state[index].lUnique=s.lUnique;
+  state[index].step=s.step;
+  state[index].y=s.y;
+  state[index].bend=s.bend;
+  state[index].rflg=s.rflg;
+  for (int j=0;j<s.si;j++){
+    state[index].aT[j]=s.aT[j];
+    state[index].aS[j]=s.aS[j];
+  }
+  state[index].stParam=s.stParam;
+  state[index].msk=s.msk;
+  state[index].l=s.l;
+  state[index].d=s.d;
+  state[index].r=s.r;
+  state[index].bm=s.bm;
+  state[index].BOUND1=s.BOUND1;
+}
 #ifdef GCC_STYLE
 int main(){
   int si=10; 
