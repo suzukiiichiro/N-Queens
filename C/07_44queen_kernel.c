@@ -68,6 +68,7 @@ CL_PACKED_KEYWORD struct queenState {
   int bm;
   int bit;
   int BOUND1;
+  int BOUND2;
 };
 int rh(int a,int sz){
   int tmp=0;
@@ -223,12 +224,244 @@ void pop(struct queenState *s){
 }
 */
 //
+//int symmetryOps_bm(struct queenState *s){
+//void backTrack2(int si,int msk,int y,int l,int d,int r){
+void backTrack2(struct queenState *s){
+  struct STACK stParam_2;
+  for (int m=0;m<s->si;m++){ 
+    stParam_2.param[m].Y=0;
+    stParam_2.param[m].I=s->si;
+    stParam_2.param[m].M=0;
+    stParam_2.param[m].L=0;
+    stParam_2.param[m].D=0;
+    stParam_2.param[m].R=0;
+    stParam_2.param[m].B=0;
+  }
+  stParam_2.current=0;
+  int bend_2=0;
+  int rflg_2=0;
+  int bit;
+  int bm;
+  while(1){
+//start:
+    // printf("methodstart:backtrack2\n");
+    // printf("###y:%d\n",y);
+    // printf("###l:%d\n",l);
+    // printf("###d:%d\n",d);
+    // printf("###r:%d\n",r);
+    // for(int k=0;k<si;k++){
+    //   printf("###i:%d\n",k);
+    //   printf("###aB[k]:%d\n",aB[k]);
+    // }
+    if(rflg_2==0){
+      bm=s->msk&~(s->l|s->d|s->r); /* 配置可能フィールド */
+    }
+    if (s->y==s->si&&rflg_2==0) {
+      // printf("if(y==si){\n");
+      if(!bm){
+        s->aB[s->y]=bm;
+        symmetryOps_bm(s);
+      }
+    }else{
+      // printf("}else{#y==si\n");
+      while(bm|| rflg_2==1) {
+        // printf("while(bm){\n");
+        if(rflg_2==0){
+          bm^=s->aB[s->y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+          // printf("beforebitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
+          if(stParam_2.current<MAX){
+            stParam_2.param[stParam_2.current].Y=s->y; 
+            stParam_2.param[stParam_2.current].I=s->si;
+            stParam_2.param[stParam_2.current].M=s->msk;
+            stParam_2.param[stParam_2.current].L=s->l;
+            stParam_2.param[stParam_2.current].D=s->d;
+            stParam_2.param[stParam_2.current].R=s->r;
+            stParam_2.param[stParam_2.current].B=bm;
+            (stParam_2.current)++;
+          }
+          s->y++;
+          // y=y+1;
+          s->l=(s->l|bit)<<1;
+          s->d=(s->d|bit);
+          s->r=(s->r|bit)>>1;
+          bend_2=1;
+          break;
+        }
+        //goto start;
+        //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+        //ret:
+        if(rflg_2==1){ 
+          if(stParam_2.current>0){
+            stParam_2.current--;
+          }
+          s->si=stParam_2.param[stParam_2.current].I;
+          s->y=stParam_2.param[stParam_2.current].Y;
+          s->msk=stParam_2.param[stParam_2.current].M;
+          s->l=stParam_2.param[stParam_2.current].L;
+          s->d=stParam_2.param[stParam_2.current].D;
+          s->r=stParam_2.param[stParam_2.current].R;
+          bm=stParam_2.param[stParam_2.current].B;
+          // printf("afterbitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
+          rflg_2=0;
+        }
+      }
+      // printf("}:end while(bm){\n");
+      if(bend_2==1 && rflg_2==0){
+        bend_2=0;
+        continue;
+      }
+    } 
+    // printf("}:end else\n");
+    if(s->y==1){
+      s->step=2;
+      break;
+    }else{
+      // printf("gotoreturn\n");
+      //goto ret;
+      rflg_2=1;
+    }
+  }
+}
+//void backTrack1(int si,int msk,int y,int l,int d,int r){
+void backTrack1(struct queenState *s){
+  struct STACK stParam_1;
+  for (int m=0;m<s->si;m++){ 
+    stParam_1.param[m].Y=0;
+    stParam_1.param[m].I=s->si;
+    stParam_1.param[m].M=0;
+    stParam_1.param[m].L=0;
+    stParam_1.param[m].D=0;
+    stParam_1.param[m].R=0;
+    stParam_1.param[m].B=0;
+  }
+  stParam_1.current=0;
+  int bend_1=0;
+  int rflg_1=0;
+  int bit;
+  int bm;
+  while(1){
+//start:
+    // printf("methodstart:backtrack1\n");
+    // printf("###y:%d\n",y);
+    // printf("###l:%d\n",l);
+    // printf("###d:%d\n",d);
+    // printf("###r:%d\n",r);
+    // for(int k=0;k<si;k++){
+    //   printf("###i:%d\n",k);
+    //   printf("###aB[k]:%d\n",aB[k]);
+    // }
+    if(rflg_1==0){
+      bm=s->msk&~(s->l|s->d|s->r); /* 配置可能フィールド */
+    }
+    if (s->y==s->si&&rflg_1==0) {
+      // printf("if(y==si){\n");
+      if(!bm){
+        s->aB[s->y]=bm;
+        symmetryOps_bm(s);
+      }
+    }else{
+      // printf("}else{#y==si\n");
+      while(bm|| rflg_1==1) {
+        // printf("while(bm){\n");
+        if(rflg_1==0){
+          bm^=s->aB[s->y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+          // printf("beforebitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
+          if(stParam_1.current<MAX){
+            stParam_1.param[stParam_1.current].Y=s->y;
+            stParam_1.param[stParam_1.current].I=s->si;
+            stParam_1.param[stParam_1.current].M=s->msk;
+            stParam_1.param[stParam_1.current].L=s->l;
+            stParam_1.param[stParam_1.current].D=s->d;
+            stParam_1.param[stParam_1.current].R=s->r;
+          stParam_1.param[stParam_1.current].B=bm;
+            (stParam_1.current)++;
+          }
+          //y=y+1;
+          s->y++;
+          s->l=(s->l|bit)<<1;
+          s->d=(s->d|bit);
+          s->r=(s->r|bit)>>1;
+          bend_1=1;
+          break;
+        }
+        //goto start;
+        //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+//ret:
+        if(rflg_1==1){ 
+        if(stParam_1.current>0){
+          stParam_1.current--;
+        }
+        s->si=stParam_1.param[stParam_1.current].I;
+        s->y=stParam_1.param[stParam_1.current].Y;
+        s->msk=stParam_1.param[stParam_1.current].M;
+        s->l=stParam_1.param[stParam_1.current].L;
+        s->d=stParam_1.param[stParam_1.current].D;
+        s->r=stParam_1.param[stParam_1.current].R;
+        bm=stParam_1.param[stParam_1.current].B;
+        // printf("afterbitmap\n");
+        // printf("###y:%d\n",y);
+        // printf("###l:%d\n",l);
+        // printf("###d:%d\n",d);
+        // printf("###r:%d\n",r);
+        // printf("###bm:%d\n",bm);
+        // for(int k=0;k<si;k++){
+        //   printf("###i:%d\n",k);
+        //   printf("###aB[k]:%d\n",aB[k]);
+        // }
+          rflg_1=0;
+        }
+      }
+      // printf("}:end while(bm){\n");
+      if(bend_1==1 && rflg_1==0){
+        bend_1=0;
+        continue;
+      }
+    } 
+    // printf("}:end else\n");
+    if(s->y==2){
+      s->step=2;
+      break;
+    }else{
+      // printf("gotoreturn\n");
+      //goto ret;
+      rflg_1=1;
+    }
+  }
+}
+
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   struct queenState s ;
+  printf("state[index].si:%d\n",state[index].si);
   s.si=state[index].si;
-  // printf("#state[index].si:%d\n",state[index].si);
-  // printf("#s.si:%d\n",s.si);
+  printf("s.si:%d\n",s.si);
   s.id=state[index].id;
   for (int j=0;j<s.si;j++){
     s.aB[j]=state[index].aB[j];
@@ -244,16 +477,45 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.aS[j]=state[index].aS[j];
   }
   s.stParam=state[index].stParam;
-  // s.msk=state[index].msk;
   s.msk=(1<<s.si)-1;
-  // printf("kernel:s.msk:%lld\n",s.msk);
   s.l=state[index].l;
   s.d=state[index].d;
   s.r=state[index].r;
   s.bm=state[index].bm;
   s.BOUND1=state[index].BOUND1;
+  s.BOUND2=state[index].BOUND2;
 
-  if (s.BOUND1==0){
+
+  int bit;
+  // printf("global");
+  printf("s.si:%d\n",s.si);
+  s.aB[0]=1;
+  if(s.BOUND1==0){
+    printf("if");
+    //for(s.BOUND1=2;s.BOUND1<s.si-1;s.BOUND1++){
+    for(int B1=2;B1<s.si-1;B1++){
+       printf("for");
+      s.aB[1]=bit=(1<<B1);
+      s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
+      //backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
+      backTrack1(&s);
+    }
+  } else{
+    // BOUND1=B1;
+    // BOUND2=B2;
+    if(s.BOUND1<s.BOUND2){
+      s.aB[0]=bit=(1<<s.BOUND1);
+      //backTrack2(si,msk,1,bit<<1,bit,bit>>1);
+      s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+      backTrack2(&s);
+    }
+  }
+
+
+
+
+/**
+  if (s.step!=2 && s.BOUND1==0){
     //backtrack1;
     unsigned long j=1;
     // int sum;
@@ -262,11 +524,13 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     while (j<200000) {
       //  start:
       if(s.rflg==0){
-        s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-        // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
+        s.bm=s.msk&~(s.l|s.d|s.r); 
+        // printf("s.bm:%d s.msk:%d s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
       }
       // printf("s.si:%d\n",s.si);
-      if (s.y==s.si && !s.bm && s.rflg==0) {
+      //if (s.y==s.si && !s.bm && s.rflg==0) {
+      if (s.y==s.si && s.bm==0 && s.rflg==0) {
+        // printf("s.bm:%d s.msk:%d s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
         // printf("s.si:%d\n",s.si);
         // if(!s.bm){
         s.aB[s.y]=s.bm;
@@ -288,6 +552,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             s.stParam.param[s.stParam.current].D=s.d;
             s.stParam.param[s.stParam.current].R=s.r;
             s.stParam.param[s.stParam.current].B=s.bm;
+            // printf("s.bm:%d s.msk:%d s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
             (s.stParam.current)++;
           }
           s.y=s.y+1;
@@ -295,11 +560,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           s.d=bit;
           s.r=bit>>1;
           s.bend=1;
-          // printf("s.bm:%d\n",s.bm);
+           printf("s.bm:%d\n",s.bm);
         }else{
         while (s.bm || s.rflg==1) {
           if(s.rflg==0){
             s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+           // printf("s.bm:%d\n",s.bm);
             if(s.stParam.current<MAX){
               s.stParam.param[s.stParam.current].Y=s.y;
               s.stParam.param[s.stParam.current].I=s.si;
@@ -308,6 +574,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
               s.stParam.param[s.stParam.current].D=s.d;
               s.stParam.param[s.stParam.current].R=s.r;
               s.stParam.param[s.stParam.current].B=s.bm;
+           // printf("s.bm:%d\n",s.bm);
               (s.stParam.current)++;
             }
             s.y=s.y+1;
@@ -331,6 +598,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             s.d=s.stParam.param[s.stParam.current].D;
             s.r=s.stParam.param[s.stParam.current].R;
             s.bm=s.stParam.param[s.stParam.current].B;
+           // printf("s.bm:%d\n",s.bm);
             s.rflg=0;
           }
         }
@@ -348,7 +616,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       }
       j++;
     }
-    }else{
+    }else if(s.step!=2){
       //backtrack2;
       unsigned long j=1;
       // int sum;
@@ -357,11 +625,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       while (j<200000) {
         //  start:
         if(s.rflg==0){
-          s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-          // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
+          s.bm=s.msk&~(s.l|s.d|s.r); 
+           printf("s.bm:%d s.msk:%d s.l:%d s.d:%d s.r:%d\n",s.bm,s.msk,s.l,s.d,s.r);
         }
         // printf("s.si:%d\n",s.si);
-        if (s.y==s.si && !s.bm && s.rflg==0) {
+        if (s.y==s.si && s.bm==0 && s.rflg==0) {
           // printf("s.si:%d\n",s.si);
           // if(!s.bm){
           s.aB[s.y]=s.bm;
@@ -390,11 +658,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           s.d=bit;
           s.r=bit>>1;
           s.bend=1;
-          // printf("s.bm:%d\n",s.bm);
+           printf("s.bm:%d\n",s.bm);
         }else{
           // printf("s.bm:%d\n",s.bm);
-          while (s.bm || s.rflg==1) {
+          while (s.bm>0 || s.rflg==1) {
             if(s.rflg==0){
+              printf("break");
               s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
               if(s.stParam.current<MAX){
                 s.stParam.param[s.stParam.current].Y=s.y;
@@ -420,8 +689,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
               if(s.stParam.current>0){
                 s.stParam.current--;
               }
-              s.si=s.stParam.param[s.stParam.current].I;
               s.y=s.stParam.param[s.stParam.current].Y;
+              s.si=s.stParam.param[s.stParam.current].I;
               s.msk=s.stParam.param[s.stParam.current].M;
               s.l=s.stParam.param[s.stParam.current].L;
               s.d=s.stParam.param[s.stParam.current].D;
@@ -433,6 +702,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         }
           if(s.bend==1 && s.rflg==0){
             s.bend=0;
+    printf("s.rflg:%d\n",s.rflg);
             continue;
           }
         } 
@@ -447,6 +717,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     }
     //uint16_t j=1;
     //unsigned long j=1;
+*/
 
     state[index].si=s.si;
     state[index].id=s.id;
@@ -454,7 +725,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       state[index].aB[j] = s.aB[j];
     }
     state[index].lTotal=s.lTotal;
-    // printf("lTotal:%ld\n",s.lTotal);
     state[index].lUnique=s.lUnique;
     state[index].step=s.step;
     state[index].y=s.y;
@@ -471,6 +741,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     state[index].r=s.r;
     state[index].bm=s.bm;
     state[index].BOUND1=s.BOUND1;
+    state[index].BOUND2=s.BOUND2;
   }
 #ifdef GCC_STYLE
 int main(){
