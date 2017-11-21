@@ -390,7 +390,7 @@ int createKernel(){
 */
 int makeInProgress(int si){
   //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){ //Single
+  for(int i=0;i<si;i++){ //Single
     inProgress[i].si=si;
     inProgress[i].id=i;
     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
