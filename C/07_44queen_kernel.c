@@ -71,8 +71,8 @@ CL_PACKED_KEYWORD struct queenState {
 int rh(int a,int sz);
 int intncmp(qint lt[],qint rt[],int si);
 int symmetryOps_bm(struct queenState *s);
-void backTrack2(struct queenState *s);
-void backTrack1(struct queenState *s);
+void backTrack2(struct queenState *s,int bm);
+void backTrack1(struct queenState *s,int bm);
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -116,7 +116,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         s.aB[1]=bit=(1<<B1);
         s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
         //backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
-        backTrack1(&s);
+        backTrack1(&s,s.bm);
       }
     } else{
       // BOUND1=B1;
@@ -125,7 +125,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         s.aB[0]=bit=(1<<BOUND1);
         //backTrack2(si,msk,1,bit<<1,bit,bit>>1);
         s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-        backTrack2(&s);
+        backTrack2(&s,s.bm);
       }
     }
   }
@@ -155,143 +155,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   // state[index].BOUND1=s.BOUND1;
   // state[index].BOUND2=s.BOUND2;
 }
-CL_KERNEL_KEYWORD void _place(CL_GLOBAL_KEYWORD struct queenState *state){
-  int index=get_global_id(0);
-  struct queenState s ;
-  s.si=state[index].si;
-  // printf("#state[index].si:%d\n",state[index].si);
-  // printf("#s.si:%d\n",s.si);
-
-
-  s.id=state[index].id;
-  for (int j=0;j<s.si;j++){
-    s.aB[j]=state[index].aB[j];
-  }
-  s.lTotal=state[index].lTotal;
-  s.lUnique=state[index].lUnique;
-  s.step=state[index].step;
-  s.y=state[index].y;
-  s.bend=state[index].bend;
-  s.rflg=state[index].rflg;
-  for (int j=0;j<s.si;j++){
-    s.aT[j]=state[index].aT[j];
-    s.aS[j]=state[index].aS[j];
-  }
-  s.stParam=state[index].stParam;
-  // s.msk=state[index].msk;
-  s.msk=(1<<s.si)-1;
-  // printf("kernel:s.msk:%lld\n",s.msk);
-  s.l=state[index].l;
-  s.d=state[index].d;
-  s.r=state[index].r;
-  s.bm=state[index].bm;
-
-  //uint16_t j=1;
-  //unsigned long j=1;
-  unsigned long j=1;
-  // int sum;
+void backTrack2(struct queenState *s,int bm){
   int bit;
-
-  while (j<200000) {
-    //  start:
-    if(s.rflg==0){
-      s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-      // printf("s.bm:%d s.msk:%lld s.l:%d s.d:%d\n",s.bm,s.msk,s.l,s.d);
-    }
-    // printf("s.si:%d\n",s.si);
-    if (s.y==s.si && !s.bm && s.rflg==0) {
-      // printf("s.si:%d\n",s.si);
-      // if(!s.bm){
-        s.aB[s.y]=s.bm;
-        // printf("s.si:%d\n",s.si);
-        int sum=symmetryOps_bm(&s);//対称解除法
-        // printf("sum:%d\n",sum);
-        if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-//        printf("lTotal:%ld\n",s.lTotal);
-        // printf("lUnique:%ld\n",s.lUnique);
-      // }
-    }else{
-      // printf("s.bm:%d\n",s.bm);
-      while (s.bm || s.rflg==1) {
-        if(s.rflg==0){
-          s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-          if(s.stParam.current<MAX){
-            s.stParam.param[s.stParam.current].Y=s.y;
-            s.stParam.param[s.stParam.current].I=s.si;
-            s.stParam.param[s.stParam.current].M=s.msk;
-            s.stParam.param[s.stParam.current].L=s.l;
-            s.stParam.param[s.stParam.current].D=s.d;
-            s.stParam.param[s.stParam.current].R=s.r;
-            s.stParam.param[s.stParam.current].B=s.bm;
-            (s.stParam.current)++;
-          }
-          s.y=s.y+1;
-          s.l=(s.l|bit)<<1;
-          s.d=(s.d|bit);
-          s.r=(s.r|bit)>>1;
-          s.bend=1;
-          break;
-        }
-        //goto start;
-        //NQueen(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-        //ret:
-        if(s.rflg==1){ 
-          if(s.stParam.current>0){
-            s.stParam.current--;
-          }
-          s.si=s.stParam.param[s.stParam.current].I;
-          s.y=s.stParam.param[s.stParam.current].Y;
-          s.msk=s.stParam.param[s.stParam.current].M;
-          s.l=s.stParam.param[s.stParam.current].L;
-          s.d=s.stParam.param[s.stParam.current].D;
-          s.r=s.stParam.param[s.stParam.current].R;
-          s.bm=s.stParam.param[s.stParam.current].B;
-          s.rflg=0;
-        }
-      }
-      if(s.bend==1 && s.rflg==0){
-        s.bend=0;
-        continue;
-      }
-    } 
-    if(s.y==0){
-      s.step=2;
-      break;
-    }else{
-      s.rflg=1;
-    }
-    j++;
-  }
-
-  state[index].si=s.si;
-  state[index].id=s.id;
-  for (int j=0;j<s.si;j++){
-    state[index].aB[j] = s.aB[j];
-  }
-  state[index].lTotal=s.lTotal;
-  // printf("lTotal:%ld\n",s.lTotal);
-  state[index].lUnique=s.lUnique;
-  state[index].step=s.step;
-  state[index].y=s.y;
-  state[index].bend=s.bend;
-  state[index].rflg=s.rflg;
-  for (int j=0;j<s.si;j++){
-    state[index].aT[j]=s.aT[j];
-    state[index].aS[j]=s.aS[j];
-  }
-  state[index].stParam=s.stParam;
-  state[index].msk=s.msk;
-  state[index].l=s.l;
-  state[index].d=s.d;
-  state[index].r=s.r;
-  state[index].bm=s.bm;
-}
-void backTrack2(struct queenState *s){
-  int bit;
-  int bm;
+  // int bm;
   unsigned long j=1;
   // while(1){
-  while (j<200000) {
+  while (j<100000) {
 //start:
     // printf("methodstart:backtrack2\n");
     // printf("###y:%d\n",y);
@@ -391,14 +260,15 @@ void backTrack2(struct queenState *s){
     }
     j++;
   }
+  s->bm=bm;
 }
 //void backTrack1(int si,int msk,int y,int l,int d,int r){
-void backTrack1(struct queenState *s){
+void backTrack1(struct queenState *s,int bm){
   int bit;
-  int bm;
+  // int bm;
   // while(1){
   unsigned long j=1;
-  while (j<200000) {
+  while (j<100000) {
 //start:
     // printf("methodstart:backtrack1\n");
     // printf("###y:%d\n",y);
@@ -442,7 +312,7 @@ void backTrack1(struct queenState *s){
             s->stParam.param[s->stParam.current].L=s->l;
             s->stParam.param[s->stParam.current].D=s->d;
             s->stParam.param[s->stParam.current].R=s->r;
-          s->stParam.param[s->stParam.current].B=bm;
+            s->stParam.param[s->stParam.current].B=bm;
             (s->stParam.current)++;
           }
           //y=y+1;
@@ -497,6 +367,7 @@ void backTrack1(struct queenState *s){
     }
     j++;
   }
+  s->bm=bm;
 }
 int rh(int a,int sz){
   int tmp=0;
