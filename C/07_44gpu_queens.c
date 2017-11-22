@@ -1,11 +1,13 @@
 /**
 
-   43. GPU ビットマップ(07_07GPU版)
+   43. ビットマップ(07_07GPU版)
 
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
    $ ./07_43NQueen 
+
+07_44 
 
 07_43
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -75,7 +77,7 @@
 
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1
+#define USE_DEBUG 0
 
 cl_int status;
 cl_device_id *devices;
@@ -128,12 +130,10 @@ struct queenState {
   int d;
   int r;
   int bm;
-  int BOUND1;
-  int BOUND2;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
-struct queenState inProgress[MAX]; //Single
+struct queenState inProgress[1]; //Single
 
 
 /**
@@ -388,10 +388,11 @@ int createKernel(){
  * バッファをキャッシュすることを許可する。
  * size    割り当てられたバッファメモリオブジェクトのバイトサイズ
  * host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
+ * errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
 int makeInProgress(int si){
-  for(int i=0,j=si-2;i<si;i++,j--){
-  //for(int i=0;i<1;i++){ //Single
+  //for(int i=0;i<si;i++){
+  for(int i=0;i<1;i++){ //Single
     inProgress[i].si=si;
     inProgress[i].id=i;
     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
@@ -424,8 +425,6 @@ int makeInProgress(int si){
     inProgress[i].d=0;
     inProgress[i].r=0;
     inProgress[i].bm=0;
-    inProgress[i].BOUND1=i;
-    inProgress[i].BOUND2=j;
 
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -438,7 +437,7 @@ int makeInProgress(int si){
   /**
    *
    */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),inProgress,0,NULL,NULL); 
+	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
   /**
    *
@@ -467,30 +466,27 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   //while(!all_tasks_done(si)){
-  while(!all_tasks_done(si)){ //Single
+  while(!all_tasks_done(1)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    // size_t globalWorkSize[] = {1}; //Single
-    // size_t localWorkSize[] = {0};  //Single
+    size_t globalWorkSize[] = {1}; //Single
+    size_t localWorkSize[] = {1};  //Single
 //    size_t localWorkSize=si;
 //    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
 
-//    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
-//    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
-		size_t globalSizes[]={ si };
-		status=clEnqueueNDRangeKernel(cmd_queue,kernel,1,0,globalSizes,NULL,0,NULL,NULL);
-	// status=clEnqueueNDRangeKernel(
-	// 		cmd_queue,         //タスクを投入するキュー
-	// 		kernel,            //実行するカーネル
-	// 		dim,               //work sizeの次元
-	// 		//global_work_offset,//NULLを指定すること
-	// 		NULL,//NULLを指定すること
-	// 		globalWorkSize,    //ワークアイテムの総数
-	// 		//localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
-	// 		NULL,     //ワークアイテムを分割する場合チルドアイテム数
-	// 		0,                 //この関数が待機すべきeventの数
-	// 		NULL,              //この関数が待機すべき関数のリストへのポインタ
-	// 		NULL);             //この関数の返すevent
+    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
+    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
+		status=clEnqueueNDRangeKernel(
+        cmd_queue,         //タスクを投入するキュー
+        kernel,            //実行するカーネル
+        dim,               //work sizeの次元
+        //global_work_offset,//NULLを指定すること
+        NULL,//NULLを指定すること
+        globalWorkSize,    //ワークアイテムの総数
+        localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
+        0,                 //この関数が待機すべきeventの数
+        NULL,              //この関数が待機すべき関数のリストへのポインタ
+        NULL);             //この関数の返すevent
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
     /**
      * 結果を読み込み
@@ -514,8 +510,8 @@ int execKernel(int si){
  */
 int execPrint(int si){
   //for(int i=0;i<si;i++){
-  for(int i=0;i<si;i++){ // Single
-    if(USE_DEBUG>0) printf("id:%d: lTotal:%ld lUnique:%ld\n",inProgress[i].id,inProgress[i].lTotal,inProgress[i].lUnique);
+  for(int i=0;i<1;i++){ // Single
+    if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
     lGUnique+=inProgress[i].lUnique;
     }
