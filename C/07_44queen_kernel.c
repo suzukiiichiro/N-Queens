@@ -160,7 +160,7 @@ void backTrack2(struct queenState *s,int bm){
   // int bm;
   unsigned long j=1;
   // while(1){
-  while (j<100000) {
+  while (j<200000) {
 //start:
     // printf("methodstart:backtrack2\n");
     // printf("###y:%d\n",y);
@@ -268,7 +268,7 @@ void backTrack1(struct queenState *s,int bm){
   // int bm;
   // while(1){
   unsigned long j=1;
-  while (j<100000) {
+  while (j<200000) {
 //start:
     // printf("methodstart:backtrack1\n");
     // printf("###y:%d\n",y);
