@@ -287,19 +287,6 @@ CL_KERNEL_KEYWORD void _place(CL_GLOBAL_KEYWORD struct queenState *state){
   state[index].bm=s.bm;
 }
 void backTrack2(struct queenState *s){
-  struct STACK stParam_2;
-  for (int m=0;m<s->si;m++){ 
-    stParam_2.param[m].Y=0;
-    stParam_2.param[m].I=s->si;
-    stParam_2.param[m].M=0;
-    stParam_2.param[m].L=0;
-    stParam_2.param[m].D=0;
-    stParam_2.param[m].R=0;
-    stParam_2.param[m].B=0;
-  }
-  stParam_2.current=0;
-  int bend_2=0;
-  int rflg_2=0;
   int bit;
   int bm;
   unsigned long j=1;
@@ -315,10 +302,10 @@ void backTrack2(struct queenState *s){
     //   printf("###i:%d\n",k);
     //   printf("###aB[k]:%d\n",aB[k]);
     // }
-    if(rflg_2==0){
+    if(s->rflg==0){
       bm=s->msk&~(s->l|s->d|s->r); /* 配置可能フィールド */
     }
-    if (s->y==s->si&&rflg_2==0) {
+    if (s->y==s->si&&s->rflg==0) {
       // printf("if(y==si){\n");
       if(!bm){
         s->aB[s->y]=bm;
@@ -328,9 +315,9 @@ void backTrack2(struct queenState *s){
       }
     }else{
       // printf("}else{#y==si\n");
-      while(bm|| rflg_2==1) {
+      while(bm|| s->rflg==1) {
         // printf("while(bm){\n");
-        if(rflg_2==0){
+        if(s->rflg==0){
           bm^=s->aB[s->y]=bit=(-bm&bm); //最も下位の１ビットを抽出
           // printf("beforebitmap\n");
           // printf("###y:%d\n",y);
@@ -342,38 +329,38 @@ void backTrack2(struct queenState *s){
           //   printf("###i:%d\n",k);
           //   printf("###aB[k]:%d\n",aB[k]);
           // }
-          if(stParam_2.current<MAX){
-            stParam_2.param[stParam_2.current].Y=s->y; 
-            stParam_2.param[stParam_2.current].I=s->si;
-            stParam_2.param[stParam_2.current].M=s->msk;
-            stParam_2.param[stParam_2.current].L=s->l;
-            stParam_2.param[stParam_2.current].D=s->d;
-            stParam_2.param[stParam_2.current].R=s->r;
-            stParam_2.param[stParam_2.current].B=bm;
-            (stParam_2.current)++;
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=s->y; 
+            s->stParam.param[s->stParam.current].I=s->si;
+            s->stParam.param[s->stParam.current].M=s->msk;
+            s->stParam.param[s->stParam.current].L=s->l;
+            s->stParam.param[s->stParam.current].D=s->d;
+            s->stParam.param[s->stParam.current].R=s->r;
+            s->stParam.param[s->stParam.current].B=bm;
+            (s->stParam.current)++;
           }
           s->y++;
           // y=y+1;
           s->l=(s->l|bit)<<1;
           s->d=(s->d|bit);
           s->r=(s->r|bit)>>1;
-          bend_2=1;
+          s->bend=1;
           break;
         }
         //goto start;
         //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
         //ret:
-        if(rflg_2==1){ 
-          if(stParam_2.current>0){
-            stParam_2.current--;
+        if(s->rflg==1){ 
+          if(s->stParam.current>0){
+            s->stParam.current--;
           }
-          s->si=stParam_2.param[stParam_2.current].I;
-          s->y=stParam_2.param[stParam_2.current].Y;
-          s->msk=stParam_2.param[stParam_2.current].M;
-          s->l=stParam_2.param[stParam_2.current].L;
-          s->d=stParam_2.param[stParam_2.current].D;
-          s->r=stParam_2.param[stParam_2.current].R;
-          bm=stParam_2.param[stParam_2.current].B;
+          s->si=s->stParam.param[s->stParam.current].I;
+          s->y=s->stParam.param[s->stParam.current].Y;
+          s->msk=s->stParam.param[s->stParam.current].M;
+          s->l=s->stParam.param[s->stParam.current].L;
+          s->d=s->stParam.param[s->stParam.current].D;
+          s->r=s->stParam.param[s->stParam.current].R;
+          bm=s->stParam.param[s->stParam.current].B;
           // printf("afterbitmap\n");
           // printf("###y:%d\n",y);
           // printf("###l:%d\n",l);
@@ -384,12 +371,12 @@ void backTrack2(struct queenState *s){
           //   printf("###i:%d\n",k);
           //   printf("###aB[k]:%d\n",aB[k]);
           // }
-          rflg_2=0;
+          s->rflg=0;
         }
       }
       // printf("}:end while(bm){\n");
-      if(bend_2==1 && rflg_2==0){
-        bend_2=0;
+      if(s->bend==1 && s->rflg==0){
+        s->bend=0;
         continue;
       }
     } 
@@ -400,26 +387,13 @@ void backTrack2(struct queenState *s){
     }else{
       // printf("gotoreturn\n");
       //goto ret;
-      rflg_2=1;
+      s->rflg=1;
     }
     j++;
   }
 }
 //void backTrack1(int si,int msk,int y,int l,int d,int r){
 void backTrack1(struct queenState *s){
-  struct STACK stParam_1;
-  for (int m=0;m<s->si;m++){ 
-    stParam_1.param[m].Y=0;
-    stParam_1.param[m].I=s->si;
-    stParam_1.param[m].M=0;
-    stParam_1.param[m].L=0;
-    stParam_1.param[m].D=0;
-    stParam_1.param[m].R=0;
-    stParam_1.param[m].B=0;
-  }
-  stParam_1.current=0;
-  int bend_1=0;
-  int rflg_1=0;
   int bit;
   int bm;
   // while(1){
@@ -435,10 +409,10 @@ void backTrack1(struct queenState *s){
     //   printf("###i:%d\n",k);
     //   printf("###aB[k]:%d\n",aB[k]);
     // }
-    if(rflg_1==0){
+    if(s->rflg==0){
       bm=s->msk&~(s->l|s->d|s->r); /* 配置可能フィールド */
     }
-    if (s->y==s->si&&rflg_1==0) {
+    if (s->y==s->si&&s->rflg==0) {
       // printf("if(y==si){\n");
       if(!bm){
         s->aB[s->y]=bm;
@@ -447,9 +421,9 @@ void backTrack1(struct queenState *s){
       }
     }else{
       // printf("}else{#y==si\n");
-      while(bm|| rflg_1==1) {
+      while(bm|| s->rflg==1) {
         // printf("while(bm){\n");
-        if(rflg_1==0){
+        if(s->rflg==0){
           bm^=s->aB[s->y]=bit=(-bm&bm); //最も下位の１ビットを抽出
           // printf("beforebitmap\n");
           // printf("###y:%d\n",y);
@@ -461,38 +435,38 @@ void backTrack1(struct queenState *s){
           //   printf("###i:%d\n",k);
           //   printf("###aB[k]:%d\n",aB[k]);
           // }
-          if(stParam_1.current<MAX){
-            stParam_1.param[stParam_1.current].Y=s->y;
-            stParam_1.param[stParam_1.current].I=s->si;
-            stParam_1.param[stParam_1.current].M=s->msk;
-            stParam_1.param[stParam_1.current].L=s->l;
-            stParam_1.param[stParam_1.current].D=s->d;
-            stParam_1.param[stParam_1.current].R=s->r;
-          stParam_1.param[stParam_1.current].B=bm;
-            (stParam_1.current)++;
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=s->y;
+            s->stParam.param[s->stParam.current].I=s->si;
+            s->stParam.param[s->stParam.current].M=s->msk;
+            s->stParam.param[s->stParam.current].L=s->l;
+            s->stParam.param[s->stParam.current].D=s->d;
+            s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=bm;
+            (s->stParam.current)++;
           }
           //y=y+1;
           s->y++;
           s->l=(s->l|bit)<<1;
           s->d=(s->d|bit);
           s->r=(s->r|bit)>>1;
-          bend_1=1;
+          s->bend=1;
           break;
         }
         //goto start;
         //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
 //ret:
-        if(rflg_1==1){ 
-        if(stParam_1.current>0){
-          stParam_1.current--;
+        if(s->rflg==1){ 
+        if(s->stParam.current>0){
+          s->stParam.current--;
         }
-        s->si=stParam_1.param[stParam_1.current].I;
-        s->y=stParam_1.param[stParam_1.current].Y;
-        s->msk=stParam_1.param[stParam_1.current].M;
-        s->l=stParam_1.param[stParam_1.current].L;
-        s->d=stParam_1.param[stParam_1.current].D;
-        s->r=stParam_1.param[stParam_1.current].R;
-        bm=stParam_1.param[stParam_1.current].B;
+        s->si=s->stParam.param[s->stParam.current].I;
+        s->y=s->stParam.param[s->stParam.current].Y;
+        s->msk=s->stParam.param[s->stParam.current].M;
+        s->l=s->stParam.param[s->stParam.current].L;
+        s->d=s->stParam.param[s->stParam.current].D;
+        s->r=s->stParam.param[s->stParam.current].R;
+        bm=s->stParam.param[s->stParam.current].B;
         // printf("afterbitmap\n");
         // printf("###y:%d\n",y);
         // printf("###l:%d\n",l);
@@ -503,12 +477,12 @@ void backTrack1(struct queenState *s){
         //   printf("###i:%d\n",k);
         //   printf("###aB[k]:%d\n",aB[k]);
         // }
-          rflg_1=0;
+          s->rflg=0;
         }
       }
       // printf("}:end while(bm){\n");
-      if(bend_1==1 && rflg_1==0){
-        bend_1=0;
+      if(s->bend==1 && s->rflg==0){
+        s->bend=0;
         continue;
       }
     } 
@@ -519,7 +493,7 @@ void backTrack1(struct queenState *s){
     }else{
       // printf("gotoreturn\n");
       //goto ret;
-      rflg_1=1;
+      s->rflg=1;
     }
     j++;
   }
