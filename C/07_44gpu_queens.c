@@ -193,7 +193,7 @@ int getDeviceID(){
 	size_t size;
  	  status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices);
 	if(status==CL_DEVICE_NOT_FOUND){ 
-    status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,0,NULL,&num_devices); 
+    status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,0,NULL,&num_devices); 
     printf("Couldn't get device count.");
     return 4; 
   }else{
@@ -201,6 +201,12 @@ int getDeviceID(){
   }
   devices=malloc(num_devices * sizeof(cl_device_id));
   status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_GPU,num_devices,devices,NULL);
+	if(status==CL_DEVICE_NOT_FOUND){
+		status=clGetDeviceIDs(platform,CL_DEVICE_TYPE_ALL,num_devices,devices,NULL);
+    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_ALL\n");
+	}else{
+    if(USE_DEBUG>0) printf("CL_DEVICE_TYPE_GPU\n");
+	}
   if(status!=CL_SUCCESS){ 
     printf("Couldn't get platform device count.\n");
     return 5; 
