@@ -153,7 +153,7 @@
 #include<time.h>
 #include <math.h>
 
-#define MAX 8 
+#define MAX 11 
 
 long Total=1 ; //合計解
 long Unique=0; //ユニーク解
@@ -193,7 +193,7 @@ struct STACK {
   struct HIKISU param[MAX];
   int current;
 };
-void NQueen(int si,int msk);
+void NQueen(int si,int i,int j,int msk);
 
 void backTrack2(int si,int msk,int y,int l,int d,int r){
   struct STACK stParam_2;
@@ -213,40 +213,40 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
   int bm;
   while(1){
 //start:
-    printf("methodstart:backtrack2\n");
-    printf("###y:%d\n",y);
-    printf("###l:%d\n",l);
-    printf("###d:%d\n",d);
-    printf("###r:%d\n",r);
-    for(int k=0;k<si;k++){
-      printf("###i:%d\n",k);
-      printf("###aB[k]:%d\n",aB[k]);
-    }
+    // printf("methodstart:backtrack2\n");
+    // printf("###y:%d\n",y);
+    // printf("###l:%d\n",l);
+    // printf("###d:%d\n",d);
+    // printf("###r:%d\n",r);
+    // for(int k=0;k<si;k++){
+    //   printf("###i:%d\n",k);
+    //   printf("###aB[k]:%d\n",aB[k]);
+    // }
     if(rflg_2==0){
       bm=msk&~(l|d|r); /* 配置可能フィールド */
     }
     if (y==si&&rflg_2==0) {
-      printf("if(y==si){\n");
+      // printf("if(y==si){\n");
       if(!bm){
         aB[y]=bm;
         symmetryOps_bm(si);
       }
     }else{
-      printf("}else{#y==si\n");
+      // printf("}else{#y==si\n");
       while(bm|| rflg_2==1) {
-        printf("while(bm){\n");
+        // printf("while(bm){\n");
         if(rflg_2==0){
           bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
-          printf("beforebitmap\n");
-          printf("###y:%d\n",y);
-          printf("###l:%d\n",l);
-          printf("###d:%d\n",d);
-          printf("###r:%d\n",r);
-          printf("###bm:%d\n",bm);
-          for(int k=0;k<si;k++){
-            printf("###i:%d\n",k);
-            printf("###aB[k]:%d\n",aB[k]);
-          }
+          // printf("beforebitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
           if(stParam_2.current<MAX){
             stParam_2.param[stParam_2.current].Y=y;
             stParam_2.param[stParam_2.current].I=si;
@@ -278,30 +278,30 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
           d=stParam_2.param[stParam_2.current].D;
           r=stParam_2.param[stParam_2.current].R;
           bm=stParam_2.param[stParam_2.current].B;
-          printf("afterbitmap\n");
-          printf("###y:%d\n",y);
-          printf("###l:%d\n",l);
-          printf("###d:%d\n",d);
-          printf("###r:%d\n",r);
-          printf("###bm:%d\n",bm);
-          for(int k=0;k<si;k++){
-            printf("###i:%d\n",k);
-            printf("###aB[k]:%d\n",aB[k]);
-          }
+          // printf("afterbitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
           rflg_2=0;
         }
       }
-      printf("}:end while(bm){\n");
+      // printf("}:end while(bm){\n");
       if(bend_2==1 && rflg_2==0){
         bend_2=0;
         continue;
       }
     } 
-    printf("}:end else\n");
+    // printf("}:end else\n");
     if(y==1){
       break;
     }else{
-      printf("gotoreturn\n");
+      // printf("gotoreturn\n");
       //goto ret;
       rflg_2=1;
     }
@@ -325,40 +325,40 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
   int bm;
   while(1){
 //start:
-    printf("methodstart:backtrack1\n");
-    printf("###y:%d\n",y);
-    printf("###l:%d\n",l);
-    printf("###d:%d\n",d);
-    printf("###r:%d\n",r);
-    for(int k=0;k<si;k++){
-      printf("###i:%d\n",k);
-      printf("###aB[k]:%d\n",aB[k]);
-    }
+    // printf("methodstart:backtrack1\n");
+    // printf("###y:%d\n",y);
+    // printf("###l:%d\n",l);
+    // printf("###d:%d\n",d);
+    // printf("###r:%d\n",r);
+    // for(int k=0;k<si;k++){
+    //   printf("###i:%d\n",k);
+    //   printf("###aB[k]:%d\n",aB[k]);
+    // }
     if(rflg_1==0){
       bm=msk&~(l|d|r); /* 配置可能フィールド */
     }
     if (y==si&&rflg_1==0) {
-      printf("if(y==si){\n");
+      // printf("if(y==si){\n");
       if(!bm){
         aB[y]=bm;
         symmetryOps_bm(si);
       }
     }else{
-      printf("}else{#y==si\n");
+      // printf("}else{#y==si\n");
       while(bm|| rflg_1==1) {
-        printf("while(bm){\n");
+        // printf("while(bm){\n");
         if(rflg_1==0){
           bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
-          printf("beforebitmap\n");
-          printf("###y:%d\n",y);
-          printf("###l:%d\n",l);
-          printf("###d:%d\n",d);
-          printf("###r:%d\n",r);
-          printf("###bm:%d\n",bm);
-          for(int k=0;k<si;k++){
-            printf("###i:%d\n",k);
-            printf("###aB[k]:%d\n",aB[k]);
-          }
+          // printf("beforebitmap\n");
+          // printf("###y:%d\n",y);
+          // printf("###l:%d\n",l);
+          // printf("###d:%d\n",d);
+          // printf("###r:%d\n",r);
+          // printf("###bm:%d\n",bm);
+          // for(int k=0;k<si;k++){
+          //   printf("###i:%d\n",k);
+          //   printf("###aB[k]:%d\n",aB[k]);
+          // }
           if(stParam_1.current<MAX){
             stParam_1.param[stParam_1.current].Y=y;
             stParam_1.param[stParam_1.current].I=si;
@@ -390,64 +390,69 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
         d=stParam_1.param[stParam_1.current].D;
         r=stParam_1.param[stParam_1.current].R;
         bm=stParam_1.param[stParam_1.current].B;
-        printf("afterbitmap\n");
-        printf("###y:%d\n",y);
-        printf("###l:%d\n",l);
-        printf("###d:%d\n",d);
-        printf("###r:%d\n",r);
-        printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
-          printf("###i:%d\n",k);
-          printf("###aB[k]:%d\n",aB[k]);
-        }
+        // printf("afterbitmap\n");
+        // printf("###y:%d\n",y);
+        // printf("###l:%d\n",l);
+        // printf("###d:%d\n",d);
+        // printf("###r:%d\n",r);
+        // printf("###bm:%d\n",bm);
+        // for(int k=0;k<si;k++){
+        //   printf("###i:%d\n",k);
+        //   printf("###aB[k]:%d\n",aB[k]);
+        // }
           rflg_1=0;
         }
       }
-      printf("}:end while(bm){\n");
+      // printf("}:end while(bm){\n");
       if(bend_1==1 && rflg_1==0){
         bend_1=0;
         continue;
       }
     } 
-    printf("}:end else\n");
+    // printf("}:end else\n");
     if(y==2){
       break;
     }else{
-      printf("gotoreturn\n");
+      // printf("gotoreturn\n");
       //goto ret;
       rflg_1=1;
     }
   }
 }
-void NQueen(int si,int msk){
+void NQueen(int si,int B1,int B2,int msk){
   int bit;
-  TOPBIT=1<<(si-1);
+
   aB[0]=1;
-  for(BOUND1=2;BOUND1<si-1;BOUND1++){
-    aB[1]=bit=(1<<BOUND1);
-    backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
-  }
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  for(BOUND1=1,BOUND2=si-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aB[0]=bit=(1<<BOUND1);
-    backTrack2(si,msk,1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
+  if(B1==0){
+    for(BOUND1=2;BOUND1<si-1;BOUND1++){
+      aB[1]=bit=(1<<BOUND1);
+      backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
+    }
+  } else{
+    BOUND1=B1;
+    BOUND2=B2;
+    if(BOUND1<BOUND2){
+      aB[0]=bit=(1<<BOUND1);
+      backTrack2(si,msk,1,bit<<1,bit,bit>>1);
+    }
   }
 }
 int main(void){
   clock_t st; char t[20];
   int min=8;int msk;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  for(int i=min;i<=MAX;i++){
+  for(int si=min;si<=MAX;si++){
     Total=0;Unique=0;C2=C4=C8=0;
-    for(int j=0;j<i;j++){ aB[j]=j; }
-    msk=(1<<i)-1; // 初期化
+    for(int j=0;j<si;j++){ aB[j]=j; }
     st=clock();
-    NQueen(i,msk);
+
+    int msk=(1<<si)-1; // 初期化
+    for(int BOUND1=0,BOUND2=si-2;BOUND1<si;BOUND1++,BOUND2--){
+      NQueen(si,BOUND1,BOUND2,msk);
+    }
+
     TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+    printf("%2d:%13ld%16ld%s\n",si,getTotal(),getUnique(),t);
   } 
   return 0;
 }

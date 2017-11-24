@@ -1,13 +1,11 @@
 /**
 
-   43. ビットマップ(07_07GPU版)
+   43. GPU ビットマップ(07_07GPU版)
 
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
    $ ./07_43NQueen 
-
-07_44 
 
 07_43
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -70,14 +68,14 @@
 #else
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
-#define PROGRAM_FILE "./07_43queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_44queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1
 
 cl_int status;
 cl_device_id *devices;
@@ -130,10 +128,12 @@ struct queenState {
   int d;
   int r;
   int bm;
+  int BOUND1;
+  int BOUND2;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX];
-struct queenState inProgress[1]; //Single
+struct queenState inProgress[MAX]; //Single
 
 
 /**
@@ -388,43 +388,44 @@ int createKernel(){
  * バッファをキャッシュすることを許可する。
  * size    割り当てられたバッファメモリオブジェクトのバイトサイズ
  * host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
- * errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
 int makeInProgress(int si){
-  //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){ //Single
+  //for(int i=0,j=si-2;i<si;i++,j--){
+  for(int i=0;i<si;i++){ //Single
     inProgress[i].si=si;
-    inProgress[i].id=i;
-    for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
-    inProgress[i].lTotal=0;
-    inProgress[i].lUnique=0;
-    inProgress[i].step=0;
-    inProgress[i].y=0;
-    inProgress[i].bend=0;
-    inProgress[i].rflg=0;
-    for (int m=0;m<si;m++){ 
-//      inProgress[i].fA[m]=0;
-//      inProgress[i].fB[m]=0;
-//      inProgress[i].fC[m]=0;
-      inProgress[i].aT[m]=0;
-      inProgress[i].aS[m]=0;
-    }
-    for (int m=0;m<si;m++){ 
-      inProgress[i].stParam.param[m].Y=0;
-      inProgress[i].stParam.param[m].I=si;
-      inProgress[i].stParam.param[m].M=0;
-      inProgress[i].stParam.param[m].L=0;
-      inProgress[i].stParam.param[m].D=0;
-      inProgress[i].stParam.param[m].R=0;
-      inProgress[i].stParam.param[m].B=0;
-    }
-    inProgress[i].stParam.current=0;
-    inProgress[i].msk=(1<<si)-1;
-    // printf("inProgress[i].msk%d\n",inProgress[i].msk);
-    inProgress[i].l=0;
-    inProgress[i].d=0;
-    inProgress[i].r=0;
-    inProgress[i].bm=0;
+//     inProgress[i].id=i;
+//     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
+//     inProgress[i].lTotal=0;
+//     inProgress[i].lUnique=0;
+//     inProgress[i].step=0;
+//     inProgress[i].y=0;
+//     inProgress[i].bend=0;
+//     inProgress[i].rflg=0;
+//     for (int m=0;m<si;m++){ 
+// //      inProgress[i].fA[m]=0;
+// //      inProgress[i].fB[m]=0;
+// //      inProgress[i].fC[m]=0;
+//       inProgress[i].aT[m]=0;
+//       inProgress[i].aS[m]=0;
+//     }
+//     for (int m=0;m<si;m++){ 
+//       inProgress[i].stParam.param[m].Y=0;
+//       inProgress[i].stParam.param[m].I=si;
+//       inProgress[i].stParam.param[m].M=0;
+//       inProgress[i].stParam.param[m].L=0;
+//       inProgress[i].stParam.param[m].D=0;
+//       inProgress[i].stParam.param[m].R=0;
+//       inProgress[i].stParam.param[m].B=0;
+//     }
+//     inProgress[i].stParam.current=0;
+//     inProgress[i].msk=(1<<si)-1;
+//     // printf("inProgress[i].msk%d\n",inProgress[i].msk);
+//     inProgress[i].l=0;
+//     inProgress[i].d=0;
+//     inProgress[i].r=0;
+//     inProgress[i].bm=0;
+//     inProgress[i].BOUND1=i;
+    // inProgress[i].BOUND2=j;
 
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -437,7 +438,7 @@ int makeInProgress(int si){
   /**
    *
    */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
+	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),inProgress,0,NULL,NULL); 
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
   /**
    *
@@ -466,24 +467,26 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   //while(!all_tasks_done(si)){
-  while(!all_tasks_done(1)){ //Single
+  while(!all_tasks_done(si)){ //Single
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
-    size_t globalWorkSize[] = {1}; //Single
-    size_t localWorkSize[] = {1};  //Single
-//    size_t localWorkSize=si;
-//    size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
+    //size_t globalWorkSize[] = {si}; //Single
+    size_t globalWorkSize=si; //Single
+    // size_t localWorkSize[] = {si};  //Single
+   // size_t localWorkSize=si;
+   // size_t globalWorkSize=((si+localWorkSize-1)/localWorkSize)*localWorkSize;
 
-    status = clGetKernelWorkGroupInfo(kernel, devices[1], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
-    if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
+   // status = clGetKernelWorkGroupInfo(kernel, devices[0], CL_KERNEL_WORK_GROUP_SIZE, sizeof(localWorkSize), &localWorkSize, NULL);
+    // if(USE_DEBUG>0) if (status != CL_SUCCESS){ printf("Error: Failed to retrieve kernel work group info!\n");return 16; }
 		status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
         dim,               //work sizeの次元
         //global_work_offset,//NULLを指定すること
         NULL,//NULLを指定すること
-        globalWorkSize,    //ワークアイテムの総数
-        localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
+        &globalWorkSize,    //ワークアイテムの総数
+        // localWorkSize,     //ワークアイテムを分割する場合チルドアイテム数
+        NULL,     //ワークアイテムを分割する場合チルドアイテム数
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
@@ -510,7 +513,7 @@ int execKernel(int si){
  */
 int execPrint(int si){
   //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){ // Single
+  for(int i=0;i<si;i++){ // Single
     if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
     lGTotal+=inProgress[i].lTotal;
     lGUnique+=inProgress[i].lUnique;

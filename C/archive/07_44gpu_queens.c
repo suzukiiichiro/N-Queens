@@ -1,13 +1,11 @@
 /**
 
-   43. ビットマップ(07_07GPU版)
+   43. GPU ビットマップ(07_07GPU版)
 
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
    $ ./07_43NQueen 
-
-07_44 
 
 07_43
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -38,7 +36,7 @@
 07_41
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
+ 5:                10                 2         00:00:00:00.00
  6:                 4                 1          00:00:00:00.00
  7:                40                 6          00:00:00:00.00
  8:                92                12          00:00:00:00.02
@@ -70,7 +68,10 @@
 #else
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
-#define PROGRAM_FILE "./07_43queen_kernel.c" //カーネルソースコード
+
+#define PROGRAM_FILE "./07_44queen_kernel.c" //カーネルソースコード
+//#define PROGRAM_FILE "/Users/suzukiiichiro/GoogleDrive/GitHub/N-Queens/C/07_43queen_kernel.c" //カーネルソースコード
+
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
