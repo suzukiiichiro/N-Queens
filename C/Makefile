@@ -10,6 +10,8 @@ LDFLAGS=-L/usr/lib64
 endif
 
 ifeq ($(OS),Darwin)
+CFLAGS=-Wall -W -O3 -std=c99 -lm
+FUNCTION=-framework OpenCL
 #clang
 #CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
 #LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
@@ -41,8 +43,6 @@ LDFLAGS=-L/usr/local/opt/llvm/include
 #CC=/usr/local/Cellar/gcc\@4.9/4.9.4/bin/gcc-4.9
 #LDFLAGS=-L/usr/local/Cellar/gcc\@4.9/4.9.4/lib
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@4.9/4.9.4/include
-CFLAGS=-Wall -W -O3 -std=c99 -lm
-FUNCTION=-framework OpenCL
 endif
 RM=rm -fr
 

@@ -32,13 +32,13 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_43queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_45queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1
+#define USE_DEBUG 0
 //
 //#define SPREAD 1024
 //
@@ -66,19 +66,6 @@ uint64_t lGUnique;
 typedef int64_t qint;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
-struct HIKISU{
-  int Y;
-  int I;
-  int M;
-  int L;
-  int D;
-  int R;
-  int B;
-};
-struct STACK{
-  struct HIKISU param[MAX];
-  int current ;
-};
 struct queenState {
   //int BOUND1;
 //  qint BOUND1;
@@ -91,30 +78,19 @@ struct queenState {
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  long lUnique;
   //int step;
   char step;
   //int y;
   char y;
-  int bend;
-  int rflg;
-  qint aT[MAX];        //aT:aTrial[]
-  qint aS[MAX];        //aS:aScrath[]
-  struct STACK stParam;
-  int msk;
-  int l;
-  int d;
-  int r;
-  int bm;
   //int startCol; // First column this individual computation was tasked with filling.
-//  char startCol; // First column this individual computation was tasked with filling.
+  char startCol; // First column this individual computation was tasked with filling.
   //int bm;
-//  qint bm;
+  qint bm;
   //long down;
-//  qint down;
+  qint down;
   //long right;
-//  qint right;
-//  qint left;
+  qint right;
+  qint left;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX*MAX*MAX];
@@ -414,41 +390,15 @@ int makeInProgress(int si){
         inProgress[i].id=i;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
-    inProgress[i].lUnique=0;
         inProgress[i].step=0;
         inProgress[i].y=0;
-    inProgress[i].bend=0;
-    inProgress[i].rflg=0;
-    for (int m=0;m<si;m++){ 
-//      inProgress[i].fA[m]=0;
-//      inProgress[i].fB[m]=0;
-//      inProgress[i].fC[m]=0;
-      inProgress[i].aT[m]=0;
-      inProgress[i].aS[m]=0;
-    }
-    for (int m=0;m<si;m++){ 
-      inProgress[i].stParam.param[m].Y=0;
-      inProgress[i].stParam.param[m].I=si;
-      inProgress[i].stParam.param[m].M=0;
-      inProgress[i].stParam.param[m].L=0;
-      inProgress[i].stParam.param[m].D=0;
-      inProgress[i].stParam.param[m].R=0;
-      inProgress[i].stParam.param[m].B=0;
-    }
-    //    inProgress[i].startCol =0;
-//        inProgress[i].bm= (1 << si) - 1;
-//        inProgress[i].down=0;
-//        inProgress[i].right=0;
-//        inProgress[i].left=0;
+        inProgress[i].startCol =0;
+        inProgress[i].bm= (1 << si) - 1;
+        inProgress[i].down=0;
+        inProgress[i].right=0;
+        inProgress[i].left=0;
   //    }
   //  }
-    inProgress[i].stParam.current=0;
-    inProgress[i].msk=(1<<si)-1;
-    // printf("inProgress[i].msk%d\n",inProgress[i].msk);
-    inProgress[i].l=0;
-    inProgress[i].d=0;
-    inProgress[i].r=0;
-    inProgress[i].bm=0;
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
