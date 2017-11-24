@@ -46,6 +46,10 @@ FUNCTION=-framework OpenCL
 endif
 RM=rm -fr
 
+nq45=07_45NQueen
+nq45: 07_45gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq45) 07_45gpu_queens.c 
+
 nq44=07_44NQueen
 nq44: 07_44gpu_queens.c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq44) 07_44gpu_queens.c 
