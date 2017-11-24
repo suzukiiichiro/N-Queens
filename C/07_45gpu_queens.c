@@ -95,60 +95,6 @@ struct queenState {
 
 //struct queenState inProgress[MAX*MAX*MAX];
 struct queenState inProgress[1]; //single
-
-/**
- * カーネルコードの読み込み
- */
-//void get_queens_code(char **buffer,int si){
-void get_queens_code(char **buffer){
-  char prefix[256];
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
-  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
-  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
-  long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
-  // Replace BOM with space
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
-}
-/**
-  プラットフォーム一覧を取得
-  現在利用可能なOpenCLのプラットフォームの情報を取得
-  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
-  numEntries:追加可能なエントリーの数
-  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
-  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
-  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
-*/
-int getPlatform(){
-	char value[BUFFER_SIZE];
-	size_t size;
-  cl_int status;
-  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform ID.");
-    return 1; 
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 2; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 3; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
-  }
-  return 0;
-}
 /*
   デバイス一覧を取得
   clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
@@ -216,6 +162,59 @@ int getDeviceID(){
       if(USE_DEBUG>0) printf("  CL_DEVICE_MAX_COMPUTE_UNITS:%d\n",units);
     }
 	}
+  return 0;
+}
+/**
+ * カーネルコードの読み込み
+ */
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
+  char prefix[256];
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
+  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  FILE * f=fopen(PROGRAM_FILE,"rb");
+  if(!f){ *buffer=NULL;return;}
+  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
+  long totalLength=prefixLength + fileLength + 1;
+  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  // Replace BOM with space
+  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+}
+/**
+  プラットフォーム一覧を取得
+  現在利用可能なOpenCLのプラットフォームの情報を取得
+  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
+  numEntries:追加可能なエントリーの数
+  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
+  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
+  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
+*/
+int getPlatform(){
+	char value[BUFFER_SIZE];
+	size_t size;
+  cl_int status;
+  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform ID.");
+    return 1; 
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 2; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 3; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+  }
   return 0;
 }
 /**

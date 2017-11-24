@@ -2,11 +2,13 @@
 
 OS=${shell uname}
 ifeq ($(OS),Linux)
-CC=/usr/bin/clang
-CFLAGS=-W -Wall -O3 -std=c99 -lm
+#CC=/usr/bin/clang
+CC=gcc
+CFLAGS=-W -Wall -O3 -std=c99 -lm -lpthread
 FUNCTION=`pkg-config --libs --cflags OpenCL`
 CPPFLAGS=-I/usr/include/CL
-LDFLAGS=-L/usr/lib64
+#LDFLAGS=-L/usr/lib64 -L/usr/lib64/libOpenCL.so -L/usr/lib
+LDFLAGS=-L/usr/lib64 -L/usr/lib64/libOpenCL.so
 endif
 
 ifeq ($(OS),Darwin)
