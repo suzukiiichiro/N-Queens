@@ -1,6 +1,6 @@
 /**
 
-   37. GPU ３段スレッド(si*si*si)       NQueen37() N17= 00:35.33 N18=
+   45. GPU シングル最終盤
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_37NQueen 07_37gpu_queens.c -framework OpenCL
