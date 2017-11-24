@@ -32,7 +32,7 @@
 
 #define MAX 27  
 //
-struct HIKISU{
+struct CL_PACKED_KEYWORD HIKISU{
   int Y;
   int I;
 };
@@ -46,7 +46,9 @@ struct CL_PACKED_KEYWORD queenState {
   int si;
   int id;
   qint aB[MAX];
-  uint64_t lTotal;
+  //uint64_t lTotal;
+  long lTotal;
+  //uint64_t lTotal;
   char step;
   char y;
   int bend;
@@ -56,7 +58,8 @@ struct CL_PACKED_KEYWORD queenState {
   int fC[MAX];
   struct STACK stParam;
 };
-void push(struct STACK *pStack,int I,int Y){
+/**
+CL_KERNEL_KEYWORD void push(CL_GLOBAL_KEYWORD struct STACK *pStack,int I,int Y){
   if(pStack->current<MAX){
     pStack->param[pStack->current].I=I;
     pStack->param[pStack->current].Y=Y;
@@ -64,20 +67,20 @@ void push(struct STACK *pStack,int I,int Y){
   }
 }
 //
-void pop(struct STACK *pStack){
+CL_KERNEL_KEYWORD void pop(CL_GLOBAL_KEYWORD struct STACK *pStack){
   if(pStack->current>0){
     pStack->current--;
   }
 }
+*/
 //
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   struct queenState s ;
   s.si=state[index].si;
   s.id=state[index].id;
-  for (int j=0;j<s.si;j++){
+  for (int j=0;j<s.si;j++)
     s.aB[j]=state[index].aB[j];
-  }
   s.lTotal=state[index].lTotal;
   s.step=state[index].step;
   s.y=state[index].y;
@@ -90,9 +93,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   s.stParam=state[index].stParam;
 
-  //uint16_t j=1;
+  uint16_t j=1;
+  // uint64_t j=1;
   //unsigned long j=1;
-  unsigned long j=1;
+  //unsigned long j=1;
 
   //while (j!=0) {
   //while (1) {
@@ -107,13 +111,21 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         if((s.fA[i]==0&&s.fB[s.y-i+(s.si-1)]==0&&s.fC[s.y+i]==0) || s.rflg==1){
           if(s.rflg==0){
             s.fA[i]=s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=1; 
-            push(&s.stParam,i,s.y); 
+            // push(&s.stParam,i,s.y); 
+  if(s.stParam.current<MAX){
+    s.stParam.param[s.stParam.current].I=i;
+    s.stParam.param[s.stParam.current].Y=s.y;
+    (s.stParam.current)++;
+  }
             s.y=s.y+1;
             s.bend=1;
             break;
           }
           if(s.rflg==1){
-            pop(&s.stParam);
+            // pop(&s.stParam);
+  if(s.stParam.current>0){
+    s.stParam.current--;
+  }
             s.y=s.stParam.param[s.stParam.current].Y;
             i=s.stParam.param[s.stParam.current].I;
             s.fA[i]=s.fB[s.y-s.aB[s.y]+s.si-1]=s.fC[s.y+s.aB[s.y]]=0; 
@@ -138,9 +150,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   state[index].si=s.si;
   state[index].id=s.id;
-  for (int j=0;j<s.si;j++){
-    state[index].aB[j] = s.aB[j];
-  }
+  for (int j=0;j<s.si;j++)
+    state[index].aB[j]=s.aB[j];
   state[index].lTotal=s.lTotal;
   state[index].step=s.step;
   state[index].y=s.y;
