@@ -512,8 +512,8 @@ int all_tasks_done(int32_t num_tasks,int si) {
 		//if (inProgress[i].step != 2)
 			//return 0;
 	//return 1;
-	printf("step:%d\n",inProgress[0].step);
-	printf("BOUND1:%d\n",inProgress[0].BOUND1);
+//	printf("step:%d\n",inProgress[0].step);
+//	printf("BOUND1:%d\n",inProgress[0].BOUND1);
 	if(inProgress[0].step==2 && inProgress[0].BOUND1==si){
     return 1;
   }else{

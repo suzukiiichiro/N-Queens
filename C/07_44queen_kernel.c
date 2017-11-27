@@ -91,7 +91,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   s.lTotal=state[index].lTotal;
   s.lUnique=state[index].lUnique;
-  s.step=state[index].step;
+  //s.step=state[index].step;
+  s.step=0;
   s.y=state[index].y;
   s.bend=state[index].bend;
   s.rflg=state[index].rflg;
