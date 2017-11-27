@@ -106,9 +106,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   // barrier(CLK_LOCAL_MEM_FENCE);
   //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
   while(1){
-    printf("BOUND1:%d\n",s.BOUND1);
-    printf("BOUND2:%d\n",s.BOUND2);
-    if(s.BOUND1<s.si){
+  //  printf("BOUND1:%d\n",s.BOUND1);
+  //  printf("BOUND2:%d\n",s.BOUND2);
+    if(s.BOUND1==s.si){
       break;
     }
     int bit;
@@ -171,9 +171,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           } 
           if(s.y==2){
             s.step=2;
-            printf("00000\n");
-            s.BOUND1=s.BOUND1+1;
-            s.BOUND2=s.BOUND2-1;
             break;
           }else{
             s.rflg=1;
@@ -248,9 +245,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           } 
           if(s.y==1){
             s.step=2;
-            printf("00000\n");
-            s.BOUND1=s.BOUND1+1;
-            s.BOUND2=s.BOUND2-1;
             break;
           }else{
             s.rflg=1;
@@ -259,7 +253,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         } // end while
       }
     }
-    printf("00000\n");
     s.BOUND1=s.BOUND1+1;
     s.BOUND2=s.BOUND2-1;
   }
