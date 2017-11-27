@@ -50,7 +50,8 @@ CL_PACKED_KEYWORD struct STACK {
 //
 CL_PACKED_KEYWORD struct queenState {
   int si;
-  int id;
+  //int id;
+  int B1;
   int BOUND1;
   int BOUND2;
   qint aB[MAX];
@@ -72,15 +73,14 @@ CL_PACKED_KEYWORD struct queenState {
 int rh(int a,int sz);
 int intncmp(qint lt[],qint rt[],int si);
 int symmetryOps_bm(struct queenState *s);
-void backTrack2(struct queenState *s,int bm);
-void backTrack1(struct queenState *s,int bm);
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   // printf("index:%d\n",index);
   struct queenState s ;
   s.si=state[index].si;
-  s.id=state[index].id;
+  //s.id=state[index].id;
+  s.B1=state[index].B1;
   s.BOUND1=state[index].BOUND1;
   s.BOUND2=state[index].BOUND2;
   for (int j=0;j<s.si;j++){
@@ -105,9 +105,14 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //----
   // barrier(CLK_LOCAL_MEM_FENCE);
   //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
+  int bflg=0;
   while(1){
+    if(bflg==1){
+      break;
+    }
   //  printf("BOUND1:%d\n",s.BOUND1);
   //  printf("BOUND2:%d\n",s.BOUND2);
+    //printf("B1:%d\n",s.B1);
     if(s.BOUND1==s.si){
       break;
     }
@@ -115,11 +120,19 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.aB[0]=1;
     if(s.BOUND1==0){
       for(int B1=2;B1<s.si-1;B1++){
+        if(bflg==1){
+          break;
+        }
         s.aB[1]=bit=(1<<B1);
         s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
         // backTrack1(&s,s.bm);
         unsigned long j=1;
-        while (j<200000) {
+        //while (j<200000) {
+        while (1) {
+          if(j==200000){
+            bflg=1;
+            break;
+          }
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
@@ -193,7 +206,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         //
         // Backtrack1 
         unsigned long j=1;
-        while (j<200000) {
+        while (1) {
+          if(j==200000){
+            bflg=1;
+            break;
+          }
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
@@ -258,7 +275,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }
   //----
   state[index].si=s.si;
-  state[index].id=s.id;
+  //state[index].id=s.id;
+  state[index].B1=s.B1;
   state[index].BOUND1=s.BOUND1;
   state[index].BOUND2=s.BOUND2;
   for (int j=0;j<s.si;j++){

@@ -87,7 +87,8 @@ struct queenState {
   //int BOUND3;
 //  qint BOUND3;
   int si;
-  int id;
+  //int id;
+  int B1;
   int BOUND1;
   int BOUND2;
   //int aB[MAX];
@@ -395,7 +396,8 @@ int makeInProgress(int si){
   cl_int status;
   for(int i=0;i<1;i++){ //single
         inProgress[i].si=si;
-        inProgress[i].id=i;
+        //inProgress[i].id=i;
+        inProgress[i].B1=2;
         inProgress[i].BOUND1=0;
         inProgress[i].BOUND2=si-2;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
@@ -562,7 +564,8 @@ int execPrint(int si){
 //    for(int j=0;j<si;j++){
 //      for(int k=0;k<si;k++){
 //          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
-          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+          //if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+          if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
 //        }
 //      }
