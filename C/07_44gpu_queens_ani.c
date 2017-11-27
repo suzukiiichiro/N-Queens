@@ -403,6 +403,8 @@ int makeInProgress(int si){
         inProgress[i].lUnique=0;
         inProgress[i].step=0;
         inProgress[i].y=0;
+        inProgress[i].bend=0;
+        inProgress[i].rflg=0;
     for (int m=0;m<si;m++){ 
       inProgress[i].aT[m]=0;
       inProgress[i].aS[m]=0;
