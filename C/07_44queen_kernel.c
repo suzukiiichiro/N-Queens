@@ -50,7 +50,10 @@ CL_PACKED_KEYWORD struct STACK {
 //
 CL_PACKED_KEYWORD struct queenState {
   int si;
-  int id;
+  //int id;
+  int B1;
+  int BOUND1;
+  int BOUND2;
   qint aB[MAX];
   long lTotal;
   long lUnique; // Number of solutinos found so far.
@@ -66,21 +69,23 @@ CL_PACKED_KEYWORD struct queenState {
   int d;
   int r;
   int bm;
-  int bit;
-  int BOUND1;
 };
 int rh(int a,int sz);
 int intncmp(qint lt[],qint rt[],int si);
 int symmetryOps_bm(struct queenState *s);
-void backTrack2(struct queenState *s,int bm);
-void backTrack1(struct queenState *s,int bm);
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   // printf("index:%d\n",index);
   struct queenState s ;
-  s.id=state[index].id;
   s.si=state[index].si;
+  //s.id=state[index].id;
+  s.B1=state[index].B1;
+  s.BOUND1=state[index].BOUND1;
+  s.BOUND2=state[index].BOUND2;
+  //printf("BOUND1:%d\n",s.BOUND1);
+  //printf("BOUND2:%d\n",s.BOUND2);
+  //printf("B1:%d\n",s.B1);
   for (int j=0;j<s.si;j++){
     s.aB[j]=state[index].aB[j];
   }
@@ -100,156 +105,182 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.d=state[index].d;
   s.r=state[index].r;
   s.bm=state[index].bm;
-  s.BOUND1=state[index].BOUND1;
   //----
   // barrier(CLK_LOCAL_MEM_FENCE);
-  for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
+  //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
+  int bflg=0;
+  while(1){
+    if(bflg==1){
+      s.BOUND1--;
+      s.BOUND2++;
+      break;
+    }
+
+    if(s.BOUND1==s.si){
+      break;
+    }
     int bit;
     s.aB[0]=1;
-    if(BOUND1==0){
-      for(int B1=2;B1<s.si-1;B1++){
-        s.aB[1]=bit=(1<<B1);
+    if(s.BOUND1==0){
+      //for(int B1=2;B1<s.si-1;B1++){
+      while(1){
+        //printf("B1:%d\n",s.B1);
+        if(bflg==1){
+          s.B1--;
+          break;
+        }
+        if(s.B1==s.si-1){
+          break;
+        }
+        s.aB[1]=bit=(1<<s.B1);
         s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
         // backTrack1(&s,s.bm);
-  unsigned long j=1;
-  while (j<200000) {
-    if(s.rflg==0){
-      s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-    }
-    if (s.y==s.si&&s.rflg==0) {
-      if(!s.bm){
-        s.aB[s.y]=s.bm;
-        int sum=symmetryOps_bm(&s);
-        if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-      }
-    }else{
-      while(s.bm|| s.rflg==1) {
-        if(s.rflg==0){
-          s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-          if(s.stParam.current<MAX){
-            s.stParam.param[s.stParam.current].Y=s.y;
-            s.stParam.param[s.stParam.current].I=s.si;
-            s.stParam.param[s.stParam.current].M=s.msk;
-            s.stParam.param[s.stParam.current].L=s.l;
-            s.stParam.param[s.stParam.current].D=s.d;
-            s.stParam.param[s.stParam.current].R=s.r;
-            s.stParam.param[s.stParam.current].B=s.bm;
-            (s.stParam.current)++;
+        unsigned long j=1;
+        //while (j<200000) {
+        while (1) {
+          if(j==100000){
+            bflg=1;
+            break;
           }
-          s.y++;
-          s.l=(s.l|bit)<<1;
-          s.d=(s.d|bit);
-          s.r=(s.r|bit)>>1;
-          s.bend=1;
-          break;
+          if(s.rflg==0){
+            s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
+          }
+          if (s.y==s.si&&s.rflg==0) {
+            if(!s.bm){
+              s.aB[s.y]=s.bm;
+              int sum=symmetryOps_bm(&s);
+              if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+            }
+          }else{
+            while(s.bm|| s.rflg==1) {
+              if(s.rflg==0){
+                s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+                if(s.stParam.current<MAX){
+                  s.stParam.param[s.stParam.current].Y=s.y;
+                  s.stParam.param[s.stParam.current].I=s.si;
+                  s.stParam.param[s.stParam.current].M=s.msk;
+                  s.stParam.param[s.stParam.current].L=s.l;
+                  s.stParam.param[s.stParam.current].D=s.d;
+                  s.stParam.param[s.stParam.current].R=s.r;
+                  s.stParam.param[s.stParam.current].B=s.bm;
+                  (s.stParam.current)++;
+                }
+                s.y++;
+                s.l=(s.l|bit)<<1;
+                s.d=(s.d|bit);
+                s.r=(s.r|bit)>>1;
+                s.bend=1;
+                break;
+              }
+              if(s.rflg==1){ 
+                if(s.stParam.current>0){
+                  s.stParam.current--;
+                }
+                s.si=s.stParam.param[s.stParam.current].I;
+                s.y=s.stParam.param[s.stParam.current].Y;
+                s.msk=s.stParam.param[s.stParam.current].M;
+                s.l=s.stParam.param[s.stParam.current].L;
+                s.d=s.stParam.param[s.stParam.current].D;
+                s.r=s.stParam.param[s.stParam.current].R;
+                s.bm=s.stParam.param[s.stParam.current].B;
+                s.rflg=0;
+              }
+            }
+            if(s.bend==1 && s.rflg==0){
+              s.bend=0;
+              continue;
+            }
+          } 
+          if(s.y==2){
+            s.step=2;
+            break;
+          }else{
+            s.rflg=1;
+          }
+          j++;
         }
-        if(s.rflg==1){ 
-        if(s.stParam.current>0){
-          s.stParam.current--;
-        }
-        s.si=s.stParam.param[s.stParam.current].I;
-        s.y=s.stParam.param[s.stParam.current].Y;
-        s.msk=s.stParam.param[s.stParam.current].M;
-        s.l=s.stParam.param[s.stParam.current].L;
-        s.d=s.stParam.param[s.stParam.current].D;
-        s.r=s.stParam.param[s.stParam.current].R;
-        s.bm=s.stParam.param[s.stParam.current].B;
-          s.rflg=0;
-        }
-      }
-      if(s.bend==1 && s.rflg==0){
-        s.bend=0;
-        continue;
-      }
-    } 
-    if(s.y==2){
-      s.step=2;
-      break;
-    }else{
-      s.rflg=1;
-    }
-    j++;
-  }
+        s.B1=s.B1+1;
       }
     } else{
-      if(BOUND1<BOUND2){
-        s.aB[0]=bit=(1<<BOUND1);
+      if(s.BOUND1<s.BOUND2){
+        s.aB[0]=bit=(1<<s.BOUND1);
         s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
         // backTrack2(&s,s.bm);
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-  // Backtrack1 
-  unsigned long j=1;
-  while (j<200000) {
-    if(s.rflg==0){
-      s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-    }
-    if (s.y==s.si&&s.rflg==0) {
-      if(!s.bm){
-        s.aB[s.y]=s.bm;
-        int sum=symmetryOps_bm(&s);
-        if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-      }
-    }else{
-      while(s.bm|| s.rflg==1) {
-        if(s.rflg==0){
-          s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-          if(s.stParam.current<MAX){
-            s.stParam.param[s.stParam.current].Y=s.y; 
-            s.stParam.param[s.stParam.current].I=s.si;
-            s.stParam.param[s.stParam.current].M=s.msk;
-            s.stParam.param[s.stParam.current].L=s.l;
-            s.stParam.param[s.stParam.current].D=s.d;
-            s.stParam.param[s.stParam.current].R=s.r;
-            s.stParam.param[s.stParam.current].B=s.bm;
-            (s.stParam.current)++;
+        // Backtrack1 
+        unsigned long j=1;
+        while (1) {
+          if(j==100000){
+            bflg=1;
+            break;
           }
-          s.y++;
-          s.l=(s.l|bit)<<1;
-          s.d=(s.d|bit);
-          s.r=(s.r|bit)>>1;
-          s.bend=1;
-          break;
-        }
-        if(s.rflg==1){ 
-          if(s.stParam.current>0){
-            s.stParam.current--;
+          if(s.rflg==0){
+            s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
-          s.si=s.stParam.param[s.stParam.current].I;
-          s.y=s.stParam.param[s.stParam.current].Y;
-          s.msk=s.stParam.param[s.stParam.current].M;
-          s.l=s.stParam.param[s.stParam.current].L;
-          s.d=s.stParam.param[s.stParam.current].D;
-          s.r=s.stParam.param[s.stParam.current].R;
-          s.bm=s.stParam.param[s.stParam.current].B;
-          s.rflg=0;
-        }
+          if (s.y==s.si&&s.rflg==0) {
+            if(!s.bm){
+              s.aB[s.y]=s.bm;
+              int sum=symmetryOps_bm(&s);
+              if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+            }
+          }else{
+            while(s.bm|| s.rflg==1) {
+              if(s.rflg==0){
+                s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+                if(s.stParam.current<MAX){
+                  s.stParam.param[s.stParam.current].Y=s.y; 
+                  s.stParam.param[s.stParam.current].I=s.si;
+                  s.stParam.param[s.stParam.current].M=s.msk;
+                  s.stParam.param[s.stParam.current].L=s.l;
+                  s.stParam.param[s.stParam.current].D=s.d;
+                  s.stParam.param[s.stParam.current].R=s.r;
+                  s.stParam.param[s.stParam.current].B=s.bm;
+                  (s.stParam.current)++;
+                }
+                s.y++;
+                s.l=(s.l|bit)<<1;
+                s.d=(s.d|bit);
+                s.r=(s.r|bit)>>1;
+                s.bend=1;
+                break;
+              }
+              if(s.rflg==1){ 
+                if(s.stParam.current>0){
+                  s.stParam.current--;
+                }
+                s.si=s.stParam.param[s.stParam.current].I;
+                s.y=s.stParam.param[s.stParam.current].Y;
+                s.msk=s.stParam.param[s.stParam.current].M;
+                s.l=s.stParam.param[s.stParam.current].L;
+                s.d=s.stParam.param[s.stParam.current].D;
+                s.r=s.stParam.param[s.stParam.current].R;
+                s.bm=s.stParam.param[s.stParam.current].B;
+                s.rflg=0;
+              }
+            }
+            if(s.bend==1 && s.rflg==0){
+              s.bend=0;
+              continue;
+            }
+          } 
+          if(s.y==1){
+            s.step=2;
+            break;
+          }else{
+            s.rflg=1;
+          }
+          j++;
+        } // end while
       }
-      if(s.bend==1 && s.rflg==0){
-        s.bend=0;
-        continue;
-      }
-    } 
-    if(s.y==1){
-      s.step=2;
-      break;
-    }else{
-      s.rflg=1;
     }
-    j++;
-  } // end while
-      }
-    }
+    s.BOUND1=s.BOUND1+1;
+    s.BOUND2=s.BOUND2-1;
   }
   //----
-  state[index].id=s.id;
   state[index].si=s.si;
+  //state[index].id=s.id;
+  state[index].B1=s.B1;
+  state[index].BOUND1=s.BOUND1;
+  state[index].BOUND2=s.BOUND2;
   for (int j=0;j<s.si;j++){
     state[index].aB[j] = s.aB[j];
   }
@@ -269,132 +300,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   state[index].d=s.d;
   state[index].r=s.r;
   state[index].bm=s.bm;
-  state[index].BOUND1=s.BOUND1;
-}
-void backTrack2(struct queenState *state,int bm){
-  int bit;
-  unsigned long j=1;
-  while (j<200000) {
-    if(state->rflg==0){
-      state->bm=state->msk&~(state->l|state->d|state->r); /* 配置可能フィールド */
-    }
-    if (state->y==state->si&&state->rflg==0) {
-      if(!state->bm){
-        state->aB[state->y]=state->bm;
-        int sum=symmetryOps_bm(state);
-        if(sum!=0){ state->lUnique++; state->lTotal+=sum; } //解を発見
-      }
-    }else{
-      while(state->bm|| state->rflg==1) {
-        if(state->rflg==0){
-          state->bm^=state->aB[state->y]=bit=(-state->bm&state->bm); //最も下位の１ビットを抽出
-          if(state->stParam.current<MAX){
-            state->stParam.param[state->stParam.current].Y=state->y; 
-            state->stParam.param[state->stParam.current].I=state->si;
-            state->stParam.param[state->stParam.current].M=state->msk;
-            state->stParam.param[state->stParam.current].L=state->l;
-            state->stParam.param[state->stParam.current].D=state->d;
-            state->stParam.param[state->stParam.current].R=state->r;
-            state->stParam.param[state->stParam.current].B=state->bm;
-            (state->stParam.current)++;
-          }
-          state->y++;
-          state->l=(state->l|bit)<<1;
-          state->d=(state->d|bit);
-          state->r=(state->r|bit)>>1;
-          state->bend=1;
-          break;
-        }
-        if(state->rflg==1){ 
-          if(state->stParam.current>0){
-            state->stParam.current--;
-          }
-          state->si=state->stParam.param[state->stParam.current].I;
-          state->y=state->stParam.param[state->stParam.current].Y;
-          state->msk=state->stParam.param[state->stParam.current].M;
-          state->l=state->stParam.param[state->stParam.current].L;
-          state->d=state->stParam.param[state->stParam.current].D;
-          state->r=state->stParam.param[state->stParam.current].R;
-          state->bm=state->stParam.param[state->stParam.current].B;
-          state->rflg=0;
-        }
-      }
-      if(state->bend==1 && state->rflg==0){
-        state->bend=0;
-        continue;
-      }
-    } 
-    if(state->y==1){
-      state->step=2;
-      break;
-    }else{
-      state->rflg=1;
-    }
-    j++;
-  } // end while
-}
-//void backTrack1(struct queenState *state,int bm){
-void backTrack1(struct queenState *state,int bm){
-  int bit;
-  unsigned long j=1;
-  while (j<200000) {
-    if(state->rflg==0){
-      state->bm=state->msk&~(state->l|state->d|state->r); /* 配置可能フィールド */
-    }
-    if (state->y==state->si&&state->rflg==0) {
-      if(!state->bm){
-        state->aB[state->y]=state->bm;
-        int sum=symmetryOps_bm(state);
-        if(sum!=0){ state->lUnique++; state->lTotal+=sum; } //解を発見
-      }
-    }else{
-      while(state->bm|| state->rflg==1) {
-        if(state->rflg==0){
-          state->bm^=state->aB[state->y]=bit=(-state->bm&state->bm); //最も下位の１ビットを抽出
-          if(state->stParam.current<MAX){
-            state->stParam.param[state->stParam.current].Y=state->y;
-            state->stParam.param[state->stParam.current].I=state->si;
-            state->stParam.param[state->stParam.current].M=state->msk;
-            state->stParam.param[state->stParam.current].L=state->l;
-            state->stParam.param[state->stParam.current].D=state->d;
-            state->stParam.param[state->stParam.current].R=state->r;
-            state->stParam.param[state->stParam.current].B=state->bm;
-            (state->stParam.current)++;
-          }
-          state->y++;
-          state->l=(state->l|bit)<<1;
-          state->d=(state->d|bit);
-          state->r=(state->r|bit)>>1;
-          state->bend=1;
-          break;
-        }
-        if(state->rflg==1){ 
-        if(state->stParam.current>0){
-          state->stParam.current--;
-        }
-        state->si=state->stParam.param[state->stParam.current].I;
-        state->y=state->stParam.param[state->stParam.current].Y;
-        state->msk=state->stParam.param[state->stParam.current].M;
-        state->l=state->stParam.param[state->stParam.current].L;
-        state->d=state->stParam.param[state->stParam.current].D;
-        state->r=state->stParam.param[state->stParam.current].R;
-        state->bm=state->stParam.param[state->stParam.current].B;
-          state->rflg=0;
-        }
-      }
-      if(state->bend==1 && state->rflg==0){
-        state->bend=0;
-        continue;
-      }
-    } 
-    if(state->y==2){
-      state->step=2;
-      break;
-    }else{
-      state->rflg=1;
-    }
-    j++;
-  }
 }
 int rh(int a,int sz){
   int tmp=0;

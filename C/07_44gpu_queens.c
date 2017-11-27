@@ -87,7 +87,8 @@ struct queenState {
   //int BOUND3;
 //  qint BOUND3;
   int si;
-  int id;
+  //int id;
+  int B1;
   int BOUND1;
   int BOUND2;
   //int aB[MAX];
@@ -395,7 +396,8 @@ int makeInProgress(int si){
   cl_int status;
   for(int i=0;i<1;i++){ //single
         inProgress[i].si=si;
-        inProgress[i].id=i;
+        //inProgress[i].id=i;
+        inProgress[i].B1=2;
         inProgress[i].BOUND1=0;
         inProgress[i].BOUND2=si-2;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
@@ -403,6 +405,8 @@ int makeInProgress(int si){
         inProgress[i].lUnique=0;
         inProgress[i].step=0;
         inProgress[i].y=0;
+        inProgress[i].bend=0;
+        inProgress[i].rflg=0;
     for (int m=0;m<si;m++){ 
       inProgress[i].aT[m]=0;
       inProgress[i].aS[m]=0;
@@ -502,12 +506,19 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
-int all_tasks_done(int32_t num_tasks) {
-	for (int i = 0;i<num_tasks;i++)
+int all_tasks_done(int32_t num_tasks,int si) {
+	//for (int i = 0;i<num_tasks;i++)
 		//if (tasks[i].step != 2)
-		if (inProgress[i].step != 2)
-			return 0;
-	return 1;
+		//if (inProgress[i].step != 2)
+			//return 0;
+	//return 1;
+	printf("step:%d\n",inProgress[0].step);
+	printf("BOUND1:%d\n",inProgress[0].BOUND1);
+	if(inProgress[0].step==2 && inProgress[0].BOUND1==si){
+    return 1;
+  }else{
+    return 0;
+  }
 }
 /**
   カーネルの実行 
@@ -520,7 +531,7 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
   //while(!all_tasks_done(si*si*si)){
-  while(!all_tasks_done(1)){ //single
+  while(!all_tasks_done(1,si)){ //single
 
     //size_t dim=1;
     cl_uint dim=1;
@@ -560,8 +571,10 @@ int execPrint(int si){
 //    for(int j=0;j<si;j++){
 //      for(int k=0;k<si;k++){
 //          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
-          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+          //if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+          if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
+          lGUnique+=inProgress[i].lUnique;
 //        }
 //      }
     }
