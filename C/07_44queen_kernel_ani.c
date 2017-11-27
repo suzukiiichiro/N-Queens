@@ -83,6 +83,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.B1=state[index].B1;
   s.BOUND1=state[index].BOUND1;
   s.BOUND2=state[index].BOUND2;
+  printf("BOUND1:%d\n",s.BOUND1);
+  printf("BOUND2:%d\n",s.BOUND2);
+  printf("B1:%d\n",s.B1);
   for (int j=0;j<s.si;j++){
     s.aB[j]=state[index].aB[j];
   }
@@ -110,20 +113,22 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     if(bflg==1){
       break;
     }
-  //  printf("BOUND1:%d\n",s.BOUND1);
-  //  printf("BOUND2:%d\n",s.BOUND2);
-    //printf("B1:%d\n",s.B1);
     if(s.BOUND1==s.si){
       break;
     }
     int bit;
     s.aB[0]=1;
     if(s.BOUND1==0){
-      for(int B1=2;B1<s.si-1;B1++){
+      //for(int B1=2;B1<s.si-1;B1++){
+      while(1){
+        //printf("B1:%d\n",s.B1);
         if(bflg==1){
           break;
         }
-        s.aB[1]=bit=(1<<B1);
+        if(s.B1==s.si-1){
+          break;
+        }
+        s.aB[1]=bit=(1<<s.B1);
         s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
         // backTrack1(&s,s.bm);
         unsigned long j=1;
@@ -190,6 +195,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           }
           j++;
         }
+        s.B1=s.B1+1;
       }
     } else{
       if(s.BOUND1<s.BOUND2){
