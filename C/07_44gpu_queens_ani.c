@@ -567,6 +567,7 @@ int execPrint(int si){
           //if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
           if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
+          lGUnique+=inProgress[i].lUnique;
 //        }
 //      }
     }
