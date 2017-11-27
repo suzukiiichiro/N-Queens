@@ -88,6 +88,8 @@ struct queenState {
 //  qint BOUND3;
   int si;
   int id;
+  int BOUND1;
+  int BOUND2;
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
@@ -106,7 +108,6 @@ struct queenState {
   int d;
   int r;
   int bm;
-  int BOUND1;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX*MAX*MAX];
@@ -395,6 +396,8 @@ int makeInProgress(int si){
   for(int i=0;i<1;i++){ //single
         inProgress[i].si=si;
         inProgress[i].id=i;
+        inProgress[i].BOUND1=0;
+        inProgress[i].BOUND2=si-2;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
@@ -419,7 +422,6 @@ int makeInProgress(int si){
     inProgress[i].d=0;
     inProgress[i].r=0;
     inProgress[i].bm=0;
-    inProgress[i].BOUND1=0;
 
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
