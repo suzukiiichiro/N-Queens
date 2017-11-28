@@ -153,7 +153,7 @@
 #include<time.h>
 #include <math.h>
 
-#define MAX 11 
+#define MAX 15 
 
 long Total=1 ; //合計解
 long Unique=0; //ユニーク解
@@ -422,8 +422,8 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
 void NQueen(int si,int B1,int B2,int msk){
   int bit;
 
-  aB[0]=1;
   if(B1==0){
+    aB[0]=1;
     for(BOUND1=2;BOUND1<si-1;BOUND1++){
       aB[1]=bit=(1<<BOUND1);
       backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
@@ -447,7 +447,7 @@ int main(void){
     st=clock();
 
     int msk=(1<<si)-1; // 初期化
-    for(int BOUND1=0,BOUND2=si-2;BOUND1<si;BOUND1++,BOUND2--){
+    for(int BOUND1=0,BOUND2=si-1;BOUND1<si;BOUND1++,BOUND2--){
       NQueen(si,BOUND1,BOUND2,msk);
     }
 
