@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+#define GCC_STYLE
 
 #ifndef OPENCL_STYLE
   // Declarations appropriate to this program being compiled with gcc.
@@ -13,7 +13,7 @@
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 10
+#define SIZE 24
 #else
   // Declarations appropriate to this program being compiled as an OpenCL
   // kernel. OpenCL has a 64 bit long and requires special keywords to designate
@@ -401,21 +401,46 @@ int symmetryOps_bm(struct queenState *s){
 }
 #ifdef GCC_STYLE
 int main(){
-  int si=10; 
-  struct queenState l[1];
+  struct queenState inProgress[MAX];
   long gTotal=0;
-    l[0].BOUND1=i;
-    l[0].si=si;
-    for (int m=0;m< si;m++){
-      l[0].aB[m]=m;
-    }
-    l[0].step=0;
-    l[0].y=0;
-    l[0].bm=(1<<SIZE)-1;
-    l[0].lTotal=0;
-    place(&l[0]);
-    gTotal+=l[0].lTotal;
+  printf("%s\n"," N:          Total        Unique\n");
+  for(int si=4;si<14;si++){
+    for(int i=0;i<1;i++){ //single
+          inProgress[i].si=si;
+          //inProgress[i].id=i;
+          inProgress[i].B1=2;
+          inProgress[i].BOUND1=0;
+          inProgress[i].BOUND2=si-2;
+          for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
+          inProgress[i].lTotal=0;
+          inProgress[i].lUnique=0;
+          inProgress[i].step=0;
+          inProgress[i].y=0;
+          inProgress[i].bend=0;
+          inProgress[i].rflg=0;
+      for (int m=0;m<si;m++){ 
+        inProgress[i].aT[m]=0;
+        inProgress[i].aS[m]=0;
       }
+      for (int m=0;m<si;m++){ 
+        inProgress[i].stParam.param[m].Y=0;
+        inProgress[i].stParam.param[m].I=si;
+        inProgress[i].stParam.param[m].M=0;
+        inProgress[i].stParam.param[m].L=0;
+        inProgress[i].stParam.param[m].D=0;
+        inProgress[i].stParam.param[m].R=0;
+        inProgress[i].stParam.param[m].B=0;
+      }
+      inProgress[i].stParam.current=0;
+      inProgress[i].msk=(1<<si)-1;
+      inProgress[i].l=0;
+      inProgress[i].d=0;
+      inProgress[i].r=0;
+      inProgress[i].bm=0;
+      //
+      place(&inProgress[i]);
+      gTotal+=inProgress[i].lTotal;
+      printf("%2d:%18lu%18lu\n", si,inProgress[i].lTotal,inProgress[i].lUnique);
     }
   }
   return 0;
