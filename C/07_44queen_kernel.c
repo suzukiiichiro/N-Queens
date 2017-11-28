@@ -140,18 +140,23 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // backTrack1(&s,s.bm);
         unsigned long j=1;
         //while (j<200000) {
+        int sum;
         while (1) {
+#ifdef GCC_STYLE
+#else
           if(j==50000){
             bflg=1;
             break;
           }
+#endif
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
           if (s.y==s.si&&s.rflg==0) {
             if(!s.bm){
               s.aB[s.y]=s.bm;
-              int sum=symmetryOps_bm(&s);
+              //int sum=symmetryOps_bm(&s);
+              sum=symmetryOps_bm(&s);
               if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
             }
           }else{
@@ -211,18 +216,23 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // backTrack2(&s,s.bm);
         // Backtrack1 
         unsigned long j=1;
+        int sum;
         while (1) {
+#ifdef GCC_STYLE
+#else
           if(j==50000){
             bflg=1;
             break;
           }
+#endif
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
           if (s.y==s.si&&s.rflg==0) {
             if(!s.bm){
               s.aB[s.y]=s.bm;
-              int sum=symmetryOps_bm(&s);
+              //int sum=symmetryOps_bm(&s);
+              sum=symmetryOps_bm(&s);
               if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
             }
           }else{
@@ -404,7 +414,7 @@ int main(){
   struct queenState inProgress[MAX];
   long gTotal=0;
   printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<14;si++){
+  for(int si=4;si<18;si++){
     for(int i=0;i<1;i++){ //single
           inProgress[i].si=si;
           //inProgress[i].id=i;
