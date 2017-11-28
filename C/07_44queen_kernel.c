@@ -112,8 +112,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int bflg=0;
   while(1){
     if(bflg==1){
+      //printf("docomo\n");
       s.BOUND1--;
       s.BOUND2++;
+      s.step=0;
       break;
     }
 
@@ -139,7 +141,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         unsigned long j=1;
         //while (j<200000) {
         while (1) {
-          if(j==100000){
+          if(j==50000){
             bflg=1;
             break;
           }
@@ -210,7 +212,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // Backtrack1 
         unsigned long j=1;
         while (1) {
-          if(j==100000){
+          if(j==50000){
             bflg=1;
             break;
           }
