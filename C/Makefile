@@ -92,10 +92,10 @@ nq34=07_34NQueen
 nq34: $(nq34).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq34) $(nq34).c 
 
-all:nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq45 nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen 07_38NQueen 07_40NQueen 07_41NQueen 07_42NQueen 07_43NQueen 07_44NQueen
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen 07_38NQueen 07_40NQueen 07_41NQueen 07_42NQueen 07_43NQueen 07_44NQueen 07_45NQueen
 
 
 nq33=07_33NQueen
