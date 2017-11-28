@@ -450,7 +450,7 @@ int makeInProgress(int si){
         //inProgress[i].id=i;
         inProgress[i].B1=2;
         inProgress[i].BOUND1=0;
-        inProgress[i].BOUND2=si-2;
+        inProgress[i].BOUND2=si-1;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;

@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 
 #ifndef OPENCL_STYLE
   // Declarations appropriate to this program being compiled with gcc.
@@ -420,7 +420,7 @@ int main(){
           //inProgress[i].id=i;
           inProgress[i].B1=2;
           inProgress[i].BOUND1=0;
-          inProgress[i].BOUND2=si-2;
+          inProgress[i].BOUND2=si-1;
           for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
           inProgress[i].lTotal=0;
           inProgress[i].lUnique=0;
