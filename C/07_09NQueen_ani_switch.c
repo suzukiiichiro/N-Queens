@@ -271,10 +271,12 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     stParam.param[m].B=0;
   }
   stParam.current=0;
+  int bend=0;
+  int rflg=0;
   int bit;
   int bm;
   while(1){
-    start2:
+    //start2:
     //printf("methodstart:backtrack2\n");
     //printf("###y:%d\n",y);
     //printf("###l:%d\n",l);
@@ -284,8 +286,10 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
       //printf("###i:%d\n",k);
       //printf("###aB[k]:%d\n",aB[k]);
     //}
-    bm=msk&~(l|d|r); 
-    if(y==si-1){
+    if(rflg==0){
+      bm=msk&~(l|d|r); 
+    }
+    if(y==si-1&&rflg==0){
       //printf("if(y==si){\n");
       if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
         aB[y]=bm;
@@ -294,23 +298,25 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
       }
     }else{
       //printf("}else{#y==si\n");
-      if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+      if(y<BOUND1&&rflg==0){             //【枝刈り】上部サイド枝刈り
         //printf("y<BOUND1\n");
         bm&=~SIDEMASK; 
-      }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+      }else if(y==BOUND2&&rflg==0) {     //【枝刈り】下部サイド枝刈り
         //printf("else if(y==BOUND2)\n");
-        if((d&SIDEMASK)==0){ 
+        if((d&SIDEMASK)==0&&rflg==0){ 
         //printf("if((d&SIDEMASK)==0){\n");
-          goto ret2; 
+          //goto ret2; 
+          rflg=1;
         }
-        if((d&SIDEMASK)!=SIDEMASK){ 
+        if((d&SIDEMASK)!=SIDEMASK&&rflg==0){ 
         //printf("if((d&SIDEMASK)!=SIDEMASK){\n");
           bm&=SIDEMASK; 
         }
       }
       //printf("} end else\n");
-      while(bm>0) {
+      while(bm>0||rflg==1) {
         //printf("while(bm>0){\n");
+        if(rflg==0){
         bm^=aB[y]=bit=-bm&bm;
         //printf("beforebitmap\n");
         //printf("###y:%d\n",y);
@@ -318,10 +324,10 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
         //printf("###d:%d\n",d);
         //printf("###r:%d\n",r);
         //printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
+        //for(int k=0;k<si;k++){
          // printf("###i:%d\n",k);
          // printf("###aB[k]:%d\n",aB[k]);
-        }
+        //}
         if(stParam.current<MAX){
           stParam.param[stParam.current].Y=y;
           stParam.param[stParam.current].I=si;
@@ -336,9 +342,13 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
         l=(l|bit)<<1;
         d=(d|bit);
         r=(r|bit)>>1;
-        goto start2;
+        bend=1;
+        break;
+        //goto start2;
+        }
         //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-        ret2:
+        //ret2:
+        if(rflg==1){ 
         if(stParam.current>0){
           stParam.current--;
         }
@@ -359,15 +369,22 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
           //printf("###i:%d\n",k);
           //printf("###aB[k]:%d\n",aB[k]);
         //}
+          rflg=0;
+        }
       }
       //printf("}:end while(bm){\n");
+      if(bend==1 && rflg==0){
+        bend=0;
+        continue;
+      }
     }
     //printf("}:end else\n");
     if(y==1){
       break;
     }else{
       //printf("gotoreturn\n");
-      goto ret2;
+      //goto ret2;
+      rflg=1;
     }
 
   }
@@ -384,10 +401,12 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
     stParam.param[m].B=0;
   }
   stParam.current=0;
+  int bend=0;
+  int rflg=0;
   int bm;
   int bit;
   while(1){
-start:
+//start:
     //printf("methodstart:backtrack1\n");
     //printf("###y:%d\n",y);
     //printf("###l:%d\n",l);
@@ -397,8 +416,10 @@ start:
       //printf("###i:%d\n",k);
       //printf("###aB[k]:%d\n",aB[k]);
     //}
-    bm=msk&~(l|d|r); 
-    if(y==si-1) {
+    if(rflg==0){
+      bm=msk&~(l|d|r); 
+    }
+    if(y==si-1&&rflg==0) {
       //printf("if(y==si-1){\n");
       if(bm>0){
         //printf("if(bm>0){\n");
@@ -408,15 +429,16 @@ start:
       }
     }else{
       //printf("}else{#y==si-1\n");
-      if(y<BOUND1) {   
+      if(y<BOUND1&&rflg==0) {   
         //printf("if(y<BOUND1){\n");
         //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
         // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
         bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
       }
       //printf("}#if(y<BOUND1){\n");
-      while(bm>0) {
+      while(bm>0|| rflg==1) {
         //printf("while(bm>0){\n");
+        if(rflg==0){
         bm^=aB[y]=bit=-bm&bm;
         //printf("beforebitmap\n");
         //printf("###y:%d\n",y);
@@ -442,9 +464,13 @@ start:
         l=(l|bit)<<1;
         d=(d|bit);
         r=(r|bit)>>1;
-        goto start;
+        //goto start;
+          bend=1;
+          break;
+        }
         //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-        ret:
+        //ret:
+        if(rflg==1){ 
         if(stParam.current>0){
           stParam.current--;
         }
@@ -465,15 +491,22 @@ start:
           //printf("###i:%d\n",k);
           //printf("###aB[k]:%d\n",aB[k]);
         //}
+          rflg=0;
+        }
       }
       //printf("}:end while(bm){\n");
+      if(bend==1 && rflg==0){
+        bend=0;
+        continue;
+      }
     } 
     //printf("}:end else\n");
     if(y==2){
       break;
     }else{
       //printf("gotoreturn\n");
-      goto ret;
+      //goto ret;
+      rflg=1;
     }
   }
 }
