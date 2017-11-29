@@ -182,7 +182,7 @@
 #include<stdio.h>
 #include<time.h>
 
-#define MAX 27 
+#define MAX 27
 
 long Total=1 ; //合計解
 long Unique=0; //ユニーク解
@@ -212,19 +212,6 @@ void symmetryOps_bm_old(int si);
 void symmetryOps_bm(int si);
 void backTrack2(int si,int msk,int y,int l,int d,int r);
 void backTrack1(int si,int msk,int y,int l,int d,int r);
-struct HIKISU{
-  int Y;
-  int I;
-  int M;
-  int L;
-  int D;
-  int R;
-  int B;
-};
-struct STACK {
-  struct HIKISU param[MAX];
-  int current;
-};
 void NQueen(int si,int msk);
 
 void symmetryOps_bm(int si){
@@ -260,222 +247,47 @@ void symmetryOps_bm(int si){
   C8++;
 }
 void backTrack2(int si,int msk,int y,int l,int d,int r){
-  struct STACK stParam;
-  for (int m=0;m<si;m++){ 
-    stParam.param[m].Y=0;
-    stParam.param[m].I=si;
-    stParam.param[m].M=0;
-    stParam.param[m].L=0;
-    stParam.param[m].D=0;
-    stParam.param[m].R=0;
-    stParam.param[m].B=0;
-  }
-  stParam.current=0;
   int bit;
-  int bm;
-  while(1){
-    start2:
-    //printf("methodstart:backtrack2\n");
-    //printf("###y:%d\n",y);
-    //printf("###l:%d\n",l);
-    //printf("###d:%d\n",d);
-    //printf("###r:%d\n",r);
-    //for(int k=0;k<si;k++){
-      //printf("###i:%d\n",k);
-      //printf("###aB[k]:%d\n",aB[k]);
-    //}
-    bm=msk&~(l|d|r); 
-    if(y==si-1){
-      //printf("if(y==si){\n");
-      if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
-        aB[y]=bm;
-        symmetryOps_bm(si); //  takakenの移植版の移植版
-        //symmetryOps_bm_old(si);// 兄が作成した労作
-      }
-    }else{
-      //printf("}else{#y==si\n");
-      if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-        //printf("y<BOUND1\n");
-        bm&=~SIDEMASK; 
-      }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
-        //printf("else if(y==BOUND2)\n");
-        if((d&SIDEMASK)==0){ 
-        //printf("if((d&SIDEMASK)==0){\n");
-          goto ret2; 
-        }
-        if((d&SIDEMASK)!=SIDEMASK){ 
-        //printf("if((d&SIDEMASK)!=SIDEMASK){\n");
-          bm&=SIDEMASK; 
-        }
-      }
-      //printf("} end else\n");
-      while(bm>0) {
-        //printf("while(bm>0){\n");
-        bm^=aB[y]=bit=-bm&bm;
-        //printf("beforebitmap\n");
-        //printf("###y:%d\n",y);
-        //printf("###l:%d\n",l);
-        //printf("###d:%d\n",d);
-        //printf("###r:%d\n",r);
-        //printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
-         // printf("###i:%d\n",k);
-         // printf("###aB[k]:%d\n",aB[k]);
-        }
-        if(stParam.current<MAX){
-          stParam.param[stParam.current].Y=y;
-          stParam.param[stParam.current].I=si;
-          stParam.param[stParam.current].M=msk;
-          stParam.param[stParam.current].L=l;
-          stParam.param[stParam.current].D=d;
-          stParam.param[stParam.current].R=r;
-          stParam.param[stParam.current].B=bm;
-          (stParam.current)++;
-        }
-        y=y+1;
-        l=(l|bit)<<1;
-        d=(d|bit);
-        r=(r|bit)>>1;
-        goto start2;
-        //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-        ret2:
-        if(stParam.current>0){
-          stParam.current--;
-        }
-        si=stParam.param[stParam.current].I;
-        y=stParam.param[stParam.current].Y;
-        msk=stParam.param[stParam.current].M;
-        l=stParam.param[stParam.current].L;
-        d=stParam.param[stParam.current].D;
-        r=stParam.param[stParam.current].R;
-        bm=stParam.param[stParam.current].B;
-        //printf("afterbitmap\n");
-        //printf("###y:%d\n",y);
-        //printf("###l:%d\n",l);
-        //printf("###d:%d\n",d);
-        //printf("###r:%d\n",r);
-        //printf("###bm:%d\n",bm);
-        //for(int k=0;k<si;k++){
-          //printf("###i:%d\n",k);
-          //printf("###aB[k]:%d\n",aB[k]);
-        //}
-      }
-      //printf("}:end while(bm){\n");
+  int bm=msk&~(l|d|r); 
+  if(y==si-1){
+    if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
+      aB[y]=bm;
+      symmetryOps_bm(si); //  takakenの移植版の移植版
+      //symmetryOps_bm_old(si);// 兄が作成した労作
     }
-    //printf("}:end else\n");
-    if(y==1){
-      break;
-    }else{
-      //printf("gotoreturn\n");
-      goto ret2;
+  }else{
+    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+      bm&=~SIDEMASK; 
+    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+      if((d&SIDEMASK)==0){ return; }
+      if((d&SIDEMASK)!=SIDEMASK){ bm&=SIDEMASK; }
     }
-
+    while(bm>0) {
+      bm^=aB[y]=bit=-bm&bm;
+      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
   }
 }
 void backTrack1(int si,int msk,int y,int l,int d,int r){
-  struct STACK stParam;
-  for (int m=0;m<si;m++){ 
-    stParam.param[m].Y=0;
-    stParam.param[m].I=si;
-    stParam.param[m].M=0;
-    stParam.param[m].L=0;
-    stParam.param[m].D=0;
-    stParam.param[m].R=0;
-    stParam.param[m].B=0;
-  }
-  stParam.current=0;
-  int bm;
+  int bm=msk&~(l|d|r); 
   int bit;
-  while(1){
-start:
-    //printf("methodstart:backtrack1\n");
-    //printf("###y:%d\n",y);
-    //printf("###l:%d\n",l);
-    //printf("###d:%d\n",d);
-    //printf("###r:%d\n",r);
-    //for(int k=0;k<si;k++){
-      //printf("###i:%d\n",k);
-      //printf("###aB[k]:%d\n",aB[k]);
-    //}
-    bm=msk&~(l|d|r); 
-    if(y==si-1) {
-      //printf("if(y==si-1){\n");
-      if(bm>0){
-        //printf("if(bm>0){\n");
-        aB[y]=bm;
-        //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-        C8++;
-      }
-    }else{
-      //printf("}else{#y==si-1\n");
-      if(y<BOUND1) {   
-        //printf("if(y<BOUND1){\n");
-        //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-        // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-        bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-      }
-      //printf("}#if(y<BOUND1){\n");
-      while(bm>0) {
-        //printf("while(bm>0){\n");
-        bm^=aB[y]=bit=-bm&bm;
-        //printf("beforebitmap\n");
-        //printf("###y:%d\n",y);
-        //printf("###l:%d\n",l);
-        //printf("###d:%d\n",d);
-        //printf("###r:%d\n",r);
-        //printf("###bm:%d\n",bm);
-        //for(int k=0;k<si;k++){
-          //printf("###i:%d\n",k);
-          //printf("###aB[k]:%d\n",aB[k]);
-        //}
-        if(stParam.current<MAX){
-          stParam.param[stParam.current].Y=y;
-          stParam.param[stParam.current].I=si;
-          stParam.param[stParam.current].M=msk;
-          stParam.param[stParam.current].L=l;
-          stParam.param[stParam.current].D=d;
-          stParam.param[stParam.current].R=r;
-          stParam.param[stParam.current].B=bm;
-          (stParam.current)++;
-        }
-        y=y+1;
-        l=(l|bit)<<1;
-        d=(d|bit);
-        r=(r|bit)>>1;
-        goto start;
-        //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-        ret:
-        if(stParam.current>0){
-          stParam.current--;
-        }
-        si=stParam.param[stParam.current].I;
-        y=stParam.param[stParam.current].Y;
-        msk=stParam.param[stParam.current].M;
-        l=stParam.param[stParam.current].L;
-        d=stParam.param[stParam.current].D;
-        r=stParam.param[stParam.current].R;
-        bm=stParam.param[stParam.current].B;
-        //printf("afterbitmap\n");
-        //printf("###y:%d\n",y);
-        //printf("###l:%d\n",l);
-        //printf("###d:%d\n",d);
-        //printf("###r:%d\n",r);
-        //printf("###bm:%d\n",bm);
-        //for(int k=0;k<si;k++){
-          //printf("###i:%d\n",k);
-          //printf("###aB[k]:%d\n",aB[k]);
-        //}
-      }
-      //printf("}:end while(bm){\n");
-    } 
-    //printf("}:end else\n");
-    if(y==2){
-      break;
-    }else{
-      //printf("gotoreturn\n");
-      goto ret;
+  if(y==si-1) {
+    if(bm>0){
+      aB[y]=bm;
+      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      C8++;
     }
-  }
+  }else{
+    if(y<BOUND1) {   
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bm>0) {
+      bm^=aB[y]=bit=-bm&bm;
+      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  } 
 }
 void NQueen(int si,int msk){
   int bit;
