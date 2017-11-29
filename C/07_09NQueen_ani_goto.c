@@ -182,7 +182,7 @@
 #include<stdio.h>
 #include<time.h>
 
-#define MAX 8 
+#define MAX 27 
 
 long Total=1 ; //合計解
 long Unique=0; //ユニーク解
@@ -212,6 +212,19 @@ void symmetryOps_bm_old(int si);
 void symmetryOps_bm(int si);
 void backTrack2(int si,int msk,int y,int l,int d,int r);
 void backTrack1(int si,int msk,int y,int l,int d,int r);
+struct HIKISU{
+  int Y;
+  int I;
+  int M;
+  int L;
+  int D;
+  int R;
+  int B;
+};
+struct STACK {
+  struct HIKISU param[MAX];
+  int current;
+};
 void NQueen(int si,int msk);
 
 void symmetryOps_bm(int si){
@@ -247,127 +260,220 @@ void symmetryOps_bm(int si){
   C8++;
 }
 void backTrack2(int si,int msk,int y,int l,int d,int r){
-  printf("methodstart:backtrack2\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
+  struct STACK stParam_2;
+  for (int m=0;m<si;m++){ 
+    stParam_2.param[m].Y=0;
+    stParam_2.param[m].I=si;
+    stParam_2.param[m].M=0;
+    stParam_2.param[m].L=0;
+    stParam_2.param[m].D=0;
+    stParam_2.param[m].R=0;
+    stParam_2.param[m].B=0;
   }
-  int bit;
-  int bm=msk&~(l|d|r); 
-  if(y==si-1){
-  printf("if(y==si){\n");
-    if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
-      aB[y]=bm;
-      symmetryOps_bm(si); //  takakenの移植版の移植版
-      //symmetryOps_bm_old(si);// 兄が作成した労作
+  stParam_2.current=0;
+  while(1){
+    start2:
+    //printf("methodstart:backtrack2\n");
+    //printf("###y:%d\n",y);
+    //printf("###l:%d\n",l);
+    //printf("###d:%d\n",d);
+    //printf("###r:%d\n",r);
+    for(int k=0;k<si;k++){
+      //printf("###i:%d\n",k);
+      //printf("###aB[k]:%d\n",aB[k]);
     }
-  }else{
-  printf("}else{#y==si\n");
-    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-  printf("y<BOUND1\n");
-      bm&=~SIDEMASK; 
-    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
-  printf("else if(y==BOUND2)\n");
-      if((d&SIDEMASK)==0){ 
-        printf("if((d&SIDEMASK)==0){\n");
-        return; 
+    int bit;
+    int bm=msk&~(l|d|r); 
+    if(y==si-1){
+      //printf("if(y==si){\n");
+      if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
+        aB[y]=bm;
+        symmetryOps_bm(si); //  takakenの移植版の移植版
+        //symmetryOps_bm_old(si);// 兄が作成した労作
       }
-      if((d&SIDEMASK)!=SIDEMASK){ 
-        printf("if((d&SIDEMASK)!=SIDEMASK){\n");
-        bm&=SIDEMASK; 
+    }else{
+      //printf("}else{#y==si\n");
+      if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+        //printf("y<BOUND1\n");
+        bm&=~SIDEMASK; 
+      }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+        //printf("else if(y==BOUND2)\n");
+        if((d&SIDEMASK)==0){ 
+        //printf("if((d&SIDEMASK)==0){\n");
+          goto ret2; 
+        }
+        if((d&SIDEMASK)!=SIDEMASK){ 
+        //printf("if((d&SIDEMASK)!=SIDEMASK){\n");
+          bm&=SIDEMASK; 
+        }
       }
+      //printf("} end else\n");
+      while(bm>0) {
+        //printf("while(bm>0){\n");
+        bm^=aB[y]=bit=-bm&bm;
+        //printf("beforebitmap\n");
+        //printf("###y:%d\n",y);
+        //printf("###l:%d\n",l);
+        //printf("###d:%d\n",d);
+        //printf("###r:%d\n",r);
+        //printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+         // printf("###i:%d\n",k);
+         // printf("###aB[k]:%d\n",aB[k]);
+        }
+        if(stParam_2.current<MAX){
+          stParam_2.param[stParam_2.current].Y=y;
+          stParam_2.param[stParam_2.current].I=si;
+          stParam_2.param[stParam_2.current].M=msk;
+          stParam_2.param[stParam_2.current].L=l;
+          stParam_2.param[stParam_2.current].D=d;
+          stParam_2.param[stParam_2.current].R=r;
+          stParam_2.param[stParam_2.current].B=bm;
+          (stParam_2.current)++;
+        }
+        y=y+1;
+        l=(l|bit)<<1;
+        d=(d|bit);
+        r=(r|bit)>>1;
+        goto start2;
+        //backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+        ret2:
+        if(stParam_2.current>0){
+          stParam_2.current--;
+        }
+        si=stParam_2.param[stParam_2.current].I;
+        y=stParam_2.param[stParam_2.current].Y;
+        msk=stParam_2.param[stParam_2.current].M;
+        l=stParam_2.param[stParam_2.current].L;
+        d=stParam_2.param[stParam_2.current].D;
+        r=stParam_2.param[stParam_2.current].R;
+        bm=stParam_2.param[stParam_2.current].B;
+        //printf("afterbitmap\n");
+        //printf("###y:%d\n",y);
+        //printf("###l:%d\n",l);
+        //printf("###d:%d\n",d);
+        //printf("###r:%d\n",r);
+        //printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+          //printf("###i:%d\n",k);
+          //printf("###aB[k]:%d\n",aB[k]);
+        }
+      }
+      //printf("}:end while(bm){\n");
     }
-  printf("} end else\n");
-    while(bm>0) {
-  printf("while(bm>0){\n");
-      bm^=aB[y]=bit=-bm&bm;
-  printf("beforebitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
-  }
-      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-  printf("afterbitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
-  }
+    //printf("}:end else\n");
+    if(y==1){
+      break;
+    }else{
+      //printf("gotoreturn\n");
+      goto ret2;
     }
-  printf("}:end while(bm){\n");
+
   }
-  printf("}:end else\n");
 }
 void backTrack1(int si,int msk,int y,int l,int d,int r){
-  printf("methodstart:backtrack1\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
+  struct STACK stParam_1;
+  for (int m=0;m<si;m++){ 
+    stParam_1.param[m].Y=0;
+    stParam_1.param[m].I=si;
+    stParam_1.param[m].M=0;
+    stParam_1.param[m].L=0;
+    stParam_1.param[m].D=0;
+    stParam_1.param[m].R=0;
+    stParam_1.param[m].B=0;
   }
-  int bm=msk&~(l|d|r); 
-  int bit;
-  if(y==si-1) {
-  printf("if(y==si-1){\n");
-    if(bm>0){
-  printf("if(bm>0){\n");
-      aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C8++;
+  stParam_1.current=0;
+  while(1){
+start:
+    //printf("methodstart:backtrack1\n");
+    //printf("###y:%d\n",y);
+    //printf("###l:%d\n",l);
+    //printf("###d:%d\n",d);
+    //printf("###r:%d\n",r);
+    for(int k=0;k<si;k++){
+      //printf("###i:%d\n",k);
+      //printf("###aB[k]:%d\n",aB[k]);
     }
-  }else{
-  printf("}else{#y==si-1\n");
-    if(y<BOUND1) {   
-  printf("if(y<BOUND1){\n");
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    int bm=msk&~(l|d|r); 
+    int bit;
+    if(y==si-1) {
+      //printf("if(y==si-1){\n");
+      if(bm>0){
+        //printf("if(bm>0){\n");
+        aB[y]=bm;
+        //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+        C8++;
+      }
+    }else{
+      //printf("}else{#y==si-1\n");
+      if(y<BOUND1) {   
+        //printf("if(y<BOUND1){\n");
+        //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+        // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+        bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+      }
+      //printf("}#if(y<BOUND1){\n");
+      while(bm>0) {
+        //printf("while(bm>0){\n");
+        bm^=aB[y]=bit=-bm&bm;
+        //printf("beforebitmap\n");
+        //printf("###y:%d\n",y);
+        //printf("###l:%d\n",l);
+        //printf("###d:%d\n",d);
+        //printf("###r:%d\n",r);
+        //printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+          //printf("###i:%d\n",k);
+          //printf("###aB[k]:%d\n",aB[k]);
+        }
+        if(stParam_1.current<MAX){
+          stParam_1.param[stParam_1.current].Y=y;
+          stParam_1.param[stParam_1.current].I=si;
+          stParam_1.param[stParam_1.current].M=msk;
+          stParam_1.param[stParam_1.current].L=l;
+          stParam_1.param[stParam_1.current].D=d;
+          stParam_1.param[stParam_1.current].R=r;
+          stParam_1.param[stParam_1.current].B=bm;
+          (stParam_1.current)++;
+        }
+        y=y+1;
+        l=(l|bit)<<1;
+        d=(d|bit);
+        r=(r|bit)>>1;
+        goto start;
+        //backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+        ret:
+        if(stParam_1.current>0){
+          stParam_1.current--;
+        }
+        si=stParam_1.param[stParam_1.current].I;
+        y=stParam_1.param[stParam_1.current].Y;
+        msk=stParam_1.param[stParam_1.current].M;
+        l=stParam_1.param[stParam_1.current].L;
+        d=stParam_1.param[stParam_1.current].D;
+        r=stParam_1.param[stParam_1.current].R;
+        bm=stParam_1.param[stParam_1.current].B;
+        //printf("afterbitmap\n");
+        //printf("###y:%d\n",y);
+        //printf("###l:%d\n",l);
+        //printf("###d:%d\n",d);
+        //printf("###r:%d\n",r);
+        //printf("###bm:%d\n",bm);
+        for(int k=0;k<si;k++){
+          //printf("###i:%d\n",k);
+          //printf("###aB[k]:%d\n",aB[k]);
+        }
+      }
+      //printf("}:end while(bm){\n");
+    } 
+    //printf("}:end else\n");
+    if(y==2){
+      break;
+    }else{
+      //printf("gotoreturn\n");
+      goto ret;
     }
-  printf("}#if(y<BOUND1){\n");
-    while(bm>0) {
-  printf("while(bm>0){\n");
-      bm^=aB[y]=bit=-bm&bm;
-  printf("beforebitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
   }
-      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-  printf("afterbitmap\n");
-  printf("###y:%d\n",y);
-  printf("###l:%d\n",l);
-  printf("###d:%d\n",d);
-  printf("###r:%d\n",r);
-  printf("###bm:%d\n",bm);
-  for(int k=0;k<si;k++){
-    printf("###i:%d\n",k);
-    printf("###aB[k]:%d\n",aB[k]);
-  }
-    }
-      printf("}:end while(bm){\n");
-  } 
-    printf("}:end else\n");
 }
 void NQueen(int si,int msk){
   int bit;
@@ -394,7 +500,7 @@ void NQueen(int si,int msk){
 }
 int main(void){
   clock_t st; char t[20];
-  int min=8; int msk;
+  int min=2; int msk;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
     Total=0;Unique=0;C2=C4=C8=0;
