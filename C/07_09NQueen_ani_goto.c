@@ -271,6 +271,8 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     stParam_2.param[m].B=0;
   }
   stParam_2.current=0;
+  int bit;
+  int bm;
   while(1){
     start2:
     //printf("methodstart:backtrack2\n");
@@ -278,12 +280,11 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     //printf("###l:%d\n",l);
     //printf("###d:%d\n",d);
     //printf("###r:%d\n",r);
-    for(int k=0;k<si;k++){
+    //for(int k=0;k<si;k++){
       //printf("###i:%d\n",k);
       //printf("###aB[k]:%d\n",aB[k]);
-    }
-    int bit;
-    int bm=msk&~(l|d|r); 
+    //}
+    bm=msk&~(l|d|r); 
     if(y==si-1){
       //printf("if(y==si){\n");
       if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
@@ -354,10 +355,10 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
         //printf("###d:%d\n",d);
         //printf("###r:%d\n",r);
         //printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
+        //for(int k=0;k<si;k++){
           //printf("###i:%d\n",k);
           //printf("###aB[k]:%d\n",aB[k]);
-        }
+        //}
       }
       //printf("}:end while(bm){\n");
     }
@@ -383,6 +384,8 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
     stParam_1.param[m].B=0;
   }
   stParam_1.current=0;
+  int bm;
+  int bit;
   while(1){
 start:
     //printf("methodstart:backtrack1\n");
@@ -390,12 +393,11 @@ start:
     //printf("###l:%d\n",l);
     //printf("###d:%d\n",d);
     //printf("###r:%d\n",r);
-    for(int k=0;k<si;k++){
+    //for(int k=0;k<si;k++){
       //printf("###i:%d\n",k);
       //printf("###aB[k]:%d\n",aB[k]);
-    }
-    int bm=msk&~(l|d|r); 
-    int bit;
+    //}
+    bm=msk&~(l|d|r); 
     if(y==si-1) {
       //printf("if(y==si-1){\n");
       if(bm>0){
@@ -422,10 +424,10 @@ start:
         //printf("###d:%d\n",d);
         //printf("###r:%d\n",r);
         //printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
+        //for(int k=0;k<si;k++){
           //printf("###i:%d\n",k);
           //printf("###aB[k]:%d\n",aB[k]);
-        }
+        //}
         if(stParam_1.current<MAX){
           stParam_1.param[stParam_1.current].Y=y;
           stParam_1.param[stParam_1.current].I=si;
@@ -459,10 +461,10 @@ start:
         //printf("###d:%d\n",d);
         //printf("###r:%d\n",r);
         //printf("###bm:%d\n",bm);
-        for(int k=0;k<si;k++){
+        //for(int k=0;k<si;k++){
           //printf("###i:%d\n",k);
           //printf("###aB[k]:%d\n",aB[k]);
-        }
+        //}
       }
       //printf("}:end while(bm){\n");
     } 
