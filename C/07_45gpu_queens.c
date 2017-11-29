@@ -141,6 +141,10 @@ struct queenState {
   int B1;
   int BOUND1;
   int BOUND2;
+  int TOPBIT;
+  int ENDBIT;
+  int SIDEMASK;
+  int LASTMASK;
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
@@ -450,6 +454,10 @@ int makeInProgress(int si){
         inProgress[i].B1=2;
         inProgress[i].BOUND1=0;
         inProgress[i].BOUND2=si-1;
+    inProgress[i].ENDBIT=0;
+    inProgress[i].TOPBIT=1<<(si-1);
+    inProgress[i].SIDEMASK=0;
+    inProgress[i].LASTMASK=0;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
