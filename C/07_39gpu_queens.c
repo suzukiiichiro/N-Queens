@@ -1,76 +1,26 @@
 /**
 
-   45. 枝刈り (07_09GPU版)
+   45. GPU シングル最終盤(保存用）
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_45NQueen 07_45gpu_queens.c -framework OpenCL
    $ ./07_45NQueen 
 
-
-07_44
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.01
- 9:               352                46          00:00:00:00.05
-10:               724                92          00:00:00:00.18
-11:              2680               341          00:00:00:00.58
-12:             14200              1787          00:00:00:03.46
-13:             73712              9233          00:00:00:18.17
-14:            365596             45752          00:00:01:54.15
-
-07_43
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.01
- 9:               352                46          00:00:00:00.07
-10:               724                92          00:00:00:00.24
-11:              2680               341          00:00:00:01.15
-12:             14200              1787          00:00:00:06.19
-13:             73712              9233          00:00:00:34.70
-07_42
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.02
- 9:               352                46          00:00:00:00.08
-10:               724                92          00:00:00:00.32
-11:              2680               341          00:00:00:01.55
-12:             14200              1787          00:00:00:08.15
-13:             73712              9233          00:00:00:45.45
-
-07_41
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.02
- 9:               352                46          00:00:00:00.09
-10:               724                92          00:00:00:00.38
-11:              2680               341          00:00:00:01.90
-12:             14200              1787          00:00:00:10.37
-13:             73712              9233          00:00:00:59.70
-
- 07_40
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
  5:                10                 0          00:00:00:00.00
  6:                 4                 0          00:00:00:00.00
  7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.02
- 9:               352                 0          00:00:00:00.09
-10:               724                 0          00:00:00:00.40
-11:              2680                 0          00:00:00:01.99
-12:             14200                 0          00:00:00:10.85
-13:             73712                 0          00:00:01:02.31 
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.02
+13:             73712                 0          00:00:00:00.07
+14:            365596                 0          00:00:00:00.30
+15:           2279184                 0          00:00:00:01.58
+16:          14772512                 0          00:00:00:09.48
+17:          95815104                 0          00:00:01:09.54 
 */
 
 #include "stdio.h"
@@ -116,19 +66,6 @@ uint64_t lGUnique;
 typedef int64_t qint;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
-struct HIKISU{
-  int Y;
-  int I;
-  int M;
-  int L;
-  int D;
-  int R;
-  int B;
-};
-struct STACK{
-  struct HIKISU param[MAX];
-  int current ;
-};
 struct queenState {
   //int BOUND1;
 //  qint BOUND1;
@@ -137,32 +74,81 @@ struct queenState {
   //int BOUND3;
 //  qint BOUND3;
   int si;
-  //int id;
-  int B1;
-  int BOUND1;
-  int BOUND2;
+  int id;
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  long lUnique;
   //int step;
   char step;
   //int y;
   char y;
-  int bend;
-  int rflg;
-  qint aT[MAX];        //aT:aTrial[]
-  qint aS[MAX];        //aS:aScrath[]
-  struct STACK stParam;
-  int msk;
-  int l;
-  int d;
-  int r;
-  int bm;
+  //int startCol; // First column this individual computation was tasked with filling.
+  char startCol; // First column this individual computation was tasked with filling.
+  //int bm;
+  qint bm;
+  //long down;
+  qint down;
+  //long right;
+  qint right;
+  qint left;
 } __attribute__((packed));
 
 //struct queenState inProgress[MAX*MAX*MAX];
 struct queenState inProgress[1]; //single
+
+/**
+ * カーネルコードの読み込み
+ */
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
+  char prefix[256];
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
+  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  FILE * f=fopen(PROGRAM_FILE,"rb");
+  if(!f){ *buffer=NULL;return;}
+  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
+  long totalLength=prefixLength + fileLength + 1;
+  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  // Replace BOM with space
+  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+}
+/**
+  プラットフォーム一覧を取得
+  現在利用可能なOpenCLのプラットフォームの情報を取得
+  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
+  numEntries:追加可能なエントリーの数
+  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
+  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
+  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
+*/
+int getPlatform(){
+	char value[BUFFER_SIZE];
+	size_t size;
+  cl_int status;
+  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform ID.");
+    return 1; 
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 2; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 3; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+  }
+  return 0;
+}
 /*
   デバイス一覧を取得
   clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
@@ -230,59 +216,6 @@ int getDeviceID(){
       if(USE_DEBUG>0) printf("  CL_DEVICE_MAX_COMPUTE_UNITS:%d\n",units);
     }
 	}
-  return 0;
-}
-/**
- * カーネルコードの読み込み
- */
-//void get_queens_code(char **buffer,int si){
-void get_queens_code(char **buffer){
-  char prefix[256];
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
-  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
-  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
-  long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
-  // Replace BOM with space
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
-}
-/**
-  プラットフォーム一覧を取得
-  現在利用可能なOpenCLのプラットフォームの情報を取得
-  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
-  numEntries:追加可能なエントリーの数
-  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
-  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
-  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
-*/
-int getPlatform(){
-	char value[BUFFER_SIZE];
-	size_t size;
-  cl_int status;
-  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform ID.");
-    return 1; 
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 2; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 3; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
-  }
   return 0;
 }
 /**
@@ -444,39 +377,28 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  */
 int makeInProgress(int si){
   cl_int status;
+//  struct queenState inProgress[si*si*si];
+  //for(int i=0;i<si;i++){
   for(int i=0;i<1;i++){ //single
+
+//    for(int j=0;j<si;j++){
+//      for(int k=0;k<si;k++){
+//        inProgress[i].BOUND1=i;
+//        inProgress[i].BOUND2=j;
+//        inProgress[i].BOUND3=k;
         inProgress[i].si=si;
-        //inProgress[i].id=i;
-        inProgress[i].B1=2;
-        inProgress[i].BOUND1=0;
-        inProgress[i].BOUND2=si-1;
+        inProgress[i].id=i;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
         inProgress[i].lTotal=0;
-        inProgress[i].lUnique=0;
         inProgress[i].step=0;
         inProgress[i].y=0;
-        inProgress[i].bend=0;
-        inProgress[i].rflg=0;
-    for (int m=0;m<si;m++){ 
-      inProgress[i].aT[m]=0;
-      inProgress[i].aS[m]=0;
-    }
-    for (int m=0;m<si;m++){ 
-      inProgress[i].stParam.param[m].Y=0;
-      inProgress[i].stParam.param[m].I=si;
-      inProgress[i].stParam.param[m].M=0;
-      inProgress[i].stParam.param[m].L=0;
-      inProgress[i].stParam.param[m].D=0;
-      inProgress[i].stParam.param[m].R=0;
-      inProgress[i].stParam.param[m].B=0;
-    }
-    inProgress[i].stParam.current=0;
-    inProgress[i].msk=(1<<si)-1;
-    inProgress[i].l=0;
-    inProgress[i].d=0;
-    inProgress[i].r=0;
-    inProgress[i].bm=0;
-
+        inProgress[i].startCol =0;
+        inProgress[i].bm= (1 << si) - 1;
+        inProgress[i].down=0;
+        inProgress[i].right=0;
+        inProgress[i].left=0;
+  //    }
+  //  }
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -556,19 +478,12 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
-int all_tasks_done(int32_t num_tasks,int si) {
-	//for (int i = 0;i<num_tasks;i++)
+int all_tasks_done(int32_t num_tasks) {
+	for (int i = 0;i<num_tasks;i++)
 		//if (tasks[i].step != 2)
-		//if (inProgress[i].step != 2)
-			//return 0;
-	//return 1;
-//	printf("step:%d\n",inProgress[0].step);
-//	printf("BOUND1:%d\n",inProgress[0].BOUND1);
-	if(inProgress[0].step==2 && inProgress[0].BOUND1==si){
-    return 1;
-  }else{
-    return 0;
-  }
+		if (inProgress[i].step != 2)
+			return 0;
+	return 1;
 }
 /**
   カーネルの実行 
@@ -581,15 +496,13 @@ int all_tasks_done(int32_t num_tasks,int si) {
 int execKernel(int si){
   cl_int status;
   //while(!all_tasks_done(si*si*si)){
-  while(!all_tasks_done(1,si)){ //single
-
+  while(!all_tasks_done(1)){ //single
     //size_t dim=1;
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si*si*si};
     size_t globalWorkSize[] = {1}; //single
     //size_t localWorkSize[] = { si };
     size_t localWorkSize[] = { 1 }; // single
-
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -621,10 +534,8 @@ int execPrint(int si){
 //    for(int j=0;j<si;j++){
 //      for(int k=0;k<si;k++){
 //          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
-          //if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
-          if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
+          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
-          lGUnique+=inProgress[i].lUnique;
 //        }
 //      }
     }

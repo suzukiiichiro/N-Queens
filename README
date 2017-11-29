@@ -46,7 +46,7 @@
    41. GPU 対称解除法(07_04GPU版)       
    42. GPU 対称解除法(07_05GPU版)　枝刈り
    43. GPU ビットマップ(07_07GPU版)
-   44. クイーンの位置による振り分け(BOUND1 07_08GPU版)
+   44. クイーンの位置による振り分け(BOUND1 BOUND2 07_08GPU版)
 
 
  # Jav/C/Lua/Bash版
@@ -2545,7 +2545,7 @@ Q . . . . . . .
 13:             73712              9233          00:00:00:34.70
 
 
-   44. クイーンの位置による振り分け(BOUND1 07_08GPU版)
+   44. クイーンの位置による振り分け(BOUND1 BOUND2 07_08GPU版)
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_44NQueen 07_44gpu_queens.c -framework OpenCL
