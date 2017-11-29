@@ -1,30 +1,30 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+#define GCC_STYLE
 
 #ifndef OPENCL_STYLE
-  // Declarations appropriate to this program being compiled with gcc.
-  #include "stdio.h"
-  #include "stdint.h"
-  #include <math.h>
-  typedef int64_t qint;
-  // A stub for OpenCL's get_global_id function.
-  int get_global_id(int dimension){ return 0;}
+// Declarations appropriate to this program being compiled with gcc.
+#include "stdio.h"
+#include "stdint.h"
+#include <math.h>
+typedef int64_t qint;
+// A stub for OpenCL's get_global_id function.
+int get_global_id(int dimension){ return 0;}
 #define CL_KERNEL_KEYWORD
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
 #define SIZE 24
 #else
-  // Declarations appropriate to this program being compiled as an OpenCL
-  // kernel. OpenCL has a 64 bit long and requires special keywords to designate
-  // where and how different objects are stored in memory.
+// Declarations appropriate to this program being compiled as an OpenCL
+// kernel. OpenCL has a 64 bit long and requires special keywords to designate
+// where and how different objects are stored in memory.
 //typedef long qint;
 //typedef long int64_t;
 //typedef ulong uint64_t;
-  typedef long qint;
-  typedef long int64_t;
-  typedef ulong uint64_t;
-  typedef ushort uint16_t;
+typedef long qint;
+typedef long int64_t;
+typedef ulong uint64_t;
+typedef ushort uint16_t;
 #define CL_KERNEL_KEYWORD __kernel
 #define CL_GLOBAL_KEYWORD __global
 #define CL_CONSTANT_KEYWORD __constant
@@ -72,7 +72,7 @@ CL_PACKED_KEYWORD struct queenState {
 };
 int rh(int a,int sz);
 int intncmp(qint lt[],qint rt[],int si);
-int symmetryOps_bm(struct queenState *s);
+int symmetryOps_bm(struct queenState *s,int ENDBIT,int TOPBIT);
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -106,6 +106,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.d=state[index].d;
   s.r=state[index].r;
   s.bm=state[index].bm;
+  int TOPBIT=1<<(s.si-1);
+  int LASTMASK;
+  int SIDEMASK;
+  int ENDBIT;
   //----
   // barrier(CLK_LOCAL_MEM_FENCE);
   //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
@@ -152,15 +156,23 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
-          if (s.y==s.si&&s.rflg==0) {
-            if(!s.bm){
+          if (s.y==s.si-1&&s.rflg==0) {
+            if(s.bm>0){
               s.aB[s.y]=s.bm;
               //int sum=symmetryOps_bm(&s);
-              sum=symmetryOps_bm(&s);
-              if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+              //sum=symmetryOps_bm(&s);
+              //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+              s.lTotal+=8;
+              s.lUnique++;
             }
           }else{
-            while(s.bm|| s.rflg==1) {
+            if(s.y<s.BOUND1&&s.rflg==0) {   
+              //printf("if(y<BOUND1){\n");
+              //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+              // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+              s.bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+            }
+            while(s.bm>0|| s.rflg==1) {
               if(s.rflg==0){
                 s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
                 if(s.stParam.current<MAX){
@@ -209,213 +221,185 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         }
         s.B1=s.B1+1;
       }
-    } else{
-      if(s.BOUND1<s.BOUND2){
-        s.aB[0]=bit=(1<<s.BOUND1);
-        s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-        // backTrack2(&s,s.bm);
-        // Backtrack1 
-        unsigned long j=1;
-        int sum;
-        while (1) {
+      SIDEMASK=LASTMASK=(TOPBIT|1);
+      ENDBIT=(TOPBIT>>1);
+      } else{
+        if(s.BOUND1<s.BOUND2){
+          s.aB[0]=bit=(1<<s.BOUND1);
+          s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+          // backTrack2(&s,s.bm);
+          // Backtrack1 
+          unsigned long j=1;
+          int sum;
+          while (1) {
 #ifdef GCC_STYLE
 #else
-          if(j==50000){
-            bflg=1;
-            break;
-          }
+            if(j==50000){
+              bflg=1;
+              break;
+            }
 #endif
-          if(s.rflg==0){
-            s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
-          }
-          if (s.y==s.si&&s.rflg==0) {
-            if(!s.bm){
-              s.aB[s.y]=s.bm;
-              //int sum=symmetryOps_bm(&s);
-              sum=symmetryOps_bm(&s);
-              if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+            if(s.rflg==0){
+              s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
             }
-          }else{
-            while(s.bm|| s.rflg==1) {
-              if(s.rflg==0){
-                s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-                if(s.stParam.current<MAX){
-                  s.stParam.param[s.stParam.current].Y=s.y; 
-                  s.stParam.param[s.stParam.current].I=s.si;
-                  s.stParam.param[s.stParam.current].M=s.msk;
-                  s.stParam.param[s.stParam.current].L=s.l;
-                  s.stParam.param[s.stParam.current].D=s.d;
-                  s.stParam.param[s.stParam.current].R=s.r;
-                  s.stParam.param[s.stParam.current].B=s.bm;
-                  (s.stParam.current)++;
-                }
-                s.y++;
-                s.l=(s.l|bit)<<1;
-                s.d=(s.d|bit);
-                s.r=(s.r|bit)>>1;
-                s.bend=1;
-                break;
+            if (s.y==s.si-1&&s.rflg==0) {
+              if(s.bm>0 && (s.bm&LASTMASK)==0){
+                s.aB[s.y]=s.bm;
+                //int sum=symmetryOps_bm(&s);
+                sum=symmetryOps_bm(&s,ENDBIT,TOPBIT);
+                if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
               }
-              if(s.rflg==1){ 
-                if(s.stParam.current>0){
-                  s.stParam.current--;
+            }else{
+              if(s.y<s.BOUND1&&s.rflg==0){             //【枝刈り】上部サイド枝刈り
+                //printf("y<BOUND1\n");
+                s.bm&=~SIDEMASK; 
+              }else if(s.y==s.BOUND2&&s.rflg==0) {     //【枝刈り】下部サイド枝刈り
+                //printf("else if(y==BOUND2)\n");
+                if((s.d&SIDEMASK)==0&&s.rflg==0){ 
+                  //printf("if((d&SIDEMASK)==0){\n");
+                  //goto ret2; 
+                  s.rflg=1;
                 }
-                s.si=s.stParam.param[s.stParam.current].I;
-                s.y=s.stParam.param[s.stParam.current].Y;
-                s.msk=s.stParam.param[s.stParam.current].M;
-                s.l=s.stParam.param[s.stParam.current].L;
-                s.d=s.stParam.param[s.stParam.current].D;
-                s.r=s.stParam.param[s.stParam.current].R;
-                s.bm=s.stParam.param[s.stParam.current].B;
-                s.rflg=0;
+                if((s.d&SIDEMASK)!=SIDEMASK&&s.rflg==0){ 
+                  //printf("if((d&SIDEMASK)!=SIDEMASK){\n");
+                  s.bm&=SIDEMASK; 
+                }
               }
+              while(s.bm>0|| s.rflg==1) {
+                if(s.rflg==0){
+                  s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+                  if(s.stParam.current<MAX){
+                    s.stParam.param[s.stParam.current].Y=s.y; 
+                    s.stParam.param[s.stParam.current].I=s.si;
+                    s.stParam.param[s.stParam.current].M=s.msk;
+                    s.stParam.param[s.stParam.current].L=s.l;
+                    s.stParam.param[s.stParam.current].D=s.d;
+                    s.stParam.param[s.stParam.current].R=s.r;
+                    s.stParam.param[s.stParam.current].B=s.bm;
+                    (s.stParam.current)++;
+                  }
+                  s.y++;
+                  s.l=(s.l|bit)<<1;
+                  s.d=(s.d|bit);
+                  s.r=(s.r|bit)>>1;
+                  s.bend=1;
+                  break;
+                }
+                if(s.rflg==1){ 
+                  if(s.stParam.current>0){
+                    s.stParam.current--;
+                  }
+                  s.si=s.stParam.param[s.stParam.current].I;
+                  s.y=s.stParam.param[s.stParam.current].Y;
+                  s.msk=s.stParam.param[s.stParam.current].M;
+                  s.l=s.stParam.param[s.stParam.current].L;
+                  s.d=s.stParam.param[s.stParam.current].D;
+                  s.r=s.stParam.param[s.stParam.current].R;
+                  s.bm=s.stParam.param[s.stParam.current].B;
+                  s.rflg=0;
+                }
+              }
+              if(s.bend==1 && s.rflg==0){
+                s.bend=0;
+                continue;
+              }
+            } 
+            if(s.y==1){
+              s.step=2;
+              break;
+            }else{
+              s.rflg=1;
             }
-            if(s.bend==1 && s.rflg==0){
-              s.bend=0;
-              continue;
-            }
-          } 
-          if(s.y==1){
-            s.step=2;
-            break;
-          }else{
-            s.rflg=1;
-          }
-          j++;
-        } // end while
-      }
-    }
-    s.BOUND1=s.BOUND1+1;
-    s.BOUND2=s.BOUND2-1;
-  }
-  //----
-  state[index].si=s.si;
-  //state[index].id=s.id;
-  state[index].B1=s.B1;
-  state[index].BOUND1=s.BOUND1;
-  state[index].BOUND2=s.BOUND2;
-  for (int j=0;j<s.si;j++){
-    state[index].aB[j] = s.aB[j];
-  }
-  state[index].lTotal=s.lTotal;
-  state[index].lUnique=s.lUnique;
-  state[index].step=s.step;
-  state[index].y=s.y;
-  state[index].bend=s.bend;
-  state[index].rflg=s.rflg;
-  for (int j=0;j<s.si;j++){
-    state[index].aT[j]=s.aT[j];
-    state[index].aS[j]=s.aS[j];
-  }
-  state[index].stParam=s.stParam;
-  state[index].msk=s.msk;
-  state[index].l=s.l;
-  state[index].d=s.d;
-  state[index].r=s.r;
-  state[index].bm=s.bm;
-}
-int rh(int a,int sz){
-  int tmp=0;
-  for(int i=0;i<=sz;i++){
-    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-  }
-  return tmp;
-}
-int intncmp(qint lt[],qint rt[],int si){
-  int rtn=0;
-  for(int k=0;k<si;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
-}
-int symmetryOps_bm(struct queenState *s){
-  int nEquiv;
-  for(int i=0;i<s->si;i++){ s->aT[i]=s->aB[i];}
-  for(int i=0;i<s->si;i++){
-    int t=0;
-    for(int j=0;j<s->si;j++){
-      t|=((s->aT[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
-    }
-    s->aS[i]=t;                        // y[i] の j ビット目にする
-  }
-  int k=intncmp(s->aB,s->aS,s->si);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=2;}else{
-    for(int i=0;i<s->si;i++){
-      int t=0;
-      for(int j=0;j<s->si;j++){
-        t|=((s->aS[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
-      }
-      s->aT[i]=t;                        // y[i] の j ビット目にする
-    }
-    k=intncmp(s->aB,s->aT,s->si);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=4;}else{
-      for(int i=0;i<s->si;i++){
-        int t=0;
-        for(int j=0;j<s->si;j++){
-          t|=((s->aT[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
+            j++;
+          } // end while
+          LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+          ENDBIT>>=1;
         }
-        s->aS[i]=t;                        // y[i] の j ビット目にする
       }
-      k=intncmp(s->aB,s->aS,s->si);
-      if(k>0){ return 0;}
-      nEquiv=8;
+      s.BOUND1=s.BOUND1+1;
+      s.BOUND2=s.BOUND2-1;
     }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<s->si;i++){ s->aS[i]=s->aB[i];}
-  int score ;
-  for(int i=0;i<s->si;i++) {
-    score=s->aS[i];
-    s->aT[i]=rh(score,s->si-1);
-  }
-  k=intncmp(s->aB,s->aT,s->si);
-  if(k>0){ return 0; }
-  if(nEquiv>2){               //-90度回転 対角鏡と同等       
-    for(int i=0;i<s->si;i++){
-      int t=0;
-      for(int j=0;j<s->si;j++){
-        t|=((s->aT[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
+    //----
+    state[index].si=s.si;
+    //state[index].id=s.id;
+    state[index].B1=s.B1;
+    state[index].BOUND1=s.BOUND1;
+    state[index].BOUND2=s.BOUND2;
+    for (int j=0;j<s.si;j++){
+      state[index].aB[j] = s.aB[j];
+    }
+    state[index].lTotal=s.lTotal;
+    state[index].lUnique=s.lUnique;
+    state[index].step=s.step;
+    state[index].y=s.y;
+    state[index].bend=s.bend;
+    state[index].rflg=s.rflg;
+    for (int j=0;j<s.si;j++){
+      state[index].aT[j]=s.aT[j];
+      state[index].aS[j]=s.aS[j];
+    }
+    state[index].stParam=s.stParam;
+    state[index].msk=s.msk;
+    state[index].l=s.l;
+    state[index].d=s.d;
+    state[index].r=s.r;
+    state[index].bm=s.bm;
+    }
+    int rh(int a,int sz){
+      int tmp=0;
+      for(int i=0;i<=sz;i++){
+        if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
       }
-      s->aS[i]=t;                        // y[i] の j ビット目にする
+      return tmp;
     }
-    k=intncmp(s->aB,s->aS,s->si);
-    if(k>0){return 0;}
-    if(nEquiv>4){             //-180度回転 水平鏡像と同等
-      for(int i=0;i<s->si;i++){
-        int t=0;
-        for(int j=0;j<s->si;j++){
-          t|=((s->aS[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
+    int intncmp(qint lt[],qint rt[],int si){
+      int rtn=0;
+      for(int k=0;k<si;k++){
+        rtn=lt[k]-rt[k];
+        if(rtn!=0){ break;}
+      }
+      return rtn;
+    }
+    int symmetryOps_bm(struct queenState *s,int ENDBIT,int TOPBIT){
+      int nEquiv;
+      int own,ptn,you,bit;
+      //90度回転
+      if(s->aB[s->BOUND2]==1){ own=1; ptn=2;
+        while(own<=s->si-1){ bit=1; you=s->si-1;
+          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you--; }
+          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+          own++; ptn<<=1;
         }
-        s->aT[i]=t;                        // y[i] の j ビット目にする
+        /** 90度回転して同型なら180度/270度回転も同型である */
+        if(own>s->si-1){ nEquiv=2; return nEquiv; }
       }
-      k=intncmp(s->aB,s->aT,s->si);
-      if(k>0){ return 0;}       //-270度回転 反対角鏡と同等
-      for(int i=0;i<s->si;i++){
-        int t=0;
-        for(int j=0;j<s->si;j++){
-          t|=((s->aT[j]>>i)&1)<<(s->si-j-1); // x[j] の i ビット目を
+      //180度回転
+      if(s->aB[s->si-1]==ENDBIT){ own=1; you=s->si-1-1;
+        while(own<=s->si-1){ bit=1; ptn=TOPBIT;
+          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
+          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+          own++; you--;
         }
-        s->aS[i]=t;                        // y[i] の j ビット目にする
+        /** 90度回転が同型でなくても180度回転が同型である事もある */
+        if(own>s->si-1){ nEquiv=4; return nEquiv; }
       }
-      k=intncmp(s->aB,s->aS,s->si);
-      if(k>0){ return 0;}
+      //270度回転
+      if(s->aB[s->BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+        while(own<=s->si-1){ bit=1; you=0;
+          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you++; }
+          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+          own++; ptn>>=1;
+        }
+      }
+      nEquiv=8; return nEquiv;
     }
-  }
-  //if(nEquiv==2){ C2++; }
-  //if(nEquiv==4){ C4++; }
-  //if(nEquiv==8){ C8++; }
-  return nEquiv;
-}
 #ifdef GCC_STYLE
-int main(){
-  struct queenState inProgress[MAX];
-  long gTotal=0;
-  printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<18;si++){
-    for(int i=0;i<1;i++){ //single
+    int main(){
+      struct queenState inProgress[MAX];
+      long gTotal=0;
+      printf("%s\n"," N:          Total        Unique\n");
+      for(int si=4;si<18;si++){
+        for(int i=0;i<1;i++){ //single
           inProgress[i].si=si;
           //inProgress[i].id=i;
           inProgress[i].B1=2;
@@ -428,31 +412,31 @@ int main(){
           inProgress[i].y=0;
           inProgress[i].bend=0;
           inProgress[i].rflg=0;
-      for (int m=0;m<si;m++){ 
-        inProgress[i].aT[m]=0;
-        inProgress[i].aS[m]=0;
+          for (int m=0;m<si;m++){ 
+            inProgress[i].aT[m]=0;
+            inProgress[i].aS[m]=0;
+          }
+          for (int m=0;m<si;m++){ 
+            inProgress[i].stParam.param[m].Y=0;
+            inProgress[i].stParam.param[m].I=si;
+            inProgress[i].stParam.param[m].M=0;
+            inProgress[i].stParam.param[m].L=0;
+            inProgress[i].stParam.param[m].D=0;
+            inProgress[i].stParam.param[m].R=0;
+            inProgress[i].stParam.param[m].B=0;
+          }
+          inProgress[i].stParam.current=0;
+          inProgress[i].msk=(1<<si)-1;
+          inProgress[i].l=0;
+          inProgress[i].d=0;
+          inProgress[i].r=0;
+          inProgress[i].bm=0;
+          //
+          place(&inProgress[i]);
+          gTotal+=inProgress[i].lTotal;
+          printf("%2d:%18lu%18lu\n", si,inProgress[i].lTotal,inProgress[i].lUnique);
+        }
       }
-      for (int m=0;m<si;m++){ 
-        inProgress[i].stParam.param[m].Y=0;
-        inProgress[i].stParam.param[m].I=si;
-        inProgress[i].stParam.param[m].M=0;
-        inProgress[i].stParam.param[m].L=0;
-        inProgress[i].stParam.param[m].D=0;
-        inProgress[i].stParam.param[m].R=0;
-        inProgress[i].stParam.param[m].B=0;
-      }
-      inProgress[i].stParam.current=0;
-      inProgress[i].msk=(1<<si)-1;
-      inProgress[i].l=0;
-      inProgress[i].d=0;
-      inProgress[i].r=0;
-      inProgress[i].bm=0;
-      //
-      place(&inProgress[i]);
-      gTotal+=inProgress[i].lTotal;
-      printf("%2d:%18lu%18lu\n", si,inProgress[i].lTotal,inProgress[i].lUnique);
+      return 0;
     }
-  }
-  return 0;
-}
 #endif
