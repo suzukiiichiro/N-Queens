@@ -134,8 +134,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       break;
     }
     int bit;
-    s.aB[0]=1;
     if(s.BOUND1==0){
+      s.aB[0]=1;
       //for(int B1=2;B1<s.si-1;B1++){
       while(1){
         //printf("B1:%d\n",s.B1);
@@ -152,20 +152,30 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // backTrack1
         unsigned long j=1;
         //while (j<200000) {
-        int sum;
         while (1) {
 #ifdef GCC_STYLE
 #else
-          if(j==50000){
+          if(j==100){
             bflg=1;
             break;
           }
 #endif
+//    printf("methodstart:backtrack1\n");
+//    printf("###y:%d\n",s.y);
+//    printf("###l:%d\n",s.l);
+//    printf("###d:%d\n",s.d);
+//    printf("###r:%d\n",s.r);
+//    for(int k=0;k<s.si;k++){
+//      printf("###i:%d\n",k);
+ //     printf("###aB[k]:%d\n",s.aB[k]);
+//    }
           if(s.rflg==0){
             s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
           }
-          if (s.y==s.si-1&&s.rflg==0) {
+          if (s.y==s.si-1&&s.rflg==0) { 
+        printf("if(y==si-1){\n");
             if(s.bm>0){
+        printf("if(bm>0){\n");
               s.aB[s.y]=s.bm;
               //int sum=symmetryOps_bm(&s);
               //sum=symmetryOps_bm(&s);
@@ -174,16 +184,31 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
               s.lUnique++;
             }
           }else{
+      printf("}else{#y==si-1\n");
+      printf("y:%d:BOUND1:%d:rflg:%d\n",s.y,s.B1,s.rflg);
             //if(s.y<s.BOUND1&&s.rflg==0) {   
             if(s.y<s.B1&&s.rflg==0) {   
+        printf("if(y<BOUND1){\n");
               //printf("if(y<BOUND1){\n");
               //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
               // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
               s.bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
             }
+      printf("}#if(y<BOUND1){\n");
             while(s.bm>0|| s.rflg==1) {
+        printf("while(bm>0){\n");
               if(s.rflg==0){
                 s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
+        printf("beforebitmap\n");
+        printf("###y:%d\n",s.y);
+        printf("###l:%d\n",s.l);
+        printf("###d:%d\n",s.d);
+        printf("###r:%d\n",s.r);
+        printf("###bm:%d\n",s.bm);
+ //       for(int k=0;k<s.si;k++){
+ //         printf("###i:%d\n",k);
+ //         printf("###aB[k]:%d\n",s.aB[k]);
+ //       }
                 if(s.stParam.current<MAX){
                   s.stParam.param[s.stParam.current].Y=s.y;
                   s.stParam.param[s.stParam.current].I=s.si;
@@ -212,14 +237,26 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 s.d=s.stParam.param[s.stParam.current].D;
                 s.r=s.stParam.param[s.stParam.current].R;
                 s.bm=s.stParam.param[s.stParam.current].B;
+        printf("afterbitmap\n");
+        printf("###y:%d\n",s.y);
+        printf("###l:%d\n",s.l);
+        printf("###d:%d\n",s.d);
+        printf("###r:%d\n",s.r);
+        printf("###bm:%d\n",s.bm);
+ //       for(int k=0;k<s.si;k++){
+ //         printf("###i:%d\n",k);
+ //         printf("###aB[k]:%d\n",s.aB[k]);
+ //       }
                 s.rflg=0;
               }
             }
+      printf("}:end while(bm){\n");
             if(s.bend==1 && s.rflg==0){
               s.bend=0;
               continue;
             }
           } 
+    printf("}:end else\n");
           if(s.y==2){
             s.step=2;
             break;
@@ -230,8 +267,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         }
         s.B1=s.B1+1;
       }
-      s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-      s.ENDBIT=(s.TOPBIT>>1);
+        if(bflg==0){
+          s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+          s.ENDBIT=(s.TOPBIT>>1);
+          printf("EB:SIDEMASK:%d\n",s.SIDEMASK);
+          printf("EB:LASTMASK:%d\n",s.LASTMASK);
+        }
       } else{
         if(s.BOUND1<s.BOUND2){
           s.aB[0]=bit=(1<<s.BOUND1);
@@ -243,7 +284,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           while (1) {
 #ifdef GCC_STYLE
 #else
-            if(j==50000){
+            if(j==100){
               bflg=1;
               break;
             }
@@ -321,14 +362,17 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             }
             j++;
           } // end while
-          s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
-          s.ENDBIT>>=1;
+          if(bflg==0){
+            s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
+            s.ENDBIT>>=1;
+          }
         }
       }
       s.BOUND1=s.BOUND1+1;
       s.BOUND2=s.BOUND2-1;
     }
     //----
+//    printf("for分脱出\n");
     state[index].si=s.si;
     //state[index].id=s.id;
     state[index].B1=s.B1;
@@ -396,7 +440,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       struct queenState inProgress[MAX];
       long gTotal=0;
       printf("%s\n"," N:          Total        Unique\n");
-      for(int si=4;si<18;si++){
+      for(int si=8;si<9;si++){
         for(int i=0;i<1;i++){ //single
           inProgress[i].si=si;
           //inProgress[i].id=i;
