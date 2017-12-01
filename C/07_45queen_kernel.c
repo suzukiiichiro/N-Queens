@@ -74,7 +74,39 @@ CL_PACKED_KEYWORD struct queenState {
   int r;
   int bm;
 };
-int symmetryOps_bm(struct queenState *s);
+int symmetryOps_bm(struct queenState *s){
+  int nEquiv;
+  int own,ptn,you,bit;
+  //90度回転
+  if(s->aB[s->BOUND2]==1){ own=1; ptn=2;
+    while(own<=s->si-1){ bit=1; you=s->si-1;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you--; }
+      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>s->si-1){ nEquiv=2; return nEquiv; }
+  }
+  //180度回転
+  if(s->aB[s->si-1]==s->ENDBIT){ own=1; you=s->si-1-1;
+    while(own<=s->si-1){ bit=1; ptn=s->TOPBIT;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>s->si-1){ nEquiv=4; return nEquiv; }
+  }
+  //270度回転
+  if(s->aB[s->BOUND1]==s->TOPBIT){ own=1; ptn=s->TOPBIT>>1;
+    while(own<=s->si-1){ bit=1; you=0;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you++; }
+      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
+      own++; ptn>>=1;
+    }
+  }
+  nEquiv=8; return nEquiv;
+}
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -87,18 +119,13 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.BOUND2=state[index].BOUND2;
   s.ENDBIT=state[index].ENDBIT;
   s.TOPBIT=state[index].TOPBIT;
-  // printf("s.TOPBIT%d\n",s.TOPBIT);
   s.SIDEMASK=state[index].SIDEMASK;
   s.LASTMASK=state[index].LASTMASK;
-  //printf("BOUND1:%d\n",s.BOUND1);
-  //printf("BOUND2:%d\n",s.BOUND2);
-  //printf("B1:%d\n",s.B1);
   for (int j=0;j<s.si;j++){
     s.aB[j]=state[index].aB[j];
   }
   s.lTotal=state[index].lTotal;
   s.lUnique=state[index].lUnique;
-  //s.step=state[index].step;
   s.step=0;
   s.y=state[index].y;
   s.bend=state[index].bend;
@@ -113,13 +140,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.d=state[index].d;
   s.r=state[index].r;
   s.bm=state[index].bm;
-  // s.TOPBIT=1<<(s.si-1);
-  // int LASTMASK;
-  // int SIDEMASK;
-  // int ENDBIT;
-  //----
-  // barrier(CLK_LOCAL_MEM_FENCE);
-  //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
   int bflg=0;
   while(1){
     if(bflg==1){
@@ -227,11 +247,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             s.rflg=1;
           }
           j++;
+          }
+          s.B1=s.B1+1;
         }
-        s.B1=s.B1+1;
-      }
-      s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-      s.ENDBIT=(s.TOPBIT>>1);
+        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+        s.ENDBIT=(s.TOPBIT>>1);
       } else{
         if(s.BOUND1<s.BOUND2){
           s.aB[0]=bit=(1<<s.BOUND1);
@@ -327,69 +347,36 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       }
       s.BOUND1=s.BOUND1+1;
       s.BOUND2=s.BOUND2-1;
-    }
-    //----
-    state[index].si=s.si;
-    //state[index].id=s.id;
-    state[index].B1=s.B1;
-    state[index].BOUND1=s.BOUND1;
-    state[index].BOUND2=s.BOUND2;
-    state[index].ENDBIT=s.ENDBIT;
-    state[index].TOPBIT=s.TOPBIT;
-    state[index].SIDEMASK=s.SIDEMASK;
-    state[index].LASTMASK=s.LASTMASK;
-    for (int j=0;j<s.si;j++){
-      state[index].aB[j] = s.aB[j];
-    }
-    state[index].lTotal=s.lTotal;
-    state[index].lUnique=s.lUnique;
-    state[index].step=s.step;
-    state[index].y=s.y;
-    state[index].bend=s.bend;
-    state[index].rflg=s.rflg;
-    for (int j=0;j<s.si;j++){
-      state[index].aT[j]=s.aT[j];
-      state[index].aS[j]=s.aS[j];
-    }
-    state[index].stParam=s.stParam;
-    state[index].msk=s.msk;
-    state[index].l=s.l;
-    state[index].d=s.d;
-    state[index].r=s.r;
-    state[index].bm=s.bm;
-    }
-    int symmetryOps_bm(struct queenState *s){
-      int nEquiv;
-      int own,ptn,you,bit;
-      //90度回転
-      if(s->aB[s->BOUND2]==1){ own=1; ptn=2;
-        while(own<=s->si-1){ bit=1; you=s->si-1;
-          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you--; }
-          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-          own++; ptn<<=1;
-        }
-        /** 90度回転して同型なら180度/270度回転も同型である */
-        if(own>s->si-1){ nEquiv=2; return nEquiv; }
       }
-      //180度回転
-      if(s->aB[s->si-1]==s->ENDBIT){ own=1; you=s->si-1-1;
-        while(own<=s->si-1){ bit=1; ptn=s->TOPBIT;
-          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
-          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-          own++; you--;
-        }
-        /** 90度回転が同型でなくても180度回転が同型である事もある */
-        if(own>s->si-1){ nEquiv=4; return nEquiv; }
+      //----
+      state[index].si=s.si;
+      //state[index].id=s.id;
+      state[index].B1=s.B1;
+      state[index].BOUND1=s.BOUND1;
+      state[index].BOUND2=s.BOUND2;
+      state[index].ENDBIT=s.ENDBIT;
+      state[index].TOPBIT=s.TOPBIT;
+      state[index].SIDEMASK=s.SIDEMASK;
+      state[index].LASTMASK=s.LASTMASK;
+      for (int j=0;j<s.si;j++){
+        state[index].aB[j] = s.aB[j];
       }
-      //270度回転
-      if(s->aB[s->BOUND1]==s->TOPBIT){ own=1; ptn=s->TOPBIT>>1;
-        while(own<=s->si-1){ bit=1; you=0;
-          while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you++; }
-          if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-          own++; ptn>>=1;
-        }
+      state[index].lTotal=s.lTotal;
+      state[index].lUnique=s.lUnique;
+      state[index].step=s.step;
+      state[index].y=s.y;
+      state[index].bend=s.bend;
+      state[index].rflg=s.rflg;
+      for (int j=0;j<s.si;j++){
+        state[index].aT[j]=s.aT[j];
+        state[index].aS[j]=s.aS[j];
       }
-      nEquiv=8; return nEquiv;
+      state[index].stParam=s.stParam;
+      state[index].msk=s.msk;
+      state[index].l=s.l;
+      state[index].d=s.d;
+      state[index].r=s.r;
+      state[index].bm=s.bm;
     }
 #ifdef GCC_STYLE
     int main(){

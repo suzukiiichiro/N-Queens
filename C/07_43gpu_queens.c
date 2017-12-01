@@ -7,8 +7,6 @@
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_43NQueen 07_43gpu_queens.c -framework OpenCL
    $ ./07_43NQueen 
 
-07_44 
-
 07_43
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 1          00:00:00:00.00
