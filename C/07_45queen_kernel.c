@@ -74,7 +74,89 @@ CL_PACKED_KEYWORD struct queenState {
   int r;
   int bm;
 };
-int symmetryOps_bm(struct queenState *s);
+
+void symmetryOps_bm(struct queenState *s){
+  int nEquiv;
+  int own,ptn,you,bit;
+  //90度回転
+  if(s->aB[s->BOUND2]==1){ 
+    own=1;
+    ptn=2;
+    while(own<=(s->si-1)){ 
+      bit=1; 
+      you=s->si-1;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
+        bit<<=1; 
+        you--; 
+      }
+      if(s->aB[own]>bit){ 
+        return; 
+      }
+      if(s->aB[own]<bit){
+        // printf("break\n");
+        break; 
+      }
+      own++; 
+      ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>s->si-1){ 
+      s->lTotal+=2;
+      s->lUnique++; 
+      return;
+    }
+  }
+  //180度回転
+  if(s->aB[s->si-1]==s->ENDBIT){ 
+    own=1; 
+    you=s->si-2;
+    while(own<=s->si-1){ 
+      bit=1; 
+      ptn=s->TOPBIT;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
+        bit<<=1; 
+        ptn>>=1; 
+      }
+      if(s->aB[own]>bit){ 
+        return ; 
+      } 
+      if(s->aB[own]<bit){ 
+        break; 
+      }
+      own++; 
+      you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>s->si-1){ 
+      s->lTotal+=4;
+      s->lUnique++;
+      return ;
+    }
+  }
+  //270度回転
+  if(s->aB[s->BOUND1]==s->TOPBIT){ 
+    own=1; 
+    ptn=s->TOPBIT>>1;
+    while(own<=s->si-1){ 
+      bit=1; 
+      you=0;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
+        bit<<=1; 
+        you++; 
+      }
+      if(s->aB[own]>bit){ 
+        return ; 
+      } 
+      if(s->aB[own]<bit){ 
+        break; 
+      }
+      own++; 
+      ptn>>=1;
+    }
+  }
+  s->lTotal+=8;
+  s->lUnique++;
+}
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -289,8 +371,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             if(s.bm>0 && (s.bm&s.LASTMASK)==0){
               s.aB[s.y]=s.bm;
               //int sum=symmetryOps_bm(&s);
-              sum=symmetryOps_bm(&s);
-              if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+              symmetryOps_bm(&s);
+              //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
+              // if(sum!=0){ s.lUnique++;} //解を発見
             }
           }else{
             if(s.y<s.BOUND1&&s.rflg==0){             //【枝刈り】上部サイド枝刈り
@@ -395,39 +478,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   state[index].r=s.r;
   state[index].bm=s.bm;
 }
-int symmetryOps_bm(struct queenState *s){
-  int nEquiv;
-  int own,ptn,you,bit;
-  //90度回転
-  if(s->aB[s->BOUND2]==1){ own=1; ptn=2;
-    while(own<=s->si-1){ bit=1; you=s->si-1;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you--; }
-      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-      own++; ptn<<=1;
-    }
-    /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>s->si-1){ nEquiv=2; return nEquiv; }
-  }
-  //180度回転
-  if(s->aB[s->si-1]==s->ENDBIT){ own=1; you=s->si-1-1;
-    while(own<=s->si-1){ bit=1; ptn=s->TOPBIT;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-      own++; you--;
-    }
-    /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>s->si-1){ nEquiv=4; return nEquiv; }
-  }
-  //270度回転
-  if(s->aB[s->BOUND1]==s->TOPBIT){ own=1; ptn=s->TOPBIT>>1;
-    while(own<=s->si-1){ bit=1; you=0;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ bit<<=1; you++; }
-      if(s->aB[own]>bit){ return 0; } if(s->aB[own]<bit){ break; }
-      own++; ptn>>=1;
-    }
-  }
-  nEquiv=8; return nEquiv;
-}
+
 #ifdef GCC_STYLE
 int main(){
   struct queenState inProgress[MAX];
