@@ -56,8 +56,8 @@ cl_uint num_devices;
 //int spread;
 //long lGTotal;
 //long lGTotal;
-//long lGUnique;
 uint64_t lGTotal;
+//long lGUnique;
 uint64_t lGUnique;
 typedef int64_t qint;
 //typedef int64_t qint;
@@ -79,7 +79,6 @@ struct queenState {
   //int aB[MAX];
   qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  //uint64_t lTotal; // Number of solutinos found so far.
   //int step;
   char step;
   //int y;
@@ -94,6 +93,59 @@ struct queenState {
 
 //struct queenState inProgress[MAX];
 struct queenState inProgress[1];
+/**
+ * カーネルコードの読み込み
+ */
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
+  char prefix[256];
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
+  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  FILE * f=fopen(PROGRAM_FILE,"rb");
+  if(!f){ *buffer=NULL;return;}
+  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
+  long totalLength=prefixLength + fileLength + 1;
+  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  // Replace BOM with space
+  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+}
+/**
+  プラットフォーム一覧を取得
+  現在利用可能なOpenCLのプラットフォームの情報を取得
+  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
+  numEntries:追加可能なエントリーの数
+  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
+  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
+  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
+*/
+int getPlatform(){
+	char value[BUFFER_SIZE];
+	size_t size;
+  cl_int status;
+  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform ID.");
+    return 1; 
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 2; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 3; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+  }
+  return 0;
+}
 /*
   デバイス一覧を取得
   clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
@@ -164,55 +216,6 @@ int getDeviceID(){
   return 0;
 }
 /**
- * カーネルコードの読み込み
- */
-//void get_queens_code(char **buffer,int si){
-void get_queens_code(char **buffer){
-  char prefix[256];
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
-  FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
-  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
-  long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
-}
-/**
-  プラットフォーム一覧を取得
-  現在利用可能なOpenCLのプラットフォームの情報を取得
-  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
-  numEntries:追加可能なエントリーの数
-  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
-  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
-  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
-*/
-int getPlatform(){
-	char value[BUFFER_SIZE];
-	size_t size;
-  cl_int status;
-  status=clGetPlatformIDs(1,&platform,NULL);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform ID.");
-    return 1; 
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 2; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 3; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
-  }
-  return 0;
-}
-/**
   コンテキストオブジェクトの作成
   clCreateContext()ひとつ以上のデバイスで使用するためのコンテキストを作成する。
   nullptr コンテキストプロパティを指定する。
@@ -244,6 +247,7 @@ int createContext(){
 int createProgramWithSource(){
   cl_int status;
   char * code;
+  //get_queens_code(&code,si);
   get_queens_code(&code);
   if(code==NULL){
     printf("Couldn't load the code.\n");
@@ -271,6 +275,7 @@ int createProgramWithSource(){
 */
 int buildProgram(){
   cl_int status;
+  //status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
   status=clBuildProgram(program,1,devices,"",NULL,NULL);
   if(status!=CL_SUCCESS){
     char log[2048];
@@ -309,10 +314,12 @@ int createKernel(){
 int commandQueue(){
   cl_int status;
 #ifdef CL_VERSION_2_0
+	//cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueueWithProperties(context, devices[0], NULL, &status);
 #else
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
+	//cmd_queue = clCreateCommandQueue(context, devices[0], NULL, &status);
 #endif
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
@@ -337,10 +344,39 @@ int commandQueue(){
  * host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
  * errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
+int ceil_int_div(int i, int div) {
+    return (i + div - 1) / div;
+}
+/**
+ *
+ *
+ */
+int ceil_int(int i, int div) {
+    return ceil_int_div(i, div) * div;
+}
+/**
+ *
+ *
+ */
+void* aligned_malloc(size_t required_bytes, size_t alignment) {
+	void* p1; 	// original block
+	void** p2; 	// aligned block
+	int offset = (int)alignment - 1 + sizeof(void*);
+	if ((p1 = (void*)malloc(required_bytes + offset)) == NULL) {
+		 return NULL;
+	}
+	p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
+	p2[-1] = p1;
+	return p2;
+}
+/**
+ *
+ *
+ */
 int makeInProgress(int si){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
-  for(int i=0;i<1;i++){ //single
+  for(int i=0;i<1;i++){
     inProgress[i].si=si;
     inProgress[i].id=i;
     for (int m=0;m<si;m++){ inProgress[i].aB[m]=m;}
@@ -439,11 +475,10 @@ int makeInProgress(int si){
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
 int all_tasks_done(int32_t num_tasks) {
-	for (int i=0;i<num_tasks;i++){
-		if (inProgress[i].step != 2){
+	for (int i=0;i<num_tasks;i++)
+		//if (tasks[i].step != 2)
+		if (inProgress[i].step != 2)
 			return 0;
-    }
-  }
 	return 1;
 }
 /**
@@ -457,12 +492,12 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
   //while(!all_tasks_done(si)){
-  while(all_tasks_done(1)==0){
+  while(!all_tasks_done(1)){
     //size_t dim=1;
     cl_uint dim=1;
     //size_t globalWorkSize[] = {si};
     size_t globalWorkSize[] = {1};
-    size_t localWorkSize[] = {1};
+    size_t localWorkSize[] = { 1 };
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -474,7 +509,6 @@ int execKernel(int si){
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
-    clFinish(cmd_queue);
     /**
      * 結果を読み込み
      */
@@ -491,7 +525,7 @@ int execPrint(int si){
   lGTotal=0;
   lGUnique=0;
   //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){//single
+  for(int i=0;i<1;i++){
           if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
           lGTotal+=inProgress[i].lTotal;
     }
