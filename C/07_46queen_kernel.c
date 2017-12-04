@@ -224,6 +224,7 @@ void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,i
   state[index].bm=s->bm;
 }
 void inParam(struct queenState *s){
+                if(s->stParam.current<MAX){
                   s->stParam.param[s->stParam.current].Y=s->y;
                   s->stParam.param[s->stParam.current].I=s->si;
                   s->stParam.param[s->stParam.current].M=s->msk;
@@ -231,8 +232,13 @@ void inParam(struct queenState *s){
                   s->stParam.param[s->stParam.current].D=s->d;
                   s->stParam.param[s->stParam.current].R=s->r;
                   s->stParam.param[s->stParam.current].B=s->bm;
+                  (s->stParam.current)++;
+                }
 }
 void outParam(struct queenState *s){
+                if(s->stParam.current>0){
+                  s->stParam.current--;
+                }
                 s->si=s->stParam.param[s->stParam.current].I;
                 s->y=s->stParam.param[s->stParam.current].Y;
                 s->msk=s->stParam.param[s->stParam.current].M;
@@ -242,78 +248,19 @@ void outParam(struct queenState *s){
                 s->bm=s->stParam.param[s->stParam.current].B;
 }
 
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
-  int index=get_global_id(0);
-  struct queenState s ;
-/*
-  s.si=state[index].si;
-  s.B1=state[index].B1;
-  s.BOUND1=state[index].BOUND1;
-  s.BOUND2=state[index].BOUND2;
-  s.ENDBIT=state[index].ENDBIT;
-  s.TOPBIT=state[index].TOPBIT;
-  s.SIDEMASK=state[index].SIDEMASK;
-  s.LASTMASK=state[index].LASTMASK;
-  //printf("BOUND1:%d\n",s.BOUND1);
-  //printf("BOUND2:%d\n",s.BOUND2);
-  //printf("B1:%d\n",s.B1);
-  for (int j=0;j<s.si;j++){
-    s.aB[j]=state[index].aB[j];
-  }
-  s.lTotal=state[index].lTotal;
-  s.lUnique=state[index].lUnique;
-  //s.step=state[index].step;
-  s.step=0;
-  s.y=state[index].y;
-  s.bend=state[index].bend;
-  s.rflg=state[index].rflg;
-  for (int j=0;j<s.si;j++){
-    s.aT[j]=state[index].aT[j];
-    s.aS[j]=state[index].aS[j];
-  }
-  s.stParam=state[index].stParam;
-  s.msk=(1<<s.si)-1;
-  s.l=state[index].l;
-  s.d=state[index].d;
-  s.r=state[index].r;
-  s.bm=state[index].bm;
-  // s.TOPBIT=1<<(s.si-1);
-  // int LASTMASK;
-  // int SIDEMASK;
-  // int ENDBIT;
-  */
-  inStruct(&s,state,index);
-  //----
-  // barrier(CLK_LOCAL_MEM_FENCE);
-  //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
-  int bflg=0;
-  while(1){
-    if(bflg==1){
-      //printf("docomo\n");
-      s.BOUND1--;
-      s.BOUND2++;
-      s.step=0;
-      break;
-    }
-    if(s.BOUND1==s.si){
-      break;
-    }
-    int bit;
-    if(s.BOUND1==0){ // BackTrack1
-      s.aB[0]=1;
+int backTrack1(struct queenState *s,int bflg){
+  int bit;
+      s->aB[0]=1;
       while(1){
-        //printf("B1:%d\n",s.B1);
         if(bflg==1){
-          s.B1--;
+          s->B1--;
           break;
         }
-        if(s.B1==s.si-1){
+        if(s->B1==s->si-1){
           break;
         }
-        s.aB[1]=bit=(1<<s.B1);
-        s.y=2;s.l=(2|bit)<<1;s.d=(1|bit);s.r=(bit>>1);
-        // backTrack1(&s,s.bm);
-        // backTrack1
+        s->aB[1]=bit=(1<<s->B1);
+        s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
         unsigned long j=1;
         while(1){
 #ifdef GCC_STYLE
@@ -323,133 +270,57 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             break;
           }
 #endif
-          //    printf("methodstart:backtrack1\n");
-          //    printf("###y:%d\n",s.y);
-          //    printf("###l:%d\n",s.l);
-          //    printf("###d:%d\n",s.d);
-          //    printf("###r:%d\n",s.r);
-          //    for(int k=0;k<s.si;k++){
-          //      printf("###i:%d\n",k);
-          //     printf("###aB[k]:%d\n",s.aB[k]);
-          //    }
-          if(s.rflg==0){
-            s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
+          if(s->rflg==0){
+            s->bm=s->msk&~(s->l|s->d|s->r); 
           }
-          if (s.y==s.si-1&&s.rflg==0){ 
-            // printf("if(y==si-1){\n");
-            if(s.bm>0){
-              // printf("if(bm>0){\n");
-              s.aB[s.y]=s.bm;
-              //int sum=symmetryOps_bm(&s);
-              //sum=symmetryOps_bm(&s);
-              //if(sum!=0){ s.lUnique++; s.lTotal+=sum; } //解を発見
-              s.lTotal+=8;
-              s.lUnique++;
+          if (s->y==s->si-1&&s->rflg==0){ 
+            if(s->bm>0){
+              s->aB[s->y]=s->bm;
+              s->lTotal+=8;
+              s->lUnique++;
             }
           }else{
-            // printf("}else{#y==si-1\n");
-            // printf("y:%d:BOUND1:%d:rflg:%d\n",s.y,s.B1,s.rflg);
-            if(s.y<s.B1&&s.rflg==0){   
-              // printf("if(y<BOUND1){\n");
-              //printf("if(y<BOUND1){\n");
-              //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-              // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-              s.bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-            }//end if
-            // printf("}#if(y<BOUND1){\n");
-            while(s.bm>0|| s.rflg==1){
-              // printf("while(bm>0){\n");
-              if(s.rflg==0){
-                s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-                // printf("beforebitmap\n");
-                // printf("###y:%d\n",s.y);
-                // printf("###l:%d\n",s.l);
-                // printf("###d:%d\n",s.d);
-                // printf("###r:%d\n",s.r);
-                // printf("###bm:%d\n",s.bm);
-                //       for(int k=0;k<s.si;k++){
-                //         printf("###i:%d\n",k);
-                //         printf("###aB[k]:%d\n",s.aB[k]);
-                //       }
-                if(s.stParam.current<MAX){
-                  /*
-                  s.stParam.param[s.stParam.current].Y=s.y;
-                  s.stParam.param[s.stParam.current].I=s.si;
-                  s.stParam.param[s.stParam.current].M=s.msk;
-                  s.stParam.param[s.stParam.current].L=s.l;
-                  s.stParam.param[s.stParam.current].D=s.d;
-                  s.stParam.param[s.stParam.current].R=s.r;
-                  s.stParam.param[s.stParam.current].B=s.bm;
-                  */
-  inParam(&s);
-                  
-                  (s.stParam.current)++;
-                }//end if
-                s.y++;
-                s.l=(s.l|bit)<<1;
-                s.d=(s.d|bit);
-                s.r=(s.r|bit)>>1;
-                s.bend=1;
+            if(s->y<s->B1&&s->rflg==0){   
+              s->bm&=~2;
+            }
+            while(s->bm>0|| s->rflg==1){
+              if(s->rflg==0){
+                s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
+inParam(s);
+                s->y++;
+                s->l=(s->l|bit)<<1;
+                s->d=(s->d|bit);
+                s->r=(s->r|bit)>>1;
+                s->bend=1;
                 break;
-              }//end if
-              if(s.rflg==1){ 
-                if(s.stParam.current>0){
-                  s.stParam.current--;
-                }
-                /*
-                s.si=s.stParam.param[s.stParam.current].I;
-                s.y=s.stParam.param[s.stParam.current].Y;
-                s.msk=s.stParam.param[s.stParam.current].M;
-                s.l=s.stParam.param[s.stParam.current].L;
-                s.d=s.stParam.param[s.stParam.current].D;
-                s.r=s.stParam.param[s.stParam.current].R;
-                s.bm=s.stParam.param[s.stParam.current].B;
-                */
-  outParam(&s);
-                // printf("afterbitmap\n");
-                // printf("###y:%d\n",s.y);
-                // printf("###l:%d\n",s.l);
-                // printf("###d:%d\n",s.d);
-                // printf("###r:%d\n",s.r);
-                // printf("###bm:%d\n",s.bm);
-                //       for(int k=0;k<s.si;k++){
-                //         printf("###i:%d\n",k);
-                //         printf("###aB[k]:%d\n",s.aB[k]);
-                //       }
-                s.rflg=0;
-              }//end if
-            }//end while
-            // printf("}:end while(bm){\n");
-            if(s.bend==1 && s.rflg==0){
-              s.bend=0;
+              }
+              if(s->rflg==1){ 
+outParam(s);
+                s->rflg=0;
+              }
+            }
+            if(s->bend==1 && s->rflg==0){
+              s->bend=0;
               continue;
             }
-          }//end else 
-          // printf("}:end else\n");
-          if(s.y==2){
-            s.step=2;
+          }
+          if(s->y==2){
+            s->step=2;
             break;
           }else{
-            s.rflg=1;
-          } //end if
+            s->rflg=1;
+          }
           j++;
         }
-        s.B1=s.B1+1;
-      } // end while
-      if(bflg==0){
-        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-        s.ENDBIT=(s.TOPBIT>>1);
-        // printf("EB:SIDEMASK:%d\n",s.SIDEMASK);
-        // printf("EB:LASTMASK:%d\n",s.LASTMASK);
-      }//end if
-    }else{ // BackTrack2
-      if(s.BOUND1<s.BOUND2){
-        s.aB[0]=bit=(1<<s.BOUND1);
-        s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-        // backTrack2(&s,s.bm);
-        // Backtrack2
+        s->B1=s->B1+1;
+      }
+  return bflg;
+}
+int backTrack2(struct queenState *s,int bflg){
+  int bit;
+        s->aB[0]=bit=(1<<s->BOUND1);
+        s->y=1;s->l=bit<<1;s->d=bit;s->r=bit>>1;
         unsigned long j=1;
-        // int sum;
         while (1){
 #ifdef GCC_STYLE
 #else
@@ -458,125 +329,92 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
             break;
           }
 #endif
-          if(s.rflg==0){
-            s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */
+          if(s->rflg==0){
+            s->bm=s->msk&~(s->l|s->d|s->r); 
           }
-          if (s.y==s.si-1&&s.rflg==0) {
-            if(s.bm>0 && (s.bm&s.LASTMASK)==0){
-              s.aB[s.y]=s.bm;
-              symmetryOps_bm(&s);
+          if (s->y==s->si-1&&s->rflg==0) {
+            if(s->bm>0 && (s->bm&s->LASTMASK)==0){
+              s->aB[s->y]=s->bm;
+              symmetryOps_bm(s);
             }
           }else{
-            if(s.y<s.BOUND1&&s.rflg==0){             //【枝刈り】上部サイド枝刈り
-              //printf("y<BOUND1\n");
-              s.bm&=~s.SIDEMASK; 
-            }else if(s.y==s.BOUND2&&s.rflg==0){     //【枝刈り】下部サイド枝刈り
-              //printf("else if(y==BOUND2)\n");
-              if((s.d&s.SIDEMASK)==0&&s.rflg==0){ 
-                //printf("if((d&SIDEMASK)==0){\n");
-                //goto ret2; 
-                s.rflg=1;
+            if(s->y<s->BOUND1&&s->rflg==0){
+              s->bm&=~s->SIDEMASK; 
+            }else if(s->y==s->BOUND2&&s->rflg==0){
+              if((s->d&s->SIDEMASK)==0&&s->rflg==0){ 
+                s->rflg=1;
               }
-              if((s.d&s.SIDEMASK)!=s.SIDEMASK&&s.rflg==0){ 
-                //printf("if((d&SIDEMASK)!=SIDEMASK){\n");
-                s.bm&=s.SIDEMASK; 
+              if((s->d&s->SIDEMASK)!=s->SIDEMASK&&s->rflg==0){ 
+                s->bm&=s->SIDEMASK; 
               }
-            } // end if
-            while(s.bm>0|| s.rflg==1){
-              if(s.rflg==0){
-                s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
-                if(s.stParam.current<MAX){
-  inParam(&s);
-                  /*
-                  s.stParam.param[s.stParam.current].Y=s.y; 
-                  s.stParam.param[s.stParam.current].I=s.si;
-                  s.stParam.param[s.stParam.current].M=s.msk;
-                  s.stParam.param[s.stParam.current].L=s.l;
-                  s.stParam.param[s.stParam.current].D=s.d;
-                  s.stParam.param[s.stParam.current].R=s.r;
-                  s.stParam.param[s.stParam.current].B=s.bm;
-                  */
-                  (s.stParam.current)++;
-                }
-                s.y++;
-                s.l=(s.l|bit)<<1;
-                s.d=(s.d|bit);
-                s.r=(s.r|bit)>>1;
-                s.bend=1;
+            }
+            while(s->bm>0|| s->rflg==1){
+              if(s->rflg==0){
+                s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm); 
+inParam(s);
+                s->y++;
+                s->l=(s->l|bit)<<1;
+                s->d=(s->d|bit);
+                s->r=(s->r|bit)>>1;
+                s->bend=1;
                 break;
               }
-              if(s.rflg==1){ 
-                if(s.stParam.current>0){
-                  s.stParam.current--;
-                }
-  outParam(&s);
-                /*
-                s.si=s.stParam.param[s.stParam.current].I;
-                s.y=s.stParam.param[s.stParam.current].Y;
-                s.msk=s.stParam.param[s.stParam.current].M;
-                s.l=s.stParam.param[s.stParam.current].L;
-                s.d=s.stParam.param[s.stParam.current].D;
-                s.r=s.stParam.param[s.stParam.current].R;
-                s.bm=s.stParam.param[s.stParam.current].B;
-                */
-                s.rflg=0;
+              if(s->rflg==1){ 
+outParam(s);
+                s->rflg=0;
               }
-            } // end while
-            if(s.bend==1 && s.rflg==0){
-              s.bend=0;
+            }
+            if(s->bend==1 && s->rflg==0){
+              s->bend=0;
               continue;
             }
-          } // end if
-          if(s.y==1){
-            s.step=2;
+          }
+          if(s->y==1){
+            s->step=2;
             break;
           }else{
-            s.rflg=1;
+            s->rflg=1;
           }
           j++;
-        } // end while
+        } 
         if(bflg==0){
-          s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
-          s.ENDBIT>>=1;
+          s->LASTMASK|=s->LASTMASK>>1|s->LASTMASK<<1;
+          s->ENDBIT>>=1;
         }
-      }// end if
-    }//end if
+
+        return bflg;
+}
+CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
+  int index=get_global_id(0);
+  struct queenState s ;
+inStruct(&s,state,index);
+  int bflg=0;
+  while(1){
+    if(bflg==1){
+      s.BOUND1--;
+      s.BOUND2++;
+      s.step=0;
+      break;
+    }
+    if(s.BOUND1==s.si){
+      break;
+    }
+    int bit;
+    if(s.BOUND1==0){ 
+bflg=backTrack1(&s,bflg);
+      if(bflg==0){
+        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+        s.ENDBIT=(s.TOPBIT>>1);
+      }
+    }else{ 
+      if(s.BOUND1<s.BOUND2){
+bflg=backTrack2(&s,bflg);
+      }
+    }
     s.BOUND1=s.BOUND1+1;
     s.BOUND2=s.BOUND2-1;
-  }//end while
-  outStruct(state,&s,index);
-  //----
-  //    printf("for分脱出\n");
-  /*
-  state[index].si=s.si;
-  //state[index].id=s.id;
-  state[index].B1=s.B1;
-  state[index].BOUND1=s.BOUND1;
-  state[index].BOUND2=s.BOUND2;
-  state[index].ENDBIT=s.ENDBIT;
-  state[index].TOPBIT=s.TOPBIT;
-  state[index].SIDEMASK=s.SIDEMASK;
-  state[index].LASTMASK=s.LASTMASK;
-  for (int j=0;j<s.si;j++){
-    state[index].aB[j] = s.aB[j];
-  }//end for
-  state[index].lTotal=s.lTotal;
-  state[index].lUnique=s.lUnique;
-  state[index].step=s.step;
-  state[index].y=s.y;
-  state[index].bend=s.bend;
-  state[index].rflg=s.rflg;
-  for (int j=0;j<s.si;j++){
-    state[index].aT[j]=s.aT[j];
-    state[index].aS[j]=s.aS[j];
-  }//end for
-  state[index].stParam=s.stParam;
-  state[index].msk=s.msk;
-  state[index].l=s.l;
-  state[index].d=s.d;
-  state[index].r=s.r;
-  state[index].bm=s.bm;
-  */
+  }
+outStruct(state,&s,index);
 }
 
 #ifdef GCC_STYLE
