@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
- #define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -201,8 +201,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //----
   // barrier(CLK_LOCAL_MEM_FENCE);
   //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
-  int bflg=0;
+  //int bflg=0;
   while(1){
+    /*
     if(bflg==1){
       //printf("docomo\n");
       s.BOUND1--;
@@ -210,6 +211,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       s.step=0;
       break;
     }
+    */  
     if(s.BOUND1==s.si){
       break;
     }
@@ -218,10 +220,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
       s.aB[0]=1;
       while(1){
         //printf("B1:%d\n",s.B1);
+        /*
         if(bflg==1){
           s.B1--;
           break;
         }
+        */
         if(s.B1==s.si-1){
           break;
         }
@@ -235,8 +239,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 #ifdef GCC_STYLE
 #else
           if(j==500000){
-            bflg=1;
-            break;
+            //bflg=1;
+            goto bflg;
+            //break;
           }
 #endif
           //    printf("methodstart:backtrack1\n");
@@ -353,12 +358,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         }
         s.B1=s.B1+1;
       } // end while
-      if(bflg==0){
+      //if(bflg==0){
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
         s.ENDBIT=(s.TOPBIT>>1);
         // printf("EB:SIDEMASK:%d\n",s.SIDEMASK);
         // printf("EB:LASTMASK:%d\n",s.LASTMASK);
-      }//end if
+      //}//end if
     }else{ // BackTrack2
       if(s.BOUND1<s.BOUND2){
         s.aB[0]=bit=(1<<s.BOUND1);
@@ -372,8 +377,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 #ifdef GCC_STYLE
 #else
           if(j==100){
-            bflg=1;
-            break;
+            //bflg=1;
+            goto bflg;
+            //break;
           }
 #endif
           //if(s.rflg==0){
@@ -459,10 +465,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
           }
           j++;
         } // end while
-        if(bflg==0){
+        //if(bflg==0){
           s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
           s.ENDBIT>>=1;
-        }
+        //}
       }// end if
     }//end if
     s.BOUND1=s.BOUND1+1;
@@ -470,6 +476,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   }//end while
   //----
   //    printf("for分脱出\n");
+  bflg:
   state[index].si=s.si;
   //state[index].id=s.id;
   state[index].B1=s.B1;
