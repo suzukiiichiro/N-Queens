@@ -223,6 +223,24 @@ void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,i
   state[index].r=s->r;
   state[index].bm=s->bm;
 }
+void inParam(struct queenState *s){
+                  s->stParam.param[s->stParam.current].Y=s->y;
+                  s->stParam.param[s->stParam.current].I=s->si;
+                  s->stParam.param[s->stParam.current].M=s->msk;
+                  s->stParam.param[s->stParam.current].L=s->l;
+                  s->stParam.param[s->stParam.current].D=s->d;
+                  s->stParam.param[s->stParam.current].R=s->r;
+                  s->stParam.param[s->stParam.current].B=s->bm;
+}
+void outParam(struct queenState *s){
+                s->si=s->stParam.param[s->stParam.current].I;
+                s->y=s->stParam.param[s->stParam.current].Y;
+                s->msk=s->stParam.param[s->stParam.current].M;
+                s->l=s->stParam.param[s->stParam.current].L;
+                s->d=s->stParam.param[s->stParam.current].D;
+                s->r=s->stParam.param[s->stParam.current].R;
+                s->bm=s->stParam.param[s->stParam.current].B;
+}
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
@@ -354,6 +372,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 //         printf("###aB[k]:%d\n",s.aB[k]);
                 //       }
                 if(s.stParam.current<MAX){
+                  /*
                   s.stParam.param[s.stParam.current].Y=s.y;
                   s.stParam.param[s.stParam.current].I=s.si;
                   s.stParam.param[s.stParam.current].M=s.msk;
@@ -361,6 +380,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                   s.stParam.param[s.stParam.current].D=s.d;
                   s.stParam.param[s.stParam.current].R=s.r;
                   s.stParam.param[s.stParam.current].B=s.bm;
+                  */
+  inParam(&s);
+                  
                   (s.stParam.current)++;
                 }//end if
                 s.y++;
@@ -374,6 +396,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 if(s.stParam.current>0){
                   s.stParam.current--;
                 }
+                /*
                 s.si=s.stParam.param[s.stParam.current].I;
                 s.y=s.stParam.param[s.stParam.current].Y;
                 s.msk=s.stParam.param[s.stParam.current].M;
@@ -381,6 +404,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 s.d=s.stParam.param[s.stParam.current].D;
                 s.r=s.stParam.param[s.stParam.current].R;
                 s.bm=s.stParam.param[s.stParam.current].B;
+                */
+  outParam(&s);
                 // printf("afterbitmap\n");
                 // printf("###y:%d\n",s.y);
                 // printf("###l:%d\n",s.l);
