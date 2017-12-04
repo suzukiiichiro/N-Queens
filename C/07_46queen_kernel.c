@@ -75,84 +75,126 @@ CL_PACKED_KEYWORD struct queenState {
   int bm;
 };
 
-void symmetryOps_bm(struct queenState *s){
-  int nEquiv;
-  int own,ptn,you,bit;
-  //90度回転
+CL_PACKED_KEYWORD struct symmetry {
+  int own;
+  int ptn;
+  int you;
+  int bit;
+};
+int symmetryOps_2(struct queenState *s,struct symmetry *sym){
   if(s->aB[s->BOUND2]==1){ 
-    own=1;
-    ptn=2;
-    while(own<=(s->si-1)){
-      bit=1; 
-      you=s->si-1;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
-        bit<<=1; 
-        you--; 
+    sym->own=1;
+    sym->ptn=2;
+    while(sym->own<=(s->si-1)){
+      sym->bit=1; 
+      sym->you=s->si-1;
+      while((s->aB[sym->you]!=sym->ptn)&&(s->aB[sym->own]>=sym->bit)){ 
+        sym->bit<<=1; 
+        sym->you--; 
       }//end while
-      if(s->aB[own]>bit){ 
-        return; 
+      if(s->aB[sym->own]>sym->bit){ 
+        return 0; 
       }//end if 
-      if(s->aB[own]<bit){
-        printf("");
+      if(s->aB[sym->own]<sym->bit){
+        //printf("");
         break; 
       }//end if
-      own++; 
-      ptn<<=1;
+      sym->own++; 
+      sym->ptn<<=1;
     }//end while
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>s->si-1){ 
+    if(sym->own>s->si-1){ 
       s->lTotal+=2;
       s->lUnique++; 
-      return;
+      return 0;
     }//end if
   }//end if
+  return 1;
+  //printf("b_bit:%d\n",sym->bit);
+  //printf("b_own:%d\n",sym->own);
+  //printf("b_you:%d\n",sym->you);
+  //printf("b_ptn:%d\n",sym->ptn);
+}
+int symmetryOps_4(struct queenState *s,struct symmetry *sym){
   //180度回転
   if(s->aB[s->si-1]==s->ENDBIT){ 
-    own=1; 
-    you=s->si-2;
-    while(own<=s->si-1){ 
-      bit=1; 
-      ptn=s->TOPBIT;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
-        bit<<=1; 
-        ptn>>=1; 
+    sym->own=1; 
+    sym->you=s->si-2;
+    while(sym->own<=s->si-1){ 
+      sym->bit=1; 
+      sym->ptn=s->TOPBIT;
+      while((s->aB[sym->you]!=sym->ptn)&&(s->aB[sym->own]>=sym->bit)){ 
+        sym->bit<<=1; 
+        sym->ptn>>=1; 
       }
-      if(s->aB[own]>bit){ 
-        return ; 
+      if(s->aB[sym->own]>sym->bit){ 
+        return 0; 
       } 
-      if(s->aB[own]<bit){ 
+      if(s->aB[sym->own]<sym->bit){ 
         break; 
       }
-      own++; 
-      you--;
+      sym->own++; 
+      sym->you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>s->si-1){ 
+    if(sym->own>s->si-1){ 
       s->lTotal+=4;
       s->lUnique++;
-      return ;
+      return 0;
     }
   }
+  return 1;
+  //printf("b_bit:%d\n",sym->bit);
+  //printf("b_own:%d\n",sym->own);
+  //printf("b_you:%d\n",sym->you);
+  //printf("b_ptn:%d\n",sym->ptn);
+}
+int symmetryOps_8(struct queenState *s,struct symmetry *sym){
   //270度回転
   if(s->aB[s->BOUND1]==s->TOPBIT){ 
-    own=1; 
-    ptn=s->TOPBIT>>1;
-    while(own<=s->si-1){ 
-      bit=1; 
-      you=0;
-      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
-        bit<<=1; 
-        you++; 
+    sym->own=1; 
+    sym->ptn=s->TOPBIT>>1;
+    while(sym->own<=s->si-1){ 
+      sym->bit=1; 
+      sym->you=0;
+      while((s->aB[sym->you]!=sym->ptn)&&(s->aB[sym->own]>=sym->bit)){ 
+        sym->bit<<=1; 
+        sym->you++; 
       }
-      if(s->aB[own]>bit){ 
-        return ; 
+      if(s->aB[sym->own]>sym->bit){ 
+        return 0; 
       } 
-      if(s->aB[own]<bit){ 
+      if(s->aB[sym->own]<sym->bit){ 
         break; 
       }
-      own++; 
-      ptn>>=1;
+      sym->own++; 
+      sym->ptn>>=1;
     }
+  }
+  return 1;
+  //printf("b_bit:%d\n",sym->bit);
+  //printf("b_own:%d\n",sym->own);
+  //printf("b_you:%d\n",sym->you);
+  //printf("b_ptn:%d\n",sym->ptn);
+}
+void symmetryOps_bm(struct queenState *s){
+  int nEquiv;
+  struct symmetry sym ;
+  int rtn;
+  //90度回転
+  rtn=symmetryOps_2(s,&sym);
+  if(rtn == 0){
+    return;
+  }
+  //180度回転
+  rtn=symmetryOps_4(s,&sym);
+  if(rtn == 0){
+    return;
+  }
+  //270度回転
+  rtn=symmetryOps_8(s,&sym);
+  if(rtn == 0){
+    return;
   }
   s->lTotal+=8;
   s->lUnique++;
