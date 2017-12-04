@@ -159,10 +159,75 @@ void symmetryOps_bm(struct queenState *s){
   s->lTotal+=8;
   s->lUnique++;
 }
+void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,int index){
+  s->si=state[index].si;
+  s->B1=state[index].B1;
+  s->BOUND1=state[index].BOUND1;
+  s->BOUND2=state[index].BOUND2;
+  s->ENDBIT=state[index].ENDBIT;
+  s->TOPBIT=state[index].TOPBIT;
+  s->SIDEMASK=state[index].SIDEMASK;
+  s->LASTMASK=state[index].LASTMASK;
+  //printf("BOUND1:%d\n",s->BOUND1);
+  //printf("BOUND2:%d\n",s->BOUND2);
+  //printf("B1:%d\n",s->B1);
+  for (int j=0;j<s->si;j++){
+    s->aB[j]=state[index].aB[j];
+  }
+  s->lTotal=state[index].lTotal;
+  s->lUnique=state[index].lUnique;
+  //s->step=state[index].step;
+  s->step=0;
+  s->y=state[index].y;
+  s->bend=state[index].bend;
+  s->rflg=state[index].rflg;
+  for (int j=0;j<s->si;j++){
+    s->aT[j]=state[index].aT[j];
+    s->aS[j]=state[index].aS[j];
+  }
+  s->stParam=state[index].stParam;
+  s->msk=(1<<s->si)-1;
+  s->l=state[index].l;
+  s->d=state[index].d;
+  s->r=state[index].r;
+  s->bm=state[index].bm;
+
+}
+void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,int index){
+  state[index].si=s->si;
+  //state[index].id=s->id;
+  state[index].B1=s->B1;
+  state[index].BOUND1=s->BOUND1;
+  state[index].BOUND2=s->BOUND2;
+  state[index].ENDBIT=s->ENDBIT;
+  state[index].TOPBIT=s->TOPBIT;
+  state[index].SIDEMASK=s->SIDEMASK;
+  state[index].LASTMASK=s->LASTMASK;
+  for (int j=0;j<s->si;j++){
+    state[index].aB[j] = s->aB[j];
+  }//end for
+  state[index].lTotal=s->lTotal;
+  state[index].lUnique=s->lUnique;
+  state[index].step=s->step;
+  state[index].y=s->y;
+  state[index].bend=s->bend;
+  state[index].rflg=s->rflg;
+  for (int j=0;j<s->si;j++){
+    state[index].aT[j]=s->aT[j];
+    state[index].aS[j]=s->aS[j];
+  }//end for
+  state[index].stParam=s->stParam;
+  state[index].msk=s->msk;
+  state[index].l=s->l;
+  state[index].d=s->d;
+  state[index].r=s->r;
+  state[index].bm=s->bm;
+}
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   struct queenState s ;
+/*
   s.si=state[index].si;
   s.B1=state[index].B1;
   s.BOUND1=state[index].BOUND1;
@@ -198,6 +263,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   // int LASTMASK;
   // int SIDEMASK;
   // int ENDBIT;
+  */
+  inStruct(&s,state,index);
   //----
   // barrier(CLK_LOCAL_MEM_FENCE);
   //for(int BOUND1=0,BOUND2=s.si-2;BOUND1<s.si;BOUND1++,BOUND2--){
@@ -446,8 +513,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     s.BOUND1=s.BOUND1+1;
     s.BOUND2=s.BOUND2-1;
   }//end while
+  outStruct(state,&s,index);
   //----
   //    printf("for分脱出\n");
+  /*
   state[index].si=s.si;
   //state[index].id=s.id;
   state[index].B1=s.B1;
@@ -476,6 +545,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   state[index].d=s.d;
   state[index].r=s.r;
   state[index].bm=s.bm;
+  */
 }
 
 #ifdef GCC_STYLE
