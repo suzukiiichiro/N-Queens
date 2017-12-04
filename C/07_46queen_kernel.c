@@ -486,6 +486,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
               if(s.rflg==0){
                 s.bm^=s.aB[s.y]=bit=(-s.bm&s.bm); //最も下位の１ビットを抽出
                 if(s.stParam.current<MAX){
+  inParam(&s);
+                  /*
                   s.stParam.param[s.stParam.current].Y=s.y; 
                   s.stParam.param[s.stParam.current].I=s.si;
                   s.stParam.param[s.stParam.current].M=s.msk;
@@ -493,6 +495,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                   s.stParam.param[s.stParam.current].D=s.d;
                   s.stParam.param[s.stParam.current].R=s.r;
                   s.stParam.param[s.stParam.current].B=s.bm;
+                  */
                   (s.stParam.current)++;
                 }
                 s.y++;
@@ -506,6 +509,8 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 if(s.stParam.current>0){
                   s.stParam.current--;
                 }
+  outParam(&s);
+                /*
                 s.si=s.stParam.param[s.stParam.current].I;
                 s.y=s.stParam.param[s.stParam.current].Y;
                 s.msk=s.stParam.param[s.stParam.current].M;
@@ -513,6 +518,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
                 s.d=s.stParam.param[s.stParam.current].D;
                 s.r=s.stParam.param[s.stParam.current].R;
                 s.bm=s.stParam.param[s.stParam.current].B;
+                */
                 s.rflg=0;
               }
             } // end while
