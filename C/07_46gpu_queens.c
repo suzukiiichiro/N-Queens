@@ -1,12 +1,11 @@
 /**
 
-   45. 枝刈り (07_09GPU版)
+   46. 整理整頓
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_45NQueen 07_45gpu_queens.c -framework OpenCL
-   $ ./07_45NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_46NQueen 07_46gpu_queens.c -framework OpenCL
+   $ ./07_46NQueen 
 
-   07_45queen_kernel.c の printf問題は解決していない
 
 07_45
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -97,7 +96,7 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_45queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_46queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
