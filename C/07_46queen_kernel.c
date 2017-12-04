@@ -73,12 +73,14 @@ int symmetryOps_2(struct queenState *s){
 			if(s->aB[own]>bit){
 				return 0;
 			}
-			if(s->aB[own]<bit){
+			else if(s->aB[own]<bit){
 				printf("");
-				break;
+				// break;
+				goto go;
 			}
 			own++;ptn<<=1;
 		}
+go:
 		if(own>s->si-1){
 			s->lTotal+=2;
 			s->lUnique++;
@@ -101,7 +103,7 @@ int symmetryOps_4(struct queenState *s){
       if(s->aB[own]>bit){ 
         return 0; 
       } 
-      if(s->aB[own]<bit){ 
+      else if(s->aB[own]<bit){ 
         break; 
       }
       own++; 
@@ -132,7 +134,7 @@ int symmetryOps_8(struct queenState *s){
       if(s->aB[own]>bit){ 
         return 0; 
       } 
-      if(s->aB[own]<bit){ 
+      else if(s->aB[own]<bit){ 
         break; 
       }
       own++; 
