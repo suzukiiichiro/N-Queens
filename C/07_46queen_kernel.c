@@ -385,6 +385,9 @@ inStruct(&s,state,index);
     int bit;
     if(s.BOUND1==0){ 
       s.aB[0]=1;
+      if(bflg==0){
+        s.TOPBIT=1<<(s.si-1);
+      }
       while(1){
         if(bflg==1){
           s.B1--;
@@ -396,20 +399,25 @@ inStruct(&s,state,index);
 bflg=backTrack1(&s,bflg);
         s.B1=s.B1+1;
       }
-      if(bflg==0){
-        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-        s.ENDBIT=(s.TOPBIT>>1);
-      }
     }else{ 
-        s.aB[0]=bit=(1<<s.BOUND1);
-        s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-      if(s.BOUND1<s.BOUND2){
-bflg=backTrack2(&s,bflg);
-        }
         if(bflg==0){
-          s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
-          s.ENDBIT>>=1;
-      }
+        s.TOPBIT=1<<(s.si-1);
+        s.ENDBIT=s.TOPBIT>>s.BOUND1;
+        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+        }
+        if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
+          if(bflg==0){
+            for(int i=1;i<s.BOUND1;i++){
+              s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
+            }
+          }
+          s.aB[0]=bit=(1<<s.BOUND1);
+          s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+bflg=backTrack2(&s,bflg);
+          if(bflg==0){
+            s.ENDBIT>>=s.si;
+          }
+        }
     }
     s.BOUND1=s.BOUND1+1;
     s.BOUND2=s.BOUND2-1;
@@ -422,7 +430,7 @@ int main(){
   struct queenState inProgress[MAX];
   long gTotal=0;
   printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<17;si++){
+  for(int si=8;si<9;si++){
     for(int i=0;i<1;i++){ //single
       inProgress[i].si=si;
       //inProgress[i].id=i;
