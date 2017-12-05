@@ -250,15 +250,6 @@ void outParam(struct queenState *s){
 
 int backTrack1(struct queenState *s,int bflg){
   int bit;
-      s->aB[0]=1;
-      while(1){
-        if(bflg==1){
-          s->B1--;
-          break;
-        }
-        if(s->B1==s->si-1){
-          break;
-        }
         s->aB[1]=bit=(1<<s->B1);
         s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
         unsigned long j=1;
@@ -312,14 +303,10 @@ outParam(s);
           }
           j++;
         }
-        s->B1=s->B1+1;
-      }
   return bflg;
 }
 int backTrack2(struct queenState *s,int bflg){
   int bit;
-        s->aB[0]=bit=(1<<s->BOUND1);
-        s->y=1;s->l=bit<<1;s->d=bit;s->r=bit>>1;
         unsigned long j=1;
         while (1){
 #ifdef GCC_STYLE
@@ -377,10 +364,6 @@ outParam(s);
           }
           j++;
         } 
-        if(bflg==0){
-          s->LASTMASK|=s->LASTMASK>>1|s->LASTMASK<<1;
-          s->ENDBIT>>=1;
-        }
 
         return bflg;
 }
@@ -401,14 +384,31 @@ inStruct(&s,state,index);
     }
     int bit;
     if(s.BOUND1==0){ 
+      s.aB[0]=1;
+      while(1){
+        if(bflg==1){
+          s.B1--;
+          break;
+        }
+        if(s.B1==s.si-1){
+          break;
+        }
 bflg=backTrack1(&s,bflg);
+        s.B1=s.B1+1;
+      }
       if(bflg==0){
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
         s.ENDBIT=(s.TOPBIT>>1);
       }
     }else{ 
+        s.aB[0]=bit=(1<<s.BOUND1);
+        s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
       if(s.BOUND1<s.BOUND2){
 bflg=backTrack2(&s,bflg);
+        }
+        if(bflg==0){
+          s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
+          s.ENDBIT>>=1;
       }
     }
     s.BOUND1=s.BOUND1+1;
