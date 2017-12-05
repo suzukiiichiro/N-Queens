@@ -386,7 +386,7 @@ inStruct(&s,state,index);
     if(s.BOUND1==0){ 
       s.aB[0]=1;
       if(bflg==0){
-        s.TOPBIT=1<<(s.si-2);
+        s.TOPBIT=1<<(s.si-1);
      //   s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
      //   s.ENDBIT=(s.TOPBIT>>1);
       }
@@ -408,11 +408,11 @@ bflg=backTrack1(&s,bflg);
       }
     }else{ 
         if(bflg==0){
-        s.TOPBIT=1<<(s.si-2);
+        s.TOPBIT=1<<(s.si-1);
         s.ENDBIT=s.TOPBIT>>s.BOUND1;
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
         }
-        if(s.BOUND1>0&&s.BOUND2<s.si-2&&s.BOUND1<s.BOUND2){
+        if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
           if(bflg==0){
             for(int i=1;i<s.BOUND1;i++){
               s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
@@ -444,7 +444,7 @@ int main(){
   struct queenState inProgress[MAX];
   long gTotal=0;
   printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<17;si++){
+  for(int si=8;si<9;si++){
     for(int i=0;i<1;i++){ //single
       inProgress[i].si=si;
       //inProgress[i].id=i;
