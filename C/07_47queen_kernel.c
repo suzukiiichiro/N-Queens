@@ -191,15 +191,6 @@ void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,in
   s->d=state[index].d;
   s->r=state[index].r;
   s->bm=state[index].bm;
-  printf("si:%d\n",s->si);
-  printf("B1:%d\n",s->B1);
-  printf("BOUND1:%d\n",s->BOUND1);
-  printf("BOUND2:%d\n",s->BOUND2);
-  printf("ENDBIT:%d\n",s->ENDBIT);
-  printf("TOPBIT:%d\n",s->TOPBIT);
-  printf("SIDEMASK:%d\n",s->SIDEMASK);
-  printf("LASTMASK:%d\n",s->TOPBIT);
-  printf("msk:%d\n",s->msk);
 
 }
 void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,int index){
@@ -257,12 +248,19 @@ void outParam(struct queenState *s){
                 s->bm=s->stParam.param[s->stParam.current].B;
 }
 
-void backTrack1(struct queenState *s){
+int backTrack1(struct queenState *s,int bflg){
   int bit;
         s->aB[1]=bit=(1<<s->B1);
         s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
         unsigned long j=1;
         while(1){
+#ifdef GCC_STYLE
+#else
+          if(j==500000){
+            bflg=1;
+            break;
+          }
+#endif
           if(s->rflg==0){
             s->bm=s->msk&~(s->l|s->d|s->r); 
           }
@@ -305,11 +303,19 @@ outParam(s);
           }
           j++;
         }
+  return bflg;
 }
-void backTrack2(struct queenState *s){
+int backTrack2(struct queenState *s,int bflg){
   int bit;
         unsigned long j=1;
         while (1){
+#ifdef GCC_STYLE
+#else
+          if(j==100){
+            bflg=1;
+            break;
+          }
+#endif
           if(s->rflg==0){
             s->bm=s->msk&~(s->l|s->d|s->r); 
           }
@@ -359,54 +365,78 @@ outParam(s);
           j++;
         } 
 
+        return bflg;
 }
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
   struct queenState s ;
 inStruct(&s,state,index);
+  int bflg=0;
+  while(1){
+    if(bflg==1){
+      s.BOUND1--;
+      s.BOUND2++;
+      s.step=0;
+      break;
+    }
+    if(s.BOUND1==s.si){
+      break;
+    }
     int bit;
     if(s.BOUND1==0){ 
       s.aB[0]=1;
+      if(bflg==0){
         s.TOPBIT=1<<(s.si-1);
+      }
       while(1){
-        if(s.B1>=s.si-1){
+        if(bflg==1){
+          s.B1--;
           break;
         }
-backTrack1(&s);
+        if(s.B1==s.si-1){
+          break;
+        }
+bflg=backTrack1(&s,bflg);
         s.B1=s.B1+1;
       }
     }else{ 
+        if(bflg==0){
         s.TOPBIT=1<<(s.si-1);
         s.ENDBIT=s.TOPBIT>>s.BOUND1;
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+        }
         if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
+          if(bflg==0){
             for(int i=1;i<s.BOUND1;i++){
               s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
             }
+          }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-backTrack2(&s);
+bflg=backTrack2(&s,bflg);
+          if(bflg==0){
             s.ENDBIT>>=s.si;
+          }
         }
     }
+    s.BOUND1=s.BOUND1+1;
+    s.BOUND2=s.BOUND2-1;
+  }
 outStruct(state,&s,index);
 }
 
 #ifdef GCC_STYLE
 int main(){
   struct queenState inProgress[MAX];
-  printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<17;si++){
   long gTotal=0;
-  long gUnique=0;
-    int B2=si-1;
-    for(int i=0;i<si;i++){ //single
+  printf("%s\n"," N:          Total        Unique\n");
+  for(int si=8;si<9;si++){
+    for(int i=0;i<1;i++){ //single
       inProgress[i].si=si;
       //inProgress[i].id=i;
       inProgress[i].B1=2;
-      inProgress[i].BOUND1=i;
-      inProgress[i].BOUND2=B2;
-      B2--;
+      inProgress[i].BOUND1=0;
+      inProgress[i].BOUND2=si-1;
       inProgress[i].ENDBIT=0;
       inProgress[i].TOPBIT=1<<(si-1);
       inProgress[i].SIDEMASK=0;
@@ -441,9 +471,8 @@ int main(){
       //
       place(&inProgress[i]);
       gTotal+=inProgress[i].lTotal;
-      gUnique+=inProgress[i].lUnique;
+      printf("%2d:%18lu%18lu\n", si,inProgress[i].lTotal,inProgress[i].lUnique);
     }
-      printf("%2d:%18lu%18lu\n", si,gTotal,gUnique);
   }
   return 0;
 }
