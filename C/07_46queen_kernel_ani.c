@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+ #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -387,6 +387,8 @@ inStruct(&s,state,index);
       s.aB[0]=1;
       if(bflg==0){
         s.TOPBIT=1<<(s.si-1);
+     //   s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+     //   s.ENDBIT=(s.TOPBIT>>1);
       }
       while(1){
         if(bflg==1){
@@ -396,6 +398,11 @@ inStruct(&s,state,index);
         if(s.B1==s.si-1){
           break;
         }
+          printf("B1:s.BOUND1:%d\n",s.BOUND1);
+          printf("B1:s.TOPBIT:%d\n",s.TOPBIT);
+          printf("B1:s.ENDBIT:%d\n",s.ENDBIT);
+          printf("B1:s.LASTMASK:%d\n",s.LASTMASK);
+          printf("B1:s.SIDEMASK:%d\n",s.SIDEMASK);
 bflg=backTrack1(&s,bflg);
         s.B1=s.B1+1;
       }
@@ -413,8 +420,15 @@ bflg=backTrack1(&s,bflg);
           }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+          printf("B2:s.BOUND1:%d\n",s.BOUND1);
+          printf("B2:s.TOPBIT:%d\n",s.TOPBIT);
+          printf("B2:s.ENDBIT:%d\n",s.ENDBIT);
+          printf("B2:s.LASTMASK:%d\n",s.LASTMASK);
+          printf("B2:s.SIDEMASK:%d\n",s.SIDEMASK);
 bflg=backTrack2(&s,bflg);
           if(bflg==0){
+            // s.LASTMASK|=s.LASTMASK>>1|s.LASTMASK<<1;
+            // s.ENDBIT>>=1;
             s.ENDBIT>>=s.si;
           }
         }
