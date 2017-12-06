@@ -62,7 +62,6 @@ struct local{
 
 pthread_mutex_t mutex;   //マルチスレッド排他処理mutexの宣言
 
-
 void backTrack2(int y,int left,int down,int right,void *args);
 void backTrack1(int y,int left,int down,int right,void *args);
 void *run(void *args);
