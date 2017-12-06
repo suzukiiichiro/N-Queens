@@ -10,6 +10,8 @@
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
    単純なバックトラックよりも２０〜３０倍高速
+
+   symmetryOps()内でCOUNT2,COUNT4,COUNT8の変数に格納
  
  　ビットマップであれば、シフトにより高速にデータを移動できる。
   フラグ配列ではデータの移動にO(N)の時間がかかるが、ビットマップであればO(1)
@@ -149,8 +151,9 @@
 16:     14772512         1846955           14.37
 17:     95815104        11977939         1:40.52
  */
-#include<stdio.h>
-#include<time.h>
+
+#include <stdio.h>
+#include <time.h>
 #include <math.h>
 
 #define MAX 27
@@ -160,7 +163,6 @@ long Unique=0;//ユニーク解
 int aB[MAX];  //aB:aBoard[] チェス盤の横一列
 int aT[MAX];  //aT:aTrial[]
 int aS[MAX];  //aS:aScrath[]
-
 int bit;
 int C2=0;  //C2:COUNT2
 int C4=0;  //C4:COUNT4
@@ -175,15 +177,16 @@ int intncmp(int lt[],int rt[],int si);
 long getUnique();
 long getTotal();
 
-// si:size y:row l:left d:down r:right
 void NQueen(int si,int msk,int y,int l,int d,int r){
   int bm=msk&~(l|d|r); /* 配置可能フィールド */
-  if (y==si) {
+  if(y==si){
     if(!bm){
       aB[y]=bm;
       //ベタにビットの配列を 元のaBにいったん戻してみた 
       int v[MAX];
-      for (int i=0;i<si;i++){
+      // 枝刈り 半分だけ走査
+      int lim=(r!=0)?si:(si+1)/2; 
+      for (int i=0;i<lim;i++){
         v[i]=aB[i];
         aB[i]=si-1-log2(aB[i]); // log2:math.hが必要
       }
@@ -193,18 +196,21 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
       for (int i=0;i<si;i++){ aB[i]=v[i]; }
     }
   }else{
-    while (bm) {
+    while(bm) {
       bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
       NQueen(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
 int main(void){
-  time_t st; char t[20];
-  int min=2; int msk; // msk:mask
+  clock_t st; char t[20];
+  int min=2;
+  int msk; //msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-    Total=0; Unique=0; C2=0;C4=0;C8=0; msk=(1<<i)-1; // 初期化
+    Total=0;Unique=0;
+    C2=0;C4=0;C8=0;
+    msk=(1<<i)-1; // 初期化
     for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
     NQueen(i,msk,0,0,0,0);
@@ -228,20 +234,19 @@ void TimeFormat(clock_t utime,char *form){
   else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
   else sprintf(form, "           %5.2f",ss);
 }
-// si:size
 void symmetryOps(int si){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  rotate(aT,aS,si,0);  //時計回りに90度回転
+  rotate(aT,aS,si,0);       //時計回りに90度回転
   int k=intncmp(aB,aT,si);
   if(k>0)return;
   if(k==0){ nEquiv=2;}else{
-    rotate(aT,aS,si,0);//時計回りに180度回転
+    rotate(aT,aS,si,0);     //時計回りに180度回転
     k=intncmp(aB,aT,si);
     if(k>0)return;
     if(k==0){ nEquiv=4;}else{
-      rotate(aT,aS,si,0);//時計回りに270度回転
+      rotate(aT,aS,si,0);   //時計回りに270度回転
       k=intncmp(aB,aT,si);
       if(k>0){ return;}
       nEquiv=8;
@@ -249,7 +254,7 @@ void symmetryOps(int si){
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  vMirror(aT,si);    //垂直反転
+  vMirror(aT,si);           //垂直反転
   k=intncmp(aB,aT,si);
   if(k>0){ return; }
   if(nEquiv>2){             //-90度回転 対角鏡と同等       
@@ -265,9 +270,9 @@ void symmetryOps(int si){
       if(k>0){ return;}
     }
   }
-  if(nEquiv==2){ C2++; }
-  if(nEquiv==4){ C4++; }
-  if(nEquiv==8){ C8++; }
+  if(nEquiv==2){C2++;}
+  if(nEquiv==4){C4++;}
+  if(nEquiv==8){C8++;}
 }
 void rotate(int chk[],int scr[],int n,int neg){
   int k=neg?0:n-1;
@@ -276,12 +281,12 @@ void rotate(int chk[],int scr[],int n,int neg){
   k=neg?n-1:0;
   for(int j=0;j<n;k-=incr){ chk[scr[j++]]=k;}
 }
-void vMirror(int chk[],int si){
-  for(int j=0;j<si;j++){ chk[j]=(si-1)- chk[j];}
+void vMirror(int chk[],int n){
+  for(int j=0;j<n;j++){ chk[j]=(n-1)- chk[j];}
 }
-int intncmp(int lt[],int rt[],int si){
+int intncmp(int lt[],int rt[],int n){
   int rtn=0;
-  for(int k=0;k<si;k++){
+  for(int k=0;k<n;k++){
     rtn=lt[k]-rt[k];
     if(rtn!=0){ break;}
   }

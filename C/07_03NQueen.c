@@ -42,15 +42,15 @@
 
 #define MAX 27
 
-long Total=1 ;        //合計解
-long Unique=0;        //ユニーク解
-int fA[2*MAX-1]; //fA:flagA 縦 配置フラグ　
-int fB[2*MAX-1];  //fB:flagB 斜め配置フラグ　
-int fC[2*MAX-1];  //fC:flagC 斜め配置フラグ　
-int aB[MAX];      //aB:aBoard[] チェス盤の横一列
+long Total=1;      //合計解
+long Unique=0;     //ユニーク解
+int aB[MAX];       //aB:aBoard[] チェス盤の横一列
+int fA[2*MAX-1];   //fA:flagA[] 縦 配置フラグ
+int fB[2*MAX-1];   //fB:flagB[] 斜め配置フラグ
+int fC[2*MAX-1];   //fC:flagC[] 斜め配置フラグ
 
-void TimeFormat(clock_t utime, char *form);
 void NQueen(int r,int si);
+void TimeFormat(clock_t utime,char *form);
 
 // i:col si:size r:row fA:縦 fB:斜め fC:斜め
 void NQueen(int r,int si){
@@ -58,36 +58,36 @@ void NQueen(int r,int si){
     Total++; //解を発見
   }else{
     for(int i=0;i<si;i++){
-      aB[r]=i ;
+      aB[r]=i;
       //バックトラック 制約を満たしているときだけ進む
       if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
-        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1; 
+        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;
         NQueen(r+1,si);//再帰
-        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0; 
+        fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;
       }
-    }  
+    }
   }
 }
-int main(void) {
+int main(void){
   clock_t st; char t[20];
   int min=2;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-    Total=0; Unique=0; 
+    Total=0; Unique=0;
     for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
     NQueen(0,i);
     TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,Total,Unique,t) ;
+    printf("%2d:%13ld%16ld%s\n",i,Total,Unique,t);
   } 
   return 0;
 }
-void TimeFormat(clock_t utime, char *form) {
+void TimeFormat(clock_t utime,char *form){
   int dd,hh,mm;
   float ftime,ss;
   ftime=(float)utime/CLOCKS_PER_SEC;
   mm=(int)ftime/60;
-  ss=ftime-(float)(mm * 60);
+  ss=ftime-(int)(mm*60);
   dd=mm/(24*60);
   mm=mm%(24*60);
   hh=mm/60;

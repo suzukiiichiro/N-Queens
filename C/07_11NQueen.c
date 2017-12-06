@@ -56,14 +56,6 @@ Nのサイズが大きくなりクイーンの数を解法します。
 #include<sys/time.h>
 #define MAX 27
 
-long getUnique();
-long getTotal();
-void TimeFormat(clock_t utime,char *form);
-void backTrack2(int y,int l,int d,int r);
-void backTrack1(int y,int left,int down,int right);
-void run();
-void NQueenThread();
-//
 // pthreadはパラメータを１つしか渡せないので構造体に格納
 typedef struct {
   int si; //size
@@ -82,6 +74,118 @@ typedef struct {
 }CLASS, *Class;
 CLASS C; //構造体
 
+void backTrack2(int y,int l,int d,int r);
+void backTrack1(int y,int left,int down,int right);
+void thread();
+void NQueen();
+void symmetryOps_bm();
+long getUnique();
+long getTotal();
+
+void backTrack2(int y,int l,int d,int r){
+  int bit=0;
+  int bm=C.msk&~(l|d|r);    /* 配置可能フィールド */
+  if(y==C.siE){             //【枝刈り】
+    if(bm){
+      if((bm&C.LM)==0){     //【枝刈り】最下段枝刈り
+        C.aB[y]=bm;
+        symmetryOps_bm();
+      }
+    }
+  }else{
+    if(y<C.B1){             //【枝刈り】上部サイド枝刈り
+      bm&=~C.SM;            // bm|=SM; bm^=SM;(bm&=~SMと同等)
+    }else if(y==C.B2) {     //【枝刈り】下部サイド枝刈り
+      if((d&C.SM)==0){ return; }
+      if((d&C.SM)!=C.SM){ bm&=C.SM; }
+    }
+    while(bm) {
+      bm^=C.aB[y]=bit=-bm&bm;
+      backTrack2(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  }
+}
+void backTrack1(int y,int l,int d,int r){
+  int bit;
+  int bm=C.msk&~(l|d|r);  /* 配置可能フィールド */
+  if(y==C.siE) {
+    if(bm){
+      C.aB[y]=bm;
+      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      C.C8++;
+    }
+  }else{
+    if(y<C.B1) {   
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bm) {
+      bm^=C.aB[y]=bit=-bm&bm;
+      backTrack1(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  } 
+}
+void thread(){
+  int bit=0;
+  C.aB[0]=1;
+  C.TB=1<<(C.siE);
+  // 最上段のクイーンが角にある場合の探索
+  if(C.B1>1&&C.B1<(C.siE)) { 
+    if(C.B1<(C.siE)) {
+    // 角にクイーンを配置 
+      C.aB[1]=bit=(1<<C.B1);
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
+    }
+  }
+  C.SM=C.LM=(C.TB|1);
+  C.EB=(C.TB>>C.B1);
+  /* 最上段行のクイーンが角以外にある場合の探索 
+     ユニーク解に対する左右対称解を予め削除するには、
+     左半分だけにクイーンを配置するようにすればよい */
+  if(C.B1>0&&C.B2<C.siE&&C.B1<C.B2){ 
+    for(int i=1;i<C.B1;i++){
+      C.LM=C.LM|C.LM>>1|C.LM<<1;
+    }
+    if(C.B1<C.B2) {
+      C.aB[0]=bit=(1<<C.B1);
+      backTrack2(1,bit<<1,bit,bit>>1);
+    }
+    C.EB>>=C.si;
+  }
+}
+void NQueen(){
+  for(C.B1=C.siE,C.B2=0;C.B2<C.siE;C.B1--,C.B2++){
+    thread();
+  }
+}
+int main(void){
+  struct timeval t0;
+  struct timeval t1;
+  int min=2;
+  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  for(int i=min;i<=MAX;i++){
+    C.C2=C.C4=C.C8=0; C.si=i; C.siE=i-1; C.msk=(1<<i)-1; // 初期化
+    for(int j=0;j<i;j++){ C.aB[j]=j; }
+    gettimeofday(&t0, NULL);
+    NQueen();
+    gettimeofday(&t1, NULL);
+    int ss;int ms;int dd;
+    if (t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
+    } else { 
+      dd=(t1.tv_sec-t0.tv_sec)/86400; 
+      ss=(t1.tv_sec-t0.tv_sec)%86400; 
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
+    }
+    int hh=ss/3600; 
+    int mm=(ss-hh*3600)/60; 
+    ss%=60;
+    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),dd,hh,mm,ss,ms); 
+  } 
+}
 void symmetryOps_bm(){
   int own,ptn,you,bit;
   //90度回転
@@ -113,108 +217,6 @@ void symmetryOps_bm(){
     }
   }
   C.C8++;
-}
-void backTrack2(int y,int l,int d,int r){
-  int bit=0;
-  int bm=C.msk&~(l|d|r); 
-  if(y==C.siE){
-    if(bm>0&&(bm&C.LM)==0){ //【枝刈り】最下段枝刈り
-      C.aB[y]=bm;
-      symmetryOps_bm(); //  takakenの移植版の移植版
-    }
-  }else{
-    if(y<C.B1){             //【枝刈り】上部サイド枝刈り
-      bm&=~C.SM; 
-      // bm|=SM; 
-      // bm^=SM;(bm&=~SMと同等)
-    }else if(y==C.B2) {     //【枝刈り】下部サイド枝刈り
-      if((d&C.SM)==0){ return; }
-      if((d&C.SM)!=C.SM){ bm&=C.SM; }
-    }
-    while(bm>0) {
-      bm^=C.aB[y]=bit=-bm&bm;
-      //backTrack2(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-      backTrack2(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-    }
-  }
-}
-void backTrack1(int y,int l,int d,int r){
-  int bit=0;
-  int bm=C.msk&~(l|d|r); 
-  if(y==C.siE) {
-    if(bm>0){
-      C.aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C.C8++;
-    }
-  }else{
-    if(y<C.B1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-    }
-    while(bm>0) {
-      bm^=C.aB[y]=bit=-bm&bm;
-      backTrack1(y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-    }
-  } 
-}
-void run(){
-  int bit=0;
-  C.aB[0]=1;
-  C.TB=1<<(C.siE);
-  // 最上段のクイーンが角にある場合の探索
-  if(C.B1>1&&C.B1<(C.siE)) { 
-    if(C.B1<(C.siE)) {
-      C.aB[1]=bit=(1<<C.B1);
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
-    }
-  }
-  C.EB=(C.TB>>C.B1);
-  C.SM=C.LM=(C.TB|1);
-  // 最上段のクイーンが角以外にある場合の探索
-  if(C.B1>0&&C.B2<C.siE&&C.B1<C.B2){ 
-    for(int i=1;i<C.B1;i++){
-      C.LM=C.LM|C.LM>>1|C.LM<<1;
-    }
-    if(C.B1<C.B2) {
-      C.aB[0]=bit=(1<<C.B1);
-      backTrack2(1,bit<<1,bit,bit>>1);
-    }
-    C.EB>>=C.si;
-  }
-}
-void NQueenThread(){
-  for(C.B1=C.siE,C.B2=0;C.B2<C.siE;C.B1--,C.B2++){
-    run();
-  }
-}
-int main(void){
-  struct timeval t0;
-  struct timeval t1;
-  int min=2;
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  for(int i=min;i<=MAX;i++){
-    C.C2=C.C4=C.C8=0; C.si=i; C.siE=i-1; C.msk=(1<<i)-1; // 初期化
-    for(int j=0;j<i;j++){ C.aB[j]=j; }
-    gettimeofday(&t0, NULL);
-    NQueenThread();
-    gettimeofday(&t1, NULL);
-    int ss;int ms;int dd;
-    if (t1.tv_usec<t0.tv_usec) {
-      dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
-      ss=(t1.tv_sec-t0.tv_sec-1)%86400; 
-      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000; 
-    } else { 
-      dd=(t1.tv_sec-t0.tv_sec)/86400; 
-      ss=(t1.tv_sec-t0.tv_sec)%86400; 
-      ms=(t1.tv_usec-t0.tv_usec+500)/10000; 
-    }
-    int hh=ss/3600; 
-    int mm=(ss-hh*3600)/60; 
-    ss%=60;
-    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,getTotal(),getUnique(),dd,hh,mm,ss,ms); 
-  } 
 }
 long getUnique(){ 
   return C.C2+C.C4+C.C8;

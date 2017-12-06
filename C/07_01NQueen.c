@@ -33,7 +33,7 @@
 #include <time.h>
 
 int c=1 ;   // c:count
-int aB[8];  // aB:aBboard[] 
+int aB[8];  // aB:aBoard[]
 
 // mi:min ma:max
 void NQueen(int mi,int ma) {
@@ -48,10 +48,10 @@ void NQueen(int mi,int ma) {
     }else{
       NQueen(mi+1,ma);
     }
-  }  
+  }
 }
 int main(void) {
-  NQueen(0,17);
+  NQueen(0,8);
   return 0;
 }
 

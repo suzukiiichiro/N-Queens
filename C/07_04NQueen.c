@@ -145,21 +145,22 @@
 16:     14772512         1846955         1:08.64
 17:     95815104        11977939         8:11.18
  */
-#include<stdio.h>
-#include<time.h>
+
+#include <stdio.h>
+#include <time.h>
 
 #define MAX 27
 
 long Total=1;      //合計解
-long Unique=0;      //ユニーク解
-int fA [2*MAX-1];   //fA:flagA[] 縦 配置フラグ　
-int fB[2*MAX-1];    //fB:flagB[] 斜め配置フラグ　
-int fC[2*MAX-1];    //fC:flagC[] 斜め配置フラグ　
-int aB[MAX];        //aB:aBoard[] チェス盤の横一列
-int aT[MAX];        //aT:aTrial[]
-int aS[MAX];        //aS:aScrath[]
+long Unique=0;     //ユニーク解
+int aB[MAX];       //aB:aBoard[] チェス盤の横一列
+int fA[2*MAX-1];   //fA:flagA[] 縦 配置フラグ
+int fB[2*MAX-1];   //fB:flagB[] 斜め配置フラグ
+int fC[2*MAX-1];   //fC:flagC[] 斜め配置フラグ
+int aT[MAX];       //aT:aTrial[]
+int aS[MAX];       //aS:aScrath[]
 
-void NQueen(int row, int si);
+void NQueen(int r,int si);
 void TimeFormat(clock_t utime,char *form);
 int symmetryOps(int si);
 void rotate(int chk[],int scr[],int n,int neg);
@@ -172,16 +173,15 @@ void NQueen(int r,int si){
     int s=symmetryOps(si);//対称解除法
     if(s!=0){ Unique++; Total+=s; } //解を発見
   }else{
-    //i:col
     for(int i=0;i<si;i++){
       aB[r]=i;
-      //バックトラック 制約を満たしているときだけ進む
-      if(fA[i]==0 && fB[r-i+(si-1)]==0 && fC[r+i]==0){
+      // 枝刈り バックトラック 制約を満たしているときだけ進む
+      if(fA[i]==0&&fB[r-i+(si-1)]==0&&fC[r+i]==0){
         fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;
-        NQueen(r+1,si); //再帰
+        NQueen(r+1,si);//再帰
         fA[i]=fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;
       }
-    }  
+    }
   }
 }
 int main(void){
@@ -189,7 +189,7 @@ int main(void){
   int min=2;
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-   Total=0; Unique=0;
+    Total=0; Unique=0;
     for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
     NQueen(0,i);
@@ -213,7 +213,7 @@ void TimeFormat(clock_t utime,char *form){
   else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
   else sprintf(form, "           %5.2f",ss);
 }
-// si:size
+//si:size
 int symmetryOps(int si){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー

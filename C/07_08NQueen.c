@@ -155,12 +155,15 @@
 
 #define MAX 27
 
-long Total=1 ; //合計解
-long Unique=0; //ユニーク解
-int aB[MAX];  //チェス盤の横一列
-int aT[MAX];
-int aS[MAX];
-int C2=0;int C4=0;int C8=0;
+long Total=1; //合計解
+long Unique=0;//ユニーク解
+int aB[MAX];  //aB:aBoard[] チェス盤の横一列
+int aT[MAX];  //aT:aTrial[]
+int aS[MAX];  //aS:aScrath[]
+
+int C2=0;  //C2:COUNT2
+int C4=0;  //C4:COUNT4
+int C8=0;  //C8:COUNT8
 
 int BOUND1;
 int BOUND2;
@@ -169,18 +172,18 @@ int ENDBIT;
 int SIDEMASK;
 int LASTMASK;
 
-void symmetryOps_bm(int si);
-int intncmp(int lt[],int rt[],int si);
-int rh(int a,int sz);
-long getTotal();
-long getUnique();
-void dtob(int score,int si);
-void vMirror_bitmap(int bf[],int af[],int si);
-void rotate_bitmap(int bf[],int af[],int si);
+void NQueen(int si,int msk);
 void TimeFormat(clock_t utime,char *form);
+void symmetryOps_bm(int si);
+void rotate_bitmap(int bf[],int af[],int si);
+void vMirror_bitmap(int bf[],int af[],int si);
+void dtob(int score,int si);
+int rh(int a,int sz);
+int intncmp(int lt[],int rt[],int si);
+long getUnique();
+long getTotal();
 void backTrack2(int is,int msk,int y, int l, int d, int r);
 void backTrack1(int si,int msk,int y, int l, int d, int r);
-void NQueen(int si,int msk);
 
 void backTrack2(int si,int msk,int y,int l,int d,int r){
   int bit;
@@ -197,6 +200,7 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
     }
   } 
 }
+
 void backTrack1(int si,int msk,int y,int l,int d,int r){
   int bit;
   int bm=msk&~(l|d|r); /* 配置可能フィールド */
@@ -210,8 +214,9 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
       bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
       backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
-  } 
+  }
 }
+
 void NQueen(int si,int msk){
   int bit;
   TOPBIT=1<<(si-1);
@@ -231,12 +236,14 @@ void NQueen(int si,int msk){
 }
 int main(void){
   clock_t st; char t[20];
-  int min=2;int msk;
+  int min=2;
+  int msk; //msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-    Total=0;Unique=0;C2=C4=C8=0;
-    for(int j=0;j<i;j++){ aB[j]=j; }
+    Total=0;Unique=0;
+    C2=C4=C8=0;
     msk=(1<<i)-1; // 初期化
+    for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
     NQueen(i,msk);
     TimeFormat(clock()-st,t);
@@ -259,7 +266,46 @@ void TimeFormat(clock_t utime,char *form){
   else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
   else sprintf(form, "           %5.2f",ss);
 }
-// bf:before af:after
+void symmetryOps_bm(int si){
+  int nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  rotate_bitmap(aT,aS,si);    //時計回りに90度回転
+  int k=intncmp(aB,aS,si);
+  if(k>0)return;
+  if(k==0){ nEquiv=2;}else{
+    rotate_bitmap(aS,aT,si);  //時計回りに180度回転
+    k=intncmp(aB,aT,si);
+    if(k>0)return;
+    if(k==0){ nEquiv=4;}else{
+      rotate_bitmap(aT,aS,si);//時計回りに270度回転
+      k=intncmp(aB,aS,si);
+      if(k>0){ return;}
+      nEquiv=8;
+    }
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aS[i]=aB[i];}
+  vMirror_bitmap(aS,aT,si);   //垂直反転
+  k=intncmp(aB,aT,si);
+  if(k>0){ return; }
+  if(nEquiv>2){             //-90度回転 対角鏡と同等       
+    rotate_bitmap(aT,aS,si);
+    k=intncmp(aB,aS,si);
+    if(k>0){return;}
+    if(nEquiv>4){           //-180度回転 水平鏡像と同等
+      rotate_bitmap(aS,aT,si);
+      k=intncmp(aB,aT,si);
+      if(k>0){ return;}       //-270度回転 反対角鏡と同等
+      rotate_bitmap(aT,aS,si);
+      k=intncmp(aB,aS,si);
+      if(k>0){ return;}
+    }
+  }
+  if(nEquiv==2){C2++;}
+  if(nEquiv==4){C4++;}
+  if(nEquiv==8){C8++;}
+}
 void rotate_bitmap(int bf[],int af[],int si){
   for(int i=0;i<si;i++){
     int t=0;
@@ -267,13 +313,6 @@ void rotate_bitmap(int bf[],int af[],int si){
       t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
     }
     af[i]=t;                        // y[i] の j ビット目にする
-  }
-}
-void vMirror_bitmap(int bf[],int af[],int si){
-  int score;
-  for(int i=0;i< si;i++) {
-    score=bf[i];
-    af[i]=rh(score,si-1);
   }
 }
 void dtob(int score,int si) {
@@ -286,18 +325,19 @@ void dtob(int score,int si) {
   for (int i=si-1;i>=0;i--){ putchar(c[i]); }
   printf("\n");
 }
-long getUnique(){ 
-  return C2+C4+C8;
-}
-long getTotal(){ 
-  return C2*2+C4*4+C8*8;
-}
 int rh(int a,int sz){
   int tmp=0;
   for(int i=0;i<=sz;i++){
     if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
   }
   return tmp;
+}
+void vMirror_bitmap(int bf[],int af[],int si){
+  int score ;
+  for(int i=0;i<si;i++) {
+    score=bf[i];
+    af[i]=rh(score,si-1);
+  }
 }
 int intncmp(int lt[],int rt[],int si){
   int rtn=0;
@@ -307,45 +347,9 @@ int intncmp(int lt[],int rt[],int si){
   }
   return rtn;
 }
-void symmetryOps_bm(int si){
-  int nEquiv;
-  int aT[si];
-  int aS[si];
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  rotate_bitmap(aT,aS,si);  //時計回りに90度回転
-  int k=intncmp(aB,aS,si);
-  if(k>0)return;
-  if(k==0){ nEquiv=2;}else{
-    rotate_bitmap(aS,aT,si);//時計回りに180度回転
-    k=intncmp(aB,aT,si);
-    if(k>0)return;
-    if(k==0){ nEquiv=4;}else{
-      rotate_bitmap(aT,aS,si);//時計回りに270度回転
-      k=intncmp(aB,aS,si);
-      if(k>0){ return;}
-      nEquiv=8;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aS[i]=aB[i];}
-  vMirror_bitmap(aS,aT,si);    //垂直反転
-  k=intncmp(aB,aT,si);
-  if(k>0){ return; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等       
-    rotate_bitmap(aT,aS,si);
-    k=intncmp(aB,aS,si);
-    if(k>0){return;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate_bitmap(aS,aT,si);
-      k=intncmp(aB,aT,si);
-      if(k>0){ return;}  //-270度回転 反対角鏡と同等
-      rotate_bitmap(aT,aS,si);
-      k=intncmp(aB,aS,si);
-      if(k>0){ return;}
-    }
-  }
-  if(nEquiv==2){ C2++; }
-  if(nEquiv==4){ C4++; }
-  if(nEquiv==8){ C8++; }
+long getUnique(){ 
+  return C2+C4+C8;
+}
+long getTotal(){ 
+  return C2*2+C4*4+C8*8;
 }

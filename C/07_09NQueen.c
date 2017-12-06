@@ -184,36 +184,130 @@
 
 #define MAX 27
 
-long Total=1 ; //合計解
-long Unique=0; //ユニーク解
-long C2=0; long C4=0; long C8=0;
-int aB[MAX];  //チェス盤の横一列
-int aT[MAX];
-int aS[MAX];
+long Total=1; //合計解
+long Unique=0;//ユニーク解
+int aB[MAX];  //aB:aBoard[] チェス盤の横一列
+int aT[MAX];  //aT:aTrial[]
+int aS[MAX];  //aS:aScrath[]
 
-int MASK;
+int C2=0;  //C2:COUNT2
+int C4=0;  //C4:COUNT4
+int C8=0;  //C8:COUNT8
+
 int BOUND1;
 int BOUND2;
 int TOPBIT;
-int SIZEE;
+int ENDBIT;
 int SIDEMASK;
 int LASTMASK;
-int ENDBIT;
 
-void TimeFormat(clock_t utime,char *form);
-long getUnique();
-long getTotal();
-void rotate_bitmap_180(int bf[],int af[],int si);
-void rotate_bitmap(int bf[],int af[],int si);
-void vMirror_bitmap(int bf[],int af[],int si);
-int intncmp(int lt[],int rt[],int si);
-int rh(int a,int sz);
-void symmetryOps_bm_old(int si);
-void symmetryOps_bm(int si);
 void backTrack2(int si,int msk,int y,int l,int d,int r);
 void backTrack1(int si,int msk,int y,int l,int d,int r);
 void NQueen(int si,int msk);
+void TimeFormat(clock_t utime,char *form);
+void symmetryOps_bm(int si);
+long getUnique();
+long getTotal();
 
+void backTrack2(int si,int msk,int y,int l,int d,int r){
+  int bit;
+  int bm=msk&~(l|d|r); /* 配置可能フィールド */
+  if(y==si-1){                //【枝刈り】
+    if(bm){
+      if((bm&LASTMASK)==0){   //【枝刈り】最下段枝刈り
+        aB[y]=bm;
+        symmetryOps_bm(si);
+      }
+    }
+  }else{
+    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
+      bm&=~SIDEMASK; 
+    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
+      if((d&SIDEMASK)==0){ return; }
+      if((d&SIDEMASK)!=SIDEMASK){ bm&=SIDEMASK; }
+    }
+    while(bm) {
+      bm^=aB[y]=bit=-bm&bm;
+      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  }
+}
+void backTrack1(int si,int msk,int y,int l,int d,int r){
+  int bit;
+  int bm=msk&~(l|d|r); /* 配置可能フィールド */
+  if(y==si-1) {
+    if(bm){
+      aB[y]=bm;
+      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      C8++;
+    }
+  }else{
+    if(y<BOUND1) {   
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bm) {
+      bm^=aB[y]=bit=-bm&bm;
+      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  } 
+}
+void NQueen(int si,int msk){
+  int bit;
+  TOPBIT=1<<(si-1);
+  aB[0]=1;
+  /* 最上段行のクイーンが角にある場合の探索 */
+  for(BOUND1=2;BOUND1<si-1;BOUND1++){
+    // 角にクイーンを配置 
+    aB[1]=bit=(1<<BOUND1); 
+    //２行目から探索
+    backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1)); 
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  /* 最上段行のクイーンが角以外にある場合の探索 
+     ユニーク解に対する左右対称解を予め削除するには、
+     左半分だけにクイーンを配置するようにすればよい */
+  for(BOUND1=1,BOUND2=si-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aB[0]=bit=(1<<BOUND1);
+    backTrack2(si,msk,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
+}
+int main(void){
+  clock_t st; char t[20];
+  int min=2;
+  int msk; //msk:mask
+  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  for(int i=min;i<=MAX;i++){
+    Total=0;Unique=0;
+    C2=C4=C8=0;
+    msk=(1<<i)-1; // 初期化
+    for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+    st=clock();
+    NQueen(i,msk);
+    TimeFormat(clock()-st,t);
+    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+  } 
+  return 0;
+}
+void TimeFormat(clock_t utime,char *form){
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
+  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
+  else sprintf(form, "           %5.2f",ss);
+}
 void symmetryOps_bm(int si){
   int own,ptn,you,bit;
   //90度回転
@@ -246,188 +340,9 @@ void symmetryOps_bm(int si){
   }
   C8++;
 }
-void backTrack2(int si,int msk,int y,int l,int d,int r){
-  int bit;
-  int bm=msk&~(l|d|r); 
-  if(y==si-1){
-    if(bm>0 && (bm&LASTMASK)==0){ //【枝刈り】最下段枝刈り
-      aB[y]=bm;
-      symmetryOps_bm(si); //  takakenの移植版の移植版
-      //symmetryOps_bm_old(si);// 兄が作成した労作
-    }
-  }else{
-    if(y<BOUND1){             //【枝刈り】上部サイド枝刈り
-      bm&=~SIDEMASK; 
-    }else if(y==BOUND2) {     //【枝刈り】下部サイド枝刈り
-      if((d&SIDEMASK)==0){ return; }
-      if((d&SIDEMASK)!=SIDEMASK){ bm&=SIDEMASK; }
-    }
-    while(bm>0) {
-      bm^=aB[y]=bit=-bm&bm;
-      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-    }
-  }
-}
-void backTrack1(int si,int msk,int y,int l,int d,int r){
-  int bm=msk&~(l|d|r); 
-  int bit;
-  if(y==si-1) {
-    if(bm>0){
-      aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-      C8++;
-    }
-  }else{
-    if(y<BOUND1) {   
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-    }
-    while(bm>0) {
-      bm^=aB[y]=bit=-bm&bm;
-      backTrack1(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
-    }
-  } 
-}
-void NQueen(int si,int msk){
-  int bit;
-  TOPBIT=1<<(si-1);
-  aB[0]=1;
-  /* 最上段行のクイーンが角にある場合の探索 */
-  for(BOUND1=2;BOUND1<si-1;BOUND1++){
-    // 角にクイーンを配置 
-    aB[1]=bit=(1<<BOUND1); 
-    //２行目から探索
-    backTrack1(si,msk,2,(2|bit)<<1,(1|bit),(bit>>1)); 
-  }
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  /* 最上段行のクイーンが角以外にある場合の探索 
-     ユニーク解に対する左右対称解を予め削除するには、
-     左半分だけにクイーンを配置するようにすればよい */
-  for(BOUND1=1,BOUND2=si-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aB[0]=bit=(1<<BOUND1);
-    backTrack2(si,msk,1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
-  }
-}
-int main(void){
-  clock_t st; char t[20];
-  int min=2; int msk;
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  for(int i=min;i<=MAX;i++){
-    Total=0;Unique=0;C2=C4=C8=0;
-    for(int j=0;j<i;j++){ aB[j]=j; }
-    msk=(1<<i)-1; // 初期化
-    st=clock();
-    NQueen(i,msk);
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-  } 
-  return 0;
-}
-void TimeFormat(clock_t utime,char *form){
-  int dd,hh,mm;
-  float ftime,ss;
-  ftime=(float)utime/CLOCKS_PER_SEC;
-  mm=(int)ftime/60;
-  ss=ftime-(int)(mm*60);
-  dd=mm/(24*60);
-  mm=mm%(24*60);
-  hh=mm/60;
-  mm=mm%60;
-  if (dd) sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-  else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
-  else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
-  else sprintf(form, "           %5.2f",ss);
-}
 long getUnique(){ 
   return C2+C4+C8;
 }
 long getTotal(){ 
   return C2*2+C4*4+C8*8;
-}
-// bf:before af:after
-void rotate_bitmap_180(int bf[],int af[],int si){
-  for(int i=0;i<si;i++){
-    int t=0;
-    for(int j=0;j<si;j++){
-      t|=((bf[si-i-1]>>j)&1)<<(si-j-1); // x[j] の i ビット目を
-    }
-    af[i]=t;                        // y[i] の j ビット目にする
-  }
-}
-void rotate_bitmap(int bf[],int af[],int si){
-  for(int i=0;i<si;i++){
-    int t=0;
-    for(int j=0;j<si;j++){
-      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
-    }
-    af[i]=t;                        // y[i] の j ビット目にする
-  }
-}
-int rh(int a,int sz){
-  int tmp=0;
-  for(int i=0;i<=sz;i++){
-    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-  }
-  return tmp;
-}
-void vMirror_bitmap(int bf[],int af[],int si){
-  int score ;
-  for(int i=0;i<si;i++) {
-    score=bf[i];
-    af[i]=rh(score,si-1);
-  }
-}
-int intncmp(int lt[],int rt[],int si){
-  int rtn=0;
-  for(int k=0;k<si;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
-}
-void symmetryOps_bm_old(int si){
-  int aT[si];
-  int aS[si];
-  int k;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  // 1行目のクイーンのある位置を基準にこれを 90度回転 180度回転 270度回転させた時に重なるかどうか判定する
-  // Aの場合 １行目のクイーンのある場所の左端からの列数が1の時（９０度回転したところ）
-  if(aB[BOUND2]==1){
-    rotate_bitmap(aT,aS,si);  //時計回りに90度回転
-    k=intncmp(aB,aS,si);
-    if(k>0)return;
-    if(k==0){ C2++; return;}
-  }
-  // Bの場合 1番下の行の現在の左端から2番目が1の場合 180度回転
-  if(aB[si-1]==ENDBIT){
-    //aB[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
-    //   if(aB[BOUND2]!=1){
-    //     rotate_bitmap(aT,aS);  //時計回りに90度回転
-    //   }
-    //rotate_bitmap(aS,aT);    //時計回りに180度回転
-    rotate_bitmap_180(aB,aT,si);    //時計回りに180度回転
-    k=intncmp(aB,aT,si);
-    if(k>0)return;
-    if(k==0){ C4++; return;}
-  }
-  //Cの場合 1行目のクイーンのある位置の右端からの列数の行の左端が1の時 270度回転
-  if(aB[BOUND1]==TOPBIT){
-    //aB[BOUND2]==1のif 文に入っていない場合は90度回転させてあげる
-    if(aB[BOUND2]!=1){
-      rotate_bitmap(aT,aS,si);  //時計回りに90度回転
-    }
-    //aB[si-1]!=ENDBITのif 文に入っていない場合は180度回転させてあげる
-    if(aB[si-1]!=ENDBIT){
-      rotate_bitmap(aS,aT,si);//時計回りに180度回転
-    }
-    rotate_bitmap(aT,aS,si);//時計回りに270度回転
-    k=intncmp(aB,aS,si);
-    if(k>0){ return;}
-  }
-  C8++;
 }

@@ -30,45 +30,46 @@
 16:     14772512         1846955           18.03
 17:     95815104        11977939         2:15.80
  */
-#include<stdio.h>
-#include<time.h>
+
+#include <stdio.h>
+#include <time.h>
 
 #define MAX 27
 
 long Total=1;      //合計解
-long Unique=0;      //ユニーク解
-int fA [2*MAX-1];   //fA:flagA[] 縦 配置フラグ　
-int fB[2*MAX-1];    //fB:flagB[] 斜め配置フラグ　
-int fC[2*MAX-1];    //fC:flagC[] 斜め配置フラグ　
-int aB[MAX];        //aB:aBoard[] チェス盤の横一列
-int aT[MAX];        //aT:aTrial[]
-int aS[MAX];        //aS:aScrath[]
+long Unique=0;     //ユニーク解
+int aB[MAX];       //aB:aBoard[] チェス盤の横一列
+int fA[2*MAX-1];   //fA:flagA[] 縦 配置フラグ
+int fB[2*MAX-1];   //fB:flagB[] 斜め配置フラグ
+int fC[2*MAX-1];   //fC:flagC[] 斜め配置フラグ
+int aT[MAX];       //aT:aTrial[]
+int aS[MAX];       //aS:aScrath[]
 
-void NQueen(int si,int row);
+void NQueen(int r,int si);
 void TimeFormat(clock_t utime,char *form);
 int symmetryOps(int si);
 void rotate(int chk[],int scr[],int n,int neg);
 void vMirror(int chk[],int n);
 int intncmp(int lt[],int rt[],int n);
 
-// i:col si:size r:row fA:縦 fB:斜め fC:斜め
-void NQueen(int si,int r){
+// i:col si:size r:row fA:縦 fB:斜め fC:斜め t:temp
+void NQueen(int r,int si){
   int t; //t:temp
+  // 枝刈り 
   if(r==si-1){
     // 枝刈り 
     if ((fB[r-aB[r]+si-1]||fC[r+aB[r]])){ return; }
     int s=symmetryOps(si);//対称解除法
     if(s!=0){ Unique++; Total+=s; } //解を発見
   }else{
-    // 枝刈り 半分だけ捜査
+    // 枝刈り 半分だけ走査
     int lim=(r!=0)?si:(si+1)/2; 
-    // i:col
     for(int i=r;i<lim;i++){
       t=aB[i]; aB[i]=aB[r]; aB[r]=t; // swap
       // 枝刈り バックトラック 制約を満たしているときだけ進む
       if(!(fB[r-aB[r]+si-1]||fC[r+aB[r]])){
         fB[r-aB[r]+si-1]=fC[r+aB[r]]=1;
-        NQueen(si,r+1); //再帰
+        NQueen(r+1,si); //再帰
         fB[r-aB[r]+si-1]=fC[r+aB[r]]=0;
       }
     }
@@ -85,7 +86,7 @@ int main(void){
     Total=0; Unique=0;
     for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
-    NQueen(i,0);
+    NQueen(0,i);
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,Total,Unique,t);
   } 
@@ -111,36 +112,36 @@ int symmetryOps(int si){
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  rotate(aT,aS,si,0);     //時計回りに90度回転
+  rotate(aT,aS,si,0);       //時計回りに90度回転
   int k=intncmp(aB,aT,si);
   if(k>0)return 0;
-  if(k==0){ nEquiv=1; }else{
-    rotate(aT,aS,si,0);   //時計回りに180度回転
+  if(k==0){ nEquiv=1;}else{
+    rotate(aT,aS,si,0);     //時計回りに180度回転
     k=intncmp(aB,aT,si);
     if(k>0)return 0;
-    if(k==0){ nEquiv=2; }else{
-      rotate(aT,aS,si,0); //時計回りに270度回転
+    if(k==0){ nEquiv=2;}else{
+      rotate(aT,aS,si,0);   //時計回りに270度回転
       k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }
+      if(k>0){ return 0;}
       nEquiv=4;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aB[i];}
-  vMirror(aT,si);         //垂直反転
+  vMirror(aT,si);           //垂直反転
   k=intncmp(aB,aT,si);
   if(k>0){ return 0; }
-  if(nEquiv>1){           //-90度回転 対角鏡と同等       
+  if(nEquiv>1){             //-90度回転 対角鏡と同等       
     rotate(aT,aS,si,1);
     k=intncmp(aB,aT,si);
-    if(k>0){return 0; }
-    if(nEquiv>2){         //-180度回転 水平鏡像と同等
+    if(k>0){return 0;}
+    if(nEquiv>2){           //-180度回転 水平鏡像と同等
       rotate(aT,aS,si,1);
       k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }//-270度回転 反対角鏡と同等
+      if(k>0){ return 0;}  //-270度回転 反対角鏡と同等
       rotate(aT,aS,si,1);
       k=intncmp(aB,aT,si);
-      if(k>0){ return 0; }
+      if(k>0){ return 0;}
     }
   }
   return nEquiv*2;

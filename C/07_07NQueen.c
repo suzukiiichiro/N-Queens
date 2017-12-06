@@ -8,6 +8,7 @@
 		コンパイルと実行
 		$ make nq7 && ./07_07NQueen
 
+
  *
  *     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
  *     ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
@@ -89,35 +90,39 @@
 17:     95815104        11977939         3:04.94
  */
 
-#include<stdio.h>
-#include<time.h>
+#include <stdio.h>
+#include <time.h>
 
 #define MAX 27
 
-long Total=1 ; //合計解
-long Unique=0; //ユニーク解
-int aB[MAX];  //チェス盤の横一列
-int aT[MAX];
-int aS[MAX];
+long Total=1; //合計解
+long Unique=0;//ユニーク解
+int aB[MAX];  //aB:aBoard[] チェス盤の横一列
+int aT[MAX];  //aT:aTrial[]
+int aS[MAX];  //aS:aScrath[]
 int bit;
-int C2=0;int C4=0;int C8=0;
+int C2=0;  //C2:COUNT2
+int C4=0;  //C4:COUNT4
+int C8=0;  //C8:COUNT8
 
 void NQueen(int si,int msk,int y,int l,int d,int r);
-void dtob(int score,int si);
+void TimeFormat(clock_t utime,char *form);
+void symmetryOps_bm(int si);
 void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
+void dtob(int score,int si);
 int rh(int a,int sz);
 int intncmp(int lt[],int rt[],int si);
-void symmetryOps_bm(int si);
-void TimeFormat(clock_t utime,char *form);
-long getTotal();
 long getUnique();
+long getTotal();
 
 void NQueen(int si,int msk,int y,int l,int d,int r){
-  int bm=msk&~(l|d|r); //配置可能フィールド
-  if(y==si&&!bm){
-    aB[y]=bm;
-    symmetryOps_bm(si);
+  int bm=msk&~(l|d|r); /* 配置可能フィールド */
+  if(y==si){
+    if(!bm){
+      aB[y]=bm;
+      symmetryOps_bm(si);
+    }
   }else{
     while(bm) {
       bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
@@ -127,12 +132,14 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
 }
 int main(void){
   clock_t st; char t[20];
-  int min=2; int msk;  //msk:mask
+  int min=2;
+  int msk; //msk:mask
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
-    Total=0;Unique=0;C2=0;C4=0;C8=0;
-    for(int j=0;j<i;j++){ aB[j]=j; }
+    Total=0;Unique=0;
+    C2=C4=C8=0;
     msk=(1<<i)-1; // 初期化
+    for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
     st=clock();
     NQueen(i,msk,0,0,0,0);
     TimeFormat(clock()-st,t);
@@ -154,54 +161,6 @@ void TimeFormat(clock_t utime,char *form){
   else if (hh) sprintf(form, "     %2d:%02d:%05.2f",hh,mm,ss);
   else if (mm) sprintf(form, "        %2d:%05.2f",mm,ss);
   else sprintf(form, "           %5.2f",ss);
-}
-void dtob(int score,int si) {
-  int bit=1; char c[si];
-  for (int i=0;i<si;i++) {
-    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
-    bit<<=1;
-  }
-  // 計算結果の表示
-  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
-  printf("\n");
-}
-long getUnique(){ 
-  return C2+C4+C8;
-}
-long getTotal(){ 
-  return C2*2+C4*4+C8*8;
-}
-// bf:before af:after
-void rotate_bitmap(int bf[],int af[],int si){
-  for(int i=0;i<si;i++){
-    int t=0;
-    for(int j=0;j<si;j++){
-      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
-    }
-    af[i]=t;                        // y[i] の j ビット目にする
-  }
-}
-void vMirror_bitmap(int bf[],int af[],int si){
-  int score ;
-  for(int i=0;i<si;i++) {
-    score=bf[i];
-    af[i]=rh(score,si-1);
-  }
-}
-int rh(int a,int sz){
-  int tmp=0;
-  for(int i=0;i<=sz;i++){
-    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-  }
-  return tmp;
-}
-int intncmp(int lt[],int rt[],int si){
-  int rtn=0;
-  for(int k=0;k<si;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){ break;}
-  }
-  return rtn;
 }
 void symmetryOps_bm(int si){
   int nEquiv;
@@ -226,11 +185,11 @@ void symmetryOps_bm(int si){
   vMirror_bitmap(aS,aT,si);   //垂直反転
   k=intncmp(aB,aT,si);
   if(k>0){ return; }
-  if(nEquiv>2){               //-90度回転 対角鏡と同等       
+  if(nEquiv>2){             //-90度回転 対角鏡と同等       
     rotate_bitmap(aT,aS,si);
     k=intncmp(aB,aS,si);
     if(k>0){return;}
-    if(nEquiv>4){             //-180度回転 水平鏡像と同等
+    if(nEquiv>4){           //-180度回転 水平鏡像と同等
       rotate_bitmap(aS,aT,si);
       k=intncmp(aB,aT,si);
       if(k>0){ return;}       //-270度回転 反対角鏡と同等
@@ -239,7 +198,54 @@ void symmetryOps_bm(int si){
       if(k>0){ return;}
     }
   }
-  if(nEquiv==2){ C2++; }
-  if(nEquiv==4){ C4++; }
-  if(nEquiv==8){ C8++; }
+  if(nEquiv==2){C2++;}
+  if(nEquiv==4){C4++;}
+  if(nEquiv==8){C8++;}
+}
+void rotate_bitmap(int bf[],int af[],int si){
+  for(int i=0;i<si;i++){
+    int t=0;
+    for(int j=0;j<si;j++){
+      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
+    }
+    af[i]=t;                        // y[i] の j ビット目にする
+  }
+}
+void dtob(int score,int si) {
+  int bit=1; char c[si];
+  for (int i=0;i<si;i++) {
+    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
+    bit<<=1;
+  }
+  // 計算結果の表示
+  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
+  printf("\n");
+}
+int rh(int a,int sz){
+  int tmp=0;
+  for(int i=0;i<=sz;i++){
+    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+  }
+  return tmp;
+}
+void vMirror_bitmap(int bf[],int af[],int si){
+  int score ;
+  for(int i=0;i<si;i++) {
+    score=bf[i];
+    af[i]=rh(score,si-1);
+  }
+}
+int intncmp(int lt[],int rt[],int si){
+  int rtn=0;
+  for(int k=0;k<si;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){ break;}
+  }
+  return rtn;
+}
+long getUnique(){ 
+  return C2+C4+C8;
+}
+long getTotal(){ 
+  return C2*2+C4*4+C8*8;
 }
