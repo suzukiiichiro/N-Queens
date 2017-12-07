@@ -16,7 +16,6 @@
  これにより、Nが大きくなればなるほど不均衡で偏りが出て遅くなる傾向にあった処理速度の遅延は改善された。 の、malloc卒業版
 常にスレッド数はＮに制限され、最大で9段階にシフトしながら解析処理を進めていく。
 
-
  N:          Total        Unique                 dd:hh:mm:ss.ms
  2:                 0                 0          00:00:00:00.00
  3:                 0                 0          00:00:00:00.00
@@ -47,7 +46,6 @@
 #include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include "unistd.h"
 
 // OpenCL
 #ifdef __APPLE__
@@ -61,13 +59,7 @@
 #define THREAD 1    //TRUE:1 FALSE:0
 
 
-/** グローバル変数 */
-int si;             //size
-int siE;            //size-1
-long lTotal;        //解の総合計
-long lUnique;       //解のユニーク解数
-
-/** スレッドローカル構造体 */
+//ローカル構造体
 typedef struct{
 	int bit;
   int own;
@@ -94,9 +86,24 @@ typedef struct{
   int BK;
 }local ;
 
-/**
- * 関数定義
- */
+int si;             //size
+int siE;            //size-1
+long lTotal;        //解の総合計
+long lUnique;       //解のユニーク解数
+
+#ifdef DEBUG
+const int spc[]={'/', '-', '\\', '|'};
+const int spl=sizeof(spc)/sizeof(spc[0]);
+void thMonitor(local *l,int i);
+void hoge();
+void hoge(){
+  clock_t t;
+  t = clock() + CLOCKS_PER_SEC/10;
+  while(t>clock());
+}
+//FILE *f;
+#endif
+
 void thMonitor(local *l,int i);
 void symmetryOps_bm(local *l);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
@@ -113,19 +120,6 @@ void NQueenThread_22();
 void NQueenThread_23();
 void NQueenThread_24();
 void NQueenThread_25();
-
-#ifdef DEBUG
-const int spc[]={'/', '-', '\\', '|'};
-const int spl=sizeof(spc)/sizeof(spc[0]);
-void thMonitor(local *l,int i);
-void hoge();
-void hoge(){
-  clock_t t;
-  t = clock() + CLOCKS_PER_SEC/10;
-  while(t>clock());
-}
-//FILE *f;
-#endif
 
 /**
  * チェスボードのクイーンの場所を確認
@@ -147,31 +141,6 @@ void thMonitor(local *l,int i){
     }
     printf("\n");
   } 
-}
-/**
- * 回転・反転の解析処理
- */
-void symmetryOps_bm(local *l){
-  l->own=l->ptn=l->you=l->bit=0;
-  if(l->aB[l->B2]==1){ //90度回転
-    for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
-      for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
-      if(l->aB[l->own]>l->bit){ return; }else if(l->aB[l->own]<l->bit){ break; } }
-    //90度回転して同型なら180度/270度回転も同型である
-    if(l->own>siE){ l->C2[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,2); return ; } }
-  if(l->aB[siE]==l->EB){ //180度回転
-    for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
-      for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
-      if(l->aB[l->own]>l->bit){ return; } 
-      else if(l->aB[l->own]<l->bit){ break; } }
-    //90度回転が同型でなくても180度回転が同型である事もある
-    if(l->own>siE){ l->C4[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,4); return; } }
-  if(l->aB[l->B1]==l->TB){ //270度回転
-    for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
-      for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
-      if(l->aB[l->own]>l->bit){ return; } else if(l->aB[l->own]<l->bit){ break; } } }
-  l->C8[l->B1][l->BK]++;
-  if(DEBUG>0) thMonitor(l,8); 
 }
 void backTrack2(int y,int left,int down,int right,int bm,local *l){
   //配置可能フィールド
@@ -283,10 +252,58 @@ void *run(void *args){
   }
   return 0;
 }
+/**********************************************/
+/* マルチスレッド */
+/* Nの数だけスレッドをもたせて同時並列処理をする */
+/**********************************************/
 /**
- * Nの数だけスレッドをもたせて同時並列処理をする
-*/
+ *
+ * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
+
+ メインスレッド  N=8
+ +--B1=7----- run()
+ +--B1=6----- run()
+ +--B1=5----- run()
+ +--B1=4----- run()
+ +--B1=3----- run()
+ +--B1=2----- run()
+ +--B1=1----- run()
+ +--B1=0----- run()
+
+ * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
+ *
+// スレッドローカル構造体 
+struct local{
+int bit;
+int B1;
+int B2;
+int TB;
+int EB;
+int msk;
+int SM;
+int LM;
+int aB[MAX];
+};
+ * 
+ * スレッドローカルな構造体の宣言は以下の通りです。
+ *
+ *    //スレッドローカルな構造体
+ *    struct local l[MAX];
+ *
+ * アクセスはグローバル構造体同様 . ドットでアクセスします。
+ l[B1].B1=B1;
+ l[B1].B2=B2;
+ *
+ */
 void *NQueenThread(){
+ //N18までは07_27で実装した２段階 k
+ //N19は07_28で実装した３段階     j
+ //N20は07_29で実装した４段階     kj4
+ //N21は07_31で実装した５段階で処理するようにした。 kj5
+ //N22 kj6
+ //N23 kj7
+ //N24 kj8
+ //N25 
   if(si<=18){ NQueenThread_18();  } //07_27NQueen.c
   else if(si==19){ NQueenThread_19(); }
   else if(si==20){ NQueenThread_20(); }
@@ -297,8 +314,18 @@ void *NQueenThread(){
   else if(si>=25){ NQueenThread_25(); }
   return 0;
 }
+/**********************************************/
+/*  マルチスレッド pthread                    */
+/**********************************************/
 /**
- * メインスレッドの生成
+ *  マルチスレッドには pthreadを使います。
+ *  pthread を宣言するには pthread_t 型の変数を宣言します。
+ *
+ pthread_t tId;  //スレッド変数
+
+ スレッドを生成するには pthread_create()を呼び出します。
+ 戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
+ pthread_join()はスレッドの終了を待ちます。
  */
 void NQueen(){
   pthread_t pth;//スレッド変数
@@ -306,9 +333,32 @@ void NQueen(){
   pthread_join(pth, NULL); //スレッドの終了を待つ
   pthread_detach(pth);
 }
+/**********************************************/
+/*  メイン関数                                */
+/**********************************************/
 /**
- * メイン
- */
+ * N=2 から順を追って 実行関数 NQueen()を呼び出します。
+ * 最大値は 先頭行でMAXをdefineしています。
+ * G は グローバル構造体で宣言しています。
+
+//グローバル構造体
+typedef struct {
+int nThread;
+int si;
+int siE;
+long C2;
+long C4;
+long C8;
+}GCLASS, *GClass;
+GCLASS G; //グローバル構造体
+
+グローバル構造体を使う場合は
+G.si=i ; 
+のようにドットを使ってアクセスします。
+
+NQueen()実行関数は forの中の値iがインクリメントする度に
+Nのサイズが大きくなりクイーンの数を解法します。 
+*/
 int main(void){
   int min=2;
   struct timeval t0;
@@ -935,4 +985,59 @@ void NQueenThread_25(){
       }
     }
   }
+}
+/**********************************************/
+/** 対称解除法                               **/
+/** ユニーク解から全解への展開               **/
+/**********************************************/
+/**
+  ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
+
+  １２ ４１ ３４ ２３
+  ４３ ３２ ２１ １４
+
+  ２１ １４ ４３ ３２
+  ３４ ２３ １２ ４１
+
+  上図左上がユニーク解。
+  1行目はユニーク解を90度、180度、270度回転したもの
+  2行目は1行目のそれぞれを左右反転したもの。
+  2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
+  ただし、 回転・線対称な解もある
+  クイーンが右上角にあるユニーク解を考えます。
+  斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
+  右上角のクイーンを他の３つの角に写像させることができるので(×４)、
+  このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
+
+  (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
+  　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
+  (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
+  　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
+
+  　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
+  ２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
+  て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
+  場合は８個になります。(左右反転×縦横回転×上下反転)
+  */
+void symmetryOps_bm(local *l){
+  l->own=l->ptn=l->you=l->bit=0;
+  if(l->aB[l->B2]==1){ //90度回転
+    for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
+      for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
+      if(l->aB[l->own]>l->bit){ return; }else if(l->aB[l->own]<l->bit){ break; } }
+    //90度回転して同型なら180度/270度回転も同型である
+    if(l->own>siE){ l->C2[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,2); return ; } }
+  if(l->aB[siE]==l->EB){ //180度回転
+    for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
+      for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
+      if(l->aB[l->own]>l->bit){ return; } 
+      else if(l->aB[l->own]<l->bit){ break; } }
+    //90度回転が同型でなくても180度回転が同型である事もある
+    if(l->own>siE){ l->C4[l->B1][l->BK]++; if(DEBUG>0) thMonitor(l,4); return; } }
+  if(l->aB[l->B1]==l->TB){ //270度回転
+    for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
+      for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
+      if(l->aB[l->own]>l->bit){ return; } else if(l->aB[l->own]<l->bit){ break; } } }
+  l->C8[l->B1][l->BK]++;
+  if(DEBUG>0) thMonitor(l,8); 
 }
