@@ -38,7 +38,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1 
+#define USE_DEBUG 0
 //
 //#define SPREAD 1024
 //
@@ -82,14 +82,26 @@ struct STACK{
 struct queenState {
   int si;
   //int id;
-  int B1;
   int BOUND1;
   int BOUND2;
+  int TOPBIT;
+  int ENDBIT;
+  int SIDEMASK;
+  int LASTMASK;
+  //int aB[MAX];
   qint aB[MAX];
-  char step;
   long lTotal; // Number of solutinos found so far.
   long lUnique;
   //int step;
+  char step;
+  //int y;
+  char y;
+  struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
+  int bm;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX];
@@ -380,14 +392,34 @@ int makeInProgress(int si){
   for(int i=0;i<si;i++){ //single
         inProgress[i].si=si;
         //inProgress[i].id=i;
-        inProgress[i].B1=2;
         inProgress[i].BOUND1=i;
         inProgress[i].BOUND2=B2;
         B2--;
+    inProgress[i].ENDBIT=0;
+    inProgress[i].TOPBIT=1<<(si-1);
+    inProgress[i].SIDEMASK=0;
+    inProgress[i].LASTMASK=0;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
-        inProgress[i].step=0;
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
+        inProgress[i].step=0;
+        inProgress[i].y=0;
+    for (int m=0;m<si;m++){ 
+      inProgress[i].stParam.param[m].Y=0;
+      inProgress[i].stParam.param[m].I=si;
+      inProgress[i].stParam.param[m].M=0;
+      inProgress[i].stParam.param[m].L=0;
+      inProgress[i].stParam.param[m].D=0;
+      inProgress[i].stParam.param[m].R=0;
+      inProgress[i].stParam.param[m].B=0;
+    }
+    inProgress[i].stParam.current=0;
+    inProgress[i].msk=(1<<si)-1;
+    inProgress[i].l=0;
+    inProgress[i].d=0;
+    inProgress[i].r=0;
+    inProgress[i].bm=0;
+
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
