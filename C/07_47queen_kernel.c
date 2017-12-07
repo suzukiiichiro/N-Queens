@@ -42,9 +42,9 @@ CL_PACKED_KEYWORD struct queenState {
   long lTotal;
   long lUnique; // Number of solutinos found so far.
   char step;
-  char y;
 };
 CL_PACKED_KEYWORD struct localState {
+  char y;
   int B1;
   int TOPBIT;
   int ENDBIT;
@@ -167,7 +167,7 @@ void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,in
   s->lUnique=state[index].lUnique;
   //s->step=state[index].step;
   s->step=0;
-  s->y=state[index].y;
+  lo->y=0;
   lo->B1=2;
   lo->ENDBIT=0;
   lo->TOPBIT=1<<(s->si-1);
@@ -217,13 +217,12 @@ void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,i
   state[index].lTotal=s->lTotal;
   state[index].lUnique=s->lUnique;
   state[index].step=s->step;
-  state[index].y=s->y;
   //state[index].bend=s->bend;
   //state[index].rflg=s->rflg;
 }
 void inParam(struct queenState *s,struct localState *lo){
                 if(lo->stParam.current<MAX){
-                  lo->stParam.param[lo->stParam.current].Y=s->y;
+                  lo->stParam.param[lo->stParam.current].Y=lo->y;
                   lo->stParam.param[lo->stParam.current].I=s->si;
                   lo->stParam.param[lo->stParam.current].M=lo->msk;
                   lo->stParam.param[lo->stParam.current].L=lo->l;
@@ -238,7 +237,7 @@ void outParam(struct queenState *s,struct localState *lo){
                   lo->stParam.current--;
                 }
                 s->si=lo->stParam.param[lo->stParam.current].I;
-                s->y=lo->stParam.param[lo->stParam.current].Y;
+                lo->y=lo->stParam.param[lo->stParam.current].Y;
                 lo->msk=lo->stParam.param[lo->stParam.current].M;
                 lo->l=lo->stParam.param[lo->stParam.current].L;
                 lo->d=lo->stParam.param[lo->stParam.current].D;
@@ -249,27 +248,27 @@ void outParam(struct queenState *s,struct localState *lo){
 void backTrack1(struct queenState *s,struct localState *lo){
   int bit;
         lo->aB[1]=bit=(1<<lo->B1);
-        s->y=2;lo->l=(2|bit)<<1;lo->d=(1|bit);lo->r=(bit>>1);
+        lo->y=2;lo->l=(2|bit)<<1;lo->d=(1|bit);lo->r=(bit>>1);
         unsigned long j=1;
         while(1){
           if(lo->rflg==0){
             lo->bm=lo->msk&~(lo->l|lo->d|lo->r); 
           }
-          if (s->y==s->si-1&&lo->rflg==0){ 
+          if (lo->y==s->si-1&&lo->rflg==0){ 
             if(lo->bm>0){
-              lo->aB[s->y]=lo->bm;
+              lo->aB[lo->y]=lo->bm;
               s->lTotal+=8;
               s->lUnique++;
             }
           }else{
-            if(s->y<lo->B1&&lo->rflg==0){   
+            if(lo->y<lo->B1&&lo->rflg==0){   
               lo->bm&=~2;
             }
             while(lo->bm>0|| lo->rflg==1){
               if(lo->rflg==0){
-                lo->bm^=lo->aB[s->y]=bit=(-lo->bm&lo->bm);
+                lo->bm^=lo->aB[lo->y]=bit=(-lo->bm&lo->bm);
 inParam(s,lo);
-                s->y++;
+                lo->y++;
                 lo->l=(lo->l|bit)<<1;
                 lo->d=(lo->d|bit);
                 lo->r=(lo->r|bit)>>1;
@@ -286,7 +285,7 @@ outParam(s,lo);
               continue;
             }
           }
-          if(s->y==2){
+          if(lo->y==2){
             s->step=2;
             break;
           }else{
@@ -302,15 +301,15 @@ void backTrack2(struct queenState *s,struct localState *lo){
           if(lo->rflg==0){
             lo->bm=lo->msk&~(lo->l|lo->d|lo->r); 
           }
-          if (s->y==s->si-1&&lo->rflg==0) {
+          if (lo->y==s->si-1&&lo->rflg==0) {
             if(lo->bm>0 && (lo->bm&lo->LASTMASK)==0){
-              lo->aB[s->y]=lo->bm;
+              lo->aB[lo->y]=lo->bm;
               symmetryOps_bm(s,lo);
             }
           }else{
-            if(s->y<s->BOUND1&&lo->rflg==0){
+            if(lo->y<s->BOUND1&&lo->rflg==0){
               lo->bm&=~lo->SIDEMASK; 
-            }else if(s->y==s->BOUND2&&lo->rflg==0){
+            }else if(lo->y==s->BOUND2&&lo->rflg==0){
               if((lo->d&lo->SIDEMASK)==0&&lo->rflg==0){ 
                 lo->rflg=1;
               }
@@ -320,9 +319,9 @@ void backTrack2(struct queenState *s,struct localState *lo){
             }
             while(lo->bm>0|| lo->rflg==1){
               if(lo->rflg==0){
-                lo->bm^=lo->aB[s->y]=bit=(-lo->bm&lo->bm); 
+                lo->bm^=lo->aB[lo->y]=bit=(-lo->bm&lo->bm); 
 inParam(s,lo);
-                s->y++;
+                lo->y++;
                 lo->l=(lo->l|bit)<<1;
                 lo->d=(lo->d|bit);
                 lo->r=(lo->r|bit)>>1;
@@ -339,7 +338,7 @@ outParam(s,lo);
               continue;
             }
           }
-          if(s->y==1){
+          if(lo->y==1){
             s->step=2;
             break;
           }else{
@@ -374,7 +373,7 @@ backTrack1(&s,&lo);
               lo.LASTMASK=lo.LASTMASK|lo.LASTMASK>>1|lo.LASTMASK<<1;
             }
           lo.aB[0]=bit=(1<<s.BOUND1);
-          s.y=1;lo.l=bit<<1;lo.d=bit;lo.r=bit>>1;
+          lo.y=1;lo.l=bit<<1;lo.d=bit;lo.r=bit>>1;
 backTrack2(&s,&lo);
             lo.ENDBIT>>=s.si;
         }

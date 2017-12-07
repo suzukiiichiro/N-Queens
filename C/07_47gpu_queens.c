@@ -90,7 +90,6 @@ struct queenState {
   //int step;
   char step;
   //int y;
-  char y;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX];
@@ -387,7 +386,6 @@ int makeInProgress(int si){
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
         inProgress[i].step=0;
-        inProgress[i].y=0;
 
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
