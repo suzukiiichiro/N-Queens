@@ -8,6 +8,9 @@
 		コンパイルと実行
 		$ make nq19 && ./07_19NQueen
 
+ローカル構造体、グローバル構造体にそれぞれ何がふさわしいのか、
+どの変数をアドレスとポインタで表現した方が高速なのかを、
+色々と試してみるテストの終盤線
 
  実行結果
 
@@ -18,35 +21,35 @@ void backTrack2(int y,int left,int down,int right,struct local *l,int *si,
 16:        14772512          1846955        0000:00:00.99
 17:        95815104         11977939        0000:00:06.12
 
-2,SIZEEを移動
+2,siEを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *bo,int *bo2,int *ma,int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.16
 16:        14772512          1846955        0000:00:00.93
 17:        95815104         11977939        0000:00:05.74
 
-3,BOUND1を移動
+3,B1を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *bo2,int *ma,int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.14
 16:        14772512          1846955        0000:00:00.88
 17:        95815104         11977939        0000:00:05.55
 
-4,BOUND2を移動
+4,B2を移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *ma,int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.13
 16:        14772512          1846955        0000:00:00.80
 17:        95815104         11977939        0000:00:05.23
 
-5,MASKを移動
+5,mskを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *sm,int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.15
 16:        14772512          1846955        0000:00:00.79
 17:        95815104         11977939        0000:00:05.10
 
-6,SIDEMASKを移動
+6,SMを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *lm,int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.12
@@ -54,27 +57,27 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 17:        95815104         11977939        0000:00:05.10
 18:       666090624         83263591        0000:00:35.18
 
-7,LASTMASKを移動
+7,LMを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *to,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.11
 16:        14772512          1846955        0000:00:00.74
 17:        95815104         11977939        0000:00:04.71
 
-8,TOPBITを移動
+8,TBを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,int *en,int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.14
 16:        14772512          1846955        0000:00:00.70
 17:        95815104         11977939        0000:00:04.50
 
-9,ENDBITを移動
+9,EBを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,
      int *p,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.65
 17:        95815104         11977939        0000:00:04.31
 
-10,aBoardを移動
+10,aBを移動
 void backTrack2(int y,int left,int down,int right,struct local *l,long *c2,long *c4,long *c8){
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.58
@@ -98,7 +101,7 @@ void backTrack2(int y,int left,int down,int right,struct local *l,){
 16:        14772512          1846955        0000:00:00.65
 17:        95815104         11977939        0000:00:04.21
 
-13,COUNT2,COUNT4,COUNT8を外出しにする。SIDEMASKを変数に入れて使う
+13,COUNT2,COUNT4,COUNT8を外出しにする。SMを変数に入れて使う
 15:         2279184           285053        0000:00:00.10
 16:        14772512          1846955        0000:00:00.57
 17:        95815104         11977939        0000:00:03.66
@@ -122,98 +125,46 @@ void backTrack2(int y,int left,int down,int right,struct local *l,){
 17:        95815104         11977939          00:00:00:06.62
 */
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
-#include <math.h>
-#include "pthread.h"
+#include <stdio.h>
+#include <time.h>
 #include <sys/time.h>
-#define MAXSIZE 27
+#include <pthread.h>
+
+#define MAX 27
 
 // pthreadはパラメータを１つしか渡せないので構造体に格納
-/** スレッドローカル構造体 */
+//グローバル構造体
+typedef struct {
+  int si; //siはスレッドローカルにコピーします。
+  int siE;//siEはスレッドローカルにコピーします。
+  long lTotal;
+  long lUnique;
+}GCLASS, *GClass;
+
+//ローカル構造体
 struct local{
-  int BOUND1;
-  int BOUND2;
-  int TOPBIT;
-  int ENDBIT;
-  int MASK;
-  int SIDEMASK;
-  int LASTMASK;
-  int aBoard[MAXSIZE];
-  int SIZE;
-  int SIZEE;
+  int B1;
+  int B2;
+  int TB;
+  int EB;
+  int msk;
+  int SM;
+  int LM;
+  int aB[MAX];
+  int si;
+  int siE;
   long COUNT2;
   long COUNT4;
   long COUNT8;
 };
-//グローバル構造体
-typedef struct {
-  int SIZE; //SIZEはスレッドローカルにコピーします。
-  int SIZEE;//SIZEEはスレッドローカルにコピーします。
-  long lTotal;
-  long lUnique;
-}GCLASS, *GClass;
 GCLASS G; //グローバル構造体
 
-/**********************************************/
-/** 対称解除法                               **/
-/** ユニーク解から全解への展開               **/
-/**********************************************/
-/**
-ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
-
-    １２ ４１ ３４ ２３
-    ４３ ３２ ２１ １４
-
-    ２１ １４ ４３ ３２
-    ３４ ２３ １２ ４１
-    
-上図左上がユニーク解。
-1行目はユニーク解を90度、180度、270度回転したもの
-2行目は1行目のそれぞれを左右反転したもの。
-2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
-ただし、 回転・線対称な解もある
-**/
-/**
-クイーンが右上角にあるユニーク解を考えます。
-斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
-右上角のクイーンを他の３つの角に写像させることができるので(×４)、
-このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
-
-(1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
-　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
-(2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
-　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
-
-　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
-２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
-て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
-場合は８個になります。(左右反転×縦横回転×上下反転)
-*/
-void symmetryOps_bitmap(struct local *l,long *c2,long *c4,long *c8){
-  int own,ptn,you,bit;
-  //90度回転
-  if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
-    while(own<=l->SIZEE){ bit=1; you=l->SIZEE;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn<<=1; }
-    /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>l->SIZEE){ (*c2)++; return; } }
-  //180度回転
-  if(l->aBoard[l->SIZEE]==l->ENDBIT){ own=1; you=l->SIZEE-1;
-    while(own<=l->SIZEE){ bit=1; ptn=l->TOPBIT;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; you--; }
-    /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>l->SIZEE){ (*c4)++; return; } }
-  //270度回転
-  if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
-    while(own<=l->SIZEE){ bit=1; you=0;
-      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; } own++; ptn>>=1; } }
-  (*c8)++;
-}
+void backTrack2(int y,int left,int down,int right,struct local *l, long *c2,long *c4,long *c8);
+void backTrack1(int y,int left,int down,int right,struct local *l,long *c8);
+void *run(void *args);
+void *NQueenThread( void *args);
+int main(void);
+void symmetryOps_bm(struct local *l,long *c2,long *c4,long *c8);
 
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -236,26 +187,30 @@ lt, dn, lt 位置は効きチェックで配置不可能となる
   x - - - - | - x    
   x x b - - dnx x    
 */
-void backTrack2(int y,int left,int down,int right,struct local *l,
-     long *c2,long *c4,long *c8){
-  int bit=0; int bitmap=l->MASK&~(left|down|right); //配置可能フィールド
-  int sm=l->SIDEMASK;
-  if(y==l->SIZEE){
-    if(bitmap!=0){ //【枝刈り】最下段枝刈り
-      if( (bitmap&l->LASTMASK)==0){ 
-        l->aBoard[y]=bitmap;
-        //対称解除法
-        symmetryOps_bitmap(l,c2,c4,c8); } }
+void backTrack2(int y,int left,int down,int right,
+    struct local *l,
+    long *c2,long *c4,long *c8){
+  int bit=0; 
+  int bm=l->msk&~(left|down|right); //配置可能フィールド
+  int sm=l->SM;
+  if(y==l->siE){          //【枝刈り】
+    if(bm){
+      if( (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
+        l->aB[y]=bm;
+        symmetryOps_bm(l,c2,c4,c8); 
+      } 
+    }
   }else{
-    if(y<l->BOUND1){ //【枝刈り】上部サイド枝刈り
-      bitmap&=~sm; 
-    }else if(y==l->BOUND2) { //【枝刈り】下部サイド枝刈り
+    if(y<l->B1){          //【枝刈り】上部サイド枝刈り
+      bm&=~sm; 
+    }else if(y==l->B2) {  //【枝刈り】下部サイド枝刈り
       if((down&sm)==0){ return; }
-      if((down&sm)!=sm){ bitmap&=sm; } }
-    while(bitmap!=0) { //最も下位の１ビットを抽出
-      bitmap^=l->aBoard[y]=bit=-bitmap&bitmap;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,
-                                  l,c2,c4,c8); } }
+      if((down&sm)!=sm){ bm&=sm; } }
+    while(bm) {           //最も下位の１ビットを抽出
+      bm^=l->aB[y]=bit=-bm&bm;
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,c2,c4,c8);
+    }
+  }
 }
 /**********************************************/
 /*  枝刈りと最適化                            */
@@ -308,18 +263,24 @@ void backTrack2(int y,int left,int down,int right,struct local *l,
 ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
 */
 void backTrack1(int y,int left,int down,int right,struct local *l,long *c8){
-  int bit; int bitmap=l->MASK&~(left|down|right);  //配置可能フィールド
-  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(y==l->SIZEE) { if(bitmap!=0){ l->aBoard[y]=bitmap; (*c8)++; }
+  int bit;
+  int bm=l->msk&~(left|down|right);  //配置可能フィールド
+  if(y==l->siE){
+    if(bm){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      l->aB[y]=bm;
+      (*c8)++;
+    }
   }else{
-    //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-    // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-    // bitmap|=2; // bitmap^=2; //(bitmap&=~2と同等)
-    if(y<l->BOUND1) { bitmap&=~2; }
-    //最も下位の１ビットを抽出
-    while(bitmap!=0) {
-      bitmap^=l->aBoard[y]=bit=(-bitmap&bitmap);
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,c8); } } 
+    if(y<l->B1){
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bm){
+      bm^=l->aB[y]=bit=(-bm&bm);//最も下位の１ビットを抽出
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l,c8); 
+    } 
+  } 
 }
 /**
   クイーンの場所で分岐
@@ -446,36 +407,41 @@ void backTrack1(int y,int left,int down,int right,struct local *l,long *c8){
 void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
+  int si=l->si; int siE =l->siE;
+  int B1=l->B1; int B2=l->B2;
+  l->TB=1<<siE;
+  l->msk=(1<<si)-1;
   long COUNT2=l->COUNT2=0;
   long COUNT4=l->COUNT4=0;
   long COUNT8=l->COUNT8=0;
   long *c2=&(COUNT2);
   long *c4=&(COUNT4);
   long *c8=&(COUNT8);
-  int SIZE=l->SIZE;
-  int SIZEE =l->SIZEE;
-  l->MASK=(1<<SIZE)-1;
-  int BOUND1=l->BOUND1;
-  int BOUND2=l->BOUND2;
   /* 最上段のクイーンが角にある場合の探索 */
-  if(BOUND1>1 && BOUND1<SIZEE) { 
-    l->aBoard[1]=bit=(1<<BOUND1);// 角にクイーンを配置 
-    backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,c8); 
-  }//２行目から探索
-  l->TOPBIT=1<<SIZEE;
-  l->ENDBIT=(l->TOPBIT>>l->BOUND1);
-  l->SIDEMASK=(l->TOPBIT|1);
-  l->LASTMASK=(l->TOPBIT|1);
-  /* 最上段行のクイーンが角以外にある場合の探索 */
-  //   ユニーク解に対する左右対称解を予め削除するため片半分だけにクイーンを配置する
-  if(BOUND1>0 && BOUND2<SIZEE && BOUND1<BOUND2){ 
-    for(int i=1; i<BOUND1; i++){
-      l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1; }
-    l->aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(1,bit<<1,bit,bit>>1,
-      l,
-      c2,c4,c8); 
-    l->ENDBIT>>=1; }
+  if(B1>1&&B1<siE) { 
+    if(B1<siE){
+      // 角にクイーンを配置 
+      l->aB[1]=bit=(1<<B1);
+      //２行目から探索
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l,c8); 
+    }
+  }
+  l->EB=(l->TB>>l->B1);
+  l->SM=(l->TB|1);
+  l->LM=(l->TB|1);
+  /* 最上段行のクイーンが角以外にある場合の探索
+     ユニーク解に対する左右対称解を予め削除するためには、
+     片半分だけにクイーンを配置すればよい */
+  if(B1>0 && B2<siE && B1<B2){ 
+    for(int i=1;i<B1;i++){
+      l->LM=l->LM|l->LM>>1|l->LM<<1;
+    }
+    if(l->B1<l->B2){
+      l->aB[0]=bit=(1<<B1);
+      backTrack2(1,bit<<1,bit,bit>>1,l,c2,c4,c8); 
+    }
+    l->EB>>=si;
+  }
   l->COUNT2=*c2;
   l->COUNT4=*c4;
   l->COUNT8=*c8;
@@ -489,38 +455,38 @@ void *run(void *args){
  * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
 
       メインスレッド  N=8
-          +--BOUND1=7----- run()
-          +--BOUND1=6----- run()
-          +--BOUND1=5----- run()
-          +--BOUND1=4----- run()
-          +--BOUND1=3----- run()
-          +--BOUND1=2----- run()
-          +--BOUND1=1----- run()
-          +--BOUND1=0----- run()
+          +--B1=7----- run()
+          +--B1=6----- run()
+          +--B1=5----- run()
+          +--B1=4----- run()
+          +--B1=3----- run()
+          +--B1=2----- run()
+          +--B1=1----- run()
+          +--B1=0----- run()
   
  * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
  *
       // スレッドローカル構造体 
       struct local{
         int bit;
-        int BOUND1;
-        int BOUND2;
-        int TOPBIT;
-        int ENDBIT;
-        int MASK;
-        int SIDEMASK;
-        int LASTMASK;
-        int aBoard[MAXSIZE];
+        int B1;
+        int B2;
+        int TB;
+        int EB;
+        int msk;
+        int SM;
+        int LM;
+        int aB[MAX];
       };
  * 
  * スレッドローカルな構造体の宣言は以下の通りです。
  *
  *    //スレッドローカルな構造体
- *    struct local l[MAXSIZE];
+ *    struct local l[MAX];
  *
  * アクセスはグローバル構造体同様 . ドットでアクセスします。
-      l[BOUND1].BOUND1=BOUND1;
-      l[BOUND1].BOUND2=BOUND2;
+      l[B1].B1=B1;
+      l[B1].B2=B2;
  *
  */
 /**********************************************/
@@ -566,13 +532,11 @@ void *run(void *args){
         COUNT4+=C4;                //保護されている処理
         COUNT8+=C8;                //保護されている処理
       pthread_mutex_unlock(&mutex);   //ロックの終了
- *
+ 
   使い終わったら破棄します。
     pthread_mutexattr_destroy(&mutexattr);//不要になった変数の破棄
     pthread_mutex_destroy(&mutex);        //nutexの破棄
- *
- */
-/**
+ 
   ですが、mutexのロックとロック解除は処理の中断と開始が頻繁に走り、
 　速度が著しく低下します。
   そこで、スレッド毎に独立した配列にそれぞれに変数を格納し、
@@ -587,7 +551,7 @@ void *run(void *args){
    メモリアクセスする方が良さそうです。
    排他処理に必要な箇所はCOUNT++する箇所となります。
    具体的にはカウントする変数をスレッド毎の配列に格納し、
-   COUNT2[BOUND1] COUNT4[BOUND1] COUNT8[BOUND1]で実装します。
+   COUNT2[B1] COUNT4[B1] COUNT8[B1]で実装します。
 
   // mutexを廃止したことで以下の宣言が不要となりました。
    //pthread_mutexattr_t 変数を用意します。
@@ -596,20 +560,29 @@ void *run(void *args){
    pthread_mutexattr_init(&mutexattr);
    pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_NORMAL);
 */
-void *NQueenThread( void *args){
-  struct local l[MAXSIZE]; //構造体 local型 
-  int SIZE=*(int *)args; int SIZEE=SIZE-1; //argsで引き渡されたパラメータをSIZEに格納
-  pthread_t cth[SIZE]; //スレッド childThread
+
+void *NQueenThread(void *args){
+  struct local l[MAX];                //構造体 local型 
+  int si=*(int *)args;
+  int siE=si-1;
+  pthread_t cth[si];                //スレッド childThread
   // B1から順にスレッドを生成しながら処理を分担する 
-  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ 
-    l[B1].BOUND1=B1; l[B1].BOUND2=B2; l[B1].SIZE=SIZE; l[B1].SIZEE=SIZEE; //スレッド毎の変数の初期化
-    for(int j=0;j<SIZE;j++){ l[B1].aBoard[j]=j; } 
-    pthread_create(&cth[B1],NULL,run, (void *) &l[B1]); // マルチスレッドの生成 
+  for(int B1=siE,B2=0;B2<siE;B1--,B2++){
+    //スレッド毎の変数の初期化
+    l[B1].B1=B1; l[B1].B2=B2;
+    l[B1].si=si; l[B1].siE=siE;
+    for(int j=0;j<si;j++){ l[B1].aB[j]=j; } 
+    // マルチスレッドの生成 
+    int iFbRet=pthread_create(&cth[B1],NULL,run, (void *) &l[B1]);
+    //エラー出力デバッグ用
+    if(iFbRet>0){ printf("[mainThread] pthread_create #%d: %d\n", l[B1].B1, iFbRet); }
   }
-  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ pthread_join(cth[B1],NULL); } //処理が終わったら 全てjoin
-  for(int B1=SIZEE,B2=0;B2<SIZEE;B1--,B2++){ //スレッド毎のカウンターを合計
+  //処理が終わったら 全ての処理をjoinする
+  for(int B1=siE,B2=0;B2<siE;B1--,B2++){ pthread_join(cth[B1],NULL); }
+  //スレッド毎のカウンターを合計
+  for(int B1=siE,B2=0;B2<siE;B1--,B2++){
     G.lTotal+=l[B1].COUNT2*2+l[B1].COUNT4*4+l[B1].COUNT8*8;
-    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8; 
+    G.lUnique+=l[B1].COUNT2+l[B1].COUNT4+l[B1].COUNT8;
   }
   return 0;
 }
@@ -630,11 +603,11 @@ void *NQueenThread( void *args){
 
   //構造体
   struct local{
-    int BOUND1;
-    int BOUND2;
-    int aBoard[MAXSIZE];
-    int SIZE;
-    int SIZEE;
+    int B1;
+    int B2;
+    int aB[MAX];
+    int si;
+    int siE;
     long COUNT2;
     long COUNT4;
     long COUNT8;
@@ -643,31 +616,36 @@ void *NQueenThread( void *args){
   渡された関数側
   void *run(void *args){
     struct local *l=(struct local *)args;
-    int SIZE=l->SIZEE; //こんな感じで
+    int si=l->siE; //こんな感じで
   }  
 
   スレッドを生成するには pthread_create()を呼び出します。
   戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
   pthread_join()はスレッドの終了を待ちます。
  */
-void NQueen(int SIZE){
-  pthread_t pth;  //スレッド変数
-  pthread_create(&pth, NULL, NQueenThread,(void *) &SIZE); // メインスレッドの生成
-  pthread_join(pth, NULL); //スレッドの終了を待つ
+void NQueen(int si){
+  //スレッド変数
+  pthread_t pth;  
+  // メインスレッドの生成
+  int iFbRet=pthread_create(&pth, NULL, NQueenThread,(void *)&si);
+  //エラー出力デバッグ用
+  if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); }
+  //スレッドの終了を待つ
+  pthread_join(pth, NULL);
 }
 /**********************************************/
 /*  メイン関数                                */
 /**********************************************/
 /**
  * N=2 から順を追って 実行関数 NQueen()を呼び出します。
- * 最大値は 先頭行でMAXSIZEをdefineしています。
+ * 最大値は 先頭行でMAXをdefineしています。
  * G は グローバル構造体で宣言しています。
 
     //グローバル構造体
     typedef struct {
       int nThread;
-      int SIZE;
-      int SIZEE;
+      int si;
+      int siE;
       long COUNT2;
       long COUNT4;
       long COUNT8;
@@ -675,18 +653,22 @@ void NQueen(int SIZE){
     GCLASS G; //グローバル構造体
 
 グローバル構造体を使う場合は
-  G.SIZE=i ; 
+  G.si=i ; 
   のようにドットを使ってアクセスします。
  
   NQueen()実行関数は forの中の値iがインクリメントする度に
   Nのサイズが大きくなりクイーンの数を解法します。 
  */
 int main(void){
+  struct timeval t0;
+  struct timeval t1;
+  int min=2;
   printf("%s\n"," N:           Total           Unique          hh:mm:ss.ms");
-  struct timeval t0; struct timeval t1;
-  for(int i=2;i<=MAXSIZE;i++){
+  for(int i=min;i<=MAX;i++){
     G.lTotal=G.lUnique=0;
-    gettimeofday(&t0, NULL);NQueen(i);gettimeofday(&t1, NULL);
+    gettimeofday(&t0, NULL);
+    NQueen(i);     // 実行関数
+    gettimeofday(&t1, NULL);
     int ss;int ms;int dd;
     if (t1.tv_usec<t0.tv_usec) {
       dd=(t1.tv_sec-t0.tv_sec-1)/86400; 
@@ -702,4 +684,63 @@ int main(void){
     ss%=60;
     printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,G.lTotal,G.lUnique,dd,hh,mm,ss,ms); 
   } 
+}
+/**********************************************/
+/** 対称解除法                               **/
+/** ユニーク解から全解への展開               **/
+/**********************************************/
+/**
+ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
+
+    １２ ４１ ３４ ２３
+    ４３ ３２ ２１ １４
+
+    ２１ １４ ４３ ３２
+    ３４ ２３ １２ ４１
+    
+上図左上がユニーク解。
+1行目はユニーク解を90度、180度、270度回転したもの
+2行目は1行目のそれぞれを左右反転したもの。
+2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
+ただし、 回転・線対称な解もある
+**/
+/**
+クイーンが右上角にあるユニーク解を考えます。
+斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
+右上角のクイーンを他の３つの角に写像させることができるので(×４)、
+このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
+
+(1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
+　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
+(2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
+　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
+
+　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
+２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
+て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
+場合は８個になります。(左右反転×縦横回転×上下反転)
+*/
+
+void symmetryOps_bm(struct local *l,long *c2,long *c4,long *c8){
+  int own,ptn,you,bit;
+  //90度回転
+  if(l->aB[l->B2]==1){ own=1; ptn=2;
+    while(own<=l->siE){ bit=1; you=l->siE;
+      while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; you--; }
+      if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; } own++; ptn<<=1; }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>l->siE){ (*c2)++; return; } }
+  //180度回転
+  if(l->aB[l->siE]==l->EB){ own=1; you=l->siE-1;
+    while(own<=l->siE){ bit=1; ptn=l->TB;
+      while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; } own++; you--; }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>l->siE){ (*c4)++; return; } }
+  //270度回転
+  if(l->aB[l->B1]==l->TB){ own=1; ptn=l->TB>>1;
+    while(own<=l->siE){ bit=1; you=0;
+      while((l->aB[you]!=ptn)&&(l->aB[own]>=bit)){ bit<<=1; you++; }
+      if(l->aB[own]>bit){ return; } if(l->aB[own]<bit){ break; } own++; ptn>>=1; } }
+  (*c8)++;
 }
