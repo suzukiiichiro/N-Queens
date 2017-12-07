@@ -566,32 +566,6 @@ void NQueen(){
   pthread_join(pth, NULL);
   pthread_detach(pth);
 }
-/**********************************************/
-/*  メイン関数                                */
-/**********************************************/
-/**
- * N=2 から順を追って 実行関数 NQueen()を呼び出します。
- * 最大値は 先頭行でMAXをdefineしています。
- * G は グローバル構造体で宣言しています。
-
-//グローバル構造体
-typedef struct {
-int nThread;
-int si;
-int siE;
-long C2;
-long C4;
-long C8;
-}GCLASS, *GClass;
-GCLASS G; //グローバル構造体
-
-グローバル構造体を使う場合は
-G.si=i ; 
-のようにドットを使ってアクセスします。
-
-NQueen()実行関数は forの中の値iがインクリメントする度に
-Nのサイズが大きくなりクイーンの数を解法します。 
-*/
 int main(void){
   struct timeval t0;
   struct timeval t1;

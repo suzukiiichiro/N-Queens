@@ -11,6 +11,9 @@
   現行の処理ではすでに最上段と上から3段目のクイーンまでは固定化してスレッド化している。
   今回は、上記に加えて上から4段目のクイーンまでを固定化してスレッド化（1XNxNxN)
 
+  //pthread_t pt1[si][si];    //上から2段目のスレッド childThread
+  //pthread_t pt1[si][si][si];    //上から3段目のスレッド childThread
+  //pthread_t pt3[si][si][si][si];//上から4段目のスレッド childThread
 
 	07_28 07_29は暴れん坊過ぎてハングアップするので修正、かつ強化。
 
@@ -53,25 +56,46 @@
 20:     39029188884       4878666808          00:00:31:20.65
 21:    314666222712      39333324973          00:04:15:55.95 
 
+  参考 07_27NQueen.c
+17:        95815104         11977939          00:00:00:00.78
+18:       666090624         83263591          00:00:00:05.32
+19:      4968057848        621012754          00:00:00:39.64
+20:     39029188884       4878666808          00:00:05:05.33
+21:    314666222712      39333324973          00:00:41:31.41
+22:   2691008701644     336376244042          00:06:01:35.36
+
+  参考（Bash版 07_8NQueen.lua）
+13:           73712             9233                   99
+14:          365596            45752                  573
+15:         2279184           285053                 3511
+                                               
+  参考（Lua版 07_8NQueen.lua）                 
+14:          365596            45752             00:00:00
+15:         2279184           285053             00:00:03
+16:        14772512          1846955             00:00:20
+                                               
+  参考（Java版 NQueen8.java マルチスレット）
+16:        14772512          1846955             00:00:00
+17:        95815104         11977939             00:00:04
+18:       666090624         83263591             00:00:34
+19:      4968057848        621012754             00:04:18
+20:     39029188884       4878666808             00:35:07
+21:    314666222712      39333324973             04:41:36
+22:   2691008701644     336376244042             39:14:59
+ *
 */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include "unistd.h"
 
 #define MAX 27
 #define DEBUG 1   // TRUE:1 FALSE:0
 #define THREAD 0  // TRUE:1 FALSE:0
 
-int si;  
-int siE;
-long lTotal;
-long lUnique;
 
-/** スレッドローカル構造体 */
+//ローカル構造体
 typedef struct{
 	int bit;
   int own;
@@ -93,6 +117,11 @@ typedef struct{
   long C8[MAX][2];
   int BK;
 }local ;
+
+int si;  
+int siE;
+long lTotal;
+long lUnique;
 
 #ifdef DEBUG
 const int spc[]={'/', '-', '\\', '|'};
@@ -135,93 +164,35 @@ void thMonitor(local *l,int i){
 }
 
 
-void symmetryOps_bm(local *l);
-void backTrack1stLine(int y,int left,int down,int right,int bm,local *l);
-void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l);
-void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l);
-void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l);
 void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l);
+void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l);
+void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l);
+void backTrack1stLine(int y,int left,int down,int right,int bm,local *l);
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l2);
 void cornerQ(int y,int left,int down,int right,int bm,local *l);
-void *run(void *args);
-void *run2(void *args);
 void *run3(void *args);
+void *run2(void *args);
+void *run(void *args);
 void *NQueenThread();
 void NQueen();
+void symmetryOps_bm(local *l);
 
-void symmetryOps_bm(local *l){
-  l->own=l->ptn=l->you=l->bit=0;
-  //l->C8[l->B1][l->BK]++;
-  //if(DEBUG>0) thMonitor(l,8); 
-  //90度回転
-  if(l->aB[l->B2]==1){ 
-    for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
-      for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
-      if(l->aB[l->own]>l->bit){ 
-        //l->C8[l->B1][l->BK]--; 
-        return; 
-      }else if(l->aB[l->own]<l->bit){ 
-        break; 
-      }
-    }
-    /** 90度回転して同型なら180度/270度回転も同型である */
-    if(l->own>siE){ 
-      l->C2[l->B1][l->BK]++;
-      if(DEBUG>0) thMonitor(l,2); 
-      //l->C8[l->B1][l->BK]--;
-      return ; 
-    } 
-  }
-  //180度回転
-  if(l->aB[siE]==l->EB){ 
-    for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
-      for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
-      if(l->aB[l->own]>l->bit){ 
-        //l->C8[l->B1][l->BK]--; 
-        return; 
-      } 
-      else if(l->aB[l->own]<l->bit){ 
-        break; 
-      }
-    }
-    /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(l->own>siE){ 
-      l->C4[l->B1][l->BK]++;
-      if(DEBUG>0) thMonitor(l,4); 
-      //l->C8[l->B1][l->BK]--;
-      return; 
-    } 
-  }
-  //270度回転
-  if(l->aB[l->B1]==l->TB){ 
-    for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
-      for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
-      if(l->aB[l->own]>l->bit){ 
-        //l->C8[l->B1][l->BK]--; 
-        return; 
-      } 
-      else if(l->aB[l->own]<l->bit){ 
-        break; 
-      }
-    }
-  }
-  l->C8[l->B1][l->BK]++;
-  if(DEBUG>0) thMonitor(l,8); 
-}
 //backtrack2の3行目の列数を固定して場合分けすることによりスレッドを分割する
-//void backTrack3(int y,int left,int down,int right,int bm,local *l){
 void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
-  if(y==siE){
-    if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
-      l->aB[y]=bm;
-      symmetryOps_bm(l);//対称解除法
+  if(y==siE){             //【枝刈り】
+    if(bm){
+      if((bm&l->LM)==0){  //【枝刈り】最下段枝刈り
+        l->aB[y]=bm;
+        symmetryOps_bm(l);//対称解除法
+      }
     }
   }else{
-    if(y<l->B1){ //【枝刈り】上部サイド枝刈り            
+    if(y<l->B1){          //【枝刈り】上部サイド枝刈り            
       bm&=~l->SM; 
-    }else if(y==l->B2) { //【枝刈り】下部サイド枝刈り    
+    }else if(y==l->B2) {  //【枝刈り】下部サイド枝刈り    
       if((down&l->SM)==0){ 
         return; 
       }
@@ -237,7 +208,6 @@ void backTrack3rdLine(int y,int left,int down,int right,int bm,local *l){
       return;
     }
     //4行目以降は通常のbacktrack2の処理に渡す
-    //NoCornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
     backTrack3rdLine2(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   }
 }
@@ -274,7 +244,6 @@ void backTrack3rdLine2(int y,int left,int down,int right,int bm,local *l){
   }
 }
 //backtrack2の2行目の列数を固定して場合分けすることによりスレッドを分割する
-//void backTrack3(int y,int left,int down,int right,int bm,local *l){
 void backTrack2ndLine(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   l->bit=0;
@@ -358,8 +327,28 @@ void backTrack1stLine2(int y,int left,int down,int right,int bm,local *l){
       cornerQ(y+1,(left|l->bit)<<1,down|l->bit,(right|l->bit)>>1,bm,l);
   } 
 }
+/**********************************************/
+/* 最上段行のクイーンが角以外にある場合の探索 */
+/**********************************************/
+/**
+  １行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを
+  置くことはできない
+  １行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
+  lt, dn, lt 位置は効きチェックで配置不可能となる
+  回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、 
+  90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+
+  【枝刈り図】
+  x x - - - Q x x    
+  x - - - / | ＼x    
+  c - - / - | -rt    
+  - - / - - | - -    
+  - / - - - | - -    
+  lt- - - - | - a    
+  x - - - - | - x    
+  x x b - - dnx x    
+  */
 //上から１行目角にクイーンがない場合の処理
-//void backTrack2(int y,int left,int down,int right,int bm,local *l){
 void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); //配置可能フィールド
   //bmはクイーンが置ける場所
@@ -465,6 +454,15 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
     }
   }
 }
+/**********************************************/
+/* 最上段行のクイーンが角にある場合の探索     */
+/**********************************************/
+/* 
+   １行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
+   １行目角にクイーンがある場合、他の角にクイーンを配置することは不可
+   鏡像についても、主対角線鏡像のみを判定すればよい
+   ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
+   */
 //上から１行目角にクイーンがある場合の処理
 //void backTrack1(int y,int left,int down,int right,int bm,local *l){
 void cornerQ(int y,int left,int down,int right,int bm,local *l){
@@ -581,93 +579,49 @@ void *run(void *args){
   }
   return 0;
 }
-void *NQueenThread(){
-  //Nの数だけスレッドをもたせて同時並列処理をする
-  //backtrack1
-  //スレッド数は1xNxN
-  //1行目 クイーンは右端に固定
-  //2行目 B1の値によってスレッドを分割する
-  //3行目 kの値によってスレッドを分割する
-  //N=4の場合のスレッドの例
-  //aB[0]は１行目のクイーンの位置、aB[1]は２行目のクイーンの位置、aB[2]は３行目のクイーンの位置
-  //backtrack1の場合は１行目のクイーンの位置は右端1に固定
-  //aB[0]=1,aB[1]=1,aB[2]=1
-  //aB[0]=1,aB[1]=1,aB[2]=2
-  //aB[0]=1,aB[1]=1,aB[2]=3
-  //aB[0]=1,aB[1]=1,aB[2]=4
-  //aB[0]=1,aB[1]=2,aB[2]=1
-  //aB[0]=1,aB[1]=2,aB[2]=2
-  //aB[0]=1,aB[1]=2,aB[2]=3
-  //aB[0]=1,aB[1]=2,aB[2]=4
-  //aB[0]=1,aB[1]=3,aB[2]=1
-  //aB[0]=1,aB[1]=3,aB[2]=2
-  //aB[0]=1,aB[1]=3,aB[2]=3
-  //aB[0]=1,aB[1]=3,aB[2]=4
-  //aB[0]=1,aB[1]=4,aB[2]=1
-  //aB[0]=1,aB[1]=4,aB[2]=2
-  //aB[0]=1,aB[1]=4,aB[2]=3
-  //aB[0]=1,aB[1]=4,aB[2]=4
-  //pthread_t pt1[si][si];    //上から2段目のスレッド childThread
-  //pthread_t pt1[si][si][si];    //上から3段目のスレッド childThread
-  //backtrack2
-  //スレッド数はNxNxN
-  //1行目 B1の値によってスレッドを分割する
-  //2行目 kの値によってスレッドを分割する
-  //3行目 jの値によってスレッドを分割する
-  //N=4の場合のスレッドの例
-  //aB[0]は１行目のクイーンの位置、aB[1]は２行目のクイーンの位置
-  //backtrack2の場合は１行目のクイーンの位置は右端以外2~4
-  //２行目、３行目は1~4
-  //aB[0]=2,aB[1]=1,aB[2]=1
-  //aB[0]=2,aB[1]=1,aB[2]=2
-  //aB[0]=2,aB[1]=1,aB[2]=3
-  //aB[0]=2,aB[1]=1,aB[2]=4
-  //aB[0]=2,aB[1]=2,aB[2]=1
-  //aB[0]=2,aB[1]=2,aB[2]=2
-  //aB[0]=2,aB[1]=2,aB[2]=3
-  //aB[0]=2,aB[1]=2,aB[2]=4
-  //aB[0]=2,aB[1]=3,aB[2]=1
-  //aB[0]=2,aB[1]=3,aB[2]=2
-  //aB[0]=2,aB[1]=3,aB[2]=3
-  //aB[0]=2,aB[1]=3,aB[2]=4
-  //aB[0]=2,aB[1]=4,aB[2]=1
-  //aB[0]=2,aB[1]=4,aB[2]=2
-  //aB[0]=2,aB[1]=4,aB[2]=3
-  //aB[0]=2,aB[1]=4,aB[2]=4
-  //aB[0]=3,aB[1]=1,aB[2]=1
-  //aB[0]=3,aB[1]=1,aB[2]=2
-  //aB[0]=3,aB[1]=1,aB[2]=3
-  //aB[0]=3,aB[1]=1,aB[2]=4
-  //aB[0]=3,aB[1]=2,aB[2]=1
-  //aB[0]=3,aB[1]=2,aB[2]=2
-  //aB[0]=3,aB[1]=2,aB[2]=3
-  //aB[0]=3,aB[1]=2,aB[2]=4
-  //aB[0]=3,aB[1]=3,aB[2]=1
-  //aB[0]=3,aB[1]=3,aB[2]=2
-  //aB[0]=3,aB[1]=3,aB[2]=3
-  //aB[0]=3,aB[1]=3,aB[2]=4
-  //aB[0]=3,aB[1]=4,aB[2]=1
-  //aB[0]=3,aB[1]=4,aB[2]=2
-  //aB[0]=3,aB[1]=4,aB[2]=3
-  //aB[0]=3,aB[1]=4,aB[2]=4
-  //aB[0]=4,aB[1]=1,aB[2]=1
-  //aB[0]=4,aB[1]=1,aB[2]=2
-  //aB[0]=4,aB[1]=1,aB[2]=3
-  //aB[0]=4,aB[1]=1,aB[2]=4
-  //aB[0]=4,aB[1]=2,aB[2]=1
-  //aB[0]=4,aB[1]=2,aB[2]=2
-  //aB[0]=4,aB[1]=2,aB[2]=3
-  //aB[0]=4,aB[1]=2,aB[2]=4
-  //aB[0]=4,aB[1]=3,aB[2]=1
-  //aB[0]=4,aB[1]=3,aB[2]=2
-  //aB[0]=4,aB[1]=3,aB[2]=3
-  //aB[0]=4,aB[1]=3,aB[2]=4
-  //aB[0]=4,aB[1]=4,aB[2]=1
-  //aB[0]=4,aB[1]=4,aB[2]=2
-  //aB[0]=4,aB[1]=4,aB[2]=3
-  //aB[0]=4,aB[1]=4,aB[2]=4
-  //pthread_t pt3[si][si][si][si];//上から4段目のスレッド childThread
+/**********************************************/
+/* マルチスレッド */
+/**********************************************/
+/**
+ *
+ * N=8の場合は8つのスレッドがおのおののrowを担当し処理を行います。
 
+ メインスレッド  N=8
+ +--B1=7----- run()
+ +--B1=6----- run()
+ +--B1=5----- run()
+ +--B1=4----- run()
+ +--B1=3----- run()
+ +--B1=2----- run()
+ +--B1=1----- run()
+ +--B1=0----- run()
+
+ * そこで、それぞれのスレッド毎にスレッドローカルな構造体を持ちます。
+ *
+// スレッドローカル構造体 
+struct local{
+int bit;
+int B1;
+int B2;
+int TB;
+int EB;
+int msk;
+int SM;
+int LM;
+int aB[MAX];
+};
+ * 
+ * スレッドローカルな構造体の宣言は以下の通りです。
+ *
+ *    //スレッドローカルな構造体
+ *    struct local l[MAX];
+ *
+ * アクセスはグローバル構造体同様 . ドットでアクセスします。
+ l[B1].B1=B1;
+ l[B1].B2=B2;
+ *
+ */
+void *NQueenThread(){
   pthread_t ***pt1=(pthread_t***)malloc(sizeof(pthread_t*)*si*si*si); //B1xk
   for(int B1=1;B1<=si;B1++){
       pt1=(pthread_t***)malloc(sizeof(pthread_t)*si);
@@ -853,12 +807,51 @@ void *NQueenThread(){
   }
   return 0;
 }
+/**********************************************/
+/*  マルチスレッド pthread                    */
+/**********************************************/
+/**
+ *  マルチスレッドには pthreadを使います。
+ *  pthread を宣言するには pthread_t 型の変数を宣言します。
+ *
+ pthread_t tId;  //スレッド変数
+
+ スレッドを生成するには pthread_create()を呼び出します。
+ 戻り値iFbRetにはスレッドの状態が格納されます。正常作成は0になります。
+ pthread_join()はスレッドの終了を待ちます。
+ */
 void NQueen(){
   pthread_t pth;//スレッド変数
   pthread_create(&pth, NULL, &NQueenThread, NULL);// メインスレッドの生成
   pthread_join(pth, NULL); //スレッドの終了を待つ
   pthread_detach(pth);
 }
+/**********************************************/
+/*  メイン関数                                */
+/**********************************************/
+/**
+ * N=2 から順を追って 実行関数 NQueen()を呼び出します。
+ * 最大値は 先頭行でMAXをdefineしています。
+ * G は グローバル構造体で宣言しています。
+
+//グローバル構造体
+typedef struct {
+int nThread;
+int si;
+int siE;
+long C2;
+long C4;
+long C8;
+}GCLASS, *GClass;
+GCLASS G; //グローバル構造体
+
+グローバル構造体を使う場合は
+G.si=i ; 
+のようにドットを使ってアクセスします。
+
+NQueen()実行関数は forの中の値iがインクリメントする度に
+Nのサイズが大きくなりクイーンの数を解法します。 
+*/
 int main(void){
   int min=8;
   struct timeval t0;
@@ -889,4 +882,63 @@ int main(void){
   } 
 //	fclose(f);
   return 0;
+}
+/**********************************************/
+/** 対称解除法                               **/
+/** ユニーク解から全解への展開               **/
+/**********************************************/
+/**
+  ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
+
+  １２ ４１ ３４ ２３
+  ４３ ３２ ２１ １４
+
+  ２１ １４ ４３ ３２
+  ３４ ２３ １２ ４１
+
+  上図左上がユニーク解。
+  1行目はユニーク解を90度、180度、270度回転したもの
+  2行目は1行目のそれぞれを左右反転したもの。
+  2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
+  ただし、 回転・線対称な解もある
+  クイーンが右上角にあるユニーク解を考えます。
+  斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
+  右上角のクイーンを他の３つの角に写像させることができるので(×４)、
+  このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
+
+  (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
+  　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
+  (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
+  　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
+
+  　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
+  ２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
+  て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
+  場合は８個になります。(左右反転×縦横回転×上下反転)
+  */
+void symmetryOps_bm(local *l){
+  l->own=l->ptn=l->you=l->bit=0;
+  l->C8[l->B1][l->BK]++;
+  //90度回転
+  if(l->aB[l->B2]==1){ 
+    for(l->own=1,l->ptn=2;l->own<=siE;l->own++,l->ptn<<=1){ 
+      for(l->bit=1,l->you=siE;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you--){}
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1][l->BK]--; return; 
+      }else if(l->aB[l->own]<l->bit){ break; } }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(l->own>siE){ l->C2[l->B1][l->BK]++; l->C8[l->B1][l->BK]--; return ; } }
+  //180度回転
+  if(l->aB[siE]==l->EB){ 
+    for(l->own=1,l->you=siE-1;l->own<=siE;l->own++,l->you--){ 
+      for(l->bit=1,l->ptn=l->TB;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->ptn>>=1){}
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1][l->BK]--; return; } 
+      else if(l->aB[l->own]<l->bit){ break; } }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(l->own>siE){ l->C4[l->B1][l->BK]++; l->C8[l->B1][l->BK]--; return; } }
+  //270度回転
+  if(l->aB[l->B1]==l->TB){ 
+    for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 
+      for(l->bit=1,l->you=0;(l->aB[l->you]!=l->ptn)&&(l->aB[l->own]>=l->bit);l->bit<<=1,l->you++){}
+      if(l->aB[l->own]>l->bit){ l->C8[l->B1][l->BK]--; return; } 
+      else if(l->aB[l->own]<l->bit){ break; } } }
 }
