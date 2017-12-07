@@ -81,9 +81,8 @@ struct STACK{
 };
 struct queenState {
   //int id;
-  int BOUND1;
-  int BOUND2;
   int si;
+  int BOUND1;
   //int aB[MAX];
   long lTotal; // Number of solutinos found so far.
   long lUnique;
@@ -376,13 +375,10 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 int makeInProgress(int si){
   cl_int status;
 //  struct queenState inProgress[si*si*si];
-  int B2=si-1;
   for(int i=0;i<si;i++){ //single
         //inProgress[i].id=i;
-        inProgress[i].BOUND1=i;
-        inProgress[i].BOUND2=B2;
-        B2--;
         inProgress[i].si=si;
+        inProgress[i].BOUND1=i;
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
         inProgress[i].step=0;

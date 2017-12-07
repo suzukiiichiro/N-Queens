@@ -36,15 +36,15 @@ CL_PACKED_KEYWORD struct STACK {
   int current;
 };
 CL_PACKED_KEYWORD struct queenState {
-  int BOUND1;
-  int BOUND2;
   int si;
+  int BOUND1;
   long lTotal;
   long lUnique; // Number of solutinos found so far.
   char step;
 };
 CL_PACKED_KEYWORD struct localState {
   char y;
+  int BOUND2;
   int B1;
   int TOPBIT;
   int ENDBIT;
@@ -145,7 +145,7 @@ int symmetryOps_8(struct queenState *s,struct localState *lo){
 }
 void symmetryOps_bm(struct queenState *s,struct localState *lo){
   //90度回転
-	if(lo->aB[s->BOUND2]==1){
+	if(lo->aB[lo->BOUND2]==1){
 		if(symmetryOps_2(s,lo)==0){ return; }
 	}
   //180度回転
@@ -161,12 +161,12 @@ void symmetryOps_bm(struct queenState *s,struct localState *lo){
 }
 void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,int index,struct localState *lo){
   s->BOUND1=state[index].BOUND1;
-  s->BOUND2=state[index].BOUND2;
-  s->si=state[index].si;
   s->lTotal=state[index].lTotal;
   s->lUnique=state[index].lUnique;
   //s->step=state[index].step;
   s->step=0;
+  s->si=state[index].si;
+  lo->BOUND2=s->si-1-s->BOUND1;
   lo->y=0;
   lo->B1=2;
   lo->ENDBIT=0;
@@ -201,7 +201,7 @@ void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,in
   printf("si:%d\n",s->si);
   printf("B1:%d\n",lo->B1);
   printf("BOUND1:%d\n",s->BOUND1);
-  printf("BOUND2:%d\n",s->BOUND2);
+  printf("BOUND2:%d\n",lo->BOUND2);
   printf("ENDBIT:%d\n",lo->ENDBIT);
   printf("TOPBIT:%d\n",lo->TOPBIT);
   printf("SIDEMASK:%d\n",lo->SIDEMASK);
@@ -210,13 +210,12 @@ void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,in
 
 }
 void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,int index){
-  state[index].si=s->si;
   //state[index].id=s->id;
   state[index].BOUND1=s->BOUND1;
-  state[index].BOUND2=s->BOUND2;
   state[index].lTotal=s->lTotal;
   state[index].lUnique=s->lUnique;
   state[index].step=s->step;
+  state[index].si=s->si;
   //state[index].bend=s->bend;
   //state[index].rflg=s->rflg;
 }
@@ -309,7 +308,7 @@ void backTrack2(struct queenState *s,struct localState *lo){
           }else{
             if(lo->y<s->BOUND1&&lo->rflg==0){
               lo->bm&=~lo->SIDEMASK; 
-            }else if(lo->y==s->BOUND2&&lo->rflg==0){
+            }else if(lo->y==lo->BOUND2&&lo->rflg==0){
               if((lo->d&lo->SIDEMASK)==0&&lo->rflg==0){ 
                 lo->rflg=1;
               }
@@ -368,7 +367,7 @@ backTrack1(&s,&lo);
         lo.TOPBIT=1<<(s.si-1);
         lo.ENDBIT=lo.TOPBIT>>s.BOUND1;
         lo.SIDEMASK=lo.LASTMASK=(lo.TOPBIT|1);
-        if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
+        if(s.BOUND1>0&&lo.BOUND2<s.si-1&&s.BOUND1<lo.BOUND2){
             for(int i=1;i<s.BOUND1;i++){
               lo.LASTMASK=lo.LASTMASK|lo.LASTMASK>>1|lo.LASTMASK<<1;
             }
@@ -384,49 +383,18 @@ outStruct(state,&s,index);
 #ifdef GCC_STYLE
 int main(){
   struct queenState inProgress[MAX];
+  struct localState lo[MAX];
   printf("%s\n"," N:          Total        Unique\n");
   for(int si=4;si<17;si++){
   long gTotal=0;
   long gUnique=0;
-    int B2=si-1;
     for(int i=0;i<si;i++){ //single
       inProgress[i].si=si;
       //inProgress[i].id=i;
-      inProgress[i].B1=2;
       inProgress[i].BOUND1=i;
-      inProgress[i].BOUND2=B2;
-      B2--;
-      inProgress[i].ENDBIT=0;
-      inProgress[i].TOPBIT=1<<(si-1);
-      inProgress[i].SIDEMASK=0;
-      inProgress[i].LASTMASK=0;
-      for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
       inProgress[i].lTotal=0;
       inProgress[i].lUnique=0;
       inProgress[i].step=0;
-      inProgress[i].y=0;
-      inProgress[i].bend=0;
-      inProgress[i].rflg=0;
-      for (int m=0;m<si;m++){ 
-        inProgress[i].aT[m]=0;
-        inProgress[i].aS[m]=0;
-      }
-      for (int m=0;m<si;m++){ 
-        inProgress[i].stParam.param[m].Y=0;
-        inProgress[i].stParam.param[m].I=si;
-        inProgress[i].stParam.param[m].M=0;
-        inProgress[i].stParam.param[m].L=0;
-        inProgress[i].stParam.param[m].D=0;
-        inProgress[i].stParam.param[m].R=0;
-        inProgress[i].stParam.param[m].B=0;
-      }
-      inProgress[i].stParam.current=0;
-      inProgress[i].msk=(1<<si)-1;
-      inProgress[i].l=0;
-      inProgress[i].d=0;
-      inProgress[i].r=0;
-      inProgress[i].bm=0;
-
       //
       place(&inProgress[i]);
       gTotal+=inProgress[i].lTotal;
