@@ -1,91 +1,26 @@
 /**
 
-
-   46. 整理整頓
+   38. GPU バックトラック               NQueen38() N17= 00:35.33 N18=
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_46NQueen 07_46gpu_queens.c -framework OpenCL
-   $ ./07_46NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_38NQueen 07_38gpu_queens.c -framework OpenCL
+   $ ./07_38NQueen 
 
-
-07_45
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.02
-10:               724                92          00:00:00:00.10
-11:              2680               341          00:00:00:00.38
-12:             14200              1787          00:00:00:01.90
-13:             73712              9233          00:00:00:10.14
-14:            365596             45752          00:00:00:57.93
-
-07_44
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.01
- 9:               352                46          00:00:00:00.05
-10:               724                92          00:00:00:00.18
-11:              2680               341          00:00:00:00.58
-12:             14200              1787          00:00:00:03.46
-13:             73712              9233          00:00:00:18.17
-14:            365596             45752          00:00:01:54.15
-
-07_43
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.01
- 9:               352                46          00:00:00:00.07
-10:               724                92          00:00:00:00.24
-11:              2680               341          00:00:00:01.15
-12:             14200              1787          00:00:00:06.19
-13:             73712              9233          00:00:00:34.70
-07_42
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.02
- 9:               352                46          00:00:00:00.08
-10:               724                92          00:00:00:00.32
-11:              2680               341          00:00:00:01.55
-12:             14200              1787          00:00:00:08.15
-13:             73712              9233          00:00:00:45.45
-
-07_41
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.02
- 9:               352                46          00:00:00:00.09
-10:               724                92          00:00:00:00.38
-11:              2680               341          00:00:00:01.90
-12:             14200              1787          00:00:00:10.37
-13:             73712              9233          00:00:00:59.70
-
- 07_40
  N:          Total        Unique                 dd:hh:mm:ss.ms
  4:                 2                 0          00:00:00:00.00
  5:                10                 0          00:00:00:00.00
  6:                 4                 0          00:00:00:00.00
  7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.02
- 9:               352                 0          00:00:00:00.09
-10:               724                 0          00:00:00:00.40
-11:              2680                 0          00:00:00:01.99
-12:             14200                 0          00:00:00:10.85
-13:             73712                 0          00:00:01:02.31 
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.02
+13:             73712                 0          00:00:00:00.07
+14:            365596                 0          00:00:00:00.30
+15:           2279184                 0          00:00:00:01.58
+16:          14772512                 0          00:00:00:09.48
+17:          95815104                 0          00:00:01:09.54 
 */
 
 #include "stdio.h"
@@ -97,13 +32,13 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_46queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_47queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1 
 //
 //#define SPREAD 1024
 //
@@ -145,43 +80,72 @@ struct STACK{
   int current ;
 };
 struct queenState {
-  //int BOUND1;
-//  qint BOUND1;
-  //int BOUND2;
-//  qint BOUND2;
-  //int BOUND3;
-//  qint BOUND3;
   int si;
   //int id;
   int B1;
   int BOUND1;
   int BOUND2;
-  int TOPBIT;
-  int ENDBIT;
-  int SIDEMASK;
-  int LASTMASK;
-  //int aB[MAX];
   qint aB[MAX];
+  char step;
   long lTotal; // Number of solutinos found so far.
   long lUnique;
   //int step;
-  char step;
-  //int y;
-  char y;
-  int bend;
-  int rflg;
-  qint aT[MAX];        //aT:aTrial[]
-  qint aS[MAX];        //aS:aScrath[]
-  struct STACK stParam;
-  int msk;
-  int l;
-  int d;
-  int r;
-  int bm;
 } __attribute__((packed));
 
-//struct queenState inProgress[MAX*MAX*MAX];
-struct queenState inProgress[1]; //single
+struct queenState inProgress[MAX];
+/**
+ * カーネルコードの読み込み
+ */
+//void get_queens_code(char **buffer,int si){
+void get_queens_code(char **buffer){
+  char prefix[256];
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
+  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
+  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
+  FILE * f=fopen(PROGRAM_FILE,"rb");
+  if(!f){ *buffer=NULL;return;}
+  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
+  long totalLength=prefixLength + fileLength + 1;
+  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
+  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  // Replace BOM with space
+  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+}
+/**
+  プラットフォーム一覧を取得
+  現在利用可能なOpenCLのプラットフォームの情報を取得
+  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
+  numEntries:追加可能なエントリーの数
+  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
+  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
+  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
+*/
+int getPlatform(){
+	char value[BUFFER_SIZE];
+	size_t size;
+  cl_int status;
+  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform ID.");
+    return 1; 
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 2; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
+  }
+	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
+  if(status!=CL_SUCCESS){ 
+    printf("Couldn't get platform info.");
+    return 3; 
+  }else{
+    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
+  }
+  return 0;
+}
 /*
   デバイス一覧を取得
   clGetDeviceIds()使用できるデバイスの数とID一覧を取得する関数
@@ -249,59 +213,6 @@ int getDeviceID(){
       if(USE_DEBUG>0) printf("  CL_DEVICE_MAX_COMPUTE_UNITS:%d\n",units);
     }
 	}
-  return 0;
-}
-/**
- * カーネルコードの読み込み
- */
-//void get_queens_code(char **buffer,int si){
-void get_queens_code(char **buffer){
-  char prefix[256];
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
-  //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
-  //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
-  FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
-  long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
-  long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
-  // Replace BOM with space
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
-}
-/**
-  プラットフォーム一覧を取得
-  現在利用可能なOpenCLのプラットフォームの情報を取得
-  clGetPlatformIDs()使用できるプラットフォームの数とID一覧を取得する関数
-  numEntries:追加可能なエントリーの数
-  platforms : 見つかったプラットフォームの一覧が代入されるポインタ
-  numPlatforms : 使用できるプラットフォームの数が代入されるポインタ  
-  戻り値　CL_SUCCESS 成功 CL_INVALID_VALUE 失敗
-*/
-int getPlatform(){
-	char value[BUFFER_SIZE];
-	size_t size;
-  cl_int status;
-  status=clGetPlatformIDs(1,&platform,NULL);//pletformは一つでよし
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform ID.");
-    return 1; 
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_NAME,BUFFER_SIZE,value,&size);
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 2; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_NAME:%s\n",value);
-  }
-	status=clGetPlatformInfo(platform,CL_PLATFORM_VERSION,BUFFER_SIZE,value,&size);	
-  if(status!=CL_SUCCESS){ 
-    printf("Couldn't get platform info.");
-    return 3; 
-  }else{
-    if(USE_DEBUG>0) printf("CL_PLATFORM_VERSION:%s\n",value);
-  }
   return 0;
 }
 /**
@@ -403,11 +314,12 @@ int createKernel(){
 int commandQueue(){
   cl_int status;
 #ifdef CL_VERSION_2_0
+	//cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueueWithProperties(context, devices[0], NULL, &status);
 #else
-	//cmd_queue=clCreateCommandQueue(context,devices[0],0,&status);
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cmd_queue = clCreateCommandQueue(context, devices[0], properties, &status);
+	//cmd_queue = clCreateCommandQueue(context, devices[0], NULL, &status);
 #endif
   if(status!=CL_SUCCESS){ 
     printf("Couldn't creating command queue.");
@@ -463,43 +375,19 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  */
 int makeInProgress(int si){
   cl_int status;
-  for(int i=0;i<1;i++){ //single
+//  struct queenState inProgress[si*si*si];
+  int B2=si-1;
+  for(int i=0;i<si;i++){ //single
         inProgress[i].si=si;
         //inProgress[i].id=i;
         inProgress[i].B1=2;
-        inProgress[i].BOUND1=0;
-        inProgress[i].BOUND2=si-1;
-    inProgress[i].ENDBIT=0;
-    inProgress[i].TOPBIT=1<<(si-1);
-    inProgress[i].SIDEMASK=0;
-    inProgress[i].LASTMASK=0;
+        inProgress[i].BOUND1=i;
+        inProgress[i].BOUND2=B2;
+        B2--;
         for (int m=0;m< si;m++){ inProgress[i].aB[m]=m;}
+        inProgress[i].step=0;
         inProgress[i].lTotal=0;
         inProgress[i].lUnique=0;
-        inProgress[i].step=0;
-        inProgress[i].y=0;
-        inProgress[i].bend=0;
-        inProgress[i].rflg=0;
-    for (int m=0;m<si;m++){ 
-      inProgress[i].aT[m]=0;
-      inProgress[i].aS[m]=0;
-    }
-    for (int m=0;m<si;m++){ 
-      inProgress[i].stParam.param[m].Y=0;
-      inProgress[i].stParam.param[m].I=si;
-      inProgress[i].stParam.param[m].M=0;
-      inProgress[i].stParam.param[m].L=0;
-      inProgress[i].stParam.param[m].D=0;
-      inProgress[i].stParam.param[m].R=0;
-      inProgress[i].stParam.param[m].B=0;
-    }
-    inProgress[i].stParam.current=0;
-    inProgress[i].msk=(1<<si)-1;
-    inProgress[i].l=0;
-    inProgress[i].d=0;
-    inProgress[i].r=0;
-    inProgress[i].bm=0;
-
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -579,19 +467,12 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 //int all_tasks_done(struct queenState *tasks, int32_t num_tasks) {
-int all_tasks_done(int32_t num_tasks,int si) {
-	//for (int i = 0;i<num_tasks;i++)
+int all_tasks_done(int32_t num_tasks) {
+	for (int i = 0;i<num_tasks;i++)
 		//if (tasks[i].step != 2)
-		//if (inProgress[i].step != 2)
-			//return 0;
-	//return 1;
-//	printf("step:%d\n",inProgress[0].step);
-//	printf("BOUND1:%d\n",inProgress[0].BOUND1);
-	if(inProgress[0].step==2 && inProgress[0].BOUND1==si){
-    return 1;
-  }else{
-    return 0;
-  }
+		if (inProgress[i].step != 2)
+			return 0;
+	return 1;
 }
 /**
   カーネルの実行 
@@ -603,16 +484,11 @@ int all_tasks_done(int32_t num_tasks,int si) {
 */
 int execKernel(int si){
   cl_int status;
-  //while(!all_tasks_done(si*si*si)){
-  while(!all_tasks_done(1,si)){ //single
-
+  while(!all_tasks_done(si)){
     //size_t dim=1;
     cl_uint dim=1;
-    //size_t globalWorkSize[] = {si*si*si};
-    size_t globalWorkSize[] = {1}; //single
-    //size_t localWorkSize[] = { si };
-    size_t localWorkSize[] = { 1 }; // single
-
+    size_t globalWorkSize[] = {si};
+    size_t localWorkSize[] = { si };
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -629,7 +505,7 @@ int execKernel(int si){
      */
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
-  } //end while
+ } //end while
   return 0;
 }
 /**
@@ -639,8 +515,7 @@ int execKernel(int si){
 int execPrint(int si){
   lGTotal=0;
   lGUnique=0;
-  //for(int i=0;i<si;i++){
-  for(int i=0;i<1;i++){ //single
+  for(int i=0;i<si;i++){ //single
 //    for(int j=0;j<si;j++){
 //      for(int k=0;k<si;k++){
 //          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
@@ -694,7 +569,8 @@ int NQueens(int si){
   int mm=(ss-hh*3600)/60;
   ss%=60;
   //printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
-  printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+  //printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,lGTotal,lGUnique,dd,hh,mm,ss,ms);
+  printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", si,(unsigned long long)lGTotal,(unsigned long long)lGUnique,dd,hh,mm,ss,ms);
   return 0;
 }
 /**
@@ -703,7 +579,7 @@ int NQueens(int si){
  */
 int main(void){
   int min=4;
-  int targetN=27;
+  int targetN=22;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
