@@ -8,7 +8,9 @@
 		コンパイルと実行
 		$ make nq20 && ./07_20NQueen
 
-
+ローカル構造体、グローバル構造体にそれぞれ何がふさわしいのか、
+どの変数をアドレスとポインタで表現した方が高速なのかを、
+色々と試してみるテストの終盤線
 
  配列カウンターはアクセスが多いので構造体から出して
  グローバル変数に。さらにスレッド対応にするため、
@@ -38,16 +40,23 @@ long C8[MAX];
 17:        95815104         11977939          00:00:00:07.45
 */
 
-
-
-#include<stdio.h>
-#include<time.h>
+#include <stdio.h>
+#include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
 
 #define MAX 27
 
-/** スレッドローカル構造体 */
+// pthreadはパラメータを１つしか渡せないので構造体に格納
+//グローバル構造体
+typedef struct {
+  int si;
+  int siE;
+  long lTotal;
+  long lUnique;
+}GCLASS, *GClass;
+
+//ローカル構造体
 typedef struct{
   int B1;
   int B2;
@@ -59,18 +68,11 @@ typedef struct{
   int aB[MAX];
 }local ;
 
+GCLASS G; //グローバル構造体
 long C2[MAX];
 long C4[MAX];
 long C8[MAX];
 
-//グローバル構造体
-typedef struct {
-  int si;
-  int siE;
-  long lTotal;
-  long lUnique;
-}GCLASS, *GClass;
-GCLASS G; 
 
 void symmetryOps_bm(void *args,long *C2,long *C4,long *C8);
 void backTrack2(int y,int left,int down,int right,void *args,long *C2,long *C4,long *C8);
@@ -78,8 +80,6 @@ void backTrack1(int y,int left,int down,int right,void *args,long *C8);
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
-long getUnique();
-long getTotal();
 
 /**********************************************/
 /** 対称解除法                               **/

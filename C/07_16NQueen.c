@@ -66,7 +66,6 @@ struct local{
 // pthread_mutex_t mutex[MAX];
 GCLASS G; //グローバル構造体
 
-
 void backTrack2(int y,int left,int down,int right,void *args);
 void backTrack1(int y,int left,int down,int right,void *args);
 void *run(void *args);
@@ -132,8 +131,8 @@ void backTrack2(int y,int left,int down,int right,void *args){
    */
 void backTrack1(int y,int left,int down,int right,void *args){
   struct local *l=(struct local *)args;
-  int bit=0;                  /* 配置可能フィールド */
-  int bm=l->msk&~(left|down|right); 
+  int bit=0;                  
+  int bm=l->msk&~(left|down|right); /* 配置可能フィールド */
   if(y==l->siE) {
     if(bm){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       l->aB[y]=bm;
@@ -159,8 +158,9 @@ void *run(void *args){
   l->TB=1<<l->siE;
   l->msk=(1<<l->si)-1;
   l->COUNT2=l->COUNT4=l->COUNT8=0;//初期化
+  
   // 最上段のクイーンが角にある場合の探索
-  if(l->B1>1 && l->B1<l->siE) { 
+  if(l->B1>1&&l->B1<l->siE) {
     if(l->B1<l->siE) {
       // 角にクイーンを配置 
       l->aB[1]=bit=(1<<l->B1);
@@ -174,7 +174,7 @@ void *run(void *args){
      ユニーク解に対する左右対称解を予め削除するには、
      左半分だけにクイーンを配置するようにすればよい */
   if(l->B1>0&&l->B2<l->si-1&&l->B1<l->B2){ 
-    for(int i=1; i<l->B1; i++){
+    for(int i=1;i<l->B1;i++){
       l->LM=l->LM|l->LM>>1|l->LM<<1;
     }
     if(l->B1<l->B2) {
@@ -243,35 +243,35 @@ void *run(void *args){
  * マルチスレッド pthreadには排他処理 mutexがあります。
    まずmutexの宣言は以下の通りです。
 
-      // mutexの宣言
-      pthread_mutex_t mutex;   
-      //pthread_mutexattr_t 変数を用意します。
-      pthread_mutexattr_t mutexattr;
-      // pthread_mutexattr_t 変数にロック方式を設定します。
-      pthread_mutexattr_init(&mutexattr);
-      //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
-        PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内でのロックもブロック、その代り動作が速い）
+  // mutexの宣言
+  pthread_mutex_t mutex;   
+  //pthread_mutexattr_t 変数を用意します。
+  pthread_mutexattr_t mutexattr;
+  // pthread_mutexattr_t 変数にロック方式を設定します。
+  pthread_mutexattr_init(&mutexattr);
+  //以下の第二パラメータでロック方式を指定できます。（これはとても重要です）
+    PTHREAD_MUTEX_NORMAL  PTHREAD_MUTEX_FAST_NP 
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内でのロックもブロック、その代り動作が速い）
 
-        PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
-        誰かがロックしているときに、それが解放されるまで永遠に待ちます。
-        （同一スレッド内での２度目以降のロックは素通り）
+    PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP  
+    誰かがロックしているときに、それが解放されるまで永遠に待ちます。
+    （同一スレッド内での２度目以降のロックは素通り）
 
-        PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
-        誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
-        （同一スレッド内で 2 度目のロックがあったことを検出できる）      
+    PTHREAD_MUTEX_ERRORCHECK  PTHREAD_MUTEX_ERRORCHECK_NP 
+    誰かがロックしているときに、直ちに EDEADLK (11) を戻り値に返します。
+    （同一スレッド内で 2 度目のロックがあったことを検出できる）      
 
-        <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
+    <>第 2 引数で NULL を指定した場合は、PTHREAD_MUTEX_NORMAL が指定されたのと同じになります。
 
-      pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
-      // ミューテックスを初期化します。
-      pthread_mutex_init(&mutex, &mutexattr);
-      //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
+  pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_RECURSIVE);
+  // ミューテックスを初期化します。
+  pthread_mutex_init(&mutex, &mutexattr);
+  //pthread_mutex_init(&mutex, NULL); // 通常はこう書きますが遅いです
 
-      実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
-      //pthread_mutex_lock(&mutex);
-      //pthread_mutex_unlock(&mutex);
+  実際にロックする場合はできるだけ局所的に以下の構文を挟み込むようにします。
+  //pthread_mutex_lock(&mutex);
+  //pthread_mutex_unlock(&mutex);
  
  * 実行部分は以下のようにロックとロック解除で処理を挟みます。
       pthread_mutex_lock(&mutex);     //ロックの開始
@@ -285,6 +285,7 @@ void *run(void *args){
     pthread_mutex_destroy(&mutex);        //nutexの破棄
  *
  */
+
 void *NQueenThread(void *args){
   struct local l[MAX];                //構造体 local型 
   int si=*(int *)args;
@@ -326,7 +327,7 @@ void NQueen(int si){
   //スレッド変数
   pthread_t pth;  
   // メインスレッドの生成
-  int iFbRet = pthread_create(&pth, NULL, NQueenThread,(void *)&si);
+  int iFbRet=pthread_create(&pth, NULL, NQueenThread,(void *)&si);
   //エラー出力デバッグ用
   if(iFbRet>0){ printf("[main] pthread_create: %d\n", iFbRet); }
   //スレッドの終了を待つ
