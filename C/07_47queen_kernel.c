@@ -37,10 +37,10 @@ CL_PACKED_KEYWORD struct STACK {
 };
 CL_PACKED_KEYWORD struct queenState {
   int si;
+  char step;
   int BOUND1;
   long lTotal;
   long lUnique; // Number of solutinos found so far.
-  char step;
 };
 CL_PACKED_KEYWORD struct localState {
   char y;
@@ -160,12 +160,12 @@ void symmetryOps_bm(struct queenState *s,struct localState *lo){
   s->lUnique++;
 }
 void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,int index,struct localState *lo){
+  s->si=state[index].si;
+  s->step=0;
   s->BOUND1=state[index].BOUND1;
   s->lTotal=state[index].lTotal;
   s->lUnique=state[index].lUnique;
   //s->step=state[index].step;
-  s->step=0;
-  s->si=state[index].si;
   lo->BOUND2=s->si-1-s->BOUND1;
   lo->y=0;
   lo->B1=2;
@@ -211,11 +211,11 @@ void inStruct(struct queenState *s,CL_GLOBAL_KEYWORD struct queenState *state,in
 }
 void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct queenState *s,int index){
   //state[index].id=s->id;
+  state[index].si=s->si;
+  state[index].step=s->step;
   state[index].BOUND1=s->BOUND1;
   state[index].lTotal=s->lTotal;
   state[index].lUnique=s->lUnique;
-  state[index].step=s->step;
-  state[index].si=s->si;
   //state[index].bend=s->bend;
   //state[index].rflg=s->rflg;
 }
@@ -349,6 +349,9 @@ outParam(s,lo);
 }
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index=get_global_id(0);
+  printf("index:%d\n",index);
+  printf("###bound1:%d:index:%d\n",state[index].BOUND1,index);
+  printf("###si:%d:index:%d\n",state[index].si,index);
   struct queenState s ;
   struct localState lo ;
 inStruct(&s,state,index,&lo);

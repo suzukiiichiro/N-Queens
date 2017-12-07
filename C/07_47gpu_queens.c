@@ -82,12 +82,12 @@ struct STACK{
 struct queenState {
   //int id;
   int si;
+  char step;
   int BOUND1;
   //int aB[MAX];
   long lTotal; // Number of solutinos found so far.
   long lUnique;
   //int step;
-  char step;
   //int y;
 } __attribute__((packed));
 
@@ -274,8 +274,8 @@ int createProgramWithSource(){
 */
 int buildProgram(){
   cl_int status;
-  //status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
-  status=clBuildProgram(program,1,devices,"",NULL,NULL);
+  status=clBuildProgram(program,num_devices,devices,NULL,NULL,NULL);
+  //status=clBuildProgram(program,1,devices,"",NULL,NULL);
   if(status!=CL_SUCCESS){
     char log[2048];
     size_t logSize;
@@ -374,23 +374,23 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
  */
 int makeInProgress(int si){
   cl_int status;
+	cl_int* inputA ;
 //  struct queenState inProgress[si*si*si];
-  for(int i=0;i<si;i++){ //single
+  for(int m=0;m<si;m++){ //single
         //inProgress[i].id=i;
-        inProgress[i].si=si;
-        inProgress[i].BOUND1=i;
-        inProgress[i].lTotal=0;
-        inProgress[i].lUnique=0;
-        inProgress[i].step=0;
-
+        inProgress[m].si=si;
+        inProgress[m].step=0;
+        inProgress[m].BOUND1=m;
+        inProgress[m].lTotal=0;
+        inProgress[m].lUnique=0;
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
    *
    *
    */
-  //cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
-  //cl_int *inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
+  cl_uint optimizedSize=ceil_int(sizeof(inProgress), 64);
+  inputA = (cl_int*)aligned_malloc(optimizedSize, 4096);
 //  buffer=clCreateBuffer(context,CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,sizeof(inProgress),NULL,&status);
   buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
   clRetainMemObject(buffer);
@@ -399,10 +399,9 @@ int makeInProgress(int si){
    *
    *
    */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+	//status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
+  //if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 
-  /**
 	struct queenState *ptrMappedA = clEnqueueMapBuffer(
       cmd_queue,      //投入キュー
       buffer,         //対象のOpenCLバッファ
@@ -411,19 +410,17 @@ int makeInProgress(int si){
                       //(読み込みならCL_MAP_READ) 
                       //(両方ならCL_MAP_READ | CL_MAP_WRITE)
       0,              //オフセット
-      //optimizedSize,  //マップするサイズ
-      ceil_int(sizeof(inProgress), 64),
+      optimizedSize,  //マップするサイズ
+      //ceil_int(sizeof(inProgress), 64),
       0,              //この関数が待機すべきeventの数
       NULL,           //この関数が待機すべき関数のリストへのポインタ
       NULL,           //この関数の返すevent
       &status);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
-   *
-   */
   /**
    *  メモリバッファへコピー
    */
-//  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
+  memcpy(ptrMappedA,inProgress,sizeof(inProgress));
   /**
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
@@ -436,7 +433,6 @@ int makeInProgress(int si){
   /**
    * マップオブジェクトの解放
    */
-/**
   status = clEnqueueUnmapMemObject(
         cmd_queue,  //投入キュー
         buffer,     //対象のOpenCLバッファ
@@ -445,7 +441,6 @@ int makeInProgress(int si){
         NULL,       //この関数が待機すべき関数のリストへのポインタ
         NULL);      //この関数の返すevent
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
-*/
  /**
     カーネルの引数をセット
     clSetKernelArg()カーネルの特定の引数に値をセットする。
