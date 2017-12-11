@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -42,7 +42,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int id= state[index].id;
   int aB[MAX];
   for (int i = 0; i < si; i++)
-    aB[i] = state[index].aB[i];
+    aB[i]=state[index].aB[i];
   long lTotal = state[index].lTotal;
   int step      = state[index].step;
   int y       = state[index].y;
@@ -106,10 +106,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   	j++;
   }
 state[index].BOUND1=BOUND1;
+
+
+
 state[index].si=si;
 state[index].id=id;
-for(int i=0;i<si;i++)
-state[index].aB[i]=aB[i];
+for(int i=0;i<si;i++){state[index].aB[i]=aB[i];}
 state[index].lTotal=lTotal;
 state[index].step=step;
 state[index].y=y;
@@ -121,8 +123,11 @@ state[index].left=left;
 }
 #ifdef GCC_STYLE
 int main(){
+  /**********/
   struct queenState l[MAX];
+  /**********/
   printf("%s\n"," N:          Total        Unique\n");
+  /**********/
   for(int si=4;si<MAX;si++){
     long gTotal=0;
     for (int i=0;i<si;i++){
@@ -140,9 +145,11 @@ int main(){
       l[i].left=0;
       place(&l[i]);
     }
+  /**********/
     for(int i=0;i<si;i++){
       gTotal+=l[i].lTotal;
     }
+  /**********/
     printf("%2d:%18ld\n", si,gTotal);
   }
   return 0;

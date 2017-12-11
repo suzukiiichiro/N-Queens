@@ -81,12 +81,14 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=2;
         break;
       }
+    /***************/
     }else if(y==1){
       if(bm & (1<<BOUND2)){
         bit=1<<BOUND2;
       }else{
         step=2;
         break;
+    /***************/
       }
     }else{
       bit=bm&-bm;
@@ -102,7 +104,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=1;
       }else{
         bm=msk&~(down|(right>>y)|(left>>((si-1)-y)));
-        //bm=msk&~(down|(right>>y)|(left>>((SIZE-1)-y)));
         if(bm==0)
           step=1;
       }
@@ -115,26 +116,28 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     }
   	j++;
   }
-  state[index].BOUND1=BOUND1;
-  state[index].BOUND2=BOUND2;
-  state[index].si=si;
-  state[index].id=id;
-  for (int i=0;i<si;i++)
-  //for (int i = 0; i < SIZE; i++)
-    state[index].aB[i]=aB[i];
-  state[index].lTotal=lTotal;
-  state[index].step=step;
-  state[index].y=y;
-  state[index].startCol=startCol;
-  state[index].bm=bm;
-  state[index].down=down;
-  state[index].right=right;
-  state[index].left=left;
+state[index].BOUND1=BOUND1;
+state[index].BOUND2=BOUND2;
+
+state[index].si=si;
+state[index].id=id;
+for(int i=0;i<si;i++){state[index].aB[i]=aB[i];}
+state[index].lTotal=lTotal;
+state[index].step=step;
+state[index].y=y;
+state[index].startCol=startCol;
+state[index].bm=bm;
+state[index].down=down;
+state[index].right=right;
+state[index].left=left;
 }
 #ifdef GCC_STYLE
 int main(){
+  /**********/
   struct queenState l[MAX*MAX];
+  /**********/
   printf("%s\n"," N:          Total        Unique\n");
+  /**********/
   for(int si=4;si<MAX;si++){
     long gTotal=0;
     for (int i=0;i<si;i++){
@@ -155,11 +158,13 @@ int main(){
         place(&l[i*si+j]);
       }
     }
+  /**********/
     for(int i=0;i<si;i++){
       for(int j=0;j<si;j++){
         gTotal+=l[i*si+j].lTotal;
       }
     }
+  /**********/
     printf("%2d:%18ld\n", si,gTotal);
   }
   return 0;
