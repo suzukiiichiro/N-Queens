@@ -23,6 +23,8 @@ typedef ushort uint16_t;
 #define MAX 27  
 struct CL_PACKED_KEYWORD queenState {
   int BOUND1;
+  int BOUND2;
+  int BOUND3;
   int si;
   int id;
   int aB[MAX];
@@ -38,14 +40,16 @@ struct CL_PACKED_KEYWORD queenState {
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   int BOUND1=state[index].BOUND1;
+  int BOUND2=state[index].BOUND2;
+  int BOUND3=state[index].BOUND3;
   int si= state[index].si;
   int id= state[index].id;
   int aB[MAX];
   for (int i = 0; i < si; i++)
-    aB[i] = state[index].aB[i];
+    aB[i]=state[index].aB[i];
   long lTotal = state[index].lTotal;
   int step      = state[index].step;
-  int y       = state[index].y;
+  //int y       = state[index].y;
   int startCol  = state[index].startCol;
   int bm     = state[index].bm;
   long down     = state[index].down;
@@ -79,6 +83,20 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         step=2;
         break;
       }
+    }else if(y==1){
+      if(bm & (1<<BOUND2)){
+        bit=1<<BOUND2;
+      }else{
+        step=2;
+        break;
+      }
+    }else if(y==2){
+      if(bm & (1<<BOUND3)){
+        bit=1<<BOUND3;
+      }else{
+        step=2;
+        break;
+      }
     }else{
       bit=bm&-bm;
       aB[y]=bit;
@@ -105,22 +123,25 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
     }
   	j++;
   }
-state[index].BOUND1=BOUND1;
-state[index].si=si;
-state[index].id=id;
-for(int i=0;i<si;i++)
-state[index].aB[i]=aB[i];
-state[index].lTotal=lTotal;
-state[index].step=step;
-state[index].y=y;
-state[index].startCol=startCol;
-state[index].bm=bm;
-state[index].down=down;
-state[index].right=right;
-state[index].left=left;
+  state[index].BOUND1=BOUND1;
+  state[index].BOUND2=BOUND2;
+  state[index].BOUND3=BOUND3;
+  state[index].si=si;
+  state[index].id=id;
+  for (int i=0;i<si;i++)
+    state[index].aB[i]=aB[i];
+  state[index].lTotal=lTotal;
+  state[index].step=step;
+  state[index].y=y;
+  state[index].startCol=startCol;
+  state[index].bm=bm;
+  state[index].down=down;
+  state[index].right=right;
+  state[index].left=left;
 }
 #ifdef GCC_STYLE
 int main(){
+/*
   struct queenState l[MAX];
   printf("%s\n"," N:          Total        Unique\n");
   for(int si=4;si<MAX;si++){
@@ -143,8 +164,40 @@ int main(){
     for(int i=0;i<si;i++){
       gTotal+=l[i].lTotal;
     }
-    printf("%2d:%18ld\n", si,gTotal);
+*/ 
+/*
+  int si=10; 
+  struct queenState l[SIZE*SIZE*SIZE];
+  //long gTotal=0;
+  uint64_t gTotal=0;
+  for (int i=0;i<SIZE;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+    l[i*SIZE*SIZE+j*SIZE+k].BOUND1=i;
+    l[i*SIZE*SIZE+j*SIZE+k].BOUND2=j;
+    l[i*SIZE*SIZE+j*SIZE+k].BOUND3=k;
+    l[i*SIZE*SIZE+j*SIZE+k].SIZE=SIZE;
+    for (int m=0;m< SIZE;m++){
+      l[i*SIZE*SIZE+j*SIZE+k].aB[m]=m;
+    }
+    l[i*SIZE*SIZE+j*SIZE+k].step=0;
+    l[i*SIZE*SIZE+j*SIZE+k].y=0;
+    l[i*SIZE*SIZE+j*SIZE+k].startCol=3;
+    l[i].msk=(1<<SIZEZE)-1;
+    l[i*SIZE*SIZE+j*SIZE+k].bm=(1<<SIZEZE)-1;
+    l[i*SIZE*SIZE+j*SIZE+k].down=0;
+    l[i*SIZE*SIZE+j*SIZE+k].right=0;
+    l[i*SIZE*SIZE+j*SIZE+k].left=0;
+    l[i*SIZE*SIZE+j*SIZE+k].lTotal=0;
+    place(&l[i*SIZE*SIZE+j*SIZE+k]);
+    gTotal+=l[i*SIZE*SIZE+j*SIZE+k].lTotal;
+    //printf("%ld\n", l[i*SIZE*SIZE+j*SIZE+k].lTotal);
+    printf("%llu\n", l[i*SIZE*SIZE+j*SIZE+k].lTotal);
+      }
+    }
   }
+  printf("%ld\n", gTotal);
+  */
   return 0;
 }
 #endif
