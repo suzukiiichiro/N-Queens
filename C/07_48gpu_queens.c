@@ -18,7 +18,7 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_38queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_48queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
@@ -45,38 +45,39 @@ cl_uint num_devices;
 
 //int spread;
 //long lGTotal;
-//long lGTotal;
-uint64_t lGTotal;
-//long lGUnique;
-uint64_t lGUnique;
-typedef int64_t qint;
+long lGTotal;
+// uint64_t lGTotal;
+long lGUnique;
+// uint64_t lGUnique;
+// typedef int64_t qint;
 //typedef int64_t qint;
 enum { Place,Remove,Done };
 struct queenState {
-  //int BOUND1;
-  qint BOUND1;
-  //int BOUND2;
-  qint BOUND2;
-  //int BOUND3;
-  qint BOUND3;
+  int BOUND1;
+  // qint BOUND1;
+  int BOUND2;
+  // qint BOUND2;
+  int BOUND3;
+  // qint BOUND3;
   int si;
   int id;
-  //int aB[MAX];
-  qint aB[MAX];
+  int aB[MAX];
+  // qint aB[MAX];
   long lTotal; // Number of solutinos found so far.
-  //int step;
-  char step;
-  //int y;
-  char y;
-  //int startCol; // First column this individual computation was tasked with filling.
-  char startCol; // First column this individual computation was tasked with filling.
-  //int bm;
-  qint bm;
-  //long down;
-  qint down;
-  //long right;
-  qint right;
-  qint left;
+  int step;
+  // char step;
+  int y;
+  // char y;
+  int startCol; // First column this individual computation was tasked with filling.
+  // char startCol; // First column this individual computation was tasked with filling.
+  int bm;
+  // qint bm;
+  long down;
+  // qint down;
+  long right;
+  // qint right;
+  long left;
+  // qint left;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX*MAX*MAX];
