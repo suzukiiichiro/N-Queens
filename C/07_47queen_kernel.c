@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -53,7 +53,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   long left      = state[index].left;
   int bit;
   int msk = (1 << si) - 1;
-  printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
+//  printf("bound:%d:startCol:%d:ltotal:%ld:step:%d:y:%d:bm:%d:down:%d:right:%d:left:%d\n", BOUND1,startCol,lTotal,step,y,bm,down,right,left);
   uint16_t i = 1;
   //long i=0;
   //while (i <300000)
@@ -117,8 +117,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 int main(){
   int si=10; 
   struct queenState l[SIZE];
+  printf("%s\n"," N:          Total        Unique\n");
+  for(int si=4;si<17;si++){
   long gTotal=0;
-  for (int i=0;i<SIZE;i++){
+  for (int i=0;i<si;i++){
     l[i].BOUND1=i;
     l[i].si=si;
     l[i].aB[i]=i;
@@ -133,9 +135,10 @@ int main(){
     l[i].lTotal=0;
     place(&l[i]);
     gTotal+=l[i].lTotal;
-    printf("%ld\n", l[i].lTotal);
+//    printf("%ld\n", l[i].lTotal);
   }
   printf("%ld\n", gTotal);
+  }
   return 0;
 }
 #endif
