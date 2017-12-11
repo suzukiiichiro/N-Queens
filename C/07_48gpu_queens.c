@@ -57,7 +57,6 @@ struct queenState {
   // qint BOUND1;
   int BOUND2;
   // qint BOUND2;
-  int BOUND3;
   // qint BOUND3;
   int si;
   int id;
@@ -80,7 +79,7 @@ struct queenState {
   // qint left;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX*MAX];
+struct queenState inProgress[MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -366,23 +365,20 @@ int makeInProgress(int si){
 //  struct queenState inProgress[si*si*si];
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      for(int k=0;k<si;k++){
-        inProgress[i*si*si+j*si+k].BOUND1=i;
-        inProgress[i*si*si+j*si+k].BOUND2=j;
-        inProgress[i*si*si+j*si+k].BOUND3=k;
-        inProgress[i*si*si+j*si+k].si=si;
-        inProgress[i*si*si+j*si+k].id=i*si*si+j*si+k;
-        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
-        inProgress[i*si*si+j*si+k].lTotal=0;
-        inProgress[i*si*si+j*si+k].step=0;
-        inProgress[i*si*si+j*si+k].y=0;
-        inProgress[i*si*si+j*si+k].startCol =1;
-        inProgress[i*si*si+j*si+k].bm= (1 << si) - 1;
-        inProgress[i*si*si+j*si+k].down=0;
-        inProgress[i*si*si+j*si+k].right=0;
-        inProgress[i*si*si+j*si+k].left=0;
+        inProgress[i*si+j].BOUND1=i;
+        inProgress[i*si+j].BOUND2=j;
+        inProgress[i*si+j].si=si;
+        inProgress[i*si+j].id=i*si+j;
+        for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
+        inProgress[i*si+j].lTotal=0;
+        inProgress[i*si+j].step=0;
+        inProgress[i*si+j].y=0;
+        inProgress[i*si+j].startCol =1;
+        inProgress[i*si+j].bm= (1 << si) - 1;
+        inProgress[i*si+j].down=0;
+        inProgress[i*si+j].right=0;
+        inProgress[i*si+j].left=0;
       }
-    }
   }
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   /**
@@ -479,10 +475,10 @@ int all_tasks_done(int32_t num_tasks) {
 */
 int execKernel(int si){
   cl_int status;
-  while(!all_tasks_done(si*si*si)){
+  while(!all_tasks_done(si*si)){
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si*si*si};
+    size_t globalWorkSize[] = {si*si};
     size_t localWorkSize[] = { si };
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
@@ -512,10 +508,8 @@ int execPrint(int si){
   lGUnique=0;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      for(int k=0;k<si;k++){
-          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si*si+j*si+k].id,inProgress[i*si*si+j*si+k].lTotal);
-          lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
-        }
+          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si+j].id,inProgress[i*si+j].lTotal);
+          lGTotal+=inProgress[i*si+j].lTotal;
       }
     }
   return 0;
