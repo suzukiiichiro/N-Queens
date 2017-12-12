@@ -34,6 +34,31 @@ CL_PACKED_KEYWORD struct STACK {
   struct HIKISU param[MAX];
   int current;
 };
+CL_PACKED_KEYWORD struct queenState {
+  int si;
+  int B1;
+  int BOUND1;
+  int BOUND2;
+  int TOPBIT;
+  int ENDBIT;
+  int SIDEMASK;
+  int LASTMASK;
+  qint aB[MAX];
+  long lTotal;
+  long lUnique; // Number of solutinos found so far.
+  char step;
+  char y;
+  int bend;
+  int rflg;
+  qint aT[MAX];
+  qint aS[MAX];
+  struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
+  int bm;
+};
 int symmetryOps_2(struct queenState *s){
 	int own,ptn,you,bit;
   //90度回転
