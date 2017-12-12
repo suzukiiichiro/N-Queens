@@ -94,7 +94,6 @@
 #define DEBUG 1   // TRUE:1 FALSE:0
 #define THREAD 0  // TRUE:1 FALSE:0
 
-
 //ローカル構造体
 typedef struct{
 	int bit;
@@ -464,7 +463,6 @@ void NoCornerQ(int y,int left,int down,int right,int bm,local *l){
    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい 
    */
 //上から１行目角にクイーンがある場合の処理
-//void backTrack1(int y,int left,int down,int right,int bm,local *l){
 void cornerQ(int y,int left,int down,int right,int bm,local *l){
   bm=l->msk&~(left|down|right); 
   //bmはクイーンが置ける場所
@@ -540,9 +538,11 @@ void cornerQ(int y,int left,int down,int right,int bm,local *l){
     }
   } 
 }
-//backtrack2のマルチスレッド処理
-//３行目のクイーンの位置まで固定して別スレッドで走らせる
-//NXNXNスレッドが立っている
+/**
+ * cornerQのマルチスレッド処理
+ * ３行目のクイーンの位置まで固定して別スレッドで走らせる
+ * NXNXNスレッドが立っている
+*/
 void *run3(void *args){
   local *l=(local *)args;
   l->msk=(1<<si)-1; //l->makはクイーンを置ける場所 si分1が並ぶ
@@ -558,13 +558,14 @@ void *run3(void *args){
     //１行目のクイーンの位置はB1の値によって決まる
     l->aB[0]=l->bit=(1<<l->B1);
     //２行目のクイーンの位置を固定することによってN分スレッドを分割する
-    //backTrack3(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     backTrack2ndLine(1,l->bit<<1,l->bit,l->bit>>1,0,l);
     l->EB>>=si;
   }
   return 0;
 }
-//backtrack1のマルチスレッド処理
+/**
+ * noCornerQのマルチスレッド処理
+*/
 void *run(void *args){
   local *l=(local *)args;
   l->bit=0 ; 
@@ -856,7 +857,6 @@ int main(void){
   int min=8;
   struct timeval t0;
   struct timeval t1;
-//	f=fopen("out","w"); 
   printf("%s\n"," N:        Total       Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=MAX;i++){
 		db=0;
@@ -880,42 +880,8 @@ int main(void){
     ss%=60;
     printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,lTotal,lUnique,dd,hh,mm,ss,ms); 
   } 
-//	fclose(f);
   return 0;
 }
-/**********************************************/
-/** 対称解除法                               **/
-/** ユニーク解から全解への展開               **/
-/**********************************************/
-/**
-  ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
-
-  １２ ４１ ３４ ２３
-  ４３ ３２ ２１ １４
-
-  ２１ １４ ４３ ３２
-  ３４ ２３ １２ ４１
-
-  上図左上がユニーク解。
-  1行目はユニーク解を90度、180度、270度回転したもの
-  2行目は1行目のそれぞれを左右反転したもの。
-  2行目はユニーク解を左右反転、対角反転、上下反転、逆対角反転したものとも解釈可 
-  ただし、 回転・線対称な解もある
-  クイーンが右上角にあるユニーク解を考えます。
-  斜軸で反転したパターンがオリジナルと同型になることは有り得ないことと(×２)、
-  右上角のクイーンを他の３つの角に写像させることができるので(×４)、
-  このユニーク解が属するグループの要素数は必ず８個(＝２×４)になります。
-
-  (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
-  　　させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。 
-  (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナルとは異なる。
-  　　ただし、180度回転させた場合はオリジナルと同型になることも有り得る。
-
-  　(1)に該当するユニーク解が属するグループの要素数は、左右反転させたパターンを加えて
-  ２個しかありません。(2)に該当するユニーク解が属するグループの要素数は、180度回転させ
-  て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
-  場合は８個になります。(左右反転×縦横回転×上下反転)
-  */
 void symmetryOps_bm(local *l){
   l->own=l->ptn=l->you=l->bit=0;
   l->C8[l->B1][l->BK]++;

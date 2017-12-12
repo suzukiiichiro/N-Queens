@@ -130,7 +130,6 @@ KiB Swap:        0 total,        0 free,        0 used. 60359736 avail Mem
   20:     39029188884       4878666808          00:35:07
   21:    314666222712      39333324973          04:41:36
   22:   2691008701644     336376244042          39:14:59
- *
 */
 
 #include <stdio.h>
@@ -181,8 +180,8 @@ long lUnique;
 void backTrack3(int y,int left,int down,int right,int bm,local *l);
 void backTrack2(int y,int left,int down,int right,int bm,local *l2);
 void backTrack1(int y,int left,int down,int right,int bm,local *l);
-void *run(void *args);
 void *run2(void *args);
+void *run(void *args);
 void *NQueenThread();
 void NQueen();
 void symmetryOps_bm(local *l);
@@ -209,7 +208,7 @@ void backTrack3(int y,int left,int down,int right,int bm,local *l){
         bm&=l->SM; 
       }
     }
-    if(bm & (1<<l->k)){
+    if(bm&(1<<l->k)){
       //スレッドの引数として指定した2行目のクイーンの位置kを固定で指定する
       l->aB[y]=l->bit=1<<l->k;
     }else{
@@ -247,7 +246,7 @@ void backTrack2(int y,int left,int down,int right,int bm,local *l){
   if(y==siE){
     if(bm>0 && (bm&l->LM)==0){ //【枝刈り】最下段枝刈り
       l->aB[y]=bm;
-      symmetryOps_bm(l);
+      symmetryOps_bm(l);//対称解除法
     }
   }else{
     if(y<l->B1){ //【枝刈り】上部サイド枝刈り            
@@ -478,6 +477,32 @@ void NQueen(){
   pthread_join(pth, NULL); //スレッドの終了を待つ
   pthread_detach(pth);
 }
+/**********************************************/
+/*  メイン関数                                */
+/**********************************************/
+/**
+ * N=2 から順を追って 実行関数 NQueen()を呼び出します。
+ * 最大値は 先頭行でMAXをdefineしています。
+ * G は グローバル構造体で宣言しています。
+
+//グローバル構造体
+typedef struct {
+int nThread;
+int si;
+int siE;
+long C2;
+long C4;
+long C8;
+}GCLASS, *GClass;
+GCLASS G; //グローバル構造体
+
+グローバル構造体を使う場合は
+G.si=i ; 
+のようにドットを使ってアクセスします。
+
+NQueen()実行関数は forの中の値iがインクリメントする度に
+Nのサイズが大きくなりクイーンの数を解法します。 
+*/
 int main(void){
   struct timeval t0;
   struct timeval t1;
@@ -558,8 +583,7 @@ void symmetryOps_bm(local *l){
       if(l->aB[l->own]>l->bit){ l->C8[l->B1][l->BK]--; return; } 
       else if(l->aB[l->own]<l->bit){ break; } }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(l->own>siE){ l->C4[l->B1][l->BK]++; l->C8[l->B1][l->BK]--; return; } 
-  }
+    if(l->own>siE){ l->C4[l->B1][l->BK]++; l->C8[l->B1][l->BK]--; return; } }
   //270度回転
   if(l->aB[l->B1]==l->TB){ 
     for(l->own=1,l->ptn=l->TB>>1;l->own<=siE;l->own++,l->ptn>>=1){ 

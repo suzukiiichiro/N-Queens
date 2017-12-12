@@ -101,11 +101,11 @@ void backTrack2(int y,int left,int down,int right,void *args){
   struct local *l=(struct local *)args;
   int bit=0;
   int bm=l->msk&~(left|down|right); /* 配置可能フィールド */
-  if(y==G.siE){                     //【枝刈り】
+  if(y==G.siE){                    //【枝刈り】
     if(bm){
-      if((bm&l->LM)==0){            //【枝刈り】最下段枝刈り
+      if((bm&l->LM)==0){           //【枝刈り】最下段枝刈り
         l->aB[y]=bm;
-        symmetryOps_bm(&*l);
+        symmetryOps_bm(l);
       }
     }
   }else{
@@ -115,10 +115,9 @@ void backTrack2(int y,int left,int down,int right,void *args){
       if((down&l->SM)==0){ return; }
       if((down&l->SM)!=l->SM){ bm&=l->SM; }
     }
-    while(bm>0) {
-      //最も下位の１ビットを抽出
+    while(bm) { //最も下位の１ビットを抽出
       bm^=l->aB[y]=bit=-bm&bm;
-      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,&*l);
+      backTrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
@@ -136,23 +135,22 @@ void backTrack1(int y,int left,int down,int right,void *args){
   int bit=0;                  /* 配置可能フィールド */
   int bm=l->msk&~(left|down|right); 
   if(y==G.siE) {
-    if(bm){
+    if(bm){//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
       l->aB[y]=bm;
-      //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+      
       //pthread_mutex_lock(&mutex);   //ロックして
        G.C8[l->B1]++;
        pthread_mutex_unlock(&mutex); //アンロックする
     }
   }else{
-    if(y<l->B1) {   
+    if(y<l->B1) { 
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
       bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
     }
     while(bm) {
-      //最も下位の１ビットを抽出
-      bm^=l->aB[y]=bit=-bm&bm;
-      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,&*l);
+      bm^=l->aB[y]=bit=-bm&bm;//最も下位の１ビットを抽出
+      backTrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   } 
 }
@@ -169,7 +167,7 @@ void *run(void *args){
       // 角にクイーンを配置 
       l->aB[1]=bit=(1<<l->B1);
       //２行目から探索
-      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),&*l);
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
     }
   }
   l->EB=(l->TB>>l->B1);
@@ -183,7 +181,7 @@ void *run(void *args){
     }
     if(l->B1<l->B2) {
       l->aB[0]=bit=(1<<l->B1);
-      backTrack2(1,bit<<1,bit,bit>>1,&*l);
+      backTrack2(1,bit<<1,bit,bit>>1,l);
     }
     l->EB>>=G.si;
   }
@@ -251,10 +249,10 @@ int aB[MAX];
  *
  */
 void *NQueenThread(){
+  struct local l[MAX];                //構造体 local型 
   pthread_t pt[G.si];                 //スレッド childThread
   pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;//mutexの初期化
   pthread_mutex_init(&mutex, NULL);   //pthread 排他処理
-  struct local l[MAX];                //構造体 local型 
   // B1から順にスレッドを生成しながら処理を分担する 
   //-- mutex 追記
   // pthread_mutexattr_t 変数を用意します。
@@ -374,8 +372,7 @@ int main(void){
 /** ユニーク解から全解への展開               **/
 /**********************************************/
 /**
-  ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
-
+ひとつの解には、盤面を90度・180度・270度回転、及びそれらの鏡像の合計8個の対称解が存在する
   １２ ４１ ３４ ２３
   ４３ ３２ ２１ １４
 
@@ -404,6 +401,7 @@ int main(void){
   て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
+
 void symmetryOps_bm(void *args){
   struct local *l=(struct local *)args;
   int own,ptn,you,bit;

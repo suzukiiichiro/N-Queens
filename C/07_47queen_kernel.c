@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -123,12 +123,13 @@ state[index].left=left;
 }
 #ifdef GCC_STYLE
 int main(){
+  int target=12;
   /**********/
   struct queenState l[MAX];
   /**********/
   printf("%s\n"," N:          Total        Unique\n");
   /**********/
-  for(int si=4;si<MAX;si++){
+  for(int si=4;si<=target;si++){
     long gTotal=0;
     for (int i=0;i<si;i++){
       l[i].BOUND1=i;

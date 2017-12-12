@@ -51,9 +51,9 @@ Nのサイズが大きくなりクイーンの数を解法します。
 
 */
 
-#include<stdio.h>
-#include<time.h>
-#include<sys/time.h>
+#include <stdio.h>
+#include <time.h>
+#include <sys/time.h>
 #define MAX 27
 
 // pthreadはパラメータを１つしか渡せないので構造体に格納
@@ -106,7 +106,7 @@ void backTrack2(int y,int l,int d,int r){
   }
 }
 void backTrack1(int y,int l,int d,int r){
-  int bit;
+  int bit=0;
   int bm=C.msk&~(l|d|r);  /* 配置可能フィールド */
   if(y==C.siE) {
     if(bm){
@@ -135,6 +135,7 @@ void thread(){
     if(C.B1<(C.siE)) {
     // 角にクイーンを配置 
       C.aB[1]=bit=(1<<C.B1);
+      //２行目から探索
       backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1));
     }
   }

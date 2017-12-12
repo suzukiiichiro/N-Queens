@@ -12,16 +12,16 @@ LDFLAGS=-L/usr/lib64 -L/usr/lib64/libOpenCL.so
 endif
 
 ifeq ($(OS),Darwin)
-CFLAGS=-Wall -W -O3 -std=c99 -lm
+CFLAGS=-Wall -W -O3 -std=c99 -lm 
 FUNCTION=-framework OpenCL
 #clang
-#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
-#LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
-#CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
+CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
+LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
+CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
 
-CC=/usr/local/opt/llvm/bin/clang-5.0
-CPPFLAGS=-I/usr/local/opt/llvm\@5/lib
-LDFLAGS=-L/usr/local/opt/llvm\@5/include
+#CC=/usr/local/opt/llvm/bin/clang-5.0
+#CPPFLAGS=-I/usr/local/opt/llvm\@5/lib
+#LDFLAGS=-L/usr/local/opt/llvm\@5/include
 
 #CC=/usr/local/Cellar/llvm/4.0.1/bin/clang
 #LDFLAGS=-L/usr/local/Cellar/llvm/4.0.1/lib
@@ -49,6 +49,18 @@ LDFLAGS=-L/usr/local/opt/llvm\@5/include
 #CPPFLAGS=-I/usr/local/Cellar/gcc\@4.9/4.9.4/include
 endif
 RM=rm -fr
+
+nq49=07_49NQueen
+nq49: 07_49gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq49) 07_49gpu_queens.c 
+
+nq48=07_48NQueen
+nq48: 07_48gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq48) 07_48gpu_queens.c 
+
+nq47=07_47NQueen
+nq47: 07_47gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq47) 07_47gpu_queens.c 
 
 nq46=07_46NQueen
 nq46: 07_46gpu_queens.c 
@@ -98,10 +110,10 @@ nq34=07_34NQueen
 nq34: $(nq34).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq34) $(nq34).c 
 
-all:nq46 nq45 nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq49 nq48 nq47 nq46 nq45 nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
-	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen 07_38NQueen 07_40NQueen 07_41NQueen 07_42NQueen 07_43NQueen 07_44NQueen 07_45NQueen 07_46NQueen
+	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen 07_38NQueen 07_40NQueen 07_41NQueen 07_42NQueen 07_43NQueen 07_44NQueen 07_45NQueen 07_46NQueen 07_47NQueen 07_48NQueen 07_49NQueen
 
 
 nq33=07_33NQueen
@@ -194,7 +206,7 @@ nq13: $(nq13).c
 
 nq12=07_12NQueen
 nq12: $(nq12).c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq12) $(nq12).c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) -o $(nq12) $(nq12).c
 
 nq11=07_11NQueen
 nq11: $(nq11).c 

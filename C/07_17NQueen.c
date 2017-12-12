@@ -59,19 +59,13 @@ struct local{
 
 GCLASS G; //グローバル構造体
 
-void backTrack2(int y,int left,int down,int right,int siE,
-     int B1,int B2,int msk,int SM,int LM,
-     int TB,int EB,int aB[],
-     long *COUNT2,long *COUNT4,long *COUNT8);
-void backTrack1(int y,int left,int down,int right,
-    int siE,int B1,int msk,int aB[],long *COUNT8);
+void backTrack2(int y,int left,int down,int right,int siE, int B1,int B2,int msk,int SM,int LM, int TB,int EB,int aB[], long *COUNT2,long *COUNT4,long *COUNT8);
+void backTrack1(int y,int left,int down,int right, int siE,int B1,int msk,int aB[],long *COUNT8);
 void *run(void *args);
 void *NQueenThread( void *args);
 void NQueen(int si);
 int main(void);
-void symmetryOps_bm(int siE,int B1,int B2,
-    int TB,int EB,int aB[],
-    long *COUNT2,long *COUNT4,long *COUNT8);
+void symmetryOps_bm(int siE,int B1,int B2, int TB,int EB,int aB[], long *COUNT2,long *COUNT4,long *COUNT8);
 
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
@@ -100,7 +94,7 @@ void backTrack2(int y,int left,int down,int right,
      long *COUNT2,long *COUNT4,long *COUNT8){
   int bit=0;
   int bm=msk&~(left|down|right);  //配置可能フィールド
-  if(y==siE){                     //【枝刈り】最下段枝刈り
+  if(y==siE){                     //【枝刈り】
     if(bm){ 
       if((bm&LM)==0){             //【枝刈り】最下段枝刈り
         aB[y]=bm;
@@ -182,7 +176,7 @@ void backTrack1(int y,int left,int down,int right,
       (*COUNT8)++;
     }
   }else{
-    if(y<B1) { 
+    if(y<B1) {
       //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
       // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
       bm&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
@@ -321,15 +315,13 @@ void *run(void *args){
   struct local *l=(struct local *)args;
   int bit ;
   int si=l->si; int siE =l->siE;
-  int B1=l->B1; int B2=l->B2; int *aB=l->aB;
-
-  aB[0]=1;
+  int B1=l->B1; int B2=l->B2;
+  int *aB=l->aB;
   int TB=1<<siE;
   int msk=(1<<si)-1;
   long COUNT2=l->COUNT2=0; //ローカルにコピー
   long COUNT4=l->COUNT4=0;
   long COUNT8=l->COUNT8=0;
-
   /* 最上段のクイーンが角にある場合の探索 */
   if(B1>1&&B1<siE) { 
     if(l->B1<l->siE){

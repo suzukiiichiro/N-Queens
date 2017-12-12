@@ -1,20 +1,19 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
-#include <math.h>
 typedef int64_t qint;
 int get_global_id(int dimension){ return 0;}
 #define CL_KERNEL_KEYWORD
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 24
+#define SIZE 17
 #else
-typedef long qint;
-typedef long int64_t;
-typedef ulong uint64_t;
+//typedef long qint;
+//typedef long int64_t;
+//typedef ulong uint64_t;
 typedef ushort uint16_t;
 #define CL_KERNEL_KEYWORD __kernel
 #define CL_GLOBAL_KEYWORD __global
@@ -34,31 +33,6 @@ CL_PACKED_KEYWORD struct HIKISU{
 CL_PACKED_KEYWORD struct STACK {
   struct HIKISU param[MAX];
   int current;
-};
-CL_PACKED_KEYWORD struct queenState {
-  int si;
-  int B1;
-  int BOUND1;
-  int BOUND2;
-  int TOPBIT;
-  int ENDBIT;
-  int SIDEMASK;
-  int LASTMASK;
-  qint aB[MAX];
-  long lTotal;
-  long lUnique; // Number of solutinos found so far.
-  char step;
-  char y;
-  int bend;
-  int rflg;
-  qint aT[MAX];
-  qint aS[MAX];
-  struct STACK stParam;
-  int msk;
-  int l;
-  int d;
-  int r;
-  int bm;
 };
 int symmetryOps_2(struct queenState *s){
 	int own,ptn,you,bit;
@@ -308,13 +282,13 @@ outParam(s);
 int backTrack2(struct queenState *s,int bflg){
   int bit;
         unsigned long j=1;
-        while (1){
+        while (j>0){
 #ifdef GCC_STYLE
 #else
-          if(j==100){
-            bflg=1;
-            break;
-          }
+    if(j==100){
+      bflg=1;
+      break;
+    }
 #endif
           if(s->rflg==0){
             s->bm=s->msk&~(s->l|s->d|s->r); 
@@ -427,10 +401,13 @@ outStruct(state,&s,index);
 
 #ifdef GCC_STYLE
 int main(){
+  int target=12;
+  /**********/
   struct queenState inProgress[MAX];
-  long gTotal=0;
+  /**********/
   printf("%s\n"," N:          Total        Unique\n");
-  for(int si=8;si<9;si++){
+  for(int si=4;si<=target;si++){
+    long gTotal=0;
     for(int i=0;i<1;i++){ //single
       inProgress[i].si=si;
       //inProgress[i].id=i;

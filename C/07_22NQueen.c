@@ -406,7 +406,6 @@ int main(void){
   て同型になる場合は４個(左右反転×縦横回転)、そして180度回転させてもオリジナルと異なる
   場合は８個になります。(左右反転×縦横回転×上下反転)
   */
-//void symmetryOps_bm(void *args,long *C2,long *C4,long *C8){
 void symmetryOps_bm(local *l,long *C2,long *C4,long *C8){
   int own,ptn,you,bit;
   int _siE=G.siE;
