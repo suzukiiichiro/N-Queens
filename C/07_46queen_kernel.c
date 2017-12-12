@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE H6
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
