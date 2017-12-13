@@ -75,6 +75,7 @@ struct queenState {
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
+  int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
   int TOPBIT;
@@ -353,6 +354,7 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 int makeInProgress(int si){
   cl_int status;
 	/**************/
+  int B2=si-1;
   for(int i=0;i<si;i++){
     inProgress[i].BOUND1=i;
     inProgress[i].si=si;
@@ -360,8 +362,10 @@ int makeInProgress(int si){
 		inProgress[i].lTotal=0;
 		inProgress[i].step=0;
     inProgress[i].y=0;
+		inProgress[i].startCol =1;
     inProgress[i].bm= 0;
-    inProgress[i].BOUND2=si-1;
+    inProgress[i].BOUND2=B2;
+    B2--;
     inProgress[i].ENDBIT=0;
     inProgress[i].TOPBIT=1<<(si-1);
     inProgress[i].SIDEMASK=0;
