@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -83,32 +83,32 @@ struct CL_PACKED_KEYWORD localState {
   int B1;
 };
 int symmetryOps_2(struct localState *s){
-	int own,ptn,you,bit;
+  int own,ptn,you,bit;
   //90度回転
-		own=1;ptn=2;
-		while(own<=(s->si-1)){
-			bit=1;
-			you=s->si-1;
-			while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){
-				bit<<=1;you--;
-			}
-			if(s->aB[own]>bit){
-				return 0;
-			}
-			else if(s->aB[own]<bit){
-				printf("");
-				// break;
-				goto go;
-			}
-			own++;ptn<<=1;
-		}
+  own=1;ptn=2;
+  while(own<=(s->si-1)){
+    bit=1;
+    you=s->si-1;
+    while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){
+      bit<<=1;you--;
+    }
+    if(s->aB[own]>bit){
+      return 0;
+    }
+    else if(s->aB[own]<bit){
+      printf("");
+      // break;
+      goto go;
+    }
+    own++;ptn<<=1;
+  }
 go:
-		if(own>s->si-1){
-			s->lTotal+=2;
-			s->lUnique++;
-			return 0;
-		}
-	return 1;
+  if(own>s->si-1){
+    s->lTotal+=2;
+    s->lUnique++;
+    return 0;
+  }
+  return 1;
 }
 int symmetryOps_4(struct localState *s){
   int own,ptn,you,bit;
@@ -165,43 +165,43 @@ int symmetryOps_8(struct localState *s){
 }
 void symmetryOps_bm(struct localState *s){
   //90度回転
-	if(s->aB[s->BOUND2]==1){
-		if(symmetryOps_2(s)==0){ return; }
-	}
+  if(s->aB[s->BOUND2]==1){
+    if(symmetryOps_2(s)==0){ return; }
+  }
   //180度回転
   if(s->aB[s->si-1]==s->ENDBIT){
-		if(symmetryOps_4(s)==0){ return; }
-	}
+    if(symmetryOps_4(s)==0){ return; }
+  }
   //270度回転
   if(s->aB[s->BOUND1]==s->TOPBIT){
-		if(symmetryOps_8(s)==0){ return; }
-	}
+    if(symmetryOps_8(s)==0){ return; }
+  }
   s->lTotal+=8;
   s->lUnique++;
 }
 void inParam(struct localState *s){
-	if(s->stParam.current<MAX){
-		s->stParam.param[s->stParam.current].Y=s->y;
-		s->stParam.param[s->stParam.current].I=s->si;
-		s->stParam.param[s->stParam.current].M=s->msk;
-		s->stParam.param[s->stParam.current].L=s->l;
-		s->stParam.param[s->stParam.current].D=s->d;
-		s->stParam.param[s->stParam.current].R=s->r;
-		s->stParam.param[s->stParam.current].B=s->bm;
-		(s->stParam.current)++;
-	}
+  if(s->stParam.current<MAX){
+    s->stParam.param[s->stParam.current].Y=s->y;
+    s->stParam.param[s->stParam.current].I=s->si;
+    s->stParam.param[s->stParam.current].M=s->msk;
+    s->stParam.param[s->stParam.current].L=s->l;
+    s->stParam.param[s->stParam.current].D=s->d;
+    s->stParam.param[s->stParam.current].R=s->r;
+    s->stParam.param[s->stParam.current].B=s->bm;
+    (s->stParam.current)++;
+  }
 }
 void outParam(struct localState *s){
-	if(s->stParam.current>0){
-		s->stParam.current--;
-	}
-	s->si=s->stParam.param[s->stParam.current].I;
-	s->y=s->stParam.param[s->stParam.current].Y;
-	s->msk=s->stParam.param[s->stParam.current].M;
-	s->l=s->stParam.param[s->stParam.current].L;
-	s->d=s->stParam.param[s->stParam.current].D;
-	s->r=s->stParam.param[s->stParam.current].R;
-	s->bm=s->stParam.param[s->stParam.current].B;
+  if(s->stParam.current>0){
+    s->stParam.current--;
+  }
+  s->si=s->stParam.param[s->stParam.current].I;
+  s->y=s->stParam.param[s->stParam.current].Y;
+  s->msk=s->stParam.param[s->stParam.current].M;
+  s->l=s->stParam.param[s->stParam.current].L;
+  s->d=s->stParam.param[s->stParam.current].D;
+  s->r=s->stParam.param[s->stParam.current].R;
+  s->bm=s->stParam.param[s->stParam.current].B;
 }
 void inStruct(struct localState *s,CL_GLOBAL_KEYWORD struct queenState *state,int index){
   s->si=state[index].si;
@@ -371,33 +371,33 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   struct localState s;
   s.BOUND1=state[index].BOUND1;
-inStruct(&s,state,index);
-	int bit;
-	if(s.BOUND1==0){
-		s.aB[0]=1;
-		s.TOPBIT=1<<(s.si-1);
-		while(1){
-			if(s.B1==s.si-1){
-				break;
-			}//ene if
-backTrack1(&s);
-			s.B1=s.B1+1;
-		}//end while
-	}else{
-		s.TOPBIT=1<<(s.si-1);
-		s.ENDBIT=s.TOPBIT>>s.BOUND1;
-		s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-		if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
-			for(int i=1;i<s.BOUND1;i++){
-				s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
-			}//end for
-			s.aB[0]=bit=(1<<s.BOUND1);
-			s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-backTrack2(&s);
-				s.ENDBIT>>=s.si;
-		}//end if
+  inStruct(&s,state,index);
+  int bit;
+  if(s.BOUND1==0){
+    s.aB[0]=1;
+    s.TOPBIT=1<<(s.si-1);
+    while(1){
+      if(s.B1==s.si-1){
+        break;
+      }//ene if
+      backTrack1(&s);
+      s.B1=s.B1+1;
+    }//end while
+  }else{
+    s.TOPBIT=1<<(s.si-1);
+    s.ENDBIT=s.TOPBIT>>s.BOUND1;
+    s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+    if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
+      for(int i=1;i<s.BOUND1;i++){
+        s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
+      }//end for
+      s.aB[0]=bit=(1<<s.BOUND1);
+      s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+      backTrack2(&s);
+      s.ENDBIT>>=s.si;
+    }//end if
   }//end else
-outStruct(state,&s,index);
+  outStruct(state,&s,index);
 }
 #ifdef GCC_STYLE
 int main(){
