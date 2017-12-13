@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -449,7 +449,7 @@ state[index].B1=s.B1;
 int main(){
   int target=12;
   /**********/
-  struct localState inProgress[MAX];
+  struct queenState inProgress[MAX];
   /**********/
   printf("%s\n"," N:          Total        Unique\n");
   for(int si=4;si<=target;si++){
@@ -471,10 +471,6 @@ int main(){
       inProgress[i].y=0;
       inProgress[i].bend=0;
       inProgress[i].rflg=0;
-      for (int m=0;m<si;m++){ 
-        inProgress[i].aT[m]=0;
-        inProgress[i].aS[m]=0;
-      }
       for (int m=0;m<si;m++){ 
         inProgress[i].stParam.param[m].Y=0;
         inProgress[i].stParam.param[m].I=si;
