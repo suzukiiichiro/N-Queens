@@ -60,6 +60,7 @@ struct CL_PACKED_KEYWORD queenState {
   int l;
   int d;
   int r;
+  int B1;
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
@@ -90,6 +91,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int l= state[index].l;
   int d= state[index].d;
   int r= state[index].r;
+  int B1= state[index].B1;
   printf("BOUND1:%d\n",BOUND1);
   printf("si:%d\n",si);
   printf("id:%d\n",id);
@@ -113,6 +115,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   printf("l:%d\n",l);
   printf("d:%d\n",d);
   printf("r:%d\n",r);
+  printf("B1:%d\n",B1);
 state[index].BOUND1=BOUND1;
 state[index].si=si;
 state[index].id=id;
@@ -138,6 +141,7 @@ state[index].msk=msk;
 state[index].l=l;
 state[index].d=d;
 state[index].r=r;
+state[index].B1=B1;
 }
 #ifdef GCC_STYLE
 int main(){
