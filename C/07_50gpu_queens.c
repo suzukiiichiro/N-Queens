@@ -75,7 +75,6 @@ struct queenState {
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
   int TOPBIT;
@@ -361,7 +360,6 @@ int makeInProgress(int si){
 		inProgress[i].lTotal=0;
 		inProgress[i].step=0;
     inProgress[i].y=0;
-		inProgress[i].startCol =1;
     inProgress[i].bm= 0;
     inProgress[i].BOUND2=si-1;
     inProgress[i].ENDBIT=0;

@@ -35,27 +35,29 @@ CL_PACKED_KEYWORD struct STACK {
   int current;
 };
 struct CL_PACKED_KEYWORD queenState {
-  int BOUND1;
   int si;
-  int aB[MAX];
-  long lTotal; // Number of solutinos found so far.
-  int step;
-  int y;
-  int bm;
+  int B1;
+  int BOUND1;
   int BOUND2;
   int TOPBIT;
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
+  qint aB[MAX];
+  long lTotal;
   long lUnique; // Number of solutinos found so far.
+  char step;
+  char y;
   int bend;
   int rflg;
+  qint aT[MAX];
+  qint aS[MAX];
   struct STACK stParam;
   int msk;
   int l;
   int d;
   int r;
-  int B1;
+  int bm;
 };
 struct CL_PACKED_KEYWORD localState {
   int BOUND1;
@@ -393,16 +395,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.BOUND1=state[index].BOUND1;
 	inStruct(&s,state,index);
   int bflg=0;
-  while(1){
     // if(bflg==1){
     //   s.BOUND1--;
     //   s.BOUND2++;
     //   s.step=0;
     //   break;
     // }
-    if(s.BOUND1==s.si){
-      break;
-    }
     int bit;
     if(s.BOUND1==0){ 
       s.aB[0]=1;
@@ -439,9 +437,6 @@ bflg=backTrack2(&s,bflg);
             s.ENDBIT>>=s.si;
           // }
         }
-    }
-    s.BOUND1=s.BOUND1+1;
-    s.BOUND2=s.BOUND2-1;
   }
 outStruct(state,&s,index);
 }
