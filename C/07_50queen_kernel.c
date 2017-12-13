@@ -37,16 +37,12 @@ CL_PACKED_KEYWORD struct STACK {
 struct CL_PACKED_KEYWORD queenState {
   int BOUND1;
   int si;
-  int id;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  long down;
-  long right;
-  long left;
   int BOUND2;
   int TOPBIT;
   int ENDBIT;
@@ -66,7 +62,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   int BOUND1=state[index].BOUND1;
   int si= state[index].si;
-  int id= state[index].id;
   int aB[MAX];
   for (int i = 0; i < si; i++)
     aB[i]=state[index].aB[i];
@@ -75,9 +70,6 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int y       = state[index].y;
   int startCol  = state[index].startCol;
   int bm     = state[index].bm;
-  long down     = state[index].down;
-  long right      = state[index].right;
-  long left      = state[index].left;
   int BOUND2    =state[index].BOUND2;
   int TOPBIT    =state[index].TOPBIT;
   int ENDBIT    =state[index].ENDBIT;
@@ -94,15 +86,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int B1= state[index].B1;
   printf("BOUND1:%d\n",BOUND1);
   printf("si:%d\n",si);
-  printf("id:%d\n",id);
   printf("lTotal:%ld\n",lTotal);
   printf("step:%d\n",step);
   printf("y:%d\n",y);
   printf("startCol:%d\n",startCol);
   printf("bm:%d\n",bm);
-  printf("down:%ld\n",down);
-  printf("right:%ld\n",right);
-  printf("left:%ld\n",left);
   printf("BOUND2:%d\n",BOUND2);
   printf("TOPBIT:%d\n",TOPBIT);
   printf("ENDBIT:%d\n",ENDBIT);
@@ -118,16 +106,12 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   printf("B1:%d\n",B1);
 state[index].BOUND1=BOUND1;
 state[index].si=si;
-state[index].id=id;
 for(int i=0;i<si;i++){state[index].aB[i]=aB[i];}
 state[index].lTotal=lTotal;
 state[index].step=step;
 state[index].y=y;
 state[index].startCol=startCol;
 state[index].bm=bm;
-state[index].down=down;
-state[index].right=right;
-state[index].left=left;
 state[index].BOUND2=BOUND2;
 state[index].TOPBIT=TOPBIT;
 state[index].ENDBIT=ENDBIT;

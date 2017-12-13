@@ -71,16 +71,12 @@ struct queenState {
   int BOUND1;
 	/**************/
   int si;
-  int id;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  long down;
-  long right;
-  long left;
   int BOUND2;
   int TOPBIT;
   int ENDBIT;
@@ -361,16 +357,12 @@ int makeInProgress(int si){
   for(int i=0;i<si;i++){
     inProgress[i].BOUND1=i;
     inProgress[i].si=si;
-    inProgress[i].id=i;
 		for (int j=0;j< si;j++){ inProgress[i].aB[j]=j;}
 		inProgress[i].lTotal=0;
 		inProgress[i].step=0;
     inProgress[i].y=0;
 		inProgress[i].startCol =1;
     inProgress[i].bm= 0;
-    inProgress[i].down=0;
-    inProgress[i].right=0;
-    inProgress[i].left=0;
     inProgress[i].BOUND2=si-1;
     inProgress[i].ENDBIT=0;
     inProgress[i].TOPBIT=1<<(si-1);
@@ -486,7 +478,7 @@ int execPrint(int si){
   lGUnique=0;
 	/**************/
   for(int i=0;i<si;i++){
-      if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i].id,inProgress[i].lTotal);
+      if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
       lGTotal+=inProgress[i].lTotal;
     }
 	/**************/
