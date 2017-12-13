@@ -203,6 +203,70 @@ void outParam(struct localState *s){
                 s->r=s->stParam.param[s->stParam.current].R;
                 s->bm=s->stParam.param[s->stParam.current].B;
 }
+void inStruct(struct localState *s,CL_GLOBAL_KEYWORD struct queenState *state,int index){
+  s->si=state[index].si;
+  s->B1=state[index].B1;
+  s->BOUND1=state[index].BOUND1;
+  s->BOUND2=state[index].BOUND2;
+  s->ENDBIT=state[index].ENDBIT;
+  s->TOPBIT=state[index].TOPBIT;
+  s->SIDEMASK=state[index].SIDEMASK;
+  s->LASTMASK=state[index].LASTMASK;
+  //printf("BOUND1:%d\n",s->BOUND1);
+  //printf("BOUND2:%d\n",s->BOUND2);
+  //printf("B1:%d\n",s->B1);
+  for (int j=0;j<s->si;j++){
+    s->aB[j]=state[index].aB[j];
+  }
+  s->lTotal=state[index].lTotal;
+  s->lUnique=state[index].lUnique;
+  //s->step=state[index].step;
+  s->step=0;
+  s->y=state[index].y;
+  s->bend=state[index].bend;
+  s->rflg=state[index].rflg;
+  // for (int j=0;j<s->si;j++){
+  //   s->aT[j]=state[index].aT[j];
+  //   s->aS[j]=state[index].aS[j];
+  // }
+  s->stParam=state[index].stParam;
+  s->msk=(1<<s->si)-1;
+  s->l=state[index].l;
+  s->d=state[index].d;
+  s->r=state[index].r;
+  s->bm=state[index].bm;
+
+}
+void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct localState *s,int index){
+  state[index].si=s->si;
+  //state[index].id=s->id;
+  state[index].B1=s->B1;
+  state[index].BOUND1=s->BOUND1;
+  state[index].BOUND2=s->BOUND2;
+  state[index].ENDBIT=s->ENDBIT;
+  state[index].TOPBIT=s->TOPBIT;
+  state[index].SIDEMASK=s->SIDEMASK;
+  state[index].LASTMASK=s->LASTMASK;
+  for (int j=0;j<s->si;j++){
+    state[index].aB[j] = s->aB[j];
+  }//end for
+  state[index].lTotal=s->lTotal;
+  state[index].lUnique=s->lUnique;
+  state[index].step=s->step;
+  state[index].y=s->y;
+  state[index].bend=s->bend;
+  state[index].rflg=s->rflg;
+  // for (int j=0;j<s->si;j++){
+  //   state[index].aT[j]=s->aT[j];
+  //   state[index].aS[j]=s->aS[j];
+  // }//end for
+  state[index].stParam=s->stParam;
+  state[index].msk=s->msk;
+  state[index].l=s->l;
+  state[index].d=s->d;
+  state[index].r=s->r;
+  state[index].bm=s->bm;
+}
 
 int backTrack1(struct localState *s,int bflg){
   int bit;
@@ -327,68 +391,29 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   struct localState s;
   s.BOUND1=state[index].BOUND1;
-  s.si= state[index].si;
-  for (int i = 0; i < s.si; i++)
-    s.aB[i]=state[index].aB[i];
-  s.lTotal = state[index].lTotal;
-  s.step      = state[index].step;
-  s.y       = state[index].y;
-  s.bm     = state[index].bm;
-  s.BOUND2    =state[index].BOUND2;
-  s.TOPBIT    =state[index].TOPBIT;
-  s.ENDBIT    =state[index].ENDBIT;
-  s.SIDEMASK    =state[index].SIDEMASK;
-  s.LASTMASK  =state[index].LASTMASK;
-  s.lUnique  =state[index].lUnique;
-  s.bend  =state[index].bend;
-  s.rflg  =state[index].rflg;
-  s.stParam=state[index].stParam;
-  s.msk= state[index].msk;
-  s.l= state[index].l;
-  s.d= state[index].d;
-  s.r= state[index].r;
-  s.B1= state[index].B1;
-  // printf("BOUND1:%d\n",s.BOUND1);
-  // printf("si:%d\n",s.si);
-  // printf("lTotal:%ld\n",s.lTotal);
-  // printf("step:%d\n",s.step);
-  // printf("y:%d\n",s.y);
-  // printf("bm:%d\n",s.bm);
-  // printf("BOUND2:%d\n",s.BOUND2);
-  // printf("TOPBIT:%d\n",s.TOPBIT);
-  // printf("ENDBIT:%d\n",s.ENDBIT);
-  // printf("SIDEMASK:%d\n",s.SIDEMASK);
-  // printf("LASTMASK:%d\n",s.LASTMASK);
-  //printf("lUnique:%ld\n",s.lUnique);
-  //printf("bend:%d\n",s.bend);
-  //printf("rflg:%d\n",s.rflg);
-  //printf("msk:%d\n",s.msk);
-  //printf("l:%d\n",s.l);
-  //printf("d:%d\n",s.d);
-  //printf("r:%d\n",s.r);
-  //printf("B1:%d\n",s.B1);
+	inStruct(&s,state,index);
   int bflg=0;
   while(1){
-    if(bflg==1){
-      s.BOUND1--;
-      s.BOUND2++;
-      s.step=0;
-      break;
-    }
+    // if(bflg==1){
+    //   s.BOUND1--;
+    //   s.BOUND2++;
+    //   s.step=0;
+    //   break;
+    // }
     if(s.BOUND1==s.si){
       break;
     }
     int bit;
     if(s.BOUND1==0){ 
       s.aB[0]=1;
-      if(bflg==0){
+      // if(bflg==0){
         s.TOPBIT=1<<(s.si-1);
-      }
+      // }
       while(1){
-        if(bflg==1){
-          s.B1--;
-          break;
-        }
+        // if(bflg==1){
+        //   s.B1--;
+        //   break;
+        // }
         if(s.B1==s.si-1){
           break;
         }
@@ -396,49 +421,29 @@ bflg=backTrack1(&s,bflg);
         s.B1=s.B1+1;
       }
     }else{ 
-        if(bflg==0){
+        // if(bflg==0){
         s.TOPBIT=1<<(s.si-1);
         s.ENDBIT=s.TOPBIT>>s.BOUND1;
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-        }
+        // }
         if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
-          if(bflg==0){
+          // if(bflg==0){
             for(int i=1;i<s.BOUND1;i++){
               s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
             }
-          }
+          // }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
 bflg=backTrack2(&s,bflg);
-          if(bflg==0){
+          // if(bflg==0){
             s.ENDBIT>>=s.si;
-          }
+          // }
         }
     }
     s.BOUND1=s.BOUND1+1;
     s.BOUND2=s.BOUND2-1;
   }
-state[index].BOUND1=s.BOUND1;
-state[index].si=s.si;
-for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
-state[index].lTotal=s.lTotal;
-state[index].step=s.step;
-state[index].y=s.y;
-state[index].bm=s.bm;
-state[index].BOUND2=s.BOUND2;
-state[index].TOPBIT=s.TOPBIT;
-state[index].ENDBIT=s.ENDBIT;
-state[index].SIDEMASK=s.SIDEMASK;
-state[index].LASTMASK=s.LASTMASK;
-state[index].lUnique=s.lUnique;
-state[index].bend=s.bend;
-state[index].rflg=s.rflg;
-state[index].stParam=s.stParam;
-state[index].msk=s.msk;
-state[index].l=s.l;
-state[index].d=s.d;
-state[index].r=s.r;
-state[index].B1=s.B1;
+outStruct(state,&s,index);
 }
 #ifdef GCC_STYLE
 int main(){
@@ -450,14 +455,14 @@ int main(){
   for(int si=4;si<=target;si++){
     long gTotal=0;
     long gUnique=0;
-    int B2=si-1;
-    for(int i=0;i<si;i++){ //single
+    // int B2=si-1;
+    for(int i=0,B2=si-1;i<si;i++,B2--){ // N
       inProgress[i].si=si;
       //inProgress[i].id=i;
       inProgress[i].B1=2;
       inProgress[i].BOUND1=i;
       inProgress[i].BOUND2=B2;
-      B2--;
+      // B2--;
       inProgress[i].ENDBIT=0;
       inProgress[i].TOPBIT=1<<(si-1);
       inProgress[i].SIDEMASK=0;
