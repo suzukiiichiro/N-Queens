@@ -50,6 +50,8 @@ CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xc
 endif
 RM=rm -fr
 
+
+
 nq50=07_50NQueen
 nq50: 07_50gpu_queens.c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq50) 07_50gpu_queens.c 
