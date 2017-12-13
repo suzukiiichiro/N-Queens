@@ -270,7 +270,7 @@ void outStruct(CL_GLOBAL_KEYWORD struct queenState *state,struct localState *s,i
   state[index].bm=s->bm;
 }
 
-int backTrack1(struct localState *s,int bflg){
+void backTrack1(struct localState *s){
   int bit;
         s->aB[1]=bit=(1<<s->B1);
         s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
@@ -279,7 +279,6 @@ int backTrack1(struct localState *s,int bflg){
 #ifdef GCC_STYLE
 #else
           if(j==500000){
-            bflg=1;
             break;
           }
 #endif
@@ -325,16 +324,14 @@ outParam(s);
           }
           j++;
         }
-  return bflg;
 }
-int backTrack2(struct localState *s,int bflg){
+void backTrack2(struct localState *s){
   int bit;
         unsigned long j=1;
         while (j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100){
-      bflg=1;
       break;
     }
 #endif
@@ -386,15 +383,13 @@ outParam(s);
           }
           j++;
         } 
-
-        return bflg;
 }
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   struct localState s;
   s.BOUND1=state[index].BOUND1;
 	inStruct(&s,state,index);
-  int bflg=0;
+  // int bflg=0;
     // if(bflg==1){
     //   s.BOUND1--;
     //   s.BOUND2++;
@@ -415,7 +410,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         if(s.B1==s.si-1){
           break;
         }
-bflg=backTrack1(&s,bflg);
+backTrack1(&s);
         s.B1=s.B1+1;
       }
     }else{ 
@@ -432,7 +427,7 @@ bflg=backTrack1(&s,bflg);
           // }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
-bflg=backTrack2(&s,bflg);
+backTrack2(&s);
           // if(bflg==0){
             s.ENDBIT>>=s.si;
           // }
