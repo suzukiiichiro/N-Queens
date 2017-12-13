@@ -56,6 +56,10 @@ struct CL_PACKED_KEYWORD queenState {
   int bend;
   int rflg;
   struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
 };
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
@@ -82,6 +86,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int bend  =state[index].bend;
   int rflg  =state[index].rflg;
   struct STACK sp=state[index].stParam;
+  int msk= state[index].msk;
+  int l= state[index].l;
+  int d= state[index].d;
+  int r= state[index].r;
   printf("BOUND1:%d\n",BOUND1);
   printf("si:%d\n",si);
   printf("id:%d\n",id);
@@ -101,6 +109,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   printf("lUnique:%ld\n",lUnique);
   printf("bend:%d\n",bend);
   printf("rflg:%d\n",rflg);
+  printf("msk:%d\n",msk);
+  printf("l:%d\n",l);
+  printf("d:%d\n",d);
+  printf("r:%d\n",r);
 state[index].BOUND1=BOUND1;
 state[index].si=si;
 state[index].id=id;
@@ -122,6 +134,10 @@ state[index].lUnique=lUnique;
 state[index].bend=bend;
 state[index].rflg=rflg;
 state[index].stParam=sp;
+state[index].msk=msk;
+state[index].l=l;
+state[index].d=d;
+state[index].r=r;
 }
 #ifdef GCC_STYLE
 int main(){

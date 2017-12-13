@@ -90,6 +90,10 @@ struct queenState {
   int bend;
   int rflg;
   struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
 } __attribute__((packed));
 
   struct queenState inProgress[MAX];
@@ -362,7 +366,7 @@ int makeInProgress(int si){
 		inProgress[i].step=0;
     inProgress[i].y=0;
 		inProgress[i].startCol =1;
-    inProgress[i].bm= (1 << si) - 1;
+    inProgress[i].bm= 0;
     inProgress[i].down=0;
     inProgress[i].right=0;
     inProgress[i].left=0;
@@ -384,6 +388,10 @@ int makeInProgress(int si){
       inProgress[i].stParam.param[m].B=0;
     }
     inProgress[i].stParam.current=0;
+    inProgress[i].msk=(1<<si)-1;
+    inProgress[i].l=0;
+    inProgress[i].d=0;
+    inProgress[i].r=0;
   }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
