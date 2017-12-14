@@ -208,14 +208,15 @@ void outParam(struct localState *s){
 void backTrack1(struct localState *s){
   int bit;
   if(s->step!=1){
-    s->aB[1]=bit=(1<<s->B1);
-    s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
+    //s->aB[1]=bit=(1<<s->B1);
+    //s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
+    s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
   }
   unsigned long j=1;
   while(1){
 #ifdef GCC_STYLE
 #else
-          if(j==500000){
+          if(j==100000){
             s->step=1;
             return;
           }
@@ -230,12 +231,17 @@ void backTrack1(struct localState *s){
               s->lUnique++;
             }
           }else{
-            if(s->y<s->B1&&s->rflg==0){   
+            if(s->B1 !=-1 && s->y>1&&(1<<s->y)<s->B1&&s->rflg==0){   
               s->bm&=~2;
             }
             while(s->bm>0|| s->rflg==1){
               if(s->rflg==0){
                 s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
+                if(s->y==1){
+                  s->B1=bit;
+                  //printf("b1:%d\n",B1);
+                  //printf("y:%d\n",1<<s->y);
+                }
 inParam(s);
                 s->y++;
                 s->l=(s->l|bit)<<1;
@@ -254,7 +260,7 @@ outParam(s);
               continue;
             }
           }
-          if(s->y==2){
+          if(s->y==1){
             s->step=2;
             return;
           }else{
@@ -269,7 +275,7 @@ void backTrack2(struct localState *s){
         while (j>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100){
+    if(j==100000){
       s->step=1;
       return;
     }
@@ -375,18 +381,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         s.aB[0]=1;
         s.TOPBIT=1<<(s.si-1);
       }
-      while(1){
-        if(s.step==1){
-          s.B1--;
-        }
-        if(s.B1==s.si-1){
-          break;
-        }
         backTrack1(&s);
-        if(s.step!=1){
-          s.B1=s.B1+1;
-        }
-      }
     }else if(s.BOUND1 !=0 && s.step !=2){ 
         if(s.step!=1){
         s.TOPBIT=1<<(s.si-1);
@@ -437,7 +432,7 @@ state[index].B1=s.B1;
 }
 #ifdef GCC_STYLE
 int main(){
-  int target=12;
+  int target=16;
   /**********/
   struct queenState inProgress[MAX];
   /**********/
@@ -447,7 +442,7 @@ int main(){
     long gUnique=0;
     for(int i=0,B2=si-1;i<si;i++,B2--){ // N
       inProgress[i].si=si;
-      inProgress[i].B1=2;
+      inProgress[i].B1=-1;
       inProgress[i].BOUND1=i;
       inProgress[i].BOUND2=B2;
       inProgress[i].ENDBIT=0;
