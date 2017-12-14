@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -58,61 +58,39 @@ struct CL_PACKED_KEYWORD queenState {
   int r;
   int B1;
 };
-struct CL_PACKED_KEYWORD localState {
-  int BOUND1;
-  int si;
-  int aB[MAX];
-  long lTotal; // Number of solutinos found so far.
-  int step;
-  int y;
-  int startCol; // First column this individual computation was tasked with filling.
-  int bm;
-  int BOUND2;
-  int TOPBIT;
-  int ENDBIT;
-  int SIDEMASK;
-  int LASTMASK;
-  long lUnique; // Number of solutinos found so far.
-  int bend;
-  int rflg;
-  struct STACK stParam;
-  int msk;
-  int l;
-  int d;
-  int r;
-  int B1;
-};
-int symmetryOps_2(struct localState *s){
-	int own,ptn,you,bit;
-  //90度回転
-		own=1;ptn=2;
-		while(own<=(s->si-1)){
-			bit=1;
-			you=s->si-1;
-			while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){
-				bit<<=1;you--;
-			}
-			if(s->aB[own]>bit){
-				return 0;
-			}
-			else if(s->aB[own]<bit){
-				printf("");
-				// break;
-				goto go;
-			}
-			own++;ptn<<=1;
-		}
-go:
-		if(own>s->si-1){
-			s->lTotal+=2;
-			s->lUnique++;
-			return 0;
-		}
-	return 1;
-}
-int symmetryOps_4(struct localState *s){
+void symmetryOps_bm(struct queenState *s){
+  int nEquiv;
   int own,ptn,you,bit;
+  //90度回転
+  if(s->aB[s->BOUND2]==1){ 
+    own=1;
+    ptn=2;
+    while(own<=(s->si-1)){
+      bit=1; 
+      you=s->si-1;
+      while((s->aB[you]!=ptn)&&(s->aB[own]>=bit)){ 
+        bit<<=1; 
+        you--; 
+      }//end while
+      if(s->aB[own]>bit){ 
+        return; 
+      }//end if 
+      if(s->aB[own]<bit){
+        printf("");
+        break; 
+      }//end if
+      own++; 
+      ptn<<=1;
+    }//end while
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>s->si-1){ 
+      s->lTotal+=2;
+      s->lUnique++; 
+      return;
+    }//end if
+  }//end if
   //180度回転
+  if(s->aB[s->si-1]==s->ENDBIT){ 
     own=1; 
     you=s->si-2;
     while(own<=s->si-1){ 
@@ -123,9 +101,9 @@ int symmetryOps_4(struct localState *s){
         ptn>>=1; 
       }
       if(s->aB[own]>bit){ 
-        return 0; 
+        return ; 
       } 
-      else if(s->aB[own]<bit){ 
+      if(s->aB[own]<bit){ 
         break; 
       }
       own++; 
@@ -135,15 +113,11 @@ int symmetryOps_4(struct localState *s){
     if(own>s->si-1){ 
       s->lTotal+=4;
       s->lUnique++;
-      return 0;
+      return ;
     }
-  return 1;
-}
-//int symmetryOps_8(struct queenState *s,struct symmetry *sym){
-int symmetryOps_8(struct localState *s){
-  int own,ptn,you,bit;
+  }
   //270度回転
-  // if(s->aB[s->BOUND1]==s->TOPBIT){ 
+  if(s->aB[s->BOUND1]==s->TOPBIT){ 
     own=1; 
     ptn=s->TOPBIT>>1;
     while(own<=s->si-1){ 
@@ -154,125 +128,25 @@ int symmetryOps_8(struct localState *s){
         you++; 
       }
       if(s->aB[own]>bit){ 
-        return 0; 
+        return ; 
       } 
-      else if(s->aB[own]<bit){ 
+      if(s->aB[own]<bit){ 
         break; 
       }
       own++; 
       ptn>>=1;
     }
-  // }
-  return 1;
-}
-void symmetryOps_bm(struct localState *s){
-  //90度回転
-	if(s->aB[s->BOUND2]==1){
-		if(symmetryOps_2(s)==0){ return; }
-	}
-  //180度回転
-  if(s->aB[s->si-1]==s->ENDBIT){ 
-		if(symmetryOps_4(s)==0){ return; }
-	}
-  //270度回転
-  if(s->aB[s->BOUND1]==s->TOPBIT){ 
-		if(symmetryOps_8(s)==0){ return; }
-	}
+  }
   s->lTotal+=8;
   s->lUnique++;
 }
-void inParam(struct localState *s){
-                if(s->stParam.current<MAX){
-                  s->stParam.param[s->stParam.current].Y=s->y;
-                  s->stParam.param[s->stParam.current].I=s->si;
-                  s->stParam.param[s->stParam.current].M=s->msk;
-                  s->stParam.param[s->stParam.current].L=s->l;
-                  s->stParam.param[s->stParam.current].D=s->d;
-                  s->stParam.param[s->stParam.current].R=s->r;
-                  s->stParam.param[s->stParam.current].B=s->bm;
-                  (s->stParam.current)++;
-                }
-}
-void outParam(struct localState *s){
-                if(s->stParam.current>0){
-                  s->stParam.current--;
-                }
-                s->si=s->stParam.param[s->stParam.current].I;
-                s->y=s->stParam.param[s->stParam.current].Y;
-                s->msk=s->stParam.param[s->stParam.current].M;
-                s->l=s->stParam.param[s->stParam.current].L;
-                s->d=s->stParam.param[s->stParam.current].D;
-                s->r=s->stParam.param[s->stParam.current].R;
-                s->bm=s->stParam.param[s->stParam.current].B;
-}
-void backTrack1(struct localState *s){
+void backTrack1(struct queenState *s){
   int bit;
   if(s->step!=1){
-    //s->aB[1]=bit=(1<<s->B1);
-    //s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
   }
   unsigned long j=1;
   while(1){
-#ifdef GCC_STYLE
-#else
-          if(j==100000){
-            s->step=1;
-            return;
-          }
-#endif
-          if(s->rflg==0){
-            s->bm=s->msk&~(s->l|s->d|s->r); 
-          }
-          if (s->y==s->si-1&&s->rflg==0){ 
-            if(s->bm>0){
-              s->aB[s->y]=s->bm;
-              s->lTotal+=8;
-              s->lUnique++;
-            }
-          }else{
-            if(s->B1 !=-1 && s->y>1&&(1<<s->y)<s->B1&&s->rflg==0){   
-              s->bm&=~2;
-            }
-            while(s->bm>0|| s->rflg==1){
-              if(s->rflg==0){
-                s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
-                if(s->y==1){
-                  s->B1=bit;
-                  //printf("b1:%d\n",B1);
-                  //printf("y:%d\n",1<<s->y);
-                }
-inParam(s);
-                s->y++;
-                s->l=(s->l|bit)<<1;
-                s->d=(s->d|bit);
-                s->r=(s->r|bit)>>1;
-                s->bend=1;
-                break;
-              }
-              if(s->rflg==1){ 
-outParam(s);
-                s->rflg=0;
-              }
-            }
-            if(s->bend==1 && s->rflg==0){
-              s->bend=0;
-              continue;
-            }
-          }
-          if(s->y==1){
-            s->step=2;
-            return;
-          }else{
-            s->rflg=1;
-          }
-          j++;
-        }
-}
-void backTrack2(struct localState *s){
-  int bit;
-        unsigned long j=1;
-        while (j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -280,59 +154,148 @@ void backTrack2(struct localState *s){
       return;
     }
 #endif
-          if(s->rflg==0){
-            s->bm=s->msk&~(s->l|s->d|s->r); 
-          }
-          if (s->y==s->si-1&&s->rflg==0) {
-            if(s->bm>0 && (s->bm&s->LASTMASK)==0){
-              s->aB[s->y]=s->bm;
-              symmetryOps_bm(s);
-            }
-          }else{
-            if(s->y<s->BOUND1&&s->rflg==0){
-              s->bm&=~s->SIDEMASK; 
-            }else if(s->y==s->BOUND2&&s->rflg==0){
-              if((s->d&s->SIDEMASK)==0&&s->rflg==0){ 
-                s->rflg=1;
-              }
-              if((s->d&s->SIDEMASK)!=s->SIDEMASK&&s->rflg==0){ 
-                s->bm&=s->SIDEMASK; 
-              }
-            }
-            while(s->bm>0|| s->rflg==1){
-              if(s->rflg==0){
-                s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm); 
-inParam(s);
-                s->y++;
-                s->l=(s->l|bit)<<1;
-                s->d=(s->d|bit);
-                s->r=(s->r|bit)>>1;
-                s->bend=1;
-                break;
-              }
-              if(s->rflg==1){ 
-outParam(s);
-                s->rflg=0;
-              }
-            }
-            if(s->bend==1 && s->rflg==0){
-              s->bend=0;
-              continue;
-            }
-          }
+    if(s->rflg==0){
+      s->bm=s->msk&~(s->l|s->d|s->r); 
+    }
+    if (s->y==s->si-1&&s->rflg==0){ 
+      if(s->bm>0){
+        s->aB[s->y]=s->bm;
+        s->lTotal+=8;
+        s->lUnique++;
+      }
+    }else{
+      if(s->y>1&&(1<<s->y)<s->B1){   
+        s->bm&=~2;
+      }
+      while(s->bm || s->rflg==1){
+        if(s->rflg==0){
+          s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
           if(s->y==1){
-            s->step=2;
-            return;
-          }else{
-            s->rflg=1;
+            s->B1=bit;
           }
-          j++;
-        } 
-
+        if(s->stParam.current<MAX){
+          s->stParam.param[s->stParam.current].Y=s->y;
+          s->stParam.param[s->stParam.current].I=s->si;
+          s->stParam.param[s->stParam.current].M=s->msk;
+          s->stParam.param[s->stParam.current].L=s->l;
+          s->stParam.param[s->stParam.current].D=s->d;
+          s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=s->bm;
+          (s->stParam.current)++;
+        }
+// inParam(s);
+          s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+          s->y++; s->bend=1;
+          break;
+        }else{ // s->rflg==1
+          if(s->stParam.current>0){
+            s->stParam.current--;
+          }
+          s->si=s->stParam.param[s->stParam.current].I;
+          s->y=s->stParam.param[s->stParam.current].Y;
+          s->msk=s->stParam.param[s->stParam.current].M;
+          s->l=s->stParam.param[s->stParam.current].L;
+          s->d=s->stParam.param[s->stParam.current].D;
+          s->r=s->stParam.param[s->stParam.current].R;
+          s->bm=s->stParam.param[s->stParam.current].B;
+// outParam(s);
+          s->rflg=0;
+        }
+      }
+      if(s->bend==1){
+        s->bend=0;
+        continue;
+      }
+    }
+    if(s->y==1){
+      s->step=2;
+      return;
+    }else{
+      s->rflg=1;
+    }
+    j++;
+  }
+}
+void backTrack2(struct queenState *s){
+  int bit;
+  unsigned long j=1;
+  while (1){
+#ifdef GCC_STYLE
+#else
+    if(j==100000){
+      s->step=1;
+      return;
+    }
+#endif
+    if(s->rflg==0){
+      s->bm=s->msk&~(s->l|s->d|s->r); 
+      if (s->y==s->si-1&& s->bm){
+        if((s->bm&s->LASTMASK)==0){
+          s->aB[s->y]=s->bm;
+          symmetryOps_bm(s);
+        }
+      }
+      if(s->y<s->BOUND1){
+        s->bm&=~s->SIDEMASK; 
+      }else if(s->y==s->BOUND2){
+        if((s->d&s->SIDEMASK)==0){ 
+          s->rflg=1;
+        }
+        if((s->d&s->SIDEMASK)!=s->SIDEMASK){ 
+          s->bm&=s->SIDEMASK; 
+        }
+      }
+    }
+    if(s->rflg==1 || s->y!=s->si-1) {
+      while(s->bm || s->rflg==1){
+        if(s->rflg==0){
+          s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm); 
+        if(s->stParam.current<MAX){
+          s->stParam.param[s->stParam.current].Y=s->y;
+          s->stParam.param[s->stParam.current].I=s->si;
+          s->stParam.param[s->stParam.current].M=s->msk;
+          s->stParam.param[s->stParam.current].L=s->l;
+          s->stParam.param[s->stParam.current].D=s->d;
+          s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=s->bm;
+          (s->stParam.current)++;
+        }
+// inParam(s);
+          s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+          s->y++; s->bend=1;
+          break;
+        }else{
+          if(s->stParam.current>0){
+            s->stParam.current--;
+          }
+          s->si=s->stParam.param[s->stParam.current].I;
+          s->y=s->stParam.param[s->stParam.current].Y;
+          s->msk=s->stParam.param[s->stParam.current].M;
+          s->l=s->stParam.param[s->stParam.current].L;
+          s->d=s->stParam.param[s->stParam.current].D;
+          s->r=s->stParam.param[s->stParam.current].R;
+          s->bm=s->stParam.param[s->stParam.current].B;
+// outParam(s);
+          s->rflg=0;
+        }
+      }//end while
+      if(s->bend==1){
+        s->bend=0;
+        continue;
+      }
+    }
+    if(s->y==1){
+      s->step=2;
+      return;
+    }else{
+      s->rflg=1;
+    }
+    j++;
+  } 
 }
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
-  struct localState s;
+  struct queenState s;
   s.BOUND1=state[index].BOUND1;
   s.si= state[index].si;
   for (int i = 0; i < s.si; i++)
@@ -381,18 +344,18 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         s.aB[0]=1;
         s.TOPBIT=1<<(s.si-1);
       }
-        backTrack1(&s);
+backTrack1(&s);
     }else if(s.BOUND1 !=0 && s.step !=2){ 
+      if(s.step!=1){
+      s.TOPBIT=1<<(s.si-1);
+      s.ENDBIT=s.TOPBIT>>s.BOUND1;
+      s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+      }
+      if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
         if(s.step!=1){
-        s.TOPBIT=1<<(s.si-1);
-        s.ENDBIT=s.TOPBIT>>s.BOUND1;
-        s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
-        }
-        if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
-        if(s.step!=1){
-            for(int i=1;i<s.BOUND1;i++){
-              s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
-            }
+          for(int i=1;i<s.BOUND1;i++){
+            s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
+          }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
         }
@@ -400,7 +363,7 @@ backTrack2(&s);
         if(s.step!=1){
             s.ENDBIT>>=s.si;
         }
-        }
+      }
     }
   //printf("lTotal:%ld\n",s.lTotal);
 state[index].BOUND1=s.BOUND1;

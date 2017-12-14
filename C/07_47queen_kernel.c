@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -123,7 +123,7 @@ state[index].left=left;
 }
 #ifdef GCC_STYLE
 int main(){
-  int target=12;
+  int target=16;
   /**********/
   struct queenState l[MAX];
   /**********/
