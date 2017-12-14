@@ -428,7 +428,7 @@ int makeInProgress(int si){
     inProgress[i].l=0;
     inProgress[i].d=0;
     inProgress[i].r=0;
-    inProgress[i].B1=2;
+    inProgress[i].B1=-1;
   }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
