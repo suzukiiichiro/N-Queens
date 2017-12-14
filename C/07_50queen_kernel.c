@@ -207,15 +207,17 @@ void outParam(struct localState *s){
 }
 void backTrack1(struct localState *s){
   int bit;
-        s->aB[1]=bit=(1<<s->B1);
-        s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
-        unsigned long j=1;
-        while(1){
+  if(s->step!=1){
+    s->aB[1]=bit=(1<<s->B1);
+    s->y=2;s->l=(2|bit)<<1;s->d=(1|bit);s->r=(bit>>1);
+  }
+  unsigned long j=1;
+  while(1){
 #ifdef GCC_STYLE
 #else
           if(j==500000){
             s->step=1;
-            break;
+            return;
           }
 #endif
           if(s->rflg==0){
@@ -254,7 +256,7 @@ outParam(s);
           }
           if(s->y==2){
             s->step=2;
-            break;
+            return;
           }else{
             s->rflg=1;
           }
@@ -267,9 +269,9 @@ void backTrack2(struct localState *s){
         while (j>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100000){
+    if(j==100){
       s->step=1;
-      break;
+      return;
     }
 #endif
           if(s->rflg==0){
@@ -314,7 +316,7 @@ outParam(s);
           }
           if(s->y==1){
             s->step=2;
-            break;
+            return;
           }else{
             s->rflg=1;
           }
@@ -368,28 +370,41 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //printf("r:%d\n",s.r);
   //printf("B1:%d\n",s.B1);
     int bit;
-    if(s.BOUND1==0){ 
-      s.aB[0]=1;
+    if(s.BOUND1==0 && s.step !=2){ 
+      if(s.step!=1){
+        s.aB[0]=1;
         s.TOPBIT=1<<(s.si-1);
+      }
       while(1){
+        if(s.step==1){
+          s.B1--;
+        }
         if(s.B1==s.si-1){
           break;
         }
-backTrack1(&s);
-        s.B1=s.B1+1;
+        backTrack1(&s);
+        if(s.step!=1){
+          s.B1=s.B1+1;
+        }
       }
-    }else{ 
+    }else if(s.BOUND1 !=0 && s.step !=2){ 
+        if(s.step!=1){
         s.TOPBIT=1<<(s.si-1);
         s.ENDBIT=s.TOPBIT>>s.BOUND1;
         s.SIDEMASK=s.LASTMASK=(s.TOPBIT|1);
+        }
         if(s.BOUND1>0&&s.BOUND2<s.si-1&&s.BOUND1<s.BOUND2){
+        if(s.step!=1){
             for(int i=1;i<s.BOUND1;i++){
               s.LASTMASK=s.LASTMASK|s.LASTMASK>>1|s.LASTMASK<<1;
             }
           s.aB[0]=bit=(1<<s.BOUND1);
           s.y=1;s.l=bit<<1;s.d=bit;s.r=bit>>1;
+        }
 backTrack2(&s);
+        if(s.step!=1){
             s.ENDBIT>>=s.si;
+        }
         }
     }
   //printf("lTotal:%ld\n",s.lTotal);
@@ -398,7 +413,7 @@ state[index].si=s.si;
 for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
 state[index].lTotal=s.lTotal;
 if(s.step==1){
-  state[index].step=0;
+  state[index].step=1;
 }else{
   state[index].step=2;
 }
