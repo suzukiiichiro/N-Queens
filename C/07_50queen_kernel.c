@@ -293,6 +293,7 @@ void backTrack2(struct queenState *s){
     j++;
   } 
 }
+
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   struct queenState s;

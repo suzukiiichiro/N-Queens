@@ -505,6 +505,7 @@ int execKernel(int si){
     size_t globalWorkSize[] = {si};
 	/**************/
     size_t localWorkSize[] = { 1 };
+    cl_event event;
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -514,7 +515,24 @@ int execKernel(int si){
         localWorkSize,     //1グループのスレッド数
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
-        NULL);             //この関数の返すevent
+        &event);             //この関数の返すevent
+    clFinish(cmd_queue);
+  if(USE_DEBUG){
+    cl_ulong start;
+    cl_ulong end;
+    status=clGetEventProfilingInfo(
+       event,
+       CL_PROFILING_COMMAND_START,
+       sizeof(cl_ulong),
+       &start,NULL);
+    status=clGetEventProfilingInfo(
+       event,
+       CL_PROFILING_COMMAND_END,
+       sizeof(cl_ulong),
+       &end,NULL);
+    unsigned long elapsed=(unsigned long)(end-start);
+    printf("kernel Execution\t%ldns\n",elapsed);
+  }
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
     /**
      * 結果を読み込み
