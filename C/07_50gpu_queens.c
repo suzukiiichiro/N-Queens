@@ -92,7 +92,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1
 
 cl_device_id *devices;
 cl_mem buffer;
