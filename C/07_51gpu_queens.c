@@ -147,7 +147,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1 
 
 cl_device_id *devices;
 cl_mem buffer;
@@ -161,23 +161,43 @@ cl_uint num_devices;
 long lGTotal;
 long lGUnique;
 enum { Place,Remove,Done };
+struct HIKISU{
+  int Y;
+  int I;
+  int M;
+  int L;
+  int D;
+  int R;
+  int B;
+};
+struct STACK {
+  struct HIKISU param[MAX];
+  int current;
+};
 struct queenState {
-	/**************/
   int BOUND1;
-  int BOUND2;
-	/**************/
   int si;
-  int id;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  long down;
-  long right;
-  long left;
-} __attribute__((packed));
+  int BOUND2;
+  int ENDBIT;
+  int TOPBIT;
+  int SIDEMASK;
+  int LASTMASK;
+  long lUnique; // Number of solutinos found so far.
+  int bend;
+  int rflg;
+  struct STACK stParam;
+  int msk;
+  int l;
+  int d;
+  int r;
+  int B1;
+  int j;
+};
 
 struct queenState inProgress[MAX*MAX];
 /**
@@ -439,22 +459,42 @@ void* aligned_malloc(size_t required_bytes, size_t alignment) {
 int makeInProgress(int si){
   cl_int status;
 	/**************/
+  int B2=si-1;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-        inProgress[i*si+j].BOUND1=i;
-        inProgress[i*si+j].BOUND2=j;
-        inProgress[i*si+j].si=si;
-        inProgress[i*si+j].id=i*si+j;
-        for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
-        inProgress[i*si+j].lTotal=0;
-        inProgress[i*si+j].step=0;
-        inProgress[i*si+j].y=0;
-        inProgress[i*si+j].startCol =1;
-        inProgress[i*si+j].bm= (1 << si) - 1;
-        inProgress[i*si+j].down=0;
-        inProgress[i*si+j].right=0;
-        inProgress[i*si+j].left=0;
+      inProgress[i*si+j].BOUND1=i;
+      inProgress[i*si+j].si=si;
+      for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
+      inProgress[i*si+j].lTotal=0;
+      inProgress[i*si+j].step=0;
+      inProgress[i*si+j].y=0;
+      inProgress[i*si+j].bm=0;
+      inProgress[i*si+j].BOUND2=B2;
+      B2--;
+      inProgress[i*si+j].ENDBIT=0;
+      inProgress[i*si+j].TOPBIT=1<<(si-1);
+      inProgress[i*si+j].SIDEMASK=0;
+      inProgress[i*si+j].LASTMASK=0;
+      inProgress[i*si+j].lUnique=0;
+      inProgress[i*si+j].bend=0;
+      inProgress[i*si+j].rflg=0;
+      for (int m=0;m<si;m++){
+        inProgress[i*si+j].stParam.param[m].Y=0;
+        inProgress[i*si+j].stParam.param[m].I=si;
+        inProgress[i*si+j].stParam.param[m].M=0;
+        inProgress[i*si+j].stParam.param[m].L=0;
+        inProgress[i*si+j].stParam.param[m].D=0;
+        inProgress[i*si+j].stParam.param[m].R=0;
+        inProgress[i*si+j].stParam.param[m].B=0;
       }
+      inProgress[i*si+j].stParam.current=0;
+      inProgress[i*si+j].msk=(1<<si)-1;
+      inProgress[i*si+j].l=0;
+      inProgress[i*si+j].d=0;
+      inProgress[i*si+j].r=0;
+      inProgress[i*si+j].B1=0;
+      inProgress[i*si+j].j=j;
+    }
   }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -497,9 +537,18 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
-	for (int i=0;i<num_tasks;i++)
-		if (inProgress[i].step != 2)
+	for (int i=0;i<num_tasks;i++){
+	for (int j=0;j<num_tasks;j++){
+  }
+  }
+	for (int i=0;i<num_tasks;i++){
+	for (int j=0;j<num_tasks;j++){
+		if (inProgress[i*num_tasks+j].step != 2){
+      printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].step);
 			return 0;
+    }  
+  }
+  }
 	return 1;
 }
 /**
@@ -513,7 +562,7 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
-  while(!all_tasks_done(si*si)){
+  while(!all_tasks_done(si)){
     //size_t dim=1;
     cl_uint dim=1;
     size_t globalWorkSize[] = {si*si};
@@ -548,7 +597,7 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-          if(USE_DEBUG>0) printf("%d: %ld\n",inProgress[i*si+j].id,inProgress[i*si+j].lTotal);
+          if(USE_DEBUG>0) printf("%ld\n",inProgress[i*si+j].lTotal);
           lGTotal+=inProgress[i*si+j].lTotal;
     }
   }
@@ -603,7 +652,7 @@ int NQueens(int si){
  */
 int main(void){
   int min=4;
-  int targetN=14;
+  int targetN=4;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
