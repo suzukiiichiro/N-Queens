@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -44,8 +44,8 @@ struct CL_PACKED_KEYWORD queenState {
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
-  int TOPBIT;
   int ENDBIT;
+  int TOPBIT;
   int SIDEMASK;
   int LASTMASK;
   long lUnique; // Number of solutinos found so far.
@@ -384,11 +384,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.lTotal = state[index].lTotal;
   s.step      = state[index].step;
   s.y       = state[index].y;
-  s.startCol  = state[index].startCol;
   s.bm     = state[index].bm;
   s.BOUND2    =state[index].BOUND2;
-  s.TOPBIT    =state[index].TOPBIT;
   s.ENDBIT    =state[index].ENDBIT;
+  s.TOPBIT    =state[index].TOPBIT;
   s.SIDEMASK    =state[index].SIDEMASK;
   s.LASTMASK  =state[index].LASTMASK;
   s.lUnique  =state[index].lUnique;
@@ -401,26 +400,26 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.r= state[index].r;
   s.B1= state[index].B1;
   s.j= state[index].j;
-  // printf("BOUND1:%d\n",s.BOUND1);
-  // printf("j:%d\n",s.j);
-  //printf("si:%d\n",s.si);
-  //printf("step:%d\n",s.step);
-  //printf("y:%d\n",s.y);
-  //printf("startCol:%d\n",s.startCol);
-  //printf("bm:%d\n",s.bm);
-  //printf("BOUND2:%d\n",s.BOUND2);
-  //printf("TOPBIT:%d\n",s.TOPBIT);
-  //printf("ENDBIT:%d\n",s.ENDBIT);
-  //printf("SIDEMASK:%d\n",s.SIDEMASK);
-  //printf("LASTMASK:%d\n",s.LASTMASK);
-  //printf("lUnique:%ld\n",s.lUnique);
-  //printf("bend:%d\n",s.bend);
-  //printf("rflg:%d\n",s.rflg);
-  //printf("msk:%d\n",s.msk);
-  //printf("l:%d\n",s.l);
-  //printf("d:%d\n",s.d);
-  //printf("r:%d\n",s.r);
-  //printf("B1:%d\n",s.B1);
+   printf("BOUND1:%d\n",s.BOUND1);
+   printf("j:%d\n",s.j);
+  // printf("si:%d\n",s.si);
+  printf("step:%d\n",s.step);
+  // printf("y:%d\n",s.y);
+  // printf("startCol:%d\n",s.startCol);
+  // printf("bm:%d\n",s.bm);
+  // printf("BOUND2:%d\n",s.BOUND2);
+  // printf("TOPBIT:%d\n",s.TOPBIT);
+  // printf("ENDBIT:%d\n",s.ENDBIT);
+  // printf("SIDEMASK:%d\n",s.SIDEMASK);
+  // printf("LASTMASK:%d\n",s.LASTMASK);
+  // printf("lUnique:%ld\n",s.lUnique);
+  // printf("bend:%d\n",s.bend);
+  // printf("rflg:%d\n",s.rflg);
+  // printf("msk:%d\n",s.msk);
+  // printf("l:%d\n",s.l);
+  // printf("d:%d\n",s.d);
+  // printf("r:%d\n",s.r);
+  // printf("B1:%d\n",s.B1);
     int bit;
     if(s.BOUND1==0 && s.step !=2){ 
       if(s.step!=1){
@@ -448,7 +447,7 @@ backTrack2(&s);
         }
       }
     }
-  // printf("lTotal:%ld\n",s.lTotal);
+ printf("lTotal:%ld\n",s.lTotal);
 state[index].BOUND1=s.BOUND1;
 state[index].si=s.si;
 for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
@@ -459,11 +458,10 @@ if(s.step==1){
   state[index].step=2;
 }
 state[index].y=s.y;
-state[index].startCol=s.startCol;
 state[index].bm=s.bm;
 state[index].BOUND2=s.BOUND2;
-state[index].TOPBIT=s.TOPBIT;
 state[index].ENDBIT=s.ENDBIT;
+state[index].TOPBIT=s.TOPBIT;
 state[index].SIDEMASK=s.SIDEMASK;
 state[index].LASTMASK=s.LASTMASK;
 state[index].lUnique=s.lUnique;
