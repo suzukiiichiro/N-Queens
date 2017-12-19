@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -44,8 +44,8 @@ struct CL_PACKED_KEYWORD queenState {
   int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
-  int ENDBIT;
   int TOPBIT;
+  int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
   long lUnique; // Number of solutinos found so far.
@@ -57,8 +57,10 @@ struct CL_PACKED_KEYWORD queenState {
   int d;
   int r;
   int B1;
+  /***********/
   int j;
   long lt;
+  /***********/
 };
 void symmetryOps_bm(struct queenState *s){
   int nEquiv;
@@ -146,11 +148,9 @@ void symmetryOps_bm(struct queenState *s){
   s->lUnique++;
 }
 void backTrack1(struct queenState *s){
-  //printf("backtrack1:start\n");
   int bit;
   if(s->step!=1){
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
-    //printf("s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);\n");
   }
   unsigned long j=1;
   while(1){
@@ -163,105 +163,91 @@ void backTrack1(struct queenState *s){
 #endif
     if(s->rflg==0){
       s->bm=s->msk&~(s->l|s->d|s->r); 
-      //printf("s->bm=s->msk&~(s->l|s->d|s->r);\n");
-    }
-    if (s->y==s->si-1&&s->rflg==0){ 
-      //printf("if (s->y==s->si-1&&s->rflg==0){\n");
-      if(s->bm>0){
-        //printf("if(s->bm>0){\n");
-        s->aB[s->y]=s->bm;
-        s->lTotal+=8;
-        s->lt+=8;
-        s->lUnique++;
+      if (s->y==s->si-1){ 
+        if(s->bm){
+          s->aB[s->y]=s->bm;
+          s->lTotal+=8;
+          s->lt+=8;
+          s->lUnique++;
+        }
       }
-    }else{
-      //printf("}else{#if (s->y==s->si-1&&s->rflg==0){\n");
-      if(s->y>1&&(1<<s->y)<s->B1 && s->rflg==0){   
-        s->bm&=~2;
-        //printf("s->bm&=~2;\n");
-      }
-      if(s->y==1 && s->j>=0 && s->rflg==0){
-        //printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
+    /******************************/
+      if(s->y==1 && s->j>=0){
         if(s->bm & (1<<s->j)){ 
-          //printf("if(s->bm & (1<<s->j)){\n");
           s->aB[s->y]=bit=1<<s->j; 
           s->B1=bit;
         }else{ 
-          //printf("}else{ #if(s->bm & (1<<s->j)){\n");
           return;
         }
-          //printf("if(s->rflg==0){#inParam\n");
-          if(s->stParam.current<MAX){
-            s->stParam.param[s->stParam.current].Y=s->y;
-            s->stParam.param[s->stParam.current].I=s->si;
-            s->stParam.param[s->stParam.current].M=s->msk;
-            s->stParam.param[s->stParam.current].L=s->l;
-            s->stParam.param[s->stParam.current].D=s->d;
-            s->stParam.param[s->stParam.current].R=s->r;
-            s->stParam.param[s->stParam.current].B=s->bm;
-            (s->stParam.current)++;
-          }
-          // inParam(s);
-          s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
-          s->y++; 
-          continue;
-      }else {
-        //printf("}else{ #if(s->y>1&&(1<<s->y)<s->B1){\n");
-        while(s->bm || s->rflg==1){
-          //printf("while(s->bm || s->rflg==1){\n");
-          if(s->rflg==0){
-            //printf("inparam\n");
-            s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
-            if(s->stParam.current<MAX){
-              s->stParam.param[s->stParam.current].Y=s->y;
-              s->stParam.param[s->stParam.current].I=s->si;
-              s->stParam.param[s->stParam.current].M=s->msk;
-              s->stParam.param[s->stParam.current].L=s->l;
-              s->stParam.param[s->stParam.current].D=s->d;
-              s->stParam.param[s->stParam.current].R=s->r;
-              s->stParam.param[s->stParam.current].B=s->bm;
-              (s->stParam.current)++;
-            }
-            // inParam(s);
-            s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
-            s->y++; s->bend=1;
-            break;
-          }else{ // s->rflg==1
-            //printf("outparam\n");
-            if(s->stParam.current>0){
-              s->stParam.current--;
-            }
-            s->si=s->stParam.param[s->stParam.current].I;
-            s->y=s->stParam.param[s->stParam.current].Y;
-            s->msk=s->stParam.param[s->stParam.current].M;
-            s->l=s->stParam.param[s->stParam.current].L;
-            s->d=s->stParam.param[s->stParam.current].D;
-            s->r=s->stParam.param[s->stParam.current].R;
-            s->bm=s->stParam.param[s->stParam.current].B;
-            // outParam(s);
-            s->rflg=0;
-          }
+        if(s->stParam.current<MAX){
+          s->stParam.param[s->stParam.current].Y=s->y;
+          s->stParam.param[s->stParam.current].I=s->si;
+          s->stParam.param[s->stParam.current].M=s->msk;
+          s->stParam.param[s->stParam.current].L=s->l;
+          s->stParam.param[s->stParam.current].D=s->d;
+          s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=s->bm;
+          (s->stParam.current)++;
         }
-      }
-      if(s->bend==1 && s->rflg==0){
-        //printf("if(s->bend==1){\n");
-        s->bend=0;
+        s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+        s->y++; 
         continue;
       }
     }
+    /******************************/
+    if(s->y>1&&(1<<s->y)<s->B1){   
+      s->bm&=~2;
+    }
+    while(s->bm || s->rflg==1){
+      if(s->rflg==0){
+        s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm);
+        if(s->y==1){
+          s->B1=bit;
+        }
+        if(s->stParam.current<MAX){
+          s->stParam.param[s->stParam.current].Y=s->y;
+          s->stParam.param[s->stParam.current].I=s->si;
+          s->stParam.param[s->stParam.current].M=s->msk;
+          s->stParam.param[s->stParam.current].L=s->l;
+          s->stParam.param[s->stParam.current].D=s->d;
+          s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=s->bm;
+          (s->stParam.current)++;
+        }
+        s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+        s->y++; s->bend=1;
+        break;
+      }else{ // s->rflg==1
+        if(s->stParam.current>0){
+          s->stParam.current--;
+        }
+        s->si=s->stParam.param[s->stParam.current].I;
+        s->y=s->stParam.param[s->stParam.current].Y;
+        s->msk=s->stParam.param[s->stParam.current].M;
+        s->l=s->stParam.param[s->stParam.current].L;
+        s->d=s->stParam.param[s->stParam.current].D;
+        s->r=s->stParam.param[s->stParam.current].R;
+        s->bm=s->stParam.param[s->stParam.current].B;
+        s->rflg=0;
+      }
+    }
+    if(s->bend==1){
+      s->bend=0;
+      continue;
+    }
+    /***************/
+    //if(s->y==1){
     if(s->y==2){
-      //printf("if(s->y==1){\n");
+    /***************/
       s->step=2;
       return;
     }else{
-      //printf("}else{#if(s->y==1){");
       s->rflg=1;
     }
     j++;
   }
 }
 void backTrack2(struct queenState *s){
-  // printf("backtrack2:start\n");
   int bit;
   unsigned long j=1;
   while (1){
@@ -274,42 +260,30 @@ void backTrack2(struct queenState *s){
 #endif
     if(s->rflg==0){
       s->bm=s->msk&~(s->l|s->d|s->r); 
-      // printf("s->bm=s->msk&~(s->l|s->d|s->r);\n");
-    }
-    if (s->y==s->si-1 && s->rflg==0){
-      // printf("if (s->y==s->si-1&& s->bm){\n");
-      if(s->bm>0 && (s->bm&s->LASTMASK)==0){
-        // printf("if((s->bm&s->LASTMASK)==0){#symmetryOps\n");
-        s->aB[s->y]=s->bm;
-        symmetryOps_bm(s);
+      if(s->y==s->si-1&&s->bm){
+        if((s->bm&s->LASTMASK)==0){
+          s->aB[s->y]=s->bm;
+          symmetryOps_bm(s);
+        }
       }
-    }else{
-      if(s->y<s->BOUND1&&s->rflg==0){
-        // printf("if(s->y<s->BOUND1){\n");
+      if(s->y<s->BOUND1){
         s->bm&=~s->SIDEMASK; 
-      }else if(s->y==s->BOUND2&&s->rflg==0){
-        // printf("}else if(s->y==s->BOUND2){\n");
-        if((s->d&s->SIDEMASK)==0&&s->rflg==0){ 
-          // printf("if((s->d&s->SIDEMASK)==0){\n");
+      }else if(s->y==s->BOUND2){
+        if((s->d&s->SIDEMASK)==0){ 
           s->rflg=1;
         }
-        if((s->d&s->SIDEMASK)!=s->SIDEMASK&&s->rflg==0){ 
-          // printf("if((s->d&s->SIDEMASK)!=s->SIDEMASK){\n");
+        if((s->d&s->SIDEMASK)!=s->SIDEMASK){ 
           s->bm&=s->SIDEMASK; 
         }
       }
-
-      if(s->y==1 && s->j>=0 && s->rflg==0){
-        // printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
-        if(s->bm & (1<<s->j)){ 
-          // printf("if(s->bm & (1<<s->j)){\n");
-          s->aB[s->y]=bit=1<<s->j; 
-
-        } else{ 
-          // printf("} else{#if(s->bm & (1<<s->j)){");
-          return;
-        }
-          // printf("inparam\n");
+  /***************************/
+      if(s->y==1){
+        if(s->j>=0){
+          if(s->bm & (1<<s->j)){ 
+            s->aB[s->y]=bit=1<<s->j; 
+          }else{ 
+            return;
+          }
           if(s->stParam.current<MAX){
             s->stParam.param[s->stParam.current].Y=s->y;
             s->stParam.param[s->stParam.current].I=s->si;
@@ -320,59 +294,54 @@ void backTrack2(struct queenState *s){
             s->stParam.param[s->stParam.current].B=s->bm;
             (s->stParam.current)++;
           }
-          // inParam(s);
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
-      }else{
-        while(s->bm || s->rflg==1){
-          // printf("while(s->bm || s->rflg==1){\n");
-          if(s->rflg==0){
-            // printf("inparam\n");
-            s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm); 
-            if(s->stParam.current<MAX){
-              s->stParam.param[s->stParam.current].Y=s->y;
-              s->stParam.param[s->stParam.current].I=s->si;
-              s->stParam.param[s->stParam.current].M=s->msk;
-              s->stParam.param[s->stParam.current].L=s->l;
-              s->stParam.param[s->stParam.current].D=s->d;
-              s->stParam.param[s->stParam.current].R=s->r;
-              s->stParam.param[s->stParam.current].B=s->bm;
-              (s->stParam.current)++;
-            }
-            // inParam(s);
-            s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
-            s->y++; s->bend=1;
-            break;
-          }else{
-            // printf("outparam\n");
-            if(s->stParam.current>0){
-              s->stParam.current--;
-            }
-            s->si=s->stParam.param[s->stParam.current].I;
-            s->y=s->stParam.param[s->stParam.current].Y;
-            s->msk=s->stParam.param[s->stParam.current].M;
-            s->l=s->stParam.param[s->stParam.current].L;
-            s->d=s->stParam.param[s->stParam.current].D;
-            s->r=s->stParam.param[s->stParam.current].R;
-            s->bm=s->stParam.param[s->stParam.current].B;
-            // outParam(s);
-            s->rflg=0;
-          }
-        }//end while
+        }
       }
-      if(s->bend==1 && s->rflg==0){
-        // printf("if(s->bend==1){\n");
-        s->bend=0;
-        continue;
+  /***************************/
+    }
+    while(s->bm || s->rflg==1){
+      if(s->rflg==0){
+        s->bm^=s->aB[s->y]=bit=(-s->bm&s->bm); 
+        if(s->stParam.current<MAX){
+          s->stParam.param[s->stParam.current].Y=s->y;
+          s->stParam.param[s->stParam.current].I=s->si;
+          s->stParam.param[s->stParam.current].M=s->msk;
+          s->stParam.param[s->stParam.current].L=s->l;
+          s->stParam.param[s->stParam.current].D=s->d;
+          s->stParam.param[s->stParam.current].R=s->r;
+          s->stParam.param[s->stParam.current].B=s->bm;
+          (s->stParam.current)++;
+        }
+        s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+        s->y++; s->bend=1;
+        break;
+      }else{
+        if(s->stParam.current>0){
+          s->stParam.current--;
+        }
+        s->si=s->stParam.param[s->stParam.current].I;
+        s->y=s->stParam.param[s->stParam.current].Y;
+        s->msk=s->stParam.param[s->stParam.current].M;
+        s->l=s->stParam.param[s->stParam.current].L;
+        s->d=s->stParam.param[s->stParam.current].D;
+        s->r=s->stParam.param[s->stParam.current].R;
+        s->bm=s->stParam.param[s->stParam.current].B;
+        s->rflg=0;
       }
     }
+    if(s->bend==1){
+      s->bend=0;
+      continue;
+    }
+    // }
+    /**************************/
     if(s->y==2){
-      // printf("if(s->y==1){\n");
+    /**************************/
       s->step=2;
       return;
     }else{
-      // printf("}else{#if(s->y==1){");
       s->rflg=1;
     }
     j++;
@@ -389,10 +358,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.lTotal = state[index].lTotal;
   s.step      = state[index].step;
   s.y       = state[index].y;
+  s.startCol  = state[index].startCol;
   s.bm     = state[index].bm;
   s.BOUND2    =state[index].BOUND2;
-  s.ENDBIT    =state[index].ENDBIT;
   s.TOPBIT    =state[index].TOPBIT;
+  s.ENDBIT    =state[index].ENDBIT;
   s.SIDEMASK    =state[index].SIDEMASK;
   s.LASTMASK  =state[index].LASTMASK;
   s.lUnique  =state[index].lUnique;
@@ -400,33 +370,13 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.rflg  =state[index].rflg;
   s.stParam=state[index].stParam;
   //s.msk= state[index].msk;
-  s.msk= (1<<s.si)-1;
+  s.msk=(1<<s.si)-1;
   s.l= state[index].l;
   s.d= state[index].d;
   s.r= state[index].r;
   s.B1= state[index].B1;
   s.j= state[index].j;
-  s.lt= state[index].lt;
-   // printf("BOUND1:%d\n",s.BOUND1);
-   // printf("j:%d\n",s.j);
-  // printf("si:%d\n",s.si);
-  // printf("b:step:%d\n",s.step);
-  // printf("y:%d\n",s.y);
-  // printf("startCol:%d\n",s.startCol);
-  // printf("bm:%d\n",s.bm);
-  // printf("BOUND2:%d\n",s.BOUND2);
-  // printf("TOPBIT:%d\n",s.TOPBIT);
-  // printf("ENDBIT:%d\n",s.ENDBIT);
-  // printf("SIDEMASK:%d\n",s.SIDEMASK);
-  // printf("LASTMASK:%d\n",s.LASTMASK);
-  // printf("lUnique:%ld\n",s.lUnique);
-  // printf("bend:%d\n",s.bend);
-  // printf("rflg:%d\n",s.rflg);
-  // printf("msk:%d\n",s.msk);
-  // printf("l:%d\n",s.l);
-  // printf("d:%d\n",s.d);
-  // printf("r:%d\n",s.r);
-  // printf("B1:%d\n",s.B1);
+  s.lt=state[index].lt;
     int bit;
     if(s.BOUND1==0 && s.step !=2){ 
       if(s.step!=1){
@@ -454,37 +404,38 @@ backTrack2(&s);
         }
       }
     }
- // printf("lTotal:%ld\n",s.lTotal);
 state[index].BOUND1=s.BOUND1;
 state[index].si=s.si;
 for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
 state[index].lTotal=s.lTotal;
 if(s.step==1){
   state[index].step=1;
-state[index].msk=1;
+  state[index].msk=1;
 }else{
   state[index].step=2;
-state[index].msk=2;
+  state[index].msk=2;
 }
 state[index].y=s.y;
-state[index].startCol=0;
+state[index].startCol=s.startCol;
 state[index].bm=s.bm;
 state[index].BOUND2=s.BOUND2;
-state[index].ENDBIT=s.ENDBIT;
 state[index].TOPBIT=s.TOPBIT;
+state[index].ENDBIT=s.ENDBIT;
 state[index].SIDEMASK=s.SIDEMASK;
 state[index].LASTMASK=s.LASTMASK;
 state[index].lUnique=s.lUnique;
 state[index].bend=s.bend;
 state[index].rflg=s.rflg;
 state[index].stParam=s.stParam;
- // printf("m:step:%d\n",state[index].msk);
+// state[index].msk=s.msk;
 state[index].l=s.l;
 state[index].d=s.d;
 state[index].r=s.r;
 state[index].B1=s.B1;
+/******************/
 state[index].j=s.j;
 state[index].lt=s.lt;
+/******************/
 }
 #ifdef GCC_STYLE
 int main(){
