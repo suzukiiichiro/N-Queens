@@ -1,11 +1,5 @@
-﻿//
-//
-//
-//
-//
-//
-//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+﻿//  単体で動かすときは以下のコメントを外す
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -64,6 +58,7 @@ struct CL_PACKED_KEYWORD queenState {
   int r;
   int B1;
   int j;
+  int k;
   long lt;
   // long C2;
   // long C4;
@@ -218,6 +213,31 @@ void backTrack1(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
+      }else if(s->y==2 && s->k>=0 && s->rflg==0){
+        //printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
+        if(s->bm & (1<<s->k)){ 
+          //printf("if(s->bm & (1<<s->j)){\n");
+          s->aB[s->y]=bit=1<<s->k; 
+          // s->B1=bit;
+        }else{ 
+          //printf("}else{ #if(s->bm & (1<<s->j)){\n");
+          return;
+        }
+          //printf("if(s->rflg==0){#inParam\n");
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=s->y;
+            s->stParam.param[s->stParam.current].I=s->si;
+            s->stParam.param[s->stParam.current].M=s->msk;
+            s->stParam.param[s->stParam.current].L=s->l;
+            s->stParam.param[s->stParam.current].D=s->d;
+            s->stParam.param[s->stParam.current].R=s->r;
+            s->stParam.param[s->stParam.current].B=s->bm;
+            (s->stParam.current)++;
+          }
+          // inParam(s);
+          s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+          s->y++; 
+          continue;
       }else {
         //printf("}else{ #if(s->y>1&&(1<<s->y)<s->B1){\n");
         while(s->bm || s->rflg==1){
@@ -262,7 +282,7 @@ void backTrack1(struct queenState *s){
         continue;
       }
     }
-    if(s->y==2){
+    if(s->y==3){
       //printf("if(s->y==1){\n");
       s->step=2;
       return;
@@ -337,6 +357,31 @@ void backTrack2(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
+      }else if(s->y==2 && s->k>=0 && s->rflg==0){
+        // printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
+        if(s->bm & (1<<s->k)){ 
+          // printf("if(s->bm & (1<<s->j)){\n");
+          s->aB[s->y]=bit=1<<s->k; 
+
+        } else{ 
+          // printf("} else{#if(s->bm & (1<<s->j)){");
+          return;
+        }
+          // printf("inparam\n");
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=s->y;
+            s->stParam.param[s->stParam.current].I=s->si;
+            s->stParam.param[s->stParam.current].M=s->msk;
+            s->stParam.param[s->stParam.current].L=s->l;
+            s->stParam.param[s->stParam.current].D=s->d;
+            s->stParam.param[s->stParam.current].R=s->r;
+            s->stParam.param[s->stParam.current].B=s->bm;
+            (s->stParam.current)++;
+          }
+          // inParam(s);
+          s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
+          s->y++; 
+          continue;
       }else{
         while(s->bm || s->rflg==1){
           // printf("while(s->bm || s->rflg==1){\n");
@@ -380,7 +425,7 @@ void backTrack2(struct queenState *s){
         continue;
       }
     }
-    if(s->y==2){
+    if(s->y==3){
       // printf("if(s->y==1){\n");
       s->step=2;
       return;
@@ -419,6 +464,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.r= state[index].r;
   s.B1= state[index].B1;
   s.j= state[index].j;
+  s.k= state[index].k;
   s.lt= state[index].lt;
   // s.C2=state[index].C2;
   // s.C4=state[index].C4;
@@ -500,6 +546,7 @@ state[index].d=s.d;
 state[index].r=s.r;
 state[index].B1=s.B1;
 state[index].j=s.j;
+state[index].k=s.k;
 state[index].lt=s.lt;
 // state[index].C2=s.C2;
 // state[index].C4=s.C4;
@@ -509,7 +556,7 @@ state[index].lt=s.lt;
 int main(){
   int target=17;
   /**********/
-  struct queenState inProgress[MAX*MAX];
+  struct queenState inProgress[MAX*MAX*MAX];
   /**********/
   printf("%s\n"," N:          Total        Unique\n");
   for(int si=4;si<=target;si++){
@@ -517,49 +564,54 @@ int main(){
     long gUnique=0;
     for(int i=0,B2=si-1;i<si;i++,B2--){ // N
       for(int j=0;j<si;j++){ // N
-      inProgress[i*si+j].si=si;
-      inProgress[i*si+j].B1=-1;
-      inProgress[i*si+j].BOUND1=i;
-      inProgress[i*si+j].BOUND2=B2;
-      inProgress[i*si+j].j=j;
-      inProgress[i*si+j].ENDBIT=0;
-      inProgress[i*si+j].TOPBIT=1<<(si-1);
-      inProgress[i*si+j].SIDEMASK=0;
-      inProgress[i*si+j].LASTMASK=0;
-      for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
-      inProgress[i*si+j].lTotal=0;
-      inProgress[i*si+j].lUnique=0;
-      inProgress[i*si+j].step=0;
-      inProgress[i*si+j].y=0;
-      inProgress[i*si+j].bend=0;
-      inProgress[i*si+j].rflg=0;
-      for (int m=0;m<si;m++){
-        inProgress[i*si+j].stParam.param[m].Y=0;
-        inProgress[i*si+j].stParam.param[m].I=si;
-        inProgress[i*si+j].stParam.param[m].M=0;
-        inProgress[i*si+j].stParam.param[m].L=0;
-        inProgress[i*si+j].stParam.param[m].D=0;
-        inProgress[i*si+j].stParam.param[m].R=0;
-        inProgress[i*si+j].stParam.param[m].B=0;
-      }
-      inProgress[i*si+j].stParam.current=0;
-      inProgress[i*si+j].msk=(1<<si)-1;
-      inProgress[i*si+j].l=0;
-      inProgress[i*si+j].d=0;
-      inProgress[i*si+j].r=0;
-      inProgress[i*si+j].bm=0;
-      inProgress[i*si+j].C2=0;
-      inProgress[i*si+j].C4=0;
-      inProgress[i*si+j].C8=0;
-      place(&inProgress[i*si+j]);
+        for(int k=0;k<si;k++){
+          inProgress[i*si*si+j*si+k].si=si;
+          inProgress[i*si*si+j*si+k].B1=-1;
+          inProgress[i*si*si+j*si+k].BOUND1=i;
+          inProgress[i*si*si+j*si+k].BOUND2=B2;
+          inProgress[i*si*si+j*si+k].j=j;
+          inProgress[i*si*si+j*si+k].k=k;
+          inProgress[i*si*si+j*si+k].ENDBIT=0;
+          inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
+          inProgress[i*si*si+j*si+k].SIDEMASK=0;
+          inProgress[i*si*si+j*si+k].LASTMASK=0;
+          for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+          inProgress[i*si*si+j*si+k].lTotal=0;
+          inProgress[i*si*si+j*si+k].lUnique=0;
+          inProgress[i*si*si+j*si+k].step=0;
+          inProgress[i*si*si+j*si+k].y=0;
+          inProgress[i*si*si+j*si+k].bend=0;
+          inProgress[i*si*si+j*si+k].rflg=0;
+          for (int m=0;m<si;m++){
+            inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
+            inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
+            inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
+            inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
+            inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
+            inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
+            inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+          }
+          inProgress[i*si*si+j*si+k].stParam.current=0;
+          inProgress[i*si*si+j*si+k].msk=(1<<si)-1;
+          inProgress[i*si*si+j*si+k].l=0;
+          inProgress[i*si*si+j*si+k].d=0;
+          inProgress[i*si*si+j*si+k].r=0;
+          inProgress[i*si*si+j*si+k].bm=0;
+          // inProgress[i*si*si+j*si+k].C2=0;
+          // inProgress[i*si*si+j*si+k].C4=0;
+          // inProgress[i*si*si+j*si+k].C8=0;
+          place(&inProgress[i*si*si+j*si+k]);
+        }
       }
     }
     for(int i=0;i<si;i++){
       for(int j=0;j<si;j++){ // N
-        gTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
-        // gTotal+=inProgress[i*si+j].lTotal;
-        // gUnique+=inProgress[i*si+j].lUnique;
-        gUnique+=inProgress[i*si+j].C2+inProgress[i*si+j].C4+inProgress[i*si+j].C8;
+        for(int k=0;k<si;k++){
+          // gTotal+=inProgress[i*si*si+j*si+k].C2*2+inProgress[i*si*si+j*si+k].C4*4+inProgress[i*si*si+j*si+k].C8*8;
+          gTotal+=inProgress[i*si*si+j*si+k].lTotal;
+          gUnique+=inProgress[i*si*si+j*si+k].lUnique;
+          // gUnique+=inProgress[i*si*si+j*si+k].C2+inProgress[i*si*si+j*si+k].C4+inProgress[i*si*si+j*si+k].C8;
+        }
       }
     }
   /**********/

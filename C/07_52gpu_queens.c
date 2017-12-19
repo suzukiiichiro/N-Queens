@@ -4,7 +4,7 @@
 
 	07_46までのロジックを全て含み GPUをNからＮ*siに変更
 
-  struct queenState inProgress[MAX*MAX];
+  struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_51NQueen 07_51gpu_queens.c -framework OpenCL
@@ -155,6 +155,7 @@ struct queenState {
   int r;
   int B1;
   int j;
+  int k;
   long lt;
   // long C2;
   // long C4;
@@ -162,7 +163,7 @@ struct queenState {
 // };
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX];
+struct queenState inProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -425,43 +426,46 @@ int makeInProgress(int si){
   int B2=si-1;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      inProgress[i*si+j].BOUND1=i;
-      inProgress[i*si+j].si=si;
-      for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
-      inProgress[i*si+j].lTotal=0;
-      inProgress[i*si+j].step=0;
-      inProgress[i*si+j].y=0;
-      inProgress[i*si+j].bm=0;
-      inProgress[i*si+j].BOUND2=B2;
-      inProgress[i*si+j].ENDBIT=0;
-      inProgress[i*si+j].TOPBIT=1<<(si-1);
-      inProgress[i*si+j].SIDEMASK=0;
-      inProgress[i*si+j].LASTMASK=0;
-      inProgress[i*si+j].lUnique=0;
-      inProgress[i*si+j].bend=0;
-      inProgress[i*si+j].rflg=0;
-      for (int m=0;m<si;m++){
-        inProgress[i*si+j].stParam.param[m].Y=0;
-        inProgress[i*si+j].stParam.param[m].I=si;
-        inProgress[i*si+j].stParam.param[m].M=0;
-        inProgress[i*si+j].stParam.param[m].L=0;
-        inProgress[i*si+j].stParam.param[m].D=0;
-        inProgress[i*si+j].stParam.param[m].R=0;
-        inProgress[i*si+j].stParam.param[m].B=0;
+      for(int k=0;k<si;k++){
+        inProgress[i*si*si+j*si+k].BOUND1=i;
+        inProgress[i*si*si+j*si+k].si=si;
+        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+        inProgress[i*si*si+j*si+k].lTotal=0;
+        inProgress[i*si*si+j*si+k].step=0;
+        inProgress[i*si*si+j*si+k].y=0;
+        inProgress[i*si*si+j*si+k].bm=0;
+        inProgress[i*si*si+j*si+k].BOUND2=B2;
+        inProgress[i*si*si+j*si+k].ENDBIT=0;
+        inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
+        inProgress[i*si*si+j*si+k].SIDEMASK=0;
+        inProgress[i*si*si+j*si+k].LASTMASK=0;
+        inProgress[i*si*si+j*si+k].lUnique=0;
+        inProgress[i*si*si+j*si+k].bend=0;
+        inProgress[i*si*si+j*si+k].rflg=0;
+        for (int m=0;m<si;m++){
+          inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
+          inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+        }
+        inProgress[i*si*si+j*si+k].stParam.current=0;
+        inProgress[i*si*si+j*si+k].msk=(1<<si)-1;
+        inProgress[i*si*si+j*si+k].l=0;
+        inProgress[i*si*si+j*si+k].d=0;
+        inProgress[i*si*si+j*si+k].r=0;
+        inProgress[i*si*si+j*si+k].B1=0;
+        inProgress[i*si*si+j*si+k].j=j;
+        inProgress[i*si*si+j*si+k].j=k;
+        inProgress[i*si*si+j*si+k].lt=0;
+        // inProgress[i*si*si+j*si+k].C2=0;
+        // inProgress[i*si*si+j*si+k].C4=0;
+        // inProgress[i*si*si+j*si+k].C8=0;
       }
-      inProgress[i*si+j].stParam.current=0;
-      inProgress[i*si+j].msk=(1<<si)-1;
-      inProgress[i*si+j].l=0;
-      inProgress[i*si+j].d=0;
-      inProgress[i*si+j].r=0;
-      inProgress[i*si+j].B1=0;
-      inProgress[i*si+j].j=j;
-      inProgress[i*si+j].lt=0;
-      // inProgress[i*si+j].C2=0;
-      // inProgress[i*si+j].C4=0;
-      // inProgress[i*si+j].C8=0;
     }
-      B2--;
+    B2--;
   }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -526,10 +530,10 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
-  while(!all_tasks_done(si*si)){
+  while(!all_tasks_done(si*si*si)){
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si*si};
+    size_t globalWorkSize[] = {si*si*si};
 	/**************/
     size_t localWorkSize[] = { 1 };
     status=clEnqueueNDRangeKernel(
@@ -561,6 +565,7 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
           // if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
           // printf("BOUND1:%d\n",inProgress[i*si+j].BOUND1);
           // printf("si:%d\n",inProgress[i*si+j].si);
@@ -585,9 +590,10 @@ int execPrint(int si){
           // lGTotal+=inProgress[i*si+j].lt;
           // lGUnique+=inProgress[i*si+j].lUnique;
         // lGTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
-        lGTotal+=inProgress[i*si+j].lTotal;
-        lGUnique+=inProgress[i*si+j].lUnique;
+        lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
+        lGUnique+=inProgress[i*si*si+j*si+k].lUnique;
         // lGUnique+=inProgress[i*si+j].C2+inProgress[i*si+j].C4+inProgress[i*si+j].C8;
+      }
     }
   }
 	/**************/
