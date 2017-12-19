@@ -58,6 +58,7 @@ struct CL_PACKED_KEYWORD queenState {
   int r;
   int B1;
   int j;
+  long lt;
 };
 void symmetryOps_bm(struct queenState *s){
   int nEquiv;
@@ -86,6 +87,7 @@ void symmetryOps_bm(struct queenState *s){
     /** 90度回転して同型なら180度/270度回転も同型である */
     if(own>s->si-1){ 
       s->lTotal+=2;
+      s->lt+=2;
       s->lUnique++; 
       return;
     }//end if
@@ -113,6 +115,7 @@ void symmetryOps_bm(struct queenState *s){
     /** 90度回転が同型でなくても180度回転が同型である事もある */
     if(own>s->si-1){ 
       s->lTotal+=4;
+      s->lt+=4;
       s->lUnique++;
       return ;
     }
@@ -139,6 +142,7 @@ void symmetryOps_bm(struct queenState *s){
     }
   }
   s->lTotal+=8;
+  s->lt+=8;
   s->lUnique++;
 }
 void backTrack1(struct queenState *s){
@@ -167,6 +171,7 @@ void backTrack1(struct queenState *s){
         //printf("if(s->bm>0){\n");
         s->aB[s->y]=s->bm;
         s->lTotal+=8;
+        s->lt+=8;
         s->lUnique++;
       }
     }else{
@@ -394,32 +399,34 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.bend  =state[index].bend;
   s.rflg  =state[index].rflg;
   s.stParam=state[index].stParam;
-  s.msk= state[index].msk;
+  //s.msk= state[index].msk;
+  s.msk= (1<<s.si)-1;
   s.l= state[index].l;
   s.d= state[index].d;
   s.r= state[index].r;
   s.B1= state[index].B1;
   s.j= state[index].j;
-   printf("BOUND1:%d\n",s.BOUND1);
-   printf("j:%d\n",s.j);
-  printf("si:%d\n",s.si);
-  printf("step:%d\n",s.step);
-  printf("y:%d\n",s.y);
-  printf("startCol:%d\n",s.startCol);
-  printf("bm:%d\n",s.bm);
-  printf("BOUND2:%d\n",s.BOUND2);
-  printf("TOPBIT:%d\n",s.TOPBIT);
-  printf("ENDBIT:%d\n",s.ENDBIT);
-  printf("SIDEMASK:%d\n",s.SIDEMASK);
-  printf("LASTMASK:%d\n",s.LASTMASK);
-  printf("lUnique:%ld\n",s.lUnique);
-  printf("bend:%d\n",s.bend);
-  printf("rflg:%d\n",s.rflg);
-  printf("msk:%d\n",s.msk);
-  printf("l:%d\n",s.l);
-  printf("d:%d\n",s.d);
-  printf("r:%d\n",s.r);
-  printf("B1:%d\n",s.B1);
+  s.lt= state[index].lt;
+   // printf("BOUND1:%d\n",s.BOUND1);
+   // printf("j:%d\n",s.j);
+  // printf("si:%d\n",s.si);
+  // printf("b:step:%d\n",s.step);
+  // printf("y:%d\n",s.y);
+  // printf("startCol:%d\n",s.startCol);
+  // printf("bm:%d\n",s.bm);
+  // printf("BOUND2:%d\n",s.BOUND2);
+  // printf("TOPBIT:%d\n",s.TOPBIT);
+  // printf("ENDBIT:%d\n",s.ENDBIT);
+  // printf("SIDEMASK:%d\n",s.SIDEMASK);
+  // printf("LASTMASK:%d\n",s.LASTMASK);
+  // printf("lUnique:%ld\n",s.lUnique);
+  // printf("bend:%d\n",s.bend);
+  // printf("rflg:%d\n",s.rflg);
+  // printf("msk:%d\n",s.msk);
+  // printf("l:%d\n",s.l);
+  // printf("d:%d\n",s.d);
+  // printf("r:%d\n",s.r);
+  // printf("B1:%d\n",s.B1);
     int bit;
     if(s.BOUND1==0 && s.step !=2){ 
       if(s.step!=1){
@@ -447,19 +454,20 @@ backTrack2(&s);
         }
       }
     }
- printf("lTotal:%ld\n",s.lTotal);
+ // printf("lTotal:%ld\n",s.lTotal);
 state[index].BOUND1=s.BOUND1;
 state[index].si=s.si;
 for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
-state[index].startCol=0;
 state[index].lTotal=s.lTotal;
+if(s.step==1){
+  state[index].step=1;
+state[index].msk=1;
+}else{
   state[index].step=2;
-//if(s.step==1){
-  // state[index].step=1;
-// }else{
-  // state[index].step=2;
-// }
+state[index].msk=2;
+}
 state[index].y=s.y;
+state[index].startCol=0;
 state[index].bm=s.bm;
 state[index].BOUND2=s.BOUND2;
 state[index].ENDBIT=s.ENDBIT;
@@ -470,12 +478,13 @@ state[index].lUnique=s.lUnique;
 state[index].bend=s.bend;
 state[index].rflg=s.rflg;
 state[index].stParam=s.stParam;
-state[index].msk=s.msk;
+ // printf("m:step:%d\n",state[index].msk);
 state[index].l=s.l;
 state[index].d=s.d;
 state[index].r=s.r;
 state[index].B1=s.B1;
 state[index].j=s.j;
+state[index].lt=s.lt;
 }
 #ifdef GCC_STYLE
 int main(){

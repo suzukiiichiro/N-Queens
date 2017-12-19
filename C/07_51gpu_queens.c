@@ -147,7 +147,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1 
+#define USE_DEBUG 0 
 
 cl_device_id *devices;
 cl_mem buffer;
@@ -197,6 +197,7 @@ struct queenState {
   int r;
   int B1;
   int j;
+  long lt;
 };
 
 struct queenState inProgress[MAX*MAX];
@@ -493,6 +494,7 @@ int makeInProgress(int si){
       inProgress[i*si+j].r=0;
       inProgress[i*si+j].B1=0;
       inProgress[i*si+j].j=j;
+      inProgress[i*si+j].lt=0;
     }
       B2--;
   }
@@ -539,18 +541,14 @@ int makeInProgress(int si){
 int all_tasks_done(int32_t num_tasks) {
 	for (int i=0;i<num_tasks;i++){
 	for (int j=0;j<num_tasks;j++){
-  }
-  }
-	for (int i=0;i<num_tasks;i++){
-	for (int j=0;j<num_tasks;j++){
 		//if (inProgress[i*num_tasks+j].step != 2){
-		if (inProgress[i*num_tasks+j].step == 2){
-      printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].step);
-			return 1;
+		if (inProgress[i*num_tasks+j].msk != 2){
+      // printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].msk);
+			return 0;
     }  
   }
   }
-	return 0;
+	return 1;
 }
 /**
   カーネルの実行 
@@ -598,8 +596,28 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-          if(USE_DEBUG>0) printf("%ld\n",inProgress[i*si+j].lTotal);
-          lGTotal+=inProgress[i*si+j].lTotal;
+          if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
+          // printf("BOUND1:%d\n",inProgress[i*si+j].BOUND1);
+          // printf("si:%d\n",inProgress[i*si+j].si);
+          //printf("a:step:%d\n",inProgress[i*si+j].step);
+          //printf("msk:step:%d\n",inProgress[i*si+j].msk);
+          // printf("y:%d\n",inProgress[i*si+j].y);
+          // printf("bm:%d\n",inProgress[i*si+j].bm);
+          // printf("BOUND2:%d\n",inProgress[i*si+j].BOUND2);
+          // printf("ENDBIT:%d\n",inProgress[i*si+j].ENDBIT);
+          // printf("TOPBIT:%d\n",inProgress[i*si+j].TOPBIT);
+          // printf("SIDEMASK:%d\n",inProgress[i*si+j].SIDEMASK);
+          // printf("LASTMASK:%d\n",inProgress[i*si+j].LASTMASK);
+          // printf("bend:%d\n",inProgress[i*si+j].bend);
+          // printf("rflg:%d\n",inProgress[i*si+j].rflg);
+          // printf("l:%d\n",inProgress[i*si+j].l);
+          // printf("d:%d\n",inProgress[i*si+j].d);
+          // printf("r:%d\n",inProgress[i*si+j].r);
+          // printf("B1:%d\n",inProgress[i*si+j].B1);
+          // printf("j:%d\n",inProgress[i*si+j].j);
+          // printf("lUnique:%ld\n",inProgress[i*si+j].lUnique);
+           printf("lt:%ld\n",inProgress[i*si+j].lt);
+          lGTotal+=inProgress[i*si+j].lt;
           lGUnique+=inProgress[i*si+j].lUnique;
     }
   }
@@ -653,8 +671,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=8;
-  int targetN=8;
+  int min=4;
+  int targetN=18;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
