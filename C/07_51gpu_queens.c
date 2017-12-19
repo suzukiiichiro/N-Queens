@@ -470,7 +470,6 @@ int makeInProgress(int si){
       inProgress[i*si+j].y=0;
       inProgress[i*si+j].bm=0;
       inProgress[i*si+j].BOUND2=B2;
-      B2--;
       inProgress[i*si+j].ENDBIT=0;
       inProgress[i*si+j].TOPBIT=1<<(si-1);
       inProgress[i*si+j].SIDEMASK=0;
@@ -495,6 +494,7 @@ int makeInProgress(int si){
       inProgress[i*si+j].B1=0;
       inProgress[i*si+j].j=j;
     }
+      B2--;
   }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -543,13 +543,14 @@ int all_tasks_done(int32_t num_tasks) {
   }
 	for (int i=0;i<num_tasks;i++){
 	for (int j=0;j<num_tasks;j++){
-		if (inProgress[i*num_tasks+j].step != 2){
+		//if (inProgress[i*num_tasks+j].step != 2){
+		if (inProgress[i*num_tasks+j].step == 2){
       printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].step);
-			return 0;
+			return 1;
     }  
   }
   }
-	return 1;
+	return 0;
 }
 /**
   カーネルの実行 
@@ -599,6 +600,7 @@ int execPrint(int si){
     for(int j=0;j<si;j++){
           if(USE_DEBUG>0) printf("%ld\n",inProgress[i*si+j].lTotal);
           lGTotal+=inProgress[i*si+j].lTotal;
+          lGUnique+=inProgress[i*si+j].lUnique;
     }
   }
 	/**************/
@@ -651,8 +653,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=4;
-  int targetN=4;
+  int min=8;
+  int targetN=8;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
