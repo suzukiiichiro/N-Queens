@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -20,7 +20,7 @@ typedef ushort uint16_t;
 #define CL_CONSTANT_KEYWORD __constant
 #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-#define MAX 27  
+#define MAX 20  
 CL_PACKED_KEYWORD struct HIKISU{
   int Y;
   int I;
@@ -188,7 +188,8 @@ void backTrack1(struct queenState *s){
         s->bm&=~2;
         //printf("s->bm&=~2;\n");
       }
-      if(s->y==1 && s->j>=0 && s->rflg==0){
+      if(s->y==1 && s->j>=0){
+        if(s->rflg==0){
         //printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
         if(s->bm & (1<<s->j)){ 
           //printf("if(s->bm & (1<<s->j)){\n");
@@ -213,7 +214,24 @@ void backTrack1(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
-      }else if(s->y==2 && s->k>=0 && s->rflg==0){
+         }else{
+            // printf("1outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            s->si=s->stParam.param[s->stParam.current].I;
+            s->y=s->stParam.param[s->stParam.current].Y;
+            s->msk=s->stParam.param[s->stParam.current].M;
+            s->l=s->stParam.param[s->stParam.current].L;
+            s->d=s->stParam.param[s->stParam.current].D;
+            s->r=s->stParam.param[s->stParam.current].R;
+            s->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            s->rflg=0;
+         
+         }
+      }else if(s->y==2 && s->k>=0){
+        if(s->rflg==0){
         //printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
         if(s->bm & (1<<s->k)){ 
           //printf("if(s->bm & (1<<s->j)){\n");
@@ -238,6 +256,23 @@ void backTrack1(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
+        }else{
+            // printf("1outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            s->si=s->stParam.param[s->stParam.current].I;
+            s->y=s->stParam.param[s->stParam.current].Y;
+            s->msk=s->stParam.param[s->stParam.current].M;
+            s->l=s->stParam.param[s->stParam.current].L;
+            s->d=s->stParam.param[s->stParam.current].D;
+            s->r=s->stParam.param[s->stParam.current].R;
+            s->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            s->rflg=0;
+        
+        
+        }
       }else {
         //printf("}else{ #if(s->y>1&&(1<<s->y)<s->B1){\n");
         while(s->bm || s->rflg==1){
@@ -294,7 +329,7 @@ void backTrack1(struct queenState *s){
   }
 }
 void backTrack2(struct queenState *s){
-  // printf("backtrack2:start\n");
+   //printf("backtrack2:start\n");
   int bit;
   unsigned long j=1;
   while (1){
@@ -332,7 +367,8 @@ void backTrack2(struct queenState *s){
         }
       }
 
-      if(s->y==1 && s->j>=0 && s->rflg==0){
+      if(s->y==1 && s->j>=0){
+        if(s->rflg==0){
         // printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
         if(s->bm & (1<<s->j)){ 
           // printf("if(s->bm & (1<<s->j)){\n");
@@ -357,17 +393,33 @@ void backTrack2(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
-      }else if(s->y==2 && s->k>=0 && s->rflg==0){
-        // printf("if(s->y==1 && s->j>=0 && s->rflg==0){\n");
+         }else{
+            // printf("1outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            s->si=s->stParam.param[s->stParam.current].I;
+            s->y=s->stParam.param[s->stParam.current].Y;
+            s->msk=s->stParam.param[s->stParam.current].M;
+            s->l=s->stParam.param[s->stParam.current].L;
+            s->d=s->stParam.param[s->stParam.current].D;
+            s->r=s->stParam.param[s->stParam.current].R;
+            s->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            s->rflg=0;
+         }
+      }else if(s->y==2 && s->k>=0){
+        if(s->rflg==0){
+         // printf("if(s->y==2 && s->j>=0 && s->rflg==0){\n");
         if(s->bm & (1<<s->k)){ 
-          // printf("if(s->bm & (1<<s->j)){\n");
+           // printf("2if(s->bm & (1<<s->j)){\n");
           s->aB[s->y]=bit=1<<s->k; 
 
         } else{ 
-          // printf("} else{#if(s->bm & (1<<s->j)){");
+           // printf("2} else{#if(s->bm & (1<<s->j)){");
           return;
         }
-          // printf("inparam\n");
+           // printf("2inparam\n");
           if(s->stParam.current<MAX){
             s->stParam.param[s->stParam.current].Y=s->y;
             s->stParam.param[s->stParam.current].I=s->si;
@@ -382,8 +434,24 @@ void backTrack2(struct queenState *s){
           s->l=(s->l|bit)<<1; s->d=(s->d|bit); s->r=(s->r|bit)>>1;
           s->y++; 
           continue;
+        }else{
+            // printf("2outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            s->si=s->stParam.param[s->stParam.current].I;
+            s->y=s->stParam.param[s->stParam.current].Y;
+            s->msk=s->stParam.param[s->stParam.current].M;
+            s->l=s->stParam.param[s->stParam.current].L;
+            s->d=s->stParam.param[s->stParam.current].D;
+            s->r=s->stParam.param[s->stParam.current].R;
+            s->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            s->rflg=0;
+        }
       }else{
-        while(s->bm || s->rflg==1){
+        // printf("y:%d\n",s->y);
+        while((s->bm || s->rflg==1)&&s->y>2){
           // printf("while(s->bm || s->rflg==1){\n");
           if(s->rflg==0){
             // printf("inparam\n");
@@ -425,12 +493,12 @@ void backTrack2(struct queenState *s){
         continue;
       }
     }
-    if(s->y==3){
+    if(s->y<=3){
       // printf("if(s->y==1){\n");
       s->step=2;
       return;
     }else{
-      // printf("}else{#if(s->y==1){");
+      // printf("}else{#if(s->y==1){\n");
       s->rflg=1;
     }
     j++;
