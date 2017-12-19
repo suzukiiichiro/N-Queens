@@ -1,14 +1,14 @@
 /**
 
-   51. GPU(07_37 *N*si アルゴリムは全部のせ) 
+   52. GPU(07_38 *N*si*si アルゴリムは全部のせ) 
 
 	07_46までのロジックを全て含み GPUをNからＮ*siに変更
 
   struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_51NQueen 07_51gpu_queens.c -framework OpenCL
-   $ ./07_51NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_52NQueen 07_52gpu_queens.c -framework OpenCL
+   $ ./07_52NQueen 
 
 52. GPU(07_38 *N*si*si アルゴリムは全部のせ) 
 
@@ -98,13 +98,13 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_51queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_52queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1
 
 cl_device_id *devices;
 cl_mem buffer;
@@ -512,6 +512,9 @@ int all_tasks_done(int32_t num_tasks) {
     // for (int j=0;j<num_tasks;j++){
       //if (inProgress[i*num_tasks+j].step != 2){
       if (inProgress[i].step != 2){
+      // if (inProgress[i].msk != 2){
+         printf("notfinish:i:%d:step:%d\n",i,inProgress[i].step);
+         // printf("notfinish:i:%d:step:%d\n",i,inProgress[i].msk);
         // printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].msk);
         return 0;
       }  
