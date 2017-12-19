@@ -1,5 +1,11 @@
-﻿//  単体で動かすときは以下のコメントを外す
-//#define GCC_STYLE
+﻿//
+//
+//
+//
+//
+//
+//  単体で動かすときは以下のコメントを外す
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -41,11 +47,11 @@ struct CL_PACKED_KEYWORD queenState {
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  int startCol; // First column this individual computation was tasked with filling.
+  // int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
-  int ENDBIT;
   int TOPBIT;
+  int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
   long lUnique; // Number of solutinos found so far.
@@ -59,6 +65,9 @@ struct CL_PACKED_KEYWORD queenState {
   int B1;
   int j;
   long lt;
+  // long C2;
+  // long C4;
+  // long C8;
 };
 void symmetryOps_bm(struct queenState *s){
   int nEquiv;
@@ -89,6 +98,7 @@ void symmetryOps_bm(struct queenState *s){
       s->lTotal+=2;
       s->lt+=2;
       s->lUnique++; 
+      // s->C2++;
       return;
     }//end if
   }//end if
@@ -117,6 +127,7 @@ void symmetryOps_bm(struct queenState *s){
       s->lTotal+=4;
       s->lt+=4;
       s->lUnique++;
+      // s->C4++;
       return ;
     }
   }
@@ -144,6 +155,7 @@ void symmetryOps_bm(struct queenState *s){
   s->lTotal+=8;
   s->lt+=8;
   s->lUnique++;
+  // s->C8++;
 }
 void backTrack1(struct queenState *s){
   //printf("backtrack1:start\n");
@@ -173,6 +185,7 @@ void backTrack1(struct queenState *s){
         s->lTotal+=8;
         s->lt+=8;
         s->lUnique++;
+        // s->C8++;
       }
     }else{
       //printf("}else{#if (s->y==s->si-1&&s->rflg==0){\n");
@@ -407,6 +420,9 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.B1= state[index].B1;
   s.j= state[index].j;
   s.lt= state[index].lt;
+  // s.C2=state[index].C2;
+  // s.C4=state[index].C4;
+  // s.C8=state[index].C8;
    // printf("BOUND1:%d\n",s.BOUND1);
    // printf("j:%d\n",s.j);
   // printf("si:%d\n",s.si);
@@ -461,13 +477,13 @@ for(int i=0;i<s.si;i++){state[index].aB[i]=s.aB[i];}
 state[index].lTotal=s.lTotal;
 if(s.step==1){
   state[index].step=1;
-state[index].msk=1;
+// state[index].msk=1;
 }else{
   state[index].step=2;
-state[index].msk=2;
+// state[index].msk=2;
 }
 state[index].y=s.y;
-state[index].startCol=0;
+// state[index].startCol=0;
 state[index].bm=s.bm;
 state[index].BOUND2=s.BOUND2;
 state[index].ENDBIT=s.ENDBIT;
@@ -485,6 +501,9 @@ state[index].r=s.r;
 state[index].B1=s.B1;
 state[index].j=s.j;
 state[index].lt=s.lt;
+// state[index].C2=s.C2;
+// state[index].C4=s.C4;
+// state[index].C8=s.C8;
 }
 #ifdef GCC_STYLE
 int main(){
@@ -529,13 +548,18 @@ int main(){
       inProgress[i*si+j].d=0;
       inProgress[i*si+j].r=0;
       inProgress[i*si+j].bm=0;
+      inProgress[i*si+j].C2=0;
+      inProgress[i*si+j].C4=0;
+      inProgress[i*si+j].C8=0;
       place(&inProgress[i*si+j]);
       }
     }
     for(int i=0;i<si;i++){
       for(int j=0;j<si;j++){ // N
-        gTotal+=inProgress[i*si+j].lTotal;
-        gUnique+=inProgress[i*si+j].lUnique;
+        gTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
+        // gTotal+=inProgress[i*si+j].lTotal;
+        // gUnique+=inProgress[i*si+j].lUnique;
+        gUnique+=inProgress[i*si+j].C2+inProgress[i*si+j].C4+inProgress[i*si+j].C8;
       }
     }
   /**********/

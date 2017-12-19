@@ -13,6 +13,18 @@
 52. GPU(07_38 *N*si*si アルゴリムは全部のせ) 
 
 51. GPU(07_37 *N*si アルゴリムは全部のせ) 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.01
+12:             14200              1787          00:00:00:00.06
+13:             73712              9233          00:00:00:00.25
+14:            365596             45752          00:00:00:01.22
 
 50. GPU(07_36 *N アルゴリムは全部のせ) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -126,10 +138,11 @@ struct queenState {
   long lTotal; // Number of solutinos found so far.
   int step;
   int y;
+  // int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
-  int ENDBIT;
   int TOPBIT;
+  int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
   long lUnique; // Number of solutinos found so far.
@@ -143,7 +156,11 @@ struct queenState {
   int B1;
   int j;
   long lt;
-};
+  // long C2;
+  // long C4;
+  // long C8;
+// };
+} __attribute__((packed));
 
 struct queenState inProgress[MAX*MAX];
 /**
@@ -440,6 +457,9 @@ int makeInProgress(int si){
       inProgress[i*si+j].B1=0;
       inProgress[i*si+j].j=j;
       inProgress[i*si+j].lt=0;
+      // inProgress[i*si+j].C2=0;
+      // inProgress[i*si+j].C4=0;
+      // inProgress[i*si+j].C8=0;
     }
       B2--;
   }
@@ -485,13 +505,13 @@ int makeInProgress(int si){
  */
 int all_tasks_done(int32_t num_tasks) {
 	for (int i=0;i<num_tasks;i++){
-    for (int j=0;j<num_tasks;j++){
+    // for (int j=0;j<num_tasks;j++){
       //if (inProgress[i*num_tasks+j].step != 2){
-      if (inProgress[i*num_tasks+j].msk != 2){
+      if (inProgress[i].step != 2){
         // printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].msk);
         return 0;
       }  
-    }
+    // }
   }
 	return 1;
 }
@@ -506,7 +526,7 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
-  while(!all_tasks_done(si)){
+  while(!all_tasks_done(si*si)){
     //size_t dim=1;
     cl_uint dim=1;
     size_t globalWorkSize[] = {si*si};
@@ -541,7 +561,7 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-          if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
+          // if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
           // printf("BOUND1:%d\n",inProgress[i*si+j].BOUND1);
           // printf("si:%d\n",inProgress[i*si+j].si);
           //printf("a:step:%d\n",inProgress[i*si+j].step);
@@ -562,8 +582,12 @@ int execPrint(int si){
           // printf("j:%d\n",inProgress[i*si+j].j);
           // printf("lUnique:%ld\n",inProgress[i*si+j].lUnique);
            // printf("lt:%ld\n",inProgress[i*si+j].lt);
-          lGTotal+=inProgress[i*si+j].lt;
-          lGUnique+=inProgress[i*si+j].lUnique;
+          // lGTotal+=inProgress[i*si+j].lt;
+          // lGUnique+=inProgress[i*si+j].lUnique;
+        // lGTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
+        lGTotal+=inProgress[i*si+j].lTotal;
+        lGUnique+=inProgress[i*si+j].lUnique;
+        // lGUnique+=inProgress[i*si+j].C2+inProgress[i*si+j].C4+inProgress[i*si+j].C8;
     }
   }
 	/**************/

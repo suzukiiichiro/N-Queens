@@ -23,10 +23,10 @@
  8:                92                12          00:00:00:00.00
  9:               352                46          00:00:00:00.00
 10:               724                92          00:00:00:00.02
-11:              2680               341          00:00:00:00.11
-12:             14200              1787          00:00:00:00.38
-13:             73712              9233          00:00:00:01.82
-14:            365596             45752          00:00:00:09.98
+11:              2680               341          00:00:00:00.08
+12:             14200              1787          00:00:00:00.35
+13:             73712              9233          00:00:00:01.76
+14:            365596             45752          00:00:00:09.53
 
 49. GPU(07_38 *N*si*si アルゴリムはバックトラック+ビットマップまで) 
 13:             73712                 0          00:00:00:00.16
@@ -92,7 +92,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1
+#define USE_DEBUG 0
 
 cl_device_id *devices;
 cl_mem buffer;
@@ -117,12 +117,10 @@ struct HIKISU{
 };
 struct STACK{
   struct HIKISU param[MAX];
-  int current ;
+  int current;
 };
 struct queenState {
-	/**************/
   int BOUND1;
-	/**************/
   int si;
   int aB[MAX];
   long lTotal; // Number of solutinos found so far.
@@ -505,7 +503,6 @@ int execKernel(int si){
     size_t globalWorkSize[] = {si};
 	/**************/
     size_t localWorkSize[] = { 1 };
-    cl_event event;
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -515,24 +512,7 @@ int execKernel(int si){
         localWorkSize,     //1グループのスレッド数
         0,                 //この関数が待機すべきeventの数
         NULL,              //この関数が待機すべき関数のリストへのポインタ
-        &event);             //この関数の返すevent
-    clFinish(cmd_queue);
-  if(USE_DEBUG){
-    cl_ulong start;
-    cl_ulong end;
-    status=clGetEventProfilingInfo(
-       event,
-       CL_PROFILING_COMMAND_START,
-       sizeof(cl_ulong),
-       &start,NULL);
-    status=clGetEventProfilingInfo(
-       event,
-       CL_PROFILING_COMMAND_END,
-       sizeof(cl_ulong),
-       &end,NULL);
-    unsigned long elapsed=(unsigned long)(end-start);
-    printf("kernel Execution\t%ldns\n",elapsed);
-  }
+        NULL);             //この関数の返すevent
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
     /**
      * 結果を読み込み
@@ -562,7 +542,7 @@ int create(){
   int rst;
   while (1){
     createProgramWithSource();  // ソースコードからカーネルプログラム作成
-     rst=buildProgram();             // カーネルプログラムのビルド
+    rst=buildProgram();             // カーネルプログラムのビルド
     if(rst==0){
       break;
     }
