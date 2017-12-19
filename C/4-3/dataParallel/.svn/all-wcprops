@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/marketing/!svn/ver/1898/PR/OpenCL/Book/1.2/sample/4-3/dataParallel
+END
+dataParallel.cl
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/marketing/!svn/ver/1881/PR/OpenCL/Book/1.2/sample/4-3/dataParallel/dataParallel.cl
+END
+dataParallel.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/marketing/!svn/ver/1881/PR/OpenCL/Book/1.2/sample/4-3/dataParallel/dataParallel.cpp
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/marketing/!svn/ver/1895/PR/OpenCL/Book/1.2/sample/4-3/dataParallel/Makefile
+END
