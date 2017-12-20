@@ -1,6 +1,6 @@
 /**
 
-   55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
+  55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
 
 	07_49 の07_46までのロジックを全て含み GPUをNからＮ*siに変更
 	の構造体を二つに分解バージョン
@@ -8,8 +8,9 @@
   struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_52NQueen 07_52gpu_queens.c -framework OpenCL
-   $ ./07_52NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_55NQueen 07_55gpu_queens.c -framework OpenCL
+   $ ./07_55NQueen 
+
 
 55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
 
@@ -24,9 +25,11 @@
 51. GPU(07_37 *N*si アルゴリムは全部のせ) 
 13:             73712              9233          00:00:00:00.25
 14:            365596             45752          00:00:00:01.22
+
 50. GPU(07_36 *N アルゴリムは全部のせ) 
 13:             73712              9233          00:00:00:10.52
 14:            365596             45752          00:00:00:57.10
+
 49. GPU(07_38 *N*si*si アルゴリムはバックトラック+ビットマップまで) 
 13:             73712                 0          00:00:00:00.16
 14:            365596                 0          00:00:00:00.74
@@ -85,16 +88,17 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_55queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_54queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1
+#define USE_DEBUG 0
 
 cl_device_id *devices;
-cl_mem buffer;
+cl_mem lBuffer;
+cl_mem gBuffer;
 cl_context context;
 cl_program program;
 cl_kernel kernel;
@@ -118,21 +122,25 @@ struct STACK{
   struct HIKISU param[MAX];
   int current;
 };
+struct globalState {
+  long lTotal; // Number of solutinos found so far.
+  long lUnique;
+} __attribute__((packed));
 struct queenState {
   int BOUND1;
   int si;
   int aB[MAX];
-  long lTotal; // Number of solutinos found so far.
+  // long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  // int startCol; // First column this individual computation was tasked with filling.
+  //int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
   int TOPBIT;
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
-  long lUnique; // Number of solutinos found so far.
+  // long lUnique; // Number of solutinos found so far.
   int bend;
   int rflg;
   struct STACK stParam;
@@ -142,31 +150,26 @@ struct queenState {
   int r;
   int B1;
   int j;
-  int k;
-  long lt;
-  // long C2;
-  // long C4;
-  // long C8;
-// };
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX*MAX];
+struct queenState inProgress[MAX*MAX];
+struct globalState gProgress[MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
-void get_queens_code(char **buffer){
+void get_queens_code(char **code){
   char prefix[256];
   int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
   //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
   //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
+  if(!f){ *code=NULL;return;}
   long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
   long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  *code=malloc(totalLength); strcpy(*code,prefix);
+  if(code){ fread(*code + prefixLength,1,fileLength,f);} fclose(f);
   // Replace BOM with space
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+  (*code)[prefixLength]=' '; (*code)[prefixLength + 1]=' '; (*code)[prefixLength + 2]=' ';
 }
 /**
 プラットフォーム一覧を取得
@@ -413,59 +416,53 @@ int makeInProgress(int si){
   int B2=si-1;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      for(int k=0;k<si;k++){
-        inProgress[i*si*si+j*si+k].BOUND1=i;
-        inProgress[i*si*si+j*si+k].si=si;
-        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
-        inProgress[i*si*si+j*si+k].lTotal=0;
-        inProgress[i*si*si+j*si+k].step=0;
-        inProgress[i*si*si+j*si+k].y=0;
-        inProgress[i*si*si+j*si+k].bm=0;
-        inProgress[i*si*si+j*si+k].BOUND2=B2;
-        inProgress[i*si*si+j*si+k].ENDBIT=0;
-        inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
-        inProgress[i*si*si+j*si+k].SIDEMASK=0;
-        inProgress[i*si*si+j*si+k].LASTMASK=0;
-        inProgress[i*si*si+j*si+k].lUnique=0;
-        inProgress[i*si*si+j*si+k].bend=0;
-        inProgress[i*si*si+j*si+k].rflg=0;
-        for (int m=0;m<si;m++){
-          inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
-          inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
-          inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
-          inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
-          inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
-          inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
-          inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
-        }
-        inProgress[i*si*si+j*si+k].stParam.current=0;
-        inProgress[i*si*si+j*si+k].msk=(1<<si)-1;
-        inProgress[i*si*si+j*si+k].l=0;
-        inProgress[i*si*si+j*si+k].d=0;
-        inProgress[i*si*si+j*si+k].r=0;
-        inProgress[i*si*si+j*si+k].B1=0;
-        inProgress[i*si*si+j*si+k].j=j;
-        inProgress[i*si*si+j*si+k].j=k;
-        inProgress[i*si*si+j*si+k].lt=0;
-        // inProgress[i*si*si+j*si+k].C2=0;
-        // inProgress[i*si*si+j*si+k].C4=0;
-        // inProgress[i*si*si+j*si+k].C8=0;
+      inProgress[i*si+j].BOUND1=i;
+      inProgress[i*si+j].si=si;
+      for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
+      gProgress[i*si+j].lTotal=0;
+      inProgress[i*si+j].step=0;
+      inProgress[i*si+j].y=0;
+      inProgress[i*si+j].bm=0;
+      inProgress[i*si+j].BOUND2=B2;
+      inProgress[i*si+j].ENDBIT=0;
+      inProgress[i*si+j].TOPBIT=1<<(si-1);
+      inProgress[i*si+j].SIDEMASK=0;
+      inProgress[i*si+j].LASTMASK=0;
+      gProgress[i*si+j].lUnique=0;
+      inProgress[i*si+j].bend=0;
+      inProgress[i*si+j].rflg=0;
+      for (int m=0;m<si;m++){
+        inProgress[i*si+j].stParam.param[m].Y=0;
+        inProgress[i*si+j].stParam.param[m].I=si;
+        inProgress[i*si+j].stParam.param[m].M=0;
+        inProgress[i*si+j].stParam.param[m].L=0;
+        inProgress[i*si+j].stParam.param[m].D=0;
+        inProgress[i*si+j].stParam.param[m].R=0;
+        inProgress[i*si+j].stParam.param[m].B=0;
       }
+      inProgress[i*si+j].stParam.current=0;
+      inProgress[i*si+j].msk=(1<<si)-1;
+      inProgress[i*si+j].l=0;
+      inProgress[i*si+j].d=0;
+      inProgress[i*si+j].r=0;
+      inProgress[i*si+j].B1=0;
+      inProgress[i*si+j].j=j;
     }
-    B2--;
+      B2--;
   }
 	/**************/
-  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-  buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
-  clRetainMemObject(buffer);
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
-  /**
-   *
-   *
-   */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
+  /* バッファオブジェクトの作成 */
+  lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
+  gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
+  if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
+  /*メモリバッファにデータを転送*/
+	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_FALSE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
-
+	/**************/
+  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
+  clRetainMemObject(lBuffer);
+  clRetainMemObject(gBuffer);
   /**
    * マップオブジェクトの解放
    */
@@ -487,8 +484,11 @@ int makeInProgress(int si){
     arg_size    引数として渡すのデータのサイズ。
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
-  status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
+	/**************/
+  status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
+  status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+	/**************/
   return 0;
 }
 /**
@@ -496,16 +496,9 @@ int makeInProgress(int si){
  */
 int all_tasks_done(int32_t num_tasks) {
 	for (int i=0;i<num_tasks;i++){
-    // for (int j=0;j<num_tasks;j++){
-      //if (inProgress[i*num_tasks+j].step != 2){
-      if (inProgress[i].step != 2){
-      // if (inProgress[i].msk != 2){
-         printf("notfinish:i:%d:step:%d\n",i,inProgress[i].step);
-         // printf("notfinish:i:%d:step:%d\n",i,inProgress[i].msk);
-        // printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].msk);
-        return 0;
-      }  
-    // }
+		if (inProgress[i].step != 2){
+			return 0;
+    }
   }
 	return 1;
 }
@@ -520,10 +513,10 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
-  while(!all_tasks_done(si*si*si)){
+  while(!all_tasks_done(si*si)){
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si*si*si};
+    size_t globalWorkSize[] = {si*si};
 	/**************/
     size_t localWorkSize[] = { 1 };
     status=clEnqueueNDRangeKernel(
@@ -540,7 +533,8 @@ int execKernel(int si){
     /**
      * 結果を読み込み
      */
-    status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
  } //end while
   return 0;
@@ -555,35 +549,9 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      for(int k=0;k<si;k++){
-          // if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
-          // printf("BOUND1:%d\n",inProgress[i*si+j].BOUND1);
-          // printf("si:%d\n",inProgress[i*si+j].si);
-          //printf("a:step:%d\n",inProgress[i*si+j].step);
-          //printf("msk:step:%d\n",inProgress[i*si+j].msk);
-          // printf("y:%d\n",inProgress[i*si+j].y);
-          // printf("bm:%d\n",inProgress[i*si+j].bm);
-          // printf("BOUND2:%d\n",inProgress[i*si+j].BOUND2);
-          // printf("ENDBIT:%d\n",inProgress[i*si+j].ENDBIT);
-          // printf("TOPBIT:%d\n",inProgress[i*si+j].TOPBIT);
-          // printf("SIDEMASK:%d\n",inProgress[i*si+j].SIDEMASK);
-          // printf("LASTMASK:%d\n",inProgress[i*si+j].LASTMASK);
-          // printf("bend:%d\n",inProgress[i*si+j].bend);
-          // printf("rflg:%d\n",inProgress[i*si+j].rflg);
-          // printf("l:%d\n",inProgress[i*si+j].l);
-          // printf("d:%d\n",inProgress[i*si+j].d);
-          // printf("r:%d\n",inProgress[i*si+j].r);
-          // printf("B1:%d\n",inProgress[i*si+j].B1);
-          // printf("j:%d\n",inProgress[i*si+j].j);
-          // printf("lUnique:%ld\n",inProgress[i*si+j].lUnique);
-           // printf("lt:%ld\n",inProgress[i*si+j].lt);
-          // lGTotal+=inProgress[i*si+j].lt;
-          // lGUnique+=inProgress[i*si+j].lUnique;
-        // lGTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
-        lGTotal+=inProgress[i*si*si+j*si+k].lTotal;
-        lGUnique+=inProgress[i*si*si+j*si+k].lUnique;
-        // lGUnique+=inProgress[i*si+j].C2+inProgress[i*si+j].C4+inProgress[i*si+j].C8;
-      }
+        lGTotal+=gProgress[i*si+j].lTotal;
+        lGUnique+=gProgress[i*si+j].lUnique;
+        // printf("lUnique:%ld\n",gProgress[i*si+j].lUnique);
     }
   }
 	/**************/
@@ -611,7 +579,8 @@ int NQueens(int si){
   execKernel(si);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
-	clReleaseMemObject(buffer);
+	clReleaseMemObject(lBuffer);
+	clReleaseMemObject(gBuffer);
   clReleaseContext(context);
   if (t1.tv_usec<t0.tv_usec) {
     dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;

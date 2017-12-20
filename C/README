@@ -2820,7 +2820,7 @@ Q . . . . . . .
   struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_52NQueen 07_52gpu_queens.c -framework OpenCL
-   $ ./07_52NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_55NQueen 07_55gpu_queens.c -framework OpenCL
+   $ ./07_55NQueen 
 
 

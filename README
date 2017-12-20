@@ -2811,7 +2811,6 @@ Q . . . . . . .
 12:             14200              1787          00:00:00:00.06
 13:             73712              9233          00:00:00:00.26
 14:            365596             45752          00:00:00:01.29
-15:           2279184            285053          00:00:00:06.86
 
 55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
 
@@ -2821,7 +2820,7 @@ Q . . . . . . .
   struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_52NQueen 07_52gpu_queens.c -framework OpenCL
-   $ ./07_52NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_55NQueen 07_55gpu_queens.c -framework OpenCL
+   $ ./07_55NQueen 
 
 

@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -91,7 +91,6 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
     if(own>s->si-1){ 
       g->lTotal+=2;
       g->lUnique++; 
-// printf("lUnique\n");
       return;
     }//end if
   }//end if
@@ -119,7 +118,6 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
     if(own>s->si-1){ 
       g->lTotal+=4;
       g->lUnique++;
-// printf("lUnique\n");
       return ;
     }
   }
@@ -146,7 +144,6 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
   }
   g->lTotal+=8;
   g->lUnique++;
-// printf("lUnique\n");
 }
 void backTrack1(struct queenState *s,struct globalState *g){
   int bit;
@@ -168,10 +165,8 @@ void backTrack1(struct queenState *s,struct globalState *g){
     if (s->y==s->si-1&&s->rflg==0){ 
       if(s->bm>0){
         s->aB[s->y]=s->bm;
- // printf("GTotal:%d%d\n",s->BOUND1,s->j);
         g->lTotal+=8; 
         g->lUnique++;
-// printf("lUnique\n");
       }
     }else{
       //printf("}else{#if (s->y==s->si-1&&s->rflg==0){\n");
@@ -302,7 +297,6 @@ void backTrack2(struct queenState *s,struct globalState *g){
         if(s->bm & (1<<s->j)){ 
           // printf("if(s->bm & (1<<s->j)){\n");
           s->aB[s->y]=bit=1<<s->j; 
-
         } else{ 
           // printf("} else{#if(s->bm & (1<<s->j)){");
           return;
@@ -370,7 +364,6 @@ void backTrack2(struct queenState *s,struct globalState *g){
       s->step=2;
       return;
     }else{
-      // printf("}else{#if(s->y==1){");
       s->rflg=1;
     }
     j++;
