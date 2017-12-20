@@ -298,7 +298,9 @@ void backTrack2(struct queenState *s,struct globalState *g){
   } 
 }
 
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *l,CL_GLOBAL_KEYWORD struct globalState *g){
+CL_KERNEL_KEYWORD void place(
+    CL_GLOBAL_KEYWORD struct queenState *l,
+    CL_GLOBAL_KEYWORD struct globalState *g){
   int index = get_global_id(0);
 
   struct queenState _l;
@@ -327,25 +329,25 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *l,CL_GLOBAL_KE
   _l.d= l[index].d;
   _l.r= l[index].r;
   _l.B1= l[index].B1;
-  //printf("BOUND1:%d\n",s.BOUND1);
-  //printf("si:%d\n",s.si);
-  //printf("step:%d\n",s.step);
-  //printf("y:%d\n",s.y);
-  //printf("startCol:%d\n",s.startCol);
-  //printf("bm:%d\n",s.bm);
-  //printf("BOUND2:%d\n",s.BOUND2);
-  //printf("TOPBIT:%d\n",s.TOPBIT);
-  //printf("ENDBIT:%d\n",s.ENDBIT);
-  //printf("SIDEMASK:%d\n",s.SIDEMASK);
-  //printf("LASTMASK:%d\n",s.LASTMASK);
-  //printf("lUnique:%ld\n",s.lUnique);
-  //printf("bend:%d\n",s.bend);
-  //printf("rflg:%d\n",s.rflg);
-  //printf("msk:%d\n",s.msk);
-  //printf("l:%d\n",s.l);
-  //printf("d:%d\n",s.d);
-  //printf("r:%d\n",s.r);
-  //printf("B1:%d\n",s.B1);
+  // printf("BOUND1:%d\n",_l.BOUND1);
+  // printf("si:%d\n",_l.si);
+  // printf("step:%d\n",_l.step);
+  // printf("y:%d\n",_l.y);
+  // printf("startCol:%d\n",_l.startCol);
+  // printf("bm:%d\n",_l.bm);
+  // printf("BOUND2:%d\n",_l.BOUND2);
+  // printf("TOPBIT:%d\n",_l.TOPBIT);
+  // printf("ENDBIT:%d\n",_l.ENDBIT);
+  // printf("SIDEMASK:%d\n",_l.SIDEMASK);
+  // printf("LASTMASK:%d\n",_l.LASTMASK);
+  // printf("bend:%d\n",_l.bend);
+  // printf("rflg:%d\n",_l.rflg);
+  // printf("msk:%d\n",_l.msk);
+  // printf("l:%d\n",_l.l);
+  // printf("d:%d\n",_l.d);
+  // printf("r:%d\n",_l.r);
+  // printf("B1:%d\n",_l.B1);
+  // printf("lUnique:%ld\n",_g.lUnique);
     int bit;
     if(_l.BOUND1==0 && _l.step !=2){ 
       if(_l.step!=1){
@@ -373,7 +375,7 @@ backTrack2(&_l,&_g);
         }
       }
     }
-  //printf("lTotal:%ld\n",_l.lTotal);
+  // printf("lTotal:%ld\n",_g.lTotal);
 l[index].BOUND1=_l.BOUND1;
 l[index].si=_l.si;
 for(int i=0;i<_l.si;i++){l[index].aB[i]=_l.aB[i];}
