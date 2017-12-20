@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -91,6 +91,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
     if(own>s->si-1){ 
       g->lTotal+=2;
       g->lUnique++; 
+// printf("lUnique\n");
       return;
     }//end if
   }//end if
@@ -118,6 +119,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
     if(own>s->si-1){ 
       g->lTotal+=4;
       g->lUnique++;
+// printf("lUnique\n");
       return ;
     }
   }
@@ -144,6 +146,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g){
   }
   g->lTotal+=8;
   g->lUnique++;
+// printf("lUnique\n");
 }
 void backTrack1(struct queenState *s,struct globalState *g){
   int bit;
@@ -151,7 +154,7 @@ void backTrack1(struct queenState *s,struct globalState *g){
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
   }
   unsigned long j=1;
-  while(1){
+  while(j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -165,8 +168,10 @@ void backTrack1(struct queenState *s,struct globalState *g){
     if (s->y==s->si-1&&s->rflg==0){ 
       if(s->bm>0){
         s->aB[s->y]=s->bm;
+ // printf("GTotal:%d%d\n",s->BOUND1,s->j);
         g->lTotal+=8; 
         g->lUnique++;
+// printf("lUnique\n");
       }
     }else{
       //printf("}else{#if (s->y==s->si-1&&s->rflg==0){\n");
@@ -257,7 +262,7 @@ void backTrack1(struct queenState *s,struct globalState *g){
 void backTrack2(struct queenState *s,struct globalState *g){
   int bit;
   unsigned long j=1;
-  while (1){
+  while (j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -378,6 +383,7 @@ CL_KERNEL_KEYWORD void place(
   int index = get_global_id(0);
   struct queenState _l;
   struct globalState _g;
+
   _l.BOUND1=l[index].BOUND1;
   _l.si= l[index].si;
   for (int i = 0; i < _l.si; i++)

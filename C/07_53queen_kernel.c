@@ -164,8 +164,7 @@ void backTrack1(struct queenState *s,struct globalState *g){
     if (s->y==s->si-1&&s->rflg==0){ 
       if(s->bm>0){
         s->aB[s->y]=s->bm;
-        g->lTotal+=8;
-        g->lUnique++;
+        g->lTotal+=8; g->lUnique++;
       }
     }else{
       if(s->y>1&&(1<<s->y)<s->B1){   

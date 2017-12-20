@@ -3,12 +3,13 @@
    53. GPU(07_36 *N アルゴリムは全部のせ) 
 		
 	07_46までのロジックを全て含み GPUを１からＮに変更
+	の構造体を二つに分解バージョン
 
   struct queenState inProgress[MAX];
 
    実行方法
-   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_50NQueen 07_50gpu_queens.c -framework OpenCL
-   $ ./07_50NQueen 
+   $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_53NQueen 07_53gpu_queens.c -framework OpenCL
+   $ ./07_53NQueen 
 
 
 53. GPU(07_36 *N アルゴリムは全部のせ) 
@@ -28,6 +29,18 @@
 52. GPU(07_38 *N*si*si アルゴリムは全部のせ) 
 
 51. GPU(07_37 *N*si アルゴリムは全部のせ) 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.01
+12:             14200              1787          00:00:00:00.06
+13:             73712              9233          00:00:00:00.25
+14:            365596             45752          00:00:00:01.22
 
 50. GPU(07_36 *N アルゴリムは全部のせ) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -118,17 +131,10 @@ cl_kernel kernel;
 cl_command_queue cmd_queue;
 cl_platform_id platform;
 cl_uint num_devices;
-cl_mem Amobj = NULL;
-cl_mem Bmobj = NULL;
-cl_mem Cmobj = NULL;
-
-// int *globalState;
-// cl_int ret;
 
 long lGTotal;
 long lGUnique;
 enum { Place,Remove,Done };
-
 struct HIKISU{
   int Y;
   int I;
@@ -146,7 +152,6 @@ struct globalState {
   long lTotal; // Number of solutinos found so far.
   long lUnique;
 } __attribute__((packed));
-
 struct queenState {
   int BOUND1;
   int si;
@@ -174,7 +179,6 @@ struct queenState {
 
   struct queenState inProgress[MAX];
   struct globalState gProgress[MAX];
-
 /**
  * カーネルコードの読み込み
  */
@@ -473,24 +477,15 @@ int makeInProgress(int si){
   /* バッファオブジェクトの作成 */
   lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
   gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
-  //Bmobj=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
-  //Cmobj=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress)+sizeof(gProgress),NULL,&status);
   if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
-
   /*メモリバッファにデータを転送*/
 	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
   status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
-  // status = clEnqueueWriteBuffer(cmd_queue, Bmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
-  // status = clEnqueueWriteBuffer(cmd_queue, Cmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
-    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 	/**************/
-
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   clRetainMemObject(lBuffer);
   clRetainMemObject(gBuffer);
-  // clRetainMemObject(Amobj);
-  // clRetainMemObject(Bmobj);
-  // clRetainMemObject(Cmobj);
   /**
    * マップオブジェクトの解放
    */
@@ -515,9 +510,6 @@ int makeInProgress(int si){
 	/**************/
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
   status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
-  // status=clSetKernelArg(kernel,0,sizeof(cl_mem),(void *)&Amobj);
-  // status=clSetKernelArg(kernel,1,sizeof(cl_mem),(void *)&Bmobj);
-  // status=clSetKernelArg(kernel,2,sizeof(cl_mem),(void *)&Cmobj);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 	/**************/
   return 0;
@@ -526,11 +518,11 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
-	for (int i=0;i<num_tasks;i++)
+	for (int i=0;i<num_tasks;i++){
 		if (inProgress[i].step != 2){
-      // printf("##################step2\n");
 			return 0;
     }
+	}
 	return 1;
 }
 /**
@@ -567,20 +559,6 @@ int execKernel(int si){
     status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
-
-
-    /* メモリバッファから結果を取得 */
-    // ret = clEnqueueReadBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
-    // ret = clEnqueueReadBuffer(cmd_queue, Bmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
-    // ret = clEnqueueReadBuffer(cmd_queue, Cmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
-    /* 結果の表示 */
-    // for (int i=0; i<si; i++) {
-    //     for (int j=0; j<4; j++) {
-    //         printf("%d ", globalState[i*si+j]);
-    //     }
-    //     printf("\n");
-    // }
-    //
  } //end while
   return 0;
 }
@@ -593,7 +571,6 @@ int execPrint(int si){
   lGUnique=0;
 	/**************/
   for(int i=0;i<si;i++){
-      if(USE_DEBUG>0) printf("%ld\n",gProgress[i].lTotal);
       lGTotal+=gProgress[i].lTotal;
       lGUnique+=gProgress[i].lUnique;
     }
@@ -622,10 +599,8 @@ int NQueens(int si){
   execKernel(si);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
-	// clReleaseMemObject(buffer);
-	// clReleaseMemObject(Amobj);
-	// clReleaseMemObject(Bmobj);
-	// clReleaseMemObject(Cmobj);
+	clReleaseMemObject(lBuffer);
+	clReleaseMemObject(gBuffer);
   clReleaseContext(context);
   if (t1.tv_usec<t0.tv_usec) {
     dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;

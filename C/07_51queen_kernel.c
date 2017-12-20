@@ -99,6 +99,7 @@ void symmetryOps_bm(struct queenState *s){
       s->lt+=2;
       s->lUnique++; 
       // s->C2++;
+// printf("lUnique\n");
       return;
     }//end if
   }//end if
@@ -128,6 +129,7 @@ void symmetryOps_bm(struct queenState *s){
       s->lt+=4;
       s->lUnique++;
       // s->C4++;
+// printf("lUnique\n");
       return ;
     }
   }
@@ -155,17 +157,16 @@ void symmetryOps_bm(struct queenState *s){
   s->lTotal+=8;
   s->lt+=8;
   s->lUnique++;
+// printf("lUnique\n");
   // s->C8++;
 }
 void backTrack1(struct queenState *s){
-  //printf("backtrack1:start\n");
   int bit;
   if(s->step!=1){
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
-    //printf("s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);\n");
   }
   unsigned long j=1;
-  while(1){
+  while(j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -175,17 +176,14 @@ void backTrack1(struct queenState *s){
 #endif
     if(s->rflg==0){
       s->bm=s->msk&~(s->l|s->d|s->r); 
-      //printf("s->bm=s->msk&~(s->l|s->d|s->r);\n");
     }
     if (s->y==s->si-1&&s->rflg==0){ 
-      //printf("if (s->y==s->si-1&&s->rflg==0){\n");
       if(s->bm>0){
-        //printf("if(s->bm>0){\n");
         s->aB[s->y]=s->bm;
         s->lTotal+=8;
         s->lt+=8;
         s->lUnique++;
-        // s->C8++;
+// printf("lUnique\n");
       }
     }else{
       //printf("}else{#if (s->y==s->si-1&&s->rflg==0){\n");
@@ -274,10 +272,9 @@ void backTrack1(struct queenState *s){
   }
 }
 void backTrack2(struct queenState *s){
-  // printf("backtrack2:start\n");
   int bit;
   unsigned long j=1;
-  while (1){
+  while (j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -392,9 +389,11 @@ void backTrack2(struct queenState *s){
   } 
 }
 
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
+CL_KERNEL_KEYWORD void place(
+  CL_GLOBAL_KEYWORD struct queenState *state){
   int index = get_global_id(0);
   struct queenState s;
+
   s.BOUND1=state[index].BOUND1;
   s.si= state[index].si;
   for (int i = 0; i < s.si; i++)

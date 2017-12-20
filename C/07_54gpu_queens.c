@@ -12,6 +12,19 @@
    $ ./07_54NQueen 
 
 54. GPU(07_37 *N*si アルゴリムは全部のせ) 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.01
+12:             14200              1787          00:00:00:00.06
+13:             73712              9233          00:00:00:00.26
+14:            365596             45752          00:00:00:01.29
+15:           2279184            285053          00:00:00:06.86
 
 53. GPU(07_36 *N アルゴリムは全部のせ) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -160,7 +173,7 @@ struct queenState {
   // long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  // int startCol; // First column this individual computation was tasked with filling.
+  //int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
   int TOPBIT;
@@ -474,7 +487,6 @@ int makeInProgress(int si){
       inProgress[i*si+j].r=0;
       inProgress[i*si+j].B1=0;
       inProgress[i*si+j].j=j;
-      // inProgress[i*si+j].lt=0;
     }
       B2--;
   }
@@ -484,8 +496,8 @@ int makeInProgress(int si){
   gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
   if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
   /*メモリバッファにデータを転送*/
-	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
-  status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
+	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_FALSE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -577,32 +589,9 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-          // if(USE_DEBUG>0) printf("lTotal:%ld\n",inProgress[i*si+j].lTotal);
-          // printf("BOUND1:%d\n",inProgress[i*si+j].BOUND1);
-          // printf("si:%d\n",inProgress[i*si+j].si);
-          //printf("a:step:%d\n",inProgress[i*si+j].step);
-          //printf("msk:step:%d\n",inProgress[i*si+j].msk);
-          // printf("y:%d\n",inProgress[i*si+j].y);
-          // printf("bm:%d\n",inProgress[i*si+j].bm);
-          // printf("BOUND2:%d\n",inProgress[i*si+j].BOUND2);
-          // printf("ENDBIT:%d\n",inProgress[i*si+j].ENDBIT);
-          // printf("TOPBIT:%d\n",inProgress[i*si+j].TOPBIT);
-          // printf("SIDEMASK:%d\n",inProgress[i*si+j].SIDEMASK);
-          // printf("LASTMASK:%d\n",inProgress[i*si+j].LASTMASK);
-          // printf("bend:%d\n",inProgress[i*si+j].bend);
-          // printf("rflg:%d\n",inProgress[i*si+j].rflg);
-          // printf("l:%d\n",inProgress[i*si+j].l);
-          // printf("d:%d\n",inProgress[i*si+j].d);
-          // printf("r:%d\n",inProgress[i*si+j].r);
-          // printf("B1:%d\n",inProgress[i*si+j].B1);
-          // printf("j:%d\n",inProgress[i*si+j].j);
-          // printf("lUnique:%ld\n",inProgress[i*si+j].lUnique);
-           // printf("lt:%ld\n",inProgress[i*si+j].lt);
-          // lGTotal+=inProgress[i*si+j].lt;
-          // lGUnique+=inProgress[i*si+j].lUnique;
-        // lGTotal+=inProgress[i*si+j].C2*2+inProgress[i*si+j].C4*4+inProgress[i*si+j].C8*8;
         lGTotal+=gProgress[i*si+j].lTotal;
         lGUnique+=gProgress[i*si+j].lUnique;
+        // printf("lUnique:%ld\n",gProgress[i*si+j].lUnique);
     }
   }
 	/**************/
