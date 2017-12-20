@@ -92,10 +92,11 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1
 
 cl_device_id *devices;
-cl_mem buffer;
+cl_mem lBuffer;
+cl_mem gBuffer;
 cl_context context;
 cl_program program;
 cl_kernel kernel;
@@ -103,12 +104,16 @@ cl_command_queue cmd_queue;
 cl_platform_id platform;
 cl_uint num_devices;
 cl_mem Amobj = NULL;
-int *localState;
-cl_int ret;
+cl_mem Bmobj = NULL;
+cl_mem Cmobj = NULL;
+
+// int *globalState;
+// cl_int ret;
 
 long lGTotal;
 long lGUnique;
 enum { Place,Remove,Done };
+
 struct HIKISU{
   int Y;
   int I;
@@ -122,11 +127,16 @@ struct STACK{
   struct HIKISU param[MAX];
   int current;
 };
+struct globalState {
+  long lTotal; // Number of solutinos found so far.
+  long lUnique;
+} __attribute__((packed));
+
 struct queenState {
   int BOUND1;
   int si;
   int aB[MAX];
-  long lTotal; // Number of solutinos found so far.
+  // long lTotal; // Number of solutinos found so far.
   int step;
   int y;
   int startCol; // First column this individual computation was tasked with filling.
@@ -136,7 +146,7 @@ struct queenState {
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
-  long lUnique;
+  // long lUnique;
   int bend;
   int rflg;
   struct STACK stParam;
@@ -148,23 +158,24 @@ struct queenState {
 } __attribute__((packed));
 
   struct queenState inProgress[MAX];
+  struct globalState gProgress[MAX];
 
 /**
  * カーネルコードの読み込み
  */
-void get_queens_code(char **buffer){
+void get_queens_code(char **code){
   char prefix[256];
   int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n");
   //int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n//#define SIZE %d\n",si);
   //  int prefixLength=snprintf(prefix,256,"#define OPENCL_STYLE\n #define SIZE %d\n",si);
   FILE * f=fopen(PROGRAM_FILE,"rb");
-  if(!f){ *buffer=NULL;return;}
+  if(!f){ *code=NULL;return;}
   long fileLength=0; fseek(f,0,SEEK_END); fileLength=ftell(f); fseek(f,0,SEEK_SET);
   long totalLength=prefixLength + fileLength + 1;
-  *buffer=malloc(totalLength); strcpy(*buffer,prefix);
-  if(buffer){ fread(*buffer + prefixLength,1,fileLength,f);} fclose(f);
+  *code=malloc(totalLength); strcpy(*code,prefix);
+  if(code){ fread(*code + prefixLength,1,fileLength,f);} fclose(f);
   // Replace BOM with space
-  (*buffer)[prefixLength]=' '; (*buffer)[prefixLength + 1]=' '; (*buffer)[prefixLength + 2]=' ';
+  (*code)[prefixLength]=' '; (*code)[prefixLength + 1]=' '; (*code)[prefixLength + 2]=' ';
 }
 /**
 プラットフォーム一覧を取得
@@ -413,7 +424,7 @@ int makeInProgress(int si){
     inProgress[i].BOUND1=i;
     inProgress[i].si=si;
 		for (int j=0;j< si;j++){ inProgress[i].aB[j]=j;}
-		inProgress[i].lTotal=0;
+		gProgress[i].lTotal=0;
 		inProgress[i].step=0;
     inProgress[i].y=0;
 		inProgress[i].startCol =1;
@@ -424,7 +435,7 @@ int makeInProgress(int si){
     inProgress[i].TOPBIT=1<<(si-1);
     inProgress[i].SIDEMASK=0;
     inProgress[i].LASTMASK=0;
-    inProgress[i].lUnique=0;
+    gProgress[i].lUnique=0;
     inProgress[i].bend=0;
     inProgress[i].rflg=0;
     for (int m=0;m<si;m++){ 
@@ -444,30 +455,27 @@ int makeInProgress(int si){
     inProgress[i].B1=0;
   }
 	/**************/
-    localState = (int *)malloc(si*4*sizeof(int));
-    /* データを初期化 */
-    for (int i=0; i<si; i++) {
-        for (int j=0; j<4; j++) {
-            localState[i*4+j] = i*4+j+1;
-        }
-    }
-    /* バッファオブジェクトの作成 */
-    Amobj = clCreateBuffer(context, CL_MEM_READ_WRITE, si*4*sizeof(int), NULL, &status);
-    /* メモリバッファにデータを転送 */
-    ret = clEnqueueWriteBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), localState, 0, NULL, NULL);
+  /* バッファオブジェクトの作成 */
+  lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
+  gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
+  //Bmobj=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
+  //Cmobj=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress)+sizeof(gProgress),NULL,&status);
+  if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
+
+  /*メモリバッファにデータを転送*/
+	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
+  // status = clEnqueueWriteBuffer(cmd_queue, Bmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
+  // status = clEnqueueWriteBuffer(cmd_queue, Cmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
+    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 	/**************/
 
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-  buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
-  clRetainMemObject(buffer);
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't create buffer.\n"); return 14; }
-  /**
-   *
-   *
-   */
-	status=clEnqueueWriteBuffer(cmd_queue,buffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL); 
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
-
+  clRetainMemObject(lBuffer);
+  clRetainMemObject(gBuffer);
+  // clRetainMemObject(Amobj);
+  // clRetainMemObject(Bmobj);
+  // clRetainMemObject(Cmobj);
   /**
    * マップオブジェクトの解放
    */
@@ -489,10 +497,13 @@ int makeInProgress(int si){
     arg_size    引数として渡すのデータのサイズ。
     arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
   */
-  status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 	/**************/
-  status=clSetKernelArg(kernel,1,sizeof(cl_mem),(void *)&Amobj);
+  status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
+  status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
+  // status=clSetKernelArg(kernel,0,sizeof(cl_mem),(void *)&Amobj);
+  // status=clSetKernelArg(kernel,1,sizeof(cl_mem),(void *)&Bmobj);
+  // status=clSetKernelArg(kernel,2,sizeof(cl_mem),(void *)&Cmobj);
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 	/**************/
   return 0;
 }
@@ -536,20 +547,23 @@ int execKernel(int si){
     /**
      * 結果を読み込み
      */
-    status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    // status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
 
 
     /* メモリバッファから結果を取得 */
-    ret = clEnqueueReadBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), localState, 0, NULL, NULL);
+    // ret = clEnqueueReadBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
+    // ret = clEnqueueReadBuffer(cmd_queue, Bmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
+    // ret = clEnqueueReadBuffer(cmd_queue, Cmobj, CL_TRUE, 0, si*4*sizeof(int), globalState, 0, NULL, NULL);
     /* 結果の表示 */
-    for (int i=0; i<si; i++) {
-        for (int j=0; j<4; j++) {
-            printf("%d ", localState[i*si+j]);
-        }
-        printf("\n");
-    }
-
+    // for (int i=0; i<si; i++) {
+    //     for (int j=0; j<4; j++) {
+    //         printf("%d ", globalState[i*si+j]);
+    //     }
+    //     printf("\n");
+    // }
+    //
  } //end while
   return 0;
 }
@@ -562,9 +576,9 @@ int execPrint(int si){
   lGUnique=0;
 	/**************/
   for(int i=0;i<si;i++){
-      if(USE_DEBUG>0) printf("%ld\n",inProgress[i].lTotal);
-      lGTotal+=inProgress[i].lTotal;
-      lGUnique+=inProgress[i].lUnique;
+      if(USE_DEBUG>0) printf("%ld\n",gProgress[i].lTotal);
+      lGTotal+=gProgress[i].lTotal;
+      lGUnique+=gProgress[i].lUnique;
     }
 	/**************/
   return 0;
@@ -591,7 +605,10 @@ int NQueens(int si){
   execKernel(si);
   gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
-	clReleaseMemObject(buffer);
+	// clReleaseMemObject(buffer);
+	// clReleaseMemObject(Amobj);
+	// clReleaseMemObject(Bmobj);
+	// clReleaseMemObject(Cmobj);
   clReleaseContext(context);
   if (t1.tv_usec<t0.tv_usec) {
     dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
