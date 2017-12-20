@@ -88,13 +88,13 @@
 #include<CL/cl.h> //Windows/Unix/Linuxの場合はインクルード
 #endif
 
-#define PROGRAM_FILE "./07_54queen_kernel.c" //カーネルソースコード
+#define PROGRAM_FILE "./07_55queen_kernel.c" //カーネルソースコード
 #define FUNC "place" //カーネル関数の名称を設定
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 1 
 
 cl_device_id *devices;
 cl_mem lBuffer;
@@ -125,22 +125,23 @@ struct STACK{
 struct globalState {
   long lTotal; // Number of solutinos found so far.
   long lUnique;
+  int k;
 } __attribute__((packed));
 struct queenState {
   int BOUND1;
   int si;
   int aB[MAX];
-  // long lTotal; // Number of solutinos found so far.
+  long lTotal; // Number of solutinos found so far.
   int step;
   int y;
-  //int startCol; // First column this individual computation was tasked with filling.
+  // int startCol; // First column this individual computation was tasked with filling.
   int bm;
   int BOUND2;
   int TOPBIT;
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
-  // long lUnique; // Number of solutinos found so far.
+  long lUnique; // Number of solutinos found so far.
   int bend;
   int rflg;
   struct STACK stParam;
@@ -150,10 +151,11 @@ struct queenState {
   int r;
   int B1;
   int j;
+  long lt;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX];
-struct globalState gProgress[MAX*MAX];
+struct queenState inProgress[MAX*MAX*MAX];
+struct globalState gProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -416,37 +418,40 @@ int makeInProgress(int si){
   int B2=si-1;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-      inProgress[i*si+j].BOUND1=i;
-      inProgress[i*si+j].si=si;
-      for (int m=0;m< si;m++){ inProgress[i*si+j].aB[m]=m;}
-      gProgress[i*si+j].lTotal=0;
-      inProgress[i*si+j].step=0;
-      inProgress[i*si+j].y=0;
-      inProgress[i*si+j].bm=0;
-      inProgress[i*si+j].BOUND2=B2;
-      inProgress[i*si+j].ENDBIT=0;
-      inProgress[i*si+j].TOPBIT=1<<(si-1);
-      inProgress[i*si+j].SIDEMASK=0;
-      inProgress[i*si+j].LASTMASK=0;
-      gProgress[i*si+j].lUnique=0;
-      inProgress[i*si+j].bend=0;
-      inProgress[i*si+j].rflg=0;
+    for(int k=0;k<si;k++){
+      inProgress[i*si*si+j*si+k].BOUND1=i;
+      inProgress[i*si*si+j*si+k].si=si;
+      for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+      gProgress[i*si*si+j*si+k].lTotal=0;
+      inProgress[i*si*si+j*si+k].step=0;
+      inProgress[i*si*si+j*si+k].y=0;
+      inProgress[i*si*si+j*si+k].bm=0;
+      inProgress[i*si*si+j*si+k].BOUND2=B2;
+      inProgress[i*si*si+j*si+k].ENDBIT=0;
+      inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
+      inProgress[i*si*si+j*si+k].SIDEMASK=0;
+      inProgress[i*si*si+j*si+k].LASTMASK=0;
+      gProgress[i*si*si+j*si+k].lUnique=0;
+      inProgress[i*si*si+j*si+k].bend=0;
+      inProgress[i*si*si+j*si+k].rflg=0;
       for (int m=0;m<si;m++){
-        inProgress[i*si+j].stParam.param[m].Y=0;
-        inProgress[i*si+j].stParam.param[m].I=si;
-        inProgress[i*si+j].stParam.param[m].M=0;
-        inProgress[i*si+j].stParam.param[m].L=0;
-        inProgress[i*si+j].stParam.param[m].D=0;
-        inProgress[i*si+j].stParam.param[m].R=0;
-        inProgress[i*si+j].stParam.param[m].B=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
+        inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
+        inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
       }
-      inProgress[i*si+j].stParam.current=0;
-      inProgress[i*si+j].msk=(1<<si)-1;
-      inProgress[i*si+j].l=0;
-      inProgress[i*si+j].d=0;
-      inProgress[i*si+j].r=0;
-      inProgress[i*si+j].B1=0;
-      inProgress[i*si+j].j=j;
+      inProgress[i*si*si+j*si+k].stParam.current=0;
+      inProgress[i*si*si+j*si+k].msk=(1<<si)-1;
+      inProgress[i*si*si+j*si+k].l=0;
+      inProgress[i*si*si+j*si+k].d=0;
+      inProgress[i*si*si+j*si+k].r=0;
+      inProgress[i*si*si+j*si+k].B1=0;
+      inProgress[i*si*si+j*si+k].j=j;
+      gProgress[i*si*si+j*si+k].k=k;
+    }
     }
       B2--;
   }
@@ -513,10 +518,10 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
-  while(!all_tasks_done(si*si)){
+  while(!all_tasks_done(si*si*si)){
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si*si};
+    size_t globalWorkSize[] = {si*si*si};
 	/**************/
     size_t localWorkSize[] = { 1 };
     status=clEnqueueNDRangeKernel(
@@ -549,9 +554,11 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-        lGTotal+=gProgress[i*si+j].lTotal;
-        lGUnique+=gProgress[i*si+j].lUnique;
-        // printf("lUnique:%ld\n",gProgress[i*si+j].lUnique);
+    for(int k=0;k<si;k++){
+        lGTotal+=gProgress[i*si*si+j*si+k].lTotal;
+        lGUnique+=gProgress[i*si*si+j*si+k].lUnique;
+        // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
+      }
     }
   }
 	/**************/
