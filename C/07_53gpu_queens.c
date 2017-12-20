@@ -102,6 +102,9 @@ cl_kernel kernel;
 cl_command_queue cmd_queue;
 cl_platform_id platform;
 cl_uint num_devices;
+cl_mem Amobj = NULL;
+int *localState;
+cl_int ret;
 
 long lGTotal;
 long lGUnique;
@@ -441,6 +444,19 @@ int makeInProgress(int si){
     inProgress[i].B1=0;
   }
 	/**************/
+    localState = (int *)malloc(si*4*sizeof(int));
+    /* データを初期化 */
+    for (int i=0; i<si; i++) {
+        for (int j=0; j<4; j++) {
+            localState[i*4+j] = i*4+j+1;
+        }
+    }
+    /* バッファオブジェクトの作成 */
+    Amobj = clCreateBuffer(context, CL_MEM_READ_WRITE, si*4*sizeof(int), NULL, &status);
+    /* メモリバッファにデータを転送 */
+    ret = clEnqueueWriteBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), localState, 0, NULL, NULL);
+	/**************/
+
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(inProgress), NULL, &status);
   clRetainMemObject(buffer);
@@ -475,6 +491,9 @@ int makeInProgress(int si){
   */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&buffer);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+	/**************/
+  status=clSetKernelArg(kernel,1,sizeof(cl_mem),(void *)&Amobj);
+	/**************/
   return 0;
 }
 /**
@@ -519,6 +538,18 @@ int execKernel(int si){
      */
     status=clEnqueueReadBuffer(cmd_queue,buffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
+
+
+    /* メモリバッファから結果を取得 */
+    ret = clEnqueueReadBuffer(cmd_queue, Amobj, CL_TRUE, 0, si*4*sizeof(int), localState, 0, NULL, NULL);
+    /* 結果の表示 */
+    for (int i=0; i<si; i++) {
+        for (int j=0; j<4; j++) {
+            printf("%d ", localState[i*si+j]);
+        }
+        printf("\n");
+    }
+
  } //end while
   return 0;
 }

@@ -294,7 +294,7 @@ void backTrack2(struct queenState *s){
   } 
 }
 
-CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
+CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state,CL_GLOBAL_KEYWORD int* localState){
   int index = get_global_id(0);
   struct queenState s;
   s.BOUND1=state[index].BOUND1;
@@ -320,6 +320,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   s.d= state[index].d;
   s.r= state[index].r;
   s.B1= state[index].B1;
+  printf("localState0:%d\n",localState[index*s.si+0]);
+  printf("localState1:%d\n",localState[index*s.si+1]);
+  printf("localState2:%d\n",localState[index*s.si+2]);
+  printf("localState3:%d\n",localState[index*s.si+3]);
   //printf("BOUND1:%d\n",s.BOUND1);
   //printf("si:%d\n",s.si);
   //printf("step:%d\n",s.step);
