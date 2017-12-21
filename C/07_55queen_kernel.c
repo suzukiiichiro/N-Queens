@@ -152,11 +152,11 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     g->y=1;g->l=(1)<<1;g->d=(1);g->r=(1>>1);
   }
   g->step=0;
-  unsigned long j=1;
-  while(j>0){
+  unsigned long COUNT=1;
+  while(COUNT>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100000){
+    if(COUNT==100000){
       printf("b1_over\n");
       g->step=1;
       return;
@@ -314,18 +314,18 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
       // printf("}else{#if(s->y==1){");
       g->rflg=1;
     }
-    j++;
+    COUNT++;
   }   
   g->step=2;
 }
 void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
-  unsigned long j=1;
+  unsigned long COUNT=1;
   g->step=0;
-  while (j>0){
+  while (COUNT>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100000){
+    if(COUNT==100000){
       g->step=1;
       printf("b2_over\n");
       return;
@@ -492,7 +492,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
     }else{
       g->rflg=1;
     }
-    j++;
+    COUNT++;
   } 
   g->step=2;
 }

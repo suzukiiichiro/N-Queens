@@ -348,10 +348,7 @@ int buildProgram(){
   }
   return status;
 }
-/** 
- * カーネルオブジェクトの宣言
- * 
- */
+/* データ並列のOpenCLカーネルの作成 */
 int createKernel(){
   cl_int status;
   kernel=clCreateKernel(program,FUNC,&status);
@@ -460,7 +457,7 @@ int makeInProgress(int si){
   clRetainMemObject(lBuffer);
   clRetainMemObject(gBuffer);
   clRetainMemObject(gtBuffer);
-	/**************/
+  /* OpenCLカーネル引数の設定 */
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
   status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
   status=clSetKernelArg(kernel,2,sizeof(cl_mem),&gtBuffer);
@@ -496,11 +493,13 @@ int execKernel(int si){
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   while(!all_tasks_done(si*si*si)){
+    // printf("loop");
     //size_t dim=1;
     cl_uint dim=1;
     size_t globalWorkSize[] = {si*si*si};
-	/**************/
     size_t localWorkSize[] = { 1 };
+	/**************/
+  /* OpenCLカーネルをデータ並列で実行 */
     status=clEnqueueNDRangeKernel(
         cmd_queue,         //タスクを投入するキュー
         kernel,            //実行するカーネル
@@ -512,9 +511,7 @@ int execKernel(int si){
         NULL,              //この関数が待機すべき関数のリストへのポインタ
         NULL);             //この関数の返すevent
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
-    /**
-     * 結果を読み込み
-     */
+    /* メモリバッファから結果を取得 */
     status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
     status=clEnqueueReadBuffer(cmd_queue,gtBuffer,CL_TRUE,0,sizeof(gtProgress),gtProgress,0,NULL,NULL);
@@ -533,7 +530,7 @@ int execPrint(int si){
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
+        // printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
         lGTotal+=gtProgress[i*si*si+j*si+k].lTotal;
         lGUnique+=gtProgress[i*si*si+j*si+k].lUnique;
         // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
