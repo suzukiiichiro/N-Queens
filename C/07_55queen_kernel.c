@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -157,7 +157,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
 #ifdef GCC_STYLE
 #else
     if(COUNT==100000){
-      printf("b1_over\n");
+      // printf("b1_over\n");
       g->step=1;
       return;
     }
@@ -327,7 +327,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
 #else
     if(COUNT==100000){
       g->step=1;
-      printf("b2_over\n");
+      // printf("b2_over\n");
       return;
     }
 #endif
@@ -585,7 +585,6 @@ backTrack2(&_l,&_g,&_gt);
 g[index].BOUND1=_g.BOUND1;
 g[index].si=_g.si;
 for(int i=0;i<_g.si;i++){l[index].aB[i]=_l.aB[i];}
-gt[index].lTotal=_gt.lTotal;
 if(_g.step==1){
   g[index].step=1;
 // l[index].msk=1;
@@ -594,6 +593,8 @@ if(_g.step==1){
 // l[index].msk=2;
 }
  // printf("m:step:%d:BOUND1:%d:k:%d:j:%d\n",g[index].step,g[index].BOUND1,g[index].k,g[index].j);
+gt[index].lTotal=_gt.lTotal;
+gt[index].lUnique=_gt.lUnique;
 g[index].y=_g.y;
 // l[index].startCol=0;
 g[index].bm=_g.bm;
@@ -602,7 +603,6 @@ g[index].ENDBIT=_g.ENDBIT;
 g[index].TOPBIT=_g.TOPBIT;
 g[index].SIDEMASK=_g.SIDEMASK;
 g[index].LASTMASK=_g.LASTMASK;
-gt[index].lUnique=_gt.lUnique;
 g[index].bend=_g.bend;
 g[index].rflg=_g.rflg;
 l[index].stParam=_l.stParam;
@@ -615,6 +615,9 @@ g[index].k=_g.k;
 // l[index].C2=_l.C2;
 // l[index].C4=_l.C4;
 // l[index].C8=_l.C8;
+printf("");
+// printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
+// printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt[index].lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
 }
 #ifdef GCC_STYLE
 int main(){

@@ -390,11 +390,9 @@ int commandQueue(){
 デバイスメモリを確保しつつデータをコピー
 clCreateBuffer()バッファオブジェクトを作成する。
 context バッファオブジェクトを作成するために必要なOpenCLコンテキスト。
-flags    「バッファオブジェクトをどのようなメモリ領域に割り当てるか」「メモリ領域
-をどのように使用するか」のような割り当てやusageに関する情報を指定するビットフィールド。
+flags    「バッファオブジェクトをどのようなメモリ領域に割り当てるか」「メモリ領域 をどのように使用するか」のような割り当てやusageに関する情報を指定するビットフィールド。
 CL_MEM_READ_WRITE カーネルにメモリ領域へのRead/Writeを許可する設定。
-CL_MEM_USE_HOST_PTR デバイスメモリ内でhost_ptrを指定することにより、OpsnCL処理に
-バッファをキャッシュすることを許可する。
+CL_MEM_USE_HOST_PTR デバイスメモリ内でhost_ptrを指定することにより、OpsnCL処理にバッファをキャッシュすることを許可する。
 size    割り当てられたバッファメモリオブジェクトのバイトサイズ
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
@@ -472,13 +470,14 @@ int all_tasks_done(int32_t num_tasks) {
   // printf("##############\n");
 	for (int i=0;i<num_tasks;i++){
     // printf("afterstep:%d:BOUND1:%d:j:%d:k:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k);
-		//if (gProgress[i].step != 2){
-		if (gProgress[i].step == 2){
-			//return 0;
-			return 1;
+		if (gProgress[i].step != 2){
+		// if (gProgress[i].step == 2){
+			return 0;
+			// return 1;
     }
   }
-	return 0;
+	// return 0;
+	return 1;
 }
 /**
   カーネルの実行 
@@ -531,8 +530,10 @@ int execPrint(int si){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
         // printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
+        if(gtProgress[i*si*si+j*si+k].lTotal<1000000){
         lGTotal+=gtProgress[i*si*si+j*si+k].lTotal;
         lGUnique+=gtProgress[i*si*si+j*si+k].lUnique;
+        }
         // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
       }
     }
