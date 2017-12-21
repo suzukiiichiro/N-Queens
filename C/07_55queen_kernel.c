@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+// #define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -615,7 +615,7 @@ g[index].k=_g.k;
 // l[index].C2=_l.C2;
 // l[index].C4=_l.C4;
 // l[index].C8=_l.C8;
-printf("");
+printf("########### _gt.lTotal %lu gt[index].lTotal %lu index :%d\n", _gt.lTotal,gt[index].lTotal,index);
 // printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
 // printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt[index].lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
 }
