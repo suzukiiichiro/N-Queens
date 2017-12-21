@@ -94,11 +94,12 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 1 
+#define USE_DEBUG 0
 
 cl_device_id *devices;
 cl_mem lBuffer;
 cl_mem gBuffer;
+cl_mem gtBuffer;
 cl_context context;
 cl_program program;
 cl_kernel kernel;
@@ -117,14 +118,16 @@ struct HIKISU{
   int D;
   int R;
   int B;
-};
+} __attribute__((packed));
 struct STACK{
   struct HIKISU param[MAX];
   int current;
-};
-struct globalState {
+} __attribute__((packed));
+struct gtState{
   long lTotal; // Number of solutinos found so far.
   long lUnique;
+} __attribute__((packed));
+struct globalState {
   int k;
   int j;
   int BOUND1;
@@ -132,27 +135,28 @@ struct globalState {
   int si;
   int B1;
   int step;
-} __attribute__((packed));
-struct queenState {
-  int aB[MAX];
+  int bend;
   int y;
-  // int startCol; // First column this individual computation was tasked with filling.
   int bm;
+  int rflg;
+  int msk;
   int TOPBIT;
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
-  int bend;
-  int rflg;
-  struct STACK stParam;
-  int msk;
   int l;
   int d;
   int r;
 } __attribute__((packed));
+struct queenState {
+  int aB[MAX];
+  // int startCol; // First column this individual computation was tasked with filling.
+  struct STACK stParam;
+} __attribute__((packed));
 
 struct queenState inProgress[MAX*MAX*MAX];
 struct globalState gProgress[MAX*MAX*MAX];
+struct gtState gtProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -398,57 +402,46 @@ size    割り当てられたバッファメモリオブジェクトのバイト
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
-void* aligned_malloc(size_t required_bytes, size_t alignment) {
-	void* p1; 	// original block
-	void** p2; 	// aligned block
-	int offset=(int)alignment-1+sizeof(void*);
-	if ((p1 = (void*)malloc(required_bytes + offset)) == NULL) {
-		 return NULL;
-	}
-	p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
-	p2[-1] = p1;
-	return p2;
-}
 int makeInProgress(int si){
   cl_int status;
 	/**************/
   int B2=si-1;
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-    for(int k=0;k<si;k++){
-      gProgress[i*si*si+j*si+k].BOUND1=i;
-      gProgress[i*si*si+j*si+k].si=si;
-      for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
-      gProgress[i*si*si+j*si+k].lTotal=0;
-      gProgress[i*si*si+j*si+k].step=0;
-      inProgress[i*si*si+j*si+k].y=0;
-      inProgress[i*si*si+j*si+k].bm=0;
-      gProgress[i*si*si+j*si+k].BOUND2=B2;
-      inProgress[i*si*si+j*si+k].ENDBIT=0;
-      inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
-      inProgress[i*si*si+j*si+k].SIDEMASK=0;
-      inProgress[i*si*si+j*si+k].LASTMASK=0;
-      gProgress[i*si*si+j*si+k].lUnique=0;
-      inProgress[i*si*si+j*si+k].bend=0;
-      inProgress[i*si*si+j*si+k].rflg=0;
-      for (int m=0;m<si;m++){
-        inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
-        inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
-        inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
-        inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
-        inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
-        inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
-        inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+      for(int k=0;k<si;k++){
+        gProgress[i*si*si+j*si+k].BOUND1=i;
+        gProgress[i*si*si+j*si+k].si=si;
+        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+        gtProgress[i*si*si+j*si+k].lTotal=0;
+        gProgress[i*si*si+j*si+k].step=0;
+        gProgress[i*si*si+j*si+k].y=0;
+        gProgress[i*si*si+j*si+k].bm=0;
+        gProgress[i*si*si+j*si+k].BOUND2=B2;
+        gProgress[i*si*si+j*si+k].ENDBIT=0;
+        gProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
+        gProgress[i*si*si+j*si+k].SIDEMASK=0;
+        gProgress[i*si*si+j*si+k].LASTMASK=0;
+        gtProgress[i*si*si+j*si+k].lUnique=0;
+        gProgress[i*si*si+j*si+k].bend=0;
+        gProgress[i*si*si+j*si+k].rflg=0;
+        for (int m=0;m<si;m++){
+          inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
+          inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+        }
+        inProgress[i*si*si+j*si+k].stParam.current=0;
+        gProgress[i*si*si+j*si+k].msk=(1<<si)-1;
+        gProgress[i*si*si+j*si+k].l=0;
+        gProgress[i*si*si+j*si+k].d=0;
+        gProgress[i*si*si+j*si+k].r=0;
+        gProgress[i*si*si+j*si+k].B1=0;
+        gProgress[i*si*si+j*si+k].j=j;
+        gProgress[i*si*si+j*si+k].k=k;
       }
-      inProgress[i*si*si+j*si+k].stParam.current=0;
-      inProgress[i*si*si+j*si+k].msk=(1<<si)-1;
-      inProgress[i*si*si+j*si+k].l=0;
-      inProgress[i*si*si+j*si+k].d=0;
-      inProgress[i*si*si+j*si+k].r=0;
-      gProgress[i*si*si+j*si+k].B1=0;
-      gProgress[i*si*si+j*si+k].j=j;
-      gProgress[i*si*si+j*si+k].k=k;
-    }
     }
       B2--;
   }
@@ -456,39 +449,21 @@ int makeInProgress(int si){
   /* バッファオブジェクトの作成 */
   lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
   gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
+  gtBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gtProgress),NULL,&status);
   if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
   /*メモリバッファにデータを転送*/
 	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
   status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_FALSE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gtBuffer,CL_FALSE,0,sizeof(gtProgress),&gtProgress,0,NULL,NULL);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
 	/**************/
-  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   clRetainMemObject(lBuffer);
   clRetainMemObject(gBuffer);
-  /**
-   * マップオブジェクトの解放
-   */
-/**
-  status = clEnqueueUnmapMemObject(
-        cmd_queue,  //投入キュー
-        buffer,     //対象のOpenCLバッファ
-        ptrMappedA, //取得したホスト側のポインタ
-        0,          //この関数が待機すべきeventの数
-        NULL,       //この関数が待機すべき関数のリストへのポインタ
-        NULL);      //この関数の返すevent
-  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't finish command queue."); return 14; }
-*/
- /**
-    カーネルの引数をセット
-    clSetKernelArg()カーネルの特定の引数に値をセットする。
-    kernel    値をセットするカーネル。
-    arg_index    引数のインデックス。
-    arg_size    引数として渡すのデータのサイズ。
-    arg_value    第２引数arg_indexで指定した引数にわたすデータへのポインタ。
-  */
+  clRetainMemObject(gtBuffer);
 	/**************/
   status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
   status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
+  status=clSetKernelArg(kernel,2,sizeof(cl_mem),&gtBuffer);
   if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
 	/**************/
   return 0;
@@ -497,9 +472,9 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
-  printf("##############\n");
+  // printf("##############\n");
 	for (int i=0;i<num_tasks;i++){
-    printf("afterstep:%d:BOUND1:%d:j:%d:k:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k);
+    // printf("afterstep:%d:BOUND1:%d:j:%d:k:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k);
 		//if (gProgress[i].step != 2){
 		if (gProgress[i].step == 2){
 			//return 0;
@@ -519,6 +494,7 @@ int all_tasks_done(int32_t num_tasks) {
 int execKernel(int si){
   cl_int status;
 	/**************/
+  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
   while(!all_tasks_done(si*si*si)){
     //size_t dim=1;
     cl_uint dim=1;
@@ -541,6 +517,7 @@ int execKernel(int si){
      */
     status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
     status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,gtBuffer,CL_TRUE,0,sizeof(gtProgress),gtProgress,0,NULL,NULL);
     if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
  } //end while
   return 0;
@@ -556,9 +533,9 @@ int execPrint(int si){
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        printf("lTotal:%ld\n",gProgress[i*si*si+j*si+k].lTotal);
-        lGTotal+=gProgress[i*si*si+j*si+k].lTotal;
-        lGUnique+=gProgress[i*si*si+j*si+k].lUnique;
+        printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
+        lGTotal+=gtProgress[i*si*si+j*si+k].lTotal;
+        lGUnique+=gtProgress[i*si*si+j*si+k].lUnique;
         // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
       }
     }
@@ -590,6 +567,7 @@ int NQueens(int si){
   execPrint(si);
 	clReleaseMemObject(lBuffer);
 	clReleaseMemObject(gBuffer);
+	clReleaseMemObject(gtBuffer);
   clReleaseContext(context);
   if (t1.tv_usec<t0.tv_usec) {
     dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -612,7 +590,7 @@ int NQueens(int si){
  */
 int main(void){
   int min=8;
-  int targetN=8;
+  int targetN=14;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
