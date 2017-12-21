@@ -126,22 +126,22 @@ struct globalState {
   long lTotal; // Number of solutinos found so far.
   long lUnique;
   int k;
+  int j;
+  int BOUND1;
+  int BOUND2;
+  int si;
+  int B1;
+  int step;
 } __attribute__((packed));
 struct queenState {
-  int BOUND1;
-  int si;
   int aB[MAX];
-  long lTotal; // Number of solutinos found so far.
-  int step;
   int y;
   // int startCol; // First column this individual computation was tasked with filling.
   int bm;
-  int BOUND2;
   int TOPBIT;
   int ENDBIT;
   int SIDEMASK;
   int LASTMASK;
-  long lUnique; // Number of solutinos found so far.
   int bend;
   int rflg;
   struct STACK stParam;
@@ -149,9 +149,6 @@ struct queenState {
   int l;
   int d;
   int r;
-  int B1;
-  int j;
-  long lt;
 } __attribute__((packed));
 
 struct queenState inProgress[MAX*MAX*MAX];
@@ -419,14 +416,14 @@ int makeInProgress(int si){
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
     for(int k=0;k<si;k++){
-      inProgress[i*si*si+j*si+k].BOUND1=i;
-      inProgress[i*si*si+j*si+k].si=si;
+      gProgress[i*si*si+j*si+k].BOUND1=i;
+      gProgress[i*si*si+j*si+k].si=si;
       for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
       gProgress[i*si*si+j*si+k].lTotal=0;
-      inProgress[i*si*si+j*si+k].step=0;
+      gProgress[i*si*si+j*si+k].step=0;
       inProgress[i*si*si+j*si+k].y=0;
       inProgress[i*si*si+j*si+k].bm=0;
-      inProgress[i*si*si+j*si+k].BOUND2=B2;
+      gProgress[i*si*si+j*si+k].BOUND2=B2;
       inProgress[i*si*si+j*si+k].ENDBIT=0;
       inProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
       inProgress[i*si*si+j*si+k].SIDEMASK=0;
@@ -448,8 +445,8 @@ int makeInProgress(int si){
       inProgress[i*si*si+j*si+k].l=0;
       inProgress[i*si*si+j*si+k].d=0;
       inProgress[i*si*si+j*si+k].r=0;
-      inProgress[i*si*si+j*si+k].B1=0;
-      inProgress[i*si*si+j*si+k].j=j;
+      gProgress[i*si*si+j*si+k].B1=0;
+      gProgress[i*si*si+j*si+k].j=j;
       gProgress[i*si*si+j*si+k].k=k;
     }
     }
@@ -500,12 +497,16 @@ int makeInProgress(int si){
  * タスクの終了を待機する
  */
 int all_tasks_done(int32_t num_tasks) {
+  printf("##############\n");
 	for (int i=0;i<num_tasks;i++){
-		if (inProgress[i].step != 2){
-			return 0;
+    printf("afterstep:%d:BOUND1:%d:j:%d:k:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k);
+		//if (gProgress[i].step != 2){
+		if (gProgress[i].step == 2){
+			//return 0;
+			return 1;
     }
   }
-	return 1;
+	return 0;
 }
 /**
   カーネルの実行 
@@ -554,7 +555,8 @@ int execPrint(int si){
 	/**************/
   for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
-    for(int k=0;k<si;k++){
+      for(int k=0;k<si;k++){
+        printf("lTotal:%ld\n",gProgress[i*si*si+j*si+k].lTotal);
         lGTotal+=gProgress[i*si*si+j*si+k].lTotal;
         lGUnique+=gProgress[i*si*si+j*si+k].lUnique;
         // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
@@ -609,8 +611,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=4;
-  int targetN=17;
+  int min=8;
+  int targetN=8;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
