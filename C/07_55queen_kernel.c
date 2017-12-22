@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-// #define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -9,7 +9,7 @@ int get_global_id(int dimension){ return 0;}
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 17
+#define SIZE 27 
 #else
 //typedef long qint;
 //typedef long int64_t;
@@ -20,7 +20,7 @@ typedef ushort uint16_t;
 #define CL_CONSTANT_KEYWORD __constant
 #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-#define MAX 17  
+#define MAX 27  
 CL_PACKED_KEYWORD struct HIKISU{
   int Y;
   int I;
@@ -146,7 +146,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g,struct gtState *g
   gt->lTotal+=8;
   gt->lUnique++;
 }
-void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
+int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
   if(g->step!=1){
     g->y=1;g->l=(1)<<1;g->d=(1);g->r=(1>>1);
@@ -159,7 +159,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(COUNT==100000){
       // printf("b1_over\n");
       g->step=1;
-      return;
+      return 0;
     }
 #endif
     if(g->rflg==0){
@@ -187,7 +187,9 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
         }else{ 
           // printf("}else{ #if(g->bm & (1<<s->j)){\n");
           g->step=2;
-          return;
+          printf("");
+ // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
+          return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -230,7 +232,9 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
         }else{ 
           // printf("}else{ #if(g->bm & (1<<s->j)){\n");
           g->step=2;
-          return;
+ // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
+          printf("");
+          return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -309,7 +313,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(g->y<=3){
       // printf("if(s->y==1){\n");
       g->step=2;
-      return;
+      return 0;
     }else{
       // printf("}else{#if(s->y==1){");
       g->rflg=1;
@@ -317,6 +321,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     COUNT++;
   }   
   g->step=2;
+  return 0;
 }
 void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
@@ -367,6 +372,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
         } else{ 
           // printf("} else{#if(g->bm & (1<<s->j)){");
           g->step=2;
+// printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           return;
         }
           // printf("inparam\n");
@@ -410,6 +416,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
         } else{ 
            // printf("2} else{#if(g->bm & (1<<s->j)){");
           g->step=2;
+// printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           return;
         }
            // printf("2inparam\n");
@@ -560,7 +567,14 @@ CL_KERNEL_KEYWORD void place(
         _l.aB[0]=1;
         _g.TOPBIT=1<<(_g.si-1);
       }
-backTrack1(&_l,&_g,&_gt);
+      int rtn;
+      rtn=backTrack1(&_l,&_g,&_gt);
+      if(rtn==1){
+        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
+        _gt.lTotal=0;
+        _gt.lUnique=0;
+        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
+      }
     }else if(_g.BOUND1 !=0 && _g.step !=2){ 
       if(_g.step!=1){
       _g.TOPBIT=1<<(_g.si-1);
@@ -615,7 +629,7 @@ g[index].k=_g.k;
 // l[index].C2=_l.C2;
 // l[index].C4=_l.C4;
 // l[index].C8=_l.C8;
-printf("########### _gt.lTotal %lu gt[index].lTotal %lu index :%d\n", _gt.lTotal,gt[index].lTotal,index);
+//printf("########### _gt.lTotal %lu gt[index].lTotal %lu index :%d:\n", _gt.lTotal,gt[index].lTotal,index);
 // printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
 // printf("###############lTotal         %lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt[index].lTotal,g[index].step,g[index].BOUND1,g[index].k,g[index].j);
 }

@@ -530,10 +530,10 @@ int execPrint(int si){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
         // printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
-        if(gtProgress[i*si*si+j*si+k].lTotal<1000000){
+        // if(gtProgress[i*si*si+j*si+k].lTotal<1000000){
         lGTotal+=gtProgress[i*si*si+j*si+k].lTotal;
         lGUnique+=gtProgress[i*si*si+j*si+k].lUnique;
-        }
+        // }
         // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
       }
     }
@@ -587,8 +587,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=8;
-  int targetN=14;
+  int min=4;
+  int targetN=17;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
