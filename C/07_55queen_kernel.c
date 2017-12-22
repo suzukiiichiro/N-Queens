@@ -146,7 +146,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g,struct gtState *g
   gt->lTotal+=8;
   gt->lUnique++;
 }
-int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
+void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
   if(g->step!=1){
     g->y=1;g->l=(1)<<1;g->d=(1);g->r=(1>>1);
@@ -159,7 +159,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(COUNT==100000){
       // printf("b1_over\n");
       g->step=1;
-      return 0;
+      return;
     }
 #endif
     if(g->rflg==0){
@@ -189,7 +189,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           g->step=2;
           printf("");
  // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
-          return 1;
+          return;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -234,7 +234,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           g->step=2;
  // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           printf("");
-          return 1;
+          return;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -313,7 +313,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(g->y<=3){
       // printf("if(s->y==1){\n");
       g->step=2;
-      return 0;
+      return;
     }else{
       // printf("}else{#if(s->y==1){");
       g->rflg=1;
@@ -321,7 +321,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     COUNT++;
   }   
   g->step=2;
-  return 0;
+  return;
 }
 void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
@@ -568,13 +568,13 @@ CL_KERNEL_KEYWORD void place(
         _g.TOPBIT=1<<(_g.si-1);
       }
       int rtn;
-      rtn=backTrack1(&_l,&_g,&_gt);
-      if(rtn==1){
+      backTrack1(&_l,&_g,&_gt);
+      // if(rtn==1){
         // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
-        _gt.lTotal=0;
-        _gt.lUnique=0;
+        // _gt.lTotal=0;
+        // _gt.lUnique=0;
         // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
-      }
+      // }
     }else if(_g.BOUND1 !=0 && _g.step !=2){ 
       if(_g.step!=1){
       _g.TOPBIT=1<<(_g.si-1);
