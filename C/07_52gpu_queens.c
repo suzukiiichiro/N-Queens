@@ -103,7 +103,7 @@
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
-#define MAX 21
+#define MAX 27
 #define USE_DEBUG 0
 
 cl_device_id *devices;

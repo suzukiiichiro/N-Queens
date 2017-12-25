@@ -9,7 +9,7 @@ int get_global_id(int dimension){ return 0;}
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 21 
+#define SIZE 27 
 #else
 //typedef long qint;
 //typedef long int64_t;
@@ -20,7 +20,7 @@ typedef ushort uint16_t;
 #define CL_CONSTANT_KEYWORD __constant
 #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-#define MAX 21 
+#define MAX 27 
 CL_PACKED_KEYWORD struct HIKISU{
   int Y;
   int I;
