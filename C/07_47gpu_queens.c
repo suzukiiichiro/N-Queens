@@ -317,17 +317,6 @@ size    割り当てられたバッファメモリオブジェクトのバイト
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
-void* aligned_malloc(size_t required_bytes, size_t alignment) {
-	void* p1; 	// original block
-	void** p2; 	// aligned block
-	int offset=(int)alignment-1+sizeof(void*);
-	if ((p1 = (void*)malloc(required_bytes + offset)) == NULL) {
-		 return NULL;
-	}
-	p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
-	p2[-1] = p1;
-	return p2;
-}
 int makeInProgress(int si){
   cl_int status;
 	/**************/
@@ -487,7 +476,7 @@ int NQueens(int si){
  */
 int main(void){
   int min=4;
-  int targetN=12;
+  int targetN=14;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
