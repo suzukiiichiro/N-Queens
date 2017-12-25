@@ -9,7 +9,7 @@ int get_global_id(int dimension){ return 0;}
 #define CL_GLOBAL_KEYWORD
 #define CL_CONSTANT_KEYWORD
 #define CL_PACKED_KEYWORD
-#define SIZE 17
+#define SIZE 21 
 #else
 //typedef long qint;
 //typedef long int64_t;
@@ -20,7 +20,7 @@ typedef ushort uint16_t;
 #define CL_CONSTANT_KEYWORD __constant
 #define CL_PACKED_KEYWORD  __attribute__ ((packed))
 #endif
-#define MAX 20  
+#define MAX 21 
 CL_PACKED_KEYWORD struct HIKISU{
   int Y;
   int I;
@@ -159,11 +159,12 @@ void backTrack1(struct queenState *s){
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
     //printf("s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);\n");
   }
-  unsigned long j=1;
-  while(1){
+  s->step=0;
+  unsigned long COUNT=1;
+  while(COUNT>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100000){
+    if(COUNT==100000){
       s->step=1;
       return;
     }
@@ -197,6 +198,8 @@ void backTrack1(struct queenState *s){
           s->B1=bit;
         }else{ 
           //printf("}else{ #if(s->bm & (1<<s->j)){\n");
+          s->step=2;
+          printf("");
           return;
         }
           //printf("if(s->rflg==0){#inParam\n");
@@ -239,6 +242,9 @@ void backTrack1(struct queenState *s){
           // s->B1=bit;
         }else{ 
           //printf("}else{ #if(s->bm & (1<<s->j)){\n");
+          s->step=2;
+ // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
+          printf("");
           return;
         }
           //printf("if(s->rflg==0){#inParam\n");
@@ -325,17 +331,20 @@ void backTrack1(struct queenState *s){
       //printf("}else{#if(s->y==1){");
       s->rflg=1;
     }
-    j++;
+    COUNT++;
   }
+  s->step=2;
+  return;
 }
 void backTrack2(struct queenState *s){
    //printf("backtrack2:start\n");
   int bit;
-  unsigned long j=1;
-  while (1){
+  unsigned long COUNT=1;
+  s->step=0;
+  while (COUNT>0){
 #ifdef GCC_STYLE
 #else
-    if(j==100000){
+    if(COUNT==100000){
       s->step=1;
       return;
     }
@@ -376,6 +385,7 @@ void backTrack2(struct queenState *s){
 
         } else{ 
           // printf("} else{#if(s->bm & (1<<s->j)){");
+          s->step=2;
           return;
         }
           // printf("inparam\n");
@@ -417,6 +427,7 @@ void backTrack2(struct queenState *s){
 
         } else{ 
            // printf("2} else{#if(s->bm & (1<<s->j)){");
+          s->step=2;
           return;
         }
            // printf("2inparam\n");
@@ -501,8 +512,9 @@ void backTrack2(struct queenState *s){
       // printf("}else{#if(s->y==1){\n");
       s->rflg=1;
     }
-    j++;
+    COUNT++;
   } 
+  s->step=2;
 }
 
 CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
@@ -537,25 +549,25 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   // s.C2=state[index].C2;
   // s.C4=state[index].C4;
   // s.C8=state[index].C8;
-  printf("BOUND1:%d\n",s.BOUND1);
-  printf("j:%d\n",s.j);
-  printf("si:%d\n",s.si);
-  printf("b:step:%d\n",s.step);
-  printf("y:%d\n",s.y);
-  printf("bm:%d\n",s.bm);
-  printf("BOUND2:%d\n",s.BOUND2);
-  printf("TOPBIT:%d\n",s.TOPBIT);
-  printf("ENDBIT:%d\n",s.ENDBIT);
-  printf("SIDEMASK:%d\n",s.SIDEMASK);
-  printf("LASTMASK:%d\n",s.LASTMASK);
-  printf("lUnique:%ld\n",s.lUnique);
-  printf("bend:%d\n",s.bend);
-  printf("rflg:%d\n",s.rflg);
-  printf("msk:%d\n",s.msk);
-  printf("l:%d\n",s.l);
-  printf("d:%d\n",s.d);
-  printf("r:%d\n",s.r);
-  printf("B1:%d\n",s.B1);
+  // printf("BOUND1:%d\n",s.BOUND1);
+  // printf("j:%d\n",s.j);
+  // printf("si:%d\n",s.si);
+  // printf("b:step:%d\n",s.step);
+  // printf("y:%d\n",s.y);
+  // printf("bm:%d\n",s.bm);
+  // printf("BOUND2:%d\n",s.BOUND2);
+  // printf("TOPBIT:%d\n",s.TOPBIT);
+  // printf("ENDBIT:%d\n",s.ENDBIT);
+  // printf("SIDEMASK:%d\n",s.SIDEMASK);
+  // printf("LASTMASK:%d\n",s.LASTMASK);
+  // printf("lUnique:%ld\n",s.lUnique);
+  // printf("bend:%d\n",s.bend);
+  // printf("rflg:%d\n",s.rflg);
+  // printf("msk:%d\n",s.msk);
+  // printf("l:%d\n",s.l);
+  // printf("d:%d\n",s.d);
+  // printf("r:%d\n",s.r);
+  // printf("B1:%d\n",s.B1);
     int bit;
     if(s.BOUND1==0 && s.step !=2){ 
       if(s.step!=1){

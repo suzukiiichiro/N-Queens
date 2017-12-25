@@ -103,8 +103,8 @@
 #include "time.h"
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
-#define MAX 27
-#define USE_DEBUG 1
+#define MAX 21
+#define USE_DEBUG 0
 
 cl_device_id *devices;
 cl_mem buffer;
@@ -458,7 +458,7 @@ int makeInProgress(int si){
         inProgress[i*si*si+j*si+k].r=0;
         inProgress[i*si*si+j*si+k].B1=0;
         inProgress[i*si*si+j*si+k].j=j;
-        inProgress[i*si*si+j*si+k].j=k;
+        inProgress[i*si*si+j*si+k].k=k;
         inProgress[i*si*si+j*si+k].lt=0;
         // inProgress[i*si*si+j*si+k].C2=0;
         // inProgress[i*si*si+j*si+k].C4=0;
@@ -513,7 +513,7 @@ int all_tasks_done(int32_t num_tasks) {
       //if (inProgress[i*num_tasks+j].step != 2){
       if (inProgress[i].step != 2){
       // if (inProgress[i].msk != 2){
-         printf("notfinish:i:%d:step:%d\n",i,inProgress[i].step);
+         // printf("notfinish:i:%d:step:%d\n",i,inProgress[i].step);
          // printf("notfinish:i:%d:step:%d\n",i,inProgress[i].msk);
         // printf("notfinish:i:%d:step:%d\n",i*num_tasks+j,inProgress[i*num_tasks+j].msk);
         return 0;
