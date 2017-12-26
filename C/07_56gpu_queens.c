@@ -624,8 +624,8 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=9;
-  int targetN=9;
+  int min=5;
+  int targetN=19;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
