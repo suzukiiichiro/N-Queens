@@ -630,26 +630,27 @@ CL_KERNEL_KEYWORD void place(
   // _l.C2=l[index].C2;
   // _l.C4=l[index].C4;
   // _l.C8=l[index].C8;
-//    printf("BOUND1:%d\n",_g.BOUND1);
-//    printf("j:%d\n",_g.j);
-//   printf("k:%d\n",_g.k);
-//  printf("si:%d\n",_g.si);
-//   printf("b:step:%d\n",_g.step);
-//   printf("y:%d\n",_g.y);
-//   printf("bm:%d\n",_g.bm);
-// //  printf("BOUND2:%d\n",_g.BOUND2);
-//   printf("TOPBIT:%d\n",_g.TOPBIT);
-//   printf("ENDBIT:%d\n",_g.ENDBIT);
-//   printf("SIDEMASK:%d\n",_g.SIDEMASK);
-//   printf("LASTMASK:%d\n",_g.LASTMASK);
-//   printf("lUnique:%ld\n",_gt.lUnique);
-//   printf("bend:%d\n",_g.bend);
-//   printf("rflg:%d\n",_g.rflg);
-//   printf("msk:%d\n",_g.msk);
-//   printf("l:%d\n",_g.l);
-//   printf("d:%d\n",_g.d);
-//   printf("r:%d\n",_g.r);
-//  printf("B1:%d\n",_g.B1);
+  
+   printf("BOUND1:%d\n",_g.BOUND1);
+   printf("j:%d\n",_g.j);
+  printf("k:%d\n",_g.k);
+ printf("si:%d\n",_g.si);
+  printf("b:step:%d\n",_g.step);
+  printf("y:%d\n",_g.y);
+  printf("bm:%d\n",_g.bm);
+ printf("BOUND2:%d\n",_g.BOUND2);
+  printf("TOPBIT:%d\n",_g.TOPBIT);
+  printf("ENDBIT:%d\n",_g.ENDBIT);
+  printf("SIDEMASK:%d\n",_g.SIDEMASK);
+  printf("LASTMASK:%d\n",_g.LASTMASK);
+  printf("lUnique:%ld\n",_gt.lUnique);
+  printf("bend:%d\n",_g.bend);
+  printf("rflg:%d\n",_g.rflg);
+  printf("msk:%d\n",_g.msk);
+  printf("l:%d\n",_g.l);
+  printf("d:%d\n",_g.d);
+  printf("r:%d\n",_g.r);
+ printf("B1:%d\n",_g.B1);
     int bit;
     if(_g.BOUND1==0 && _g.step !=2){ 
       if(_g.step!=1){
@@ -725,61 +726,66 @@ g[index].k2=_g.k2;
 }
 #ifdef GCC_STYLE
 int main(){
-  int target=14;
+  int target=12;
   /**********/
-  struct queenState inProgress[MAX*MAX*MAX];
-  struct globalState gProgress[MAX*MAX*MAX];
-  struct gtState gtProgress[MAX*MAX*MAX];
+  struct queenState inProgress[MAX*MAX*MAX*MAX];
+  struct globalState gProgress[MAX*MAX*MAX*MAX];
+  struct gtState gtProgress[MAX*MAX*MAX*MAX];
   /**********/
   printf("%s\n"," N:          Total        Unique\n");
-  for(int si=4;si<=target;si++){
+  for(int si=5;si<=target;si++){
     long gTotal=0;
     long gUnique=0;
     for(int i=0,B2=si-1;i<si;i++,B2--){ // N
       for(int j=0;j<si;j++){ // N
         for(int k=0;k<si;k++){ // N
-          gProgress[i*si*si+j*si+k].si=si;
-          gProgress[i*si*si+j*si+k].B1=-1;
-          gProgress[i*si*si+j*si+k].BOUND1=i;
-          gProgress[i*si*si+j*si+k].BOUND2=B2;
-          gProgress[i*si*si+j*si+k].j=j;
-          gProgress[i*si*si+j*si+k].k=k;
-          gProgress[i*si*si+j*si+k].ENDBIT=0;
-          gProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
-          gProgress[i*si*si+j*si+k].SIDEMASK=0;
-          gProgress[i*si*si+j*si+k].LASTMASK=0;
-          for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
-          gtProgress[i*si*si+j*si+k].lTotal=0;
-          gtProgress[i*si*si+j*si+k].lUnique=0;
-          gProgress[i*si*si+j*si+k].step=0;
-          gProgress[i*si*si+j*si+k].y=0;
-          gProgress[i*si*si+j*si+k].bend=0;
-          gProgress[i*si*si+j*si+k].rflg=0;
+        for(int k2=0;k2<si;k2++){ // N
+          gProgress[i*si*si*si+j*si*si+k*si+k2].si=si;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].B1=-1;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].BOUND1=i;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].BOUND2=B2;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].j=j;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].k=k;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].k2=k2;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].ENDBIT=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].TOPBIT=1<<(si-1);
+          gProgress[i*si*si*si+j*si*si+k*si+k2].SIDEMASK=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].LASTMASK=0;
+          for (int m=0;m< si;m++){ inProgress[i*si*si*si+j*si*si+k*si+k2].aB[m]=m;}
+          gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal=0;
+          gtProgress[i*si*si*si+j*si*si+k*si+k2].lUnique=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].step=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].y=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].bend=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].rflg=0;
           for (int m=0;m<si;m++){
-            inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
-            inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
-            inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
-            inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
-            inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
-            inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
-            inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].Y=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].I=si;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].M=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].L=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].D=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].R=0;
+            inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].B=0;
           }
-          inProgress[i*si*si+j*si+k].stParam.current=0;
-          gProgress[i*si*si+j*si+k].msk=(1<<si)-1;
-          gProgress[i*si*si+j*si+k].l=0;
-          gProgress[i*si*si+j*si+k].d=0;
-          gProgress[i*si*si+j*si+k].r=0;
-          gProgress[i*si*si+j*si+k].bm=0;
-          place(&inProgress[i*si*si+j*si+k],&gProgress[i*si*si+j*si+k],
-              &gtProgress[i*si*si+j*si+k]);
+          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.current=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].msk=(1<<si)-1;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].l=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].d=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].r=0;
+          gProgress[i*si*si*si+j*si*si+k*si+k2].bm=0;
+          place(&inProgress[i*si*si*si+j*si*si+k*si+k2],&gProgress[i*si*si*si+j*si*si+k*si+k2],
+              &gtProgress[i*si*si*si+j*si*si+k*si+k2]);
+        }
         }
       }
     }
     for(int i=0;i<si;i++){
       for(int j=0;j<si;j++){ // N
         for(int k=0;k<si;k++){ // N
-          gTotal+=gtProgress[i*si*si+j*si+k].lTotal;
-          gUnique+=gtProgress[i*si*si+j*si+k].lUnique;
+        for(int k2=0;k2<si;k2++){ // N
+          gTotal+=gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal;
+          gUnique+=gtProgress[i*si*si*si+j*si*si+k*si+k2].lUnique;
+        }
         }
       }
     }
