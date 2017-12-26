@@ -418,7 +418,6 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
           // printf("} else{#if(g->bm & (1<<s->j)){");
           g->step=2;
 // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
-          printf("");
           return;
         }
           // printf("inparam\n");
@@ -462,7 +461,6 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
         } else{ 
            // printf("2} else{#if(g->bm & (1<<s->j)){");
           g->step=2;
-          printf("");
 // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           return;
         }
@@ -506,7 +504,6 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
         } else{ 
            // printf("2} else{#if(g->bm & (1<<s->j)){");
           g->step=2;
-          printf("");
 // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           return;
         }
@@ -633,7 +630,7 @@ CL_KERNEL_KEYWORD void place(
   // _l.C2=l[index].C2;
   // _l.C4=l[index].C4;
   // _l.C8=l[index].C8;
-  
+ printf(""); 
    // printf("BOUND1:%d\n",_g.BOUND1);
    // printf("j:%d\n",_g.j);
   // printf("k:%d\n",_g.k);
