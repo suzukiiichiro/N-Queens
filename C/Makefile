@@ -1,5 +1,16 @@
 # Makefile
 
+# gdbによるデバッグ方法
+# suzukiiichiro:C suzukiiichiro$ gcc -Wall -W -g -ftrapv -framework OpenCL 07_56gpu_queens.c && gdb -q ./a.out                                                 Reading symbols from ./a.out...Reading symbols from /Users/suzukiiichiro/GoogleDrive/GitHub/N-Queens/C/a.out.dSYM/Contents/Resources/DWARF/a.out...done.     done.
+# 	(gdb) r
+# Starting program: /Users/suzukiiichiro/GoogleDrive/GitHub/N-Queens/C/a.out
+# 	[New Thread 0x1403 of process 25844]
+# warning: unhandled dyld version (15)
+# 	 N:          Total        Unique                 dd:hh:mm:ss.ms
+# 	 [New Thread 0x1207 of process 25844]
+# 	 [New Thread 0x1503 of process 25844]
+# 	 [New Thread 0x1603 of process 25844]
+
 OS=${shell uname}
 ifeq ($(OS),Linux)
 #CC=/usr/bin/clang
@@ -51,6 +62,9 @@ endif
 RM=rm -fr
 
 
+nq56=07_56NQueen
+nq56: 07_56gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq56) 07_56gpu_queens.c 
 
 nq55=07_55NQueen
 nq55: 07_55gpu_queens.c 
