@@ -1,5 +1,5 @@
 ﻿//  単体で動かすときは以下のコメントを外す
-#define GCC_STYLE
+//#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
 #include "stdint.h"
@@ -58,6 +58,7 @@ struct CL_PACKED_KEYWORD globalState {
   int l;
   int d;
   int r;
+  int k2;
 };
 struct CL_PACKED_KEYWORD queenState {
   int aB[MAX];
@@ -266,6 +267,50 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
             // outParam(s);
             g->rflg=0;
         }
+      }else if(g->y==3 && g->k2>=0){
+        if(g->rflg==0){
+        // printf("if(s->y==1 && s->j>=0 && g->rflg==0){\n");
+        if(g->bm & (1<<g->k2)){ 
+          // printf("if(g->bm & (1<<s->j)){\n");
+          s->aB[g->y]=bit=1<<g->k2; 
+          // s->B1=bit;
+        }else{ 
+          // printf("}else{ #if(g->bm & (1<<s->j)){\n");
+          g->step=2;
+ // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
+          printf("");
+          return;
+        }
+          // printf("if(g->rflg==0){#inParam\n");
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=g->y;
+            s->stParam.param[s->stParam.current].I=g->si;
+            // s->stParam.param[s->stParam.current].M=g->msk;
+            s->stParam.param[s->stParam.current].L=g->l;
+            s->stParam.param[s->stParam.current].D=g->d;
+            s->stParam.param[s->stParam.current].R=g->r;
+            s->stParam.param[s->stParam.current].B=g->bm;
+            (s->stParam.current)++;
+          }
+          // inParam(s);
+          g->l=(g->l|bit)<<1; g->d=(g->d|bit); g->r=(g->r|bit)>>1;
+          g->y++; 
+          continue;
+        }else{
+            // printf("b1_y2outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            g->si=s->stParam.param[s->stParam.current].I;
+            g->y=s->stParam.param[s->stParam.current].Y;
+            // g->msk=s->stParam.param[s->stParam.current].M;
+            g->l=s->stParam.param[s->stParam.current].L;
+            g->d=s->stParam.param[s->stParam.current].D;
+            g->r=s->stParam.param[s->stParam.current].R;
+            g->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            g->rflg=0;
+        }
       }else {
         // printf("}else{ #if(s->y>1&&(1<<s->y)<s->B1){\n");
         while(g->bm || g->rflg==1){
@@ -310,7 +355,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
         continue;
       }
     }
-    if(g->y<=3){
+    if(g->y<=4){
       // printf("if(s->y==1){\n");
       g->step=2;
       return;
@@ -449,8 +494,51 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
             // outParam(s);
             g->rflg=0;
         }
+      }else if(g->y==3 && g->k2>=0){
+        if(g->rflg==0){
+         // printf("if(s->y==2 && s->j>=0 && g->rflg==0){\n");
+        if(g->bm & (1<<g->k2)){ 
+           // printf("2if(g->bm & (1<<s->j)){\n");
+          s->aB[g->y]=bit=1<<g->k2; 
+
+        } else{ 
+           // printf("2} else{#if(g->bm & (1<<s->j)){");
+          g->step=2;
+// printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
+          return;
+        }
+           // printf("2inparam\n");
+          if(s->stParam.current<MAX){
+            s->stParam.param[s->stParam.current].Y=g->y;
+            s->stParam.param[s->stParam.current].I=g->si;
+            s->stParam.param[s->stParam.current].M=g->msk;
+            s->stParam.param[s->stParam.current].L=g->l;
+            s->stParam.param[s->stParam.current].D=g->d;
+            s->stParam.param[s->stParam.current].R=g->r;
+            s->stParam.param[s->stParam.current].B=g->bm;
+            (s->stParam.current)++;
+          }
+          // inParam(s);
+          g->l=(g->l|bit)<<1; g->d=(g->d|bit); g->r=(g->r|bit)>>1;
+          g->y++; 
+          continue;
+        }else{
+            // printf("2outparam\n");
+            if(s->stParam.current>0){
+              s->stParam.current--;
+            }
+            g->si=s->stParam.param[s->stParam.current].I;
+            g->y=s->stParam.param[s->stParam.current].Y;
+            g->msk=s->stParam.param[s->stParam.current].M;
+            g->l=s->stParam.param[s->stParam.current].L;
+            g->d=s->stParam.param[s->stParam.current].D;
+            g->r=s->stParam.param[s->stParam.current].R;
+            g->bm=s->stParam.param[s->stParam.current].B;
+            // outParam(s);
+            g->rflg=0;
+        }
       }else{
-        while((g->bm || g->rflg==1)&&g->y>2){
+        while((g->bm || g->rflg==1)&&g->y>3){
           // printf("while(g->bm || g->rflg==1){\n");
           if(g->rflg==0){
             // printf("inparam\n");
@@ -492,7 +580,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
         continue;
       }
     }
-    if(g->y<=3){
+    if(g->y<=4){
       // printf("if(s->y==1){\n");
       g->step=2;
       return;
@@ -538,6 +626,7 @@ CL_KERNEL_KEYWORD void place(
   _g.B1= g[index].B1;
   _g.j= g[index].j;
   _g.k= g[index].k;
+  _g.k2= g[index].k2;
   // _l.C2=l[index].C2;
   // _l.C4=l[index].C4;
   // _l.C8=l[index].C8;
@@ -626,6 +715,7 @@ g[index].r=_g.r;
 g[index].B1=_g.B1;
 g[index].j=_g.j;
 g[index].k=_g.k;
+g[index].k2=_g.k2;
 // l[index].C2=_l.C2;
 // l[index].C4=_l.C4;
 // l[index].C8=_l.C8;
