@@ -1,4 +1,4 @@
-﻿//  単体で動かすときは以下のコメントを外す
+﻿//   単体で動かすときは以下のコメントを外す
 //#define GCC_STYLE
 #ifndef OPENCL_STYLE
 #include "stdio.h"
