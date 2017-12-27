@@ -634,6 +634,7 @@ int main(void){
   createKernel();             // カーネルの作成
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=targetN;i++){
+    // printf("i:%d:si*si*si*si:%d\n",i,i*i*i*i);
     lGTotal=0; 
     lGUnique=0;
     NQueens(i); //スレッド実行
