@@ -1,21 +1,14 @@
 # Makefile
 
 # gdbによるデバッグ方法
-# suzukiiichiro:C suzukiiichiro$ gcc -Wall -W -g -ftrapv -framework OpenCL 07_56gpu_queens.c && gdb -q ./a.out                                                 Reading symbols from ./a.out...Reading symbols from /Users/suzukiiichiro/GoogleDrive/GitHub/N-Queens/C/a.out.dSYM/Contents/Resources/DWARF/a.out...done.     done.
-# 	(gdb) r
-# Starting program: /Users/suzukiiichiro/GoogleDrive/GitHub/N-Queens/C/a.out
-# 	[New Thread 0x1403 of process 25844]
-# warning: unhandled dyld version (15)
-# 	 N:          Total        Unique                 dd:hh:mm:ss.ms
-# 	 [New Thread 0x1207 of process 25844]
-# 	 [New Thread 0x1503 of process 25844]
-# 	 [New Thread 0x1603 of process 25844]
+# make nq55 
+# $(gdb) r
 
 OS=${shell uname}
 ifeq ($(OS),Linux)
 #CC=/usr/bin/clang
 CC=gcc
-CFLAGS=-W -Wall -O3 -std=c99 -lm -lpthread
+CFLAGS=-W -Wall -O3 -g -ftrapv -std=c99 -lm -lpthread  
 FUNCTION=`pkg-config --libs --cflags OpenCL`
 CPPFLAGS=-I/usr/include/CL
 #LDFLAGS=-L/usr/lib64 -L/usr/lib64/libOpenCL.so -L/usr/lib
@@ -64,71 +57,87 @@ RM=rm -fr
 
 nq56=07_56NQueen
 nq56: 07_56gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq56) 07_56gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq56) 07_56gpu_queens.c && gdb -q ./$(nq56)
 
 nq55=07_55NQueen
 nq55: 07_55gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq55) 07_55gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq55) 07_55gpu_queens.c && gdb -q ./$(nq55)
+
 
 nq54=07_54NQueen
 nq54: 07_54gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq54) 07_54gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq54) 07_54gpu_queens.c  && gdb -q ./$(nq54)
+ 
 
 nq53=07_53NQueen
 nq53: 07_53gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq53) 07_53gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq53) 07_53gpu_queens.c  && gdb -q ./$(nq53)
+
 
 nq52=07_52NQueen
 nq52: 07_52gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq52) 07_52gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq52) 07_52gpu_queens.c  && gdb -q ./$(nq52)
+
 
 nq51=07_51NQueen
 nq51: 07_51gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq51) 07_51gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq51) 07_51gpu_queens.c  && gdb -q ./$(nq51)
+
 
 nq50=07_50NQueen
 nq50: 07_50gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq50) 07_50gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq50) 07_50gpu_queens.c  && gdb -q ./$(nq50)
+
 
 nq49=07_49NQueen
 nq49: 07_49gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq49) 07_49gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq49) 07_49gpu_queens.c  && gdb -q ./$(nq49)
+
 
 nq48=07_48NQueen
 nq48: 07_48gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq48) 07_48gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq48) 07_48gpu_queens.c  && gdb -q ./$(nq48)
+
 
 nq47=07_47NQueen
 nq47: 07_47gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq47) 07_47gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq47) 07_47gpu_queens.c  && gdb -q ./$(nq47)
+
 
 nq46=07_46NQueen
 nq46: 07_46gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq46) 07_46gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq46) 07_46gpu_queens.c  && gdb -q ./$(nq46)
+
 
 nq45=07_45NQueen
 nq45: 07_45gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq45) 07_45gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq45) 07_45gpu_queens.c  && gdb -q ./$(nq45)
+
 
 nq44=07_44NQueen
 nq44: 07_44gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq44) 07_44gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq44) 07_44gpu_queens.c  && gdb -q ./$(nq44)
+
 
 nq43=07_43NQueen
 nq43: 07_43gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq43) 07_43gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq43) 07_43gpu_queens.c  && gdb -q ./$(nq43)
+
 
 nq42=07_42NQueen
 nq42: 07_42gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq42) 07_42gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq42) 07_42gpu_queens.c  && gdb -q ./$(nq42)
+
 
 nq41=07_41NQueen
 nq41: 07_41gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq41) 07_41gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq41) 07_41gpu_queens.c  && gdb -q ./$(nq41)
+
 
 nq40=07_40NQueen
 nq40: 07_40gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq40) 07_40gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq40) 07_40gpu_queens.c  && gdb -q ./$(nq40)
+
 
 nq38=07_38NQueen
 nq38: 07_38gpu_queens.c 
