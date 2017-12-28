@@ -185,9 +185,9 @@ struct queenState {
   struct STACK stParam;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX*MAX];
-struct globalState gProgress[MAX*MAX*MAX];
-struct gtState gtProgress[MAX*MAX*MAX];
+struct queenState inProgress[MAX*MAX];
+struct globalState gProgress[MAX*MAX];
+struct gtState gtProgress[MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
