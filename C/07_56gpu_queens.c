@@ -1,6 +1,6 @@
 /**
 
-  56. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
+  55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
 
 	07_49 の07_46までのロジックを全て含み GPUをNからＮ*siに変更
 	の構造体を二つに分解バージョン
@@ -36,6 +36,7 @@
 53. GPU(07_36 *N アルゴリムは全部のせ) 
 13:             73712              9233          00:00:00:01.84
 14:            365596             45752          00:00:00:10.25
+
 
 52. GPU(07_38 *N*si*si アルゴリムは全部のせ) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -124,7 +125,7 @@
 #include "sys/time.h"
 #define BUFFER_SIZE 4096
 #define MAX 27
-#define USE_DEBUG 0
+#define USE_DEBUG 0 
 
 cl_device_id *devices;
 cl_mem lBuffer;
@@ -177,7 +178,6 @@ struct globalState {
   int l;
   int d;
   int r;
-  int k2;
 } __attribute__((packed));
 struct queenState {
   int aB[MAX];
@@ -185,9 +185,9 @@ struct queenState {
   struct STACK stParam;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX*MAX*MAX];
-struct globalState gProgress[MAX*MAX*MAX*MAX];
-struct gtState gtProgress[MAX*MAX*MAX*MAX];
+struct queenState inProgress[MAX*MAX*MAX];
+struct globalState gProgress[MAX*MAX*MAX];
+struct gtState gtProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -428,52 +428,45 @@ size    割り当てられたバッファメモリオブジェクトのバイト
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
-int makeInProgress(int si){
+int makeInProgress(int si,int BOUND1,int BOUND2){
   cl_int status;
 	/**************/
-  int B2=si-1;
-  for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-      for(int k2=0;k2<si;k2++){
-        gProgress[i*si*si*si+j*si*si+k*si+k2].BOUND1=i;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].si=si;
-        for (int m=0;m< si;m++){ inProgress[i*si*si*si+j*si*si+k*si+k2].aB[m]=m;}
-        gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].step=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].y=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].bm=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].BOUND2=B2;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].ENDBIT=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].TOPBIT=1<<(si-1);
-        gProgress[i*si*si*si+j*si*si+k*si+k2].SIDEMASK=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].LASTMASK=0;
-        gtProgress[i*si*si*si+j*si*si+k*si+k2].lUnique=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].bend=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].rflg=0;
+        gProgress[j*si+k].BOUND1=BOUND1;
+        gProgress[j*si+k].si=si;
+        for (int m=0;m< si;m++){ inProgress[j*si+k].aB[m]=m;}
+        gtProgress[j*si+k].lTotal=0;
+        gProgress[j*si+k].step=0;
+        gProgress[j*si+k].y=0;
+        gProgress[j*si+k].bm=0;
+        gProgress[j*si+k].BOUND2=BOUND2;
+        gProgress[j*si+k].ENDBIT=0;
+        gProgress[j*si+k].TOPBIT=1<<(si-1);
+        gProgress[j*si+k].SIDEMASK=0;
+        gProgress[j*si+k].LASTMASK=0;
+        gtProgress[j*si+k].lUnique=0;
+        gProgress[j*si+k].bend=0;
+        gProgress[j*si+k].rflg=0;
         for (int m=0;m<si;m++){
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].Y=0;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].I=si;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].M=0;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].L=0;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].D=0;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].R=0;
-          inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.param[m].B=0;
+          inProgress[j*si+k].stParam.param[m].Y=0;
+          inProgress[j*si+k].stParam.param[m].I=si;
+          inProgress[j*si+k].stParam.param[m].M=0;
+          inProgress[j*si+k].stParam.param[m].L=0;
+          inProgress[j*si+k].stParam.param[m].D=0;
+          inProgress[j*si+k].stParam.param[m].R=0;
+          inProgress[j*si+k].stParam.param[m].B=0;
         }
-        inProgress[i*si*si*si+j*si*si+k*si+k2].stParam.current=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].msk=(1<<si)-1;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].l=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].d=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].r=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].B1=0;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].j=j;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].k=k;
-        gProgress[i*si*si*si+j*si*si+k*si+k2].k2=k2;
-      }
+        inProgress[j*si+k].stParam.current=0;
+        gProgress[j*si+k].msk=(1<<si)-1;
+        gProgress[j*si+k].l=0;
+        gProgress[j*si+k].d=0;
+        gProgress[j*si+k].r=0;
+        gProgress[j*si+k].B1=0;
+        gProgress[j*si+k].j=j;
+        gProgress[j*si+k].k=k;
       }
     }
-      B2--;
-  }
 	/**************/
   /* バッファオブジェクトの作成 */
   lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
@@ -503,7 +496,7 @@ int makeInProgress(int si){
 int all_tasks_done(int32_t num_tasks) {
   // printf("##############\n");
 	for (int i=0;i<num_tasks;i++){
-     // printf("afterstep:%d:BOUND1:%d:j:%d:k:%d:k2:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k,gProgress[i].k2);
+    // printf("afterstep:%d:BOUND1:%d:j:%d:k:%d\n",gProgress[i].step,gProgress[i].BOUND1,gProgress[i].j,gProgress[i].k);
 		if (gProgress[i].step != 2){
 		// if (gProgress[i].step == 2){
 			return 0;
@@ -525,11 +518,11 @@ int execKernel(int si){
   cl_int status;
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
-  while(!all_tasks_done(si*si*si*si)){
+  while(!all_tasks_done(si*si)){
     // printf("loop");
     //size_t dim=1;
     cl_uint dim=1;
-    size_t globalWorkSize[] = {si*si*si*si};
+    size_t globalWorkSize[] = {si*si};
     size_t localWorkSize[] = { 1 };
 	/**************/
   /* OpenCLカーネルをデータ並列で実行 */
@@ -557,23 +550,17 @@ int execKernel(int si){
  *
  */
 int execPrint(int si){
-  lGTotal=0;
-  lGUnique=0;
 	/**************/
-  for(int i=0;i<si;i++){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
-        for(int k2=0;k2<si;k2++){
-          // printf("lTotal:%ld\n",gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal);
-          // if(gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal<1000000){
-          lGTotal+=gtProgress[i*si*si*si+j*si*si+k*si+k2].lTotal;
-          lGUnique+=gtProgress[i*si*si*si+j*si*si+k*si+k2].lUnique;
-          // }
-          // printf("lUnique:%ld\n",gProgress[i*si*si*si+j*si*si+k*si+k2].lUnique);
-        }
+        // printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
+        // if(gtProgress[i*si*si+j*si+k].lTotal<1000000){
+        lGTotal+=gtProgress[j*si+k].lTotal;
+        lGUnique+=gtProgress[j*si+k].lUnique;
+        // }
+        // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
       }
     }
-  }
 	/**************/
   return 0;
 }
@@ -594,15 +581,23 @@ int create(){
 */
 int NQueens(int si){
   struct timeval t0; struct timeval t1; int ss;int ms;int dd;
-  makeInProgress(si);
   gettimeofday(&t0,NULL);    // 計測開始
+  int BOUND2=si-1;
+  lGTotal=0;
+  lGUnique=0;
+  for(int BOUND1=0;BOUND1<si; BOUND1++){ 
+  makeInProgress(si,BOUND1,BOUND2);
+  BOUND2--;
   execKernel(si);
-  gettimeofday(&t1,NULL);    // 計測終了
   execPrint(si);
 	clReleaseMemObject(lBuffer);
 	clReleaseMemObject(gBuffer);
 	clReleaseMemObject(gtBuffer);
   clReleaseContext(context);
+  }
+
+  gettimeofday(&t1,NULL);    // 計測終了
+
   if (t1.tv_usec<t0.tv_usec) {
     dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
     ss=(t1.tv_sec-t0.tv_sec-1)%86400;
@@ -623,7 +618,7 @@ int NQueens(int si){
  *
  */
 int main(void){
-  int min=5;
+  int min=4;
   int targetN=19;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
@@ -634,7 +629,6 @@ int main(void){
   createKernel();             // カーネルの作成
   printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=targetN;i++){
-    // printf("i:%d:si*si*si*si:%d\n",i,i*i*i*i);
     lGTotal=0; 
     lGUnique=0;
     NQueens(i); //スレッド実行
