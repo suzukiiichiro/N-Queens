@@ -659,9 +659,9 @@ CL_KERNEL_KEYWORD void place(
       int rtn;
       rtn=backTrack1(&_l,&_g,&_gt);
        if(rtn==1){
-        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
          _gt.lTotal=0;
          _gt.lUnique=0;
+        printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
         // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
        }
     }else if(_g.BOUND1 !=0 && _g.step !=2){ 
@@ -679,6 +679,7 @@ CL_KERNEL_KEYWORD void place(
           _g.y=1;_g.l=bit<<1;_g.d=bit;_g.r=bit>>1;
         }
 backTrack2(&_l,&_g,&_gt);
+        printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
         if(_g.step!=1){
             _g.ENDBIT>>=_g.si;
         }
