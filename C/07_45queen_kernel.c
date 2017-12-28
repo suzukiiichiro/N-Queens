@@ -228,10 +228,11 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // backTrack1(&s,s.bm);
         // backTrack1
         unsigned long j=1;
-        while(1){
+        //while(1){
+        while(j>0){
 #ifdef GCC_STYLE
 #else
-          if(j==500000){
+          if(j==100000){
             bflg=1;
             break;
           }
@@ -356,10 +357,10 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
         // Backtrack2
         unsigned long j=1;
         // int sum;
-        while (1){
+        while (j>0){
 #ifdef GCC_STYLE
 #else
-          if(j==100){
+          if(j==100000){
             bflg=1;
             break;
           }
