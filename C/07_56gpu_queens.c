@@ -3,6 +3,15 @@
   56. GPU(07_54 *N*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
 
   struct queenState inProgress[MAX*MAX*MAX];
+  実際の挙動はBOUND1でバケツリレーをしているので
+  struct queenState inProgress[MAX*MAX];
+
+  BOUND1によるバケツリレー
+  BOUND1の0の処理が終わってからBOUND1の1の処理を始めNまで継続
+  BOUND1の0-Nまでを同時並行で動作させるとOSのスレッド限界数に達するため
+
+	バケツリレー処理は処理が断続化し速度が出ないので、
+	Nが19までは07_55と同じ処理を行い、N20からはバケツリレー処理が発動
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_56NQueen 07_56gpu_queens.c -framework OpenCL
@@ -10,22 +19,18 @@
 
 56. GPU(07_54 *N*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 0                 0          00:00:00:00.01
- 5:                 8                 1          00:00:00:00.01
- 6:                 0                 0          00:00:00:00.01
- 7:                16                 2          00:00:00:00.01
- 8:                16                 2          00:00:00:00.00
- 9:               112                14          00:00:00:00.01
-10:               256                32          00:00:00:00.01
-11:               384                48          00:00:00:00.01
-12:              2000               250          00:00:00:00.01
-13:             11040              1380          00:00:00:00.02
-14:             47568              5946          00:00:00:00.07
-15:            278064             34758          00:00:00:00.22
-16:           1744912            218114          00:00:00:01.22
-17:          10919088           1364886          00:00:00:07.45
-18:          68841488           8605186          00:00:00:45.82
-19:         487824176          60978022          00:00:05:01.24
+ 4:                 2                 1          00:00:00:00.01
+ 5:                10                 2          00:00:00:00.01
+ 6:                 4                 1          00:00:00:00.01
+ 7:                40                 6          00:00:00:00.01
+ 8:                92                12          00:00:00:00.01
+ 9:               352                46          00:00:00:00.01
+10:               724                92          00:00:00:00.01
+11:              2680               341          00:00:00:00.01
+12:             14200              1787          00:00:00:00.01
+13:             73712              9233          00:00:00:00.04
+14:            365596             45752          00:00:00:00.15
+15:           2279184            285053          00:00:00:00.76
 
 55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -755,7 +760,7 @@ int all_tasks_done(int32_t num_tasks) {
   またグループあたり1 work item (実は効率的でない)
   width * heightの2次元でwork itemを作成
 */
-int execKernel(int si){
+int execKernel2(int si){
   cl_int status;
 	/**************/
   if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
@@ -764,6 +769,37 @@ int execKernel(int si){
     //size_t dim=1;
     cl_uint dim=1;
     size_t globalWorkSize[] = {si*si};
+    size_t localWorkSize[] = { 1 };
+	/**************/
+  /* OpenCLカーネルをデータ並列で実行 */
+    status=clEnqueueNDRangeKernel(
+        cmd_queue,         //タスクを投入するキュー
+        kernel,            //実行するカーネル
+        dim,               //work sizeの次元
+        NULL,              //NULLを指定すること
+        globalWorkSize,    //全スレッド数
+        localWorkSize,     //1グループのスレッド数
+        0,                 //この関数が待機すべきeventの数
+        NULL,              //この関数が待機すべき関数のリストへのポインタ
+        NULL);             //この関数の返すevent
+    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque kernel execution command."); return 17; }
+    /* メモリバッファから結果を取得 */
+    status=clEnqueueReadBuffer(cmd_queue,lBuffer,CL_TRUE,0,sizeof(inProgress),inProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,gBuffer,CL_TRUE,0,sizeof(gProgress),gProgress,0,NULL,NULL);
+    status=clEnqueueReadBuffer(cmd_queue,gtBuffer,CL_TRUE,0,sizeof(gtProgress),gtProgress,0,NULL,NULL);
+    if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque read command."); return 18; }
+ } //end while
+  return 0;
+}
+int execKernel1(int si){
+  cl_int status;
+	/**************/
+  if(USE_DEBUG>0) printf("Starting computation of Q(%d)\n",si);
+  while(!all_tasks_done(si*si*si)){
+    // printf("loop");
+    //size_t dim=1;
+    cl_uint dim=1;
+    size_t globalWorkSize[] = {si*si*si};
     size_t localWorkSize[] = { 1 };
 	/**************/
   /* OpenCLカーネルをデータ並列で実行 */
@@ -850,7 +886,7 @@ int NQueens(int si){
 		for(int BOUND1=0;BOUND1<si; BOUND1++){ 
 			makeInProgress2(si,BOUND1,BOUND2);
 			BOUND2--;
-			execKernel(si);
+			execKernel2(si);
 			execPrint2(si);
 			clReleaseMemObject(lBuffer);
 			clReleaseMemObject(gBuffer);
@@ -859,7 +895,7 @@ int NQueens(int si){
 		}
 	}else{
 		makeInProgress1(si);
-		execKernel(si);
+		execKernel1(si);
 		execPrint1(si);
 		clReleaseMemObject(lBuffer);
 		clReleaseMemObject(gBuffer);
