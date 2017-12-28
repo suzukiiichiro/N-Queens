@@ -147,7 +147,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g,struct gtState *g
   gt->lTotal+=8;
   gt->lUnique++;
 }
-void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
+int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
   if(g->step!=1){
     g->y=1;g->l=(1)<<1;g->d=(1);g->r=(1>>1);
@@ -160,7 +160,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(COUNT==100000){
       // printf("b1_over\n");
       g->step=1;
-      return;
+      return 0;
     }
 #endif
     if(g->rflg==0){
@@ -190,7 +190,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           g->step=2;
           printf("");
  // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
-          return;
+          return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -235,7 +235,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           g->step=2;
  // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           printf("");
-          return;
+          return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -279,7 +279,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           g->step=2;
  // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           printf("");
-          return;
+          return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
           if(s->stParam.current<MAX){
@@ -358,7 +358,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     if(g->y<=4){
       // printf("if(s->y==1){\n");
       g->step=2;
-      return;
+      return 0;
     }else{
       // printf("}else{#if(s->y==1){");
       g->rflg=1;
@@ -366,7 +366,7 @@ void backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
     COUNT++;
   }   
   g->step=2;
-  return;
+  return 0;
 }
 void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
@@ -600,33 +600,32 @@ CL_KERNEL_KEYWORD void place(
   struct queenState _l;
   struct globalState _g;
   struct gtState _gt;
-
-  _g.BOUND1=g[index].BOUND1;
-  _g.si= g[index].si;
-  for (int i = 0; i < _g.si; i++)
-    _l.aB[i]=l[index].aB[i];
   _gt.lTotal = gt[index].lTotal;
+  _gt.lUnique  =gt[index].lUnique;
+  _g.k= g[index].k;
+  _g.j= g[index].j;
+  _g.BOUND1=g[index].BOUND1;
+  _g.BOUND2    =g[index].BOUND2;
+  _g.si= g[index].si;
+  _g.B1= g[index].B1;
   _g.step      = g[index].step;
+  _g.bend  =g[index].bend;
   _g.y       = g[index].y;
   _g.bm     = g[index].bm;
-  _g.BOUND2    =g[index].BOUND2;
-  _g.ENDBIT    =g[index].ENDBIT;
+  _g.rflg  =g[index].rflg;
+  _g.msk= (1<<_g.si)-1;
   _g.TOPBIT    =g[index].TOPBIT;
+  _g.ENDBIT    =g[index].ENDBIT;
   _g.SIDEMASK    =g[index].SIDEMASK;
   _g.LASTMASK  =g[index].LASTMASK;
-  _gt.lUnique  =gt[index].lUnique;
-  _g.bend  =g[index].bend;
-  _g.rflg  =g[index].rflg;
-  _l.stParam=l[index].stParam;
-  //_l.msk= l[index].msk;
-  _g.msk= (1<<_g.si)-1;
   _g.l= g[index].l;
   _g.d= g[index].d;
   _g.r= g[index].r;
-  _g.B1= g[index].B1;
-  _g.j= g[index].j;
-  _g.k= g[index].k;
   _g.k2= g[index].k2;
+  for (int i = 0; i < _g.si; i++)
+    _l.aB[i]=l[index].aB[i];
+  _l.stParam=l[index].stParam;
+  //_l.msk= l[index].msk;
   // _l.C2=l[index].C2;
   // _l.C4=l[index].C4;
   // _l.C8=l[index].C8;
@@ -658,13 +657,13 @@ CL_KERNEL_KEYWORD void place(
         _g.TOPBIT=1<<(_g.si-1);
       }
       int rtn;
-      backTrack1(&_l,&_g,&_gt);
-      // if(rtn==1){
+      rtn=backTrack1(&_l,&_g,&_gt);
+       if(rtn==1){
+        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
+         _gt.lTotal=0;
+         _gt.lUnique=0;
         // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
-        // _gt.lTotal=0;
-        // _gt.lUnique=0;
-        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
-      // }
+       }
     }else if(_g.BOUND1 !=0 && _g.step !=2){ 
       if(_g.step!=1){
       _g.TOPBIT=1<<(_g.si-1);
@@ -686,9 +685,15 @@ backTrack2(&_l,&_g,&_gt);
       }
     }
   // printf("lTotal:%ld\n",_gt.lTotal);
+ // printf("m:step:%d:BOUND1:%d:k:%d:j:%d\n",g[index].step,g[index].BOUND1,g[index].k,g[index].j);
+gt[index].lTotal=_gt.lTotal;
+gt[index].lUnique=_gt.lUnique;
+g[index].k=_g.k;
+g[index].j=_g.j;
 g[index].BOUND1=_g.BOUND1;
+g[index].BOUND2=_g.BOUND2;
 g[index].si=_g.si;
-for(int i=0;i<_g.si;i++){l[index].aB[i]=_l.aB[i];}
+g[index].B1=_g.B1;
 if(_g.step==1){
   g[index].step=1;
 // l[index].msk=1;
@@ -696,27 +701,22 @@ if(_g.step==1){
   g[index].step=2;
 // l[index].msk=2;
 }
- // printf("m:step:%d:BOUND1:%d:k:%d:j:%d\n",g[index].step,g[index].BOUND1,g[index].k,g[index].j);
-gt[index].lTotal=_gt.lTotal;
-gt[index].lUnique=_gt.lUnique;
+g[index].bend=_g.bend;
 g[index].y=_g.y;
 // l[index].startCol=0;
 g[index].bm=_g.bm;
-g[index].BOUND2=_g.BOUND2;
-g[index].ENDBIT=_g.ENDBIT;
+g[index].rflg=_g.rflg;
+g[index].msk=_g.msk;
 g[index].TOPBIT=_g.TOPBIT;
+g[index].ENDBIT=_g.ENDBIT;
 g[index].SIDEMASK=_g.SIDEMASK;
 g[index].LASTMASK=_g.LASTMASK;
-g[index].bend=_g.bend;
-g[index].rflg=_g.rflg;
-l[index].stParam=_l.stParam;
 g[index].l=_g.l;
 g[index].d=_g.d;
 g[index].r=_g.r;
-g[index].B1=_g.B1;
-g[index].j=_g.j;
-g[index].k=_g.k;
 g[index].k2=_g.k2;
+l[index].stParam=_l.stParam;
+for(int i=0;i<_g.si;i++){l[index].aB[i]=_l.aB[i];}
 // l[index].C2=_l.C2;
 // l[index].C4=_l.C4;
 // l[index].C8=_l.C8;

@@ -435,21 +435,29 @@ int makeInProgress(int si,int BOUND1,int BOUND2){
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
       for(int k2=0;k2<si;k2++){
-        gProgress[j*si*si+k*si+k2].BOUND1=BOUND1;
-        gProgress[j*si*si+k*si+k2].si=si;
-        for (int m=0;m< si;m++){ inProgress[j*si*si+k*si+k2].aB[m]=m;}
         gtProgress[j*si*si+k*si+k2].lTotal=0;
+        gtProgress[j*si*si+k*si+k2].lUnique=0;
+        gProgress[j*si*si+k*si+k2].k=k;
+        gProgress[j*si*si+k*si+k2].j=j;
+        gProgress[j*si*si+k*si+k2].BOUND1=BOUND1;
+        gProgress[j*si*si+k*si+k2].BOUND2=BOUND2;
+        gProgress[j*si*si+k*si+k2].si=si;
+        gProgress[j*si*si+k*si+k2].B1=0;
         gProgress[j*si*si+k*si+k2].step=0;
+        gProgress[j*si*si+k*si+k2].bend=0;
         gProgress[j*si*si+k*si+k2].y=0;
         gProgress[j*si*si+k*si+k2].bm=0;
-        gProgress[j*si*si+k*si+k2].BOUND2=BOUND2;
-        gProgress[j*si*si+k*si+k2].ENDBIT=0;
+        gProgress[j*si*si+k*si+k2].rflg=0;
+        gProgress[j*si*si+k*si+k2].msk=(1<<si)-1;
         gProgress[j*si*si+k*si+k2].TOPBIT=1<<(si-1);
+        gProgress[j*si*si+k*si+k2].ENDBIT=0;
         gProgress[j*si*si+k*si+k2].SIDEMASK=0;
         gProgress[j*si*si+k*si+k2].LASTMASK=0;
-        gtProgress[j*si*si+k*si+k2].lUnique=0;
-        gProgress[j*si*si+k*si+k2].bend=0;
-        gProgress[j*si*si+k*si+k2].rflg=0;
+        gProgress[j*si*si+k*si+k2].l=0;
+        gProgress[j*si*si+k*si+k2].d=0;
+        gProgress[j*si*si+k*si+k2].r=0;
+        gProgress[j*si*si+k*si+k2].k2=k2;
+        for (int m=0;m< si;m++){ inProgress[j*si*si+k*si+k2].aB[m]=m;}
         for (int m=0;m<si;m++){
           inProgress[j*si*si+k*si+k2].stParam.param[m].Y=0;
           inProgress[j*si*si+k*si+k2].stParam.param[m].I=si;
@@ -460,14 +468,6 @@ int makeInProgress(int si,int BOUND1,int BOUND2){
           inProgress[j*si*si+k*si+k2].stParam.param[m].B=0;
         }
         inProgress[j*si*si+k*si+k2].stParam.current=0;
-        gProgress[j*si*si+k*si+k2].msk=(1<<si)-1;
-        gProgress[j*si*si+k*si+k2].l=0;
-        gProgress[j*si*si+k*si+k2].d=0;
-        gProgress[j*si*si+k*si+k2].r=0;
-        gProgress[j*si*si+k*si+k2].B1=0;
-        gProgress[j*si*si+k*si+k2].j=j;
-        gProgress[j*si*si+k*si+k2].k=k;
-        gProgress[j*si*si+k*si+k2].k2=k2;
       }
       }
     }
