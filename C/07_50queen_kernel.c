@@ -146,7 +146,7 @@ void backTrack1(struct queenState *s){
     s->y=1;s->l=(1)<<1;s->d=(1);s->r=(1>>1);
   }
   unsigned long j=1;
-  while(1){
+  while(j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){
@@ -219,7 +219,7 @@ void backTrack1(struct queenState *s){
 void backTrack2(struct queenState *s){
   int bit;
   unsigned long j=1;
-  while (1){
+  while (j>0){
 #ifdef GCC_STYLE
 #else
     if(j==100000){

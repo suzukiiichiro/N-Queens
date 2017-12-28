@@ -327,7 +327,7 @@ void backTrack2(struct queenState *s,struct globalState *g,struct gtState *gt){
   int bit;
   unsigned long COUNT=1;
   g->step=0;
-  while (COUNT>0){
+  while(COUNT>0){
 #ifdef GCC_STYLE
 #else
     if(COUNT==100000){

@@ -259,7 +259,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   // int sum;
   int bit;
 
-  while (j<200000) {
+  while (j<100000) {
     //  start:
     if(s.rflg==0){
       s.bm=s.msk&~(s.l|s.d|s.r); /* 配置可能フィールド */

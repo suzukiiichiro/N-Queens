@@ -96,7 +96,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
 
   //while (j!=0) {
   //while (1) {
-  while (j<200000) {
+  while (j<100000) {
     if(s.y==s.si && s.rflg==0){
       s.lTotal++;
     }else{

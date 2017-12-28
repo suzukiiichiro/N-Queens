@@ -183,7 +183,7 @@ CL_KERNEL_KEYWORD void place(CL_GLOBAL_KEYWORD struct queenState *state){
   //while (j!=0) {
   //while (1) {
   //printf("while:%d\n",sum);
-  while (j<200000) {
+  while (j<100000) {
     if(s.y==s.si && s.rflg==0){
    //   s.lTotal++;
       //sum=symmetryOps(s.si,s.aB,s.aT,s.aS);//対称解除法
