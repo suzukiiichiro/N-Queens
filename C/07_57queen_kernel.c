@@ -83,7 +83,7 @@ void symmetryOps_bm(struct queenState *s,struct globalState *g,struct gtState *g
         return; 
       }//end if 
       if(s->aB[own]<bit){
-        printf("");
+        printf(""); /** 重要★★これを消すと計算が合わなくなる **/
         break; 
       }//end if
       own++; 
@@ -188,7 +188,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
         }else{ 
           // printf("}else{ #if(g->bm & (1<<s->j)){\n");
           g->step=2;
-          printf("");
+        // printf(""); 
  // printf("return:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
           return 1;
         }
@@ -234,7 +234,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           // printf("}else{ #if(g->bm & (1<<s->j)){\n");
           g->step=2;
  // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
-          printf("");
+        printf(""); /** 重要★★これを消すと計算が合わなくなる **/
           return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
@@ -278,7 +278,7 @@ int backTrack1(struct queenState *s,struct globalState *g,struct gtState *gt){
           // printf("}else{ #if(g->bm & (1<<s->j)){\n");
           g->step=2;
  // printf("return_2:%lu m:step:%d:BOUND1:%d:k:%d:j:%d\n",gt->lTotal,g->step,g->BOUND1,g->k,g->j);
-          printf("");
+        // printf(""); 
           return 1;
         }
           // printf("if(g->rflg==0){#inParam\n");
@@ -629,7 +629,7 @@ CL_KERNEL_KEYWORD void place(
   // _l.C2=l[index].C2;
   // _l.C4=l[index].C4;
   // _l.C8=l[index].C8;
-  printf("");
+        // printf(""); 
 //    printf("BOUND1:%d\n",_g.BOUND1);
 //    printf("j:%d\n",_g.j);
 //   printf("k:%d\n",_g.k);
@@ -661,7 +661,8 @@ CL_KERNEL_KEYWORD void place(
        if(rtn==1){
          _gt.lTotal=0;
          _gt.lUnique=0;
-        printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
+        // printf(""); 
+        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
         // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:k:%d:j:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.k,_g.j);
        }
     }else if(_g.BOUND1 !=0 && _g.step !=2){ 
@@ -679,7 +680,7 @@ CL_KERNEL_KEYWORD void place(
           _g.y=1;_g.l=bit<<1;_g.d=bit;_g.r=bit>>1;
         }
 backTrack2(&_l,&_g,&_gt);
-        printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
+        // printf("ltotal:%ld:lUnique:%ld:BOUND1:%d:j:%d:k:%d:k2:%d\n",_gt.lTotal,_gt.lUnique,_g.BOUND1,_g.j,_g.k,_g.k2);
         if(_g.step!=1){
             _g.ENDBIT>>=_g.si;
         }
