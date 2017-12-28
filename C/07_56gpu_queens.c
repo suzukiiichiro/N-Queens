@@ -2,7 +2,7 @@
 
   56. GPU(07_54 *N*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
 
-  struct queenState inProgress[MAX*MAX];
+  struct queenState inProgress[MAX*MAX*MAX];
 
    実行方法
    $ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_56NQueen 07_56gpu_queens.c -framework OpenCL
@@ -10,18 +10,22 @@
 
 56. GPU(07_54 *N*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.01
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.01
- 9:               352                46          00:00:00:00.01
-10:               724                92          00:00:00:00.01
-11:              2680               341          00:00:00:00.02
-12:             14200              1787          00:00:00:00.05
-13:             73712              9233          00:00:00:00.14
-14:            365596             45752          00:00:00:00.42
-15:           2279184            285053          00:00:00:01.91
+ 4:                 0                 0          00:00:00:00.01
+ 5:                 8                 1          00:00:00:00.01
+ 6:                 0                 0          00:00:00:00.01
+ 7:                16                 2          00:00:00:00.01
+ 8:                16                 2          00:00:00:00.00
+ 9:               112                14          00:00:00:00.01
+10:               256                32          00:00:00:00.01
+11:               384                48          00:00:00:00.01
+12:              2000               250          00:00:00:00.01
+13:             11040              1380          00:00:00:00.02
+14:             47568              5946          00:00:00:00.07
+15:            278064             34758          00:00:00:00.22
+16:           1744912            218114          00:00:00:01.22
+17:          10919088           1364886          00:00:00:07.45
+18:          68841488           8605186          00:00:00:45.82
+19:         487824176          60978022          00:00:05:01.24
 
 55. GPU(07_52 *N*si*si アルゴリムは全部のせ 構造体分割バージョン) 
  N:          Total        Unique                 dd:hh:mm:ss.ms
@@ -255,6 +259,31 @@
 12:             14200                 0          00:00:00:11.25
 13:             73712                 0          00:00:01:04.73
 14:            365596                 0          00:00:06:41.58
+
+ CPU版07_35
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 2:                 0                 0          00:00:00:00.00
+ 3:                 0                 0          00:00:00:00.00
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.00
+12:             14200              1787          00:00:00:00.00
+13:             73712              9233          00:00:00:00.00
+14:            365596             45752          00:00:00:00.01
+15:           2279184            285053          00:00:00:00.07
+16:          14772512           1846955          00:00:00:00.52
+17:          95815104          11977939          00:00:00:03.86
+18:         666090624          83263591          00:00:00:30.94
+19:        4968057848         621012754          00:00:05:08.98
+20:       39029188884        4878666808          00:00:40:31.91
+21:      314666222712       39333324973          00:05:38:49.56
+22:     2691008701644      336376244042          02:02:03:49.27
+23:    24233937684440     3029242658210          22:12:20:11.13
 */
 
 #include "stdio.h"
@@ -331,9 +360,9 @@ struct queenState {
   struct STACK stParam;
 } __attribute__((packed));
 
-struct queenState inProgress[MAX*MAX];
-struct globalState gProgress[MAX*MAX];
-struct gtState gtProgress[MAX*MAX];
+struct queenState inProgress[MAX*MAX*MAX];
+struct globalState gProgress[MAX*MAX*MAX];
+struct gtState gtProgress[MAX*MAX*MAX];
 /**
  * カーネルコードの読み込み
  */
@@ -574,7 +603,7 @@ size    割り当てられたバッファメモリオブジェクトのバイト
 host_ptr    アプリケーションにより既に割り当てられているバッファデータへのポインタ。
 errcode_ret    実行結果に関連づけられたエラーコードを格納するポインタ。
 */
-int makeInProgress(int si,int BOUND1,int BOUND2){
+int makeInProgress2(int si,int BOUND1,int BOUND2){
   cl_int status;
 	/**************/
     for(int j=0;j<si;j++){
@@ -613,6 +642,72 @@ int makeInProgress(int si,int BOUND1,int BOUND2){
         gProgress[j*si+k].k=k;
       }
     }
+	/**************/
+  /* バッファオブジェクトの作成 */
+  lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
+  gBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gProgress),NULL,&status);
+  gtBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(gtProgress),NULL,&status);
+  if(USE_DEBUG>0) { if(status!=CL_SUCCESS){printf("Couldn'tcreatebuffer.\n"); return 14;} }
+  /*メモリバッファにデータを転送*/
+	status=clEnqueueWriteBuffer(cmd_queue,lBuffer,CL_FALSE,0,sizeof(inProgress),&inProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gBuffer,CL_FALSE,0,sizeof(gProgress),&gProgress,0,NULL,NULL);
+  status=clEnqueueWriteBuffer(cmd_queue,gtBuffer,CL_FALSE,0,sizeof(gtProgress),&gtProgress,0,NULL,NULL);
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't enque write buffer command."); return 16; }
+	/**************/
+  clRetainMemObject(lBuffer);
+  clRetainMemObject(gBuffer);
+  clRetainMemObject(gtBuffer);
+  /* OpenCLカーネル引数の設定 */
+  status=clSetKernelArg(kernel,0,sizeof(cl_mem),&lBuffer);
+  status=clSetKernelArg(kernel,1,sizeof(cl_mem),&gBuffer);
+  status=clSetKernelArg(kernel,2,sizeof(cl_mem),&gtBuffer);
+  if(USE_DEBUG>0) if(status!=CL_SUCCESS){ printf("Couldn't set kernel arg."); return 15; }
+	/**************/
+  return 0;
+}
+int makeInProgress1(int si){
+  cl_int status;
+	/**************/
+  int B2=si-1;
+  for(int i=0;i<si;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+        gProgress[i*si*si+j*si+k].BOUND1=i;
+        gProgress[i*si*si+j*si+k].si=si;
+        for (int m=0;m< si;m++){ inProgress[i*si*si+j*si+k].aB[m]=m;}
+        gtProgress[i*si*si+j*si+k].lTotal=0;
+        gProgress[i*si*si+j*si+k].step=0;
+        gProgress[i*si*si+j*si+k].y=0;
+        gProgress[i*si*si+j*si+k].bm=0;
+        gProgress[i*si*si+j*si+k].BOUND2=B2;
+        gProgress[i*si*si+j*si+k].ENDBIT=0;
+        gProgress[i*si*si+j*si+k].TOPBIT=1<<(si-1);
+        gProgress[i*si*si+j*si+k].SIDEMASK=0;
+        gProgress[i*si*si+j*si+k].LASTMASK=0;
+        gtProgress[i*si*si+j*si+k].lUnique=0;
+        gProgress[i*si*si+j*si+k].bend=0;
+        gProgress[i*si*si+j*si+k].rflg=0;
+        for (int m=0;m<si;m++){
+          inProgress[i*si*si+j*si+k].stParam.param[m].Y=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].I=si;
+          inProgress[i*si*si+j*si+k].stParam.param[m].M=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].L=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].D=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].R=0;
+          inProgress[i*si*si+j*si+k].stParam.param[m].B=0;
+        }
+        inProgress[i*si*si+j*si+k].stParam.current=0;
+        gProgress[i*si*si+j*si+k].msk=(1<<si)-1;
+        gProgress[i*si*si+j*si+k].l=0;
+        gProgress[i*si*si+j*si+k].d=0;
+        gProgress[i*si*si+j*si+k].r=0;
+        gProgress[i*si*si+j*si+k].B1=0;
+        gProgress[i*si*si+j*si+k].j=j;
+        gProgress[i*si*si+j*si+k].k=k;
+      }
+    }
+      B2--;
+  }
 	/**************/
   /* バッファオブジェクトの作成 */
   lBuffer=clCreateBuffer(context,CL_MEM_READ_WRITE,sizeof(inProgress),NULL,&status);
@@ -695,7 +790,7 @@ int execKernel(int si){
  * 結果の印字
  *
  */
-int execPrint(int si){
+int execPrint2(int si){
 	/**************/
     for(int j=0;j<si;j++){
       for(int k=0;k<si;k++){
@@ -710,6 +805,26 @@ int execPrint(int si){
 	/**************/
   return 0;
 }
+int execPrint1(int si){
+  lGTotal=0;
+  lGUnique=0;
+	/**************/
+  for(int i=0;i<si;i++){
+    for(int j=0;j<si;j++){
+      for(int k=0;k<si;k++){
+        // printf("lTotal:%ld\n",gtProgress[i*si*si+j*si+k].lTotal);
+        // if(gtProgress[i*si*si+j*si+k].lTotal<1000000){
+        lGTotal+=gtProgress[i*si*si+j*si+k].lTotal;
+        lGUnique+=gtProgress[i*si*si+j*si+k].lUnique;
+        // }
+        // printf("lUnique:%ld\n",gProgress[i*si*si+j*si+k].lUnique);
+      }
+    }
+  }
+	/**************/
+  return 0;
+}
+
 int create(){
   int rst;
   while (1){
@@ -731,16 +846,26 @@ int NQueens(int si){
   int BOUND2=si-1;
   lGTotal=0;
   lGUnique=0;
-  for(int BOUND1=0;BOUND1<si; BOUND1++){ 
-  makeInProgress(si,BOUND1,BOUND2);
-  BOUND2--;
-  execKernel(si);
-  execPrint(si);
-	clReleaseMemObject(lBuffer);
-	clReleaseMemObject(gBuffer);
-	clReleaseMemObject(gtBuffer);
-  clReleaseContext(context);
-  }
+	if(si>19){
+		for(int BOUND1=0;BOUND1<si; BOUND1++){ 
+			makeInProgress2(si,BOUND1,BOUND2);
+			BOUND2--;
+			execKernel(si);
+			execPrint2(si);
+			clReleaseMemObject(lBuffer);
+			clReleaseMemObject(gBuffer);
+			clReleaseMemObject(gtBuffer);
+			clReleaseContext(context);
+		}
+	}else{
+		makeInProgress1(si);
+		execKernel(si);
+		execPrint1(si);
+		clReleaseMemObject(lBuffer);
+		clReleaseMemObject(gBuffer);
+		clReleaseMemObject(gtBuffer);
+		clReleaseContext(context);
+	}
 
   gettimeofday(&t1,NULL);    // 計測終了
 
@@ -765,7 +890,7 @@ int NQueens(int si){
  */
 int main(void){
   int min=4;
-  int targetN=19;
+  int targetN=27;
   //Nが変化しても変動のないメソッドを１回だけ実行
   getPlatform();              // プラットフォーム一覧を取得
   getDeviceID();              // デバイス一覧を取得
