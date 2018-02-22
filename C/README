@@ -101,7 +101,12 @@
   GPUマルチスレッド対応 バケツリレー
   ==================================
   56. GPU(07_54 *N*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
+  57. GPU(07_55 *N*si*si*si アルゴリムは全部のせ 構造体分割+BOUND1によるバケツリレー) 
 
+  nVidia CUDA バージョン
+  ======================
+ 58 nVidia CUDA バージョン NQueen
+  
 
  # Jav/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
