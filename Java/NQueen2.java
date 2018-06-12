@@ -1,7 +1,7 @@
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 /**
- * Luaで学ぶアルゴリズムとデータ構造  
+ * Javaで学ぶアルゴリズムとデータ構造  
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
  * 
