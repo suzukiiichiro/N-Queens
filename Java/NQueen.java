@@ -682,6 +682,7 @@ class NQueen3{
 	private void nQueens(int row){
 		if(row==size){
 			TOTAL++;
+    //  picture(board,size);
 		}else{
 			for(int col=0;col<size;col++){
 				board[row]=col; // 各列にひとつのクイーンを配置する
@@ -692,6 +693,17 @@ class NQueen3{
 				}
 			}
 		}
+	}
+	static void picture(int[] board,int size){
+		int row,col,tst;
+		for(row=0;row<size;row++){
+			System.out.println();
+			tst=board[row];
+			for(col=0;col<size;col++){
+				System.out.print(" "+(col==tst ? "Q" : "."));
+			}
+		}
+		System.out.println('\n');
 	}
 }
 
@@ -794,6 +806,17 @@ class NQueen4{
 				}
 			}
 		}
+	}
+	static void picture(int[] board,int size){
+		int row,col,tst;
+		for(row=0;row<size;row++){
+			System.out.println();
+			tst=board[row];
+			for(col=0;col<size;col++){
+				System.out.print(" "+(col==tst ? "Q" : "."));
+			}
+		}
+		System.out.println('\n');
 	}
 }
 
@@ -1146,6 +1169,7 @@ class NQueen5{
 			if(tst!=0){
 				nUnique++;
 				nTotal+=tst;
+        // picture(board,size);
 			}
 		}else
 			for(int col=0;col<size;col++){
@@ -1156,6 +1180,17 @@ class NQueen5{
 					mark(row,board[row],false);
 				}
 			}
+	}
+	static void picture(int[] board,int size){
+		int row,col,tst;
+		for(row=0;row<size;row++){
+			System.out.println();
+			tst=board[row];
+			for(col=0;col<size;col++){
+				System.out.print(" "+(col==tst ? "Q" : "."));
+			}
+		}
+		System.out.println('\n');
 	}
 }
 
