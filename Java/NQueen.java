@@ -480,7 +480,7 @@ class NQueen{
 		// new NQueen9();   //実行はコメントを外して $ ./MAIN.SH を実行
 		// new NQueen10();  //実行はコメントを外して $ ./MAIN.SH を実行
 		// new NQueen11();  //実行はコメントを外して $ ./MAIN.SH を実行
-		// new NQueen12();  //実行はコメントを外して $ ./MAIN.SH を実行
+		 new NQueen12();  //実行はコメントを外して $ ./MAIN.SH を実行
 
 	}
 }
@@ -1864,7 +1864,7 @@ class NQueen8{
 	private int				size,nUnique,nTotal;
 	private int				bit;
 	private int				mask;
-	private boolean[]	colChk,diagChk,antiChk;
+//	private boolean[]	colChk,diagChk,antiChk;
 	public NQueen8(){
 		int max=27;
 		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
@@ -1874,9 +1874,9 @@ class NQueen8{
 			board=new int[size];
 			trial=new int[size];
 			scratch=new int[size];
-			colChk=new boolean[2*size-1];
-			diagChk=new boolean[2*size-1];
-			antiChk=new boolean[2*size-1];
+//			colChk=new boolean[2*size-1];
+//			diagChk=new boolean[2*size-1];
+//			antiChk=new boolean[2*size-1];
 			for(int k=0;k<size;k++){
 				board[k]=k;
 			}
@@ -1932,90 +1932,90 @@ class NQueen8{
 	int total(){
 		return nTotal;
 	}
-	private int symmetryOps(){
-		int k; /* String offset                     */
-		int nEquiv; /* Number equivalent boards          */
-		/* Copy over; now trial will be subjected to the transformations    */
-		for(k=0;k<size;k++)
-			trial[k]=board[k];
-		/* 90 degrees --- clockwise */
-		rotate(trial,scratch,size,false);
-		k=intncmp(board,trial,size);
-		if(k>0)
-			return 0;
-		if(k==0)
-			nEquiv=1;
-		else{
-			/* 180 degrees */
-			rotate(trial,scratch,size,false);
-			k=intncmp(board,trial,size);
-			if(k>0)
-				return 0;
-			if(k==0)
-				nEquiv=2;
-			else{
-				/* 270 degrees */
-				rotate(trial,scratch,size,false);
-				k=intncmp(board,trial,size);
-				if(k>0)
-					return 0;
-				nEquiv=4;
-			}
-		}
-		/* Reflect -- vertical mirror */
-		for(k=0;k<size;k++)
-			trial[k]=board[k];
-		vMirror(trial,size);
-		k=intncmp(board,trial,size);
-		if(k>0)
-			return 0;
-		if(nEquiv>1)        // I.e., no four-fold rotational symmetry
-		{
-			/* -90 degrees --- equiv. to diagonal mirror */
-			rotate(trial,scratch,size,true);
-			k=intncmp(board,trial,size);
-			if(k>0)
-				return 0;
-			if(nEquiv>2)     // I.e., no two-fold rotational symmetry
-			{
-				/* -180 degrees --- equiv. to horizontal mirror */
-				rotate(trial,scratch,size,true);
-				k=intncmp(board,trial,size);
-				if(k>0)
-					return 0;
-				/* -270 degrees --- equiv. to anti-diagonal mirror */
-				rotate(trial,scratch,size,true);
-				k=intncmp(board,trial,size);
-				if(k>0)
-					return 0;
-			}
-		}
-		/* WE HAVE A GOOD ONE! */
-		return nEquiv*2;
-	}
+//	private int symmetryOps(){
+//		int k; /* String offset                     */
+//		int nEquiv; /* Number equivalent boards          */
+//		/* Copy over; now trial will be subjected to the transformations    */
+//		for(k=0;k<size;k++)
+//			trial[k]=board[k];
+//		/* 90 degrees --- clockwise */
+//		rotate(trial,scratch,size,false);
+//		k=intncmp(board,trial,size);
+//		if(k>0)
+//			return 0;
+//		if(k==0)
+//			nEquiv=1;
+//		else{
+//			/* 180 degrees */
+//			rotate(trial,scratch,size,false);
+//			k=intncmp(board,trial,size);
+//			if(k>0)
+//				return 0;
+//			if(k==0)
+//				nEquiv=2;
+//			else{
+//				/* 270 degrees */
+//				rotate(trial,scratch,size,false);
+//				k=intncmp(board,trial,size);
+//				if(k>0)
+//					return 0;
+//				nEquiv=4;
+//			}
+//		}
+//		/* Reflect -- vertical mirror */
+//		for(k=0;k<size;k++)
+//			trial[k]=board[k];
+//		vMirror(trial,size);
+//		k=intncmp(board,trial,size);
+//		if(k>0)
+//			return 0;
+//		if(nEquiv>1)        // I.e., no four-fold rotational symmetry
+//		{
+//			/* -90 degrees --- equiv. to diagonal mirror */
+//			rotate(trial,scratch,size,true);
+//			k=intncmp(board,trial,size);
+//			if(k>0)
+//				return 0;
+//			if(nEquiv>2)     // I.e., no two-fold rotational symmetry
+//			{
+//				/* -180 degrees --- equiv. to horizontal mirror */
+//				rotate(trial,scratch,size,true);
+//				k=intncmp(board,trial,size);
+//				if(k>0)
+//					return 0;
+//				/* -270 degrees --- equiv. to anti-diagonal mirror */
+//				rotate(trial,scratch,size,true);
+//				k=intncmp(board,trial,size);
+//				if(k>0)
+//					return 0;
+//			}
+//		}
+//		/* WE HAVE A GOOD ONE! */
+//		return nEquiv*2;
+//	}
 	// Wirth's validity check
-	private void mark(int row,int col,boolean value){
-		int idx;
-		colChk[col]=value;
-		idx=row-col+size-1;
-		diagChk[idx]=value;
-		idx=row+col;
-		antiChk[idx]=value;
-	}
-	private boolean valid(int row){
-		int k;
-		boolean chk;
-		chk=colChk[board[row]];
-		k=row-board[row]+size-1;
-		chk=chk|diagChk[k];
-		k=row+board[row];
-		chk=chk|antiChk[k];
-		return !chk; /* Valid if NOT any occupied */
-	}
+//	private void mark(int row,int col,boolean value){
+//		int idx;
+//		colChk[col]=value;
+//		idx=row-col+size-1;
+//		diagChk[idx]=value;
+//		idx=row+col;
+//		antiChk[idx]=value;
+//	}
+//	private boolean valid(int row){
+//		int k;
+//		boolean chk;
+//		chk=colChk[board[row]];
+//		k=row-board[row]+size-1;
+//		chk=chk|diagChk[k];
+//		k=row+board[row];
+//		chk=chk|antiChk[k];
+//		return !chk; /* Valid if NOT any occupied */
+//	}
 	// 再帰関数
 	private void nQueens(int row,int left,int down,int right){
 		int bitmap=mask&~(left|down|right);
-		int k=0;
+//		int k=0;
 		if(row==size){
 			nTotal++;
 			//			if(bitmap!=0){
@@ -2949,6 +2949,15 @@ class NQ12_WorkingEngine extends Thread{
 			child=null;
 		}
 	}
+//  protected void finalize() throws Throwable {
+//    try {
+//      super.finalize();
+//    } finally {
+//    		info=null;
+//    		child=null;
+//    		board=null;
+//    }
+//  }
 	private void BOUND2(int B1,int B2){
 		int bit;
 		bound1=B1;
@@ -3154,6 +3163,9 @@ class NQueen12{
 			long end=System.currentTimeMillis();
 			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
 			System.out.printf("%2d:%17d%13d%17s%n",size,info.getTotal(),info.getUnique(),TIME);
+			info=null;
+			child=null;
+			System.gc();
 		}
 	}
 }
