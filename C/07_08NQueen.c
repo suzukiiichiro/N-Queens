@@ -182,7 +182,7 @@ int rh(int a,int sz);
 int intncmp(int lt[],int rt[],int si);
 long getUnique();
 long getTotal();
-void backTrack2(int is,int msk,int y, int l, int d, int r);
+void backTrack2(int si,int msk,int y, int l, int d, int r);
 void backTrack1(int si,int msk,int y, int l, int d, int r);
 
 void backTrack2(int si,int msk,int y,int l,int d,int r){

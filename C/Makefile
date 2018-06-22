@@ -4,9 +4,11 @@
 # make nq55 
 # $(gdb) r
 
+# gdb
+#GDB="/usr/local/bin/gdb -q";
+
 OS=${shell uname}
 ifeq ($(OS),Linux)
-#CC=/usr/bin/clang
 CC=gcc
 CFLAGS=-W -Wall -O3 -g -ftrapv -std=c99 -lm -lpthread  
 FUNCTION=`pkg-config --libs --cflags OpenCL`
@@ -16,12 +18,24 @@ LDFLAGS=-L/usr/lib64 -L/usr/lib64/libOpenCL.so
 endif
 
 ifeq ($(OS),Darwin)
-CFLAGS=-Wall -W -O3 -std=c99 -lm 
+CC=/Library/Developer/CommandLineTools/usr/bin/clang
+CFLAGS=-Wall -W -O3 -g -ftrapv -std=c99 -lm 
 FUNCTION=-framework OpenCL
+
+#CUDA
+export CUDA_ROOT="/usr/local/cuda";
+export PATH="/Developer/NVIDIA/CUDA-*/bin:$PATH";
+export CUDA_PATH="/Developer/NVIDIA/CUDA-*";
+export CUDA_BIN_PATH="/Developer/NVIDIA/CUDA-*/bin";
+export CUDA_INC_PATH="/Developer/NVIDIA/CUDA-*/include";
+export CUDA_LIB_PATH="/Developer/NVIDIA/CUDA-*/lib";
+export DYLD_LIBRARY_PATH=$CUDA_ROOT/lib:/Developer/NVIDIA/CUDA-*/lib:$DYLD_LIBRARY_PATH
+#
+
 #clang
-CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
-LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
-CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
+#CC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
+#LDFLAGS=-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/lib
+#CPPFLAGS=-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include
 
 #CC=/usr/local/opt/llvm/bin/clang-5.0
 #CPPFLAGS=-I/usr/local/opt/llvm\@5/lib
@@ -55,88 +69,92 @@ endif
 RM=rm -fr
 
 
+nq57=07_57NQueen
+nq57: 07_57gpu_queens.c 
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq57) 07_57gpu_queens.c && $(GDB) ./$(nq57)
+
 nq56=07_56NQueen
 nq56: 07_56gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq56) 07_56gpu_queens.c && gdb -q ./$(nq56)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq56) 07_56gpu_queens.c && $(GDB) ./$(nq56)
 
 nq55=07_55NQueen
 nq55: 07_55gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq55) 07_55gpu_queens.c && gdb -q ./$(nq55)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq55) 07_55gpu_queens.c && $(GDB) ./$(nq55)
 
 
 nq54=07_54NQueen
 nq54: 07_54gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq54) 07_54gpu_queens.c  && gdb -q ./$(nq54)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq54) 07_54gpu_queens.c  && $(GDB) ./$(nq54)
  
 
 nq53=07_53NQueen
 nq53: 07_53gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq53) 07_53gpu_queens.c  && gdb -q ./$(nq53)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq53) 07_53gpu_queens.c  && $(GDB) ./$(nq53)
 
 
 nq52=07_52NQueen
 nq52: 07_52gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq52) 07_52gpu_queens.c  && gdb -q ./$(nq52)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq52) 07_52gpu_queens.c  && $(GDB) ./$(nq52)
 
 
 nq51=07_51NQueen
 nq51: 07_51gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq51) 07_51gpu_queens.c  && gdb -q ./$(nq51)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq51) 07_51gpu_queens.c  && $(GDB) ./$(nq51)
 
 
 nq50=07_50NQueen
 nq50: 07_50gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq50) 07_50gpu_queens.c  && gdb -q ./$(nq50)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq50) 07_50gpu_queens.c  && $(GDB) ./$(nq50)
 
 
 nq49=07_49NQueen
 nq49: 07_49gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq49) 07_49gpu_queens.c  && gdb -q ./$(nq49)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq49) 07_49gpu_queens.c  && $(GDB) ./$(nq49)
 
 
 nq48=07_48NQueen
 nq48: 07_48gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq48) 07_48gpu_queens.c  && gdb -q ./$(nq48)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq48) 07_48gpu_queens.c  && $(GDB) ./$(nq48)
 
 
 nq47=07_47NQueen
 nq47: 07_47gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq47) 07_47gpu_queens.c  && gdb -q ./$(nq47)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq47) 07_47gpu_queens.c  && $(GDB) ./$(nq47)
 
 
 nq46=07_46NQueen
 nq46: 07_46gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq46) 07_46gpu_queens.c  && gdb -q ./$(nq46)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq46) 07_46gpu_queens.c  && $(GDB) ./$(nq46)
 
 
 nq45=07_45NQueen
 nq45: 07_45gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq45) 07_45gpu_queens.c  && gdb -q ./$(nq45)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq45) 07_45gpu_queens.c  && $(GDB) ./$(nq45)
 
 
 nq44=07_44NQueen
 nq44: 07_44gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq44) 07_44gpu_queens.c  && gdb -q ./$(nq44)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq44) 07_44gpu_queens.c  && $(GDB) ./$(nq44)
 
 
 nq43=07_43NQueen
 nq43: 07_43gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq43) 07_43gpu_queens.c  && gdb -q ./$(nq43)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq43) 07_43gpu_queens.c  && $(GDB) ./$(nq43)
 
 
 nq42=07_42NQueen
 nq42: 07_42gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq42) 07_42gpu_queens.c  && gdb -q ./$(nq42)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq42) 07_42gpu_queens.c  && $(GDB) ./$(nq42)
 
 
 nq41=07_41NQueen
 nq41: 07_41gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq41) 07_41gpu_queens.c  && gdb -q ./$(nq41)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq41) 07_41gpu_queens.c  && $(GDB) ./$(nq41)
 
 
 nq40=07_40NQueen
 nq40: 07_40gpu_queens.c 
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq40) 07_40gpu_queens.c  && gdb -q ./$(nq40)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq40) 07_40gpu_queens.c  && $(GDB) ./$(nq40)
 
 
 nq38=07_38NQueen
@@ -159,7 +177,7 @@ nq34=07_34NQueen
 nq34: $(nq34).c 
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CPPFLAGS) $(FUNCTION) -o $(nq34) $(nq34).c 
 
-all:nq56 nq55 nq54 nq53 nq52 nq51 nq50 nq49 nq48 nq47 nq46 nq45 nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
+all:nq57 nq56 nq55 nq54 nq53 nq52 nq51 nq50 nq49 nq48 nq47 nq46 nq45 nq44 nq43 nq42 nq41 nq40 nq38 nq37 nq36 nq35 nq34 nq33 nq32 nq31 nq30 nq29 nq28 nq27 nq26 nq25 nq24 nq23 nq22 nq21 nq20 nq19 nq18 nq17 nq16 nq15t nq15 nq14 nq13 nq12 nq11 nq10 nq9 nq8 nq7 nq6 nq5 nq4 nq3 nq2 nq1
 
 clean:
 	$(RM) a.out $(nq1) $(nq2) $(nq3) $(nq4) $(nq5) $(nq6) $(nq7) $(nq8) $(nq9) $(nq10) $(nq11) $(nq12) $(nq13) $(nq14) $(nq15t) $(nq15) $(nq16) $(nq17) $(nq18) $(nq19) $(nq20) $(nq21) $(nq22) $(nq23) $(nq24) $(nq25) $(nq26) $(nq27) $(nq28) $(nq29) $(nq30) $(nq31) $(nq32) $(nq33) $(nq34) $(nq35) *Sol 07_36NQueen 07_37NQueen 07_38NQueen 07_40NQueen 07_41NQueen 07_42NQueen 07_43NQueen 07_44NQueen 07_45NQueen 07_46NQueen 07_47NQueen 07_48NQueen 07_49NQueen 07_50NQueen 07_51NQueen 07_52NQueen 07_53NQueen 07_54NQueen 07_55NQueen 07_56NQueen 07_57NQueen 
@@ -294,11 +312,11 @@ nq3: $(nq3).c
 
 nq2=07_02NQueen
 nq2: $(nq2).c 
-	$(CC) $(CFLAGS) -o $(nq2) $(nq2).c 
+	$(CC) $(CFLAGS) -o $(nq2) $(nq2).c && ./07_02NQueen
 
 nq1=07_01NQueen
 nq1: $(nq1).c 
-	$(CC) $(CFLAGS) -o $(nq1) $(nq1).c 
+	$(CC) $(CFLAGS) -o $(nq1) $(nq1).c && ./07_01NQueen 
 	
 #nq02: nqueens2.c
 #	$(CC) $(CFLAGS) -o nq02  nqueens2.c

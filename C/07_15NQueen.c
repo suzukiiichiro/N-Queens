@@ -140,7 +140,7 @@ void backTrack1(int y,int left,int down,int right,void *args){
       
       //pthread_mutex_lock(&mutex);   //ロックして
        G.C8[l->B1]++;
-       pthread_mutex_unlock(&mutex); //アンロックする
+      //pthread_mutex_unlock(&mutex); //アンロックする
     }
   }else{
     if(y<l->B1) { 

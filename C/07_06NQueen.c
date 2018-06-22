@@ -185,7 +185,7 @@ void NQueen(int si,int msk,int y,int l,int d,int r){
       //ベタにビットの配列を 元のaBにいったん戻してみた 
       int v[MAX];
       // 枝刈り 半分だけ走査
-      int lim=(r!=0)?si:(si+1)/2; 
+      int lim=(y!=0)?si:(si+1)/2; 
       for (int i=0;i<lim;i++){
         v[i]=aB[i];
         aB[i]=si-1-log2(aB[i]); // log2:math.hが必要
