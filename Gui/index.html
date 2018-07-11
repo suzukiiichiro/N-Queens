@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>枝刈りポイント発見システム</title>
+  <link rel="stylesheet" href="//stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="//use.fontawesome.com/releases/v5.1.0/css/all.css">
+  <link rel="stylesheet" href="css/nq.css">
+</head>
+<body>
+  <div class="container">
+    <div id="a">
+      <button type="button" id="start">スタート</button>
+      <button type="button" id="stop" style="display:none">ストップ</button>
+      <input type="checkbox" id="isstop" checked> 途中で止める</button>
+      <div id="output" class="row"></div>
+      <button type="buton" id="btn-m">-</button>
+      <button type="buton" id="btn-p">+</button>
+      <input type="text" id="num" value="5">
+    </div>
+   <div id="b">
+      <div id="res"></div>
+      <div id="text">
+        <small id="count-text"></small>
+        <small id="find-text"></small>
+        <small id="res-text"></small>
+        <small id="res-time"></small>
+      </div>
+   </div>
+  </div>
+
+  <script
+  src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+  <script src="js/nq.js"></script>
+</body>
+</html>

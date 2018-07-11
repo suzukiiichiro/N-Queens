@@ -1,0 +1,93 @@
+@charset 'utf-8';
+body, html {
+    margin: 0;
+}
+#output {
+    font-size: 0.7em;
+}
+
+.table {
+    width: auto;
+    margin: 20px auto;
+}
+
+.table td {
+    width: 3em;
+    height: 3em;
+    padding: 0;
+    text-align: center;
+}
+.queen {
+    background-color: #1abc9c !important;
+}
+
+.no {
+    background-color: #EFEFEF;
+}
+
+.table td:before {
+    content: "("attr(data-val)")"
+}
+
+.container {
+    padding: 20px;
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+}
+
+.container>div {
+    width: 50%;
+    max-height: 100vh;
+    overflow: scroll;
+}
+.find td {
+    background: lightpink;
+}
+#res {
+    font-size: 0.7em;
+}
+
+#res .table {
+    margin: 5px;
+}
+
+#res .table td {
+    width: 15px;
+    height: 15px;
+}
+
+#res .table td:before {
+    display: none;
+}
+
+#res {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    flex-wrap: wrap;
+}
+#res td { border-color: #FFF; }
+#res td { background-color: lightblue; }
+#res td.c_r { background-color: lightpink; }
+#res td.c_gr { background-color: lightgreen; }
+#res td.c_g, #res tr.c_g td { background-color: #EFEFEF; }
+
+#res .queen { background-color: #1abc9c !important; }
+
+
+
+#text {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+}
+#text > * {
+    margin: 20px 10px 0;
+}
