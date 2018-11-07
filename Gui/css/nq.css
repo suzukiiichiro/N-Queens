@@ -1,0 +1,192 @@
+@charset 'utf-8';
+/*---------------------------------------------
+共通設定
+---------------------------------------------*/
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body, html {
+    margin: 0;
+    padding: 0;
+    max-height: 100vh;
+    max-width: 100vw;
+    overflow: hidden;
+    background: #192a56;
+}
+table {
+    border-collapse: collapse;
+}
+/*---------------------------------------------
+ボード
+---------------------------------------------*/
+#board-area {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+}
+#board-area .item-area {
+    padding: 20px;
+    width: 50%;
+}
+/*---------------------------------------------
+クイーン配置ボード
+---------------------------------------------*/
+#queen-board {
+    height: 100vh;
+    color: #FFF;
+}
+#queen-board .table {
+    background: #FFF;
+    width: auto;
+    margin: 20px auto;
+}
+#queen-board .table td {
+    width: 3em;
+    height: 3em;
+    padding: 0;
+    text-align: center;
+    border: 2px solid #192a56;
+    color: #DDD;
+}
+#queen-board .table td.queen {
+    background-color: #1abc9c;
+}
+#queen-board .table td:before {
+    content: "("attr(data-val)")";
+    font-size: 0.8em;
+}
+
+
+/*---------------------------------------------
+結果表示エリア
+---------------------------------------------*/
+#response-board {
+    background-color: #fff;
+}
+#response-board #res {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    -webkit-flex-wrap: wrap;
+    -moz-flex-wrap: wrap;
+    -ms-flex-wrap: wrap;
+    -o-flex-wrap: wrap;
+    flex-wrap: wrap;
+}
+#response-board .table {
+    margin: 5px;
+}
+#response-board .table td {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #DDD;
+}
+#response-board .table td.queen {
+    background-color: #1abc9c;
+}
+#response-board .table td { background-color: lightblue; }
+#response-board .table td.c_r { background-color: lightpink; }
+#response-board .table td.c_gr { background-color: lightgreen; }
+#response-board .table td.c_g, #response-board .table tr.c_g td { background-color: #EFEFEF; }
+#response-board .table .queen { background-color: #1abc9c !important; }
+/*
+body, html {
+    margin: 0;
+}
+#output {
+    font-size: 0.7em;
+}
+
+.table {
+    width: auto;
+    margin: 20px auto;
+}
+
+.table td {
+    width: 3em;
+    height: 3em;
+    padding: 0;
+    text-align: center;
+}
+.queen {
+    background-color: #1abc9c !important;
+}
+
+.no {
+    background-color: #EFEFEF;
+}
+
+.table td:before {
+    content: "("attr(data-val)")"
+}
+
+.container {
+    padding: 20px;
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+}
+
+.container>div {
+    width: 50%;
+    max-height: 100vh;
+    overflow: scroll;
+}
+.find td {
+    background: lightpink;
+}
+#res {
+    font-size: 0.7em;
+}
+
+#res .table {
+    margin: 5px;
+}
+
+#res .table td {
+    width: 15px;
+    height: 15px;
+}
+
+#res .table td:before {
+    display: none;
+}
+
+#res {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    flex-wrap: wrap;
+}
+#res td { border-color: #FFF; }
+#res td { background-color: lightblue; }
+#res td.c_r { background-color: lightpink; }
+#res td.c_gr { background-color: lightgreen; }
+#res td.c_g, #res tr.c_g td { background-color: #EFEFEF; }
+
+#res .queen { background-color: #1abc9c !important; }
+
+
+
+#text {
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+}
+#text > * {
+    margin: 20px 10px 0;
+}
+
+*/
