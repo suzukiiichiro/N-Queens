@@ -1,16 +1,6 @@
-// nqueen_dg.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
-//
 // #include "stdafx.h"
 #include "nqueen_dg_QJH_Inc_odd.h"
 
-/*-----------------------------------*/
-/*  copyright deepgreen  2011.07.31  */
-/*                                   */
-/*  author    deepgreen  2010.07.07  */
-/*  bugfix    SymCheck   2011.05.01  */
-/*-----------------------------------*/
-
-//-------------------------------------------------------------------------
 //int _tmain(int argc, _TCHAR* argv[])
 int main()
 {
