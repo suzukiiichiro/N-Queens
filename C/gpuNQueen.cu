@@ -99,16 +99,181 @@ Wed Jun 27 02:36:34 2018
   case 1 : 非再帰　非CUDA
   1. バックトラック
 **/
-long long solve_nqueen_nonRecursive_BT(int n){
-  return true;
+#define MAX 15
+long Total=0 ;        //合計解
+int fA[2*MAX-1]; //fA:flagA 縦 配置フラグ　
+int fB[2*MAX-1];  //fB:flagB 斜め配置フラグ　
+int fC[2*MAX-1];  //fC:flagC 斜め配置フラグ　
+int aB[2*MAX-1];      //aB:aBoard[] チェス盤の横一列
+typedef struct{
+    //  データを格納数る配列
+    int array[MAX];
+    //  現在の位置
+    int current;
+}STACK;
+ 
+//  スタックの初期化
+void init(STACK*);
+//  値のプッシュ
+int push(STACK*,int);
+//  値のポップ
+int pop(STACK*,int*);
+//  スタックの初期化
+void init(STACK* pStack)
+{
+    int i;
+    for(i = 0; i < MAX; i++){
+        pStack->array[i] = 0;
+    }
+    //  カレントの値を0に。
+    pStack->current = 0;
+}
+//  値のプッシュ
+int push(STACK* pStack,int value)
+{
+    if(pStack->current < MAX){
+        //  まだデータが格納できるのなら、データを格納し、一つずらす。
+        pStack->array[pStack->current] = value;
+        pStack->current++;
+        return 1;
+    }
+    //  データを格納しきれなかった
+    return 0;
+}
+//  値のポップ
+int pop(STACK* pStack,int* pValue)
+{
+    if(pStack->current > 0){
+        //  まだデータが格納できるのなら、データを格納し、一つずらす。
+        pStack->current--;
+        *pValue = pStack->array[pStack->current];
+        return *pValue;
+    }
+    return 0;
+}
+int leng(STACK* pStack)
+{
+    if(pStack->current > 0){
+     return 1;
+    }
+    return 0;
+}
+void solve_nqueen_nonRecursive_BT(int r,int n){
+  STACK R;
+  STACK I;
+  init(&R);
+  init(&I);
+  int bend=0;
+  int rflg=0;
+  while(1){
+  //start:
+  //printf("methodstart\n");
+  //printf("###r:%d\n",r);
+  //for(int k=0;k<n;k++){
+  //  printf("###i:%d\n",k);
+  //  printf("###fa[k]:%d\n",fA[k]);
+  //  printf("###fB[k]:%d\n",fB[k]);
+  //  printf("###fC[k]:%d\n",fC[k]);
+  //}
+  if(r==n && rflg==0){
+  //printf("if(r==n){\n");
+    Total++; //解を発見
+   // printf("Total++;\n");
+  }else{
+    //printf("}else{\n");
+    for(int i=0;i<n;i++){
+      //printf("for(int i=0;i<n;i++){\n");
+      if(rflg==0){
+        aB[r]=i ;
+      }
+      //printf("aB[r]=i ;\n");
+      //printf("###i:%d\n",i);
+      //printf("###r:%d\n",r);
+     // for(int k=0;k<n;k++){
+      //  printf("###i:%d\n",k);
+      //  printf("###fa[k]:%d\n",fA[k]);
+      //  printf("###fB[k]:%d\n",fB[k]);
+      //  printf("###fC[k]:%d\n",fC[k]);
+     // }
+      //バックトラック 制約を満たしているときだけ進む
+      if((fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0)  || rflg==1){
+      //  printf("if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){\n");
+        if(rflg==0){
+          fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1; 
+       //   printf("fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1;\n");
+       //   printf("###before_nqueen\n");
+       //   printf("###i:%d\n",i);
+       //   printf("###r:%d\n",r);
+       //   for(int k=0;k<n;k++){
+       //     printf("###i:%d\n",k);
+       //     printf("###fa[k]:%d\n",fA[k]);
+       //     printf("###fB[k]:%d\n",fB[k]);
+       //     printf("###fC[k]:%d\n",fC[k]);
+       //   }
+          push(&R,r); 
+          push(&I,i); 
+          r=r+1;
+          bend=1;
+          break;
+          //  goto start;
+        }
+        //NQueen(r+1,n);//再帰
+        // ret:
+        if(rflg==1){
+          r=pop(&R,&r);
+          i=pop(&I,&i);
+        //  printf("###after_nqueen\n");
+        //  printf("###i:%d\n",i);
+        //  printf("###r:%d\n",r);
+        //  for(int k=0;k<n;k++){
+        //    printf("###i:%d\n",k);
+        //    printf("###fa[k]:%d\n",fA[k]);
+        //    printf("###fB[k]:%d\n",fB[k]);
+        //    printf("###fC[k]:%d\n",fC[k]);
+        //  }
+          fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0; 
+          rflg=0;
+        }
+        //printf("fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0;\n");
+      }else{
+        bend=0;
+      }
+      //printf("}#after:if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){\n");
+    }  
+    //printf("after:for\n");
+    if(bend==1 && rflg==0){
+      bend=0;
+      continue;
+    }
+  }
+  //printf("after:else\n");
+    if(r==0){
+      break;
+    }else{
+      //goto ret;
+      rflg=1;
+    }
+  }
 }
 
 /**
   case 2 : 再帰　非CUDA
   1. バックトラック
 **/
-long long solve_nqueen_Recursive_BT(int n){
-  return true;
+void solve_nqueen_Recursive_BT(int r,int n){
+  if(r==n){
+    Total++; //解を発見
+  }else{
+    for(int i=0;i<n;i++){
+      aB[r]=i ;
+      //バックトラック 制約を満たしているときだけ進む
+      if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){
+        fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1; 
+        solve_nqueen_Recursive_BT(r+1,n);//再帰
+        fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0; 
+      }
+    }  
+  }
 }
 
 /** 
@@ -395,10 +560,17 @@ void execCPU(int procNo){
     gettimeofday(&t0,NULL);   // 計測開始
     switch (procNo){
       case 1:
-        solution=solve_nqueen_nonRecursive_BT(i);
+        //solution=solve_nqueen_nonRecursive_BT(i);
+        Total=0 ;        //合計解
+        solve_nqueen_nonRecursive_BT(0,i);
+        solution=Total;
         break;
       case 2:
-        solution=solve_nqueen_Recursive_BT(i);
+        //solution=solve_nqueen_Recursive_BT(0,i);
+        for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+        Total=0 ;        //合計解
+        solve_nqueen_Recursive_BT(0,i);
+        solution=Total;
         break;
       case 3:
         solution=solve_nqueen_nonRecursive_BT_BM(i);
