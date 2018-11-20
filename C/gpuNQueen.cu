@@ -359,8 +359,118 @@ long long solve_nqueen_nonRecursive_BT_BM(int n){
 long long nqInternal_BT_BM_SO(int n,unsigned int left,unsigned int down,unsigned int right) {
   return true;
 }
-long long solve_nqueen_Recursive_BT_BM_SO(int n){
-	return nqInternal_BT_BM_SO(n,0,0,0);
+long Unique=0; //ユニーク解
+int aT[MAX];
+int aS[MAX];
+int bit;
+int C2=0;int C4=0;int C8=0;
+void dtob(int score,int si);
+void rotate_bitmap(int bf[],int af[],int si);
+void vMirror_bitmap(int bf[],int af[],int si);
+int rh(int a,int sz);
+int intncmp(int lt[],int rt[],int si);
+void symmetryOps_bm(int si);
+long getTotal();
+long getUnique();
+void solve_nqueen_Recursive_BT_BM_SO(int n,int msk,int y,int l,int d,int r){
+  int bm=msk&~(l|d|r); //配置可能フィールド
+  if(y==n&&!bm){
+    aB[y]=bm;
+    symmetryOps_bm(n);
+  }else{
+    while(bm) {
+      bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+      solve_nqueen_Recursive_BT_BM_SO(n,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+    }
+  } 
+}
+void dtob(int score,int si) {
+  int bit=1; char c[si];
+  for (int i=0;i<si;i++) {
+    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
+    bit<<=1;
+  }
+  // 計算結果の表示
+  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
+  printf("\n");
+}
+long getUnique(){ 
+  return C2+C4+C8;
+}
+long getTotal(){ 
+  return C2*2+C4*4+C8*8;
+}
+// bf:before af:after
+void rotate_bitmap(int bf[],int af[],int si){
+  for(int i=0;i<si;i++){
+    int t=0;
+    for(int j=0;j<si;j++){
+      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
+    }
+    af[i]=t;                        // y[i] の j ビット目にする
+  }
+}
+void vMirror_bitmap(int bf[],int af[],int si){
+  int score ;
+  for(int i=0;i<si;i++) {
+    score=bf[i];
+    af[i]=rh(score,si-1);
+  }
+}
+int rh(int a,int sz){
+  int tmp=0;
+  for(int i=0;i<=sz;i++){
+    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+  }
+  return tmp;
+}
+int intncmp(int lt[],int rt[],int si){
+  int rtn=0;
+  for(int k=0;k<si;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){ break;}
+  }
+  return rtn;
+}
+void symmetryOps_bm(int si){
+  int nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aT[i]=aB[i];}
+  rotate_bitmap(aT,aS,si);    //時計回りに90度回転
+  int k=intncmp(aB,aS,si);
+  if(k>0)return;
+  if(k==0){ nEquiv=2;}else{
+    rotate_bitmap(aS,aT,si);  //時計回りに180度回転
+    k=intncmp(aB,aT,si);
+    if(k>0)return;
+    if(k==0){ nEquiv=4;}else{
+      rotate_bitmap(aT,aS,si);//時計回りに270度回転
+      k=intncmp(aB,aS,si);
+      if(k>0){ return;}
+      nEquiv=8;
+    }
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aS[i]=aB[i];}
+  vMirror_bitmap(aS,aT,si);   //垂直反転
+  k=intncmp(aB,aT,si);
+  if(k>0){ return; }
+  if(nEquiv>2){               //-90度回転 対角鏡と同等       
+    rotate_bitmap(aT,aS,si);
+    k=intncmp(aB,aS,si);
+    if(k>0){return;}
+    if(nEquiv>4){             //-180度回転 水平鏡像と同等
+      rotate_bitmap(aS,aT,si);
+      k=intncmp(aB,aT,si);
+      if(k>0){ return;}       //-270度回転 反対角鏡と同等
+      rotate_bitmap(aT,aS,si);
+      k=intncmp(aB,aS,si);
+      if(k>0){ return;}
+    }
+  }
+  if(nEquiv==2){ C2++; }
+  if(nEquiv==4){ C4++; }
+  if(nEquiv==8){ C8++; }
 }
 
 /**
@@ -369,8 +479,88 @@ long long solve_nqueen_Recursive_BT_BM_SO(int n){
   2. ビットマップ   BM
   3. 対象解除法     SO
 */
-long long solve_nqueen_nonRecursive_BT_BM_SO(int n){
-  return true;
+struct HIKISU{
+  int Y;
+  int I;
+  int M;
+  int L;
+  int D;
+  int R;
+  int B;
+};
+struct STACK {
+  struct HIKISU param[MAX];
+  int current;
+};
+void solve_nqueen_nonRecursive_BT_BM_SO(int n,int msk,int y,int l,int d,int r){
+  struct STACK stParam;
+  for (int m=0;m<n;m++){ 
+    stParam.param[m].Y=0;
+    stParam.param[m].I=n;
+    stParam.param[m].M=0;
+    stParam.param[m].L=0;
+    stParam.param[m].D=0;
+    stParam.param[m].R=0;
+    stParam.param[m].B=0;
+  }
+  stParam.current=0;
+  int bend=0;
+  int rflg=0;
+  int bm;
+  while(1){
+  if(rflg==0){
+   bm=msk&~(l|d|r); //配置可能フィールド
+  }
+  if(y==n&&!bm&&rflg==0){
+    aB[y]=bm;
+    symmetryOps_bm(n);
+  }else{
+    while(bm|| rflg==1) {
+        if(rflg==0){
+      bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
+          if(stParam.current<MAX){
+            stParam.param[stParam.current].Y=y;
+            stParam.param[stParam.current].I=n;
+            stParam.param[stParam.current].M=msk;
+            stParam.param[stParam.current].L=l;
+            stParam.param[stParam.current].D=d;
+            stParam.param[stParam.current].R=r;
+            stParam.param[stParam.current].B=bm;
+            (stParam.current)++;
+          }
+          y=y+1;
+          l=(l|bit)<<1;
+          d=(d|bit);
+          r=(r|bit)>>1;
+          bend=1;
+          break;
+        }
+        if(rflg==1){ 
+          if(stParam.current>0){
+            stParam.current--;
+          }
+          n=stParam.param[stParam.current].I;
+          y=stParam.param[stParam.current].Y;
+          msk=stParam.param[stParam.current].M;
+          l=stParam.param[stParam.current].L;
+          d=stParam.param[stParam.current].D;
+          r=stParam.param[stParam.current].R;
+          bm=stParam.param[stParam.current].B;
+          rflg=0;
+        }
+    }
+      if(bend==1 && rflg==0){
+        bend=0;
+        continue;
+      }
+  } 
+    if(y==0){
+      break;
+    }else{
+      //goto ret;
+      rflg=1;
+    }
+  }
 }
 
 /**
@@ -588,6 +778,7 @@ bool InitCUDA(){
 void execCPU(int procNo){
   long long solution;
   int min=4;int targetN=15;
+  int msk;
   struct timeval t0;struct timeval t1;int ss;int ms;int dd;
   printf("\n%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=targetN;i++){
@@ -609,8 +800,22 @@ void execCPU(int procNo){
         break;
       case 3: solution=solve_nqueen_Recursive_BT_BM(i);       break;
       case 4: solution=solve_nqueen_nonRecursive_BT_BM(i);    break;
-      case 5: solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
-      case 6: solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
+      case 5: 
+        //solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
+        for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+        msk=(1<<i)-1; // 初期化
+        Total=0;Unique=0;C2=0;C4=0;C8=0;
+        solve_nqueen_Recursive_BT_BM_SO(i,msk,0,0,0,0);
+        solution=getTotal();
+        break;
+      case 6: 
+        //solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
+        for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+        msk=(1<<i)-1; // 初期化
+        Total=0;Unique=0;C2=0;C4=0;C8=0;
+        solve_nqueen_nonRecursive_BT_BM_SO(i,msk,0,0,0,0);
+        solution=getTotal();
+        break;
       case 7: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
       case 8: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
       default: break;
