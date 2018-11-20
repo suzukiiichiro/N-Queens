@@ -101,9 +101,9 @@ Wed Jun 27 02:36:34 2018
 **/
 #define MAX 15
 long Total=0 ;        //合計解
-int fA[2*MAX-1]; //fA:flagA 縦 配置フラグ　
-int fB[2*MAX-1];  //fB:flagB 斜め配置フラグ　
-int fC[2*MAX-1];  //fC:flagC 斜め配置フラグ　
+int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
+int left[2*MAX-1];  //left:flagB 斜め配置フラグ　
+int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 int aB[2*MAX-1];      //aB:aBoard[] チェス盤の横一列
 typedef struct{
     //  データを格納数る配列
@@ -167,49 +167,17 @@ void solve_nqueen_nonRecursive_BT(int r,int n){
   int rflg=0;
   while(1){
   //start:
-  //printf("methodstart\n");
-  //printf("###r:%d\n",r);
-  //for(int k=0;k<n;k++){
-  //  printf("###i:%d\n",k);
-  //  printf("###fa[k]:%d\n",fA[k]);
-  //  printf("###fB[k]:%d\n",fB[k]);
-  //  printf("###fC[k]:%d\n",fC[k]);
-  //}
   if(r==n && rflg==0){
-  //printf("if(r==n){\n");
     Total++; //解を発見
-   // printf("Total++;\n");
   }else{
-    //printf("}else{\n");
     for(int i=0;i<n;i++){
-      //printf("for(int i=0;i<n;i++){\n");
       if(rflg==0){
         aB[r]=i ;
       }
-      //printf("aB[r]=i ;\n");
-      //printf("###i:%d\n",i);
-      //printf("###r:%d\n",r);
-     // for(int k=0;k<n;k++){
-      //  printf("###i:%d\n",k);
-      //  printf("###fa[k]:%d\n",fA[k]);
-      //  printf("###fB[k]:%d\n",fB[k]);
-      //  printf("###fC[k]:%d\n",fC[k]);
-     // }
       //バックトラック 制約を満たしているときだけ進む
-      if((fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0)  || rflg==1){
-      //  printf("if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){\n");
+      if((down[i]==0&&left[r-i+(n-1)]==0&&right[r+i]==0)  || rflg==1){
         if(rflg==0){
-          fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1; 
-       //   printf("fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1;\n");
-       //   printf("###before_nqueen\n");
-       //   printf("###i:%d\n",i);
-       //   printf("###r:%d\n",r);
-       //   for(int k=0;k<n;k++){
-       //     printf("###i:%d\n",k);
-       //     printf("###fa[k]:%d\n",fA[k]);
-       //     printf("###fB[k]:%d\n",fB[k]);
-       //     printf("###fC[k]:%d\n",fC[k]);
-       //   }
+          down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=1; 
           push(&R,r); 
           push(&I,i); 
           r=r+1;
@@ -222,31 +190,18 @@ void solve_nqueen_nonRecursive_BT(int r,int n){
         if(rflg==1){
           r=pop(&R,&r);
           i=pop(&I,&i);
-        //  printf("###after_nqueen\n");
-        //  printf("###i:%d\n",i);
-        //  printf("###r:%d\n",r);
-        //  for(int k=0;k<n;k++){
-        //    printf("###i:%d\n",k);
-        //    printf("###fa[k]:%d\n",fA[k]);
-        //    printf("###fB[k]:%d\n",fB[k]);
-        //    printf("###fC[k]:%d\n",fC[k]);
-        //  }
-          fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0; 
+          down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=0; 
           rflg=0;
         }
-        //printf("fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0;\n");
       }else{
         bend=0;
       }
-      //printf("}#after:if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){\n");
     }  
-    //printf("after:for\n");
     if(bend==1 && rflg==0){
       bend=0;
       continue;
     }
   }
-  //printf("after:else\n");
     if(r==0){
       break;
     }else{
@@ -267,10 +222,10 @@ void solve_nqueen_Recursive_BT(int r,int n){
     for(int i=0;i<n;i++){
       aB[r]=i ;
       //バックトラック 制約を満たしているときだけ進む
-      if(fA[i]==0&&fB[r-i+(n-1)]==0&&fC[r+i]==0){
-        fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=1; 
+      if(down[i]==0&&left[r-i+(n-1)]==0&&right[r+i]==0){
+        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=1; 
         solve_nqueen_Recursive_BT(r+1,n);//再帰
-        fA[i]=fB[r-aB[r]+n-1]=fC[r+aB[r]]=0; 
+        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=0; 
       }
     }  
   }
