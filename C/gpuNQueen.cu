@@ -56,35 +56,7 @@ Wed Jun 27 02:36:34 2018
  *
  *  実行結果
 
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.00
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.00
-13:             73712                 0          00:00:00:00.05
-14:            365596                 0          00:00:00:00.29
-15:           2279184                 0          00:00:00:01.94
 
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.06
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.01
-13:             73712                 0          00:00:00:00.02
-14:            365596                 0          00:00:00:00.01
-15:           2279184                 0          00:00:00:00.05
-16:          14772512                 0          00:00:00:00.27
-17:          95815104                 0          00:00:00:01.65
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,17 +66,99 @@ Wed Jun 27 02:36:34 2018
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
-
-/**
-  case 1 : 非再帰　非CUDA
-  1. バックトラック
-**/
 #define MAX 15
+
 long Total=0 ;        //合計解
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
 int left[2*MAX-1];  //left:flagB 斜め配置フラグ　
 int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 int aB[2*MAX-1];      //aB:aBoard[] チェス盤の横一列
+
+/**
+  case 1 : 再帰　非CUDA
+  1. バックトラック
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.01
+12:             14200                 0          00:00:00:00.08
+13:             73712                 0          00:00:00:00.45
+14:            365596                 0          00:00:00:02.72
+15:           2279184                 0          00:00:00:17.61
+**/
+void solve_nqueen_Recursive_BT(int r,int n){
+  if(r==n){
+    Total++; //解を発見
+  }else{
+    for(int i=0;i<n;i++){
+      aB[r]=i ;
+      //バックトラック 制約を満たしているときだけ進む
+      if(down[i]==0&&left[r-i+(n-1)]==0&&right[r+i]==0){
+        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=1; 
+        solve_nqueen_Recursive_BT(r+1,n);//再帰
+        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=0; 
+      }
+    }  
+  }
+}
+
+/**
+  case 2 : 非再帰　非CUDA
+  1. バックトラック
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.01
+12:             14200                 0          00:00:00:00.07
+13:             73712                 0          00:00:00:00.44
+14:            365596                 0          00:00:00:02.72
+15:           2279184                 0          00:00:00:17.41
+**/
+void solve_nqueen_nonRecursive_BT(int r,int n){
+  bool matched;
+  while(r>=0) {
+    matched=false;
+    for(int i=aB[r]+1;i<n;i++) {
+      if(0==down[i] && 0==left[r+(n-1)-i] && 0==right[r+i]) {
+        if(aB[r] >= 0) {
+          down[aB[r]]=left[r+(n-1)-aB[r]]=right[r+aB[r]]=0;
+        }
+        aB[r]=i;
+        down[i]=left[r+(n-1)-i]=right[r+i]=1;
+        matched=true;
+        break;
+      }
+    }
+    if(matched){
+      r++;
+      if(r==n){
+        Total++;
+        r--;
+      }
+    }else{
+      if(aB[r]>=0){
+        int tmp=aB[r];
+        aB[r]=-1;
+        down[tmp]=left[r+(n-1)-tmp]=right[r+tmp]=0;
+      }
+      r--;
+    }
+  }
+}
+
+/*
 typedef struct{
     //  データを格納数る配列
     int array[MAX];
@@ -206,34 +260,63 @@ void solve_nqueen_nonRecursive_BT(int r,int n){
     }
   }
 }
-
-/**
-  case 2 : 再帰　非CUDA
-  1. バックトラック
-**/
-void solve_nqueen_Recursive_BT(int r,int n){
-  if(r==n){
-    Total++; //解を発見
-  }else{
-    for(int i=0;i<n;i++){
-      aB[r]=i ;
-      //バックトラック 制約を満たしているときだけ進む
-      if(down[i]==0&&left[r-i+(n-1)]==0&&right[r+i]==0){
-        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=1; 
-        solve_nqueen_Recursive_BT(r+1,n);//再帰
-        down[i]=left[r-aB[r]+n-1]=right[r+aB[r]]=0; 
-      }
-    }  
-  }
-}
+*/
 
 /** 
-  case 3 : 非再帰 非CUDA
+  case 3 : 再帰 非CUDA
   1. バックトラック
   2. ビットマップ
 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.01
+13:             73712                 0          00:00:00:00.07
+14:            365596                 0          00:00:00:00.45
+15:           2279184                 0          00:00:00:02.81
+*/
+long long nqInternal_BT_BM(int n,unsigned int left,unsigned int down,unsigned int right) {
+  unsigned int msk=(1<<n)-1;
+  if(down==msk){return 1;}
+	unsigned int bm=(left|down|right);
+	if((bm&msk)==msk){return 0;}
+	long long total=0;
+	unsigned int bit=(bm+1)&~bm;
+	while((bit&msk)!=0){
+		total+=nqInternal_BT_BM(n,(left|bit)<<1,down|bit,(right|bit)>>1);
+		bm|=bit;
+		bit=(bm+1)&~bm;
+	}
+	return total;
+}
+long long solve_nqueen_Recursive_BT_BM(int n){
+	return nqInternal_BT_BM(n,0,0,0);
+}
+
+/** 
+  case 4 : 非再帰 非CUDA
+  1. バックトラック
+  2. ビットマップ
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.00
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.00
+12:             14200                 0          00:00:00:00.00
+13:             73712                 0          00:00:00:00.04
 14:            365596                 0          00:00:00:00.22
-15:           2279184                 0          00:00:00:01.50
+15:           2279184                 0          00:00:00:01.49
 */
 long long solve_nqueen_nonRecursive_BT_BM(int n){
   unsigned int down[32];unsigned int left[32];unsigned int right[32];unsigned int bm[32];
@@ -267,44 +350,8 @@ long long solve_nqueen_nonRecursive_BT_BM(int n){
   else{return uTotal*2+total;}
 }
 
-/** 
-  case 4 : 再帰 非CUDA
-  1. バックトラック
-  2. ビットマップ
-
-14:            365596                 0          00:00:00:00.44
-15:           2279184                 0          00:00:00:02.81
-*/
-long long nqInternal_BT_BM(int n,unsigned int left,unsigned int down,unsigned int right) {
-  unsigned int msk=(1<<n)-1;
-  if(down==msk){return 1;}
-	unsigned int bm=(left|down|right);
-	if((bm&msk)==msk){return 0;}
-	long long total=0;
-	unsigned int bit=(bm+1)&~bm;
-	while((bit&msk)!=0){
-		total+=nqInternal_BT_BM(n,(left|bit)<<1,down|bit,(right|bit)>>1);
-		bm|=bit;
-		bit=(bm+1)&~bm;
-	}
-	return total;
-}
-long long solve_nqueen_Recursive_BT_BM(int n){
-	return nqInternal_BT_BM(n,0,0,0);
-}
-
 /**
-  case 5 : 非再帰 非CUDA
-  1. バックトラック BT
-  2. ビットマップ   BM
-  3. 対象解除法     SO
-*/
-long long solve_nqueen_nonRecursive_BT_BM_SO(int n){
-  return true;
-}
-
-/**
-  case 6 : 再帰 非CUDA
+  case 5 : 再帰 非CUDA
   1. バックトラック BT
   2. ビットマップ   BM
   3. 対象解除法     SO
@@ -317,18 +364,17 @@ long long solve_nqueen_Recursive_BT_BM_SO(int n){
 }
 
 /**
-  case 7 : 非再帰 非CUDA
+  case 6 : 非再帰 非CUDA
   1. バックトラック BT
   2. ビットマップ   BM
   3. 対象解除法     SO
-  4. 最上段のクイーンの位置による枝刈り BOUND
 */
-long long solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n){
+long long solve_nqueen_nonRecursive_BT_BM_SO(int n){
   return true;
 }
 
 /**
-  case 8 : 再帰 非CUDA
+  case 7 : 再帰 非CUDA
   1. バックトラック BT
   2. ビットマップ   BM
   3. 対象解除法     SO
@@ -340,6 +386,18 @@ long long nqInternal_BT_BM_SO_BOUND(int n,unsigned int left,unsigned int down,un
 long long solve_nqueen_Recursive_BT_BM_SO_BOUND(int n){
 	return nqInternal_BT_BM_SO_BOUND(n,0,0,0);
 }
+
+/**
+  case 8 : 非再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND
+*/
+long long solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n){
+  return true;
+}
+
 
 
 
@@ -536,22 +594,23 @@ void execCPU(int procNo){
     gettimeofday(&t0,NULL);   // 計測開始
     switch (procNo){
       case 1:
-        //solution=solve_nqueen_nonRecursive_BT(i);
-        Total=0 ;        //合計解
-        solve_nqueen_nonRecursive_BT(0,i);
-        solution=Total;
-        break;
-      case 2:
         //solution=solve_nqueen_Recursive_BT(0,i);
         for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
         Total=0 ;        //合計解
         solve_nqueen_Recursive_BT(0,i);
         solution=Total;
         break;
-      case 3: solution=solve_nqueen_nonRecursive_BT_BM(i);    break;
-      case 4: solution=solve_nqueen_Recursive_BT_BM(i);       break;
-      case 5: solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
-      case 6: solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
+      case 2:
+        //solution=solve_nqueen_nonRecursive_BT(i);
+        for(int j=0;j<i;j++){ aB[j]=-1; } //aBを初期化
+        Total=0 ;        //合計解
+        solve_nqueen_nonRecursive_BT(0,i);
+        solution=Total;
+        break;
+      case 3: solution=solve_nqueen_Recursive_BT_BM(i);       break;
+      case 4: solution=solve_nqueen_nonRecursive_BT_BM(i);    break;
+      case 5: solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
+      case 6: solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
       case 7: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
       case 8: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
       default: break;
@@ -593,21 +652,21 @@ int main(int argc,char** argv) {
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-    printf("\n\n1. 非再帰＋バックトラック(BT)");
-    execCPU(1); /* solve_nqueen_nonRecursive_BT     */
-    printf("\n\n2. 再帰＋バックトラック(BT)");
-    execCPU(2); /* solve_nqueen_Recursive_BT     */
-    printf("\n\n3. 非再帰＋バックトラック(BT)＋ビットマップ(BM)");
-    execCPU(3); /* solve_nqueen_nonRecursive_BT_BM  */
-    printf("\n\n4. 再帰＋バックトラック(BT)＋ビットマップ(BM)");
-    execCPU(4); /* 07_05 solve_nqueen_Recursive_BT_BM  */
-    printf("\n\n5. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)");
-    execCPU(5); /* solve_nqueen_nonRecursive_BT_BM_SO     */
-    printf("\n\n6. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)");
-    execCPU(6); /* solve_nqueen_Recursive_BT_BM_SO     */
-    printf("\n\n7. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
+    printf("\n\n1. 再帰＋バックトラック(BT)");
+    execCPU(1); /* solve_nqueen_Recursive_BT     */
+    printf("\n\n2. 非再帰＋バックトラック(BT)");
+    execCPU(2); /* solve_nqueen_nonRecursive_BT     */
+    printf("\n\n3. 再帰＋バックトラック(BT)＋ビットマップ(BM)");
+    execCPU(3); /* 07_05 solve_nqueen_Recursive_BT_BM  */
+    printf("\n\n4. 非再帰＋バックトラック(BT)＋ビットマップ(BM)");
+    execCPU(4); /* solve_nqueen_nonRecursive_BT_BM  */
+    printf("\n\n5. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)");
+    execCPU(5); /* solve_nqueen_Recursive_BT_BM_SO     */
+    printf("\n\n6. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)");
+    execCPU(6); /* solve_nqueen_nonRecursive_BT_BM_SO     */
+    printf("\n\n7. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
     execCPU(7); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
-    printf("\n\n8. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
+    printf("\n\n8. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
     execCPU(8); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
   }
   /** GPU */
