@@ -119,8 +119,7 @@ int push(STACK*,int);
 //  値のポップ
 int pop(STACK*,int*);
 //  スタックの初期化
-void init(STACK* pStack)
-{
+void init(STACK* pStack) {
     int i;
     for(i = 0; i < MAX; i++){
         pStack->array[i] = 0;
@@ -129,8 +128,7 @@ void init(STACK* pStack)
     pStack->current = 0;
 }
 //  値のプッシュ
-int push(STACK* pStack,int value)
-{
+int push(STACK* pStack,int value) {
     if(pStack->current < MAX){
         //  まだデータが格納できるのなら、データを格納し、一つずらす。
         pStack->array[pStack->current] = value;
@@ -141,8 +139,7 @@ int push(STACK* pStack,int value)
     return 0;
 }
 //  値のポップ
-int pop(STACK* pStack,int* pValue)
-{
+int pop(STACK* pStack,int* pValue) {
     if(pStack->current > 0){
         //  まだデータが格納できるのなら、データを格納し、一つずらす。
         pStack->current--;
@@ -151,8 +148,7 @@ int pop(STACK* pStack,int* pValue)
     }
     return 0;
 }
-int leng(STACK* pStack)
-{
+int leng(STACK* pStack) {
     if(pStack->current > 0){
      return 1;
     }
@@ -317,7 +313,32 @@ long long nqInternal_BT_BM_SO(int n,unsigned int left,unsigned int down,unsigned
   return true;
 }
 long long solve_nqueen_Recursive_BT_BM_SO(int n){
-	return nqInternal_BT_BM(n,0,0,0);
+	return nqInternal_BT_BM_SO(n,0,0,0);
+}
+
+/**
+  case 7 : 非再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND
+*/
+long long solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n){
+  return true;
+}
+
+/**
+  case 8 : 再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+*/
+long long nqInternal_BT_BM_SO_BOUND(int n,unsigned int left,unsigned int down,unsigned int right) {
+  return true;
+}
+long long solve_nqueen_Recursive_BT_BM_SO_BOUND(int n){
+	return nqInternal_BT_BM_SO_BOUND(n,0,0,0);
 }
 
 
@@ -527,20 +548,13 @@ void execCPU(int procNo){
         solve_nqueen_Recursive_BT(0,i);
         solution=Total;
         break;
-      case 3:
-        solution=solve_nqueen_nonRecursive_BT_BM(i);
-        break;
-      case 4:
-        solution=solve_nqueen_Recursive_BT_BM(i);
-        break;
-      case 5:
-        solution=solve_nqueen_nonRecursive_BT_BM_SO(i);
-        break;
-      case 6:
-        solution=solve_nqueen_Recursive_BT_BM_SO(i);
-        break;
-      default:
-        break;
+      case 3: solution=solve_nqueen_nonRecursive_BT_BM(i);    break;
+      case 4: solution=solve_nqueen_Recursive_BT_BM(i);       break;
+      case 5: solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
+      case 6: solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
+      case 7: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
+      case 8: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
+      default: break;
     } 
     /** 再帰 */
     /** 非再帰 */
@@ -591,6 +605,10 @@ int main(int argc,char** argv) {
     execCPU(5); /* solve_nqueen_nonRecursive_BT_BM_SO     */
     printf("\n\n6. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)");
     execCPU(6); /* solve_nqueen_Recursive_BT_BM_SO     */
+    printf("\n\n7. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
+    execCPU(7); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
+    printf("\n\n8. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
+    execCPU(8); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
   }
   /** GPU */
   if(gpu){
