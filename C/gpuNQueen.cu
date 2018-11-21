@@ -372,17 +372,10 @@ long long solve_nqueen_nonRecursive_BT_BM(int n){
 14:            365596             45752          00:00:00:00.83
 15:           2279184            285053          00:00:00:05.61
 */
-/*
-long long nqInternal_BT_BM_SO(int n,unsigned int left,unsigned int down,unsigned int right) {
-  return true;
-}
-*/
 int aT[MAX];
 int aS[MAX];
 int bit;
 int C2=0;int C4=0;int C8=0;
-// void dtob(int score,int si);
-// void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
 int rh(int a,int sz);
 int intncmp(int lt[],int rt[],int si);
@@ -401,25 +394,12 @@ void solve_nqueen_Recursive_BT_BM_SO(int n,int msk,int y,int l,int d,int r){
     }
   } 
 }
-/**
-void dtob(int score,int si) {
-  int bit=1; char c[si];
-  for (int i=0;i<si;i++) {
-    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
-    bit<<=1;
-  }
-  // 計算結果の表示
-  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
-  printf("\n");
-}
-*/
 long getUnique(){ 
   return C2+C4+C8;
 }
 long getTotal(){ 
   return C2*2+C4*4+C8*8;
 }
-// bf:before af:after
 void rotate_bitmap(int bf[],int af[],int si){
   for(int i=0;i<si;i++){
     int t=0;
