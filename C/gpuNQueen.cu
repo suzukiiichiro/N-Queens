@@ -69,6 +69,7 @@ Wed Jun 27 02:36:34 2018
 #define MAX 15
 
 long Total=0 ;        //合計解
+long Unique=0;
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
 int left[2*MAX-1];  //left:flagB 斜め配置フラグ　
 int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
@@ -355,17 +356,33 @@ long long solve_nqueen_nonRecursive_BT_BM(int n){
   1. バックトラック BT
   2. ビットマップ   BM
   3. 対象解除法     SO
+
+5. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.00
+12:             14200              1787          00:00:00:00.02
+13:             73712              9233          00:00:00:00.14
+14:            365596             45752          00:00:00:00.83
+15:           2279184            285053          00:00:00:05.61
 */
+/*
 long long nqInternal_BT_BM_SO(int n,unsigned int left,unsigned int down,unsigned int right) {
   return true;
 }
-long Unique=0; //ユニーク解
+*/
 int aT[MAX];
 int aS[MAX];
 int bit;
 int C2=0;int C4=0;int C8=0;
-void dtob(int score,int si);
-void rotate_bitmap(int bf[],int af[],int si);
+// void dtob(int score,int si);
+// void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
 int rh(int a,int sz);
 int intncmp(int lt[],int rt[],int si);
@@ -384,6 +401,7 @@ void solve_nqueen_Recursive_BT_BM_SO(int n,int msk,int y,int l,int d,int r){
     }
   } 
 }
+/**
 void dtob(int score,int si) {
   int bit=1; char c[si];
   for (int i=0;i<si;i++) {
@@ -394,6 +412,7 @@ void dtob(int score,int si) {
   for (int i=si-1;i>=0;i--){ putchar(c[i]); }
   printf("\n");
 }
+*/
 long getUnique(){ 
   return C2+C4+C8;
 }
@@ -478,6 +497,21 @@ void symmetryOps_bm(int si){
   1. バックトラック BT
   2. ビットマップ   BM
   3. 対象解除法     SO
+
+6. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.00
+12:             14200              1787          00:00:00:00.03
+13:             73712              9233          00:00:00:00.19
+14:            365596             45752          00:00:00:01.14
+15:           2279184            285053          00:00:00:07.70
 */
 struct HIKISU{
   int Y;
@@ -776,52 +810,52 @@ bool InitCUDA(){
   return true;
 }
 void execCPU(int procNo){
-  long long solution;
   int min=4;int targetN=15;
   int msk;
   struct timeval t0;struct timeval t1;int ss;int ms;int dd;
   printf("\n%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
   for(int i=min;i<=targetN;i++){
+    Total=Unique=C2=C4=C8=0;
     gettimeofday(&t0,NULL);   // 計測開始
     switch (procNo){
       case 1:
-        //solution=solve_nqueen_Recursive_BT(0,i);
         for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
-        Total=0 ;        //合計解
         solve_nqueen_Recursive_BT(0,i);
-        solution=Total;
         break;
       case 2:
-        //solution=solve_nqueen_nonRecursive_BT(i);
         for(int j=0;j<i;j++){ aB[j]=-1; } //aBを初期化
-        Total=0 ;        //合計解
         solve_nqueen_nonRecursive_BT(0,i);
-        solution=Total;
         break;
-      case 3: solution=solve_nqueen_Recursive_BT_BM(i);       break;
-      case 4: solution=solve_nqueen_nonRecursive_BT_BM(i);    break;
+      case 3:
+        Total=solve_nqueen_Recursive_BT_BM(i);       
+        break;
+      case 4: 
+        Total=solve_nqueen_nonRecursive_BT_BM(i);    
+        break;
       case 5: 
-        //solution=solve_nqueen_Recursive_BT_BM_SO(i);    break;
         for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
         msk=(1<<i)-1; // 初期化
-        Total=0;Unique=0;C2=0;C4=0;C8=0;
         solve_nqueen_Recursive_BT_BM_SO(i,msk,0,0,0,0);
-        solution=getTotal();
+        Total=getTotal();
+        Unique=getUnique();
         break;
       case 6: 
-        //solution=solve_nqueen_nonRecursive_BT_BM_SO(i); break;
         for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
         msk=(1<<i)-1; // 初期化
         Total=0;Unique=0;C2=0;C4=0;C8=0;
         solve_nqueen_nonRecursive_BT_BM_SO(i,msk,0,0,0,0);
-        solution=getTotal();
+        Total=getTotal();
+        Unique=getUnique();
         break;
-      case 7: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
-      case 8: solution=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); break;
-      default: break;
+      case 7: 
+        Total=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); 
+        break;
+      case 8: 
+        Unique=solve_nqueen_Recursive_BT_BM_SO_BOUND(i); 
+        break;
+      default: 
+        break;
     } 
-    /** 再帰 */
-    /** 非再帰 */
     gettimeofday(&t1,NULL);   // 計測終了
     if (t1.tv_usec<t0.tv_usec) {
       dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -835,8 +869,7 @@ void execCPU(int procNo){
     int hh=ss/3600;
     int mm=(ss-hh*3600)/60;
     ss%=60;
-    long lGUnique=0;
-    printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", i,(unsigned long long)solution,(unsigned long long)lGUnique,dd,hh,mm,ss,ms);
+    printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", i,Total,Unique,dd,hh,mm,ss,ms);
   }
 }
 int main(int argc,char** argv) {
@@ -876,14 +909,13 @@ int main(int argc,char** argv) {
   }
   /** GPU */
   if(gpu){
-    long long solution;
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=17;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
       gettimeofday(&t0,NULL);   // 計測開始
-      solution=solve_nqueen_cuda(i,steps);
+      Total=solve_nqueen_cuda(i,steps);
       gettimeofday(&t1,NULL);   // 計測終了
       if (t1.tv_usec<t0.tv_usec) {
         dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -897,8 +929,7 @@ int main(int argc,char** argv) {
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
       ss%=60;
-      long lGUnique=0;
-      printf("%2d:%18llu%18llu%12.2d:%02d:%02d:%02d.%02d\n", i,(unsigned long long)solution,(unsigned long long)lGUnique,dd,hh,mm,ss,ms);
+      printf("%2d:%18ld%18ld%12.2d:%02d:%02d:%02d.%02d\n", i,Total,Unique,dd,hh,mm,ss,ms);
     }
   }
   return 0;
