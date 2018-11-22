@@ -678,6 +678,20 @@ void solve_nqueen_Recursive_BT_BM_SO_BOUND(int size,int mask) {
   2. ビットマップ   BM
   3. 対象解除法     SO
   4. 最上段のクイーンの位置による枝刈り BOUND
+
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.00
+12:             14200              1787          00:00:00:00.02
+13:             73712              9233          00:00:00:00.10
+14:            365596             45752          00:00:00:00.67
+15:           2279184            285053          00:00:00:04.22
 */
 //long long solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n){
 //  return true;
@@ -858,6 +872,19 @@ void backTrack1_nonRecursive_BT_BM_SO_BOUND(int si,int msk,int y,int l,int d,int
   4. 最上段のクイーンの位置による枝刈り BOUND 
   5. BOUNDの枝刈り
 
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 1          00:00:00:00.00
+ 5:                10                 2          00:00:00:00.00
+ 6:                 4                 1          00:00:00:00.00
+ 7:                40                 6          00:00:00:00.00
+ 8:                92                12          00:00:00:00.00
+ 9:               352                46          00:00:00:00.00
+10:               724                92          00:00:00:00.00
+11:              2680               341          00:00:00:00.00
+12:             14200              1787          00:00:00:00.00
+13:             73712              9233          00:00:00:00.04
+14:            365596             45752          00:00:00:00.22
+15:           2279184            285053          00:00:00:01.52
 */
 void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2(int size,int mask,int row,int l,int d,int r){
   int bit;
@@ -1219,9 +1246,7 @@ void execCPU(int procNo){
         for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
         msk=(1<<i)-1; // 初期化
         Total=0;Unique=0;C2=0;C4=0;C8=0;
-        for(int BOUND1=0,BOUND2=i-1;BOUND1<i;BOUND1++,BOUND2--){
-          solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2(i,msk); 
-        }
+        solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2(i,msk); 
         Total=getTotal();
         Unique=getUnique();
         break ;
@@ -1296,7 +1321,7 @@ int main(int argc,char** argv) {
     execCPU(9); /* solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2     */
     printf("\n\n10. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り");
     execCPU(10); /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     */
-    printf("\n\n11. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
+    printf("\n\n11. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(11); /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     */
     printf("\n\n12. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(12); /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     */
