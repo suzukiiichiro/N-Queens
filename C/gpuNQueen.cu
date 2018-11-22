@@ -650,7 +650,7 @@ void backTrack1_Recursive_BT_BM_SO_BOUND(int size,int mask,int row,int l,int d,i
   }else{
     while(bitmap) {
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //SO最も下位の１ビットを抽出
-      backTrack1_Recursive_BT_BM_SO_BOUND(size,mask,row+1,(l|bit)<<1,d|bit,(row|bit)>>1);
+      backTrack1_Recursive_BT_BM_SO_BOUND(size,mask,row+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
@@ -907,7 +907,7 @@ void backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2(int size,int mask,int row,int l,
     }
     while(bitmap) {
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //SO最も下位の１ビットを抽出
-      backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2(size,mask,row+1,(l|bit)<<1,d|bit,(row|bit)>>1);
+      backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2(size,mask,row+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
