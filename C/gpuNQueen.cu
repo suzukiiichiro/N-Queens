@@ -591,8 +591,8 @@ int TOPBIT;
 int ENDBIT;
 int SIDEMASK;
 int LASTMASK;
-void backTrack2(int is,int msk,int y, int l, int d, int r);
-void backTrack1(int si,int msk,int y, int l, int d, int r);
+void backTrack2_BT_BM_SO_BOUND(int is,int msk,int y, int l, int d, int r);
+void backTrack1_BT_BM_SO_BOUND(int si,int msk,int y, int l, int d, int r);
 //long long nqInternal_BT_BM_SO_BOUND(int n,unsigned int left,unsigned int down,unsigned int right) {
 //  return true;
 //}
@@ -602,18 +602,18 @@ void solve_nqueen_Recursive_BT_BM_SO_BOUND(int n,int msk) {
   aB[0]=1;
   for(BOUND1=2;BOUND1<n-1;BOUND1++){
     aB[1]=bit=(1<<BOUND1);
-    backTrack1(n,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1_BT_BM_SO_BOUND(n,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
   }
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
   for(BOUND1=1,BOUND2=n-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aB[0]=bit=(1<<BOUND1);
-    backTrack2(n,msk,1,bit<<1,bit,bit>>1);
+    backTrack2_BT_BM_SO_BOUND(n,msk,1,bit<<1,bit,bit>>1);
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
     ENDBIT>>=1;
   }
 }
-void backTrack2(int si,int msk,int y,int l,int d,int r){
+void backTrack2_BT_BM_SO_BOUND(int si,int msk,int y,int l,int d,int r){
   int bit;
   int bm=msk&~(l|d|r); /* 配置可能フィールド */
   if (y==si) {
@@ -624,7 +624,7 @@ void backTrack2(int si,int msk,int y,int l,int d,int r){
   }else{
     while(bm) {
       bm^=aB[y]=bit=(-bm&bm); //最も下位の１ビットを抽出
-      backTrack2(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
+      backTrack2_BT_BM_SO_BOUND(si,msk,y+1,(l|bit)<<1,d|bit,(r|bit)>>1);
     }
   } 
 }
@@ -654,26 +654,26 @@ void backTrack1(int si,int msk,int y,int l,int d,int r){
 //long long solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n){
 //  return true;
 //}
-void backTrack2_nonRecursive(int is,int msk,int y, int l, int d, int r);
-void backTrack1_nonRecursive(int si,int msk,int y, int l, int d, int r);
+void backTrack2_nonRecursive_BT_BM_SO_BOUND(int is,int msk,int y, int l, int d, int r);
+void backTrack1_nonRecursive_BT_BM_SO_BOUND(int si,int msk,int y, int l, int d, int r);
 void solve_nqueen_nonRecursive_BT_BM_SO_BOUND(int n,int B1,int B2,int msk){
   int bit;
   if(B1==0){
     aB[0]=1;
     for(BOUND1=2;BOUND1<n-1;BOUND1++){
       aB[1]=bit=(1<<BOUND1);
-      backTrack1_nonRecursive(n,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
+      backTrack1_nonRecursive_BT_BM_SO_BOUND(n,msk,2,(2|bit)<<1,(1|bit),(bit>>1));
     }
   } else{
     BOUND1=B1;
     BOUND2=B2;
     if(BOUND1<BOUND2){
       aB[0]=bit=(1<<BOUND1);
-      backTrack2_nonRecursive(n,msk,1,bit<<1,bit,bit>>1);
+      backTrack2_nonRecursive_BT_BM_SO_BOUND(n,msk,1,bit<<1,bit,bit>>1);
     }
   }
 }
-void backTrack2_nonRecursive(int si,int msk,int y,int l,int d,int r){
+void backTrack2_nonRecursive_BT_BM_SO_BOUND(int si,int msk,int y,int l,int d,int r){
   struct STACK stParam_2;
   for (int m=0;m<si;m++){ 
     stParam_2.param[m].Y=0;
@@ -746,7 +746,7 @@ void backTrack2_nonRecursive(int si,int msk,int y,int l,int d,int r){
     }
   }
 }
-void backTrack1_nonRecursive(int si,int msk,int y,int l,int d,int r){
+void backTrack1_nonRecursive_BT_BM_SO_BOUND(int si,int msk,int y,int l,int d,int r){
   struct STACK stParam_1;
   for (int m=0;m<si;m++){ 
     stParam_1.param[m].Y=0;
@@ -819,6 +819,39 @@ void backTrack1_nonRecursive(int si,int msk,int y,int l,int d,int r){
     }
   }
 }
+/**
+  case 7 : 再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+  5. BOUNDの枝刈り
+*/
+void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2(int is,int msk,int y, int l, int d, int r);
+void backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2(int si,int msk,int y, int l, int d, int r);
+
+void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2(int is,int msk,int y, int l, int d, int r){
+}
+void backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2(int si,int msk,int y, int l, int d, int r){
+}
+void solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2(int n,int B1,int B2,int msk);
+
+/**
+  case 8 : 非再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+  5. BOUNDの枝刈り
+*/
+void backTrack2_nonRecursive_BT_BM_SO_BOUND_BOUND2(int is,int msk,int y, int l, int d, int r);
+void backTrack1_nonRecursive_BT_BM_SO_BOUND_BOUND2(int si,int msk,int y, int l, int d, int r);
+
+void backTrack2_nonRecursive_BT_BM_SO_BOUND_BOUND2(int is,int msk,int y, int l, int d, int r){
+}
+void backTrack1_nonRecursive_BT_BM_SO_BOUND_BOUND2(int si,int msk,int y, int l, int d, int r){
+}
+void solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2(int n,int B1,int B2,int msk);
 
 
 
@@ -1059,14 +1092,35 @@ void execCPU(int procNo){
         for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
         msk=(1<<i)-1; // 初期化
         Total=0;Unique=0;C2=0;C4=0;C8=0;
-    for(int BOUND1=0,BOUND2=i-1;BOUND1<i;BOUND1++,BOUND2--){
-      solve_nqueen_nonRecursive_BT_BM_SO_BOUND(i,BOUND1,BOUND2,msk); 
-    }
+        for(int BOUND1=0,BOUND2=i-1;BOUND1<i;BOUND1++,BOUND2--){
+          solve_nqueen_nonRecursive_BT_BM_SO_BOUND(i,BOUND1,BOUND2,msk); 
+        }
         Total=getTotal();
         Unique=getUnique();
         break;
-      default: 
-        break;
+      case 9:
+        /* solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2     */
+        for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+        msk=(1<<i)-1; // 初期化
+        Total=0;Unique=0;C2=0;C4=0;C8=0;
+        for(int BOUND1=0,BOUND2=i-1;BOUND1<i;BOUND1++,BOUND2--){
+          solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2(i,BOUND1,BOUND2,msk); 
+        }
+        Total=getTotal();
+        Unique=getUnique();
+        break ;
+      case 10:
+        /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     */
+        for(int j=0;j<i;j++){ aB[j]=j; } //aBを初期化
+        msk=(1<<i)-1; // 初期化
+        Total=0;Unique=0;C2=0;C4=0;C8=0;
+        for(int BOUND1=0,BOUND2=i-1;BOUND1<i;BOUND1++,BOUND2--){
+          solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2(i,BOUND1,BOUND2,msk); 
+        }
+        Total=getTotal();
+        Unique=getUnique();
+        break ;
+      default: break;
     } 
     gettimeofday(&t1,NULL);   // 計測終了
     if (t1.tv_usec<t0.tv_usec) {
@@ -1117,7 +1171,11 @@ int main(int argc,char** argv) {
     printf("\n\n7. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
     execCPU(7); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
     printf("\n\n8. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)");
-    execCPU(8); /* solve_nqueen_Recursive_BT_BM_SO_BOUND     */
+    execCPU(8); /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND     */
+    printf("\n\n9. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り");
+    execCPU(9); /* solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2     */
+    printf("\n\n10. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り");
+    execCPU(10); /* solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     */
   }
   /** GPU */
   if(gpu){
