@@ -1411,100 +1411,168 @@ void solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT(int size,int mask){
   6. 最適化
   7. 並列処理
 */
-void symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size){
+
+#include <pthread.h>
+
+//グローバル構造体
+typedef struct {
+  int size;
+  int sizeE;
+  long lTOTAL,lUNIQUE;
+} GCLASS, *GClass;
+GCLASS G;
+
+//ローカル構造体
+typedef struct{
+  int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  int mask;
+  int aBoard[MAX];
+  long COUNT2[MAX],COUNT4[MAX],COUNT8[MAX];
+} local ;
+
+void symmetryOps(local *l){
   int own,ptn,you,bit;
   //90度回転
-  if(aBoard[BOUND2]==1){ own=1; ptn=2;
-    while(own<=size-1){ bit=1; you=size-1;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+  if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
+    while(own<=G.sizeE){ bit=1; you=G.sizeE;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>size-1){ C2++; return; }
+    if(own>G.sizeE){
+      l->COUNT2[l->BOUND1]++;
+      return; }
   }
   //180度回転
-  if(aBoard[size-1]==ENDBIT){ own=1; you=size-1-1;
-    while(own<=size-1){ bit=1; ptn=TOPBIT;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+  if(l->aBoard[G.sizeE]==l->ENDBIT){ own=1; you=G.sizeE-1;
+    while(own<=G.sizeE){ bit=1; ptn=l->TOPBIT;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>size-1){ C4++; return; }
+    if(own>G.sizeE){
+       l->COUNT4[l->BOUND1]++;
+      return; }
   }
   //270度回転
-  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
-    while(own<=size-1){ bit=1; you=0;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+  if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
+    while(own<=G.sizeE){ bit=1; you=0;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
       own++; ptn>>=1;
     }
   }
-  C8++;
+  l->COUNT8[l->BOUND1]++;
 }
-void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask,int row,int left,int down,int right){
+void backTrack2(int row,int left,int down,int right,local *l){
 	int bit;
-	int bitmap=mask&~(left|down|right);
-	if(row==size-1){ 								// 【枝刈り】
+	int bitmap=l->mask&~(left|down|right);
+	if(row==G.sizeE){ 								// 【枝刈り】
 		if(bitmap){
-			if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
-				aBoard[row]=bitmap;
-				symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT(size);
+			if((bitmap&l->LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
+				l->aBoard[row]=bitmap;
+				symmetryOps(l);
 			}
 		}
 	}else{
-    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
-      bitmap&=~SIDEMASK;
-    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
-      if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
+    if(row<l->BOUND1){             	//【枝刈り】上部サイド枝刈り
+      bitmap&=~l->SIDEMASK;
+    }else if(row==l->BOUND2) {     	//【枝刈り】下部サイド枝刈り
+      if((down&l->SIDEMASK)==0){ return; }
+      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; }
     }
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-			backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+			bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
 		}
 	}
 }
-
-void backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask,int row,int left,int down,int right){
+void backTrack1(int row,int left,int down,int right,local *l){
 	int bit;
-	int bitmap=mask&~(left|down|right);
+	int bitmap=l->mask&~(left|down|right);
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(row==size-1) {
+  if(row==G.sizeE) {
     if(bitmap){
-      aBoard[row]=bitmap;
-      C8++;
+      l->aBoard[row]=bitmap;
+      l->COUNT8[l->BOUND1]++;
     }
   }else{
 		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
 		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-    if(row<BOUND1) {
+    if(row<l->BOUND1) {
       bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
     }
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-			backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+			bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
 		}
 	}
 }
-
+void *run(void *args){
+	local *l=(local *)args;
+  int bit ;
+  l->aBoard[0]=1;
+  l->TOPBIT=1<<G.sizeE;
+  l->mask=(1<<G.size)-1;
+  // 最上段のクイーンが角にある場合の探索
+  if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
+    if(l->BOUND1<G.sizeE) {
+      // 角にクイーンを配置
+      l->aBoard[1]=bit=(1<<l->BOUND1);
+      //２行目から探索
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+    }
+  }
+  l->ENDBIT=(l->TOPBIT>>l->BOUND1);
+  l->SIDEMASK=l->LASTMASK=(l->TOPBIT|1);
+  /* 最上段行のクイーンが角以外にある場合の探索
+     ユニーク解に対する左右対称解を予め削除するには、
+     左半分だけにクイーンを配置するようにすればよい */
+  if(l->BOUND1>0&&l->BOUND2<G.sizeE&&l->BOUND1<l->BOUND2){
+    for(int i=1; i<l->BOUND1; i++){
+      l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1;
+    }
+    if(l->BOUND1<l->BOUND2) {
+      l->aBoard[0]=bit=(1<<l->BOUND1);
+      backTrack2(1,bit<<1,bit,bit>>1,l);
+    }
+    l->ENDBIT>>=G.size;
+  }
+  return 0;   //*run()の場合はreturn 0;が必要
+}
+void *NQueenThread(){
+  local l[MAX];                //構造体 local型
+  pthread_t pt[G.size];                 //スレッド childThread
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;         //B1 と B2を初期化
+    for(int j=0;j<G.size;j++){ l[l->BOUND1].aBoard[j]=j; } // aB[]の初期化
+    l[BOUND1].COUNT2[BOUND1]=l[BOUND1].COUNT4[BOUND1]=l[BOUND1].COUNT8[BOUND1]=0;//カウンターの初期化
+    // チルドスレッドの生成
+    int iFbRet=pthread_create(&pt[BOUND1],NULL,&run,&l[BOUND1]);
+    if(iFbRet>0){
+      printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
+    }
+  }
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    pthread_join(pt[BOUND1],NULL);
+  }
+  //スレッド毎のカウンターを合計
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    G.lTOTAL+=l[BOUND1].COUNT2[BOUND1]*2+l[BOUND1].COUNT4[BOUND1]*4+l[BOUND1].COUNT8[BOUND1]*8;
+    G.lUNIQUE+=l[BOUND1].COUNT2[BOUND1]+l[BOUND1].COUNT4[BOUND1]+l[BOUND1].COUNT8[BOUND1];
+  }
+  return 0;
+}
 void solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask){
-	int bit;
-	TOPBIT=1<<(size-1);
-	aBoard[0]=1;
-	for(BOUND1=2;BOUND1<size-1;BOUND1++){
-		aBoard[1]=bit=(1<<BOUND1);
-		backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-	}
-	SIDEMASK=LASTMASK=(TOPBIT|1);
-	ENDBIT=(TOPBIT>>1);
-	for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-		aBoard[0]=bit=(1<<BOUND1);
-		backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,1,bit<<1,bit,bit>>1);
-		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-		ENDBIT>>=1;
-	}
+  pthread_t pth;  //スレッド変数
+  // メインスレッドの生成
+  int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);
+  if(iFbRet>0){
+    printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
+  }
+  pthread_join(pth,NULL); /* いちいちjoinをする */
 }
 
 /**
@@ -1517,193 +1585,6 @@ void solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask){
   6. 最適化
   7. 並列処理
 */
-void backTrack2_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask,int row, int l, int d, int r){
-  struct STACK stParam_2;
-  for (int m=0;m<size;m++){ 
-    stParam_2.param[m].Y=0;
-    stParam_2.param[m].I=size;
-    stParam_2.param[m].M=0;
-    stParam_2.param[m].L=0;
-    stParam_2.param[m].D=0;
-    stParam_2.param[m].R=0;
-    stParam_2.param[m].B=0;
-  }
-  stParam_2.current=0;
-  int bend_2=0;
-  int rflg_2=0;
-  int bitmap;
-  int bit;
-  while(1){
-   if(rflg_2==0){ 
-    bitmap=mask&~(l|d|r); /* 配置可能フィールド */
-   }
-  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-    if (row==size-1&&rflg_2==0) {
-      if(bitmap){
-        if((bitmap&LASTMASK)==0){
-          aBoard[row]=bitmap;
-				  symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size);
-        }
-      }
-    }else{
-    // 追加はじめ
-        if(row<BOUND1&&rflg_2==0){             	//【枝刈り】上部サイド枝刈り
-          bitmap&=~SIDEMASK;
-        }else if(row==BOUND2&&rflg_2==0) {     	//【枝刈り】下部サイド枝刈り
-          if((d&SIDEMASK)==0&&rflg_2==0){ 
-            rflg_2=1;
-          }
-          if((d&SIDEMASK)!=SIDEMASK&&rflg_2==0){ bitmap&=SIDEMASK; }
-        }
-    // 追加終わり
-      while(bitmap||rflg_2==1) {
-        if(rflg_2==0){
-          bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-          if(stParam_2.current<MAX){
-            stParam_2.param[stParam_2.current].Y=row;
-            stParam_2.param[stParam_2.current].I=size;
-            stParam_2.param[stParam_2.current].M=mask;
-            stParam_2.param[stParam_2.current].L=l;
-            stParam_2.param[stParam_2.current].D=d;
-            stParam_2.param[stParam_2.current].R=r;
-            stParam_2.param[stParam_2.current].B=bitmap;
-            (stParam_2.current)++;
-          }
-          row=row+1;
-          l=(l|bit)<<1;
-          d=(d|bit);
-          r=(r|bit)>>1;
-          bend_2=1;
-          break;
-        }
-        if(rflg_2==1){ 
-          if(stParam_2.current>0){
-            stParam_2.current--;
-          }
-          size=stParam_2.param[stParam_2.current].I;
-          row=stParam_2.param[stParam_2.current].Y;
-          mask=stParam_2.param[stParam_2.current].M;
-          l=stParam_2.param[stParam_2.current].L;
-          d=stParam_2.param[stParam_2.current].D;
-          r=stParam_2.param[stParam_2.current].R;
-          bitmap=stParam_2.param[stParam_2.current].B;
-          rflg_2=0;
-        }
-      }
-      if(bend_2==1 && rflg_2==0){
-        bend_2=0;
-        continue;
-      }
-    }
-    if(row==1){
-      break;
-    }else{
-      rflg_2=1;
-    }
-  } 
-}
-void backTrack1_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask,int row, int l, int d, int r){
-  struct STACK stParam_1;
-  for (int m=0;m<size;m++){ 
-    stParam_1.param[m].Y=0;
-    stParam_1.param[m].I=size;
-    stParam_1.param[m].M=0;
-    stParam_1.param[m].L=0;
-    stParam_1.param[m].D=0;
-    stParam_1.param[m].R=0;
-    stParam_1.param[m].B=0;
-  }
-  stParam_1.current=0;
-  int bend_1=0;
-  int rflg_1=0;
-  int bit;
-  int bitmap;
-  while(1){
-    if(rflg_1==0){
-      bitmap=mask&~(l|d|r); /* 配置可能フィールド */
-    }
-  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-    if (row==size-1&&rflg_1==0) {
-      if(bitmap){
-        aBoard[row]=bitmap;
-        C8++;
-      }
-    }else{
-		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      if(row<BOUND1 && rflg_1==0) {
-        bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-      }
-      while(bitmap||rflg_1==1) {
-        if(rflg_1==0){
-          bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //SO最も下位の１ビットを抽出
-          if(stParam_1.current<MAX){
-            stParam_1.param[stParam_1.current].Y=row;
-            stParam_1.param[stParam_1.current].I=size;
-            stParam_1.param[stParam_1.current].M=mask;
-            stParam_1.param[stParam_1.current].L=l;
-            stParam_1.param[stParam_1.current].D=d;
-            stParam_1.param[stParam_1.current].R=r;
-            stParam_1.param[stParam_1.current].B=bitmap;
-            (stParam_1.current)++;
-          }
-          row=row+1;
-          l=(l|bit)<<1;
-          d=(d|bit);
-          r=(r|bit)>>1;
-          bend_1=1;
-          break;
-        }
-        if(rflg_1==1){ 
-          if(stParam_1.current>0){
-            stParam_1.current--;
-          }
-          size=stParam_1.param[stParam_1.current].I;
-          row=stParam_1.param[stParam_1.current].Y;
-          mask=stParam_1.param[stParam_1.current].M;
-          l=stParam_1.param[stParam_1.current].L;
-          d=stParam_1.param[stParam_1.current].D;
-          r=stParam_1.param[stParam_1.current].R;
-          bitmap=stParam_1.param[stParam_1.current].B;
-          rflg_1=0;
-        }
-      }
-      if(bend_1==1 && rflg_1==0){
-        bend_1=0;
-        continue;
-      }
-    } 
-    if(row==2){
-      break;
-    }else{
-      rflg_1=1;
-    }
-  } 
-}
-void solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask){
-  int bit;
-  TOPBIT=1<<(size-1);
-  aBoard[0]=1;
-  /* 最上段行のクイーンが角にある場合の探索 */
-  for(BOUND1=2;BOUND1<size-1;BOUND1++){
-    // 角にクイーンを配置 
-    aBoard[1]=bit=(1<<BOUND1); 
-    //２行目から探索
-    backTrack1_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1)); 
-  }
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  /* 最上段行のクイーンが角以外にある場合の探索 
-     ユニーク解に対する左右対称解を予め削除するには、
-     左半分だけにクイーンを配置するようにすればよい */
-  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aBoard[0]=bit=(1<<BOUND1);
-    backTrack2_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(size,mask,1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
-  }
-}
-
 
 
 /** #################################################################
@@ -1988,7 +1869,9 @@ void execCPU(int procNo){
       */
         for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
         msk=(1<<i)-1; // 初期化
-        Total=0;Unique=0;C2=0;C4=0;C8=0;
+    G.size=i; G.sizeE=i-1; //初期化
+    G.lTOTAL=G.lUNIQUE=0;
+    //    Total=0;Unique=0;C2=0;C4=0;C8=0;
         solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(i,msk);
         Total=getTotal();
         Unique=getUnique();
@@ -2000,7 +1883,7 @@ void execCPU(int procNo){
         for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
         msk=(1<<i)-1; // 初期化
         Total=0;Unique=0;C2=0;C4=0;C8=0;
-        solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(i,msk);
+        //solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(i,msk);
         Total=getTotal();
         Unique=getUnique();
         break ;
