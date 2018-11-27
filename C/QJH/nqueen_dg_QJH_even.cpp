@@ -9,7 +9,7 @@ void *MyMalloc_Rep( size_t sz, const char *pcFileName, int nLine )
 void *ptr;
 ptr = malloc(sz);
 //printf(stderr, "malloc at %s %-4d : %p - %p, %ld byte", pcFileName, nLine, ptr, ptr+sz, sz);
-fprintf(stderr, "malloc at %s %-4d : %p %ld byte\n", pcFileName, nLine, ptr, sz);
+fprintf(stderr, "malloc at %s %-4d : %p - %lu byte\n", pcFileName, nLine, ptr,sz);
 return ptr;
 }
 
@@ -95,7 +95,6 @@ init(N);
 
 		 PartsGen(N,M ,MjIXC,MjIXP,&MjDtp);
 		 Mjcnt = Cnt;
-
 
 		 PartsGen(N,M2,MnIXC,MnIXP,&MnDtp);
 		 Mncnt = Cnt;
