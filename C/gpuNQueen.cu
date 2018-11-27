@@ -66,7 +66,7 @@ Wed Jun 27 02:36:34 2018
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
-#define MAX 15
+#define MAX 23 
 
 long Total=0 ;        //合計解
 long Unique=0;
