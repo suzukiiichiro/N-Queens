@@ -462,32 +462,51 @@ long long solve_nqueen_Recursive_BT_BM(int size,unsigned int left,unsigned int d
 15:           2279184                 0          00:00:00:01.49
 */
 long long solve_nqueen_nonRecursive_BT_BM(int n){
-  unsigned int down[32];unsigned int left[32];unsigned int right[32];unsigned int bm[32];
+  unsigned int down[32];
+  unsigned int left[32];
+  unsigned int right[32];
+  unsigned int bitmap[32];
   if(n<=0||n>32){return 0;}
-  const unsigned int msk=(1<<n)-1;long long total=0;long long uTotal=0;
-  int i=0;int j=0;unsigned int bit;
-  down[0]=0;left[0]=0;right[0]=0;bm[0]=0;
+  const unsigned int msk=(1<<n)-1;
+  long long total=0;
+  long long uTotal=0;
+  int i=0;
+  int j=0;
+  unsigned int bit;
+  down[0]=0;
+  left[0]=0;
+  right[0]=0;
+  bitmap[0]=0;
   for(j=0;j<(n+1)/2;j++){
     bit=(1<<j);
-    bm[0]|=bit;down[1]=bit;left[1]=bit<<1;right[1]=bit>>1;
-    bm[1]=(down[1]|left[1]|right[1]);
+    bitmap[0]|=bit;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=(down[1]|left[1]|right[1]);
     i=1;
     if(n%2==1&&j==(n+1)/2-1){uTotal=total;total=0;}
+    /**
+    */
     while(i>0){
-      if((bm[i]&msk)==msk){i--;}
+      if((bitmap[i]&msk)==msk){i--;}
       else{
-        bit=((bm[i]+1)^bm[i])&~bm[i];
-        bm[i]|=bit;
+        bit=((bitmap[i]+1)^bitmap[i])&~bitmap[i];
+        bitmap[i]|=bit;
         if((bit&msk)!=0){
           if(i+1==n){total++;i--;}
           else{
-            down[i+1]=down[i]|bit;left[i+1]=(left[i]|bit)<<1;right[i+1]=(right[i]|bit)>>1;
-            bm[i+1]=(down[i+1]|left[i+1]|right[i+1]);
+            down[i+1]=down[i]|bit;
+            left[i+1]=(left[i]|bit)<<1;
+            right[i+1]=(right[i]|bit)>>1;
+            bitmap[i+1]=(down[i+1]|left[i+1]|right[i+1]);
             i++;
           }
         }else{i--;}
       }
     }
+    /**
+    */
   }
   if(n%2==0){return total*2;}
   else{return uTotal*2+total;}
