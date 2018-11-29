@@ -1860,7 +1860,7 @@ bool InitCUDA(){
   return true;
 }
 void execCPU(int procNo){
-  int min=4;int targetN=17;
+  int min=4;int targetN=18;
   int msk;
   struct timeval t0;struct timeval t1;int ss;int ms;int dd;
   printf("\n%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
@@ -1987,6 +1987,7 @@ int main(int argc,char** argv) {
   /** 出力と実行 */
   /** CPU */
   if(cpu){
+/**
     printf("\n\n1. 再帰＋バックトラック(BT)");
     execCPU(1);  // solve_nqueen_Recursive_BT     
     printf("\n\n2. 非再帰＋バックトラック(BT)");
@@ -2009,13 +2010,14 @@ int main(int argc,char** argv) {
     execCPU(10);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     
     printf("\n\n11. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(11);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
+*/
     printf("\n\n12. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(12);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
   }
   /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
-    int min=4;int targetN=17;
+    int min=4;int targetN=18;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
