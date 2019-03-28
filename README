@@ -16,7 +16,7 @@
 
 
  目次
-                                            Bash      Lua        C    Java  非GPU再帰 非GPU非再帰  GPU
+                                           Bash      Lua        C    Java  非GPU再帰 非GPU非再帰  GPU
  １．ブルートフォース　力任せ探索
  ２．配置フラグ（制約テスト高速化）
  ３．バックトラック                     
