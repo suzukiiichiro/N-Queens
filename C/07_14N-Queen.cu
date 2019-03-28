@@ -1385,7 +1385,7 @@ void symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT(int size){
       own++; ptn>>=1;
     }
   }
-  C8++;
+  C8++; 
 }
 void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT(int size,int mask,int row,int left,int down,int right){
 	int bit;
@@ -1661,6 +1661,141 @@ void solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT(int size,int mask){
     ENDBIT>>=1;
   }
 }
+
+
+/**
+  case 13 : 再帰 非CUDA 
+
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+  5. BOUNDの枝刈り
+  6. 最適化
+  7. 枝刈りポイントの検出
+
+*/
+void _wait(unsigned int secs) {
+  unsigned int retTime= time(0) + secs;
+  while(time(0) < retTime) {
+    ;  // Loop until it arrives.
+  }
+}
+void printBoard(int size){
+  printf("\n");
+  system("clear");
+  for (int row=0;row<size;row++) {
+    for (bit=TOPBIT;bit;bit>>=1){
+        char c;
+        if(aBoard[row]==bit){
+          c='Q';
+        }else{
+          c='-';
+        }
+        putchar(c);
+    }
+    printf("\n");
+  }
+  printf("\n\n");
+//  _wait(1);
+}
+void symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(int size){
+  int own,ptn,you,bit;
+  //90度回転
+  if(aBoard[BOUND2]==1){ own=1; ptn=2;
+    while(own<=size-1){ bit=1; you=size-1;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>size-1){ C2++; return; }
+  }
+  //180度回転
+  if(aBoard[size-1]==ENDBIT){ own=1; you=size-1-1;
+    while(own<=size-1){ bit=1; ptn=TOPBIT;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>size-1){ C4++; return; }
+  }
+  //270度回転
+  if(aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
+    while(own<=size-1){ bit=1; you=0;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn>>=1;
+    }
+  }
+  C8++; 
+}
+void backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(int size,int mask,int row,int left,int down,int right){
+	int bit;
+	int bitmap=mask&~(left|down|right);
+	if(row==size-1){ 								// 【枝刈り】
+		if(bitmap){
+			if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
+				aBoard[row]=bitmap;
+				symmetryOps_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(size);
+			}
+		}
+	}else{
+    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
+      bitmap&=~SIDEMASK;
+    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
+      if((down&SIDEMASK)==0){ return; }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
+    }
+		while(bitmap){
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+		}
+	}
+}
+void backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(int size,int mask,int row,int left,int down,int right){
+	int bit;
+	int bitmap=mask&~(left|down|right);
+  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+  if(row==size-1) {
+    if(bitmap){
+      aBoard[row]=bitmap;
+      printBoard(size);
+      C8++;
+    }
+  }else{
+		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+    if(row<BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+		while(bitmap){
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+		}
+	}
+}
+
+void solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(int size,int mask){
+	int bit;
+	TOPBIT=1<<(size-1);
+	aBoard[0]=1;
+	for(BOUND1=2;BOUND1<size-1;BOUND1++){
+		aBoard[1]=bit=(1<<BOUND1);
+		backTrack1_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+	}
+	SIDEMASK=LASTMASK=(TOPBIT|1);
+	ENDBIT=(TOPBIT>>1);
+	for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+		aBoard[0]=bit=(1<<BOUND1);
+		backTrack2_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(size,mask,1,bit<<1,bit,bit>>1);
+		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+		ENDBIT>>=1;
+	}
+}
+
+
 /** #################################################################
 
   nVidia CUDA ブロック
@@ -1860,7 +1995,7 @@ bool InitCUDA(){
   return true;
 }
 void execCPU(int procNo){
-  int min=4;int targetN=18;
+  int min=4;int targetN=20;
   int msk;
   struct timeval t0;struct timeval t1;int ss;int ms;int dd;
   printf("\n%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
@@ -1951,6 +2086,16 @@ void execCPU(int procNo){
         Total=getTotal();
         Unique=getUnique();
         break ;
+      case 13:
+        if(i==20){
+          for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
+          msk=(1<<i)-1; // 初期化
+          Total=0;Unique=0;C2=0;C4=0;C8=0;
+          solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING(i,msk);
+          Total=getTotal();
+          Unique=getUnique();
+        }
+        break ;
       default: break;
     } 
     gettimeofday(&t1,NULL);   // 計測終了
@@ -2010,9 +2155,11 @@ int main(int argc,char** argv) {
     execCPU(10);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     
     printf("\n\n11. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(11);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
-*/
     printf("\n\n12. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(12);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
+*/
+    printf("\n\n13. 枝刈りポイントの検出 solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PRUNING");
+    execCPU(13);
   }
   /** GPU */
   if(gpu){

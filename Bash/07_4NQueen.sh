@@ -172,13 +172,13 @@ N-Queen4_rec(){
   }
 }
 N-Queen4(){
-  local ma=13 mi=2 st= t= ; # ma:maxsize mi:minsize st:starttime t:time
-  echo " N:        Total       Unique        hh:mm" ;
+  local ma=15 mi=2 st= t= ; # ma:maxsize mi:minsize st:starttime t:time
+  echo " N:        Total       Unique        hh:mm:ss" ;
   for ((S=mi;S<=ma;S++)) {
     T=0 U=0 M=$(((1<<S)-1)) st=`date +%s` ;
     N-Queen4_rec 0 0 0 0 ;
     t=$((`date +%s` - st)) ;
-    printf "%2d:%13d%13d%13d\n" $S $T $U $t ;
+    printf "%2d:%13d%13d%16d\n" $S $T $U $t ;
   } 
 }
 

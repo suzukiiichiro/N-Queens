@@ -346,13 +346,13 @@ function N-QueenLogic_Q5(){
 }
 N-Queen5(){
 	# m:max mi:min st:starttime t:time s:S
-  local m=15 mi=2 st= t= s=; 
-  echo " N:        Total       Unique        hh:mm" ;
+  local m=17 mi=2 st= t= s=; 
+  echo " N:        Total       Unique        hh:mm:ss" ;
   for ((S=mi;S<=m;S++));do
     C2=0; C4=0; C8=0 st=`date +%s` ;
     N-QueenLogic_Q5 ;
     t=$((`date +%s` - st)) ;
-    printf "%2d:%13d%13d%13d\n" $S $T $U $t ;
+    printf "%2d:%13d%13d%16d\n" $S $T $U $t ;
   done
 }
 

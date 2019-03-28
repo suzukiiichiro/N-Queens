@@ -57,13 +57,14 @@ N-Queen3_rec(){
 }
 N-Queen3(){
   # m: max mi:min s:size st:starttime t:time
-  local -i m=12 mi=2 s=$mi st= t= ;
-  echo " N:        Total       Unique        hh:mm" ;
+  #local -i m=17 mi=2 s=$mi st= t= ;
+  local -i m=17 mi=13 s=$mi st= t= ;
+  echo " N:        Total       Unique        hh:mm:ss" ;
   for((s=mi;s<=m;s++)){
     T=0 U=0 st=`date +%s` ;
     N-Queen3_rec 0 "$s";
     t=$((`date +%s` - st)) ;
-    printf "%2d:%13d%13d%13d\n" $s $T $U $t ;
+    printf "%2d:%13d%13d%16d\n" $s $T $U $t ;
   } 
 }
 

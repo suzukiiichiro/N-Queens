@@ -479,7 +479,7 @@ end
 NQueen={}; NQueen.new=function()
   local this={};
   function NQueen:NQueen()
-    local max=16;
+    local max=17;
     print(" N:            Total       Unique    hh:mm:ss");
     for size=2,max,1 do
       info=Info.new(); 

@@ -399,7 +399,7 @@ NQueen={}; NQueen.new=function()
   end
 
   function NQueen:NQueen()
-	  local max=27 ; -- //最大N
+	  local max=77 ; -- //最大N
     print(" N:            Total       Unique    hh:mm:ss");
     for si=2,max-1,1 do
       self.size=si;

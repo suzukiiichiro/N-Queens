@@ -42,266 +42,21 @@ Wed Jun 27 02:36:34 2018
  コンパイルと実行
 
  # CPUだけの実行
- $ nvcc 07_13N-Queen.cu -o 07_13N-Queen && ./07_13N-Queen -cpu
+ $ nvcc gpuNQueen.cu -o gpuNQueen && ./gpuNQueen -cpu 
 
  # GPUだけの実行
- $ nvcc 07_13N-Queen.cu -o 07_13N-Queen && ./07_13N-Queen -gpu
+ $ nvcc gpuNQueen.cu -o gpuNQueen && ./gpuNQueen -gpu
 
  # CPUとGPUの実行
- $ nvcc 07_13N-Queen.cu -o 07_13N-Queen && ./07_13N-Queen
+ $ nvcc gpuNQueen.cu -o gpuNQueen && ./gpuNQueen
 
 
-  目次
-                                             C           Java
- １．ブルートフォース　力任せ探索
- ２．配置フラグ（制約テスト高速化）
- ３．バックトラック                                   
- ４．出力結果の表示処理                 N17 12:29.59  
- ５．対称解除法                         N17  8:11.18  
- ６．枝刈りと最適化                     N17  2:15.80  
- ７．ビットマップ(symmetryOps()以外）   N17  2:58.32  
- ８．ビットマップ(symmetryOps()も対応） N17  4:36.71  
- ９．最上段の行のクイーンの位置に着目   N17  2:44.42  
- １０．枝刈り                           N17  1:16.26  
- １１．対称解除法の最適化               N17    24.45  
- １２．並列処理：pthreadと構造体        N17     4.30     4.124
- １３．ＧＰＵ nVidia-CUDA               
-      case  1 : 再帰　非CUDA 07_04相当  N17 14:44.33
-      case  2 : 非再帰　非CUDA          N17 14:45.31
-      case  3 : 再帰 非CUDA             N17 02:15.90
-      case  4 : 非再帰 非CUDA           N17 01:12.50
-      case  5 : 再帰 非CUDA 07_08相当   N17 04:36.35
-      case  6 : 非再帰 非CUDA           N17 06:28.57
-      case  7 : 再帰 非CUDA 07_09に相当 N17 02:56.74
-      case  8 : 非再帰 非CUDA           N17 03:42.14
-      case  9 : 再帰 非CUDA 07_10相当   N17 01:19.89
-      case 10 : 非再帰 非CUDA           N17 01:40.83
-      case 11 : 再帰 非CUDA 07_11相当   N17 00:24.72
-      case 12 : 非再帰 非CUDA           N17 00:45.65
-      case 13: 【CUDA】 非再帰          N17 00:01.65
+
+ １３．ＧＰＵ nVidia-CUDA               N17=    1.67
+ *
+ *  実行結果
 
 
-1. 再帰＋バックトラック(BT)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.00
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.01
-12:             14200                 0          00:00:00:00.08
-13:             73712                 0          00:00:00:00.44
-14:            365596                 0          00:00:00:02.79
-15:           2279184                 0          00:00:00:17.88
-16:          14772512                 0          00:00:02:02.11
-17:          93085332                 0          00:00:14:44.33
-
-2. 非再帰＋バックトラック(BT)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.00
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.01
-12:             14200                 0          00:00:00:00.07
-13:             73712                 0          00:00:00:00.45
-14:            365596                 0          00:00:00:02.78
-15:           2279184                 0          00:00:00:17.87
-16:          14772512                 0          00:00:02:02.79
-17:          93085332                 0          00:00:14:45.31
-
-3. 再帰＋バックトラック(BT)＋ビットマップ(BM)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.00
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.01
-13:             73712                 0          00:00:00:00.07
-14:            365596                 0          00:00:00:00.47
-15:           2279184                 0          00:00:00:02.86
-16:          14772512                 0          00:00:00:19.28
-17:          95815104                 0          00:00:02:15.90
-
-4. 非再帰＋バックトラック(BT)＋ビットマップ(BM)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.00
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.00
-13:             73712                 0          00:00:00:00.04
-14:            365596                 0          00:00:00:00.24
-15:           2279184                 0          00:00:00:01.62
-16:          14772512                 0          00:00:00:09.82
-17:          95815104                 0          00:00:01:12.50
-
-5. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.02
-13:             73712              9233          00:00:00:00.14
-14:            365596             45752          00:00:00:00.83
-15:           2279184            285053          00:00:00:05.90
-16:          14772512           1846955          00:00:00:40.86
-17:         117853152          14780796          00:00:04:36.35
-
-6. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.03
-13:             73712              9233          00:00:00:00.20
-14:            365596             45752          00:00:00:01.13
-15:           2279184            285053          00:00:00:07.59
-16:          14772512           1846955          00:00:00:55.20
-17:          95815104          11977939          00:00:06:28.57
-
-7. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.01
-13:             73712              9233          00:00:00:00.08
-14:            365596             45752          00:00:00:00.54
-15:           2279184            285053          00:00:00:03.41
-16:          14772512           1846955          00:00:00:26.05
-17:          95815104          11977939          00:00:02:56.74
-
-8. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.02
-13:             73712              9233          00:00:00:00.11
-14:            365596             45752          00:00:00:00.70
-15:           2279184            285053          00:00:00:04.35
-16:          14772512           1846955          00:00:00:32.62
-17:          95815104          11977939          00:00:03:42.14
-
-9. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.00
-13:             73712              9233          00:00:00:00.04
-14:            365596             45752          00:00:00:00.24
-15:           2279184            285053          00:00:00:01.54
-16:          14772512           1846955          00:00:00:11.13
-17:          95815104          11977939          00:00:01:19.89
-
-10. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.00
-13:             73712              9233          00:00:00:00.05
-14:            365596             45752          00:00:00:00.31
-15:           2279184            285053          00:00:00:02.08
-16:          14772512           1846955          00:00:00:14.28
-17:          95815104          11977939          00:00:01:40.83
-
-11. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.00
-13:             73712              9233          00:00:00:00.01
-14:            365596             45752          00:00:00:00.08
-15:           2279184            285053          00:00:00:00.54
-16:          14772512           1846955          00:00:00:03.63
-17:          95815104          11977939          00:00:00:24.72
-
-12. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 1          00:00:00:00.00
- 5:                10                 2          00:00:00:00.00
- 6:                 4                 1          00:00:00:00.00
- 7:                40                 6          00:00:00:00.00
- 8:                92                12          00:00:00:00.00
- 9:               352                46          00:00:00:00.00
-10:               724                92          00:00:00:00.00
-11:              2680               341          00:00:00:00.00
-12:             14200              1787          00:00:00:00.00
-13:             73712              9233          00:00:00:00.03
-14:            365596             45752          00:00:00:00.16
-15:           2279184            285053          00:00:00:01.04
-16:          14772512           1846955          00:00:00:06.72
-17:          95815104          11977939          00:00:00:45.65
-
-
-13: 【CUDA】 非再帰 CPUイテレータから複数の初期条件を受け取り、カウント
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.07
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.02
-13:             73712                 0          00:00:00:00.02
-14:            365596                 0          00:00:00:00.01
-15:           2279184                 0          00:00:00:00.05
-16:          14772512                 0          00:00:00:00.28
-17:          95815104                 0          00:00:00:01.65
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -311,7 +66,7 @@ Wed Jun 27 02:36:34 2018
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
-#define MAX 27
+#define MAX 15
 
 long Total=0 ;        //合計解
 long Unique=0;
@@ -462,51 +217,32 @@ long long solve_nqueen_Recursive_BT_BM(int size,unsigned int left,unsigned int d
 15:           2279184                 0          00:00:00:01.49
 */
 long long solve_nqueen_nonRecursive_BT_BM(int n){
-  unsigned int down[32];
-  unsigned int left[32];
-  unsigned int right[32];
-  unsigned int bitmap[32];
+  unsigned int down[32];unsigned int left[32];unsigned int right[32];unsigned int bm[32];
   if(n<=0||n>32){return 0;}
-  const unsigned int msk=(1<<n)-1;
-  long long total=0;
-  long long uTotal=0;
-  int i=0;
-  int j=0;
-  unsigned int bit;
-  down[0]=0;
-  left[0]=0;
-  right[0]=0;
-  bitmap[0]=0;
+  const unsigned int msk=(1<<n)-1;long long total=0;long long uTotal=0;
+  int i=0;int j=0;unsigned int bit;
+  down[0]=0;left[0]=0;right[0]=0;bm[0]=0;
   for(j=0;j<(n+1)/2;j++){
     bit=(1<<j);
-    bitmap[0]|=bit;
-    down[1]=bit;
-    left[1]=bit<<1;
-    right[1]=bit>>1;
-    bitmap[1]=(down[1]|left[1]|right[1]);
+    bm[0]|=bit;down[1]=bit;left[1]=bit<<1;right[1]=bit>>1;
+    bm[1]=(down[1]|left[1]|right[1]);
     i=1;
     if(n%2==1&&j==(n+1)/2-1){uTotal=total;total=0;}
-    /**
-    */
     while(i>0){
-      if((bitmap[i]&msk)==msk){i--;}
+      if((bm[i]&msk)==msk){i--;}
       else{
-        bit=((bitmap[i]+1)^bitmap[i])&~bitmap[i];
-        bitmap[i]|=bit;
+        bit=((bm[i]+1)^bm[i])&~bm[i];
+        bm[i]|=bit;
         if((bit&msk)!=0){
           if(i+1==n){total++;i--;}
           else{
-            down[i+1]=down[i]|bit;
-            left[i+1]=(left[i]|bit)<<1;
-            right[i+1]=(right[i]|bit)>>1;
-            bitmap[i+1]=(down[i+1]|left[i+1]|right[i+1]);
+            down[i+1]=down[i]|bit;left[i+1]=(left[i]|bit)<<1;right[i+1]=(right[i]|bit)>>1;
+            bm[i+1]=(down[i+1]|left[i+1]|right[i+1]);
             i++;
           }
         }else{i--;}
       }
     }
-    /**
-    */
   }
   if(n%2==0){return total*2;}
   else{return uTotal*2+total;}
@@ -1661,31 +1397,207 @@ void solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT(int size,int mask){
     ENDBIT>>=1;
   }
 }
+
+/**
+  case 13 : 再帰 非CUDA 07_12相当
+  07_12
+  15:         2279184           285053          00:00:00:00.12
+
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+  5. BOUNDの枝刈り
+  6. 最適化
+  7. 並列処理
+*/
+
+#include <pthread.h>
+
+//グローバル構造体
+typedef struct {
+  int size;
+  int sizeE;
+  long lTOTAL,lUNIQUE;
+} GCLASS, *GClass;
+GCLASS G;
+
+//ローカル構造体
+typedef struct{
+  int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  int mask;
+  int aBoard[MAX];
+  long COUNT2[MAX],COUNT4[MAX],COUNT8[MAX];
+} local ;
+
+void symmetryOps(local *l){
+  int own,ptn,you,bit;
+  //90度回転
+  if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
+    while(own<=G.sizeE){ bit=1; you=G.sizeE;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>G.sizeE){
+      l->COUNT2[l->BOUND1]++;
+      return; }
+  }
+  //180度回転
+  if(l->aBoard[G.sizeE]==l->ENDBIT){ own=1; you=G.sizeE-1;
+    while(own<=G.sizeE){ bit=1; ptn=l->TOPBIT;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>G.sizeE){
+       l->COUNT4[l->BOUND1]++;
+      return; }
+  }
+  //270度回転
+  if(l->aBoard[l->BOUND1]==l->TOPBIT){ own=1; ptn=l->TOPBIT>>1;
+    while(own<=G.sizeE){ bit=1; you=0;
+      while((l->aBoard[you]!=ptn)&&(l->aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(l->aBoard[own]>bit){ return; } if(l->aBoard[own]<bit){ break; }
+      own++; ptn>>=1;
+    }
+  }
+  l->COUNT8[l->BOUND1]++;
+}
+void backTrack2(int row,int left,int down,int right,local *l){
+	int bit;
+	int bitmap=l->mask&~(left|down|right);
+	if(row==G.sizeE){ 								// 【枝刈り】
+		if(bitmap){
+			if((bitmap&l->LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
+				l->aBoard[row]=bitmap;
+				symmetryOps(l);
+			}
+		}
+	}else{
+    if(row<l->BOUND1){             	//【枝刈り】上部サイド枝刈り
+      bitmap&=~l->SIDEMASK;
+    }else if(row==l->BOUND2) {     	//【枝刈り】下部サイド枝刈り
+      if((down&l->SIDEMASK)==0){ return; }
+      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; }
+    }
+		while(bitmap){
+			bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+		}
+	}
+}
+void backTrack1(int row,int left,int down,int right,local *l){
+	int bit;
+	int bitmap=l->mask&~(left|down|right);
+  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+  if(row==G.sizeE) {
+    if(bitmap){
+      l->aBoard[row]=bitmap;
+      l->COUNT8[l->BOUND1]++;
+    }
+  }else{
+		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+    if(row<l->BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+		while(bitmap){
+			bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+			backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+		}
+	}
+}
+void *run(void *args){
+	local *l=(local *)args;
+  int bit ;
+  l->aBoard[0]=1;
+  l->TOPBIT=1<<G.sizeE;
+  l->mask=(1<<G.size)-1;
+  // 最上段のクイーンが角にある場合の探索
+  if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
+    if(l->BOUND1<G.sizeE) {
+      // 角にクイーンを配置
+      l->aBoard[1]=bit=(1<<l->BOUND1);
+      //２行目から探索
+      backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+    }
+  }
+  l->ENDBIT=(l->TOPBIT>>l->BOUND1);
+  l->SIDEMASK=l->LASTMASK=(l->TOPBIT|1);
+  /* 最上段行のクイーンが角以外にある場合の探索
+     ユニーク解に対する左右対称解を予め削除するには、
+     左半分だけにクイーンを配置するようにすればよい */
+  if(l->BOUND1>0&&l->BOUND2<G.sizeE&&l->BOUND1<l->BOUND2){
+    for(int i=1; i<l->BOUND1; i++){
+      l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1;
+    }
+    if(l->BOUND1<l->BOUND2) {
+      l->aBoard[0]=bit=(1<<l->BOUND1);
+      backTrack2(1,bit<<1,bit,bit>>1,l);
+    }
+    l->ENDBIT>>=G.size;
+  }
+  return 0;   //*run()の場合はreturn 0;が必要
+}
+void *NQueenThread(){
+  local l[MAX];                //構造体 local型
+  pthread_t pt[G.size];                 //スレッド childThread
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;         //B1 と B2を初期化
+    for(int j=0;j<G.size;j++){ l[l->BOUND1].aBoard[j]=j; } // aB[]の初期化
+    l[BOUND1].COUNT2[BOUND1]=l[BOUND1].COUNT4[BOUND1]=l[BOUND1].COUNT8[BOUND1]=0;//カウンターの初期化
+    // チルドスレッドの生成
+    int iFbRet=pthread_create(&pt[BOUND1],NULL,&run,&l[BOUND1]);
+    if(iFbRet>0){
+      printf("[mainThread] pthread_create #%d: %d\n", l[BOUND1].BOUND1, iFbRet);
+    }
+  }
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    pthread_join(pt[BOUND1],NULL);
+  }
+  //スレッド毎のカウンターを合計
+  for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    G.lTOTAL+=l[BOUND1].COUNT2[BOUND1]*2+l[BOUND1].COUNT4[BOUND1]*4+l[BOUND1].COUNT8[BOUND1]*8;
+    G.lUNIQUE+=l[BOUND1].COUNT2[BOUND1]+l[BOUND1].COUNT4[BOUND1]+l[BOUND1].COUNT8[BOUND1];
+  }
+  return 0;
+}
+void solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(int size,int mask){
+  pthread_t pth;  //スレッド変数
+  // メインスレッドの生成
+  int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);
+  if(iFbRet>0){
+    printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
+  }
+  pthread_join(pth,NULL); /* いちいちjoinをする */
+}
+
+/**
+  case 14 : 非再帰 非CUDA
+  1. バックトラック BT
+  2. ビットマップ   BM
+  3. 対象解除法     SO
+  4. 最上段のクイーンの位置による枝刈り BOUND 
+  5. BOUNDの枝刈り
+  6. 最適化
+  7. 並列処理
+*/
+
+
 /** #################################################################
 
   nVidia CUDA ブロック
 
 #####################################################################*/
 /** 
-  case 13: CUDA 非再帰 CPUイテレータから複数の初期条件を受け取り、カウント
+  CUDA 非再帰 CPUイテレータから複数の初期条件を受け取り、カウント
   1. バックトラック backTrack
   2. ビットマップ   bitmap
-
- N:          Total        Unique                 dd:hh:mm:ss.ms
- 4:                 2                 0          00:00:00:00.07
- 5:                10                 0          00:00:00:00.00
- 6:                 4                 0          00:00:00:00.00
- 7:                40                 0          00:00:00:00.00
- 8:                92                 0          00:00:00:00.00
- 9:               352                 0          00:00:00:00.00
-10:               724                 0          00:00:00:00.00
-11:              2680                 0          00:00:00:00.00
-12:             14200                 0          00:00:00:00.02
-13:             73712                 0          00:00:00:00.02
-14:            365596                 0          00:00:00:00.01
-15:           2279184                 0          00:00:00:00.05
-16:          14772512                 0          00:00:00:00.28
-17:          95815104                 0          00:00:00:01.65
+14:            365596                 0          00:00:00:00.08
+15:           2279184                 0          00:00:00:00.49
 */
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
@@ -1860,7 +1772,7 @@ bool InitCUDA(){
   return true;
 }
 void execCPU(int procNo){
-  int min=4;int targetN=18;
+  int min=4;int targetN=15;
   int msk;
   struct timeval t0;struct timeval t1;int ss;int ms;int dd;
   printf("\n%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
@@ -1951,7 +1863,32 @@ void execCPU(int procNo){
         Total=getTotal();
         Unique=getUnique();
         break ;
+      case 13:
+      /*
+       pthread がCUDAの再帰でできるならここに記述
+      */
+        for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
+        msk=(1<<i)-1; // 初期化
+    G.size=i; G.sizeE=i-1; //初期化
+    G.lTOTAL=G.lUNIQUE=0;
+    //    Total=0;Unique=0;C2=0;C4=0;C8=0;
+        solve_nqueen_Recursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(i,msk);
+        Total=getTotal();
+        Unique=getUnique();
+      break ;
+      case 14: 
+      /*
+       pthread がCUDAの非再帰でできるならここに記述
+      */
+        for(int j=0;j<i;j++){ aBoard[j]=j; } //aBoardを初期化
+        msk=(1<<i)-1; // 初期化
+        Total=0;Unique=0;C2=0;C4=0;C8=0;
+        //solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT(i,msk);
+        Total=getTotal();
+        Unique=getUnique();
+        break ;
       default: break;
+
     } 
     gettimeofday(&t1,NULL);   // 計測終了
     if (t1.tv_usec<t0.tv_usec) {
@@ -1987,7 +1924,6 @@ int main(int argc,char** argv) {
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-/**
     printf("\n\n1. 再帰＋バックトラック(BT)");
     execCPU(1);  // solve_nqueen_Recursive_BT     
     printf("\n\n2. 非再帰＋バックトラック(BT)");
@@ -2010,14 +1946,17 @@ int main(int argc,char** argv) {
     execCPU(10);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2     
     printf("\n\n11. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(11);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
-*/
     printf("\n\n12. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化");
     execCPU(12);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT     
+    printf("\n\n13. 再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化＋並列処理");
+    execCPU(13); // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT     
+    printf("\n\n14. 非再帰＋バックトラック(BT)＋ビットマップ(BM)＋対象解除法(SO)＋枝刈り(BOUND)＋BOUNDの枝刈り＋最適化＋並列処理");
+    execCPU(14);  // solve_nqueen_nonRecursive_BT_BM_SO_BOUND_BOUND2_OPT_PT
   }
   /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
-    int min=4;int targetN=18;
+    int min=4;int targetN=17;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
