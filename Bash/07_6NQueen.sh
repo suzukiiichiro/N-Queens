@@ -29,25 +29,25 @@ function rotate() {
       local -i n=$1;
       local neg=$2;
       local -i incr;
-      ((neg=="true"))&&{
-       k=0;
-      }||{
-       k=$((n-1)); 
-      }
-      ((neg=="true"))&&{
+      if [ "$neg" = "true" ];then
+        k=0;
+      else
+        k=$((n-1)); 
+      fi 
+      if [ "$neg" = "true" ];then
        incr=$((incr+1));
-      }||{
+      else
        incr=$((incr-1));
-      }
+      fi 
       for((j=0;j<n;k+=incr)){ 
         j=$((j+1))
         scratch[j]=${trial[k]};
       }
-      ((neg=="true"))&&{
+      if [ "$neg" = "true" ];then
        k=$((n-1));
-      }||{
+      else
        k=0;
-      }
+      fi 
       for((j=0;j<n;k-=incr)){ 
         j=$((j+1))
         trial[${scratch[j]}]=$k;
