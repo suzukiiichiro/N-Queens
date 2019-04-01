@@ -150,10 +150,9 @@ N-Queen4_rec(){
     [ "${flag_a[$i]}" != "true"  ]&& \
     [ "${flag_b[$min+$i]}" != "true" ]&& \
     [ "${flag_c[$min-$i+$size-1]}" != "true" ]&&{ #この文はif文 文字列比較の場合は [ ] を使います
-      pos[$min]=$i ;            # 代入する場合、posの前には$ は不要ですが、添え字には$が必要
+      board[$min]=$i ;            # 代入する場合、boardの前には$ は不要ですが、添え字には$が必要
       ((min==(size-1)))&&{      # (()) の中の変数に $ は不要です
         tst=$(symmetryOps "$size");
-      echo "tst:$tst"
         if [ "$tst" != 0 ];then
           ((UNIQUE++));            # ((TOTAL++))はTOTALのインクリメント (()) の中の変数に $ は不要です
           TOTAL=$((TOTAL+tst));            # ((TOTAL++))はTOTALのインクリメント (()) の中の変数に $ は不要です
@@ -183,6 +182,7 @@ N-Queen4(){
     TOTAL=0;      # Nが更新される度に TOTALとUNIQUEを初期化
     UNIQUE=0;
     startTime=`date +%s` ;      # 計測開始時間
+    for((k=0;k<N;k++)){ board[k]=k;}
     N-Queen4_rec 0 "$N";
 		endTime=`date +%s`;					# 計測終了時間
 		ss=`expr ${endTime} - ${startTime}` # hh:mm:ss 形式に変換
