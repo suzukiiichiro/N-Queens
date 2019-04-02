@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # ５．枝刈りと最適化
+
 # グローバル変数は大文字
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
@@ -17,9 +18,7 @@ function intncmp(){
   local -i n=$1;
   for((k=0;k<n;k++)){
     rtn=$((board[k]-trial[k]));
-    ((rtn!=0))&&{
-      break;
-    }
+    ((rtn!=0))&&{ break; }
   }
   echo "$rtn";
 }
@@ -36,9 +35,9 @@ function rotate() {
     k=$((n-1)); 
   fi 
   if [ "$neg" = "true" ];then
-   incr=$((incr+1));
+    incr=$((incr+1));
   else
-   incr=$((incr-1));
+    incr=$((incr-1));
   fi 
   for((j=0;j<n;k+=incr)){ 
     j=$((j+1))
@@ -51,16 +50,15 @@ function rotate() {
   fi 
   for((j=0;j<n;k-=incr)){ 
     j=$((j+1))
-    trial[${scratch[j]}]=$k;
+    trial[${scratch[$j]}]=$k;
   }
 }
 #
 function vMirror(){
   local -i j;
   local -i n=$1;
-  local -i n1;
   for((j=0;j<n;j++)){
-    n1=$((n-1));
+    local -i n1=$((n-1));
     trial[$j]=$((n1-trial[j]));
   }
 }
@@ -93,7 +91,7 @@ function symmetryOps() {
      }
      ((k==0))&&{
         nEquiv=2;
-     }||{
+   }||{
       #//時計回りに270度回転
       rotate "$size" "false";
       k=$(intncmp "$size");
@@ -105,7 +103,7 @@ function symmetryOps() {
      }
   }
   #// 回転・反転・対称チェックのためにboard配列をコピー
-  for((k=0;k<size;k++)){
+  for((k=0;k<size;k++)){ 
     trial[$k]=${board[$k]};
   }
   #//垂直反転
@@ -115,7 +113,8 @@ function symmetryOps() {
     echo 0; 
     return;
   }
-  ((nEquiv>1))&&{        #// 4回転とは異なる場合
+  #// 4回転とは異なる場合
+  ((nEquiv>1))&&{
    #// -90度回転 対角鏡と同等
      rotate "$size" "true";
      k=$(intncmp "$size");
@@ -144,6 +143,7 @@ function symmetryOps() {
   echo "$rtn";
   return;
  }
+#
 N-Queen5_rec(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
@@ -208,22 +208,22 @@ N-Queen5(){
   local startTime=0;
 	local endTime=0;
 	local hh=mm=ss=0; 		# いっぺんにに初期化することもできます
-  echo " N:        Total       Unique        hh:mm:ss" ;
+  echo " N:        Total       Unique        hh:mm:ss";
   for((N=min;N<=max;N++)){
     TOTAL=0;      # Nが更新される度に TOTALとUNIQUEを初期化
     UNIQUE=0;
-    startTime=`date +%s` ;      # 計測開始時間
+    startTime=`date +%s`;      # 計測開始時間
     for((k=0;k<N;k++)){ board[$k]=$k;}
     N-Queen5_rec 0 "$N";
 		endTime=`date +%s`;					# 計測終了時間
-		ss=`expr ${endTime} - ${startTime}` # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`
-		ss=`expr ${ss} % 3600`
-		mm=`expr ${ss} / 60`
-		ss=`expr ${ss} % 60`
+		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
+		hh=`expr ${ss} / 3600`;
+		ss=`expr ${ss} % 3600`;
+		mm=`expr ${ss} / 60`;
+		ss=`expr ${ss} % 60`;
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-N-Queen5 		      # バックトラック
+N-Queen5 		      # バックトラック＋対称解除法
