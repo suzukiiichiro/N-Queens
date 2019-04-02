@@ -1038,7 +1038,8 @@ rotate_bitmap_ts(){
   for((i=0;i<si;i++)){
     local -i t=0;
     for((j=0;j<si;j++)){
-      ((t|=((aT[j]>>i)&1)<<(si-j-1))); 
+      #((t|=((aT[j]>>i)&1)<<(si-j-1))); 
+      t=$((t | ( (aT[j]>>i) & 1 ) << (si-j-1) )); 
       # // x[j] の i ビット目を
     }
     aS[$i]=$t; 
@@ -1096,7 +1097,8 @@ symmetryOps_bm(){
   local -i nEquiv;
   #回転・反転・対称チェックのためにboard配列をコピー
   for((i=0;i<si;i++)){ 
-   aT[$i]=aB{[$i]};
+   #aT[$i]=$aB{[$i]};
+   aT[$i]=${aB[$i]};
   }
   rotate_bitmap_ts "$si";
   #    //時計回りに90度回転
