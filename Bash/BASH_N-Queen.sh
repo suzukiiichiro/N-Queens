@@ -947,30 +947,41 @@ N-Queen5(){
 #
 #
 #
-T=0; # T:total
-U=0  # U:unique
-S=0; # S:size
-M=;  # M:mask
+typeset -i TOTAL=0;
+typeset -i UNIQUE=0;
+typeset -i size=0;
+typeset -i MASK=0;
 N-Queen6_rec(){
 	#y: l:left d:down r:right b:bit bm:bitmap
-  local y="$1" l="$2" d="$3" r="$4" bm= b=;
-  ((y==S))&&((T++))||{
-    bm=$((M&~(l|d|r)));
-    while ((bm)); do
-      b=$((-bm&bm)) ;
-      bm=$((bm^b)) ;
-      N-Queen6_rec "$((y+1))" "$(((l|b)<<1))" "$((d|b))" "$(((r|b)>>1))"  ;
+  local -i min="$1";
+	local -i left="$2";
+	local -i down="$3";
+	local -i right="$4";
+	local -i bitmap=;
+	local -i bit=;
+  ((min==size))&&((TOTAL++))||{
+    bitmap=$((MASK&~(left|down|right)));
+    while ((bitmap)); do
+      bit=$((-bitmap&bitmap)) ;
+      bitmap=$((bitmap^bit)) ;
+      N-Queen6_rec "$((min+1))" "$(((left|bit)<<1))" "$((down|bit))" "$(((right|bit)>>1))"  ;
     done
   }
 }
 N-Queen6(){
-  local ma=15 mi=2 st= t= ; # ma:maxsize mi:minsize st:starttime t:time
+  local -i max=15;
+	local -i min=2;
+	local st=;
+	local t= ;
   echo " N:        Total       Unique        hh:mm:ss" ;
-  for ((S=mi;S<=ma;S++)) {
-    T=0 U=0 M=$(((1<<S)-1)) st=`date +%s` ;
+  for ((size=mi;size<=max;size++)) {
+    TOTAL=0;
+		UNIQUE=0;
+		MASK=$(((1<<size)-1));
+		st=`date +%s` ;
     N-Queen6_rec 0 0 0 0 ;
     t=$((`date +%s` - st)) ;
-    printf "%2d:%13d%13d%16d\n" $S $T $U $t ;
+    printf "%2d:%13d%13d%16d\n" $size $TOTAL $UNIQUE $t ;
   } 
 }
 
@@ -983,6 +994,7 @@ N-Queen6(){
 ##
 # ７．バックトラック＋ビットマップ＋対称解除法
 #
+#
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   # echo "N-Queen7 : バックトラック＋ビットマップ＋対称解除法";
   # N-Queen7;
@@ -992,6 +1004,7 @@ N-Queen6(){
 # ---------------------------------------------------------------------------------
 ##
 # ８．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化
+#
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   # echo "N-Queen8 : バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化";
