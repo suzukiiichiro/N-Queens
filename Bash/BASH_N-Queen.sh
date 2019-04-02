@@ -969,12 +969,12 @@ N-Queen6_rec(){
   }
 }
 N-Queen6(){
-  local -i max=15;
 	local -i min=2;
+  local -i max=15;
 	local st=;
 	local t= ;
   echo " N:        Total       Unique        hh:mm:ss" ;
-  for ((size=mi;size<=max;size++)) {
+  for ((size=min;size<=max;size++)) {
     TOTAL=0;
 		UNIQUE=0;
 		MASK=$(((1<<size)-1));
