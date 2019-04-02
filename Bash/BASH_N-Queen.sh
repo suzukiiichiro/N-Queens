@@ -1014,75 +1014,73 @@ N-Queen6(){
 # ７．バックトラック＋ビットマップ＋対称解除法
 #
 #
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-  # echo "N-Queen7 : バックトラック＋ビットマップ＋対称解除法";
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
 typeset -i size=0;
 typeset -i MASK=0;
-typeset -a aB;
-typeset -a aT;
-typeset -a aS;
-typeset -i C2=0;
-typeset -i C4=0;
-typeset -i C8=0;
-getUnique(){ 
-  echo $((C2+C4+C8));
+typeset -a board="";
+typeset -a trial="";
+typeset -a scratch="";
+typeset -i COUNT2=0;
+typeset -i COUNT4=0;
+typeset -i COUNT8=0;
+#
+function getUnique(){ 
+  echo $((COUNT2+COUNT4+COUNT8));
 }
-getTotal(){ 
-  echo $((C2*2+C4*4+C8*8));
+#
+function getTotal(){ 
+  echo $((COUNT2*2+COUNT4*4+COUNT8*8));
 }
 #// bf:before af:after
 rotate_bitmap_ts(){
-  local -i si=$1;
-  for((i=0;i<si;i++)){
+  for((i=0;i<size;i++)){
     local -i t=0;
-    for((j=0;j<si;j++)){
-      #((t|=((aT[j]>>i)&1)<<(si-j-1))); 
-      t=$((t | ( (aT[j]>>i) & 1 ) << (si-j-1) )); 
-      # // x[j] の i ビット目を
+    for((j=0;j<size;j++)){
+      #((t|=((trial[j]>>i)&1)<<(size-j-1))); 
+      t=$((t | ( (trial[j]>>i) & 1 ) << (size-j-1) )); 
     }
-    aS[$i]=$t; 
-    #                       // y[i] の j ビット目にする
+    scratch[$i]=$t; 
   }
 }
-rotate_bitmap_st(){
-  local -i si=$1;
-  for((i=0;i<si;i++)){
+#
+function rotate_bitmap_st(){
+  for((i=0;i<size;i++)){
     local -i t=0;
-    for((j=0;j<si;j++)){
-      ((t|=((aS[j]>>i)&1)<<(si-j-1))); 
-      # // x[j] の i ビット目を
+    for((j=0;j<size;j++)){
+      ((t|=((scratch[j]>>i)&1)<<(size-j-1))); 
     }
-    aT[$i]=$t; 
-    #                       // y[i] の j ビット目にする
+    trial[$i]=$t; 
   }
 }
-vMirror_bitmap(){
-  local -i si=$1;
+#
+function vMirror_bitmap(){
   local -i score;
-  for((i=0;i<si;i++)){
-    score=${aS[$i]};
-    aT[$i]=$(rh "$score" $((si-1)));
+  for((i=0;i<size;i++)){
+    score=${scratch[$i]};
+    trial[$i]=$(rh "$score" $((size-1)));
   }
 }
-rh(){
+function rh(){
   local -i a=$1;
-  local -i sz=$2
+#  local -i sz=$2
   local -i tmp=0;
-  for((i=0;i<=sz;i++)){
+  #for((i=0;i<=sz;i++)){
+  for((i=0;i<=size;i++)){
     ((a&(1<<i)))&&{ 
-     echo $((tmp|=(1<<(sz-i)))); 
+     echo $((tmp|=(1<<(size-i)))); 
     }
   }
   echo $tmp;
 }
-intncmp(){
+function intncmp(){
   local -a lt=$1; 
   local -a rt=$2;
-  local -i si=$3;
+#  local -i si=$3;
   local -i rtn=0;
-  for((k=0;k<si;k++)){
+  local -i ltk=0;
+  local -i rtk=0;
+  for((k=0;k<size;k++)){
     ltk=${lt[$k]};
     rtk=${rt[$k]};
     rtn=$((ltk-rtk));
@@ -1092,91 +1090,106 @@ intncmp(){
   }
   echo "$rtn";
 }
-symmetryOps_bm(){
-  local -i si=$1;
-  local -i nEquiv;
+function symmetryOps_bm(){
+#  local -i si=$1;
+  local -i nEquiv=0;
   #回転・反転・対称チェックのためにboard配列をコピー
-  for((i=0;i<si;i++)){ 
-   #aT[$i]=$aB{[$i]};
-   aT[$i]=${aB[$i]};
+  for((i=0;i<size;i++)){ 
+   #trial[$i]=$board{[$i]};
+   trial[$i]=${board[$i]};
   }
-  rotate_bitmap_ts "$si";
+  #rotate_bitmap_ts "$size";
+  rotate_bitmap_ts; 
   #    //時計回りに90度回転
-  k=$(intncmp "${aB}" "${aS}" "$si");
+  #k=$(intncmp "${board}" "${scratch}" "$size");
+  k=$(intncmp "${board}" "${scratch}");
   ((k>0))&&{ 
    return;
   }
   ((k==0))&&{ 
     nEquiv=2;
   }||{
-    rotate_bitmap_st "$si";
+    #rotate_bitmap_st "$size";
+    rotate_bitmap_st;
     #  //時計回りに180度回転
-    k=$(intncmp "${aB}" "${aT}" "$si");
+    #k=$(intncmp "${board}" "${trial}" "$size");
+    k=$(intncmp "${board}" "${trial}");
     ((k>0))&&{
      return;
     }
     ((k==0))&&{ 
      nEquiv=4;
     }||{
-      rotate_bitmap_ts "$si";
+      rotate_bitmap_ts "$size";
       #//時計回りに270度回転
-      k=$(intncmp "${aB}" "${aS}" "$si");
+      #k=$(intncmp "${board}" "${scratch}" "$size");
+      k=$(intncmp "${board}" "${scratch}");
       ((k>0))&&{ 
-      return;
+        return;
       }
       nEquiv=8;
     }
   }
   #// 回転・反転・対称チェックのためにboard配列をコピー
-  for((i=0;i<si;i++)){ aS[$i]=${aB[$i]};}
-  vMirror_bitmap "$si";
+  for((i=0;i<size;i++)){ 
+    scratch[$i]=${board[$i]};
+  }
+  #vMirror_bitmap "$size";
+  vMirror_bitmap;
   #//垂直反転
-  k=$(intncmp "${aB}" "${aT}" "$si");
+  #k=$(intncmp "${board}" "${trial}" "$size");
+  k=$(intncmp "${board}" "${trial}");
   ((k>0))&&{ 
    return; 
   }
   ((nEquiv>2))&&{
   #               //-90度回転 対角鏡と同等       
-    rotate_bitmap_ts "$si";
-    k=$(intncmp "${aB}" "${aS}" "$si");
+    #rotate_bitmap_ts "$size";
+    rotate_bitmap_ts;
+    #k=$(intncmp "${board}" "${scratch}" "$size");
+    k=$(intncmp "${board}" "${scratch}");
     ((k>0))&&{
-     return;
+      return;
     }
     ((nEquiv>4))&&{
     #             //-180度回転 水平鏡像と同等
-      rotate_bitmap_st "$si";
-      k=$(intncmp "${aB}" "${aT}" "$si");
+      rotate_bitmap_st "$size";
+      #k=$(intncmp "${board}" "${trial}" "$size");
+      k=$(intncmp "${board}" "${trial}");
       ((k>0))&&{ 
-       return;
+        return;
       } 
       #      //-270度回転 反対角鏡と同等
-      rotate_bitmap_ts "$si";
-      k=$(intncmp "${aB}" "${aS}" "$si");
+      rotate_bitmap_ts "$size";
+      #k=$(intncmp "${board}" "${scratch}" "$size");
+      k=$(intncmp "${board}" "${scratch}");
       ((k>0))&&{ 
-       return;
+        return;
       }
     }
   }
   if [ $nEquiv -eq 2 ];then
-   ((C2++));
+   ((COUNT2++));
   fi
   if [ $nEquiv -eq 4 ];then
-   ((C4++));
+   ((COUNT4++));
   fi
   if [ $nEquiv -eq 8 ];then
-   ((C8++));
+   ((COUNT8++));
   fi
 }
-N-Queen7_rec(){
+#
+function N-Queen7_rec(){
 	#y: l:left d:down r:right b:bit bm:bitmap
   local -i min="$1";
 	local -i left="$2";
 	local -i down="$3";
 	local -i right="$4";
-	local -i bitmap=;
-	local -i bit=;
+	local -i bitmap=0;
+#	local -i bit=;
   ((min==size))&&{
-    symmetryOps_bm "$size";
+    #symmetryOps_bm "$size";
+    symmetryOps_bm;
 }||{
     bitmap=$((MASK&~(left|down|right)));
     while ((bitmap)); do
@@ -1211,6 +1224,8 @@ N-Queen7(){
   } 
 }
 
+# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
+   echo "N-Queen7 : バックトラック＋ビットマップ＋対称解除法";
    N-Queen7;
 #
 #
