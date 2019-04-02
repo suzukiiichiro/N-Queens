@@ -959,7 +959,7 @@ N-Queen6_rec(){
     while ((bm)); do
       b=$((-bm&bm)) ;
       bm=$((bm^b)) ;
-      N-Queen4_rec "$((y+1))" "$(((l|b)<<1))" "$((d|b))" "$(((r|b)>>1))"  ;
+      N-Queen6_rec "$((y+1))" "$(((l|b)<<1))" "$((d|b))" "$(((r|b)>>1))"  ;
     done
   }
 }
