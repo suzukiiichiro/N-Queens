@@ -969,19 +969,25 @@ N-Queen6_rec(){
   }
 }
 N-Queen6(){
-	local -i min=2;
   local -i max=15;
-	local st=;
-	local t= ;
+	local -i min=2;
+	local startTime=;
+	local endTime= ;
+	local hh=mm=ss=0; 		# いっぺんにに初期化することもできます
   echo " N:        Total       Unique        hh:mm:ss" ;
   for ((size=min;size<=max;size++)) {
     TOTAL=0;
 		UNIQUE=0;
 		MASK=$(((1<<size)-1));
-		st=`date +%s` ;
+		startTime=`date +%s` ;
     N-Queen6_rec 0 0 0 0 ;
-    t=$((`date +%s` - st)) ;
-    printf "%2d:%13d%13d%16d\n" $size $TOTAL $UNIQUE $t ;
+    endTime=$((`date +%s` - st)) ;
+		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
+		hh=`expr ${ss} / 3600`;
+		ss=`expr ${ss} % 3600`;
+		mm=`expr ${ss} / 60`;
+		ss=`expr ${ss} % 60`;
+    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
 
