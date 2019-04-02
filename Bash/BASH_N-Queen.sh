@@ -1006,7 +1006,7 @@ N-Queen6(){
 
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
    echo "N-Queen6 : バックトラック＋ビットマップ";
-   N-Queen6;
+#   N-Queen6;
 #
 #
 # ---------------------------------------------------------------------------------
@@ -1016,7 +1016,200 @@ N-Queen6(){
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   # echo "N-Queen7 : バックトラック＋ビットマップ＋対称解除法";
-  # N-Queen7;
+typeset -i TOTAL=0;
+typeset -i UNIQUE=0;
+typeset -i size=0;
+typeset -i MASK=0;
+typeset -a aB;
+typeset -a aT;
+typeset -a aS;
+typeset -i C2=0;
+typeset -i C4=0;
+typeset -i C8=0;
+getUnique(){ 
+  echo $((C2+C4+C8));
+}
+getTotal(){ 
+  echo $((C2*2+C4*4+C8*8));
+}
+#// bf:before af:after
+rotate_bitmap_ts(){
+  local -i si=$1;
+  for((i=0;i<si;i++)){
+    local -i t=0;
+    for((j=0;j<si;j++)){
+      ((t|=((aT[j]>>i)&1)<<(si-j-1))); 
+      # // x[j] の i ビット目を
+    }
+    aS[$i]=$t; 
+    #                       // y[i] の j ビット目にする
+  }
+}
+rotate_bitmap_st(){
+  local -i si=$1;
+  for((i=0;i<si;i++)){
+    local -i t=0;
+    for((j=0;j<si;j++)){
+      ((t|=((aS[j]>>i)&1)<<(si-j-1))); 
+      # // x[j] の i ビット目を
+    }
+    aT[$i]=$t; 
+    #                       // y[i] の j ビット目にする
+  }
+}
+vMirror_bitmap(){
+  local -i si=$1;
+  local -i score;
+  for((i=0;i<si;i++)){
+    score=${aS[$i]};
+    aT[$i]=$(rh "$score" $((si-1)));
+  }
+}
+rh(){
+  local -i a=$1;
+  local -i sz=$2
+  local -i tmp=0;
+  for((i=0;i<=sz;i++)){
+    ((a&(1<<i)))&&{ 
+     echo $((tmp|=(1<<(sz-i)))); 
+    }
+  }
+  echo $tmp;
+}
+intncmp(){
+  local -a lt=$1; 
+  local -a rt=$2;
+  local -i si=$3;
+  local -i rtn=0;
+  for((k=0;k<si;k++)){
+    ltk=${lt[$k]};
+    rtk=${rt[$k]};
+    rtn=$((ltk-rtk));
+    ((rtn!=0))&&{ 
+     break;
+    }
+  }
+  echo "$rtn";
+}
+symmetryOps_bm(){
+  local -i si=$1;
+  local -i nEquiv;
+  #回転・反転・対称チェックのためにboard配列をコピー
+  for((i=0;i<si;i++)){ 
+   aT[$i]=aB{[$i]};
+  }
+  rotate_bitmap_ts "$si";
+  #    //時計回りに90度回転
+  k=$(intncmp "${aB}" "${aS}" "$si");
+  ((k>0))&&{ 
+   return;
+  }
+  ((k==0))&&{ 
+    nEquiv=2;
+  }||{
+    rotate_bitmap_st "$si";
+    #  //時計回りに180度回転
+    k=$(intncmp "${aB}" "${aT}" "$si");
+    ((k>0))&&{
+     return;
+    }
+    ((k==0))&&{ 
+     nEquiv=4;
+    }||{
+      rotate_bitmap_ts "$si";
+      #//時計回りに270度回転
+      k=$(intncmp "${aB}" "${aS}" "$si");
+      ((k>0))&&{ 
+      return;
+      }
+      nEquiv=8;
+    }
+  }
+  #// 回転・反転・対称チェックのためにboard配列をコピー
+  for((i=0;i<si;i++)){ aS[$i]=${aB[$i]};}
+  vMirror_bitmap "$si";
+  #//垂直反転
+  k=$(intncmp "${aB}" "${aT}" "$si");
+  ((k>0))&&{ 
+   return; 
+  }
+  ((nEquiv>2))&&{
+  #               //-90度回転 対角鏡と同等       
+    rotate_bitmap_ts "$si";
+    k=$(intncmp "${aB}" "${aS}" "$si");
+    ((k>0))&&{
+     return;
+    }
+    ((nEquiv>4))&&{
+    #             //-180度回転 水平鏡像と同等
+      rotate_bitmap_st "$si";
+      k=$(intncmp "${aB}" "${aT}" "$si");
+      ((k>0))&&{ 
+       return;
+      } 
+      #      //-270度回転 反対角鏡と同等
+      rotate_bitmap_ts "$si";
+      k=$(intncmp "${aB}" "${aS}" "$si");
+      ((k>0))&&{ 
+       return;
+      }
+    }
+  }
+  if [ $nEquiv -eq 2 ];then
+   ((C2++));
+  fi
+  if [ $nEquiv -eq 4 ];then
+   ((C4++));
+  fi
+  if [ $nEquiv -eq 8 ];then
+   ((C8++));
+  fi
+}
+N-Queen7_rec(){
+	#y: l:left d:down r:right b:bit bm:bitmap
+  local -i min="$1";
+	local -i left="$2";
+	local -i down="$3";
+	local -i right="$4";
+	local -i bitmap=;
+	local -i bit=;
+  ((min==size))&&{
+    symmetryOps_bm "$size";
+}||{
+    bitmap=$((MASK&~(left|down|right)));
+    while ((bitmap)); do
+      bit=$((-bitmap&bitmap)) ;
+      bitmap=$((bitmap^bit)) ;
+      N-Queen7_rec "$((min+1))" "$(((left|bit)<<1))" "$((down|bit))" "$(((right|bit)>>1))"  ;
+    done
+  }
+}
+N-Queen7(){
+  local -i max=15;
+	local -i min=2;
+	local startTime=;
+	local endTime= ;
+	local hh=mm=ss=0; 		# いっぺんにに初期化することもできます
+  echo " N:        Total       Unique        hh:mm:ss" ;
+  for ((size=min;size<=max;size++)) {
+    TOTAL=0;
+		UNIQUE=0;
+		MASK=$(((1<<size)-1));
+		startTime=`date +%s` ;
+    N-Queen7_rec 0 0 0 0 ;
+    endTime=$((`date +%s` - st)) ;
+		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
+		hh=`expr ${ss} / 3600`;
+		ss=`expr ${ss} % 3600`;
+		mm=`expr ${ss} / 60`;
+		ss=`expr ${ss} % 60`;
+    TOTAL=$(getTotal);
+    UNIQUE=$(getUnique);
+    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
+  } 
+}
+
+   N-Queen7;
 #
 #
 #
