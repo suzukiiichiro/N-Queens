@@ -188,7 +188,7 @@ N-Queen4(){
     TOTAL=0;      # Nが更新される度に TOTALとUNIQUEを初期化
     UNIQUE=0;
     startTime=`date +%s`;      # 計測開始時間
-    for((k=0;k<N;k++)){ board[k]=k;}
+    for((k=0;k<N;k++)){ board[$k]=$k;}
     N-Queen4_rec 0 "$N";
 		endTime=`date +%s`;					# 計測終了時間
 		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
