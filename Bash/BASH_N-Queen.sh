@@ -1059,11 +1059,12 @@ function rotate_bitmap_st(){
 #
 function rh(){
   local -i a=$1;
-#  local -i sz=$2
+  local -i sz=$2;
   local -i tmp=0;
-  for((i=0;i<=size;i++)){
+  for((i=0;i<=sz;i++)){
     ((a&(1<<i)))&&{ 
-     echo $((tmp|=(1<<(sz-i)))); 
+     #echo $((tmp|=(1<<(sz-i)))); 
+     let tmp="tmp|=(1<<(sz-i))"; 
     }
   }
   echo $tmp;
@@ -1081,8 +1082,8 @@ function vMirror_bitmap(){
   local -i sizeE=$((size-1));
   for((i=0;i<size;i++)){
     score=${scratch[$i]};
-    #trial[$i]=$(rh "$score" $sizeE);
-    trial[$i]=$(rh "$score");
+    trial[$i]=$(rh "$score" $sizeE);
+    #trial[$i]=$(rh "$score");
   }
 }
 function intncmp(){
@@ -1111,6 +1112,24 @@ function intncmp(){
 #    }
 #  }
 }
+function intncmp_bs(){
+  local -i rtn=0;
+  for((i=0;i<size;i++)){
+    #rtn=$((board[i]-scratch[i]));
+    rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
+    ((rtn!=0))&&{ break; }
+  }
+  echo "$rtn";
+}
+function intncmp_bt(){
+  local -i rtn=0;
+  for((i=0;i<size;i++)){
+    #rtn=$((board[i]-trial[i]));
+    rtn=$(echo "${board[$i]}-${trial[$i]}"|bc);
+    ((rtn!=0))&&{ break; }
+  }
+  echo "$rtn";
+}
 function symmetryOps_bm(){
 #  local -i si=$1;
   local -i nEquiv=0;
@@ -1123,28 +1142,38 @@ function symmetryOps_bm(){
   rotate_bitmap_ts; 
   #    //時計回りに90度回転
   #k=$(intncmp "${board}" "${scratch}" "$size");
-  k=$(intncmp "${board}" "${scratch}");
-  ((k>0))&&{ return; }
+  k=$(intncmp_bs);
+  ((k>0))&&{ 
+#  echo "1:$k";
+   return; 
+  }
   ((k==0))&&{ 
     nEquiv=2;
+#    echo "2:$k";
   }||{
     #rotate_bitmap_st "$size";
     rotate_bitmap_st;
     #  //時計回りに180度回転
     #k=$(intncmp "${board}" "${trial}" "$size");
-    k=$(intncmp "${board}" "${trial}");
-    ((k>0))&&{ return; }
+    k=$(intncmp_bt);
+    ((k>0))&&{ 
+#     echo "3:$k";
+     return; 
+    }
     ((k==0))&&{ 
+#      echo "4:$k";
       nEquiv=4;
     }||{
       #rotate_bitmap_ts "$size";
       rotate_bitmap_ts;
       #//時計回りに270度回転
       #k=$(intncmp "${board}" "${scratch}" "$size");
-      k=$(intncmp "${board}" "${scratch}");
+      k=$(intncmp_bs);
       ((k>0))&&{ 
+#        echo "5:$k";
         return;
       }
+#      echo "6:$k";
       nEquiv=8;
     }
   }
@@ -1156,8 +1185,9 @@ function symmetryOps_bm(){
   vMirror_bitmap;
   #//垂直反転
   #k=$(intncmp "${board}" "${trial}" "$size");
-  k=$(intncmp "${board}" "${trial}");
+  k=$(intncmp_bt);
   ((k>0))&&{ 
+#   echo "7:$k";
    return; 
   }
   ((nEquiv>2))&&{
@@ -1165,29 +1195,35 @@ function symmetryOps_bm(){
     #rotate_bitmap_ts "$size";
     rotate_bitmap_ts;
     #k=$(intncmp "${board}" "${scratch}" "$size");
-    k=$(intncmp "${board}" "${scratch}");
+    k=$(intncmp_bs);
+#    echo "8:$k";
     ((k>0))&&{
+#      echo "9:$k";
       return;
     }
     ((nEquiv>4))&&{
+#      echo "10:$k";
     #             //-180度回転 水平鏡像と同等
       #rotate_bitmap_st "$size";
       rotate_bitmap_st;
       #k=$(intncmp "${board}" "${trial}" "$size");
-      k=$(intncmp "${board}" "${trial}");
+      k=$(intncmp_bt);
       ((k>0))&&{ 
+#        echo "11:$k";
         return;
       } 
       #      //-270度回転 反対角鏡と同等
       #rotate_bitmap_ts "$size";
       rotate_bitmap_ts;
       #k=$(intncmp "${board}" "${scratch}" "$size");
-      k=$(intncmp "${board}" "${scratch}");
+      k=$(intncmp_bs);
       ((k>0))&&{ 
+#        echo "12:$k";
         return;
       }
     }
   }
+#  echo "13:$k";
   ((nEquiv==2))&&{
     ((COUNT2++));
   }
@@ -1216,13 +1252,15 @@ function N-Queen7_rec(){
 	local -i right="$4";
 	local -i bitmap=0;
 #	local -i bit=;
-  ((min==size))&&{
+  bitmap=$((MASK&~(left|down|right)));
+  ((min==size&&!bitmap))&&{
+    board[$min]=$bitmap;
     #symmetryOps_bm "$size";
     symmetryOps_bm;
 }||{
-    bitmap=$((MASK&~(left|down|right)));
     while ((bitmap)); do
       bit=$((-bitmap&bitmap)) ;
+      board[$min]=$bit;
       bitmap=$((bitmap^bit)) ;
       N-Queen7_rec "$((min+1))" "$(((left|bit)<<1))" "$((down|bit))" "$(((right|bit)>>1))"  ;
     done
@@ -1239,6 +1277,9 @@ N-Queen7(){
     TOTAL=0;
 		UNIQUE=0;
     COUNT2=COUNT4=COUNT8=0;
+    for((j=0;j<$size;j++)){
+     board[$j]=$j; 
+    }
 		MASK=$(((1<<size)-1));
 		startTime=`date +%s` ;
     N-Queen7_rec 0 0 0 0 ;
