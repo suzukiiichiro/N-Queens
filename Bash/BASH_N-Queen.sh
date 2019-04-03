@@ -1058,12 +1058,13 @@ function rotate_bitmap_st(){
 }
 #
 function rh(){
-  local -i a=$1;
+  local -i score=$1;
 #  local -i sz=$2
   local -i tmp=0;
   for((i=0;i<=size;i++)){
-    ((a&(1<<i)))&&{ 
-     echo $((tmp|=(1<<(sz-i)))); 
+    ((score&(1<<i)))&&{ 
+     #echo $((tmp|=(1<<(size-i)))); 
+     ((tmp|=(1<<(size-i)))); 
     }
   }
   echo $tmp;
@@ -1085,9 +1086,35 @@ function vMirror_bitmap(){
     trial[$i]=$(rh "$score");
   }
 }
-function intncmp(){
+function intncmp_Scratch(){
 #  local -i k; 
+  local -i rtn=0;
+#  local -i n=$1;
+  #for((k=0;k<n;k++)){
+  #for((k=0;k<size;k++)){
+  for((i=0;i<size;i++)){
+    rtn=$((board[i]-scratch[i]));
+    ((rtn!=0))&&{ break; }
+  }
+  echo "$rtn";
+#  local -a lt=$1; 
+#  local -a rt=$2;
+##  local -i si=$3;
 #  local -i rtn=0;
+#  local -i ltk=0;
+#  local -i rtk=0;
+#  for((k=0;k<size;k++)){
+#    ltk=${lt[$k]};
+#    rtk=${rt[$k]};
+#    rtn=$((ltk-rtk));
+#    ((rtn!=0))&&{ 
+#     break;
+#    }
+#  }
+}
+function intncmp_Trial(){
+#  local -i k; 
+  local -i rtn=0;
 #  local -i n=$1;
   #for((k=0;k<n;k++)){
   #for((k=0;k<size;k++)){
@@ -1123,7 +1150,8 @@ function symmetryOps_bm(){
   rotate_bitmap_ts; 
   #    //時計回りに90度回転
   #k=$(intncmp "${board}" "${scratch}" "$size");
-  k=$(intncmp "${board}" "${scratch}");
+  #k=$(intncmp "${board}" "${scratch}");
+  k=$(intncmp_Scratch);
   ((k>0))&&{ return; }
   ((k==0))&&{ 
     nEquiv=2;
@@ -1132,16 +1160,18 @@ function symmetryOps_bm(){
     rotate_bitmap_st;
     #  //時計回りに180度回転
     #k=$(intncmp "${board}" "${trial}" "$size");
-    k=$(intncmp "${board}" "${trial}");
+    #k=$(intncmp "${board}" "${trial}");
+    k=$(intncmp_Trial);
     ((k>0))&&{ return; }
     ((k==0))&&{ 
       nEquiv=4;
     }||{
       #rotate_bitmap_ts "$size";
-      rotate_bitmap_ts;
+      #rotate_bitmap_ts;
       #//時計回りに270度回転
       #k=$(intncmp "${board}" "${scratch}" "$size");
-      k=$(intncmp "${board}" "${scratch}");
+      #k=$(intncmp "${board}" "${scratch}");
+      k=$(intncmp_Scratch);
       ((k>0))&&{ 
         return;
       }
@@ -1156,7 +1186,8 @@ function symmetryOps_bm(){
   vMirror_bitmap;
   #//垂直反転
   #k=$(intncmp "${board}" "${trial}" "$size");
-  k=$(intncmp "${board}" "${trial}");
+  #k=$(intncmp "${board}" "${trial}");
+  k=$(intncmp_Trial "${board}" "${trial}");
   ((k>0))&&{ 
    return; 
   }
@@ -1165,7 +1196,9 @@ function symmetryOps_bm(){
     #rotate_bitmap_ts "$size";
     rotate_bitmap_ts;
     #k=$(intncmp "${board}" "${scratch}" "$size");
-    k=$(intncmp "${board}" "${scratch}");
+    #k=$(intncmp "${board}" "${scratch}");
+    #k=$(intncmp_Scratch "${board}" "${scratch}");
+    k=$(intncmp_Scratch);
     ((k>0))&&{
       return;
     }
@@ -1174,7 +1207,8 @@ function symmetryOps_bm(){
       #rotate_bitmap_st "$size";
       rotate_bitmap_st;
       #k=$(intncmp "${board}" "${trial}" "$size");
-      k=$(intncmp "${board}" "${trial}");
+      #k=$(intncmp "${board}" "${trial}");
+      k=$(intncmp_Trial);
       ((k>0))&&{ 
         return;
       } 
@@ -1182,7 +1216,9 @@ function symmetryOps_bm(){
       #rotate_bitmap_ts "$size";
       rotate_bitmap_ts;
       #k=$(intncmp "${board}" "${scratch}" "$size");
-      k=$(intncmp "${board}" "${scratch}");
+      #k=$(intncmp "${board}" "${scratch}");
+      #k=$(intncmp_Scratch "${board}" "${scratch}");
+      k=$(intncmp_Scratch);
       ((k>0))&&{ 
         return;
       }
@@ -1238,7 +1274,9 @@ N-Queen7(){
   for ((size=min;size<=max;size++)) {
     TOTAL=0;
 		UNIQUE=0;
-    COUNT2=COUNT4=COUNT8=0;
+    COUNT2=0;
+    COUNT4=0;
+    COUNT8=0;
 		MASK=$(((1<<size)-1));
 		startTime=`date +%s` ;
     N-Queen7_rec 0 0 0 0 ;
