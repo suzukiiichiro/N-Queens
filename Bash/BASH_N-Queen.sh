@@ -1005,8 +1005,8 @@ N-Queen6(){
 }
 
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-   echo "N-Queen6 : バックトラック＋ビットマップ";
-#   N-Queen6;
+   # echo "N-Queen6 : バックトラック＋ビットマップ";
+   # N-Queen6;
 #
 #
 # ---------------------------------------------------------------------------------
@@ -1030,12 +1030,14 @@ function getUnique(){
 }
 #
 function getTotal(){ 
-  echo $((COUNT2*2+COUNT4*4+COUNT8*8));
+  echo $(( COUNT2*2 + COUNT4*4 + COUNT8*8));
 }
-#// bf:before af:after
-rotate_bitmap_ts(){
+#
+function rotate_bitmap_ts(){
+  local -i t=0;
   for((i=0;i<size;i++)){
-    local -i t=0;
+    #local -i t=0;
+    t=0;
     for((j=0;j<size;j++)){
       ((t|=((trial[j]>>i)&1)<<(size-j-1))); 
     }
@@ -1044,8 +1046,10 @@ rotate_bitmap_ts(){
 }
 #
 function rotate_bitmap_st(){
+  local -i t=0;
   for((i=0;i<size;i++)){
-    local -i t=0;
+    #local -i t=0;
+    t=0;
     for((j=0;j<size;j++)){
       ((t|=((scratch[j]>>i)&1)<<(size-j-1))); 
     }
@@ -1055,9 +1059,9 @@ function rotate_bitmap_st(){
 #
 function rh(){
   local -i a=$1;
-  local -i sz=$2
+#  local -i sz=$2
   local -i tmp=0;
-  for((i=0;i<=sz;i++)){
+  for((i=0;i<=size;i++)){
     ((a&(1<<i)))&&{ 
      echo $((tmp|=(1<<(sz-i)))); 
     }
@@ -1066,28 +1070,46 @@ function rh(){
 }
 #
 function vMirror_bitmap(){
+#  local -i j;
+#  local -i n=$1;
+#  local -i n1=$((size-1));
+#  for((i=0;i<size;i++)){
+#    #n1=$((size-1));
+#    trial[$i]=$((n1-trial[i]));
+#  }
   local -i score=0;
+  local -i sizeE=$((size-1));
   for((i=0;i<size;i++)){
     score=${scratch[$i]};
-    trial[$i]=$(rh "$score" $((size-1)));
+    #trial[$i]=$(rh "$score" $sizeE);
+    trial[$i]=$(rh "$score");
   }
 }
 function intncmp(){
-  local -a lt=$1; 
-  local -a rt=$2;
-#  local -i si=$3;
-  local -i rtn=0;
-  local -i ltk=0;
-  local -i rtk=0;
-  for((k=0;k<size;k++)){
-    ltk=${lt[$k]};
-    rtk=${rt[$k]};
-    rtn=$((ltk-rtk));
-    ((rtn!=0))&&{ 
-     break;
-    }
+#  local -i k; 
+#  local -i rtn=0;
+#  local -i n=$1;
+  #for((k=0;k<n;k++)){
+  #for((k=0;k<size;k++)){
+  for((i=0;i<size;i++)){
+    rtn=$((board[i]-trial[i]));
+    ((rtn!=0))&&{ break; }
   }
   echo "$rtn";
+#  local -a lt=$1; 
+#  local -a rt=$2;
+##  local -i si=$3;
+#  local -i rtn=0;
+#  local -i ltk=0;
+#  local -i rtk=0;
+#  for((k=0;k<size;k++)){
+#    ltk=${lt[$k]};
+#    rtk=${rt[$k]};
+#    rtn=$((ltk-rtk));
+#    ((rtn!=0))&&{ 
+#     break;
+#    }
+#  }
 }
 function symmetryOps_bm(){
 #  local -i si=$1;
@@ -1102,9 +1124,7 @@ function symmetryOps_bm(){
   #    //時計回りに90度回転
   #k=$(intncmp "${board}" "${scratch}" "$size");
   k=$(intncmp "${board}" "${scratch}");
-  ((k>0))&&{ 
-    return;
-  }
+  ((k>0))&&{ return; }
   ((k==0))&&{ 
     nEquiv=2;
   }||{
@@ -1113,9 +1133,7 @@ function symmetryOps_bm(){
     #  //時計回りに180度回転
     #k=$(intncmp "${board}" "${trial}" "$size");
     k=$(intncmp "${board}" "${trial}");
-    ((k>0))&&{
-     return;
-    }
+    ((k>0))&&{ return; }
     ((k==0))&&{ 
       nEquiv=4;
     }||{
@@ -1172,14 +1190,11 @@ function symmetryOps_bm(){
   }
   ((nEquiv==2))&&{
     ((COUNT2++));
-    echo "COUNT2";
   }
   ((nEquiv==4))&&{
     ((COUNT4++));
-    echo "COUNT4";
   }
-  (( nEquiv==8))&&{
-    echo "COUNT8";
+  ((nEquiv==8))&&{
     ((COUNT8++));
   }
 #  if [ $nEquiv -eq 2 ];then
@@ -1223,6 +1238,7 @@ N-Queen7(){
   for ((size=min;size<=max;size++)) {
     TOTAL=0;
 		UNIQUE=0;
+    COUNT2=COUNT4=COUNT8=0;
 		MASK=$(((1<<size)-1));
 		startTime=`date +%s` ;
     N-Queen7_rec 0 0 0 0 ;
