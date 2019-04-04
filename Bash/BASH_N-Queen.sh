@@ -1036,7 +1036,6 @@ function getTotal(){
 function rotate_bitmap_ts(){
   local -i t=0;
   for((i=0;i<size;i++)){
-    #local -i t=0;
     t=0;
     for((j=0;j<size;j++)){
       ((t|=((trial[j]>>i)&1)<<(size-j-1))); 
@@ -1048,7 +1047,6 @@ function rotate_bitmap_ts(){
 function rotate_bitmap_st(){
   local -i t=0;
   for((i=0;i<size;i++)){
-    #local -i t=0;
     t=0;
     for((j=0;j<size;j++)){
       ((t|=((scratch[j]>>i)&1)<<(size-j-1))); 
@@ -1071,51 +1069,16 @@ function rh(){
 }
 #
 function vMirror_bitmap(){
-#  local -i j;
-#  local -i n=$1;
-#  local -i n1=$((size-1));
-#  for((i=0;i<size;i++)){
-#    #n1=$((size-1));
-#    trial[$i]=$((n1-trial[i]));
-#  }
   local -i score=0;
   local -i sizeE=$((size-1));
   for((i=0;i<size;i++)){
     score=${scratch[$i]};
     trial[$i]=$(rh "$score" $sizeE);
-    #trial[$i]=$(rh "$score");
   }
-}
-function intncmp(){
-#  local -i k; 
-#  local -i rtn=0;
-#  local -i n=$1;
-  #for((k=0;k<n;k++)){
-  #for((k=0;k<size;k++)){
-  for((i=0;i<size;i++)){
-    rtn=$((board[i]-trial[i]));
-    ((rtn!=0))&&{ break; }
-  }
-  echo "$rtn";
-#  local -a lt=$1; 
-#  local -a rt=$2;
-##  local -i si=$3;
-#  local -i rtn=0;
-#  local -i ltk=0;
-#  local -i rtk=0;
-#  for((k=0;k<size;k++)){
-#    ltk=${lt[$k]};
-#    rtk=${rt[$k]};
-#    rtn=$((ltk-rtk));
-#    ((rtn!=0))&&{ 
-#     break;
-#    }
-#  }
 }
 function intncmp_bs(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    #rtn=$((board[i]-scratch[i]));
     rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
     ((rtn!=0))&&{ break; }
   }
@@ -1124,7 +1087,6 @@ function intncmp_bs(){
 function intncmp_bt(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    #rtn=$((board[i]-trial[i]));
     rtn=$(echo "${board[$i]}-${trial[$i]}"|bc);
     ((rtn!=0))&&{ break; }
   }
@@ -1135,45 +1097,33 @@ function symmetryOps_bm(){
   local -i nEquiv=0;
   #回転・反転・対称チェックのためにboard配列をコピー
   for((i=0;i<size;i++)){ 
-    #trial[$i]=$board{[$i]};
     trial[$i]=${board[$i]};
   }
   #rotate_bitmap_ts "$size";
   rotate_bitmap_ts; 
   #    //時計回りに90度回転
-  #k=$(intncmp "${board}" "${scratch}" "$size");
   k=$(intncmp_bs);
   ((k>0))&&{ 
-#  echo "1:$k";
    return; 
   }
   ((k==0))&&{ 
     nEquiv=2;
-#    echo "2:$k";
   }||{
-    #rotate_bitmap_st "$size";
     rotate_bitmap_st;
     #  //時計回りに180度回転
-    #k=$(intncmp "${board}" "${trial}" "$size");
     k=$(intncmp_bt);
     ((k>0))&&{ 
-#     echo "3:$k";
      return; 
     }
     ((k==0))&&{ 
-#      echo "4:$k";
       nEquiv=4;
     }||{
-      #rotate_bitmap_ts "$size";
       rotate_bitmap_ts;
       #//時計回りに270度回転
-      #k=$(intncmp "${board}" "${scratch}" "$size");
       k=$(intncmp_bs);
       ((k>0))&&{ 
-#        echo "5:$k";
         return;
       }
-#      echo "6:$k";
       nEquiv=8;
     }
   }
@@ -1181,49 +1131,35 @@ function symmetryOps_bm(){
   for((i=0;i<size;i++)){ 
     scratch[$i]=${board[$i]};
   }
-  #vMirror_bitmap "$size";
   vMirror_bitmap;
   #//垂直反転
-  #k=$(intncmp "${board}" "${trial}" "$size");
   k=$(intncmp_bt);
   ((k>0))&&{ 
-#   echo "7:$k";
    return; 
   }
   ((nEquiv>2))&&{
   #               //-90度回転 対角鏡と同等       
-    #rotate_bitmap_ts "$size";
     rotate_bitmap_ts;
-    #k=$(intncmp "${board}" "${scratch}" "$size");
     k=$(intncmp_bs);
-#    echo "8:$k";
     ((k>0))&&{
-#      echo "9:$k";
       return;
     }
     ((nEquiv>4))&&{
-#      echo "10:$k";
     #             //-180度回転 水平鏡像と同等
       #rotate_bitmap_st "$size";
       rotate_bitmap_st;
-      #k=$(intncmp "${board}" "${trial}" "$size");
       k=$(intncmp_bt);
       ((k>0))&&{ 
-#        echo "11:$k";
         return;
       } 
       #      //-270度回転 反対角鏡と同等
-      #rotate_bitmap_ts "$size";
       rotate_bitmap_ts;
-      #k=$(intncmp "${board}" "${scratch}" "$size");
       k=$(intncmp_bs);
       ((k>0))&&{ 
-#        echo "12:$k";
         return;
       }
     }
   }
-#  echo "13:$k";
   ((nEquiv==2))&&{
     ((COUNT2++));
   }
@@ -1233,15 +1169,6 @@ function symmetryOps_bm(){
   ((nEquiv==8))&&{
     ((COUNT8++));
   }
-#  if [ $nEquiv -eq 2 ];then
-#   ((COUNT2++));
-#  fi
-#  if [ $nEquiv -eq 4 ];then
-#   ((COUNT4++));
-#  fi
-#  if [ $nEquiv -eq 8 ];then
-#   ((COUNT8++));
-#  fi
 }
 #
 function N-Queen7_rec(){
@@ -1251,11 +1178,9 @@ function N-Queen7_rec(){
 	local -i down="$3";
 	local -i right="$4";
 	local -i bitmap=0;
-#	local -i bit=;
   bitmap=$((MASK&~(left|down|right)));
   ((min==size&&!bitmap))&&{
     board[$min]=$bitmap;
-    #symmetryOps_bm "$size";
     symmetryOps_bm;
 }||{
     while ((bitmap)); do
