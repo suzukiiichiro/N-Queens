@@ -30,7 +30,7 @@ typeset -i size;
 typeset -i sizeE=; 			# sizeE = ((N-1))
 typeset -i MASK=SIDEMASK=LASTMASK=0;
 typeset -i bit=TOPBIT=ENDBIT=0;
-typeset -i BOUNT1=BOUND2=0;
+typeset -i BOUND1=BOUND2=0;
 typeset -a board;
 #
 function symmetryOps(){
