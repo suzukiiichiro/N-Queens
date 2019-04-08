@@ -16,7 +16,7 @@
 #  ８．BT＋Bit＋対称解除法＋枝刈り     							                             N-Queen8()  0:05:54
 #　９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1)                N-Queen9()  0:03:19
 #１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)         N-Queen10() 0:03:50
-#１１．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り                             N-Queen11() 
+#１１．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り                             N-Queen11() 0:02:00
 #１２．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り＋最適化                     N-Queen12() 0:00:25
 #
 #
