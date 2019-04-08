@@ -26,21 +26,21 @@
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
 typeset -i COUNT2=COUNT4=COUNT8=0;
-typeset -i N=;
+typeset -i size;
 typeset -i sizeE=; 			# sizeE = ((N-1))
 typeset -i MASK=SIDEMASK=LASTMASK=0;
-typeset -i BIT=TOPBIT=ENDBIT=0;
+typeset -i bit=TOPBIT=ENDBIT=0;
 typeset -i BOUNT1=BOUND2=0;
-typeset -a aBoard;
+typeset -a board;
 #
 function symmetryOps(){
-	((aBoard[BOUND2]==1))&&{
+	((board[BOUND2]==1))&&{
 		for((p=2,o=1;o<=sizeE;o++,p<<=1)){
-			for((BIT=1,y=sizeE;(aBoard[y]!=p)&&(aBoard[o]>=BIT);y--)){
-				((BIT<<=1));
+			for((bit=1,y=sizeE;(board[y]!=p)&&(board[o]>=bit);y--)){
+				((bit<<=1));
 			}
-			((aBoard[o]>BIT))&& return ;
-			((aBoard[o]<BIT))&& break ;
+			((board[o]>bit))&& return ;
+			((board[o]<bit))&& break ;
 		}
 		#90度回転して同型なら180度回転も270度回転も同型である
 		((o>sizeE))&&{ 
@@ -49,13 +49,13 @@ function symmetryOps(){
 		}
 	}
 	#180度回転
-	((aBoard[sizeE]==ENDBIT))&&{ 
+	((board[sizeE]==ENDBIT))&&{ 
 		for ((y=sizeE-1,o=1;o<=sizeE;o++,y--)){
-			for ((BIT=1,p=TOPBIT;(p!=aBoard[y])&&(aBoard[o]>=BIT);p>>=1)){
-					((BIT<<=1)) ;
+			for ((bit=1,p=TOPBIT;(p!=board[y])&&(board[o]>=bit);p>>=1)){
+					((bit<<=1)) ;
 			}
-			((aBoard[o]>BIT))&& return ;
-			((aBoard[o]<BIT))&& break ;
+			((board[o]>bit))&& return ;
+			((board[o]<bit))&& break ;
 		}
 		#90度回転が同型でなくても180度回転が同型であることもある
 		((o>sizeE))&&{ 
@@ -64,13 +64,13 @@ function symmetryOps(){
 		}
 	}
 	#270度回転
-	((aBoard[BOUND1]==TOPBIT))&&{ 
+	((board[BOUND1]==TOPBIT))&&{ 
 		for((p=TOPBIT>>1,o=1;o<=sizeE;o++,p>>=1)){
-			for((BIT=1,y=0;(aBoard[y]!=p)&&(aBoard[o]>=BIT);y++)){
-					((BIT<<=1)) ;
+			for((bit=1,y=0;(board[y]!=p)&&(board[o]>=bit);y++)){
+					((bit<<=1)) ;
 			}
-			((aBoard[o]>BIT))&& return ;
-			((aBoard[o]<BIT))&& break ;
+			((board[o]>bit))&& return ;
+			((board[o]<bit))&& break ;
 		}
 	}
 	((COUNT8++));
@@ -78,74 +78,74 @@ function symmetryOps(){
 #
 # 最上段行のクイーンが角以外にある場合の探索 */
 function Backtrack2(){
-	local v=$1;		# v:virtical l:left d:down r:right
-	local l=$2;
-	local d=$3;
-	local r=$4; 
-	local bitmap=$((MASK & ~(l|d|r)));
-	((v==sizeE))&&{ 
+	local min=$1;		# v:virtical l:left d:down r:right
+	local left=$2;
+	local down=$3;
+	local right=$4; 
+	local bitmap=$((MASK & ~(left|down|right)));
+	((min==sizeE))&&{ 
 		((bitmap))&&{
 			((!(bitmap&LASTMASK)))&&{
-					aBoard[v]=$bitmap;
+					board[min]=$bitmap;
 					symmetryOps ;
 			}
 		}
 	}||{
-		((v<BOUND1))&&{  #上部サイド枝刈り
+		((min<BOUND1))&&{  #上部サイド枝刈り
 			((bitmap|=SIDEMASK));
 			((bitmap^=SIDEMASK));
 		} 
-		((v==BOUND2))&&{ #下部サイド枝刈り
-				((!(d&SIDEMASK)))&& return ;
-				(((d&SIDEMASK)!=SIDEMASK))&&((bitmap&=SIDEMASK));
+		((min==BOUND2))&&{ #下部サイド枝刈り
+				((!(down&SIDEMASK)))&& return ;
+				(((down&SIDEMASK)!=SIDEMASK))&&((bitmap&=SIDEMASK));
 		}
 		while((bitmap));do
-			((bitmap^=aBoard[v]=BIT=-bitmap&bitmap)); 
-			Backtrack2 $((v+1)) $(((l|BIT)<<1)) $(((d|BIT)))  $(((r|BIT)>>1)) ;
+			((bitmap^=board[min]=bit=-bitmap&bitmap)); 
+			Backtrack2 $((min+1)) $(((left|bit)<<1)) $(((down|bit)))  $(((right|bit)>>1)) ;
 		done
 	}
 }
 #
 # 最上段行のクイーンが角にある場合の探索
 function Backtrack1(){
-	local y=$1;		#y: l:left d:down r:right bm:bitmap
-	local l=$2;
-	local d=$3;
-	local r=$4; 
-	local bitmap=$((MASK & ~(l|d|r)));
-	((y==sizeE))&&{
+	local min=$1;		#y: l:left d:down r:right bm:bitmap
+	local left=$2;
+	local down=$3;
+	local right=$4; 
+	local bitmap=$((MASK & ~(left|down|right)));
+	((min==sizeE))&&{
 		 ((bitmap))&&{
-			 	aBoard[y]=$bm;
+			 	board[min]=$bm;
 				((COUNT8++)) ;
 		 }
 	}||{
-		 ((y<BOUND1))&&{
+		 ((min<BOUND1))&&{
 			 	((bitmap|=2));
 			 	((bitmap^=2));
 		 }
 		 while((bitmap));do
-			((bitmap^=aBoard[y]=BIT=(-bitmap&bitmap))) ;
-			Backtrack1 $((y+1)) $(((l|BIT)<<1))  $((d|BIT)) $(((r|BIT)>>1)) ;
+			((bitmap^=board[min]=bit=(-bitmap&bitmap))) ;
+			Backtrack1 $((min+1)) $(((left|bit)<<1))  $((down|bit)) $(((right|bit)>>1)) ;
 		 done
 	}
 }
 function func_BOUND1(){
 	(($1<sizeE))&&{
-		((aBoard[1]=BIT=1<<BOUND1));
-		Backtrack1 2 $(((2|BIT)<<1)) $((1|BIT)) $((BIT>>1));
+		((board[1]=bit=1<<BOUND1));
+		Backtrack1 2 $(((2|bit)<<1)) $((1|bit)) $((bit>>1));
 	}
 }
 function func_BOUND2(){
 	(($1<$2))&&{
-		((aBoard[0]=BIT=1<<BOUND1));
-		Backtrack2 1 $((BIT<<1)) $BIT $((BIT>>1)) ;
+		((board[0]=bit=1<<BOUND1));
+		Backtrack2 1 $((bit<<1)) $bit $((bit>>1)) ;
 	}
 }
 #
 function N-QueenLogic_Q12(){
-	aBoard[0]=1;
-	((sizeE=(N-1))); 	
-	((MASK=(1<<N)-1));
+	board[0]=1;
+	((sizeE=(size-1))); 	
+	((MASK=(1<<size)-1));
 	((TOPBIT=1<<sizeE));
 	BOUND1=2;
 	while((BOUND1>1&&BOUND1<sizeE));do
@@ -155,7 +155,7 @@ function N-QueenLogic_Q12(){
 	((SIDEMASK=LASTMASK=(TOPBIT|1)));
 	((ENDBIT=TOPBIT>>1));
 	BOUND1=1;
-	((BOUND2=N-2));
+	((BOUND2=size-2));
 	while((BOUND1>0&&BOUND2<sizeE&&BOUND1<BOUND2));do
 		func_BOUND2 BOUND1 BOUND2;
 		((BOUND1++,BOUND2--));
@@ -173,7 +173,7 @@ N-Queen12(){
 	local endTime=0;
 	local hh=mm=ss=0; 		# いっぺんにに初期化することもできます
   echo " N:        Total       Unique        hh:mm:ss" ;
-  for ((N=min;N<=max;N++));do
+  for ((size=min;size<=max;size++));do
 		COUNT2=COUNT4=COUNT8=0;
 		startTime=`date +%s` ;
 		N-QueenLogic_Q12 ;
@@ -183,7 +183,7 @@ N-Queen12(){
 		ss=`expr ${ss} % 3600`
 		mm=`expr ${ss} / 60`
 		ss=`expr ${ss} % 60`
-    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
+    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
   done
 }
 #
