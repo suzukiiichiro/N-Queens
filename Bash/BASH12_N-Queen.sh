@@ -35,42 +35,42 @@ typeset -a board;
 #
 function symmetryOps(){
 	((board[BOUND2]==1))&&{
-		for((p=2,o=1;o<=sizeE;o++,p<<=1)){
-			for((bit=1,y=sizeE;(board[y]!=p)&&(board[o]>=bit);y--)){
+		for((ptn=2,own=1;own<=sizeE;own++,ptn<<=1)){
+			for((bit=1,you=sizeE;(board[you]!=ptn)&&(board[own]>=bit);you--)){
 				((bit<<=1));
 			}
-			((board[o]>bit))&& return ;
-			((board[o]<bit))&& break ;
+			((board[own]>bit))&& return ;
+			((board[own]<bit))&& break ;
 		}
 		#90度回転して同型なら180度回転も270度回転も同型である
-		((o>sizeE))&&{ 
+		((own>sizeE))&&{ 
 			((COUNT2++));
 			return;
 		}
 	}
 	#180度回転
 	((board[sizeE]==ENDBIT))&&{ 
-		for ((y=sizeE-1,o=1;o<=sizeE;o++,y--)){
-			for ((bit=1,p=TOPBIT;(p!=board[y])&&(board[o]>=bit);p>>=1)){
+		for ((you=sizeE-1,own=1;own<=sizeE;own++,you--)){
+			for ((bit=1,ptn=TOPBIT;(ptn!=board[you])&&(board[own]>=bit);ptn>>=1)){
 					((bit<<=1)) ;
 			}
-			((board[o]>bit))&& return ;
-			((board[o]<bit))&& break ;
+			((board[own]>bit))&& return ;
+			((board[own]<bit))&& break ;
 		}
 		#90度回転が同型でなくても180度回転が同型であることもある
-		((o>sizeE))&&{ 
+		((own>sizeE))&&{ 
 			((COUNT4++));
 			return;
 		}
 	}
 	#270度回転
 	((board[BOUND1]==TOPBIT))&&{ 
-		for((p=TOPBIT>>1,o=1;o<=sizeE;o++,p>>=1)){
-			for((bit=1,y=0;(board[y]!=p)&&(board[o]>=bit);y++)){
+		for((ptn=TOPBIT>>1,own=1;own<=sizeE;own++,ptn>>=1)){
+			for((bit=1,you=0;(board[you]!=ptn)&&(board[own]>=bit);you++)){
 					((bit<<=1)) ;
 			}
-			((board[o]>bit))&& return ;
-			((board[o]<bit))&& break ;
+			((board[own]>bit))&& return ;
+			((board[own]<bit))&& break ;
 		}
 	}
 	((COUNT8++));
