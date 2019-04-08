@@ -149,7 +149,7 @@ function N-QueenLogic_Q12(){
 	((TOPBIT=1<<sizeE));
 	BOUND1=2;
 	while((BOUND1>1&&BOUND1<sizeE));do
-		func_BOUND1 BOUND1;
+		func_BOUND1 "$BOUND1";
 		((BOUND1++));
 	done
 	((SIDEMASK=LASTMASK=(TOPBIT|1)));
@@ -157,7 +157,7 @@ function N-QueenLogic_Q12(){
 	BOUND1=1;
 	((BOUND2=size-2));
 	while((BOUND1>0&&BOUND2<sizeE&&BOUND1<BOUND2));do
-		func_BOUND2 BOUND1 BOUND2;
+		func_BOUND2 "$BOUND1" "$BOUND2";
 		((BOUND1++,BOUND2--));
 		((ENDBIT>>=1));
 		((LASTMASK|=LASTMASK>>1|LASTMASK<<1)) ;
