@@ -26,8 +26,8 @@
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
 typeset -i COUNT2=COUNT4=COUNT8=0;
-typeset -i size;
-typeset -i sizeE=; 			# sizeE = ((N-1))
+typeset -i size=;
+typeset -i sizeE=;
 typeset -i MASK=SIDEMASK=LASTMASK=0;
 typeset -i bit=TOPBIT=ENDBIT=0;
 typeset -i BOUND1=BOUND2=0;
@@ -78,11 +78,11 @@ function symmetryOps(){
 #
 # 最上段行のクイーンが角以外にある場合の探索 */
 function Backtrack2(){
-	local min=$1;		# v:virtical l:left d:down r:right
+	local min=$1;
 	local left=$2;
 	local down=$3;
 	local right=$4; 
-	local bitmap=$((MASK & ~(left|down|right)));
+	local bitmap=$((MASK&~(left|down|right)));
 	((min==sizeE))&&{ 
 		((bitmap))&&{
 			((!(bitmap&LASTMASK)))&&{
@@ -91,10 +91,12 @@ function Backtrack2(){
 			}
 		}
 	}||{
+    #枝刈り
 		((min<BOUND1))&&{  #上部サイド枝刈り
 			((bitmap|=SIDEMASK));
 			((bitmap^=SIDEMASK));
 		} 
+    #枝刈り
 		((min==BOUND2))&&{ #下部サイド枝刈り
 				((!(down&SIDEMASK)))&& return ;
 				(((down&SIDEMASK)!=SIDEMASK))&&((bitmap&=SIDEMASK));
@@ -108,17 +110,20 @@ function Backtrack2(){
 #
 # 最上段行のクイーンが角にある場合の探索
 function Backtrack1(){
-	local min=$1;		#y: l:left d:down r:right bm:bitmap
+	local min=$1;
 	local left=$2;
 	local down=$3;
 	local right=$4; 
-	local bitmap=$((MASK & ~(left|down|right)));
+	local bitmap=$((MASK&~(left|down|right)));
 	((min==sizeE))&&{
 		 ((bitmap))&&{
 			 	board[min]=$bm;
+        #枝刈りによりsymmetryOpsは不要
+				#symmetryOps ;
 				((COUNT8++)) ;
 		 }
 	}||{
+     #枝刈り
 		 ((min<BOUND1))&&{
 			 	((bitmap|=2));
 			 	((bitmap^=2));
