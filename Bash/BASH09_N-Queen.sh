@@ -75,12 +75,12 @@
 #  4:            0            0         0:00:00
 #  5:           10            2         0:00:00
 #  6:            4            1         0:00:00
-#  7:           40            6         0:00:01
+#  7:           40            6         0:00:00
 #  8:           92           12         0:00:01
-#  9:          352           46         0:00:05
-# 10:          724           92         0:00:12
-# 11:         2680          341         0:00:52
-# 12:        14200         1787         0:04:25
+#  9:          352           46         0:00:03
+# 10:          724           92         0:00:09
+# 11:         2680          341         0:00:38
+# 12:        14200         1787         0:03:19
 #
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
@@ -139,7 +139,8 @@ function rh(){
   for((i=0;i<=sz;i++)){
     ((a&(1<<i)))&&{ 
      #echo $((tmp|=(1<<(sz-i)))); 
-     let tmp="tmp|=(1<<(sz-i))"; 
+     #let tmp="tmp|=(1<<(sz-i))"; 
+     ((tmp|=(1<<(sz-i)))); 
     }
   }
   echo $tmp;
@@ -156,16 +157,20 @@ function vMirror_bitmap(){
 function intncmp_bs(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
-    ((rtn!=0))&&{ break; }
+    #rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
+    rtn=$(echo "${board[$i]}-${scratch[$i]}"+10);
+    #((rtn!=0))&&{ break; }
+    ((rtn!=10))&&{ break; }
   }
   echo "$rtn";
 }
 function intncmp_bt(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    rtn=$(echo "${board[$i]}-${trial[$i]}"|bc);
-    ((rtn!=0))&&{ break; }
+    #rtn=$(echo "${board[$i]}-${trial[$i]}"|bc);
+    rtn=$(echo "${board[$i]}-${trial[$i]}"+10);
+    #((rtn!=0))&&{ break; }
+    ((rtn!=10))&&{ break; }
   }
   echo "$rtn";
 }
@@ -180,25 +185,30 @@ function symmetryOps_bm(){
   rotate_bitmap_ts; 
   #    //時計回りに90度回転
   k=$(intncmp_bs);
-  ((k>0))&&{ 
+  #((k>0))&&{ 
+  ((k>10))&&{ 
    return; 
   }
-  ((k==0))&&{ 
+  #((k==0))&&{ 
+  ((k==10))&&{ 
     nEquiv=2;
   }||{
     rotate_bitmap_st;
     #  //時計回りに180度回転
     k=$(intncmp_bt);
-    ((k>0))&&{ 
+    #((k>0))&&{ 
+    ((k>10))&&{ 
      return; 
     }
-    ((k==0))&&{ 
+    #((k==0))&&{ 
+    ((k==10))&&{ 
       nEquiv=4;
     }||{
       rotate_bitmap_ts;
       #//時計回りに270度回転
       k=$(intncmp_bs);
-      ((k>0))&&{ 
+      #((k>0))&&{ 
+      ((k>10))&&{ 
         return;
       }
       nEquiv=8;
@@ -211,14 +221,16 @@ function symmetryOps_bm(){
   vMirror_bitmap;
   #//垂直反転
   k=$(intncmp_bt);
-  ((k>0))&&{ 
+  #((k>0))&&{ 
+  ((k>10))&&{ 
    return; 
   }
   ((nEquiv>2))&&{
   #               //-90度回転 対角鏡と同等       
     rotate_bitmap_ts;
     k=$(intncmp_bs);
-    ((k>0))&&{
+    #((k>0))&&{
+    ((k>10))&&{
       return;
     }
     ((nEquiv>4))&&{
@@ -226,13 +238,15 @@ function symmetryOps_bm(){
       #rotate_bitmap_st "$size";
       rotate_bitmap_st;
       k=$(intncmp_bt);
-      ((k>0))&&{ 
+      #((k>0))&&{ 
+      ((k>10))&&{ 
         return;
       } 
       #      //-270度回転 反対角鏡と同等
       rotate_bitmap_ts;
       k=$(intncmp_bs);
-      ((k>0))&&{ 
+      #((k>0))&&{ 
+      ((k>10))&&{ 
         return;
       }
     }
@@ -249,36 +263,36 @@ function symmetryOps_bm(){
 }
 backTrack(){
 	local -i bit;
-        local -i min="$1";
+  local -i min="$1";
 	local -i left="$2";
 	local -i down="$3";
 	local -i right="$4";
 	local -i bitmap=0;
-        bitmap=$((MASK&~(left|down|right)));
+  bitmap=$((MASK&~(left|down|right)));
 	((min==size&&!bitmap))&&{
 	  board[$min]=bitmap;
-          symmetryOps_bm;
+    symmetryOps_bm;
 	}||{
 		while((bitmap));do
-                  bit=$((-bitmap&bitmap)) ;
-                  board[$min]=$bit;
-                  bitmap=$((bitmap^bit)) ;
-                  backTrack "$((min+1))" "$(((left|bit)<<1))" "$((down|bit))" "$(((right|bit)>>1))"  ;
+      bit=$((-bitmap&bitmap)) ;
+      board[$min]=$bit;
+      bitmap=$((bitmap^bit)) ;
+      backTrack "$((min+1))" "$(((left|bit)<<1))" "$((down|bit))" "$(((right|bit)>>1))"  ;
 		done
 	}
 }
 #
 function N-Queen9_rec(){
-  	local -i min="$1";
+ 	local -i min="$1";
 	((TOPBIT=1<<(size-1)));
-        LASTMASK=$((TOPBIT|1));
+  LASTMASK=$((TOPBIT|1));
 	SIDEMASK=$LASTMASK;
 	ENDBIT=$((TOPBIT>>1));
 	BOUND2=$((size-2));
 	for ((BOUND1=0;BOUND1<BOUND2;BOUND1++)){
 	  bit=$((1<<BOUND1));
 	  board[0]=$bit;
-          backTrack "1" "$((bit<<1))" "$((bit))" "$((bit>>1))";
+    backTrack "1" "$((bit<<1))" "$((bit))" "$((bit>>1))";
 	  ((LASTMASK|=LASTMASK>>1|LASTMASK<<1));
 	  ((ENDBIT>>=1));
 	  ((BOUND2--));

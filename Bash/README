@@ -12,10 +12,10 @@
 #  ４．BT＋対称解除法                  							                             N-Queen4()  0:06:48
 #  ５．BT＋対称解除法＋枝刈り          							                             N-Queen5()  0:03:36
 #　６．BT＋ビットマップ(Bit)           							                             N-Queen6()  0:01:52
-#　７．BT＋Bit＋対称解除法    				  						                             N-Queen7()  0:07:32
-#  ８．BT＋Bit＋対称解除法＋枝刈り     							                             N-Queen8()  0:07:42
-#　９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1)                N-Queen9()  0:04:25
-#１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)         N-Queen10() 0:05:05
+#　７．BT＋Bit＋対称解除法    				  						                             N-Queen7()  0:05:47
+#  ８．BT＋Bit＋対称解除法＋枝刈り     							                             N-Queen8()  0:05:54
+#　９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1)                N-Queen9()  0:03:19
+#１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)         N-Queen10() 0:03:50
 #１１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り N-Queen11() 0:00:25
 #
 #
