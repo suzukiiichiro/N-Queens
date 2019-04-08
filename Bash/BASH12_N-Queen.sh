@@ -7,7 +7,7 @@
 # １１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り
 #
 # 実行結果
-# <>１１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り N-Queen11()
+# <>１２．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り＋最適化 N-Queen12()
 #  N:        Total       Unique        hh:mm:ss
 #  2:            0            0         0:00:00
 #  3:            0            0         0:00:00
@@ -142,7 +142,7 @@ function func_BOUND2(){
 	}
 }
 #
-function N-QueenLogic_Q11(){
+function N-QueenLogic_Q12(){
 	aBoard[0]=1;
 	((sizeE=(N-1))); 	
 	((MASK=(1<<N)-1));
@@ -166,7 +166,7 @@ function N-QueenLogic_Q11(){
 	((TOTAL=COUNT8*8+COUNT4*4+COUNT2*2));
 }
 #
-N-Queen11(){
+N-Queen12(){
   local -i max=17;
 	local -i min=2;
 	local startTime=0;
@@ -176,7 +176,7 @@ N-Queen11(){
   for ((N=min;N<=max;N++));do
 		COUNT2=COUNT4=COUNT8=0;
 		startTime=`date +%s` ;
-		N-QueenLogic_Q11 ;
+		N-QueenLogic_Q12 ;
 		endTime=`date +%s`;					# 計測終了時間
 		ss=`expr ${endTime} - ${startTime}` # hh:mm:ss 形式に変換
 		hh=`expr ${ss} / 3600`
@@ -188,7 +188,7 @@ N-Queen11(){
 }
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-  echo "<>１１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り N-Queen11()";
-  N-Queen11;
+  echo "<>１２．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り＋最適化 N-Queen12()";
+  N-Queen12;
 #
 #
