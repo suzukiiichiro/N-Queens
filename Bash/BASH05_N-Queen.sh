@@ -1,7 +1,27 @@
 #!/bin/bash
-
-# ５．枝刈りと最適化
-
+#
+#
+# アルゴリズムとデータ構造  
+# 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
+#
+#
+# ---------------------------------------------------------------------------------
+# ５．バックトラック＋対称解除法＋枝刈りと最適化
+#
+#  N:        Total       Unique        hh:mm:ss
+#  2:            0            0         0:00:00
+#  3:            0            0         0:00:00
+#  4:            2            1         0:00:00
+#  5:           10            2         0:00:00
+#  6:            4            1         0:00:00
+#  7:           40            6         0:00:00
+#  8:           92           12         0:00:01
+#  9:          352           46         0:00:03
+# 10:          724           92         0:00:08
+# 11:         2680          341         0:00:45
+# 12:        14200         1787         0:03:36
+#
+#
 # グローバル変数は大文字
 typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
@@ -147,15 +167,15 @@ function symmetryOps() {
 N-Queen5_rec(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
+  local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
+  local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
+  local -i i=0;           # 再帰するために forで使う変数も宣言が必要
   local -i s;
   local -i lim;
   local -i vTemp;
 
-  local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
-  local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
-  local -i i=0;           # 再帰するために forで使う変数も宣言が必要
-
   ((min<size-1))&&{
+		# flag_aを枝刈りによって使う必要がなくなった
     [ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
     [ "${flag_b[$min+${board[$min]}]}" != "true" ]&&{ 
 	    flag_c[$min-${board[$min]}+$size-1]="true";
@@ -164,41 +184,42 @@ N-Queen5_rec(){
 	    flag_c[$min-${board[$min]}+$size-1]=""; 
       flag_b[$min+${board[$min]}]="";
     }
-      ((min != 0))&&{
-			  lim=$size;
-      }||{
-        lim=$(((size+1)/2));
-      }
-      for((s=min+1;s<lim;s++)){
-				vTemp=${board[$s]};
-				board[$s]=${board[$min]};
-				board[$min]=${vTemp};
-        [ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
-        [ "${flag_b[$min+${board[$min]}]}" != "true" ]&& {
-		      flag_c[$min-${board[$min]}+$size-1]="true"; 
-          flag_b[$min+${board[$min]}]="true";
-          N-Queen5_rec "$((min+1))" "$size";
-		      flag_c[$min-${board[$min]}+$size-1]=""; 
-          flag_b[$min+${board[$min]}]="";
-        }
-
-			}
-			vTemp=${board[$min]};
-      for((s=min+1;s<size;s++)){
-				board[$s-1]=${board[$s]};
-			}
-			board[$s-1]=${vTemp};
-		}||{ 
-        if [ "${flag_c[$min-${board[$min]}+$size-1]}" = "true" -o "${flag_b[$min+${board[$min]}]}" == "true" ];then
-				  return;
-		    fi	
-      tst=$(symmetryOps "$size");
-      ((tst!=0))&&{
-        ((UNIQUE++));
-				TOTAL=$((TOTAL+tst));
+		# 枝刈り
+		((min != 0))&&{
+			lim=$size;
+		}||{
+			lim=$(((size+1)/2)); 
+		}
+		for((s=min+1;s<lim;s++)){
+			vTemp=${board[$s]};
+			board[$s]=${board[$min]};
+			board[$min]=${vTemp};
+			# flag_aを枝刈りによって使う必要がなくなった
+			[ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
+			[ "${flag_b[$min+${board[$min]}]}" != "true" ]&& {
+				flag_c[$min-${board[$min]}+$size-1]="true"; 
+				flag_b[$min+${board[$min]}]="true";
+				N-Queen5_rec "$((min+1))" "$size";
+				flag_c[$min-${board[$min]}+$size-1]=""; 
+				flag_b[$min+${board[$min]}]="";
 			}
 		}
-		return;
+		vTemp=${board[$min]};
+		for((s=min+1;s<size;s++)){
+			board[$s-1]=${board[$s]};
+		}
+		board[$s-1]=${vTemp};
+	}||{ 
+		if [ "${flag_c[$min-${board[$min]}+$size-1]}" = "true" -o "${flag_b[$min+${board[$min]}]}" == "true" ];then
+			return;
+		fi	
+		tst=$(symmetryOps "$size");
+		((tst!=0))&&{
+			((UNIQUE++));
+			TOTAL=$((TOTAL+tst));
+		}
+	}
+	return;
 }
 #
 N-Queen5(){
@@ -226,4 +247,7 @@ N-Queen5(){
 }
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-N-Queen5 		      # バックトラック＋対称解除法
+  echo "<>５．BT＋対称解除法＋枝刈り N-Queen5()";
+  N-Queen5;
+#
+#
