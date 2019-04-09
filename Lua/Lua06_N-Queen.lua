@@ -3,7 +3,6 @@
 
 --[[
 /**
-<<<<<<< HEAD
  * Luaで学ぶアルゴリズムとデータ構造  
  * ステップバイステップでＮ−クイーン問題を最適化
  * 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
@@ -102,21 +101,6 @@
 12:            14200            0    00:00:00
 13:            73712            0    00:00:00
 14:           365596            0    00:00:04
-=======
-  Luaで学ぶアルゴリズムとデータ構造  
-  ステップバイステップでＮ−クイーン問題を最適化
-  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-  
-  ６．スレッド
-  
-  　クイーンが上段角にある場合とそうではない場合の二つにスレッドを分割し並行処理
-  さらに高速化するならば、rowひとつずつにスレッドを割り当てる方法もある。
-  　backTrack1とbackTrack2を以下で囲んでスレッド処理するとよい。
-  　ただしスレッド数を管理する必要がある。
-
-	実行結果
-
->>>>>>> 1ad203875b7a34a3df48288cd0f96be1b62a0cd8
 ]]--
 
 NQueen={}; NQueen.new=function()
@@ -126,28 +110,22 @@ NQueen={}; NQueen.new=function()
     TOTAL=0;
     UNIQUE=0;
     MASK=0;
-    min=0;
-    left=0;
-    down=0;
-    right=0;
   };
 
-  function NQueen:NQueens(row,left,down,right) 
-    bitmap=0;
-    BIT=0;
-    print(string.format("row:%d",row)); 
-    if row==self.size then
+  function NQueen:NQueens(min,left,down,right) 
+    --print(string.format("min:%d",min)); 
+    if min==self.size then
       self.TOTAL=self.TOTAL+1 ;
     else
-      bitmap=self.MASK&~(left|down|right);
+      local bitmap=self.MASK&~(left|down|right);
       --print(string.format("bitmap:%d",bitmap)); 
-      while bitmap >0 do
-        BIT=-bitmap&bitmap ;
-        print(string.format("BIT:%d",BIT)); 
-        bitmap=bitmap~BIT;
+      while bitmap~=0 do
+        local bit=-bitmap&bitmap ;
+        --print(string.format("BIT:%d",BIT)); 
+        bitmap=bitmap~bit;
         --print(string.format("bitmap:%d",bitmap)); 
-        print(string.format("bitmap:%d",bitmap)); 
-        self:NQueens(row+1,(left|BIT)<<1,down|BIT,(right|BIT)>>1);
+        --print(string.format("bitmap:%s",bitmap)); 
+        self:NQueens(min+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
       end
     end
   end
@@ -167,15 +145,8 @@ NQueen={}; NQueen.new=function()
 	  return "00:00:"..sec
   end 
 
-<<<<<<< HEAD
-=======
-NQueen={}; NQueen.new=function()
-  local this={ 
-    max=17; size=2; 
-  };
->>>>>>> 1ad203875b7a34a3df48288cd0f96be1b62a0cd8
   function NQueen:NQueen()
-    local max=7;
+    local max=15;
     print(" N:            Total       Unique    hh:mm:ss");
     for si=2,max,1 do
       self.size=si;
