@@ -167,59 +167,97 @@ function symmetryOps() {
 N-Queen5_rec(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
-  local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
-  local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
-  local -i i=0;           # 再帰するために forで使う変数も宣言が必要
-  local -i s;
-  local -i lim;
-  local -i vTemp;
-
-  ((min<size-1))&&{
-		# flag_aを枝刈りによって使う必要がなくなった
-    [ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
-    [ "${flag_b[$min+${board[$min]}]}" != "true" ]&&{ 
-	    flag_c[$min-${board[$min]}+$size-1]="true";
-      flag_b[$min+${board[$min]}]="true";
-      N-Queen5_rec "$((min+1))" "$size";
-	    flag_c[$min-${board[$min]}+$size-1]=""; 
-      flag_b[$min+${board[$min]}]="";
+  local -i min="$1";                # ひとつ目のパラメータ $1をminに代入
+  local -i size=$2;                 # ふたつ目のパラメータ $2をsizeに代入
+  local -i i=0;                     # 再帰するために forで使う変数も宣言が必要
+  # forはこういうＣ的な書き方のほうが見やすい
+ 		# 枝刈り
+  ((min != 0))&&{
+    lim=$size;
+  }||{
+    lim=$(((size+1)/2)); 
+  }
+  #for((i=0;i<size;i++)){        # (()) の中の変数に $ は不要です 
+  for((i=0;i<lim;i++)){        # (()) の中の変数に $ は不要です 
+    #わかりづらいですが、この文はif文 文字列比較の場合は [ ] を使います
+    # 長い文章は \ （スペースバックスラッシュ）で改行することができます
+    [ "${flag_a[$i]}" != "true"  ]&& \
+    [ "${flag_b[$min+$i]}" != "true" ]&& \
+    [ "${flag_c[$min-$i+$size-1]}" != "true" ]&&{   #この文はif文 文字列比較の場合は [ ] を使います
+      board[$min]=$i ;              # 代入する場合、boardの前には$ は不要ですが、添え字には$が必要
+      ((min==(size-1)))&&{          # (()) の中の変数に $ は不要です
+        tst=$(symmetryOps "$size");
+        ((tst!=0))&&{
+          ((UNIQUE++));             # ((TOTAL++))はTOTALのインクリメント (()) の中の変数に $ は不要です
+          TOTAL=$((TOTAL+tst));     # ((TOTAL++))はTOTALのインクリメント (()) の中の変数に $ は不要です
+        }
+      }||{                          # elseのはじまり                     
+        flag_a[$i]="true";          # 配列の中の添え字には $ をつけます 
+        flag_b[$min+$i]="true"; 
+        flag_c[$min-$i+$size-1]="true"; 
+        N-Queen5_rec "$((min+1))" "$size"; # 再帰する場合は $((min++))ではなく $((min+1))
+        flag_a[$i]="";           
+        flag_b[$min+$i]="";   
+        flag_c[$min-$i+$size-1]=""; 
+      }          
     }
-		# 枝刈り
-		((min != 0))&&{
-			lim=$size;
-		}||{
-			lim=$(((size+1)/2)); 
-		}
-		for((s=min+1;s<lim;s++)){
-			vTemp=${board[$s]};
-			board[$s]=${board[$min]};
-			board[$min]=${vTemp};
-			# flag_aを枝刈りによって使う必要がなくなった
-			[ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
-			[ "${flag_b[$min+${board[$min]}]}" != "true" ]&& {
-				flag_c[$min-${board[$min]}+$size-1]="true"; 
-				flag_b[$min+${board[$min]}]="true";
-				N-Queen5_rec "$((min+1))" "$size";
-				flag_c[$min-${board[$min]}+$size-1]=""; 
-				flag_b[$min+${board[$min]}]="";
-			}
-		}
-		vTemp=${board[$min]};
-		for((s=min+1;s<size;s++)){
-			board[$s-1]=${board[$s]};
-		}
-		board[$s-1]=${vTemp};
-	}||{ 
-		if [ "${flag_c[$min-${board[$min]}+$size-1]}" = "true" -o "${flag_b[$min+${board[$min]}]}" == "true" ];then
-			return;
-		fi	
-		tst=$(symmetryOps "$size");
-		((tst!=0))&&{
-			((UNIQUE++));
-			TOTAL=$((TOTAL+tst));
-		}
-	}
-	return;
+  }  
+#   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
+#   # -i は 変数の型が整数であることを示しています
+#   local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
+#   local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
+#   local -i i=0;           # 再帰するために forで使う変数も宣言が必要
+#   local -i s;
+#   local -i lim;
+#   local -i vTemp;
+# 
+#   ((min<size-1))&&{
+# 		# flag_aを枝刈りによって使う必要がなくなった
+#     [ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
+#     [ "${flag_b[$min+${board[$min]}]}" != "true" ]&&{ 
+# 	    flag_c[$min-${board[$min]}+$size-1]="true";
+#       flag_b[$min+${board[$min]}]="true";
+#       N-Queen5_rec "$((min+1))" "$size";
+# 	    flag_c[$min-${board[$min]}+$size-1]=""; 
+#       flag_b[$min+${board[$min]}]="";
+#     }
+# 		# 枝刈り
+# 		((min != 0))&&{
+# 			lim=$size;
+# 		}||{
+# 			lim=$(((size+1)/2)); 
+# 		}
+# 		for((s=min+1;s<lim;s++)){
+# 			vTemp=${board[$s]};
+# 			board[$s]=${board[$min]};
+# 			board[$min]=${vTemp};
+# 			# flag_aを枝刈りによって使う必要がなくなった
+# 			[ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
+# 			[ "${flag_b[$min+${board[$min]}]}" != "true" ]&& {
+# 				flag_c[$min-${board[$min]}+$size-1]="true"; 
+# 				flag_b[$min+${board[$min]}]="true";
+# 				N-Queen5_rec "$((min+1))" "$size";
+# 				flag_c[$min-${board[$min]}+$size-1]=""; 
+# 				flag_b[$min+${board[$min]}]="";
+# 			}
+# 		}
+# 		vTemp=${board[$min]};
+# 		for((s=min+1;s<size;s++)){
+# 			board[$s-1]=${board[$s]};
+# 		}
+# 		board[$s-1]=${vTemp};
+# 	}||{ 
+# 		if [ "${flag_c[$min-${board[$min]}+$size-1]}" = "true" -o "${flag_b[$min+${board[$min]}]}" == "true" ];then
+# 			return;
+# 		fi	
+# 		tst=$(symmetryOps "$size");
+# 		((tst!=0))&&{
+# 			((UNIQUE++));
+# 			TOTAL=$((TOTAL+tst));
+# 		}
+# 	}
+# 	return;
+:
 }
 #
 N-Queen5(){
