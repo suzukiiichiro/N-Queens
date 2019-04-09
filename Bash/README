@@ -5,19 +5,20 @@
 # Bash/Lua/Java/C/GPU版
 # https://github.com/suzukiiichiro/N-Queen
 #
-# ステップバイステップでＮ−クイーン問題を最適化                                              N=12
-#  １．ブルートフォース（力まかせ探索）                                          N-Queen1()
-#  ２．配置フラグ（制約テスト高速化）  						                               N-Queen2()          	
-#  ３．バックトラック(BT)              							                             N-Queen3()  0:07_30
-#  ４．BT＋対称解除法                  							                             N-Queen4()  0:06:48
-#  ５．BT＋対称解除法＋枝刈り          							                             N-Queen5()  0:03:36
-#　６．BT＋ビットマップ(Bit)           							                             N-Queen6()  0:01:52
-#　７．BT＋Bit＋対称解除法    				  						                             N-Queen7()  0:05:47
-#  ８．BT＋Bit＋対称解除法＋枝刈り     							                             N-Queen8()  0:05:54
-#　９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1)                N-Queen9()  0:03:19
-#１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)         N-Queen10() 0:03:50
-#１１．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り                             N-Queen11() 0:02:00
-#１２．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り＋最適化                     N-Queen12() 0:00:25
+# ステップバイステップでＮ−クイーン問題を最適化                                               N=12
+
+#  １．ブルートフォース（力まかせ探索）                                  N-Queen1()
+#  ２．配置フラグ（制約テスト高速化）                                    N-Queen2()              
+#  ３．バックトラック(BT)                                                N-Queen3()  0:07_30
+#  ４．BT＋対称解除法                                                    N-Queen4()  0:06:48
+#  ５．BT＋対称解除法＋枝刈り                                            N-Queen5()  0:03:36
+#  ６．BT＋ビットマップ(Bit)                                             N-Queen6()  0:01:52
+#  ７．BT＋Bit＋対称解除法                                               N-Queen7()  0:05:47
+#  ８．BT＋Bit＋対称解除法＋枝刈り                                       N-Queen8()  0:05:54
+#  ９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1)        N-Queen9()  0:03:19
+#１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2) N-Queen10() 0:03:50
+#１１．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り                     N-Queen11() 0:02:00
+#１２．BT＋Bit＋対称解除Bit＋(BOUND1+BOUND2)＋枝刈り＋最適化             N-Queen12() 0:00:25
 #
 #
 ############################################
