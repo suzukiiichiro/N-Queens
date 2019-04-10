@@ -5,17 +5,19 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
- ９．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビットマップ化＋クイーンの位置による振り分け（BOUND1)
+ １１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り
 
- 	実行結果
-  ]]--
+	実行結果
 
- Info={}; Info.new=function()
-   local this={
-     nTotal=0;nUniq=0; nextCol=0; limit=0;
-     starttime=os.time();
-   };
-   function Info:resetCount(size)
+
+ ]]--
+
+Info={}; Info.new=function()
+  local this={
+    nTotal=0;nUniq=0; nextCol=0; limit=0;
+    starttime=os.time();
+  };
+  function Info:resetCount(size)
     self.nTotal,self.nUniq=0,0;
     self.limit=1;
   end
