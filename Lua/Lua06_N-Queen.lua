@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env luajit
 
 
 --[[
@@ -110,22 +110,25 @@ NQueen={}; NQueen.new=function()
     TOTAL=0;
     UNIQUE=0;
     MASK=0;
+    min=0;
+    left=0;
+    down=0;
+    right=0;
   };
 
-  function NQueen:NQueens(min,left,down,right) 
-    --print(string.format("min:%d",min)); 
-    if min==self.size then
+  function NQueen:NQueens(row,left,down,right) 
+    local bitmap=0;
+    local BIT=0;
+    if row==self.size then
       self.TOTAL=self.TOTAL+1 ;
     else
-      local bitmap=self.MASK&~(left|down|right);
+      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
       --print(string.format("bitmap:%d",bitmap)); 
-      while bitmap~=0 do
-        local bit=-bitmap&bitmap ;
-        --print(string.format("BIT:%d",BIT)); 
-        bitmap=bitmap~bit;
+      while bitmap>0 do
+        BIT=bit.band(-bitmap,bitmap);
         --print(string.format("bitmap:%d",bitmap)); 
-        --print(string.format("bitmap:%s",bitmap)); 
-        self:NQueens(min+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
+        bitmap=bit.bxor(bitmap,BIT);
+        self:NQueens(row+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
     end
   end
@@ -146,13 +149,13 @@ NQueen={}; NQueen.new=function()
   end 
 
   function NQueen:NQueen()
-    local max=15;
+    local max=24;
     print(" N:            Total       Unique    hh:mm:ss");
     for si=2,max,1 do
       self.size=si;
       self.TOTAL=0;
       self.UNIQUE=0;
-      self.MASK=(1<<self.size)-1;    
+      self.MASK=bit.lshift(1,self.size)-1;    
       s=os.time();
       self:NQueens(0,0,0,0);
       print(string.format("%2d:%17d%13d%12s",si,self.TOTAL,0,self:secstotime(os.difftime(os.time(),s)))); 
@@ -160,6 +163,17 @@ NQueen={}; NQueen.new=function()
   end
   return setmetatable( this,{__index=NQueen} );
 end
+  --ビット反転させるメソッド・・・
+  function NQueen:rbits(byte,sz)
+    local score=0;
+    for i=sz,0,-1 do
+    --io.write(bit.bnot(bit.band(bit.arshift(byte,i), 1)))
+      if bit.band(bit.arshift(byte,i), 1) ==0 then
+        score=score+2^i;
+      end
+    end
+    return score;
+  end
 
 NQueen.new():NQueen();
 
