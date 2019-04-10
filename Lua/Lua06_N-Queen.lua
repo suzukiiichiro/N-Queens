@@ -147,16 +147,16 @@ Q - - - - - - -    10000000 3番目のビットフィールド
 16:         14772512            0    00:01:17
 17:         95815104            0    00:09:05
 ]]--
-
+--
 NQueen={}; NQueen.new=function()
-  
+  -- 
   local this={
     size=0;
     TOTAL=0;
     UNIQUE=0;
     MASK=0;
   };
-
+  --
   function NQueen:NQueens(min,left,down,right) 
     local bitmap=0;
     local BIT=0;
@@ -173,7 +173,7 @@ NQueen={}; NQueen.new=function()
       end
     end
   end
-
+  --
   function NQueen:secstotime(secs)
     sec=math.floor(secs);
 	  if(sec>59) then
@@ -188,7 +188,7 @@ NQueen={}; NQueen.new=function()
 	  if(sec<10)then sec = "0"..sec end
 	  return "00:00:"..sec
   end 
-
+  --
   function NQueen:NQueen()
     local max=24;
     print(" N:            Total       Unique    hh:mm:ss");
@@ -202,6 +202,7 @@ NQueen={}; NQueen.new=function()
       print(string.format("%2d:%17d%13d%12s",si,self.TOTAL,0,self:secstotime(os.difftime(os.time(),s)))); 
     end
   end
+  --
   return setmetatable( this,{__index=NQueen} );
 end
   --ビット反転させるメソッド・・・
@@ -215,6 +216,6 @@ end
     end
     return score;
   end
-
+--
 NQueen.new():NQueen();
 
