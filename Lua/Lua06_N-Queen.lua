@@ -120,7 +120,7 @@ NQueen={}; NQueen.new=function()
     else
       bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
       --print(string.format("bitmap:%d",bitmap)); 
-      while bitmap>0 do
+      while bitmap~=0 do
         BIT=bit.band(-bitmap,bitmap);
         --print(string.format("bitmap:%d",bitmap)); 
         bitmap=bit.bxor(bitmap,BIT);
