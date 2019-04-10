@@ -356,6 +356,7 @@ Thread={}; Thread.new=function()
       end
     end
   end
+  --
   function Thread:BM_rotate(size)
     self.SE=size-1;
 		local SE=self.SE;
