@@ -141,7 +141,7 @@ NQueen={}; NQueen.new=function()
     nEquiv=0;
     COUNT2=0;COUNT4=0;COUNT8=0;
     board={};colChk={};diagChk={};antiChk={};
-    trial={};scratch={};
+    -- trial={};scratch={};
   };
   --
   function NQueen:secstotime(secs)
@@ -168,15 +168,15 @@ NQueen={}; NQueen.new=function()
     return rtn;
   end
   --
-  function NQueen:rotate(n,neg) --回転
+  function NQueen:rotate(trial,scratch,n,neg) --回転
     local k=0; local incr=0;
     if neg then k=0; else k=n-1; end
     if neg then incr=1; else incr=-1; end 
     local j=0;
-    while j<n do self.scratch[j]=self.trial[k]; k=k+incr; j=j+1; end
+    while j<n do scratch[j]=trial[k]; k=k+incr; j=j+1; end
     if neg then k=n-1; else k=0; end 
     local j=0;
-    while j<n do self.trial[self.scratch[j]]=k; k=k-incr; j=j+1; end
+    while j<n do trial[scratch[j]]=k; k=k-incr; j=j+1; end
   end
   --
   function NQueen:vMirror(check,n) -- 反転
@@ -186,47 +186,40 @@ NQueen={}; NQueen.new=function()
   end
   --
   function NQueen:symmetryOps()
-    --local self.trial={}; 	local self.scratch={}; local k=0;
-    local k=0;
+    local trial={};local scratch={}; local k=0;
     for k=0,self.size-1,1 do 
-      self.trial[k]=self.board[k]; 
-      self.scratch[k]=self.board[k];
+      trial[k]=self.board[k]; 
+      scratch[k]=self.board[k];
     end --テーブルの初期化
     --回転
-    --self:rotate(self.trial,self.scratch,self.size,nil);-- 時計回りに90度回転 self.nEquiv=1
-    self:rotate(self.size,nil);-- 時計回りに90度回転 self.nEquiv=1
-    k=self:intncmp(self.board,self.trial,self.size);
+    self:rotate(trial,scratch,self.size,nil);-- 時計回りに90度回転 self.nEquiv=1
+    k=self:intncmp(self.board,trial,self.size);
     if(k>0)then return 0; end
     if(k==0)then self.nEquiv=1; else 
-      --self:rotate(self.trial,self.scratch,self.size,nil);-- 時計回りに180度回転 self.nEquiv=2
-      self:rotate(self.size,nil);-- 時計回りに180度回転 self.nEquiv=2
-      k=self:intncmp(self.board,self.trial,self.size);
+      self:rotate(trial,scratch,self.size,nil);-- 時計回りに180度回転 self.nEquiv=2
+      k=self:intncmp(self.board,trial,self.size);
       if(k>0) then return 0; end
       if(k==0)then self.nEquiv=2; else 
-        --self:rotate(self.trial,self.scratch,self.size,nil);-- 時計回りに270度回転 self.nEquiv=4
-        self:rotate(self.size,nil);-- 時計回りに270度回転 self.nEquiv=4
-        k=self:intncmp(self.board,self.trial,self.size);
+        self:rotate(trial,scratch,self.size,nil);-- 時計回りに270度回転 self.nEquiv=4
+        k=self:intncmp(self.board,trial,self.size);
         if(k>0) then return 0; end
         self.nEquiv=4;
       end
     end  
     -- 反転
-    self:vMirror(self.trial,self.size);	
-    k=self:intncmp(self.board,self.trial,self.size);
+    self:vMirror(trial,self.size);	
+    k=self:intncmp(self.board,trial,self.size);
     if(k>0) then return 0; end
     if (self.nEquiv>1) then 		
-      --self:rotate(self.trial,self.scratch,self.size,true);-- 90度反転 対角鏡と同等 return 0				
-      self:rotate(self.size,true);-- 90度反転 対角鏡と同等 return 0				
-      k=self:intncmp(self.board,self.trial,self.size);
+      self:rotate(trial,scratch,self.size,true);-- 90度反転 対角鏡と同等 return 0				
+      k=self:intncmp(self.board,trial,self.size);
       if(k>0) then return 0; end
       if(self.nEquiv>2)then    
-        --self:rotate(self.trial,self.scratch,self.size,true);-- 180度反転 水平鏡像と同等 return 0
-        self:rotate(self.size,true);-- 180度反転 水平鏡像と同等 return 0
-        k=self:intncmp(self.board,self.trial,self.size);
+        self:rotate(trial,scratch,self.size,true);-- 180度反転 水平鏡像と同等 return 0
+        k=self:intncmp(self.board,trial,self.size);
         if(k>0) then return 0; end
-        --self:rotate(self.trial,self.scratch,self.size,true);-- 270度反転 反対角鏡と同等 return 0			
-        self:rotate(self.size,true);-- 270度反転 反対角鏡と同等 return 0			
-        k=self:intncmp(self.board,self.trial,self.size);
+        self:rotate(trial,scratch,self.size,true);-- 270度反転 反対角鏡と同等 return 0			
+        k=self:intncmp(self.board,trial,self.size);
         if(k>0) then return 0; end
       end 
     end
@@ -238,8 +231,8 @@ NQueen={}; NQueen.new=function()
     local BIT=0;
     local k=0;
     if min==self.size then
-      --self.TOTAL=self.TOTAL+1 ;
-      -- --[[
+      self.TOTAL=self.TOTAL+1 ;
+       --[[
       -- if bitmap~=0 then
         self.board[min]=bitmap;
         k=self:symmetryOps();
@@ -248,13 +241,11 @@ NQueen={}; NQueen.new=function()
           self.UNIQUE=self.UNIQUE+1;
         end
       -- end
-      -- ]]--
+       ]]--
     else
       bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
-      --print(string.format("bitmap:%d",bitmap)); 
       while bitmap~=0 do
         BIT=bit.band(-bitmap,bitmap);
-        --print(string.format("bitmap:%d",bitmap)); 
         bitmap=bit.bxor(bitmap,BIT);
         self:NQueens(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
@@ -264,7 +255,6 @@ NQueen={}; NQueen.new=function()
   function NQueen:rbits(byte,sz)
     local score=0;
     for i=sz,0,-1 do
-    --io.write(bit.bnot(bit.band(bit.arshift(byte,i), 1)))
       if bit.band(bit.arshift(byte,i), 1) ==0 then
         score=score+2^i;
       end
