@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 --[[ 
   Luaで学ぶ「アルゴリズムとデータ構造」
