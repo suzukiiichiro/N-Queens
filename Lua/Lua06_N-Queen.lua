@@ -110,16 +110,12 @@ NQueen={}; NQueen.new=function()
     TOTAL=0;
     UNIQUE=0;
     MASK=0;
-    min=0;
-    left=0;
-    down=0;
-    right=0;
   };
 
-  function NQueen:NQueens(row,left,down,right) 
+  function NQueen:NQueens(min,left,down,right) 
     local bitmap=0;
     local BIT=0;
-    if row==self.size then
+    if min==self.size then
       self.TOTAL=self.TOTAL+1 ;
     else
       bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
@@ -128,7 +124,7 @@ NQueen={}; NQueen.new=function()
         BIT=bit.band(-bitmap,bitmap);
         --print(string.format("bitmap:%d",bitmap)); 
         bitmap=bit.bxor(bitmap,BIT);
-        self:NQueens(row+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
+        self:NQueens(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
     end
   end
