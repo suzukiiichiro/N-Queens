@@ -137,11 +137,9 @@ NQueen={}; NQueen.new=function()
     TOTAL=0;
     UNIQUE=0;
     MASK=0;
-    --nTotal=0;nUniq=0;nEquiv=0; 
     nEquiv=0;
     COUNT2=0;COUNT4=0;COUNT8=0;
     board={};colChk={};diagChk={};antiChk={};
-    -- trial={};scratch={};
   };
   --
   function NQueen:secstotime(secs)
@@ -187,7 +185,8 @@ NQueen={}; NQueen.new=function()
   --
   function NQueen:symmetryOps()
     local trial={};local scratch={}; local k=0;
-    for k=0,self.size-1,1 do 
+    local nEquiv=0;
+    for k=0,self.size,1 do 
       trial[k]=self.board[k]; 
       scratch[k]=self.board[k];
     end --テーブルの初期化
@@ -231,17 +230,17 @@ NQueen={}; NQueen.new=function()
     local BIT=0;
     local k=0;
     if min==self.size then
-      self.TOTAL=self.TOTAL+1 ;
-       --[[
-      -- if bitmap~=0 then
+      --self.TOTAL=self.TOTAL+1 ;
+      -- --[[
+       if bitmap==0 then
         self.board[min]=bitmap;
         k=self:symmetryOps();
         if (k~=0) then
           self.TOTAL=self.TOTAL+k;
           self.UNIQUE=self.UNIQUE+1;
         end
-      -- end
-       ]]--
+       end
+      -- ]]--
     else
       bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
       while bitmap~=0 do
@@ -263,7 +262,7 @@ NQueen={}; NQueen.new=function()
   end
   --
   function NQueen:NQueen()
-    local max=24;
+    local max=17;
     print(" N:            Total       Unique    hh:mm:ss");
     for si=2,max,1 do
       self.size=si;

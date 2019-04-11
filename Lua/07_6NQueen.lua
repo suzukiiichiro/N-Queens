@@ -97,6 +97,7 @@ Info={}; Info.new=function()
     --self.limit=size;
     --self.limit=1;
   end
+
   function Info:nextJob(nS,nU)
     self.nTotal=self.nTotal+nS;
     self.nUniq=self.nUniq+nU;
@@ -110,6 +111,7 @@ Info={}; Info.new=function()
   function Info:getTotal() return self.nTotal; end
   function Info:getUnique() return self.nUniq; end
   function Info:getTime() return self:secstotime(os.difftime(os.time(),self.starttime)); end
+
   function Info:secstotime(secs)
     sec=math.floor(secs);
     if(sec>59) then
@@ -201,6 +203,7 @@ Thread={}; Thread.new=function()
     end
     return rtn;
   end
+
   function Thread:rotate(trial,scratch,n,neg) --回転
     local k=0; local incr=0;
     if neg then k=0; else k=n-1; end
