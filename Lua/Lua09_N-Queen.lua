@@ -38,7 +38,12 @@ NQueen={}; NQueen.new=function()
     MASK=0;
     --nTotal=0;nUniq=0;nEquiv=0; 
     COUNT2=0;COUNT4=0;COUNT8=0;
-    bit;
+    BOUND1=0;
+    BOUND2=0;
+    TOPBIT=0;
+    ENDBIT=0;
+    SIDEMASK=0;
+    LASTMASK=0;
     board={};trial={};scratch={};
     -- trial={};scratch={};
   };
@@ -147,8 +152,8 @@ NQueen={}; NQueen.new=function()
     if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end 
     if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
   end
-  --
-  function NQueen:NQueens(min,left,down,right) 
+  function NQueen:backTrack(min,left,down,right) 
+    local BIT;
     local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
     if min==self.size then
       --self.TOTAL=self.TOTAL+1 ;
@@ -157,23 +162,30 @@ NQueen={}; NQueen.new=function()
         self:symmetryOps(self.size);
       end
     else
-      if min~=0 then
-        lim=self.size;
-      else
-        -- 枝刈り
-        lim=(self.size+1)/2;
+      while bitmap~=0 do
+        BIT=bit.band(-bitmap,bitmap);
+        self.board[min]=BIT;
+        bitmap=bit.bxor(bitmap,BIT);
+        self:backTrack(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
-      -- 枝刈り
-      for s=min+1,lim,1 do
-        if bitmap==0 then
-          break;
-        end
-      --while bitmap~=0 do
-        self.BIT=bit.band(-bitmap,bitmap);
-        self.board[min]=self.BIT;
-        bitmap=bit.bxor(bitmap,self.BIT);
-        self:NQueens(min+1,bit.lshift(bit.bor(left,self.BIT),1),bit.bor(down,self.BIT),bit.rshift(bit.bor(right,self.BIT),1));
-      end
+    end
+  end
+  --
+  --
+  function NQueen:NQueens(min) 
+    local BIT;
+    self.TOPBIT=bit.lshift(self.TOPBIT,(self.size-1));
+    self.LASTMASK=bit.bor(self.TOPBIT,1);
+    self.SIDEMASK=self.LASTMASK;
+    self.ENDBIT=bit.rshift(self.TOPBIT,1);
+    self.BOUND2=self.size-2;
+    for BOUND1=0,self.BOUND2,1 do
+      BIT=bit.lshift(1,BOUND1);
+      self.board[0]=BIT;
+      self:backTrack(1,bit.lshift(BIT,1),BIT,bit.rshift(BIT,1));
+      self.LASTMASK=bit.bxor(self.LASTMASK,bit.bor(bit.rshift(self.LASTMASK,1),bit.lshift(self.LASTMASK,1)));
+      self.ENDBIT=bit.rshift(self.ENDBIT,1);
+      self.BOUND2=self.BOUND2-1;
     end
   end
   --
@@ -200,7 +212,7 @@ NQueen={}; NQueen.new=function()
       for k=0,self.size-1,1 do self.board[k]=k; end --テーブルの初期化
       self.MASK=bit.lshift(1,self.size)-1;    
       s=os.time();
-      self:NQueens(0,0,0,0);
+      self:NQueens(0);
       self.TOTAL=self.COUNT2*2+self.COUNT4*4+self.COUNT8*8;
       self.UNIQUE=self.COUNT2+self.COUNT4+self.COUNT8;
       print(string.format("%2d:%17d%13d%12s",si,self.TOTAL,self.UNIQUE,self:secstotime(os.difftime(os.time(),s)))); 
