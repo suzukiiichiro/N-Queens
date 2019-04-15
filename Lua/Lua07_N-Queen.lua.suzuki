@@ -224,7 +224,7 @@ NQueen={}; NQueen.new=function()
 	--function NQueen:rh(a,sz)
 	function NQueen:rh(score)
 		local tmp=0;
-		for i=0,self.size,1 do
+		for i=0,self.size-1,1 do
 			--¦ if a&(1<<i) then
 			if bit.band(score,bit.lshift(1,i))  then
 				-- (( tmp|=(1<<(sz-i)) )); 
@@ -268,11 +268,11 @@ NQueen={}; NQueen.new=function()
   --   --  check[j]=(n-1)-check[j];
   --   --end
   -- end
- 
   --
   function NQueen:intncmp_bs()
     local rtn=0;
-    for i=0,self.size-1,1 do
+    for i=0,self.size,1 do
+      --print(string.format("board[] %d", self.board[i]));
       rtn=self.board[i]-self.scratch[i]+10;
       if rtn ~= 10 then
         break ;
@@ -283,7 +283,7 @@ NQueen={}; NQueen.new=function()
   --
   function NQueen:intncmp_bt()
     local rtn=0;
-    for i=0,self.size-1,1 do
+    for i=0,self.size,1 do
       rtn=self.board[i]-self.trial[i]+10;
       if rtn ~= 10 then
         break ;
@@ -300,13 +300,14 @@ NQueen={}; NQueen.new=function()
   --   return rtn;
   -- end
   --
-  function NQueen:rbits(byte,sz)
+  function NQueen:rbits(byte)
     local score=0;
-    for i=sz,0,-1 do
+    for i=self.size-1,0,-1 do
       if bit.band(bit.arshift(byte,i), 1) ==0 then
         score=score+2^i;
       end
     end
+    --print(string.format("score : %d", score));
     return score;
   end
   --
@@ -334,14 +335,14 @@ NQueen={}; NQueen.new=function()
     --print(string.format("nEquiv : %d",self.nEquiv));
     if(k>10)then return ; end
     --if(k==0)then self.nEquiv=2; else 
-    print(string.format("nEquiv : %d",self.nEquiv));
+    --print(string.format("nEquiv : %d",self.nEquiv));
     if(k==10)then self.nEquiv=2; else 
       self:rotate_bitmap_st();
       -- self:rotate(self.trial,self.scratch,self.size,nil);-- 時計回りに180度回転 self.nEquiv=2
       --k=self:intncmp(self.board,self.trial,self.size);
       k=self:intncmp_bt();
       --if(k>0) then return 0; end
-    print(string.format("k : %d",k));
+    -- print(string.format("k : %d",k));
       -- マイナス計算１０を足す
       --if(k>0) then return ; end
       if(k>10) then return ; end
@@ -350,7 +351,7 @@ NQueen={}; NQueen.new=function()
         self:rotate_bitmap_ts();
         --self:rotate(self.trial,self.scratch,self.size,nil);-- 時計回りに270度回転 self.nEquiv=4
         --k=self:intncmp(self.board,self.trial,self.size);
-        k=self.intncmp_bt();
+        k=self.intncmp_bs();
         --if(k>0) then return 0; end
         -- マイナス計算１０を足す
         --if(k>0) then return ; end
@@ -372,18 +373,18 @@ NQueen={}; NQueen.new=function()
     -- if(k>0) then return 0; end
     -- マイナス計算１０を足す
     --if(k>0) then return ; end
-    print(string.format("nEquiv : %d", self.nEquiv));
+    --print(string.format("nEquiv : %d", self.nEquiv));
     if(k>10) then return ; end
     if (self.nEquiv>2) then 		
       self:rotate_bitmap_ts();
       -- self:rotate(self.trial,self.scratch,self.size,true);-- 90度反転 対角鏡と同等 return 0				
       --k=self:intncmp(self.board,self.scratch,self.size);
-    print(string.format("nEquiv : %d", self.nEquiv));
       k=self:intncmp_bs();
+    --print(string.format("nEquiv : %d", self.nEquiv));
       --if(k>0) then return 0; end
     -- マイナス計算１０を足す
       --if(k>0) then return ; end
-    print(string.format("nEquiv : %d", self.nEquiv));
+    --print(string.format("nEquiv : %d", self.nEquiv));
       if(k>10) then return ; end
       if(self.nEquiv>4)then    
         self:rotate_bitmap_st();
@@ -419,9 +420,9 @@ NQueen={}; NQueen.new=function()
   end
   --
   function NQueen:NQueen_rec(min,left,down,right) 
-    local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
+    local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right)));
     local BIT;
-    local k=0;
+--    local k=0;
     if min==self.size then
       --self.TOTAL=self.TOTAL+1 ;
       -- --[[
@@ -436,7 +437,7 @@ NQueen={}; NQueen.new=function()
        end
       -- ]]--
     else
-      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
+--      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
       while bitmap~=0 do
         BIT=bit.band(-bitmap,bitmap);
         self.board[min]=bitmap;
