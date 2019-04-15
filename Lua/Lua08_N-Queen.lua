@@ -141,7 +141,16 @@ NQueen={}; NQueen.new=function()
         self:symmetryOps(self.size);
       end
     else
-      while bitmap~=0 do
+      if min~=0 then
+        lim=self.size;
+      else
+        lim=(self.size+1)/2;
+      end
+      for s=min+1,lim,1 do
+        if bitmap==0 then
+          break;
+        end
+      --while bitmap~=0 do
         self.BIT=bit.band(-bitmap,bitmap);
         self.board[min]=self.BIT;
         bitmap=bit.bxor(bitmap,self.BIT);
