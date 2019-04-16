@@ -4,10 +4,11 @@
 # アルゴリズムとデータ構造  
 # 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 #
-# １１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り
+# １２．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り＋最適化
 #
 # 実行結果
 # <>１２．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り＋最適化 N-Queen12()
+
 #  N:        Total       Unique        hh:mm:ss
 #  2:            0            0         0:00:00
 #  3:            0            0         0:00:00

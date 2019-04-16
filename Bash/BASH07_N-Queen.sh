@@ -208,6 +208,7 @@ function vMirror_bitmap(){
 function intncmp_bs(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
+    echo "board : ${board[$i]}";
     # bcを使うと処理が遅いので10を足す
     #rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
     # bashはマイナス計算ができないので10を足す

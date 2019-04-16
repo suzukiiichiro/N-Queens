@@ -8,11 +8,12 @@
 #
 # ---------------------------------------------------------------------------------
 ##
-# １０．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビットマップ化＋クイーンの位置による振り分け（BOUND1+BOUND2)
+# １１．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビットマップ化＋クイーンの位置による振り分け（BOUND1+BOUND2)＋枝刈り
 #
 #
 # 実行結果
-# <>１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け (BOUND1+BOUND2) N-Queen10()
+# <>１１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け (BOUND1+BOUND2) ＋ 枝刈りN-Queen11()
+
 #  N:        Total       Unique        hh:mm:ss
 #  2:            0            0         0:00:00
 #  3:            0            0         0:00:00
@@ -205,7 +206,7 @@ function symmetryOps_bm(){
     ((COUNT8++));
   }
 }
-backTrack2(){
+function backTrack2(){
 	local -i bit;
   local -i min="$1";
 	local -i left="$2";
@@ -237,7 +238,7 @@ backTrack2(){
 		done
 	}
 }
-backTrack1(){
+function backTrack1(){
 	local -i bit;
   local -i min="$1";
 	local -i left="$2";
@@ -267,7 +268,7 @@ backTrack1(){
 	}
 }
 #
-function N-Queen10_rec(){
+function N-Queen11_rec(){
  	local -i min="$1";
 	((TOPBIT=1<<(size-1)));
 	board[0]=1;
@@ -290,7 +291,7 @@ function N-Queen10_rec(){
 	  ((BOUND2--));
 	}
 }
-N-Queen10(){
+function N-Queen11(){
   local -i max=15;
 	local -i min=2;
 	local startTime=;
@@ -306,7 +307,7 @@ N-Queen10(){
     }
 		MASK=$(((1<<size)-1));
 		startTime=`date +%s` ;
-    N-Queen10_rec 0;
+    N-Queen11_rec 0;
     endTime=$((`date +%s` - st)) ;
 		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
 		hh=`expr ${ss} / 3600`;
@@ -322,6 +323,6 @@ N-Queen10(){
 #
 #
 # 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-  echo "<>１０．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け (BOUND1+BOUND2) N-Queen10()";
-  N-Queen10;
+  echo "<>１１．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り N-Queen11()";
+  N-Queen11;
 #
