@@ -93,7 +93,7 @@ NQueen={}; NQueen.new=function()
     return score;
   end
   --
-  function NQueen:symmetryOps(si)
+  function NQueen:_symmetryOps(si)
     local nEquiv;
     --// 回転・反転・対称チェックのためにboard配列をコピー
     for i=0,si,1 do self.trial[i]=self.board[i]; end
@@ -142,32 +142,127 @@ NQueen={}; NQueen.new=function()
     if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end 
     if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
   end
+  --
+  function NQueen:symmetryOps()
+    --90度回転
+    local sizeE=self.size-1; --SIZEE
+    local board=self.board; --array board[]
+    local TOPBIT=self.TOPBIT; --TOPBIT
+    local ENDBIT=self.ENDBIT; --ENDBIT
+    local BOUND1=self.BOUND1; --BOUND1
+    local BOUND2=self.BOUND2; --BOUND2
+    local BIT=0;
+		if board[BOUND2]==1 then 
+			local own=1; 
+      local ptn=2; 
+      while own<=sizeE do
+        BIT=1; 
+        local you=sizeE; 
+        while board[you]~=ptn and board[own]>=BIT do
+          --self.B=(self.B<<1);
+          BIT=bit.lshift(BIT,1);
+          you=you-1;
+        end
+        if board[own]>BIT then return; end
+        if board[own]<BIT then break; end
+        own=own+1;
+        --ptn=(ptn<<1);
+        ptn= bit.lshift(ptn,1);
+      end
+		--//90度回転して同型なら180度/270度回転も同型である
+      if own>sizeE then
+        self.COUNT2=self.COUNT2+1;
+        return;
+      end
+    end
+    --//180度回転
+    if board[sizeE]==ENDBIT then
+      local own=1; 
+      local you=sizeE-1;
+      while own<=sizeE do
+        BIT=1; 
+        local ptn=TOPBIT;
+        while ptn~=board[you] and board[own]>=BIT do
+          --self.B=(self.B<<1);
+          BIT=bit.lshift(BIT,1);
+          --ptn=(ptn>>1);
+          ptn=bit.rshift(ptn,1);
+        end
+        if board[own]>BIT then return; end
+        if board[own]<BIT then break; end
+        own=own+1;
+        you=you-1;
+      end
+    --	//90度回転が同型でなくても180度回転が同型である事もある
+      if own>sizeE then
+        self.COUNT4=self.COUNT4+1;
+        return;
+      end
+    end
+    --	//270度回転
+    if board[BOUND1]==TOPBIT then
+      local own=1; 
+      --local ptn=(TOPBIT>>1); 
+      local ptn=bit.rshift(TOPBIT,1);
+      while own<=sizeE do
+        BIT=1; 
+        local you=0;
+        while board[you]~=ptn and board[own]>=BIT do
+          --BIT=(BIT<<1);
+          BIT=bit.lshift(BIT,1);
+          you=you+1;
+        end
+        if board[own]>BIT then return; end
+        if board[own]<BIT then break; end
+        own=own+1;
+        --ptn=(ptn>>1);
+        ptn=bit.rshift(ptn,1);
+      end
+    end
+    self.COUNT8=self.COUNT8+1;
+  end   
+  --
   function NQueen:backTrack2(min,left,down,right) 
     local BIT;
     local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
     if min==self.size then
       --self.TOTAL=self.TOTAL+1 ;
       if bitmap==0 then
-        self.board[min]=bitmap;
-        self:symmetryOps(self.size);
+        -- 枝刈りと最適化
+        if bit.band(bitmap,self.LASTMASK)==0 then
+          self.board[min]=bitmap;
+          --今回の新バージョンのsymmetryOps()
+          self:symmetryOps(self.size);
+          --旧バージョンのsymmetryOps()
+          --self:_symmetryOps(self.size);
+        end
       end
     else
       if min < self.BOUND1 then
+        --BM=(BM|SM);
         bitmap=bit.bor(bitmap,self.SIDEMASK);
+        --BM=(BM~SM);
         bitmap=bit.bxor(bitmap,self.SIDEMASK);
       end
       if min==self.BOUND2 then
+        --if(d&SM)==0 then return; end 
         if bit.band(down,self.SIDEMASK) ==0 then
           return;
         end
+        --if(d&SM)~=SM then BM=(BM&SM); end
         if bit.band(down,self.SIDEMASK)~=self.SIDEMASK then
            bitmap=bit.band(bitmap,self.SIDEMASK)
         end
      end
       while bitmap~=0 do
-        BIT=bit.band(-bitmap,bitmap);
-        self.board[min]=BIT;
+        --self.aB[y],self.B=(-BM&BM),(-BM&BM);
+          --BIT=bit.band(-bitmap,bitmap);
+          --self.board[min]=BIT;
+        -- 最適化と枝刈り インラインに最適化
+        self.board[min],BIT=bit.band(-bitmap,bitmap),bit.band(-bitmap,bitmap);
+        --BM=(BM~self.aB[y]);
         bitmap=bit.bxor(bitmap,BIT);
+        --self:backTrack2(y+1,(l|self.B)<<1,(d|self.B),((r|self.B)>>1));
         self:backTrack2(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
     end
@@ -176,9 +271,13 @@ NQueen={}; NQueen.new=function()
   function NQueen:backTrack1(min,left,down,right) 
     local BIT;
     local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
-    if min==self.size then
+    -- 最適化と枝刈り
+    -- if min==self.size then
+    if min==self.size-1 then
       --self.TOTAL=self.TOTAL+1 ;
-      if bitmap==0 then
+      -- 最適化と枝刈り
+      -- if bitmap==0 then
+      if bitmap~=0 then
         self.board[min]=bitmap;
         --self:symmetryOps(self.size);
         self.COUNT8=self.COUNT8+1;
@@ -187,12 +286,16 @@ NQueen={}; NQueen.new=function()
       if min<self.BOUND1 then
         bitmap=bit.bor(bitmap,2);
         bitmap=bit.bxor(bitmap,2);
-
       end
       while bitmap~=0 do
-        BIT=bit.band(-bitmap,bitmap);
-        self.board[min]=BIT;
+        --self.aB[y],self.B=(-BM&BM),(-BM&BM)
+            --BIT=bit.band(-bitmap,bitmap);
+            --self.board[min]=BIT;
+        -- 最適化と枝刈り インラインに最適化
+        self.board[min],BIT=bit.band(-bitmap,bitmap),bit.band(-bitmap,bitmap);
+        --BM=(BM~self.aB[y]);
         bitmap=bit.bxor(bitmap,BIT);
+        --self:backTrack1(y+1,(l|self.B)<<1,(d|self.B),(r|self.B)>>1);
         self:backTrack1(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
       end
     end
@@ -200,25 +303,40 @@ NQueen={}; NQueen.new=function()
   --
   function NQueen:NQueens(min) 
     local BIT;
+    --self.TOPBIT=(1<<(size-1));
     self.TOPBIT=bit.lshift(1,(self.size-1));
     self.board[0]=1;
     for BOUND1=2,self.size-1,1 do
-      BIT=bit.lshift(1,BOUND1);
-      self.board[1]=BIT;
+        --BIT=bit.lshift(1,BOUND1);
+        --self.board[1]=BIT;
+      -- 最適化と枝刈り インラインに最適化
+      self.board[0],BIT=bit.lshift(1,BOUND1),bit.lshift(1,BOUND1);
       self.BOUND1=BOUND1;
+      --self:backTrack1(2,(2|self.B)<<1,(1|self.B),(self.B>>1));
       self:backTrack1(2,bit.lshift(bit.bor(2,BIT),1),bit.bor(1,BIT),bit.rshift(BIT,1));
 
     end
-    self.LASTMASK=bit.bor(self.TOPBIT,1);
-    self.SIDEMASK=self.LASTMASK;
+    --self.SM,self.LM=(self.TB|1),(self.TB|1);
+        --self.SIDEMASK=self.LASTMASK;
+        --self.LASTMASK=bit.bor(self.TOPBIT,1);
+    -- 最適化と枝刈り インラインに最適化
+		self.SIDEMASK,self.LASTMASK=bit.bor(self.TOPBIT,1),bit.bor(self.TOPBIT,1);
+    --self.EB=(self.TB>>1);
     self.ENDBIT=bit.rshift(self.TOPBIT,1);
     self.BOUND2=self.size-2;
     for BOUND1=1,self.BOUND2,1 do
-      BIT=bit.lshift(1,BOUND1);
-      self.board[0]=BIT;
+      --self.aB[0],self.B=(1<<self.B1),(1<<self.B1);
+        --BIT=bit.lshift(1,BOUND1);
+        --self.board[0]=BIT;
+      -- 最適化と枝刈り インラインに最適化
+      self.board[0],BIT=bit.lshift(1,BOUND1),bit.lshift(1,BOUND1);
       self.BOUND1=BOUND1;
+
+      --self:backTrack2(1,self.B<<1,self.B,self.B>>1);
       self:backTrack2(1,bit.lshift(BIT,1),BIT,bit.rshift(BIT,1));
+      --self.LM=(self.LM|self.LM>>1|self.LM<<1);
       self.LASTMASK=bit.bxor(self.LASTMASK,bit.bor(bit.rshift(self.LASTMASK,1),bit.lshift(self.LASTMASK,1)));
+      --self.EB=(self.EB>>1);
       self.ENDBIT=bit.rshift(self.ENDBIT,1);
       self.BOUND2=self.BOUND2-1;
     end
