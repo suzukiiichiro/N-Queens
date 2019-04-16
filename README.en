@@ -1,0 +1,1503 @@
+/ **
+  Algorithms and data structures learned in Java / C / Lua / Bash
+  Step-by-step optimization of the N-Queen problem
+  Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
+
+   Algorithms and Data Structures Learned with Java / C / Lua / Bash Optimize the
+   N-Queen Problem Step by Step Joint Information Technology Agency Kyodo News
+   Agency Information Technology Bureau Weichiro Suzuki
+   (suzuki.iichiro@kyodonews.jp)
+
+ table of contents
+                                       | | Bash | | Lua | C | Java | OpenCL | Non-GPU Recursive | Non-GPU Non-Recursive |
+ 1. Brute Force Forced Search | | | | | |
+ 2. Placement flag (constraint test acceleration) | | | | |
+ 3. Backtracking | N12 | 07:30 | N17 | 20: 48 | 12: 29 | 12: 50 | 14: 44 | 14: 45 | 00: 01 |
+ 4. Symmetry cancellation method | N12 | 06: 48 | N17 | 24: 31 | 8: 11 | 12: 05 |
+ 5. Pruning and Optimization | N12 | 03: 36 | N 17 | 22: 57 | 2: 15 | 2: 54 |
+ 6. Bit map | N12 | 01: 52 | N 17 | 09: 05 | 2: 58 |-|
+ 7. Bit map + symmetry cancellation method | N12 | 05: 47 | N17 | 23: 09 | 4: 36 | 1: 08 | | 04: 36 | 06: 28 |
+ 8. Bit map + symmetry cancellation method + pruning | N12 | 05: 54 | N17 | 07: 33 |
+ 9. Branch by the position of the queen BOUND1 | N12 | 03: 19 | N 17 | 12: 20 | 2: 44 | 0: 15 | | 02: 56 | 03: 42 |
+ 10. Branching according to the position of the queen BOUND1,2 | N12 | 03: 50 | N17 | 12: 18 | 1: 16 |-| | 01:19 | 01:40 |
+ 11. Pruning | N12 | 02:00 | N17 | 03: 32 | 0: 24 | 0: 14 | | 00: 24 | 00: 45 |
+ 12. Optimization | N12 | 00: 25 | N 17 | 02: 13 |
+ 13. Parallel processing | N 12 | | N 17 | | 0: 04 | 0: 04 | 00: 35 |
+
+
+ Compile (please refer to README in the directory for details)
+ Compile (please refer to README in the directory for details)
+
+# Bash version (execution)
+ $ bash BASH01_N-Queen.sh
+
+# Lua version (execution)
+ $ luajit Lua01_N-Queen.sh
+
+# C version
+ $ gcc -Wall -W -O3 -g -ftrapv -std = c99 -lm 07_01N -Queen.c -o 01N -Queen
+
+ Execution
+ $ ./01 N-Queen
+
+ # Jav / C / Lua / Bash version
+ # https://github.com/suzukiiichiro/N-Queen
+
+
+
+*********************************
+  What is the N-Queens problem
+  What is the N-Queens problem
+*********************************
+ 
+     The N-Queen problem is that “8 columns × 8 rows of chess boards work with 8 queens,
+     "I arrange it so that it does not hit" "queen (N) of 8 queen problem, how large
+     The problem is whether you can find a solution up to N.
+     The queen refers to the queen used in chess, and in the chessboard, vertically and horizontally,
+     It is a piece that can go as far as it goes diagonally, and it combines “flyers and horns” in Japanese Shogi.
+     It is a movement that 8-Queens on a typical chess board consisting of 8 columns x 8 lines
+     The solution of the problem is that the total number of solutions is 92. Because it is a relatively simple problem,
+     It is often taken as a lesson.
+     If it is about 8-Queens problem, even if "forced search" by human power or program
+     The solution can be obtained, but when N becomes large, the solution explodes at a stretch, and in practical time
+     It can not be solved.
+     All solutions currently known are Intel Pentium 4 at the University of Electro-Communications in 2004
+     Resolve n = 24 over 20 days of a PC cluster equipped with 68 Xeon 2.8 GHz processors,
+     First in the world, then at Nizza University in 2005 n = 25, 2009 at Dresden University of Technology
+     N-26, and also succeeded in finding an N = 27 solution at the same technical university in 2016.
+     In addition to the elegant algorithm using Jeff Sommers' bit operation, the symmetry cancellation
+     World records with advanced technology such as parallel processing, partial decomposition synthesis, compression and pruning
+     It is updated one after another.
+
+     The N-Queen problem is that “8 columns × 8 rows of chess boards work with 8 queens,
+     "I arrange it so it does not hit" "queen (N) of 8 queen problem, how large
+     The problem is when you can find a solution up to N.
+     The queen refers to the queen used in chess, and in the chessboard, vertically and horizontally,
+     It is a piece that can go as far as it goes diagonally, and it combines “flyers and horns” in Japanese Shogi.
+     It is a movement that 8-Queens on a typical chess board consisting of 8 columns x 8 lines
+     Because it is a relative number of solutions is 92. Because it is a relatively simple problem,
+     It is often taken as a lesson.
+     If it is about 8-Queens problem, even if "forced search" by manual or program
+     The solution can be obtained, but when N becomes large, the solution explodes at a stretch, and in practical time
+     It can not be solved.
+     All solutions currently known are Intel Pentium 4 at the University of Electro-Communications in 2004
+     Resolve n = 24 over 20 days of a PC cluster equipped with 68 Xeon 2.8 GHz processors,
+     First in the world, then at Nizza University in 2005 n = 25, 2009 at Dresden University of Technology
+     N-26, and also succeeded in finding an N = 27 solution at the same technical university in 2016.
+     In addition to the elegant algorithm using Jeff Sommers' bit operation, the symmetry cancellation
+     World records with advanced technology like as parallel processing, partial decomposition synthesis, compression and pruning
+     It is updated one after another.
+
+                                                       【World 1】 【Japan 1】 Decomposition method Contrasting method Bit map
+ ---------------------------------------------- Kyodo News Service tu-dresden ProActive University of Electro-Communications (N24 ) QJH (GPU) version Shinichiro Takahashi Somers version (N22)
+ N: Total Unique dd: hh: mm: ss
+ 2: 0 0 00:00: 00:00
+ 3: 0 0 00: 00: 00: 00
+ 4: 2 1 00: 00: 00: 00
+ 5: 10 2 00: 00: 00: 00
+ 6: 4 1 00:00: 00:00
+ 7: 40 6 00:00: 00:00
+ 8: 92 12 00: 00: 00: 00
+ 9: 352 46 00: 00: 00: 00
+10: 724 92 00: 00: 00: 00
+11: 2680 341 00: 00: 00: 00
+12: 14200 1787 00: 00: 00: 00
+13: 73712 9233 00: 00: 00: 00
+14: 365596 45752 00: 00: 00: 00
+15: 2279184 285053 00: 00: 00: 00 00:00:00 00:00:00 00:00:04
+16: 14772512 1846955 00: 00: 00: 00 00:00:00 00:00:04 00:00:23
+17: 95815104 11977939 00:00:03 00:00:07 00:00:31 00:02:38
+18: 666090624 83263591 00: 00: 00: 30 00:00:12 00:00:25 00:03:48 00:19:26
+19: 4968057848 621012754 00:00: 05: 08 00: 00:00: 42 00: 03: 17 00: 29: 22 02: 31: 24
+20: 39029188884 4878666808 00: 00: 40: 31 00: 00: 04: 46 00:24:07 03:54:10 20:35:06
+21: 314666222712 39333324973 00: 05: 38: 49 00:00: 41: 37 03: 05: 28 01: 09: 17: 19
+22 2691008701644 336376244042 02: 02: 03: 49 00: 05: 50: 02 01: 03: 08: 20
+23 24233937684440 30292426582210 22: 12: 20: 11 02: 08: 52: 30
+24 22551417973736 28439272956934 21: 18: 10: 31
+25 2207893435808352 275986683743434?
+26 223176969616364044 2789712466510289 240 days
+27 234907967154122528393619967678199 More than a year
+
+
+
+24 April 11, 2004 The University of Electro-Communications April 2009 68 CPU x 22 (1,496 CPU days N24)
+25 June 11, 2005 ProActive More than 50 years in single CPU conversion (18,250 CPU days N25)
+26 July 11, 2009 tu-dresden FPGA (* 1: equivalent to 8 * 22 2.5 GHz-QuadCore systems (approximately 176 * 4 CPU = 704 CPU) x 240 days (168, 960 CPU days N26)
+27 March 2016 tu-dresden
+
+JSomers version (N = 22)
+Speed ​​up by skillful bit operation
+Reduce the search in half considering the solution of upside down
+The solution that Jeff Somers used to solve for N = 23
+
+University of Electro-Communications qn24b (N = 24)
+Improve JSomers version and improve performance by 7 to 24%
+Solution used to determine N = 24 at the University of Electro-Communications
+
+takaken version
+Koichiro Takahashi improves JSomers version
+Search only representative solutions focusing on symmetry
+Improved program detoxification by recursive calling
+
+JSomers version (N = 22)
+Speed ​​up by skillful bit operation
+Reduce the search in half considering the solution of upside down
+The solution that Jeff Somers used to solve for N = 23
+
+University of Electro-Communications qn24b (N = 24)
+Improve JSomers version and improve performance by 7 to 24%
+Solution used to determine N = 24 at the University of Electro-Communications
+
+takaken version
+Koichiro Takahashi improves JSomers version
+Search only representative solutions focusing on symmetry
+Improved program detoxification by recursive calling
+
+
+
+ 
+****************************
+In the beginning
+****************************
+
+There are a few N-Queen (N-Queen) engineers who were fortunate to be able to refer to this page.
+I think it arrived by Google search or Git search, but the probability is close to a miracle.
+I want you to read a little more about the miracle that you can refer to this page as an engineer.
+Specifically, it is written clearly in the following link.
+
+  Eight queen problem
+  https://en.wikipedia.org/wiki/Eight Queen
+ 
+Eight queens have been in existence since 1848.
+It is the top research. As the name suggests, it is a puzzle that seeks the solution of eight queens,
+N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
+To find the solution for the board whose value is N.
+
+******************************
+In the beginning
+******************************
+
+There are a few N-Queen engineers who were fortable to be able to refer to this page.
+I think it arrived by Google search or Git search, but the probability is close to a miracle.
+I want you to read a little more about the miracle that you can refer to this page as an engineer.
+Specifically, it is written clearly in the following link.
+
+  Eight queen problem
+  https://en.wikipedia.org/wiki/Eight Queen
+ 
+Eight queens have been in presence since 1848.
+As the name suggest, it is a puzzle that seeks the solution of eight queens,
+N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
+To find the solution for the board whose value is N.
+
+****************************
+Prize money for historical unresolved issues
+****************************
+
+Historical chess puzzle problems may lead to unsolved problems in modern mathematics
+http://gigazine.net/news/20170905-million-dollar-chess-problem/
+
+The board game "Chess" with a history of more than 1000 years is more than just a game
+There are various puzzle problems "Chess Problem" in line with the rules.
+Eight queens are puzzles that use only eight queens of chess pieces.
+Large scale, it is an unsolved problem in modern mathematics,
+It is thought that it leads to the elucidation of the "P vs. NP problem".
+
+2017 | “Simple” chess puzzle holds key to $ 1m prize | University of St Andrews
+https://www.st-andrews.ac.uk/news/archive/2017/title,1539813,en.php
+
+Can You Solve the Million-Dollar, Unsolvable Chess Problem?-Atlas Obscura
+http://www.atlasobscura.com/articles/queens-puzzle-chess-problem-solution-software
+
+The N queen can not be solved by any means with today's computer. You'll get 100 million yen if you solve
+https://www.gizmodo.jp/2017/10/eight-queens-puzzle.html
+
+"Eight Queen" was presented by chess player Max Betzel in 1848.
+A proposed puzzle. On the 8x8 chess board, you can go anywhere in the horizontal and vertical directions
+It is something that arranges eight pieces and queens, but in that case "each piece is taken to another piece
+Rules are not set in such a position. To this rule
+It has been considered as a mystery for a long time as how many correct answers exist when following
+However, in 1874, more than 100 years after its creation, Gunther proposed a method to solve using determinants
+And confirm that the total solution (basic solution) is 12 by British Glacier (Glaisher)
+doing.
+
+This problem is the n-queen problem where the number of squares on one side of the chessboard is equal to the number of queens.
+It is also known that the number of solutions increases dramatically as the number of n increases.
+You At the time of writing, all solutions were known at the Dresden University of Technology in 2009.
+The basic solution is “26-Queen”, and the basic solution is 2789, 7124,466,51,289.
+It is known that the number will be as much as 2K, 2317, 699, 1616, 3640, 44 when including the solution
+You are
+
+To Dr. Ian Gent, a computer scientist at the University of St. Andrews
+Research team is based on the "n-Queen Problem"
+(n-Queens Completion) on the complexity of the puzzle (PDF
+http://jair.org/media/5512/live-5512-10126-jair.pdf) I am making a dissertation. n-ku
+In the case of the hole filling problem, arrange some queen pieces on the chess board in advance.
+The puzzle is to fill in all the remaining queens.
+
+Basically, in order to solve this problem, it is called backtrack method, so to speak
+Law is used, but it takes a lot of time to try all the options, and
+The time increases exponentially as the number of squares and queens increases. To Gent
+Computers and algorithms that can solve this "n-queen fill-in problem" quickly
+As the development of Zum advances, we can expect the evolution of technology to solve the problems that we have every day
+That. As mentioned earlier, the n-Queen problem that can be solved by modern science is 26 × 26 squares
+Remain in the “26-queen” of the
+It is imperative to develop new technologies that do not exist today.
+
+The problem is that in 2000, the Clay Math Research Institute in the United States received a $ 1 million (approximately 110 million yen) prize
+Connected to the proof of the "P vs. NP problem", which is one of the Millennium
+It is assumed. It may be difficult to find the answer, but the answer is
+Problem that can be checked quickly to see if it is
+If you set P to be a problem that is
+It is proved that it is an NP problem that can be done, but the reverse
+Are all possible NP problems solved quickly? To prove the problem. Solve this
+Requires a large amount of calculations to be performed quickly, and modern computer technology
+But it is thought that it will take tens of thousands of years to solve it.
+
+
+******************************
+Prize money for historical unresolved issues
+******************************
+
+Historical chess puzzle problems may lead to unsolved problems in modern mathematics
+http://gigazine.net/news/20170905-million-dollar-chess-problem/
+
+The board game "Chess" with a history of more than 1000 years is more than just a game
+There are various puzzle problems "Chess Problem" in line with the rules.
+Eight queens are puzzles that use only eight queens of chess pieces.
+Large scale, it is an unsolved problem in modern mathematics,
+It is thought that leads to the elucidation of the "P vs. NP problem".
+
+2017 | “Simple” chess puzzle holds key to $ 1m prize | University of St Andrews
+https://www.st-andrews.ac.uk/news/archive/2017/title,1539813,en.php
+
+Can You Solve the Million-Dollar, Unsolvable Chess Problem? -Atlas Obscura
+http://www.atlasobscura.com/articles/queens-puzzle-chess-problem-solution-software
+
+You'll get 100 million yen if you solve The N queen can not be solved by any means with today's computer.
+https://www.gizmodo.jp/2017/10/eight-queens-puzzle.html
+
+"Eight Queen" was presented by chess player Max Betzel in 1848.
+A proposed puzzle. On the 8x8 chess board, you can go anywhere in the horizontal and vertical directions
+It is something that arranges eight pieces and queens, but in that case "each piece is taken to another piece
+Rules are not set in such a position. To this rule
+It has been considered as a mystery for a long time as how many correct answers exists exist when following
+However, in 1874, more than 100 years after its creation, Gunther proposed a method to solve using determinants
+And confirm that the total solution (basic solution) is 12 by British Glacier (Glaisher)
+doing.
+
+This problem is the n-queen problem where the number of squares on one side of the chess board is equal to the number of queens.
+It is also known that the numbers of solutions increases dramatically as the number of n increases.
+You at the time of writing, all solutions were known at the Dresden University of Technology in 2009.
+The basic solution is “26-Queen”, and the basic solution is 2789, 7124, 466, 51, 289.
+It is known that the number will be as much as 2K, 2317, 699, 1616, 3640, 44 when including the solution
+You are
+
+To Dr. Ian Gent, a computer scientist at the University of St. Andrews
+Research team is based on the "n-Queen Problem"
+(n-Queens Completion) on the complexity of the puzzle (PDF
+http://jair.org/media/5512/live-5512-10126-jair.pdf) I am making a dissertation. n-ku
+In the case of the hole filling problem, arrange some queen pieces on the chess board in advance.
+The puzzle is to fill in all the remaining queens.
+
+Basically, in order to solve this problem, it is called backtrack method, so to speak
+Law is used, but it takes a lot of time to try all the options, and
+To Gent The time increases exponentially as the number of squares and queens increases.
+Computers and algorithms that can solve this "n-queen fill-in problem" quickly
+As the development of Zum advances, we can expect the evolution of technology to solve the problems that we have every day
+That idea as early, the n-Queen problem that can be solved by modern science is 26 × 26 squares
+Remain in the “26-queen” of the
+It is acceptable to develop new technologies that do not exist today.
+
+The problem is that in 2000, The Clay Research Institute in the United States received a $ 1 million (approximately 110 million yen) prize
+Connected to the proof of the "P vs. NP problem", which is one of the Millennium
+It is assumed. It may be difficult to find the answer, but the answer is
+Problem that can be checked quickly to see if it is
+If you set P to be a problem that is
+It is provided that it is an NP problem that can be done, but the reverse
+Are all possible NP problems solved quickly? To prove the problem. Solve this
+Requires a large amount of calculations to be performed quickly, and modern computer technology
+But it is thought that it will take tens of thousands of years to solve it.
+
+
+****************************
+Reference link etc.
+****************************
+
+
+When you search the Web such as Goole, you can see that there are countless pages. Among them, a fulfilling site
+I would like to introduce. If you read the following site roughly, 90% of the information is covered.
+
+N-Queens problem (Nobuhide Tsuda)
+****************************
+  In the beginning
+  Forced search (Brute-force search)
+  Backtracking
+  Constraint test acceleration (placement flag)
+  Speed ​​up by bit operation (bit map)
+  Symmetric solution removal
+  Speeding up by pruning
+  http://vivi.dyndns.org/tech/puzzle/NQueen.html
+
+Puzzle DE Programming (M.Hiroi)
+****************************
+  Speeding up with backtracking and bit operations
+  http://www.geocities.jp/m_hiroi/puzzle/nqueens.html
+
+Page of Mr. Takaken (Shinichiro Takahashi)
+****************************
+  N-Queen problem (finding the number of solutions)
+    Basic form using bit processing
+    Program mechanism using bit processing
+    Determination method of unique solution
+    Find the number of unique solutions
+    Development from unique solutions to all solutions
+    Source program and execution result
+  http://www.ic-net.or.jp/home/takaken/nt/queen/index.html
+
+It seems that everyone is discussing on the bulletin board (it is valuable)
+http://www2.ic-net.or.jp/~takaken/auto/guest/bbs62.html
+
+******************************
+Reference link etc.
+******************************
+
+
+When you search the Web such as Goole, you can see that there are countless pages. Among them, a fulfilling site
+If you read the following site roughly, 90% of the information is covered.
+
+N-Queens problem (Nobuhide Tsuda)
+******************************
+  In the beginning
+  Forced search (Brute-force search)
+  Backtracking
+  Constraint test acceleration (placement flag)
+  Speed ​​up by bit operation (bit map)
+  Symmetric solution removal
+  Speeding up by pruning
+  http://vivi.dyndns.org/tech/puzzle/NQueen.html
+
+Puzzle DE Programming (M.Hiroi)
+******************************
+  Speeding up with backtracking and bit operations
+  http://www.geocities.jp/m_hiroi/puzzle/nqueens.html
+
+Page of Mr. Takaken (Shinichiro Takahashi)
+******************************
+  N-Queen problem (finding the number of solutions)
+    Basic form using bit processing
+    Program mechanism using bit processing
+    Determination method of unique solution
+    Find the number of unique solutions
+    Development from unique solutions to all solutions
+    Source program and execution result
+  http://www.ic-net.or.jp/home/takaken/nt/queen/index.html
+
+It seems that everyone is discosing on the bulletin board (it is valuable)
+http://www2.ic-net.or.jp/~takaken/auto/guest/bbs62.html
+
+
+****************************
+English, but all of the above is written in Java
+English, but all of the above is written in Java
+
+http://penguin.ewu.edu/~trolfe/Queens/OptQueen.html
+
+Other links
+Other links
+
+https://rosettacode.org/wiki/N-queens_problem
+http://www.cc.kyoto-su.ac.jp/~yamada/ap/backtrack.html
+http://yucchi.jp/java/java_tip/n_queens_problem/n_queens_problem.html
+http://www.shido.info/py/queen_py3.html
+http://toraneko75.sakura.ne.jp/wp/?p=223
+http://yoshiiz.blog129.fc2.com/blog-entry-380.html
+http://nw.tsuda.ac.jp/class/algoB/c6.html
+http://www.kawa.net/works/js/8queens/nqueens.html
+http://www.yasugi.ai.kyutech.ac.jp/2012/4/nq.html
+http://www.neuro.sfc.keio.ac.jp/~masato/jv/nqueen/MPneuron.java
+http://fujimura2.fiw-web.net/java/lang/page-20-3.html
+https://github.com/pankajmore/DPP/blob/master/EPI/src/puzzles/NQueens.java
+http://www.kanadas.com/ccm/queens-sort/index-j.html
+http://chiiji.s10.xrea.com/nn/nqueen/nqueenn.shtml
+http://www.neuro.sfc.keio.ac.jp/~masato/jv/nqueen/nqueenDemo.htm
+
+
+From here as a note of reference information
+From here as a note of reference information
+
+N = 22 found Jeff Somers
+  The first application of bitmaps to N-Queens seems to be Jeff Somers.
+  Reference: The N Queens Problem
+  http://www.jsomers.com/nqueen_demo/nqueens.html (It seems like a broken link)
+
+N = 24 discovery University of Electro-Communications
+  In 2004, a research group at the University of Electro-Communications parallelized processing
+  The world's first discovery of the number of N = 24 solutions.
+  http://www.arch.cs.titech.ac.jp/~kise/nq/
+
+  Press release
+  http://www.arch.cs.titech.ac.jp/~kise/nq/press-2004-10-05.txt
+
+  University of Electro-Communications Achieves World Record of "N-queens" Problem
+  http://www.itmedia.co.jp/news/articles/0410/06/news079.html
+
+  University of North Texas
+  http://larc.unt.edu/ian/24queens/
+
+  NQueens problem
+  The basic idea of ​​QJH is "the approach of constructing the whole solution from partial decomposition" (Parts Assembly Approach).
+  http://deepgreen.game.coocan.jp/NQueens/nqueen_index.htm
+
+  N Queens World records
+  http://www.nqueens.de/sub/WorldRecord.en.html
+
+  N = 21-23 computed by Sylvain PION (Sylvain.Pion (AT) sophia.inria.fr) and Joel-Yann FOURRE (Joel-Yann.Fourre (AT) ens.fr).
+
+  N = 24 from Kenji KISE (kis (AT) is.uec.ac.jp), Sep 01 2004
+
+  N = 25 from Objectweb ProActive INRIA Team (proactive (AT) objectweb.org), Jun 11 2005 [Communicated by Alexandre Di Costanzo (Alexandre.Di_Costanzo (AT) sophia.inria.fr)]. time. N = 25 has been confirmed by the NTU 25 Queen Project at National Taiwan University and Ming Chuan University, led by Yuh-Pyng (Arping) Shieh, Jul 26 2005. This computation took 26982 days CPU time.
+
+  N = 26 as calculated by Queens (AT) TUD [http://queens.inf.tu-dresden.de/].-Thomas B. Preußer, Jul 11 ​​2009
+
+  N = 27 as calculated by the Q27 Project [https://github.com/preusser/q27].-Thomas B. Preußer, Sep 23 2016
+
+
+
+*********************************
+What's in this page
+*********************************
+
+Specifically, there is an N queen program on this page.
+
+compile
+$ gcc -pthread -O3 -Wall 07 _ ** NQueen.c -o NQueen
+
+Execution
+$ ./NQueen
+
+
+I want you to try it.
+
+The solution to the N-Queen requires steps to disassemble the process and understand each one carefully.
+The first step is to look at and write the source of Step 1 over and over again.
+Of course, it's easy, so it takes a lot of solution time. You may have finished drinking coffee by the end of the process.
+When the process reaches step 15, the process ends in about one second. It took 1 minute to finish in 1 second
+You may not be interested. But what if 100 years do not take a year?
+Artificial intelligence AI technology is a trinity of device evolution, processing acceleration, and solution optimization (algorithm).
+In order, I want you to read carefully without skipping. Maybe, break up the N queen program all over Japan so far
+There should not be many sites summarized in the steps.
+
+In addition, the site is ready to become familiar with the N-Queen program in multiple programming languages.
+For example:
+
+  Java version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+
+  Bash version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash
+
+  Lua version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+
+  C version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_C
+ 
+C version
+It is said to be the fastest among almost all programming languages. That's true.
+If you are a beginner who does not know anything yet, you should start with C language.
+Because it is necessary to describe more complicatedly than Java, such as multi-threading,
+It requires deep knowledge. C language masters definitely understand the system technology more thoroughly than Java programmers.
+
+Java version
+The language C is said to be too difficult, leaving easy-to-reach parts, and Java is a language that was created without losing anything that C could do.
+Multithreading is also easier to understand than C language. If you have only superficial knowledge of system technology, Java is good.
+It is also a dangerous language that makes the system known. The conclusion is that Java can be Linux command, Bash, kernel
+There is no progress in understanding.
+
+Bash version
+If you want to learn Linux / UNIX, I recommend the Bash version.
+https://github.com/suzukiiichiro/AI_Algorithm_Bash
+
+  I wrote below why Bash.
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash/blob/master/002UNIXBasic
+
+  Bash is slow. But it is powerful. You can get the power of Linux.
+  If you're wondering which language to learn in, don't hesitate to pick "Bash".
+  Next is Lua-> Java-> C.
+
+Lua version
+There is no doubt that smartphone apps are driving the world's technology.
+It is the Lua language that is gaining breadth in its application development. It's compact and fast, and it's good when it's compatible with the surroundings.
+
+
+Above, I think that you may start with any language. Anyone who can do it can write in any language.
+Then, the main subject from the following.
+
+
+
+***********************************
+What's in this page
+***********************************
+
+Specifically, there is an N queen program on this page.
+
+compile
+$ gcc -pthread -O3 -Wall 07 _ ** NQueen.c -o NQueen
+
+Execution
+$ ./NQueen
+
+
+I want you to try it.
+
+The solution to the N-Queen requires steps to disassemble the process and understand each one carefully.
+The first step is to look at and write the source of Step 1 over and over again.
+Of course, it's easy, so it takes a lot of solution time. You may have finished drinking coffee by the end of the process.
+When the process reaches step 15, the process ends in about one second. It took 1 minute to finish in 1 second
+You may not be interested. But what if 100 years do not take a year?
+Artificial intelligence AI technology is a trinity of device evolution, processing acceleration, and solution optimization (algorithm).
+In order, I want you to read carefully without skipping. Maybe, break up the N queen program all over Japan so far
+There should not be many sites summarized in the steps.
+
+In addition, the site is ready to become familiar with the N-Queen program in multiple programming languages.
+For example:
+
+  Java version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
+
+  Bash version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash
+
+  Lua version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_Lua
+
+  C version N-Queen
+  https://github.com/suzukiiichiro/AI_Algorithm_C
+ 
+C version
+It is said to be the fastest among almost all programming languages. That's true.
+If you are a beginner who does not know anything yet, you should start with C language.
+Because it is necessary to describe more complicatedly than Java, such as multi-threading,
+It requires deep knowledge. C language masters definitely understand the system technology more thoroughly than Java programmers.
+
+Java version
+The language C is said to be too difficult, leaving easy-to-reach parts, and Java is a language that was created without losing anything that C could do.
+Multithreading is also easier to understand than C language. If you have only superficial knowledge of system technology, Java is good.
+It is also a dangerous language that makes the system known. The conclusion is that Java can be Linux command, Bash, kernel
+There is no progress in understanding.
+
+Bash version
+If you want to learn Linux / UNIX, I recommend the Bash version.
+https://github.com/suzukiiichiro/AI_Algorithm_Bash
+
+  I wrote below why Bash.
+  https://github.com/suzukiiichiro/AI_Algorithm_Bash/blob/master/002UNIXBasic
+
+  Bash is slow. But it is powerful. You can get the power of Linux.
+  If you're wondering which language to learn in, don't hesitate to pick "Bash".
+  Next is Lua-> Java-> C.
+
+Lua version
+There is no doubt that smartphone apps are driving the world's technology.
+It is the Lua language that is gaining breadth in its application development. It's compact and fast, and it's good when it's compatible with the surroundings.
+
+
+Above, I think that you may start with any language. Anyone who can do it can write in any language.
+Then, the main subject from the following.
+
+
+
+************************************************
+  ステップバイステップでＮ−クイーン問題を最適化
+************************************************
+
+/**
+ Cで学ぶアルゴリズムとデータ構造
+ ステップバイステップでＮ−クイーン問題を最適化
+ 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
+
+ コンパイル compile
+ $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm 07_01N-Queen.c -o 01N-Queen
+
+ 実行 Execution
+ $ ./01N-Queen
+
+
+ 1. ブルートフォース　力任せ探索
+
+ 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
+   なるかをチェックする方法
+
+   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
+   けであって8王妃問題を解いているわけではありません
+
+ Execution result
+ :
+ : ＜すごく時間がかかります＞
+ :
+ 16777207: 7 7 7 7 7 7 6 6
+ 16777208: 7 7 7 7 7 7 6 7
+ 16777209: 7 7 7 7 7 7 7 0
+ 16777210: 7 7 7 7 7 7 7 1
+ 16777211: 7 7 7 7 7 7 7 2
+ 16777212: 7 7 7 7 7 7 7 3
+ 16777213: 7 7 7 7 7 7 7 4
+ 16777214: 7 7 7 7 7 7 7 5
+ 16777215: 7 7 7 7 7 7 7 6
+ 16777216: 7 7 7 7 7 7 7 7
+
+
+ 1. Brute force force-based search
+
+ Systematically count all possible solution candidates, and each solution candidate
+   How to check
+
+   (※) It generates the combination which enumerates the combination which arranges one royal note in each line recursively
+   It does not mean that the 8 kings problem is solved
+
+ Execution result
+ :
+ : <It takes a lot of time>
+ :
+ 16777207: 7 7 7 7 7 7 6 6
+ 16777208: 7 7 7 7 7 7 6 7
+ 16777209: 7 7 7 7 7 7 7 0
+ 16777210: 7 7 7 7 7 7 7 1
+ 16777211: 7 7 7 7 7 7 7 2
+ 16777212: 7 7 7 7 7 7 7 3
+ 16777213: 7 7 7 7 7 7 7 4
+ 16777214: 7 7 7 7 7 7 7 5
+ 16777215: 7 7 7 7 7 7 7 6
+ 16777216: 7 7 7 7 7 7 7 7
+
+
+
+ 
+ ２．配置フラグ（制約テスト高速化）
+
+   パターンを生成し終わってからチェックを行うのではなく、途中で制約を満たさな
+   い事が明らかな場合は、それ以降のパターン生成を行わない。
+  「手を進められるだけ進めて、それ以上は無理（それ以上進めても解はない）という
+  事がわかると一手だけ戻ってやり直す」という考え方で全ての手を調べる方法。
+  (※)各行列に一個の王妃配置する組み合わせを再帰的に列挙分枝走査を行っても、組
+  み合わせを列挙するだけであって、8王妃問題を解いているわけではありません。
+
+ Execution result
+ :
+ :
+ 40312: 7 6 5 4 2 1 3 0
+ 40313: 7 6 5 4 2 3 0 1
+ 40314: 7 6 5 4 2 3 1 0
+ 40315: 7 6 5 4 3 0 1 2
+ 40316: 7 6 5 4 3 0 2 1
+ 40317: 7 6 5 4 3 1 0 2
+ 40318: 7 6 5 4 3 1 2 0
+ 40319: 7 6 5 4 3 2 0 1
+ 40320: 7 6 5 4 3 2 1 0
+
+
+ 2. Placement flag (constraint test acceleration)
+
+   Do not check after completion of pattern generation, but satisfy constraints on the way
+   If it is obvious that there is no need for subsequent pattern generation.
+  "I'm going to advance as much as I can, but I can't go further than that."
+  A method of examining all the hands with the idea that only one move back and start over when things are understood.
+  (*) Even if the combination branch arrangement is performed for one matrix in each matrix, even if the branch branch scan is performed recursively,
+  It is only a list of combinations, and it does not mean that the 8 kings problem is solved.
+
+ Execution result
+ :
+ :
+ 40312: 7 6 5 4 2 1 3 0
+ 40313: 7 6 5 4 2 3 0 1
+ 40314: 7 6 5 4 2 3 1 0
+ 40315: 7 6 5 4 3 0 1 2
+ 40316: 7 6 5 4 3 0 2 1
+ 40317: 7 6 5 4 3 1 0 2
+ 40318: 7 6 5 4 3 1 2 0
+ 40319: 7 6 5 4 3 2 0 1
+ 40320: 7 6 5 4 3 2 1 0
+
+ ３．バックトラック
+
+   　各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
+   さない事が明らかな場合は、それ以降のパターン生成を行わない。
+   　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
+   　これまでは行方向と列方向に重複しない組み合わせを列挙するものですが、王妃
+   は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
+   けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
+   を降りても解がないと判明した時点で木を引き返すということができます。
+
+ Execution result
+ 	 :
+ 	 :
+	83: 6 1 5 2 0 3 7 4
+	84: 6 2 0 5 7 4 1 3
+	85: 6 2 7 1 4 0 5 3
+	86: 6 3 1 4 7 0 2 5
+	87: 6 3 1 7 5 0 2 4
+	88: 6 4 2 0 5 7 1 3
+	89: 7 1 3 0 6 4 2 5
+	90: 7 1 4 2 0 6 3 5
+	91: 7 2 0 5 1 4 6 3
+	92: 7 3 0 2 5 1 6 4
+
+ 3. Back track
+
+   Prepare a flag indicating whether there is a queen on each column, diagonally, and meet the constraints along the way
+   If it is obvious not to do so, no further pattern generation will be performed.
+   Speedup is achieved by preparing a flag whether or not there is a queen on each row and diagonal line.
+   So far, it is a list of combinations that do not overlap in the row and column directions.
+   Can take a piece in a diagonal direction, so there is one queen on every diagonal line
+   The tree can not be visited by all the leaves in the depth-first search by adding the limit that can only be placed.
+   It is possible to turn back the tree when it turns out that there is no solution after getting down.
+
+ Execution result
+ :
+ :
+83: 6 1 5 2 0 3 7 4
+84: 6 2 0 5 7 4 1 3
+85: 6 2 7 1 4 0 5 3
+86: 6 3 1 4 7 0 2 5
+87: 6 3 1 7 5 0 2 4
+88: 6 4 2 0 5 7 1 3
+89: 7 1 3 0 6 4 2 5
+90: 7 1 4 2 0 6 3 5
+91: 7 2 0 5 1 4 6 3
+92: 7 3 0 2 5 1 6 4
+
+
+ ４．出力結果の表示処理
+      Nが順次大きくなりつつ処理を継続できるように処理を修正
+ 4. Display process of output result
+      Corrected processing so that processing can be continued while N gradually increases
+
+ Execution result
+  N: Total Unique hh: mm: ss. Ms
+  2: 0 0 0.00
+  3: 0 0 0.00
+  4:            2               0            0.00
+  5:           10               0            0.00
+  6:            4               0            0.00
+  7:           40               0            0.00
+  8:           92               0            0.00
+  9:          352               0            0.00
+ 10:          724               0            0.00
+ 11:         2680               0            0.01
+ 12:        14200               0            0.05
+ 13:        73712               0            0.30
+ 14:       365596               0            1.93
+ 15:      2279184               0           13.50
+ 16:     14772512               0         1:39.30
+ 17:     95815104               0        12:29.59
+
+
+ ５．対称解除法
+
+     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
+     ８個の対称解が存在する。 A method of removing an opposite solution and finding a solution from a unique solution.
+ 
+ ■ユニーク解の判定方法
+   全探索によって得られたある１つの解が、回転・反転などによる本質的に変わること
+ のない変換によって他の解と同型となるものが存在する場合、それを別の解とはしない
+ とする解の数え方で得られる解を「ユニーク解」といいます。 In other words, a unique solution is
+ 全解の中から回転・反転などによる変換によって同型になるもの同士をグループ化する
+ ことを意味しています。
+ 
+   従って、ユニーク解はその「個数のみ」に着目され、この解はユニーク解であり、こ
+ の解はユニーク解ではないという定まった判定方法はありません。 Is it a unique solution?
+ どうかの判断はユニーク解の個数を数える目的の為だけに各個人が自由に定義すること
+ It becomes. Of course, the number of unique solutions themselves is
+ わりません。
+ 
+   さて、Ｎクイーン問題は正方形のボードで形成されるので回転・反転による変換パター
+ ンはぜんぶで８通りあります。 So simply "total number of answers = unique number of answers x 8"
+ いきません。 The number of elements in one group is not always eight. Of N = 5
+ 下の例では要素数が２個のものと８個のものがあります。
+
+
+ Ｎ＝５の全解は１０、ユニーク解は２なのです。
+ 
+ グループ１: ユニーク解１つ目
+--- Q-  - Q---
+ Q----  ---- Q
+-- Q--  -- Q--
+---- Q   Q----
+- Q---  --- Q-
+ 
+ グループ２: ユニーク解２つ目
+---- Q   Q----  -- Q--  -- Q--  --- Q-  - Q---   Q----  ---- Q
+-- Q--  -- Q--   Q----  ---- Q  - Q---  --- Q-  --- Q-  - Q---
+ Q----  ---- Q  --- Q-  - Q---  ---- Q   Q----  - Q---  --- Q-
+--- Q-  - Q---  - Q---  --- Q-  -- Q--  -- Q--  ---- Q   Q----
+- Q---  --- Q-  ---- Q   Q----   Q----  ---- Q  -- Q--  -- Q--
+
+ 
+   それでは、ユニーク解を判定するための定義付けを行いますが、次のように定義する
+ ことにします。 Find out where the queen of each row is from the right, down from the top row
+ の行へ順番に列挙します。 And it will be the minimum value when it is viewed as an N-digit number
+ をユニーク解として数えることにします。 In addition, the number of N digits is referred to as "unique judgment value" thereafter.
+ と呼ぶことにします。
+ 
+---- Q   0
+-- Q--   2
+ Q----   4  --->  0 2 4 1 3 (ユニーク判定値)
+--- Q-   1
+- Q---   3
+ 
+ 
+   探索によって得られたある１つの解(オリジナル)がユニーク解であるかどうかを判定
+ するには「８通りの変換を試み、その中でオリジナルのユニーク判定値が最小であるか
+ を調べる」ことになります。 However, speaking from the conclusion, it can not be a unique solution
+ とが明確なパターンを探索中に切り捨てるある枝刈りを組み込むことにより、３通りの
+ 変換を試みるだけでユニーク解の判定が可能になります。
+  
+ 5. Symmetry cancellation method
+
+     One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
+     There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
+ 
+ ■ How to judge unique solutions
+   One solution obtained by the whole search is essentially changed by rotation, inversion, etc.
+ If there is something that is isomorphic to another solution due to no transformation, do not make it another solution
+ The solution obtained by counting solutions is called "unique solution". In other words, a unique solution is
+ Group among all solutions that become isomorphic by transformation by rotation, inversion, etc.
+ It means that.
+ 
+   Therefore, a unique solution is focused on its "number only", and this solution is a unique solution.
+ There is no definite way to judge that the solution of is not a unique solution. Is it a unique solution?
+ Judgment of whether or not each person is free to define only for the purpose of counting the number of unique solutions
+ It becomes. Of course, the number of unique solutions themselves is
+ Sorry.
+ 
+   Well, since the N queen problem is formed by a square board, a conversion putter by rotation and inversion
+ There are 8 ways of So simply "total number of answers = unique number of answers x 8"
+ I don `t go. The number of elements in one group is not always eight. Of N = 5
+ In the example below, there are two elements and eight elements.
+
+
+ The total solution for N = 5 is 10, and the unique solution is 2.
+ 
+ Group 1: One unique solution
+--- Q--Q ---
+ Q ---- ---- Q
+-Q---Q--
+---- Q Q ----
+-Q --- --- Q-
+ 
+ Group 2: Unique solution 2
+---- Q Q -----Q---Q--Q--Q-Q----Q
+-Q--Q--Q----Q-Q---Q---Q--Q ---
+ Q ---- ---- Q --- Q--Q --- ---- Q Q -----Q --- --- Q-
+--- Q--Q ----Q --- --- Q--Q---Q-- ----- Q Q ----
+-Q --- --- Q- ---- Q Q ---- Q ---- ---- Q-Q---Q--
+
+ 
+   Then we define it to determine the unique solution, but define it as follows
+ I'm going to Find out where the queen of each row is from the right, down from the top row
+ List the lines in order. And it will be the minimum value when it is viewed as an N-digit number
+ Is counted as a unique solution. In addition, the number of N digits is referred to as "unique judgment value" thereafter.
+ I will call it.
+ 
+---- Q 0
+-Q-- 2
+ Q ---- 4 ---> 0 2 4 1 3 (unique judgment value)
+--- Q- 1
+-Q --- 3
+ 
+ 
+   Determine if one solution (original) obtained by search is a unique solution
+ "To try 8 different conversions, among which the original unique judgment value is the smallest?
+ It will be "investigate". However, speaking from the conclusion, it can not be a unique solution
+ By incorporating certain prunes that truncate while searching for clear patterns, three ways
+ It is possible to judge the unique solution just by trying the conversion.
+  
+ 
+ ■ユニーク解の個数を求める
+   先ず最上段の行のクイーンの位置に着目します。その位置が左半分の領域にあればユ
+ ニーク解には成り得ません。何故なら左右反転によって得られるパターンのユニーク判
+ 定値の方が確実に小さくなるからです。また、Ｎが奇数の場合に中央にあった場合はど
+ うでしょう。これもユニーク解には成り得ません。何故なら仮に中央にあった場合、そ
+ れがユニーク解であるためには少なくとも他の外側の３辺におけるクイーンの位置も中
+ 央になければならず、それは互いの効き筋にあたるので有り得ません。
+
+ ■ Find the number of unique solutions
+   First we focus on the queen position in the top row. If the position is in the left half area, you
+ It can not be a Neek solution. Because the unique size of the pattern obtained by flipping left and right
+ This is because the fixed value is definitely smaller. Also, if N was odd and in the middle
+ It will be. This too can not be a unique solution. Because if it was in the middle,
+ In order to be unique, the position of the queen on at least the other three outer sides is also
+ It has to be in the middle, and it is impossible because it corresponds to each other's effective muscles.
+
+
+ ************************************************** *************************
+ The position of the queen in the top row is limited to the right area except the center. (Where N 2 2)
+ ************************************************** *************************
+ 
+   Next, consider the case where there is a queen at the far right (upper right corner). The other three
+ Because you can not put the queen in the corner of (because it is a good muscle), whether it is a unique solution
+ The only way to determine this is to compare it with the pattern inverted on the oblique axis passing from the upper right corner to the lower left corner.
+ You In short,
+ 
+ [The position of the second queen from the top from the right]
+ [The position of the second row of queens from the top from the top]
+ 
+
+ It can be determined just by comparing. This is because these two values ​​will never be the same.
+ 
+       3 0
+       ↓
+---- Q ← 0
+-Q --- ← 3
+----- The second row from the top is the fourth queen position from the right.
+--- Q- The second row from the right is the fourth queen position from the top.
+----- However, this is impossible because they are mutually effective.
+ 
+   After all, it is better to put a pruning that prohibits the placement to X in the following figure during recursive search.
+ It is guaranteed that every solution is unique.
+ 
+---- X Q
+-Q-- X-
+---- X-
+---- X-
+-------
+-------
+ 
+   Now consider the case where there is a queen other than the right end. Original is a unique solution
+ For this reason, the placement to X in the figure below is prohibited first. Therefore, put that pruning first
+ You
+ 
+ X X --- Q X X
+ X ---- X
+--------
+--------
+--------
+--------
+ X ---- X
+ X X ---- X X
+ 
+   If you follow the queen's dominant source next time, it is possible that the original is not a unique solution
+ There is a sex only if there is a queen somewhere in the positions A, B and C in the figure below. Follow
+ Therefore, it is good to examine only three conversion patterns of 90 degree rotation, 180 degree rotation and 270 degree rotation
+ It becomes.
+ 
+ X x x x x Q X X
+ X --- x x x X
+ C-- x- x- x
+-x-- x--
+-x --- x--
+ x --- x- A
+ X ---- x- X
+ X X B-- x X X
+
+ ■ Development from unique solutions to all solutions
+   The previous considerations were to find the number of unique solutions. To find the total number of solutions
+ We need to prune to find a unique solution and do a full search. Therefore
+ It will cost you search time. Therefore, from the number of unique solutions,
+ I can think of an attempt to lead it. This is a pattern search by left-right inversion
+ It is an expanded version of the idea of ​​omitting the and finally doubling the result. And that
+ To realize this, "How many elements of a group a certain unique solution belongs to?"
+ It is necessary to consider.
+ 
+   First, consider the unique solution where the queen is in the upper right corner. The pattern inverted on the oblique axis
+ It is impossible to become isomorphic to the original (× 2), and the other three queens in the upper right corner
+ The number of elements of the group to which this unique solution belongs is required because it can be mapped to a corner (× 4)
+ There will be 8 pieces (= 2 × 4).
+ 
+   Second, it will be a bit more complicated if the queen is outside the upper right corner, but I will simplify the discussion
+ In order to make sure
+
+ TOTAL = (COUNT 8 * 8) + (COUNT 4 * 4) + (COUNT 2 * 2);
+  (1) If it is rotated by 90 degrees and becomes the same type as the original, then it is further rotated by 90 degrees (the original
+    Even if it is rotated by
+    It becomes the same type as Zinal.
+
+    COUNT 2 * 2
+ 
+  (2) If it is rotated 90 degrees and it differs from the original, it is always an origina even if it is rotated 270 degrees
+    It is different from However, when rotated 180 degrees, it may be the same as the original
+    It is possible.
+
+    COUNT 4 * 4
+ 
+  (3) The number of elements of the group to which the unique solution corresponding to (1) belongs is a pattern in which the left and right are inverted.
+       In addition there are only two. The number of elements of the group to which the unique solution corresponding to (2) belongs is
+       When rotating 180 degrees and becoming the same type, 4 pieces (horizontal flip x vertical rotation), and even rotating 180 degrees
+       If different from the original will be eight. (Horizontal flip × vertical rotation × vertical flip)
+ 
+    COUNT 8 * 8
+
+   From the above, we investigate which kind of unique solution each one corresponds to
+ In this way, the total solution number can be derived by calculation. Pruning will shorten the search time
+ It is no longer necessary to
+ 
+   UNIQUE COUNT2 + COUNT4 + COUNT8
+   TOTAL (COUNT 2 * 2) + (COUNT 4 * 4) + (COUNT 8 * 8)
+
+ If you realize these, execution speed will be slower than the previous NQueen 3 ().
+ This is because processing is added to reverse the symmetry, inversion, and oblique axes.
+ However, by performing this process, the processing speed will be much faster with NQueen 5 ().
+ It is speeded up. For that purpose, this algorithm implementation is necessary.
+
+Execution result
+ N: Total Unique hh: mm: ss. Ms
+ 2: 0 0 0.00
+ 3: 0 0 0.00
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.01
+12: 14200 1787 0.04
+13: 73712 9233 0.27
+14: 365596 45752 1.57
+15: 2279184 285053 10.09
+16: 14772512 1846955 1: 08. 64
+17: 95815104 11977939 8: 11.18
+
+
+ * 6. Pruning and optimization
+ *
+ * Compare source comments for simplicity.
+ * Although simple, the effect of pruning is enormous.
+
+ Execution result
+  N: Total Unique hh: mm: ss. Ms
+  2: 0 0 0.00
+  3: 0 0 0.00
+  4: 2 1 0.00
+  5: 10 2 0.00
+  6: 4 1 0.00
+  7: 40 6 0.00
+  8: 92 12 0.00
+  9: 352 46 0.00
+ 10: 724 92 0.00
+ 11: 2680 341 0.00
+ 12: 14200 1787 0.01
+ 13: 73712 9233 0.08
+ 14: 365596 45752 0.43
+ 15: 2279184 285053 2.86
+ 16: 14772512 1846955 18.03
+ 17: 95815104 11977939 2: 15.80
+
+
+ 7. Bit map (correspondence other than symmetryOps ())
+
+   Use Bitwise operations to pack and process acceleration states into bitmaps
+   20 to 30 times faster than a simple backtrack
+ 
+ With bitmaps, data can be moved at high speed by shifting.
+  In the flag array, it takes O (N) time to move data, but in the case of bitmap, O (1)
+  Instead of preparing 2 * N-1 elements in the diagonal direction as in the flag array, fill with N bits.
+  Minutes.
+
+ Put assignable bit string into flags, and take out bits in order with -flags & flags.
+ 20-30 times faster than back track.
+ 
+ ======================
+ Way of thinking 1
+ ======================
+
+ An N × N chess board is represented by N bit fields, and one row state is
+ Corresponds to one bit field. (Turn on the bit where the queen is placed
+ Do)
+ And backtracking is "downward" in order from the 0th bit field.
+ Turn on one bit position of any one and proceed.
+
+ 
+  ------Q--00000100 0th bit field
+  ---Q----00010000 First bit field
+  -------Q-0000010 Second bit field
+  Q-------10000000 third bit field
+  --------Q 00000001 Fourth bit field
+  -Q------01000000 fifth bit field
+  ----Q---00001000 6th bit field
+  --Q-----00100000 7th bit field
+
+
+ ======================
+ Concept 2
+ ======================
+
+ Next, prepare three more bit fields to check the effect.
+
+ 1. The left lower muscle goes forward: left
+ 2. What works right below: down
+ 3. What works right below: right
+
+Next, consider the diagonal dominant hand.
+ In the case of the above figure,
+ The dominant muscle on the right of the first column is the third (0x08)
+ The second line (0x04) is the dominant muscle on the upper right of the second column.
+ This value is obtained by "shifting right" the position 0x10 of the 0th row queen by 1 bit
+ can do.
+ Also, in the case of the upper left diagonal, the fifth column (0x20) in the first column and the sixth column (0x40) in the second column
+It can be obtained by "shifting left" one bit at a time.
+
+In other words, by expressing the dominant of the right shift with the right and the dominant of the left shift with the left, the quee
+It is possible to determine the effect of the on-line by shifting the right and left by one bit.
+
+  * ---------------
+  ...
+  |... -3.. 0x02-|
+  |.. -2... 0x04 | (1 bit right shift right)
+  .. -1... 0x08-|
+  | Q... 0x10 (the position of Q is 4 down)
+  ... 0x20-|
+  |.. +2... 0x40 | (1 bit left shift left)
+  |... +3.. 0x80-|
+  * ---------------
+  Figure: Diagonal dominant check
+
+ When advancing the search from the nth bitfield to the n + 1th bitfield,
+ Row the OR operation of the 3 bit field and the n th bit field (bit)
+ is. left is shifted one to the left, down is unchanged, right is shifted one to the right
+ Pass it to the n + 1st bit field search.
+
+ left: (left | bit) << 1
+ right: (right | bit) >> 1
+ down: down | bit
+
+
+ ======================
+ Way of thinking 3
+ ======================
+
+   In the search of the (n + 1) th bit field, these three bit fields are ORed
+ Make a bit field and put it in the position where it is ON because it is a valid muscle.
+ It will be the impossible position. Next, the bit obtained by ORing the three bit fields
+ Inverts the tofield. In other words, "Bit
+ Convert to And assuming that this arrangeable bit field is called bitmap,
+ Try the following operation.
+ 
+ bit = -bitmap & bitmap; // Get the rightmost bit
+ 
+   How can a negative value be used in a binary system in a computer to understand the meaning of this formula?
+ You need to know what is being expressed in Try to represent negative values ​​in binary notation
+ And will be as follows.
+ 
+  00000011 3
+  00000010 2
+  00000001 1
+  00000000 0
+  11111111 -1
+  11111110 -2
+  11111101 -3
+ 
+   When making positive value n into negative value -n, it is inverted after adding n to +1. And
+ For example, if n = 22 and AND of n and -n, it will become as follows. when n is expressed in binary system
+ The result is that only the lowest ON bit is extracted. Extremely easy operation
+ It is important to realize 1 bit extraction by.
+ 
+      00010110 22
+  AND 11101010 -22
+ --------------------
+      00000010
+ 
+   Well, if you write a while statement like this below, this loop will have the number of ON bits in bitmap.
+ It will loop a number of times. There is no waste at all for every pattern that can be placed
+ It will be generated.
+ 
+ while (bitmap) {
+     bit = -bitmap & bitmap;
+     bitmap ^ = bit;
+     // A placeable pattern is generated here one by one (bit)
+ }
+
+
+  Execution result
+ N: Total Unique hh: mm: ss. Ms
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.00
+12: 14200 1787 0.02
+13: 73712 9233 0.11
+14: 365596 45752 0.59
+15: 2279184 285053 3.89
+16: 14772512 1846955 26.12
+17: 95815104 11977939 2: 58. 32
+
+
+ 8. Bit map (also supports symmetryOps ())
+
+ * One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
+ * There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
+ *
+ * ■ Judgment method of unique solution
+ * One solution obtained by the whole search is essentially changed by rotation, inversion, etc.
+ If there is something that is isomorphic to another solution by the transformation without *, it is not taken as another solution
+ The solution obtained by counting solutions is called "unique solution". In other words, a unique solution is
+ * Group all solutions that become isomorphic by transformation by rotation, inversion, etc.
+ * It means that.
+ *
+ * Therefore, a unique solution is focused on its "number only", and this solution is a unique solution.
+ There is no definite way to judge that the solution of * is not a unique solution. Is it a unique solution?
+ * Judgment should be freely defined by each individual for the purpose of counting the number of unique solutions.
+ It will be *. Of course, the number of unique solutions themselves is
+ * I do not know.
+ *
+ * Well, since the N-Queen problem is formed by a square board, a conversion putter by rotation and inversion
+ There are eight ways to So simply "total number of answers = unique number of answers x 8"
+ * I don `t go. The number of elements in one group is not always eight. Of N = 5
+ * In the example below, there are two elements and eight elements.
+ *
+ *
+ * The total solution for N = 5 is 10, and the unique solution is 2.
+ *
+ * Group 1: One unique solution
+ *---Q--Q---
+ * Q--------Q
+ *--Q----Q--
+ *----Q Q----
+ *-Q------Q-
+ *
+ * Group 2: Unique solution 2
+ *----Q Q------Q----Q----Q--Q---Q-------Q
+ *--Q----Q--Q-------Q-Q-----Q----Q--Q--Q---
+ * Q--------Q---Q--Q------Q Q-----Q------Q-
+ *---Q--Q----Q-----Q---Q---Q-----Q Q----
+ *-Q------Q-----Q Q----Q-------Q--Q-----Q--
+ *
+ *
+ * Then, I will define to determine the unique solution, but define as follows
+ * I will. Find out where the queen of each row is from the right, down from the top row
+ List the lines in * in order. And it will be the minimum value when it is viewed as an N-digit number
+ We will count * as a unique solution. In addition, the number of N digits is referred to as "unique judgment value" thereafter.
+ I will call it *.
+ *
+ *----Q 0
+ *--Q--2
+ * Q----4 ---> 0 2 4 1 3 (unique judgment value)
+ *---Q-1
+ *-Q---3
+ *
+ *
+ * Determine whether one solution (original) obtained by search is a unique solution
+ * To try the “8 conversions, among them the original unique judgment value is the minimum?
+ It will be "examine the *". However, speaking from the conclusion, it can not be a unique solution
+ * By incorporating a pruning that truncates while searching for clear patterns, three ways
+ * It is possible to determine the unique solution just by trying the conversion.
+ *
+
+  Execution result
+ N: Total Unique hh: mm: ss. Ms
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.00
+12: 14200 1787 0.03
+13: 73712 9233 0.15
+14: 365596 45752 0.79
+15: 2279184 285053 5.88
+16: 14772512 1846955 38.64
+17: 95815104 11977939 4: 36.71
+
+
+ 9. Focus on the queen position in the top row
+
+  The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
+  In a sense, the same as "generate & test"
+  Analyze the nature of the problem and, like backtracking / forward inspection, think about omitting unnecessary searches
+  To remove the left-right symmetric solution for the unique solution in advance, at the loop in the first line,
+  You should arrange the queen only in the right half
+  If N is an odd number, there is no solution for centering the queen in the first row.
+  If there are no other three queens in the center, they will be rotated so that that side is on the top, and possibly left-right reversed,
+  Since it is possible to use a minimum solution, only the one placed in the center can be a unique solution
+  However, queens can not be placed at the top and at the center of the other sides, as they will work with each other
+
+
+  1. Separate the processing if there is a queen in the first corner, and if not
+    The condition judgment of whether it is the first line may go out of the loop
+    There is no significant difference in processing time, so we showed a code that is easy to understand
+  If there is a queen on line 2.1, the rotational symmetry check can be omitted
+    If there is a queen in the first corner of the line, it is impossible to place the queen in the other corner
+    Also for mirror images, it is sufficient to determine only the main diagonal mirror image
+    The second line, the second column should be regarded as a numerical value, and the condition of the second line <second column should be imposed.
+
+  If there is no queen in the first line corner, the queen can not be placed at 8 symmetrical positions to the right of the queen position
+  When placed, the unique judgment value of the state obtained by rotation and mirror image conversion is clearly increased
+    ☓☓ ... Q ☓☓
+    ☓ ... / | \ ☓
+    c ・ ・ ・ ・ ・ ・ ・ rt
+    ・ ・ ・ ・ ・ ・ ・ ・ ・
+    ・ ・ ・ ・ ・ ・ ・ ・ ・ ・
+    lt ・ ・ ・ ・ ・ ・ ・ a
+    ・ ・ ・ ・ ・ ・ ・ ☓
+    ☓☓ b · · dn ☓☓
+    
+  When the first line position is determined, calculate the possible position (☓ position)
+  lt, dn, lt positions can not be placed by valid check
+  The rotational symmetry check is only necessary if the queen is at a, b, c, so
+  It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
+ *
+ *
+ *
+ *
+ Execution result
+ N: Total Unique hh: mm: ss. Ms
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.00
+12: 14200 1787 0.02
+13: 73712 9233 0.08
+14: 365596 45752 0.49
+15: 2279184 285053 3.33
+16: 14772512 1846955 24.99
+17: 95815104 11977939 2: 44.42
+
+
+ 10. Pruning
+
+  The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
+  In a sense, the same as "generate & test"
+  Analyze the nature of the problem and, like backtracking / forward inspection, think about omitting unnecessary searches
+  To remove the left-right symmetric solution for the unique solution in advance, at the loop in the first line,
+  You should arrange the queen only in the right half
+  If N is an odd number, there is no solution for centering the queen in the first row.
+  If there are no other three queens in the center, they will be rotated so that that side is on the top, and possibly left-right reversed,
+  Since it is possible to use a minimum solution, only the one placed in the center can be a unique solution
+  However, queens can not be placed at the top and at the center of the other sides, as they will work with each other
+
+
+  1. Separate the processing if there is a queen in the first corner, and if not
+    The condition judgment of whether it is the first line may go out of the loop
+    There is no significant difference in processing time, so we showed a code that is easy to understand
+  If there is a queen on line 2.1, the rotational symmetry check can be omitted
+    If there is a queen in the first corner of the line, it is impossible to place the queen in the other corner
+    Also for mirror images, it is sufficient to determine only the main diagonal mirror image
+    The second line, the second column should be regarded as a numerical value, and the condition of the second line <second column should be imposed.
+
+  If there is no queen in the first line corner, the queen can not be placed at 8 symmetrical positions to the right of the queen position
+  When placed, the unique judgment value of the state obtained by rotation and mirror image conversion is clearly increased
+    ☓☓ ... Q ☓☓
+    ☓ ... / | \ ☓
+    c ・ ・ ・ ・ ・ ・ ・ rt
+    ・ ・ ・ ・ ・ ・ ・ ・ ・
+    ・ ・ ・ ・ ・ ・ ・ ・ ・ ・
+    lt ・ ・ ・ ・ ・ ・ ・ a
+    ・ ・ ・ ・ ・ ・ ・ ☓
+    ☓☓ b · · dn ☓☓
+    
+  When the first line position is determined, calculate the possible position (☓ position)
+  lt, dn, lt positions can not be placed by valid check
+  The rotational symmetry check is only necessary if the queen is at a, b, c, so
+  It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
+
+ *
+ *  Execution result
+ N: Total Unique hh: mm: ss. Ms
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.00
+12: 14200 1787 0.01
+13: 73712 9233 0.04
+14: 365596 45752 0.23
+15: 2279184 285053 1.48
+16: 14772512 1846955 10.60
+17: 95815104 11977939 1: 16.26
+
+
+ 11. Optimization of the symmetry cancellation method
+ *
+ *  Execution result
+  N: Total Unique hh: mm: ss. Ms
+ 4: 2 1 0.00
+ 5: 10 2 0.00
+ 6: 4 1 0.00
+ 7: 40 6 0.00
+ 8: 92 12 0.00
+ 9: 352 46 0.00
+10: 724 92 0.00
+11: 2680 341 0.00
+12: 14200 1787 0.00
+13: 73712 9233 0.02
+14: 365596 45752 0.09
+15: 2279184 285053 0.54
+16: 14772512 1846955 3.50
+17: 95815104 11977939 24.45
+
+
+ 12. Parallel processing: pthreads and structures
+ *
+ *  Execution result
+ N: Total Unique dd: hh: mm: ss. Ms
+ 4: 2 1 00:00: 00: 00
+ 5: 10 2 00:00: 00: 00
+ 6: 4 1 00:00: 00: 00
+ 7: 40 6 00:00: 00: 00
+ 8: 92 12 00:00: 00: 00
+ 9: 352 46 00: 00: 00.00
+10: 724 92 00: 00: 00.00
+11: 2680 341 00:00: 00: 00
+12: 14200 1787 00: 00: 00.00
+13: 73712 9233 00: 00: 00.00
+14: 365596 45752 00:00: 00.02
+15: 2279184 285053 00: 00: 00: 00.12
+16: 14772512 1846955 00: 00: 00: 00.66
+17: 95815104 11977939 00:00: 00: 30
+
+ 
+13. GPU nVidia-CUDA N17 = 1.67
+ *
+ *  Execution result
+ N: Total Unique dd: hh: mm: ss. Ms
+ 4: 2 0 00:00: 00: 00
+ 5: 10 0 00:00: 00: 00
+ 6: 4 0 00:00: 00: 00
+ 7: 40 0 ​​00:00: 00: 00
+ 8: 92 0 00:00: 00: 00
+ 9: 352 0 00:00: 00: 00
+10: 724 0 00:00: 00: 00
+11: 2680 0 00:00: 00: 00
+12: 14200 0 00: 00:00: 00
+13: 73712 0 00:00: 00: 0.05
+14: 365596 0 00: 00: 00: 00.29
+15: 2279184 0 00: 00:00: 01.94
+
+ N: Total Unique dd: hh: mm: ss. Ms
+ 4: 2 0 00: 00: 00: 00.06
+ 5: 10 0 00:00: 00: 00
+ 6: 4 0 00:00: 00: 00
+ 7: 40 0 ​​00:00: 00: 00
+ 8: 92 0 00:00: 00: 00
+ 9: 352 0 00:00: 00: 00
+10: 724 0 00:00: 00: 00
+11: 2680 0 00:00: 00: 00
+12: 14200 0 00:00:00 0.01
+13: 73712 0 00:00: 00:02
+14: 365596 0 00:00: 00: 01
+15: 2279184 0 00:00: 00: 05
+16: 14772512 0 00: 00: 00: 00.27
+17: 95815104 0 00:00: 01. 65
+
+
+
+ ** /
+
+
+
+
+
