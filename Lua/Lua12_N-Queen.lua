@@ -225,9 +225,9 @@ NQueen={}; NQueen.new=function()
   function NQueen:backTrack2(min,left,down,right) 
     local BIT;
     local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
-    if min==self.size then
+    if min==self.size-1 then
       --self.TOTAL=self.TOTAL+1 ;
-      if bitmap==0 then
+      if bitmap~=0 then
         -- 枝刈りと最適化
         if bit.band(bitmap,self.LASTMASK)==0 then
           self.board[min]=bitmap;
