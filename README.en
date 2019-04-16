@@ -2,11 +2,7 @@
   Algorithms and data structures learned in Java / C / Lua / Bash
   Step-by-step optimization of the N-Queen problem
   Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
-
-   Algorithms and Data Structures Learned with Java / C / Lua / Bash Optimize the
-   N-Queen Problem Step by Step Joint Information Technology Agency Kyodo News
-   Agency Information Technology Bureau Weichiro Suzuki
-   (suzuki.iichiro@kyodonews.jp)
+  
 
  table of contents
                                        | | Bash | | Lua | C | Java | OpenCL | Non-GPU Recursive | Non-GPU Non-Recursive |
@@ -25,7 +21,6 @@
  13. Parallel processing | N 12 | | N 17 | | 0: 04 | 0: 04 | 00: 35 |
 
 
- Compile (please refer to README in the directory for details)
  Compile (please refer to README in the directory for details)
 
 # Bash version (execution)
@@ -47,7 +42,6 @@
 
 *********************************
   What is the N-Queens problem
-  What is the N-Queens problem
 *********************************
  
      The N-Queen problem is that “8 columns × 8 rows of chess boards work with 8 queens,
@@ -67,25 +61,6 @@
      N-26, and also succeeded in finding an N = 27 solution at the same technical university in 2016.
      In addition to the elegant algorithm using Jeff Sommers' bit operation, the symmetry cancellation
      World records with advanced technology such as parallel processing, partial decomposition synthesis, compression and pruning
-     It is updated one after another.
-
-     The N-Queen problem is that “8 columns × 8 rows of chess boards work with 8 queens,
-     "I arrange it so it does not hit" "queen (N) of 8 queen problem, how large
-     The problem is when you can find a solution up to N.
-     The queen refers to the queen used in chess, and in the chessboard, vertically and horizontally,
-     It is a piece that can go as far as it goes diagonally, and it combines “flyers and horns” in Japanese Shogi.
-     It is a movement that 8-Queens on a typical chess board consisting of 8 columns x 8 lines
-     Because it is a relative number of solutions is 92. Because it is a relatively simple problem,
-     It is often taken as a lesson.
-     If it is about 8-Queens problem, even if "forced search" by manual or program
-     The solution can be obtained, but when N becomes large, the solution explodes at a stretch, and in practical time
-     It can not be solved.
-     All solutions currently known are Intel Pentium 4 at the University of Electro-Communications in 2004
-     Resolve n = 24 over 20 days of a PC cluster equipped with 68 Xeon 2.8 GHz processors,
-     First in the world, then at Nizza University in 2005 n = 25, 2009 at Dresden University of Technology
-     N-26, and also succeeded in finding an N = 27 solution at the same technical university in 2016.
-     In addition to the elegant algorithm using Jeff Sommers' bit operation, the symmetry cancellation
-     World records with advanced technology like as parallel processing, partial decomposition synthesis, compression and pruning
      It is updated one after another.
 
                                                        【World 1】 【Japan 1】 Decomposition method Contrasting method Bit map
@@ -139,19 +114,6 @@ Koichiro Takahashi improves JSomers version
 Search only representative solutions focusing on symmetry
 Improved program detoxification by recursive calling
 
-JSomers version (N = 22)
-Speed ​​up by skillful bit operation
-Reduce the search in half considering the solution of upside down
-The solution that Jeff Somers used to solve for N = 23
-
-University of Electro-Communications qn24b (N = 24)
-Improve JSomers version and improve performance by 7 to 24%
-Solution used to determine N = 24 at the University of Electro-Communications
-
-takaken version
-Koichiro Takahashi improves JSomers version
-Search only representative solutions focusing on symmetry
-Improved program detoxification by recursive calling
 
 
 
@@ -173,22 +135,7 @@ It is the top research. As the name suggests, it is a puzzle that seeks the solu
 N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
 To find the solution for the board whose value is N.
 
-******************************
-In the beginning
-******************************
 
-There are a few N-Queen engineers who were fortable to be able to refer to this page.
-I think it arrived by Google search or Git search, but the probability is close to a miracle.
-I want you to read a little more about the miracle that you can refer to this page as an engineer.
-Specifically, it is written clearly in the following link.
-
-  Eight queen problem
-  https://en.wikipedia.org/wiki/Eight Queen
- 
-Eight queens have been in presence since 1848.
-As the name suggest, it is a puzzle that seeks the solution of eight queens,
-N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
-To find the solution for the board whose value is N.
 
 ****************************
 Prize money for historical unresolved issues
@@ -255,71 +202,6 @@ Requires a large amount of calculations to be performed quickly, and modern comp
 But it is thought that it will take tens of thousands of years to solve it.
 
 
-******************************
-Prize money for historical unresolved issues
-******************************
-
-Historical chess puzzle problems may lead to unsolved problems in modern mathematics
-http://gigazine.net/news/20170905-million-dollar-chess-problem/
-
-The board game "Chess" with a history of more than 1000 years is more than just a game
-There are various puzzle problems "Chess Problem" in line with the rules.
-Eight queens are puzzles that use only eight queens of chess pieces.
-Large scale, it is an unsolved problem in modern mathematics,
-It is thought that leads to the elucidation of the "P vs. NP problem".
-
-2017 | “Simple” chess puzzle holds key to $ 1m prize | University of St Andrews
-https://www.st-andrews.ac.uk/news/archive/2017/title,1539813,en.php
-
-Can You Solve the Million-Dollar, Unsolvable Chess Problem? -Atlas Obscura
-http://www.atlasobscura.com/articles/queens-puzzle-chess-problem-solution-software
-
-You'll get 100 million yen if you solve The N queen can not be solved by any means with today's computer.
-https://www.gizmodo.jp/2017/10/eight-queens-puzzle.html
-
-"Eight Queen" was presented by chess player Max Betzel in 1848.
-A proposed puzzle. On the 8x8 chess board, you can go anywhere in the horizontal and vertical directions
-It is something that arranges eight pieces and queens, but in that case "each piece is taken to another piece
-Rules are not set in such a position. To this rule
-It has been considered as a mystery for a long time as how many correct answers exists exist when following
-However, in 1874, more than 100 years after its creation, Gunther proposed a method to solve using determinants
-And confirm that the total solution (basic solution) is 12 by British Glacier (Glaisher)
-doing.
-
-This problem is the n-queen problem where the number of squares on one side of the chess board is equal to the number of queens.
-It is also known that the numbers of solutions increases dramatically as the number of n increases.
-You at the time of writing, all solutions were known at the Dresden University of Technology in 2009.
-The basic solution is “26-Queen”, and the basic solution is 2789, 7124, 466, 51, 289.
-It is known that the number will be as much as 2K, 2317, 699, 1616, 3640, 44 when including the solution
-You are
-
-To Dr. Ian Gent, a computer scientist at the University of St. Andrews
-Research team is based on the "n-Queen Problem"
-(n-Queens Completion) on the complexity of the puzzle (PDF
-http://jair.org/media/5512/live-5512-10126-jair.pdf) I am making a dissertation. n-ku
-In the case of the hole filling problem, arrange some queen pieces on the chess board in advance.
-The puzzle is to fill in all the remaining queens.
-
-Basically, in order to solve this problem, it is called backtrack method, so to speak
-Law is used, but it takes a lot of time to try all the options, and
-To Gent The time increases exponentially as the number of squares and queens increases.
-Computers and algorithms that can solve this "n-queen fill-in problem" quickly
-As the development of Zum advances, we can expect the evolution of technology to solve the problems that we have every day
-That idea as early, the n-Queen problem that can be solved by modern science is 26 × 26 squares
-Remain in the “26-queen” of the
-It is acceptable to develop new technologies that do not exist today.
-
-The problem is that in 2000, The Clay Research Institute in the United States received a $ 1 million (approximately 110 million yen) prize
-Connected to the proof of the "P vs. NP problem", which is one of the Millennium
-It is assumed. It may be difficult to find the answer, but the answer is
-Problem that can be checked quickly to see if it is
-If you set P to be a problem that is
-It is provided that it is an NP problem that can be done, but the reverse
-Are all possible NP problems solved quickly? To prove the problem. Solve this
-Requires a large amount of calculations to be performed quickly, and modern computer technology
-But it is thought that it will take tens of thousands of years to solve it.
-
-
 ****************************
 Reference link etc.
 ****************************
@@ -358,54 +240,12 @@ Page of Mr. Takaken (Shinichiro Takahashi)
 It seems that everyone is discussing on the bulletin board (it is valuable)
 http://www2.ic-net.or.jp/~takaken/auto/guest/bbs62.html
 
-******************************
-Reference link etc.
-******************************
-
-
-When you search the Web such as Goole, you can see that there are countless pages. Among them, a fulfilling site
-If you read the following site roughly, 90% of the information is covered.
-
-N-Queens problem (Nobuhide Tsuda)
-******************************
-  In the beginning
-  Forced search (Brute-force search)
-  Backtracking
-  Constraint test acceleration (placement flag)
-  Speed ​​up by bit operation (bit map)
-  Symmetric solution removal
-  Speeding up by pruning
-  http://vivi.dyndns.org/tech/puzzle/NQueen.html
-
-Puzzle DE Programming (M.Hiroi)
-******************************
-  Speeding up with backtracking and bit operations
-  http://www.geocities.jp/m_hiroi/puzzle/nqueens.html
-
-Page of Mr. Takaken (Shinichiro Takahashi)
-******************************
-  N-Queen problem (finding the number of solutions)
-    Basic form using bit processing
-    Program mechanism using bit processing
-    Determination method of unique solution
-    Find the number of unique solutions
-    Development from unique solutions to all solutions
-    Source program and execution result
-  http://www.ic-net.or.jp/home/takaken/nt/queen/index.html
-
-It seems that everyone is discosing on the bulletin board (it is valuable)
-http://www2.ic-net.or.jp/~takaken/auto/guest/bbs62.html
-
-
+ptimal queens
 ****************************
 English, but all of the above is written in Java
-English, but all of the above is written in Java
-
 http://penguin.ewu.edu/~trolfe/Queens/OptQueen.html
 
 Other links
-Other links
-
 https://rosettacode.org/wiki/N-queens_problem
 http://www.cc.kyoto-su.ac.jp/~yamada/ap/backtrack.html
 http://yucchi.jp/java/java_tip/n_queens_problem/n_queens_problem.html
@@ -423,7 +263,6 @@ http://chiiji.s10.xrea.com/nn/nqueen/nqueenn.shtml
 http://www.neuro.sfc.keio.ac.jp/~masato/jv/nqueen/nqueenDemo.htm
 
 
-From here as a note of reference information
 From here as a note of reference information
 
 N = 22 found Jeff Somers
@@ -456,7 +295,7 @@ N = 24 discovery University of Electro-Communications
 
   N = 24 from Kenji KISE (kis (AT) is.uec.ac.jp), Sep 01 2004
 
-  N = 25 from Objectweb ProActive INRIA Team (proactive (AT) objectweb.org), Jun 11 2005 [Communicated by Alexandre Di Costanzo (Alexandre.Di_Costanzo (AT) sophia.inria.fr)]. time. N = 25 has been confirmed by the NTU 25 Queen Project at National Taiwan University and Ming Chuan University, led by Yuh-Pyng (Arping) Shieh, Jul 26 2005. This computation took 26982 days CPU time.
+  N = 25 from Objectweb ProActive INRIA Team (proactive (AT) objectweb.org), Jun 11 2005 [Communicated by Alexandre Di Costanzo (Alexandre.Di_Costanzo (AT) sophia.inria.fr)]. This calculation took about 53 years of CPU time. N = 25 has been confirmed by the NTU 25 Queen Project at National Taiwan University and Ming Chuan University, led by Yuh-Pyng (Arping) Shieh, Jul 26 2005. This computation took 26982 days CPU time.
 
   N = 26 as calculated by Queens (AT) TUD [http://queens.inf.tu-dresden.de/].-Thomas B. Preußer, Jul 11 ​​2009
 
@@ -481,7 +320,7 @@ I want you to try it.
 
 The solution to the N-Queen requires steps to disassemble the process and understand each one carefully.
 The first step is to look at and write the source of Step 1 over and over again.
-Of course, it's easy, so it takes a lot of solution time. You may have finished drinking coffee by the end of the process.
+Of course, it takes a lot of solution time as well as easy. You may have finished drinking coffee by the end of the process.
 When the process reaches step 15, the process ends in about one second. It took 1 minute to finish in 1 second
 You may not be interested. But what if 100 years do not take a year?
 Artificial intelligence AI technology is a trinity of device evolution, processing acceleration, and solution optimization (algorithm).
@@ -535,117 +374,20 @@ Above, I think that you may start with any language. Anyone who can do it can wr
 Then, the main subject from the following.
 
 
+**************************************************
+  Step-by-step optimization of the N-Queen problem
+**************************************************
 
-***********************************
-What's in this page
-***********************************
+/ **
+ Algorithms and data structures learned in C
+ Step-by-step optimization of the N-Queen problem
+ Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
 
-Specifically, there is an N queen program on this page.
+ compile
+ $ gcc -Wall -W -O3 -g -ftrapv -std = c99 -lm 07_01N -Queen.c -o 01N -Queen
 
-compile
-$ gcc -pthread -O3 -Wall 07 _ ** NQueen.c -o NQueen
-
-Execution
-$ ./NQueen
-
-
-I want you to try it.
-
-The solution to the N-Queen requires steps to disassemble the process and understand each one carefully.
-The first step is to look at and write the source of Step 1 over and over again.
-Of course, it's easy, so it takes a lot of solution time. You may have finished drinking coffee by the end of the process.
-When the process reaches step 15, the process ends in about one second. It took 1 minute to finish in 1 second
-You may not be interested. But what if 100 years do not take a year?
-Artificial intelligence AI technology is a trinity of device evolution, processing acceleration, and solution optimization (algorithm).
-In order, I want you to read carefully without skipping. Maybe, break up the N queen program all over Japan so far
-There should not be many sites summarized in the steps.
-
-In addition, the site is ready to become familiar with the N-Queen program in multiple programming languages.
-For example:
-
-  Java version N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_N-Queen
-
-  Bash version N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash
-
-  Lua version N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_Lua
-
-  C version N-Queen
-  https://github.com/suzukiiichiro/AI_Algorithm_C
- 
-C version
-It is said to be the fastest among almost all programming languages. That's true.
-If you are a beginner who does not know anything yet, you should start with C language.
-Because it is necessary to describe more complicatedly than Java, such as multi-threading,
-It requires deep knowledge. C language masters definitely understand the system technology more thoroughly than Java programmers.
-
-Java version
-The language C is said to be too difficult, leaving easy-to-reach parts, and Java is a language that was created without losing anything that C could do.
-Multithreading is also easier to understand than C language. If you have only superficial knowledge of system technology, Java is good.
-It is also a dangerous language that makes the system known. The conclusion is that Java can be Linux command, Bash, kernel
-There is no progress in understanding.
-
-Bash version
-If you want to learn Linux / UNIX, I recommend the Bash version.
-https://github.com/suzukiiichiro/AI_Algorithm_Bash
-
-  I wrote below why Bash.
-  https://github.com/suzukiiichiro/AI_Algorithm_Bash/blob/master/002UNIXBasic
-
-  Bash is slow. But it is powerful. You can get the power of Linux.
-  If you're wondering which language to learn in, don't hesitate to pick "Bash".
-  Next is Lua-> Java-> C.
-
-Lua version
-There is no doubt that smartphone apps are driving the world's technology.
-It is the Lua language that is gaining breadth in its application development. It's compact and fast, and it's good when it's compatible with the surroundings.
-
-
-Above, I think that you may start with any language. Anyone who can do it can write in any language.
-Then, the main subject from the following.
-
-
-
-************************************************
-  ステップバイステップでＮ−クイーン問題を最適化
-************************************************
-
-/**
- Cで学ぶアルゴリズムとデータ構造
- ステップバイステップでＮ−クイーン問題を最適化
- 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-
- コンパイル compile
- $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm 07_01N-Queen.c -o 01N-Queen
-
- 実行 Execution
- $ ./01N-Queen
-
-
- 1. ブルートフォース　力任せ探索
-
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解と
-   なるかをチェックする方法
-
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
-
- Execution result
- :
- : ＜すごく時間がかかります＞
- :
- 16777207: 7 7 7 7 7 7 6 6
- 16777208: 7 7 7 7 7 7 6 7
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+ Execution
+ $ ./01 N-Queen
 
 
  1. Brute force force-based search
@@ -663,7 +405,7 @@ Then, the main subject from the following.
  16777207: 7 7 7 7 7 7 6 6
  16777208: 7 7 7 7 7 7 6 7
  16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
+ 16777210: 7 7 7 7 7 7 1
  16777211: 7 7 7 7 7 7 7 2
  16777212: 7 7 7 7 7 7 7 3
  16777213: 7 7 7 7 7 7 7 4
@@ -671,30 +413,6 @@ Then, the main subject from the following.
  16777215: 7 7 7 7 7 7 7 6
  16777216: 7 7 7 7 7 7 7 7
 
-
-
- 
- ２．配置フラグ（制約テスト高速化）
-
-   パターンを生成し終わってからチェックを行うのではなく、途中で制約を満たさな
-   い事が明らかな場合は、それ以降のパターン生成を行わない。
-  「手を進められるだけ進めて、それ以上は無理（それ以上進めても解はない）という
-  事がわかると一手だけ戻ってやり直す」という考え方で全ての手を調べる方法。
-  (※)各行列に一個の王妃配置する組み合わせを再帰的に列挙分枝走査を行っても、組
-  み合わせを列挙するだけであって、8王妃問題を解いているわけではありません。
-
- Execution result
- :
- :
- 40312: 7 6 5 4 2 1 3 0
- 40313: 7 6 5 4 2 3 0 1
- 40314: 7 6 5 4 2 3 1 0
- 40315: 7 6 5 4 3 0 1 2
- 40316: 7 6 5 4 3 0 2 1
- 40317: 7 6 5 4 3 1 0 2
- 40318: 7 6 5 4 3 1 2 0
- 40319: 7 6 5 4 3 2 0 1
- 40320: 7 6 5 4 3 2 1 0
 
 
  2. Placement flag (constraint test acceleration)
@@ -719,29 +437,6 @@ Then, the main subject from the following.
  40319: 7 6 5 4 3 2 0 1
  40320: 7 6 5 4 3 2 1 0
 
- ３．バックトラック
-
-   　各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
-   さない事が明らかな場合は、それ以降のパターン生成を行わない。
-   　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
-   　これまでは行方向と列方向に重複しない組み合わせを列挙するものですが、王妃
-   は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
-   けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
-   を降りても解がないと判明した時点で木を引き返すということができます。
-
- Execution result
- 	 :
- 	 :
-	83: 6 1 5 2 0 3 7 4
-	84: 6 2 0 5 7 4 1 3
-	85: 6 2 7 1 4 0 5 3
-	86: 6 3 1 4 7 0 2 5
-	87: 6 3 1 7 5 0 2 4
-	88: 6 4 2 0 5 7 1 3
-	89: 7 1 3 0 6 4 2 5
-	90: 7 1 4 2 0 6 3 5
-	91: 7 2 0 5 1 4 6 3
-	92: 7 3 0 2 5 1 6 4
 
  3. Back track
 
@@ -768,8 +463,6 @@ Then, the main subject from the following.
 92: 7 3 0 2 5 1 6 4
 
 
- ４．出力結果の表示処理
-      Nが順次大きくなりつつ処理を継続できるように処理を修正
  4. Display process of output result
       Corrected processing so that processing can be continued while N gradually increases
 
@@ -777,82 +470,22 @@ Then, the main subject from the following.
   N: Total Unique hh: mm: ss. Ms
   2: 0 0 0.00
   3: 0 0 0.00
-  4:            2               0            0.00
-  5:           10               0            0.00
-  6:            4               0            0.00
-  7:           40               0            0.00
-  8:           92               0            0.00
-  9:          352               0            0.00
- 10:          724               0            0.00
- 11:         2680               0            0.01
- 12:        14200               0            0.05
- 13:        73712               0            0.30
- 14:       365596               0            1.93
- 15:      2279184               0           13.50
- 16:     14772512               0         1:39.30
- 17:     95815104               0        12:29.59
+  4: 2 0 0.00
+  5: 10 0 0.00
+  6: 4 0 0.00
+  7: 40 0 ​​0.00
+  8: 92 0 0.00
+  9: 352 0 0.00
+ 10: 724 0 0.00
+ 11: 2680 0 0.01
+ 12: 14200 0 0.05
+ 13: 73712 0 0.30
+ 14: 365596 0 1.93
+ 15: 2279184 0 13.50
+ 16: 14772512 0 1: 39.30
+ 17: 95815104 0 12: 29. 59
 
 
- ５．対称解除法
-
-     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
-     ８個の対称解が存在する。 A method of removing an opposite solution and finding a solution from a unique solution.
- 
- ■ユニーク解の判定方法
-   全探索によって得られたある１つの解が、回転・反転などによる本質的に変わること
- のない変換によって他の解と同型となるものが存在する場合、それを別の解とはしない
- とする解の数え方で得られる解を「ユニーク解」といいます。 In other words, a unique solution is
- 全解の中から回転・反転などによる変換によって同型になるもの同士をグループ化する
- ことを意味しています。
- 
-   従って、ユニーク解はその「個数のみ」に着目され、この解はユニーク解であり、こ
- の解はユニーク解ではないという定まった判定方法はありません。 Is it a unique solution?
- どうかの判断はユニーク解の個数を数える目的の為だけに各個人が自由に定義すること
- It becomes. Of course, the number of unique solutions themselves is
- わりません。
- 
-   さて、Ｎクイーン問題は正方形のボードで形成されるので回転・反転による変換パター
- ンはぜんぶで８通りあります。 So simply "total number of answers = unique number of answers x 8"
- いきません。 The number of elements in one group is not always eight. Of N = 5
- 下の例では要素数が２個のものと８個のものがあります。
-
-
- Ｎ＝５の全解は１０、ユニーク解は２なのです。
- 
- グループ１: ユニーク解１つ目
---- Q-  - Q---
- Q----  ---- Q
--- Q--  -- Q--
----- Q   Q----
-- Q---  --- Q-
- 
- グループ２: ユニーク解２つ目
----- Q   Q----  -- Q--  -- Q--  --- Q-  - Q---   Q----  ---- Q
--- Q--  -- Q--   Q----  ---- Q  - Q---  --- Q-  --- Q-  - Q---
- Q----  ---- Q  --- Q-  - Q---  ---- Q   Q----  - Q---  --- Q-
---- Q-  - Q---  - Q---  --- Q-  -- Q--  -- Q--  ---- Q   Q----
-- Q---  --- Q-  ---- Q   Q----   Q----  ---- Q  -- Q--  -- Q--
-
- 
-   それでは、ユニーク解を判定するための定義付けを行いますが、次のように定義する
- ことにします。 Find out where the queen of each row is from the right, down from the top row
- の行へ順番に列挙します。 And it will be the minimum value when it is viewed as an N-digit number
- をユニーク解として数えることにします。 In addition, the number of N digits is referred to as "unique judgment value" thereafter.
- と呼ぶことにします。
- 
----- Q   0
--- Q--   2
- Q----   4  --->  0 2 4 1 3 (ユニーク判定値)
---- Q-   1
-- Q---   3
- 
- 
-   探索によって得られたある１つの解(オリジナル)がユニーク解であるかどうかを判定
- するには「８通りの変換を試み、その中でオリジナルのユニーク判定値が最小であるか
- を調べる」ことになります。 However, speaking from the conclusion, it can not be a unique solution
- とが明確なパターンを探索中に切り捨てるある枝刈りを組み込むことにより、３通りの
- 変換を試みるだけでユニーク解の判定が可能になります。
-  
  5. Symmetry cancellation method
 
      One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
@@ -914,14 +547,6 @@ Then, the main subject from the following.
  It is possible to judge the unique solution just by trying the conversion.
   
  
- ■ユニーク解の個数を求める
-   先ず最上段の行のクイーンの位置に着目します。その位置が左半分の領域にあればユ
- ニーク解には成り得ません。何故なら左右反転によって得られるパターンのユニーク判
- 定値の方が確実に小さくなるからです。また、Ｎが奇数の場合に中央にあった場合はど
- うでしょう。これもユニーク解には成り得ません。何故なら仮に中央にあった場合、そ
- れがユニーク解であるためには少なくとも他の外側の３辺におけるクイーンの位置も中
- 央になければならず、それは互いの効き筋にあたるので有り得ません。
-
  ■ Find the number of unique solutions
    First we focus on the queen position in the top row. If the position is in the left half area, you
  It can not be a Neek solution. Because the unique size of the pattern obtained by flipping left and right
@@ -929,6 +554,7 @@ Then, the main subject from the following.
  It will be. This too can not be a unique solution. Because if it was in the middle,
  In order to be unique, the position of the queen on at least the other three outer sides is also
  It has to be in the middle, and it is impossible because it corresponds to each other's effective muscles.
+
 
 
  ************************************************** *************************
