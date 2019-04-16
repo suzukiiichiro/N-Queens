@@ -5,7 +5,7 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
- ８．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化
+ １０．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビットマップ化＋クイーンの位置による振り分け（BOUND1+BOUND2)
 
  	実行結果
 
@@ -21,11 +21,11 @@
 10:              724           92    00:00:00
 11:             2680          341    00:00:00
 12:            14200         1787    00:00:00
-13:            73712         9233    00:00:01
-14:           365596        45752    00:00:01
-15:          2279184       285053    00:00:10
-16:         14772512      1846955    00:01:01
-17:         95815104     11977939    00:07:33
+13:            73712         9233    00:00:00
+14:           365596        45752    00:00:02
+15:          2279184       285053    00:00:16
+16:         14772512      1846955    00:01:45
+17:         95815104     11977939    00:12:18
 
   ]]--
 
@@ -35,7 +35,6 @@ NQueen={}; NQueen.new=function()
     size=0;
     UNIQUE=0;
     MASK=0;
-    --nTotal=0;nUniq=0;nEquiv=0; 
     COUNT2=0;COUNT4=0;COUNT8=0;
     BOUND1=0;
     BOUND2=0;
@@ -44,7 +43,6 @@ NQueen={}; NQueen.new=function()
     SIDEMASK=0;
     LASTMASK=0;
     board={};trial={};scratch={};
-    -- trial={};scratch={};
   };
   --
   function NQueen:secstotime(secs)
@@ -73,14 +71,6 @@ NQueen={}; NQueen.new=function()
     end 
   end
   --
-  function NQueen:vMirror(bf,af,si)
-    local score ;
-    for i=0,si,1 do 
-      score=bf[i];
-      af[i]=self:rh(score,si-1);
-    end 
-  end
-  --
   function NQueen:rh(a,sz)
     local tmp=0;
     for i=0,sz,1 do
@@ -93,6 +83,14 @@ NQueen={}; NQueen.new=function()
     return tmp;
   end
   --
+  function NQueen:vMirror(bf,af,si)
+    local score ;
+    for i=0,si,1 do 
+      score=bf[i];
+      af[i]=self:rh(score,si-1);
+    end 
+  end
+  --
   function NQueen:intncmp(lt,rt,si)
     local rtn=0;
     for k=0,si,1 do
@@ -100,6 +98,16 @@ NQueen={}; NQueen.new=function()
       if(rtn~=0)then break;end
     end 
     return rtn;
+  end
+  --
+  function NQueen:rbits(byte,sz)
+    local score=0;
+    for i=sz,0,-1 do
+      if bit.band(bit.arshift(byte,i), 1) ==0 then
+        score=score+2^i;
+      end
+    end
+    return score;
   end
   --
   function NQueen:symmetryOps(si)
@@ -151,6 +159,7 @@ NQueen={}; NQueen.new=function()
     if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end 
     if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
   end
+  --
   function NQueen:backTrack2(min,left,down,right) 
     local BIT;
     local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
@@ -197,7 +206,6 @@ NQueen={}; NQueen.new=function()
       BIT=bit.lshift(1,BOUND1);
       self.board[1]=BIT;
       self:backTrack1(2,bit.lshift(bit.bor(2,BIT),1),bit.bor(1,BIT),bit.rshift(BIT,1));
-
     end
     self.LASTMASK=bit.bor(self.TOPBIT,1);
     self.SIDEMASK=self.LASTMASK;
@@ -211,16 +219,6 @@ NQueen={}; NQueen.new=function()
       self.ENDBIT=bit.rshift(self.ENDBIT,1);
       self.BOUND2=self.BOUND2-1;
     end
-  end
-  --
-  function NQueen:rbits(byte,sz)
-    local score=0;
-    for i=sz,0,-1 do
-      if bit.band(bit.arshift(byte,i), 1) ==0 then
-        score=score+2^i;
-      end
-    end
-    return score;
   end
   --
   function NQueen:NQueen()

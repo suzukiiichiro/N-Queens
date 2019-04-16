@@ -5,296 +5,262 @@
   ステップバイステップでＮ−クイーン問題を最適化
   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
   
- １２．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビッ トマップ化＋クイーンの位置による振り分け（BOUND1+BOUND2)＋枝刈り＋最適化
+ １１．バックトラック＋ビットマップ＋対称解除法＋枝刈りと最適化＋対称解除法のビッ トマップ化＋クイーンの位置による振り分け（BOUND1+BOUND2)＋枝刈り
 
-	実行結果
+ 	実行結果
 
+ N:            Total       Unique    hh:mm:ss
+ 2:                0            0    00:00:00
+ 3:                0            0    00:00:00
+ 4:                2            1    00:00:00
+ 5:               10            2    00:00:00
+ 6:                4            1    00:00:00
+ 7:               40            6    00:00:00
+ 8:               92           12    00:00:00
+ 9:              352           46    00:00:00
+10:              724           92    00:00:00
+11:             2680          341    00:00:00
+12:            14200         1787    00:00:00
+13:            73712         9233    00:00:00
+14:           365596        45752    00:00:01
+15:          2279184       285053    00:00:04
+16:         14772512      1846955    00:00:30
+17:         95815104     11977939    00:03:32
 
- ]]--
+  ]]--
 
-Info={}; Info.new=function()
+NQueen={}; NQueen.new=function()
+  -- 
   local this={
-    nTotal=0;nUniq=0; nextCol=0; limit=0;
-    starttime=os.time();
+    size=0;
+    UNIQUE=0;
+    MASK=0;
+    COUNT2=0;COUNT4=0;COUNT8=0;
+    BOUND1=0;
+    BOUND2=0;
+    TOPBIT=0;
+    ENDBIT=0;
+    SIDEMASK=0;
+    LASTMASK=0;
+    board={};trial={};scratch={};
   };
-  function Info:resetCount(size)
-    self.nTotal,self.nUniq=0,0;
-    self.limit=1;
-  end
-  function Info:nextJob(nS,nU)
-    self.nTotal=self.nTotal+nS;
-    self.nUniq=self.nUniq+nU;
-    if self.nextCol<self.limit then
-      self.nextCol=self.nextCol+1;
-    else self.nextCol=-1; end
-    return self.nextCol;
-  end
-  function Info:getTotal() return self.nTotal; end
-  function Info:getUnique() return self.nUniq; end
-  function Info:getTime() 
-    return self:secstotime(os.difftime(os.time(),self.starttime)); 
-  end
-  function Info:secstotime(secs)
-    sec=math.floor(secs)
-    if(sec>59) then
-      local hour=math.floor(sec*0.000277777778);
-      local minute=math.floor(sec*0.0166666667)-hour*60;
-      sec=sec-hour*3600-minute*60
-      if(sec<10)then sec="0"..sec; end
-      if(hour<10)then hour="0"..hour; end
-      if(minute<10)then minute="0"..minute; end
-      return hour..":"..minute..":"..sec;
-    end
-    if(sec<10)then sec="0"..sec end
-    return "00:00:"..sec;
+  --
+  function NQueen:secstotime(secs)
+    sec=math.floor(secs);
+	  if(sec>59) then
+		  local hour = math.floor(sec*0.000277777778)
+		  local minute = math.floor(sec*0.0166666667) - hour*60
+		  sec = sec - hour*3600 - minute*60
+		  if(sec<10)then sec = "0"..sec end
+		  if(hour<10)then hour = "0"..hour end
+		  if(minute<10)then minute = "0"..minute end
+		  return hour..":"..minute..":"..sec
+	  end
+	  if(sec<10)then sec = "0"..sec end
+	  return "00:00:"..sec
   end 
-  return setmetatable(this,{__index=Info});
-end
-
-Thread={}; Thread.new=function()
-  local this={
-    size=2;
-    nTotal=0;nUniq=0;
-    C2=0;C4=0;C8=0;
-    aB={};--array board
-    B=0; --BIT
-    M=0; --MASK
-    SE=0;--SIZEE
-    TB=0;--TOPBIT
-    SM=0;--SIDEMASK
-    LM=0;--LASTMAK
-    EB=0;--ENDBIT
-    B1=0;--BOUND1
-    B2=0;--BOUND2
-  };
-  function Thread:Thread(size,info)
-    self.size=size;
-    self.info=info;
-    info:resetCount();
+  --
+  function NQueen:rotate(bf,af,si)
+    for i=0,si,1 do
+      local t=0;
+      for j=0,si,1 do
+        --t=t|((bf[j]>>i)&1)<<(si-j-1); 
+        t=bit.bor(t,bit.lshift(bit.band(bit.rshift(bf[j],i),1),(si-j-1)));
+      end 
+      af[i]=t;
+    end 
   end
-  function Thread:run()
-    local nextCol;
-    local size=self.size;
-    while(true) do
-      nextCol=info:nextJob(self.nTotal,self.nUniq);
-      if nextCol<0 then break; end
-      self.nTotal,self.nUniq=0,0;
-      for y=0,size-1,1 do self.aB[y]=y; end --テーブルの初期化
-      self:BM_rotate(size);
-    end
+  --
+  function NQueen:rh(a,sz)
+    local tmp=0;
+    for i=0,sz,1 do
+      --if(a&(1<<i))then  
+      if bit.band(a,bit.lshift(1,i))~=0 then
+         --return tmp|=(1<<(sz-i)); 
+         return bit.bor(tmp,bit.lshift(1,(sz-i)));
+      end
+    end 
+    return tmp;
   end
-
-  function Thread:Check(bsize)
-    --90度回転
-    local SE=self.SE; --SIZEE
-    local aB=self.aB; --array board[]
-    local TB=self.TB; --TOPBIT
-    local EB=self.EB; --ENDBIT
-    local B1=self.B1; --BOUND1
-    local B2=self.B2; --BOUND2
-		if aB[B2]==1 then 
-			local own=1; 
-      local ptn=2; 
-      while own<=SE do
-        self.B=1; 
-        local you=SE; 
-        while aB[you]~=ptn and aB[own]>=self.B do
-          --self.B=(self.B<<1);
-          self.B=bit.lshift(self.B,1);
-          you=you-1;
-        end
-        if aB[own]>self.B then return; end
-        if aB[own]<self.B then break; end
-        own=own+1;
-        --ptn=(ptn<<1);
-        ptn= bit.lshift(ptn,1);
-      end
-		--//90度回転して同型なら180度/270度回転も同型である
-      if own>SE then
-        self.C2=self.C2+1;
-        return;
-      end
-    end
-    --//180度回転
-    if aB[SE]==EB then
-      local own=1; 
-      local you=SE-1;
-      while own<=SE do
-        self.B=1; 
-        local ptn=TB;
-        while ptn~=aB[you] and aB[own]>=self.B do
-          --self.B=(self.B<<1);
-          self.B=bit.lshift(self.B,1);
-          --ptn=(ptn>>1);
-          ptn=bit.rshift(ptn,1);
-        end
-        if aB[own]>self.B then return; end
-        if aB[own]<self.B then break; end
-        own=own+1;
-        you=you-1;
-      end
-    --	//90度回転が同型でなくても180度回転が同型である事もある
-      if own>SE then
-        self.C4=self.C4+1;
-        return;
-      end
-    end
-    --	//270度回転
-    if aB[B1]==TB then
-      local own=1; 
-      --local ptn=(TB>>1); 
-      local ptn=bit.rshift(self.TB,1);
-      while own<=SE do
-        self.B=1; 
-        local you=0;
-        while aB[you]~=ptn and aB[own]>=self.B do
-          --self.B=(self.B<<1);
-          self.B=bit.lshift(self.B,1);
-          you=you+1;
-        end
-        if aB[own]>self.B then return; end
-        if aB[own]<self.B then break; end
-        own=own+1;
-        --ptn=(ptn>>1);
-        ptn=bit.rshift(ptn,1);
-      end
-    end
-    self.C8=self.C8+1;
-  end   
-  --ビット反転させるメソッド・・・
-  function Thread:rbits(byte,sz)
+  --
+  function NQueen:vMirror(bf,af,si)
+    local score ;
+    for i=0,si,1 do 
+      score=bf[i];
+      af[i]=self:rh(score,si-1);
+    end 
+  end
+  --
+  function NQueen:intncmp(lt,rt,si)
+    local rtn=0;
+    for k=0,si,1 do
+      rtn=lt[k]-rt[k];
+      if(rtn~=0)then break;end
+    end 
+    return rtn;
+  end
+  --
+  function NQueen:rbits(byte,sz)
     local score=0;
     for i=sz,0,-1 do
-    --io.write(bit.bnot(bit.band(bit.arshift(byte,i), 1)))
       if bit.band(bit.arshift(byte,i), 1) ==0 then
         score=score+2^i;
       end
     end
     return score;
   end
-	--* 最上段のクイーンが角以外にある場合の探索
-  function Thread:backTrack2(y,l,d,r)
-    --local BM=(self.M&~(l|d|r)); -- BM:bitmap
-    local BM=bit.band(self.M,self:rbits(bit.bor(l,d,r),self.size-1));
-    local SE=self.SE; --SEZIE
-    local LM=self.LM; --LASTmASK
-    local SM=self.SM; --SIDEMASK
-    local B1=self.B1; --BOUND1
-    local B2=self.B2; --BOUND2
-    if y==SE then
-      if BM~=0 then 
-        --if (BM&LM)==0 then
-        if bit.band(BM,LM)==0 then
-          self.aB[y]=BM;
-          self:Check(BM);
+  --
+  function NQueen:symmetryOps(si)
+    local nEquiv;
+    --// 回転・反転・対称チェックのためにboard配列をコピー
+    for i=0,si,1 do self.trial[i]=self.board[i]; end
+    --//時計回りに90度回転
+    self:rotate(self.trial,self.scratch,si);    
+    local k=self:intncmp(self.board,self.scratch,si);
+    if(k>0)then return; end
+    if(k==0)then nEquiv=2;
+    else
+      --//時計回りに180度回転
+      self:rotate(self.scratch,self.trial,si);  
+      k=self:intncmp(self.board,self.trial,si);
+      if(k>0)then return; end 
+      if(k==0)then nEquiv=4;
+      else
+        --//時計回りに270度回転
+        self:rotate(self.trial,self.scratch,si);
+        k=self:intncmp(self.board,self.scratch,si);
+        if(k>0) then return; end 
+        nEquiv=8;
+      end 
+    end 
+    --// 回転・反転・対称チェックのためにboard配列をコピー
+    for i=0,si,1 do
+      self.scratch[i]=self.board[i];
+    end
+    --//垂直反転
+    self:vMirror(self.scratch,self.trial,si);   
+    k=self:intncmp(self.board,self.trial,si);
+    if(k>0)then return; end 
+    if(nEquiv>2)then    --//-90度回転 対角鏡と同等       
+      self:rotate(self.trial,self.scratch,si);
+      k=self:intncmp(self.board,self.scratch,si);
+      if(k>0)then return; end 
+      if(nEquiv>4)then  --//-180度回転 水平鏡像と同等
+        self:rotate(self.scratch,self.trial,si);
+        k=self:intncmp(self.board,self.trial,si);
+        if(k>0)then return; end
+        --//-270度回転 反対角鏡と同等
+        self:rotate(self.trial,self.scratch,si);
+        k=self:intncmp(self.board,self.scratch,si);
+        if(k>0)then return; end 
+      end 
+    end 
+    if(nEquiv==2)then self.COUNT2=self.COUNT2+1;end 
+    if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end 
+    if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
+  end
+  function NQueen:backTrack2(min,left,down,right) 
+    local BIT;
+    local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
+    if min==self.size then
+      --self.TOTAL=self.TOTAL+1 ;
+      if bitmap==0 then
+        self.board[min]=bitmap;
+        self:symmetryOps(self.size);
+      end
+    else
+      if min < self.BOUND1 then
+        bitmap=bit.bor(bitmap,self.SIDEMASK);
+        bitmap=bit.bxor(bitmap,self.SIDEMASK);
+      end
+      if min==self.BOUND2 then
+        if bit.band(down,self.SIDEMASK) ==0 then
+          return;
         end
+        if bit.band(down,self.SIDEMASK)~=self.SIDEMASK then
+           bitmap=bit.band(bitmap,self.SIDEMASK)
+        end
+     end
+      while bitmap~=0 do
+        BIT=bit.band(-bitmap,bitmap);
+        self.board[min]=BIT;
+        bitmap=bit.bxor(bitmap,BIT);
+        self:backTrack2(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
+      end
+    end
+  end
+  --
+  function NQueen:backTrack1(min,left,down,right) 
+    local BIT;
+    local bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right ),self.size-1));
+    if min==self.size then
+      --self.TOTAL=self.TOTAL+1 ;
+      if bitmap==0 then
+        self.board[min]=bitmap;
+        --self:symmetryOps(self.size);
+        self.COUNT8=self.COUNT8+1;
       end
     else
-      if y<B1 then
-        --BM=(BM|SM);
-        BM=bit.bor(BM,SM);
-        --BM=(BM~SM);
-        BM=bit.bxor(BM,SM);
-      elseif y==B2 then
-        --if(d&SM)==0 then return; end 
-        if(bit.band(d,SM)==0) then return; end
-        --if(d&SM)~=SM then BM=(BM&SM); end
-        if(bit.band(d,SM)~=SM) then BM=bit.band(BM,SM); end
-      end
-      while BM~=0 do
-        --self.aB[y],self.B=(-BM&BM),(-BM&BM);
-        self.aB[y],self.B=bit.band(-BM,BM),bit.band(-BM,BM);
-        --BM=(BM~self.aB[y]);
-        BM=bit.bxor(BM,self.aB[y]);
-        --self:backTrack2(y+1,(l|self.B)<<1,(d|self.B),((r|self.B)>>1));
-        self:backTrack2(y+1,bit.lshift(bit.bor(l,self.B),1),bit.bor(d,self.B),bit.rshift(bit.bor(r,self.B),1));
-      end
-    end
-  end
-  -- * 最上段のクイーンが角にある場合の探索
-  function Thread:backTrack1(y,l,d,r)
-    --local BM=(self.M&~(l|d|r));
-    local BM=bit.band(self.M,self:rbits(bit.bor(l,d,r),self.size-1));
-    local SE=self.SE; --SEZIE
-    local B1=self.B1; --BOUND1
-    if y==SE then
-      if BM~=0 then
-          self.aB[y]=BM;
-          self.C8=self.C8+1;
-      end
-    else
-      if y<B1 then
-        --BM=BM|2;
-        BM=bit.bor(BM,2);
-        --BM=BM~2;
-        BM=bit.bxor(BM,2);
-      end
-      while BM~=0 do
-        --self.aB[y],self.B=(-BM&BM),(-BM&BM)
-        self.aB[y],self.B=bit.band(-BM,BM),bit.band(-BM,BM);
-        --BM=(BM~self.aB[y]);
-        BM=bit.bxor(BM,self.aB[y]);
-        --self:backTrack1(y+1,(l|self.B)<<1,(d|self.B),(r|self.B)>>1);
-        self:backTrack1(y+1,bit.lshift(bit.bor(l,self.B),1),bit.bor(d,self.B),bit.rshift(bit.bor(r,self.B),1));
-      end
-    end
-  end
-  function Thread:BM_rotate(size)
-    self.SE=size-1;
-		local SE=self.SE;
-    --self.TB=(1<<SE);
-		self.TB=bit.lshift(1,SE);
-    --self.M=(1<<size)-1;    
-    self.M=bit.lshift(1,size)-1;    
-    self.aB[0]=1;
-    self.B1=2;
-    while self.B1>1 and self.B1<SE do
-      --self.aB[1],self.B=(1<<self.B1),(1<<self.B1);
-			self.aB[1],self.B=bit.lshift(1,self.B1),bit.lshift(1,self.B1);
-      --self:backTrack1(2,(2|self.B)<<1,(1|self.B),(self.B>>1));
-      self:backTrack1(2,bit.lshift(bit.bor(2,self.B),1),bit.bor(1,self.B),bit.rshift(self.B,1));
-      self.B1=self.B1+1;
-    end
-    --self.SM,self.LM=(self.TB|1),(self.TB|1);
-		self.SM,self.LM=bit.bor(self.TB,1),bit.bor(self.TB,1);
-    --self.EB=(self.TB>>1);
-    self.EB=bit.rshift(self.TB,1);
-    self.B1=1;
-    self.B2=size-2;
-    while self.B1>0 and self.B2<SE and self.B1<self.B2 do
-      --self.aB[0],self.B=(1<<self.B1),(1<<self.B1);
-      self.aB[0],self.B=bit.lshift(1,self.B1),bit.lshift(1,self.B1);
-      --self:backTrack2(1,self.B<<1,self.B,self.B>>1);
-      self:backTrack2(1,bit.lshift(self.B,1),self.B,bit.rshift(self.B,1));
-      --self.LM=(self.LM|self.LM>>1|self.LM<<1);
-      self.LM=bit.bor(self.LM,bit.rshift(self.LM,1),bit.lshift(self.LM,1));
-      --self.EB=(self.EB>>1);
-      self.EB=bit.rshift(self.EB,1);
-      self.B1=self.B1+1;
-      self.B2=self.B2-1;
-    end
-    self.nUniq=self.C8+self.C4+self.C2;
-    self.nTotal=(self.C8*8)+(self.C4*4)+(self.C2*2);
-  end
-  return setmetatable(this,{__index=Thread});
-end
+      if min<self.BOUND1 then
+        bitmap=bit.bor(bitmap,2);
+        bitmap=bit.bxor(bitmap,2);
 
-NQueen={}; NQueen.new=function()
-  local this={};
+      end
+      while bitmap~=0 do
+        BIT=bit.band(-bitmap,bitmap);
+        self.board[min]=BIT;
+        bitmap=bit.bxor(bitmap,BIT);
+        self:backTrack1(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
+      end
+    end
+  end
+  --
+  function NQueen:NQueens(min) 
+    local BIT;
+    self.TOPBIT=bit.lshift(1,(self.size-1));
+    self.board[0]=1;
+    for BOUND1=2,self.size-1,1 do
+      BIT=bit.lshift(1,BOUND1);
+      self.board[1]=BIT;
+      self.BOUND1=BOUND1;
+      self:backTrack1(2,bit.lshift(bit.bor(2,BIT),1),bit.bor(1,BIT),bit.rshift(BIT,1));
+
+    end
+    self.LASTMASK=bit.bor(self.TOPBIT,1);
+    self.SIDEMASK=self.LASTMASK;
+    self.ENDBIT=bit.rshift(self.TOPBIT,1);
+    self.BOUND2=self.size-2;
+    for BOUND1=1,self.BOUND2,1 do
+      BIT=bit.lshift(1,BOUND1);
+      self.board[0]=BIT;
+      self.BOUND1=BOUND1;
+      self:backTrack2(1,bit.lshift(BIT,1),BIT,bit.rshift(BIT,1));
+      self.LASTMASK=bit.bxor(self.LASTMASK,bit.bor(bit.rshift(self.LASTMASK,1),bit.lshift(self.LASTMASK,1)));
+      self.ENDBIT=bit.rshift(self.ENDBIT,1);
+      self.BOUND2=self.BOUND2-1;
+    end
+  end
+  --
   function NQueen:NQueen()
     local max=17;
     print(" N:            Total       Unique    hh:mm:ss");
-    for size=2,max,1 do
-      info=Info.new(); 
-      thread=Thread.new();
-      thread:Thread(size,info);   
-      thread:run();
-      print(string.format("%2d:%17d%13d%12s", 
-      size,info:getTotal(),info:getUnique(),info:getTime())); 
+    for si=2,max,1 do
+      self.size=si;
+      self.TOTAL=0;
+      self.UNIQUE=0;
+      self.COUNT2=0;
+      self.COUNT4=0;
+      self.COUNT8=0;
+      for k=0,self.size-1,1 do self.board[k]=k; end --テーブルの初期化
+      self.MASK=bit.lshift(1,self.size)-1;    
+      s=os.time();
+      self:NQueens(0);
+      self.TOTAL=self.COUNT2*2+self.COUNT4*4+self.COUNT8*8;
+      self.UNIQUE=self.COUNT2+self.COUNT4+self.COUNT8;
+      print(string.format("%2d:%17d%13d%12s",si,self.TOTAL,self.UNIQUE,self:secstotime(os.difftime(os.time(),s)))); 
     end
   end
-  return setmetatable(this,{__index=NQueen} );
+  return setmetatable( this,{__index=NQueen} );
 end
-
+  --
 NQueen.new():NQueen();
-
