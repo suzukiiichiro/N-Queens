@@ -143,7 +143,7 @@ NQueen={}; NQueen.new=function()
   end
 	--
   function NQueen:NQueens(row)
-		--枝刈り
+    local lim=0;
     if row==self.size then
 	    local tst=self:symmetryOps();--//回転・反転・対称の解析
 	    if(tst~=0) then
@@ -151,22 +151,53 @@ NQueen={}; NQueen.new=function()
 	      self.nTotal=self.nTotal+tst;
 	    end
     else
-		  if(row~=0) then lim=self.size; else lim=(self.size+1)/2; end
-      for col=0,self.size-1,1 do
-        self.board[row]=col; 
-        if	self.colChk[col]==nil 
-			  and self.antiChk[row+col]==nil 
-			  and self.diagChk[row-col+(self.size-1)]==nil then
-          self.colChk[col],
-          self.antiChk[row+col],
-          self.diagChk[row-col+(self.size-1)]=true,true,true;
+      --枝刈り
+		  if row~=0 then 
+        lim=self.size; 
+      else 
+        lim=(self.size+1)/2; 
+      end
+      -- for i=row+1,lim,1 do
+      for i=0,self.size-1,1 do
+        self.board[row]=i; 
+        if	self.colChk[i]==nil 
+			  and self.antiChk[row+i]==nil 
+			  and self.diagChk[row-i+(self.size-1)]==nil then
+          self.colChk[i],
+          self.antiChk[row+i],
+          self.diagChk[row-i+(self.size-1)]=true,true,true;
           self:NQueens(row+1);
-          self.colChk[col],
-          self.antiChk[row+col],
-          self.diagChk[row-col+(self.size-1)]=nil,nil,nil;
+          self.colChk[i],
+          self.antiChk[row+i],
+          self.diagChk[row-i+(self.size-1)]=nil,nil,nil;
         end
       end
     end
+--    -- BASH05版の移植
+--    if min~=0 then lim=self.size; else lim=(self.size+1)/2; end
+--    --枝刈り
+--    for i=0,lim,1 do
+--      if self.colChk[i]==nil 
+--        and self.antiChk[min+i]==nil 
+--        and self.diagChk[min-i+(self.size-1)]==nil then
+--        self.board[min]=i; 
+--        if min==self.size-1 then
+--          local tst=self:symmetryOps();--//回転・反転・対称の解析
+--          if(tst~=0) then
+--            self.nUnique=self.nUnique+1;
+--            self.nTotal=self.nTotal+tst;
+--          end
+--        else
+--          self.colChk[i],
+--          self.antiChk[min+i],
+--          self.diagChk[min-i+(self.size-1)]=true,true,true;
+--          self:NQueens(min+1);
+--          self.colChk[i],
+--          self.antiChk[min+i],
+--          self.diagChk[min-i+(self.size-1)]=nil,nil,nil;
+--        end
+--      end
+--    end
   end
 	--
   function NQueen:NQueen()
