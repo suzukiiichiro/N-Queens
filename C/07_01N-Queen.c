@@ -33,15 +33,15 @@
  16777215: 7 7 7 7 7 7 7 6
  16777216: 7 7 7 7 7 7 7 7
  **/
-
+//
 #include <stdio.h>
 #include <time.h>
 #define MAX 24
-
+//
 int SIZE=8;
 int COUNT=0;
 int aBoard[MAX];
-
+//
 void print(){
 	printf("%d: ",++COUNT);
 	for(int j=0;j<SIZE;j++){
@@ -49,6 +49,7 @@ void print(){
 	}
 	printf("\n");
 }
+//
 void NQueen(int row){
 	if(row==SIZE){
 		print();
@@ -59,6 +60,7 @@ void NQueen(int row){
 		}
 	}
 }
+//
 int main(void){
 	NQueen(0);
 	return 0;

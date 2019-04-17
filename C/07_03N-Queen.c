@@ -37,17 +37,17 @@
 #include <stdio.h>
 #include <time.h>
 #define MAX 24
-
+//
 int SIZE=8;
 int COUNT=0;
 int aBoard[MAX];
 int fA[2*MAX-1];	//縦列にクイーンを一つだけ配置
 int fB[2*MAX-1];	//斜め列にクイーンを一つだけ配置
 int fC[2*MAX-1];	//斜め列にクイーンを一つだけ配置
-
+//
 void print();
 void NQueen(int row);
-
+//
 void print(){
 	printf("%d: ",++COUNT);
 	for(int j=0;j<SIZE;j++){
@@ -55,6 +55,7 @@ void print(){
 	}
 	printf("\n");
 }
+//
 void NQueen(int row){
 	if(row==SIZE){
 		print();
@@ -69,6 +70,7 @@ void NQueen(int row){
 		}
 	}
 }
+//
 int main(void){
 	NQueen(0);
 	return 0;
