@@ -185,7 +185,7 @@ NQueen={}; NQueen.new=function()
       local lim ;
 		  if row~=0 then lim=size; else lim=(size+1)/2; end
       --for i=0,size-1,1 do
-        for i=row,lim,1 do
+        for i=row,lim-1,1 do
         --board[row]=i; 
           -- 交換
           tmp=board[i];
