@@ -4,12 +4,12 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm 07_10N-Queen.c -o 10N-Queen
+ $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm C10_N-Queen.c -o C10_N-Queen
 
  実行
- $ ./10N-Queen
+ $ ./C10_N-Queen
 
- １０．枝刈り
+ １０．クイーンの位置による分岐BOUND1,2
 
   前章のコードは全ての解を求めた後に、ユニーク解以外の対称解を除去していた
   ある意味、「生成検査法（generate ＆ test）」と同じである
@@ -45,9 +45,11 @@
   lt, dn, lt 位置は効きチェックで配置不可能となる
   回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
-
  *
- *  実行結果
+ *
+ *
+ *
+ 実行結果
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -57,26 +59,25 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.04
-14:       365596           45752            0.23
-15:      2279184          285053            1.48
-16:     14772512         1846955           10.60
-17:     95815104        11977939         1:16.26
-
-*/
+12:        14200            1787            0.02
+13:        73712            9233            0.08
+14:       365596           45752            0.49
+15:      2279184          285053            3.33
+16:     14772512         1846955           24.99
+17:     95815104        11977939         2:44.42
+ */
 
 #include <stdio.h>
 #include <time.h>
 #define MAX 24
-
+//
 int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
 int bit;
 int COUNT2,COUNT4,COUNT8;
 int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
-
+//
 void NQueen(int size,int mask);
 void symmetryOps_bitmap(int si);
 void TimeFormat(clock_t utime,char *form);
@@ -89,53 +90,124 @@ void dtob(int score,int si);
 int rh(int a,int sz);
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
-
+//
+void TimeFormat(clock_t utime,char *form){
+	int dd,hh,mm;
+	float ftime,ss;
+	ftime=(float)utime/CLOCKS_PER_SEC;
+	mm=(int)ftime/60;
+	ss=ftime-(int)(mm*60);
+	dd=mm/(24*60);
+	mm=mm%(24*60);
+	hh=mm/60;
+	mm=mm%60;
+	if(dd)
+	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+	else if(hh)
+	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
+	else if(mm)
+	sprintf(form,"        %2d:%05.2f",mm,ss);
+	else
+	sprintf(form,"           %5.2f",ss);
+}
+//
+void dtob(int score,int size){
+	int bit=1;
+	char c[size];
+	for(int i=0;i<size;i++){
+		if(score&bit){
+			c[i]='1';
+		}else{
+			c[i]='0';
+		}
+		bit<<=1;
+	}
+	for(int i=size-1;i>=0;i--){
+		putchar(c[i]);
+	}
+	printf("\n");
+}
+//
+int rh(int a,int size){
+	int tmp=0;
+	for(int i=0;i<=size;i++){
+		if(a&(1<<i)){
+			return tmp|=(1<<(size-i));
+		}
+	}
+	return tmp;
+}
+//
+void vMirror_bitmap(int bf[],int af[],int size){
+	int score;
+	for(int i=0;i<size;i++){
+		score=bf[i];
+		af[i]=rh(score,size-1);
+	}
+}
+//
+void rotate_bitmap(int bf[],int af[],int size){
+	int t;
+	for(int i=0;i<size;i++){
+		t=0;
+		for(int j=0;j<size;j++){
+			t|=((bf[j]>>i)&1)<<(size-j-1); // x[j] の i ビット目を
+		}
+		af[i]=t;                        // y[i] の j ビット目にする
+	}
+}
+//
+int intncmp(int lt[],int rt[],int n){
+	int rtn=0;
+	for(int k=0;k<n;k++){
+		rtn=lt[k]-rt[k];
+		if(rtn!=0){
+			break;
+		}
+	}
+	return rtn;
+}
+//
+long getUnique(){
+	return COUNT2+COUNT4+COUNT8;
+}
+//
+long getTotal(){
+	return COUNT2*2+COUNT4*4+COUNT8*8;
+}
+//
 void backTrack2(int size,int mask,int row,int left,int down,int right){
 	int bit;
-	int bitmap=mask&~(left|down|right);
-	if(row==size-1){ 								// 【枝刈り】
-		if(bitmap){
-			if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
-				aBoard[row]=bitmap;
-				symmetryOps_bitmap(size);
-			}
+	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
+	if(row==size){
+		if(!bitmap){
+			aBoard[row]=bitmap;
+			symmetryOps_bitmap(size);
 		}
 	}else{
-    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
-      bitmap&=~SIDEMASK;
-    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
-      if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
-    }
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
 			backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
 	}
 }
-
+//
 void backTrack1(int size,int mask,int row,int left,int down,int right){
 	int bit;
-	int bitmap=mask&~(left|down|right);
-  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-  if(row==size-1) {
-    if(bitmap){
-      aBoard[row]=bitmap;
-      COUNT8++;
-    }
-  }else{
-		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-    if(row<BOUND1) {
-      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-    }
+	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
+	if(row==size){
+		if(!bitmap){
+			aBoard[row]=bitmap;
+			symmetryOps_bitmap(size);
+		}
+	}else{
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
 			backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
 	}
 }
-
+//
 void NQueen(int size,int mask){
 	int bit;
 	TOPBIT=1<<(size-1);
@@ -153,14 +225,15 @@ void NQueen(int size,int mask){
 		ENDBIT>>=1;
 	}
 }
-
+//
 int main(void){
 	clock_t st;
 	char t[20];
 	int min=4;
 	int mask=0;
+  int max=17;
 	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	for(int i=min;i<=MAX;i++){
+	for(int i=min;i<=max;i++){
 		COUNT2=COUNT4=COUNT8=0;
 		mask=(1<<i)-1;
 		for(int j=0;j<i;j++){
@@ -236,81 +309,4 @@ void symmetryOps_bitmap(int size){
 	if(nEquiv==8){
 		COUNT8++;
 	}
-}
-void TimeFormat(clock_t utime,char *form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-	sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-	sprintf(form,"           %5.2f",ss);
-}
-void dtob(int score,int size){
-	int bit=1;
-	char c[size];
-	for(int i=0;i<size;i++){
-		if(score&bit){
-			c[i]='1';
-		}else{
-			c[i]='0';
-		}
-		bit<<=1;
-	}
-	for(int i=size-1;i>=0;i--){
-		putchar(c[i]);
-	}
-	printf("\n");
-}
-int rh(int a,int size){
-	int tmp=0;
-	for(int i=0;i<=size;i++){
-		if(a&(1<<i)){
-			return tmp|=(1<<(size-i));
-		}
-	}
-	return tmp;
-}
-void vMirror_bitmap(int bf[],int af[],int size){
-	int score;
-	for(int i=0;i<size;i++){
-		score=bf[i];
-		af[i]=rh(score,size-1);
-	}
-}
-void rotate_bitmap(int bf[],int af[],int size){
-	int t;
-	for(int i=0;i<size;i++){
-		t=0;
-		for(int j=0;j<size;j++){
-			t|=((bf[j]>>i)&1)<<(size-j-1); // x[j] の i ビット目を
-		}
-		af[i]=t;                        // y[i] の j ビット目にする
-	}
-}
-int intncmp(int lt[],int rt[],int n){
-	int rtn=0;
-	for(int k=0;k<n;k++){
-		rtn=lt[k]-rt[k];
-		if(rtn!=0){
-			break;
-		}
-	}
-	return rtn;
-}
-long getUnique(){
-	return COUNT2+COUNT4+COUNT8;
-}
-long getTotal(){
-	return COUNT2*2+COUNT4*4+COUNT8*8;
 }
