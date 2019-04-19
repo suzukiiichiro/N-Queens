@@ -4,10 +4,10 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm 07_06N-Queen.c -o 06N-Queen
+ $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm C05_N-Queen.c -o C05_N-Queen
 
  実行
- $ ./06N-Queen
+ $ ./05N-Queen
 
  * ５．バックトラック＋対称解除法＋枝刈りと最適化
  *
@@ -190,6 +190,7 @@ void NQueen(int row,int size){
 			tmp=aBoard[i];
 			aBoard[i]=aBoard[row];
 			aBoard[row]=tmp;
+
 			if(!(fB[row-aBoard[row]+size-1]||fC[row+aBoard[row]])){
 				fB[row-aBoard[row]+size-1]=fC[row+aBoard[row]]=1;
 				NQueen(row+1,size); //再帰
@@ -201,6 +202,7 @@ void NQueen(int row,int size){
 //				fA[i]=fB[row-i+(size-1)]=fC[row+i]=0;
 //			}
 		}
+	  // 交換
 		tmp=aBoard[row];
 		for(int i=row+1;i<size;i++){
 			aBoard[i-1]=aBoard[i];
