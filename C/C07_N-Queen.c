@@ -80,18 +80,18 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.00
-12:        14200            1787            0.03
-13:        73712            9233            0.15
-14:       365596           45752            0.79
-15:      2279184          285053            5.88
-16:     14772512         1846955           38.64
-17:     95815104        11977939         4:36.71
+12:        14200            1787            0.01
+13:        73712            9233            0.08
+14:       365596           45752            0.47
+15:      2279184          285053            3.15
+16:     14772512         1846955           22.18
+17:     95815104        11977939         2:38.94
  */
 
 #include <stdio.h>
 #include <time.h>
 #define MAX 24
-
+//
 int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
@@ -245,8 +245,9 @@ int main(void){
 	char t[20];
 	int min=4;
 	int mask=0;
+  int max=17;
 	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	for(int i=min;i<=MAX;i++){
+	for(int i=min;i<=max;i++){
 		COUNT2=COUNT4=COUNT8=0;
 		mask=(1<<i)-1;
 		for(int j=0;j<i;j++){

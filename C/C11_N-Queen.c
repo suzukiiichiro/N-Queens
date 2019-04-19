@@ -4,12 +4,12 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm C10_N-Queen.c -o C10_N-Queen
+ $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm C11_N-Queen.c -o C11_N-Queen
 
  実行
- $ ./C10_N-Queen
+ $ ./C11_N-Queen
 
- １０．クイーンの位置による分岐BOUND1,2
+ １１．枝刈り
 
   前章のコードは全ての解を求めた後に、ユニーク解以外の対称解を除去していた
   ある意味、「生成検査法（generate ＆ test）」と同じである
@@ -45,11 +45,9 @@
   lt, dn, lt 位置は効きチェックで配置不可能となる
   回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+
  *
- *
- *
- *
- 実行結果
+ *  実行結果
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -59,13 +57,13 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.05
-14:       365596           45752            0.29
-15:      2279184          285053            1.83
-16:     14772512         1846955           13.82
-17:     95815104        11977939         1:33.66
- */
+12:        14200            1787            0.00
+13:        73712            9233            0.02
+14:       365596           45752            0.14
+15:      2279184          285053            0.91
+16:     14772512         1846955            6.40
+17:     95815104        11977939           45.94
+*/
 
 #include <stdio.h>
 #include <time.h>
@@ -84,9 +82,9 @@ void vMirror_bitmap(int bf[],int af[],int si);
 int intncmp(int lt[],int rt[],int n);
 void dtob(int score,int si);
 int rh(int a,int sz);
+void symmetryOps_bitmap(int si);
 long getUnique();
 long getTotal();
-void symmetryOps_bitmap(int si);
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
@@ -243,15 +241,23 @@ void symmetryOps_bitmap(int size){
 //
 void backTrack2(int size,int mask,int row,int left,int down,int right){
 	int bit;
-	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-	if(row==size){
-		if(!bitmap){
-			aBoard[row]=bitmap;
-			symmetryOps_bitmap(size);
+	int bitmap=mask&~(left|down|right);
+	if(row==size-1){ 								// 【枝刈り】
+		if(bitmap){
+			if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
+				aBoard[row]=bitmap;
+				symmetryOps_bitmap(size);
+			}
 		}
 	}else{
+    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
+      bitmap&=~SIDEMASK;
+    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
+      if((down&SIDEMASK)==0){ return; }
+      if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
+    }
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
 			backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
 	}
@@ -259,15 +265,21 @@ void backTrack2(int size,int mask,int row,int left,int down,int right){
 //
 void backTrack1(int size,int mask,int row,int left,int down,int right){
 	int bit;
-	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-	if(row==size){
-		if(!bitmap){
-			aBoard[row]=bitmap;
-			symmetryOps_bitmap(size);
-		}
-	}else{
+	int bitmap=mask&~(left|down|right);
+  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+  if(row==size-1) {
+    if(bitmap){
+      aBoard[row]=bitmap;
+      COUNT8++;
+    }
+  }else{
+		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+    if(row<BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
 		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
+			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
 			backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
 	}
@@ -296,9 +308,8 @@ int main(void){
 	char t[20];
 	int min=4;
 	int mask=0;
-  int max=17;
 	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	for(int i=min;i<=max;i++){
+	for(int i=min;i<=MAX;i++){
 		COUNT2=COUNT4=COUNT8=0;
 		mask=(1<<i)-1;
 		for(int j=0;j<i;j++){

@@ -47,12 +47,12 @@ int fC[2*MAX-1];	//斜め列にクイーンを一つだけ配置
 int aT[MAX];       //aT:aTrial[]
 int aS[MAX];       //aS:aScrath[]
 //
-void NQueen(int row,int size);
-int symmetryOps(int si);
+void TimeFormat(clock_t utime,char *form);
 void rotate(int chk[],int scr[],int n,int neg);
 void vMirror(int chk[],int n);
 int intncmp(int lt[],int rt[],int n);
-void TimeFormat(clock_t utime,char *form);
+int symmetryOps(int si);
+void NQueen(int row,int size);
 //
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
@@ -215,8 +215,9 @@ int main(void){
 	clock_t st;
 	char t[20];
 	int min=4;
+  int max=17;
 	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	for(int i=min;i<=MAX;i++){
+	for(int i=min;i<=max;i++){
 		TOTAL=0;
 		UNIQUE=0;
 		for(int j=0;j<i;j++){

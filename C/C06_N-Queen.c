@@ -143,32 +143,32 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.00
-12:        14200            1787            0.02
-13:        73712            9233            0.11
-14:       365596           45752            0.59
-15:      2279184          285053            3.89
-16:     14772512         1846955           26.12
-17:     95815104        11977939         2:58.32
+12:        14200            1787            0.01
+13:        73712            9233            0.06
+14:       365596           45752            0.34
+15:      2279184          285053            2.19
+16:     14772512         1846955           14.44
+17:     95815104        11977939         1:40.82
  */
 
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
 #define MAX 24
-
+//
 int aBoard[MAX];
 int aT[MAX];       //aT:aTrial[]
 int aS[MAX];       //aS:aScrath[]
 int bit;
 int COUNT2,COUNT4,COUNT8;
-
+//
 void TimeFormat(clock_t utime,char *form);
-void symmetryOps(int si);
 void rotate(int chk[],int scr[],int n,int neg);
 void vMirror(int chk[],int n);
 int intncmp(int lt[],int rt[],int n);
 long getUnique();
 long getTotal();
+void symmetryOps(int si);
 void NQueen(int size,int mask,int row,int left,int down,int right);
 //
 void TimeFormat(clock_t utime,char *form){
@@ -189,6 +189,43 @@ void TimeFormat(clock_t utime,char *form){
 	sprintf(form,"        %2d:%05.2f",mm,ss);
 	else
 	sprintf(form,"           %5.2f",ss);
+}
+//
+void rotate(int chk[],int scr[],int n,int neg){
+	int k=neg ? 0 : n-1;
+	int incr=(neg ? +1 : -1);
+	for(int j=0;j<n;k+=incr){
+		scr[j++]=chk[k];
+	}
+	k=neg ? n-1 : 0;
+	for(int j=0;j<n;k-=incr){
+		chk[scr[j++]]=k;
+	}
+}
+//
+void vMirror(int chk[],int n){
+	for(int j=0;j<n;j++){
+		chk[j]=(n-1)-chk[j];
+	}
+}
+//
+int intncmp(int lt[],int rt[],int n){
+	int rtn=0;
+	for(int k=0;k<n;k++){
+		rtn=lt[k]-rt[k];
+		if(rtn!=0){
+			break;
+		}
+	}
+	return rtn;
+}
+//
+long getUnique(){
+	return COUNT2+COUNT4+COUNT8;
+}
+//
+long getTotal(){
+	return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 //
 void symmetryOps(int size){
@@ -231,43 +268,6 @@ void symmetryOps(int size){
   if(nEquiv==4){COUNT4++;}
   if(nEquiv==8){COUNT8++;}
 }
-//
-void rotate(int chk[],int scr[],int n,int neg){
-	int k=neg ? 0 : n-1;
-	int incr=(neg ? +1 : -1);
-	for(int j=0;j<n;k+=incr){
-		scr[j++]=chk[k];
-	}
-	k=neg ? n-1 : 0;
-	for(int j=0;j<n;k-=incr){
-		chk[scr[j++]]=k;
-	}
-}
-//
-void vMirror(int chk[],int n){
-	for(int j=0;j<n;j++){
-		chk[j]=(n-1)-chk[j];
-	}
-}
-//
-int intncmp(int lt[],int rt[],int n){
-	int rtn=0;
-	for(int k=0;k<n;k++){
-		rtn=lt[k]-rt[k];
-		if(rtn!=0){
-			break;
-		}
-	}
-	return rtn;
-}
-//
-long getUnique(){
-	return COUNT2+COUNT4+COUNT8;
-}
-//
-long getTotal(){
-	return COUNT2*2+COUNT4*4+COUNT8*8;
-}
 void NQueen(int size,int mask,int row,int left,int down,int right){
 	int bitmap=mask&~(left|down|right);
 	if(row==size){
@@ -298,8 +298,9 @@ int main(void){
 	char t[20];
 	int min=4;
 	int mask=0;
+  int max=17;
 	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	for(int i=min;i<=MAX;i++){
+	for(int i=min;i<=max;i++){
 		COUNT2=COUNT4=COUNT8=0;
 		mask=(1<<i)-1;
 		for(int j=0;j<i;j++){
