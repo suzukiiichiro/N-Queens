@@ -31,7 +31,7 @@
    2. Placement flag (constraint test acceleration) NQueen 3 ()
    3. Backtracking NQueen 2 () 00:20:48
    4. Symmetry cancellation method (rotation and oblique axis) NQueen 4 () 00:24:31
-   5. Symmetry cancellation + pruning NQueen 5 () 00:22:57
+   5. Symmetry cancellation + pruning NQueen 5 () 00:16:38
    6. Bitmap NQueen 6 () 00:09:05
    7. Bit map + symmetry cancellation method NQueen 7 () 00: 23: 09
    8. Bitmap + Symmetry + Pruning NQueen 8 () 00:07:33

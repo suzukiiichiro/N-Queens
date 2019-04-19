@@ -25,10 +25,10 @@
 11:             2680          341    00:00:00
 12:            14200         1787    00:00:00
 13:            73712         9233    00:00:01
-14:           365596        45752    00:00:05
-15:          2279184       285053    00:00:29
-16:         14772512      1846955    00:03:14
-17:         95815104     11977939    00:22:57
+14:           365596        45752    00:00:03
+15:          2279184       285053    00:00:21
+16:         14772512      1846955    00:02:09
+17:         95815104     11977939    00:16:38
 ]]--
 
 NQueen={}; NQueen.new=function()
@@ -208,61 +208,6 @@ NQueen={}; NQueen.new=function()
       end
       board[size-1]=tmp;
     end
---    local lim=0;
---    if row==self.size then
---	    local tst=self:symmetryOps();--//回転・反転・対称の解析
---	    if(tst~=0) then
---	      self.nUnique=self.nUnique+1;
---	      self.nTotal=self.nTotal+tst;
---	    end
---    else
---      --枝刈り
---		  if row~=0 then 
---        lim=self.size; 
---      else 
---        lim=(self.size+1)/2; 
---      end
---      -- for i=row+1,lim,1 do
---      for i=0,self.size-1,1 do
---        self.board[row]=i; 
---        if	self.colChk[i]==nil 
---			  and self.antiChk[row+i]==nil 
---			  and self.diagChk[row-i+(self.size-1)]==nil then
---          self.colChk[i],
---          self.antiChk[row+i],
---          self.diagChk[row-i+(self.size-1)]=true,true,true;
---          self:NQueens(row+1);
---          self.colChk[i],
---          self.antiChk[row+i],
---          self.diagChk[row-i+(self.size-1)]=nil,nil,nil;
---        end
---      end
---    end
---    -- BASH05版の移植
---    if min~=0 then lim=self.size; else lim=(self.size+1)/2; end
---    --枝刈り
---    for i=0,lim,1 do
---      if self.colChk[i]==nil 
---        and self.antiChk[min+i]==nil 
---        and self.diagChk[min-i+(self.size-1)]==nil then
---        self.board[min]=i; 
---        if min==self.size-1 then
---          local tst=self:symmetryOps();--//回転・反転・対称の解析
---          if(tst~=0) then
---            self.nUnique=self.nUnique+1;
---            self.nTotal=self.nTotal+tst;
---          end
---        else
---          self.colChk[i],
---          self.antiChk[min+i],
---          self.diagChk[min-i+(self.size-1)]=true,true,true;
---          self:NQueens(min+1);
---          self.colChk[i],
---          self.antiChk[min+i],
---          self.diagChk[min-i+(self.size-1)]=nil,nil,nil;
---        end
---      end
---    end
   end
 	--
   function NQueen:NQueen()
