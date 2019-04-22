@@ -254,12 +254,12 @@ class Java04_NQueen{
 	}
   //
 	int symmetryOps(){
-		int k; /* String offset */
-		int nEquiv; /* Number equivalent boards */
-		/* Copy over; now trial will be subjected to the transformations */
+		int k; 
+		int nEquiv;
+	  // 回転・反転・対称チェックのためにboard配列をコピー
 		for(k=0;k<size;k++)
 			trial[k]=board[k];
-		/* 90 degrees --- clockwise */
+    //時計回りに90度回転
 		rotate(trial,scratch,size,false);
 		k=intncmp(board,trial,size);
 		if(k>0)
@@ -267,7 +267,7 @@ class Java04_NQueen{
 		if(k==0)
 			nEquiv=1;
 		else{
-			/* 180 degrees */
+      //時計回りに180度回転
 			rotate(trial,scratch,size,false);
 			k=intncmp(board,trial,size);
 			if(k>0)
@@ -275,7 +275,7 @@ class Java04_NQueen{
 			if(k==0)
 				nEquiv=2;
 			else{
-				/* 270 degrees */
+        //時計回りに270度回転
 				rotate(trial,scratch,size,false);
 				k=intncmp(board,trial,size);
 				if(k>0)
@@ -283,33 +283,32 @@ class Java04_NQueen{
 				nEquiv=4;
 			}
 		}
-		/* Reflect -- vertical mirror */
+    //垂直反転
 		for(k=0;k<size;k++)
 			trial[k]=board[k];
 		vMirror(trial,size);
 		k=intncmp(board,trial,size);
 		if(k>0)
 			return 0;
-		/* -90 degrees --- equiv. to diagonal mirror */
+    //-90度回転 対角鏡と同等
 		rotate(trial,scratch,size,true);
 		k=intncmp(board,trial,size);
 		if(k>0)
 			return 0;
 		if(k<0){
-			/* -180 degrees --- equiv. to horizontal mirror */
+      //-180度回転 水平鏡像と同等
 			rotate(trial,scratch,size,true);
 			k=intncmp(board,trial,size);
 			if(k>0)
 				return 0;
 			if(k<0){
-				/* -270 degrees --- equiv. to anti-diagonal mirror */
+        //-270度回転 反対角鏡と同等
 				rotate(trial,scratch,size,true);
 				k=intncmp(board,trial,size);
 				if(k>0)
 					return 0;
 			}
 		}
-		/* WE HAVE A GOOD ONE! */
 		return nEquiv*2;
 	}
 	// 再帰関数
