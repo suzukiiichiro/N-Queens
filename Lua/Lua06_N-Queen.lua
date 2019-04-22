@@ -157,23 +157,6 @@ NQueen={}; NQueen.new=function()
     MASK=0;
   };
   --
-  function NQueen:NQueens(min,left,down,right) 
-    local bitmap=0;
-    local BIT=0;
-    if min==self.size then
-      self.TOTAL=self.TOTAL+1 ;
-    else
-      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
-      --print(string.format("bitmap:%d",bitmap)); 
-      while bitmap~=0 do
-        BIT=bit.band(-bitmap,bitmap);
-        --print(string.format("bitmap:%d",bitmap)); 
-        bitmap=bit.bxor(bitmap,BIT);
-        self:NQueens(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
-      end
-    end
-  end
-  --
   function NQueen:secstotime(secs)
     sec=math.floor(secs);
 	  if(sec>59) then
@@ -188,6 +171,21 @@ NQueen={}; NQueen.new=function()
 	  if(sec<10)then sec = "0"..sec end
 	  return "00:00:"..sec
   end 
+  --
+  function NQueen:NQueens(min,left,down,right) 
+    local bitmap=0;
+    local BIT=0;
+    if min==self.size then
+      self.TOTAL=self.TOTAL+1 ;
+    else
+      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),self.size-1));
+      while bitmap~=0 do
+        BIT=bit.band(-bitmap,bitmap);
+        bitmap=bit.bxor(bitmap,BIT);
+        self:NQueens(min+1,bit.lshift(bit.bor(left,BIT),1),bit.bor(down,BIT),bit.rshift(bit.bor(right,BIT),1));
+      end
+    end
+  end
   --
   function NQueen:NQueen()
     local max=24;
