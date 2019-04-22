@@ -240,30 +240,31 @@ class Java06_NQueen{
     if(nEquiv==8){COUNT8++;}
 	}
 	// 再帰関数
-	private void NQueen(int size,int mask,int row,
+	private void NQueen(int row,
                       int left,int down,int right){
+		int mask=(1<<size)-1;
     int bitmap=mask&~(left|down|right);
     int tmp=0;
     if(row==size){
-      if(bitmap!=0){
-        board[row]=bitmap;
+      if(bitmap!=1){
+        board[row-1]=bitmap;
         /** symmetryOps() はまだ未改修のため以下の記述**/
         /** 次のステップで改修します */
         int lim=(row!=0)?size:(size+1)/2;
         for(int i=0;i<lim;i++){
           tmp=board[i];
           board[i]=size-1-((int)Math.log(board[i]));
+          System.out.println("board : " + board[i]);
         }
         symmetryOps();
-        //for(int i=0;i<size;i++){
         for(int i=0;i<lim;i++){
           board[i]=tmp;
         }
       }
     }else{
-      while(bitmap!=0){
+      while(bitmap>0){
         bitmap^=board[row]=bit=(-bitmap&bitmap);
-        NQueen(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+        NQueen(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
     }
 	}
@@ -273,23 +274,22 @@ class Java06_NQueen{
     int min=4;
     int mask=0;
 		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
-		for(int i=min;i<=max;i++){
-			board=new int[i];
-			trial=new int[i];
-			scratch=new int[i];
+		for(size=min;size<=max;size++){
+			board=new int[size];
+			trial=new int[size];
+			scratch=new int[size];
       COUNT2=COUNT4=COUNT8=0;
-		  mask=(1<<i)-1;
 			// fA=new int[i];
 			// fC=new int[2*i-1];
 			// fB=new int[2*i-1];
-			for(int j=0;j<i;j++){
+			for(int j=0;j<size;j++){
 				board[j]=j;
 			}
 			long start=System.currentTimeMillis();
-			NQueen(i,mask,0,0,0,0); // ０列目に王妃を配置してスタート
+			NQueen(0,0,0,0); // ０列目に王妃を配置してスタート
 			long end=System.currentTimeMillis();
 			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
-			System.out.printf("%2d:%17d%13d%17s%n",i,getTotal(),getUnique(),TIME);
+			System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
 		}
 	}
   //メインメソッド
