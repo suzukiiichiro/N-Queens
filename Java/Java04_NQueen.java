@@ -215,34 +215,14 @@
 17:         95815104     11977939     00:12:51.460
 
 */
+//
 import org.apache.commons.lang3.time.DurationFormatUtils;
+//
 class Java04_NQueen{
   //グローバル変数
 	private int[]			board,trial,scratch;
 	private int				size,nUnique,nTotal;
 	private int[]	fA,fC,fB;																				// Antidiagonal
-	// コンストラクタ
-	public Java04_NQueen(){
-		int max=27;
-		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
-		for(size=4;size<max;size++){
-			nUnique=nTotal=0;
-			board=new int[size];
-			trial=new int[size];
-			scratch=new int[size];
-			fA=new int[size];
-			fC=new int[2*size-1];
-			fB=new int[2*size-1];
-			for(int k=0;k<size;k++){
-				board[k]=k;
-			}
-			long start=System.currentTimeMillis();
-			nQueens(0); // ０列目に王妃を配置してスタート
-			long end=System.currentTimeMillis();
-			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
-			System.out.printf("%2d:%17d%13d%17s%n",size,nTotal,nUnique,TIME);
-		}
-	}
   //
 	private int intncmp(int[] lt,int[] rt,int n){
 		int k,rtn=0;
@@ -350,6 +330,28 @@ class Java04_NQueen{
         }
 			}
     }
+	}
+	// コンストラクタ
+	public Java04_NQueen(){
+		int max=17;
+		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
+		for(size=4;size<max;size++){
+			nUnique=nTotal=0;
+			board=new int[size];
+			trial=new int[size];
+			scratch=new int[size];
+			fA=new int[size];
+			fC=new int[2*size-1];
+			fB=new int[2*size-1];
+			for(int k=0;k<size;k++){
+				board[k]=k;
+			}
+			long start=System.currentTimeMillis();
+			nQueens(0); // ０列目に王妃を配置してスタート
+			long end=System.currentTimeMillis();
+			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
+			System.out.printf("%2d:%17d%13d%17s%n",size,nTotal,nUnique,TIME);
+		}
 	}
   //メインメソッド
 	public static void main(String[] args){

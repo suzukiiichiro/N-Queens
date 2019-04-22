@@ -1,6 +1,6 @@
 /**
 
- Javaで学ぶアルゴリズムとデータ構造  
+ Javaで学ぶ「アルゴリズムとデータ構造」
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木 維一郎(suzuki.iichiro@kyodonews.jp)
  
@@ -9,11 +9,11 @@
  https://github.com/suzukiiichiro/N-Queen 
  			
 
-コンパイル
-javac -cp .:commons-lang3-3.4.jar Java03_NQueen.java ;
+  コンパイル
+  javac -cp .:commons-lang3-3.4.jar Java03_NQueen.java ;
 
-実行
-java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java03_NQueen  ;
+  実行
+  java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java03_NQueen  ;
 
 
 	３．バックトラック
