@@ -108,7 +108,7 @@ class Java07_NQueen{
   public int rh(int a,int sz){
     int tmp=0;
     for(int i=0;i<=sz;i++){
-      if( (a&(1<<i))==1){ return tmp|=(1<<(sz-i)); }
+      if( (a&(1<<i))!=0){ return tmp|=(1<<(sz-i)); }
     }
     return tmp;
   }
@@ -192,18 +192,17 @@ class Java07_NQueen{
   }
   //
   public void NQueen(int row,int left,int down,int right){
-    int bitmap=0;
+    int bitmap=(MASK&~(left|down|right));
     if(row==size){
-      if(bitmap!=0){
+       if(bitmap==0){
         board[row]=bitmap;
         symmetryOps_bitmap();
-      }
+       }
     }else{
-      bitmap=MASK&~(left|down|right);
       while(bitmap>0){
-        // bit=(-bitmap&bitmap);
-        // bitmap=(bitmap^bit);
-        bitmap^=board[row]=bit=(-bitmap&bitmap);
+         bit=(-bitmap&bitmap);
+         bitmap=(bitmap^bit);
+         board[row]=bit;
         NQueen(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
     }
@@ -213,13 +212,16 @@ class Java07_NQueen{
     int min=4;
     int max=17;
 		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
-    for(int size=min;size<=max;size++){
+    for(int i=min;i<=max;i++){
       COUNT2=COUNT4=COUNT8=0;
-      MASK=(1<<size)-1;
-      board=new int[size];
-      for(int j=0;j<size;j++){
+      MASK=(1<<i)-1;
+      board=new int[i+1];
+      aT=new int[i+1];
+      aS=new int[i+1];
+      for(int j=0;j<=i;j++){
         board[j]=j;
       }
+      size=i;
 			long start=System.currentTimeMillis();
 			NQueen(0,0,0,0); // ０列目に王妃を配置してスタート
 			long end=System.currentTimeMillis();
