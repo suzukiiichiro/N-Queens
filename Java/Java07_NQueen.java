@@ -97,11 +97,12 @@ java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMem
 import org.apache.commons.lang3.time.DurationFormatUtils;
 class Java07_NQueen{
   //グローバル変数
-  private int aBoard[];
+  private int size;
+  private int board[];
+  private int MASK;
   private int aT[];
   private int aS[];
   private int bit;
-  private int size;
   private int COUNT2,COUNT4,COUNT8;
   //
   public int rh(int a,int sz){
@@ -149,39 +150,39 @@ class Java07_NQueen{
     return COUNT2*2+COUNT4*4+COUNT8*8;
   }
   //
-  public void symmetryOps_bitmap(int si){
+  public void symmetryOps_bitmap(){
     int nEquiv;
     // 回転・反転・対称チェックのためにboard配列をコピー
-    for(int i=0;i<si;i++){ aT[i]=aBoard[i];}
-    rotate_bitmap(aT,aS,si);    //時計回りに90度回転
-    int k=intncmp(aBoard,aS,si);
+    for(int i=0;i<size;i++){ aT[i]=board[i];}
+    rotate_bitmap(aT,aS,size);    //時計回りに90度回転
+    int k=intncmp(board,aS,size);
     if(k>0)return;
     if(k==0){ nEquiv=2;}else{
-      rotate_bitmap(aS,aT,si);  //時計回りに180度回転
-      k=intncmp(aBoard,aT,si);
+      rotate_bitmap(aS,aT,size);  //時計回りに180度回転
+      k=intncmp(board,aT,size);
       if(k>0)return;
       if(k==0){ nEquiv=4;}else{
-        rotate_bitmap(aT,aS,si);//時計回りに270度回転
-        k=intncmp(aBoard,aS,si);
+        rotate_bitmap(aT,aS,size);//時計回りに270度回転
+        k=intncmp(board,aS,size);
         if(k>0){ return;}
         nEquiv=8;
       }
     }
     // 回転・反転・対称チェックのためにboard配列をコピー
-    for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
-    vMirror_bitmap(aS,aT,si);   //垂直反転
-    k=intncmp(aBoard,aT,si);
+    for(int i=0;i<size;i++){ aS[i]=board[i];}
+    vMirror_bitmap(aS,aT,size);   //垂直反転
+    k=intncmp(board,aT,size);
     if(k>0){ return; }
     if(nEquiv>2){             //-90度回転 対角鏡と同等
-      rotate_bitmap(aT,aS,si);
-      k=intncmp(aBoard,aS,si);
+      rotate_bitmap(aT,aS,size);
+      k=intncmp(board,aS,size);
       if(k>0){return;}
       if(nEquiv>4){           //-180度回転 水平鏡像と同等
-        rotate_bitmap(aS,aT,si);
-        k=intncmp(aBoard,aT,si);
+        rotate_bitmap(aS,aT,size);
+        k=intncmp(board,aT,size);
         if(k>0){ return;}       //-270度回転 反対角鏡と同等
-        rotate_bitmap(aT,aS,si);
-        k=intncmp(aBoard,aS,si);
+        rotate_bitmap(aT,aS,size);
+        k=intncmp(board,aS,size);
         if(k>0){ return;}
       }
     }
@@ -190,21 +191,20 @@ class Java07_NQueen{
     if(nEquiv==8){COUNT8++;}
   }
   //
-  public void NQueen(int size,int mask,int row,int left,int down,int right){
-    int bitmap=mask&~(left|down|right);
+  public void NQueen(int row,int left,int down,int right){
+    int bitmap=0;
     if(row==size){
-      //if(!bitmap){
-      if(bitmap!=1){
-        aBoard[row]=bitmap;
-        symmetryOps_bitmap(size);
+      if(bitmap!=0){
+        board[row]=bitmap;
+        symmetryOps_bitmap();
       }
     }else{
-      //while(bitmap){
-      while(bitmap==1){
+      bitmap=MASK&~(left|down|right);
+      while(bitmap>0){
         // bit=(-bitmap&bitmap);
         // bitmap=(bitmap^bit);
-        bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-        NQueen(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+        bitmap^=board[row]=bit=(-bitmap&bitmap);
+        NQueen(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
     }
   }
@@ -212,20 +212,16 @@ class Java07_NQueen{
   public Java07_NQueen(){
     int min=4;
     int max=17;
-    int mask=0;
 		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
     for(int size=min;size<=max;size++){
       COUNT2=COUNT4=COUNT8=0;
-      mask=(1<<size)-1;
+      MASK=(1<<size)-1;
+      board=new int[size];
       for(int j=0;j<size;j++){
-        aBoard[j]=j;
+        board[j]=j;
       }
-      // st=clock();
-      // NQueen(i,mask,0,0,0,0);
-      // TimeFormat(clock()-st,t);
-      // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
 			long start=System.currentTimeMillis();
-			NQueen(0,0,0,0,0,0); // ０列目に王妃を配置してスタート
+			NQueen(0,0,0,0); // ０列目に王妃を配置してスタート
 			long end=System.currentTimeMillis();
 			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
 			System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
