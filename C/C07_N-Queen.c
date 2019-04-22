@@ -234,6 +234,8 @@ void NQueen(int size,int mask,int row,int left,int down,int right){
 		}
 	}else{
 		while(bitmap){
+      // bit=(-bitmap&bitmap);
+      // bitmap=(bitmap^bit);
 			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
 			NQueen(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
