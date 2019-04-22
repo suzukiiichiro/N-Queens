@@ -107,7 +107,7 @@ class Java07_NQueen{
   public int rh(int a,int sz){
     int tmp=0;
     for(int i=0;i<=sz;i++){
-//      if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+      if( (a&(1<<i))==1){ return tmp|=(1<<(sz-i)); }
     }
     return tmp;
   }
