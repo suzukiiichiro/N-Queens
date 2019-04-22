@@ -15,7 +15,7 @@
   実行
   java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java05_NQueen  ;
 
- ４．バックトラック＋対称解除法＋枝刈り
+ ５．バックトラック＋対称解除法＋枝刈り
 
 
 実行結果
