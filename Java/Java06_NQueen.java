@@ -15,7 +15,7 @@
   実行
   java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java06_NQueen  ;
 
- ６．ビットマップ(symmetryOps()以外の対応）
+ ６．バックトラック＋ビットマップ
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
    単純なバックトラックよりも２０〜３０倍高速
@@ -139,132 +139,44 @@
  }
 
 
-
 実行結果
-
+ N:            Total       Unique     hh:mm:ss.SSS
+ 4:                2            0     00:00:00.000
+ 5:               10            0     00:00:00.000
+ 6:                4            0     00:00:00.000
+ 7:               40            0     00:00:00.000
+ 8:               92            0     00:00:00.000
+ 9:              352            0     00:00:00.001
+10:              724            0     00:00:00.002
+11:             2680            0     00:00:00.002
+12:            14200            0     00:00:00.006
+13:            73712            0     00:00:00.035
+14:           365596            0     00:00:00.201
+15:          2279184            0     00:00:01.239
+16:         14772512            0     00:00:08.340
+17:         95815104            0     00:00:58.940
 */
 //
 import org.apache.commons.lang3.time.DurationFormatUtils;
 //
 class Java06_NQueen{
   //グローバル変数
-	private int[]			board,trial,scratch;
-	private int				size;
-	private int[]	fA,fC,fB;
-  private int bit;
-  private int COUNT2,COUNT4,COUNT8;
-  //
-	private int intncmp(int[] lt,int[] rt,int n){
-		int k,rtn=0;
-		for(k=0;k<n;k++){
-			rtn=lt[k]-rt[k];
-			if(rtn!=0)
-				break;
-		}
-		return rtn;
-	}
-	/* rotate +90 or -90: */
-	private void rotate(int[] check,int[] scr,int n,boolean neg){
-		int j,k;
-		int incr;
-		k=neg ? 0 : n-1;
-		incr=(neg ? +1 : -1);
-		for(j=0;j<n;k+=incr)
-			scr[j++]=check[k];
-		k=neg ? n-1 : 0;
-		for(j=0;j<n;k-=incr)
-			check[scr[j++]]=k;
-	}
-  //
-	private void vMirror(int[] check,int n){
-		int j;
-		for(j=0;j<n;j++)
-			check[j]=(n-1)-check[j];
-		return;
-	}
-  //
-  long getUnique(){
-    return COUNT2+COUNT4+COUNT8;
-  }
-  //
-  long getTotal(){
-    return COUNT2*2+COUNT4*4+COUNT8*8;
-  }
-  //
-	private void symmetryOps(){
-		int nEquiv;
-	  // 回転・反転・対称チェックのためにboard配列をコピー
-		for(int k=0;k<size;k++){ trial[k]=board[k];}
-    //時計回りに90度回転
-		rotate(trial,scratch,size,false);
-		int k=intncmp(board,trial,size);
-		if(k>0) return ;
-		if(k==0) nEquiv=2;
-		else{
-      //時計回りに180度回転
-			rotate(trial,scratch,size,false);
-			k=intncmp(board,trial,size);
-			if(k>0) return ;
-			if(k==0) nEquiv=4;
-			else{
-        //時計回りに270度回転
-				rotate(trial,scratch,size,false);
-				k=intncmp(board,trial,size);
-				if(k>0) return ;
-				nEquiv=8;
-			}
-		}
-    //垂直反転
-		for(k=0;k<size;k++) { trial[k]=board[k];}
-		vMirror(trial,size);
-		k=intncmp(board,trial,size);
-		if(k>0) return ;
-    if(nEquiv>2){
-      //-90度回転 対角鏡と同等
-      rotate(trial,scratch,size,true);
-      k=intncmp(board,trial,size);
-      if(k>0) return ;
-      if(nEquiv>4){
-        //-180度回転 水平鏡像と同等
-        rotate(trial,scratch,size,true);
-        k=intncmp(board,trial,size);
-        if(k>0) return ;
-          //-270度回転 反対角鏡と同等
-          rotate(trial,scratch,size,true);
-          k=intncmp(board,trial,size);
-          if(k>0) return ;
-      }
-    }
-    if(nEquiv==2){COUNT2++;}
-    if(nEquiv==4){COUNT4++;}
-    if(nEquiv==8){COUNT8++;}
-	}
+	private int[] board;
+	private int	size;
+  private int TOTAL,UNIQUE;
+  private int MASK;
 	// 再帰関数
-	private void NQueen(int row,
-                      int left,int down,int right){
-		int mask=(1<<size)-1;
-    int bitmap=mask&~(left|down|right);
-    int tmp=0;
+	private void NQueen(int row,int left,int down,int right){
+    int bitmap=0;
+    int bit=0;
     if(row==size){
-      if(bitmap!=1){
-        board[row-1]=bitmap;
-        /** symmetryOps() はまだ未改修のため以下の記述**/
-        /** 次のステップで改修します */
-        int lim=(row!=0)?size:(size+1)/2;
-        for(int i=0;i<lim;i++){
-          tmp=board[i];
-          board[i]=size-1-((int)Math.log(board[i]));
-          System.out.println("board : " + board[i]);
-        }
-        symmetryOps();
-        for(int i=0;i<lim;i++){
-          board[i]=tmp;
-        }
-      }
+      TOTAL++;
     }else{
+      bitmap=MASK&~(left|down|right);
       while(bitmap>0){
-        bitmap^=board[row]=bit=(-bitmap&bitmap);
-        NQueen(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+        bit=(-bitmap&bitmap);
+        bitmap=(bitmap^bit);
+        NQueen(row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
       }
     }
 	}
@@ -272,16 +184,11 @@ class Java06_NQueen{
 	public Java06_NQueen(){
 		int max=17;
     int min=4;
-    int mask=0;
 		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
 		for(size=min;size<=max;size++){
+		  MASK=(1<<size)-1;
 			board=new int[size];
-			trial=new int[size];
-			scratch=new int[size];
-      COUNT2=COUNT4=COUNT8=0;
-			// fA=new int[i];
-			// fC=new int[2*i-1];
-			// fB=new int[2*i-1];
+      TOTAL=UNIQUE=0;
 			for(int j=0;j<size;j++){
 				board[j]=j;
 			}
@@ -289,7 +196,7 @@ class Java06_NQueen{
 			NQueen(0,0,0,0); // ０列目に王妃を配置してスタート
 			long end=System.currentTimeMillis();
 			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
-			System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
+			System.out.printf("%2d:%17d%13d%17s%n",size,TOTAL,UNIQUE,TIME);
 		}
 	}
   //メインメソッド
