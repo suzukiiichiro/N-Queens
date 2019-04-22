@@ -95,53 +95,24 @@ java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMem
  */
 //
 import org.apache.commons.lang3.time.DurationFormatUtils;
-class NQueen{
+class Java07_NQueen{
   //グローバル変数
   private int aBoard[];
   private int aT[];
   private int aS[];
   private int bit;
+  private int size;
   private int COUNT2,COUNT4,COUNT8;
   //
-  public void TimeFormat(clock_t utime,char *form){
-    int dd,hh,mm;
-    float ftime,ss;
-    ftime=(float)utime/CLOCKS_PER_SEC;
-    mm=(int)ftime/60;
-    ss=ftime-(int)(mm*60);
-    dd=mm/(24*60);
-    mm=mm%(24*60);
-    hh=mm/60;
-    mm=mm%60;
-    if(dd)
-    sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-    else if(hh)
-    sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-    else if(mm)
-    sprintf(form,"        %2d:%05.2f",mm,ss);
-    else
-    sprintf(form,"           %5.2f",ss);
-  }
-  //
-  void dtob(int score,int si) {
-    int bit=1; char c[si];
-    for (int i=0;i<si;i++) {
-      if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
-      bit<<=1;
-    }
-    for (int i=si-1;i>=0;i--){ putchar(c[i]); }
-    printf("\n");
-  }
-  //
-  int rh(int a,int sz){
+  public int rh(int a,int sz){
     int tmp=0;
     for(int i=0;i<=sz;i++){
-      if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
+//      if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
     }
     return tmp;
   }
   //
-  void vMirror_bitmap(int bf[],int af[],int si){
+  public void vMirror_bitmap(int bf[],int af[],int si){
     int score ;
     for(int i=0;i<si;i++) {
       score=bf[i];
@@ -149,7 +120,7 @@ class NQueen{
     }
   }
   //
-  void rotate_bitmap(int bf[],int af[],int si){
+  public void rotate_bitmap(int bf[],int af[],int si){
     for(int i=0;i<si;i++){
       int t=0;
       for(int j=0;j<si;j++){
@@ -159,7 +130,7 @@ class NQueen{
     }
   }
   //
-  int intncmp(int lt[],int rt[],int n){
+  public int intncmp(int lt[],int rt[],int n){
     int rtn=0;
     for(int k=0;k<n;k++){
       rtn=lt[k]-rt[k];
@@ -170,15 +141,15 @@ class NQueen{
     return rtn;
   }
   //
-  long getUnique(){
+  public long getUnique(){
     return COUNT2+COUNT4+COUNT8;
   }
   //
-  long getTotal(){
+  public long getTotal(){
     return COUNT2*2+COUNT4*4+COUNT8*8;
   }
   //
-  void symmetryOps_bitmap(int si){
+  public void symmetryOps_bitmap(int si){
     int nEquiv;
     // 回転・反転・対称チェックのためにboard配列をコピー
     for(int i=0;i<si;i++){ aT[i]=aBoard[i];}
@@ -219,15 +190,17 @@ class NQueen{
     if(nEquiv==8){COUNT8++;}
   }
   //
-  void NQueen(int size,int mask,int row,int left,int down,int right){
+  public void NQueen(int size,int mask,int row,int left,int down,int right){
     int bitmap=mask&~(left|down|right);
     if(row==size){
-      if(!bitmap){
+      //if(!bitmap){
+      if(bitmap!=1){
         aBoard[row]=bitmap;
         symmetryOps_bitmap(size);
       }
     }else{
-      while(bitmap){
+      //while(bitmap){
+      while(bitmap==1){
         // bit=(-bitmap&bitmap);
         // bitmap=(bitmap^bit);
         bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
@@ -236,29 +209,31 @@ class NQueen{
     }
   }
   //
-  int NQueen7(void){
-    clock_t st;
-    char t[20];
+  public Java07_NQueen(){
     int min=4;
-    int mask=0;
     int max=17;
-    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(int i=min;i<=max;i++){
+    int mask=0;
+		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
+    for(int size=min;size<=max;size++){
       COUNT2=COUNT4=COUNT8=0;
-      mask=(1<<i)-1;
-      for(int j=0;j<i;j++){
+      mask=(1<<size)-1;
+      for(int j=0;j<size;j++){
         aBoard[j]=j;
       }
-      st=clock();
-      NQueen(i,mask,0,0,0,0);
-      TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      // st=clock();
+      // NQueen(i,mask,0,0,0,0);
+      // TimeFormat(clock()-st,t);
+      // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+			long start=System.currentTimeMillis();
+			NQueen(0,0,0,0,0,0); // ０列目に王妃を配置してスタート
+			long end=System.currentTimeMillis();
+			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
+			System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
     }
-    return 0;
   }
   //
 	public static void main(String[] args){
-		new NQueen7();
+		new Java07_NQueen();
 	}
 }
 //
