@@ -242,17 +242,21 @@ void symmetryOps_bitmap(int size){
 void backTrack2(int size,int mask,int row,int left,int down,int right){
 	int bit;
 	int bitmap=mask&~(left|down|right);
-	if(row==size-1){ 								// 【枝刈り】
+  // 【枝刈り】
+	if(row==size-1){ 								
 		if(bitmap){
-			if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
+      //【枝刈り】 最下段枝刈り
+			if((bitmap&LASTMASK)==0){ 	
 				aBoard[row]=bitmap;
 				symmetryOps_bitmap(size);
 			}
 		}
 	}else{
-    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
+    //【枝刈り】上部サイド枝刈り
+    if(row<BOUND1){             	
       bitmap&=~SIDEMASK;
-    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
+    //【枝刈り】下部サイド枝刈り
+    }else if(row==BOUND2) {     	
       if((down&SIDEMASK)==0){ return; }
       if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
     }
