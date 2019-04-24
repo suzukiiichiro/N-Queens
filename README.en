@@ -4,6 +4,9 @@
   Information Technology Bureau, Kyodo News Agency, General Incorporated  Association Corporation, Iichiro Suzuki (suzuki.iichiro@kyodonews.jp)
   
 
+    N-Queen Demo
+    https://suzukiiichiro.github.io/N-Queens/demo/
+
  table of contents
                                        | | Bash | | Lua | C | Java | OpenCL | Non-GPU Recursive | Non-GPU Non-Recursive |
  1. Brute Force Forced Search | | | | | |
@@ -135,6 +138,8 @@ It is the top research. As the name suggests, it is a puzzle that seeks the solu
 N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
 To find the solution for the board whose value is N.
 
+    N-Queen Demo
+    https://suzukiiichiro.github.io/N-Queens/demo/
 
 
 ****************************
