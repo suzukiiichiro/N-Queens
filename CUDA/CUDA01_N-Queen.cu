@@ -225,24 +225,30 @@ void NQueen(int row){
 	}
 }
 int main(int argc,char** argv) {
-  bool cpu=true,gpu=true;
+  bool cpu=true,cpur=true,gpu=true;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
     argstart=2;
   }
   if(argc<argstart){
-    printf("Usage: %s [-c|-g] n steps\n",argv[0]);
+    printf("Usage: %s [-c|-g|-r] n steps\n",argv[0]);
     printf("  -c: CPU only\n");
+    printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-    printf("\n\n1. 再帰＋バックトラック(BT)");
+    printf("\n\n1. ブルートフォース　力任せ探索");
+  }
+  /** CPUR */
+  if(cpur){
+    printf("\n\n1. ブルートフォース　力任せ探索");
     NQueen(0);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
