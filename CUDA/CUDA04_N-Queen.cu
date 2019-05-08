@@ -237,25 +237,6 @@ int intncmp(int lt[],int rt[],int n);
 void TimeFormat(clock_t utime,char *form);
 //
 //hh:mm:ss.ms形式に変換
-void TimeFormat(clock_t utime,char *form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-	sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-	sprintf(form,"           %5.2f",ss);
-}
 //回転
 void rotate(int chk[],int scr[],int n,int neg){
 	int k=neg ? 0 : n-1;
