@@ -3,13 +3,34 @@
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
- 必要なこと
-　１．$ lspci | grep -i  nvidia 
-      で、nVidiaが存在しなければ絶対動かない。
-　２．$ nvidia-smi
-　　　で、以下の通りに出力され、ＧＰＵの存在が確認できなければ絶対に動かない。
+ コンパイル
+ $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+
+ 実行
+ $ ./CUDA01_N-Queen
+
+ 1. ブルートフォース　力任せ探索
+
+ 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
+ るかをチェックする方法
+
+   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
+   けであって8王妃問題を解いているわけではありません
+
+ 実行結果
+ :
+ :
+ 16777209: 7 7 7 7 7 7 7 0
+ 16777210: 7 7 7 7 7 7 7 1
+ 16777211: 7 7 7 7 7 7 7 2
+ 16777212: 7 7 7 7 7 7 7 3
+ 16777213: 7 7 7 7 7 7 7 4
+ 16777214: 7 7 7 7 7 7 7 5
+ 16777215: 7 7 7 7 7 7 7 6
+ 16777216: 7 7 7 7 7 7 7 7
 
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -19,7 +40,7 @@
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
 #define MAX 27
-
+//
 long Total=0 ;        //合計解
 long Unique=0;
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
@@ -28,9 +49,7 @@ int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 int SIZE=8;      //Nは8で固定
 int COUNT=0;     //カウント用
 int aBoard[MAX]; //版の配列
-
-
-
+//
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
   unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
@@ -72,6 +91,7 @@ __global__ void solve_nqueen_cuda_kernel_bt_bm(
   __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
   __syncthreads();if(tid==0){results[bid]=sum[0];}
 }
+//
 long long solve_nqueen_cuda(int n,int steps) {
   unsigned int down[32];unsigned int left[32];unsigned int right[32];
   unsigned int m[32];unsigned int bit;
@@ -203,8 +223,6 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
-
-//
 //出力用のメソッド
 void print(){
 	printf("%d: ",++COUNT);
@@ -224,6 +242,7 @@ void NQueen(int row){
 		}
 	}
 }
+//メインメソッド
 int main(int argc,char** argv) {
   bool cpu=true,cpur=true,gpu=true;
   int argstart=1,steps=24576;
@@ -278,5 +297,3 @@ int main(int argc,char** argv) {
   }
   return 0;
 }
-
-
