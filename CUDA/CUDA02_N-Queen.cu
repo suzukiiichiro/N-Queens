@@ -268,11 +268,11 @@ int main(int argc,char** argv) {
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-    printf("\n\n1. ブルートフォース　力任せ探索");
+    printf("\n\n２．配置フラグ（制約テスト高速化）");
   }
   /** CPUR */
   if(cpur){
-    printf("\n\n1. ブルートフォース　力任せ探索");
+    printf("\n\n２．配置フラグ（制約テスト高速化）");
     NQueen(0);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
