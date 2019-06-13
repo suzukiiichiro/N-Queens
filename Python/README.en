@@ -1,46 +1,32 @@
 / **
-  Algorithms and data structures learned in Java / C / Lua / Bash
+  "Algorithms and data structures" learned in Python
   Step-by-step optimization of the N-Queen problem
-  Information Technology Bureau, Kyodo News Agency, General Incorporated  Association Corporation, Iichiro Suzuki (suzuki.iichiro@kyodonews.jp)
+  Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
   
 
-    N-Queen Demo
-    https://suzukiiichiro.github.io/N-Queens/demo/
-
- table of contents
-|   |Bash |   |Python|   | Lua |  C  |Java |非GPU再帰|非GPU非再帰|GPUCUDA|
-|   |     |   |      |   |     |     |     |         |           |       |1. Brute Force Forced Search       
-|   |     |   |      |   |     |     |     |         |           |       |2. Placement flag                 
-|N12|07:30|N15| 07:54|N17|20:48|12:29|12:18|    14:44|   14:45   |  00:01|3. Backtracking                   
-|N12|06:48|N15| 08:21|N17|24:31| 8:11|12:51|         |           |       |4. Symmetry cancellation method   
-|N12|03:36|N15| 04:48|N17|16:38| 2:15| 3:01|         |           |       |5. Pruning and Optimization       
-|N12|01:52|N15| 02:05|N17|09:05| 1:40| 0:58|         |           |       |6. Bit map                        
-|N12|05:47|N15| 07:25|N17|23:09| 2:38| 2:38|   04:36 |   06:28   |       |7. Bit map + symmetry method      
-|N12|05:54|N15| 08:49|N17|07:33| 3:05| 2:40|         |           |       |8. Bit map + symmetry + pruning   
-|N12|03:19|N15| 08:06|N17|12:20| 1:38| 1:38|   02:56 |   03:42   |       |9. position of the queen BOUND1   
-|N12|03:50|N15| 08:10|N17|12:18| 1:38| 1:38|   01:19 |   01:40   |       |10.position of the queen BOUND1,2 
-|N12|02:00|N15| 02:27|N17|03:32| 1:34| 1:34|   00:24 |   00:45   |       |11.Pruning                       
-|N12|00:25|N15| 00:54|N17|02:13| 0:16| 0:14|         |           |       |12.Optimization                  
-|N12|     |N15|      |N17|     | 0:04| 0:04|         |           |       |13.Parallel processing           
-                                                                           
-
- Compile (please refer to README in the directory for details)
-
-# Bash version (execution)
- $ bash BASH01_N-Queen.sh
-
-# Lua version (execution)
- $ luajit Lua01_N-Queen.sh
-
-# C version
- $ gcc -Wall -W -O3 -g -ftrapv -std = c99 -lm 07_01N -Queen.c -o 01N -Queen
-
  Execution
- $ ./01 N-Queen
+ $ python Py01 N-Queen.py
 
- # Jav / C / Lua / Bash version
+ # Python / Java / C / Lua / Bash version
  # https://github.com/suzukiiichiro/N-Queen
 
+
+
+  table of contents
+                                                     |Python
+1. Brute force force search                          |         
+2. Placement flag (constraint test acceleration)     |      
+3. Backtracking                                   N15| 07:54
+4. Backtracking + symmetry cancellation method    N15| 08:21
+5. Backtracking + symmetry removal + pruning      N15| 04:48
+6. Bit map (other than symmetryOps ()             N15| 02:05
+7. Bit map (also supports symmetryOps ())         N15| 07:25
+8. Bitmap + pruning                               N15| 08:49
+9. Branch by position of queen BOUND1             N15| 08:06
+ 10. Branch by position of queen BOUND1,2         N15| 08:10
+ 11. Pruning                                      N15| 02:27
+ 12. Optimization                                 N15| 00:54
+ 13. Parallel processing                          N15|      
 
 
 *********************************
@@ -138,8 +124,6 @@ It is the top research. As the name suggests, it is a puzzle that seeks the solu
 N Queen is an expanded version of Eight Queen, and the value of N is 8, 9, 10, 11, 12, ...
 To find the solution for the board whose value is N.
 
-    N-Queen Demo
-    https://suzukiiichiro.github.io/N-Queens/demo/
 
 
 ****************************
@@ -325,7 +309,7 @@ I want you to try it.
 
 The solution to the N-Queen requires steps to disassemble the process and understand each one carefully.
 The first step is to look at and write the source of Step 1 over and over again.
-Of course, it takes a lot of solution time as well as easy. You may have finished drinking coffee by the end of the process.
+Of course, it's easy, so it takes a lot of solution time. You may have finished drinking coffee by the end of the process.
 When the process reaches step 15, the process ends in about one second. It took 1 minute to finish in 1 second
 You may not be interested. But what if 100 years do not take a year?
 Artificial intelligence AI technology is a trinity of device evolution, processing acceleration, and solution optimization (algorithm).
@@ -454,47 +438,26 @@ Then, the main subject from the following.
    It is possible to turn back the tree when it turns out that there is no solution after getting down.
 
  Execution result
- :
- :
-83: 6 1 5 2 0 3 7 4
-84: 6 2 0 5 7 4 1 3
-85: 6 2 7 1 4 0 5 3
-86: 6 3 1 4 7 0 2 5
-87: 6 3 1 7 5 0 2 4
-88: 6 4 2 0 5 7 1 3
-89: 7 1 3 0 6 4 2 5
-90: 7 1 4 2 0 6 3 5
-91: 7 2 0 5 1 4 6 3
-92: 7 3 0 2 5 1 6 4
+#   N:        Total       Unique        hh:mm:ss.ms
+#   4:            2            0         0:00:00.000
+#   5:           10            0         0:00:00.000
+#   6:            4            0         0:00:00.000
+#   7:           40            0         0:00:00.001
+#   8:           92            0         0:00:00.004
+#   9:          352            0         0:00:00.017
+#  10:          724            0         0:00:00.077
+#  11:         2680            0         0:00:00.380
+#  12:        14200            0         0:00:02.090
+#  13:        73712            0         0:00:12.024
+#  14:       365596            0         0:01:13.316
+#  15:      2279184            0         0:07:54.251
+#  16:     14772512            0         0:54:46.040
+#  17:     95815104            0         6:36:34.981
 
+ 4. Backtrack + symmetry cancellation method
 
- 4. Display process of output result
-      Corrected processing so that processing can be continued while N gradually increases
-
- Execution result
-  N: Total Unique hh: mm: ss. Ms
-  2: 0 0 0.00
-  3: 0 0 0.00
-  4: 2 0 0.00
-  5: 10 0 0.00
-  6: 4 0 0.00
-  7: 40 0 ​​0.00
-  8: 92 0 0.00
-  9: 352 0 0.00
- 10: 724 0 0.00
- 11: 2680 0 0.01
- 12: 14200 0 0.05
- 13: 73712 0 0.30
- 14: 365596 0 1.93
- 15: 2279184 0 13.50
- 16: 14772512 0 1: 39.30
- 17: 95815104 0 12: 29. 59
-
-
- 5. Symmetry cancellation method
-
-     One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
-     There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
+ One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
+ There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
  
  ■ How to judge unique solutions
    One solution obtained by the whole search is essentially changed by rotation, inversion, etc.
@@ -518,18 +481,18 @@ Then, the main subject from the following.
  The total solution for N = 5 is 10, and the unique solution is 2.
  
  Group 1: One unique solution
---- Q--Q ---
- Q ---- ---- Q
--Q---Q--
----- Q Q ----
--Q --- --- Q-
+ ---Q--Q---
+ Q--------Q
+ --Q----Q--
+ ----Q Q----
+ -Q------Q-
  
  Group 2: Unique solution 2
----- Q Q -----Q---Q--Q--Q-Q----Q
--Q--Q--Q----Q-Q---Q---Q--Q ---
- Q ---- ---- Q --- Q--Q --- ---- Q Q -----Q --- --- Q-
---- Q--Q ----Q --- --- Q--Q---Q-- ----- Q Q ----
--Q --- --- Q- ---- Q Q ---- Q ---- ---- Q-Q---Q--
+ ----Q Q------Q----Q----Q--Q---Q-------Q
+ --Q----Q--Q-------Q-Q-----Q----Q--Q-----
+ Q--------Q---Q--Q------Q Q-----Q------Q-
+ ---Q--Q----Q-----Q---Q---Q-----Q Q----
+ -Q------Q-----Q Q----Q-------Q--Q----Q--
 
  
    Then we define it to determine the unique solution, but define it as follows
@@ -538,11 +501,11 @@ Then, the main subject from the following.
  Is counted as a unique solution. In addition, the number of N digits is referred to as "unique judgment value" thereafter.
  I will call it.
  
----- Q 0
--Q-- 2
- Q ---- 4 ---> 0 2 4 1 3 (unique judgment value)
---- Q- 1
--Q --- 3
+ ----Q 0
+ --Q--2
+ Q----4 ---> 0 2 4 1 3 (unique judgment value)
+ ---Q-1
+ -Q---3
  
  
    Determine if one solution (original) obtained by search is a unique solution
@@ -560,163 +523,155 @@ Then, the main subject from the following.
  In order to be unique, the position of the queen on at least the other three outer sides is also
  It has to be in the middle, and it is impossible because it corresponds to each other's effective muscles.
 
+  ************************************************** *************************
+  The position of the queen in the top row is limited to the right area except the center. (Where N 2 2)
+  ************************************************** *************************
+  
+    Next, consider the case where there is a queen at the far right (upper right corner). The other three
+  Because you can not put the queen in the corner of (because it is a good muscle), whether it is a unique solution
+  The only way to determine this is to compare it with the pattern inverted on the oblique axis passing from the upper right corner to the lower left corner.
+  You In short,
+  
+  [The position of the second queen from the top from the right]
+  [The position of the second row of queens from the top from the top]
+  
+ 
+  It can be determined just by comparing. This is because these two values ​​will never be the same.
+  
+        3 0
+        ↓
+  ----Q 0 0
+  -Q---← 3
+  -----The second queen from the top is the fourth from the right.
+  ---Q-The second row from the right is the fourth queen position from the top.
+  -----However, this is impossible because they are mutually effective.
+  
+    After all, it is better to put a pruning that prohibits the placement to X in the following figure during recursive search.
+  It is guaranteed that every solution is unique.
+  
+  ----X Q
+  -Q--X-
+  ----X-
+  ----X-
+  ------
+  ------
+  
+    Now consider the case where there is a queen other than the right end. Original is a unique solution
+  For this reason, the placement to X in the figure below is prohibited first. Therefore, put that pruning first
+  You
+  
+  X X---Q X X
+  X------X
+  --------
+  --------
+  - - - - - - - -
+  - - - - - - - -
+  X - - - - - - X
+
+    If you go to the next queen's dominant source, it is possible that the original is not a unique solution after all
+  There is a sex only if there is a queen somewhere in the positions A, B and C in the figure below. Follow
+  Therefore, it is good to examine only three conversion patterns of 90 degree rotation, 180 degree rotation and 270 degree rotation
+  It becomes.
+  
+  X x x x x Q X X
+  X---x x x X
+  C--x-x-x
+  --x--x--
+  -x---x--
+  x----x-A
+  X----x-X
+  X X B--x X X
+ 
+ 
+  ■ Development from unique solutions to all solutions
+    The previous considerations were to find the number of unique solutions. To find the total number of solutions
+  We need to prune to find a unique solution and do a full search. Therefore
+  It will cost you search time. Therefore, from the number of unique solutions,
+  I can think of an attempt to lead it. This is a pattern search by left-right inversion
+  It is an expanded version of the idea of ​​omitting the and finally doubling the result. And that
+  To realize this, "How many elements of a group a certain unique solution belongs to?"
+  It is necessary to consider.
+  
+    First, consider the unique solution where the queen is in the upper right corner. The pattern inverted on the oblique axis
+  It is impossible to become isomorphic to the original (× 2), and the other three queens in the upper right corner
+  The number of elements of the group to which this unique solution belongs is required because it can be mapped to a corner (× 4)
+  There will be 8 pieces (= 2 × 4).
+  
+    Second, it will be a bit more complicated if the queen is outside the upper right corner, but I will simplify the discussion
+  In order to make sure
+ 
+  TOTAL = (COUNT 8 * 8) + (COUNT 4 * 4) + (COUNT 2 * 2);
+    (1) If it is rotated by 90 degrees and becomes the same as the original, then it is further rotated by 90 degrees.
+     Even if it is rotated by
+     It becomes the same type as Zinal.
+ 
+     COUNT 2 * 2
+  
+    (2) If it is rotated by 90 degrees and it differs from the original, the original must be rotated by 270 degrees
+     It is different from However, when rotated 180 degrees, it may be the same as the original
+     It is possible.
+ 
+     COUNT 4 * 4
+  
+    (3) The number of elements of the group to which the unique solution corresponding to (1) belongs is a pattern in which the left and right are inverted.
+        In addition there are only two. The number of elements of the group to which the unique solution corresponding to (2) belongs is
+        When rotating 180 degrees and becoming the same type, 4 pieces (horizontal flip x vertical rotation), and even rotating 180 degrees
+        If different from the original will be eight. (Horizontal Reversal x Vertical Rotation x Vertical Reversal)
+  
+     COUNT 8 * 8
+ 
+    From the above, we investigate which kind of unique solution each one corresponds to
+  In this way, the total solution number can be derived by calculation. Pruning will shorten the search time
+  It is no longer necessary to
+  
+    UNIQUE COUNT2 + COUNT4 + COUNT8
+    TOTAL (COUNT 2 * 2) + (COUNT 4 * 4) + (COUNT 8 * 8)
+ 
+  If you realize these, execution speed will be slower than the previous NQueen 3 ().
+  This is because processing is added to reverse the symmetry, inversion, and oblique axes.
+  However, by performing this process, NQueen 5 () will further accelerate the processing speed.
+  It is speeding up dramatically. For that purpose, this algorithm implementation is necessary.
 
 
- ************************************************** *************************
- The position of the queen in the top row is limited to the right area except the center. (Where N 2 2)
- ************************************************** *************************
- 
-   Next, consider the case where there is a queen at the far right (upper right corner). The other three
- Because you can not put the queen in the corner of (because it is a good muscle), whether it is a unique solution
- The only way to determine this is to compare it with the pattern inverted on the oblique axis passing from the upper right corner to the lower left corner.
- You In short,
- 
- [The position of the second queen from the top from the right]
- [The position of the second row of queens from the top from the top]
- 
 
- It can be determined just by comparing. This is because these two values ​​will never be the same.
- 
-       3 0
-       ↓
----- Q ← 0
--Q --- ← 3
------ The second row from the top is the fourth queen position from the right.
---- Q- The second row from the right is the fourth queen position from the top.
------ However, this is impossible because they are mutually effective.
- 
-   After all, it is better to put a pruning that prohibits the placement to X in the following figure during recursive search.
- It is guaranteed that every solution is unique.
- 
----- X Q
--Q-- X-
----- X-
----- X-
--------
--------
- 
-   Now consider the case where there is a queen other than the right end. Original is a unique solution
- For this reason, the placement to X in the figure below is prohibited first. Therefore, put that pruning first
- You
- 
- X X --- Q X X
- X ---- X
---------
---------
---------
---------
- X ---- X
- X X ---- X X
- 
-   If you follow the queen's dominant source next time, it is possible that the original is not a unique solution
- There is a sex only if there is a queen somewhere in the positions A, B and C in the figure below. Follow
- Therefore, it is good to examine only three conversion patterns of 90 degree rotation, 180 degree rotation and 270 degree rotation
- It becomes.
- 
- X x x x x Q X X
- X --- x x x X
- C-- x- x- x
--x-- x--
--x --- x--
- x --- x- A
- X ---- x- X
- X X B-- x X X
-
- ■ Development from unique solutions to all solutions
-   The previous considerations were to find the number of unique solutions. To find the total number of solutions
- We need to prune to find a unique solution and do a full search. Therefore
- It will cost you search time. Therefore, from the number of unique solutions,
- I can think of an attempt to lead it. This is a pattern search by left-right inversion
- It is an expanded version of the idea of ​​omitting the and finally doubling the result. And that
- To realize this, "How many elements of a group a certain unique solution belongs to?"
- It is necessary to consider.
- 
-   First, consider the unique solution where the queen is in the upper right corner. The pattern inverted on the oblique axis
- It is impossible to become isomorphic to the original (× 2), and the other three queens in the upper right corner
- The number of elements of the group to which this unique solution belongs is required because it can be mapped to a corner (× 4)
- There will be 8 pieces (= 2 × 4).
- 
-   Second, it will be a bit more complicated if the queen is outside the upper right corner, but I will simplify the discussion
- In order to make sure
-
- TOTAL = (COUNT 8 * 8) + (COUNT 4 * 4) + (COUNT 2 * 2);
-  (1) If it is rotated by 90 degrees and becomes the same type as the original, then it is further rotated by 90 degrees (the original
-    Even if it is rotated by
-    It becomes the same type as Zinal.
-
-    COUNT 2 * 2
- 
-  (2) If it is rotated 90 degrees and it differs from the original, it is always an origina even if it is rotated 270 degrees
-    It is different from However, when rotated 180 degrees, it may be the same as the original
-    It is possible.
-
-    COUNT 4 * 4
- 
-  (3) The number of elements of the group to which the unique solution corresponding to (1) belongs is a pattern in which the left and right are inverted.
-       In addition there are only two. The number of elements of the group to which the unique solution corresponding to (2) belongs is
-       When rotating 180 degrees and becoming the same type, 4 pieces (horizontal flip x vertical rotation), and even rotating 180 degrees
-       If different from the original will be eight. (Horizontal flip × vertical rotation × vertical flip)
- 
-    COUNT 8 * 8
-
-   From the above, we investigate which kind of unique solution each one corresponds to
- In this way, the total solution number can be derived by calculation. Pruning will shorten the search time
- It is no longer necessary to
- 
-   UNIQUE COUNT2 + COUNT4 + COUNT8
-   TOTAL (COUNT 2 * 2) + (COUNT 4 * 4) + (COUNT 8 * 8)
-
- If you realize these, execution speed will be slower than the previous NQueen 3 ().
- This is because processing is added to reverse the symmetry, inversion, and oblique axes.
- However, by performing this process, the processing speed will be much faster with NQueen 5 ().
- It is speeded up. For that purpose, this algorithm implementation is necessary.
 
 Execution result
- N: Total Unique hh: mm: ss. Ms
- 2: 0 0 0.00
- 3: 0 0 0.00
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.01
-12: 14200 1787 0.04
-13: 73712 9233 0.27
-14: 365596 45752 1.57
-15: 2279184 285053 10.09
-16: 14772512 1846955 1: 08. 64
-17: 95815104 11977939 8: 11.18
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.001
+#  8:           92           12         0:00:00.005
+#  9:          352           46         0:00:00.020
+# 10:          724           92         0:00:00.089
+# 11:         2680          341         0:00:00.429
+# 12:        14200         1787         0:00:02.235
+# 13:        73712         9233         0:00:12.962
+# 14:       365596        45752         0:01:17.622
+# 15:      2279184       285053         0:08:21.847
 
 
- * 6. Pruning and optimization
+ * 5. Backtrack + de-symmetry + pruning and optimization
  *
  * Compare source comments for simplicity.
  * Although simple, the effect of pruning is enormous.
 
  Execution result
-  N: Total Unique hh: mm: ss. Ms
-  2: 0 0 0.00
-  3: 0 0 0.00
-  4: 2 1 0.00
-  5: 10 2 0.00
-  6: 4 1 0.00
-  7: 40 6 0.00
-  8: 92 12 0.00
-  9: 352 46 0.00
- 10: 724 92 0.00
- 11: 2680 341 0.00
- 12: 14200 1787 0.01
- 13: 73712 9233 0.08
- 14: 365596 45752 0.43
- 15: 2279184 285053 2.86
- 16: 14772512 1846955 18.03
- 17: 95815104 11977939 2: 15.80
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.000
+# 8:           92           12         0:00:00.002
+# 9:          352           46         0:00:00.013
+#10:          724           92         0:00:00.052
+#11:         2680          341         0:00:00.269
+#12:        14200         1787         0:00:01.283
+#13:        73712         9233         0:00:07.756
+#14:       365596        45752         0:00:42.300
+#15:      2279184       285053         0:04:48.555
 
-
- 7. Bit map (correspondence other than symmetryOps ())
+ 6. Bit map (correspondence other than symmetryOps ())
 
    Use Bitwise operations to pack and process acceleration states into bitmaps
    20 to 30 times faster than a simple backtrack
@@ -841,24 +796,22 @@ It is possible to determine the effect of the on-line by shifting the right and 
 
 
   Execution result
- N: Total Unique hh: mm: ss. Ms
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.00
-12: 14200 1787 0.02
-13: 73712 9233 0.11
-14: 365596 45752 0.59
-15: 2279184 285053 3.89
-16: 14772512 1846955 26.12
-17: 95815104 11977939 2: 58. 32
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            0         0:00:00.000
+# 5:           10            0         0:00:00.000
+# 6:            4            0         0:00:00.000
+# 7:           40            0         0:00:00.000
+# 8:           92            0         0:00:00.001
+# 9:          352            0         0:00:00.005
+#10:          724            0         0:00:00.024
+#11:         2680            0         0:00:00.119
+#12:        14200            0         0:00:00.606
+#13:        73712            0         0:00:03.348
+#14:       365596            0         0:00:19.538
+#15:      2279184            0         0:02:05.652
 
 
- 8. Bit map (also supports symmetryOps ())
+ 7. Bit map (also supports symmetryOps ())
 
  * One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
  * There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
@@ -920,24 +873,40 @@ It is possible to determine the effect of the on-line by shifting the right and 
  *
 
   Execution result
- N: Total Unique hh: mm: ss. Ms
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.00
-12: 14200 1787 0.03
-13: 73712 9233 0.15
-14: 365596 45752 0.79
-15: 2279184 285053 5.88
-16: 14772512 1846955 38.64
-17: 95815104 11977939 4: 36.71
+#    N:        Total       Unique        hh:mm:ss.ms
+#    4:            2            1         0:00:00.000
+#    5:           10            2         0:00:00.000
+#    6:            4            1         0:00:00.000
+#    7:           40            6         0:00:00.001
+#    8:           92           12         0:00:00.005
+#    9:          352           46         0:00:00.025
+#   10:          724           92         0:00:00.077
+#   11:         2680          341         0:00:00.341
+#   12:        14200         1787         0:00:01.981
+#   13:        73712         9233         0:00:11.558
+#   14:       365596        45752         0:01:05.960
+#   15:      2279184       285053         0:07:25.447
 
 
- 9. Focus on the queen position in the top row
+ 8. Bitmap + pruning
+
+
+  Execution result
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.002
+# 8:           92           12         0:00:00.006
+# 9:          352           46         0:00:00.030
+#10:          724           92         0:00:00.092
+#11:         2680          341         0:00:00.413
+#12:        14200         1787         0:00:02.349
+#13:        73712         9233         0:00:13.641
+#14:       365596        45752         0:01:18.859
+#15:      2279184       285053         0:08:49.312
+ 
+ 9. Branch BOUND1 depending on the position of the queen
 
   The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
   In a sense, the same as "generate & test"
@@ -978,24 +947,78 @@ It is possible to determine the effect of the on-line by shifting the right and 
  *
  *
  Execution result
- N: Total Unique hh: mm: ss. Ms
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.00
-12: 14200 1787 0.02
-13: 73712 9233 0.08
-14: 365596 45752 0.49
-15: 2279184 285053 3.33
-16: 14772512 1846955 24.99
-17: 95815104 11977939 2: 44.42
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.001
+# 8:           92           12         0:00:00.005
+# 9:          352           46         0:00:00.025
+#10:          724           92         0:00:00.078
+#11:         2680          341         0:00:00.363
+#12:        14200         1787         0:00:02.121
+#13:        73712         9233         0:00:12.364
+#14:       365596        45752         0:01:14.248
+#15:      2279184       285053         0:08:06.387
 
 
- 10. Pruning
+
+ 10. Branch BOUND 1, 2 depending on the position of the queen
+
+  The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
+  In a sense, the same as "generate & test"
+  Analyze the nature of the problem and, like backtracking / forward inspection, think about omitting unnecessary searches
+  To remove the left-right symmetric solution for the unique solution in advance, at the loop in the first line,
+  You should arrange the queen only in the right half
+  If N is an odd number, there is no solution for centering the queen in the first row.
+  If there are no other three queens in the center, they will be rotated so that that side is on the top, and possibly left-right reversed,
+  Since it is possible to use a minimum solution, only the one placed in the center can be a unique solution
+  However, queens can not be placed at the top and at the center of the other sides, as they will work with each other
+
+
+  1. Separate the processing if there is a queen in the first corner, and if not
+    The condition judgment of whether it is the first line may go out of the loop
+    There is no significant difference in processing time, so we showed a code that is easy to understand
+  If there is a queen on line 2.1, the rotational symmetry check can be omitted
+    If there is a queen in the first corner of the line, it is impossible to place the queen in the other corner
+    Also for mirror images, it is sufficient to determine only the main diagonal mirror image
+    The second line, the second column should be regarded as a numerical value, and the condition of the second line <second column should be imposed.
+
+  If there is no queen in the first line corner, the queen can not be placed at 8 symmetrical positions to the right of the queen position
+  When placed, the unique judgment value of the state obtained by rotation and mirror image conversion is clearly increased
+    ☓☓ ... Q ☓☓
+    ☓ ... / | \ ☓
+    c ・ ・ ・ ・ ・ ・ ・ rt
+    ・ ・ ・ ・ ・ ・ ・ ・ ・
+    ・ ・ ・ ・ ・ ・ ・ ・ ・ ・
+    lt ・ ・ ・ ・ ・ ・ ・ a
+    ・ ・ ・ ・ ・ ・ ・ ☓
+    ☓☓ b · · dn ☓☓
+    
+  When the first line position is determined, calculate the possible position (☓ position)
+  lt, dn, lt positions can not be placed by valid check
+  The rotational symmetry check is only necessary if the queen is at a, b, c, so
+  It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
+ *
+ *
+ *
+ *
+ Execution result
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.001
+#  8:           92           12         0:00:00.005
+#  9:          352           46         0:00:00.025
+# 10:          724           92         0:00:00.080
+# 11:         2680          341         0:00:00.368
+# 12:        14200         1787         0:00:02.132
+# 13:        73712         9233         0:00:12.465
+# 14:       365596        45752         0:01:12.723
+# 15:      2279184       285053         0:08:10.190
+
+ 11. Pruning
 
   The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
   In a sense, the same as "generate & test"
@@ -1034,101 +1057,45 @@ It is possible to determine the effect of the on-line by shifting the right and 
 
  *
  *  Execution result
- N: Total Unique hh: mm: ss. Ms
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.00
-12: 14200 1787 0.01
-13: 73712 9233 0.04
-14: 365596 45752 0.23
-15: 2279184 285053 1.48
-16: 14772512 1846955 10.60
-17: 95815104 11977939 1: 16.26
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.000
+#  8:           92           12         0:00:00.002
+#  9:          352           46         0:00:00.007
+# 10:          724           92         0:00:00.023
+# 11:         2680          341         0:00:00.119
+# 12:        14200         1787         0:00:00.671
+# 13:        73712         9233         0:00:03.797
+# 14:       365596        45752         0:00:22.222
+# 15:      2279184       285053         0:02:27.751
 
 
- 11. Optimization of the symmetry cancellation method
+
+ 12. Optimization of the symmetry cancellation method
  *
  *  Execution result
-  N: Total Unique hh: mm: ss. Ms
- 4: 2 1 0.00
- 5: 10 2 0.00
- 6: 4 1 0.00
- 7: 40 6 0.00
- 8: 92 12 0.00
- 9: 352 46 0.00
-10: 724 92 0.00
-11: 2680 341 0.00
-12: 14200 1787 0.00
-13: 73712 9233 0.02
-14: 365596 45752 0.09
-15: 2279184 285053 0.54
-16: 14772512 1846955 3.50
-17: 95815104 11977939 24.45
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.000
+#  8:           92           12         0:00:00.000
+#  9:          352           46         0:00:00.002
+# 10:          724           92         0:00:00.012
+# 11:         2680          341         0:00:00.057
+# 12:        14200         1787         0:00:00.291
+# 13:        73712         9233         0:00:01.512
+# 14:       365596        45752         0:00:08.967
+# 15:      2279184       285053         0:00:54.645
+#
 
 
- 12. Parallel processing: pthreads and structures
+ 13. Parallel processing: pthreads and structures
  *
  *  Execution result
  N: Total Unique dd: hh: mm: ss. Ms
- 4: 2 1 00:00: 00: 00
- 5: 10 2 00:00: 00: 00
- 6: 4 1 00:00: 00: 00
- 7: 40 6 00:00: 00: 00
- 8: 92 12 00:00: 00: 00
- 9: 352 46 00: 00: 00.00
-10: 724 92 00: 00: 00.00
-11: 2680 341 00:00: 00: 00
-12: 14200 1787 00: 00: 00.00
-13: 73712 9233 00: 00: 00.00
-14: 365596 45752 00:00: 00.02
-15: 2279184 285053 00: 00: 00: 00.12
-16: 14772512 1846955 00: 00: 00: 00.66
-17: 95815104 11977939 00:00: 00: 30
-
  
-13. GPU nVidia-CUDA N17 = 1.67
- *
- *  Execution result
- N: Total Unique dd: hh: mm: ss. Ms
- 4: 2 0 00:00: 00: 00
- 5: 10 0 00:00: 00: 00
- 6: 4 0 00:00: 00: 00
- 7: 40 0 ​​00:00: 00: 00
- 8: 92 0 00:00: 00: 00
- 9: 352 0 00:00: 00: 00
-10: 724 0 00:00: 00: 00
-11: 2680 0 00:00: 00: 00
-12: 14200 0 00: 00:00: 00
-13: 73712 0 00:00: 00: 0.05
-14: 365596 0 00: 00: 00: 00.29
-15: 2279184 0 00: 00:00: 01.94
-
- N: Total Unique dd: hh: mm: ss. Ms
- 4: 2 0 00: 00: 00: 00.06
- 5: 10 0 00:00: 00: 00
- 6: 4 0 00:00: 00: 00
- 7: 40 0 ​​00:00: 00: 00
- 8: 92 0 00:00: 00: 00
- 9: 352 0 00:00: 00: 00
-10: 724 0 00:00: 00: 00
-11: 2680 0 00:00: 00: 00
-12: 14200 0 00:00:00 0.01
-13: 73712 0 00:00: 00:02
-14: 365596 0 00:00: 00: 01
-15: 2279184 0 00:00: 00: 05
-16: 14772512 0 00: 00: 00: 00.27
-17: 95815104 0 00:00: 01. 65
-
-
-
- ** /
-
-
-
-
-
+ making now.
+ 
