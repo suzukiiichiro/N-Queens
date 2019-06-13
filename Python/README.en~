@@ -1,25 +1,32 @@
- * "Algorithms and data structures" learned in Java
- * Step-by-step optimization of the N-Queen problem
- * Information Technology Bureau, Kyodo News Agency, Inc., Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
- *
+/ **
+  "Algorithms and data structures" learned in Python
+  Step-by-step optimization of the N-Queen problem
+  Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
+  
+
+ Execution
+ $ python Py01 N-Queen.py
+
  # Python / Java / C / Lua / Bash version
  # https://github.com/suzukiiichiro/N-Queen
- *
- * N queen problem
-1. Brute force force search
-2. Placement flag (constraint test acceleration)
-3. Backtracking N17 12: 18
-4. Back track + symmetry cancellation method N17 12: 51
-5. Backtrack + symmetry cancellation + pruning N17 03: 01
-6. Backtrack + Bitmap N17 00: 58
-7. Backtrack + bitmap + symmetry cancellation method N17 02: 38
-8. Pruning N17 02:40
-9. Branching by the position of the queen BOUND1 N17 01:38
- 10. Branch by position of queen BOUND1, 2 N17 01: 38
- 11. Pruning N17 01: 34
- 12. Optimization N17 00:14
- 13. Parallel processing N17 00:04
 
+
+
+  table of contents
+                                                     |Python
+1. Brute force force search                          |         
+2. Placement flag (constraint test acceleration)     |      
+3. Backtracking                                   N15| 07:54
+4. Backtracking + symmetry cancellation method    N15| 08:21
+5. Backtracking + symmetry removal + pruning      N15| 04:48
+6. Bit map (other than symmetryOps ()             N15| 02:05
+7. Bit map (also supports symmetryOps ())         N15| 07:25
+8. Bitmap + pruning                               N15| 08:49
+9. Branch by position of queen BOUND1             N15| 08:06
+ 10. Branch by position of queen BOUND1,2         N15| 08:10
+ 11. Pruning                                      N15| 02:27
+ 12. Optimization                                 N15| 00:54
+ 13. Parallel processing                          N15|      
 
 
 *********************************
@@ -210,7 +217,7 @@ Puzzle DE Programming (M.Hiroi)
 
 Page of Mr. Takaken (Shinichiro Takahashi)
 ****************************
-  N-Queen Problem (Find the Number of Solutions)
+  N-Queen problem (finding the number of solutions)
     Basic form using bit processing
     Program mechanism using bit processing
     Determination method of unique solution
@@ -356,72 +363,96 @@ Above, I think that you may start with any language. Anyone who can do it can wr
 Then, the main subject from the following.
 
 
+**************************************************
+  Step-by-step optimization of the N-Queen problem
+**************************************************
 
-  1. Brute force force search
-   Recursively enumerate combinations that place one king in each column
-   Systematically count all possible solution candidates, and each solution candidate
-   Method to check whether it will be (*) Recursively combine combinations of placing one royal note in each row
-   It only generates the combination and does not mean solving the 8 king problem
+/ **
+ Algorithms and data structures learned in C
+ Step-by-step optimization of the N-Queen problem
+ Information Technology Bureau, Kyodo News Agency, General Incorporated Association Corporation, Isichiro Suzuki (suzuki.iichiro@kyodonews.jp)
 
-   Execution result
-      :
-      :
-      16777208: 7 7 7 7 7 7 6 7
-      16777209: 7 7 7 7 7 7 7 0
-      16777210: 7 7 7 7 7 7 7 1
-      16777211: 7 7 7 7 7 7 7 2
-      16777212: 7 7 7 7 7 7 7 3
-      16777213: 7 7 7 7 7 7 7 4
-      16777214: 7 7 7 7 7 7 7 5
-      16777215: 7 7 7 7 7 7 7 6
-      16777216: 7 7 7 7 7 7 7 7
+ compile
+ $ gcc -Wall -W -O3 -g -ftrapv -std = c99 -lm 07_01N -Queen.c -o 01N -Queen
+
+ Execution
+ $ ./01 N-Queen
 
 
-2. Placement flag (constraint test acceleration)
-   Recursively enumerate combinations that place one king in each row and column
-   
-   Execution result 
-   :
-   :
-40312: 7 6 5 4 2 1 3 0
-40313: 7 6 5 4 2 3 0 0
-40314: 7 6 5 4 2 3 1 0
-40315: 7 6 5 4 3 0 1 0
-40316: 7 6 5 4 3 0 2 0
-40317: 7 6 5 4 3 1 0 0
-40318: 7 6 5 4 3 1 2 0
-40319: 7 6 5 4 3 2 0 0
-40320: 7 6 5 4 3 2 1 0
+ 1. Brute force force-based search
+
+ Systematically count all possible solution candidates, and each solution candidate
+   How to check
+
+   (※) It generates the combination which enumerates the combination which arranges one royal note in each line recursively
+   It does not mean that the 8 kings problem is solved
+
+ Execution result
+ :
+ : <It takes a lot of time>
+ :
+ 16777207: 7 7 7 7 7 7 6 6
+ 16777208: 7 7 7 7 7 7 6 7
+ 16777209: 7 7 7 7 7 7 7 0
+ 16777210: 7 7 7 7 7 7 1
+ 16777211: 7 7 7 7 7 7 7 2
+ 16777212: 7 7 7 7 7 7 7 3
+ 16777213: 7 7 7 7 7 7 7 4
+ 16777214: 7 7 7 7 7 7 7 5
+ 16777215: 7 7 7 7 7 7 7 6
+ 16777216: 7 7 7 7 7 7 7 7
 
 
 
-3. Back track
-    A combination of placement flags for each diagonal row in addition to each row and column, each row, diagonal
-Prepare a flag on whether there is a queen on the top, it is clear that it does not meet the constraints along the way
-If this is the case, no further pattern generation is performed. Each row, there is a queen on the diagonal
-Speed ​​up by preparing some flags. Until now, row direction and column direction
-There is a list of combinations, but the queen can take a piece in the diagonal direction
-So, by placing a restriction that only one queen can be placed on any diagonal line
-When it turns out that there is no solution even if you go down the tree without visiting all the leaves in the depth-first search
-It can be said that it returns.
+ 2. Placement flag (constraint test acceleration)
 
- Execution result 
- N: Total Unique hh: mm: ss. SSS
- 4: 2 0 00: 00: 00.000
- 5: 10 0 00: 00: 00.000
- 6: 4 0 00: 00: 00.001
- 7: 40 0 ​​00: 00: 00.000
- 8: 92 0 00:00: 00.001
- 9: 352 0 00: 00: 00.002
-10: 724 0 00: 00: 00.003
-11: 2680 0 00:00: 0 0.014
-12: 14200 0 00: 00: 00.064
-13: 73712 0 00: 00: 00.381
-14: 365596 0 00: 00: 02.229
-15: 2279184 0 00: 00: 14.249
-16: 14772512 0 00: 01: 38. 375
-17: 95815104 0 00: 12: 18.698
+   Do not check after completion of pattern generation, but satisfy constraints on the way
+   If it is obvious that there is no need for subsequent pattern generation.
+  "I'm going to advance as much as I can, but I can't go further than that."
+  A method of examining all the hands with the idea that only one move back and start over when things are understood.
+  (*) Even if the combination branch arrangement is performed for one matrix in each matrix, even if the branch branch scan is performed recursively,
+  It is only a list of combinations, and it does not mean that the 8 kings problem is solved.
 
+ Execution result
+ :
+ :
+ 40312: 7 6 5 4 2 1 3 0
+ 40313: 7 6 5 4 2 3 0 1
+ 40314: 7 6 5 4 2 3 1 0
+ 40315: 7 6 5 4 3 0 1 2
+ 40316: 7 6 5 4 3 0 2 1
+ 40317: 7 6 5 4 3 1 0 2
+ 40318: 7 6 5 4 3 1 2 0
+ 40319: 7 6 5 4 3 2 0 1
+ 40320: 7 6 5 4 3 2 1 0
+
+
+ 3. Back track
+
+   Prepare a flag indicating whether there is a queen on each column, diagonally, and meet the constraints along the way
+   If it is obvious not to do so, no further pattern generation will be performed.
+   Speedup is achieved by preparing a flag whether or not there is a queen on each row and diagonal line.
+   So far, it is a list of combinations that do not overlap in the row and column directions.
+   Can take a piece in a diagonal direction, so there is one queen on every diagonal line
+   The tree can not be visited by all the leaves in the depth-first search by adding the limit that can only be placed.
+   It is possible to turn back the tree when it turns out that there is no solution after getting down.
+
+ Execution result
+#   N:        Total       Unique        hh:mm:ss.ms
+#   4:            2            0         0:00:00.000
+#   5:           10            0         0:00:00.000
+#   6:            4            0         0:00:00.000
+#   7:           40            0         0:00:00.001
+#   8:           92            0         0:00:00.004
+#   9:          352            0         0:00:00.017
+#  10:          724            0         0:00:00.077
+#  11:         2680            0         0:00:00.380
+#  12:        14200            0         0:00:02.090
+#  13:        73712            0         0:00:12.024
+#  14:       365596            0         0:01:13.316
+#  15:      2279184            0         0:07:54.251
+#  16:     14772512            0         0:54:46.040
+#  17:     95815104            0         6:36:34.981
 
  4. Backtrack + symmetry cancellation method
 
@@ -533,12 +564,11 @@ It can be said that it returns.
   X------X
   --------
   --------
-  --------
-  --------
-  X------X
-  X X----X X
-  
-    If you follow the queen's dominant source next time, it is possible that the original is not a unique solution
+  - - - - - - - -
+  - - - - - - - -
+  X - - - - - - X
+
+    If you go to the next queen's dominant source, it is possible that the original is not a unique solution after all
   There is a sex only if there is a queen somewhere in the positions A, B and C in the figure below. Follow
   Therefore, it is good to examine only three conversion patterns of 90 degree rotation, 180 degree rotation and 270 degree rotation
   It becomes.
@@ -606,44 +636,42 @@ It can be said that it returns.
 
 
 Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00:00: 00.001
- 9: 352 46 00: 00: 00.002
-10: 724 92 00:00: 00. 00
-11: 2680 341 00:00: 0 0.015
-12: 14200 1787 00: 00: 00.076
-13: 73712 9233 00: 00: 00.408
-14: 365596 45752 00: 00: 02.438
-15: 2279184 285053 00:00: 15.703
-16: 14772512 1846955 00: 01: 47. 324
-17: 95815104 11977939 00: 12: 51.460
-
- 5. Backtrack + symmetry cancellation + pruning
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.001
+#  8:           92           12         0:00:00.005
+#  9:          352           46         0:00:00.020
+# 10:          724           92         0:00:00.089
+# 11:         2680          341         0:00:00.429
+# 12:        14200         1787         0:00:02.235
+# 13:        73712         9233         0:00:12.962
+# 14:       365596        45752         0:01:17.622
+# 15:      2279184       285053         0:08:21.847
 
 
-Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00:00: 00.001
- 9: 352 46 00: 00: 00.002
-10: 724 92 00:00: 00. 00
-11: 2680 341 00:00: 00. 00
-12: 14200 1787 00:00: 0. 020
-13: 73712 9233 00: 00: 00.107
-14: 365596 45752 00:00: 0. 557
-15: 2279184 285053 00: 00: 03.845
-16: 14772512 1846955 00: 00: 24.166
-17: 95815104 11977939 00: 03: 01.539
+ * 5. Backtrack + de-symmetry + pruning and optimization
+ *
+ * Compare source comments for simplicity.
+ * Although simple, the effect of pruning is enormous.
 
+ Execution result
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.000
+# 8:           92           12         0:00:00.002
+# 9:          352           46         0:00:00.013
+#10:          724           92         0:00:00.052
+#11:         2680          341         0:00:00.269
+#12:        14200         1787         0:00:01.283
+#13:        73712         9233         0:00:07.756
+#14:       365596        45752         0:00:42.300
+#15:      2279184       285053         0:04:48.555
 
- 6. Backtrack + Bitmap
+ 6. Bit map (correspondence other than symmetryOps ())
 
    Use Bitwise operations to pack and process acceleration states into bitmaps
    20 to 30 times faster than a simple backtrack
@@ -767,25 +795,23 @@ It is possible to determine the effect of the on-line by shifting the right and 
  }
 
 
-Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 0 00: 00: 00.000
- 5: 10 0 00: 00: 00.000
- 6: 4 0 00: 00: 00.000
- 7: 40 0 ​​00: 00: 00.000
- 8: 92 0 00: 00: 00.000
- 9: 352 0 00: 00: 00.001
-10: 724 0 00: 00: 00.002
-11: 2680 0 00:00: 00. 02
-12: 14200 0 00: 00: 00.006
-13: 73712 0 00: 00: 00.035
-14: 365596 0 00:00: 00. 201
-15: 2279184 0 00:00: 01. 239
-16: 14772512 0 00:00: 08. 340
-17: 95815104 0 00:00: 58. 940
+  Execution result
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            0         0:00:00.000
+# 5:           10            0         0:00:00.000
+# 6:            4            0         0:00:00.000
+# 7:           40            0         0:00:00.000
+# 8:           92            0         0:00:00.001
+# 9:          352            0         0:00:00.005
+#10:          724            0         0:00:00.024
+#11:         2680            0         0:00:00.119
+#12:        14200            0         0:00:00.606
+#13:        73712            0         0:00:03.348
+#14:       365596            0         0:00:19.538
+#15:      2279184            0         0:02:05.652
 
 
- 7. Backtrack + bitmap + symmetry cancellation method
+ 7. Bit map (also supports symmetryOps ())
 
  * One solution is to rotate the board 90 degrees, 180 degrees, 270 degrees, and the sum of their mirror images
  * There are eight symmetric solutions. A method of removing an opposite solution and finding a solution from a unique solution.
@@ -847,44 +873,152 @@ Execution result
  *
 
   Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00:00: 00.001
- 9: 352 46 00: 00: 00.002
-10: 724 92 00:00: 00. 02
-11: 2680 341 00:00: 00.005
-12: 14200 1787 00:00: 00.016
-13: 73712 9233 00:00: 00. 08
-14: 365596 45752 00: 00: 00.452
-15: 2279184 285053 00: 00: 03.003
-16: 14772512 1846955 00:00: 20.812
-17: 95815104 11977939 00: 02: 38.799
-  
- 8. Pruning
+#    N:        Total       Unique        hh:mm:ss.ms
+#    4:            2            1         0:00:00.000
+#    5:           10            2         0:00:00.000
+#    6:            4            1         0:00:00.000
+#    7:           40            6         0:00:00.001
+#    8:           92           12         0:00:00.005
+#    9:          352           46         0:00:00.025
+#   10:          724           92         0:00:00.077
+#   11:         2680          341         0:00:00.341
+#   12:        14200         1787         0:00:01.981
+#   13:        73712         9233         0:00:11.558
+#   14:       365596        45752         0:01:05.960
+#   15:      2279184       285053         0:07:25.447
+
+
+ 8. Bitmap + pruning
 
 
   Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.002
-10: 724 92 00:00: 00. 02
-11: 2680 341 00:00: 00.005
-12: 14200 1787 00:00: 00.017
-13: 73712 9233 00:00: 00. 089
-14: 365596 45752 00: 00: 00.472
-15: 2279184 285053 00:00: 03. 162
-16: 14772512 1846955 00: 00: 22.404
-17: 95815104 11977939 00: 02: 40.032
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.002
+# 8:           92           12         0:00:00.006
+# 9:          352           46         0:00:00.030
+#10:          724           92         0:00:00.092
+#11:         2680          341         0:00:00.413
+#12:        14200         1787         0:00:02.349
+#13:        73712         9233         0:00:13.641
+#14:       365596        45752         0:01:18.859
+#15:      2279184       285053         0:08:49.312
+ 
+ 9. Branch BOUND1 depending on the position of the queen
+
+  The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
+  In a sense, the same as "generate & test"
+  Analyze the nature of the problem and, like backtracking / forward inspection, think about omitting unnecessary searches
+  To remove the left-right symmetric solution for the unique solution in advance, at the loop in the first line,
+  You should arrange the queen only in the right half
+  If N is an odd number, there is no solution for centering the queen in the first row.
+  If there are no other three queens in the center, they will be rotated so that that side is on the top, and possibly left-right reversed,
+  Since it is possible to use a minimum solution, only the one placed in the center can be a unique solution
+  However, queens can not be placed at the top and at the center of the other sides, as they will work with each other
 
 
-9. Branch BOUND1 depending on the position of the queen
+  1. Separate the processing if there is a queen in the first corner, and if not
+    The condition judgment of whether it is the first line may go out of the loop
+    There is no significant difference in processing time, so we showed a code that is easy to understand
+  If there is a queen on line 2.1, the rotational symmetry check can be omitted
+    If there is a queen in the first corner of the line, it is impossible to place the queen in the other corner
+    Also for mirror images, it is sufficient to determine only the main diagonal mirror image
+    The second line, the second column should be regarded as a numerical value, and the condition of the second line <second column should be imposed.
+
+  If there is no queen in the first line corner, the queen can not be placed at 8 symmetrical positions to the right of the queen position
+  When placed, the unique judgment value of the state obtained by rotation and mirror image conversion is clearly increased
+    ☓☓ ... Q ☓☓
+    ☓ ... / | \ ☓
+    c ・ ・ ・ ・ ・ ・ ・ rt
+    ・ ・ ・ ・ ・ ・ ・ ・ ・
+    ・ ・ ・ ・ ・ ・ ・ ・ ・ ・
+    lt ・ ・ ・ ・ ・ ・ ・ a
+    ・ ・ ・ ・ ・ ・ ・ ☓
+    ☓☓ b · · dn ☓☓
+    
+  When the first line position is determined, calculate the possible position (☓ position)
+  lt, dn, lt positions can not be placed by valid check
+  The rotational symmetry check is only necessary if the queen is at a, b, c, so
+  It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
+ *
+ *
+ *
+ *
+ Execution result
+# N:        Total       Unique        hh:mm:ss.ms
+# 4:            2            1         0:00:00.000
+# 5:           10            2         0:00:00.000
+# 6:            4            1         0:00:00.000
+# 7:           40            6         0:00:00.001
+# 8:           92           12         0:00:00.005
+# 9:          352           46         0:00:00.025
+#10:          724           92         0:00:00.078
+#11:         2680          341         0:00:00.363
+#12:        14200         1787         0:00:02.121
+#13:        73712         9233         0:00:12.364
+#14:       365596        45752         0:01:14.248
+#15:      2279184       285053         0:08:06.387
+
+
+
+ 10. Branch BOUND 1, 2 depending on the position of the queen
+
+  The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
+  In a sense, the same as "generate & test"
+  Analyze the nature of the problem and, like backtracking / forward inspection, think about omitting unnecessary searches
+  To remove the left-right symmetric solution for the unique solution in advance, at the loop in the first line,
+  You should arrange the queen only in the right half
+  If N is an odd number, there is no solution for centering the queen in the first row.
+  If there are no other three queens in the center, they will be rotated so that that side is on the top, and possibly left-right reversed,
+  Since it is possible to use a minimum solution, only the one placed in the center can be a unique solution
+  However, queens can not be placed at the top and at the center of the other sides, as they will work with each other
+
+
+  1. Separate the processing if there is a queen in the first corner, and if not
+    The condition judgment of whether it is the first line may go out of the loop
+    There is no significant difference in processing time, so we showed a code that is easy to understand
+  If there is a queen on line 2.1, the rotational symmetry check can be omitted
+    If there is a queen in the first corner of the line, it is impossible to place the queen in the other corner
+    Also for mirror images, it is sufficient to determine only the main diagonal mirror image
+    The second line, the second column should be regarded as a numerical value, and the condition of the second line <second column should be imposed.
+
+  If there is no queen in the first line corner, the queen can not be placed at 8 symmetrical positions to the right of the queen position
+  When placed, the unique judgment value of the state obtained by rotation and mirror image conversion is clearly increased
+    ☓☓ ... Q ☓☓
+    ☓ ... / | \ ☓
+    c ・ ・ ・ ・ ・ ・ ・ rt
+    ・ ・ ・ ・ ・ ・ ・ ・ ・
+    ・ ・ ・ ・ ・ ・ ・ ・ ・ ・
+    lt ・ ・ ・ ・ ・ ・ ・ a
+    ・ ・ ・ ・ ・ ・ ・ ☓
+    ☓☓ b · · dn ☓☓
+    
+  When the first line position is determined, calculate the possible position (☓ position)
+  lt, dn, lt positions can not be placed by valid check
+  The rotational symmetry check is only necessary if the queen is at a, b, c, so
+  It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
+ *
+ *
+ *
+ *
+ Execution result
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.001
+#  8:           92           12         0:00:00.005
+#  9:          352           46         0:00:00.025
+# 10:          724           92         0:00:00.080
+# 11:         2680          341         0:00:00.368
+# 12:        14200         1787         0:00:02.132
+# 13:        73712         9233         0:00:12.465
+# 14:       365596        45752         0:01:12.723
+# 15:      2279184       285053         0:08:10.190
+
+ 11. Pruning
 
   The code of the previous chapter removed symmetric solutions other than unique solution after finding all solutions
   In a sense, the same as "generate & test"
@@ -921,173 +1055,47 @@ Execution result
   The rotational symmetry check is only necessary if the queen is at a, b, c, so
   It is sufficient to compare with the unique judgment value in the state rotated 90 degrees, 180 degrees, 270 degrees
 
-  Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.002
-10: 724 92 00:00: 00. 00
-11: 2680 341 00:00: 00. 03
-12: 14200 1787 00:00: 0. 010
-13: 73712 9233 00:00: 00. 05
-14: 365596 45752 00:00: 00. 301
-15: 2279184 285053 00:00: 01. 901
-16: 14772512 1846955 00:00: 14.085
-17: 95815104 11977939 00: 01: 38. 246
+ *
+ *  Execution result
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.000
+#  8:           92           12         0:00:00.002
+#  9:          352           46         0:00:00.007
+# 10:          724           92         0:00:00.023
+# 11:         2680          341         0:00:00.119
+# 12:        14200         1787         0:00:00.671
+# 13:        73712         9233         0:00:03.797
+# 14:       365596        45752         0:00:22.222
+# 15:      2279184       285053         0:02:27.751
 
 
- 10. Branch BOUND 1, 2 depending on the position of the queen
+
+ 12. Optimization of the symmetry cancellation method
+ *
+ *  Execution result
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.000
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
+#  7:           40            6         0:00:00.000
+#  8:           92           12         0:00:00.000
+#  9:          352           46         0:00:00.002
+# 10:          724           92         0:00:00.012
+# 11:         2680          341         0:00:00.057
+# 12:        14200         1787         0:00:00.291
+# 13:        73712         9233         0:00:01.512
+# 14:       365596        45752         0:00:08.967
+# 15:      2279184       285053         0:00:54.645
+#
 
 
-  Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00:00: 00.001
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.001
-10: 724 92 00:00: 00.001
-11: 2680 341 00:00: 00. 00
-12: 14200 1787 00:00: 0. 013
-13: 73712 9233 00:00: 00. 04
-14: 365596 45752 00:00: 00. 299
-15: 2279184 285053 00:00: 01.879
-16: 14772512 1846955 00: 00: 14.144
-17: 95815104 11977939 00: 01: 38. 500
-
-
- 11. Pruning
-  Execution result
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.001
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00:00: 00.001
- 9: 352 46 00: 00: 00.001
-10: 724 92 00:00: 00.001
-11: 2680 341 00:00: 00.005
-12: 14200 1787 00:00: 00. 00
-13: 73712 9233 00: 00: 00.048
-14: 365596 45752 00:00: 00. 267
-15: 2279184 285053 00:00: 01.754
-16: 14772512 1846955 00:00: 12.398
-17: 95815104 11977939 00: 01: 34.783
-
- 12. optimisation
-
-
-  Execution result
-【old version】
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00:00: 00.001
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.001
-10: 724 92 00:00: 00. 00
-11: 2680 341 00:00: 00. 02
-12: 14200 1787 00: 00: 00.008
-13: 73712 9233 00: 00: 0.025
-14: 365596 45752 00:00: 00. 133
-15: 2279184 285053 00: 00: 00.875
-16: 14772512 1846955 00:00: 06.017
-17: 95815104 11977939 00:00: 44.417
-
-[New version]
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.000
-10: 724 92 00:00: 00.001
-11: 2680 341 00:00: 00. 01
-12: 14200 1787 00: 00: 00.002
-13: 73712 9233 00:00: 0. 011.
-14: 365596 45752 00:00: 00. 05
-15: 2279184 285053 00:00: 0. 324
-16: 14772512 1846955 00: 00: 02.089
-17: 95815104 11977939 00:00: 14.524
-
- 13a. Multithreading (Preparation 1)
-
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.000
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.000
-10: 724 92 00: 00: 00.000
-11: 2680 341 00:00: 00. 01
-12: 14200 1787 00: 00: 00.003
-13: 73712 9233 00:00: 0. 010
-14: 365596 45752 00:00: 00. 05
-15: 2279184 285053 00: 00: 00.327
-16: 14772512 1846955 00: 00: 02.127
-17: 95815104 11977939 00:00: 14.962
-
- 13b. Multithreading (Preparation 2)
- Parallel processing Implementation of single threaded thread
-
-Execution result
-
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.001
- 5: 10 2 00: 00: 00.000
- 6: 4 1 00: 00: 00.001
- 7: 40 6 00: 00: 00.000
- 8: 92 12 00: 00: 00.000
- 9: 352 46 00: 00: 00.000
-10: 724 92 00:00: 00.001
-11: 2680 341 00:00: 00. 01
-12: 14200 1787 00:00: 00. 00
-13: 73712 9233 00:00: 0. 010
-14: 365596 45752 00:00: 00. 05
-15: 2279184 285053 00: 00:00.
-16: 14772512 1846955 00: 00: 02.089
-17: 95815104 11977939 00:00: 14.495
-
- 13c. Multi thread (completed)
- Parallel processing Multithread Multithread implementation
-
-In the process up to here, one thread sequentially determines the process in order from the first column of row A.
-It has come. In this section, assign a separate thread to each column of row A, and
-Process judgment at the same time. The processing judgment result of each row of row A is managed by Board class,
-Output the result when processing is completed. There are N threads for WorkEngine classes.
-You The WorkEngine class is only responsible for the processing of A row * column in its own post. These are
-It is called multi-thread processing, and synchronization, exclusion, locking, aggregation and other complicated processing for parallel processing
-You need knowledge to understand. And the method of calculating the total value at the end of processing
-It is said that
-1 x 1, 2 x 2, 3 x 3, 4 x 4, 5 x 5, 6 x 6, 7 x 7, 8 x 8 per boat
-There are many ways to assign calculations to threads. These methods are implemented
-Is easy, but it is possible to parallelize the calculation of N 8 in another thread while performing the calculation of N 7
-Because of the contradiction, processing time will rather increase if N becomes large. Here the ideal al
-Program in the former way as a gorism.
-
-Execution result
-
- N: Total Unique hh: mm: ss. SSS
- 4: 2 1 00: 00: 00.001
- 5: 10 2 00: 00: 00.001
- 6: 4 1 00: 00: 00.000
- 7: 40 6 00:00: 00.001
- 8: 92 12 00:00: 00.001
- 9: 352 46 00: 00: 00.001
-10: 724 92 00:00: 00.001
-11: 2680 341 00:00: 00. 03
-12: 14200 1787 00: 00: 00.002
-13: 73712 9233 00: 00: 00.005
-14: 365596 45752 00: 00: 00.021
-15: 2279184 285053 00:00: 00. 102
-16: 14772512 1846955 00: 00: 00.631
-17: 95815104 11977939 00: 00: 04.253
-
-
+ 13. Parallel processing: pthreads and structures
+ *
+ *  Execution result
+ N: Total Unique dd: hh: mm: ss. Ms
+ 
+ making now.
+ 

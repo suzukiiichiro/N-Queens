@@ -2,7 +2,7 @@
 # "Algorithms and data structures" learned with BASH
 # Information Technology Bureau, Kyodo News Agency, Inc. Iichiro Suzuki (suzuki.iichiro@kyodonews.jp)
 #
-# Python / Bash / Lua / Java / C / GPU version
+# Bash / Lua / Java / C / GPU version
 # https://github.com/suzukiiichiro/N-Queen
 #
 # Optimize N-Queen problem step by step N = 12

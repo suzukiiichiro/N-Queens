@@ -2,7 +2,7 @@
 # BASHで学ぶ「アルゴリズムとデータ構造」
 # 一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 #
-# Python/Bash/Lua/Java/C/GPU版
+# Bash/Lua/Java/C/GPU版
 # https://github.com/suzukiiichiro/N-Queen
 #
 # ステップバイステップでＮ−クイーン問題を最適化                                               N=12
