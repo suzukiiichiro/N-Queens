@@ -13,7 +13,6 @@
 #   *
 #  
 #   実行結果
-#   N:        Total       Unique        hh:mm:ss.ms
 # N:        Total       Unique        hh:mm:ss.ms
 # 4:            2            0         0:00:00.000
 # 5:           10            0         0:00:00.000

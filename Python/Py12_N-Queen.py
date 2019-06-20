@@ -32,8 +32,8 @@
 # グローバル変数
 MAX=16; # N=15
 aBoard=[0 for i in range(MAX)];
-aT=[0 for i in range(MAX)];
-aS=[0 for i in range(MAX)];
+# aT=[0 for i in range(MAX)];
+# aS=[0 for i in range(MAX)];
 bit=0;
 COUNT2=0;
 COUNT4=0;
