@@ -2,11 +2,6 @@
 
 # -*- coding: utf-8 -*-
 #
-import logging
-import threading
-import time
-from threading import Thread
-
 # /**
 #   Pythonで学ぶアルゴリズムとデータ構造
 #   ステップバイステップでＮ−クイーン問題を最適化
@@ -15,7 +10,8 @@ from threading import Thread
 #  実行
 #  $ python Py13_N-Queen.py
 #
-# １３．マルチスレッド
+#
+# １３．マルチスレッドとマルチプロセス
 #
 #        Step:1 一つのソースクラスに分解
 #        Step:2 グローバル変数などを整理
@@ -23,8 +19,8 @@ from threading import Thread
 #        Step:4 WorkingEngineクラスのコンストラクタを準備
 #        Step:5 runメソッドの準備（シングルスレッド）
 #        Step:6 runメソッド　マルチスレッドの実装
-#        Step:7 マルチプロセス
-#        Step:8 排他制御
+#        Step:7 排他制御
+#
 #
 #  シングルスレッド
 #  N:        Total       Unique        hh:mm:ss.ms
@@ -43,18 +39,18 @@ from threading import Thread
 #
 #  マルチスレッド 数が合わない！
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.000
-#  5:           10            2         0:00:00.001
-#  6:            4            1         0:00:00.001
+#  4:            2            1         0:00:00.001
+#  5:           10            2         0:00:00.000
+#  6:            4            1         0:00:00.000
 #  7:           40            6         0:00:00.000
 #  8:           92           12         0:00:00.001
 #  9:          352           46         0:00:00.003
-# 10:          724           92         0:00:00.013
-# 11:         2324          294         0:00:00.051
-# 12:         5948          747         0:00:00.147
-# 13:        16152         2019         0:00:00.301
-# 14:        30808         3851         0:00:00.610
-# 15:        70760         8845         0:00:01.495
+# 10:          724           92         0:00:00.012
+# 11:         2440          309         0:00:00.051
+# 12:         5724          716         0:00:00.145
+# 13:        18680         2335         0:00:00.387
+# 14:        32904         4113         0:00:00.769
+# 15:         8848         1106         0:00:00.187
 #
 #
 # Step:2 除去
@@ -69,7 +65,22 @@ from threading import Thread
 # ENDBIT=0;
 # SIDEMASK=0;
 # LASTMASK=0;
-
+#
+# ------------------------------------------------
+#
+# すごく重要なフラグ設定
+#
+# ------------------------------------------------
+#マルチスレッド・シングルスレッドの切り換えフラグ    
+bThread=True;       # マルチスレッド
+#bThread=False;       # シングルスレッド
+#
+# マルチスレッド時にjoin()するか
+# 遅いけどstart()する度にjoin()する。これにより、処理ロジックに
+# 間違いのないことが確認できる
+enableJoin=True;    # joinする 遅いけど正しい計算結果
+#enableJoin=False;  # joinしない 速いけどおかしい計算結果
+#
 # ---------------------------------
 # ボードの値を保存するボードクラス
 # ---------------------------------
@@ -110,18 +121,26 @@ class Board:
 # 追加 Step:1 スレッドクラスの作成
 #class WorkingEngine:
 #
+# ロギング
+import logging
+# time.sleep()
+import time
+#
+# Step:6 マルチプロセス
+#from multiprocessing import Process
+#class WorkingEngine(Process):
+#
 # Step:5 スレッドの構築
+import threading
+from threading import Thread
+#
 class WorkingEngine(Thread):
-
+  #
   # デバッグ用出力フォーマット
   logging.basicConfig(level=logging.DEBUG,
     format='[%(levelname)s] (%(threadName)-10s) %(message)s',)
 #
-# Step:7 マルチプロセス
-# from multiprocessing import Process
-#class WorkingEngine(Process):
-#
-# Step:7 マルチプロセス
+# Step:6 マルチプロセス
   #
   # 追加 Step:1 コンストラクタの追加
   #def __init__(self,size,info):
@@ -136,18 +155,26 @@ class WorkingEngine(Thread):
     self.daemon = True  
     #
     # Step:2 グローバル変数の値を変更するので宣言が必要です
-    global SIZE; SIZE=size;
-    global aBoard; aBoard=[0 for i in range(size)];
-    global MASK; MASK=(1<<size)-1;
-    global INFO; INFO=info;
+    global SIZE; 
+    SIZE=size;
+    global aBoard; 
+    aBoard=[0 for i in range(size)];
+    global MASK; 
+    MASK=(1<<size)-1;
+    global INFO; 
+    INFO=info;
     #
     # Step:3 グローバル変数の追加
-    global NMORE; NMORE=nMore;
-    global child; child=None;
+    global NMORE; 
+    NMORE=nMore;
+    global child; 
+    child=None;
     # 
     # Step:5 B1,B2の処理を追加
-    global BOUND1; BOUND1=B1;
-    global BOUND2; BOUND2=B2;
+    global BOUND1; 
+    BOUND1=B1;
+    global BOUND2; 
+    BOUND2=B2;
     #
     # 追加 Step:1 グローバル変数の追加
     for i in range(size):
@@ -157,14 +184,22 @@ class WorkingEngine(Thread):
     if nMore>0 :
       if bThread:
         child=WorkingEngine(size,nMore-1,info,B1-1,B2+1,bThread);
-        # child=threading.Thread(target=self.WorkingEngine,args=(size,nMore-1,info,B1-1,B2+1,bThread),name=nMore);
+        #child=threading.Thread(target=WorkingEngine,args=(size,nMore-1,info,B1-1,B2+1,bThread),name=nMore);
         BOUND1=B1;
         BOUND2=B2;
+        # SIZE=size;
+        # aBoard=[0 for i in range(size)];
+        # MASK=(1<<size)-1;
+        # INFO=info;
+        # NMORE=nMore;
+        # for i in range(size):
+        #   aBoard[i]=i;              # 盤を初期化
 	      # Step:6 
         child.start();
         # マルチスレッド
         # ここでjoin()はマルチスレッドの意味がない
-        # child.join();  
+        if enableJoin:
+          child.join();  
         # 処理の確認は、 child.join()を活かし、さらにrun()の末尾
         # をコメントアウトして実行
         # 
@@ -222,14 +257,13 @@ class WorkingEngine(Thread):
           LASTMASK=LASTMASK|LASTMASK>>1|LASTMASK<<1;
         self.BOUND2(BOUND1,BOUND2);
         ENDBIT>>=NMORE;
-      #
       # Step:6 
-      # マルチスレッドでのjoin()
-      # CHILD.join(); # これではうごかない！
-      main_thread = threading.currentThread()
-      for t in threading.enumerate():
-        if t is not main_thread:
-          t.join()
+      # マルチスレッドでの適正なjoin()
+      if not enableJoin:
+        main_thread = threading.currentThread()
+        for t in threading.enumerate():
+          if t is not main_thread:
+            t.join()
   #
   # 対称解除法
   # Step:1 パラメータに selfを追加してsizeをグローバルへ変更
@@ -476,7 +510,7 @@ class WorkingEngine(Thread):
     # Step:1 sizeをグローバル変数SIZEへ変更
     #
     # Step:1 maskをグローバル変数MASKへ変更
-    if CHILD==None:
+    if child==None:
       if NMORE>0 :
         bit=0;
         TOPBIT=1<<(SIZE-1);
@@ -543,14 +577,25 @@ def main():
   # global MAX;
   max=16;
   min=4;                          # Nの最小値（スタートの値）を格納
+  #
+  #
+	#
+  if bThread :
+    print("マルチスレッドにて");
+    if enableJoin: 
+      print("start/joinを連ねて遅くとも間違いなく実行")
+    else:
+      print("joinを処理末でまとめて実行。速いけど計測値が違う!!")
+  else:
+    print("シングルスレッドにて実行");
+  #
+  #
   print(" N:        Total       Unique        hh:mm:ss.ms");
   #
   # Step:4 スレッドの切り換え 現在は Falseで
   # Step:5 スレッドオフ / False
   # bThread=False;
   # 
-  # Step:6 マルチスレッドの実行
-  bThread=True;
   #
   #
   # Step:2 グローバル変数MAXをmaxに置き換え
@@ -566,10 +611,10 @@ def main():
       # Step:1 呼び出し方法の変更
       # NQueen(i,mask);
       #
-      # Step:8 排他制御
+      # Step:7 排他制御
       lock = threading.Lock();
       #
-      # Step:8
+      # Step:7
       # ボードクラスにlockを渡します
       info=Board(lock);       # ボードクラス
       #
