@@ -80,21 +80,25 @@ ENABLEJOIN = True   # joinする 遅いけど正しい計算結果
 #
 class Board:
     """ Board """
+    #
     def __init__(self, lock):
         """ __init__ """
         self.count2 = 0
         self.count4 = 0
         self.count8 = 0
         self.lock = lock
+    #
     def setcount(self, count8, count4, count2):
         """ setcount() """
         with self.lock:
             self.count8 += count8
             self.count4 += count4
             self.count2 += count2
+    #
     def getunique(self):
         """ getunique() """
         return self.count2 + self.count4 + self.count8
+    #
     def gettotal(self):
         """ gettotal() """
         return self.count2 * 2 + self.count4 * 4 + self.count8 * 8
@@ -103,10 +107,12 @@ class WorkingEngine(Thread): # pylint: disable=R0902
     """ WorkingEngine """
     logging.basicConfig(level=logging.DEBUG,
                         format='[%(levelname)s] (%(threadName)-10s) %(message)s', )
+    #
     def __init__(self, size, nmore, info, B1, B2, bthread): # pylint: disable=R0913
         """ ___init___ """
         super(WorkingEngine, self).__init__()
         global BTHREAD    # pylint: disable=W0603
+        BTHREAD = bthread
         self.size = size
         self.sizee = size-1
         self.aboard = [0 for i in range(size)]
@@ -116,7 +122,6 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         self.child = None
         self.bound1 = B1
         self.bound2 = B2
-        BTHREAD = bthread
         self.topbit = 0
         self.endbit = 0
         self.sidemask = 0
@@ -134,6 +139,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
             else:
                 self.child = None
                 self.run()
+    #
     def run(self):
         if self.child is None:
             if self.nmore > 0:
