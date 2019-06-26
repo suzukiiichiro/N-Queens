@@ -1,24 +1,26 @@
 #!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
+""" Py02_N-Queen.py """
 
 # /**
 #  Pythonで学ぶアルゴリズムとデータ構造
 #  ステップバイステップでＮ−クイーン問題を最適化
 #  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-# 
+#
 #  実行
-#  $ python Py02_N-Queen.py
-# 
-# 
+#  $ python py02_nqueen.py
+#
+#
 #  ２．配置フラグ（制約テスト高速化）
-# 
+#
 #    パターンを生成し終わってからチェックを行うのではなく、途中で制約を満たさな
 #    い事が明らかな場合は、それ以降のパターン生成を行わない。
 #   「手を進められるだけ進めて、それ以上は無理（それ以上進めても解はない）という
 #   事がわかると一手だけ戻ってやり直す」という考え方で全ての手を調べる方法。
 #   (※)各行列に一個の王妃配置する組み合わせを再帰的に列挙分枝走査を行っても、組
 #   み合わせを列挙するだけであって、8王妃問題を解いているわけではありません。
-# 
+#
 #  実行結果
 #  :
 #  :
@@ -33,36 +35,34 @@
 #  40320: 7 6 5 4 3 2 1 0
 #  */
 #
-# グローバル変数
-MAX=8;
-SIZE=8;         #Nを8に固定
-COUNT=0;
-aBoard=[0 for i in range(MAX)];
-fA = [0 for i in range(SIZE)];  #縦列にクイーンを一つだけ配置
+MAX = 8
+SIZE = 8                        #Nを8に固定
+COUNT = 0
+ABOARD = [0 for i in range(MAX)]
+FA = [0 for i in range(SIZE)]   #縦列にクイーンを一つだけ配置
 #
-# 出力用のメソッド
 def printout():
-  global COUNT;         #global変数を扱うときはglobalをつけます
-  global SIZE;
-  COUNT+=1;           #インクリメントはこのように書きます
-  print(COUNT,end=": "),    #改行したくないときは, を行末にいれます
-  for i in range(SIZE):
-    print(aBoard[i],end=" "),
-  print("");
-#
-# ロジックメソッド
-def NQueen(row):
-  global SIZE;
-  if row==SIZE-1:    #から始まるのでN=8から1を引きます
-    printout();    #出力
-  else:
+    """ printout() """
+    global COUNT                # pylint: disable=W0603
+    COUNT += 1                  #インクリメントはこのように書きます
+    print(COUNT, end=": ")      #改行したくないときは, を行末にいれます
     for i in range(SIZE):
-      aBoard[row] = i;
-      if fA[i]==0:    #縦列にクイーンがない場合
-        fA[i]=1;
-        NQueen(row+1);  #1を足して再帰
-        fA[i]=0;
+        print(ABOARD[i], end=" ")
+    print("")
 #
-# メインメソッド
-NQueen(0);
+def nqueen(row):
+    """ NQueen() """
+    global ABOARD                 # pylint: disable=W0603
+    global FA                     # pylint: disable=W0603
+    if row == SIZE-1:             #から始まるのでN = 8から1を引きます
+        printout()                #出力
+    else:
+        for i in range(SIZE):
+            ABOARD[row] = i
+            if FA[i] == 0:        #縦列にクイーンがない場合
+                FA[i] = 1
+                nqueen(row+1)     #1を足して再帰
+                FA[i] = 0
+#
+nqueen(0)
 #

@@ -1,17 +1,21 @@
 #!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
+""" py03_nqueen.py """
+
+from datetime import datetime
 
 # /**
 #  Pythonで学ぶアルゴリズムとデータ構造
 #  ステップバイステップでＮ−クイーン問題を最適化
 #  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
-# 
+#
 #  実行
-#  $ python Py03_N-Queen.py
-# 
-# 
+#  $ python py03_nqueen.py
+#
+#
 #  ３．バックトラック
-# 
+#
 #  　各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
 #  さない事が明らかな場合は、それ以降のパターン生成を行わない。
 #  　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
@@ -19,8 +23,8 @@
 #  は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
 #  けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
 #  を降りても解がないと判明した時点で木を引き返すということができます。
-# 
-# 
+#
+#
 #  実行結果
 #   N:        Total       Unique        hh:mm:ss.ms
 #   4:            2            0         0:00:00.000
@@ -40,49 +44,49 @@
 #  */
 #
 # グローバル変数
-MAX=16; # N=15
-TOTAL=0;
-UNIQUE=0;
-aBoard=[0 for i in range(MAX)];
-fA=[0 for i in range(2*MAX-1)];	#縦列にクイーンを一つだけ配置
-fB=[0 for i in range(2*MAX-1)];	#斜め列にクイーンを一つだけ配置
-fC=[0 for i in range(2*MAX-1)];	#斜め列にクイーンを一つだけ配置
+MAX = 16                         # N = 15
+TOTAL = 0
+UNIQUE = 0
+ABOARD = [0 for i in range(MAX)]
+FA = [0 for i in range(2*MAX-1)]	#縦列にクイーンを一つだけ配置
+FB = [0 for i in range(2*MAX-1)]	#斜め列にクイーンを一つだけ配置
+FC = [0 for i in range(2*MAX-1)]	#斜め列にクイーンを一つだけ配置
 #
 # ロジックメソッド
-def NQueen(row,size):
-  global fA;
-  global fB;
-  global fC;
-  global TOTAL;
-  if row==size:  #最後までこれたらカウント
-    TOTAL+=1;
-  else:
-    for i in range(size):
-      aBoard[row]=i;
-      # 縦斜右斜左を判定
-      if fA[i]==0 and fB[row-i+(size-1)]==0 and fC[row+i]==0 :
-        fA[i]=fB[row-i+(size-1)]=fC[row+i]=1;
-        NQueen(row+1,size);   #再帰
-        fA[i]=fB[row-i+(size-1)]=fC[row+i]=0;
+def nqueen(row, size):
+    """ nqueen() """
+    global FA           # pylint: disable=W0603
+    global FB           # pylint: disable=W0603
+    global FC           # pylint: disable=W0603
+    global TOTAL        # pylint: disable=W0603
+    if row == size:     #最後までこれたらカウント
+        TOTAL += 1
+    else:
+        for i in range(size):
+            ABOARD[row] = i
+            # 縦斜右斜左を判定
+            if FA[i] == 0 and FB[row-i+(size-1)] == 0 and FC[row+i] == 0:
+                FA[i] = FB[row-i+(size-1)] = FC[row+i] = 1
+                nqueen(row+1, size)   #再帰
+                FA[i] = FB[row-i+(size-1)] = FC[row+i] = 0
 #
-# メインメソッド
-from datetime import datetime 
 def main():
-  global TOTAL;
-  global UNIQUE;
-  min=4;                          # Nの最小値（スタートの値）を格納
-  print(" N:        Total       Unique        hh:mm:ss.ms");
-  for i in range(min,MAX):
-    TOTAL=0;
-    UNIQUE=0;           # 初期化
-    for j in range(i):
-      aBoard[j]=j;      # 盤を初期化
-    start_time = datetime.now() 
-    NQueen(0,i)
-    time_elapsed=datetime.now()-start_time 
-    _text='{}'.format(time_elapsed)
-    text=_text[:-3]
-    print("%2d:%13d%13d%20s" % (i,TOTAL,UNIQUE,text)); # 出力
+    """ main() """
+    global TOTAL                # pylint: disable=W0603
+    global UNIQUE               # pylint: disable=W0603
+    nmin = 4                    # Nの最小値（スタートの値）を格納
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, MAX):
+        TOTAL = 0
+        UNIQUE = 0              # 初期化
+        for j in range(i):
+            ABOARD[j] = j       # 盤を初期化
+        start_time = datetime.now()
+        nqueen(0, i)
+        time_elapsed = datetime.now()-start_time
+        _text = '{}'.format(time_elapsed)
+        text = _text[:-3]
+        print("%2d:%13d%13d%20s" % (i, TOTAL, UNIQUE, text)) # 出力
 #
-main();
+main()
 #
