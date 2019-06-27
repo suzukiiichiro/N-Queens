@@ -126,6 +126,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         self.endbit = 0
         self.sidemask = 0
         self.lastmask = 0
+        self.threadlist=list()
         for i in range(size):
             self.aboard[i] = i
         if nmore > 0:
@@ -133,10 +134,13 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                 self.child = WorkingEngine(size, nmore - 1, info, B1 - 1, B2 + 1, bthread)       # pylint: disable=C0301
                 self.bound1 = B1
                 self.bound2 = B2
-                self.child.start()
-                if ENABLEJOIN:
+                # マルチスレッド
+                if ENABLEJOIN: # joinする
+                    self.child.start()
                     self.child.join()
-            else:
+                else:          # runでjoinする（本来のあるべき姿)
+                    self.child.start()
+            else:  # シングルスレッド
                 self.child = None
                 self.run()
     #
@@ -175,10 +179,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
             if ENABLEJOIN:
                 pass
             else:
-                main_thread = threading.currentThread()
-                for _th in threading.enumerate():  # pylint: disable=W0612
-                    if _th is not main_thread:
-                        _th.join()
+                self.child.join()
     #
     def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
         """ symmetryops() """
