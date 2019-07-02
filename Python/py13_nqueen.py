@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # -*- coding: utf-8 -*-
 """ py13_nqueen.py """
 import logging
@@ -7,7 +6,7 @@ import threading
 from threading import Thread
 from datetime import datetime
 #
-# /**
+#
 #   Pythonで学ぶアルゴリズムとデータ構造
 #   ステップバイステップでＮ−クイーン問題を最適化
 #   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
@@ -76,6 +75,8 @@ BTHREAD = True    # マルチスレッド
 #
 ENABLEJOIN = True   # joinする 遅いけど正しい計算結果
 #ENABLEJOIN = False     # joinしない 速いけどおかしい計算結果
+#                       # ここをなんとかしたい！
+#
 #
 #
 class Board:
@@ -126,7 +127,6 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         self.endbit = 0
         self.sidemask = 0
         self.lastmask = 0
-        self.threadlist=list()
         for i in range(size):
             self.aboard[i] = i
         if nmore > 0:
@@ -135,14 +135,14 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                 self.bound1 = B1
                 self.bound2 = B2
                 # マルチスレッド
-                if ENABLEJOIN: # joinする
-                    self.child.start()
-                    self.child.join()
-                else:          # runでjoinする（本来のあるべき姿)
-                    self.child.start()
-            else:  # シングルスレッド
+                self.child.start()
+                if ENABLEJOIN:
+                    self.child.join()   # joinする
+                else:
+                    pass                # joinしない（本来のあるべきすがた）
+            else:
+                # シングルスレッド
                 self.child = None
-                self.run()
     #
     def run(self):
         if self.child is None:
@@ -166,7 +166,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
             self.aboard[0] = 1
             self.sizee = self.size - 1
             self.mask = (1 << self.size) - 1
-            self.topbit = 1 << self.sizee
+            self.topbit = (1 << self.sizee)
             if (self.bound1 > 1) and (self.bound1 < self.sizee):
                 self.rec_bound1(self.bound1)
             self.endbit = (self.topbit >> self.bound1)
@@ -176,10 +176,6 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                     self.lastmask = self.lastmask | self.lastmask >> 1 | self.lastmask << 1
                 self.rec_bound2(self.bound1, self.bound2)
                 self.endbit >>= self.nmore
-            if ENABLEJOIN:
-                pass
-            else:
-                self.child.join()
     #
     def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
         """ symmetryops() """
@@ -345,13 +341,13 @@ def main():
         lock = threading.Lock()
         info = Board(lock)  # ボードクラス
         start_time = datetime.now()
-        child = threading.Thread(target=WorkingEngine, args=(i, i, info, i - 1, 0, BTHREAD))
+#        child = threading.Thread(target=WorkingEngine, args=(i, i, info, i - 1, 0, BTHREAD))
+        child = WorkingEngine(i, i, info, i - 1, 0, BTHREAD)
         child.start()
         child.join()
         time_elapsed = datetime.now() - start_time
         _text = '{}'.format(time_elapsed)
         text = _text[:-3]
         print("%2d:%13d%13d%20s" % (i, info.gettotal(), info.getunique(), text))  # 出力
-#
 main()
-#
+
