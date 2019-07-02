@@ -12,71 +12,74 @@ from datetime import datetime
 #   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 #
 #  実行
-#  $ python Py13_N-Queen.py
+#  $ python py13-a_nqueen.py
 #
 #
 # １３．マルチスレッドとマルチプロセス
 #
-#  シングルスレッド
+#        マルチスレッドは、一つのコアの中に複数のスレッド起動して実行
+#        します。ですので、Nが大きくなると処理速度は低下します。
+#        次の節では、より高速に実行できるマルチプロセスを構築します。
+#
+# シングルスレッドにて実行
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.000
+#  4:            2            1         0:00:00.002
 #  5:           10            2         0:00:00.000
 #  6:            4            1         0:00:00.000
-#  7:           40            6         0:00:00.000
-#  8:           92           12         0:00:00.000
-#  9:          352           46         0:00:00.002
-# 10:          724           92         0:00:00.010
-# 11:         2680          341         0:00:00.053
-# 12:        14200         1787         0:00:00.265
-# 13:        73712         9233         0:00:01.420
-# 14:       365596        45752         0:00:08.174
-# 15:      2279184       285053         0:00:51.030
+#  7:           40            6         0:00:00.001
+#  8:           92           12         0:00:00.002
+#  9:          352           46         0:00:00.011
+# 10:          724           92         0:00:00.044
+# 11:         2680          341         0:00:00.192
+# 12:        14200         1787         0:00:00.937
+# 13:        73712         9233         0:00:05.205
+# 14:       365596        45752         0:00:28.879
+# 15:      2279184       285053         0:03:00.068
 #
 # マルチスレッドにて
 # start/joinを連ねて遅くとも間違いなく実行
+# やっていることはシングルスレッドと同等。
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.000
-#  5:           10            2         0:00:00.000
-#  6:            4            1         0:00:00.000
-#  7:           40            6         0:00:00.000
-#  8:           92           12         0:00:00.001
-#  9:          352           46         0:00:00.004
-# 10:          724           92         0:00:00.016
-# 11:         2680          341         0:00:00.069
-# 12:        14200         1787         0:00:00.386
-# 13:        73712         9233         0:00:01.863
-# 14:       365596        45752         0:00:10.437
-# 15:      2279184       285053         0:01:06.639
+#  4:            2            1         0:00:00.003
+#  5:           10            2         0:00:00.002
+#  6:            4            1         0:00:00.003
+#  7:           40            6         0:00:00.004
+#  8:           92           12         0:00:00.006
+#  9:          352           46         0:00:00.016
+# 10:          724           92         0:00:00.064
+# 11:         2680          341         0:00:00.219
+# 12:        14200         1787         0:00:00.977
+# 13:        73712         9233         0:00:05.262
+# 14:       365596        45752         0:00:29.435
+# 15:      2279184       285053         0:03:05.539
 #
-# マルチスレッドにて
-# joinを処理末でまとめて実行。速いけど計測値が違う!!
+# マルチスレッドにて(コア一つを使い回しているので遅い）
+# joinを処理末で実行。本来のマルチスレッド
+# Nの数分スレッドが起動しそれぞれ並列処理
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.000
-#  5:           10            2         0:00:00.001
-#  6:            4            1         0:00:00.000
-#  7:           40            6         0:00:00.000
-#  8:           92           12         0:00:00.001
-#  9:          352           46         0:00:00.004
-# 10:          724           92         0:00:00.016
-# 11:         2680          341         0:00:00.073
-# 12:        14200         1787         0:00:00.362
-# 13:        20172         2525         0:00:00.510
-# 14:        29040         3630         0:00:00.713
-# 15:         8840         1105         0:00:01.142
+#  4:            2            1         0:00:00.005
+#  5:           10            2         0:00:00.002
+#  6:            4            1         0:00:00.002
+#  7:           40            6         0:00:00.003
+#  8:           92           12         0:00:00.006
+#  9:          352           46         0:00:00.015
+# 10:          724           92         0:00:00.047
+# 11:         2680          341         0:00:00.204
+# 12:        14200         1787         0:00:01.022
+# 13:        73712         9233         0:00:05.317
+# 14:       365596        45752         0:00:31.083
+# 15:      2279184       285053         0:03:13.819
+#
+#
 #
 #
 # マルチスレッド・シングルスレッドの切り換えフラグ
-BTHREAD = True    # マルチスレッド
-#BTHREAD = False    # シングルスレッド
+BTHREAD = True          # マルチスレッド
+#BTHREAD = False        # シングルスレッド
 #
-# マルチスレッド時にjoin()するか
-# 遅いけどstart()する度にjoin()する。これにより、処理ロジックに
-# 間違いのないことが確認できる
-#
-ENABLEJOIN = True   # joinする 遅いけど正しい計算結果
-#ENABLEJOIN = False     # joinしない 速いけどおかしい計算結果
-#                       # ここをなんとかしたい！
-#
+#ENABLEJOIN = True      # コンストラクタでjoinする 遅い
+ENABLEJOIN = False      # run()の処理末尾でjoin() マルチスレッド完成型
+                        #
 #
 #
 class Board:
@@ -130,21 +133,21 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         for i in range(size):
             self.aboard[i] = i
         if nmore > 0:
+            # マルチスレッド
             if bthread:
                 self.child = WorkingEngine(size, nmore - 1, info, B1 - 1, B2 + 1, bthread)       # pylint: disable=C0301
                 self.bound1 = B1
                 self.bound2 = B2
-                # マルチスレッド
                 self.child.start()
+                # コンストラクタでjoin()する
                 if ENABLEJOIN:
                     self.child.join()   # joinする
-                else:
-                    pass                # joinしない（本来のあるべきすがた）
+            # シングルスレッド
             else:
-                # シングルスレッド
                 self.child = None
     #
     def run(self):
+        # シングルスレッド
         if self.child is None:
             if self.nmore > 0:
                 self.aboard[0] = 1
@@ -162,6 +165,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                     self.rec_bound2(self.bound1, self.bound2)
                     self.bound1 += 1
                     self.bound2 -= 1
+        # マルチスレッド
         else:
             self.aboard[0] = 1
             self.sizee = self.size - 1
@@ -176,6 +180,12 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                     self.lastmask = self.lastmask | self.lastmask >> 1 | self.lastmask << 1
                 self.rec_bound2(self.bound1, self.bound2)
                 self.endbit >>= self.nmore
+            # コンストラクタでjoin()する
+            if ENABLEJOIN:
+                pass
+            # run()の処理末尾でjoin()する
+            else:
+                self.child.join()
     #
     def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
         """ symmetryops() """
@@ -332,16 +342,18 @@ def main():
         print("マルチスレッドにて")
         if ENABLEJOIN:
             print("start/joinを連ねて遅くとも間違いなく実行")
+            print("やっていることはシングルスレッドと同等。")
         else:
-            print("joinを処理末でまとめて実行。速いけど計測値が違う!!")
+            print("コア一つを使い回しているにすぎない。遅い")
+            print("joinを処理末で実行。本来のマルチスレッド")
+            print("Nの数分スレッドが起動しそれぞれ並列処理")
     else:
         print("シングルスレッドにて実行")
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for i in range(nmin, nmax):
         lock = threading.Lock()
-        info = Board(lock)  # ボードクラス
+        info = Board(lock)
         start_time = datetime.now()
-#        child = threading.Thread(target=WorkingEngine, args=(i, i, info, i - 1, 0, BTHREAD))
         child = WorkingEngine(i, i, info, i - 1, 0, BTHREAD)
         child.start()
         child.join()
