@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" py13_nqueen.py """
+""" py13a_nqueen.py """
 import logging
 import threading
 from threading import Thread
@@ -12,14 +12,12 @@ from datetime import datetime
 #   一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 #
 #  実行
-#  $ python py13-a_nqueen.py
+#  $ python py13a_nqueen.py
 #
 #
-# １３．マルチスレッドとマルチプロセス
+# １３a．シングルスレッドの構築
+#       マルチスレッドの構築の準備としてシングルスレッドを構築します
 #
-#        マルチスレッドは、一つのコアの中に複数のスレッド起動して実行
-#        します。ですので、Nが大きくなると処理速度は低下します。
-#        次の節では、より高速に実行できるマルチプロセスを構築します。
 #
 # シングルスレッドにて実行
 #  N:        Total       Unique        hh:mm:ss.ms
@@ -35,51 +33,6 @@ from datetime import datetime
 # 13:        73712         9233         0:00:05.205
 # 14:       365596        45752         0:00:28.879
 # 15:      2279184       285053         0:03:00.068
-#
-# マルチスレッドにて
-# start/joinを連ねて遅くとも間違いなく実行
-# やっていることはシングルスレッドと同等。
-#  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.003
-#  5:           10            2         0:00:00.002
-#  6:            4            1         0:00:00.003
-#  7:           40            6         0:00:00.004
-#  8:           92           12         0:00:00.006
-#  9:          352           46         0:00:00.016
-# 10:          724           92         0:00:00.064
-# 11:         2680          341         0:00:00.219
-# 12:        14200         1787         0:00:00.977
-# 13:        73712         9233         0:00:05.262
-# 14:       365596        45752         0:00:29.435
-# 15:      2279184       285053         0:03:05.539
-#
-# マルチスレッドにて(コア一つを使い回しているので遅い）
-# joinを処理末で実行。本来のマルチスレッド
-# Nの数分スレッドが起動しそれぞれ並列処理
-#  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.005
-#  5:           10            2         0:00:00.002
-#  6:            4            1         0:00:00.002
-#  7:           40            6         0:00:00.003
-#  8:           92           12         0:00:00.006
-#  9:          352           46         0:00:00.015
-# 10:          724           92         0:00:00.047
-# 11:         2680          341         0:00:00.204
-# 12:        14200         1787         0:00:01.022
-# 13:        73712         9233         0:00:05.317
-# 14:       365596        45752         0:00:31.083
-# 15:      2279184       285053         0:03:13.819
-#
-#
-#
-#
-# マルチスレッド・シングルスレッドの切り換えフラグ
-BTHREAD = True          # マルチスレッド
-#BTHREAD = False        # シングルスレッド
-#
-#ENABLEJOIN = True      # コンストラクタでjoinする 遅い
-ENABLEJOIN = False      # run()の処理末尾でjoin() マルチスレッド完成型
-                        #
 #
 #
 class Board:
@@ -112,11 +65,9 @@ class WorkingEngine(Thread): # pylint: disable=R0902
     logging.basicConfig(level=logging.DEBUG,
                         format='[%(levelname)s] (%(threadName)-10s) %(message)s', )
     #
-    def __init__(self, size, nmore, info, B1, B2, bthread): # pylint: disable=R0913
+    def __init__(self, size, nmore, info, B1, B2): # pylint: disable=R0913
         """ ___init___ """
         super(WorkingEngine, self).__init__()
-        global BTHREAD    # pylint: disable=W0603
-        BTHREAD = bthread
         self.size = size
         self.sizee = size-1
         self.aboard = [0 for i in range(size)]
@@ -132,19 +83,6 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         self.lastmask = 0
         for i in range(size):
             self.aboard[i] = i
-        if nmore > 0:
-            # マルチスレッド
-            if bthread:
-                self.child = WorkingEngine(size, nmore - 1, info, B1 - 1, B2 + 1, bthread)       # pylint: disable=C0301
-                self.bound1 = B1
-                self.bound2 = B2
-                self.child.start()
-                # コンストラクタでjoin()する
-                if ENABLEJOIN:
-                    self.child.join()   # joinする
-            # シングルスレッド
-            else:
-                self.child = None
     #
     def run(self):
         # シングルスレッド
@@ -165,27 +103,6 @@ class WorkingEngine(Thread): # pylint: disable=R0902
                     self.rec_bound2(self.bound1, self.bound2)
                     self.bound1 += 1
                     self.bound2 -= 1
-        # マルチスレッド
-        else:
-            self.aboard[0] = 1
-            self.sizee = self.size - 1
-            self.mask = (1 << self.size) - 1
-            self.topbit = (1 << self.sizee)
-            if (self.bound1 > 1) and (self.bound1 < self.sizee):
-                self.rec_bound1(self.bound1)
-            self.endbit = (self.topbit >> self.bound1)
-            self.sidemask = self.lastmask = (self.topbit | 1)
-            if (self.bound1 > 0) and (self.bound2 < self.size - 1) and (self.bound1 < self.bound2):
-                for i in range(1, self.bound1): # pylint: disable=W0612
-                    self.lastmask = self.lastmask | self.lastmask >> 1 | self.lastmask << 1
-                self.rec_bound2(self.bound1, self.bound2)
-                self.endbit >>= self.nmore
-            # コンストラクタでjoin()する
-            if ENABLEJOIN:
-                pass
-            # run()の処理末尾でjoin()する
-            else:
-                self.child.join()
     #
     def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
         """ symmetryops() """
@@ -338,23 +255,13 @@ def main():
     """ main() """
     nmax = 16
     nmin = 4  # Nの最小値（スタートの値）を格納
-    if BTHREAD:
-        print("マルチスレッドにて")
-        if ENABLEJOIN:
-            print("start/joinを連ねて遅くとも間違いなく実行")
-            print("やっていることはシングルスレッドと同等。")
-        else:
-            print("コア一つを使い回しているにすぎない。遅い")
-            print("joinを処理末で実行。本来のマルチスレッド")
-            print("Nの数分スレッドが起動しそれぞれ並列処理")
-    else:
-        print("シングルスレッドにて実行")
+    print("シングルスレッド")
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for i in range(nmin, nmax):
         lock = threading.Lock()
         info = Board(lock)
         start_time = datetime.now()
-        child = WorkingEngine(i, i, info, i - 1, 0, BTHREAD)
+        child = WorkingEngine(i, i, info, i - 1, 0)
         child.start()
         child.join()
         time_elapsed = datetime.now() - start_time
