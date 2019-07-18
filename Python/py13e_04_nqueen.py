@@ -103,69 +103,78 @@ class Nqueen():
     # 対称解除法
     def symmetryops(self, thr_index): # pylint: disable=R0911,R0912
         """ symmetryOps() """
+        AT = self.AT[thr_index]
+        AS = self.AS[thr_index]
+        ABOARD = self.aboard[thr_index]
+        size = self.size
         nquiev = 0
         # 回転・反転・対称チェックのためにboard配列をコピー
-        for i in range(self.size):
-            self.AT[thr_index][i] = self.aboard[thr_index][i]
+        for i in range(size):
+            AT[i] = ABOARD[i]
         # 時計回りに90度回転
-        self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 0)
-        k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+        self.rotate(AT, AS, size, 0)
+        k = self.intncmp(ABOARD, AT, size)
         if k > 0:
             return 0            # pylint: disable=R0915
         if k == 0:
             nquiev = 1
         else:
             # 時計回りに180度回転
-            self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 0)
-            k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+            self.rotate(AT, AS, size, 0)
+            k = self.intncmp(ABOARD, AT, size)
             if k > 0:
                 return 0        # pylint: disable=R0915
             if k == 0:
                 nquiev = 2
             else:
                 # 時計回りに270度回転
-                self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 0)
-                k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+                self.rotate(AT, AS, size, 0)
+                k = self.intncmp(ABOARD, AT, size)
                 if k > 0:
                     return 0
                 nquiev = 4
         # 回転・反転・対称チェックのためにboard配列をコピー
-        for i in range(self.size):
-            self.AT[thr_index][i] = self.aboard[thr_index][i]
+        for i in range(size):
+            AT[i] = ABOARD[i]
         # 垂直反転
-        self.vmirror(self.AT[thr_index], self.size)
-        k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+        self.vmirror(AT, size)
+        k = self.intncmp(ABOARD, AT, size)
         if k > 0:
             return 0
         # -90度回転 対角鏡と同等
         if nquiev > 1:
-            self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 1)
-            k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+            self.rotate(AT, AS, size, 1)
+            k = self.intncmp(ABOARD, AT, size)
             if k > 0:
                 return 0
             # -180度回転 水平鏡像と同等
             if nquiev > 2:
-                self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 1)
-                k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+                self.rotate(AT, AS, size, 1)
+                k = self.intncmp(ABOARD, AT, size)
                 if k > 0:
                     return 0
                 # -270度回転 反対角鏡と同等
-                self.rotate(self.AT[thr_index], self.AS[thr_index], self.size, 1)
-                k = self.intncmp(self.aboard[thr_index], self.AT[thr_index], self.size)
+                self.rotate(AT, AS, size, 1)
+                k = self.intncmp(ABOARD, AT, size)
                 if k > 0:
                     return 0
         return nquiev*2
 #
     def nqueen(self, thr_index, row=0):     # rowは横(行) colは縦(列)
         """nqueen()"""
+        ABOARD = self.aboard[thr_index]
+        FA = self.FA[thr_index]
+        FB = self.FB[thr_index]
+        FC = self.FC[thr_index]
+        size = self.size
         #print(thr_index)
         if row > 0:
             start = 0
-            end = self.size -1
+            end = size -1
         else:
             start = thr_index
             end = thr_index
-        if row == self.size:
+        if row == size:
             # Py04相当
             stotal = self.symmetryops(thr_index)	      # 対称解除法の導入
             if stotal != 0:
@@ -175,12 +184,12 @@ class Nqueen():
         else:
             for i in range(start, end + 1):
                 # Py03相当
-                if self.FA[thr_index][i] == 0 and self.FB[thr_index][row-i+(self.size-1)] == 0 and self.FC[thr_index][row+i] == 0:
-                    self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 1
-                    self.aboard[thr_index][row] = i
+                if FA[i] == 0 and FB[row-i+(size-1)] == 0 and FC[row+i] == 0:
+                    FA[i] = FB[row-i+(size-1)] = FC[row+i] = 1
+                    ABOARD[row] = i
                     self.nqueen(thr_index, row + 1)
-                    #nqueen(row+1, self.size)   #再帰
-                    self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 0
+                    #nqueen(row+1, size)   #再帰
+                    FA[i] = FB[row-i+(size-1)] = FC[row+i] = 0
                 
                 # 元のソース
                 # _v = 0
@@ -188,7 +197,7 @@ class Nqueen():
                 #     _v += 1
                 # if _v < row:
                 #     continue
-                # self.aboard[thr_index][row] = i
+                # ABOARD[row] = i
                 # self.nqueen(thr_index, row + 1)
             if row == 0:
                 return self.total,self.unique

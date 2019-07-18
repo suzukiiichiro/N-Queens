@@ -145,18 +145,15 @@ def nqueen(row, size):
     global FC       # pylint: disable=W0603
     # if row==size:
     if row == size-1: # 枝刈り
-        # 追加
+        # 枝刈り
         if FB[row-ABOARD[row]+size-1] or FC[row+ABOARD[row]]:
             return
-        #
         stotal = symmetryops(size)	  # 対称解除法の導入
         if stotal != 0:
             UNIQUE += 1            # ユニーク解を加算
             TOTAL += stotal             # 対称解除で得られた解数を加算
     else:
         # 枝刈り
-        # pythonでは割り算の結果を整数で返すときは // にする
-        #int lim=(row!=0) ? size : (size+1)/2
         lim = size if row != 0 else (size + 1) // 2
         #for i in range(size):  # 枝刈り
         for i in range(row, lim):
@@ -167,9 +164,8 @@ def nqueen(row, size):
             ABOARD[row] = tmp
             #
             # 枝刈り
-            if FB[row-ABOARD[row]+size-1] or FC[row+ABOARD[row]]:
-                pass
-            else:
+            if FB[row-ABOARD[row]+size-1] == 0 \
+              and FC[row+ABOARD[row]] == 0:
                 FB[row-ABOARD[row]+size-1] = FC[row+ABOARD[row]] = 1
                 nqueen(row+1, size) # 再帰
                 FB[row-ABOARD[row]+size-1] = FC[row+ABOARD[row]] = 0
@@ -187,8 +183,9 @@ def main():
     global ABOARD   # pylint: disable=W0603
     global MAX      # pylint: disable=W0603
     nmin = 4                          # Nの最小値（スタートの値）を格納
+    nmax = 16
     print(" N:        Total       Unique        hh:mm:ss.ms")
-    for i in range(nmin, MAX):
+    for i in range(nmin, nmax):
         TOTAL = 0
         UNIQUE = 0                   # 初期化
         for j in range(i):
