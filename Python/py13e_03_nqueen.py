@@ -20,6 +20,8 @@ from multiprocessing import Pool as ThreadPool
 # Nの数だけプロセスを起動して、最後にそれぞれの集計値を合算して合計解を求めます
 # 02 で実行したソースよりも多少高速な、py03_nqueen.pyのマルチプロセス版です。
 #
+# 実行後、複数のCPU全てが100%使用されていることを確認して下さい。
+#
 #   実行結果
 #  N:        Total       Unique        hh:mm:ss.ms
 #  4:            2            0         0:00:00.125
@@ -41,14 +43,16 @@ class Nqueen():
     def __init__(self, size):
         """ __init__"""
         self.size = size                    # N
+        self._nthreads = self.size
         self.total = 0                      # スレッド毎の合計
         self.unique = 0
         self.gttotal = [0] * self.size      #総合計
         self.aboard = [[0 for i in range(self.size)] for j in range(self.size)]
-				# py03で使用します
+        self.count = 0
         self.FA = [[0 for i in range(2*size-1)] for j in range(self.size)]
         self.FB = [[0 for i in range(2*size-1)] for j in range(self.size)]
         self.FC = [[0 for i in range(2*size-1)] for j in range(self.size)]
+    #
     def solve(self):
         """ solve() """
         pool = ThreadPool(self.size)
@@ -56,51 +60,34 @@ class Nqueen():
         pool.close()
         pool.join()
         return sum(self.gttotal)
-    def nqueen(self, thr_index, row=0):     # rowは横(行) colは縦(列)
+    #
+    def nqueen(self, thr_index, row=0, depth=0):     # rowは横(行) colは縦(列)
         """nqueen()"""
-        #print(thr_index)
-        if row > 0:
-            start = 0
-            end = self.size -1
-        else:
-            start = thr_index
-            end = thr_index
+        # self.count += 1
+        # print(self.count)
+        # print(thr_index)
+        size = self.size
+        start = 0 if (row > 0) else int(thr_index * (size / self._nthreads))
+        end = size - 1 if ((row > 0) or (thr_index == self._nthreads - 1)) else int((thr_index + 1) * (size / self._nthreads) - 1)
         if row == self.size:
             self.total += 1
-        else:
-            for i in range(start, end + 1):
-                # Py03相当
-                if self.FA[thr_index][i] == 0 and self.FB[thr_index][row-i+(self.size-1)] == 0 and self.FC[thr_index][row+i] == 0:
-                    self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 1
-                    self.aboard[thr_index][row] = i
-                    self.nqueen(thr_index, row + 1)
-                    #nqueen(row+1, self.size)   #再帰
-                    self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 0
-                
-                # 元のソース
-                # _v = 0
-                # while(_v < row and self.is_safe(i, _v, row, thr_index)):
-                #     _v += 1
-                # if _v < row:
-                #     continue
-                # self.aboard[thr_index][row] = i
-                # self.nqueen(thr_index, row + 1)
-
-            if row == 0:
-                return self.total
+        for i in range(start, end + 1):
+            if self.FA[thr_index][i] == 0 and self.FB[thr_index][row-i+(self.size-1)] == 0 and self.FC[thr_index][row+i] == 0:
+                self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 1
+                self.aboard[thr_index][row] = i
+                self.nqueen(thr_index, row + 1)
+                self.FA[thr_index][i] = self.FB[thr_index][row-i+(self.size-1)] = self.FC[thr_index][row+i] = 0
+        if depth == 0:
+            return self.total
         return self.total
-    # def is_safe(self, i, _v, row, thr_index):
-    #     """is_safe() """
-    #     if self.aboard[thr_index][_v] == i:      # 縦位置の検査
-    #         return 0
-    #     if abs(self.aboard[thr_index][_v] - i) == row - _v: # 斜めの検査 3x5 == 5x3
-    #         return 0
-    #     return 1
+#
 def main():
     """main()"""
     print(" N:        Total       Unique        hh:mm:ss.ms")
     nmin = 4
     nmax = 16
+    # nmin = 8
+    # nmax = 9
     for size in range(nmin, nmax):
         start_time = datetime.now()
         nqueen_obj = Nqueen(size)

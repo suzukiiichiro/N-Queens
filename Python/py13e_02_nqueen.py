@@ -20,19 +20,20 @@ from multiprocessing import Pool as ThreadPool
 # Nの数だけプロセスを起動して、最後にそれぞれの集計値を合算して合計解を求めます
 # まずは１３dまでの処理を考えずにマルチプロセスのロジックをpy03にたちもどって
 # 一からから再構築してみます。
+# 実行後、複数のCPU全てが100%使用されていることを確認して下さい。
 #
 #   実行結果
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            0         0:00:00.127
+#  4:            2            0         0:00:00.124
 #  5:           10            0         0:00:00.115
-#  6:            4            0         0:00:00.117
+#  6:            4            0         0:00:00.116
 #  7:           40            0         0:00:00.117
-#  8:           92            0         0:00:00.113
-#  9:          352            0         0:00:00.119
-# 10:          724            0         0:00:00.227
-# 11:         2680            0         0:00:01.152
-# 12:        14200            0         0:00:07.610
-# 13:        73712            0         0:00:50.093
+#  8:           92            0         0:00:00.118
+#  9:          352            0         0:00:00.117
+# 10:          724            0         0:00:00.220
+# 11:         2680            0         0:00:01.049
+# 12:        14200            0         0:00:06.808
+# 13:        73712            0         0:00:49.041
 #
 #
 class Nqueen():
@@ -40,10 +41,13 @@ class Nqueen():
     def __init__(self, size):
         """ __init__"""
         self.size = size                    # N
+        self._nthreads = self.size
         self.total = 0                      # スレッド毎の合計
         self.unique = 0
         self.gttotal = [0] * self.size      #総合計
         self.aboard = [[0 for i in range(self.size)] for j in range(self.size)]
+        self.count=0
+    #
     def solve(self):
         """ solve() """
         pool = ThreadPool(self.size)
@@ -51,40 +55,44 @@ class Nqueen():
         pool.close()
         pool.join()
         return sum(self.gttotal)
-    def nqueen(self, thr_index, row=0):     # rowは横(行) colは縦(列)
+    #
+    def nqueen(self, thr_index, row=0, depth=0):     # rowは横(行) colは縦(列)
         """nqueen()"""
-        if row > 0:
-            start = 0
-            end = self.size -1
-        else:
-            start = thr_index
-            end = thr_index
-        if row == self.size:
+        # self.count += 1
+        # print(self.count)
+        # print(thr_index)
+        size = self.size
+        start = 0 if (row > 0) else int(thr_index * (size / self._nthreads))
+        end = size - 1 if ((row > 0) or (thr_index == self._nthreads - 1)) else int((thr_index + 1) * (size / self._nthreads) - 1)
+        if row == size:
             self.total += 1
-        else:
-            for i in range(start, end + 1):
-                _v = 0
-                while(_v < row and self.is_safe(i, _v, row, thr_index)):
-                    _v += 1
-                if _v < row:
-                    continue
-                self.aboard[thr_index][row] = i
-                self.nqueen(thr_index, row + 1)
-            if row == 0:
-                return self.total
+        for i in range(start, end + 1):
+            j = 0
+            while(j < row and self.is_safe(i, j, row, thr_index)):
+                j += 1
+            if j < row:
+                continue
+            self.aboard[thr_index][row] = i
+            self.nqueen(thr_index, row + 1, depth + 1)
+        if depth == 0:
+            return self.total
         return self.total
-    def is_safe(self, i, _v, row, thr_index):
+		#
+    def is_safe(self, i, j, row, thr_index):
         """is_safe() """
-        if self.aboard[thr_index][_v] == i:      # 縦位置の検査
+        if self.aboard[thr_index][j] == i:      # 縦位置の検査
             return 0
-        if abs(self.aboard[thr_index][_v] - i) == row - _v: # 斜めの検査 3x5 == 5x3
+        if abs(self.aboard[thr_index][j] - i) == row - j: # 斜めの検査 3x5 == 5x3
             return 0
         return 1
+#
 def main():
     """main()"""
     print(" N:        Total       Unique        hh:mm:ss.ms")
     nmin = 4
     nmax = 16
+    # nmin = 8
+    # nmax = 9
     for size in range(nmin, nmax):
         start_time = datetime.now()
         nqueen_obj = Nqueen(size)

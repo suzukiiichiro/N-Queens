@@ -21,7 +21,6 @@ from multiprocessing import Pool as ThreadPool
 # 本来は、N=4,N=5,N=6...を並行するのではなく、rowの数だけプロセスが起動
 # すべきなのです。
 #       
-#            準備中
 #
 # 実行結果
 #  N:        Total       Unique        hh:mm:ss.ms
@@ -45,6 +44,7 @@ class Nqueen():
     def __init__(self, size):
         """ __init__"""
         self.size = size                    # N
+        self._nthreads = self.size
         self.total = 0                      # スレッド毎の合計
         self.unique = 0
         self.stotal = [0] * self.size
@@ -161,12 +161,17 @@ class Nqueen():
                     return 0
         return nquiev*2
 #
-    def nqueen(self, thr_index, row=0):     # rowは横(行) colは縦(列)
+    def nqueen(self, thr_index, row=0, depth=0):     # rowは横(行) colは縦(列)
       """nqueen()"""
+      self.count += 1
+      print("count : %d" % self.count)
+      print("thr_index : %d" % thr_index)
       ABOARD = self.aboard[thr_index]
       FB = self.FB[thr_index]
       FC = self.FC[thr_index]
       size = self.size
+      start = 0 if (row > 0) else int(thr_index * (size / self._nthreads))
+      end = size - 1 if ((row > 0) or (thr_index == self._nthreads - 1)) else int((thr_index + 1) * (size / self._nthreads) - 1)
       if row == size-1: 
           if FB[row-ABOARD[row]+size-1] or FC[row+ABOARD[row]]:
               return
@@ -174,28 +179,33 @@ class Nqueen():
           if stotal != 0:
               self.unique += 1                    # ユニーク解を加算
               self.total += stotal    # 対称解除で得られた解数を加算
-      if row == thr_index:
+      if depth == thr_index:
           return self.total, self.unique
       lim = thr_index+1 if row != 0 else (size + 1) // 2
       for i in range(row, lim):
+      # for i in range(start, end + 1):
           tmp = ABOARD[i]
           ABOARD[i] = ABOARD[row]
           ABOARD[row] = tmp
           if FB[row-ABOARD[row]+size-1] == 0 \
             and FC[row+ABOARD[row]] == 0:
               FB[row-ABOARD[row]+size-1] = FC[row+ABOARD[row]] = 1
-              self.nqueen(thr_index,row+1)
+              self.nqueen(thr_index,row+1, depth+1)
               FB[row-ABOARD[row]+size-1] = FC[row+ABOARD[row]] = 0
       tmp = ABOARD[row]
       for i in range(row+1, size):
           ABOARD[i-1] = ABOARD[i]
       ABOARD[size-1] = tmp
+      if depth == thr_index:
+          return self.total, self.unique
       return self.total, self.unique
 def main():
     """main()"""
     print(" N:        Total       Unique        hh:mm:ss.ms")
-    nmin = 4
-    nmax = 16
+    # nmin = 4
+    # nmax = 16
+    nmin = 8
+    nmax = 9
     for size in range(nmin, nmax):
         start_time = datetime.now()
         nqueen_obj = Nqueen(size)
