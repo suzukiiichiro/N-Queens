@@ -145,7 +145,7 @@ class Nqueen():
         uni=0
         #
         # ここをみて。あともう少しなんだけどな
-        # print("gttotal:%s" % self.gttotal)
+        print("gttotal:%s" % self.gttotal)
         for t,u in self.gttotal:
             to+=t
             uni+=u
@@ -322,33 +322,38 @@ class Nqueen():
         size = self.size
         start = 0 if (row > 0) else int(thr_index * (size / self._nthreads))
         end = size - 1 if ((row > 0) or (thr_index == self._nthreads - 1)) else int((thr_index + 1) * (size / self._nthreads) - 1)
-
         global TOPBIT         # pylint: disable=W0603
         global ENDBIT         # pylint: disable=W0603
         global SIDEMASK       # pylint: disable=W0603
         global LASTMASK       # pylint: disable=W0603
         global BOUND1         # pylint: disable=W0603
         global BOUND2         # pylint: disable=W0603
-
-
         bit = 0
         ABOARD[0] = 1
         TOPBIT = 1<<(size-1)
         BOUND1 = thr_index
-        #for BOUND1 in range(2, size-1):
+        # 
+        # 148+ をコメントアウトして
+        # ここを入れ替えると数は合う
+        # ロジックはあっているはず
+        # for BOUND1 in range(2, size-1):
         if BOUND1 > 1 and BOUND1 < size - 1:
             ABOARD[1] = bit = (1<<BOUND1)
             self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
         SIDEMASK = LASTMASK = (TOPBIT|1)
         ENDBIT = (TOPBIT>>1)
         BOUND2 = size-2
-        #for BOUND1 in range(1, BOUND2):
+        #
+        # 148+ をコメントアウトして
+        # ここを入れ替えると数は合う
+        # ロジックはあっているはず
+        # for BOUND1 in range(1, BOUND2):
         if BOUND1 > 0 and BOUND2 < size -1 and BOUND1 < BOUND2:
             ABOARD[0] = bit = (1<<BOUND1)
             self.backtrack2(1, bit<<1, bit, bit>>1)
             LASTMASK |= LASTMASK>>1|LASTMASK<<1
             ENDBIT >>= 1
-            # BOUND2 -= 1
+            BOUND2 -= 1
 
         if depth == 0:
             return self.gettotal(),self.getunique()
