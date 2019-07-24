@@ -152,10 +152,7 @@ class Nqueen():
             uni+=u
         pool.close()
         pool.join()
-
-        # これじゃだめだろ。。。。でも今はこれで
-        #return to, uni
-        return to/self.size, uni/self.size
+        return to, uni
     #
     # ユニーク値を出力
     def getunique(self):
@@ -334,21 +331,25 @@ class Nqueen():
         global BOUND1         # pylint: disable=W0603
         global BOUND2         # pylint: disable=W0603
 
+
         bit = 0
-        TOPBIT = 1<<(size-1)
         ABOARD[0] = 1
-        for BOUND1 in range(2, size-1):
+        TOPBIT = 1<<(size-1)
+        BOUND1 = thr_index
+        #for BOUND1 in range(2, size-1):
+        if BOUND1 > 1 and BOUND1 < size - 1:
             ABOARD[1] = bit = (1<<BOUND1)
             self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
         SIDEMASK = LASTMASK = (TOPBIT|1)
         ENDBIT = (TOPBIT>>1)
         BOUND2 = size-2
-        for BOUND1 in range(1, BOUND2):
+        #for BOUND1 in range(1, BOUND2):
+        if BOUND1 > 0 and BOUND2 < size -1 and BOUND1 < BOUND2:
             ABOARD[0] = bit = (1<<BOUND1)
             self.backtrack2(1, bit<<1, bit, bit>>1)
             LASTMASK |= LASTMASK>>1|LASTMASK<<1
             ENDBIT >>= 1
-            BOUND2 -= 1
+            # BOUND2 -= 1
 
         if depth == 0:
             return self.gettotal(),self.getunique()
