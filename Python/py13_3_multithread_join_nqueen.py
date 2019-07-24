@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
 """ py13_3_multithread_join_nqueen.py """
+
 import logging
 import threading
 from threading import Thread
@@ -19,7 +21,7 @@ from datetime import datetime
 #     １３−２ではjoin()をコンストラクタで実行していましたが、
 #     run()の処理末尾でjoin()するようにすることで、並行処理による高速化を試みます
 #
-# py12_nqueen.py 
+# py12_nqueen.py
 #  N:        Total       Unique        hh:mm:ss.ms
 #  4:            2            1         0:00:00.000
 #  5:           10            2         0:00:00.000
@@ -70,7 +72,7 @@ from datetime import datetime
 # マルチスレッドにて py13_3_multithread_join_nqueen.py
 # コア一つを使い回しているにすぎない。遅い
 # joinを処理末で実行。本来のマルチスレッド
-# Nの数分スレッドが起動しそれぞれ並列処理 
+# Nの数分スレッドが起動しそれぞれ並列処理
 #  N:        Total       Unique        hh:mm:ss.ms
 #  4:            2            1         0:00:00.001
 #  5:           10            2         0:00:00.000
@@ -380,4 +382,3 @@ def main():
         text = _text[:-3]
         print("%2d:%13d%13d%20s" % (i, info.gettotal(), info.getunique(), text))  # 出力
 main()
-

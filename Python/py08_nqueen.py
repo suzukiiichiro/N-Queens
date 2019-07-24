@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """ py08_nqueen.py """
+
 from datetime import datetime
 #
 # /**

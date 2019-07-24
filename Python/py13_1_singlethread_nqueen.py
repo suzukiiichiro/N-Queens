@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
 """ py13_1_singlethread_nqueen.py """
+
 import logging
 import threading
 from threading import Thread
@@ -21,7 +23,7 @@ from datetime import datetime
 #       ですので、Nが大きくなると、これまでの速度よりもむしろ低下します。
 #
 #
-# py12_nqueen.py 
+# py12_nqueen.py
 #  N:        Total       Unique        hh:mm:ss.ms
 #  4:            2            1         0:00:00.000
 #  5:           10            2         0:00:00.000
@@ -286,4 +288,3 @@ def main():
         text = _text[:-3]
         print("%2d:%13d%13d%20s" % (i, info.gettotal(), info.getunique(), text))  # 出力
 main()
-

@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """ py12_nqueen.py """
+
 from datetime import datetime
 #
 # /**
@@ -289,7 +290,7 @@ def backtrack1(size, mask, row, left, down, right):  # pylint: disable=R0913
         else:
             lim = (size+1)//2 # 割り算の結果を整数にするには //
         # 枝刈り
-        for i in range(row, lim):   # pylint: disable=W0612 
+        for i in range(row, lim):   # pylint: disable=W0612
             while bitmap:
                 bit = (-bitmap&bitmap)
                 ABOARD[row] = bit

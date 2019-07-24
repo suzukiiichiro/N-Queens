@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
 """ py13_2_multithread_nqueen.py """
+
 import logging
 import threading
 from threading import Thread
@@ -20,7 +22,7 @@ from datetime import datetime
 #     Nのrowの処理が終了するまで次のrowの処理に入らないので、
 #     これまでのシングルスレッドと、処理速度に大きな変化は起きません。
 #
-# py12_nqueen.py 
+# py12_nqueen.py
 #  N:        Total       Unique        hh:mm:ss.ms
 #  4:            2            1         0:00:00.000
 #  5:           10            2         0:00:00.000
@@ -339,4 +341,3 @@ def main():
         text = _text[:-3]
         print("%2d:%13d%13d%20s" % (i, info.gettotal(), info.getunique(), text))  # 出力
 main()
-
