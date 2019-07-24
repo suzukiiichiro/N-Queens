@@ -346,12 +346,18 @@ class Nqueen(): # pylint: disable=R0902
         # ここを入れ替えると数は合う
         # ロジックはあっているはず。合計はもちろん違うけど
         #
+        # for の時
         # gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
         #  8:          736           96         0:00:00.119
+        # 
+        # if の時
+        # gttotal:[(0, 0), (56, 7), (72, 9), (32, 4), (24, 3), (8, 1), (0, 0), (0, 0)]
+        #  8:          192           24         0:00:00.118
         #
         # print(thr_index) # N=8の時は 0,1,2,3,4,5,6,7
-        for self.bound1 in range(2, self.size-1):
-        # if self.bound1 > 1 and self.bound1 < self.size - 1:
+        #
+        # for self.bound1 in range(2, self.size-1):
+        if self.bound1 > 1 and self.bound1 < self.size - 1:
             self.aboard[1] = bit = (1<<self.bound1)
             self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
         self.sidemask = self.lastmask = (self.topbit|1)
@@ -361,8 +367,8 @@ class Nqueen(): # pylint: disable=R0902
         # 148+ をコメントアウトして
         # ここを入れ替えると数は合う
         # ロジックはあっているはず
-        for self.bound1 in range(1, self.bound2):
-        # if self.bound1 > 0 and self.bound2 < self.size - 1 and self.bound1 < self.bound2:
+        # for self.bound1 in range(1, self.bound2):
+        if self.bound1 > 0 and self.bound2 < self.size - 1 and self.bound1 < self.bound2:
             self.aboard[0] = bit = (1<<self.bound1)
             self.backtrack2(1, bit<<1, bit, bit>>1)
             self.lastmask |= self.lastmask>>1|self.lastmask<<1
