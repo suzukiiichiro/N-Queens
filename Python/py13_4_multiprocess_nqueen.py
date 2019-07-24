@@ -340,6 +340,7 @@ class Nqueen():
         # gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
         #  8:          736           96         0:00:00.119
         #
+        # print(thr_index) # N=8の時は 0,1,2,3,4,5,6,7
         # for BOUND1 in range(2, size-1):
         if BOUND1 > 1 and BOUND1 < size - 1:
             ABOARD[1] = bit = (1<<BOUND1)
@@ -352,13 +353,12 @@ class Nqueen():
         # ここを入れ替えると数は合う
         # ロジックはあっているはず
         # for BOUND1 in range(1, BOUND2):
-        if BOUND1 > 0 and BOUND2 < size -1 and BOUND1 < BOUND2:
+        if BOUND1 > 0 and BOUND2 < size - 1 and BOUND1 < BOUND2:
             ABOARD[0] = bit = (1<<BOUND1)
             self.backtrack2(1, bit<<1, bit, bit>>1)
             LASTMASK |= LASTMASK>>1|LASTMASK<<1
             ENDBIT >>= 1
             BOUND2 -= 1
-
         if depth == 0:
             return self.gettotal(),self.getunique()
         return self.gettotal(),self.getunique()
