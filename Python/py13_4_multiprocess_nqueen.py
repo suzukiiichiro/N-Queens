@@ -17,6 +17,8 @@ from multiprocessing import Pool as ThreadPool
 #  単一のCPUを複数のプロセスで使い回すマルチスレッドと異なり、
 #  複数のCPUを複数のプロセスで使い回すマルチプロセスのほうが、
 #  圧倒的に高速です
+#  py13_1, 2, 3, では処理中に、「全ての」CPUの負荷が１００％になることはありませんでした。
+#  処理中は全てのCPUの負荷が１００％になっていることを確認して下さい。
 #
 # py12_nqueen.py 
 #  N:        Total       Unique        hh:mm:ss.ms
@@ -142,6 +144,9 @@ class Nqueen():
         self.gttotal = list(pool.map(self.nqueen, range(self.size)))
         to=0
         uni=0
+        #
+        # ここをみて。あともう少しなんだけどな
+        # print("gttotal:%s" % self.gttotal)
         for t,u in self.gttotal:
             to+=t
             uni+=u
@@ -149,7 +154,7 @@ class Nqueen():
         pool.join()
 
         # これじゃだめだろ。。。。でも今はこれで
-        #return to/self.size, uni/self.size
+        #return to, uni
         return to/self.size, uni/self.size
     #
     # ユニーク値を出力
