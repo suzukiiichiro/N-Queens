@@ -153,13 +153,18 @@ class Nqueen(): # pylint: disable=R0902
         unique = 0
         #
         # ここをみて。あともう少しなんだけどな
-        print("gttotal:%s" % self.gttotal)
+        #print("gttotal:%s" % self.gttotal)
+        #
         for _t, _u in self.gttotal:
             total += _t
             unique += _u
         pool.close()
         pool.join()
+        #
         return total, unique
+        #
+        # ここをみて。あともう少しなんだけどな
+        #return total/self.size, unique/self.size
     #
     # ユニーク値を出力
     def getunique(self):
@@ -342,8 +347,7 @@ class Nqueen(): # pylint: disable=R0902
         self.topbit = 1<<(self.size-1)
         self.bound1 = thr_index
         #
-        # 148+ をコメントアウトして
-        # ここを入れ替えると数は合う
+        # 364+ をコメントアウトして 363+を活かすと数は合う
         # ロジックはあっているはず。合計はもちろん違うけど
         #
         # for の時
@@ -356,7 +360,7 @@ class Nqueen(): # pylint: disable=R0902
         #
         # print(thr_index) # N=8の時は 0,1,2,3,4,5,6,7
         #
-        # for self.bound1 in range(2, self.size-1):
+        #for self.bound1 in range(2, self.size-1):
         if self.bound1 > 1 and self.bound1 < self.size - 1:
             self.aboard[1] = bit = (1<<self.bound1)
             self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
@@ -364,18 +368,15 @@ class Nqueen(): # pylint: disable=R0902
         self.endbit = (self.topbit>>1)
         self.bound2 = self.size-2
         #
-        # 148+ をコメントアウトして
-        # ここを入れ替えると数は合う
+        # 374+ をコメントアウトして 373+を活かすと数は合う
         # ロジックはあっているはず
-        # for self.bound1 in range(1, self.bound2):
+        #for self.bound1 in range(1, self.bound2):
         if self.bound1 > 0 and self.bound2 < self.size - 1 and self.bound1 < self.bound2:
             self.aboard[0] = bit = (1<<self.bound1)
             self.backtrack2(1, bit<<1, bit, bit>>1)
             self.lastmask |= self.lastmask>>1|self.lastmask<<1
             self.endbit >>= 1
             self.bound2 -= 1
-        # if depth == 0:
-            # return self.gettotal(), self.getunique()
         return self.gettotal(), self.getunique()
 #
 # メインメソッド
