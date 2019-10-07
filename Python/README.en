@@ -26,7 +26,7 @@
  10. Branch by position of queen BOUND1,2         N15| 08:10
  11. Pruning                                      N15| 02:27
  12. Optimization                                 N15| 00:54
- 13. Parallel processing                          N15| 00:29
+ 13. Parallel processing                          N15| 00:19
 
 
 *********************************
@@ -1097,5 +1097,16 @@ It is possible to determine the effect of the on-line by shifting the right and 
  *  Execution result
  N: Total Unique dd: hh: mm: ss. Ms
  
- making now.
- 
+#  N:        Total       Unique        hh:mm:ss.ms
+#  4:            2            1         0:00:00.124
+#  5:           10            2         0:00:00.110
+#  6:            4            1         0:00:00.116
+#  7:           40            6         0:00:00.115
+#  8:           92           12         0:00:00.119
+#  9:          352           46         0:00:00.118
+# 10:          724           92         0:00:00.121
+# 11:         2680          341         0:00:00.122
+# 12:        14200         1787         0:00:00.228
+# 13:        73712         9233         0:00:00.641
+# 14:       365596        45752         0:00:03.227
+# 15:      2279184       285053         0:00:19.973 

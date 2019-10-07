@@ -91,41 +91,31 @@ from multiprocessing import Pool as ThreadPool
 # 15:      2279184       285053         0:01:08.997
 #
 #
-# マルチプロセス （にてるけど違う 現在作り中）
+# マルチプロセス版 （このソース）
 #  N:        Total       Unique        hh:mm:ss.ms
-#  4:            2            1         0:00:00.123
-#  5:           10            2         0:00:00.115
-#  6:            4            1         0:00:00.111
-#  7:           40            6         0:00:00.117
-#  8:          192           24         0:00:00.119
-#  9:          600           76         0:00:00.115
-# 10:         1324          166         0:00:00.119
-# 11:         5560          697         0:00:00.121
-# 12:        29896         3739         0:00:00.223
-# 13:       154312        19293         0:00:00.746
-# 14:       804416       100561         0:00:04.048
-# 15:      5018016       627288         0:00:29.257
-#
+#  4:            2            1         0:00:00.124
+#  5:           10            2         0:00:00.110
+#  6:            4            1         0:00:00.116
+#  7:           40            6         0:00:00.115
+#  8:           92           12         0:00:00.119
+#  9:          352           46         0:00:00.118
+# 10:          724           92         0:00:00.121
+# 11:         2680          341         0:00:00.122
+# 12:        14200         1787         0:00:00.228
+# 13:        73712         9233         0:00:00.641
+# 14:       365596        45752         0:00:03.227
+# 15:      2279184       285053         0:00:19.973
 #
 #
 # グローバル変数
 #
 class Nqueen(): # pylint: disable=R0902
     """ nqueen() """
-    # MAX = 16 # N = 15
-    # self.aboard = [0 for i in range(MAX)]
-    # self.topbit = 0
-    # self.endbit = 0
-    # self.sidemask = 0
-    # self.lastmask = 0
-    # self.bound1 = 0
-    # self.bound2 = 0
-    # MASK = 0
-    #
     # 初期化
     def __init__(self, size):
         """ __init__"""
         self.size = size                    # N
+        self.sizeE = size -1
         self._nthreads = self.size
         self.total = 0                      # スレッド毎の合計
         self.unique = 0
@@ -148,13 +138,19 @@ class Nqueen(): # pylint: disable=R0902
     def solve(self):
         """ solve() """
         pool = ThreadPool(self.size)
-        self.gttotal = list(pool.map(self.nqueen, range(self.size)))
+        #
+        ## ロジック確認用
+        ## シングル版 Nで割ると解が合う
+        ## gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
+        ##  8:          736           96         0:00:00.119
+        #
+        # self.gttotal = list(pool.map(self.nqueen_single, range(self.size)))
+        ##
+        ## マルチプロセス版
+        self.gttotal = list(pool.map(self.nqueen_multi, range(self.size)))
+        #
         total = 0
         unique = 0
-        #
-        # ここをみて。あともう少しなんだけどな
-        #print("gttotal:%s" % self.gttotal)
-        #
         for _t, _u in self.gttotal:
             total += _t
             unique += _u
@@ -162,9 +158,6 @@ class Nqueen(): # pylint: disable=R0902
         pool.join()
         #
         return total, unique
-        #
-        # ここをみて。あともう少しなんだけどな
-        #return total/self.size, unique/self.size
     #
     # ユニーク値を出力
     def getunique(self):
@@ -179,12 +172,6 @@ class Nqueen(): # pylint: disable=R0902
     # 対称解除法
     def symmetryops(self):      # pylint: disable=R0912,R0911,R0915
         """ symmetryops() """
-        # global count2  # pylint: disable=W0603
-        # global count4  # pylint: disable=W0603
-        # global count8  # pylint: disable=W0603
-        # global self.aboard  # pylint: disable=W0603
-        # global self.topbit  # pylint: disable=W0603
-        # global self.endbit  # pylint: disable=W0603
         own = 0
         ptn = 0
         you = 0
@@ -250,10 +237,6 @@ class Nqueen(): # pylint: disable=R0902
     # BackTrack2
     def backtrack2(self, row, left, down, right): # pylint: disable=R0913
         """ backtrack2() """
-        # global self.aboard       # pylint: disable=W0603
-        # global self.lastmask     # pylint: disable=W0603
-        # global self.bound1       # pylint: disable=W0603
-        # global self.bound2       # pylint: disable=W0603
         bit = 0
         bitmap = self.mask&~(left|down|right)
         #枝刈り
@@ -294,9 +277,6 @@ class Nqueen(): # pylint: disable=R0902
     # BackTrack1
     def backtrack1(self, row, left, down, right):  # pylint: disable=R0913
         """ backtrack1() """
-        # global self.aboard       # pylint: disable=W0603,W0601
-        # global count8       # pylint: disable=W0603,W0601
-        # global self.bound1       # pylint: disable=W0603,W0601
         bit = 0
         bitmap = self.mask&~(left|down|right)
         #枝刈り
@@ -326,82 +306,88 @@ class Nqueen(): # pylint: disable=R0902
                     self.aboard[row] = bit
                     bitmap ^= self.aboard[row]
                     self.backtrack1(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
-      #
-    # メインメソッド
-    #def nqueen(self, thr_index, row=0, depth=0):
-    def nqueen(self, thr_index):
-        """ nqueen() """
-        # global self.aboard         # pylint: disable=W0603,W0601
-        # self.aboard = self.aboard[thr_index]
-        # size = self.size
-        # start = 0 if (row > 0) else int(thr_index * (size / self._nthreads))
-        # end = size - 1 if ((row > 0) or (thr_index == self._nthreads - 1)) else int((thr_index + 1) * (size / self._nthreads) - 1) # pylint: disable=C0301
-        # global self.topbit         # pylint: disable=W0603,W0601
-        # global self.endbit         # pylint: disable=W0603,W0601
-        # global self.sidemask       # pylint: disable=W0603,W0601
-        # global self.lastmask       # pylint: disable=W0603,W0601
-        # global self.bound1         # pylint: disable=W0603,W0601
-        # global self.bound2         # pylint: disable=W0603,W0601
-        bit = 0
-        self.aboard[0] = 1
-        self.topbit = 1<<(self.size-1)
-        self.bound1 = thr_index
-        #
-        # 364+ をコメントアウトして 363+を活かすと数は合う
-        # ロジックはあっているはず。合計はもちろん違うけど
-        #
-        # for の時
-        # gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
-        #  8:          736           96         0:00:00.119
-        # 
-        # if の時
-        # gttotal:[(0, 0), (56, 7), (72, 9), (32, 4), (24, 3), (8, 1), (0, 0), (0, 0)]
-        #  8:          192           24         0:00:00.118
-        #
-        # print(thr_index) # N=8の時は 0,1,2,3,4,5,6,7
-        #
-        #for self.bound1 in range(2, self.size-1):
-        if self.bound1 > 1 and self.bound1 < self.size - 1:
-            self.aboard[1] = bit = (1<<self.bound1)
-            self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
-        self.sidemask = self.lastmask = (self.topbit|1)
-        self.endbit = (self.topbit>>1)
-        self.bound2 = self.size-2
-        #
-        # 374+ をコメントアウトして 373+を活かすと数は合う
-        # ロジックはあっているはず
-        #for self.bound1 in range(1, self.bound2):
-        if self.bound1 > 0 and self.bound2 < self.size - 1 and self.bound1 < self.bound2:
-            self.aboard[0] = bit = (1<<self.bound1)
-            self.backtrack2(1, bit<<1, bit, bit>>1)
-            self.lastmask |= self.lastmask>>1|self.lastmask<<1
-            self.endbit >>= 1
-            self.bound2 -= 1
-        return self.gettotal(), self.getunique()
+    #
+    def BOUND1_single(self, B1):
+      bit = 0
+      self.bound1 = B1 
+      self.aboard[1] = bit = (1<<self.bound1)
+      self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
+    #
+    def BOUND2_single(self, B1, B2):
+      bit = 0
+      self.bound1 = B1
+      self.bound2 = B2
+      self.aboard[0] = bit = (1<<self.bound1)
+      self.backtrack2(1, bit<<1, bit, bit>>1)
+      self.lastmask|=self.lastmask>>1|self.lastmask<<1
+      self.endbit >>= 1
+      self.bound1 += 1
+      self.bound2 -= 1
+    #
+    def BOUND1_multi(self, B1):
+      bit = 0
+      self.bound1 = B1 
+      self.aboard[1] = bit = (1<<self.bound1)
+      self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
+    #
+    def BOUND2_multi(self, B1, B2):
+      bit = 0
+      self.bound1 = B1
+      self.bound2 = B2
+      self.aboard[0] = bit = (1<<self.bound1)
+      for i in range(1, self.bound1):
+        self.lastmask |= self.lastmask>>1|self.lastmask<<1
+        self.endbit >>= 1
+      self.backtrack2(1, bit<<1, bit, bit>>1)
+    #
+    #メインメソッド シングル版
+    def nqueen_single(self, thr_index):
+      """ nqueen_single() """
+      self.aboard[0] = 1
+      self.sizeE = self.size - 1
+      self.mask = (1<<self.size)-1
+      self.topbit = 1<<self.sizeE
+      self.bound1 = 1
+      for self.bound1 in range(2, self.sizeE):
+        self.BOUND1_single(self.bound1)
+        self.bound1 += 1
+      self.sidemask = self.lastmask = (self.topbit|1)
+      self.endbit = (self.topbit>>1)
+      self.bound1 = 1
+      self.bound2 = self.sizeE -1
+      for self.bound1 in range(1, self.bound2):
+        self.BOUND2_single(self.bound1, self.bound2)
+      return self.gettotal(), self.getunique()
+    #
+    # メインメソッド マルチプロセス版
+    def nqueen_multi(self, thr_index):
+      """ nqueen_multi() """
+      self.aboard[0] = 1
+      self.sizeE = self.size -1
+      self.topbit = 1<<self.sizeE
+      self.bound1 = (self.size)-thr_index-1
+      if self.bound1 > 1 and self.bound1 < self.sizeE:
+        self.BOUND1_multi(self.bound1)
+      self.endbit = (self.topbit>>1)
+      self.sidemask = self.lastmask = (self.topbit|1)
+      self.bound2 = thr_index
+      if self.bound1 > 0 and self.bound2<self.sizeE and self.bound1 < self.bound2:
+        self.BOUND2_multi(self.bound1, self.bound2)
+      return self.gettotal(), self.getunique()
 #
 # メインメソッド
 def main():
     """ main() """
-    # global count2     # pylint: disable=W0603,W0601
-    # global count4     # pylint: disable=W0603,W0601
-    # global count8     # pylint: disable=W0603,W0601
-    # global self.aboard     # pylint: disable=W0603,W0601
     nmin = 4                          # Nの最小値（スタートの値）を格納
     nmax = 16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for i in range(nmin, nmax):
-        # count2 = count4 = count8 = 0
-        # mask = (1<<i)-1
-        # for j in range(i):
-        #     self.aboard[j] = j              # 盤を初期化
         start_time = datetime.now()
         nqueen_obj = Nqueen(i)
         total, unique = nqueen_obj.solve()
-        # nqueen(i, mask)
         time_elapsed = datetime.now()-start_time
         _text = '{}'.format(time_elapsed)
         text = _text[:-3]
-        # print("%2d:%13d%13d%20s" % (i, gettotal(), getunique(), text)) # 出力
         print("%2d:%13d%13d%20s" % (i, total, unique, text)) # 出力
 #
 main()
