@@ -4,30 +4,56 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA03_N-Queen.cu -o CUDA03_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA03_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
+ ３．バックトラック
 
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
+ 　各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
+ さない事が明らかな場合は、それ以降のパターン生成を行わない。
+ 　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
+ 　これまでは行方向と列方向に重複しない組み合わせを列挙するものですが、王妃
+ は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
+ けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
+ を降りても解がないと判明した時点で木を引き返すということができます。
 
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
 
  実行結果
- :
- :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+３．CPUR 再帰 バックトラック
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.02
+12:        14200               0            0.08
+13:        73712               0            0.46
+14:       365596               0            2.76
+15:      2279184               0           17.45 
+
+３．CPU 非再帰 バックトラック
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.01
+12:        14200               0            0.08
+13:        73712               0            0.43
+14:       365596               0            2.60
+15:      2279184               0           16.60
+
+３．GPU 非再帰 バックトラック
+
 
 */
 
@@ -229,18 +255,61 @@ bool InitCUDA(){
 //main()以外のメソッドはここに一覧表記させます
 void NQueen(int row,int size);
 void TimeFormat(clock_t utime,char *form);
-// ロジックメソッド
+void NQueenR(int row,int size);
+void print();
+
+//出力用のメソッド
+void print(int size){
+	printf("%ld: ",++TOTAL);
+	for(int j=0;j<size;j++){
+		printf("%d ",aBoard[j]);
+	}
+	printf("\n");
+}
+// CPU 非再帰版 ロジックメソッド
 void NQueen(int row,int size){
+  bool matched;
+  while(row>=0) {
+    matched=false;
+    for(int i=aBoard[row]+1;i<size;i++) {
+      if(0==down[i] && 0==left[row+(size-1)-i] && 0==right[row+i]) {
+        if(aBoard[row] >= 0) {
+          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+        }
+        aBoard[row]=i;
+        down[i]=left[row+(size-1)-i]=right[row+i]=1;
+        matched=true;
+        break;
+      }
+    }
+    if(matched){
+      row++;
+      if(row==size){
+        TOTAL++;
+        row--;
+      }
+    }else{
+      if(aBoard[row]>=0){
+        int tmp=aBoard[row];
+        aBoard[row]=-1;
+        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
+      }
+      row--;
+    }
+  }
+}
+// CPUR 再帰版 ロジックメソッド
+void NQueenR(int row,int size){
 	if(row==size){ //最後までこれたらカウント
 		TOTAL++;
 	}else{
 		for(int i=0;i<size;i++){
 			aBoard[row]=i;
 			//縦斜右斜左を判定
-			if(fA[i]==0&&fB[row-i+(size-1)]==0&&fC[row+i]==0){ 
-				fA[i]=fB[row-i+(size-1)]=fC[row+i]=1;
-				NQueen(row+1,size); //再帰
-				fA[i]=fB[row-i+(size-1)]=fC[row+i]=0;
+			if(down[i]==0&&left[row-i+(size-1)]==0&&right[row+i]==0){ 
+				down[i]=left[row-i+(size-1)]=right[row+i]=1;
+				NQueenR(row+1,size); //再帰
+				down[i]=left[row-i+(size-1)]=right[row+i]=0;
 			}
 		}
 	}
@@ -267,13 +336,15 @@ void TimeFormat(clock_t utime,char *form){
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -281,29 +352,38 @@ int main(int argc,char** argv) {
     printf("  -c: CPU only\n");
     printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
-    printf("Default to 8 queen\n");
+    printf("Default CPUR to 8 queen\n");
   }
   /** 出力と実行 */
-  /** CPU */
   if(cpu){
-    printf("\n\n３．バックトラック");
+    printf("\n\n３．CPU 非再帰 バックトラック\n");
+  }else if(cpur){
+    printf("\n\n３．CPUR 再帰 バックトラック\n");
+  }else if(gpu){
+    printf("\n\n３．GPU 非再帰 バックトラック\n");
   }
-  /** CPUR */
-  if(cpur){
-    printf("\n\n３．バックトラック");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    int min=4;            //Nの最小値（スタートの値）を格納
+  if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(int i=min;i<=MAX;i++){
-      TOTAL=0; UNIQUE=0;  //初期化
-      for(int j=0;j<i;j++){ aBoard[j]=j; } //版を初期化
-        st=clock();         //計測開始
+		clock_t st;           //速度計測用
+		char t[20];           //hh:mm:ss.msを格納
+    int min=4; int targetN=18;
+    /* int targetN=MAX; */
+    for(int i=min;i<=targetN;i++){
+      TOTAL=0; UNIQUE=0;
+      st=clock();
+      if(cpu){
+        //非再帰は-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
         NQueen(0,i);
-        TimeFormat(clock()-st,t); //計測終了
-        printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t); //出力
+      }
+      if(cpur){
+        //再帰は0で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
+        NQueenR(0,i);
+      }
+      TimeFormat(clock()-st,t); 
+      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }
-    return 0;
   }
   /** GPU */
   if(gpu){

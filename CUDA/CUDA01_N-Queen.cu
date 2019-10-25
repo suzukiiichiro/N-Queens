@@ -7,7 +7,8 @@
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
  1. ブルートフォース　力任せ探索
 
@@ -231,26 +232,53 @@ void print(){
 	}
 	printf("\n");
 }
-//ロジックメソッド
+//非再帰版ロジックメソッド
 void NQueen(int row){
+  bool matched;
+  while(row>=0) {
+    matched=false;
+    for(int i=aBoard[row]+1;i<SIZE;i++){
+      if(aBoard[row]>=0){}
+      aBoard[row]=i;
+      matched=true;
+      break;
+    }
+    if(matched){
+      row++;
+      if(row==SIZE){
+        print();
+        row--;
+      }
+    }else{
+      if(aBoard[row]>=0){
+        aBoard[row]=-1;
+      }
+      row--;
+    }
+  }
+}
+//再帰版ロジックメソッド
+void NQueenR(int row){
 	if(row==SIZE){  //SIZEは8で固定
 		print();      //rowが8になったら出力
 	}else{
 		for(int i=0;i<SIZE;i++){
 			aBoard[row]=i;
-			NQueen(row+1);  // インクリメントしながら再帰
+			NQueenR(row+1);  // インクリメントしながら再帰
 		}
 	}
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -258,23 +286,29 @@ int main(int argc,char** argv) {
     printf("  -c: CPU only\n");
     printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
-    printf("Default to 8 queen\n");
+    printf("Default CPUR to CPU 8 queen\n");
   }
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-    printf("\n\n1. ブルートフォース　力任せ探索");
+    printf("\n\n1. CPU 非再帰 ブルートフォース　力任せ探索\n");
+    //非再帰は-1で初期化
+    for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
+    NQueen(0);
   }
   /** CPUR */
   if(cpur){
-    printf("\n\n1. ブルートフォース　力任せ探索");
-    NQueen(0);//ロジックメソッドを0を渡して呼び出し
+    printf("\n\n1. CPUR 再帰 ブルートフォース　力任せ探索\n");
+    //再帰は0で初期化
+    for(int i=0;i<SIZE;i++){ aBoard[i]=0; }
+    NQueenR(0);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
+    printf("\n\n1. GPU 非再帰 ブルートフォース　力任せ探索\n");
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
       gettimeofday(&t0,NULL);   // 計測開始

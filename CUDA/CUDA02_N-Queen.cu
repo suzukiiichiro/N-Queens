@@ -4,30 +4,50 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA02_N-Queen.cu -o CUDA02_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA02_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
+ ２．配置フラグ（制約テスト高速化）
 
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
-
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
+   パターンを生成し終わってからチェックを行うのではなく、途中で制約を満たさな
+   い事が明らかな場合は、それ以降のパターン生成を行わない。
+  「手を進められるだけ進めて、それ以上は無理（それ以上進めても解はない）という
+  事がわかると一手だけ戻ってやり直す」という考え方で全ての手を調べる方法。
+  (※)各行列に一個の王妃配置する組み合わせを再帰的に列挙分枝走査を行っても、組
+  み合わせを列挙するだけであって、8王妃問題を解いているわけではありません。
 
  実行結果
+ ２．CPU 非再帰 配置フラグ（制約テスト高速化）
  :
  :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+ 40312: 7 6 5 4 2 1 3 0
+ 40313: 7 6 5 4 2 3 0 1
+ 40314: 7 6 5 4 2 3 1 0
+ 40315: 7 6 5 4 3 0 1 2
+ 40316: 7 6 5 4 3 0 2 1
+ 40317: 7 6 5 4 3 1 0 2
+ 40318: 7 6 5 4 3 1 2 0
+ 40319: 7 6 5 4 3 2 0 1
+ 40320: 7 6 5 4 3 2 1 0
+
+ ２．CPUR 再帰 配置フラグ（制約テスト高速化）
+ :
+ :
+ 40312: 7 6 5 4 2 1 3 0
+ 40313: 7 6 5 4 2 3 0 1
+ 40314: 7 6 5 4 2 3 1 0
+ 40315: 7 6 5 4 3 0 1 2
+ 40316: 7 6 5 4 3 0 2 1
+ 40317: 7 6 5 4 3 1 0 2
+ 40318: 7 6 5 4 3 1 2 0
+ 40319: 7 6 5 4 3 2 0 1
+ 40320: 7 6 5 4 3 2 1 0
+
+２. GPU 非再帰 配置フラグ（制約テスト高速化）
+
 
 */
 
@@ -232,30 +252,64 @@ void print(){
 	}
 	printf("\n");
 }
-//ロジックメソッド
+//CPU 非再帰 ロジックメソッド
 void NQueen(int row){
-	if(row==SIZE-1){      //0から始まるのでN=8から1を引きます
-		print();            //出力
+  bool matched;
+  while(row>=0) {
+    matched=false;
+    for(int i=aBoard[row]+1;i<SIZE;i++){
+      if(down[i]==0){
+        if(aBoard[row]>=0){
+          down[aBoard[row]]=0;
+        }
+        aBoard[row]=i;
+        down[i]=1;
+        matched=true;
+        break;
+      }
+    }
+    if(matched){
+      row++;
+      if(row==SIZE){
+        print();
+        row--;
+      }
+    }else{
+      if(aBoard[row]>=0){
+        int tmp=aBoard[row];
+        aBoard[row]=-1;
+        down[tmp]=0;
+      }
+      row--;
+    }
+  }
+}
+//CPUR 再帰 ロジックメソッド
+void NQueenR(int row){
+	if(row==SIZE){
+		print();
 	}else{
 		for(int i=0;i<SIZE;i++){
 			aBoard[row]=i;
-			if(fA[i]==0){     //縦列にクイーンがない場合
-				fA[i]=1;
-				NQueen(row+1);  //1を足して再帰
-				fA[i]=0;
+			if(down[i]==0){     //縦列にクイーンがない場合
+				down[i]=1;
+				NQueenR(row+1);  //1を足して再帰
+				down[i]=0;
 			}
 		}
 	}
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -263,23 +317,29 @@ int main(int argc,char** argv) {
     printf("  -c: CPU only\n");
     printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
-    printf("Default to 8 queen\n");
+    printf("Default CPUR to 8 queen\n");
   }
   /** 出力と実行 */
   /** CPU */
   if(cpu){
-    printf("\n\n２．配置フラグ（制約テスト高速化）");
+    printf("\n\n２．CPU 非再帰 配置フラグ（制約テスト高速化）\n");
+    //非再帰は-1で初期化
+    for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
+    NQueen(0);
   }
   /** CPUR */
   if(cpur){
-    printf("\n\n２．配置フラグ（制約テスト高速化）");
-    NQueen(0);//ロジックメソッドを0を渡して呼び出し
+    printf("\n\n２．CPUR 再帰 配置フラグ（制約テスト高速化）\n");
+    //再帰は0で初期化
+    for(int i=0;i<SIZE;i++){ aBoard[i]=0; } 
+    NQueenR(0);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
+    printf("\n\n2. GPU 非再帰 配置フラグ（制約テスト高速化）\n");
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
       gettimeofday(&t0,NULL);   // 計測開始
