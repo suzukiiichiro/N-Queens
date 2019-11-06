@@ -340,24 +340,27 @@ int symmetryOps(int size){
 	}
 	return nEquiv*2;
 }
+// デバッグ用出力
+int COUNT=0;
+void print(int size){
+	printf("%d: ",++COUNT);
+	for(int j=0;j<size;j++){
+		printf("%d ",aBoard[j]);
+	}
+	printf("\n");
+	printf("\n");
+	printf("\n");
+
+}
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int row,int size){
   bool matched;
-	/* bool old=true; */
-	bool old=false; // new
-	int tmp;
-  while(row>-1) {
+  while(row>-1){
     matched=false;
-		// 1. 枝刈り
 		int lim=(row!=0)?size:(size+1)/2;
-		if(old){
-		//こうしたい
-		//for(int i=row;i<lim;i++){
     for(int i=aBoard[row]+1;i<lim;i++) {
-		//	printf("aBoard[row]+1=%d\n", i);
       if(down[i]==0&&left[row-i+(size-1)]==0&&right[row+i]==0){
         if(aBoard[row] >= 0) {
-					// ここは i ではなくaBoard[row]
           down[aBoard[row]]=left[row-aBoard[row]+(size-1)]=right[row+aBoard[row]]=0;
         }
       	aBoard[row]=i;
@@ -365,145 +368,10 @@ void NQueen(int row,int size){
         matched=true;
         break;
       }
-    }
-		}//end old
-		else{//start new
-    for(int i=aBoard[row]+1;i<lim;i++) {
-			//1. down[]を消去
-      if(left[row+(size-1)-i]==0&&right[row+i]==0){
-        if(aBoard[row]>-1) {
-					// ここは i ではなくaBoard[row]
-          left[row+(size-1)-aBoard[row]]
-          =right[row+aBoard[row]]=0;
-        }
-				//3. コメントアウト
-      	/* aBoard[row]=i; */
-
-				//4. 交換Ａ
-    		//for(int i=aBoard[row]+1;i<lim;i++) {
-				//再帰の【最初の】交換
-				/* tmp=aBoard[i];         */
-				/* aBoard[i]=aBoard[row]; */
-				/* aBoard[row]=tmp;       */
-				//＜ここでいったい何を交換するのか>
-
-				tmp=i;
-				i=aBoard[row];
-				aBoard[row]=tmp;
-
-				//5. 
-        left[row+(size-1)-aBoard[row]]
-       =right[row+aBoard[row]]=1;
-        matched=true;
-        break;
-      }
-    }
 		}
     if(matched){
       row++;
-			if(old){
       if(row==size){
-				// なぜ？
-				// 2. 枝刈り Rと 0,1が【反対】になる
-				if((down[aBoard[row]]==0||left[row-aBoard[row]+(size-1)]==0||right[row+aBoard[row]])==0){
-					return;
-				}
-        int s=symmetryOps(size);	//対称解除法の導入
-        if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
-        }
-        row--;
-      }
-			}//end old
-			else{// start new
-			// 2. size-1を導入
-      //if(row==size){
-      if(row==size-1){
-				// なぜ？
-				// 2. 枝刈り Rと 0,1が【反対】になる
-				if((left[row+(size-1)-aBoard[row]]==0
-					||right[row+aBoard[row]])==0){
-					return;
-				}
-        int s=symmetryOps(size);	//対称解除法の導入
-        if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
-        }
-        row--;
-      }
-			}
-    }else{
-			if(old){
-      if(aBoard[row]>-1){
-        down[aBoard[row]]
-       =left[row-aBoard[row]+(size-1)]
-       =right[row+aBoard[row]]=0;
-        aBoard[row]=-1;
-      }
-			}//end old
-			else{ //start new
-      if(aBoard[row]>-1){
-        down[aBoard[row]]
-       =left[row+(size-1)-aBoard[row]]
-       =right[row+aBoard[row]]=0;
-
-					//4. 交換Ｂ(二回目の交換）
-    		  //for(int i=aBoard[row]+1;i<lim;i++) {
-					//再帰の【最初の】交換
-					/* tmp=aBoard[row];          */
-					/* for(int i=row;i<lim;i++){ */
-					/* 	aBoard[i]=aBoard[i+1]; */
-					/* }                         */
-					/* aBoard[size-1]=tmp;       */
-				  // ＜ここでいったい何を交換するのか>
-				
-				tmp=aBoard[row];
-				int step=row;
-				for(int i=aBoard[row]+1;i<lim;i++){
-				/* for(int i=row;i<lim;i++){ */
-					/* aBoard[step]=aBoard[step+1]; */
-					aBoard[step]=-1;
-					step++;
-					/* aBoard[i]=aBoard[i+1]; */
-					/* aBoard[i]=aBoard[i+1]; */
-					/* aBoard[i]=aBoard[i+1]; */
-				}
-				/* aBoard[size]=tmp; */
-				/* aBoard[size-1]=tmp; */
-				aBoard[row]=tmp;
-
-        aBoard[row]=-1;
-      }
-			} 
-      row--;
-    }
-  }
-}
-//CPU 非再帰版 ロジックメソッド
-void ____NQueen(int row,int size){
-  bool matched;
-  while(row>=0) {
-    matched=false;
-		// 1. 枝刈り
-		int lim=(row!=0) ? size : (size+1)/2;
-    for(int i=aBoard[row]+1;i<lim;i++) {
-      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
-        if(aBoard[row] >= 0) {
-					// ここは i ではなくaBoard[row]
-          down[aBoard[row]]=left[row-aBoard[row]+(size-1)]=right[row+aBoard[row]]=0;
-        }
-        aBoard[row]=i;
-        down[i]=left[row-i+(size-1)]=right[row+i]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      row++;
-      if(row==size){
-				// 2. 枝刈り Rと 0,1が【反対】になる
 				if((down[aBoard[row]]==0||left[row-aBoard[row]+(size-1)]==0||right[row+aBoard[row]])==0){
 					return;
 				}
@@ -515,142 +383,9 @@ void ____NQueen(int row,int size){
         row--;
       }
     }else{
-      if(aBoard[row]>=0){
-        int tmp=aBoard[row];
+      if(aBoard[row]>-1){
+        down[aBoard[row]] =left[row-aBoard[row]+(size-1)] =right[row+aBoard[row]]=0;
         aBoard[row]=-1;
-        down[tmp]=left[row-tmp+(size-1)]=right[row+tmp]=0;
-      }
-      row--;
-    }
-  }
-}
-//CPU 非再帰版 ロジックメソッド
-void ___NQueen(int row,int size){
-  bool matched;
-  while(row>=0) {
-    matched=false;
-		int lim=(row!=0) ? size : (size+1)/2;
-    //for(int i=aBoard[row]+1;i<size;i++) {
-    for(int i=aBoard[row]+1;i<lim;i++) {
-      if(down[i]==0
-       &&left[row+(size-1)-i]==0
-       &&right[row+i]==0) {
-        if(aBoard[row] >= 0) {
-					// ここは i ではなくaBoard[row]
-          down[aBoard[row]]
-				 =left[row-aBoard[row]+(size-1)]
-         =right[row+aBoard[row]]=0;
-        }
-        aBoard[row]=i;
-        down[i]
-       =left[row-i+(size-1)]
-       =right[row+i]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      row++;
-      if(row==size){
-				//枝刈り Rと 0,1が反対になる
-				if((down[aBoard[row]]==0 
-          ||left[row-aBoard[row]+(size-1)]==0
-					||right[row+aBoard[row]])==0){
-					return;
-				}
-        int s=symmetryOps(size);	//対称解除法の導入
-        if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
-        }
-        row--;
-      }
-    }else{
-      if(aBoard[row]>=0){
-        int tmp=aBoard[row];
-        aBoard[row]=-1;
-        down[tmp]
-       =left[row-tmp+(size-1)]
-       =right[row+tmp]=0;
-      }
-      row--;
-    }
-  }
-}
-//CPU 非再帰版 ロジックメソッド
-void __NQueen(int row,int size){
-  bool matched;
-  while(row>=0) {
-    matched=false;
-		int lim=(row!=0) ? size : (size+1)/2;
-    //for(int i=aBoard[row]+1;i<size;i++) {
-    for(int i=aBoard[row]+1;i<lim;i++) {
-      if(down[i]==0 &&left[row+(size-1)-i]==0&&right[row+i]==0) {
-        if(aBoard[row] >= 0) {
-					// ここは i ではなくaBoard[row]
-          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-        }
-        aBoard[row]=i;
-        down[i]=left[row+(size-1)-i]=right[row+i]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      row++;
-      if(row==size){
-        /* TOTAL++; */
-        int s=symmetryOps(size);	//対称解除法の導入
-        if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
-        }
-        row--;
-      }
-    }else{
-      if(aBoard[row]>=0){
-        int tmp=aBoard[row];
-        aBoard[row]=-1;
-        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
-      }
-      row--;
-    }
-  }
-}
-//CPU 非再帰版 ロジックメソッド
-void _NQueen(int row,int size){
-  bool matched;
-  while(row>=0) {
-    matched=false;
-		int lim=(row!=0) ? size : (size+1)/2;
-    //for(int i=aBoard[row]+1;i<size;i++) {
-    for(int i=aBoard[row]+1;i<lim;i++) {
-      if(0==down[i] && 0==left[row+(size-1)-i] && 0==right[row+i]) {
-        if(aBoard[row] >= 0) {
-          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-        }
-        aBoard[row]=i;
-        down[i]=left[row+(size-1)-i]=right[row+i]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      row++;
-      if(row==size){
-        /* TOTAL++; */
-        int s=symmetryOps(size);	//対称解除法の導入
-        if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
-        }
-        row--;
-      }
-    }else{
-      if(aBoard[row]>=0){
-        int tmp=aBoard[row];
-        aBoard[row]=-1;
-        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
       }
       row--;
     }
@@ -683,10 +418,10 @@ void NQueenR(int row,int size){
 			tmp=aBoard[i];
 			aBoard[i]=aBoard[row];
 			aBoard[row]=tmp;
-			if(left[row-aBoard[row]+(size-1)]==0&&right[row+aBoard[row]]==0){
-				left[row-aBoard[row]+(size-1)]=right[row+aBoard[row]]=1;
+			if(left[row+(size-1)-aBoard[row]]==0&&right[row+aBoard[row]]==0){
+				left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=1;
 				NQueenR(row+1,size);
-				left[row-aBoard[row]+(size-1)]=right[row+aBoard[row]]=0;
+				left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
 			}
 		}
 	  // 交換
@@ -750,8 +485,6 @@ int main(int argc,char** argv) {
 		clock_t st;           //速度計測用
 		char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=18;
-    //int min=8; int targetN=8;
-    /* int targetN=MAX; */
     for(int i=min;i<=targetN;i++){
       TOTAL=0; UNIQUE=0;
       st=clock();
