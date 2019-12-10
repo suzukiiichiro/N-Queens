@@ -8,7 +8,8 @@
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
  # Python/Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
@@ -307,7 +308,8 @@ N=24発見 電気通信大学
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
 実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
 
 を試して欲しい。
@@ -381,7 +383,8 @@ Lua版
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
 
  1. ブルートフォース　力任せ探索

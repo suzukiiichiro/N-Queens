@@ -8,7 +8,8 @@
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
  Execution
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
  # Python / Java / C / Lua / Bash version
  # https://github.com/suzukiiichiro/N-Queen
@@ -307,7 +308,8 @@ compile
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
 Execution
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
 
 I want you to try it.
@@ -381,7 +383,8 @@ Then, the main subject from the following.
  $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
 
  Execution
- $ ./CUDA01_N-Queen
+ $ ./CUDA01_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
 
  1. Brute force force-based search
