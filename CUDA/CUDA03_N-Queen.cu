@@ -32,10 +32,12 @@
  9:          352               0            0.00
 10:          724               0            0.00
 11:         2680               0            0.02
-12:        14200               0            0.08
-13:        73712               0            0.46
-14:       365596               0            2.76
-15:      2279184               0           17.45 
+12:        14200               0            0.09
+13:        73712               0            0.51
+14:       365596               0            3.08
+15:      2279184               0           19.55
+16:     14772512               0         2:12.55
+17:     95815104               0        15:50.90
 
 ３．CPU 非再帰 バックトラック
  N:        Total       Unique        hh:mm:ss.ms
@@ -46,11 +48,13 @@
  8:           92               0            0.00
  9:          352               0            0.00
 10:          724               0            0.00
-11:         2680               0            0.01
+11:         2680               0            0.02
 12:        14200               0            0.08
-13:        73712               0            0.43
-14:       365596               0            2.60
-15:      2279184               0           16.60
+13:        73712               0            0.44
+14:       365596               0            2.71
+15:      2279184               0           17.11
+16:     14772512               0         1:57.37
+17:     95815104               0        14:04.23
 
 ３．GPU 非再帰 バックトラック
 
@@ -269,11 +273,14 @@ void print(int size){
 // CPU 非再帰版 ロジックメソッド
 void NQueen(int row,int size){
   bool matched;
-  while(row>=0) {
+  while(row>=0){
     matched=false;
-    for(int i=aBoard[row]+1;i<size;i++) {
-      if(0==down[i] && 0==left[row+(size-1)-i] && 0==right[row+i]) {
-        if(aBoard[row] >= 0) {
+    //search begins at the position previously visited
+    for(int i=aBoard[row]+1;i<size;i++){
+      //the first matched position
+      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
+        //clear original record 
+        if(aBoard[row]>=0){
           down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
         }
         aBoard[row]=i;
@@ -283,17 +290,20 @@ void NQueen(int row,int size){
       }
     }
     if(matched){
+      //next aBoard
       row++;
       if(row==size){
         TOTAL++;
         row--;
       }
     }else{
+      //clear original record
       if(aBoard[row]>=0){
         int tmp=aBoard[row];
         aBoard[row]=-1;
         down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
       }
+      //back tracking
       row--;
     }
   }

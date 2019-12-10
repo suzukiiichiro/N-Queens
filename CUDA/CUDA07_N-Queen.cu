@@ -4,30 +4,112 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA07_N-Queen.cu -o CUDA07_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA07_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
 
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
+ ７．バックトラック＋ビットマップ＋対称解除法
 
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
+ *     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
+ *     ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
+ * 
+ * ■ユニーク解の判定方法
+ *   全探索によって得られたある１つの解が、回転・反転などによる本質的に変わること
+ * のない変換によって他の解と同型となるものが存在する場合、それを別の解とはしない
+ * とする解の数え方で得られる解を「ユニーク解」といいます。つまり、ユニーク解とは、
+ * 全解の中から回転・反転などによる変換によって同型になるもの同士をグループ化する
+ * ことを意味しています。
+ * 
+ *   従って、ユニーク解はその「個数のみ」に着目され、この解はユニーク解であり、こ
+ * の解はユニーク解ではないという定まった判定方法はありません。ユニーク解であるか
+ * どうかの判断はユニーク解の個数を数える目的の為だけに各個人が自由に定義すること
+ * になります。もちろん、どのような定義をしたとしてもユニーク解の個数それ自体は変
+ * わりません。
+ * 
+ *   さて、Ｎクイーン問題は正方形のボードで形成されるので回転・反転による変換パター
+ * ンはぜんぶで８通りあります。だからといって「全解数＝ユニーク解数×８」と単純には
+ * いきません。ひとつのグループの要素数が必ず８個あるとは限らないのです。Ｎ＝５の
+ * 下の例では要素数が２個のものと８個のものがあります。
+ *
+ *
+ * Ｎ＝５の全解は１０、ユニーク解は２なのです。
+ * 
+ * グループ１: ユニーク解１つ目
+ * - - - Q -   - Q - - -
+ * Q - - - -   - - - - Q
+ * - - Q - -   - - Q - -
+ * - - - - Q   Q - - - -
+ * - Q - - -   - - - Q -
+ * 
+ * グループ２: ユニーク解２つ目
+ * - - - - Q   Q - - - -   - - Q - -   - - Q - -   - - - Q -   - Q - - -   Q - - - -   - - - - Q
+ * - - Q - -   - - Q - -   Q - - - -   - - - - Q   - Q - - -   - - - Q -   - - - Q -   - Q - - -
+ * Q - - - -   - - - - Q   - - - Q -   - Q - - -   - - - - Q   Q - - - -   - Q - - -   - - - Q -
+ * - - - Q -   - Q - - -   - Q - - -   - - - Q -   - - Q - -   - - Q - -   - - - - Q   Q - - - -
+ * - Q - - -   - - - Q -   - - - - Q   Q - - - -   Q - - - -   - - - - Q   - - Q - -   - - Q - -
+ *
+ * 
+ *   それでは、ユニーク解を判定するための定義付けを行いますが、次のように定義する
+ * ことにします。各行のクイーンが右から何番目にあるかを調べて、最上段の行から下
+ * の行へ順番に列挙します。そしてそれをＮ桁の数値として見た場合に最小値になるもの
+ * をユニーク解として数えることにします。尚、このＮ桁の数を以後は「ユニーク判定値」
+ * と呼ぶことにします。
+ * 
+ * - - - - Q   0
+ * - - Q - -   2
+ * Q - - - -   4   --->  0 2 4 1 3  (ユニーク判定値)
+ * - - - Q -   1
+ * - Q - - -   3
+ * 
+ * 
+ *   探索によって得られたある１つの解(オリジナル)がユニーク解であるかどうかを判定
+ * するには「８通りの変換を試み、その中でオリジナルのユニーク判定値が最小であるか
+ * を調べる」ことになります。しかし結論から先にいえば、ユニーク解とは成り得ないこ
+ * とが明確なパターンを探索中に切り捨てるある枝刈りを組み込むことにより、３通りの
+ * 変換を試みるだけでユニーク解の判定が可能になります。
+ *  
+
 
  実行結果
- :
- :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+
+７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.03
+13:        73712            9233            0.15
+14:       365596           45752            0.88
+15:      2279184          285053            5.95
+16:     14772512         1846955           42.19
+17:     95815104        11977939         5:02.05
+
+７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.02
+13:        73712            9233            0.10
+14:       365596           45752            0.59
+15:      2279184          285053            4.01
+16:     14772512         1846955           28.36
+17:     95815104        11977939         3:23.48
+
+７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
 
 */
 
@@ -235,7 +317,8 @@ int intncmp(int lt[],int rt[],int n);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
-void NQueen(int row,int size);
+void NQueen(int size);
+void NQueenR(int size,int mask,int down,int left,int right);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
@@ -352,7 +435,117 @@ void symmetryOps_bitmap(int si){
   if(nEquiv==8){COUNT8++;}
 }
 //
-void NQueen(int size,int mask,int row,int left,int down,int right){
+void NQueen(int size){
+  int aStack[MAX+2];
+  register int* pnStack;
+  register int row=0;
+  register int bit;
+  register int bitmap;
+  int odd=size&1;
+  int sizeE=size-1;
+  int mask=(1<<size)-1;
+	/* センチネルを設定-スタックの終わりを示します*/
+  aStack[0]=-1; 
+	/**
+  注：サイズが奇数の場合、（サイズ＆1）は真。
+  サイズが奇数の場合は2xをループする必要があります
+	*/
+  for(int i=0;i<(1+odd);++i){
+		/**
+			クリティカルループ
+			この部分を最適化する必要はありません。
+		*/
+    bitmap=0;
+    if(0==i){
+      /*中央を除くボードの半分を処理します
+        カラム。ボードが5 x 5の場合、最初の行は00011になります。
+        クイーンを中央の列に配置することについてはまだです。
+      */
+	    /* ２で割る */
+      int half=size>>1;
+      /*サイズの半分のビットマップで右端の1を埋めます
+        サイズが7の場合、その半分は3です（残りは破棄します）
+        ビットマップはバイナリで111に設定されます。 
+      */
+      bitmap=(1<<half)-1;
+      pnStack=aStack+1;/* スタックポインタ */
+      aBoard[0]=0;
+      down[0]=left[0]=right[0]=0;
+    }else{
+			/*（奇数サイズのボードの）中央の列を処理します。
+         中央の列ビットを1に設定してから設定します 
+         したがって、最初の行（1つの要素）と次の半分を処理しています。
+         ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
+      */
+      bitmap=1<<(size>>1);
+      row=1; /*すでに 0 */
+			/* 最初の行にはクイーンが1つだけあります（中央の列）*/
+      aBoard[0]=bitmap;
+      down[0]=left[0]=right[0]=0;
+      down[1]=bitmap;
+      /* 次の行を実行します。半分だけビットを設定します
+         「Y軸」で結果を反転します
+      */
+      right[1]=(bitmap>>1);
+      left[1]=(bitmap<<1);
+      pnStack=aStack+1; // スタックポインタ
+      /* この行は-1つの要素のみで完了 */
+      *pnStack++=0;
+      /* ビットマップ-1は、単一の1の左側すべて1です */
+      bitmap=(bitmap-1)>>1; 
+    }
+    // クリティカルループ
+    while(true){
+      /* 
+         bit = bitmap ^（bitmap＆（bitmap -1））;
+         最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。 
+      */
+      /* これは、2の補数アーキテクチャを想定しています */
+      bit=-((signed)bitmap) & bitmap; 
+      if(0==bitmap){
+        /* 前を取得スタックからのビットマップ */
+        bitmap=*--pnStack;
+        /* センチネルがヒットした場合... */
+        if(pnStack==aStack){ 
+          break ;
+        }
+        --row;
+        continue;
+      }
+      /* このビットをオフにして、再試行しないようにします */
+      bitmap&=~bit; 
+      /* 結果を保存 */
+      aBoard[row]=bit;
+      /* 処理する行がまだあるか？ */
+      if(row<sizeE){
+        int n=row++;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        left[row]=(left[n]|bit)<<1;
+        *pnStack++=bitmap;
+        /* 同じ女王の位置を考慮することはできません
+           列、同じ正の対角線、または同じ負の対角線
+           すでにボード上のクイーン。 
+        */
+        bitmap=mask&~(down[row]|right[row]|left[row]);
+        continue;
+      }else{
+        /* 処理する行はもうありません。解決策が見つかりました。
+           ボードの位置としてソリューションを印刷するために、
+           printtableへの呼び出しをコメントアウトします
+           printtable（size、aBoard、TOTAL + 1）; */
+        //++TOTAL;
+			  symmetryOps_bitmap(size); /* 対称解除法の追加 */
+        bitmap=*--pnStack;
+        --row;
+        continue;
+      }
+    }
+  }
+  /* 鏡像をカウントするために、ソリューションを2倍します */
+  //TOTAL*=2;
+}
+void NQueenR(int size,int mask,int row,int left,int down,int right){
 	int bitmap=mask&~(left|down|right);
 	if(row==size){
 		if(!bitmap){
@@ -364,19 +557,21 @@ void NQueen(int size,int mask,int row,int left,int down,int right){
       // bit=(-bitmap&bitmap);
       // bitmap=(bitmap^bit);
 			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-			NQueen(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+			NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
 		}
 	}
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -387,31 +582,40 @@ int main(int argc,char** argv) {
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
-  /** CPU */
   if(cpu){
-    printf("\n\n７．バックトラック＋ビットマップ＋対称解除法");
+    printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+  }else if(cpur){
+    printf("\n\n７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法\n");
+  }else if(gpu){
+    printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }
-  /** CPUR */
-  if(cpur){
-    printf("\n\n７．バックトラック＋ビットマップ＋対称解除法");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    int min=4;            //Nの最小値（スタートの値）を格納
-    int mask=0;
-    int max=17;
+  if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(int i=min;i<=max;i++){
+		clock_t st;           //速度計測用
+		char t[20];           //hh:mm:ss.msを格納
+    int min=4; int targetN=18;
+    int mask;
+    for(int i=min;i<=targetN;i++){
+      //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
-      for(int j=0;j<i;j++){ aBoard[j]=j; } //版を初期化
-        st=clock();         //計測開始
-	NQueen(i,mask,0,0,0,0);
-        TimeFormat(clock()-st,t); //計測終了
-        printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t); //出力
+      st=clock();
+      if(cpu){
+        //非再帰は-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+        NQueen(i);
+      }
+      if(cpur){
+        //再帰は0で初期化
+        //for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
+        for(int j=0;j<=targetN;j++){ aBoard[j]=j; } 
+
+        NQueenR(i,mask,0,0,0,0);
+      }
+      TimeFormat(clock()-st,t); 
+      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
-    return 0;
   }
-  /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;

@@ -233,38 +233,45 @@ void print(){
 	printf("\n");
 }
 //非再帰版ロジックメソッド
-void NQueen(int row){
+void NQueen(int row,int size){
   bool matched;
-  while(row>=0) {
+  //check if back tracking finished
+  while(row>=0){
     matched=false;
-    for(int i=aBoard[row]+1;i<SIZE;i++){
-      if(aBoard[row]>=0){}
+    //search begins at the position previously visited 
+    for(int i=aBoard[row]+1;i<size;i++){
+      //clear original record
+      if(aBoard[row]>=0){
+      }
       aBoard[row]=i;
       matched=true;
       break;
     }
     if(matched){
+      //next aBoard
       row++;
-      if(row==SIZE){
+      if(row==size){
         print();
         row--;
       }
     }else{
+      //clear original record
       if(aBoard[row]>=0){
         aBoard[row]=-1;
       }
+      //back tracking
       row--;
     }
   }
 }
 //再帰版ロジックメソッド
-void NQueenR(int row){
-	if(row==SIZE){  //SIZEは8で固定
+void NQueenR(int row,int size){
+	if(row==size){  //SIZEは8で固定
 		print();      //rowが8になったら出力
 	}else{
-		for(int i=0;i<SIZE;i++){
+		for(int i=0;i<size;i++){
 			aBoard[row]=i;
-			NQueenR(row+1);  // インクリメントしながら再帰
+			NQueenR(row+1,size);  // インクリメントしながら再帰
 		}
 	}
 }
@@ -294,14 +301,14 @@ int main(int argc,char** argv) {
     printf("\n\n1. CPU 非再帰 ブルートフォース　力任せ探索\n");
     //非再帰は-1で初期化
     for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
-    NQueen(0);
+    NQueen(0,SIZE);
   }
   /** CPUR */
   if(cpur){
     printf("\n\n1. CPUR 再帰 ブルートフォース　力任せ探索\n");
     //再帰は0で初期化
     for(int i=0;i<SIZE;i++){ aBoard[i]=0; }
-    NQueenR(0);//ロジックメソッドを0を渡して呼び出し
+    NQueenR(0,SIZE);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){

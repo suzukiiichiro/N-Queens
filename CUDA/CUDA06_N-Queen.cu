@@ -4,30 +4,173 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA06_N-Queen.cu -o CUDA06_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA06_N-Queen(-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
 
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
+６．バックトラック＋ビットマップ
 
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
+   ビット演算を使って高速化 状態をビットマップにパックし、処理する
+   単純なバックトラックよりも２０〜３０倍高速
+ 
+ 　ビットマップであれば、シフトにより高速にデータを移動できる。
+  フラグ配列ではデータの移動にO(N)の時間がかかるが、ビットマップであればO(1)
+  フラグ配列のように、斜め方向に 2*N-1の要素を用意するのではなく、Nビットで充
+  分。
+
+ 　配置可能なビット列を flags に入れ、-flags & flags で順にビットを取り出し処理。
+ 　バックトラックよりも２０−３０倍高速。
+ 
+ ===================
+ 考え方 1
+ ===================
+
+ 　Ｎ×ＮのチェスボードをＮ個のビットフィールドで表し、ひとつの横列の状態をひと
+ つのビットフィールドに対応させます。(クイーンが置いてある位置のビットをONに
+ する)
+ 　そしてバックトラッキングは0番目のビットフィールドから「下に向かって」順にい
+ ずれかのビット位置をひとつだけONにして進めていきます。
+
+ 
+ -----Q--    00000100 0番目のビットフィールド
+ ---Q----    00010000 1番目のビットフィールド
+ ------ Q-   00000010 2番目のビットフィールド
+  Q-------   10000000 3番目のビットフィールド
+ -------Q    00000001 4番目のビットフィールド
+ -Q------    01000000 5番目のビットフィールド
+ ---- Q---   00001000 6番目のビットフィールド
+ -- Q-----   00100000 7番目のビットフィールド
+
+
+ ===================
+ 考え方 2
+ ===================
+
+ 次に、効き筋をチェックするためにさらに３つのビットフィールドを用意します。
+
+ 1. 左下に効き筋が進むもの: left 
+ 2. 真下に効き筋が進むもの: down
+ 3. 右下に効き筋が進むもの: right
+
+次に、斜めの利き筋を考えます。
+ 上図の場合、
+ 1列目の右斜め上の利き筋は 3 番目(0x08)
+ 2列目の右斜め上の利き筋は 2 番目(0x04) になります。
+ この値は 0 列目のクイーンの位置 0x10 を 1 ビットずつ「右シフト」すれば求める
+ ことができます。
+ また、左斜め上の利き筋の場合、1 列目では 5 番目(0x20) で 2 列目では 6 番目(0x40)
+になるので、今度は 1 ビットずつ「左シフト」すれば求めることができます。
+
+つまり、右シフトの利き筋を right、左シフトの利き筋を left で表すことで、クイー
+ンの効き筋はrightとleftを1 ビットシフトするだけで求めることができるわけです。
+
+  *-------------
+ |. . . . . .
+ |. . . -3. .  0x02 -|
+ |. . -2. . .  0x04  |(1 bit 右シフト right)
+ |. -1. . . .  0x08 -|
+ |Q . . . . .  0x10 ←(Q の位置は 4   down)
+ |. +1. . . .  0x20 -| 
+ |. . +2. . .  0x40  |(1 bit 左シフト left)  
+ |. . . +3. .  0x80 -|
+  *-------------
+  図：斜めの利き筋のチェック
+
+ n番目のビットフィールドからn+1番目のビットフィールドに探索を進めるときに、そ
+ の３つのビットフィールドとn番目のビットフィールド(bit)とのOR演算をそれぞれ行
+ います。leftは左にひとつシフトし、downはそのまま、rightは右にひとつシフトして
+ n+1番目のビットフィールド探索に渡してやります。
+
+ left :(left |bit)<<1
+ right:(right|bit)>>1
+ down :   down|bit
+
+
+ ===================
+ 考え方 3
+ ===================
+
+   n+1番目のビットフィールドの探索では、この３つのビットフィールドをOR演算した
+ ビットフィールドを作り、それがONになっている位置は効き筋に当たるので置くことが
+ できない位置ということになります。次にその３つのビットフィールドをORしたビッ
+ トフィールドをビット反転させます。つまり「配置可能なビットがONになったビットフィー
+ ルド」に変換します。そしてこの配置可能なビットフィールドを bitmap と呼ぶとして、
+ 次の演算を行なってみます。
+ 
+ bit=-bitmap & bitmap;//一番右のビットを取り出す
+ 
+   この演算式の意味を理解するには負の値がコンピュータにおける２進法ではどのよう
+ に表現されているのかを知る必要があります。負の値を２進法で具体的に表わしてみる
+ と次のようになります。
+ 
+  00000011   3
+  00000010   2
+  00000001   1
+  00000000   0
+  11111111  -1
+  11111110  -2
+  11111101  -3
+ 
+   正の値nを負の値-nにするときは、nをビット反転してから+1されています。そして、
+ 例えばn=22としてnと-nをAND演算すると下のようになります。nを２進法で表したときの
+ 一番下位のONビットがひとつだけ抽出される結果が得られるのです。極めて簡単な演算
+ によって1ビット抽出を実現させていることが重要です。
+ 
+      00010110   22
+  AND 11101010  -22
+ ------------------
+      00000010
+ 
+   さて、そこで下のようなwhile文を書けば、このループは bitmap のONビットの数の
+ 回数だけループすることになります。配置可能なパターンをひとつずつ全く無駄がなく
+ 生成されることになります。
+ 
+ while(bitmap) {
+     bit=-bitmap & bitmap;
+     bitmap ^= bit;
+     //ここでは配置可能なパターンがひとつずつ生成される(bit) 
+ }
 
  実行結果
- :
- :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+
+６．CPUR 再帰 バックトラック＋ビットマップ
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.00
+12:        14200               0            0.01
+13:        73712               0            0.07
+14:       365596               0            0.44
+15:      2279184               0            2.73
+16:     14772512               0           18.23
+17:     95815104               0         2:07.85
+
+６．CPU 非再帰 バックトラック＋ビットマップ
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.00
+12:        14200               0            0.01
+13:        73712               0            0.04
+14:       365596               0            0.23
+15:      2279184               0            1.44
+16:     14772512               0            9.59
+17:     95815104               0         1:06.94
+
+６．GPU 非再帰 バックトラック＋ビットマップ
 
 */
 
@@ -41,14 +184,14 @@
 #define THREAD_NUM		96
 #define MAX 27
 //
-long Total=0 ;        //合計解
+long Total=0 ;       //合計解
 long Unique=0;
-int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
-int left[2*MAX-1];  //left:flagB 斜め配置フラグ　
-int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
+int down[2*MAX-1];//down:flagA 縦 配置フラグ　
+int left[2*MAX-1]; //left:flagB 斜め配置フラグ　
+int right[2*MAX-1]; //right:flagC 斜め配置フラグ　
 long TOTAL=0;
 long UNIQUE=0;
-int size;
+/* int size;*/
 int aBoard[MAX];
 int MASK ;
 //
@@ -225,11 +368,122 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
+
 //main()以外のメソッドはここに一覧表記させます
 void TimeFormat(clock_t utime,char *form);
-void NQueen(int row,int size);
-//hh:mm:ss.ms形式に処理時間を出力
-void NQueen(int row,int left,int down,int right){
+void NQueen(int size);
+void NQueenR(int size,int row,int left,int down,int right);
+
+void NQueen(int size){
+  int aStack[MAX+2];
+  register int* pnStack;
+  register int row=0;
+  register int bit;
+  register int bitmap;
+  int odd=size&1;
+  int sizeE=size-1;
+  int mask=(1<<size)-1;
+	/* センチネルを設定-スタックの終わりを示します*/
+  aStack[0]=-1; 
+	/**
+  注：サイズが奇数の場合、（サイズ＆1）は真。
+  サイズが奇数の場合は2xをループする必要があります
+	*/
+  for(int i=0;i<(1+odd);++i){
+		/**
+			クリティカルループ
+			この部分を最適化する必要はありません。
+		*/
+    bitmap=0;
+    if(0==i){
+      /*中央を除くボードの半分を処理します
+        カラム。ボードが5 x 5の場合、最初の行は00011になります。
+        クイーンを中央の列に配置することについてはまだです。
+      */
+	    /* ２で割る */
+      int half=size>>1;
+      /*サイズの半分のビットマップで右端の1を埋めます
+        サイズが7の場合、その半分は3です（残りは破棄します）
+        ビットマップはバイナリで111に設定されます。 
+      */
+      bitmap=(1<<half)-1;
+      pnStack=aStack+1;/* スタックポインタ */
+      aBoard[0]=0;
+      down[0]=left[0]=right[0]=0;
+    }else{
+			/*（奇数サイズのボードの）中央の列を処理します。
+         中央の列ビットを1に設定してから設定します 
+         したがって、最初の行（1つの要素）と次の半分を処理しています。
+         ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
+      */
+      bitmap=1<<(size>>1);
+      row=1; /*すでに 0 */
+			/* 最初の行にはクイーンが1つだけあります（中央の列）*/
+      aBoard[0]=bitmap;
+      down[0]=left[0]=right[0]=0;
+      down[1]=bitmap;
+      /* 次の行を実行します。半分だけビットを設定します
+         「Y軸」で結果を反転します
+      */
+      right[1]=(bitmap>>1);
+      left[1]=(bitmap<<1);
+      pnStack=aStack+1; // スタックポインタ
+      /* この行は-1つの要素のみで完了 */
+      *pnStack++=0;
+      /* ビットマップ-1は、単一の1の左側すべて1です */
+      bitmap=(bitmap-1)>>1; 
+    }
+    // クリティカルループ
+    while(true){
+      /* 
+         bit = bitmap ^（bitmap＆（bitmap -1））;
+         最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。 
+      */
+      /* これは、2の補数アーキテクチャを想定しています */
+      bit=-((signed)bitmap) & bitmap; 
+      if(0==bitmap){
+        /* 前を取得スタックからのビットマップ */
+        bitmap=*--pnStack;
+        /* センチネルがヒットした場合... */
+        if(pnStack==aStack){ 
+          break ;
+        }
+        --row;
+        continue;
+      }
+      /* このビットをオフにして、再試行しないようにします */
+      bitmap&=~bit; 
+      /* 結果を保存 */
+      aBoard[row]=bit;
+      /* 処理する行がまだあるか？ */
+      if(row<sizeE){
+        int n=row++;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        left[row]=(left[n]|bit)<<1;
+        *pnStack++=bitmap;
+        /* 同じ女王の位置を考慮することはできません
+           列、同じ正の対角線、または同じ負の対角線
+           すでにボード上のクイーン。 
+        */
+        bitmap=mask&~(down[row]|right[row]|left[row]);
+        continue;
+      }else{
+        /* 処理する行はもうありません。解決策が見つかりました。
+           ボードの位置としてソリューションを印刷するために、
+           printtableへの呼び出しをコメントアウトします
+           printtable（size、aBoard、TOTAL + 1）; */
+        ++TOTAL;
+        bitmap=*--pnStack;
+        --row;
+        continue;
+      }
+    }
+  }
+  /* 鏡像をカウントするために、ソリューションを2倍します */
+  TOTAL*=2;
+}
+void NQueenR(int size,int row,int left,int down,int right){
   int bitmap=0;
   int bit=0;
   if(row==size){
@@ -239,7 +493,7 @@ void NQueen(int row,int left,int down,int right){
     while(bitmap){
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
-      NQueen(row+1,(left|bit)<<1, down|bit, (right|bit)>>1);
+      NQueenR(size,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
@@ -264,13 +518,15 @@ void TimeFormat(clock_t utime,char *form){
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -281,40 +537,48 @@ int main(int argc,char** argv) {
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
-  /** CPU */
   if(cpu){
-    printf("\n\n６．バックトラック＋ビットマップ");
+    printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ\n");
+  }else if(cpur){
+    printf("\n\n６．CPUR 再帰 バックトラック＋ビットマップ\n");
+  }else if(gpu){
+    printf("\n\n６．GPU 非再帰 バックトラック＋ビットマップ\n");
   }
-  /** CPUR */
-  if(cpur){
-    printf("\n\n６．バックトラック＋ビットマップ");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    int min=4;            //Nの最小値（スタートの値）を格納
-    int max=17;
+  if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(size=min;size<=max;size++){
-      TOTAL=0; UNIQUE=0;  //初期化
-      MASK=((1<<size)-1);
-      for(int j=0;j<size;j++){ aBoard[j]=j; } //版を初期化
-        st=clock();         //計測開始
-	NQueen(0,0,0,0);
-        TimeFormat(clock()-st,t); //計測終了
-        printf("%2d:%13ld%16ld%s\n",size,TOTAL,UNIQUE,t); //出力
+		clock_t st;          //速度計測用
+		char t[20];          //hh:mm:ss.msを格納
+    int min=4;int targetN=18;
+    for(int i=min;i<=targetN;i++){
+      TOTAL=0;UNIQUE=0;
+      MASK=((1<<i)-1);
+      st=clock();
+      if(cpu){
+        //非再帰は-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1;}
+        NQueen(i);
+      }
+      if(cpur){
+        //再帰は0で初期化
+        //for(int j=0;j<=targetN;j++){ aBoard[j]=0;} 
+        for(int j=0;j<=targetN;j++){ aBoard[j]=j;} 
+
+        NQueenR(i,0,0,0,0);
+      }
+      TimeFormat(clock()-st,t);
+      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }
-    return 0;
   }
-  /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;
     struct timeval t0;struct timeval t1;int ss;int ms;int dd;
     printf("%s\n"," N:          Total        Unique                 dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
-      gettimeofday(&t0,NULL);   // 計測開始
+      gettimeofday(&t0,NULL);  // 計測開始
       Total=solve_nqueen_cuda(i,steps);
-      gettimeofday(&t1,NULL);   // 計測終了
-      if (t1.tv_usec<t0.tv_usec) {
+      gettimeofday(&t1,NULL);  // 計測終了
+      if(t1.tv_usec<t0.tv_usec) {
         dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
         ss=(t1.tv_sec-t0.tv_sec-1)%86400;
         ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;

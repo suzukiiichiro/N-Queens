@@ -253,12 +253,16 @@ void print(){
 	printf("\n");
 }
 //CPU 非再帰 ロジックメソッド
-void NQueen(int row){
+void NQueen(int row,int size){
   bool matched;
+  //check if back tracking finished
   while(row>=0) {
     matched=false;
-    for(int i=aBoard[row]+1;i<SIZE;i++){
+    //search begins at the position previously visited
+    for(int i=aBoard[row]+1;i<size;i++){
+      //the first matched position
       if(down[i]==0){
+        //clear original record 
         if(aBoard[row]>=0){
           down[aBoard[row]]=0;
         }
@@ -269,31 +273,34 @@ void NQueen(int row){
       }
     }
     if(matched){
-      row++;
-      if(row==SIZE){
+      //next aBoard
+      row++; 
+      if(row==size){
         print();
         row--;
       }
     }else{
+      //clear original record
       if(aBoard[row]>=0){
         int tmp=aBoard[row];
         aBoard[row]=-1;
         down[tmp]=0;
       }
+      //back tracking
       row--;
     }
   }
 }
 //CPUR 再帰 ロジックメソッド
-void NQueenR(int row){
-	if(row==SIZE){
+void NQueenR(int row,int size){
+	if(row==size){
 		print();
 	}else{
-		for(int i=0;i<SIZE;i++){
+		for(int i=0;i<size;i++){
 			aBoard[row]=i;
 			if(down[i]==0){     //縦列にクイーンがない場合
 				down[i]=1;
-				NQueenR(row+1);  //1を足して再帰
+				NQueenR(row+1,size);  //1を足して再帰
 				down[i]=0;
 			}
 		}
@@ -325,14 +332,14 @@ int main(int argc,char** argv) {
     printf("\n\n２．CPU 非再帰 配置フラグ（制約テスト高速化）\n");
     //非再帰は-1で初期化
     for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
-    NQueen(0);
+    NQueen(0,SIZE);
   }
   /** CPUR */
   if(cpur){
     printf("\n\n２．CPUR 再帰 配置フラグ（制約テスト高速化）\n");
     //再帰は0で初期化
     for(int i=0;i<SIZE;i++){ aBoard[i]=0; } 
-    NQueenR(0);//ロジックメソッドを0を渡して呼び出し
+    NQueenR(0,SIZE);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){

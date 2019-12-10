@@ -4,31 +4,30 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA12_N-Queen.cu -o CUDA12_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA12_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
-
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
-
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
+ １２．対称解除法の最適化
 
  実行結果
- :
- :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
 
+１２．CPUR 再帰 対称解除法の最適化
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.00
+13:        73712            9233            0.02
+14:       365596           45752            0.08
+15:      2279184          285053            0.51
 */
 
 #include <stdio.h>
@@ -234,6 +233,7 @@ void symmetryOps(int si);
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
+void NQueenR(int size,int mask);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
@@ -343,6 +343,8 @@ void backTrack1(int size,int mask,int row,int left,int down,int right){
 }
 //
 void NQueen(int size,int mask){
+}
+void NQueenR(int size,int mask){
 	int bit;
 	TOPBIT=1<<(size-1);
 	aBoard[0]=1;
@@ -361,13 +363,15 @@ void NQueen(int size,int mask){
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -378,30 +382,40 @@ int main(int argc,char** argv) {
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
-  /** CPU */
   if(cpu){
-    printf("\n\n１２．対称解除法の最適化");
+    printf("\n\n１２．CPU 非再帰 対称解除法の最適化\n");
+  }else if(cpur){
+    printf("\n\n１２．CPUR 再帰 対称解除法の最適化\n");
+  }else if(gpu){
+    printf("\n\n１２．GPU 非再帰 対称解除法の最適化\n");
   }
-  /** CPUR */
-  if(cpur){
-    printf("\n\n１２．対称解除法の最適化");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    int min=4;            //Nの最小値（スタートの値）を格納
-    int mask=0;
+  if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(int i=min;i<=MAX;i++){
+		clock_t st;           //速度計測用
+		char t[20];           //hh:mm:ss.msを格納
+    int min=4; int targetN=18;
+    int mask;
+    for(int i=min;i<=targetN;i++){
+      //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
-      for(int j=0;j<i;j++){ aBoard[j]=j; } //版を初期化
-        st=clock();         //計測開始
-	NQueen(i,mask);
-        TimeFormat(clock()-st,t); //計測終了
-        printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t); //出力
+      st=clock();
+      if(cpu){
+        //非再帰は-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+        NQueen(i,mask);
+      }
+      if(cpur){
+        //再帰は0で初期化
+        //for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
+        for(int j=0;j<=targetN;j++){ aBoard[j]=j; } 
+
+        NQueenR(i,mask);
+      }
+      TimeFormat(clock()-st,t); 
+      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
-    return 0;
   }
-  /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;

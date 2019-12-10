@@ -204,10 +204,12 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.02
-12:        14200            1787            0.08
-13:        73712            9233            0.44
-14:       365596           45752            2.63
-15:      2279184          285053           17.11
+12:        14200            1787            0.09
+13:        73712            9233            0.49
+14:       365596           45752            2.98
+15:      2279184          285053           19.17
+16:     14772512         1846955         2:11.46
+17:     95815104        11977939        15:46.88
 
 ４．CPU 非再帰 バックトラック＋対称解除法
  N:        Total       Unique        hh:mm:ss.ms
@@ -219,12 +221,14 @@
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.02
-12:        14200            1787            0.08
-13:        73712            9233            0.44
-14:       365596           45752            2.66
-15:      2279184          285053           17.14
+12:        14200            1787            0.09
+13:        73712            9233            0.50
+14:       365596           45752            2.99
+15:      2279184          285053           19.30
+16:     14772512         1846955         2:12.39
+17:     95815104        11977939        15:51.69
 
-４．GPU 非再帰 バックトラック
+４．GPU 非再帰 バックトラック＋対称解除法
 
 */
 
@@ -533,8 +537,11 @@ void NQueen(int row,int size){
   bool matched;
   while(row>=0) {
     matched=false;
+    //search begins at the position previously visited
     for(int i=aBoard[row]+1;i<size;i++) {
+      //the first matched position
       if(0==down[i] && 0==left[row+(size-1)-i] && 0==right[row+i]) {
+        //clear original record 
         if(aBoard[row] >= 0) {
           down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
         }
@@ -545,13 +552,15 @@ void NQueen(int row,int size){
       }
     }
     if(matched){
+      //next aBoard
       row++;
+      //clear original record
       if(row==size){
         /* TOTAL++; */
         int s=symmetryOps(size);	//対称解除法の導入
         if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
-          TOTAL+=s;   //対称解除で得られた解数を加算
+        UNIQUE++;   //ユニーク解を加算
+        TOTAL+=s;   //対称解除で得られた解数を加算
         }
         row--;
       }
@@ -561,6 +570,7 @@ void NQueen(int row,int size){
         aBoard[row]=-1;
         down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
       }
+      //back tracking
       row--;
     }
   }

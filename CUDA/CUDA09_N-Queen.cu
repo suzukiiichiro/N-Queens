@@ -4,30 +4,68 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA01_N-Queen.cu -o CUDA01_N-Queen
+ $ nvcc CUDA09_N-Queen.cu -o CUDA09_N-Queen
 
  実行
- $ ./CUDA01_N-Queen
+ $ ./CUDA09_N-Queen (-c|-r|-g)
+                    -c:cpu -r cpu再帰 -g GPU
 
- 1. ブルートフォース　力任せ探索
 
- 　全ての可能性のある解の候補を体系的に数え上げ、それぞれの解候補が問題の解とな
- るかをチェックする方法
+ ９．クイーンの位置による分岐BOUND1
 
-   (※)各行に１個の王妃を配置する組み合わせを再帰的に列挙組み合わせを生成するだ
-   けであって8王妃問題を解いているわけではありません
+  前章のコードは全ての解を求めた後に、ユニーク解以外の対称解を除去していた
+  ある意味、「生成検査法（generate ＆ test）」と同じである
+  問題の性質を分析し、バックトラッキング/前方検査法と同じように、無駄な探索を省略することを考える
+  ユニーク解に対する左右対称解を予め削除するには、1行目のループのところで、
+  右半分だけにクイーンを配置するようにすればよい
+  Nが奇数の場合、クイーンを1行目中央に配置する解は無い。
+  他の3辺のクィーンが中央に無い場合、その辺が上辺に来るよう回転し、場合により左右反転することで、
+  最小値解とすることが可能だから、中央に配置したものしかユニーク解には成り得ない
+  しかし、上辺とその他の辺の中央にクィーンは互いの効きになるので、配置することが出来ない
+
+
+  1. １行目角にクイーンがある場合、とそうでない場合で処理を分ける
+    １行目かどうかの条件判断はループ外に出してもよい
+    処理時間的に有意な差はないので、分かりやすいコードを示した
+  2.１行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
+    １行目角にクイーンがある場合、他の角にクイーンを配置することは不可
+    鏡像についても、主対角線鏡像のみを判定すればよい
+    ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+
+  １行目角にクイーンが無い場合、クイーン位置より右位置の８対称位置にクイーンを置くことはできない
+  置いた場合、回転・鏡像変換により得られる状態のユニーク判定値が明らかに大きくなる
+    ☓☓・・・Ｑ☓☓
+    ☓・・・／｜＼☓
+    ｃ・・／・｜・rt
+    ・・／・・｜・・
+    ・／・・・｜・・
+    lt・・・・｜・ａ
+    ☓・・・・｜・☓
+    ☓☓ｂ・・dn☓☓
+    
+  １行目位置が確定した時点で、配置可能位置を計算しておく（☓の位置）
+  lt, dn, lt 位置は効きチェックで配置不可能となる
+  回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
+  90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+ *
+ *
 
  実行結果
- :
- :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+
+９．CPUR 再帰 クイーンの位置による分岐BOUND1
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.02
+13:        73712            9233            0.08
+14:       365596           45752            0.51
+15:      2279184          285053            3.22
 
 */
 
@@ -238,6 +276,7 @@ long getTotal();
 void symmetryOps_bitmap(int si);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
+void NQueenR(int size,int mask);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
@@ -389,6 +428,28 @@ void symmetryOps_bitmap(int size){
 	}
 }
 //
+void backTrack1_nonRecursive(int size,int mask,int row,int _left,int _down,int _right){
+}
+void NQueen(int size,int mask){
+	int bit;
+	TOPBIT=1<<(size-1);
+	aBoard[0]=1;
+	for(BOUND1=2;BOUND1<size-1;BOUND1++){
+		aBoard[1]=bit=(1<<BOUND1);
+		//backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+		backTrack1_nonRecursive(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+	}
+	SIDEMASK=LASTMASK=(TOPBIT|1);
+	ENDBIT=(TOPBIT>>1);
+	for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+		aBoard[0]=bit=(1<<BOUND1);
+		//backTrack1(size,mask,1,bit<<1,bit,bit>>1);
+		backTrack1_nonRecursive(size,mask,1,bit<<1,bit,bit>>1);
+		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+		ENDBIT>>=1;
+	}
+}
+//
 void backTrack1(int size,int mask,int row,int left,int down,int right){
 	int bit;
 	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
@@ -405,7 +466,7 @@ void backTrack1(int size,int mask,int row,int left,int down,int right){
 	}
 }
 //
-void NQueen(int size,int mask){
+void NQueenR(int size,int mask){
 	int bit;
 	TOPBIT=1<<(size-1);
 	aBoard[0]=1;
@@ -424,13 +485,15 @@ void NQueen(int size,int mask){
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  bool cpu=true,cpur=true,gpu=true;
+  bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){gpu=false;cpur=false;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpu=false;gpu=false;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){cpu=false;cpur=false;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
     argstart=2;
   }
   if(argc<argstart){
@@ -441,31 +504,40 @@ int main(int argc,char** argv) {
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
-  /** CPU */
   if(cpu){
-    printf("\n\n９．クイーンの位置による分岐BOUND1");
+    printf("\n\n９．CPU 非再帰 クイーンの位置による分岐BOUND1\n");
+  }else if(cpur){
+    printf("\n\n９．CPUR 再帰 クイーンの位置による分岐BOUND1\n");
+  }else if(gpu){
+    printf("\n\n９．GPU 非再帰 クイーンの位置による分岐BOUND1\n");
   }
-  /** CPUR */
-  if(cpur){
-    printf("\n\n９．クイーンの位置による分岐BOUND1");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    int min=4;            //Nの最小値（スタートの値）を格納
-    int mask=0;
-    int max=17;
+  if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    for(int i=min;i<=max;i++){
+		clock_t st;           //速度計測用
+		char t[20];           //hh:mm:ss.msを格納
+    int min=4; int targetN=18;
+    int mask;
+    for(int i=min;i<=targetN;i++){
+      //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
-      for(int j=0;j<i;j++){ aBoard[j]=j; } //版を初期化
-        st=clock();         //計測開始
-	NQueen(i,mask);
-        TimeFormat(clock()-st,t); //計測終了
-        printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t); //出力
+      st=clock();
+      if(cpu){
+        //非再帰は-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+        NQueen(i,mask);
+      }
+      if(cpur){
+        //再帰は0で初期化
+        //for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
+        for(int j=0;j<=targetN;j++){ aBoard[j]=j; } 
+
+        NQueenR(i,mask);
+      }
+      TimeFormat(clock()-st,t); 
+      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
-    return 0;
   }
-  /** GPU */
   if(gpu){
     if(!InitCUDA()){return 0;}
     int min=4;int targetN=18;
