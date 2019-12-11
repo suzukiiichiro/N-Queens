@@ -540,9 +540,9 @@ void NQueen(int row,int size){
     //search begins at the position previously visited
     for(int i=aBoard[row]+1;i<size;i++) {
       //the first matched position
-      if(0==down[i] && 0==left[row+(size-1)-i] && 0==right[row+i]) {
+      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0) {
         //clear original record 
-        if(aBoard[row] >= 0) {
+        if(aBoard[row]>=0) {
           down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
         }
         aBoard[row]=i;
@@ -559,8 +559,8 @@ void NQueen(int row,int size){
         /* TOTAL++; */
         int s=symmetryOps(size);	//対称解除法の導入
         if(s!=0){
-        UNIQUE++;   //ユニーク解を加算
-        TOTAL+=s;   //対称解除で得られた解数を加算
+          UNIQUE++;   //ユニーク解を加算
+          TOTAL+=s;   //対称解除で得られた解数を加算
         }
         row--;
       }
