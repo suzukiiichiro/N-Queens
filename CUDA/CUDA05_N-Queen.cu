@@ -364,42 +364,120 @@ void print(int size){
 	printf("\n");
 
 }
-//CPU 非再帰版 ロジックメソッド
-void NQueen(int row,int size){
+void _NQueen(int row,int size){
   bool matched;
   while(row>=0){
     matched=false;
+    //search begins at the position previously visited
 		int lim=(row!=0)?size:(size+1)/2;
+    //printf("aBoard[row]:%d\n",aBoard[row]);//-1
     for(int i=aBoard[row]+1;i<lim;i++){
-      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
-        down[i]=left[row+(size-1)-i]=right[row+i]=1;
-        if(aBoard[row]!=-1){
-          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-          aBoard[row]=-1;
+      //the first matched position
+      //if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
+      if(left[row+(size-1)-i]==0&&right[row+i]==0){
+        //clear original record 
+        if(aBoard[row]>=0){
+          //down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+          //left[row+(size-1)-i]=right[row+i]=0;
+          left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+
+          /** 
+            ここの交換が謎
+          */
+          //交換 
+          /* int tmp=aBoard[row];      */
+          /* for(int i=row;i<lim;i++){ */
+          /*   aBoard[i]=aBoard[i+1];  */
+          /* }                         */
+          /* aBoard[size-1]=tmp;       */
         }
-        aBoard[row]=i;
+
+        aBoard[row]=i; // 交換するときはコメントアウト
+
+        //交換
+        /* int tmp=i;       */
+        /* i=aBoard[row];   */
+        /* aBoard[row]=tmp; */
+
+        //down[i]=left[row+(size-1)-i]=right[row+i]=1;
+        //left[row+(size-1)-i]=right[row+i]=1;
+        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=1;
         matched=true;
         break;
       }
     }
     if(matched){
+      //next aBoard
       row++;
-      if(row==size){
+      if(row==size-1){
         if(aBoard[row]!=-1){
-          if(down[aBoard[row]]==0||left[row-aBoard[row]+(size-1)]==0||right[row+aBoard[row]]==0){
-            aBoard[row]=-1;
+          //if(down[aBoard[row]]==1||left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
+          if(left[row+(size-1)-aBoard[row]]==1||right[row+aBoard[row]]==1){
             return;
           }
         }
         int s=symmetryOps(size);
-        if(s!=0){ UNIQUE++; TOTAL+=s; }
+        if(s!=0){ 
+          UNIQUE++; 
+          TOTAL+=s; 
+        }
         row--;
       }
     }else{
-      if(aBoard[row]!=-1){
-        down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+      if(aBoard[row]>=0){
+        //down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
+        //left[row+(size-1)-tmp]=right[row+tmp]=0;
+        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
         aBoard[row]=-1;
       }
+      //back tracking
+      row--;
+    }
+  }
+}
+//CPU 非再帰版 ロジックメソッド
+void NQueen(int row,int size){
+  bool matched;
+  while(row>=0){
+    matched=false;
+    //search begins at the position previously visited
+		int lim=(row!=0)?size:(size+1)/2;
+    for(int i=aBoard[row]+1;i<lim;i++){
+      //the first matched position
+      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
+        //clear original record 
+        if(aBoard[row]>=0){
+          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+        }
+        aBoard[row]=i;
+        down[i]=left[row+(size-1)-i]=right[row+i]=1;
+        matched=true;
+        break;
+      }
+    }
+    if(matched){
+      //next aBoard
+      row++;
+      if(row==size){
+        if(aBoard[row]!=-1){
+          if(down[aBoard[row]]==1||left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
+            return;
+          }
+        }
+        int s=symmetryOps(size);
+        if(s!=0){ 
+          UNIQUE++; 
+          TOTAL+=s; 
+        }
+        row--;
+      }
+    }else{
+      if(aBoard[row]>=0){
+        int tmp=aBoard[row];
+        aBoard[row]=-1;
+        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
+      }
+      //back tracking
       row--;
     }
   }
@@ -411,8 +489,7 @@ void NQueenR(int row,int size){
   //if(row==size){
   if(row==size-1){
     // 2. 枝刈り
-    if(left[row-aBoard[row]+(size-1)]==1
-          ||right[row+aBoard[row]]==1){
+    if(left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
       return;
     }
     int s=symmetryOps(size);	//対称解除法の導入
