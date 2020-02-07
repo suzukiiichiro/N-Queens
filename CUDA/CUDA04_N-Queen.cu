@@ -234,6 +234,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 #include <cuda.h>
@@ -241,7 +242,7 @@
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
 #define MAX 27
-//
+//変数宣言
 long Total=0 ;        //合計解
 long Unique=0;
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
@@ -250,11 +251,17 @@ int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 long TOTAL=0;
 long UNIQUE=0;
 int aBoard[MAX];
-int fA[2*MAX-1];	//縦列にクイーンを一つだけ配置
-int fB[2*MAX-1];	//斜め列にクイーンを一つだけ配置
-int fC[2*MAX-1];	//斜め列にクイーンを一つだけ配置
 int aT[MAX];       //aT:aTrial[]
 int aS[MAX];       //aS:aScrath[]
+//関数宣言
+void NQueen(int row,int size);
+void NQueenR(int row,int size);
+int symmetryOps(int si);
+void rotate(int chk[],int scr[],int n,int neg);
+void vMirror(int chk[],int n);
+int intncmp(int lt[],int rt[],int n);
+void TimeFormat(clock_t utime,char *form);
+void print(int size);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
@@ -429,16 +436,14 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
-//main()以外のメソッドはここに一覧表記させます
-void NQueen(int row,int size);
-void NQueenR(int row,int size);
-int symmetryOps(int si);
-void rotate(int chk[],int scr[],int n,int neg);
-void vMirror(int chk[],int n);
-int intncmp(int lt[],int rt[],int n);
-void TimeFormat(clock_t utime,char *form);
-//
-//hh:mm:ss.ms形式に変換
+//出力
+void print(int size){
+	printf("%ld: ",TOTAL);
+	for(int j=0;j<size;j++){
+		printf("%d ",aBoard[j]);
+	}
+	printf("\n");
+}
 //回転
 void rotate(int chk[],int scr[],int n,int neg){
 	int k=neg ? 0 : n-1;
@@ -534,62 +539,79 @@ int symmetryOps(int size){
 }
 // CPU 非再帰版 ロジックメソッド
 void NQueen(int row,int size){
-  bool matched;
-  while(row>=0) {
-    matched=false;
-    //search begins at the position previously visited
-    for(int i=aBoard[row]+1;i<size;i++) {
-      //the first matched position
-      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0) {
-        //clear original record 
-        if(aBoard[row]>=0) {
-          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-        }
-        aBoard[row]=i;
-        down[i]=left[row+(size-1)-i]=right[row+i]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      //next aBoard
-      row++;
-      //clear original record
-      if(row==size){
-        /* TOTAL++; */
-        int s=symmetryOps(size);	//対称解除法の導入
+	int sizeE=size-1;
+	bool matched;
+	while(row>=0){
+		matched=false;
+		// １回目はaBoard[row]が-1なのでcolを0で初期化
+		// ２回目以降はcolを<sizeまで右へシフト
+		for(int col=aBoard[row]+1;col<size;col++){
+			if(down[col]==0
+					&& right[col-row+sizeE]==0
+					&& left[col+row]==0){ 	//まだ効き筋がない
+				if(aBoard[row]!=-1){		//Qを配置済み
+					//colがaBoard[row]におきかわる
+					down[aBoard[row]]
+						=right[aBoard[row]-row+sizeE]
+						=left[aBoard[row]+row]=0;
+				}
+				aBoard[row]=col;				//Qを配置
+				down[col]
+				  =right[col-row+sizeE]
+					=left[col+row]=1;			//効き筋とする
+				matched=true;						//配置した
+				break;
+			}
+		}
+		if(matched){								//配置済みなら
+			row++;										//次のrowへ
+			if(row==size){
+				//print(size); //print()でTOTALを++しない
+				/** 対称解除法の導入 */
+        int s=symmetryOps(size);
         if(s!=0){
           UNIQUE++;   //ユニーク解を加算
           TOTAL+=s;   //対称解除で得られた解数を加算
         }
-        row--;
-      }
-    }else{
-      if(aBoard[row]>=0){
-        int tmp=aBoard[row];
-        aBoard[row]=-1;
-        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
-      }
-      //back tracking
-      row--;
-    }
-  }
+				// TOTAL++;
+				row--;
+			}
+		}else{
+			if(aBoard[row]!=-1){
+				int col=aBoard[row]; /** col の代用 */
+				aBoard[row]=-1;
+				down[col]
+				  =right[col-row+sizeE]
+				  =left[col+row]=0;
+			}
+			row--;										//バックトラック
+		}
+	}
 }
 // CPUR 再帰版 ロジックメソッド
 void NQueenR(int row,int size){
+	int sizeE=size-1;
 	if(row==size){
-		int s=symmetryOps(size);	//対称解除法の導入
+		/** 対称解除法の導入 */
+		int s=symmetryOps(size);
 		if(s!=0){
 			UNIQUE++;       //ユニーク解を加算
 			TOTAL+=s;       //対称解除で得られた解数を加算
 		}
+		// TOTAL++;
 	}else{
-		for(int i=0;i<size;i++){
-			aBoard[row]=i;
-			if(down[i]==0&&left[row-i+(size-1)]==0&&right[row+i]==0){
-				down[i]=left[row-i+(size-1)]=right[row+i]=1;
-				NQueenR(row+1,size);     //再帰
-				down[i]=left[row-i+(size-1)]=right[row+i]=0;
+		for(int col=0;col<size;col++){
+			aBoard[row]=col;
+			if(down[col]==0
+					&& right[row-col+sizeE]==0
+					&& left[row+col]==0){
+				down[col]
+				  =right[row-col+sizeE]
+					=left[row+col]=1;
+				NQueenR(row+1,size);
+				down[col]
+					=right[row-col+sizeE]
+					=left[row+col]=0;
 			}
 		}
 	}

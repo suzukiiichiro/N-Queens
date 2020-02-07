@@ -57,14 +57,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+//
 #define THREAD_NUM		96
 #define MAX 27
-//
+//変数宣言
 long Total=0 ;        //合計解
 long Unique=0;
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
@@ -73,11 +75,17 @@ int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 long TOTAL=0;
 long UNIQUE=0;
 int aBoard[MAX];
-int fA[2*MAX-1];	//縦列にクイーンを一つだけ配置
-int fB[2*MAX-1];	//斜め列にクイーンを一つだけ配置
-int fC[2*MAX-1];	//斜め列にクイーンを一つだけ配置
 int aT[MAX];       //aT:aTrial[]
 int aS[MAX];       //aS:aScrath[]
+//関数宣言
+void TimeFormat(clock_t utime,char *form);
+void rotate(int chk[],int scr[],int n,int neg);
+void vMirror(int chk[],int n);
+int intncmp(int lt[],int rt[],int n);
+int symmetryOps(int si);
+void NQueen(int row,int size);
+void NQueenR(int row,int size);
+void print(int size);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
@@ -252,15 +260,15 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
-//main()以外のメソッドはここに一覧表記させます
-void TimeFormat(clock_t utime,char *form);
-void rotate(int chk[],int scr[],int n,int neg);
-void vMirror(int chk[],int n);
-int intncmp(int lt[],int rt[],int n);
-int symmetryOps(int si);
-void NQueen(int row,int size);
-void NQueenR(int row,int size);
-//
+//出力
+void print(int size){
+	printf("%ld: ",TOTAL);
+	for(int j=0;j<size;j++){
+		printf("%d ",aBoard[j]);
+	}
+	printf("\n");
+}
+//回転
 void rotate(int chk[],int scr[],int n,int neg){
 	int k=neg ? 0 : n-1;
 	int incr=(neg ? +1 : -1);
@@ -272,7 +280,7 @@ void rotate(int chk[],int scr[],int n,int neg){
 		chk[scr[j++]]=k;
 	}
 }
-//
+//反転
 void vMirror(int chk[],int n){
 	for(int j=0;j<n;j++){
 		chk[j]=(n-1)-chk[j];
@@ -289,7 +297,7 @@ int intncmp(int lt[],int rt[],int n){
 	}
 	return rtn;
 }
-//
+//対称解除法
 int symmetryOps(int size){
 	int nEquiv;
 	// 回転・反転・対称チェックのためにboard配列をコピー
@@ -352,144 +360,76 @@ int symmetryOps(int size){
 	}
 	return nEquiv*2;
 }
-// デバッグ用出力
-int COUNT=0;
-void print(int size){
-	printf("%d: ",++COUNT);
-	for(int j=0;j<size;j++){
-		printf("%d ",aBoard[j]);
-	}
-	printf("\n");
-	printf("\n");
-	printf("\n");
-
-}
-void _NQueen(int row,int size){
-  bool matched;
-  while(row>=0){
-    matched=false;
-    //search begins at the position previously visited
-		int lim=(row!=0)?size:(size+1)/2;
-    //printf("aBoard[row]:%d\n",aBoard[row]);//-1
-    for(int i=aBoard[row]+1;i<lim;i++){
-      //the first matched position
-      //if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
-      if(left[row+(size-1)-i]==0&&right[row+i]==0){
-        //clear original record 
-        if(aBoard[row]>=0){
-          //down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-          //left[row+(size-1)-i]=right[row+i]=0;
-          left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-
-          /** 
-            ここの交換が謎
-          */
-          //交換 
-          /* int tmp=aBoard[row];      */
-          /* for(int i=row;i<lim;i++){ */
-          /*   aBoard[i]=aBoard[i+1];  */
-          /* }                         */
-          /* aBoard[size-1]=tmp;       */
-        }
-
-        aBoard[row]=i; // 交換するときはコメントアウト
-
-        //交換
-        /* int tmp=i;       */
-        /* i=aBoard[row];   */
-        /* aBoard[row]=tmp; */
-
-        //down[i]=left[row+(size-1)-i]=right[row+i]=1;
-        //left[row+(size-1)-i]=right[row+i]=1;
-        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=1;
-        matched=true;
-        break;
-      }
-    }
-    if(matched){
-      //next aBoard
-      row++;
-      if(row==size-1){
-        if(aBoard[row]!=-1){
-          //if(down[aBoard[row]]==1||left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
-          if(left[row+(size-1)-aBoard[row]]==1||right[row+aBoard[row]]==1){
-            return;
-          }
-        }
-        int s=symmetryOps(size);
-        if(s!=0){ 
-          UNIQUE++; 
-          TOTAL+=s; 
-        }
-        row--;
-      }
-    }else{
-      if(aBoard[row]>=0){
-        //down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
-        //left[row+(size-1)-tmp]=right[row+tmp]=0;
-        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
-        aBoard[row]=-1;
-      }
-      //back tracking
-      row--;
-    }
-  }
-}
+//
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int row,int size){
   bool matched;
+  int sizeE=size-1;
   while(row>=0){
     matched=false;
-    //search begins at the position previously visited
 		int lim=(row!=0)?size:(size+1)/2;
-    for(int i=aBoard[row]+1;i<lim;i++){
-      //the first matched position
-      if(down[i]==0&&left[row+(size-1)-i]==0&&right[row+i]==0){
-        //clear original record 
-        if(aBoard[row]>=0){
-          down[aBoard[row]]=left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+    for(int col=aBoard[row]+1;col<lim;col++){
+      if(down[col]==0
+      		&& right[col-row+sizeE]==0
+					&& left[col+row]==0){
+        if(aBoard[row]!=-1){
+          down[aBoard[row]]
+						=right[aBoard[row]-row+sizeE]
+					  =left[aBoard[row]+row]=0;
         }
-        aBoard[row]=i;
-        down[i]=left[row+(size-1)-i]=right[row+i]=1;
+        aBoard[row]=col;
+        down[col]
+				  =right[col-row+sizeE]
+					=left[col+row]=1;
         matched=true;
         break;
       }
     }
     if(matched){
-      //next aBoard
       row++;
       if(row==size){
         if(aBoard[row]!=-1){
-          if(down[aBoard[row]]==1||left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
+          if(down[aBoard[row]]==1
+          	|| right[aBoard[row]-row+sizeE]==1
+						|| left[aBoard[row]+row]==1){
             return;
           }
         }
         int s=symmetryOps(size);
-        if(s!=0){ 
-          UNIQUE++; 
-          TOTAL+=s; 
+        if(s!=0){
+          UNIQUE++;
+          TOTAL+=s;
         }
         row--;
       }
     }else{
       if(aBoard[row]>=0){
-        int tmp=aBoard[row];
+        int col=aBoard[row];
         aBoard[row]=-1;
-        down[tmp]=left[row+(size-1)-tmp]=right[row+tmp]=0;
+        down[col]
+				  =right[col-row+sizeE]
+					=left[col+row]=0;
       }
-      //back tracking
       row--;
     }
   }
 }
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int row,int size){
+	/**
+	 * main()をチェック
+	 * 【注意】初期化が前のステップと異なります
+	 * 前のステップでは 0　で初期化しいました
+	 * for(int j=0;j<=targetN;j++){ aBoard[j]=j; }
+	 */
   int tmp;
-  //枝刈り
+  int sizeE=size-1;
+  /** 枝刈り */
   //if(row==size){
-  if(row==size-1){
-    // 2. 枝刈り
-    if(left[row-aBoard[row]+(size-1)]==1||right[row+aBoard[row]]==1){
+  if(row==sizeE){
+    /** 枝刈り */
+    if(right[row-aBoard[row]+sizeE]==1
+    		|| left[row+aBoard[row]]==1){
       return;
     }
     int s=symmetryOps(size);	//対称解除法の導入
@@ -498,26 +438,31 @@ void NQueenR(int row,int size){
       TOTAL+=s;
     }
   }else{
-    // 1. 枝刈り
-    //for(int i=0;i<size;i++){
+    /** 枝刈り */
+    //for(int col=0;col<size;col++){
     int lim=(row!=0) ? size : (size+1)/2;
+    // col のシフトがなくなりrowとなります
     for(int i=row;i<lim;i++){
-      //コメントアウト
-      //aBoard[row]=i;
-      //交換
+      /** コメントアウト */
+      //aBoard[row]=col;
+      /** 交換 */
       tmp=aBoard[i];
       aBoard[i]=aBoard[row];
       aBoard[row]=tmp;
-      if(left[row+(size-1)-aBoard[row]]==0&&right[row+aBoard[row]]==0){
-        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=1;
+      // col は aBoard[row]に置き換わります
+      if(right[row-aBoard[row]+sizeE]==0
+      		&& left[row+aBoard[row]]==0){
+				right[row-aBoard[row]+sizeE]
+					=left[row+aBoard[row]]=1;
         NQueenR(row+1,size);
-        left[row+(size-1)-aBoard[row]]=right[row+aBoard[row]]=0;
+				right[row-aBoard[row]+sizeE]
+					=left[row+aBoard[row]]=0;
       }
     }
-	  // 交換
+	  /** 交換 */
     tmp=aBoard[row];
-    for(int i=row;i<lim;i++){
-      aBoard[i]=aBoard[i+1];
+    for(int col=row;col<lim;col++){
+      aBoard[col]=aBoard[col+1];
     }
     aBoard[size-1]=tmp;
 	}
@@ -584,10 +529,11 @@ int main(int argc,char** argv) {
         NQueen(0,i);
       }
       if(cpur){
-        //再帰は0で初期化
-        //for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
-        for(int j=0;j<=targetN;j++){ aBoard[j]=j; } 
-
+				/** 【注意】初期化が前のステップと異なります */
+        for(int j=0;j<=targetN;j++){
+          //aBoard[j]=0;
+          aBoard[j]=j;
+        }
         NQueenR(0,i);
       }
       TimeFormat(clock()-st,t); 
