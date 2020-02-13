@@ -32,7 +32,7 @@
  10. Branch by position of queen BOUND1,2          1:32|  1:32|         
  11. Pruning                                         44|    43|
  12. Optimization                                    17|    15| 
- 13. Parallel processing                              4|     4|
+ 13. Parallel processing                              4|     3|
 
 
 *********************************
