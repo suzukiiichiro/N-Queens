@@ -183,7 +183,7 @@
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
 #define MAX 27
-//
+//変数宣言
 long Total=0 ;       //合計解
 long Unique=0;
 int down[2*MAX-1];//down:flagA 縦 配置フラグ　
@@ -193,7 +193,10 @@ long TOTAL=0;
 long UNIQUE=0;
 /* int size;*/
 int aBoard[MAX];
-int MASK ;
+//関数宣言
+void TimeFormat(clock_t utime,char *form);
+void NQueen(int size,int mask);
+void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
@@ -368,13 +371,8 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
-
-//main()以外のメソッドはここに一覧表記させます
-void TimeFormat(clock_t utime,char *form);
-void NQueen(int size);
-void NQueenR(int size,int row,int left,int down,int right);
-
-void NQueen(int size){
+//CPU 非再帰版 ロジックメソッド
+void NQueen(int size,int mask){
   int aStack[MAX+2];
   register int* pnStack;
   register int row=0;
@@ -382,7 +380,6 @@ void NQueen(int size){
   register int bitmap;
   int odd=size&1;
   int sizeE=size-1;
-  int mask=(1<<size)-1;
 	/* センチネルを設定-スタックの終わりを示します*/
   aStack[0]=-1; 
 	/**
@@ -483,20 +480,22 @@ void NQueen(int size){
   /* 鏡像をカウントするために、ソリューションを2倍します */
   TOTAL*=2;
 }
-void NQueenR(int size,int row,int left,int down,int right){
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask, int row,int left,int down,int right){
   int bitmap=0;
   int bit=0;
   if(row==size){
     TOTAL++;
   }else{
-    bitmap=(MASK&~(left|down|right));
+    bitmap=(mask&~(left|down|right));
     while(bitmap){
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
-      NQueenR(size,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+      NQueenR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
+//hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
 	float ftime,ss;
@@ -549,21 +548,22 @@ int main(int argc,char** argv) {
 		clock_t st;          //速度計測用
 		char t[20];          //hh:mm:ss.msを格納
     int min=4;int targetN=18;
+    int mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;UNIQUE=0;
-      MASK=((1<<i)-1);
+      mask=((1<<i)-1);
       st=clock();
       if(cpu){
         //非再帰は-1で初期化
         for(int j=0;j<=targetN;j++){ aBoard[j]=-1;}
-        NQueen(i);
+        NQueen(i,mask);
       }
       if(cpur){
         //再帰は0で初期化
         //for(int j=0;j<=targetN;j++){ aBoard[j]=0;} 
         for(int j=0;j<=targetN;j++){ aBoard[j]=j;} 
 
-        NQueenR(i,0,0,0,0);
+        NQueenR(i,mask,0,0,0,0);
       }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);

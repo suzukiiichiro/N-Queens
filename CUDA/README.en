@@ -22,17 +22,17 @@
                                                   ----------------------
 1. Brute force force search                            |      |             
 2. Placement flag (constraint test acceleration)       |      |         
-3. Backtracking N17 12: 29.59                     15:50| 14:04|  00:01
-4. Backtracking + symmetry cancellation method    15:46| 15:51|         
-5. Backtracking + symmetry removal + pruning       5:05|  8:12|         
-6. Bit map (other than symmetryOps ()              2:07|  1:06|         
-7. Bit map (also supports symmetryOps ())          5:02|  3:23|         
-8. Bitmap + pruning N17 3: 05.13                   5:33|  4:14|         
-9. Branch by position of queen BOUND1                  |      |         
- 10. Branch by position of queen BOUND1,2              |      |         
- 11. Pruning 
- 12. Optimization 
- 13. Parallel processing 
+3. Backtracking N17 12: 29.59                      8:09|  8:39|  00:01
+4. Backtracking + symmetry cancellation method     8:18|  8:31|         
+5. Backtracking + symmetry removal + pruning       2:26|  4:43|         
+6. Bit map (other than symmetryOps ()              1:04|    35|         
+7. Bit map (also supports symmetryOps ())          2:42|  1:47|         
+8. Bitmap + pruning N17 3: 05.13                   2:49|  1:42|         
+9. Branch by position of queen BOUND1              1:40|  1:38|         
+ 10. Branch by position of queen BOUND1,2          1:32|  1:32|         
+ 11. Pruning                                         44|    43|
+ 12. Optimization                                    17|    15| 
+ 13. Parallel processing                              4|     4|
 
 
 *********************************

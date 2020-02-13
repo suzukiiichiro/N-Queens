@@ -62,7 +62,7 @@
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
 #define MAX 27
-//
+//変数宣言
 long Total=0 ;        //合計解
 long Unique=0;
 int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
@@ -71,8 +71,19 @@ int right[2*MAX-1];  //right:flagC 斜め配置フラグ　
 int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
-int bit;
 int COUNT2,COUNT4,COUNT8;
+//関数宣言
+void TimeFormat(clock_t utime,char *form);
+void dtob(int score,int si);
+int rh(int a,int sz);
+void rotate_bitmap(int bf[],int af[],int si);
+void vMirror_bitmap(int bf[],int af[],int si);
+int intncmp(int lt[],int rt[],int n);
+long getUnique();
+long getTotal();
+void symmetryOps_bitmap(int si);
+void NQueen(int size);
+void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
   int n,int mark,
@@ -247,18 +258,6 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
-//main()以外のメソッドはここに一覧表記させます
-void TimeFormat(clock_t utime,char *form);
-void dtob(int score,int si);
-int rh(int a,int sz);
-void rotate_bitmap(int bf[],int af[],int si);
-void vMirror_bitmap(int bf[],int af[],int si);
-int intncmp(int lt[],int rt[],int n);
-long getUnique();
-long getTotal();
-void symmetryOps_bitmap(int si);
-void NQueen(int size);
-void NQueenR(int size,int mask,int row,int left,int down,int right);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
 	int dd,hh,mm;
@@ -374,7 +373,7 @@ void symmetryOps_bitmap(int si){
   if(nEquiv==4){COUNT4++;}
   if(nEquiv==8){COUNT8++;}
 }
-//
+//CPU 非再帰版 ロジックメソッド
 void NQueen(int size){
   int aStack[MAX+2];
   register int* pnStack;
@@ -488,7 +487,9 @@ void NQueen(int size){
   /* 鏡像をカウントするために、ソリューションを2倍します */
   //TOTAL*=2;
 }
+//CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask,int row,int left,int down,int right){
+  int bit;
 	int bitmap=mask&~(left|down|right);
   int lim;
 	if(row==size){
