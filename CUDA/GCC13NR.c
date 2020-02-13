@@ -1,6 +1,9 @@
 
 // $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13NR.c && ./a.out
-
+// 【注意】
+// Eclipse では -O3を追加しないと計算結果が合いません
+// Eclipse では、threadを追加しないと高速処理になりません。
+//
 /**
 １３．CPUR 再帰 並列処理 pthread
  N:           Total           Unique          dd:hh:mm:ss.ms
