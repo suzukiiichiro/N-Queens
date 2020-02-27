@@ -2,6 +2,7 @@ class UI {
   constructor() {
     this.fileSelect = document.querySelector('#selectFile');
     this.reverse = document.querySelector('#rev');
+    this.fileName = "";
     this.worker = null;
     this.scroll = null;
   }
@@ -33,13 +34,7 @@ class UI {
       outText = outText.match(reg);
       target.textContent = "//"+outText[0];
       PR.prettyPrint();
-      try {
-        this.worker = new Worker(file);
-        this.worker.addEventListener('message', (msg) => {
-          this.message(msg);
-        }, false);
-      } catch(e) {
-      }
+      this.fileName = file;
     });
   }
   //読み込むファイルを選択
@@ -51,6 +46,13 @@ class UI {
   }
   start() {
     if(this.scroll) { clearTimeout(this.scroll); }
+    try {
+      this.worker = new Worker(this.fileName);
+      this.worker.addEventListener('message', (msg) => {
+        this.message(msg);
+      }, false);
+    } catch(e) {
+    }
     document.querySelector('#res #output').textContent = "";
     document.querySelector('#start').classList.add('hide');
     document.querySelector('#stop').classList.remove('hide');
@@ -62,6 +64,7 @@ class UI {
   stop() {
     document.querySelector('#start').classList.remove('hide');
     document.querySelector('#stop').classList.add('hide');
+    this.worker.terminate();
   }
   //初期設定
   async init() {
