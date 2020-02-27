@@ -6,17 +6,16 @@ class UI {
     this.scroll = null;
   }
   message(msg) {
-    document.querySelector('#res #output').insertAdjacentHTML('beforeend', `<p>${msg.data.result}</p>`);
-    //最下部にスクロール
-    clearTimeout( this.scroll );
-    this.scroll = setTimeout(() => {
+    setTimeout(() => {
+      document.querySelector('#res #output').insertAdjacentHTML('beforeend', `<p>${msg.data.result}</p>`);
+      //最下部にスクロール
       let out = document.querySelector('#res');
-      out.scrollTop = out.scrollHeight;
-    }, 250);
-
-    if(msg.data.status == "success") {
-      this.stop();
-    }
+      var y = out.scrollHeight - out.clientHeight;
+      out.scroll(0, y);
+      if(msg.data.status == "success") {
+        this.stop();
+      }
+    }, 0);
   }
   async load(file) {
     let target = document.querySelector('#editor code');
@@ -51,6 +50,7 @@ class UI {
     this.load(file);
   }
   start() {
+    if(this.scroll) { clearTimeout(this.scroll); }
     document.querySelector('#res #output').textContent = "";
     document.querySelector('#start').classList.add('hide');
     document.querySelector('#stop').classList.remove('hide');
@@ -62,7 +62,6 @@ class UI {
   stop() {
     document.querySelector('#start').classList.remove('hide');
     document.querySelector('#stop').classList.add('hide');
-    // this.worker.terminate();
   }
   //初期設定
   async init() {

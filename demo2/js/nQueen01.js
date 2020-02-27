@@ -3,7 +3,7 @@ let COUNT = 0;
 let aBoard = new Array([MAX]);
 
 function print(size) {
-  let out = `${++COUNT}:`;
+  let out = `${++COUNT}:\t`;
   for(let j = 0; j < size; j++){
     out += `${aBoard[j]}`;
   }
@@ -53,6 +53,7 @@ function NQueenR(row, size) {
 //EOS2
 
 function main(size, mode = 1){
+  COUNT = 0;
   for(let i = 0; i < size; i++){ aBoard[i]=-1; }
   if(mode == 1) {
     self.NQueen(0, size);
