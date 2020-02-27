@@ -54,10 +54,10 @@ int aT[MAX];       	//aT:aTrial[]
 int aS[MAX];       	//aS:aScrath[]
 int COUNT2,COUNT4,COUNT8;
 //関数宣言
-void rotate(int chk[],int scr[],int n,int neg);
-void vMirror(int chk[],int n);
+void rotate_bitmap(int chk[],int af[],int si);
+void vMirror_bitmap(int chk[],int af[],int si);
 int intncmp(int lt[],int rt[],int n);
-int symmetryOps(int size);
+void symmetryOps_bitmap(int size);
 void TimeFormat(clock_t utime,char *form);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
 void NQueen(int size,int mask);
@@ -175,7 +175,7 @@ void NQueen(int size,int mask){
   int odd=size&1;
   int sizeE=size-1;
 	/* センチネルを設定-スタックの終わりを示します*/
-  aStack[0]=-1; 
+  aStack[0]=-1;
 	/**
   注：サイズが奇数の場合、（サイズ＆1）は真。
   サイズが奇数の場合は2xをループする必要があります
@@ -195,7 +195,7 @@ void NQueen(int size,int mask){
       int half=size>>1;
       /*サイズの半分のビットマップで右端の1を埋めます
         サイズが7の場合、その半分は3です（残りは破棄します）
-        ビットマップはバイナリで111に設定されます。 
+        ビットマップはバイナリで111に設定されます。
       */
       bitmap=(1<<half)-1;
       pnStack=aStack+1;/* スタックポインタ */
@@ -203,7 +203,7 @@ void NQueen(int size,int mask){
       down[0]=left[0]=right[0]=0;
     }else{
 			/*（奇数サイズのボードの）中央の列を処理します。
-         中央の列ビットを1に設定してから設定します 
+         中央の列ビットを1に設定してから設定します
          したがって、最初の行（1つの要素）と次の半分を処理しています。
          ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
       */
@@ -222,28 +222,28 @@ void NQueen(int size,int mask){
       /* この行は-1つの要素のみで完了 */
       *pnStack++=0;
       /* ビットマップ-1は、単一の1の左側すべて1です */
-      bitmap=(bitmap-1)>>1; 
+      bitmap=(bitmap-1)>>1;
     }
     // クリティカルループ
     while(true){
-      /* 
+      /*
          bit = bitmap ^（bitmap＆（bitmap -1））;
-         最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。 
+         最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。
       */
       /* これは、2の補数アーキテクチャを想定しています */
-      bit=-((signed)bitmap) & bitmap; 
+      bit=-((signed)bitmap) & bitmap;
       if(0==bitmap){
         /* 前を取得スタックからのビットマップ */
         bitmap=*--pnStack;
         /* センチネルがヒットした場合... */
-        if(pnStack==aStack){ 
+        if(pnStack==aStack){
           break ;
         }
         --row;
         continue;
       }
       /* このビットをオフにして、再試行しないようにします */
-      bitmap&=~bit; 
+      bitmap&=~bit;
       /* 結果を保存 */
       aBoard[row]=bit;
       /* 処理する行がまだあるか？ */
@@ -255,7 +255,7 @@ void NQueen(int size,int mask){
         *pnStack++=bitmap;
         /* 同じ女王の位置を考慮することはできません
            列、同じ正の対角線、または同じ負の対角線
-           すでにボード上のクイーン。 
+           すでにボード上のクイーン。
         */
         bitmap=mask&~(down[row]|right[row]|left[row]);
         continue;
@@ -295,13 +295,18 @@ void NQueenR(int size,int mask,int row,int left,int down,int right){
 }
 //メインメソッド
 int main(int argc,char** argv){
-
-	/** CPUで実行 */
-	bool cpu=true,cpur=false;
-
-	/** CPURで実行 */
-	//bool cpu=false,cpur=true;
-
+  bool cpu=false,cpur=false;
+  int argstart=2;
+  if(argc>=2&&argv[1][0]=='-'){
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else{ cpur=true;}
+  }
+  if(argc<argstart){
+    printf("Usage: %s [-c|-g]\n",argv[0]);
+    printf("  -c: CPU Without recursion\n");
+    printf("  -r: CPUR Recursion\n");
+  }
 	if(cpu){
     printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
 	}else if(cpur){

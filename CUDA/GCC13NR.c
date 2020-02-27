@@ -50,10 +50,8 @@
 #define MAX 27
 //
 
-/** 非再帰 CPUで実行 */
-int NR=1;
-/** 再帰 CPURで実行 */
-//int NR=0;
+/** 非再帰 再帰で実行 */
+int CPU,CPUR=0;
 
 //
 //変数宣言
@@ -129,7 +127,6 @@ void backTrack2_NR(int row,int left,int down,int right,local *l){
 			}
 		}
 	}else{
-      
     //【枝刈り】上部サイド枝刈り
 		if(row<l->BOUND1){
 			bitmap&=~l->SIDEMASK;
@@ -271,7 +268,7 @@ void *run(void *args){
 	l->TOPBIT=1<<(G.sizeE);
   l->mask=(1<<G.size)-1;
 
-    if(NR==1){
+    if(CPU==1){
       //非再帰
 		   backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
     }else{
@@ -285,7 +282,7 @@ void *run(void *args){
       l->aBoard[1]=bit=(1<<l->BOUND1);
       //２行目から探索
     //  backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
-			if(NR==1){
+			if(CPU==1){
 				//非再帰
 				 backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
 			}else{
@@ -306,7 +303,7 @@ void *run(void *args){
     if(l->BOUND1<l->BOUND2) {
       l->aBoard[0]=bit=(1<<l->BOUND1);
       //backTrack2(1,bit<<1,bit,bit>>1,l);
-			if(NR==1){
+			if(CPU==1){
 				//非再帰
 				 backTrack2_NR(1,bit<<1,bit,bit>>1,l);
 			}else{
@@ -354,11 +351,23 @@ void NQueen(){
   pthread_join(pth,NULL); /* いちいちjoinをする */
 }
 //メインメソッド
-int main() {
+int main(int argc,char** argv) {
   /** 出力と実行 */
-  if(NR){
+  // bool cpu=false,cpur=false;
+  int argstart=2;
+  if(argc>=2&&argv[1][0]=='-'){
+    if(argv[1][1]=='c'||argv[1][1]=='C'){CPU=1;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){CPUR=1;}
+    else{ CPUR=1;}
+  }
+  if(argc<argstart){
+    printf("Usage: %s [-c|-g]\n",argv[0]);
+    printf("  -c: CPU Without recursion\n");
+    printf("  -r: CPUR Recursion\n");
+  }
+  if(CPU){
     printf("\n\n１３．CPU 非再帰 並列処理 pthread\n");
-  }else{
+  }else if(CPUR){
     printf("\n\n１３．CPUR 再帰 並列処理 pthread\n");
   }
   printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
@@ -369,6 +378,10 @@ int main() {
 		G.size=i; G.sizeE=i-1; //初期化
 		G.lTOTAL=G.lUNIQUE=0;
 		gettimeofday(&t0, NULL);
+    /**
+      初期化は
+      void *NQueenThread()で行います。
+     */
 		NQueen();
 		gettimeofday(&t1, NULL);
 		int ss;int ms;int dd;

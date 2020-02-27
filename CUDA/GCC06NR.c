@@ -288,13 +288,18 @@ void NQueenR(int size,int mask,int row,int left,int down,int right){
 }
 //メインメソッド
 int main(int argc,char** argv){
-
-	/** CPUで実行 */
-	bool cpu=true,cpur=false;
-
-	/** CPURで実行 */
-	//bool cpu=false,cpur=true;
-
+  bool cpu=false,cpur=false;
+  int argstart=2;
+  if(argc>=2&&argv[1][0]=='-'){
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else{ cpur=true;}
+  }
+  if(argc<argstart){
+    printf("Usage: %s [-c|-g]\n",argv[0]);
+    printf("  -c: CPU Without recursion\n");
+    printf("  -r: CPUR Recursion\n");
+  }
 	if(cpu){
     printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ\n");
 	}else if(cpur){
