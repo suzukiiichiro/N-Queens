@@ -1,41 +1,6 @@
 
-// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC04NR.c && ./a.out
+// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC04NR.c && ./a.out [-c|-r]
 
-/**
-４．CPUR 再帰 バックトラック＋対称解除法
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.01
-12:        14200            1787            0.05
-13:        73712            9233            0.27
-14:       365596           45752            1.58
-15:      2279184          285053           10.23
-16:     14772512         1846955         1:11.23
-17:     95815104        11977939         8:18.76
-
-４．CPU 非再帰 バックトラック＋対称解除法
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.01
-12:        14200            1787            0.05
-13:        73712            9233            0.27
-14:       365596           45752            1.62
-15:      2279184          285053           10.46
-16:     14772512         1846955         1:11.30
-17:     95815104        11977939         8:31.67
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -53,7 +18,6 @@ long UNIQUE=0;
 int aT[MAX];         //aT:aTrial[]
 int aS[MAX];         //aS:aScrath[]
 //関数宣言
-void print(int size);
 void TimeFormat(clock_t utime,char *form);
 void rotate(int chk[],int scr[],int n,int neg);
 void vMirror(int chk[],int n);
@@ -61,14 +25,6 @@ int intncmp(int lt[],int rt[],int n);
 int symmetryOps(int size);
 void NQueen(int row,int size);
 void NQueenR(int row,int size);
-//出力
-void print(int size){
-  printf("%ld: ",TOTAL);
-  for(int j=0;j<size;j++){
-    printf("%d ",aBoard[j]);
-  }
-  printf("\n");
-}
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){
   int dd,hh,mm;
@@ -193,7 +149,7 @@ void NQueen(int row,int size){
     for(int col=aBoard[row]+1;col<size;col++){
       if(down[col]==0
           && right[col-row+sizeE]==0
-          && left[col+row]==0){   //まだ効き筋がない
+          && left[col+row]==0){ //まだ効き筋がない
         if(aBoard[row]!=-1){    //Qを配置済み
           //colがaBoard[row]におきかわる
           down[aBoard[row]]
@@ -203,8 +159,8 @@ void NQueen(int row,int size){
         aBoard[row]=col;        //Qを配置
         down[col]
           =right[col-row+sizeE]
-          =left[col+row]=1;      //効き筋とする
-        matched=true;            //配置した
+          =left[col+row]=1;     //効き筋とする
+        matched=true;           //配置した
         break;
       }
     }
@@ -215,7 +171,7 @@ void NQueen(int row,int size){
         /** 対称解除法の導入 */
         int s=symmetryOps(size);
         if(s!=0){
-          UNIQUE++;   //ユニーク解を加算
+          UNIQUE++;             //ユニーク解を加算
           TOTAL+=s;   //対称解除で得られた解数を加算
         }
         // TOTAL++;
@@ -224,7 +180,7 @@ void NQueen(int row,int size){
       }
     }else{
       if(aBoard[row]!=-1){
-        int col=aBoard[row]; /** col の代用 */
+        int col=aBoard[row];    /** col の代用 */
         down[col]
           =right[col-row+sizeE]
           =left[col+row]=0;
@@ -268,6 +224,7 @@ void NQueenR(int row,int size){
 int main(int argc,char** argv){
   bool cpu=false,cpur=false;
   int argstart=2;
+  /** 起動パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
@@ -292,14 +249,12 @@ int main(int argc,char** argv){
     TOTAL=0;
     UNIQUE=0;
     st=clock();
-    //aBoardを-1で初期化
+    // aBoard配列の初期化
     for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-    if(cpu){
-      NQueen(0,i);
-    }
-    if(cpur){
-      NQueenR(0,i);
-    }
+    /**  非再帰 */
+    if(cpu){ NQueen(0,i); }
+    /**  再帰 */
+    if(cpur){ NQueenR(0,i); }
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
   }

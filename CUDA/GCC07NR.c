@@ -1,41 +1,6 @@
 
-//
+//$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC07NR.c && ./a.out [-c|-r]
 
-/**
-７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.02
-13:        73712            9233            0.09
-14:       365596           45752            0.49
-15:      2279184          285053            3.22
-16:     14772512         1846955           22.76
-17:     95815104        11977939         2:42.11
-
-７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.05
-14:       365596           45752            0.32
-15:      2279184          285053            2.11
-16:     14772512         1846955           14.96
-17:     95815104        11977939         1:47.53
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -54,30 +19,35 @@ int aT[MAX];       	//aT:aTrial[]
 int aS[MAX];       	//aS:aScrath[]
 int COUNT2,COUNT4,COUNT8;
 //関数宣言
-void rotate_bitmap(int chk[],int af[],int si);
-void vMirror_bitmap(int chk[],int af[],int si);
-int intncmp(int lt[],int rt[],int n);
-void symmetryOps_bitmap(int size);
 void TimeFormat(clock_t utime,char *form);
-void NQueenR(int size,int mask,int row,int left,int down,int right);
+int rh(int a,int sz);
+void vMirror_bitmap(int chk[],int af[],int si);
+void rotate_bitmap(int chk[],int af[],int si);
+int intncmp(int lt[],int rt[],int n);
+long getUnique();
+long getTotal();
+void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask);
-void print(int size);
-//出力
-void print(int size){
-	printf("%ld: ",TOTAL);
-	for(int j=0;j<size;j++){
-		printf("%d ",aBoard[j]);
-	}
-	printf("\n");
-}
-void dtob(int score,int si) {
-  int bit=1; char c[si];
-  for (int i=0;i<si;i++) {
-    if (score&bit){ c[i]='1'; }else{ c[i]='0'; }
-    bit<<=1;
-  }
-  for (int i=si-1;i>=0;i--){ putchar(c[i]); }
-  printf("\n");
+void NQueenR(int size,int mask,int row,int left,int down,int right);
+//hh:mm:ss.ms形式に処理時間を出力
+void TimeFormat(clock_t utime,char* form){
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if(dd)
+    sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if(hh)
+    sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
+  else if(mm)
+    sprintf(form,"        %2d:%05.2f",mm,ss);
+  else
+    sprintf(form,"           %5.2f",ss);
 }
 //
 int rh(int a,int sz){
@@ -107,22 +77,22 @@ void rotate_bitmap(int bf[],int af[],int si){
 }
 //
 int intncmp(int lt[],int rt[],int n){
-	int rtn=0;
-	for(int k=0;k<n;k++){
-		rtn=lt[k]-rt[k];
-		if(rtn!=0){
-			break;
-		}
-	}
-	return rtn;
+  int rtn=0;
+  for(int k=0;k<n;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){
+      break;
+    }
+  }
+  return rtn;
 }
 //
 long getUnique(){
-	return COUNT2+COUNT4+COUNT8;
+  return COUNT2+COUNT4+COUNT8;
 }
 //
 long getTotal(){
-	return COUNT2*2+COUNT4*4+COUNT8*8;
+  return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 //
 void symmetryOps_bitmap(int si){
@@ -174,48 +144,48 @@ void NQueen(int size,int mask){
   register int bitmap;
   int odd=size&1;
   int sizeE=size-1;
-	/* センチネルを設定-スタックの終わりを示します*/
+  /* センチネルを設定-スタックの終わりを示します*/
   aStack[0]=-1;
-	/**
-  注：サイズが奇数の場合、（サイズ＆1）は真。
-  サイズが奇数の場合は2xをループする必要があります
-	*/
+  /**
+    注：サイズが奇数の場合、（サイズ＆1）は真。
+    サイズが奇数の場合は2xをループする必要があります
+    */
   for(int i=0;i<(1+odd);++i){
-		/**
-			クリティカルループ
-			この部分を最適化する必要はありません。
-		*/
+    /**
+      クリティカルループ
+      この部分を最適化する必要はありません。
+      */
     bitmap=0;
     if(0==i){
       /*中央を除くボードの半分を処理します
         カラム。ボードが5 x 5の場合、最初の行は00011になります。
         クイーンを中央の列に配置することについてはまだです。
-      */
-	    /* ２で割る */
+        */
+      /* ２で割る */
       int half=size>>1;
       /*サイズの半分のビットマップで右端の1を埋めます
         サイズが7の場合、その半分は3です（残りは破棄します）
         ビットマップはバイナリで111に設定されます。
-      */
+        */
       bitmap=(1<<half)-1;
       pnStack=aStack+1;/* スタックポインタ */
       aBoard[0]=0;
       down[0]=left[0]=right[0]=0;
     }else{
-			/*（奇数サイズのボードの）中央の列を処理します。
-         中央の列ビットを1に設定してから設定します
-         したがって、最初の行（1つの要素）と次の半分を処理しています。
-         ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
-      */
+      /*（奇数サイズのボードの）中央の列を処理します。
+        中央の列ビットを1に設定してから設定します
+        したがって、最初の行（1つの要素）と次の半分を処理しています。
+        ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
+        */
       bitmap=1<<(size>>1);
       row=1; /*すでに 0 */
-			/* 最初の行にはクイーンが1つだけあります（中央の列）*/
+      /* 最初の行にはクイーンが1つだけあります（中央の列）*/
       aBoard[0]=bitmap;
       down[0]=left[0]=right[0]=0;
-      down[1]=bitmap;
       /* 次の行を実行します。半分だけビットを設定します
          「Y軸」で結果を反転します
-      */
+         */
+      down[1]=bitmap;
       right[1]=(bitmap>>1);
       left[1]=(bitmap<<1);
       pnStack=aStack+1; // スタックポインタ
@@ -229,7 +199,7 @@ void NQueen(int size,int mask){
       /*
          bit = bitmap ^（bitmap＆（bitmap -1））;
          最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。
-      */
+         */
       /* これは、2の補数アーキテクチャを想定しています */
       bit=-((signed)bitmap) & bitmap;
       if(0==bitmap){
@@ -256,16 +226,13 @@ void NQueen(int size,int mask){
         /* 同じ女王の位置を考慮することはできません
            列、同じ正の対角線、または同じ負の対角線
            すでにボード上のクイーン。
-        */
+           */
         bitmap=mask&~(down[row]|right[row]|left[row]);
         continue;
       }else{
-        /* 処理する行はもうありません。解決策が見つかりました。
-           ボードの位置としてソリューションを印刷するために、
-           printtableへの呼び出しをコメントアウトします
-           printtable（size、aBoard、TOTAL + 1）; */
+        /* 処理する行はもうありません。解決策が見つかりました。*/
         //++TOTAL;
-			  symmetryOps_bitmap(size); /* 対称解除法の追加 */
+        symmetryOps_bitmap(size); /* 対称解除法の追加 */
         bitmap=*--pnStack;
         --row;
         continue;
@@ -278,25 +245,24 @@ void NQueen(int size,int mask){
 //CPUR 再帰版　ロジックメソッド
 void NQueenR(int size,int mask,int row,int left,int down,int right){
   int bit;
-	int bitmap=mask&~(left|down|right);
-	if(row==size){
-		if(!bitmap){
-			aBoard[row]=bitmap;
-			symmetryOps_bitmap(size);
-		}
-	}else{
-		while(bitmap){
-      // bit=(-bitmap&bitmap);
-      // bitmap=(bitmap^bit);
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-			NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-		}
-	}
+  int bitmap=mask&~(left|down|right);
+  if(row==size){
+    if(!bitmap){
+      aBoard[row]=bitmap;
+      symmetryOps_bitmap(size);
+    }
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
 }
 //メインメソッド
 int main(int argc,char** argv){
   bool cpu=false,cpur=false;
   int argstart=2;
+  /** 起動パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
@@ -307,63 +273,45 @@ int main(int argc,char** argv){
     printf("  -c: CPU Without recursion\n");
     printf("  -r: CPUR Recursion\n");
   }
-	if(cpu){
+  if(cpu){
     printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
-	}else if(cpur){
+  }else if(cpur){
     printf("\n\n７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法\n");
-	}
-	printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-	clock_t st;           //速度計測用
-	char t[20];           //hh:mm:ss.msを格納
-	int min=4;
-	int targetN=17;
+  }
+  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+  clock_t st;           //速度計測用
+  char t[20];           //hh:mm:ss.msを格納
+  int min=4;
+  int targetN=17;
   int mask;
-	//int targetN=4;
-	for(int i=min;i<=targetN;i++){
-		//TOTAL=0; UNIQUE=0;
+  //int targetN=4;
+  for(int i=min;i<=targetN;i++){
+    //TOTAL=0; UNIQUE=0;
     COUNT2=COUNT4=COUNT8=0;
     mask=(1<<i)-1;
-		st=clock();
-		if(cpu){
-			/** 非再帰は-1で初期化 */
-			for(int j=0;j<=targetN;j++){
-				aBoard[j]=-1;
-			}
-			NQueen(i,mask);
-		}
-		if(cpur){
-			/** 再帰は0で初期化 */
-			for(int j=0;j<=targetN;j++){
-				/** 【注意】初期化が前のステップと異なります */
-				//aBoard[j]=0;
-				aBoard[j]=j;
-			}
-			NQueenR(i,mask,0,0,0,0);
-		}
-		TimeFormat(clock()-st,t);
-		printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-	}
-	return 0;
+    st=clock();
+    if(cpu){
+      //初期化は不要です
+      // 再帰ではaBaordを使用しないので
+      // 初期化の必要はありません
+      /** 非再帰は-1で初期化 */
+      // for(int j=0;j<=targetN;j++){
+      // 	aBoard[j]=-1;
+      // }
+      NQueen(i,mask);
+    }
+    if(cpur){
+      //初期化は不要です
+      /** 再帰は0で初期化 */
+      // for(int j=0;j<=targetN;j++){
+      /** 【注意】初期化が前のステップと異なります */
+      //aBoard[j]=0;
+      //aBoard[j]=j;
+      // }
+      NQueenR(i,mask,0,0,0,0);
+    }
+    TimeFormat(clock()-st,t);
+    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+  }
+  return 0;
 }
-//hh:mm:ss.ms形式に処理時間を出力
-void TimeFormat(clock_t utime,char* form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-		sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-		sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-		sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-		sprintf(form,"           %5.2f",ss);
-}
-
-

@@ -1,41 +1,6 @@
 
-// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC05NR.c && ./a.out
+// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC05NR.c && ./a.out [-c|-r]
 
-/**
-５．CPUR 再帰 バックトラック＋対称解除法＋枝刈りと最適化
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.09
-14:       365596           45752            0.46
-15:      2279184          285053            3.09
-16:     14772512         1846955           19.53
-17:     95815104        11977939         2:26.74
-
-５．CPU 非再帰 バックトラック＋対称解除法＋枝刈りと最適化
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.01
-12:        14200            1787            0.03
-13:        73712            9233            0.15
-14:       365596           45752            0.85
-15:      2279184          285053            5.81
-16:     14772512         1846955           36.86
-17:     95815104        11977939         4:43.12
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -53,7 +18,6 @@ long UNIQUE=0;
 int aT[MAX];         //aT:aTrial[]
 int aS[MAX];         //aS:aScrath[]
 //関数宣言
-void print(int size);
 void TimeFormat(clock_t utime,char *form);
 void rotate(int chk[],int scr[],int n,int neg);
 void vMirror(int chk[],int n);
@@ -61,14 +25,6 @@ int intncmp(int lt[],int rt[],int n);
 int symmetryOps(int size);
 void NQueen(int row,int size);
 void NQueenR(int row,int size);
-//出力
-void print(int size){
-  printf("%ld: ",TOTAL);
-  for(int j=0;j<size;j++){
-    printf("%d ",aBoard[j]);
-  }
-  printf("\n");
-}
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){
   int dd,hh,mm;
@@ -211,8 +167,8 @@ void NQueen(int row,int size){
       if(row==size){
         if(aBoard[row]!=-1){
           if(down[aBoard[row]]==1
-            || right[aBoard[row]-row+sizeE]==1
-            || left[aBoard[row]+row]==1){
+              || right[aBoard[row]-row+sizeE]==1
+              || left[aBoard[row]+row]==1){
             return;
           }
         }
@@ -250,7 +206,7 @@ void NQueenR(int row,int size){
   if(row==sizeE){
     /** 枝刈り */
     if(right[row-aBoard[row]+sizeE]==1
-      || left[row+aBoard[row]]==1){
+        || left[row+aBoard[row]]==1){
       return;
     }
     int s=symmetryOps(size);  //対称解除法の導入
@@ -289,51 +245,52 @@ void NQueenR(int row,int size){
     aBoard[size-1]=tmp;
     /** 交換 */
   }
-}
-//メインメソッド
-int main(int argc,char** argv){
-  bool cpu=false,cpur=false;
-  int argstart=2;
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
-    else{ cpur=true;}
   }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g]\n",argv[0]);
-    printf("  -c: CPU Without recursion\n");
-    printf("  -r: CPUR Recursion\n");
-  }
-  if(cpu){
-    printf("\n\n５．CPU 非再帰 バックトラック＋対称解除法＋枝刈りと最適化\n");
-  }else if(cpur){
-    printf("\n\n５．CPUR 再帰 バックトラック＋対称解除法＋枝刈りと最適化\n");
-  }
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  clock_t st;           //速度計測用
-  char t[20];           //hh:mm:ss.msを格納
-  int min=4;
-  int targetN=17;
-  for(int i=min;i<=targetN;i++){
-    TOTAL=0;
-    UNIQUE=0;
-    st=clock();
+  //メインメソッド
+  int main(int argc,char** argv){
+    bool cpu=false,cpur=false;
+    int argstart=2;
+    /** 起動パラメータの処理 */
+    if(argc>=2&&argv[1][0]=='-'){
+      if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+      else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+      else{ cpur=true;}
+    }
+    if(argc<argstart){
+      printf("Usage: %s [-c|-g]\n",argv[0]);
+      printf("  -c: CPU Without recursion\n");
+      printf("  -r: CPUR Recursion\n");
+    }
     if(cpu){
-      //aBoardを-1で初期化
-      for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-      NQueen(0,i);
+      printf("\n\n５．CPU 非再帰 バックトラック＋対称解除法＋枝刈りと最適化\n");
+    }else if(cpur){
+      printf("\n\n５．CPUR 再帰 バックトラック＋対称解除法＋枝刈りと最適化\n");
     }
-    if(cpur){
-      /** 再帰は0で初期化 */
-      for(int j=0;j<=targetN;j++){
-        /** 【注意】初期化が前のステップと異なります */
-        //aBoard[j]=0;
-        aBoard[j]=j;
+    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+    clock_t st;           //速度計測用
+    char t[20];           //hh:mm:ss.msを格納
+    int min=4;
+    int targetN=17;
+    for(int i=min;i<=targetN;i++){
+      TOTAL=0;
+      UNIQUE=0;
+      st=clock();
+      if(cpu){
+        //aBoardを-1で初期化
+        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+        NQueen(0,i);
       }
-      NQueenR(0,i);
+      if(cpur){
+        /** 再帰は0で初期化 */
+        for(int j=0;j<=targetN;j++){
+          /** 【注意】初期化が前のステップと異なります */
+          //aBoard[j]=0;
+          aBoard[j]=j;
+        }
+        NQueenR(0,i);
+      }
+      TimeFormat(clock()-st,t);
+      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+    return 0;
   }
-  return 0;
-}

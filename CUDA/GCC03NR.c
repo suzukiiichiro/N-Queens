@@ -1,41 +1,6 @@
 
-// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC03NR.c && ./a.out
-/**
-３．CPUR 再帰 バックトラック
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               0            0.00
- 5:           10               0            0.00
- 6:            4               0            0.00
- 7:           40               0            0.00
- 8:           92               0            0.00
- 9:          352               0            0.00
-10:          724               0            0.00
-11:         2680               0            0.01
-12:        14200               0            0.05
-13:        73712               0            0.26
-14:       365596               0            1.56
-15:      2279184               0           10.00
-16:     14772512               0         1:08.35
-17:     95815104               0         8:09.30
+// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC03NR.c && ./a.out [-c|-r]
 
-３．CPU 非再帰 バックトラック
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               0            0.00
- 5:           10               0            0.00
- 6:            4               0            0.00
- 7:           40               0            0.00
- 8:           92               0            0.00
- 9:          352               0            0.00
-10:          724               0            0.00
-11:         2680               0            0.01
-12:        14200               0            0.05
-13:        73712               0            0.29
-14:       365596               0            1.68
-15:      2279184               0           10.63
-16:     14772512               0         1:12.37
-17:     95815104               0         8:39.61
-
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -51,18 +16,9 @@ int left[2*MAX-1]; //left:flagC 斜め配置フラグ
 long TOTAL=0;
 long UNIQUE=0;
 //関数宣言
-void print(int size);
 void TimeFormat(clock_t utime,char *form);
 void NQueen(int row,int size);
 void NQueenR(int row,int size);
-//出力
-void print(int size){
-  printf("%ld: ",TOTAL);
-  for(int j=0;j<size;j++){
-    printf("%d ",aBoard[j]);
-  }
-  printf("\n");
-}
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){
   int dd,hh,mm;
@@ -84,20 +40,6 @@ void TimeFormat(clock_t utime,char* form){
     sprintf(form,"           %5.2f",ss);
 }
 //CPU 非再帰版 ロジックメソッド
-/**
-  　　       column(列) 
-  row(行)_0___1___2___3___4_
-       0|-Q-|---|---|---|---|  [0]
-        +-------------------+ 
-       1|-F-|-F-|-Q-|---|---|  [2]
-        +-------------------+ 
-       2|-F-|-F-|-F-|-F-|-Q-|  [4]
-        +-------------------+ 
-       3|-F-|-Q-|-F-|-F-|-F-|  [1]
-        +-------------------+
-   ->  4|-F-|-F-|-F-|-Q-|-F-|  [3]
-        +-------------------+
-*/
 void NQueen(int row,int size){
   int sizeE=size-1;
   bool matched;
@@ -170,6 +112,7 @@ void NQueenR(int row,int size){
 int main(int argc,char** argv){
   bool cpu=false,cpur=false;
   int argstart=2;
+  /** 起動パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
@@ -190,19 +133,16 @@ int main(int argc,char** argv){
   char t[20];           //hh:mm:ss.msを格納
   int min=4;
   int targetN=17;
-  //int targetN=4;
   for(int i=min;i<=targetN;i++){
     TOTAL=0;
     UNIQUE=0;
     st=clock();
-    //aBoardを-1で初期化
+    // aBoard配列の初期化
     for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-    if(cpu){
-      NQueen(0,i);
-    }
-    if(cpur){
-      NQueenR(0,i);
-    }
+    /**  非再帰 */
+    if(cpu){ NQueen(0,i); }
+    /**  再帰 */
+    if(cpur){ NQueenR(0,i); }
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
   }

@@ -1,5 +1,5 @@
 
-// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC02NR.c && ./a.out
+// $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC02NR.c && ./a.out [-c|-r]
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,7 +75,7 @@ int main(int argc,char** argv){
   int size=5;
   bool cpu=false,cpur=false;
   int argstart=2;
-
+  /** 起動パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
@@ -86,6 +86,7 @@ int main(int argc,char** argv){
     printf("  -c: CPU Without recursion\n");
     printf("  -r: CPUR Recursion\n");
   }
+  // aBoard配列の初期化
   for(int i=0;i<size;i++){ aBoard[i]=-1; }
   /**  非再帰 */
   if(cpu){ NQueen(0,size); }
