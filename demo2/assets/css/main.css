@@ -1,29 +1,109 @@
 @charset 'utf-8';
 
-.hide {
-  display: none;
+/*----------------------------------------
+Common
+----------------------------------------*/
+* {
+  box-sizing: border-box;
 }
 
-#board-area .item-area {
-  padding: 0;
+html, body {
+  font-size: 90%;
+  font-family: 'Arial', 'Lato', 'Noto Sans JP', 'ヒラギノ角ゴ ProN', 'Hiragino Kaku Gothic ProN', 'メイリオ', Meiryo, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
+  height: 100vh;
 }
-#queen-board {
+body {
+  background-color: #272822;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
 }
-#board-area .item-area {
+input[type="number"],
+input[type="text"],
+input[type="seaarch"],
+.select {
+  border-radius: 4px;
+  border: none;
+}
+input[type="number"],
+input[type="text"],
+input[type="seaarch"] {
+  padding: 4px 8px;
+}
+.select {
+  display: flex;
+  position: relative;
   align-items: center;
+  background-color: #FFF;
 }
-#editor {
-  flex: 1;
-  margin: 20px 0 0;
+.select select::-ms-expand {
+  display: none;
+}
+input:focus,
+button:focus,
+.select select:focus {
+  outline: 0;
+}
+.select select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding: 4px 8px;
+  padding-right: 24px;
+  background-color: transparent;
+  border: none;
+}
+.select:after {
+  content: "\f0dc";
+  font-family: "Font Awesome 5 Free";
+  color: #333;
+  position: absolute;
+  right: 8px;
+  font-weight: bold;
+}
+/*----------------------------------------
+Navigation
+----------------------------------------*/
+#navigation {
+  display: flex;
+  padding: 5px 10px;
+}
+#navigation > * {
+  margin: 0 5px;
+}
+#btn-done {
+  border: none;
+  background-color: #03A9F4;
+  color: #FFF;
+  font-weight: bold;
+  border-radius: 4px;
+  padding: 4px 16px;
+  border: 1px solid #FFF;
+  box-shadow: 0 0 0 1px #03A9F4;
+}
+#btn-done .msg-stop,
+#btn-done.start .msg-start {
+  display: none;
+}
+#btn-done.start {
+  background-color: #E91E63;
+  box-shadow: 0 0 0 1px #E91E63;
+}
+#btn-done.start .msg-stop {
+  display: block;
+}
+/*----------------------------------------
+Editor
+----------------------------------------*/
+#textView {
+  margin: 0;
   padding: 10px;
-  background-color: #272822;
   overflow-y: scroll;
-  width: 100%;
-  box-shadow: 0 20px 30px 1px rgba(0,0,0,0.4) inset;
+  width: 40vw;
+  box-shadow: 10px 0 20px 1px rgba(0,0,0,0.5);
 }
-code.prettyprinted {
+#textView code.prettyprinted {
   box-shadow: none;
   border: none;
   background-color: transparent;
@@ -32,26 +112,34 @@ code.prettyprinted {
   font-size: 0.9em;
   line-height: 1.8;
 }
-ol.linenums {
+#textView ol.linenums {
   list-style: decimal outside !important;
 }
-ol.linenums li {
+#textView ol.linenums li {
   display: list-item;
   text-align: -webkit-match-parent;
 }
-li.L1, li.L3, li.L5, li.L7, li.L9 {
-  /*background-color: transparent;*/
-}
-code.prettyprint {
+#textView code.prettyprint {
   white-space: pre-wrap;
 }
-
-#response-board #res {
+/*----------------------------------------
+Common
+----------------------------------------*/
+#container {
   display: flex;
-  flex-direction: column;
-  overflow-y: scroll;
-  height: 100vh;
+  flex: 1;
+  overflow: hidden;
 }
-#output p {
-  margin: 0;
+#response-area {
+  display: flex;
+  flex: 1;
+  background-color: #000;
+  color: #FFF;
+  padding: 20px;
+  flex-direction: column;
+}
+
+#results {
+  display: flex;
+  overflow-y: scroll;
 }
