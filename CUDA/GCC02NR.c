@@ -87,13 +87,13 @@ void NQueenR(int row,int size){
     print(size);
   }else{
     for(int col=aBoard[row]+1;col<size;col++){
-      aBoard[row]=col;
+      aBoard[row]=col;  //Qを配置
       if(down[col]==0){
         down[col]=1;
         NQueenR(row+1,size);
         down[col]=0;
       }
-      aBoard[row]=-1;
+      aBoard[row]=-1;   //空き地に戻す
     }
   }
 }

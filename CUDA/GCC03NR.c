@@ -126,9 +126,8 @@ void NQueenR(int row,int size){
   if(row==size){
     TOTAL++;
   }else{
-    //for(int col=0;col<size;col++){
     for(int col=aBoard[row]+1;col<size;col++){
-      aBoard[row]=col;
+      aBoard[row]=col;    //Qを配置
       if(down[col]==0
           && right[row-col+sizeE]==0
           && left[row+col]==0){
@@ -140,7 +139,7 @@ void NQueenR(int row,int size){
           =right[row-col+sizeE]
           =left[row+col]=0;
       }
-      aBoard[row]=-1;
+      aBoard[row]=-1;     //空き地に戻す
     }
   }
 }

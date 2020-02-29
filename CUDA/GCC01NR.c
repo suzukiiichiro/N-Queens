@@ -62,13 +62,13 @@ void NQueen(int row,int size){
 }
 //CPUR 再帰版ロジックメソッド
 void NQueenR(int row,int size){
-  if(row==size){            //SIZEは8で固定
-    print(size);            //rowが8になったら出力
+  if(row==size){         //SIZEは5で固定
+    print(size);         //rowが5になったら出力
   }else{
     for(int col=aBoard[row]+1;col<size;col++){
-      aBoard[row]=col;
-      NQueenR(row+1,size);  // インクリメントしながら再帰
-      aBoard[row]=-1;
+      aBoard[row]=col;  //Qを配置
+      NQueenR(row+1,size);
+      aBoard[row]=-1;   //空き地に戻す
     }
   }
 }
