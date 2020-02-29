@@ -1,6 +1,44 @@
 
 //$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC11NR.c && ./a.out [-c|-r]
 
+/**
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11NR.c && ./a.out -r
+１１．CPUR 再帰 枝刈り
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.00
+13:        73712            9233            0.02
+14:       365596           45752            0.14
+15:      2279184          285053            0.95
+16:     14772512         1846955            6.57
+17:     95815104        11977939           46.97
+
+
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11NR.c && ./a.out -c
+１１．CPU 非再帰 枝刈り
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.00
+13:        73712            9233            0.02
+14:       365596           45752            0.14
+15:      2279184          285053            0.91
+16:     14772512         1846955            6.36
+17:     95815104        11977939           45.65
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -404,7 +442,7 @@ int main(int argc,char** argv) {
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    int min=4; int targetN=18;
+    int min=4; int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;

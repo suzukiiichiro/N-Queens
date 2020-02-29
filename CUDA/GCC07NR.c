@@ -1,6 +1,44 @@
 
 //$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC07NR.c && ./a.out [-c|-r]
 
+/**
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC07NR.c && ./a.out -r
+７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.02
+13:        73712            9233            0.09
+14:       365596           45752            0.51
+15:      2279184          285053            3.40
+16:     14772512         1846955           23.88
+17:     95815104        11977939         2:51.87
+
+
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC07NR.c && ./a.out -c
+７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.01
+13:        73712            9233            0.06
+14:       365596           45752            0.32
+15:      2279184          285053            2.18
+16:     14772512         1846955           15.41
+17:     95815104        11977939         1:50.19
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -284,7 +322,6 @@ int main(int argc,char** argv){
   int min=4;
   int targetN=17;
   int mask;
-  //int targetN=4;
   for(int i=min;i<=targetN;i++){
     //TOTAL=0; UNIQUE=0;
     COUNT2=COUNT4=COUNT8=0;
