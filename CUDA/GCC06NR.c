@@ -21,7 +21,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC06NR.c && ./a.out -r
 17:     95815104               0         1:05.71
 
 
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC06NR.c && ./a.out -c
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC06NR.c && ./a.out -c
 ６．CPU 非再帰 バックトラック＋ビットマップ
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               0            0.00
@@ -32,12 +32,12 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC06NR.c && ./a.out -c
  9:          352               0            0.00
 10:          724               0            0.00
 11:         2680               0            0.00
-12:        14200               0            0.00
-13:        73712               0            0.02
-14:       365596               0            0.13
-15:      2279184               0            0.76
-16:     14772512               0            5.07
-17:     95815104               0           35.82
+12:        14200               0            0.01
+13:        73712               0            0.04
+14:       365596               0            0.24
+15:      2279184               0            1.47
+16:     14772512               0            9.75
+17:     95815104               0         1:08.46
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,9 +47,6 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC06NR.c && ./a.out -c
 //
 #define MAX 27
 //
-int down[2*MAX-1]; 	//down:flagA 縦 配置フラグ
-int right[2*MAX-1]; //right:flagB 斜め配置フラグ
-int left[2*MAX-1]; 	//left:flagC 斜め配置フラグ
 long TOTAL=0;
 long UNIQUE=0;
 // int aBoard[MAX];
@@ -58,7 +55,7 @@ int aS[MAX];       	//aS:aScrath[]
 //関数宣言
 void TimeFormat(clock_t utime,char *form);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
-void NQueen(int size,int mask);
+void NQueen(int size,int mask,int row);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){
   int dd,hh,mm;
@@ -80,12 +77,51 @@ void TimeFormat(clock_t utime,char* form){
     sprintf(form,"           %5.2f",ss);
 }
 //CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask){
+void NQueen(int size,int mask,int row){
+  register int aStack[size];
+  register int* pnStack;
+  register int bit;
+  register int bitmap;
+  register int sizeE=size-1;
+  register int down[size],right[size],left[size];
+  aStack[0]=-1; 
+  pnStack=aStack+1;
+  bit=0;
+  bitmap=mask;
+  down[0]=left[0]=right[0]=0;
+  while(true){
+    if(bitmap){
+      bitmap^=bit=(-bitmap&bitmap); 
+      if(row==sizeE){
+        TOTAL++;
+        bitmap=*--pnStack;
+        --row;
+        continue;
+      }else{
+        int n=row++;
+        left[row]=(left[n]|bit)<<1;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        *pnStack++=bitmap;
+        bitmap=mask&~(left[row]|down[row]|right[row]);
+        continue;
+      }
+    }else{ 
+      bitmap=*--pnStack;
+      if(pnStack==aStack){ break ; }
+      --row;
+      continue;
+    }
+  }
+}
+//CPU 非再帰版 ロジックメソッド
+void _NQueen(int size,int mask){
   int aStack[MAX+2];
   register int* pnStack;
   register int row=0;
   register int bit;
   register int bitmap;
+  int down[size],right[size],left[size];
   int odd=size&1;
   int sizeE=size-1;
   /* センチネルを設定-スタックの終わりを示します*/
@@ -237,7 +273,7 @@ int main(int argc,char** argv){
       // for(int j=0;j<=targetN;j++){
       // 	aBoard[j]=-1;
       // }
-      NQueen(i,mask);
+      NQueen(i,mask,0);
     }
     if(cpur){
       // aBaordを使用しないので
