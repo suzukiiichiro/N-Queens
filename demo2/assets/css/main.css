@@ -101,6 +101,7 @@ Navigation
 }
 #speed-slider .input-range {
   margin: 0 10px;
+  transform: scaleX(-1);
 }
 #speed-slider .input-range:after {
   /*content: attr(value);*/
