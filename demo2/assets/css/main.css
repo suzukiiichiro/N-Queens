@@ -93,6 +93,51 @@ Navigation
 #btn-done.start .msg-stop {
   display: block;
 }
+#speed-slider {
+  display: inline-flex;
+  align-items: center;
+  color: #FFF;
+  position: relative;
+}
+#speed-slider .input-range {
+  margin: 0 10px;
+}
+#speed-slider .input-range:after {
+  /*content: attr(value);*/
+  /*position: absolute;*/
+}
+.input-range[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  height: 5px;
+  width: 100%;
+  border-radius: 6px;
+}
+.input-range[type=range]:focus, .input-range[type=range]:active {
+  outline: none;
+}
+.input-range[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  position: relative;
+  border: 2px solid rgba(0, 0, 0, 0.7);
+  width: 22px;
+  height: 22px;
+  display: block;
+  background-color: #fff;
+  border-radius: 50%;
+  -webkit-border-radius: 50%;
+}
+.input-range[type=range]:active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.6);
+  transition: 0.4s;
+}
+.q-start .start-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
 /*----------------------------------------
 Editor
 ----------------------------------------*/
@@ -146,4 +191,47 @@ Common
 
 #output {
   white-space: pre;
+}
+
+
+#views {
+  display: flex;
+  align-items: flex-start;
+}
+#table {
+  flex: 1;
+}
+#output-table {
+  margin: 0 auto;
+  width: auto;
+  border-collapse: collapse;
+}
+#output-table td {
+  width: 3em;
+  height: 3em;
+  padding: 0;
+  text-align: center;
+  border: 1px solid #FFF;
+  color: #DDD;
+}
+#output-table td.queen {
+  background-color: #1abc9c;
+}
+#output-table td:before {
+  content: "("attr(data-val)")";s
+  font-size: 0.8em;
+}
+#queens {
+  width: 45%;
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 50vh;
+  overflow-y: scroll;
+  padding: 0 s10px;
+}
+#queens canvas {
+  background-color: transparent;
+  width: calc(100% / 2) !important;
+  height: auto !important;
+  padding: 0 8px 8px;
 }
