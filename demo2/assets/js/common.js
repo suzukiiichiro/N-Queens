@@ -20,12 +20,12 @@ class UI {
       }
     }
     
-    let y = data.box[x];
-    
-    if(y != -1) {
-      document.querySelector(`.td-${x}${y}`).classList.add('queen');
+    for(let i = 0; i < data.box.length; i++) {
+      if(data.box[i] != -1) {
+        document.querySelector(`.td-${i}${data.box[i]}`).classList.add('queen');
+      }
     }
-
+    
     if(data.matched) {
       if(data.row + 1 == data.size || data.row == data.size) {
         html2canvas(document.querySelector("#table table"), {
