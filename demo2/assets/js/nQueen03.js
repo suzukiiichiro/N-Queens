@@ -32,16 +32,15 @@ function timeFormat(start){
 
   return h + ':' + m + ':' + s;
 }
-function sleep(waitMsec) {
-  var startMsec = new Date();
-  while (new Date() - startMsec < waitMsec);
+function sleep() {
+  let startMsec = new Date();
+  while (new Date() - startMsec < self.SPEED);
 }
 
 //EOS1
 function NQueen(row, size) {
   let sizeE = size - 1;
   let matched;
-  let speed = self.SPEED * 1000;
   while(row >= 0) {
     matched = false;
     for(let col = aBoard[row]+1; col < size; col++) {
@@ -56,8 +55,7 @@ function NQueen(row, size) {
       }
     }
 
-    sleep(speed);
-
+    sleep();
     self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: matched});
 
     if(matched) {
@@ -82,26 +80,32 @@ function NQueen(row, size) {
 function NQueenR(row, size) {
   let sizeE = size - 1;
   if(row == size) {
+    sleep();
+    self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: true});
     self.TOTAL++;
   } else {
     for(let col = aBoard[row] + 1; col < size; col++) {
       aBoard[row] = col;
+      
+      sleep();
+      self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: false});
+
       if(down[col] == 0 && right[row-col+sizeE] == 0 && left[row+col] == 0) {
         down[col] = right[row-col+sizeE] = left[row+col] = 1;
         NQueenR(row + 1, size);
         down[col] = right[row-col+sizeE] = left[row+col] = 0;
       }
+
       aBoard[row] = -1;
     }
   }
-  self.postMessage({status: 'success', result: '' });
 }
 //EOS2
 
 function main(size, mode = 1){
   let from = new Date();
   let min = 4;
-  let targetN = Number(size);
+  let targetN = size;
   for(let i = min; i <= targetN; i++){
     self.TOTAL = 0;
     self.UNIQUE = 0;
@@ -111,14 +115,15 @@ function main(size, mode = 1){
     } else {
       self.NQueenR(0, i);
     }
+
     self.postMessage({status: 'process', result: `n:${i}\t\tTotal:${self.TOTAL}\t\tUnique:${self.UNIQUE}\t\ttime:${timeFormat(from)}`});
   }
   self.postMessage({status: 'success', result: '' });
 }
 
 self.addEventListener('message', (msg) => {
-  self.SPEED = msg.data.speed;
+  self.SPEED = Number(msg.data.speed) * 1000;
   if(msg.data.size) {
-    main(msg.data.size, msg.data.mdoe);
+    main(Number(msg.data.size), Number(msg.data.mode));
   }
 });

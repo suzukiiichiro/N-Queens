@@ -11,9 +11,8 @@ class UI {
   }
   setTable(data) {
 
-    let x = data.row;
-    let row = data.matched ? data.row + 1 : data.row;
-    
+    let x = data.row == data.size ? data.row - 1 : data.row;
+
     for(let i = x; i < data.size; i++) {
       let queen = document.querySelectorAll(`.tr-${i} .queen`);
       for(let k = 0; k < queen.length; k++) {
@@ -22,16 +21,19 @@ class UI {
     }
     
     let y = data.box[x];
+    
     if(y != -1) {
       document.querySelector(`.td-${x}${y}`).classList.add('queen');
     }
 
-    if(row == data.size && data.matched) {
-      html2canvas(document.querySelector("#table table"), {
-        backgroundColor: null
-      }).then(canvas => {
-          document.querySelector('#queens').appendChild(canvas);
-      });
+    if(data.matched) {
+      if(data.row + 1 == data.size || data.row == data.size) {
+        html2canvas(document.querySelector("#table table"), {
+          backgroundColor: null
+        }).then(canvas => {
+            document.querySelector('#queens').appendChild(canvas);
+        });
+      }
     }
   }
   message(msg) {
@@ -129,11 +131,6 @@ class UI {
       this.worker.postMessage({size: number, mode: mode, speed: speed});
     }
   }
-  slider() {
-    if(!this.end) {
-      this.worker.postMessage({speed: document.querySelector('#speed').value});
-    }
-  }
 
   //初期設定
   async init() {
@@ -142,7 +139,6 @@ class UI {
     //読み込むファイルを選択
     this.fileSelect.addEventListener('change', this.selectFile.bind(this), false);
     this.reverse.addEventListener('change', this.selectFile.bind(this), false);
-    document.querySelector('#speed').addEventListener('change', this.slider.bind(this), false);
     document.querySelector('#num').addEventListener('change', this.makeTable.bind(this), false);
     //開始
     document.querySelector('#btn-done').addEventListener('click', this.start.bind(this), false);
