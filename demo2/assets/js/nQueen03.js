@@ -11,6 +11,7 @@ right.fill(0);
 left.fill(0);
 let TOTAL = 0;
 let UNIQUE = 0;
+let SPEED = 0;
 
 function print(size) {
   let out = `${TOTAL}:\t`;
@@ -31,11 +32,16 @@ function timeFormat(start){
 
   return h + ':' + m + ':' + s;
 }
+function sleep(waitMsec) {
+  var startMsec = new Date();
+  while (new Date() - startMsec < waitMsec);
+}
 
 //EOS1
 function NQueen(row, size) {
   let sizeE = size - 1;
   let matched;
+  let speed = self.SPEED * 1000;
   while(row >= 0) {
     matched = false;
     for(let col = aBoard[row]+1; col < size; col++) {
@@ -49,6 +55,11 @@ function NQueen(row, size) {
         break;
       }
     }
+
+    sleep(speed);
+
+    self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: matched});
+
     if(matched) {
       row++;
       if(row == size) {
@@ -106,5 +117,8 @@ function main(size, mode = 1){
 }
 
 self.addEventListener('message', (msg) => {
-  main(msg.data.size, msg.data.mdoe);
+  self.SPEED = msg.data.speed;
+  if(msg.data.size) {
+    main(msg.data.size, msg.data.mdoe);
+  }
 });

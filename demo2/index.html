@@ -13,11 +13,11 @@
 
 <body>
   <nav id="navigation">
-    <aside class="select">
+    <aside class="select start-disabled">
       <select id="selectFile" name="selectFile">
-        <option value="1" selected>ブルートフォース　力任せ探索</option>
+        <option value="1">ブルートフォース　力任せ探索</option>
         <option value="2">配置フラグ（制約テスト高速化）</option>
-        <option value="3">バックトラック</option>
+        <option value="3" selected>バックトラック</option>
         <option value="4">バックトラック＋対称解除法</option>
         <option value="5">バックトラック＋対称解除法＋枝刈り</option>
         <option value="6">バックトラック＋ビットマップ</option>
@@ -30,13 +30,17 @@
         <option value="13">並列処理</option>
      </select>
    </aside>
-   <aside class="select">
+   <aside class="select start-disabled">
       <select name="rev" id="rev">
        <option value="1">非再帰</option>
        <option value="2">再帰</option>
      </select>
    </aside>
-    <input type="number" id="num" value="4">
+    <input type="number" id="num" value="4" class="start-disabled">
+    <div id="speed-slider" class="start-disabled">
+      <i class="fas fa-walking"></i>
+      <input type="range" id="speed" value="0.5" step="0.5" min="0" max="3" class="input-range"><i class="fas fa-running"></i>
+    </div>
     <button type="button" id="btn-done"><span class="msg-start">スタート</span><span class="msg-stop">ストップ</span></button>
   </nav>
   <section id="container">
@@ -46,7 +50,10 @@
       </pre>
     </div>
     <div id="response-area">
-      <div id="views"></div>
+      <div id="views">
+        <div id="table"></div>
+        <div id="queens"></div>
+      </div>
       <div id="results">
         <div id="output"></div>
       </div>
@@ -54,6 +61,7 @@
   </section>
 
   <script src="assets/lib/code-prettify/prettify.js"></script>
+  <script src="assets/lib/html2canvas.min.js"></script>
   <script src="assets/js/common.js"></script>
 
 </body>
