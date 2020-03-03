@@ -106,7 +106,7 @@ function main(size, mode = 1){
   let from = new Date();
   let min = 4;
   let targetN = size;
-  for(let i = min; i <= targetN; i++){
+  for(let i = targetN; i <= targetN; i++){
     self.TOTAL = 0;
     self.UNIQUE = 0;
     for(let j = 0; j < targetN; j++){ aBoard[j]=-1; }
