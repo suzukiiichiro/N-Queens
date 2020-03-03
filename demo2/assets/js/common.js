@@ -10,11 +10,14 @@ class UI {
   message(msg) {
     if(!this.end) {
       setTimeout(() => {
-        document.querySelector('#output').insertAdjacentHTML('beforeend', `<p>${msg.data.result}</p>`);
-        //最下部にスクロール
-        let out = document.querySelector('#results');
-        var y = out.scrollHeight - out.clientHeight;
-        out.scroll(0, y);
+        if(msg.data.box) {
+        } else {
+          document.querySelector('#output').insertAdjacentHTML('beforeend', `<p>${msg.data.result}</p>`);
+          //最下部にスクロール
+          let out = document.querySelector('#results');
+          var y = out.scrollHeight - out.clientHeight;
+          out.scroll(0, y);
+        }
         if(msg.data.status == "success") {
           this.end = true;
           this.start();
