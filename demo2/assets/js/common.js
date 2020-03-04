@@ -10,30 +10,22 @@ class UI {
     this.viewArray = [];
   }
   setTable(data) {
-
-    let x = data.row == data.size ? data.row - 1 : data.row;
-
-    for(let i = x; i < data.size; i++) {
-      let queen = document.querySelectorAll(`.tr-${i} .queen`);
-      for(let k = 0; k < queen.length; k++) {
-        queen[k].classList.remove('queen');
-      }
-    }
-    
+    //配置したクイーンをリセット
+    let q = document.querySelectorAll(`.queen`);
+    for(let k = 0; k < q.length; k++) { q[k].classList.remove('queen'); }
+    //aBoardの値をみる
     for(let i = 0; i < data.box.length; i++) {
       if(data.box[i] != -1) {
         document.querySelector(`.td-${i}${data.box[i]}`).classList.add('queen');
       }
     }
-    
-    if(data.matched) {
-      if(data.row + 1 == data.size || data.row == data.size) {
-        html2canvas(document.querySelector("#table table"), {
-          backgroundColor: null
-        }).then(canvas => {
-            document.querySelector('#queens').appendChild(canvas);
-        });
-      }
+    //解が正しい場合にキャプチャする
+    if(data.row == data.size) {
+      html2canvas(document.querySelector("#table table"), {
+        backgroundColor: null
+      }).then(canvas => {
+          document.querySelector('#queens').appendChild(canvas);
+      });
     }
   }
   message(msg) {
