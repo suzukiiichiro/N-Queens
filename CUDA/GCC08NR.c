@@ -2,7 +2,8 @@
 // $ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out [-c|-r]
 
 /**
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC08NR.c && ./a.out -r
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -r
+
 ８．CPUR 再帰 ビットマップ＋対称解除法＋枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -12,16 +13,15 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC08NR.c && ./a.out -r
  8:           92              12            0.00
  9:          352              46            0.00
 10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.02
-13:        73712            9233            0.09
-14:       365596           45752            0.51
-15:      2279184          285053            3.40
-16:     14772512         1846955           23.90
-17:     95815104        11977939         2:50.63
+11:         2664             339            0.00
+12:        14200            1787            0.01
+13:        73152            9163            0.05
+14:       365596           45752            0.31
+15:      2255992          282154            2.03
+16:     14772512         1846955           14.64
+17:     94722040        11841306         1:42.45
 
-
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC08NR.c && ./a.out -c
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 ８．CPU 非再帰 ビットマップ＋対称解除法＋枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -33,11 +33,11 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC08NR.c && ./a.out -c
 10:          724              92            0.00
 11:         2680             341            0.00
 12:        14200            1787            0.01
-13:        73712            9233            0.06
-14:       365596           45752            0.32
-15:      2279184          285053            2.14
-16:     14772512         1846955           15.17
-17:     95815104        11977939         1:49.08
+13:        73712            9233            0.05
+14:       365596           45752            0.29
+15:      2279184          285053            2.07
+16:     14772512         1846955           13.85
+17:     95815104        11977939         1:45.20
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,15 +58,14 @@ int aT[MAX];       	//aT:aTrial[]
 int aS[MAX];       	//aS:aScrath[]
 int COUNT2,COUNT4,COUNT8;
 //関数宣言
+void TimeFormat(clock_t utime,char *form);
 void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
 int intncmp(int lt[],int rt[],int n);
 void symmetryOps_bitmap(int si);
-void TimeFormat(clock_t utime,char *form);
+void NQueen(int size,int mask);
 // void NQueenR(int size,int mask,int row,int left,int down,int right);
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
-void NQueen(int size,int mask);
-void print(int size);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){
   int dd,hh,mm;
@@ -185,7 +184,7 @@ void symmetryOps_bitmap(int si){
 }
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int size,int mask){
-  int aStack[MAX+2];
+  int aStack[size];
   register int* pnStack;
   register int row=0;
   register int bit;
@@ -197,42 +196,42 @@ void NQueen(int size,int mask){
   for(int i=0;i<(1+odd);++i){
     bitmap=0;
     if(0==i){
-      aBoard[0]=0;
-      down[0]=left[0]=right[0]=0;
-      int half=size>>1;
+      // aBoard[0]=0;
+      // down[0]=left[0]=right[0]=0;
+      int half=size>>1; // size/2
       bitmap=(1<<half)-1;
+      // bitmap=(1<<size/1)-1;
       pnStack=aStack+1;
     }else{
-      aBoard[0]=bitmap;
-      down[0]=left[0]=right[0]=0;
+      // aBoard[0]=bitmap;
+      // down[0]=left[0]=right[0]=0;
       bitmap=1<<(size>>1);
-      row=1;
       down[1]=bitmap;
       right[1]=(bitmap>>1);
       left[1]=(bitmap<<1);
       pnStack=aStack+1;
       *pnStack++=0;
-      bitmap=(bitmap-1)>>1;
     }
     while(true){
-      bit=-((signed)bitmap) & bitmap;
       if(bitmap){
-        bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
         if(row==sizeE){
-          symmetryOps_bitmap(size); /* 対称解除法の追加 */
+          /* 対称解除法の追加 */
+          //TOTAL++;
+          symmetryOps_bitmap(size); 
           bitmap=*--pnStack;
           --row;
           continue;
         }else{
           int n=row++;
+          left[row]=(left[n]|bit)<<1;
           down[row]=down[n]|bit;
           right[row]=(right[n]|bit)>>1;
-          left[row]=(left[n]|bit)<<1;
           *pnStack++=bitmap;
-          bitmap=mask&~(down[row]|right[row]|left[row]);
+          bitmap=mask&~(left[row]|down[row]|right[row]);
           continue;
         }
-      }else{
+      }else{ 
         bitmap=*--pnStack;
         if(pnStack==aStack){ break ; }
         --row;
@@ -245,26 +244,53 @@ void NQueen(int size,int mask){
 //void NQueenR(int size,int mask,int row,int left,int down,int right){
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
-  int bitmap;
-  int bitmaps;
-  /** 偶数と奇数の分岐 */
-  bitmaps=(mask&~(left|down|right));
-  bitmap=(mask&~(left|down|right|ex1));
+	int bitmap;
+	int bitmaps;
+	/**
+		aBoard配列構築用 bitmaps
+	*/
+  bitmaps=(mask&~(left|down|right));		//aBoard格納用
+  // bitmap=(mask&~(left|down|right|ex1)); //ロジック用
+	/**
+  		bitmap=(mask&~(left|down|right|ex1)); //ロジック用
+			↑この行１行の動きを分解すると if(size%s){ からのロジック
+			になります。
+			ですので、if文ブロックはコメントアウトして、	
+  		bitmap=(mask&~(left|down|right|ex1)); //ロジック用
+			を一行活かせばよいです。
+
+
+			偶数の処理に問題はありません。
+			奇数の処理に不具合があります。(現在調査中）
+  */
+  if(size%2){ //奇数
+    if(ex1!=0){ //１，２回目の再帰
+      // bitmap=mask&~(left|down|right);			//劇遅いけど正確
+      bitmap=(mask&~(left|down|right|ex1));		//高速だけど計算を間違える
+    }else{    //３回目以降の再帰
+      bitmap=mask&~(left|down|right);
+    }
+  }else{	//偶数
+    if(ex2==0){ //１回目の再帰
+      bitmap=mask&~(left|down|right|ex1);
+    }else{      //２回目以降の再帰
+      bitmap=mask&~(left|down|right);
+    }
+  }
   if(row==size){
-//    TOTAL++;
-     symmetryOps_bitmap(size);
+    // TOTAL++;
+    symmetryOps_bitmap(size);
   }else{
     while(bitmap){
-      //bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-    	aBoard[row]=(-bitmaps&bitmaps);
-      bitmap^=bit=(-bitmap&bitmap);
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 		//ロジック用
+      bitmaps^=aBoard[row]=bit=(-bitmaps&bitmaps); 	//aBoard格納用
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       ex2=0;
     }
   }
 }
-//メインメソッド
+
 int main(int argc,char** argv){
   bool cpu=false,cpur=false;
   int argstart=2;
@@ -315,8 +341,9 @@ int main(int argc,char** argv){
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
     }
     TimeFormat(clock()-st,t);
+     // printf("%2d:%13ld%16ld%s\n",i,TOTAL*2,getUnique(),t);
      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-//    printf("%2d:%13ld%16ld%s\n",i,TOTAL*2,getUnique(),t);
+     // printf("%2d:%13ld%16ld%s %d %d %d\n",i,getTotal(),getUnique(),t,COUNT2,COUNT4,COUNT8);
   }
   return 0;
 }
