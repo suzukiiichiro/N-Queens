@@ -189,7 +189,6 @@ void NQueen(int size,int mask,int row){
   down[0]=left[0]=right[0]=0;
   while(true){
     if(bitmap){
-      //bitmap^=bit=(-bitmap&bitmap); 
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
       if(row==sizeE){
         /* 対称解除法の追加 */
@@ -227,7 +226,6 @@ void NQueenR(int size,int mask,int row,int left,int down,int right){
     while(bitmap){
       //bitmap^=bit=(-bitmap&bitmap);
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      printf("aBoard[%d] : %d\n", row, aBoard[row]);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
