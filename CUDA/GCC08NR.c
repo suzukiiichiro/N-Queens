@@ -190,7 +190,7 @@ void NQueen(int size,int mask){
   register int row=0;
   register int bit;
   register int bitmap;
-  int odd=size&1; //奇数:1 偶数:0 
+  int odd=size&1; //奇数:1 偶数:0
   int sizeE=size-1;
   /* センチネルを設定-スタックの終わりを示します*/
   aStack[0]=-1;
@@ -217,7 +217,7 @@ void NQueen(int size,int mask){
     while(true){
       bit=-((signed)bitmap) & bitmap;
       if(bitmap){
-        bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
         if(row==sizeE){
           symmetryOps_bitmap(size); /* 対称解除法の追加 */
           bitmap=*--pnStack;
@@ -244,19 +244,20 @@ void NQueen(int size,int mask){
 //CPUR 再帰版　ロジックメソッド
 //void NQueenR(int size,int mask,int row,int left,int down,int right){
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
-  int odd=size&1;
   int bit;
   int bitmap;
   int bitmaps;
   /** 偶数と奇数の分岐 */
-  // bitmap=(mask&~(left|down|right));
+  bitmaps=(mask&~(left|down|right));
   bitmap=(mask&~(left|down|right|ex1));
   if(row==size){
-    TOTAL++;
-    // symmetryOps_bitmap(size);
+//    TOTAL++;
+     symmetryOps_bitmap(size);
   }else{
     while(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      //bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+    	aBoard[row]=(-bitmaps&bitmaps);
+      bitmap^=bit=(-bitmap&bitmap);
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       ex2=0;
@@ -286,8 +287,8 @@ int main(int argc,char** argv){
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   clock_t st;           //速度計測用
   char t[20];           //hh:mm:ss.msを格納
-  int min=8;
-  int targetN=8;
+  int min=4;
+  int targetN=17;
   int mask;
   int excl;
   for(int i=min;i<=targetN;i++){
@@ -314,8 +315,8 @@ int main(int argc,char** argv){
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
     }
     TimeFormat(clock()-st,t);
-    // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-    printf("%2d:%13ld%16ld%s\n",i,TOTAL*2,getUnique(),t);
+     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+//    printf("%2d:%13ld%16ld%s\n",i,TOTAL*2,getUnique(),t);
   }
   return 0;
 }
