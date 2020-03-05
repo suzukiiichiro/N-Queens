@@ -56,7 +56,7 @@ function NQueen(row, size) {
     }
 
     sleep();
-    self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: matched});
+    self.postMessage({status: 'process', box: aBoard, row: matched ? row + 1 : row, size: size});
 
     if(matched) {
       row++;
@@ -80,22 +80,20 @@ function NQueen(row, size) {
 function NQueenR(row, size) {
   let sizeE = size - 1;
   if(row == size) {
-    sleep();
-    self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: true});
     self.TOTAL++;
+    sleep();
+    self.postMessage({status: 'process', box: aBoard, row: row, size: size});
   } else {
+    
+    sleep();
+    self.postMessage({status: 'process', box: aBoard, row: row, size: size});
     for(let col = aBoard[row] + 1; col < size; col++) {
       aBoard[row] = col;
-      
-      sleep();
-      self.postMessage({status: 'process', box: aBoard, row: row, size: size, matched: false});
-
       if(down[col] == 0 && right[row-col+sizeE] == 0 && left[row+col] == 0) {
         down[col] = right[row-col+sizeE] = left[row+col] = 1;
         NQueenR(row + 1, size);
         down[col] = right[row-col+sizeE] = left[row+col] = 0;
       }
-
       aBoard[row] = -1;
     }
   }
