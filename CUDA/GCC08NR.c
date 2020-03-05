@@ -4,7 +4,7 @@
 /**
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -r
 
-８．CPUR 再帰 ビットマップ＋対称解除法＋枝刈り
+８．CPUR 再帰 ビットマップ＋対称解除法＋奇数と偶数
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -13,16 +13,16 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -r
  8:           92              12            0.00
  9:          352              46            0.00
 10:          724              92            0.00
-11:         2664             339            0.00
+11:         2680             341            0.00
 12:        14200            1787            0.01
-13:        73152            9163            0.05
+13:        73712            9233            0.06
 14:       365596           45752            0.31
-15:      2255992          282154            2.03
-16:     14772512         1846955           14.64
-17:     94722040        11841306         1:42.45
+15:      2279184          285053            2.09
+16:     14772512         1846955           14.59
+17:     95815104        11977939         1:44.84
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
-８．CPU 非再帰 ビットマップ＋対称解除法＋枝刈り
+８．CPU 非再帰 ビットマップ＋対称解除法＋奇数と偶数
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -48,14 +48,14 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 #define MAX 27
 //変数宣言
 int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
-int down[2*MAX-1]; 	//down:flagA 縦 配置フラグ
+int down[2*MAX-1];   //down:flagA 縦 配置フラグ
 int right[2*MAX-1]; //right:flagB 斜め配置フラグ
-int left[2*MAX-1]; 	//left:flagC 斜め配置フラグ
+int left[2*MAX-1];   //left:flagC 斜め配置フラグ
 long TOTAL=0;
 long UNIQUE=0;
 int aBoard[MAX];
-int aT[MAX];       	//aT:aTrial[]
-int aS[MAX];       	//aS:aScrath[]
+int aT[MAX];         //aT:aTrial[]
+int aS[MAX];         //aS:aScrath[]
 int COUNT2,COUNT4,COUNT8;
 //関数宣言
 void TimeFormat(clock_t utime,char *form);
@@ -244,33 +244,19 @@ void NQueen(int size,int mask){
 //void NQueenR(int size,int mask,int row,int left,int down,int right){
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
-	int bitmap;
-	int bitmaps;
-	/**
-		aBoard配列構築用 bitmaps
-	*/
-  bitmaps=(mask&~(left|down|right));		//aBoard格納用
-  // bitmap=(mask&~(left|down|right|ex1)); //ロジック用
-	/**
-  		bitmap=(mask&~(left|down|right|ex1)); //ロジック用
-			↑この行１行の動きを分解すると if(size%s){ からのロジック
-			になります。
-			ですので、if文ブロックはコメントアウトして、	
-  		bitmap=(mask&~(left|down|right|ex1)); //ロジック用
-			を一行活かせばよいです。
-
-
-			偶数の処理に問題はありません。
-			奇数の処理に不具合があります。(現在調査中）
+  int bitmap;
+  int bitmaps;
+  /**
+    aBoard配列構築用 bitmaps
   */
+  bitmaps=(mask&~(left|down|right));    //aBoard格納用
   if(size%2){ //奇数
-    if(ex1!=0){ //１，２回目の再帰
-      // bitmap=mask&~(left|down|right);			//劇遅いけど正確
-      bitmap=(mask&~(left|down|right|ex1));		//高速だけど計算を間違える
-    }else{    //３回目以降の再帰
+    if(ex2!=0){ //１回目の再帰
+      bitmap=(mask&~(left|down|right|ex1));
+    }else{      //２回目以降の再帰
       bitmap=mask&~(left|down|right);
     }
-  }else{	//偶数
+  }else{  //偶数
     if(ex2==0){ //１回目の再帰
       bitmap=mask&~(left|down|right|ex1);
     }else{      //２回目以降の再帰
@@ -282,8 +268,8 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
     symmetryOps_bitmap(size);
   }else{
     while(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 		//ロジック用
-      bitmaps^=aBoard[row]=bit=(-bitmaps&bitmaps); 	//aBoard格納用
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);     //ロジック用
+      bitmaps^=aBoard[row]=bit=(-bitmaps&bitmaps);   //aBoard格納用
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       ex2=0;
@@ -306,9 +292,9 @@ int main(int argc,char** argv){
     printf("  -r: CPUR Recursion\n");
   }
   if(cpu){
-    printf("\n\n８．CPU 非再帰 ビットマップ＋対称解除法＋枝刈り\n");
+    printf("\n\n８．CPU 非再帰 ビットマップ＋対称解除法＋奇数と偶数\n");
   }else if(cpur){
-    printf("\n\n８．CPUR 再帰 ビットマップ＋対称解除法＋枝刈り\n");
+    printf("\n\n８．CPUR 再帰 ビットマップ＋対称解除法＋奇数と偶数\n");
   }
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   clock_t st;           //速度計測用
@@ -327,7 +313,7 @@ int main(int argc,char** argv){
       //初期化は不要です
       /** 非再帰は-1で初期化 */
       // for(int j=0;j<=targetN;j++){
-      // 	aBoard[j]=-1;
+      //   aBoard[j]=-1;
       // }
       NQueen(i,mask);
     }
@@ -335,7 +321,7 @@ int main(int argc,char** argv){
       //初期化は不要です
       /** 再帰は0で初期化 */
       // for(int j=0;j<=targetN;j++){
-      // 	aBoard[j]=j;
+      //   aBoard[j]=j;
       // }
       //奇数と偶数の判別
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
