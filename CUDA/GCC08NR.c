@@ -276,7 +276,7 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
     }
   }
 }
-
+//
 int main(int argc,char** argv){
   bool cpu=false,cpur=false;
   int argstart=2;
@@ -307,8 +307,8 @@ int main(int argc,char** argv){
     TOTAL=0; UNIQUE=0;
     COUNT2=COUNT4=COUNT8=0;
     mask=(1<<i)-1;
-    st=clock();
     excl=(1<<((i/2)^0))-1;
+    st=clock();
     if(cpu){
       //初期化は不要です
       /** 非再帰は-1で初期化 */
@@ -324,6 +324,7 @@ int main(int argc,char** argv){
       //   aBoard[j]=j;
       // }
       //奇数と偶数の判別
+      // NQueenR(i,mask,0,0,0,0);
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
     }
     TimeFormat(clock()-st,t);
