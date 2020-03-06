@@ -263,7 +263,10 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
       }else{ 
         bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       }
+      //ここは２行目の処理。ex2を前にずらし除外するようにする
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
+      //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
+      //しないので0にする
       ex2=0;
     }
   }
@@ -310,6 +313,13 @@ int main(int argc,char** argv){
     }else{
      excl=excl<<(i/2);
     }
+    //偶数の場合
+    //１行目の左側半分にクイーンを置けないようにする
+    //奇数の場合
+    //１行目の左側半分にクイーンを置けないようにする
+    //１行目にクイーンが中央に置かれた場合は２行目の左側半分にクイーンを置けない
+    //ようにする
+    //最終的に個数を倍にするのは対象解除のミラー判定に委ねる
     st=clock();
     if(cpu){
       //初期化は不要です
