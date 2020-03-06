@@ -15,14 +15,6 @@ let SPEED = 0;
 let aT = new Array([MAX]);
 let aS = new Array([MAX]);
 
-// function print(size) {
-//   let out = `${TOTAL}:\t`;
-//   for(let j = 0; j < size; j++){
-//     out += `${aBoard[j]}`;
-//   }
-//   self.postMessage({status: 'process', result: out});
-// }
-
 function symmetryOps(size) {
   let nEquiv;
   for(let i = 0; i < size; i++) {
@@ -84,7 +76,8 @@ function NQueen(row, size) {
   let matched;
   while(row >= 0) {
     matched = false;
-    for(let col = aBoard[row] + 1; col < size; col++) {
+    let lim = (row != 0) ? size : (size + 1) / 2;
+    for(let col = aBoard[row] + 1; col < lim; col++) {
       if(down[col] == 0 && right[col-row+sizeE] == 0 && left[col+row] == 0) {
         if(aBoard[row] != -1) {
           down[aBoard[row]] = right[aBoard[row]-row+sizeE] = left[aBoard[row]+row] = 0;
@@ -136,6 +129,7 @@ function NQueenR(row, size) {
       self.postMessage({status: 'process', box: aBoard, row: row, size: size});
     }
   } else {
+    let lim = (row != 0) ? size : (size + 1) / 2;
     sleep();
     self.postMessage({status: 'process', box: aBoard, row: row, size: size});
     for(let col = aBoard[row] + 1; col < size; col++) {
