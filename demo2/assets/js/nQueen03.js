@@ -1,4 +1,4 @@
-self.importScripts('../lib/moment/moment.js', '../lib/moment/moment-precise-range.js');
+self.importScripts('../lib/moment/moment.js', '../lib/moment/moment-precise-range.js', 'include.js');
 
 const MAX = 27;
 
@@ -21,22 +21,6 @@ function print(size) {
   self.postMessage({status: 'process', result: out});
 }
 
-function timeFormat(start){
-  let now = new Date();
-  let ms = now.getTime() - start.getTime();
-
-
-  let h = String(Math.floor(ms / 3600000) + 100).substring(1);
-  let m = String(Math.floor((ms - h * 3600000)/60000)+ 100).substring(1);
-  let s = String(Math.round((ms - h * 3600000 - m * 60000)/1000)+ 100).substring(1);
-
-  return h + ':' + m + ':' + s;
-}
-function sleep() {
-  let startMsec = new Date();
-  while (new Date() - startMsec < self.SPEED);
-}
-
 //EOS1
 function NQueen(row, size) {
   let sizeE = size - 1;
@@ -55,7 +39,7 @@ function NQueen(row, size) {
       }
     }
 
-    sleep();
+    sleep(self.SPEED);
     self.postMessage({status: 'process', box: aBoard, row: matched ? row + 1 : row, size: size});
 
     if(matched) {
@@ -81,7 +65,7 @@ function NQueenR(row, size) {
   let sizeE = size - 1;
   if(row == size) {
     self.TOTAL++;
-    sleep();
+    sleep(self.SPEED);
     self.postMessage({status: 'process', box: aBoard, row: row, size: size});
   } else {
     
