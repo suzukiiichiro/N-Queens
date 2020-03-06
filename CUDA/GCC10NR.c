@@ -5,39 +5,39 @@
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10NR.c && ./a.out -r
 １０．CPUR 再帰 クイーンの位置による分岐BOUND1,2
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.05
-14:       365596           45752            0.30
-15:      2279184          285053            1.89
-16:     14772512         1846955           14.33
-17:     95815104        11977939         1:38.15
+ 4:            2               1            0.00 1 0 0
+ 5:           10               2            0.00 1 0 1
+ 6:            4               1            0.00 0 1 0
+ 7:           40               6            0.00 0 2 4
+ 8:           92              12            0.00 0 1 11
+ 9:          352              46            0.00 0 4 42
+10:          724              92            0.00 0 3 89
+11:         2680             341            0.00 0 12 329
+12:        14200            1787            0.01 4 18 1765
+13:        73712            9233            0.05 4 32 9197
+14:       365596           45752            0.31 0 105 45647
+15:      2279184          285053            1.94 0 310 284743
+16:     14772512         1846955           14.54 32 734 1846189
+17:     95815104        11977939         1:38.93 64 2006 11975869
 
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10NR.c && ./a.out -c
 １０．CPU 非再帰 クイーンの位置による分岐BOUND1,2
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.01
-13:        73712            9233            0.05
-14:       365596           45752            0.29
-15:      2279184          285053            1.82
-16:     14772512         1846955           13.74
-17:     95815104        11977939         1:33.34
+ 4:            2               1            0.00 1 0 0
+ 5:           10               2            0.00 1 0 1
+ 6:            4               1            0.00 0 1 0
+ 7:           40               6            0.00 0 2 4
+ 8:           92              12            0.00 0 1 11
+ 9:          352              46            0.00 0 4 42
+10:          724              92            0.00 0 3 89
+11:         2680             341            0.00 0 12 329
+12:        14200            1787            0.01 4 18 1765
+13:        73712            9233            0.05 4 32 9197
+14:       365596           45752            0.28 0 105 45647
+15:      2279184          285053            1.80 0 310 284743
+16:     14772512         1846955           13.55 32 734 1846189
+17:     95815104        11977939         1:33.01 64 2006 11975869
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,9 +67,12 @@ void symmetryOps_bitmap(int si);
 void backTrack2_NR(int si,int mask,int y,int l,int d,int r);
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
-void backTrack2(int si,int mask,int y,int l,int d,int r);
-void backTrack1(int si,int mask,int y,int l,int d,int r);
-void NQueenR(int size,int mask);
+// void backTrack2(int si,int mask,int y,int l,int d,int r);
+void backTrack2(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
+// void backTrack1(int si,int mask,int y,int l,int d,int r);
+void backTrack1(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
+// void NQueenR(int size,int mask);
+void NQueenR(int size,int mask,int ex1,int ex2);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -219,84 +222,114 @@ void symmetryOps_bitmap(int size){
 void backTrack2_NR(int size,int mask,int row,int left,int down,int right){
 	int bitmap,bit;
 	int b[100], *p=b;
-	mais1:bitmap=mask&~(left|down|right);
-  if(row==size){
-    if(!bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
     }
-  }else{
-    if(bitmap){
-      outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
-      if(bitmap){
-        *p++=left;
-        *p++=down;
-        *p++=right;
+    mais1:bitmap=mask&~(left|down|right);
+    if(row==size){
+      if(!bitmap){
+        aBoard[row]=bitmap;
+        symmetryOps_bitmap(size);
       }
-      *p++=bitmap;
-      row++;
-      left=(left|bit)<<1;
-      down=down|bit;
-      right=(right|bit)>>1;
-      goto mais1;
-      //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-      volta:if(p<=b)
-        return;
-      row--;
-      bitmap=*--p;
+    }else{
       if(bitmap){
-        right=*--p;
-        down=*--p;
-        left=*--p;
-        goto outro;
-      }else{
-        goto volta;
+        outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto mais1;
+        //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+        volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto outro;
+        }else{
+          goto volta;
+        }
       }
     }
+    goto volta;
   }
-  goto volta;
 }
 //CPU 非再帰版 backTrack1
 void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
   int bitmap,bit;
   int b[100], *p=b;
   int sizeE=size-1;
-  b1mais1:bitmap=mask&~(left|down|right);
-  if(row==sizeE){
-    if(bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
     }
-  }else{
-    if(bitmap){
-      b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+    b1mais1:bitmap=mask&~(left|down|right);
+    if(row==sizeE){
       if(bitmap){
-        *p++=left;
-        *p++=down;
-        *p++=right;
+        aBoard[row]=bitmap;
+        symmetryOps_bitmap(size);
       }
-      *p++=bitmap;
-      row++;
-      left=(left|bit)<<1;
-      down=down|bit;
-      right=(right|bit)>>1;
-      goto b1mais1;
-      //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-      b1volta:if(p<=b)
-        return;
-      row--;
-      bitmap=*--p;
+    }else{
       if(bitmap){
-        right=*--p;
-        down=*--p;
-        left=*--p;
-        goto b1outro;
-      }else{
-        goto b1volta;
+        b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto b1mais1;
+        //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+        b1volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto b1outro;
+        }else{
+          goto b1volta;
+        }
       }
     }
+    goto b1volta;
   }
-  goto b1volta;
 }
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int size,int mask){
@@ -319,52 +352,78 @@ void NQueen(int size,int mask){
   }
 }
 //
-void backTrack2(int size,int mask,int row,int left,int down,int right){
+// void backTrack2(int size,int mask,int row,int left,int down,int right){
+void backTrack2(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
   int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-  if(row==size){
-    if(!bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
+  if(size%2){ //奇数
+    if(ex2!=0){ //１回目の再帰
+      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
+    }else{      //２回目以降の再帰
+      bitmap=mask&~(left|down|right);
     }
+  }else{  //偶数
+    if(ex1!=0){ //１回目の再帰
+      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
+    }else{      //２回目以降の再帰
+      bitmap=mask&~(left|down|right|ex1);
+    }
+  }
+  if(row==size){
+    symmetryOps_bitmap(size);
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
     }
   }
 }
 //
-void backTrack1(int size,int mask,int row,int left,int down,int right){
+// void backTrack1(int size,int mask,int row,int left,int down,int right){
+void backTrack1(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
-  int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-  if(row==size){
-    if(!bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
+  int bitmap;
+  // NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
+  if(size%2){ //奇数
+    if(ex2!=0){ //１回目の再帰
+      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
+    }else{      //２回目以降の再帰
+      bitmap=mask&~(left|down|right);
     }
+  }else{  //偶数
+    if(ex1!=0){ //１回目の再帰
+      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
+    }else{      //２回目以降の再帰
+      bitmap=mask&~(left|down|right|ex1);
+    }
+  }
+  if(row==size){
+    symmetryOps_bitmap(size);
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
     }
   }
 }
 //
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask){
+// void NQueenR(int size,int mask){
+void NQueenR(int size,int mask,int ex1,int ex2){
   int bit;
   TOPBIT=1<<(size-1);
   aBoard[0]=1;
   for(BOUND1=2;BOUND1<size-1;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1);
-    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    // backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1),ex1,ex2);
   }
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
   for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(size,mask,1,bit<<1,bit,bit>>1);
+    // backTrack2(size,mask,1,bit<<1,bit,bit>>1);
+    backTrack2(size,mask,1,bit<<1,bit,bit>>1,ex1,ex2);
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
     ENDBIT>>=1;
   }
@@ -395,10 +454,12 @@ int main(int argc,char** argv) {
     char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=17;
     int mask;
+    int excl;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
+      excl=(1<<((i/2)^0))-1;
       st=clock();
       if(cpu){
         //初期化は不要です
@@ -411,10 +472,12 @@ int main(int argc,char** argv) {
         //再帰は0で初期化
         //for(int j=0;j<=targetN;j++){ aBoard[j]=0; }
         // for(int j=0;j<=targetN;j++){ aBoard[j]=j; }
-        NQueenR(i,mask);
+        // NQueenR(i,mask);
+        NQueenR(i,mask,excl,i%2 ? excl : 0);
       }
       TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      printf("%2d:%13ld%16ld%s %d %d %d\n",i,getTotal(),getUnique(),t,COUNT2,COUNT4,COUNT8);
     }
   }
   return 0;

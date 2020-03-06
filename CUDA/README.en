@@ -27,11 +27,11 @@
 5. Backtracking + symmetry removal + pruning       5:52|  6:12|         
 6. Bit map (other than symmetryOps ()              1:05|  1:08|         
 7. Bit map (also supports symmetryOps ())          2:41|  2:43|         
-8. odd & even                                      1:44|  1:45|
-9. Branch by position of queen BOUND1              1:40|  1:38|         
+8. odd & even                                      1:52|  1:51|
+9. Branch by position of queen BOUND1              1:41|  1:36|         
  10. Branch by position of queen BOUND1,2          1:32|  1:32|         
- 11. Pruning                                         44|    43|
- 12. Optimization                                    17|    15| 
+ 11. Pruning                                         45|    43|
+ 12. Optimization                                    18|    15| 
  13. Parallel processing                              4|     3|
 
 
