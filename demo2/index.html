@@ -17,8 +17,8 @@
       <select id="selectFile" name="selectFile">
         <option value="1">ブルートフォース　力任せ探索</option>
         <option value="2">配置フラグ（制約テスト高速化）</option>
-        <option value="3" selected>バックトラック</option>
-        <option value="4">バックトラック＋対称解除法</option>
+        <option value="3">バックトラック</option>
+        <option value="4" selected>バックトラック＋対称解除法</option>
         <option value="5">バックトラック＋対称解除法＋枝刈り</option>
         <option value="6">バックトラック＋ビットマップ</option>
         <option value="7">バックトラック＋ビットマップ＋対称解除法 2</option>
@@ -36,10 +36,10 @@
        <option value="2">再帰</option>
      </select>
    </aside>
-    <input type="number" id="num" value="4" class="start-disabled">
+    <input type="number" id="num" value="4" min="4" class="start-disabled">
     <div id="speed-slider" class="start-disabled">
       <i class="fas fa-walking"></i>
-      <input type="range" id="speed" value="0.3" step="0.1" min="0" max="1" class="input-range"><i class="fas fa-running"></i>
+      <input type="range" id="speed" value="0.2" step="0.1" min="0" max="1" class="input-range"><i class="fas fa-running"></i>
     </div>
     <button type="button" id="btn-done"><span class="msg-start">スタート</span><span class="msg-stop">ストップ</span></button>
   </nav>
