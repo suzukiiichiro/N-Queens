@@ -11,7 +11,7 @@
  $ ./CUDA01_N-Queen (-c|-r|-g)
                     -c:cpu -r cpu再帰 -g GPU
 
- # Python/Java/C/Lua/Bash版
+ # CUDA/Python/Java/C/Lua/Bash版
  # https://github.com/suzukiiichiro/N-Queen
 
 
