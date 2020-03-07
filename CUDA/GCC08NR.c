@@ -15,11 +15,11 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -r
 10:          724              92            0.00 0 3 89
 11:         2680             341            0.00 0 12 329
 12:        14200            1787            0.01 4 18 1765
-13:        73712            9233            0.06 4 32 9197
-14:       365596           45752            0.32 0 105 45647
-15:      2279184          285053            2.23 0 310 284743
-16:     14772512         1846955           15.04 32 734 1846189
-17:     95815104        11977939         1:52.52 64 2006 11975869
+13:        73712            9233            0.07 4 32 9197
+14:       365596           45752            0.31 0 105 45647
+15:      2279184          285053            2.60 0 310 284743
+16:     14772512         1846955           14.94 32 734 1846189
+17:     95815104        11977939         2:08.89 64 2006 11975869
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 ８．CPU 非再帰 ビットマップ＋対称解除法＋奇数と偶数
@@ -34,10 +34,10 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 11:         2680             341            0.00 0 12 329
 12:        14200            1787            0.01 4 18 1765
 13:        73712            9233            0.06 4 32 9197
-14:       365596           45752            0.31 0 105 45647
-15:      2279184          285053            2.21 0 310 284743
-16:     14772512         1846955           14.77 32 734 1846189
-17:     95815104        11977939         1:51.62 64 2006 11975869
+14:       365596           45752            0.30 0 105 45647
+15:      2279184          285053            2.16 0 310 284743
+16:     14772512         1846955           14.41 32 734 1846189
+17:     95815104        11977939         1:48.61 64 2006 11975869
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -274,36 +274,24 @@ void NQueen(int size,int mask){
 //void NQueenR(int size,int mask,int row,int left,int down,int right){
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
-  int bitmap;
-  int bitmaps;
-  /**
-    aBoard配列構築用 bitmaps
-  */
-  bitmaps=(mask&~(left|down|right));    //aBoard格納用
-  // NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
-  if(size%2){ //奇数
-    if(ex2!=0){             //1回目の再帰
-      bitmap=(mask&~(left|down|right|ex1));
-    }else{       //2回目以降の再帰
-      bitmap=mask&~(left|down|right);
-    }
-  }else{  //偶数
-    if(ex1!=0){ //１回目の再帰
-      bitmap=mask&~(left|down|right|ex1);
-    }else{ //2回目以降の再帰
-      bitmap=mask&~(left|down|right|ex1);
-    }
-  }
+  int bitmap=(mask&~(left|down|right|ex1));
   if(row==size){
     // TOTAL++;
     symmetryOps_bitmap(size);
   }else{
     while(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);     //ロジック用
-      bitmaps^=aBoard[row]=bit=(-bitmaps&bitmaps);   //aBoard格納用
+      if(ex2!=0){
+      	//奇数個の１回目は真ん中にクイーンを置く
+        bitmap^=aBoard[row]=bit=(1<<(size/2+1));
+      }else{
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      }
+     	//ここは２行目の処理。ex2を前にずらし除外するようにする
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
-      // ex2=0;
+      //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
+      //しないので0にする
+      ex2=0;
     }
   }
 }
@@ -338,7 +326,24 @@ int main(int argc,char** argv){
     TOTAL=0; UNIQUE=0;
     COUNT2=COUNT4=COUNT8=0;
     mask=(1<<i)-1;
+    //除外デフォルト ex 00001111  000001111
+    //これだと１行目の右側半分にクイーンが置けない
     excl=(1<<((i/2)^0))-1;
+    //対象解除は右側にクイーンが置かれた場合のみ判定するので
+    //除外を反転させ１行目の左側半分にクイーンを置けなくする
+    //ex 11110000 111100000 
+    if(i%2){
+     excl=excl<<(i/2+1);
+    }else{
+     excl=excl<<(i/2);
+    }
+    //偶数の場合
+    //１行目の左側半分にクイーンを置けないようにする
+    //奇数の場合
+    //１行目の左側半分にクイーンを置けないようにする
+    //１行目にクイーンが中央に置かれた場合は２行目の左側半分にクイーンを置けない
+    //ようにする
+    //最終的に個数を倍にするのは対象解除のミラー判定に委ねる
     st=clock();
     if(cpu){
       //初期化は不要です

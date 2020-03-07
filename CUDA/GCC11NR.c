@@ -422,6 +422,7 @@ void backTrack2(int size,int mask,int row,int left,int down,int right,int ex1,in
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       // backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
+      ex2=0;
     }
   }
 }
@@ -460,6 +461,7 @@ void backTrack1(int size,int mask,int row,int left,int down,int right,int ex1,in
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       // backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
+      ex2=0;
     }
   }
 }
