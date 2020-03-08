@@ -21,13 +21,11 @@ class UI {
     }
     //解が正しい場合にキャプチャする
     if(data.row == data.size) {
-      setTimeout(function(){
-        html2canvas(document.querySelector("#table table"), {
-          backgroundColor: null
-        }).then(canvas => {
-            document.querySelector('#queens').appendChild(canvas);
-        });
-      },0);
+      html2canvas(document.querySelector("#table table"), {
+        backgroundColor: null
+      }).then(canvas => {
+          document.querySelector('#queens').appendChild(canvas);
+      });
     }
   }
   message(msg) {
