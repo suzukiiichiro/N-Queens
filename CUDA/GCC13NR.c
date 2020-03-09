@@ -78,10 +78,8 @@ typedef struct{
 void symmetryOps(local *l);
 void backTrack2_NR(int y,int left,int down,int right,local *l);
 void backTrack1_NR(int y,int left,int down,int right,local *l);
-// void backTrack2(int y,int left,int down,int right,local *l);
-void backTrack2(int y,int left,int down,int right,int ex1,int ex2,local *l);
-// void backTrack1(int y,int left,int down,int right,local *l);
-void backTrack1(int y,int left,int down,int right,int ex1,int ex2,local *l);
+void backTrack2(int y,int left,int down,int right,local *l);
+void backTrack1(int y,int left,int down,int right,local *l);
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -251,15 +249,9 @@ void backTrack1_NR(int row,int left,int down,int right,local *l){
   }
 }
 //
-// void backTrack2(int row,int left,int down,int right,local *l){
-void backTrack2(int row,int left,int down,int right,int ex1,int ex2,local *l){
+void backTrack2(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
-  //偶数と奇数の分岐
-  bitmap=l->mask&~(left|down|right);
-  if(G.size%2==0 && ex1==0){ //偶数の２回目以降の再帰のみ対応
-      bitmap=l->mask&~(left|down|right|ex1);
-  }
   if(row==G.sizeE){ 								// 【枝刈り】
     if(bitmap){
       if((bitmap&l->LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
@@ -276,22 +268,14 @@ void backTrack2(int row,int left,int down,int right,int ex1,int ex2,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      // backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0,l);
-      ex2=0;
+      backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
 //
-// void backTrack1(int row,int left,int down,int right,local *l){
-void backTrack1(int row,int left,int down,int right,int ex1,int ex2,local *l){
+void backTrack1(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
-  //偶数と奇数の分岐
-  bitmap=l->mask&~(left|down|right);
-  if(G.size%2==0 && ex1==0){ //偶数の２回目以降の再帰のみ対応
-      bitmap=l->mask&~(left|down|right|ex1);
-  }
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(row==G.sizeE) {
     if(bitmap){
@@ -306,9 +290,7 @@ void backTrack1(int row,int left,int down,int right,int ex1,int ex2,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      // backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
-      backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0,l);
-      ex2=0;
+      backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
@@ -332,8 +314,7 @@ void *run(void *args){
         backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
       }else{
         //再帰
-        // backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
-        backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),excl,G.size%2 ? excl : 0,l);
+        backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
       }
     }
   }
@@ -354,8 +335,7 @@ void *run(void *args){
         backTrack2_NR(1,bit<<1,bit,bit>>1,l);
       }else{
         //再帰
-        // backTrack2(1,bit<<1,bit,bit>>1,l);
-        backTrack2(1,bit<<1,bit,bit>>1,excl,G.size%2 ? excl : 0,l);
+        backTrack2(1,bit<<1,bit,bit>>1,l);
       }
     }
     l->ENDBIT>>=G.size;

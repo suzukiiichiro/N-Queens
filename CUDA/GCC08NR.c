@@ -364,9 +364,7 @@ int main(int argc,char** argv){
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
     }
     TimeFormat(clock()-st,t);
-     // printf("%2d:%13ld%16ld%s\n",i,TOTAL*2,getUnique(),t);
-     // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-     printf("%2d:%13ld%16ld%s %d %d %d\n",i,getTotal(),getUnique(),t,COUNT2,COUNT4,COUNT8);
+     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
   }
   return 0;
 }

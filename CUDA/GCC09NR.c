@@ -65,13 +65,10 @@ int rh(int a,int sz);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int size);
-// void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void backTrack1_NR(int size,int mask,int row,int left,int down,int right);
 void NQueen(int size,int mask);
-// void backTrack1(int si,int mask,int y,int l,int d,int r);
-void backTrack1(int si,int mask,int y,int l,int d,int r,int ex1,int ex2);
-// void NQueenR(int size,int mask);
-void NQueenR(int size,int mask,int ex1,int ex2);
+void backTrack1(int si,int mask,int y,int l,int d,int r);
+void NQueenR(int size,int mask);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -301,54 +298,35 @@ void NQueen(int size,int mask){
   }
 }
 //
-// void backTrack1(int size,int mask,int row,int left,int down,int right){
-void backTrack1(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
+void backTrack1(int size,int mask,int row,int left,int down,int right){
   int bit;
-  int bitmap;
-  // NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
-  if(size%2){ //奇数
-    if(ex2!=0){ //１回目の再帰
-      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
-    }else{      //２回目以降の再帰
-      bitmap=mask&~(left|down|right);
-    }
-  }else{  //偶数
-    if(ex1!=0){ //１回目の再帰
-      bitmap=mask&~(left|down|right);   //BOUNDで対応済み
-    }else{      //２回目以降の再帰
-      bitmap=mask&~(left|down|right|ex1);
-    }
-  }
+  int bitmap=(mask&~(left|down|right));
   if(row==size){
     // TOTAL++;
+    aBoard[row]=bitmap; //symmetryOpsの時は代入します。
     symmetryOps_bitmap(size);
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //ロジック用
-      // backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
-      ex2=0;
+      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
 //
 //CPUR 再帰版 ロジックメソッド
-// void NQueenR(int size,int mask){
-void NQueenR(int size,int mask,int ex1,int ex2){
+void NQueenR(int size,int mask){
   int bit;
   TOPBIT=1<<(size-1);
   aBoard[0]=1;
   for(BOUND1=2;BOUND1<size-1;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1);
-    // backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1),ex1,ex2);
+    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
   }
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
   for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aBoard[0]=bit=(1<<BOUND1);
-    // backTrack1(size,mask,1,bit<<1,bit,bit>>1);
-    backTrack1(size,mask,1,bit<<1,bit,bit>>1,ex1,ex2);
+    backTrack1(size,mask,1,bit<<1,bit,bit>>1);
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
     ENDBIT>>=1;
   }
@@ -379,12 +357,10 @@ int main(int argc,char** argv) {
     char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=17;
     int mask;
-    int excl;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
-      excl=(1<<((i/2)^0))-1;
       st=clock();
       if(cpu){
         //初期化は不要です
@@ -397,12 +373,10 @@ int main(int argc,char** argv) {
         //再帰は0で初期化
         //for(int j=0;j<=targetN;j++){ aBoard[j]=0; }
         // for(int j=0;j<=targetN;j++){ aBoard[j]=j; }
-        // NQueenR(i,mask);
-        NQueenR(i,mask,excl,i%2 ? excl : 0);
+        NQueenR(i,mask);
       }
       TimeFormat(clock()-st,t);
-      // printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-      printf("%2d:%13ld%16ld%s %d %d %d\n",i,getTotal(),getUnique(),t,COUNT2,COUNT4,COUNT8);
+      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
   }
   return 0;
