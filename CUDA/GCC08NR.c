@@ -6,38 +6,38 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -r
 
 ８．CPUR 再帰 ビットマップ＋対称解除法＋奇数と偶数
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00 1 0 0
- 5:           10               2            0.00 1 0 1
- 6:            4               1            0.00 0 1 0
- 7:           40               6            0.00 0 2 4
- 8:           92              12            0.00 0 1 11
- 9:          352              46            0.00 0 4 42
-10:          724              92            0.00 0 3 89
-11:         2680             341            0.00 0 12 329
-12:        14200            1787            0.01 4 18 1765
-13:        73712            9233            0.07 4 32 9197
-14:       365596           45752            0.31 0 105 45647
-15:      2279184          285053            2.60 0 310 284743
-16:     14772512         1846955           14.94 32 734 1846189
-17:     95815104        11977939         2:08.89 64 2006 11975869
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.01
+13:        73712            9233            0.07
+14:       365596           45752            0.31
+15:      2279184          285053            2.60
+16:     14772512         1846955           14.94
+17:     95815104        11977939         2:08.89
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 ８．CPU 非再帰 ビットマップ＋対称解除法＋奇数と偶数
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00 1 0 0
- 5:           10               2            0.00 1 0 1
- 6:            4               1            0.00 0 1 0
- 7:           40               6            0.00 0 2 4
- 8:           92              12            0.00 0 1 11
- 9:          352              46            0.00 0 4 42
-10:          724              92            0.00 0 3 89
-11:         2680             341            0.00 0 12 329
-12:        14200            1787            0.01 4 18 1765
-13:        73712            9233            0.06 4 32 9197
-14:       365596           45752            0.30 0 105 45647
-15:      2279184          285053            2.16 0 310 284743
-16:     14772512         1846955           14.41 32 734 1846189
-17:     95815104        11977939         1:48.61 64 2006 11975869
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.01
+13:        73712            9233            0.06
+14:       365596           45752            0.30
+15:      2279184          285053            2.16
+16:     14772512         1846955           14.41
+17:     95815104        11977939         1:48.61
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +47,6 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC08NR.c && ./a.out -c
 //
 #define MAX 27
 //変数宣言
-int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
 int down[2*MAX-1];   //down:flagA 縦 配置フラグ
 int right[2*MAX-1]; //right:flagB 斜め配置フラグ
 int left[2*MAX-1];   //left:flagC 斜め配置フラグ
@@ -62,6 +61,7 @@ void TimeFormat(clock_t utime,char *form);
 void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
 int intncmp(int lt[],int rt[],int n);
+int rh(int a,int size);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
@@ -87,23 +87,6 @@ void TimeFormat(clock_t utime,char* form){
     sprintf(form,"        %2d:%05.2f",mm,ss);
   else
     sprintf(form,"           %5.2f",ss);
-}
-//
-void dtob(int score,int size){
-  int bit=1;
-  char c[size];
-  for(int i=0;i<size;i++){
-    if(score&bit){
-      c[i]='1';
-    }else{
-      c[i]='0';
-    }
-    bit<<=1;
-  }
-  for(int i=size-1;i>=0;i--){
-    putchar(c[i]);
-  }
-  printf("\n");
 }
 //
 int rh(int a,int size){

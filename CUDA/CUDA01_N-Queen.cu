@@ -1,5 +1,5 @@
 /**
- Cで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -400,16 +400,42 @@
 
 
  実行結果
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -r
+1. CPU 再帰 ブルートフォース　力任せ探索
  :
  :
- 16777209: 7 7 7 7 7 7 7 0
- 16777210: 7 7 7 7 7 7 7 1
- 16777211: 7 7 7 7 7 7 7 2
- 16777212: 7 7 7 7 7 7 7 3
- 16777213: 7 7 7 7 7 7 7 4
- 16777214: 7 7 7 7 7 7 7 5
- 16777215: 7 7 7 7 7 7 7 6
- 16777216: 7 7 7 7 7 7 7 7
+3115: 4 4 4 2 4
+3116: 4 4 4 3 0
+3117: 4 4 4 3 1
+3118: 4 4 4 3 2
+3119: 4 4 4 3 3
+3120: 4 4 4 3 4
+3121: 4 4 4 4 0
+3122: 4 4 4 4 1
+3123: 4 4 4 4 2
+3124: 4 4 4 4 3
+3125: 4 4 4 4 4
+
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -c
+1. CPU 非再帰 ブルートフォース　力任せ探索
+ :
+ :
+3115: 4 4 4 2 4
+3116: 4 4 4 3 0
+3117: 4 4 4 3 1
+3118: 4 4 4 3 2
+3119: 4 4 4 3 3
+3120: 4 4 4 3 4
+3121: 4 4 4 4 0
+3122: 4 4 4 4 1
+3123: 4 4 4 4 2
+3124: 4 4 4 4 3
+3125: 4 4 4 4 4
+
+
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -g
+1. GPU 非再帰 ブルートフォース　力任せ探索
+
 
 */
 
@@ -424,11 +450,10 @@
 #define THREAD_NUM		96
 #define MAX 27
 //変数宣言
-long Total=0 ;        //合計解
-long Unique=0;
-int SIZE=8;      //Nは8で固定
-int COUNT=0;     //カウント用
-int aBoard[MAX]; //版の配列
+long Total=0 ;    //GPU     
+long Unique=0;    //GPU
+int aBoard[MAX];  //版の配列
+int COUNT=0;      //カウント用
 //関数宣言
 void print(int size);
 void NQueen(int row,int size);
@@ -609,49 +634,51 @@ bool InitCUDA(){
 }
 //出力用のメソッド
 void print(int size){
-	printf("%d: ",++COUNT);
-	for(int j=0;j<size;j++){
-		printf("%d ",aBoard[j]);
-	}
-	printf("\n");
+  printf("%d: ",++COUNT);
+  for(int j=0;j<size;j++){
+    printf("%d ",aBoard[j]);
+  }
+  printf("\n");
 }
 //非再帰版ロジックメソッド
 void NQueen(int row,int size){
-	bool matched;
-	while(row>=0){
-		matched=false;
-		for(int col=aBoard[row]+1;col<size;col++){
-			aBoard[row]=col;//Qを配置
-			matched=true;
-			break;
-		}
-		if(matched){
-			row++;
-			if(row==size){
-				print(size);
-				row--;
-			}
-		}else{
-			if(aBoard[row]!=-1){
-				aBoard[row]=-1;
-			}
-			row--;
-		}
-	}
+  bool matched;
+  while(row>=0){
+    matched=false;
+    for(int col=aBoard[row]+1;col<size;col++){
+      aBoard[row]=col;      //Qを配置
+      matched=true;
+      break;
+    }
+    if(matched){
+      row++;
+      if(row==size){
+        print(size);
+        row--;
+      }
+    }else{
+      if(aBoard[row]!=-1){
+        aBoard[row]=-1;
+      }
+      row--;
+    }
+  }
 }
 //再帰版ロジックメソッド
 void NQueenR(int row,int size){
-	if(row==size){  //SIZEは8で固定
-		print(size);      //rowが8になったら出力
-	}else{
-		for(int col=0;col<size;col++){
-			aBoard[row]=col;
-			NQueenR(row+1,size);  // インクリメントしながら再帰
-		}
-	}
+  if(row==size){         //SIZEは5で固定
+    print(size);         //rowが5になったら出力
+  }else{
+    for(int col=aBoard[row]+1;col<size;col++){
+      aBoard[row]=col;  //Qを配置
+      NQueenR(row+1,size);
+      aBoard[row]=-1;   //空き地に戻す
+    }
+  }
 }
 //メインメソッド
 int main(int argc,char** argv) {
+  int size=5;
   bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
@@ -671,19 +698,17 @@ int main(int argc,char** argv) {
     printf("Default CPUR to CPU 8 queen\n");
   }
   /** 出力と実行 */
+  //aBoard配列を-1 で初期化
+  for(int i=0;i<size;i++){ aBoard[i]=-1; }
   /** CPU */
   if(cpu){
     printf("\n\n1. CPU 非再帰 ブルートフォース　力任せ探索\n");
-    //非再帰は-1で初期化
-    for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
-    NQueen(0,SIZE);
+    NQueen(0,size);
   }
   /** CPUR */
   if(cpur){
     printf("\n\n1. CPUR 再帰 ブルートフォース　力任せ探索\n");
-    //再帰は0で初期化
-    for(int i=0;i<SIZE;i++){ aBoard[i]=0; }
-    NQueenR(0,SIZE);//ロジックメソッドを0を渡して呼び出し
+    NQueenR(0,size);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){

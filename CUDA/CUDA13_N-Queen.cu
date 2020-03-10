@@ -1,5 +1,5 @@
 /**
- Cで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -16,9 +16,11 @@
  【注意】
  cu(nvcc)のソースに参考のために 再帰・非再帰のpthread版を記載しましたが、
  cudaはpthreadをサポートしていないので、コンパイルは通りません。
- +537 行目のコメントアウトはそのためです。
 
- pthreadの具体的なソースは、GCC13NR.c を見て下さい。
+ +590 行目のコメントアウトはそのためです。
+ //iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
+
+ pthreadの具体的なソースは、Cディレクトリの C13_N-Queen.cを見て下さい。
  こちらはきちんと動作します。
  【注意】
 
@@ -26,6 +28,7 @@
 
  実行結果
 
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13NR.c && ./a.out -r
 １３．CPUR 再帰 並列処理 pthread
  N:           Total           Unique          dd:hh:mm:ss.ms
  4:               2                1          00:00:00:00.00
@@ -41,8 +44,9 @@
 14:          365596            45752          00:00:00:00.01
 15:         2279184           285053          00:00:00:00.10
 16:        14772512          1846955          00:00:00:00.65
-17:        95815104         11977939          00:00:00:04.27
+17:        95815104         11977939          00:00:00:04.33 
 
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13NR.c && ./a.out -c
 １３．CPU 非再帰 並列処理 pthread
  N:           Total           Unique          dd:hh:mm:ss.ms
  4:               2                1          00:00:00:00.00
@@ -57,8 +61,13 @@
 13:           73712             9233          00:00:00:00.00
 14:          365596            45752          00:00:00:00.01
 15:         2279184           285053          00:00:00:00.10
-16:        14772512          1846955          00:00:00:00.63
-17:        95815104         11977939          00:00:00:03.88
+16:        14772512          1846955          00:00:00:00.62
+17:        95815104         11977939          00:00:00:03.15
+
+
+$ nvcc CUDA13_N-Queen.cu  && ./a.out -g
+１３．GPU 非再帰 並列処理 pthread
+
 */
 
 #include <stdio.h>
@@ -314,106 +323,135 @@ void symmetryOps(local *l){
 }
 //CPU 非再帰版 backTrack2
 void backTrack2_NR(int row,int left,int down,int right,local *l){
-	int bitmap,bit;
-	int b[100], *p=b;
-	mais1:bitmap=l->mask&~(left|down|right);
-  // 【枝刈り】
-	if(row==G.sizeE){
-		if(bitmap){
-      //【枝刈り】 最下段枝刈り
-			if((bitmap&l->LASTMASK)==0){
-				l->aBoard[row]=bitmap;
-				symmetryOps(l);
-			}
-		}
-	}else{
-      
-    //【枝刈り】上部サイド枝刈り
-		if(row<l->BOUND1){
-			bitmap&=~l->SIDEMASK;
-    //【枝刈り】下部サイド枝刈り
-		}else if(row==l->BOUND2){
-			if(!(down&l->SIDEMASK))
-				goto volta;
-			if((down&l->SIDEMASK)!=l->SIDEMASK)
-				bitmap&=l->SIDEMASK;
-		}
-		if(bitmap){
-			outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
-			if(bitmap){
-				*p++=left;
-				*p++=down;
-				*p++=right;
-			}
-			*p++=bitmap;
-			row++;
-			left=(left|bit)<<1;
-			down=down|bit;
-			right=(right|bit)>>1;
-			goto mais1;
-			//Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-			volta:if(p<=b)
-				return;
-			row--;
-			bitmap=*--p;
-			if(bitmap){
-				right=*--p;
-				down=*--p;
-				left=*--p;
-				goto outro;
-			}else{
-				goto volta;
-			}
-		}
-	}
-	goto volta;
+  int bitmap,bit;
+  int b[100], *p=b;
+  int odd=G.size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=G.size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(G.size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
+    }
+  mais1:bitmap=l->mask&~(left|down|right);
+    // 【枝刈り】
+    if(row==G.sizeE){
+      if(bitmap){
+        //【枝刈り】 最下段枝刈り
+        if((bitmap&l->LASTMASK)==0){
+          l->aBoard[row]=bitmap;
+          symmetryOps(l);
+        }
+      }
+    }else{
+      //【枝刈り】上部サイド枝刈り
+      if(row<l->BOUND1){
+        bitmap&=~l->SIDEMASK;
+        //【枝刈り】下部サイド枝刈り
+      }else if(row==l->BOUND2){
+        if(!(down&l->SIDEMASK))
+          goto volta;
+        if((down&l->SIDEMASK)!=l->SIDEMASK)
+          bitmap&=l->SIDEMASK;
+      }
+      if(bitmap){
+  outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
+    if(bitmap){
+      *p++=left;
+      *p++=down;
+      *p++=right;
+    }
+    *p++=bitmap;
+    row++;
+    left=(left|bit)<<1;
+    down=down|bit;
+    right=(right|bit)>>1;
+    goto mais1;
+    //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+  volta:if(p<=b)
+      return;
+    row--;
+    bitmap=*--p;
+    if(bitmap){
+      right=*--p;
+      down=*--p;
+      left=*--p;
+      goto outro;
+    }else{
+      goto volta;
+    }
+      }
+    }
+    goto volta;
+  }
 }
 //CPU 非再帰版 backTrack
 void backTrack1_NR(int row,int left,int down,int right,local *l){
-	int bitmap,bit;
-	int b[100], *p=b;
-	b1mais1:bitmap=l->mask&~(left|down|right);
-  //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-	if(row==G.sizeE){
-		if(bitmap){
-			l->aBoard[row]=bitmap;
-			l->COUNT8[l->BOUND1]++;
-		}
-	}else{
-		//【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-		// ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-    if(row<l->BOUND1) {
-      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+  int bitmap,bit;
+  int b[100], *p=b;
+  int odd=G.size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=G.size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(G.size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
     }
-		if(bitmap){
-			b1outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
-			if(bitmap){
-				*p++=left;
-				*p++=down;
-				*p++=right;
-			}
-			*p++=bitmap;
-			row++;
-			left=(left|bit)<<1;
-			down=down|bit;
-			right=(right|bit)>>1;
-			goto b1mais1;
-			//Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-			b1volta:if(p<=b)
-				return;
-			row--;
-			bitmap=*--p;
-			if(bitmap){
-				right=*--p;
-				down=*--p;
-				left=*--p;
-				goto b1outro;
-			}else{
-				goto b1volta;
-			}
-		}
-	}
-	goto b1volta;
+  b1mais1:bitmap=l->mask&~(left|down|right);
+    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+    if(row==G.sizeE){
+      if(bitmap){
+        // l->aBoard[row]=bitmap;
+        l->COUNT8[l->BOUND1]++;
+      }
+    }else{
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      if(row<l->BOUND1) {
+        bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+      }
+      if(bitmap){
+  b1outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
+    if(bitmap){
+      *p++=left;
+      *p++=down;
+      *p++=right;
+    }
+    *p++=bitmap;
+    row++;
+    left=(left|bit)<<1;
+    down=down|bit;
+    right=(right|bit)>>1;
+    goto b1mais1;
+    //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+  b1volta:if(p<=b)
+      return;
+    row--;
+    bitmap=*--p;
+    if(bitmap){
+      right=*--p;
+      down=*--p;
+      left=*--p;
+      goto b1outro;
+    }else{
+      goto b1volta;
+    }
+      }
+    }
+    goto b1volta;
+  }
 }
 //
 void backTrack2(int row,int left,int down,int right,local *l){
@@ -446,7 +484,7 @@ void backTrack1(int row,int left,int down,int right,local *l){
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(row==G.sizeE) {
     if(bitmap){
-      l->aBoard[row]=bitmap;
+      /* l->aBoard[row]=bitmap; */
       l->COUNT8[l->BOUND1]++;
     }
   }else{
@@ -469,13 +507,6 @@ void *run(void *args){
 	l->TOPBIT=1<<(G.sizeE);
   l->mask=(1<<G.size)-1;
 
-    if(NR==1){
-      //非再帰
-		   backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
-    }else{
-      //再帰
-		   backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
-    }
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
     if(l->BOUND1<G.sizeE) {
@@ -546,8 +577,10 @@ void NQueen(){
   pthread_t pth;  //スレッド変数
   int iFbRet;
   // メインスレッドの生成
-  // 拡張子 cu(nvcc) はpthreadをサポートしていません
-  //iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
+  // 拡張子 CUDA はpthreadをサポートしていませんので実行できません
+  // コンパイルが通らないので 以下をコメントアウトします
+  // Cディレクトリの 並列処理はC13_N-Queen.c を参考にして下さい。
+  // iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
   if(iFbRet>0){
     printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
   }

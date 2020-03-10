@@ -1,5 +1,5 @@
 /**
- Cで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -401,32 +401,37 @@
 
 
  実行結果
- ２．CPU 非再帰 配置フラグ（制約テスト高速化）
- :
- :
- 40312: 7 6 5 4 2 1 3 0
- 40313: 7 6 5 4 2 3 0 1
- 40314: 7 6 5 4 2 3 1 0
- 40315: 7 6 5 4 3 0 1 2
- 40316: 7 6 5 4 3 0 2 1
- 40317: 7 6 5 4 3 1 0 2
- 40318: 7 6 5 4 3 1 2 0
- 40319: 7 6 5 4 3 2 0 1
- 40320: 7 6 5 4 3 2 1 0
-
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -r
  ２．CPUR 再帰 配置フラグ（制約テスト高速化）
  :
  :
- 40312: 7 6 5 4 2 1 3 0
- 40313: 7 6 5 4 2 3 0 1
- 40314: 7 6 5 4 2 3 1 0
- 40315: 7 6 5 4 3 0 1 2
- 40316: 7 6 5 4 3 0 2 1
- 40317: 7 6 5 4 3 1 0 2
- 40318: 7 6 5 4 3 1 2 0
- 40319: 7 6 5 4 3 2 0 1
- 40320: 7 6 5 4 3 2 1 0
+111: 4 2 1 0 3 
+112: 4 2 1 3 0 
+113: 4 2 3 0 1 
+114: 4 2 3 1 0 
+115: 4 3 0 1 2 
+116: 4 3 0 2 1 
+117: 4 3 1 0 2 
+118: 4 3 1 2 0 
+119: 4 3 2 0 1 
+120: 4 3 2 1 0 
 
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -c
+ ２．CPU 非再帰 配置フラグ（制約テスト高速化）
+ :
+ :
+111: 4 2 1 0 3 
+112: 4 2 1 3 0 
+113: 4 2 3 0 1 
+114: 4 2 3 1 0 
+115: 4 3 0 1 2 
+116: 4 3 0 2 1 
+117: 4 3 1 0 2 
+118: 4 3 1 2 0 
+119: 4 3 2 0 1 
+120: 4 3 2 1 0 
+
+$ nvcc CUDA02_N-Queen.cu  && ./a.out -g
 ２. GPU 非再帰 配置フラグ（制約テスト高速化）
 
 
@@ -443,12 +448,11 @@
 #define THREAD_NUM		96
 #define MAX 27
 //変数宣言
-long Total=0 ;        //合計解
-long Unique=0;
-int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
-int SIZE=8;      //Nは8で固定
-int COUNT=0;     //カウント用
-int aBoard[MAX]; //版の配列
+long Total=0 ;      //GPU
+long Unique=0;			//GPU
+int COUNT=0;     		//カウント用
+int aBoard[MAX]; 		//版の配列
+int down[2*MAX-1]; 	//down:flagA 縦 配置フラグ　
 //関数宣言
 void print(int size);
 void NQueen(int row,int size);
@@ -637,53 +641,55 @@ void print(int size){
 }
 //CPU 非再帰 ロジックメソッド
 void NQueen(int row,int size){
-	bool matched;
-	while(row>=0){
-		matched=false;
-		for(int col=aBoard[row]+1;col<size;col++){
-			if(down[col]==0){			//downは効き筋ではない
-				if(aBoard[row]!=-1){//Qは配置済み
-					down[aBoard[row]]=0;//downの効き筋を外す
-				}
-				aBoard[row]=col;		//Qを配置
-				down[col]=1;				//downは効き筋である
-				matched=true;
-				break;
-			}
-		}
-		if(matched){
-			row++;
-			if(row==size){
-				print(size);
-				row--;
-			}
-		}else{									//置けるところがない
-			if(aBoard[row]!=-1){
-				int col=aBoard[row]; /** colの代用 */
-				aBoard[row]=-1;			//空き地に戻す
-				down[col]=0;				//downの効き筋を解除
-			}
-			row--;
-		}
-	}
+  bool matched;
+  while(row>=0){
+    matched=false;
+    for(int col=aBoard[row]+1;col<size;col++){
+      if(down[col]==0){      //downは効き筋ではない
+        if(aBoard[row]!=-1){ //Qは配置済み
+          down[aBoard[row]]=0;//downの効き筋を外す
+        }
+        aBoard[row]=col;     //Qを配置
+        down[col]=1;         //downは効き筋である
+        matched=true;
+        break;
+      }
+    }
+    if(matched){
+      row++;
+      if(row==size){
+        print(size);
+        row--;
+      }
+    }else{                   //置けるところがない
+      if(aBoard[row]!=-1){
+        int col=aBoard[row]; /** colの代用 */
+        down[col]=0;         //downの効き筋を解除
+        aBoard[row]=-1;      //空き地に戻す
+      }
+      row--;
+    }
+  }
 }
 //CPUR 再帰 ロジックメソッド
 void NQueenR(int row,int size){
-	if(row==size){
-		print(size);
-	}else{
-		for(int col=0;col<size;col++){
-			aBoard[row]=col;
-			if(down[col]==0){
-				down[col]=1;
-				NQueenR(row+1,size);
-				down[col]=0;
-			}
-		}
-	}
+  if(row==size){
+    print(size);
+  }else{
+    for(int col=aBoard[row]+1;col<size;col++){
+      aBoard[row]=col;  //Qを配置
+      if(down[col]==0){
+        down[col]=1;
+        NQueenR(row+1,size);
+        down[col]=0;
+      }
+      aBoard[row]=-1;   //空き地に戻す
+    }
+  }
 }
 //メインメソッド
 int main(int argc,char** argv) {
+	int size=5;
   bool cpu=false,cpur=false,gpu=false;
   int argstart=1,steps=24576;
   /** パラメータの処理 */
@@ -703,19 +709,17 @@ int main(int argc,char** argv) {
     printf("Default CPUR to 8 queen\n");
   }
   /** 出力と実行 */
+	//aBoard配列を-1で初期化
+  for(int i=0;i<size;i++){ aBoard[i]=-1; }
   /** CPU */
   if(cpu){
     printf("\n\n２．CPU 非再帰 配置フラグ（制約テスト高速化）\n");
-    //非再帰は-1で初期化
-    for(int i=0;i<SIZE;i++){ aBoard[i]=-1; }
-    NQueen(0,SIZE);
+    NQueen(0,size);
   }
   /** CPUR */
   if(cpur){
     printf("\n\n２．CPUR 再帰 配置フラグ（制約テスト高速化）\n");
-    //再帰は0で初期化
-    for(int i=0;i<SIZE;i++){ aBoard[i]=0; } 
-    NQueenR(0,SIZE);//ロジックメソッドを0を渡して呼び出し
+    NQueenR(0,size);//ロジックメソッドを0を渡して呼び出し
   }
   /** GPU */
   if(gpu){

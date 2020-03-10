@@ -1,5 +1,5 @@
 /**
- Cで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -135,25 +135,8 @@
  }
 
  実行結果
-
+$ nvcc CUDA06_N-Queen.cu  && ./a.out -r
 ６．CPUR 再帰 バックトラック＋ビットマップ
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               0            0.00
- 5:           10               0            0.00
- 6:            4               0            0.00
- 7:           40               0            0.00
- 8:           92               0            0.00
- 9:          352               0            0.00
-10:          724               0            0.00
-11:         2680               0            0.00
-12:        14200               0            0.01
-13:        73712               0            0.07
-14:       365596               0            0.44
-15:      2279184               0            2.73
-16:     14772512               0           18.23
-17:     95815104               0         2:07.85
-
-６．CPU 非再帰 バックトラック＋ビットマップ
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               0            0.00
  5:           10               0            0.00
@@ -166,10 +149,29 @@
 12:        14200               0            0.01
 13:        73712               0            0.04
 14:       365596               0            0.23
-15:      2279184               0            1.44
-16:     14772512               0            9.59
-17:     95815104               0         1:06.94
+15:      2279184               0            1.40
+16:     14772512               0            9.37
+17:     95815104               0         1:05.71
 
+$ nvcc CUDA06_N-Queen.cu  && ./a.out -c
+６．CPU 非再帰 バックトラック＋ビットマップ
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.00
+11:         2680               0            0.00
+12:        14200               0            0.01
+13:        73712               0            0.04
+14:       365596               0            0.24
+15:      2279184               0            1.47
+16:     14772512               0            9.75
+17:     95815104               0         1:08.46
+
+$ nvcc CUDA06_N-Queen.cu  && ./a.out -g
 ６．GPU 非再帰 バックトラック＋ビットマップ
 
 */
@@ -184,27 +186,26 @@
 #define THREAD_NUM		96
 #define MAX 27
 //変数宣言
-long Total=0 ;       //合計解
-long Unique=0;
-int down[2*MAX-1];//down:flagA 縦 配置フラグ　
-int left[2*MAX-1]; //left:flagB 斜め配置フラグ　
-int right[2*MAX-1]; //right:flagC 斜め配置フラグ　
-long TOTAL=0;
-long UNIQUE=0;
-/* int size;*/
-int aBoard[MAX];
+long Total=0 ;        //GPU
+long Unique=0;        //GPU
+// int down[2*MAX-1]; //down:flagA 縦 配置フラグ　
+// int left[2*MAX-1]; //left:flagB 斜め配置フラグ　
+// int right[2*MAX-1];//right:flagC 斜め配置フラグ　
+long TOTAL=0;         //CPU,CPUR
+long UNIQUE=0;        //CPU,CPUR
+// int aBoard[MAX];
 //関数宣言
 void TimeFormat(clock_t utime,char *form);
-void NQueen(int size,int mask);
+void NQueen(int size,int mask,int row);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
-  int n,int mark,
-  unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
-  unsigned int* results,int totalCond){
+    int n,int mark,
+    unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+    unsigned int* results,int totalCond){
   const int tid=threadIdx.x,bid=blockIdx.x,idx=bid*blockDim.x+tid;
   __shared__ unsigned int down[THREAD_NUM][10],left[THREAD_NUM][10],right[THREAD_NUM][10],
-                          bitmap[THREAD_NUM][10],sum[THREAD_NUM];
+  bitmap[THREAD_NUM][10],sum[THREAD_NUM];
   const unsigned int mask=(1<<n)-1;int total=0,i=0;unsigned int bit;
   if(idx<totalCond){
     down[tid][i]=totalDown[idx];
@@ -371,114 +372,63 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
+//hh:mm:ss.ms形式に処理時間を出力
+void TimeFormat(clock_t utime,char *form){
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if(dd)
+    sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if(hh)
+    sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
+  else if(mm)
+    sprintf(form,"        %2d:%05.2f",mm,ss);
+  else
+    sprintf(form,"           %5.2f",ss);
+}
 //CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask){
-  int aStack[MAX+2];
+void NQueen(int size,int mask,int row){
+  register int aStack[size];
   register int* pnStack;
-  register int row=0;
   register int bit;
   register int bitmap;
-  int odd=size&1;
-  int sizeE=size-1;
-	/* センチネルを設定-スタックの終わりを示します*/
+  register int sizeE=size-1;
+  register int down[size],right[size],left[size];
   aStack[0]=-1; 
-	/**
-  注：サイズが奇数の場合、（サイズ＆1）は真。
-  サイズが奇数の場合は2xをループする必要があります
-	*/
-  for(int i=0;i<(1+odd);++i){
-		/**
-			クリティカルループ
-			この部分を最適化する必要はありません。
-		*/
-    bitmap=0;
-    if(0==i){
-      /*中央を除くボードの半分を処理します
-        カラム。ボードが5 x 5の場合、最初の行は00011になります。
-        クイーンを中央の列に配置することについてはまだです。
-      */
-	    /* ２で割る */
-      int half=size>>1;
-      /*サイズの半分のビットマップで右端の1を埋めます
-        サイズが7の場合、その半分は3です（残りは破棄します）
-        ビットマップはバイナリで111に設定されます。 
-      */
-      bitmap=(1<<half)-1;
-      pnStack=aStack+1;/* スタックポインタ */
-      aBoard[0]=0;
-      down[0]=left[0]=right[0]=0;
-    }else{
-			/*（奇数サイズのボードの）中央の列を処理します。
-         中央の列ビットを1に設定してから設定します 
-         したがって、最初の行（1つの要素）と次の半分を処理しています。
-         ボードが5 x 5の場合、最初の行は00100になり、次の行は00011です。
-      */
-      bitmap=1<<(size>>1);
-      row=1; /*すでに 0 */
-			/* 最初の行にはクイーンが1つだけあります（中央の列）*/
-      aBoard[0]=bitmap;
-      down[0]=left[0]=right[0]=0;
-      down[1]=bitmap;
-      /* 次の行を実行します。半分だけビットを設定します
-         「Y軸」で結果を反転します
-      */
-      right[1]=(bitmap>>1);
-      left[1]=(bitmap<<1);
-      pnStack=aStack+1; // スタックポインタ
-      /* この行は-1つの要素のみで完了 */
-      *pnStack++=0;
-      /* ビットマップ-1は、単一の1の左側すべて1です */
-      bitmap=(bitmap-1)>>1; 
-    }
-    // クリティカルループ
-    while(true){
-      /* 
-         bit = bitmap ^（bitmap＆（bitmap -1））;
-         最初の（最小のsig） "1"ビットを取得しますが、それは遅くなります。 
-      */
-      /* これは、2の補数アーキテクチャを想定しています */
-      bit=-((signed)bitmap) & bitmap; 
-      if(0==bitmap){
-        /* 前を取得スタックからのビットマップ */
+  pnStack=aStack+1;
+  bit=0;
+  bitmap=mask;
+  down[0]=left[0]=right[0]=0;
+  while(true){
+    if(bitmap){
+      bitmap^=bit=(-bitmap&bitmap); 
+      if(row==sizeE){
+        TOTAL++;
         bitmap=*--pnStack;
-        /* センチネルがヒットした場合... */
-        if(pnStack==aStack){ 
-          break ;
-        }
         --row;
-        continue;
-      }
-      /* このビットをオフにして、再試行しないようにします */
-      bitmap&=~bit; 
-      /* 結果を保存 */
-      aBoard[row]=bit;
-      /* 処理する行がまだあるか？ */
-      if(row<sizeE){
-        int n=row++;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        left[row]=(left[n]|bit)<<1;
-        *pnStack++=bitmap;
-        /* 同じ女王の位置を考慮することはできません
-           列、同じ正の対角線、または同じ負の対角線
-           すでにボード上のクイーン。 
-        */
-        bitmap=mask&~(down[row]|right[row]|left[row]);
         continue;
       }else{
-        /* 処理する行はもうありません。解決策が見つかりました。
-           ボードの位置としてソリューションを印刷するために、
-           printtableへの呼び出しをコメントアウトします
-           printtable（size、aBoard、TOTAL + 1）; */
-        ++TOTAL;
-        bitmap=*--pnStack;
-        --row;
+        int n=row++;
+        left[row]=(left[n]|bit)<<1;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        *pnStack++=bitmap;
+        bitmap=mask&~(left[row]|down[row]|right[row]);
         continue;
       }
+    }else{ 
+      bitmap=*--pnStack;
+      if(pnStack==aStack){ break ; }
+      --row;
+      continue;
     }
   }
-  /* 鏡像をカウントするために、ソリューションを2倍します */
-  TOTAL*=2;
 }
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask, int row,int left,int down,int right){
@@ -489,31 +439,10 @@ void NQueenR(int size,int mask, int row,int left,int down,int right){
   }else{
     bitmap=(mask&~(left|down|right));
     while(bitmap){
-      bit=(-bitmap&bitmap);
-      bitmap=(bitmap^bit);
+      bitmap^=bit=(-bitmap&bitmap);
       NQueenR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
-}
-//hh:mm:ss.ms形式に処理時間を出力
-void TimeFormat(clock_t utime,char *form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-	sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-	sprintf(form,"           %5.2f",ss);
 }
 //メインメソッド
 int main(int argc,char** argv) {
@@ -545,26 +474,23 @@ int main(int argc,char** argv) {
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-		clock_t st;          //速度計測用
-		char t[20];          //hh:mm:ss.msを格納
-    int min=4;int targetN=18;
+    clock_t st;          //速度計測用
+    char t[20];          //hh:mm:ss.msを格納
+    int min=4;
+    int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
-      TOTAL=0;UNIQUE=0;
+      TOTAL=0;
+      UNIQUE=0;
       mask=((1<<i)-1);
+      // aBaordを使用しないので
+      // 初期化の必要はありません
+      // for(int j=0;j<=targetN;j++){
+      // 	aBoard[j]=-1;
+      // }
       st=clock();
-      if(cpu){
-        //非再帰は-1で初期化
-        for(int j=0;j<=targetN;j++){ aBoard[j]=-1;}
-        NQueen(i,mask);
-      }
-      if(cpur){
-        //再帰は0で初期化
-        //for(int j=0;j<=targetN;j++){ aBoard[j]=0;} 
-        for(int j=0;j<=targetN;j++){ aBoard[j]=j;} 
-
-        NQueenR(i,mask,0,0,0,0);
-      }
+      if(cpu){ NQueen(i,mask,0); }
+      if(cpur){ NQueenR(i,mask,0,0,0,0); }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }

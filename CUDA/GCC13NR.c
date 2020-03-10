@@ -396,6 +396,7 @@ int main(int argc,char** argv) {
   }
   if(CPU){
     printf("\n\n１３．CPU 非再帰 並列処理 pthread\n");
+    
   }else if(CPUR){
     printf("\n\n１３．CPUR 再帰 並列処理 pthread\n");
   }

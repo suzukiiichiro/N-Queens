@@ -50,8 +50,8 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC06NR.c && ./a.out -c
 long TOTAL=0;
 long UNIQUE=0;
 // int aBoard[MAX];
-int aT[MAX];       	//aT:aTrial[]
-int aS[MAX];       	//aS:aScrath[]
+// int aT[MAX];       	//aT:aTrial[]
+// int aS[MAX];       	//aS:aScrath[]
 //関数宣言
 void TimeFormat(clock_t utime,char *form);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
@@ -154,11 +154,10 @@ int main(int argc,char** argv){
   int min=4;
   int targetN=17;
   int mask=0;
-
   for(int i=min;i<=targetN;i++){
     TOTAL=0;
-    mask=((1<<i)-1);
     UNIQUE=0;
+    mask=((1<<i)-1);
     st=clock();
     if(cpu){
       // aBaordを使用しないので

@@ -1,5 +1,5 @@
 /**
- Cで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -52,6 +52,7 @@
 
  実行結果
 
+$ nvcc CUDA09_N-Queen.cu  && ./a.out -r
 ９．CPUR 再帰 クイーンの位置による分岐BOUND1
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -63,13 +64,14 @@
 10:          724              92            0.00
 11:         2680             341            0.00
 12:        14200            1787            0.01
-13:        73712            9233            0.08
-14:       365596           45752            0.49
-15:      2279184          285053            3.12
-16:     14772512         1846955           23.55
-17:     95815104        11977939         2:43.32
+13:        73712            9233            0.05
+14:       365596           45752            0.33
+15:      2279184          285053            1.98
+16:     14772512         1846955           15.74
+17:     95815104        11977939         1:41.91
 
-CPU 非再帰 クイーンの位置による分岐BOUND1
+$ nvcc CUDA09_N-Queen.cu  && ./a.out -c
+９．CPU 非再帰 クイーンの位置による分岐BOUND1
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -79,12 +81,16 @@ CPU 非再帰 クイーンの位置による分岐BOUND1
  9:          352              46            0.00
 10:          724              92            0.00
 11:         2680             341            0.00
-12:        14200            1787            0.02
-13:        73712            9233            0.09
-14:       365596           45752            0.54
-15:      2279184          285053            3.45
-16:     14772512         1846955           26.37
-17:     95815104        11977939         2:58.35
+12:        14200            1787            0.01
+13:        73712            9233            0.05
+14:       365596           45752            0.29
+15:      2279184          285053            1.88
+16:     14772512         1846955           14.23
+17:     95815104        11977939         1:36.77
+
+$ nvcc CUDA09_N-Queen.cu  && ./a.out -g
+９．GPU 非再帰 クイーンの位置による分岐BOUND1
+
 */
 
 #include <stdio.h>
@@ -97,8 +103,8 @@ CPU 非再帰 クイーンの位置による分岐BOUND1
 #define THREAD_NUM		96
 #define MAX 27
 //変数宣言
-long Total=0 ;      //合計解
-long Unique=0;
+long Total=0 ;      //GPU
+long Unique=0;      //GPU
 int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
@@ -109,7 +115,6 @@ void TimeFormat(clock_t utime,char *form);
 void rotate_bitmap(int bf[],int af[],int si);
 void vMirror_bitmap(int bf[],int af[],int si);
 int intncmp(int lt[],int rt[],int n);
-void dtob(int score,int si);
 int rh(int a,int sz);
 long getUnique();
 long getTotal();
@@ -313,23 +318,6 @@ void TimeFormat(clock_t utime,char *form){
 	sprintf(form,"           %5.2f",ss);
 }
 //
-void dtob(int score,int size){
-	int bit=1;
-	char c[size];
-	for(int i=0;i<size;i++){
-		if(score&bit){
-			c[i]='1';
-		}else{
-			c[i]='0';
-		}
-		bit<<=1;
-	}
-	for(int i=size-1;i>=0;i--){
-		putchar(c[i]);
-	}
-	printf("\n");
-}
-//
 int rh(int a,int size){
 	int tmp=0;
 	for(int i=0;i<=size;i++){
@@ -444,100 +432,114 @@ void symmetryOps_bitmap(int size){
 }
 //
 void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
-	int bitmap,bit;
-	int b[100], *p=b;
-	int sizeE=size-1;
-	b1mais1:bitmap=mask&~(left|down|right);
-	if(row==sizeE){
-		if(bitmap){
-			aBoard[row]=bitmap;
-			symmetryOps_bitmap(size);
-		}
-	}else{
-		if(bitmap){
-			b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
-			if(bitmap){
-				*p++=left;
-				*p++=down;
-				*p++=right;
-			}
-			*p++=bitmap;
-			row++;
-			left=(left|bit)<<1;
-			down=down|bit;
-			right=(right|bit)>>1;
-			goto b1mais1;
-			//Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-			b1volta:if(p<=b)
-				return;
-			row--;
-			bitmap=*--p;
-			if(bitmap){
-				right=*--p;
-				down=*--p;
-				left=*--p;
-				goto b1outro;
-			}else{
-				goto b1volta;
-			}
-		}
-	}
-	goto b1volta;
+  int bitmap,bit;
+  int b[100], *p=b;
+  int sizeE=size-1;
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
+    }
+  b1mais1:bitmap=mask&~(left|down|right);
+  if(row==sizeE){
+    if(bitmap){
+      aBoard[row]=bitmap;
+      symmetryOps_bitmap(size);
+    }
+  }else{
+    if(bitmap){
+      b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+      if(bitmap){
+        *p++=left;
+        *p++=down;
+        *p++=right;
+      }
+      *p++=bitmap;
+      row++;
+      left=(left|bit)<<1;
+      down=down|bit;
+      right=(right|bit)>>1;
+      goto b1mais1;
+      //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+      b1volta:if(p<=b)
+        return;
+      row--;
+      bitmap=*--p;
+      if(bitmap){
+        right=*--p;
+        down=*--p;
+        left=*--p;
+        goto b1outro;
+      }else{
+        goto b1volta;
+      }
+    }
+  }
+  goto b1volta;
+  }
 }
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int size,int mask){
-	int bit;
-	TOPBIT=1<<(size-1);
-	aBoard[0]=1;
-	for(BOUND1=2;BOUND1<size-1;BOUND1++){
-		aBoard[1]=bit=(1<<BOUND1);
-		//backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-		backTrack1_NR(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-	}
-	SIDEMASK=LASTMASK=(TOPBIT|1);
-	ENDBIT=(TOPBIT>>1);
-	for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-		aBoard[0]=bit=(1<<BOUND1);
-		//backTrack1(size,mask,1,bit<<1,bit,bit>>1);
-		backTrack1_NR(size,mask,1,bit<<1,bit,bit>>1);
-		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-		ENDBIT>>=1;
-	}
+  int bit;
+  TOPBIT=1<<(size-1);
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<size-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1_NR(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,1,bit<<1,bit,bit>>1);
+    backTrack1_NR(size,mask,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
 }
 //
 void backTrack1(int size,int mask,int row,int left,int down,int right){
-	int bit;
-	int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-	if(row==size){
-		if(!bitmap){
-			aBoard[row]=bitmap;
-			symmetryOps_bitmap(size);
-		}
-	}else{
-		while(bitmap){
-			bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-			backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-		}
-	}
+  int bit;
+  int bitmap=(mask&~(left|down|right));
+  if(row==size){
+    // TOTAL++;
+    aBoard[row]=bitmap; //symmetryOpsの時は代入します。
+    symmetryOps_bitmap(size);
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //ロジック用
+      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
 }
 //
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask){
-	int bit;
-	TOPBIT=1<<(size-1);
-	aBoard[0]=1;
-	for(BOUND1=2;BOUND1<size-1;BOUND1++){
-		aBoard[1]=bit=(1<<BOUND1);
-		backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-	}
-	SIDEMASK=LASTMASK=(TOPBIT|1);
-	ENDBIT=(TOPBIT>>1);
-	for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-		aBoard[0]=bit=(1<<BOUND1);
-		backTrack1(size,mask,1,bit<<1,bit,bit>>1);
-		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-		ENDBIT>>=1;
-	}
+  int bit;
+  TOPBIT=1<<(size-1);
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<size-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    backTrack1(size,mask,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
 }
 //メインメソッド
 int main(int argc,char** argv) {
@@ -571,25 +573,18 @@ int main(int argc,char** argv) {
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
 		clock_t st;           //速度計測用
 		char t[20];           //hh:mm:ss.msを格納
-    int min=4; int targetN=18;
+    int min=4; int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
       st=clock();
-      if(cpu){
+        //初期化は不要です
         //非再帰は-1で初期化
-        for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-        NQueen(i,mask);
-      }
-      if(cpur){
-        //再帰は0で初期化
-        //for(int j=0;j<=targetN;j++){ aBoard[j]=0; } 
-        for(int j=0;j<=targetN;j++){ aBoard[j]=j; } 
-
-        NQueenR(i,mask);
-      }
+        // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+      if(cpu){ NQueen(i,mask); }
+      if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
