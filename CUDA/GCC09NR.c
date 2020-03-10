@@ -222,42 +222,42 @@ void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
       // pnStack=aStack+1;
       // *pnStack++=0;
     }
-  b1mais1:bitmap=mask&~(left|down|right);
-  if(row==sizeE){
-    if(bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
-    }
-  }else{
-    if(bitmap){
-      b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
-      if(bitmap){
-        *p++=left;
-        *p++=down;
-        *p++=right;
-      }
-      *p++=bitmap;
-      row++;
-      left=(left|bit)<<1;
-      down=down|bit;
-      right=(right|bit)>>1;
-      goto b1mais1;
-      //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-      b1volta:if(p<=b)
-        return;
-      row--;
-      bitmap=*--p;
-      if(bitmap){
-        right=*--p;
-        down=*--p;
-        left=*--p;
-        goto b1outro;
-      }else{
+b1mais1:bitmap=mask&~(left|down|right);
+        if(row==sizeE){
+          if(bitmap){
+            aBoard[row]=bitmap;
+            symmetryOps_bitmap(size);
+          }
+        }else{
+          if(bitmap){
+b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto b1mais1;
+        //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+b1volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto b1outro;
+        }else{
+          goto b1volta;
+        }
+          }
+        }
         goto b1volta;
-      }
-    }
-  }
-  goto b1volta;
   }
 }
 //CPU 非再帰版 ロジックメソッド

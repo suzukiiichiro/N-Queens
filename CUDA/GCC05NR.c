@@ -291,8 +291,8 @@ int main(int argc,char** argv){
       /** 再帰は0で初期化 */
       for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
       //for(int j=0;j<=targetN;j++){
-        /** 【注意】初期化が前のステップと異なります */
-        //aBoard[j]=0;
+      /** 【注意】初期化が前のステップと異なります */
+      //aBoard[j]=0;
       //  aBoard[j]=j;
       //}
       NQueenR(0,i);

@@ -125,12 +125,12 @@ void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueenR(int size,int mask);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
-  int n,int mark,
-  unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
-  unsigned int* results,int totalCond){
+    int n,int mark,
+    unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+    unsigned int* results,int totalCond){
   const int tid=threadIdx.x,bid=blockIdx.x,idx=bid*blockDim.x+tid;
   __shared__ unsigned int down[THREAD_NUM][10],left[THREAD_NUM][10],right[THREAD_NUM][10],
-                          bitmap[THREAD_NUM][10],sum[THREAD_NUM];
+  bitmap[THREAD_NUM][10],sum[THREAD_NUM];
   const unsigned int mask=(1<<n)-1;int total=0,i=0;unsigned int bit;
   if(idx<totalCond){
     down[tid][i]=totalDown[idx];
@@ -299,136 +299,136 @@ bool InitCUDA(){
 }
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-	sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-	sprintf(form,"           %5.2f",ss);
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if(dd)
+    sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if(hh)
+    sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
+  else if(mm)
+    sprintf(form,"        %2d:%05.2f",mm,ss);
+  else
+    sprintf(form,"           %5.2f",ss);
 }
 //
 int rh(int a,int size){
-	int tmp=0;
-	for(int i=0;i<=size;i++){
-		if(a&(1<<i)){
-			return tmp|=(1<<(size-i));
-		}
-	}
-	return tmp;
+  int tmp=0;
+  for(int i=0;i<=size;i++){
+    if(a&(1<<i)){
+      return tmp|=(1<<(size-i));
+    }
+  }
+  return tmp;
 }
 //
 void vMirror_bitmap(int bf[],int af[],int size){
-	int score;
-	for(int i=0;i<size;i++){
-		score=bf[i];
-		af[i]=rh(score,size-1);
-	}
+  int score;
+  for(int i=0;i<size;i++){
+    score=bf[i];
+    af[i]=rh(score,size-1);
+  }
 }
 //
 void rotate_bitmap(int bf[],int af[],int size){
-	int t;
-	for(int i=0;i<size;i++){
-		t=0;
-		for(int j=0;j<size;j++){
-			t|=((bf[j]>>i)&1)<<(size-j-1); // x[j] の i ビット目を
-		}
-		af[i]=t;                        // y[i] の j ビット目にする
-	}
+  int t;
+  for(int i=0;i<size;i++){
+    t=0;
+    for(int j=0;j<size;j++){
+      t|=((bf[j]>>i)&1)<<(size-j-1); // x[j] の i ビット目を
+    }
+    af[i]=t;                        // y[i] の j ビット目にする
+  }
 }
 //
 int intncmp(int lt[],int rt[],int n){
-	int rtn=0;
-	for(int k=0;k<n;k++){
-		rtn=lt[k]-rt[k];
-		if(rtn!=0){
-			break;
-		}
-	}
-	return rtn;
+  int rtn=0;
+  for(int k=0;k<n;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){
+      break;
+    }
+  }
+  return rtn;
 }
 //
 long getUnique(){
-	return COUNT2+COUNT4+COUNT8;
+  return COUNT2+COUNT4+COUNT8;
 }
 //
 long getTotal(){
-	return COUNT2*2+COUNT4*4+COUNT8*8;
+  return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 //
 void symmetryOps_bitmap(int size){
-	int nEquiv;
-	// 回転・反転・対称チェックのためにboard配列をコピー
-	for(int i=0;i<size;i++){
-		aT[i]=aBoard[i];
-	}
-	rotate_bitmap(aT,aS,size);    //時計回りに90度回転
-	int k=intncmp(aBoard,aS,size);
-	if(k>0) return;
-	if(k==0){
-		nEquiv=2;
-	}else{
-		rotate_bitmap(aS,aT,size);  //時計回りに180度回転
-		k=intncmp(aBoard,aT,size);
-		if(k>0) return;
-		if(k==0){
-			nEquiv=4;
-		}else{
-			rotate_bitmap(aT,aS,size);  //時計回りに270度回転
-			k=intncmp(aBoard,aS,size);
-			if(k>0){
-				return;
-			}
-			nEquiv=8;
-		}
-	}
-	// 回転・反転・対称チェックのためにboard配列をコピー
-	for(int i=0;i<size;i++){
-		aS[i]=aBoard[i];
-	}
-	vMirror_bitmap(aS,aT,size);   //垂直反転
-	k=intncmp(aBoard,aT,size);
-	if(k>0){
-		return;
-	}
-	if(nEquiv>2){             //-90度回転 対角鏡と同等
-		rotate_bitmap(aT,aS,size);
-		k=intncmp(aBoard,aS,size);
-		if(k>0){
-			return;
-		}
-		if(nEquiv>4){           //-180度回転 水平鏡像と同等
-			rotate_bitmap(aS,aT,size);
-			k=intncmp(aBoard,aT,size);
-			if(k>0){
-				return;
-			}       //-270度回転 反対角鏡と同等
-			rotate_bitmap(aT,aS,size);
-			k=intncmp(aBoard,aS,size);
-			if(k>0){
-				return;
-			}
-		}
-	}
-	if(nEquiv==2){
-		COUNT2++;
-	}
-	if(nEquiv==4){
-		COUNT4++;
-	}
-	if(nEquiv==8){
-		COUNT8++;
-	}
+  int nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<size;i++){
+    aT[i]=aBoard[i];
+  }
+  rotate_bitmap(aT,aS,size);    //時計回りに90度回転
+  int k=intncmp(aBoard,aS,size);
+  if(k>0) return;
+  if(k==0){
+    nEquiv=2;
+  }else{
+    rotate_bitmap(aS,aT,size);  //時計回りに180度回転
+    k=intncmp(aBoard,aT,size);
+    if(k>0) return;
+    if(k==0){
+      nEquiv=4;
+    }else{
+      rotate_bitmap(aT,aS,size);  //時計回りに270度回転
+      k=intncmp(aBoard,aS,size);
+      if(k>0){
+        return;
+      }
+      nEquiv=8;
+    }
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<size;i++){
+    aS[i]=aBoard[i];
+  }
+  vMirror_bitmap(aS,aT,size);   //垂直反転
+  k=intncmp(aBoard,aT,size);
+  if(k>0){
+    return;
+  }
+  if(nEquiv>2){             //-90度回転 対角鏡と同等
+    rotate_bitmap(aT,aS,size);
+    k=intncmp(aBoard,aS,size);
+    if(k>0){
+      return;
+    }
+    if(nEquiv>4){           //-180度回転 水平鏡像と同等
+      rotate_bitmap(aS,aT,size);
+      k=intncmp(aBoard,aT,size);
+      if(k>0){
+        return;
+      }       //-270度回転 反対角鏡と同等
+      rotate_bitmap(aT,aS,size);
+      k=intncmp(aBoard,aS,size);
+      if(k>0){
+        return;
+      }
+    }
+  }
+  if(nEquiv==2){
+    COUNT2++;
+  }
+  if(nEquiv==4){
+    COUNT4++;
+  }
+  if(nEquiv==8){
+    COUNT8++;
+  }
 }
 //
 void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
@@ -449,42 +449,42 @@ void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
       // pnStack=aStack+1;
       // *pnStack++=0;
     }
-  b1mais1:bitmap=mask&~(left|down|right);
-  if(row==sizeE){
-    if(bitmap){
-      aBoard[row]=bitmap;
-      symmetryOps_bitmap(size);
-    }
-  }else{
-    if(bitmap){
-      b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
-      if(bitmap){
-        *p++=left;
-        *p++=down;
-        *p++=right;
-      }
-      *p++=bitmap;
-      row++;
-      left=(left|bit)<<1;
-      down=down|bit;
-      right=(right|bit)>>1;
-      goto b1mais1;
-      //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-      b1volta:if(p<=b)
-        return;
-      row--;
-      bitmap=*--p;
-      if(bitmap){
-        right=*--p;
-        down=*--p;
-        left=*--p;
-        goto b1outro;
-      }else{
+b1mais1:bitmap=mask&~(left|down|right);
+        if(row==sizeE){
+          if(bitmap){
+            aBoard[row]=bitmap;
+            symmetryOps_bitmap(size);
+          }
+        }else{
+          if(bitmap){
+b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto b1mais1;
+        //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+b1volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto b1outro;
+        }else{
+          goto b1volta;
+        }
+          }
+        }
         goto b1volta;
-      }
-    }
-  }
-  goto b1volta;
   }
 }
 //CPU 非再帰版 ロジックメソッド
@@ -571,8 +571,8 @@ int main(int argc,char** argv) {
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-		clock_t st;           //速度計測用
-		char t[20];           //hh:mm:ss.msを格納
+    clock_t st;           //速度計測用
+    char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
@@ -580,9 +580,9 @@ int main(int argc,char** argv) {
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
       st=clock();
-        //初期化は不要です
-        //非再帰は-1で初期化
-        // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
+      //初期化は不要です
+      //非再帰は-1で初期化
+      // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
       if(cpu){ NQueen(i,mask); }
       if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 

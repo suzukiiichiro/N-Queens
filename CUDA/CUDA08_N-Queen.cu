@@ -89,12 +89,12 @@ void NQueen(int size,int mask);
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
 //
 __global__ void solve_nqueen_cuda_kernel_bt_bm(
-  int n,int mark,
-  unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
-  unsigned int* results,int totalCond){
+    int n,int mark,
+    unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+    unsigned int* results,int totalCond){
   const int tid=threadIdx.x,bid=blockIdx.x,idx=bid*blockDim.x+tid;
   __shared__ unsigned int down[THREAD_NUM][10],left[THREAD_NUM][10],right[THREAD_NUM][10],
-                          bitmap[THREAD_NUM][10],sum[THREAD_NUM];
+  bitmap[THREAD_NUM][10],sum[THREAD_NUM];
   const unsigned int mask=(1<<n)-1;int total=0,i=0;unsigned int bit;
   if(idx<totalCond){
     down[tid][i]=totalDown[idx];
@@ -263,23 +263,23 @@ bool InitCUDA(){
 }
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
-	int dd,hh,mm;
-	float ftime,ss;
-	ftime=(float)utime/CLOCKS_PER_SEC;
-	mm=(int)ftime/60;
-	ss=ftime-(int)(mm*60);
-	dd=mm/(24*60);
-	mm=mm%(24*60);
-	hh=mm/60;
-	mm=mm%60;
-	if(dd)
-	sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
-	else if(hh)
-	sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
-	else if(mm)
-	sprintf(form,"        %2d:%05.2f",mm,ss);
-	else
-	sprintf(form,"           %5.2f",ss);
+  int dd,hh,mm;
+  float ftime,ss;
+  ftime=(float)utime/CLOCKS_PER_SEC;
+  mm=(int)ftime/60;
+  ss=ftime-(int)(mm*60);
+  dd=mm/(24*60);
+  mm=mm%(24*60);
+  hh=mm/60;
+  mm=mm%60;
+  if(dd)
+    sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss);
+  else if(hh)
+    sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss);
+  else if(mm)
+    sprintf(form,"        %2d:%05.2f",mm,ss);
+  else
+    sprintf(form,"           %5.2f",ss);
 }
 //
 int rh(int a,int sz){
@@ -309,22 +309,22 @@ void rotate_bitmap(int bf[],int af[],int si){
 }
 //
 int intncmp(int lt[],int rt[],int n){
-	int rtn=0;
-	for(int k=0;k<n;k++){
-		rtn=lt[k]-rt[k];
-		if(rtn!=0){
-			break;
-		}
-	}
-	return rtn;
+  int rtn=0;
+  for(int k=0;k<n;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){
+      break;
+    }
+  }
+  return rtn;
 }
 //
 long getUnique(){
-	return COUNT2+COUNT4+COUNT8;
+  return COUNT2+COUNT4+COUNT8;
 }
 //
 long getTotal(){
-	return COUNT2*2+COUNT4*4+COUNT8*8;
+  return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 //
 void symmetryOps_bitmap(int si){
@@ -431,12 +431,12 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
   }else{
     while(bitmap){
       if(ex2!=0){
-      	//奇数個の１回目は真ん中にクイーンを置く
+        //奇数個の１回目は真ん中にクイーンを置く
         bitmap^=aBoard[row]=bit=(1<<(size/2+1));
       }else{
         bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       }
-     	//ここは２行目の処理。ex2を前にずらし除外するようにする
+      //ここは２行目の処理。ex2を前にずらし除外するようにする
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
@@ -475,8 +475,8 @@ int main(int argc,char** argv) {
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-		clock_t st;           //速度計測用
-		char t[20];           //hh:mm:ss.msを格納
+    clock_t st;           //速度計測用
+    char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=17;
     int mask;
     int excl;
@@ -491,9 +491,9 @@ int main(int argc,char** argv) {
       //除外を反転させ１行目の左側半分にクイーンを置けなくする
       //ex 11110000 111100000 
       if(i%2){
-       excl=excl<<(i/2+1);
+        excl=excl<<(i/2+1);
       }else{
-       excl=excl<<(i/2);
+        excl=excl<<(i/2);
       }
       //偶数の場合
       //１行目の左側半分にクイーンを置けないようにする

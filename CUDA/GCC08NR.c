@@ -264,12 +264,12 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
   }else{
     while(bitmap){
       if(ex2!=0){
-      	//奇数個の１回目は真ん中にクイーンを置く
+        //奇数個の１回目は真ん中にクイーンを置く
         bitmap^=aBoard[row]=bit=(1<<(size/2+1));
       }else{
         bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       }
-     	//ここは２行目の処理。ex2を前にずらし除外するようにする
+      //ここは２行目の処理。ex2を前にずらし除外するようにする
       //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
@@ -316,9 +316,9 @@ int main(int argc,char** argv){
     //除外を反転させ１行目の左側半分にクイーンを置けなくする
     //ex 11110000 111100000 
     if(i%2){
-     excl=excl<<(i/2+1);
+      excl=excl<<(i/2+1);
     }else{
-     excl=excl<<(i/2);
+      excl=excl<<(i/2);
     }
     //偶数の場合
     //１行目の左側半分にクイーンを置けないようにする
@@ -347,7 +347,7 @@ int main(int argc,char** argv){
       NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
     }
     TimeFormat(clock()-st,t);
-     printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+    printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
   }
   return 0;
 }
