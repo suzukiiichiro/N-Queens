@@ -232,7 +232,22 @@ $ nvcc CUDA04_N-Queen.cu  && ./a.out -c
 
 $ nvcc CUDA04_N-Queen.cu  && ./a.out -g
 ４．GPU 非再帰 バックトラック＋対称解除法
-
+(注)UDA06のソースを実行しています
+ N:          Total        Unique                 dd:hh:mm:ss.ms
+ 4:                 2                 0          00:00:00:00.02
+ 5:                10                 0          00:00:00:00.00
+ 6:                 4                 0          00:00:00:00.00
+ 7:                40                 0          00:00:00:00.00
+ 8:                92                 0          00:00:00:00.00
+ 9:               352                 0          00:00:00:00.00
+10:               724                 0          00:00:00:00.00
+11:              2680                 0          00:00:00:00.01
+12:             14200                 0          00:00:00:00.02
+13:             73712                 0          00:00:00:00.04
+14:            365596                 0          00:00:00:00.11
+15:           2279184                 0          00:00:00:00.50
+16:          14772512                 0          00:00:00:02.42
+17:          95815104                 0          00:00:00:18.27
 */
 
 #include <stdio.h>
@@ -265,34 +280,42 @@ int symmetryOps(int si);
 void NQueen(int row,int size);
 void NQueenR(int row,int size);
 //
-__global__ void solve_nqueen_cuda_kernel_bt_bm(
-    int n,int mark,
-    unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
-    unsigned int* results,int totalCond){
-  const int tid=threadIdx.x,bid=blockIdx.x,idx=bid*blockDim.x+tid;
-  __shared__ unsigned int down[THREAD_NUM][10],left[THREAD_NUM][10],right[THREAD_NUM][10],
-  bitmap[THREAD_NUM][10],sum[THREAD_NUM];
-  const unsigned int mask=(1<<n)-1;int total=0,i=0;unsigned int bit;
+__global__ void cuda_kernel(
+  int size,int mark,
+  unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+  unsigned int* results,int totalCond){
+  const int tid=threadIdx.x;
+  const int bid=blockIdx.x;
+  const int idx=bid*blockDim.x+tid;
+  __shared__ unsigned int down[THREAD_NUM][10];
+  __shared__ unsigned int left[THREAD_NUM][10];
+  __shared__ unsigned int right[THREAD_NUM][10];
+  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ unsigned int sum[THREAD_NUM];
+  const unsigned int mask=(1<<size)-1;
+  int total=0;
+  int row=0;
+  unsigned int bit;
   if(idx<totalCond){
-    down[tid][i]=totalDown[idx];
-    left[tid][i]=totalLeft[idx];
-    right[tid][i]=totalRight[idx];
-    bitmap[tid][i]=down[tid][i]|left[tid][i]|right[tid][i];
-    while(i>=0){
-      if((bitmap[tid][i]&mask)==mask){i--;}
+    down[tid][row]=totalDown[idx];
+    left[tid][row]=totalLeft[idx];
+    right[tid][row]=totalRight[idx];
+    bitmap[tid][row]=down[tid][row]|left[tid][row]|right[tid][row];
+    while(row>=0){
+      if((bitmap[tid][row]&mask)==mask){row--;}
       else{
-        bit=(bitmap[tid][i]+1)&~bitmap[tid][i];
-        bitmap[tid][i]|=bit;
+        bit=(bitmap[tid][row]+1)&~bitmap[tid][row];
+        bitmap[tid][row]|=bit;
         if((bit&mask)!=0){
-          if(i+1==mark){total++;i--;}
+          if(row+1==mark){total++;row--;}
           else{
-            down[tid][i+1]=down[tid][i]|bit;
-            left[tid][i+1]=(left[tid][i]|bit)<<1;
-            right[tid][i+1]=(right[tid][i]|bit)>>1;
-            bitmap[tid][i+1]=(down[tid][i+1]|left[tid][i+1]|right[tid][i+1]);
-            i++;
+            down[tid][row+1]=down[tid][row]|bit;
+            left[tid][row+1]=(left[tid][row]|bit)<<1;
+            right[tid][row+1]=(right[tid][row]|bit)>>1;
+            bitmap[tid][row+1]=(down[tid][row+1]|left[tid][row+1]|right[tid][row+1]);
+            row++;
           }
-        }else{i--;}
+        }else{row--;}
       }
     }
     sum[tid]=total;
@@ -307,121 +330,182 @@ __global__ void solve_nqueen_cuda_kernel_bt_bm(
   __syncthreads();if(tid==0){results[bid]=sum[0];}
 }
 //
-long long solve_nqueen_cuda(int n,int steps) {
-  unsigned int down[32];unsigned int left[32];unsigned int right[32];
-  unsigned int m[32];unsigned int bit;
-  if(n<=0||n>32){return 0;}
+long long solve_nqueen_cuda(int size,int steps){
+  unsigned int down[32];
+  unsigned int left[32];
+  unsigned int right[32];
+  unsigned int bitmap[32];
+  unsigned int bit;
+  if(size<=0||size>32){return 0;}
   unsigned int* totalDown=new unsigned int[steps];
   unsigned int* totalLeft=new unsigned int[steps];
   unsigned int* totalRight=new unsigned int[steps];
   unsigned int* results=new unsigned int[steps];
-  unsigned int* downCuda;unsigned int* leftCuda;unsigned int* rightCuda;
+  unsigned int* downCuda;
+  unsigned int* leftCuda;
+  unsigned int* rightCuda;
   unsigned int* resultsCuda;
   cudaMalloc((void**) &downCuda,sizeof(int)*steps);
   cudaMalloc((void**) &leftCuda,sizeof(int)*steps);
   cudaMalloc((void**) &rightCuda,sizeof(int)*steps);
   cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
-  const unsigned int mask=(1<<n)-1;
-  const unsigned int mark=n>11?n-10:2;
-  long long total=0;int totalCond=0;
-  int i=0,j;down[0]=0;left[0]=0;right[0]=0;m[0]=0;bool computed=false;
-  for(j=0;j<n/2;j++){
-    bit=(1<<j);m[0]|=bit;
-    down[1]=bit;left[1]=bit<<1;right[1]=bit>>1;
-    m[1]=(down[1]|left[1]|right[1]);
-    i=1;
-    while(i>0){
-      if((m[i]&mask)==mask){i--;}
+  const unsigned int mask=(1<<size)-1;
+  const unsigned int mark=size>11?size-10:2;
+  long long total=0;
+  int totalCond=0;
+  int row=0;
+  down[0]=0;
+  left[0]=0;
+  right[0]=0;
+  bitmap[0]=0;
+  bool matched=false;
+  for(int col=0;col<size/2;col++){
+    bit=(1<<col);
+    bitmap[0]|=bit;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=(down[1]|left[1]|right[1]);
+    row=1;
+    while(row>0){
+      if((bitmap[row]&mask)==mask){row--;}
       else{
-        bit=(m[i]+1)&~m[i];m[i]|=bit;
+        bit=(bitmap[row]+1)&~bitmap[row];
+        bitmap[row]|=bit;
         if((bit&mask)!=0){
-          down[i+1]=down[i]|bit;left[i+1]=(left[i]|bit)<<1;right[i+1]=(right[i]|bit)>>1;
-          m[i+1]=(down[i+1]|left[i+1]|right[i+1]);
-          i++;
-          if(i==mark){
-            totalDown[totalCond]=down[i];totalLeft[totalCond]=left[i];totalRight[totalCond]=right[i];
+          down[row+1]=down[row]|bit;
+          left[row+1]=(left[row]|bit)<<1;
+          right[row+1]=(right[row]|bit)>>1;
+          bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
+          row++;
+          if(row==mark){
+            totalDown[totalCond]=down[row];
+            totalLeft[totalCond]=left[row];
+            totalRight[totalCond]=right[row];
             totalCond++;
             if(totalCond==steps){
-              if(computed){
-                cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-                for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}
-                computed=false;
+              if(matched){
+                cudaMemcpy(results,resultsCuda,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+                matched=false;
               }
-              cudaMemcpy(downCuda,totalDown,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              cudaMemcpy(leftCuda,totalLeft,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              cudaMemcpy(rightCuda,totalRight,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(downCuda,totalDown,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(leftCuda,totalLeft,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(rightCuda,totalRight,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
               /** backTrack+bitmap*/
-              solve_nqueen_cuda_kernel_bt_bm<<<steps/THREAD_NUM,THREAD_NUM>>>(n,n-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-              computed=true;totalCond=0;
+              cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+              matched=true;
+              totalCond=0;
             }
-            i--;
+            row--;
           }
-        }else{i --;}
+        }else{row--;}
       }
     }
   }
-  if(computed){
-    cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-    for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}
-    computed=false;
+  if(matched){
+    cudaMemcpy(results,resultsCuda,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+    matched=false;
   }
-  cudaMemcpy(downCuda,totalDown,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(leftCuda,totalLeft,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(rightCuda,totalRight,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(downCuda,totalDown,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(leftCuda,totalLeft,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(rightCuda,totalRight,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   /** backTrack+bitmap*/
-  solve_nqueen_cuda_kernel_bt_bm<<<steps/THREAD_NUM,THREAD_NUM>>>(n,n-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-  cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-  for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}	
+  cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+    >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+  cudaMemcpy(results,resultsCuda,
+      sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+  for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}	
   total*=2;
-  if(n%2==1){
-    computed=false;totalCond=0;bit=(1<<(n-1)/2);m[0]|=bit;
-    down[1]=bit;left[1]=bit<<1;right[1]=bit>>1;
-    m[1]=(down[1]|left[1]|right[1]);
-    i=1;
-    while(i>0){
-      if((m[i]&mask)==mask){i--;}
+
+
+  if(size%2==1){
+    matched=false;
+    totalCond=0;
+    bit=(1<<(size-1)/2);
+    bitmap[0]|=bit;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=(down[1]|left[1]|right[1]);
+    row=1;
+    while(row>0){
+      if((bitmap[row]&mask)==mask){row--;}
       else{
-        bit=(m[i]+1)&~m[i];m[i]|=bit;
+        bit=(bitmap[row]+1)&~bitmap[row];
+        bitmap[row]|=bit;
         if((bit&mask)!=0){
-          down[i+1]=down[i]|bit;left[i+1]=(left[i]|bit)<<1;right[i+1]=(right[i]|bit)>>1;
-          m[i+1]=(down[i+1]|left[i+1]|right[i+1]);
-          i++;
-          if(i==mark){
-            totalDown[totalCond]=down[i];totalLeft[totalCond]=left[i];totalRight[totalCond]=right[i];
+          down[row+1]=down[row]|bit;
+          left[row+1]=(left[row]|bit)<<1;
+          right[row+1]=(right[row]|bit)>>1;
+          bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
+          row++;
+          if(row==mark){
+            totalDown[totalCond]=down[row];
+            totalLeft[totalCond]=left[row];
+            totalRight[totalCond]=right[row];
             totalCond++;
             if(totalCond==steps){
-              if(computed){
-                cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-                for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}
-                computed=false;
+              if(matched){
+                cudaMemcpy(results,resultsCuda,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+                matched=false;
               }
-              cudaMemcpy(downCuda,totalDown,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              cudaMemcpy(leftCuda,totalLeft,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              cudaMemcpy(rightCuda,totalRight,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(downCuda,totalDown,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(leftCuda,totalLeft,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(rightCuda,totalRight,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
               /** backTrack+bitmap*/
-              solve_nqueen_cuda_kernel_bt_bm<<<steps/THREAD_NUM,THREAD_NUM>>>(n,n-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-              computed=true;totalCond=0;
+              cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+              matched=true;
+              totalCond=0;
             }
-            i--;
+            row--;
           }
-        }else{i --;}
+        }else{row--;}
       }
     }
-    if(computed){
-      cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-      for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}
-      computed=false;
+    if(matched){
+      cudaMemcpy(results,resultsCuda,
+          sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+      for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+      matched=false;
     }
-    cudaMemcpy(downCuda,totalDown,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-    cudaMemcpy(leftCuda,totalLeft,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-    cudaMemcpy(rightCuda,totalRight,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(downCuda,totalDown,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(leftCuda,totalLeft,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(rightCuda,totalRight,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
     /** backTrack+bitmap*/
-    solve_nqueen_cuda_kernel_bt_bm<<<steps/THREAD_NUM,THREAD_NUM>>>(n,n-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-    cudaMemcpy(results,resultsCuda,sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-    for(int j=0;j<steps/THREAD_NUM;j++){total+=results[j];}
+    cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+      >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+    cudaMemcpy(results,resultsCuda,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
   }
-  cudaFree(downCuda);cudaFree(leftCuda);cudaFree(rightCuda);cudaFree(resultsCuda);
-  delete[] totalDown;delete[] totalLeft;delete[] totalRight;delete[] results;
+  cudaFree(downCuda);
+  cudaFree(leftCuda);
+  cudaFree(rightCuda);
+  cudaFree(resultsCuda);
+  delete[] totalDown;
+  delete[] totalLeft;
+  delete[] totalRight;
+  delete[] results;
   return total;
 }
 /** CUDA 初期化 **/
@@ -668,6 +752,7 @@ int main(int argc,char** argv) {
     printf("\n\n４．CPUR 再帰 バックトラック＋対称解除法\n");
   }else if(gpu){
     printf("\n\n４．GPU 非再帰 バックトラック\n");
+    printf("(注)CUDA06のソースを実行しています\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
