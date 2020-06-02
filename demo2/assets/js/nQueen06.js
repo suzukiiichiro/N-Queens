@@ -10,7 +10,7 @@ let aS = new Array([MAX]);
 let SPEED = 0;
 
 function set(bit, row, size) {
-  let pos = zeroPadding(bit.toString(2), size).split("").indexOf('1');
+  let pos = zeroPadding(bit.toString(2), size).split("").reverse().indexOf('1');
   aBoard[row] = pos;
   sleep(self.SPEED);
   self.postMessage({status: 'process', box: aBoard, row: row, size: size});
@@ -38,7 +38,7 @@ function NQueen(size, mask, row) {
       if(row == sizeE) {
         self.TOTAL++;
 
-        let pos = zeroPadding(bit.toString(2), size).split("").indexOf('1');
+        let pos = zeroPadding(bit.toString(2), size).split("").reverse().indexOf('1');
         aBoard[row] = pos;
         sleep(self.SPEED);
         self.postMessage({status: 'process', box: aBoard, row: row+1, size: size});
@@ -82,7 +82,7 @@ function NQueenR(size, mask, row, left, down, right) {
         配置可能なパターンを取得
       http://www.ic-net.or.jp/home/takaken/nt/queen
       */
-      let pos = zeroPadding(bit.toString(2), size).split("").indexOf('1');
+      let pos = zeroPadding(bit.toString(2), size).split("").reverse().indexOf('1');
       aBoard[row] = pos;
       sleep(self.SPEED);
       self.postMessage({status: 'process', box: aBoard, row: row, size: size});
