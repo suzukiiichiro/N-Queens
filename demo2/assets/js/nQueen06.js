@@ -4,8 +4,8 @@ const MAX = 27;
 
 let TOTAL = 0;
 let UNIQUE = 0;
-let aT = new Array([MAX]);
-let aS = new Array([MAX]);
+let aT = new Array(MAX);
+let aS = new Array(MAX);
 
 let SPEED = 0;
 
@@ -17,17 +17,17 @@ function set(bit, row, size) {
 }
 //EOS1
 function NQueen(size, mask, row) {
-  let aStack = new Array([size]);
-  let pnStack = new Array([size]);
+  let aStack = new Array(size);
+  let pnStack = new Array(size);
   let bit;
   let bitmap;
   let sizeE = size - 1;
-  let down = new Array([size]);
-  let right = new Array([size]);
-  let left = new Array([size]);
+  let down = new Array(size);
+  let right = new Array(size);
+  let left = new Array(size);
   aStack[0] = -1;
-  pnStack.fill(0);
   let pnStackID = 0;
+  pnStack[pnStackID] = aStack[row] + 1;
   bit = 0;
   bitmap = mask;
   down[0] = left[0] = right[0] = 0;
@@ -54,6 +54,7 @@ function NQueen(size, mask, row) {
         right[row] = (right[n] | bit) >> 1;
         pnStack[pnStackID++] = bitmap;
         bitmap=mask&~(left[row]|down[row]|right[row]);
+        continue;
       }
     } else {
       set(bit, row, size);
