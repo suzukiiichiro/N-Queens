@@ -68,58 +68,44 @@ function getTotal(){
   return COUNT2*2 + COUNT4*4 + COUNT8*8;
 }
 //
-function symmetryOps_bitmap(si){
-  let nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(let i=0;i<si;i++){
-    aT[i] = aBoard[i];
+function symmetryOps(si){
+  let own,ptn,you,bit;
+  //90度回転
+  if(aBoard[BOUND2] === 1){ own=1; ptn=2;
+    while(own<=si-1){ bit=1; you=si-1;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn<<=1;
+    }
+    /** 90度回転して同型なら180度/270度回転も同型である */
+    if(own>si-1){ COUNT2++; return; }
   }
-  rotate_bitmap(aT, aS, si);    //時計回りに90度回転
-  let k = intncmp(aBoard, aS, si);
-  if(k > 0) { return; }
-  if(k === 0){
-    nEquiv = 2;
-  } else {
-    rotate_bitmap(aS, aT, si);  //時計回りに180度回転
-    k = intncmp(aBoard, aT, si);
-    if(k > 0) { return; }
-    if(k === 0){
-      nEquiv=4;
-    } else {
-      rotate_bitmap(aT, aS, si);//時計回りに270度回転
-      k = intncmp(aBoard, aS, si);
-      if(k > 0){ return; }
-      nEquiv = 8;
+  //180度回転
+  if(aBoard[si-1]===ENDBIT){ own=1; you=si-1-1;
+    while(own<=si-1){ bit=1; ptn=TOPBIT;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; you--;
+    }
+    /** 90度回転が同型でなくても180度回転が同型である事もある */
+    if(own>si-1){ COUNT4++; return; }
+  }
+  //270度回転
+  if(aBoard[BOUND1]===TOPBIT){ own=1; ptn=TOPBIT>>1;
+    while(own<=si-1){ bit=1; you=0;
+      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
+      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
+      own++; ptn>>=1;
     }
   }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(let i = 0; i < si; i++){ aS[i] = aBoard[i];}
-  vMirror_bitmap(aS,aT,si);   //垂直反転
-  k = intncmp(aBoard,aT,si);
-  if(k > 0){ return; }
-  if(nEquiv > 2){             //-90度回転 対角鏡と同等
-    rotate_bitmap(aT,aS,si);
-    k = intncmp(aBoard,aS,si);
-    if(k > 0){ return; }
-    if(nEquiv > 4){           //-180度回転 水平鏡像と同等
-      rotate_bitmap(aS, aT, si);
-      k = intncmp(aBoard, aT, si);
-      if(k > 0){ return;}       //-270度回転 反対角鏡と同等
-      rotate_bitmap(aT,aS,si);
-      k = intncmp(aBoard,aS,si);
-      if(k > 0){ return;}
-    }
-  }
-  if(nEquiv === 2){ COUNT2++; }
-  if(nEquiv === 4){ COUNT4++; }
-  if(nEquiv === 8){ COUNT8++; }
+  COUNT8++;
 }
 
 function backTrack2_NR(size,mask,row,left,down,right){
   let bitmap, bit;
   let p = new Array(size);
   let pID = 0;
-  let sizeE = size-1;
+  let sizeE = size - 1;
   let odd = size & 1;
   
   for(let i = 0; i < (1+odd); ++i) {
@@ -139,17 +125,21 @@ function backTrack2_NR(size,mask,row,left,down,right){
           set(bitmap, row, size);
           if(row === sizeE){
             if(bitmap){
-              if((bitmap&LASTMASK)===0){
-                aBoard[row] = bitmap;
+              //【枝刈り】 最下段枝刈り
+              if((bitmap&LASTMASK) === 0){
+                aBoard[row]=bitmap; //symmetryOpsの時は代入します。
+
                 let pos = zeroPadding(bitmap.toString(2), size).split("").indexOf('1');
                 aBoard2[row] = pos;
                 sleep(self.SPEED);
                 self.postMessage({status: 'process', box: aBoard2, row: row+1, size: size});
-                symmetryOps_bitmap(size);
+
+
+                symmetryOps(size);
               }
             }
           } else {
-            //【枝刈り】上部サイド枝刈り
+      //【枝刈り】上部サイド枝刈り
             if(row<BOUND1){
               bitmap&=~SIDEMASK;
               set(bitmap, row, size);
@@ -235,17 +225,17 @@ function backTrack1_NR(size,mask,row,left,down,right){
           set(bitmap, row, size);
           if(row === sizeE){
             if(bitmap){
+
               let pos = zeroPadding(bitmap.toString(2), size).split("").indexOf('1');
               aBoard2[row] = pos;
               sleep(self.SPEED);
               self.postMessage({status: 'process', box: aBoard2, row: row+1, size: size});
-              symmetryOps_bitmap(size);
+
               COUNT8++;
             }
           } else {
             if(row < BOUND1){
               bitmap&=~2;
-              set(bitmap, row, size);
             }
             if(bitmap){
               label = 'b1outro';
@@ -321,7 +311,7 @@ function backTrack2(size,mask,row,left,down,right){
     if(bitmap){
       if((bitmap&LASTMASK) === 0){   
         aBoard[row] = bitmap; //symmetryOpsの時は代入します。
-        symmetryOps_bitmap(size);
+        symmetryOps(size);
 
         let pos = zeroPadding(bitmap.toString(2), size).split("").indexOf('1');
         aBoard2[row] = pos;
