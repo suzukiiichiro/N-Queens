@@ -114,10 +114,11 @@
 
 
 
-24 ２００４年４月１１日 電気通信大学    2009年4月 68CPU x 22日(1,496 CPU日 N24)
-25 ２００５年６月１１日 ProActive      単一CPU換算で５０年以上(18,250 CPU日 N25)                                           
-26 ２００９年７月１１日 tu-dresden     FPGA ( *1 : 8*22 2.5 GHz-QuadCore systemsに相当（約176 * 4CPU = 704 CPU))  x ２４０日(168,960 CPU日 N26)
-27 ２０１６年　月　　日 tu-dresden
+N24 ２００４年４月１１日 電気通信大学    2004年4月 68CPU x 22日(1,496 CPU日 N24)
+N25 ２００５年６月１１日 ProActive       2005年5月 185 days 4 hours 54 minutes 52 seconds 854
+  http://www-sop.inria.fr/oasis/ProActive2/apps/nqueens25.html
+N26 ２００９年７月１１日 tu-dresden     FPGA ( *1 : 8*22 2.5 GHz-QuadCore systemsに相当（約176 * 4CPU = 704 CPU))  x ２４０日(168,960 CPU日 N26)
+N27 ２０１６年　月　　日 tu-dresden
 
 JSomers版   (N=22)
 巧みなビット演算による高速化
@@ -128,12 +129,13 @@ Jeff Somers氏がN=23の解を求めるときに使用した解法
 JSomers版を改良し、７〜２４％の性能向上
 電通大でN=24を求めるときに使用した解法
 
+ProActive(N=25)
+http://www-sop.inria.fr/oasis/ProActive2/apps/nqueens25.html
+
 takaken版
 JSomers版を高橋謙一郎氏が改良
 対称性に着目して代表解のみを探索
 再帰呼び出しによるプログラム解毒性の向上
-
-
 
 
  
