@@ -471,10 +471,11 @@
 */
 int count;      //見つかった解
 int aBoard[8];  //表示用配列
-int *BOARDE,*BOARD1,*BOARD2,
-		TOPBIT,ENDBIT,
-		MASK,SIDEMASK,LASTMASK,
-		BOUND1,BOUND2;
+//int *BOARDE;
+//int *BOARD1,*BOARD2,
+int		TOPBIT,ENDBIT,
+		MASK,SIDEMASK,LASTMASK;
+//		BOUND1,BOUND2;
 int COUNT2,COUNT4,COUNT8;
 int SIZE,SIZEE,TOTAL,UNIQUE;
 //
@@ -503,39 +504,35 @@ void Display(void) {
         printf("\n");
     }
 }
-// y:これまでに配置できたクイーンの数
-void backtrack(int y,int left,int down,int right){
-  int bitmap=0;
-  int bit=0;
-  if(y==SIZE){
-    count++;
-    Display(); //表示
-  }else{
-    bitmap=MASK&~(left|down|right); 
-    while(bitmap){
-      bit=-bitmap&bitmap;
-      bitmap^=bit;
-      aBoard[y]=bit;  // 表示用
-      backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
-    }
-  }
-}
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
 /**********************************************/
-void Check(void) {
+void Check(int BOUND1,int BOUND2) {
 	int *own,*you,bit,ptn;
 	/*90度回転*/
-	if(*BOARD2==1){
-		for(ptn=2,own=aBoard+1;own<=BOARDE;own++,ptn<<=1){
+	//if(*BOARD2==1){
+	if(aBoard[BOUND2]==1){
+		//for(ptn=2,own=aBoard+1;own<=BOARDE;own++,ptn<<=1){
+		//for(ptn=2,own=aBoard+1;own<=&aBoard[SIZEE];own++,ptn<<=1){
+		ptn=2;
+		own=aBoard+1;
+		while(own<=&aBoard[SIZEE]){
 			bit=1;
-			for(you=BOARDE;*you!=ptn&&*own>=bit;you--)
+			//for(you=BOARDE;*you!=ptn&&*own>=bit;you--)
+			//for(you=&aBoard[SIZEE];*you!=ptn&&*own>=bit;you--){
+			you=&aBoard[SIZEE];
+			while(*you!=ptn&&*own>=bit){
 				bit<<=1;
+				you--;
+			}
 			if(*own>bit)return;
 			if(*own<bit)break;
+			own++;
+			ptn<<=1;
 		}
 		/*90度回転して同型なら180度回転も270度回転も同型である*/
-		if(own>BOARDE){
+		//if(own>BOARDE){
+		if(own>&aBoard[SIZEE]){
 			COUNT2++;
 			Display(); //表示用
 			con("aBoard90",*aBoard);
@@ -543,16 +540,28 @@ void Check(void) {
 		}
 	}
 	/*180度回転*/
-	if(*BOARDE==ENDBIT){
-		for(you=BOARDE-1,own=aBoard+1;own<=BOARDE;own++,you--){
+	//if(*BOARDE==ENDBIT){
+	if(aBoard[SIZEE]==ENDBIT){
+		//for(you=BOARDE-1,own=aBoard+1;own<=BOARDE;own++,you--){
+		//for(you=&aBoard[SIZEE]-1,own=aBoard+1;own<=&aBoard[SIZEE];own++,you--){
+		you=&aBoard[SIZEE]-1;
+		own=aBoard+1;
+		while(own<=&aBoard[SIZEE]){
 			bit=1;
-			for(ptn=TOPBIT;ptn!=*you&&*own>=bit;ptn>>=1)
+			//for(ptn=TOPBIT;ptn!=*you&&*own>=bit;ptn>>=1){
+			ptn=TOPBIT;
+			while(ptn!=*you&&*own>=bit){
 				bit<<=1;
+				ptn>>=1;
+			}
 			if(*own>bit)return;
 			if(*own<bit)break;
+			own++;
+			you--;
 		}
 		/*90度回転が同型でなくても180度回転が同型であることもある*/
-		if(own>BOARDE){
+		//if(own>BOARDE){
+		if(own>&aBoard[SIZEE]){
 			COUNT4++;
 			Display();  //表示用
 			con("aBoard180",*aBoard);
@@ -560,14 +569,24 @@ void Check(void) {
 		}
 	}
 	/*270度回転*/
-	if(*BOARD1==TOPBIT){
-		for(ptn=TOPBIT>>1,own=aBoard+1;own<=BOARDE;own++,ptn>>=1){
+	//if(*BOARD1==TOPBIT){
+	if(aBoard[BOUND1]==TOPBIT){
+		//for(ptn=TOPBIT>>1,own=aBoard+1;own<=BOARDE;own++,ptn>>=1){
+		//for(ptn=TOPBIT>>1,own=aBoard+1;own<=&aBoard[SIZEE];own++,ptn>>=1){
+		ptn=TOPBIT>>1;
+		own=aBoard+1;
+		while(own<=&aBoard[SIZEE]){
 			bit=1;
-			for(you=aBoard;*you!=ptn&&*own>=bit;you++){
+			//for(you=aBoard;*you!=ptn&&*own>=bit;you++){
+			you=aBoard;
+			while(*you!=ptn&&*own>=bit){
 				bit<<=1;
+				you++;
 			}
 			if(*own>bit)return;
 			if(*own<bit)break;
+			own++;
+			ptn>>=1;
 		}
 	}
 	COUNT8++;
@@ -577,7 +596,7 @@ void Check(void) {
 /**********************************************/
 /* 最上段行のクイーンが角以外にある場合の探索 */
 /**********************************************/
-void Backtrack2(int y,int left,int down,int right){
+void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 	int bitmap,bit;
 
 	bitmap=MASK&~(left|down|right);
@@ -585,7 +604,8 @@ void Backtrack2(int y,int left,int down,int right){
 		if(bitmap){
 			if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
 				aBoard[y]=bitmap;
-				Check();
+				//Check();
+				Check(BOUND1,BOUND2);
 			}
 		}
 	}else{
@@ -598,20 +618,20 @@ void Backtrack2(int y,int left,int down,int right){
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-			Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+			Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
 		}
 	}
 }
 /**********************************************/
 /* 最上段行のクイーンが角にある場合の探索     */
 /**********************************************/
-void Backtrack1(int y, int left, int down, int right) {
+void Backtrack1(int y,int left,int down,int right,int BOUND1){
 	int  bitmap, bit;
 	bitmap=MASK&~(left|down|right);
 	if(y==SIZEE){
 		if(bitmap){
 			aBoard[y]=bitmap;
-			con("aBoard[y]",aBoard[y]);
+			// con("aBoard[y]",aBoard[y]);
 			COUNT8++;
 			Display(); //表示用
 		}
@@ -622,7 +642,7 @@ void Backtrack1(int y, int left, int down, int right) {
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
 		}
 	}
 }
@@ -632,38 +652,51 @@ void NQueens(void) {
 	/*Initialize*/
 	COUNT8=COUNT4=COUNT2=0;
 	SIZEE=SIZE-1;
-	BOARDE=&aBoard[SIZEE];
-	TOPBIT=1<<SIZEE;
-	MASK=(1<<SIZE)-1;
+	// BOARDE=&aBoard[SIZEE];
+	TOPBIT=1<<SIZEE;				//128,10000000
+	// con("TOPBIT",TOPBIT);
+	MASK=(1<<SIZE)-1;       //255,11111111
+	// con("MASK",MASK);
 
 	/*0行目:000000001(固定)*/
 	/*1行目:011111100(選択)*/
-	aBoard[0]=1;
-	for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
+	aBoard[0]=1;						//1,  00000001
+	// con("aBoard[0]",aBoard[0]);
+	int BOUND1=2;
+	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
+	while(BOUND1<SIZEE){
 		/**
 			BOUND1
-							1<<2:   100	
-							1<<3:  1000
-							1<<4: 10000
-							1<<5:100000
+							1<<2:  4      100	
+							1<<3:  8     1000
+							1<<4: 16    10000
+							1<<5: 32   100000
+							1<<6: 64  1000000
 		*/
 		aBoard[1]=bit=1<<BOUND1;
-		/**
-		
-		*/
-		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1);
+		// con("BOUND1",1<<BOUND1);
+		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
+		BOUND1++;
 	}
 
 	/*0行目:000001110(選択)*/
-	SIDEMASK=LASTMASK=TOPBIT|1;
-	ENDBIT=TOPBIT>>1;
-	for(BOUND1=1,BOUND2=SIZE-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-		BOARD1=&aBoard[BOUND1];
-		BOARD2=&aBoard[BOUND2];
+	// con("TOPBIT|1",TOPBIT|1);
+	SIDEMASK=LASTMASK=TOPBIT|1; //TOPBIT|1 129: 10000001
+	// con("TOPBIT>>1",TOPBIT>>1);	
+	ENDBIT=TOPBIT>>1;           //TOPBIT>>1 64: 01000000
+	
+	BOUND1=1;
+	int BOUND2=SIZE-2;;
+	//for(BOUND1=1,BOUND2=SIZE-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+	while(BOUND1<BOUND2){
+		// BOARD1=&aBoard[BOUND1];
+		// BOARD2=&aBoard[BOUND2];
 		aBoard[0]=bit=1<<BOUND1;
-		Backtrack2(1,bit<<1,bit,bit>>1);
+		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 		ENDBIT>>=1;
+		BOUND1++;
+		BOUND2--;
 	}
 	UNIQUE=COUNT8+COUNT4+COUNT2;
 	TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
