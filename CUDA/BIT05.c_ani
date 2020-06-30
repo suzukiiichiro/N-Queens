@@ -507,6 +507,25 @@ void Display(void) {
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
 /**********************************************/
+      //BOUND1が2だと 1列目の右から3番目にクイーンが置かれる
+      //xxoooQxx
+      //xoooooox
+      //Cooooooo
+      //oooooooo
+      //oooooooo
+      //oooooooA
+      //xoooooox
+      //xxBoooxx
+      //CheckではQの位置を
+      //・右に90度回転させたA(BOUND1が2だとBOUND2は5 6列目の右端
+      //にクイーンがあるとき aBoard[5]=00000001)
+      //・180度回転させたB(最終列の左から3番目にクイーンがあ
+      //るとき。aBoard[7]=ENDBIT=00100000 ENDBITは1列目のクイーンの位置を180度回
+      //転させた時のクイーンの位置を指し示すもの)
+      //・270度回転さえたC(３列目の左端が1の時 aBoard[2]==TOPBOT=10000000。
+      //TOPBOTは左端が1。
+      //                     でユニーク判定をする
+      //
 void Check(int BOUND1,int BOUND2) {
 	int *own,*you,bit,ptn;
 	/*90度回転*/
@@ -546,8 +565,9 @@ void Check(int BOUND1,int BOUND2) {
 	}
 	/*180度回転*/
 	//if(*BOARDE==ENDBIT){
+	  con("BOUND1",BOUND1);	
+		con("aBoard[0]",aBoard[0]);
 	if(aBoard[SIZEE]==ENDBIT){
-    printf("endbit:%d\n",ENDBIT);
 		//for(you=BOARDE-1,own=aBoard+1;own<=BOARDE;own++,you--){
 		//for(you=&aBoard[SIZEE]-1,own=aBoard+1;own<=&aBoard[SIZEE];own++,you--){
 		you=&aBoard[SIZEE]-1;
@@ -745,7 +765,6 @@ void NQueens(void) {
 	 //con("SIDEMASK",SIDEMASK);	
 	 //con("LASTMASK",LASTMASK);	
 	ENDBIT=TOPBIT>>1;           //TOPBIT>>1 64: 01000000
-	 //con("ENDBIT",ENDBIT);	
 	
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
@@ -755,15 +774,18 @@ void NQueens(void) {
 		// BOARD2=&aBoard[BOUND2];
 		aBoard[0]=bit=1<<BOUND1;
 		// con("BOUND1<<1",1<<BOUND1);
-		 con("aBoard[0]",aBoard[0]);
+		con("aBoard[0]",aBoard[0]);
+	  con("ENDBIT",ENDBIT);	
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
 	  //con("afterbacktrack2_LASTMASK",LASTMASK);	
-    //con("ENDBIT",ENDBIT);
+		con("aBoard[0]",aBoard[0]);
+    con("ENDBIT",ENDBIT);
 		ENDBIT>>=1;
 	  //con("afterbacktrack2_ENDBIT",ENDBIT);	
-    //con("ENDBIT>>1",ENDBIT);
 		BOUND1++;
+		con("aBoard[0]",aBoard[0]);
+    con("ENDBIT>>1",ENDBIT);
 		BOUND2--;
 	}
 	UNIQUE=COUNT8+COUNT4+COUNT2;
