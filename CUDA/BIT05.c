@@ -652,21 +652,44 @@ void NQueens(void) {
 	/*Initialize*/
 	COUNT8=COUNT4=COUNT2=0;
 	SIZEE=SIZE-1;
-	// BOARDE=&aBoard[SIZEE];
+
 	TOPBIT=1<<SIZEE;				//128,10000000
-	// con("TOPBIT",TOPBIT);
+/**
+			   TOPBIT  SIZEE(7) 
+							   1<<7:  		4      100	
+  0 1 2 3 4 5 6 7
+0 - - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
 	MASK=(1<<SIZE)-1;       //255,11111111
-	// con("MASK",MASK);
+/**
+			      MASK SIZE(8) 
+							   (1<<8)-1:  		255      11111111
+  0 1 2 3 4 5 6 7
+0 - - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
 
 	/*0行目:000000001(固定)*/
 	/*1行目:011111100(選択)*/
 	aBoard[0]=1;						//1,  00000001
-	// con("aBoard[0]",aBoard[0]);
 	int BOUND1=2;
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
 		/**
-			         BOUND1
+			           BOUND1
 							1<<2:  		4      100	
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
@@ -678,7 +701,7 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			         BOUND1  bit
+			           BOUND1  bit
 							1<<3:     8     1000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
@@ -690,7 +713,7 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			         BOUND1  bit
+			           BOUND1  bit
 							1<<4:    16    10000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
@@ -702,7 +725,7 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			         BOUND1  bit
+			           BOUND1  bit
 							1<<5:    32   100000
   0 1 2 3 4 5 6 7
 0 X - - - - - - Q  aBoard[0]=1
@@ -714,7 +737,7 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			         BOUND1 bit
+			           BOUND1 bit
 							1<<6:   64  1000000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
@@ -725,10 +748,8 @@ void NQueens(void) {
 5 X - - - - - X X 
 6 X - - - - - X X 
 7 X - - - - - X X
-
 		*/
 		aBoard[1]=bit=1<<BOUND1;
-		// con("BOUND1",1<<BOUND1);
 		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
 		BOUND1++;
 	}
