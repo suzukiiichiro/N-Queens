@@ -720,108 +720,114 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
 //
 void NQueens(void) {
 	int  bit;
-	/*Initialize*/
 	COUNT8=COUNT4=COUNT2=0;
 	SIZEE=SIZE-1;
 
+/**
+	MASK SIZE(8) 	bit
+	(1<<8)-1:  		255      11111111
+		0 1 2 3 4 5 6 7
+	0 Q Q Q Q Q Q Q Q  
+	1 - - - - - - - - 
+	2 - - - - - - - - 
+	3 - - - - - - - - 
+	4 - - - - - - - - 
+	5 - - - - - - - - 
+	6 - - - - - - - - 
+	7 - - - - - - - -
+*/
 	MASK=(1<<SIZE)-1;       //255,11111111
 
+
 /**
-MASK SIZE(8) 	bit
-(1<<8)-1:  		255      11111111
-  0 1 2 3 4 5 6 7
-0 Q Q Q Q Q Q Q Q  
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
+		aBoard[0]=1   1 		00000001
+		0 1 2 3 4 5 6 7
+	0 - - - - - - - Q  
+	1 - - - - - - - -  
+	2 - - - - - - - - 
+	3 - - - - - - - - 
+	4 - - - - - - - - 
+	5 - - - - - - - - 
+	6 - - - - - - - - 
+	7 - - - - - - - -
 */
+	aBoard[0]=1;						//1,  00000001
+
+
 	/*0行目:000000001(固定)*/
 	/*1行目:011111100(選択)*/
-	aBoard[0]=1;						//1,  00000001
-/**
-aBoard[0]=1   1 		00000001
-  0 1 2 3 4 5 6 7
-0 - - - - - - - Q  
-1 - - - - - - - -  
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-*/
 	int BOUND1=2;
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
+
 /**
-		aBoard[1]=bit=1<<BOUND1;
+	aBoard[1]=bit=1<<BOUND1; についての遷移
 
-BOUND1(2) 	bit
-1<<2:  			4      100	
-  0 1 2 3 4 5 6 7
-0 - - - - - - - Q  aBoard[0]=1
-1 X - - - - Q X X  aBoard[1]=bit=1<<BOUND1(2)
-2 X - - - - - X X 
-3 X - - - - - X X 
-4 X - - - - - X X 
-5 X - - - - - X X 
-6 X - - - - - X X 
-7 X - - - - - X X
+	BOUND1(2) 	bit
+	1<<2:  			4      100	
+		0 1 2 3 4 5 6 7
+	0 - - - - - - - Q  aBoard[0]=1
+	1 X - - - - Q X X  aBoard[1]=bit=1<<BOUND1(2)
+	2 X - - - - - X X 
+	3 X - - - - - X X 
+	4 X - - - - - X X 
+	5 X - - - - - X X 
+	6 X - - - - - X X 
+	7 X - - - - - X X
 
-BOUND1(3)  	bit
-1<<3:				8     1000
-  0 1 2 3 4 5 6 7
-0 - - - - - - - Q  aBoard[0]=1
-1 X - - - Q - X X  aBoard[1]=bit=1<<BOUND1(3)
-2 X - - - - - X X 
-3 X - - - - - X X 
-4 X - - - - - X X 
-5 X - - - - - X X 
-6 X - - - - - X X 
-7 X - - - - - X X
+	BOUND1(3)  	bit
+	1<<3:				8     1000
+		0 1 2 3 4 5 6 7
+	0 - - - - - - - Q  aBoard[0]=1
+	1 X - - - Q - X X  aBoard[1]=bit=1<<BOUND1(3)
+	2 X - - - - - X X 
+	3 X - - - - - X X 
+	4 X - - - - - X X 
+	5 X - - - - - X X 
+	6 X - - - - - X X 
+	7 X - - - - - X X
 
-BOUND1(4) bit
-1<<4:    	16    10000
-  0 1 2 3 4 5 6 7
-0 - - - - - - - Q  aBoard[0]=1
-1 X - - Q - - X X  aBoard[1]=bit=1<<BOUND1(4)
-2 X - - - - - X X 
-3 X - - - - - X X 
-4 X - - - - - X X 
-5 X - - - - - X X 
-6 X - - - - - X X 
-7 X - - - - - X X
+	BOUND1(4) bit
+	1<<4:    	16    10000
+		0 1 2 3 4 5 6 7
+	0 - - - - - - - Q  aBoard[0]=1
+	1 X - - Q - - X X  aBoard[1]=bit=1<<BOUND1(4)
+	2 X - - - - - X X 
+	3 X - - - - - X X 
+	4 X - - - - - X X 
+	5 X - - - - - X X 
+	6 X - - - - - X X 
+	7 X - - - - - X X
 
-BOUND1(5) bit
-1<<5:    	32   100000
-  0 1 2 3 4 5 6 7
-0 X - - - - - - Q  aBoard[0]=1
-1 X - Q - - - X X  aBoard[1]=bit=1<<BOUND1(5)
-2 X - - - - - X X 
-3 X - - - - - X X 
-4 X - - - - - X X 
-5 X - - - - - X X 
-6 X - - - - - X X 
-7 X - - - - - X X
+	BOUND1(5) bit
+	1<<5:    	32   100000
+		0 1 2 3 4 5 6 7
+	0 X - - - - - - Q  aBoard[0]=1
+	1 X - Q - - - X X  aBoard[1]=bit=1<<BOUND1(5)
+	2 X - - - - - X X 
+	3 X - - - - - X X 
+	4 X - - - - - X X 
+	5 X - - - - - X X 
+	6 X - - - - - X X 
+	7 X - - - - - X X
 
-BOUND1(6) bit
-1<<6:   	64  1000000
-  0 1 2 3 4 5 6 7
-0 - - - - - - - Q  aBoard[0]=1
-1 X Q - - - - X X  aBoard[1]=bit=1<<BOUND1(6)
-2 X - - - - - X X 
-3 X - - - - - X X 
-4 X - - - - - X X 
-5 X - - - - - X X 
-6 X - - - - - X X 
-7 X - - - - - X X
+	BOUND1(6) bit
+	1<<6:   	64  1000000
+		0 1 2 3 4 5 6 7
+	0 - - - - - - - Q  aBoard[0]=1
+	1 X Q - - - - X X  aBoard[1]=bit=1<<BOUND1(6)
+	2 X - - - - - X X 
+	3 X - - - - - X X 
+	4 X - - - - - X X 
+	5 X - - - - - X X 
+	6 X - - - - - X X 
+	7 X - - - - - X X
 */
 		aBoard[1]=bit=1<<BOUND1;
 
+/**
+		Backtrack1の挙動については Backtrack1()を参照
+*/
 		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
 		BOUND1++;
 	}
