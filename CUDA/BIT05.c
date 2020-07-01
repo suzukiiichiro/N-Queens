@@ -599,6 +599,10 @@ void Check(int BOUND1,int BOUND2) {
 void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 	int bitmap,bit;
 
+	/**
+	left,down,rightだけだと桁数が盤面より多くなる
+  （特にleft)ことがあるのでそれを防ぐために使っている 
+	*/
 	bitmap=MASK&~(left|down|right);
 	if(y==SIZEE){
 		if(bitmap){
@@ -657,8 +661,9 @@ void NQueens(void) {
 	/*1行目:011111100(選択)*/
 	aBoard[0]=1;						//1,  00000001
 /**
+aBoard[0]=1   1 		00000001
   0 1 2 3 4 5 6 7
-0 - - - - - - - Q  aBoard[0]=1   1 		00000001
+0 - - - - - - - Q  
 1 - - - - - - - -  
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -670,9 +675,9 @@ void NQueens(void) {
 	int BOUND1=2;
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
-		/**
-			           BOUND1
-							1<<2:  		4      100	
+/**
+BOUND1(2) 	bit
+1<<2:  			4      100	
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - - - Q X X  aBoard[1]=bit=1<<BOUND1(2)
@@ -683,8 +688,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<3:     8     1000
+BOUND1(3)  	bit
+1<<3:				8     1000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - - Q - X X  aBoard[1]=bit=1<<BOUND1(3)
@@ -695,8 +700,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<4:    16    10000
+BOUND1(4) bit
+1<<4:    	16    10000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - Q - - X X  aBoard[1]=bit=1<<BOUND1(4)
@@ -707,8 +712,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<5:    32   100000
+BOUND1(5) bit
+1<<5:    	32   100000
   0 1 2 3 4 5 6 7
 0 X - - - - - - Q  aBoard[0]=1
 1 X - Q - - - X X  aBoard[1]=bit=1<<BOUND1(5)
@@ -719,8 +724,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1 bit
-							1<<6:   64  1000000
+BOUND1(6) bit
+1<<6:   	64  1000000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X Q - - - - X X  aBoard[1]=bit=1<<BOUND1(6)
@@ -730,7 +735,7 @@ void NQueens(void) {
 5 X - - - - - X X 
 6 X - - - - - X X 
 7 X - - - - - X X
-		*/
+*/
 		aBoard[1]=bit=1<<BOUND1;
 		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
 		BOUND1++;
@@ -738,8 +743,8 @@ void NQueens(void) {
 
 	MASK=(1<<SIZE)-1;       //255,11111111
 /**
-			      MASK SIZE(8) 
-							   (1<<8)-1:  255      11111111
+MASK SIZE(8) 	bit
+(1<<8)-1:  		255      11111111
   0 1 2 3 4 5 6 7
 0 Q Q Q Q Q Q Q Q  
 1 - - - - - - - - 
@@ -753,16 +758,15 @@ void NQueens(void) {
 
 	TOPBIT=1<<SIZEE;				//128,10000000
 /**
-			   TOPBIT  SIZEE(7) 
-							   1<<7:  		128      10000000	
-
 TOPBITは、
 SIDEMASK,LASTMASK,ENDBITを算出するときcheckメソッドで
 ２７０度回転でクイーンの位置が左端にあるかどうかチェック
 するときに使用されている	
 
+TOPBIT  SIZEE(7)  bit
+	   		1<<7:  		128      10000000	
   0 1 2 3 4 5 6 7
-0 Q - - - - - - - 		TOPBIT 1000000 
+0 Q - - - - - - - 		
 1 - - - - - - - - 	  
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -775,7 +779,131 @@ SIDEMASK,LASTMASK,ENDBITを算出するときcheckメソッドで
 	SIDEMASK=LASTMASK=TOPBIT|1; //TOPBIT|1 129: 10000001
 /**
 										TOPBIT 		10000000
-										TOPBIT|1  10000001 
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+SIDEMASK=LASTMASK=TOPBIT|1  10000001 
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
+	ENDBIT=TOPBIT>>1;           //TOPBIT>>1 64: 01000000
+/**
+										ENDBIT 	TOPBIT>>1 
+														64				01000000
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT=TOPBIT>>1
+  0 1 2 3 4 5 6 7		
+0 - Q - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/	
+
+	BOUND1=1;
+	int BOUND2=SIZE-2;;
+	while(BOUND1<BOUND2){
+		/*0行目:000001110(選択)*/
+		aBoard[0]=bit=1<<BOUND1;
+/**
+aBoard[0]=bit=1<<BOUND1(1)
+     BOUND1 bit
+	1<<1        2   10
+  0 1 2 3 4 5 6 7		
+0 - - - - - - Q - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(2)
+     BOUND1 bit
+	1<<2        4   100
+  0 1 2 3 4 5 6 7		
+0 - - - - - Q - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(3)
+		 BOUND1   bit
+	1<<3    		8 	1000
+  0 1 2 3 4 5 6 7		
+0 - - - - Q - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(4)
+		 BOUND1		bit
+	1<<4   			16	10000
+  0 1 2 3 4 5 6 7		
+0 - - - Q - - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(5)
+		 BOUND1		bit
+	1<<5  			32	100000
+  0 1 2 3 4 5 6 7		
+0 - - Q - - - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
+		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+/**
+SIDEMASK=LASTMASK=TOPBIT|1  10000001 
   0 1 2 3 4 5 6 7		
 0 Q - - - - - - Q  
 1 - - - - - - - - 
@@ -786,9 +914,45 @@ SIDEMASK,LASTMASK,ENDBITを算出するときcheckメソッドで
 6 - - - - - - - - 
 7 - - - - - - - -
 
-										SIDEMASK 	10000001
+LASTMASK|=LASTMASK>>1|LASTMASK<<1
   0 1 2 3 4 5 6 7		
-0 Q - - - - - - Q  
+0 - Q - - - - Q -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
+		ENDBIT>>=1;
+/**
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT=TOPBIT>>1
+  0 1 2 3 4 5 6 7		
+0 - Q - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT>>=1
+  0 1 2 3 4 5 6 7		
+0 - - Q - - - - -  
 1 - - - - - - - - 
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -798,29 +962,6 @@ SIDEMASK,LASTMASK,ENDBITを算出するときcheckメソッドで
 7 - - - - - - - -
 
 */
-
-	ENDBIT=TOPBIT>>1;           //TOPBIT>>1 64: 01000000
-/**
-										ENDBIT 	TOPBIT>>1 
-														64				01000000
-  0 1 2 3 4 5 6 7		
-0 - - - - - - - -  
-1 - Q - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-*/	
-	BOUND1=1;
-	int BOUND2=SIZE-2;;
-	while(BOUND1<BOUND2){
-		/*0行目:000001110(選択)*/
-		aBoard[0]=bit=1<<BOUND1;
-		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
-		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-		ENDBIT>>=1;
 		BOUND1++;
 		BOUND2--;
 	}
