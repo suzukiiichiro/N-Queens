@@ -666,12 +666,66 @@ void NQueens(void) {
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
 		/**
-			BOUND1
-							1<<2:  4      100	
-							1<<3:  8     1000
-							1<<4: 16    10000
-							1<<5: 32   100000
-							1<<6: 64  1000000
+			         BOUND1
+							1<<2:  		4      100	
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  aBoard[0]=1
+1 - - - - - Q - -  aBoard[1]=bit=1<<BOUND1(2)
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+			         BOUND1  bit
+							1<<3:     8     1000
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  aBoard[0]=1
+1 - - - - Q - - -  aBoard[1]=bit=1<<BOUND1(3)
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+			         BOUND1  bit
+							1<<4:    16    10000
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  aBoard[0]=1
+1 - - - Q - - - -  aBoard[1]=bit=1<<BOUND1(4)
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+			         BOUND1  bit
+							1<<5:    32   100000
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  aBoard[0]=1
+1 - - Q - - - - -  aBoard[1]=bit=1<<BOUND1(5)
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+			         BOUND1 bit
+							1<<6:   64  1000000
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  aBoard[0]=1
+1 - Q - - - - - -  aBoard[1]=bit=1<<BOUND1(6)
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
 		*/
 		aBoard[1]=bit=1<<BOUND1;
 		// con("BOUND1",1<<BOUND1);
@@ -694,6 +748,7 @@ void NQueens(void) {
 		aBoard[0]=bit=1<<BOUND1;
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+		con("LASTMASK",LASTMASK);
 		ENDBIT>>=1;
 		BOUND1++;
 		BOUND2--;
