@@ -599,12 +599,13 @@ void Check(int BOUND1,int BOUND2) {
 void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 	int bitmap,bit;
 
+	/**
+	left,down,rightだけだと桁数が盤面より多くなる
+  （特にleft)ことがあるのでそれを防ぐために使っている 
+	*/
 	bitmap=MASK&~(left|down|right);
 	if(y==SIZEE){
 		if(bitmap){
-
-      //printf("y==SIZEE\n");
-      //con("LASTMASK",LASTMASK);
 			if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
 				aBoard[y]=bitmap;
 				//Check();
@@ -612,14 +613,10 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 			}
 		}
 	}else{
-    //printf("y:%d:BOUND1:%d\n",y,BOUND1);
-    //con("SIDEMASK",SIDEMASK);
 		if(y<BOUND1){/*上部サイド枝刈り*/
-     //printf("y<BOUND1\n");
 			bitmap|=SIDEMASK;
 			bitmap^=SIDEMASK;
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
-      //printf("y==BOUND2\n");
 			if(!(down&SIDEMASK))return;
 			if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
 		}
@@ -660,44 +657,27 @@ void NQueens(void) {
 	COUNT8=COUNT4=COUNT2=0;
 	SIZEE=SIZE-1;
 
-	TOPBIT=1<<SIZEE;				//128,10000000
-/**
-			   TOPBIT  SIZEE(7) 
-							   1<<7:  		128      10000000	
-  0 1 2 3 4 5 6 7
-0 - - - - - - - -  
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-*/
-	MASK=(1<<SIZE)-1;       //255,11111111
-/**
-			      MASK SIZE(8) 
-							   (1<<8)-1:  255      11111111
-  0 1 2 3 4 5 6 7
-0 - - - - - - - -  
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-*/
-
 	/*0行目:000000001(固定)*/
 	/*1行目:011111100(選択)*/
 	aBoard[0]=1;						//1,  00000001
+/**
+aBoard[0]=1   1 		00000001
+  0 1 2 3 4 5 6 7
+0 - - - - - - - Q  
+1 - - - - - - - -  
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
 	int BOUND1=2;
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
-		/**
-			           BOUND1
-							1<<2:  		4      100	
+/**
+BOUND1(2) 	bit
+1<<2:  			4      100	
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - - - Q X X  aBoard[1]=bit=1<<BOUND1(2)
@@ -708,8 +688,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<3:     8     1000
+BOUND1(3)  	bit
+1<<3:				8     1000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - - Q - X X  aBoard[1]=bit=1<<BOUND1(3)
@@ -720,8 +700,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<4:    16    10000
+BOUND1(4) bit
+1<<4:    	16    10000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X - - Q - - X X  aBoard[1]=bit=1<<BOUND1(4)
@@ -732,8 +712,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1  bit
-							1<<5:    32   100000
+BOUND1(5) bit
+1<<5:    	32   100000
   0 1 2 3 4 5 6 7
 0 X - - - - - - Q  aBoard[0]=1
 1 X - Q - - - X X  aBoard[1]=bit=1<<BOUND1(5)
@@ -744,8 +724,8 @@ void NQueens(void) {
 6 X - - - - - X X 
 7 X - - - - - X X
 
-			           BOUND1 bit
-							1<<6:   64  1000000
+BOUND1(6) bit
+1<<6:   	64  1000000
   0 1 2 3 4 5 6 7
 0 - - - - - - - Q  aBoard[0]=1
 1 X Q - - - - X X  aBoard[1]=bit=1<<BOUND1(6)
@@ -755,23 +735,103 @@ void NQueens(void) {
 5 X - - - - - X X 
 6 X - - - - - X X 
 7 X - - - - - X X
-		*/
+*/
 		aBoard[1]=bit=1<<BOUND1;
 		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
 		BOUND1++;
 	}
 
-	/*0行目:000001110(選択)*/
-	// con("TOPBIT|1",TOPBIT|1);
+	MASK=(1<<SIZE)-1;       //255,11111111
+/**
+MASK SIZE(8) 	bit
+(1<<8)-1:  		255      11111111
+  0 1 2 3 4 5 6 7
+0 Q Q Q Q Q Q Q Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
+	TOPBIT=1<<SIZEE;				//128,10000000
+/**
+TOPBITは、
+SIDEMASK,LASTMASK,ENDBITを算出するときcheckメソッドで
+２７０度回転でクイーンの位置が左端にあるかどうかチェック
+するときに使用されている	
+
+TOPBIT  SIZEE(7)  bit
+	   		1<<7:  		128      10000000	
+  0 1 2 3 4 5 6 7
+0 Q - - - - - - - 		
+1 - - - - - - - - 	  
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
 	SIDEMASK=LASTMASK=TOPBIT|1; //TOPBIT|1 129: 10000001
-	// con("TOPBIT>>1",TOPBIT>>1);	
+/**
+										TOPBIT 		10000000
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+SIDEMASK=LASTMASK=TOPBIT|1  10000001 
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
 	ENDBIT=TOPBIT>>1;           //TOPBIT>>1 64: 01000000
-	
+/**
+										ENDBIT 	TOPBIT>>1 
+														64				01000000
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT=TOPBIT>>1
+  0 1 2 3 4 5 6 7		
+0 - Q - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/	
+
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
-	//for(BOUND1=1,BOUND2=SIZE-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
 	while(BOUND1<BOUND2){
-    //printf("BOUND1:%d:BOUND2:%d\n",BOUND1,BOUND2);
 		/**
 			           BOUND1 1
                  BOUND2 6
@@ -821,15 +881,136 @@ void NQueens(void) {
 6 X - - - - - - X  
 7 X X X B - X X X  aBoard[SIZEE]==ENDBIT aBoard[7]=00010000 180度回転
 		*/
-		// BOARD1=&aBoard[BOUND1];
-		// BOARD2=&aBoard[BOUND2];
+		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
-		//con("bit",bit);
-		//con("LASTMASK",LASTMASK);
-		//con("ENDBIT",ENDBIT);
+/**
+aBoard[0]=bit=1<<BOUND1(1)
+     BOUND1 bit
+	1<<1        2   10
+  0 1 2 3 4 5 6 7		
+0 - - - - - - Q - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(2)
+     BOUND1 bit
+	1<<2        4   100
+  0 1 2 3 4 5 6 7		
+0 - - - - - Q - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(3)
+		 BOUND1   bit
+	1<<3    		8 	1000
+  0 1 2 3 4 5 6 7		
+0 - - - - Q - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(4)
+		 BOUND1		bit
+	1<<4   			16	10000
+  0 1 2 3 4 5 6 7		
+0 - - - Q - - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+aBoard[0]=bit=1<<BOUND1(5)
+		 BOUND1		bit
+	1<<5  			32	100000
+  0 1 2 3 4 5 6 7		
+0 - - Q - - - - - 	
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+/**
+SIDEMASK=LASTMASK=TOPBIT|1  10000001 
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+LASTMASK|=LASTMASK>>1|LASTMASK<<1
+  0 1 2 3 4 5 6 7		
+0 - Q - - - - Q -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
+
 		ENDBIT>>=1;
+/**
+TOPBIT
+  0 1 2 3 4 5 6 7		
+0 Q - - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT=TOPBIT>>1
+  0 1 2 3 4 5 6 7		
+0 - Q - - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT>>=1
+  0 1 2 3 4 5 6 7		
+0 - - Q - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+*/
 		BOUND1++;
 		BOUND2--;
 	}
