@@ -753,7 +753,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
 	  0 1 2 3 4 5 6 7 BOUND1(3)
 	0 - - - - - - - Q  
 	1 - - - - Q - - -  
-	2 - - - - - - - - 
+	2 - - - - - - X - 
 	3 - - - - - - X - 
 	4 - - - - - - - - 
 	5 - - - - - - - - 
