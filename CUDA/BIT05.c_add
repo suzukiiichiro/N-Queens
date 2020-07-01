@@ -780,7 +780,7 @@ void NQueens(void) {
                  LASTMASK 10000001 最終行のクイーンを置けない場所
                  ENDBIT   01000000
   0 1 2 3 4 5 6 7
-0 X - - - - - Q X  aBoard[0]=bit=1<<BOUND1 00000010
+0 X - - - - - Q X  aBoard[0]=bit=1<<BOUND1(1) 00000010
 1 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[1]=10000000 270度回転
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -796,7 +796,7 @@ void NQueens(void) {
                  LASTMASK 111000011 最終行のクイーンを置けない場所
                  ENDBIT   00100000 
   0 1 2 3 4 5 6 7
-0 X X - - - Q X X  aBoard[0]=bit=1<<BOUND1 00000100
+0 X X - - - Q X X  aBoard[0]=bit=1<<BOUND1(2) 00000100
 1 X - - - - - - X  
 2 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[2]=10000000 270度回転
 3 - - - - - - - - 
@@ -812,7 +812,7 @@ void NQueens(void) {
                  LASTMASK 1111100111 最終行のクイーンを置けない場所
                  ENDBIT   00010000 
   0 1 2 3 4 5 6 7
-0 X X X - Q X X X  aBoard[0]=bit=1<<BOUND1 00001000
+0 X X X - Q X X X  aBoard[0]=bit=1<<BOUND1(3) 00001000
 1 X - - - - - - X  
 2 X - - - - - - X  
 3 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[3]=10000000 270度回転
