@@ -657,6 +657,20 @@ void NQueens(void) {
 	COUNT8=COUNT4=COUNT2=0;
 	SIZEE=SIZE-1;
 
+	MASK=(1<<SIZE)-1;       //255,11111111
+/**
+MASK SIZE(8) 	bit
+(1<<8)-1:  		255      11111111
+  0 1 2 3 4 5 6 7
+0 Q Q Q Q Q Q Q Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+*/
 	/*0行目:000000001(固定)*/
 	/*1行目:011111100(選択)*/
 	aBoard[0]=1;						//1,  00000001
@@ -741,20 +755,6 @@ BOUND1(6) bit
 		BOUND1++;
 	}
 
-	MASK=(1<<SIZE)-1;       //255,11111111
-/**
-MASK SIZE(8) 	bit
-(1<<8)-1:  		255      11111111
-  0 1 2 3 4 5 6 7
-0 Q Q Q Q Q Q Q Q  
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-*/
 
 	TOPBIT=1<<SIZEE;				//128,10000000
 /**
@@ -832,6 +832,55 @@ ENDBIT=TOPBIT>>1
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
 	while(BOUND1<BOUND2){
+		/**
+			           BOUND1 1
+                 BOUND2 6
+                 TOPBIT   10000000
+                 SIDEMASK 10000001 BOUND1は1の時は上部サイド枝狩りはない
+                 LASTMASK 10000001 最終行のクイーンを置けない場所
+                 ENDBIT   01000000
+  0 1 2 3 4 5 6 7
+0 X - - - - - Q X  aBoard[0]=bit=1<<BOUND1(1) 00000010
+1 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[1]=10000000 270度回転
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - A  aBoard[BOUND2]=aBoard[6]=00000001 90度回転
+7 X B - - - - - X  aBoard[SIZEE]==ENDBIT aBoard[7]=01000000 180度回転
+
+			           BOUND1 2
+                 BOUND2 5
+                 TOPBIT   10000000
+                 SIDEMASK 10000001 y=1,6の時に両サイド枝狩り
+                 LASTMASK 111000011 最終行のクイーンを置けない場所
+                 ENDBIT   00100000 
+  0 1 2 3 4 5 6 7
+0 X X - - - Q X X  aBoard[0]=bit=1<<BOUND1(2) 00000100
+1 X - - - - - - X  
+2 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[2]=10000000 270度回転
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - A  aBoard[BOUND2]=aBoard[5]=00000001 90度回転
+6 X - - - - - - X  
+7 X X B - - - X X  aBoard[SIZEE]==ENDBIT aBoard[7]=00100000 180度回転
+
+			           BOUND1 3
+                 BOUND2 4
+                 TOPBIT   10000000
+                 SIDEMASK 10000001 y=1,2,5,6の時に両サイド枝狩り
+                 LASTMASK 1111100111 最終行のクイーンを置けない場所
+                 ENDBIT   00010000 
+  0 1 2 3 4 5 6 7
+0 X X X - Q X X X  aBoard[0]=bit=1<<BOUND1(3) 00001000
+1 X - - - - - - X  
+2 X - - - - - - X  
+3 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[3]=10000000 270度回転
+4 - - - - - - - A  aBoard[BOUND2]=aBoard[4]=00000001 90度回転
+5 X - - - - - - X  
+6 X - - - - - - X  
+7 X X X B - X X X  aBoard[SIZEE]==ENDBIT aBoard[7]=00010000 180度回転
+		*/
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
 /**
@@ -902,6 +951,9 @@ aBoard[0]=bit=1<<BOUND1(5)
 */
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+con("TOPBIT",TOPBIT);
+con("LASTMASK",LASTMASK);
+con("SIDEMASK",SIDEMASK);
 /**
 SIDEMASK=LASTMASK=TOPBIT|1  10000001 
   0 1 2 3 4 5 6 7		
@@ -927,6 +979,7 @@ LASTMASK|=LASTMASK>>1|LASTMASK<<1
 */
 
 		ENDBIT>>=1;
+con("ENDBIT",ENDBIT);
 /**
 TOPBIT
   0 1 2 3 4 5 6 7		
@@ -950,9 +1003,31 @@ ENDBIT=TOPBIT>>1
 6 - - - - - - - - 
 7 - - - - - - - -
 
-ENDBIT>>=1
+ENDBIT>>=1 (１回目のループ）
   0 1 2 3 4 5 6 7		
 0 - - Q - - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT>>=1 (２回目のループ）
+  0 1 2 3 4 5 6 7		
+0 - - - Q - - - -  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+
+ENDBIT>>=1 (３回目のループ）
+  0 1 2 3 4 5 6 7		
+0 - - - - Q - - -  
 1 - - - - - - - - 
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -970,7 +1045,6 @@ ENDBIT>>=1
 }
 int main(){
   SIZE=8;
-  MASK=(1<<SIZE)-1;
 	NQueens();
   printf("count:%d\n",count);
 	printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
