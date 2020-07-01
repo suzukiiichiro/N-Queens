@@ -604,6 +604,55 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
   （特にleft)ことがあるのでそれを防ぐために使っている 
 	*/
 	bitmap=MASK&~(left|down|right);
+/**
+BOUND1 1
+BOUND2 6
+TOPBIT   10000000
+SIDEMASK 10000001 BOUND1が1の時は上部サイド枝狩りはない
+LASTMASK 10000001 最終行のクイーンを置けない場所
+ENDBIT   01000000
+  0 1 2 3 4 5 6 7
+0 X - - - - - Q X  aBoard[0]=bit=1<<BOUND1(1) 00000010
+1 C - - - - - - -  C:aBoard[BOUND1(1)]==TOPBIT 	aBoard[1]=10000000 270度回転
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - A  A:aBoard[BOUND2(6)]==1 			aBoard[6]=00000001  90度回転
+7 X B - - - - - X  B:aBoard[SIZEE(7)]==ENDBIT 	aBoard[7]=01000000 180度回転
+
+BOUND1 2
+BOUND2 5
+TOPBIT   10000000
+SIDEMASK 10000001 y=1,6の時に両サイド枝狩り
+LASTMASK 11000011 最終行のクイーンを置けない場所
+ENDBIT   00100000 
+  0 1 2 3 4 5 6 7
+0 X X - - - Q X X  aBoard[0]=bit=1<<BOUND1(2) 00000100
+1 X - - - - - - X  
+2 C - - - - - - -  C:aBoard[BOUND1(2)]==TOPBIT 	aBoard[2]=10000000 270度回転
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - A  A:aBoard[BOUND2(5)]==1 			aBoard[5]=00000001  90度回転
+6 X - - - - - - X  
+7 X X B - - - X X  B:aBoard[SIZEE(7)]==ENDBIT 	aBoard[7]=00100000 180度回転
+
+BOUND1 3
+BOUND2 4
+TOPBIT   10000000
+SIDEMASK 10000001 y=1,2,5,6の時に両サイド枝狩り
+LASTMASK 11100111 最終行のクイーンを置けない場所
+ENDBIT   00010000 
+  0 1 2 3 4 5 6 7
+0 X X X - Q X X X  aBoard[0]=bit=1<<BOUND1(3) 00001000
+1 X - - - - - - X  
+2 X - - - - - - X  
+3 C - - - - - - -  aBoard[BOUND1]==TOPBIT 			aBoard[3]=10000000 270度回転
+4 - - - - - - - A  aBoard[BOUND2]==1 						aBoard[4]=00000001  90度回転
+5 X - - - - - - X  
+6 X - - - - - - X  
+7 X X X B - X X X  aBoard[SIZEE]==ENDBIT 				aBoard[7]=00010000 180度回転
+*/
 	if(y==SIZEE){
 		if(bitmap){
 			if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
@@ -611,14 +660,23 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 				//Check();
 				Check(BOUND1,BOUND2);
 			}
+/**
+兄　ここの枝刈りの遷移をおねがい
+*/
 		}
 	}else{
 		if(y<BOUND1){/*上部サイド枝刈り*/
 			bitmap|=SIDEMASK;
 			bitmap^=SIDEMASK;
+/**
+兄　ここの枝刈りの遷移をおねがい
+*/
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
 			if(!(down&SIDEMASK))return;
 			if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
+/**
+兄　ここの枝刈りの遷移をおねがい
+*/
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
@@ -635,17 +693,26 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
 	if(y==SIZEE){
 		if(bitmap){
 			aBoard[y]=bitmap;
-			// con("aBoard[y]",aBoard[y]);
+/**
+	兄　ここの変化をお願い
+*/
 			COUNT8++;
 			Display(); //表示用
 		}
 	}else{
-		if(y<BOUND1){/*斜軸反転解の排除*/
+		if(y<BOUND1){/*枝刈り : 斜軸反転解の排除*/
 			bitmap|=2;
 			bitmap^=2;
+/**
+	兄　ここの枝刈りをお願い
+*/
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+/**
+	兄　ここの枝刈りをお願い
+	bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+*/
 			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
 		}
 	}
@@ -658,6 +725,7 @@ void NQueens(void) {
 	SIZEE=SIZE-1;
 
 	MASK=(1<<SIZE)-1;       //255,11111111
+
 /**
 MASK SIZE(8) 	bit
 (1<<8)-1:  		255      11111111
@@ -690,6 +758,8 @@ aBoard[0]=1   1 		00000001
 	//for(BOUND1=2;BOUND1<SIZEE;BOUND1++){
 	while(BOUND1<SIZEE){
 /**
+		aBoard[1]=bit=1<<BOUND1;
+
 BOUND1(2) 	bit
 1<<2:  			4      100	
   0 1 2 3 4 5 6 7
@@ -751,6 +821,7 @@ BOUND1(6) bit
 7 X - - - - - X X
 */
 		aBoard[1]=bit=1<<BOUND1;
+
 		Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
 		BOUND1++;
 	}
@@ -832,55 +903,6 @@ ENDBIT=TOPBIT>>1
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
 	while(BOUND1<BOUND2){
-		/**
-			           BOUND1 1
-                 BOUND2 6
-                 TOPBIT   10000000
-                 SIDEMASK 10000001 BOUND1は1の時は上部サイド枝狩りはない
-                 LASTMASK 10000001 最終行のクイーンを置けない場所
-                 ENDBIT   01000000
-  0 1 2 3 4 5 6 7
-0 X - - - - - Q X  aBoard[0]=bit=1<<BOUND1(1) 00000010
-1 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[1]=10000000 270度回転
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - A  aBoard[BOUND2]=aBoard[6]=00000001 90度回転
-7 X B - - - - - X  aBoard[SIZEE]==ENDBIT aBoard[7]=01000000 180度回転
-
-			           BOUND1 2
-                 BOUND2 5
-                 TOPBIT   10000000
-                 SIDEMASK 10000001 y=1,6の時に両サイド枝狩り
-                 LASTMASK 111000011 最終行のクイーンを置けない場所
-                 ENDBIT   00100000 
-  0 1 2 3 4 5 6 7
-0 X X - - - Q X X  aBoard[0]=bit=1<<BOUND1(2) 00000100
-1 X - - - - - - X  
-2 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[2]=10000000 270度回転
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - A  aBoard[BOUND2]=aBoard[5]=00000001 90度回転
-6 X - - - - - - X  
-7 X X B - - - X X  aBoard[SIZEE]==ENDBIT aBoard[7]=00100000 180度回転
-
-			           BOUND1 3
-                 BOUND2 4
-                 TOPBIT   10000000
-                 SIDEMASK 10000001 y=1,2,5,6の時に両サイド枝狩り
-                 LASTMASK 1111100111 最終行のクイーンを置けない場所
-                 ENDBIT   00010000 
-  0 1 2 3 4 5 6 7
-0 X X X - Q X X X  aBoard[0]=bit=1<<BOUND1(3) 00001000
-1 X - - - - - - X  
-2 X - - - - - - X  
-3 C - - - - - - -  aBoard[BOUND1]==TOPBIT aBoard[3]=10000000 270度回転
-4 - - - - - - - A  aBoard[BOUND2]=aBoard[4]=00000001 90度回転
-5 X - - - - - - X  
-6 X - - - - - - X  
-7 X X X B - X X X  aBoard[SIZEE]==ENDBIT aBoard[7]=00010000 180度回転
-		*/
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
 /**
@@ -951,9 +973,6 @@ aBoard[0]=bit=1<<BOUND1(5)
 */
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-con("TOPBIT",TOPBIT);
-con("LASTMASK",LASTMASK);
-con("SIDEMASK",SIDEMASK);
 /**
 SIDEMASK=LASTMASK=TOPBIT|1  10000001 
   0 1 2 3 4 5 6 7		
@@ -979,7 +998,6 @@ LASTMASK|=LASTMASK>>1|LASTMASK<<1
 */
 
 		ENDBIT>>=1;
-con("ENDBIT",ENDBIT);
 /**
 TOPBIT
   0 1 2 3 4 5 6 7		
