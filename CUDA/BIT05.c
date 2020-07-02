@@ -490,12 +490,17 @@ void con(char* c,int decimal){
     decimal=decimal/2;
     base=base*10;
   }
-  printf("%s 16進数:\t%d\t2進数:\t%d\n",c,_decimal,binary);
+  printf("%s 10進数:\t%d\t2進数:\t%d\n",c,_decimal,binary);
 }
 //
 //ボード表示用
-void Display(void) {
+void Display(char* c) {
     int  y, bitmap, bit;
+    printf("\n%s\n",c);
+    con("TOPBIT",TOPBIT);
+    con("ENDBIT",ENDBIT);
+    con("SIDEMASK",SIDEMASK);
+    con("LASTMASK",LASTMASK);
     printf("\nN=%d no.%d\n", SIZE, ++count);
     for (y=0; y<SIZE; y++) {
         bitmap = aBoard[y];
@@ -534,7 +539,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT2++;
-			Display(); //表示用
+			Display(""); //表示用
 			con("aBoard90",*aBoard);
 			return;
 		}
@@ -563,7 +568,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT4++;
-			Display();  //表示用
+			Display("");  //表示用
 			con("aBoard180",*aBoard);
 			return;
 		}
@@ -590,7 +595,7 @@ void Check(int BOUND1,int BOUND2) {
 		}
 	}
 	COUNT8++;
-	Display(); //表示用
+	Display(""); //表示用
 	con("aBoard270",*aBoard);
 }
 /**********************************************/
@@ -697,7 +702,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
   最終行にクイーンを配置する
 */
 			COUNT8++;
-			Display(); //表示用
+			Display(""); //表示用
 		}
 	}else{
     //y=2の時はこの枝狩りは不要。最適化できないか検討する
@@ -978,6 +983,7 @@ ENDBIT=TOPBIT>>1
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
 	while(BOUND1<BOUND2){
+    printf("BOUND1:%d;BOUND2:%d",BOUND1,BOUND2);
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
 /**
@@ -1020,31 +1026,9 @@ aBoard[0]=bit=1<<BOUND1(3)
 6 - - - - - - - - 
 7 - - - - - - - -
 
-aBoard[0]=bit=1<<BOUND1(4)
-		 BOUND1		bit
-	1<<4   			16	10000
-  0 1 2 3 4 5 6 7		
-0 - - - Q - - - - 	
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
-
-aBoard[0]=bit=1<<BOUND1(5)
-		 BOUND1		bit
-	1<<5  			32	100000
-  0 1 2 3 4 5 6 7		
-0 - - Q - - - - - 	
-1 - - - - - - - - 
-2 - - - - - - - - 
-3 - - - - - - - - 
-4 - - - - - - - - 
-5 - - - - - - - - 
-6 - - - - - - - - 
-7 - - - - - - - -
+*/
+/**
+		Backtrack2の挙動については Backtrack2()を参照
 */
 		Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
 		LASTMASK|=LASTMASK>>1|LASTMASK<<1;
@@ -1059,10 +1043,35 @@ SIDEMASK=LASTMASK=TOPBIT|1  10000001
 5 - - - - - - - - 
 6 - - - - - - - - 
 7 - - - - - - - -
-
-LASTMASK|=LASTMASK>>1|LASTMASK<<1
+BOUND1->BOUND2切り替わり時(１回目のループ）
+LASTMASK|=LASTMASK>>1|LASTMASK<<1 111000011  
+11000011が正しい
   0 1 2 3 4 5 6 7		
-0 - Q - - - - Q -  
+0 Q Q - - - - Q Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+BOUND2->BOUND3切り替わり時(２回目のループ）
+LASTMASK|=LASTMASK>>1|LASTMASK<<1 1111100111  
+11100111が正しい
+  0 1 2 3 4 5 6 7		
+0 Q Q Q - - Q Q Q  
+1 - - - - - - - - 
+2 - - - - - - - - 
+3 - - - - - - - - 
+4 - - - - - - - - 
+5 - - - - - - - - 
+6 - - - - - - - - 
+7 - - - - - - - -
+BOUND3->BOUND4切り替わり時(３回目のループ）
+LASTMASK|=LASTMASK>>1|LASTMASK<<1 11111111111  
+11111111が正しい
+  0 1 2 3 4 5 6 7		
+0 Q Q Q Q Q Q Q Q  
 1 - - - - - - - - 
 2 - - - - - - - - 
 3 - - - - - - - - 
@@ -1071,7 +1080,6 @@ LASTMASK|=LASTMASK>>1|LASTMASK<<1
 6 - - - - - - - - 
 7 - - - - - - - -
 */
-
 		ENDBIT>>=1;
 /**
 TOPBIT
@@ -1118,7 +1126,7 @@ ENDBIT>>=1 (２回目のループ）
 6 - - - - - - - - 
 7 - - - - - - - -
 
-ENDBIT>>=1 (３回目のループ）
+ENDBIT>>=1 (３回目のループ） 
   0 1 2 3 4 5 6 7		
 0 - - - - Q - - -  
 1 - - - - - - - - 
