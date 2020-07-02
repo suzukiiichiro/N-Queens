@@ -470,6 +470,7 @@
     count:92
 */
 int count;      //見つかった解
+int step;
 int aBoard[8];  //表示用配列
 //int *BOARDE;
 //int *BOARD1,*BOARD2,
@@ -494,15 +495,18 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(int BOUND1,int BOUND2,int MODE) {
+void Display(int BOUND1,int BOUND2,int MODE,int L,const char* F,int C){
   //MODE=0 Qを優先する
   //MODE=1 TOPBIT,ENDBITを優先する
     int  y, bitmap, bit;
     char* s;
-    con("SIDEMASK",SIDEMASK);
-    con("LASTMASK",LASTMASK);
-    con("TOPBIT",TOPBIT);
-    con("ENDBIT",ENDBIT);
+    printf("Line:%d,Func:%s,Count:%d:Step.%d\n",L,F,C,++step);
+    if(BOUND2 !=0){
+      con("SIDEMASK",SIDEMASK);
+      con("LASTMASK",LASTMASK);
+      con("TOPBIT",TOPBIT);
+      con("ENDBIT",ENDBIT);
+    }
     printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d\n", SIZE, ++count,BOUND1,BOUND2);
     for (y=0; y<SIZE; y++) {
         bitmap = aBoard[y];
@@ -575,7 +579,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT2++;
-			Display(BOUND1,BOUND2,0); //表示用
+			Display(BOUND1,BOUND2,0,__LINE__,__func__,2); //表示用
 			con("aBoard90",*aBoard);
 			return;
 		}
@@ -604,7 +608,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT4++;
-			Display(BOUND1,BOUND2,0); //表示用
+			Display(BOUND1,BOUND2,0,__LINE__,__func__,4); //表示用
 			con("aBoard180",*aBoard);
 			return;
 		}
@@ -631,7 +635,7 @@ void Check(int BOUND1,int BOUND2) {
 		}
 	}
 	COUNT8++;
-	Display(BOUND1,BOUND2,0); //表示用
+	Display(BOUND1,BOUND2,0,__LINE__,__func__,8); //表示用
 	con("aBoard270",*aBoard);
 }
 /**********************************************/
@@ -738,7 +742,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
   最終行にクイーンを配置する
 */
 			COUNT8++;
-			Display(BOUND1,0,0);  //表示用
+			Display(BOUND1,0,0,__LINE__,__func__,8);  //表示用
 		}
 	}else{
     //y=2の時はこの枝狩りは不要。最適化できないか検討する
