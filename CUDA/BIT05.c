@@ -471,6 +471,7 @@
 */
 int count;      //見つかった解
 int step;
+int pause;
 int aBoard[8];  //表示用配列
 //int *BOARDE;
 //int *BOARD1,*BOARD2,
@@ -495,7 +496,7 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(int BOUND1,int BOUND2,int MODE,int L,const char* F,int C){
+void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int bm){
   //MODE=0 Qを優先する
   //MODE=1 TOPBIT,ENDBITを優先する
     int  y, bitmap, bit;
@@ -508,11 +509,24 @@ void Display(int BOUND1,int BOUND2,int MODE,int L,const char* F,int C){
       con("ENDBIT",ENDBIT);
     }
     printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d\n", SIZE, ++count,BOUND1,BOUND2);
+    int ycnt=0;
     for (y=0; y<SIZE; y++) {
         bitmap = aBoard[y];
         int cnt=SIZEE;
         for (bit=1<<(SIZEE); bit; bit>>=1){
-            s=(bitmap & bit)? "Q": "-";
+            int mb=1<<cnt;
+            if(ycnt>si){
+              s="-";
+            }else{
+              s=(bitmap & bit)? "Q": "-";
+            }
+            //MASKの処理
+            if(ycnt==si+1){
+              if(!(mb&bm)){
+               s="M";
+              }
+            
+            }
             //backtrack1の時の枝狩り
             if(y<BOUND1&&BOUND2==0){
               if(cnt==1){
@@ -528,7 +542,6 @@ void Display(int BOUND1,int BOUND2,int MODE,int L,const char* F,int C){
             //最終行の処理
             if(y==SIZEE&&BOUND2!=0){
             //LASTMASKの処理
-              int mb=1<<cnt;
               if(LASTMASK&mb){
                s="L"; 
               }
@@ -546,8 +559,16 @@ void Display(int BOUND1,int BOUND2,int MODE,int L,const char* F,int C){
             printf("%s ", s);
         }
         printf("\n");
+        ycnt++;
     }
-    getchar();
+       if(C>0){
+         printf("####処理完了#####\n");
+       }else if(C<0){
+         printf("####枝狩り#####\n");
+       }else{
+        printf("\n");
+       }
+     pause=getchar();
 }
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
@@ -579,7 +600,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT2++;
-			Display(BOUND1,BOUND2,0,__LINE__,__func__,2); //表示用
+			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,2,0); //表示用
 			con("aBoard90",*aBoard);
 			return;
 		}
@@ -608,7 +629,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT4++;
-			Display(BOUND1,BOUND2,0,__LINE__,__func__,4); //表示用
+			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,4,0); //表示用
 			con("aBoard180",*aBoard);
 			return;
 		}
@@ -635,7 +656,7 @@ void Check(int BOUND1,int BOUND2) {
 		}
 	}
 	COUNT8++;
-	Display(BOUND1,BOUND2,0,__LINE__,__func__,8); //表示用
+	Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,8,0); //表示用
 	con("aBoard270",*aBoard);
 }
 /**********************************************/
@@ -717,7 +738,10 @@ ENDBIT   00010000
 兄　ここの枝刈りの遷移をおねがい
 */
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
-			if(!(down&SIDEMASK))return;
+			if(!(down&SIDEMASK)){
+			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1)); //表示用
+        return;
+      }
 			if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
 /**
 兄　ここの枝刈りの遷移をおねがい
@@ -725,7 +749,9 @@ ENDBIT   00010000
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
+			Display(y,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1)); //表示用
 			Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
+      
 		}
 	}
 }
@@ -742,7 +768,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
   最終行にクイーンを配置する
 */
 			COUNT8++;
-			Display(BOUND1,0,0,__LINE__,__func__,8);  //表示用
+			Display(SIZEE,BOUND1,0,0,__LINE__,__func__,8,0);  //表示用
 		}
 	}else{
     //y=2の時はこの枝狩りは不要。最適化できないか検討する
@@ -824,6 +850,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
                      aBoard[y]=00010000
 
 */
+		  Display(y,BOUND1,0,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1)); //表示用
 			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
 		}
 	}
@@ -1184,7 +1211,7 @@ ENDBIT>>=1 (３回目のループ）
 	TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=9;
+  SIZE=6;
 	NQueens();
   printf("count:%d\n",count);
 	printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
