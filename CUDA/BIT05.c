@@ -471,7 +471,8 @@
 */
 int count;      //見つかった解
 int step;
-int pause;
+int pause=1;
+int fault=0;
 int aBoard[8];  //表示用配列
 //int *BOARDE;
 //int *BOARD1,*BOARD2,
@@ -501,6 +502,9 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
   //MODE=1 TOPBIT,ENDBITを優先する
     int  y, bitmap, bit;
     char* s;
+    if(fault>si){
+      printf("####枝狩り####\n\n");
+    }
     printf("Line:%d,Func:%s,Count:%d:Step.%d\n",L,F,C,++step);
     if(BOUND2 !=0){
       con("SIDEMASK",SIDEMASK);
@@ -508,7 +512,7 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
       con("TOPBIT",TOPBIT);
       con("ENDBIT",ENDBIT);
     }
-    printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d\n", SIZE, ++count,BOUND1,BOUND2);
+    printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d:y:%d\n", SIZE, ++count,BOUND1,BOUND2,si);
     int ycnt=0;
     for (y=0; y<SIZE; y++) {
         bitmap = aBoard[y];
@@ -562,13 +566,14 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
         ycnt++;
     }
        if(C>0){
-         printf("####処理完了#####\n");
-       }else if(C<0){
-         printf("####枝狩り#####\n");
-       }else{
-        printf("\n");
+         printf("####処理完了####\n");
+       }else{ 
+        if(fault<si){
+          printf("\n");
+        }
        }
-     pause=getchar();
+       fault=si;
+       pause=getchar();
 }
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
@@ -1211,7 +1216,7 @@ ENDBIT>>=1 (３回目のループ）
 	TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=6;
+  SIZE=5;
 	NQueens();
   printf("count:%d\n",count);
 	printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
