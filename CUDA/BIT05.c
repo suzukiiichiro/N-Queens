@@ -494,18 +494,47 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(char* c) {
+void Display(int BOUND1,int BOUND2) {
     int  y, bitmap, bit;
-    printf("\n%s\n",c);
-    con("TOPBIT",TOPBIT);
-    con("ENDBIT",ENDBIT);
-    con("SIDEMASK",SIDEMASK);
-    con("LASTMASK",LASTMASK);
-    printf("\nN=%d no.%d\n", SIZE, ++count);
+    char* s;
+    printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d\n", SIZE, ++count,BOUND1,BOUND2);
     for (y=0; y<SIZE; y++) {
         bitmap = aBoard[y];
-        for (bit=1<<(SIZEE); bit; bit>>=1)
-            printf("%s ", (bitmap & bit)? "Q": "-");
+        int cnt=SIZEE;
+        for (bit=1<<(SIZEE); bit; bit>>=1){
+            s=(bitmap & bit)? "Q": "-";
+            //backtrack1の時の枝狩り
+            if(y<BOUND1&&BOUND2==0){
+              if(cnt==1){
+               s="2";
+              }
+            }
+            //SIDEMASKの処理
+            if((y<BOUND1||y>BOUND2)&&BOUND2!=0){
+             if(cnt==0||cnt==SIZEE){
+              s="S";
+             } 
+            }
+            //最終行の処理
+            if(y==SIZEE&&BOUND2!=0){
+            //LASTMASKの処理
+              int mb=1<<cnt;
+              if(LASTMASK&mb){
+               s="L"; 
+              }
+            //ENDBITの処理
+              if(ENDBIT&mb){
+               s="E";
+              }
+
+            }
+            //TOPBITの処理
+            if(y==BOUND1&&cnt==SIZEE&&BOUND2!=0){
+              s="T";
+            }
+            cnt--;
+            printf("%s ", s);
+        }
         printf("\n");
     }
 }
@@ -539,7 +568,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT2++;
-			Display(""); //表示用
+			Display(BOUND1,BOUND2); //表示用
 			con("aBoard90",*aBoard);
 			return;
 		}
@@ -568,7 +597,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT4++;
-			Display("");  //表示用
+			Display(BOUND1,BOUND2); //表示用
 			con("aBoard180",*aBoard);
 			return;
 		}
@@ -595,7 +624,7 @@ void Check(int BOUND1,int BOUND2) {
 		}
 	}
 	COUNT8++;
-	Display(""); //表示用
+	Display(BOUND1,BOUND2); //表示用
 	con("aBoard270",*aBoard);
 }
 /**********************************************/
@@ -702,7 +731,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
   最終行にクイーンを配置する
 */
 			COUNT8++;
-			Display(""); //表示用
+			Display(BOUND1,0);  //表示用
 		}
 	}else{
     //y=2の時はこの枝狩りは不要。最適化できないか検討する
@@ -983,7 +1012,6 @@ ENDBIT=TOPBIT>>1
 	BOUND1=1;
 	int BOUND2=SIZE-2;;
 	while(BOUND1<BOUND2){
-    printf("BOUND1:%d;BOUND2:%d",BOUND1,BOUND2);
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
 /**
