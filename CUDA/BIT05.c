@@ -1,6 +1,7 @@
 // gcc BIT05.c && ./a.out ;
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  * 右半分だけを処理
@@ -471,7 +472,7 @@
 */
 int count;      //見つかった解
 int step;
-int pause=1;
+char pause[32]; 
 int fault=0;
 int aBoard[8];  //表示用配列
 //int *BOARDE;
@@ -584,8 +585,9 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
           printf("\n");
         }
        }
-       fault=si;
-       pause=getchar();
+       if(strcmp(pause, ".") != 10){
+         fgets(pause,sizeof(pause),stdin);
+       }
 }
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
