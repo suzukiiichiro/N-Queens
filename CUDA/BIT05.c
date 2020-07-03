@@ -515,6 +515,18 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
     printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d:y:%d\n", SIZE, ++count,BOUND1,BOUND2,si);
     int ycnt=0;
     for (y=0; y<SIZE; y++) {
+      if(y==0){
+        printf("   ");
+        for(int col=0;col<SIZE;col++){
+          printf("%d ",col);
+        }
+        printf("\n");
+      }
+      if(y==si){
+        printf(">%d ",y);
+      }else{
+        printf(" %d ",y);
+      }
         bitmap = aBoard[y];
         int cnt=SIZEE;
         for (bit=1<<(SIZEE); bit; bit>>=1){
