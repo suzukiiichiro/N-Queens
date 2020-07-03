@@ -1114,7 +1114,6 @@ ENDBIT=TOPBIT>>1
 	int BOUND2=SIZE-2;;
 	while(BOUND1<BOUND2){
                 //盤面をクリアにする
-	        Display(0,BOUND1,BOUND2,-2,__LINE__,__func__,0,MASK,0,0,0); //表示用
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
 		Display(0,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~(bit<<1|bit|bit>>1),bit,bit<<1,bit>>1); //表示用
