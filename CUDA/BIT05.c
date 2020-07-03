@@ -540,7 +540,7 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
             //MASKの処理
             if(ycnt==si+1){
               if(!(mb&bm)){
-               s="M";
+               s="x";
               }
             
             }
