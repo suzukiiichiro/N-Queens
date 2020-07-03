@@ -501,7 +501,7 @@ void con(char* c,int decimal){
 void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int bm,int down,int left,int right){
   //MODE=0 Qを優先する
   //MODE=1 TOPBIT,ENDBITを優先する
-    int  y, bitmap, bit;
+    int  y, bitmap, bit,bbitmap;
     char* s;
     if(fault>si){
       printf("####枝狩り####\n\n");
@@ -529,6 +529,8 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
         printf(" %d ",y);
       }
         bitmap = aBoard[y];
+   
+        bbitmap = aBoard[(y-1)];
         int cnt=SIZEE;
         for (bit=1<<(SIZEE); bit; bit>>=1){
             int mb=1<<cnt;
@@ -539,22 +541,22 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
             }
             //MASKの処理
             if(ycnt==si+1){
-              //if(!(mb&bm)){
-              // s="x";
-              //}
-              if((mb&down)){
+              if(!(mb&bm)){
+               s="x";
+              }
+              if(bbitmap & bit){
                s="D";
               }
-              if((mb&left)){
+              if(((bbitmap <<1)& bit)){
                s="L";
               }
-              if((mb&right)){
+              if(((bbitmap >>1)& bit)){
                s="R";
               }
             
             }
             //backtrack1の時の枝狩り
-            if(y<BOUND1&&BOUND2==0){
+            if(y<=BOUND1&&BOUND2==0){
               if(cnt==1){
                s="2";
               }
