@@ -593,9 +593,6 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
         row_cnt++;
     }
        if(C>0){
-         flg_2=0;
-         flg_s=0;
-         flg_m=0;
          fault=y-2;
          printf("####処理完了####\n");
        }else{ 
@@ -784,7 +781,6 @@ ENDBIT   00010000
 */
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
 			if(!(down&SIDEMASK)){
-        flg_sg=1;
 			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1,0,flg_s,flg_sg,flg_m); //表示用
         return;
       }
