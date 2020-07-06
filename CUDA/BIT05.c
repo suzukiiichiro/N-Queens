@@ -503,8 +503,13 @@ void con(char* c,int decimal){
 //
 //ボード表示用
 void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right){
+  //MODE=-2 TOPBIT,ENDBITを優先する
   //MODE=0 Qを優先する
-  //MODE=5 TOPBIT,ENDBITを優先する
+  //MODE=-1 最下段枝狩りで枝狩りされる場合
+  //MODE=1 Backtrack1の枝狩りフラグをオンにする
+  //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
+  //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
+  //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
     int  row, bitmap, bit,bbitmap;
     char* s;
     if(MODE==1){
