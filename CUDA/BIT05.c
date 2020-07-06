@@ -502,10 +502,10 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int bm,int down,int left,int right){
+void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right){
   //MODE=0 Qを優先する
   //MODE=5 TOPBIT,ENDBITを優先する
-    int  y, bitmap, bit,bbitmap;
+    int  row, bitmap, bit,bbitmap;
     char* s;
     if(MODE==1){
      flg_2=1;
@@ -519,44 +519,44 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
     if(MODE==4){
      flg_m=1;
     }
-    if(fault>si){
+    if(fault>y){
       printf("####枝狩り####\n\n");
     }
-    printf("Line:%d,Func:%s,Count:%d:Step.%d\n",L,F,C,++step);
+    printf("Line:%d,Func:%s,Count:%d:Step.%d\n",LINE,FUNC,C,++step);
     if(BOUND2 !=0){
       con("SIDEMASK",SIDEMASK);
       con("LASTMASK",LASTMASK);
       con("TOPBIT",TOPBIT);
       con("ENDBIT",ENDBIT);
     }
-    printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d:y:%d\n", SIZE, ++count,BOUND1,BOUND2,si);
-    int ycnt=0;
-    for (y=0; y<SIZE; y++) {
-      if(y==0){
+    printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d:y:%d\n", SIZE, ++count,BOUND1,BOUND2,y);
+    int row_cnt=0;
+    for (row=0; row<SIZE; row++) {
+      if(row==0){
         printf("   ");
         for(int col=0;col<SIZE;col++){
           printf("%d ",col);
         }
         printf("\n");
       }
-      if(y==si){
-        printf(">%d ",y);
+      if(row==y){
+        printf(">%d ",row);
       }else{
-        printf(" %d ",y);
+        printf(" %d ",row);
       }
-        bitmap = aBoard[y];
+        bitmap = aBoard[row];
    
-        bbitmap = aBoard[(y-1)];
+        bbitmap = aBoard[(row-1)];
         int cnt=SIZEE;
         for (bit=1<<(SIZEE); bit; bit>>=1){
             int mb=1<<cnt;
-            if(ycnt>si){
+            if(row_cnt>y){
               s="-";
             }else{
               s=(bitmap & bit)? "Q": "-";
             }
             //MASKの処理
-            if(ycnt==si+1){
+            if(row_cnt==y+1){
               if(!(mb&bm)){
                s="x";
               }
@@ -574,24 +574,24 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
             
             }
             //backtrack1の時の枝狩り
-            if((y<=BOUND1&&BOUND2==0)&&flg_2==1){
+            if((row<=BOUND1&&BOUND2==0)&&flg_2==1){
               if(cnt==1){
                s="2";
               }
             }
             //SIDEMASKの処理
-            if(((y<BOUND1)&&BOUND2!=0)&&flg_s==1){
+            if(((row<BOUND1)&&BOUND2!=0)&&flg_s==1){
              if(cnt==0||cnt==SIZEE){
               s="S";
              } 
             }
-            if(((y>BOUND2)&&BOUND2!=0)&&flg_sg==1){
+            if(((row>BOUND2)&&BOUND2!=0)&&flg_sg==1){
              if(cnt==0||cnt==SIZEE){
               s="S";
              } 
             }
             //最終行の処理
-            if(y==SIZEE&&BOUND2!=0){
+            if(row==SIZEE&&BOUND2!=0){
             //LASTMASKの処理
               if((LASTMASK&mb)&&flg_m==1){
                s="M"; 
@@ -603,14 +603,14 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
 
             }
             //TOPBITの処理
-            if(y==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==5){
+            if(row==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==5){
               s="T";
             }
             cnt--;
             printf("%s ", s);
         }
         printf("\n");
-        ycnt++;
+        row_cnt++;
     }
        if(C>0){
          flg_2=0;
@@ -618,7 +618,7 @@ void Display(int si,int BOUND1,int BOUND2,int MODE,int L,const char* F,int C,int
          flg_m=0;
          printf("####処理完了####\n");
        }else{ 
-        if(fault<si){
+        if(fault<y){
           printf("\n");
         }
        }
@@ -778,7 +778,7 @@ ENDBIT   00010000
 	if(y==SIZEE){
 		if(bitmap){
 			if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
-			        Display(y-1,BOUND1,BOUND2,4,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(down|bit),(left|bit),(right|bit)); //表示用
+			        Display(y-1,BOUND1,BOUND2,4,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
 				aBoard[y]=bitmap;
 				//Check();
 				Check(BOUND1,BOUND2);
@@ -791,24 +791,24 @@ ENDBIT   00010000
 		if(y<BOUND1){/*上部サイド枝刈り*/
 			bitmap|=SIDEMASK;
 			bitmap^=SIDEMASK;
-			Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(down|bit),(left|bit),(right|bit)); //表示用
+			Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
 /**
 兄　ここの枝刈りの遷移をおねがい
 */
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
 			if(!(down&SIDEMASK)){
-			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(down|bit),(left|bit)<<1,(right|bit)>>1); //表示用
+			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
         return;
       }
 			if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
-			Display(y-1,BOUND1,BOUND2,3,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(down|bit),(left|bit),(right|bit)); //表示用
+			Display(y-1,BOUND1,BOUND2,3,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
 /**
 兄　ここの枝刈りの遷移をおねがい
 */
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-			Display(y,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(down|bit),(left|bit)<<1,(right|bit)>>1); //表示用
+			Display(y,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
 			Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
       
 		}
@@ -834,7 +834,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
 		if(y<BOUND1){/*枝刈り : 斜軸反転解の排除*/
 			bitmap|=2;
 			bitmap^=2;
-		        Display(y-1,BOUND1,0,1,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(down|bit),(left|bit),(right|bit)); //表示用
+		        Display(y-1,BOUND1,0,1,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
 /**
   右から２列目を枝狩りする
   ex 10001010->10001000
@@ -910,7 +910,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
                      aBoard[y]=00010000
 
 */
-		  Display(y,BOUND1,0,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(down|bit),(left|bit)<<1,(right|bit)>>1); //表示用
+		  Display(y,BOUND1,0,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
 			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
 		}
 	}
@@ -951,7 +951,7 @@ void NQueens(void) {
 */
         Display(0,2,0,-2,__LINE__,__func__,0,MASK,0,0,0); //表示用
 	aBoard[0]=1;						//1,  00000001
-        Display(0,2,0,-1,__LINE__,__func__,0,MASK&~((1)<<1|(1)|(1)>>1),(1),1<<1,1>>1); //表示用
+        Display(0,2,0,-1,__LINE__,__func__,0,MASK&~((1)<<1|(1)|(1)>>1),1<<1,(1),1>>1); //表示用
 
 
 	/*0行目:000000001(固定)*/
@@ -1025,7 +1025,7 @@ void NQueens(void) {
 	7 - - - - - - - X
 */
 		aBoard[1]=bit=1<<BOUND1;
-		Display(1,BOUND1,0,0,__LINE__,__func__,0,MASK&~((bit|1)<<1|(bit|1)|(bit|1)>>1),(bit),(bit)<<1,(bit)>>1); //表示用
+		Display(1,BOUND1,0,0,__LINE__,__func__,0,MASK&~((bit|1)<<1|(bit|1)|(bit|1)>>1),(bit)<<1,(bit),(bit)>>1); //表示用
     //printf("BOUND1:%d\n",BOUND1);
     //con("aBoard[1]",aBoard[1]);
 
@@ -1116,7 +1116,7 @@ ENDBIT=TOPBIT>>1
                 //盤面をクリアにする
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
-		Display(0,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~(bit<<1|bit|bit>>1),bit,bit<<1,bit>>1); //表示用
+		Display(0,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~(bit<<1|bit|bit>>1),bit<<1,bit,bit>>1); //表示用
 /**
 aBoard[0]=bit=1<<BOUND1(1)
      BOUND1 bit
@@ -1276,7 +1276,7 @@ ENDBIT>>=1 (３回目のループ）
 	TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=5;
+  SIZE=6;
 	NQueens();
   printf("count:%d\n",count);
 	printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
