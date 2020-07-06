@@ -512,17 +512,21 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
   //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
     int  row, bitmap, bit;
     char* s;
-    if(MODE==1){
-     flg_2=1;
-    }
-    if(MODE==2){
-     flg_s=1;
-    }
-    if(MODE==3){
-     flg_sg=1;
-    }
-    if(MODE==4){
-     flg_m=1;
+    switch(MODE){
+    case 1:
+    //MODE=1 Backtrack1の枝狩りフラグをオンにする
+      flg_2=1;
+    case 2:
+    //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
+      flg_s=1;
+    case 3:
+    //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
+      flg_sg=1;
+    case 4:
+    //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
+      flg_m=1;
+    default:
+      printf("");
     }
     if(fault>y){
       printf("####枝狩り####\n\n");
@@ -560,7 +564,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
             }
             //MASKの処理
             if(row_cnt==y+1){
-              if(!(mb&bm)){
+              if(!(bit&bm)){
                s="x";
               }
               if(MODE !=-2){ 
@@ -596,11 +600,11 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
             //最終行の処理
             if(row==SIZEE&&BOUND2!=0){
             //LASTMASKの処理
-              if((LASTMASK&mb)&&flg_m==1){
+              if((LASTMASK&bit)&&flg_m==1){
                s="M"; 
               }
             //ENDBITの処理
-              if(ENDBIT&mb&&MODE==5){
+              if(ENDBIT&bit&&MODE==5){
                s="E";
               }
 
@@ -619,6 +623,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
          flg_2=0;
          flg_s=0;
          flg_m=0;
+         fault=0;
          printf("####処理完了####\n");
        }else{ 
         if(fault<y){
