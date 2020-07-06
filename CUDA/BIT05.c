@@ -510,7 +510,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
   //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
   //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
   //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
-    int  row, bitmap, bit,bbitmap;
+    int  row, bitmap, bit;
     char* s;
     if(MODE==1){
      flg_2=1;
@@ -550,8 +550,6 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
         printf(" %d ",row);
       }
         bitmap = aBoard[row];
-   
-        bbitmap = aBoard[(row-1)];
         int cnt=SIZEE;
         for (bit=1<<(SIZEE); bit; bit>>=1){
             int mb=1<<cnt;
@@ -566,13 +564,13 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
                s="x";
               }
               if(MODE !=-2){ 
-                if(bbitmap & bit){
+                if(aBoard[(row-1)] & bit){
                   s="D";
                 }
-                if(((bbitmap <<1)& bit)){
+                if(((aBoard[(row-1)] <<1)& bit)){
                   s="L";
                 }
-                if(((bbitmap >>1)& bit)){
+                if(((aBoard[(row-1)] >>1)& bit)){
                   s="R";
                 }
               }
@@ -630,6 +628,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
        if(strcmp(pause, ".") != 10){
          fgets(pause,sizeof(pause),stdin);
        }
+       fault=y;
 }
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
