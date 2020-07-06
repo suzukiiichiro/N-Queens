@@ -488,7 +488,7 @@ int COUNT2,COUNT4,COUNT8;
 int SIZE,SIZEE,TOTAL,UNIQUE;
 //
 // 
-//１６進数を２進数に変換
+//１０進数を２進数に変換
 void con(char* c,int decimal){
   int _decimal=decimal;
   int binary=0;
@@ -510,8 +510,6 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
   //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
   //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
   //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
-    int  row, bitmap, bit;
-    char* s;
     switch(MODE){
     case 1:
     //MODE=1 Backtrack1の枝狩りフラグをオンにする
@@ -540,7 +538,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
     }
     printf("\nN=%d no.%d BOUND1:%d:BOUND2:%d:y:%d\n", SIZE, ++count,BOUND1,BOUND2,y);
     int row_cnt=0;
-    for (row=0; row<SIZE; row++) {
+    for (int row=0; row<SIZE; row++) {
       if(row==0){
         printf("   ");
         for(int col=0;col<SIZE;col++){
@@ -553,10 +551,10 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
       }else{
         printf(" %d ",row);
       }
-        bitmap = aBoard[row];
+        int bitmap = aBoard[row];
         int cnt=SIZEE;
-        for (bit=1<<(SIZEE); bit; bit>>=1){
-            int mb=1<<cnt;
+        char* s;
+        for (int bit=1<<(SIZEE); bit; bit>>=1){
             if(row_cnt>y){
               s="-";
             }else{
@@ -623,17 +621,17 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
          flg_2=0;
          flg_s=0;
          flg_m=0;
-         fault=0;
+         fault=y-2;
          printf("####処理完了####\n");
        }else{ 
         if(fault<y){
           printf("\n");
         }
+        fault=y;
        }
        if(strcmp(pause, ".") != 10){
          fgets(pause,sizeof(pause),stdin);
        }
-       fault=y;
 }
 /**********************************************/
 /* ユニーク解の判定とユニーク解の種類の判定   */
