@@ -474,10 +474,6 @@ int count;      //見つかった解
 int step;
 char pause[32]; 
 int fault=0;
-int flg_2=0;
-int flg_s=0;
-int flg_sg=0;
-int flg_m=0;
 int aBoard[8];  //表示用配列
 //int *BOARDE;
 //int *BOARD1,*BOARD2,
@@ -502,30 +498,10 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right){
-  //MODE=-2 TOPBIT,ENDBITを優先する
+void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right,int flg_2,int flg_s,int flg_sg,int flg_m){
+  //MODE=1 TOPBIT,ENDBITを優先する
   //MODE=0 Qを優先する
   //MODE=-1 最下段枝狩りで枝狩りされる場合
-  //MODE=1 Backtrack1の枝狩りフラグをオンにする
-  //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
-  //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
-  //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
-    switch(MODE){
-    case 1:
-    //MODE=1 Backtrack1の枝狩りフラグをオンにする
-      flg_2=1;
-    case 2:
-    //MODE=2 Backtrack2上部枝狩りのフラグをオンにする
-      flg_s=1;
-    case 3:
-    //MODE=3 Backtrack2 下部枝狩りのフラグをオンにする
-      flg_sg=1;
-    case 4:
-    //MODE=4 Backtrack2 最下段枝狩りのフラグをオンにする
-      flg_m=1;
-    default:
-      printf("");
-    }
     if(fault>y){
       printf("####枝狩り####\n\n");
     }
@@ -602,13 +578,12 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
                s="M"; 
               }
             //ENDBITの処理
-              if(ENDBIT&bit&&MODE==5){
+              if(ENDBIT&bit&&MODE==1){
                s="E";
               }
-
             }
             //TOPBITの処理
-            if(row==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==5){
+            if(row==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==1){
               s="T";
             }
             cnt--;
@@ -663,7 +638,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT2++;
-			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,2,0,0,0,0); //表示用
+			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,2,0,0,0,0,0,1,1,1); //表示用
 			con("aBoard90",*aBoard);
 			return;
 		}
@@ -692,7 +667,7 @@ void Check(int BOUND1,int BOUND2) {
 		//if(own>BOARDE){
 		if(own>&aBoard[SIZEE]){
 			COUNT4++;
-			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,4,0,0,0,0); //表示用
+			Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,4,0,0,0,0,0,1,1,1); //表示用
 			con("aBoard180",*aBoard);
 			return;
 		}
@@ -719,7 +694,7 @@ void Check(int BOUND1,int BOUND2) {
 		}
 	}
 	COUNT8++;
-	Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,8,0,0,0,0); //表示用
+	Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,8,0,0,0,0,0,1,1,1); //表示用
 	con("aBoard270",*aBoard);
 }
 /**********************************************/
@@ -727,6 +702,9 @@ void Check(int BOUND1,int BOUND2) {
 /**********************************************/
 void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
 	int bitmap,bit;
+  int flg_s=0;
+  int flg_sg=0;
+  int flg_m=0;
 
 	/**
 	left,down,rightだけだと桁数が盤面より多くなる
@@ -785,7 +763,8 @@ ENDBIT   00010000
 	if(y==SIZEE){
 		if(bitmap){
 			if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
-			        Display(y-1,BOUND1,BOUND2,4,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
+              flg_m=1;
+			        Display(y-1,BOUND1,BOUND2,4,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
 				aBoard[y]=bitmap;
 				//Check();
 				Check(BOUND1,BOUND2);
@@ -798,24 +777,27 @@ ENDBIT   00010000
 		if(y<BOUND1){/*上部サイド枝刈り*/
 			bitmap|=SIDEMASK;
 			bitmap^=SIDEMASK;
-			Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
+      flg_s=1;
+			Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
 /**
 兄　ここの枝刈りの遷移をおねがい
 */
 		}else if(y==BOUND2){/*下部サイド枝刈り*/
 			if(!(down&SIDEMASK)){
-			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
+        flg_sg=1;
+			  Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1,0,flg_s,flg_sg,flg_m); //表示用
         return;
       }
 			if((down&SIDEMASK)!=SIDEMASK)bitmap&=SIDEMASK;
-			Display(y-1,BOUND1,BOUND2,3,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
+      flg_sg=1;
+			Display(y-1,BOUND1,BOUND2,3,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
 /**
 兄　ここの枝刈りの遷移をおねがい
 */
 		}
 		while(bitmap){
 			bitmap^=aBoard[y]=bit=-bitmap&bitmap;
-			Display(y,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
+			Display(y,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1,0,flg_s,flg_sg,flg_m); //表示用
 			Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
       
 		}
@@ -826,6 +808,7 @@ ENDBIT   00010000
 /**********************************************/
 void Backtrack1(int y,int left,int down,int right,int BOUND1){
 	int  bitmap, bit;
+  int flg_2;
 	bitmap=MASK&~(left|down|right);
 	if(y==SIZEE){
 		if(bitmap){
@@ -834,14 +817,15 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
   最終行にクイーンを配置する
 */
 			COUNT8++;
-			Display(SIZEE,BOUND1,0,1,__LINE__,__func__,8,0,0,0,0);  //表示用
+			Display(SIZEE,BOUND1,0,1,__LINE__,__func__,8,0,0,0,0,flg_2,0,0,0);  //表示用
 		}
 	}else{
     //y=2の時はこの枝狩りは不要。最適化できないか検討する
 		if(y<BOUND1){/*枝刈り : 斜軸反転解の排除*/
 			bitmap|=2;
 			bitmap^=2;
-		        Display(y-1,BOUND1,0,1,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit)); //表示用
+      flg_2=1;
+		        Display(y-1,BOUND1,0,1,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),flg_2,0,0,0); //表示用
 /**
   右から２列目を枝狩りする
   ex 10001010->10001000
@@ -917,7 +901,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
                      aBoard[y]=00010000
 
 */
-		  Display(y,BOUND1,0,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1); //表示用
+		  Display(y,BOUND1,0,0,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1,flg_2,0,0,0); //表示用
 			Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
 		}
 	}
@@ -956,9 +940,9 @@ void NQueens(void) {
 	6 - - - - - - - - 
 	7 - - - - - - - -
 */
-        Display(0,2,0,-2,__LINE__,__func__,0,MASK,0,0,0); //表示用
+        Display(0,2,0,-2,__LINE__,__func__,0,MASK,0,0,0,0,0,0,0); //表示用
 	aBoard[0]=1;						//1,  00000001
-        Display(0,2,0,-1,__LINE__,__func__,0,MASK&~((1)<<1|(1)|(1)>>1),1<<1,(1),1>>1); //表示用
+        Display(0,2,0,-1,__LINE__,__func__,0,MASK&~((1)<<1|(1)|(1)>>1),1<<1,(1),1>>1,0,0,0,0); //表示用
 
 
 	/*0行目:000000001(固定)*/
@@ -1032,7 +1016,7 @@ void NQueens(void) {
 	7 - - - - - - - X
 */
 		aBoard[1]=bit=1<<BOUND1;
-		Display(1,BOUND1,0,0,__LINE__,__func__,0,MASK&~((bit|1)<<1|(bit|1)|(bit|1)>>1),(bit)<<1,(bit),(bit)>>1); //表示用
+		Display(1,BOUND1,0,0,__LINE__,__func__,0,MASK&~((bit|1)<<1|(bit|1)|(bit|1)>>1),(bit)<<1,(bit),(bit)>>1,0,0,0,0); //表示用
     //printf("BOUND1:%d\n",BOUND1);
     //con("aBoard[1]",aBoard[1]);
 
@@ -1123,7 +1107,7 @@ ENDBIT=TOPBIT>>1
                 //盤面をクリアにする
 		/*0行目:000001110(選択)*/
 		aBoard[0]=bit=1<<BOUND1;
-		Display(0,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~(bit<<1|bit|bit>>1),bit<<1,bit,bit>>1); //表示用
+		Display(0,BOUND1,BOUND2,0,__LINE__,__func__,0,MASK&~(bit<<1|bit|bit>>1),bit<<1,bit,bit>>1,0,0,0,0); //表示用
 /**
 aBoard[0]=bit=1<<BOUND1(1)
      BOUND1 bit
@@ -1283,7 +1267,7 @@ ENDBIT>>=1 (３回目のループ）
 	TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=6;
+  SIZE=5;
 	NQueens();
   printf("count:%d\n",count);
 	printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
