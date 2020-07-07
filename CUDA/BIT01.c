@@ -1,6 +1,7 @@
 // gcc BIT01.c && ./a.out ;
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  * 行も斜めも考慮せず配置できる可能性を出力
@@ -237,7 +238,9 @@
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
-int count;      //見つかった解
+int count=1;      //見つかった解
+int step=1;
+char pause[32]; 
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
@@ -254,23 +257,50 @@ void con(int decimal){
 }
 //
 //ボード表示用
-void Display(void) {
-    int  y, bitmap, bit;
-    printf("\nN=%d no.%d\n", size, count);
-    for (y=0; y<size; y++) {
-        bitmap = aBoard[y];
-        for (bit=1<<(size-1); bit; bit>>=1)
-            printf("%s ", (bitmap & bit)? "Q": "-");
+void Display(int y,int LINE,const char* FUNC) {
+    printf("\nLine:%d,Func:%s,N=%d no.%d step.%d y:%d\n",LINE,FUNC, size, count,step,y);
+    int row_cnt=0;
+    for (int row=0; row<size; row++) {
+        if(row==y){
+          printf(">%d ",row);
+        }else{
+          printf(" %d ",row);
+        }
+        int bitmap = aBoard[row];
+        int cnt=size-1;
+        char* s;
+        for (int bit=1<<(size-1); bit; bit>>=1){
+         if(row_cnt>y){
+           s="-";
+         }else{
+           s=(bitmap & bit)? "Q": "-";
+         }
+         cnt--;
+         printf("%s ", s);
+        }
         printf("\n");
+        row_cnt++;
+    }
+    if(y==size-1){
+      printf("####処理完了####\n");
+    }
+    if(strcmp(pause, ".") != 10){
+         fgets(pause,sizeof(pause),stdin);
     }
 }
 // y:これまでに配置できたクイーンの数
 void backtrack(int y,int left,int down,int right){
-  int bitmap=0;
-  int bit=0;
-  if(y==size){
+  int bitmap,bit;
+  //bitmap=mask&~(left|down|right);
+    bitmap=mask&~(0); //行も斜めも考慮せず配置できる可能性を出力
+  if(y==size-1){
+    bit=-bitmap&bitmap;
+      // ここでは配置可能なパターンがひとつずつ生成される(bit) 
+    bitmap^=bit;
+    aBoard[y]=bit;  // 表示用
+    Display(y,__LINE__,__func__);
+    step++;
     count++;
-    Display(); //表示
   }else{
     //OR 結果をビット反転
     // mask:11111111 255
@@ -280,8 +310,6 @@ void backtrack(int y,int left,int down,int right){
     /**
      * 行も斜めも考慮せず配置できる可能性を出力
      */
-    //bitmap=mask&~(left|down|right);
-    bitmap=mask&~(0); //行も斜めも考慮せず配置できる可能性を出力
 
     while(bitmap){
       // nを２進法で表したときの一番下位のONビットがひとつだけ抽出される結果が
@@ -295,6 +323,8 @@ void backtrack(int y,int left,int down,int right){
       // ここでは配置可能なパターンがひとつずつ生成される(bit) 
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
+      Display(y,__LINE__,__func__);
+      step++;
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
