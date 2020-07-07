@@ -293,13 +293,7 @@ void backtrack(int y,int left,int down,int right){
   int bitmap,bit;
   //bitmap=mask&~(left|down|right);
     bitmap=mask&~(0); //行も斜めも考慮せず配置できる可能性を出力
-  if(y==size-1){
-    bit=-bitmap&bitmap;
-      // ここでは配置可能なパターンがひとつずつ生成される(bit) 
-    bitmap^=bit;
-    aBoard[y]=bit;  // 表示用
-    Display(y,__LINE__,__func__);
-    step++;
+  if(y==size){
     count++;
   }else{
     //OR 結果をビット反転
