@@ -156,6 +156,7 @@ void Display(int y,int LINE,const char* FUNC) {
   if(y==size-1){
     printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n\n",size,count,y,step,FUNC,LINE);
   }
+  step++; //手順のカウント
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
@@ -186,7 +187,6 @@ void backtrack(int y,int left,int down,int right){
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
       Display(y,__LINE__,__func__);
-      step++;
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
