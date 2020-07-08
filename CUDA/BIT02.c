@@ -127,9 +127,7 @@ void Display(int y,int LINE,const char* FUNC,int down) {
       if(row>y){ s='-'; }
       else{ s=(bitmap & bit)? 'Q': '-'; }
       if(row==y+1){
-        if((bit&down)){
-          s='D';
-        }
+        if((bit&down)){ s='D'; }
       }
       printf("%c ", s);
     }
@@ -172,6 +170,7 @@ void backtrack(int y,int left,int down,int right){
       // ここでは配置可能なパターンがひとつずつ生成される(bit) 
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
+      //Display(y,__LINE__,__func__,(down|bit));
       Display(y,__LINE__,__func__,(down|bit));
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
