@@ -117,6 +117,7 @@
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
+int count=1;    //見つかった解
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
@@ -133,7 +134,6 @@ void con(int decimal){
 }
 //
 //ボード表示用
-int count=1;      //見つかった解
 int step=1;
 char pause[32]; 
 void Display(int y,int LINE,const char* FUNC) {
