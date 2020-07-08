@@ -258,8 +258,8 @@ void con(int decimal){
 //
 //ボード表示用
 void Display(int y,int LINE,const char* FUNC) {
-    printf("\nLine:%d,Func:%s,N=%d no.%d step.%d y:%d\n",LINE,FUNC, size, count,step,y);
     int row_cnt=0;
+    int sizeE=size-1;
     for (int row=0; row<size; row++) {
         if(row==y){
           printf(">%d ",row);
@@ -267,9 +267,11 @@ void Display(int y,int LINE,const char* FUNC) {
           printf(" %d ",row);
         }
         int bitmap = aBoard[row];
-        int cnt=size-1;
+        //int cnt=size-1;
+        int cnt=sizeE;
         char* s;
-        for (int bit=1<<(size-1); bit; bit>>=1){
+        //for (int bit=1<<(size-1); bit; bit>>=1){
+        for (int bit=1<<sizeE; bit; bit>>=1){
          if(row_cnt>y){
            s="-";
          }else{
@@ -281,8 +283,10 @@ void Display(int y,int LINE,const char* FUNC) {
         printf("\n");
         row_cnt++;
     }
-    if(y==size-1){
-      printf("####処理完了####\n");
+    //if(y==size-1){
+    if(y==sizeE){
+      printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n",size,count,y,step,FUNC,LINE);
+      //printf("####処理完了####\n");
     }
     if(strcmp(pause, ".") != 10){
          fgets(pause,sizeof(pause),stdin);
@@ -327,6 +331,6 @@ int main(){
   size=5; //サイズは５で
   mask=(1<<size)-1;
   backtrack(0,0,0,0);
-  printf("count:%d\n",count);
+  //printf("count:%d\n",count);
   return 0;
 }
