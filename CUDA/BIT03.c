@@ -42,7 +42,7 @@
      2 Q - - - - 
      3 - - - Q - 
     >4 - Q - - - 
-    N=5 No.0 Step.5 backtrack(),+94,
+    N=5 No.1 Step.5 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -72,7 +72,7 @@
      2 - - - Q - 
      3 Q - - - - 
     >4 - - Q - - 
-    N=5 No.1 Step.9 backtrack(),+94,
+    N=5 No.2 Step.9 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -123,7 +123,7 @@
      2 - - - - Q 
      3 - - Q - - 
     >4 Q - - - - 
-    N=5 No.2 Step.16 backtrack(),+94,
+    N=5 No.3 Step.16 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -167,7 +167,7 @@
      2 - - Q - - 
      3 - - - - Q 
     >4 - Q - - - 
-    N=5 No.3 Step.22 backtrack(),+94,
+    N=5 No.4 Step.22 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -204,7 +204,7 @@
      2 - Q - - - 
      3 - - - Q - 
     >4 Q - - - - 
-    N=5 No.4 Step.27 backtrack(),+94,
+    N=5 No.5 Step.27 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -234,7 +234,7 @@
      2 - - - Q - 
      3 - Q - - - 
     >4 - - - - Q 
-    N=5 No.5 Step.31 backtrack(),+94,
+    N=5 No.6 Step.31 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -271,7 +271,7 @@
      2 - - Q - - 
      3 Q - - - - 
     >4 - - - Q - 
-    N=5 No.6 Step.36 backtrack(),+94,
+    N=5 No.7 Step.36 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -315,7 +315,7 @@
      2 Q - - - - 
      3 - - Q - - 
     >4 - - - - Q 
-    N=5 No.7 Step.42 backtrack(),+94,
+    N=5 No.8 Step.42 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -366,7 +366,7 @@
      2 - Q - - - 
      3 - - - - Q 
     >4 - - Q - - 
-    N=5 No.8 Step.49 backtrack(),+94,
+    N=5 No.9 Step.49 backtrack(),+484,
 
 
        0 1 2 3 4 
@@ -396,12 +396,13 @@
      2 - - - - Q 
      3 - Q - - - 
     >4 - - - Q - 
-    N=5 No.9 Step.53 backtrack(),+94,
+    N=5 No.10 Step.53 backtrack(),+484,
+
 
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
-int count;      //見つかった解
+int count=1;      //見つかった解
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
