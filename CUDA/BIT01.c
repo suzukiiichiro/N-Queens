@@ -117,9 +117,6 @@
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
-int count=1;      //見つかった解
-int step=1;
-char pause[32]; 
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
@@ -136,40 +133,30 @@ void con(int decimal){
 }
 //
 //ボード表示用
+int count=1;      //見つかった解
+int step=1;
+char pause[32]; 
 void Display(int y,int LINE,const char* FUNC) {
-  int row_cnt=0;
-  int sizeE=size-1;
-  printf("\n");
   for (int row=0; row<size; row++) {
     if(row==0){ printf("   ");
-      for(int col=0;col<size;col++){ printf("%d ",col); } printf("\n");
+      for(int col=0;col<size;col++){ printf("%d ",col); } 
+      printf("\n");
     }
-    if(row==y){ printf(">%d ",row); }else{ printf(" %d ",row); }
+    if(row==y){ printf(">%d ",row); }
+    else{ printf(" %d ",row); }
     int bitmap = aBoard[row];
-    //int cnt=size-1;
-    int cnt=sizeE;
-    char* s;
-    //for (int bit=1<<(size-1); bit; bit>>=1){
-    for (int bit=1<<sizeE; bit; bit>>=1){
-      if(row_cnt>y){
-        s="-";
-      }else{
-        s=(bitmap & bit)? "Q": "-";
-      }
-      cnt--;
-      printf("%s ", s);
+    char s;
+    for (int bit=1<<(size-1); bit; bit>>=1){
+      if(row>y){ s='-'; }
+      else{ s=(bitmap & bit)? 'Q': '-'; }
+      printf("%c ", s);
     }
     printf("\n");
-    row_cnt++;
   }
-  //if(y==size-1){
-  if(y==sizeE){
+  if(y==size-1){
     printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n\n",size,count,y,step,FUNC,LINE);
-    //printf("####処理完了####\n");
   }
-  if(strcmp(pause, ".") != 10){
-    fgets(pause,sizeof(pause),stdin);
-  }
+  if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
 void backtrack(int y,int left,int down,int right){
@@ -183,11 +170,9 @@ void backtrack(int y,int left,int down,int right){
     // mask:11111111 255
     // left 0: down 1: right 0
     // 11111110 254
-
     /**
      * 行も斜めも考慮せず配置できる可能性を出力
      */
-
     while(bitmap){
       // nを２進法で表したときの一番下位のONビットがひとつだけ抽出される結果が
       // 得られるのです。極めて簡単な演算によって1ビット抽出を実現させているこ
@@ -210,6 +195,5 @@ int main(){
   size=5; //サイズは５で
   mask=(1<<size)-1;
   backtrack(0,0,0,0);
-  //printf("count:%d\n",count);
   return 0;
 }
