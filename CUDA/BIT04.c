@@ -1,4 +1,4 @@
-// gcc BIT03.c && ./a.out ;
+// gcc BIT04.c && ./a.out ;
 
 #include <stdio.h>
 #include <string.h>
