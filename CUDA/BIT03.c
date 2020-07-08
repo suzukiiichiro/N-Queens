@@ -402,7 +402,7 @@
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
-int count=1;      //見つかった解
+int count=0;      //見つかった解
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
@@ -436,9 +436,9 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right) {
       if(row>y){ s='-'; }
       else{ s=(bitmap & bit)? 'Q': '-'; }
       if(row==y+1){
-        if((bit&left)){ s='x'; }
+        if((bit& left)){ s='x'; }
         if((bit&right)){ s='x'; }
-        if((bit&down)){ s='x'; }
+        if((bit& down)){ s='x'; }
       }
       printf("%c ", s);
     }
@@ -446,7 +446,7 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right) {
   }
   step++;
   if(y==size-1){
-    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count+1,step,FUNC,LINE);
   }
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
@@ -491,5 +491,6 @@ int main(){
   size=5;
   mask=(1<<size)-1;
   backtrack(0,0,0,0);
+  printf("COUNT:%d\n",count);
   return 0;
 }
