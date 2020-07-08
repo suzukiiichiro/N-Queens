@@ -134,7 +134,7 @@ void con(int decimal){
 }
 //
 //ボード表示用
-int step=1;
+int step=0;
 char pause[32]; 
 void Display(int y,int LINE,const char* FUNC) {
   for (int row=0; row<size; row++) {
@@ -153,10 +153,10 @@ void Display(int y,int LINE,const char* FUNC) {
     }
     printf("\n");
   }
-  if(y==size-1){
-    printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n\n",size,count,y,step,FUNC,LINE);
-  }
   step++; //手順のカウント
+  if(y==size-1){
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
+  }
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
