@@ -8,232 +8,111 @@
  */
 
 /**
-    N=5 no.1
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
 
-    N=5 no.2
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
+    >0 - - - - Q 
+     1 - - - - - 
+     2 - - - - - 
+     3 - - - - - 
+     4 - - - - - 
 
-    N=5 no.3
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - Q - - 
+     0 - - - - Q 
+    >1 - - - - Q 
+     2 - - - - - 
+     3 - - - - - 
+     4 - - - - - 
 
-    N=5 no.4
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - Q - - - 
+     0 - - - - Q 
+     1 - - - - Q 
+    >2 - - - - Q 
+     3 - - - - - 
+     4 - - - - - 
 
-    N=5 no.5
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    Q - - - - 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+    >3 - - - - Q 
+     4 - - - - - 
 
-    N=5 no.6
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
-    - - - - Q 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+     3 - - - - Q 
+    >4 - - - - Q 
+    N=5 No.1 row:4 Step.5 backtrack(),+162,
 
-    N=5 no.7
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
-    - - - Q - 
 
-    N=5 no.8
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
-    - - Q - - 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+     3 - - - - Q 
+    >4 - - - Q - 
+    N=5 No.2 row:4 Step.6 backtrack(),+162,
 
-    N=5 no.9
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
-    - Q - - - 
 
-    N=5 no.10
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - - Q - 
-    Q - - - - 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+     3 - - - - Q 
+    >4 - - Q - - 
+    N=5 No.3 row:4 Step.7 backtrack(),+162,
 
-    N=5 no.11
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - Q - - 
-    - - - - Q 
 
-    N=5 no.12
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - Q - - 
-    - - - Q - 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+     3 - - - - Q 
+    >4 - Q - - - 
+    N=5 No.4 row:4 Step.8 backtrack(),+162,
 
-    N=5 no.13
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - Q - - 
-    - - Q - - 
 
-    N=5 no.14
-    - - - - Q 
-    - - - - Q 
-    - - - - Q 
-    - - Q - - 
-    - Q - - - 
+     0 - - - - Q 
+     1 - - - - Q 
+     2 - - - - Q 
+     3 - - - - Q 
+    >4 Q - - - - 
+    N=5 No.5 row:4 Step.9 backtrack(),+162,
 
-＜＜省略＞＞
+        ＜＜省略＞＞
 
-    N=5 no.3108
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - - Q - 
-    - - Q - - 
+     0 Q - - - - 
+     1 Q - - - - 
+     2 Q - - - - 
+     3 Q - - - - 
+    >4 - - - - Q 
+    N=5 No.3121 row:4 Step.3901 backtrack(),+162,
 
-    N=5 no.3109
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - - Q - 
-    - Q - - - 
 
-    N=5 no.3110
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - - Q - 
-    Q - - - - 
+     0 Q - - - - 
+     1 Q - - - - 
+     2 Q - - - - 
+     3 Q - - - - 
+    >4 - - - Q - 
+    N=5 No.3122 row:4 Step.3902 backtrack(),+162,
 
-    N=5 no.3111
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-    - - - - Q 
 
-    N=5 no.3112
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-    - - - Q - 
+     0 Q - - - - 
+     1 Q - - - - 
+     2 Q - - - - 
+     3 Q - - - - 
+    >4 - - Q - - 
+    N=5 No.3123 row:4 Step.3903 backtrack(),+162,
 
-    N=5 no.3113
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-    - - Q - - 
 
-    N=5 no.3114
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-    - Q - - - 
+     0 Q - - - - 
+     1 Q - - - - 
+     2 Q - - - - 
+     3 Q - - - - 
+    >4 - Q - - - 
+    N=5 No.3124 row:4 Step.3904 backtrack(),+162,
 
-    N=5 no.3115
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-    Q - - - - 
 
-    N=5 no.3116
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-    - - - - Q 
+     0 Q - - - - 
+     1 Q - - - - 
+     2 Q - - - - 
+     3 Q - - - - 
+    >4 Q - - - - 
+    N=5 No.3125 row:4 Step.3905 backtrack(),+162,
 
-    N=5 no.3117
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-    - - - Q - 
-
-    N=5 no.3118
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-    - - Q - - 
-
-    N=5 no.3119
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-    - Q - - - 
-
-    N=5 no.3120
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-    Q - - - - 
-
-    N=5 no.3121
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - - - Q 
-
-    N=5 no.3122
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - - Q - 
-
-    N=5 no.3123
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - - Q - - 
-
-    N=5 no.3124
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    - Q - - - 
-
-    N=5 no.3125
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    Q - - - - 
-    count:3125
 
 */
 int size;       //ボードサイズ
@@ -258,39 +137,39 @@ void con(int decimal){
 //
 //ボード表示用
 void Display(int y,int LINE,const char* FUNC) {
-    int row_cnt=0;
-    int sizeE=size-1;
-    for (int row=0; row<size; row++) {
-        if(row==y){
-          printf(">%d ",row);
-        }else{
-          printf(" %d ",row);
-        }
-        int bitmap = aBoard[row];
-        //int cnt=size-1;
-        int cnt=sizeE;
-        char* s;
-        //for (int bit=1<<(size-1); bit; bit>>=1){
-        for (int bit=1<<sizeE; bit; bit>>=1){
-         if(row_cnt>y){
-           s="-";
-         }else{
-           s=(bitmap & bit)? "Q": "-";
-         }
-         cnt--;
-         printf("%s ", s);
-        }
-        printf("\n");
-        row_cnt++;
+  int row_cnt=0;
+  int sizeE=size-1;
+  printf("\n");
+  for (int row=0; row<size; row++) {
+    if(row==0){ printf("   ");
+      for(int col=0;col<size;col++){ printf("%d ",col); } printf("\n");
     }
-    //if(y==size-1){
-    if(y==sizeE){
-      printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n",size,count,y,step,FUNC,LINE);
-      //printf("####処理完了####\n");
+    if(row==y){ printf(">%d ",row); }else{ printf(" %d ",row); }
+    int bitmap = aBoard[row];
+    //int cnt=size-1;
+    int cnt=sizeE;
+    char* s;
+    //for (int bit=1<<(size-1); bit; bit>>=1){
+    for (int bit=1<<sizeE; bit; bit>>=1){
+      if(row_cnt>y){
+        s="-";
+      }else{
+        s=(bitmap & bit)? "Q": "-";
+      }
+      cnt--;
+      printf("%s ", s);
     }
-    if(strcmp(pause, ".") != 10){
-         fgets(pause,sizeof(pause),stdin);
-    }
+    printf("\n");
+    row_cnt++;
+  }
+  //if(y==size-1){
+  if(y==sizeE){
+    printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n\n",size,count,y,step,FUNC,LINE);
+    //printf("####処理完了####\n");
+  }
+  if(strcmp(pause, ".") != 10){
+    fgets(pause,sizeof(pause),stdin);
+  }
 }
 // y:これまでに配置できたクイーンの数
 void backtrack(int y,int left,int down,int right){
