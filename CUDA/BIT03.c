@@ -1,6 +1,7 @@
 // gcc BIT03.c && ./a.out ;
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  * 行・斜めを考慮して配置できる可能性を出力 
@@ -97,15 +98,35 @@ void con(int decimal){
 }
 //
 //ボード表示用
-void Display(void) {
-    int  y, bitmap, bit;
-    printf("\nN=%d no.%d\n", size, count);
-    for (y=0; y<size; y++) {
-        bitmap = aBoard[y];
-        for (bit=1<<(size-1); bit; bit>>=1)
-            printf("%s ", (bitmap & bit)? "Q": "-");
-        printf("\n");
+int step=0;
+char pause[32]; 
+void Display(int y,int LINE,const char* FUNC,int left,int down,int right) {
+  for (int row=0; row<size; row++) {
+    if(row==0){ printf("   ");
+      for(int col=0;col<size;col++){ printf("%d ",col); } 
+      printf("\n");
     }
+    if(row==y){ printf(">%d ",row); }
+    else{ printf(" %d ",row); }
+    int bitmap = aBoard[row];
+    char s;
+    for (int bit=1<<(size-1); bit; bit>>=1){
+      if(row>y){ s='-'; }
+      else{ s=(bitmap & bit)? 'Q': '-'; }
+      if(row==y+1){
+        if((bit&down)){ s='D'; }
+        if((bit&left)){ s='L'; }
+        if((bit&right)){ s='R'; }
+      }
+      printf("%c ", s);
+    }
+    printf("\n");
+  }
+  step++;
+  if(y==size-1){
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
+  }
+  if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
 void backtrack(int y,int left,int down,int right){
@@ -113,7 +134,6 @@ void backtrack(int y,int left,int down,int right){
   int bit=0;
   if(y==size){
     count++;
-    Display(); //表示
   }else{
     //OR 結果をビット反転
     // mask:11111111 255
@@ -140,6 +160,7 @@ void backtrack(int y,int left,int down,int right){
       // ここでは配置可能なパターンがひとつずつ生成される(bit) 
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
+      Display(y,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
