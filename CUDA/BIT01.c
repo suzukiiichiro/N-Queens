@@ -117,7 +117,7 @@
 */
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
-int count=1;    //見つかった解
+int count=0;    //見つかった解
 int aBoard[8];  //表示用配列
 // 
 //１６進数を２進数に変換
@@ -195,5 +195,6 @@ int main(){
   size=5; //サイズは５で
   mask=(1<<size)-1;
   backtrack(0,0,0,0);
+  printf("COUNT:%d\n",count);
   return 0;
 }
