@@ -113,7 +113,7 @@ void con(int decimal){
 //ボード表示用
 int step=1;
 char pause[32]; 
-void Display(int y,int LINE,const char* FUNC) {
+void Display(int y,int LINE,const char* FUNC,int down) {
   for (int row=0; row<size; row++) {
     if(row==0){ printf("   ");
       for(int col=0;col<size;col++){ printf("%d ",col); } 
@@ -126,6 +126,11 @@ void Display(int y,int LINE,const char* FUNC) {
     for (int bit=1<<(size-1); bit; bit>>=1){
       if(row>y){ s='-'; }
       else{ s=(bitmap & bit)? 'Q': '-'; }
+      if(row==y+1){
+        if((bit&down)){
+          s='D';
+        }
+      }
       printf("%c ", s);
     }
     printf("\n");
@@ -167,7 +172,7 @@ void backtrack(int y,int left,int down,int right){
       // ここでは配置可能なパターンがひとつずつ生成される(bit) 
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
-      Display(y,__LINE__,__func__);
+      Display(y,__LINE__,__func__,(down|bit));
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
