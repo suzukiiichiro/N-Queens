@@ -8,88 +8,88 @@
  */
 
 /**
-   0 1 2 3 4 
->0 - - - - Q 
- 1 - - - - - 
- 2 - - - - - 
- 3 - - - - - 
- 4 - - - - - 
+       0 1 2 3 4 
+    >0 - - - - Q 
+     1 - - - - - 
+     2 - - - - - 
+     3 - - - - - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 - - - - Q 
->1 - - - Q - 
- 2 - - - - - 
- 3 - - - - - 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 - - - - Q 
+    >1 - - - Q - 
+     2 - - - - - 
+     3 - - - - - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 - - - - Q 
- 1 - - - Q - 
->2 - - Q - - 
- 3 - - - - - 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 - - - - Q 
+     1 - - - Q - 
+    >2 - - Q - - 
+     3 - - - - - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 - - - - Q 
- 1 - - - Q - 
- 2 - - Q - - 
->3 - Q - - - 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 - - - - Q 
+     1 - - - Q - 
+     2 - - Q - - 
+    >3 - Q - - - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 - - - - Q 
- 1 - - - Q - 
- 2 - - Q - - 
- 3 - Q - - - 
->4 Q - - - - 
-N=5 No.1 row:4 Step.5 backtrack(),+86,
+       0 1 2 3 4 
+     0 - - - - Q 
+     1 - - - Q - 
+     2 - - Q - - 
+     3 - Q - - - 
+    >4 Q - - - - 
+    N=5 No.1 row:4 Step.5 backtrack(),+86,
 
-＜省略＞
+    ＜省略＞
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
- 2 - - - Q - 
- 3 - - Q - - 
->4 - - - - Q 
-N=5 No.118 row:4 Step.320 backtrack(),+86,
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+     2 - - - Q - 
+     3 - - Q - - 
+    >4 - - - - Q 
+    N=5 No.118 row:4 Step.320 backtrack(),+86,
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
->2 - - Q - - 
- 3 - - - - - 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+    >2 - - Q - - 
+     3 - - - - - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
- 2 - - Q - - 
->3 - - - - Q 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+     2 - - Q - - 
+    >3 - - - - Q 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
- 2 - - Q - - 
- 3 - - - - Q 
->4 - - - Q - 
-N=5 No.119 row:4 Step.323 backtrack(),+86,
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+     2 - - Q - - 
+     3 - - - - Q 
+    >4 - - - Q - 
+    N=5 No.119 row:4 Step.323 backtrack(),+86,
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
- 2 - - Q - - 
->3 - - - Q - 
- 4 - - - - - 
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+     2 - - Q - - 
+    >3 - - - Q - 
+     4 - - - - - 
 
-   0 1 2 3 4 
- 0 Q - - - - 
- 1 - Q - - - 
- 2 - - Q - - 
- 3 - - - Q - 
->4 - - - - Q 
-N=5 No.120 row:4 Step.325 backtrack(),+86,
+       0 1 2 3 4 
+     0 Q - - - - 
+     1 - Q - - - 
+     2 - - Q - - 
+     3 - - - Q - 
+    >4 - - - - Q 
+    N=5 No.120 row:4 Step.325 backtrack(),+86,
 
 */
 int size;       //ボードサイズ
@@ -111,7 +111,7 @@ void con(int decimal){
 }
 //
 //ボード表示用
-int step=1;
+int step=0;
 char pause[32]; 
 void Display(int y,int LINE,const char* FUNC,int down) {
   for (int row=0; row<size; row++) {
@@ -135,10 +135,10 @@ void Display(int y,int LINE,const char* FUNC,int down) {
     }
     printf("\n");
   }
-  if(y==size-1){
-    printf("N=%d No.%d row:%d Step.%d %s(),+%d,\n\n",size,count,y,step,FUNC,LINE);
-  }
   step++;
+  if(y==size-1){
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
+  }
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
