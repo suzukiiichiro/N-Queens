@@ -155,7 +155,7 @@ void Display(int y,int LINE,const char* FUNC) {
   }
   step++; //手順のカウント
   if(y==size-1){
-    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count+1,step,FUNC,LINE);
   }
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
