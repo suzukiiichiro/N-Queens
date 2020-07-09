@@ -1,5 +1,7 @@
 // gcc BIT05.c && ./a.out ;
-
+/**
+・クイーンを中央に配置する場合には、１行目を右半分だけ実行して実行結果を２倍にする
+*/
 #include <stdio.h>
 #include <string.h>
 
@@ -538,6 +540,10 @@ void backtrack(int y,int left,int down,int right){
   }
 }
 //
+/**
+  クイーンを中央に配置する場合には、
+  １行目を右半分だけ実行して実行結果を２倍にする
+*/
 void NQueen(void){
   int bitmap,bit,down,right,left;
   /*右半分限定0行目:000001111*/
