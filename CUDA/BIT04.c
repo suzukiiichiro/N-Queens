@@ -1,4 +1,9 @@
 // gcc BIT04.c && ./a.out ;
+/**
+最上部の右半分だけ実行
+偶数の場合は実行結果を２倍にする。
+奇数の場合（クイーンを中央に配置する場合）は２倍にしない
+*/
 
 #include <stdio.h>
 #include <string.h>
@@ -487,6 +492,11 @@ void backtrack(int y,int left,int down,int right){
     }
   }
 }
+/**
+  最上部の右半分だけ実行
+  偶数の場合は実行結果を２倍にする。
+  奇数の場合（クイーンを中央に配置する場合）は２倍にしない
+*/
 void NQueen(void){
   int bitmap,bit,down,right,left;
   /*右半分限定0行目:000001111*/
