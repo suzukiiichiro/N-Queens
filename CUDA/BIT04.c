@@ -487,10 +487,35 @@ void backtrack(int y,int left,int down,int right){
     }
   }
 }
+void NQueen(void){
+  int bitmap,bit,down,right,left;
+  /*右半分限定0行目:000001111*/
+  bitmap=(1<<(size/2))-1;/*0行目の配置可能ビット*/
+  while(bitmap){
+    bit=-bitmap&bitmap;
+    bitmap^=bit;
+    aBoard[0]=bit;
+    Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
+    backtrack(1,bit<<1,bit,bit>>1);
+  }
+  count*=2;/*左右反転パターンを考慮*/
+  /*奇数の中央0行目:000010000*/
+  //クイーンを中央に配置する場合は1行目の処理を右半分にしないと左右反転２パターンずつできる
+  if(size&1){ //sizeが奇数だったら
+    bitmap=(1<<(size/2));/*0行目の配置可能ビット*/
+    while(bitmap){
+      bit=-bitmap&bitmap;
+      bitmap^=bit;
+      aBoard[0]=bit;
+      Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
+      backtrack(1,bit<<1,bit,bit>>1);
+    }
+  }
+}
 int main(){
   size=5;
   mask=(1<<size)-1;
-  backtrack(0,0,0,0);
+	NQueen();
   printf("COUNT:%d\n",count);
   return 0;
 }
