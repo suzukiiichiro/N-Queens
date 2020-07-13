@@ -1,5 +1,7 @@
-// gcc BIT06.c && ./a.out ;
-
+// gcc BIT07.c && ./a.out ;
+/**
+ *
+ */
 #include <stdio.h>
 #include <string.h>
 
