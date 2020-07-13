@@ -516,6 +516,7 @@ void NQueen(void){
     right=bit>>1;
     left=bit<<1;
     bitmap=(bit-1)>>1;/*1行目の配置可能ビット*/
+    Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
     while(bitmap){
       bit=-bitmap&bitmap;
       bitmap^=bit;
