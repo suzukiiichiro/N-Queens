@@ -1,5 +1,9 @@
 // gcc BIT06.c && ./a.out ;
 /**
+ * クイーンを中央に配置する場合には、１行目を右半分だけ実行して実行結果
+ * を２倍にする（BIT05）
+ * 0,1行目でクイーンを配置する位置をBOUND1で制御 （BIT06）
+ * 0,1行目でクイーンを配置する位置をBOUND2でも制御（BIT07）
  *  
 */
 
@@ -499,14 +503,16 @@ void NQueen(void){
   int bitmap,bit,down,right,left;
   /*右半分限定0行目:000001111*/
   int BOUND1=0;
+  int BOUND2=size-1;
   //ここではBOUND1は0行目にクイーンを置く場所として使用する
   //右端から左端へ向けてBOUND1を一つづず動かしていく
   //0行目右半分まで行ったら終了
-  while(BOUND1<size/2){
+  while(BOUND1<BOUND2){
     aBoard[0]=bit=1<<BOUND1;
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
     backtrack(1,bit<<1,bit,bit>>1);
    BOUND1++;
+   BOUND2--;
   }
   /*奇数の中央0行目:000010000*/
   //クイーンを中央に配置する場合は1行目の処理を右半分にしないと左右反転２パターンずつできる
@@ -521,11 +527,13 @@ void NQueen(void){
     //ここではBOUND1は1行目のクイーンの配置のために使用する
     BOUND1=0;
     //1行目は右半分までしか置けない
-    while(BOUND1<size/2){
+    BOUND2=size-1;
+    while(BOUND1<BOUND2){
       aBoard[1]=bit=1<<BOUND1;
       Display(1,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
       backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1);
       BOUND1++;
+      BOUND2--;
     }
   }
   count*=2;/*左右反転パターンを考慮*/
