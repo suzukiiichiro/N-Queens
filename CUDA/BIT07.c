@@ -177,8 +177,8 @@ void NQueen(void){
     aBoard[0]=bit=1<<BOUND1;
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
     backtrack(1,bit<<1,bit,bit>>1);
-   BOUND1++;
-   BOUND2--;
+    BOUND1++;
+    BOUND2--;
   }
   /*奇数の中央0行目:000010000*/
   //クイーンを中央に配置する場合は1行目の処理を右半分にしないと左右反転２パターンずつできる
@@ -207,7 +207,7 @@ void NQueen(void){
 int main(){
   size=5;
   mask=(1<<size)-1;
-	NQueen();
+  NQueen();
   printf("COUNT:%d\n",count);
   return 0;
 }
