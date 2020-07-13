@@ -454,7 +454,7 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right) {
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
-void backtrack(int y,int left,int down,int right,int BOUND1){
+void backtrack(int y,int left,int down,int right){
   int bitmap=0;
   int bit=0;
   if(y==size){
@@ -486,7 +486,7 @@ void backtrack(int y,int left,int down,int right,int BOUND1){
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
       Display(y,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
-      backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1,BOUND1);
+      backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
 }
@@ -505,7 +505,7 @@ void NQueen(void){
   while(BOUND1<size/2){
     aBoard[0]=bit=1<<BOUND1;
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
-    backtrack(1,bit<<1,bit,bit>>1,BOUND1);
+    backtrack(1,bit<<1,bit,bit>>1);
    BOUND1++;
   }
   /*奇数の中央0行目:000010000*/
@@ -524,7 +524,7 @@ void NQueen(void){
     while(BOUND1<size/2){
       aBoard[1]=bit=1<<BOUND1;
       Display(1,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
-      backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
+      backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1);
       BOUND1++;
     }
   }
