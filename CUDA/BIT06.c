@@ -454,7 +454,7 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right) {
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
 // y:これまでに配置できたクイーンの数
-void backtrack(int y,int left,int down,int right){
+void backtrack(int y,int left,int down,int right,int BOUND1){
   int bitmap=0;
   int bit=0;
   if(y==size){
@@ -486,7 +486,7 @@ void backtrack(int y,int left,int down,int right){
       bitmap^=bit;
       aBoard[y]=bit;  // 表示用
       Display(y,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
-      backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1);
+      backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1,BOUND1);
     }
   }
 }
@@ -498,29 +498,34 @@ void backtrack(int y,int left,int down,int right){
 void NQueen(void){
   int bitmap,bit,down,right,left;
   /*右半分限定0行目:000001111*/
-  bitmap=(1<<(size/2))-1;/*0行目の配置可能ビット*/
-  while(bitmap){
-    bit=-bitmap&bitmap;
-    bitmap^=bit;
-    aBoard[0]=bit;
+  int BOUND1=0;
+  //ここではBOUND1は0行目にクイーンを置く場所として使用する
+  //右端から左端へ向けてBOUND1を一つづず動かしていく
+  //0行目右半分まで行ったら終了
+  while(BOUND1<size/2){
+    aBoard[0]=bit=1<<BOUND1;
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
-    backtrack(1,bit<<1,bit,bit>>1);
+    backtrack(1,bit<<1,bit,bit>>1,BOUND1);
+   BOUND1++;
   }
   /*奇数の中央0行目:000010000*/
   //クイーンを中央に配置する場合は1行目の処理を右半分にしないと左右反転２パターンずつできる
   if(size&1){ //sizeが奇数だったら
-    bit=1<<(size/2);/*0行目のビット*/
-    aBoard[0]=bit;
+    //奇数の場合はBOUND1がクイーンの位置が中央になっている
+    aBoard[0]=bit=1<<BOUND1;
     down=bit;
     right=bit>>1;
     left=bit<<1;
-    bitmap=(bit-1)>>1;/*1行目の配置可能ビット*/
-    while(bitmap){
-      bit=-bitmap&bitmap;
-      bitmap^=bit;
-      aBoard[1]=bit;
+    Display(0,__LINE__,__func__,bit<<1,bit,bit>>1); //表示
+    //1行目については右側半分だけ実行する
+    //ここではBOUND1は1行目のクイーンの配置のために使用する
+    BOUND1=0;
+    //1行目は右半分までしか置けない
+    while(BOUND1<size/2){
+      aBoard[1]=bit=1<<BOUND1;
       Display(1,__LINE__,__func__,(left|bit)<<1,(down|bit),(right|bit)>>1); //表示
-      backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
+      BOUND1++;
     }
   }
   count*=2;/*左右反転パターンを考慮*/
