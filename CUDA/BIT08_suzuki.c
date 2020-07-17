@@ -76,7 +76,7 @@ N=5 No.5 Step.27 backtrack(),+548,
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
 int count=0;      //見つかった解
-int aBoard[8];  //表示用配列
+int aBoard[17];  //表示用配列
 // 
 //１６進数を２進数に変換
 void con(int decimal){
@@ -144,7 +144,10 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
       count++;
     }
   }else{
-    if(y<BOUND1){       //枝刈り
+    /**
+     * 枝刈り（１）
+     */
+    if(BOUND1==1){       
       bitmap|=2;
       bitmap^=2;
       flg_2=1;          //表示用
@@ -226,7 +229,7 @@ void NQueen(void){
   count*=2;/*左右反転パターンを考慮*/
 }
 int main(){
-  size=8;
+  size=10;
   mask=(1<<size)-1;
   NQueen();
   printf("COUNT:%d\n",count);
