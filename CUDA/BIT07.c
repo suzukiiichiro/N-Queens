@@ -76,7 +76,7 @@ N=5 No.5 Step.27 backtrack(),+548,
 int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
 int count=0;      //見つかった解
-int aBoard[8];  //表示用配列
+int aBoard[17];  //表示用配列
 // 
 //１６進数を２進数に変換
 void con(int decimal){
