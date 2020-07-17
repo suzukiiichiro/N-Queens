@@ -77,6 +77,10 @@ int size;       //ボードサイズ
 int mask;       //連続する１ビットのシーケンス N=8: 11111111
 int count=0;      //見つかった解
 int aBoard[17];  //表示用配列
+int fault;
+int TOPBIT,ENDBIT,MASK,SIDEMASK,LASTMASK;
+int COUNT2,COUNT4,COUNT8;
+int TOTAL,UNIQUE;
 // 
 //１６進数を２進数に変換
 void con(int decimal){
@@ -129,7 +133,7 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right,int BOU
     step++;
   }
   if(y==size-1){
-    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count+1,step,FUNC,LINE);
+    printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count,step,FUNC,LINE);
   }
   if(strcmp(pause, ".") != 10){ fgets(pause,sizeof(pause),stdin); }
 }
@@ -143,21 +147,27 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
     if(bitmap){
       aBoard[y]=bitmap; //表示用
       count++;
-    }
-  }else{
-    /**
-     * 枝刈り（１）
-     */
-    if(BOUND1==1){       
-      bitmap|=2;
-      bitmap^=2;
-      Display(y-1,__LINE__,__func__,
-          (left|bit),(down|bit),(right|bit),
+      Display(y,__LINE__,__func__,
+          (left|bit)<<1,(down|bit),(right|bit)>>1,
           BOUND1,BOUND2,
-          1,            //flg_2
-          0             //stepをカウントするべきか
+          0,            //flg_2
+          1             //stepをカウントするべきか
       );                //表示用
     }
+  }else{
+    // /**
+    //  * 枝刈り（１）
+    //  */
+    // if(BOUND1==0){       
+    //   bitmap|=2;
+    //   bitmap^=2;
+    //   Display(y-1,__LINE__,__func__,
+    //       (left|bit),(down|bit),(right|bit),
+    //       BOUND1,BOUND2,
+    //       1,            //flg_2
+    //       0             //stepをカウントするべきか
+    //   );                //表示用
+    // }
     while(bitmap){
       bit=-bitmap&bitmap;
       // ここでは配置可能なパターンがひとつずつ生成される(bit) 
