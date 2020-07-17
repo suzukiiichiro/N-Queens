@@ -94,7 +94,7 @@ void con(int decimal){
 //ボード表示用
 int step=0;
 char pause[32]; 
-void Display(int y,int LINE,const char* FUNC,int left,int down,int right,int BOUND1,int BOUND2,int flg_2) {
+void Display(int y,int LINE,const char* FUNC,int left,int down,int right,int BOUND1,int BOUND2,int flg_2,int flg_step) {
   printf("\n");
   for (int row=0; row<size; row++) {
     if(row==0){ printf("   ");
@@ -125,7 +125,9 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right,int BOU
     }
     printf("\n");
   }
-  step++;
+  if(flg_step){ //trueでカウント
+    step++;
+  }
   if(y==size-1){
     printf("N=%d No.%d Step.%d %s(),+%d,\n\n",size,count+1,step,FUNC,LINE);
   }
@@ -152,7 +154,8 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
       Display(y-1,__LINE__,__func__,
           (left|bit),(down|bit),(right|bit),
           BOUND1,BOUND2,
-          1             //flg_2
+          1,            //flg_2
+          0             //stepをカウントするべきか
       );                //表示用
     }
     while(bitmap){
@@ -163,7 +166,8 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
       Display(y,__LINE__,__func__,
           (left|bit)<<1,(down|bit),(right|bit)>>1,
           BOUND1,BOUND2,
-          0             //flg_2
+          0,            //flg_2
+          1             //stepをカウントするべきか
       );                //表示用
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1,BOUND1,BOUND2);
     }
@@ -187,7 +191,8 @@ void NQueen(void){
     aBoard[0]=bit;      // 表示用
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1,
         BOUND1,BOUND2,
-        0               //flg_2
+        0,               //flg_2
+        1               //stepをカウントするべきか
     );                  //表示用
     backtrack(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
     BOUND1++;
@@ -204,7 +209,8 @@ void NQueen(void){
     aBoard[0]=bit;      //表示用
     Display(0,__LINE__,__func__,bit<<1,bit,bit>>1,
         BOUND1,BOUND2,
-        0               //flg_2
+        0,              //flg_2
+        1               //stepをカウントするべきか
     );                  //表示用
     //1行目については右側半分だけ実行する
     //ここではBOUND1は1行目のクイーンの配置のために使用する
@@ -217,7 +223,8 @@ void NQueen(void){
       Display(1,__LINE__,__func__,
           (left|bit)<<1,(down|bit),(right|bit)>>1,
           BOUND1,BOUND2,
-          0             //flg_2
+          0,            //flg_2
+          1             //stepをカウントするべきか
       );                //表示用
       backtrack(2,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
       BOUND1++;
