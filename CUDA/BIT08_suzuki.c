@@ -135,7 +135,6 @@ void Display(int y,int LINE,const char* FUNC,int left,int down,int right,int BOU
 void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
   int bitmap=0;
   int bit=0;
-  int flg_2;            //表示用
   //行・斜めを考慮して配置できる可能性を出力
   bitmap=mask&~(left|down|right); 
   if(y==size-1){
@@ -150,11 +149,10 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
     if(BOUND1==1){       
       bitmap|=2;
       bitmap^=2;
-      flg_2=1;          //表示用
       Display(y-1,__LINE__,__func__,
           (left|bit),(down|bit),(right|bit),
           BOUND1,BOUND2,
-          flg_2         //flg_2
+          1             //flg_2
       );                //表示用
     }
     while(bitmap){
@@ -165,7 +163,7 @@ void backtrack(int y,int left,int down,int right,int BOUND1,int BOUND2){
       Display(y,__LINE__,__func__,
           (left|bit)<<1,(down|bit),(right|bit)>>1,
           BOUND1,BOUND2,
-          flg_2         //flg_2
+          0             //flg_2
       );                //表示用
       backtrack(y+1,(left|bit)<<1,(down|bit),(right|bit)>>1,BOUND1,BOUND2);
     }
@@ -229,7 +227,7 @@ void NQueen(void){
   count*=2;/*左右反転パターンを考慮*/
 }
 int main(){
-  size=10;
+  size=5;
   mask=(1<<size)-1;
   NQueen();
   printf("COUNT:%d\n",count);
