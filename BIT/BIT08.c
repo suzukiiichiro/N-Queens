@@ -24,7 +24,7 @@ void con(char* c,int decimal){
 }
 //
 //ボード表示用
-void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right,int flg_2,int flg_s,int flg_sg,int flg_m,int flg_step){
+void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int C,int bm,int left,int down,int right,int mask,int flg_step){
   //MODE=1 TOPBIT,ENDBITを優先する
   //MODE=0 Qを優先する
   //MODE=-1 最下段枝狩りで枝狩りされる場合
@@ -59,25 +59,38 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
         }
       }
       //backtrack1の時の枝狩り
-      if((row<=BOUND1&&BOUND2==0)&&flg_2==1){
-        if(cnt==1){ s="2"; }
+
+      if(MODE==2){
+        if(mask&bit&&row<=BOUND1){
+          s="2";
+        }
       }
       //SIDEMASKの処理
-      if(((row<BOUND1)&&BOUND2!=0)&&flg_s==1){
-        if(cnt==0||cnt==SIZEE){ s="S"; } 
+      //上段枝刈
+      if(MODE==3){
+        if(mask&bit&&row_cnt==y+1){
+          s="S";
+        }
       }
-      if(((row>BOUND2)&&BOUND2!=0)&&flg_sg==1){
-        if(cnt==0||cnt==SIZEE){ s="S"; } 
+      //下段枝刈
+      if(MODE==4){
+        if(mask&bit&&row_cnt>y){
+          s="S";
+        }
       }
-      //最終行の処理
+
+      //最下段枝刈
+      if(MODE==5){
+        if(mask&bit&&row_cnt==y+1){
+         s="M";
+       }
+      }
       if(row==SIZEE&&BOUND2!=0){
-        //LASTMASKの処理
-        if((LASTMASK&bit)&&flg_m==1){ s="M"; }
-        //ENDBITの処理
-        if(ENDBIT&bit&&MODE==1){ s="E"; }
+      //ENDBITの処理
+        if(ENDBIT&bit&&MODE==6){ s="E"; }
       }
       //TOPBITの処理
-      if(row==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==1){ s="T"; }
+      if(row==BOUND1&&cnt==SIZEE&&BOUND2!=0&&MODE==6){ s="T"; }
       cnt--;
       printf("%s ", s);
     }
@@ -126,10 +139,7 @@ void Check(int BOUND1,int BOUND2) {
           2,            //C
           0,            //bm
           0,0,0,        //left,down,right
-          0,            //flg_2
-          1,            //flg_s
-          1,            //flg_sg
-          1,            //flg_m
+          0,            //mask
           1             //stepをカウントするべきか 1: カウントする
           );
       // con("aBoard90",*aBoard);
@@ -165,10 +175,7 @@ void Check(int BOUND1,int BOUND2) {
           4,            //C
           0,            //bm
           0,0,0,        //left,down,right
-          0,            //flg_2
-          1,            //flg_s
-          1,            //flg_sg
-          1,            //flg_m
+          0,            //mask
           1             //stepをカウントするべきか 1: カウントする
           );
       // con("aBoard180",*aBoard);
@@ -204,10 +211,7 @@ void Check(int BOUND1,int BOUND2) {
       8,            //C
       0,            //bm
       0,0,0,        //left,down,right
-      0,            //flg_2
-      1,            //flg_s
-      1,            //flg_sg
-      1,            //flg_m
+      0,            //mask
       1             //stepをカウントするべきか 1: カウントする
       );
 }
@@ -275,24 +279,22 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
     */
   if(y==SIZEE){
     if(bitmap){
-      if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
-        flg_m=1;
+        //最下段枝刈
         // Display(y-1,BOUND1,BOUND2,4,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
         Display(y-1,
             BOUND1,
             BOUND2,
-            4,            //MODE
+            5,            //MODE
             __LINE__,
             __func__,
             0,            //C
             MASK&~((left|bit)|(down|bit)|(right|bit)), //bm
             (left|bit),(down|bit),(right|bit), //left,down,right
-            0,            //flg_2
-            flg_s,        //flg_s
-            flg_sg,       //flg_sg
-            flg_m,        //flg_m
+            LASTMASK,            //mask
             0             //stepをカウントするべきか 1: カウントする
             );
+      if(!(bitmap&LASTMASK)){/*最下段枝刈り*/
+        flg_m=1;
         aBoard[y]=bitmap;
         Check(BOUND1,BOUND2);
       }
@@ -301,39 +303,35 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
     if(y<BOUND1){/*上部サイド枝刈り*/
       bitmap|=SIDEMASK;
       bitmap^=SIDEMASK;
+      int s=SIDEMASK;
+printf("sidemask:%d\n",SIDEMASK);
       flg_s=1;
       // Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
       Display(y-1,
           BOUND1,
           BOUND2,
-          2,            //MODE
+          3,            //MODE
           __LINE__,
           __func__,
           0,            //C
           MASK&~((left|bit)|(down|bit)|(right|bit)),//bm
           (left|bit),(down|bit),(right|bit),
-          0,            //flg_2
-          flg_s,        //flg_s
-          flg_sg,       //flg_sg
-          flg_m,        //flg_m
+          SIDEMASK,            //mask
           0             //stepをカウントするべきか 1: カウントする
           );
     }else if(y==BOUND2){/*下部サイド枝刈り*/
       if(!(down&SIDEMASK)){
         // Display(y,BOUND1,BOUND2,-1,__LINE__,__func__,0,MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),(left|bit)<<1,(down|bit),(right|bit)>>1,0,flg_s,flg_sg,flg_m); //表示用
-        Display(y,
+        Display(y-1,
             BOUND1,
             BOUND2,
-            -1,           //MODE
+            4,           //MODE
             __LINE__,
             __func__,
             0,            //C
             MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),//bm
             (left|bit)<<1,(down|bit),(right|bit)>>1,
-            0,            //flg_2
-            flg_s,        //flg_s
-            flg_sg,       //flg_sg
-            flg_m,        //flg_m
+            SIDEMASK,            //mask
             0             //stepをカウントするべきか 1: カウントする
             );
         return;
@@ -344,16 +342,13 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
       Display(y-1,
           BOUND1,
           BOUND2,
-          3,            //MODE
+          4,            //MODE
           __LINE__,
           __func__,
           0,            //C
           MASK&~((left|bit)|(down|bit)|(right|bit)), //bm
           (left|bit),(down|bit),(right|bit),
-          0,            //flg_2
-          flg_s,        //flg_s
-          flg_sg,       //flg_sg
-          flg_m,        //flg_m
+          SIDEMASK,            //mask
           0             //stepをカウントするべきか 1: カウントする
           );
       /**
@@ -372,10 +367,7 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
           0,            //C
           MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),//bm
           (left|bit)<<1,(down|bit),(right|bit)>>1,
-          0,            //flg_2
-          flg_s,        //flg_s
-          flg_sg,       //flg_sg
-          flg_m,        //flg_m
+          0,            //mask
           1             //stepをカウントするべきか 1: カウントする
           );
       Backtrack2(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,BOUND2);
@@ -406,10 +398,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
           8,            //C
           0,            //bm
           0,0,0,        //left,down,right
-          flg_2,        //flg_2
-          0,            //flg_s
-          0,            //flg_sg
-          0,            //flg_m
+          0,        //mask
           1             //stepをカウントするべきか 1: カウントする
           );
     }
@@ -423,16 +412,13 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
       Display(y-1,
           BOUND1,
           0,            //BOUND2
-          0,
+          2,
           __LINE__,
           __func__,
           0,            //C
           MASK&~((left|bit)|(down|bit)|(right|bit)),//bm
           (left|bit),(down|bit),(right|bit),
-          flg_2,        //flg_2
-          0,            //flg_s
-          0,            //flg_sg
-          0,            //flg_m
+          2,        //mask
           0             //stepをカウントするべきか 1: カウントする
           );
       /**
@@ -468,10 +454,7 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
           0,            //C
           MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1), //bm
           (left|bit)<<1,(down|bit),(right|bit)>>1,//left,down,right
-          flg_2,        //flg_2
-          0,            //flg_s
-          0,            //flg_sg
-          0,            //flg_m
+          0,   //mask
           1             //stepをカウントするべきか 1:カウントする
           );
       Backtrack1(y+1,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1);
@@ -495,10 +478,7 @@ void NQueens(void) {
       0,            //C
       MASK&~((1)<<1|(1)|(1)>>1),//bm
       1<<1,1,1>>1,
-      0,            //flg_2
-      0,            //flg_s
-      0,            //flg_sg
-      0,            //flg_m
+      0,            //mask
       1             //stepをカウントするべきか 1:カウントする
       );
   /*0行目:000000001(固定)*/
@@ -517,10 +497,7 @@ void NQueens(void) {
         0,            //C
         MASK&~((bit|1)<<1|(bit|1)|(bit|1)>>1), //bm
         bit<<1,bit,bit>>1,
-        0,            //flg_2
-        0,            //flg_s
-        0,            //flg_sg
-        0,            //flg_m
+        0,            //mask
         1             //stepをカウントするべきか 1:カウントする
         );
     Backtrack1(2,(2|bit)<<1,1|bit,bit>>1,BOUND1);
@@ -545,10 +522,7 @@ void NQueens(void) {
         0,            //C
         MASK&~(bit<<1|bit|bit>>1), //bm
         bit<<1,bit,bit>>1, //left,down,right
-        0,            //flg_2
-        0,            //flg_s
-        0,            //flg_sg
-        0,            //flg_m
+        0,            //mask
         1             //stepをカウントするべきか 1:カウントする
         );
     Backtrack2(1,bit<<1,bit,bit>>1,BOUND1,BOUND2);
@@ -561,7 +535,7 @@ void NQueens(void) {
   TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=5;
+  SIZE=7;
   NQueens();
   printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
   return 0;
