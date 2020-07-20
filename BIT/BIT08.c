@@ -536,7 +536,7 @@ void NQueens(void) {
   TOTAL=COUNT8*8+COUNT4*4+COUNT2*2;
 }
 int main(){
-  SIZE=7;
+  SIZE=5;
   NQueens();
   printf("%2d:%16d%16d\n", SIZE, TOTAL, UNIQUE);
   return 0;
