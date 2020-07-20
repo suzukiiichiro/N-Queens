@@ -10,6 +10,7 @@ int	TOPBIT,ENDBIT,MASK,SIDEMASK,LASTMASK;
 int COUNT2,COUNT4,COUNT8;
 int SIZE,SIZEE,TOTAL,UNIQUE;
 // 
+//
 //１０進数を２進数に変換
 void con(char* c,int decimal){
   int _decimal=decimal;
