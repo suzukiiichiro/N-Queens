@@ -305,7 +305,6 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
       bitmap|=SIDEMASK;
       bitmap^=SIDEMASK;
       int s=SIDEMASK;
-printf("sidemask:%d\n",SIDEMASK);
       flg_s=1;
       // Display(y-1,BOUND1,BOUND2,2,__LINE__,__func__,0,MASK&~((left|bit)|(down|bit)|(right|bit)),(left|bit),(down|bit),(right|bit),0,flg_s,flg_sg,flg_m); //表示用
       Display(y-1,
