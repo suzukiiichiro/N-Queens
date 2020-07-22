@@ -30,7 +30,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
   //MODE=1 TOPBIT,ENDBITを優先する
   //MODE=0 Qを優先する
   //MODE=-1 最下段枝狩りで枝狩りされる場合
-  if(fault>y){ printf("fault:%d:y:%d####枝狩り####\n\n",fault,y); }
+  if(fault>y||(y !=0&&fault==y&&MODE==0)){ printf("fault:%d:y:%d####枝狩り####\n\n",fault,y); }
   // printf("Line:%d,Func:%s,Count:%d:Step.%d\n",LINE,FUNC,C,++step);
   // if(BOUND2 !=0){
   //   con("SIDEMASK",SIDEMASK);
