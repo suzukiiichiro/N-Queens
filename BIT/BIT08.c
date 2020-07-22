@@ -29,7 +29,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
   //MODE=1 TOPBIT,ENDBITを優先する
   //MODE=0 Qを優先する
   //MODE=-1 最下段枝狩りで枝狩りされる場合
-  if(fault>y){ printf("####枝狩り####\n\n"); }
+  if(fault>y){ printf("fault:%d:y:%d####枝狩り####\n\n",fault,y); }
   // printf("Line:%d,Func:%s,Count:%d:Step.%d\n",LINE,FUNC,C,++step);
   // if(BOUND2 !=0){
   //   con("SIDEMASK",SIDEMASK);
@@ -75,7 +75,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
       }
       //下段枝刈
       if(MODE==4){
-        if(mask&bit&&row_cnt>y){
+        if(mask&bit&&row_cnt>y+1){
           s="S";
         }
       }
@@ -98,7 +98,7 @@ void Display(int y,int BOUND1,int BOUND2,int MODE,int LINE,const char* FUNC,int 
     printf("\n");
     row_cnt++;
   }
-  if(C>0){ fault=y-2; printf("####処理完了####\n"); }
+  if(C>0){ fault=0; printf("####処理完了####\n"); }
   else{ if(fault<y){ printf("\n"); } fault=y; }
   if(flg_step){ step++; }
   if(y==SIZE-1){
@@ -289,8 +289,8 @@ void Backtrack2(int y,int left,int down,int right,int BOUND1,int BOUND2){
             __LINE__,
             __func__,
             0,            //C
-            MASK&~((left|bit)|(down|bit)|(right|bit)), //bm
-            (left|bit),(down|bit),(right|bit), //left,down,right
+            MASK&~((left)|(down)|(right)), //bm
+            (left),(down),(right), //left,down,right
             LASTMASK,            //mask
             0             //stepをカウントするべきか 1: カウントする
             );
@@ -315,8 +315,8 @@ printf("sidemask:%d\n",SIDEMASK);
           __LINE__,
           __func__,
           0,            //C
-          MASK&~((left|bit)|(down|bit)|(right|bit)),//bm
-          (left|bit),(down|bit),(right|bit),
+          MASK&~((left)|(down)|(right)),//bm
+          (left),(down),(right),
           SIDEMASK,            //mask
           0             //stepをカウントするべきか 1: カウントする
           );
@@ -330,8 +330,8 @@ printf("sidemask:%d\n",SIDEMASK);
             __LINE__,
             __func__,
             0,            //C
-            MASK&~((left|bit)<<1|(down|bit)|(right|bit)>>1),//bm
-            (left|bit)<<1,(down|bit),(right|bit)>>1,
+            MASK&~((left)|(down)|(right)), //bm
+            (left),(down),(right),
             SIDEMASK,            //mask
             0             //stepをカウントするべきか 1: カウントする
             );
@@ -347,8 +347,8 @@ printf("sidemask:%d\n",SIDEMASK);
           __LINE__,
           __func__,
           0,            //C
-          MASK&~((left|bit)|(down|bit)|(right|bit)), //bm
-          (left|bit),(down|bit),(right|bit),
+          MASK&~((left)|(down)|(right)), //bm
+          (left),(down),(right),
           SIDEMASK,            //mask
           0             //stepをカウントするべきか 1: カウントする
           );
@@ -417,8 +417,8 @@ void Backtrack1(int y,int left,int down,int right,int BOUND1){
           __LINE__,
           __func__,
           0,            //C
-          MASK&~((left|bit)|(down|bit)|(right|bit)),//bm
-          (left|bit),(down|bit),(right|bit),
+          MASK&~((left)|(down)|(right)),//bm
+          (left),(down),(right),
           2,        //mask
           0             //stepをカウントするべきか 1: カウントする
           );
