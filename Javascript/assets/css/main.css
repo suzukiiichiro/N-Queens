@@ -68,6 +68,9 @@ Navigation
 #navigation {
   display: flex;
   padding: 5px 10px;
+  align-items: center;
+  color: #FFF;
+  user-select: none;
 }
 #navigation > * {
   margin: 0 5px;
@@ -235,4 +238,35 @@ Common
   width: calc(100% / 2) !important;
   height: auto !important;
   padding: 0 8px 8px;
+}
+
+
+
+
+.chk-toggle {
+  display: none;
+  
+}
+.chk-toggle + label {
+  display: inline-flex;
+  position: relative;
+  -ms-align-items: center;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 0.8em;
+  font-weight: bold;
+} 
+#analyze+label {
+  color: #333;
+  background-color: #FFF;
+  -webkit-transition: all ease 0.4s;
+  -o-transition: all ease 0.4s;
+  transition: all ease 0.4s;
+}
+#analyze:checked+label {
+  color: #FFF;
+  background-color: #e74c3c;
 }

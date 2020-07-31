@@ -1,4 +1,4 @@
-const MAX = 5;
+const MAX = 17;
 let COUNT = 0;
 let aBoard = new Array([MAX]);
 
