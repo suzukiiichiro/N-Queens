@@ -167,14 +167,18 @@ function NQueenR5(row, size) {
     if(s !== 0) {
       self.UNIQUE++;
       self.TOTAL += s;
-      sleep(self.SPEED);
-      self.postMessage({status: true, box: aBoard, row: row, size: size});
+      if(self.crow < row) {
+        sleep(self.SPEED);
+        self.postMessage({status: true, box: aBoard, row: row, size: size});
+      }
     }
   } else {
     let lim = (row != 0) ? size : (size + 1) / 2;
-    if(postFlag) {
-      sleep(self.SPEED);
-      self.postMessage({status: true, box: aBoard, row: row, size: size});
+    if(self.  crow < row) {
+      if(postFlag) {
+        sleep(self.SPEED);
+        self.postMessage({status: true, box: aBoard, row: row, size: size});
+      }
     }
     // sleep(self.SPEED);
     // self.postMessage({status: true, box: aBoard, row: row, size: size});
@@ -195,14 +199,18 @@ function main(size){
   self.TOTAL = 0;
   self.UNIQUE = 0;
   for(let j = 0; j < size; j++){ aBoard[j]=-1; }
-  self.NQueenR5(0, size);
+  if(self.crow != -1) {
+    self.NQueenR5(0, size);
+  }
   // self.NQueenR(0, size);
   self.postMessage({status: false, result: `Total:${self.TOTAL}\t\tUnique:${self.UNIQUE}\t\ttime:${timeFormat(from)}`});
   // self.postMessage({status: 'success', result: '' });
 }
 
+let crow = -1;
 self.addEventListener('message', (msg) => {
   self.SPEED = Number(msg.data.speed);
+  self.crow = msg.data.row.indexOf(undefined) > -1 ? msg.data.row.indexOf(undefined) : -1;
   if(msg.data.size) {
     this.current_table = msg.data.row.concat();
     main(Number(msg.data.size));

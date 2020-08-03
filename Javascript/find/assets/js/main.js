@@ -138,9 +138,6 @@ NQueen.prototype = {
       document.querySelector('#sub').insertAdjacentHTML('beforeend', table.outerHTML);
     }
   },
-  setMsg(msg) {
-
-  },
   message(msg) {
     this.timer = setTimeout(() => {
       if(!msg.data.status) {
@@ -160,7 +157,9 @@ NQueen.prototype = {
             }
           } else {
             if(document.querySelector(`#mainTable tr[data-tr="${index}"] td.${this.queen}`)) {
-              document.querySelector(`#mainTable tr[data-tr="${index}"] td.${this.queen}`).click();
+              if(this.current[index] === undefined) {
+                document.querySelector(`#mainTable tr[data-tr="${index}"] td.${this.queen}`).click();
+              }
             }
           }
         });
@@ -206,6 +205,7 @@ NQueen.prototype = {
       }, false);
 
       this.current = this.selected.concat();
+
       this.current_row = -1;
       this.worker.postMessage({
         size: Number(document.querySelector('select').value),
