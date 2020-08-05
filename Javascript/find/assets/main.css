@@ -1,0 +1,69 @@
+@charset 'utf-8';
+
+* {
+  box-sizing: border-box;
+}
+html, body {
+  font-size: 95%;
+  margin: 0;
+  padding: 0;
+}
+#wrapper {
+  padding: 20px;
+  width: auto;
+  display: -webkit-flex;
+  display: -moz-flex;
+  display: -ms-flex;
+  display: -o-flex;
+  display: flex;
+  justify-content: center;
+  -webkit-flex-direction: column;
+  -moz-flex-direction: column;
+  -ms-flex-direction: column;
+  -o-flex-direction: column;
+  flex-direction: column;
+}
+table {
+  width: fit-content;
+  margin: 0 auto;
+}
+table td {
+  border: 1px solid #DDD;
+  width: 2em;
+  height: 2em;
+  background: #1abc9c;
+  text-align: center;
+}
+.active td,
+.active {
+  background: #EFEFEF;
+}
+td.active:hover {
+  cursor: not-allowed;
+}
+
+td.queen {
+  background-color: #e74c3c;
+  color: #FFF;
+  font-weight: bold;
+}
+.queen:after {
+  content: "Q";
+  pointer-events: none;
+}
+
+#option {
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+}
+#option select {
+  margin-right: 10px;
+}
+#option button {
+  background-color: transparent;
+  border: 1px solid #DDD;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 10px;
+}

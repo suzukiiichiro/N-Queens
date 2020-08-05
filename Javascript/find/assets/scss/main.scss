@@ -1,0 +1,146 @@
+@charset 'utf-8';
+
+* {
+  box-sizing: border-box;
+}
+html {
+  // font-size: 95%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  font-size: 95%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.table {
+  width: fit-content;
+  margin: 0 auto;
+  .active {
+    background: #FFF;
+    td {
+      background: #FFF;
+    }
+  }
+  td {
+    border: 1px solid #DDD;
+    width: 2em;
+    height: 2em;
+    background: #1abc9c;
+    text-align: center;
+    position: relative;
+    &.active {
+      &:hover {
+        cursor: not-allowed;
+      }
+    }
+    &.queen {
+      background-color: #e74c3c;
+      color: #FFF;
+      font-weight: bold;
+      &:after {
+        content: "Q";
+        pointer-events: none;
+        z-index: 10;
+        position: relative;
+      }
+    }
+    &:not(:empty) {
+      &:not(.active) {
+        &:not(.queen) {
+          background-color: #fff;
+        }
+      }
+    }
+    span {
+      pointer-events: none;
+      position: absolute;
+      background-color: rgba(0,0,0,0.05);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+      &[class^=tai-] {
+        // background-color: #FFF;
+      }
+    }
+  }
+}
+
+#wrapper {
+  // padding: 20px;
+  width: auto;
+  display: flex;
+  height: 100%;
+  align-items: flex-start;
+  #main {
+    padding: 20px;
+    width: 60%;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    height: 100%;
+  }
+  #sub {
+    padding: 20px;
+    flex: 1;
+    min-height: 100%;
+    background-color: #000  ;
+    // display: flex;ss
+    // flex-wrap: wrap;
+    overflow-y: scroll;
+    .table {
+      margin: 8px;
+      zoom: 0.5;
+      display: inline-table;
+    }
+  }
+  #option {
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    select {
+      margin-right: 10px;
+    }
+    button {
+      background-color: transparent;
+      border: 1px solid #DDD;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 10px;
+    }
+  }
+}
+
+body.run {
+  #wrapper {
+    #option {
+      #btn-start {
+        background-color: red;
+        color: #FFF;
+        border-color: red;
+      }
+    }
+  } 
+}
+
+#queens {
+  margin-top: 40px;
+  overflow-y: scroll;
+  height: 100%;
+  canvas {
+    zoom: 0.5;
+    margin-bottom: 10px;
+    margin-right: 15px;
+    & ~ canvas {
+    }
+    &.set-queen {
+      opacity: 1;
+      border: 5px solid #000;
+    }
+  }
+}
