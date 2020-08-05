@@ -168,36 +168,75 @@ uint64 rotate_270 (uint64 value)
 }
 void Check(int BOUND1,int BOUND2) {
   //aBoardを64桁の数字にする
-   uint64 r=0;
-   int b=SIZE-1;
-   for(int col=0;col<SIZE;col++){
+  uint64 r=0;
+  int b=SIZE-1;
+  for(int col=0;col<SIZE;col++){
     r+=(uint64)aBoard[col]<<b*SIZE; 
     b--;  
-   }
-
+  }
+  uint64 r_90=rotate_90(r);
+  uint64 r_180=rotate_180(r);
+  uint64 r_270=rotate_270(r);
+  //90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルから180度回転)
+  //させても、さらに90度回転(オリジナルから270度回転)させてもオリジナルと同型になる。
+  //左右反転させたパターンを加えて２個しかありません。
   if(aBoard[BOUND2]==1){
-    if(r==rotate_90(r)){
+    if(r==r_90){
+      Display(SIZEE, 
+          BOUND1,
+          BOUND2,
+          0,            //MODE
+          __LINE__,
+          __func__,
+          2,            //C
+          0,            //bm
+          0,0,0,        //left,down,right
+          0,            //mask
+          1             //stepをカウントするべきか 1: カウントする
+          );
       COUNT2++;
       return;
     }
   }
   /*90度回転が同型でなくても180度回転が同型であることもある*/
+  //180度回転させて同型になる場合は４個(左右反転×縦横回転)
   if(aBoard[SIZEE]==ENDBIT){
-    if(r==rotate_180(r)){
-    printf("180try:r:%llu:180r:%llu\n",r,rotate_180(r));
+    if(r==r_180){
       COUNT4++;
+      Display(SIZEE, 
+          BOUND1,
+          BOUND2,
+          0,            //MODE
+          __LINE__,
+          __func__,
+          4,            //C
+          0,            //bm
+          0,0,0,        //left,down,right
+          0,            //mask
+          1             //stepをカウントするべきか 1: カウントする
+          );
       return;
     }
   }
-  //２７０度回転
-  if(aBoard[BOUND1]==TOPBIT){
-    printf("270try:r:%llu:270r:%llu\n",r,rotate_270(r));
-    if(r==rotate_270(r)){
-      COUNT4++;
-      return;
-    }
+  //90度回転,180度回転,270度回転したものと数値を比較して一番小さくなければ枝狩り
+  if(r>r_90 || r>r_180||r>r_270){
+    return;
   }
   COUNT8++;
+  // Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,4,0,0,0,0,0,1,1,1); //表示用
+  Display(SIZEE, 
+      BOUND1,
+      BOUND2,
+      0,            //MODE
+      __LINE__,
+      __func__,
+      8,            //C
+      0,            //bm
+      0,0,0,        //left,down,right
+      0,            //mask
+      1             //stepをカウントするべきか 1: カウントする
+      );
+  // con("aBoard180",*aBoard);
 }
 void Check_o(int BOUND1,int BOUND2) {
   int *own,*you,bit,ptn;
@@ -208,24 +247,40 @@ void Check_o(int BOUND1,int BOUND2) {
     b--;  
    }
   /*90度回転*/
-  printf("Check::BOUND1:%d:BOUND2:%d:ENDBIT:%d\n",BOUND1,BOUND2,ENDBIT);
-  if(aBoard[BOUND2]==1){
-    ptn=2;
-    own=aBoard+1;
-    while(own<=&aBoard[SIZEE]){
+  printf("90_Check::BOUND1:%d:BOUND2:%d:ENDBIT:%d\n",BOUND1,BOUND2,ENDBIT);
+  if(aBoard[BOUND2]==1){//aBoard[BOUND2]==1だと現在のクイーンを90度右回転させた時のクイーンの位置
+    printf("90_aBoard[BOUND2]:%d:a:%d:b:%d\n",aBoard[BOUND2],*aBoard,*(aBoard+1));
+    ptn=2;//２行目が90度回転したらクイーンの位置は右から2番目にくる
+    own=aBoard+1;//aBoard+1は２行目aBoard[1]のクイーンの位置
+    //２行目が90度回転したら右から2番目のクイーンの位置は2行目のクイーンの位置を右から数えた数分下から数えることになる
+    //例えば2行目で右から3番目にクイーンがあれば下から3行目のクイーンの位置が右から2番目だと90度回転して同じということになる
+    while(own<=&aBoard[SIZEE]){//２行目から最終行まで90度回転させてチェック
+      printf("90_own:%d:aBoard[SIZEE]:%d\n",*own,aBoard[SIZEE]);
       bit=1;
-      you=&aBoard[SIZEE];
-      while(*you!=ptn&&*own>=bit){
+      you=&aBoard[SIZEE];//aBoard[SIZEE]は最終行のクイーンの位置
+      printf("90_you:%d:ptn:%d:own:%d:bit:%d\n",*you,ptn,*own,bit);
+      while(*you!=ptn&&*own>=bit){//ptnの位置にクイーンがある行をチェックする
+        //own ２行目のクイーンの位置が例えば右から5個目だったら bitは 1,2,4,8,16まで回る可能性がある 90度回転させた時に２行目のクイーンは右から5個目だったら下から5個目まで
+        printf("90_you:%d!=ptn%d&&own:%d>=bit:%d\n",*you,ptn,*own,bit);
         bit<<=1;
-        you--;
+        you--;//最終行のクイーンの位置から一つずつ上の行に移動していく
       }
-      if(*own>bit)return;
-      if(*own<bit)break;
+      printf("90_own:%d:bit:%d\n",*own,bit);
+      if(*own>bit){
+        printf("90_return\n");
+        
+        return;
+        
+       }//例:own aBoard[1]=128 aBoard[8]=2 で抜けた bitは2 
+      if(*own<bit)break;//例:own aBoard[1]=16 aBoard[5]まで上がったけどクイーンが右から2になるものはなかったので抜けた
+      //own=bit(例えばownが右から4つ目だったら bitが下から4つ目) だと次のループに移動して次の行の90度回転チェック
       own++;
       ptn<<=1;
     }
     /*90度回転して同型なら180度回転も270度回転も同型である*/
-    if(own>&aBoard[SIZEE]){
+    printf("90_own:%d:c2aBpard[SIZEE]%d\n",*own,aBoard[SIZEE]);
+    //if(own>&aBoard[SIZEE]){
+    if(own>&aBoard[SIZEE]){//ownのループが最終行まで到達（２行目から最終行まで90度回転させてマッチしていたら 90度回転しても同型ということになる
       printf("COUNT2++:%llu",r);
       COUNT2++;
       // Display(SIZEE,BOUND1,BOUND2,0,__LINE__,__func__,2,0,0,0,0,0,1,1,1); //表示用
@@ -246,22 +301,39 @@ void Check_o(int BOUND1,int BOUND2) {
     }
   }
   /*180度回転*/
+  //ENDBIT 最終行のクイーンがENDBITの位置にあるときは180度回転して同じ可能性あり
+  //１行目の右から3番目にクイーンがあると、ENDBITは左から3番目
   if(aBoard[SIZEE]==ENDBIT){
-    you=&aBoard[SIZEE]-1;
-    own=aBoard+1;
+    printf("180_aBoard[SIZEE]:%d:ENDBIT:%d\n",aBoard[SIZEE],ENDBIT);
+    you=&aBoard[SIZEE]-1;//最終行から１行前のクイーンのいち
+    own=aBoard+1;//２行目のクイーンの位置
+    printf("180_you:%d:own:%d\n",*you,*own);
+    //2行目から最終行まで180度回転させて一致するか見ていく
+    //例えば2行目のクイーンの位置が右から3番目だったら最終行から1行前のクイーンの位置は左から3番目にあれば180度回転させて一致
     while(own<=&aBoard[SIZEE]){
+      printf("180_own:%d:aBoard[SIZEE]:%d\n",*own,aBoard[SIZEE]);
       bit=1;
-      ptn=TOPBIT;
+      ptn=TOPBIT;//ptnを左端から1ビットずつ右に移動していってyouのクイーンの位置がown個分かチェックする
+      //例えば、n=12 でownが32だったら ptnを2048,1024,512,256,128,64
+      //                               bit  1,2,4,8,16,32
+      printf("180_you:%d:ptn:%d:own:%d:bit:%d\n",*you,ptn,*own,bit);
       while(ptn!=*you&&*own>=bit){
+        printf("180_bit:%d:you:%d\n",bit,*you);
         bit<<=1;
         ptn>>=1;
       }
-      if(*own>bit)return;
+      printf("180_own:%d:bit:%d\n",*own,bit);
+      if(*own>bit){
+        printf("180_return\n");
+        return;
+      }  
       if(*own<bit)break;
       own++;
       you--;
+    //own=bit なら次の行を見る
     }
     /*90度回転が同型でなくても180度回転が同型であることもある*/
+    //ownのループが最終行まで到達（２行目から最終行まで180度回転させてマッチしていたら 180度回転しても同型ということになる/
     if(own>&aBoard[SIZEE]){
       printf("180:COUNT4++:%llu:ro:%llu",r,rotate_180(r));
       COUNT4++;
@@ -284,18 +356,25 @@ void Check_o(int BOUND1,int BOUND2) {
   }
   /*270度回転*/
   //if(*BOARD1==TOPBIT){
+  //270度回転も2行目から順番に回転して同じか比較していくが目的は最小解かどうかのチェックだけ
   if(aBoard[BOUND1]==TOPBIT){
+    printf("270_aBoard[BOUND1]:%d:TOPBIT:%d\n",aBoard[BOUND1],TOPBIT);
     ptn=TOPBIT>>1;
     own=aBoard+1;
+    printf("270_ptn:%d:own:%d\n",ptn,*own);
     while(own<=&aBoard[SIZEE]){
+      printf("270_own:%d:aBoard[SIZEE]:%d\n",*own,aBoard[SIZEE]);
       bit=1;
       you=aBoard;
+      printf("270_you:%d:ptn:%d:own:%d:bit:%d\n",*you,ptn,*own,bit);
       while(*you!=ptn&&*own>=bit){
+        printf("270_bit:%d:you:%d\n",bit,*you);
         bit<<=1;
         you++;
       }
+      printf("270_own:%d:bit:%d\n",*own,bit);
       if(*own>bit){
-        printf("270:COUNT4++:%llu",r);
+        printf("270_return\n");
         return;
       }
       if(*own<bit){
