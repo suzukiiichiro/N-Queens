@@ -1,139 +1,167 @@
-let aBoard = [];
-let COUNT2, COUNT4, COUNT8;
-let BOUND1, BOUND2, TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
-let aBoard2 = [];
+class WorkingEngine {
+  constructor(opt, _this) {
+    this.workingEngine = opt;
+  }
 
-function set(bit, row, size) {
-  let pos = zeroPadding(bit.toString(2), size).split("").indexOf('1');
-  aBoard2[row] = pos;
-  this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
-  this.postMessage({status: 'process', box: aBoard2, row: row, size: size});
-}
-function zeroPadding(NUM, LEN){
-  return ( Array(LEN).join('0') + NUM ).slice( -LEN );
-}
-//
-function getUnique(){
-  return COUNT2 + COUNT4 + COUNT8;
-}
-//
-function getTotal(){
-  return COUNT2*2 + COUNT4*4 + COUNT8*8;
-}
-//
-function symmetryOps(si){
-  let own,ptn,you,bit;
-  //90度回転
-  if(aBoard[BOUND2] === 1){ own=1; ptn=2;
-    while(own<=si-1){ bit=1; you=si-1;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; ptn<<=1;
-    }
-    /** 90度回転して同型なら180度/270度回転も同型である */
-    if(own>si-1){ COUNT2++; return; }
-  }
-  //180度回転
-  if(aBoard[si-1]===ENDBIT){ own=1; you=si-1-1;
-    while(own<=si-1){ bit=1; ptn=TOPBIT;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; you--;
-    }
-    /** 90度回転が同型でなくても180度回転が同型である事もある */
-    if(own>si-1){ COUNT4++; return; }
-  }
-  //270度回転
-  if(aBoard[BOUND1]===TOPBIT){ own=1; ptn=TOPBIT>>1;
-    while(own<=si-1){ bit=1; you=0;
-      while((aBoard[you]!=ptn)&&(aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(aBoard[own]>bit){ return; } if(aBoard[own]<bit){ break; }
-      own++; ptn>>=1;
-    }
-  }
-  COUNT8++;
-}
+  run(){
+    //マルチスレッド
+    this.workingEngine.board[0] = 1;
+    this.workingEngine.sizeE = this.workingEngine.size - 1;
+    this.workingEngine.MASK = (1 << this.workingEngine.size) - 1;
+    this.workingEngine.TOPBIT = 1 << this.workingEngine.sizeE;
 
-function backTrack2(size,mask,row,left,down,right){
-  let bit;
-  let bitmap = mask &~ (left|down|right); /* 配置可能フィールド */
-  console.log(bitmap);
-  if(row === size - 1){
-    if(bitmap){
-      if((bitmap&LASTMASK) === 0){   
-        aBoard[row] = bitmap; //symmetryOpsの時は代入します。
-        symmetryOps(size);
-        let pos = zeroPadding(bitmap.toString(2), size).split("").indexOf('1');
-        aBoard2[row] = pos;
-        this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
-        this.postMessage({status: 'find', box: aBoard2, row: row+1, size: size});
-      } else {
-        set(bitmap, row, size);
+    if(this.workingEngine.B1 > 1 && this.workingEngine.B1 < this.workingEngine.sizeE){
+      this.BOUND1(this.workingEngine.B1);
+    }
+    this.workingEngine.ENDBIT = (this.workingEngine.TOPBIT >> this.workingEngine.B1);
+    this.workingEngine.SIDEMASK = this.workingEngine.LASTMASK = (this.workingEngine.TOPBIT | 1);
+    if(this.workingEngine.B1 > 0 && this.workingEngine.B2 < this.workingEngine.size - 1 && this.workingEngine.B1 < this.workingEngine.B2){
+      for(let i=1; i < this.workingEngine.B1; i++){
+        this.workingEngine.LASTMASK = this.workingEngine.LASTMASK | this.workingEngine.LASTMASK >>1 | this.workingEngine.LASTMASK << 1;
       }
+      this.BOUND2(this.workingEngine.B1, this.workingEngine.B2);
+      this.workingEngine.ENDBIT >>= this.workingEngine.nMore;
     }
-  }else{
-    //【枝刈り】上部サイド枝刈り
-    if(row<BOUND1){
-      bitmap&=~SIDEMASK;
-      //【枝刈り】下部サイド枝刈り
-    }else if(row === BOUND2) {
-      if((down&SIDEMASK) ===0){
-        this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
+  }
+
+  symmetryOps(bitmap){
+    let own, ptn, you, bit;
+    //90度回転
+    if(this.workingEngine.board[this.workingEngine.BOUND2]==1){
+      own = 1;
+      for(ptn = 2; own <= this.workingEngine.sizeE; own++, ptn <<= 1){
+        bit = 1;
+        let bown = this.workingEngine.board[own];
+        for(you = this.workingEngine.sizeE; (this.workingEngine.board[you]!=ptn)&&(bown>=bit);you--){ bit<<=1; }
+        if(bown>bit){ return; }
+        if(bown<bit){ break; }
+      }
+      //90度回転して同型なら180度/270度回転も同型である
+      if(own>this.workingEngine.sizeE){
+        //        COUNT2++;
+        self.postMessage({mode: 'setCount', val: [0,0,1]});
+        // this.workingEngine.info.setCount(0,0,1);
         return;
       }
-      if((down&SIDEMASK)!== SIDEMASK){ bitmap&=SIDEMASK; }
     }
-    while(bitmap){
-      bitmap ^= aBoard[row] = bit = (-bitmap&bitmap); //最も下位の１ビットを抽出
-      set(bit, row, size);
-      backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    //180度回転
+    if(bitmap==this.workingEngine.ENDBIT){
+      own=1;
+      for(you=this.workingEngine.sizeE-1;own<=this.workingEngine.sizeE;own++,you--){
+        bit=1;
+        for(ptn=this.workingEngine.TOPBIT;(ptn!=this.workingEngine.board[you])&&(this.workingEngine.board[own]>=bit);ptn>>=1){ bit<<=1;}
+        if(this.workingEngine.board[own]>bit){ return; }
+        if(this.workingEngine.board[own]<bit){ break; }
+      }
+      //90度回転が同型でなくても180度回転が同型である事もある
+      if(own>this.workingEngine.sizeE){
+        //        COUNT4++;
+        self.postMessage({mode: 'setCount', val: [0,1,0]});
+        // this.workingEngine.info.setCount(0,1,0);
+        return;
+      }
+    }
+    //270度回転
+    if(this.workingEngine.board[this.workingEngine.BOUND1]==this.workingEngine.TOPBIT){
+      own=1;
+      for(ptn=this.workingEngine.TOPBIT>>1;own<=this.workingEngine.sizeE;own++,ptn>>=1){
+        bit=1;
+        for(you=0;this.workingEngine.board[you]!=ptn&&this.workingEngine.board[own]>=bit;you++){ bit<<=1; }
+        if(this.workingEngine.board[own]>bit){ return; }
+        if(this.workingEngine.board[own]<bit){ break; }
+      }
+    }
+    //    COUNT8++;
+    self.postMessage({mode: 'setCount', val: [1,0,0]});
+    // this.workingEngine.info.setCount(1,0,0);
+  }
+
+  BOUND2(B1, B2){
+    let bit;
+    this.workingEngine.BOUND1 = B1;
+    this.workingEngine.BOUND2 = B2;
+    this.workingEngine.board[0] = bit = (1 << this.workingEngine.BOUND1);
+    this.backTrack2(1, bit << 1, bit, bit >> 1);
+    this.workingEngine.LASTMASK |= this.workingEngine.LASTMASK >> 1 | this.workingEngine.LASTMASK<<1;
+    this.workingEngine.ENDBIT>>=1;
+  }
+  BOUND1(B1){
+    let bit;
+    this.workingEngine.BOUND1 = B1;
+    this.workingEngine.board[1] = bit = (1 << this.workingEngine.BOUND1);
+    this.backTrack1(2, (2|bit) << 1, (1|bit), bit>>1);
+  }
+  backTrack2(row,left,down,right){
+    let bit;
+    let bitmap=this.workingEngine.MASK&~(left|down|right);
+    
+    // this.set(bitmap, this.workingEngine.row, this.workingEngine.size);
+
+    if(row==this.workingEngine.sizeE){
+      if(bitmap!=0){
+        if((bitmap&this.workingEngine.LASTMASK)==0){
+          this.workingEngine.board[row]=bitmap;
+          this.symmetryOps(bitmap);
+        }
+      }
+    }else{
+      if(row<this.workingEngine.BOUND1){ bitmap&=~this.workingEngine.SIDEMASK; }
+      else if(row==this.workingEngine.BOUND2){
+        if((down&this.workingEngine.SIDEMASK)==0){ return; }
+        if((down&this.workingEngine.SIDEMASK)!=this.workingEngine.SIDEMASK){
+          bitmap&=this.workingEngine.SIDEMASK;
+        }
+      }
+      while(bitmap>0){
+        //最も下位の１ビットを抽出
+        bitmap^=this.workingEngine.board[row]=bit=(-bitmap&bitmap); 
+        this.backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      }
     }
   }
-  this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
-  this.postMessage({status: 'end'});
-}
-function backTrack1(size,mask,row,left,down,right){
-  let bit;
-  let bitmap = mask &~ (left|down|right);
-  if(row === size - 1){
-    if(bitmap) {
-      COUNT8++;
-      let pos = zeroPadding(bitmap.toString(2), size).split("").indexOf('1');
-      aBoard2[row] = pos;
-      this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
-      this.postMessage({status: 'find', box: aBoard2, row: row+1, size: size});
-    } else {
-      set(bitmap, row, size);
-    }
-  }else{
-    if(row < BOUND1) {
-      bitmap&=~2;
-    }
-    while(bitmap){
-      bitmap ^= aBoard[row] = bit = (-bitmap&bitmap); //ロジック用
-      set(bitmap, row, size);
-      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+  backTrack1(row,left,down,right){
+    let bit;
+    let bitmap=this.workingEngine.MASK&~(left|down|right);
+    
+    // this.set(bitmap, this.workingEngine.row, this.workingEngine.size);
+
+    if(row==this.workingEngine.sizeE){
+      if(bitmap!=0){
+        this.workingEngine.board[row]=bitmap;
+        //        COUNT8++;
+        self.postMessage({mode: 'setCount', val: [1,0,0]});
+        // this.workingEngine.info.setCount(1,0,0);
+      }
+    }else{
+      if(row<this.workingEngine.BOUND1){ bitmap&=~2; }
+      while(bitmap>0){
+        //最も下位の１ビットを抽出
+        bitmap^=this.workingEngine.board[row]=bit=(-bitmap&bitmap); 
+        this.backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      }
     }
   }
-  this.postMessage({status: 'total', total: getTotal(), unique: getUnique()});
-  this.postMessage({status: 'end'});
+
+  set(bit, row, size) {
+    let pos = this.zeroPadding(bit.toString(2), size).split("").indexOf('1');
+    console.log(pos);
+  }
+  zeroPadding(NUM, LEN){
+    return ( Array(LEN).join('0') + NUM ).slice( -LEN );
+  }
+
 }
 
+
 this.onmessage = (msg)=> {
-  aBoard = msg.data.aBoard;
-  COUNT2 = msg.data.COUNT2;
-  COUNT4 = msg.data.COUNT4;
-  COUNT8 = msg.data.COUNT8;
-  BOUND1 = msg.data.BOUND1;
-  BOUND2 = msg.data.BOUND2;
-  TOPBIT = msg.data.TOPBIT;
-  ENDBIT = msg.data.ENDBIT;
-  SIDEMASK = msg.data.SIDEMASK;
-  LASTMASK = msg.data.LASTMASK;
-  aBoard2 = msg.data.aBoard2;
-  if(msg.data.mode == "bt1") {
-    backTrack1(msg.data.size, msg.data.mask, msg.data.row, msg.data.left, msg.data.down, msg.data.right);
-  } else if(msg.data.mode == "bt2") {
-    backTrack2(msg.data.size, msg.data.mask, msg.data.row, msg.data.left, msg.data.down, msg.data.right);
-  }
-}; 
+  // console.log(msg.data.info.setCount());
+  let we = new WorkingEngine(msg.data, this);
+  we.run();
+  // self.postMessage({mode: 'total'});
+  // self.postMessage({mode: 'getUnique'});
+  self.postMessage({mode: 'end'});  
+  // self.postMessage({mode: 'total'});
+  // self.postMessage({mode: 'getUnique'});
+  // self.postMessage({mode: 'end'});  
+  // console.log(`${we.size}: ${we.COUNT8*8+we.COUNT4*4+we.COUNT2*2} ${we.COUNT8+we.COUNT4+we.COUNT2}`);
+};
