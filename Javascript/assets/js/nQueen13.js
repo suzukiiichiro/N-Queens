@@ -65,8 +65,8 @@ class WorkingEngine {
                 // aBoard2 = msg.data.pos;
                 // set(msg.data.bit, msg.data.row, msg.data.size);
                 aBoard2[msg.data.row] = msg.data.pos;
-                sleep(self.SPEED);
-                self.postMessage({status: 'process', box: aBoard2, row: msg.data.row+1, size: msg.data.size});
+                // sleep(self.SPEED);
+                // self.postMessage({status: 'process', box: aBoard2, row: msg.data.row+1, size: msg.data.size});
 
               } else if(msg.data.mode === 'setCount') {
                 this.info.setCount(msg.data.val[0],msg.data.val[1],msg.data.val[2]);

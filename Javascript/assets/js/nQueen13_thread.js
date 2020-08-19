@@ -103,8 +103,9 @@ class WorkingEngine {
         if((bitmap&this.workingEngine.LASTMASK)==0){
           this.workingEngine.board[row]=bitmap;
 
-          let pos = this.zeroPadding(bitmap.toString(2), this.workingEngine.size).split("").indexOf('1');
-          self.postMessage({mode: 'print', pos: pos, row: row, size: this.workingEngine.size});
+          this.set(bitmap, row+1, this.workingEngine.size);
+          // let pos = this.zeroPadding(bitmap.toString(2), this.workingEngine.size).split("").indexOf('1');
+          // self.postMessage({mode: 'print', pos: pos, row: row, size: this.workingEngine.size});
 
           this.symmetryOps(bitmap);
         }
