@@ -5,6 +5,20 @@ const MAX = 27;
 let TOTAL = 0;
 let UNIQUE = 0;
 
+var aBoard2 = new Array(MAX);
+let SPEED = 0;
+
+function set(bit, row, size) {
+  let pos = zeroPadding(bit.toString(2), size).split("").indexOf('1');
+  aBoard2[row] = pos;
+  sleep(self.SPEED);
+  self.postMessage({status: 'process', box: aBoard2, row: row, size: size});
+}
+
+function zeroPadding(NUM, LEN){
+  return ( Array(LEN).join('0') + NUM ).slice( -LEN );
+}
+
 //EOS1
 //EOS1
 
@@ -47,13 +61,15 @@ class WorkingEngine {
           let worker = new Worker('nQueen13_thread.js');
           const promise = new Promise((resolve, reject) => {
              worker.addEventListener('message', (msg) => {
-              console.log(msg);
-              if(msg.data.mode === 'setCount') {
+              if(msg.data.mode === 'print') {
+                // aBoard2 = msg.data.pos;
+                // set(msg.data.bit, msg.data.row, msg.data.size);
+                aBoard2[msg.data.row] = msg.data.pos;
+                sleep(self.SPEED);
+                self.postMessage({status: 'process', box: aBoard2, row: msg.data.row+1, size: msg.data.size});
+
+              } else if(msg.data.mode === 'setCount') {
                 this.info.setCount(msg.data.val[0],msg.data.val[1],msg.data.val[2]);
-              // } else if(msg.data.mode === 'getUnique') {
-              //   this.info.getUnique();
-              // } else if(msg.data.mode === 'total') {
-              //   this.info.getTotal();
               } else if(msg.data.mode === 'end') {
                 resolve(msg.data);
               }
@@ -104,6 +120,10 @@ function main(size, mode = 1){
   let from = new Date();
   let targetN = size;
   
+
+  aBoard2 = new Array(size);
+  aBoard2.fill(-1);
+
   let nThreads = size;
   let info = new Board();
   info.Board();
@@ -132,6 +152,7 @@ function main(size, mode = 1){
 
 
 self.addEventListener('message', (msg) => {
+  self.SPEED = Number(msg.data.speed) * 1000;
   if(msg.data.size) {
     main(Number(msg.data.size), Number(msg.data.mode));
   }

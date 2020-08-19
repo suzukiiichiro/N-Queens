@@ -94,6 +94,7 @@ class WorkingEngine {
   backTrack2(row,left,down,right){
     let bit;
     let bitmap=this.workingEngine.MASK&~(left|down|right);
+    this.set(bitmap, row, this.workingEngine.size);
     
     // this.set(bitmap, this.workingEngine.row, this.workingEngine.size);
 
@@ -101,11 +102,18 @@ class WorkingEngine {
       if(bitmap!=0){
         if((bitmap&this.workingEngine.LASTMASK)==0){
           this.workingEngine.board[row]=bitmap;
+
+          let pos = this.zeroPadding(bitmap.toString(2), this.workingEngine.size).split("").indexOf('1');
+          self.postMessage({mode: 'print', pos: pos, row: row, size: this.workingEngine.size});
+
           this.symmetryOps(bitmap);
         }
       }
     }else{
-      if(row<this.workingEngine.BOUND1){ bitmap&=~this.workingEngine.SIDEMASK; }
+      if(row<this.workingEngine.BOUND1){
+        bitmap&=~this.workingEngine.SIDEMASK;
+        this.set(bitmap, row, this.workingEngine.size);
+      }
       else if(row==this.workingEngine.BOUND2){
         if((down&this.workingEngine.SIDEMASK)==0){ return; }
         if((down&this.workingEngine.SIDEMASK)!=this.workingEngine.SIDEMASK){
@@ -114,7 +122,10 @@ class WorkingEngine {
       }
       while(bitmap>0){
         //最も下位の１ビットを抽出
-        bitmap^=this.workingEngine.board[row]=bit=(-bitmap&bitmap); 
+        bitmap^=this.workingEngine.board[row]=bit=(-bitmap&bitmap);
+        
+        this.set(bitmap, row, this.workingEngine.size);
+
         this.backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
     }
@@ -122,12 +133,14 @@ class WorkingEngine {
   backTrack1(row,left,down,right){
     let bit;
     let bitmap=this.workingEngine.MASK&~(left|down|right);
+    this.set(bitmap, row, this.workingEngine.size);
     
     // this.set(bitmap, this.workingEngine.row, this.workingEngine.size);
 
     if(row==this.workingEngine.sizeE){
       if(bitmap!=0){
         this.workingEngine.board[row]=bitmap;
+        this.set(bitmap, row, this.workingEngine.size);
         //        COUNT8++;
         self.postMessage({mode: 'setCount', val: [1,0,0]});
         // this.workingEngine.info.setCount(1,0,0);
@@ -137,6 +150,7 @@ class WorkingEngine {
       while(bitmap>0){
         //最も下位の１ビットを抽出
         bitmap^=this.workingEngine.board[row]=bit=(-bitmap&bitmap); 
+        this.set(bitmap, row, this.workingEngine.size);
         this.backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
     }
@@ -144,7 +158,7 @@ class WorkingEngine {
 
   set(bit, row, size) {
     let pos = this.zeroPadding(bit.toString(2), size).split("").indexOf('1');
-    console.log(pos);
+    self.postMessage({mode: 'print', pos: pos, row: row, size: size});
   }
   zeroPadding(NUM, LEN){
     return ( Array(LEN).join('0') + NUM ).slice( -LEN );
