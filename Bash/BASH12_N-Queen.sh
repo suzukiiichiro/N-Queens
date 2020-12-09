@@ -135,12 +135,14 @@ function Backtrack1(){
 		 done
 	}
 }
+#
 function func_BOUND1(){
 	(($1<sizeE))&&{
 		((board[1]=bit=1<<BOUND1));
 		Backtrack1 2 $(((2|bit)<<1)) $((1|bit)) $((bit>>1));
 	}
 }
+#
 function func_BOUND2(){
 	(($1<$2))&&{
 		((board[0]=bit=1<<BOUND1));
@@ -172,7 +174,7 @@ function N-QueenLogic_Q12(){
 	((TOTAL=COUNT8*8+COUNT4*4+COUNT2*2));
 }
 #
-N-Queen12(){
+function N-Queen12(){
   local -i max=17;
 	local -i min=2;
 	local startTime=0;
@@ -181,20 +183,18 @@ N-Queen12(){
   echo " N:        Total       Unique        hh:mm:ss" ;
   for ((size=min;size<=max;size++));do
 		COUNT2=COUNT4=COUNT8=0;
-		startTime=`date +%s` ;
+    startTime=$(date +%s);# 計測開始時間
 		N-QueenLogic_Q12 ;
-		endTime=`date +%s`;					# 計測終了時間
-		ss=`expr ${endTime} - ${startTime}` # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`
-		ss=`expr ${ss} % 3600`
-		mm=`expr ${ss} / 60`
-		ss=`expr ${ss} % 60`
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
   done
 }
 #
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   echo "<>１２．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1+BOUND2)＋枝刈り＋最適化 N-Queen12()";
   N-Queen12;
-#
 #

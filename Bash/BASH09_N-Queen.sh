@@ -138,8 +138,6 @@ function rh(){
   local -i tmp=0;
   for((i=0;i<=sz;i++)){
     ((a&(1<<i)))&&{ 
-     #echo $((tmp|=(1<<(sz-i)))); 
-     #let tmp="tmp|=(1<<(sz-i))"; 
      ((tmp|=(1<<(sz-i)))); 
     }
   }
@@ -154,60 +152,52 @@ function vMirror_bitmap(){
     trial[$i]=$(rh "$score" $sizeE);
   }
 }
+#
 function intncmp_bs(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    #rtn=$(echo "${board[$i]}-${scratch[$i]}"|bc);
     rtn=$(echo "${board[$i]}-${scratch[$i]}"+10);
-    #((rtn!=0))&&{ break; }
     ((rtn!=10))&&{ break; }
   }
   echo "$rtn";
 }
+#
 function intncmp_bt(){
   local -i rtn=0;
   for((i=0;i<size;i++)){
-    #rtn=$(echo "${board[$i]}-${trial[$i]}"|bc);
     rtn=$(echo "${board[$i]}-${trial[$i]}"+10);
-    #((rtn!=0))&&{ break; }
     ((rtn!=10))&&{ break; }
   }
   echo "$rtn";
 }
+#
 function symmetryOps_bm(){
-#  local -i si=$1;
   local -i nEquiv=0;
   #回転・反転・対称チェックのためにboard配列をコピー
   for((i=0;i<size;i++)){ 
     trial[$i]=${board[$i]};
   }
-  #rotate_bitmap_ts "$size";
   rotate_bitmap_ts; 
   #    //時計回りに90度回転
   k=$(intncmp_bs);
-  #((k>0))&&{ 
   ((k>10))&&{ 
    return; 
   }
-  #((k==0))&&{ 
   ((k==10))&&{ 
     nEquiv=2;
   }||{
     rotate_bitmap_st;
     #  //時計回りに180度回転
     k=$(intncmp_bt);
-    #((k>0))&&{ 
     ((k>10))&&{ 
      return; 
     }
-    #((k==0))&&{ 
     ((k==10))&&{ 
       nEquiv=4;
     }||{
       rotate_bitmap_ts;
       #//時計回りに270度回転
       k=$(intncmp_bs);
-      #((k>0))&&{ 
       ((k>10))&&{ 
         return;
       }
@@ -221,7 +211,6 @@ function symmetryOps_bm(){
   vMirror_bitmap;
   #//垂直反転
   k=$(intncmp_bt);
-  #((k>0))&&{ 
   ((k>10))&&{ 
    return; 
   }
@@ -229,23 +218,19 @@ function symmetryOps_bm(){
   #               //-90度回転 対角鏡と同等       
     rotate_bitmap_ts;
     k=$(intncmp_bs);
-    #((k>0))&&{
     ((k>10))&&{
       return;
     }
     ((nEquiv>4))&&{
     #             //-180度回転 水平鏡像と同等
-      #rotate_bitmap_st "$size";
       rotate_bitmap_st;
       k=$(intncmp_bt);
-      #((k>0))&&{ 
       ((k>10))&&{ 
         return;
       } 
       #      //-270度回転 反対角鏡と同等
       rotate_bitmap_ts;
       k=$(intncmp_bs);
-      #((k>0))&&{ 
       ((k>10))&&{ 
         return;
       }
@@ -261,7 +246,8 @@ function symmetryOps_bm(){
     ((COUNT8++));
   }
 }
-backTrack(){
+#
+function backTrack(){
 	local -i bit;
   local -i min="$1";
 	local -i left="$2";
@@ -298,7 +284,8 @@ function N-Queen9_rec(){
 	  ((BOUND2--));
 	}
 }
-N-Queen9(){
+#
+function N-Queen9(){
   local -i max=15;
 	local -i min=2;
 	local startTime=;
@@ -313,23 +300,20 @@ N-Queen9(){
      board[$j]=$j; 
     }
 		MASK=$(((1<<size)-1));
-		startTime=`date +%s` ;
+    startTime=$(date +%s);# 計測開始時間
     N-Queen9_rec 0;
-    endTime=$((`date +%s` - st)) ;
-		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`;
-		ss=`expr ${ss} % 3600`;
-		mm=`expr ${ss} / 60`;
-		ss=`expr ${ss} % 60`;
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
     TOTAL=$(getTotal);
     UNIQUE=$(getUnique);
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
 #
-#
-#
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   echo "<>９．BT＋Bit＋対称解除Bit＋クイーンの位置による振り分け(BOUND1) N-Queen9()";
   N-Queen9;
 #

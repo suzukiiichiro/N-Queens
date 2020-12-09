@@ -150,7 +150,8 @@ typeset -i TOTAL=0;
 typeset -i UNIQUE=0;
 typeset -i size=0;
 typeset -i MASK=0;
-N-Queen6_rec(){
+#
+function N-Queen6_rec(){
 	#y: l:left d:down r:right b:bit bm:bitmap
   local -i min="$1";
 	local -i left="$2";
@@ -167,7 +168,8 @@ N-Queen6_rec(){
     done
   }
 }
-N-Queen6(){
+#
+function N-Queen6(){
   local -i max=15;
 	local -i min=2;
 	local startTime=;
@@ -178,21 +180,18 @@ N-Queen6(){
     TOTAL=0;
 		UNIQUE=0;
 		MASK=$(((1<<size)-1));
-		startTime=`date +%s` ;
+    startTime=$(date +%s);# 計測開始時間
     N-Queen6_rec 0 0 0 0 ;
-    endTime=$((`date +%s` - st)) ;
-		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`;
-		ss=`expr ${ss} % 3600`;
-		mm=`expr ${ss} / 60`;
-		ss=`expr ${ss} % 60`;
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $size $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
-
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
+#
   echo "<>６．BT＋ビットマップ(Bit) N-Queen6()";
   N-Queen6;
 #
-#
-

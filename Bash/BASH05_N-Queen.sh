@@ -164,11 +164,11 @@ function symmetryOps() {
   return;
  }
 #
-N-Queen5_rec(){
+function N-Queen5_rec(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
   local -i min="$1";                # ひとつ目のパラメータ $1をminに代入
-  local -i size=$2;                 # ふたつ目のパラメータ $2をsizeに代入
+  local -i size="$2";                 # ふたつ目のパラメータ $2をsizeに代入
   local -i i=0;                     # 再帰するために forで使う変数も宣言が必要
   # forはこういうＣ的な書き方のほうが見やすい
  		# 枝刈り
@@ -202,65 +202,9 @@ N-Queen5_rec(){
       }          
     }
   }  
-#   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
-#   # -i は 変数の型が整数であることを示しています
-#   local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
-#   local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
-#   local -i i=0;           # 再帰するために forで使う変数も宣言が必要
-#   local -i s;
-#   local -i lim;
-#   local -i vTemp;
-# 
-#   ((min<size-1))&&{
-# 		# flag_aを枝刈りによって使う必要がなくなった
-#     [ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
-#     [ "${flag_b[$min+${board[$min]}]}" != "true" ]&&{ 
-# 	    flag_c[$min-${board[$min]}+$size-1]="true";
-#       flag_b[$min+${board[$min]}]="true";
-#       N-Queen5_rec "$((min+1))" "$size";
-# 	    flag_c[$min-${board[$min]}+$size-1]=""; 
-#       flag_b[$min+${board[$min]}]="";
-#     }
-# 		# 枝刈り
-# 		((min != 0))&&{
-# 			lim=$size;
-# 		}||{
-# 			lim=$(((size+1)/2)); 
-# 		}
-# 		for((s=min+1;s<lim;s++)){
-# 			vTemp=${board[$s]};
-# 			board[$s]=${board[$min]};
-# 			board[$min]=${vTemp};
-# 			# flag_aを枝刈りによって使う必要がなくなった
-# 			[ "${flag_c[$min-${board[$min]}+$size-1]}" != "true" ]&& \
-# 			[ "${flag_b[$min+${board[$min]}]}" != "true" ]&& {
-# 				flag_c[$min-${board[$min]}+$size-1]="true"; 
-# 				flag_b[$min+${board[$min]}]="true";
-# 				N-Queen5_rec "$((min+1))" "$size";
-# 				flag_c[$min-${board[$min]}+$size-1]=""; 
-# 				flag_b[$min+${board[$min]}]="";
-# 			}
-# 		}
-# 		vTemp=${board[$min]};
-# 		for((s=min+1;s<size;s++)){
-# 			board[$s-1]=${board[$s]};
-# 		}
-# 		board[$s-1]=${vTemp};
-# 	}||{ 
-# 		if [ "${flag_c[$min-${board[$min]}+$size-1]}" = "true" -o "${flag_b[$min+${board[$min]}]}" == "true" ];then
-# 			return;
-# 		fi	
-# 		tst=$(symmetryOps "$size");
-# 		((tst!=0))&&{
-# 			((UNIQUE++));
-# 			TOTAL=$((TOTAL+tst));
-# 		}
-# 	}
-# 	return;
-:
 }
 #
-N-Queen5(){
+function N-Queen5(){
   local -i max=15;
   local -i min=2;
   local -i N="$min";
@@ -271,21 +215,19 @@ N-Queen5(){
   for((N=min;N<=max;N++)){
     TOTAL=0;      # Nが更新される度に TOTALとUNIQUEを初期化
     UNIQUE=0;
-    startTime=`date +%s`;      # 計測開始時間
+    startTime=$(date +%s);# 計測開始時間
     for((k=0;k<N;k++)){ board[$k]=$k;}
     N-Queen5_rec 0 "$N";
-		endTime=`date +%s`;					# 計測終了時間
-		ss=`expr ${endTime} - ${startTime}`; # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`;
-		ss=`expr ${ss} % 3600`;
-		mm=`expr ${ss} / 60`;
-		ss=`expr ${ss} % 60`;
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
 #
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
   echo "<>５．BT＋対称解除法＋枝刈り N-Queen5()";
   N-Queen5;
-#
 #

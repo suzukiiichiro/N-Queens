@@ -421,14 +421,16 @@
 # グローバル変数は大文字
 TOTAL=0;
 UNIQUE=0;
+#
 typeset -a flag_a="";     # -a は配列の型を宣言します
 typeset -a flag_b="";
 typeset -a flag_c="";
-N-Queen3_rec(){
+#
+function N-Queen3_rec(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
   local -i min="$1";      # ひとつ目のパラメータ $1をminに代入
-  local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
+  local -i size="$2";       # ふたつ目のパラメータ $2をsizeに代入
   local -i i=0;           # 再帰するために forで使う変数も宣言が必要
   # forはこういうＣ的な書き方のほうが見やすい
   for((i=0;i<size;i++)){        # (()) の中の変数に $ は不要です 
@@ -453,7 +455,7 @@ N-Queen3_rec(){
   }  
 }
 #
-N-Queen3(){
+function N-Queen3(){
   local -i max=15;
   local -i min=2;
   local -i N="$min";
@@ -464,21 +466,18 @@ N-Queen3(){
   for((N=min;N<=max;N++)){
     TOTAL=0;      # Nが更新される度に TOTALとUNIQUEを初期化
     UNIQUE=0;
-    startTime=`date +%s` ;      # 計測開始時間
+    startTime=$(date +%s);# 計測開始時間
     N-Queen3_rec 0 "$N";
-		endTime=`date +%s`;					# 計測終了時間
-		ss=`expr ${endTime} - ${startTime}` # hh:mm:ss 形式に変換
-		hh=`expr ${ss} / 3600`
-		ss=`expr ${ss} % 3600`
-		mm=`expr ${ss} / 60`
-		ss=`expr ${ss} % 60`
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
   } 
 }
 #
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-#
   echo "<>３．バックトラック(BT) Queen3()";
   N-Queen3;
-#
 #

@@ -410,11 +410,12 @@
 #  40320: 7 6 5 4 3 2 1 0
 #
 COUNT=1; # グローバル変数は大文字
-N-Queen2(){
+#
+function N-Queen2(){
   # ローカル変数は明示的に local をつけ、代入する場合は ""ダブルクォートが必要です。
   # -i は 変数の型が整数であることを示しています
-  local -i min=$1;        # ひとつ目のパラメータ $1をminに代入
-  local -i size=$2;       # ふたつ目のパラメータ $2をsizeに代入
+  local -i min="$1";        # ひとつ目のパラメータ $1をminに代入
+  local -i size="$2";       # ふたつ目のパラメータ $2をsizeに代入
   local flag_a="";
   local -i i=0;           # 再帰するために forで使う変数も宣言が必要
   local -i j=0;
@@ -437,9 +438,6 @@ N-Queen2(){
   }
 }
 #
-# 実行はコメントアウトを外して、 $ ./BASH_N-Queen.sh 
-#
   echo "<>２．配置フラグ（制約テスト高速化） N-Queen2()";
   N-Queen2 0 8;
-#
 #
