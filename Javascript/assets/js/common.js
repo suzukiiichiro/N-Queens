@@ -120,7 +120,8 @@ class UI {
       let number = document.querySelector('#num').value;
       let mode = document.querySelector('#rev').value;
       let speed = document.querySelector('#speed').value;
-      this.worker.postMessage({size: number, mode: mode, speed: speed});
+      let analyze = document.querySelector('#analyze').checked;
+      this.worker.postMessage({size: number, mode: mode, speed: speed, analyze: analyze});
     }
   }
 

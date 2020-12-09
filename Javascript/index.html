@@ -20,14 +20,14 @@
         <option value="3">03. バックトラック</option>
         <option value="4">04. バックトラック＋対称解除法</option>
         <option value="5">05. バックトラック＋対称解除法＋枝刈り</option>
-        <option value="6" selected>06. バックトラック＋ビットマップ</option>
+        <option value="6">06. バックトラック＋ビットマップ</option>
         <option value="7">07. バックトラック＋ビットマップ＋対称解除法 2</option>
         <option value="8">08. 枝刈り</option>
         <option value="9">09. クイーンの位置による分岐BOUND 1</option>
         <option value="10">10. クイーンの位置による分岐BOUND 1,2</option>
         <option value="11">11. 枝刈り</option>
         <option value="12">12. 最適化</option>
-        <option value="13">13. 並列処理</option>
+        <option value="13" selected>13. 並列処理</option>
      </select>
    </aside>
    <aside class="select start-disabled">
@@ -41,6 +41,10 @@
       <i class="fas fa-walking"></i>
       <input type="range" id="speed" value="0.1" step="0.1" min="0" max="1" class="input-range"><i class="fas fa-running"></i>
     </div>
+  
+    <input class="chk-toggle" type="checkbox" id="analyze" />
+    <label for="analyze" title="">解析モード</label>
+
     <button type="button" id="btn-done"><span class="msg-start">スタート</span><span class="msg-stop">ストップ</span></button>
   </nav>
   <section id="container">
