@@ -225,9 +225,7 @@ AS = [0 for i in range(MAX)]     #AS:AScrath[]
 def rotate(chk, scr, _n, neg):
     """ rotate() """
     incr = 0
-    #int k = neg ? 0 : n-1
     k = 0 if neg else _n-1
-    #int incr = (neg ? +1 : -1)
     incr = 1 if neg else -1
     for i in range(_n):
         scr[i] = chk[k]
