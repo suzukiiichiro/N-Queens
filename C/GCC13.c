@@ -309,7 +309,6 @@ void *run(void *args){
   l->aBoard[0]=1;
   l->TOPBIT=1<<(G.sizeE);
   l->mask=(1<<G.size)-1;
-  int excl=(1<<((G.size/2)^0))-1;
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
     if(l->BOUND1<G.sizeE) {

@@ -86,12 +86,12 @@ void TimeFormat(clock_t utime,char* form){
 }
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int size,int mask,int row){
-  register int aStack[size];
-  register int* pnStack;
-  register int bit;
-  register int bitmap;
-  register int sizeE=size-1;
-  register int down[size],right[size],left[size];
+  int aStack[size];
+  int* pnStack;
+  int bit;
+  int bitmap;
+  int sizeE=size-1;
+  int down[size],right[size],left[size];
   aStack[0]=-1; 
   pnStack=aStack+1;
   bit=0;
