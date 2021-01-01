@@ -620,6 +620,7 @@ void genConstellations() {
                         continue;
                     }
                     printf("check\n");
+                    printf("Checking i=%d, j=%d, k=%d, l=%d\n", i, j, k, l); // デバッグ用プリント
                     if (!checkRotations(ijklList, i, j, k, l)) {
                         int_hashset_add(ijklList, toijkl(i, j, k, l));
                     }
@@ -653,12 +654,13 @@ void genConstellations() {
         ld = (L >> (i - 1)) | (1 << (N - k));
         rd = (L >> (i + 1)) | (1 << (l - 1));
         col = 1 | L | (L >> i) | (L >> j);
-        int LD = (L >> j) | (L >> l);
-        int RD = (L >> j) | (1 << k);
-        int counter = 0;
+        LD = (L >> j) | (L >> l);
+        RD = (L >> j) | (1 << k);
+        counter = 0;
 
         setPreQueens(ld, rd, col, k, l, 1, j == N - 1 ? 3 : 4);
         currentSize = constellations->size;
+
         for (int a = 0; a < counter; a++) {
             constellations->data[currentSize - a - 1].startijkl |= toijkl(i, j, k, l);
         }
