@@ -4,11 +4,10 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
+ $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
-                    -s SGPU(サマーズ版と思われる)
 
 
  ２．配置フラグ（制約テスト高速化）
@@ -451,6 +450,9 @@ long Unique=0;			//GPU
 int COUNT=0;     		//カウント用
 int aBoard[MAX]; 		//版の配列
 int down[2*MAX-1]; 	//down:flagA 縦 配置フラグ　
+//関数宣言 SGPU
+__global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
+long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言CUDA
 __global__ void nqueen_cuda(int *d_aBoard,int *d_results,int *d_count, int COUNT,int row,int size);
 void solve_nqueen_cuda(int si,int steps);
@@ -459,6 +461,235 @@ bool InitCUDA();
 void print(int size);
 void NQueen(int row,int size);
 void NQueenR(int row,int size);
+//
+__global__ void sgpu_cuda_kernel(
+    int size,int mark,
+    unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+    unsigned int* results,int totalCond){
+  const int tid=threadIdx.x;
+  const int bid=blockIdx.x;
+  const int idx=bid*blockDim.x+tid;
+  __shared__ unsigned int down[THREAD_NUM][10];
+  __shared__ unsigned int left[THREAD_NUM][10];
+  __shared__ unsigned int right[THREAD_NUM][10];
+  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ unsigned int sum[THREAD_NUM];
+  const unsigned int mask=(1<<size)-1;
+  int total=0;
+  int row=0;
+  unsigned int bit;
+  if(idx<totalCond){
+    down[tid][row]=totalDown[idx];
+    left[tid][row]=totalLeft[idx];
+    right[tid][row]=totalRight[idx];
+    bitmap[tid][row]=down[tid][row]|left[tid][row]|right[tid][row];
+    while(row>=0){
+      if((bitmap[tid][row]&mask)==mask){row--;}
+      else{
+        bit=(bitmap[tid][row]+1)&~bitmap[tid][row];
+        bitmap[tid][row]|=bit;
+        if((bit&mask)!=0){
+          if(row+1==mark){total++;row--;}
+          else{
+            down[tid][row+1]=down[tid][row]|bit;
+            left[tid][row+1]=(left[tid][row]|bit)<<1;
+            right[tid][row+1]=(right[tid][row]|bit)>>1;
+            bitmap[tid][row+1]=(down[tid][row+1]|left[tid][row+1]|right[tid][row+1]);
+            row++;
+          }
+        }else{row--;}
+      }
+    }
+    sum[tid]=total;
+  }else{sum[tid]=0;} 
+  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} 
+  __syncthreads();if(tid<32){sum[tid]+=sum[tid+32];} 
+  __syncthreads();if(tid<16){sum[tid]+=sum[tid+16];} 
+  __syncthreads();if(tid<8){sum[tid]+=sum[tid+8];} 
+  __syncthreads();if(tid<4){sum[tid]+=sum[tid+4];} 
+  __syncthreads();if(tid<2){sum[tid]+=sum[tid+2];} 
+  __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
+  __syncthreads();if(tid==0){results[bid]=sum[0];}
+}
+//
+long long sgpu_solve_nqueen_cuda(int size,int steps) {
+  unsigned int down[32];
+  unsigned int left[32];
+  unsigned int right[32];
+  unsigned int bitmap[32];
+  unsigned int bit;
+  if(size<=0||size>32){return 0;}
+  unsigned int* totalDown=new unsigned int[steps];
+  unsigned int* totalLeft=new unsigned int[steps];
+  unsigned int* totalRight=new unsigned int[steps];
+  unsigned int* results=new unsigned int[steps];
+  unsigned int* downCuda;
+  unsigned int* leftCuda;
+  unsigned int* rightCuda;
+  unsigned int* resultsCuda;
+  cudaMalloc((void**) &downCuda,sizeof(int)*steps);
+  cudaMalloc((void**) &leftCuda,sizeof(int)*steps);
+  cudaMalloc((void**) &rightCuda,sizeof(int)*steps);
+  cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
+  const unsigned int mask=(1<<size)-1;
+  const unsigned int mark=size>11?size-10:2;
+  long long total=0;
+  int totalCond=0;
+  int row=0;
+  down[0]=0;
+  left[0]=0;
+  right[0]=0;
+  bitmap[0]=0;
+  bool matched=false;
+  for(int col=0;col<size/2;col++){
+    bit=(1<<col);
+    bitmap[0]|=bit;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=(down[1]|left[1]|right[1]);
+    row=1;
+    while(row>0){
+      if((bitmap[row]&mask)==mask){row--;}
+      else{
+        bit=(bitmap[row]+1)&~bitmap[row];
+        bitmap[row]|=bit;
+        if((bit&mask)!=0){
+          down[row+1]=down[row]|bit;
+          left[row+1]=(left[row]|bit)<<1;
+          right[row+1]=(right[row]|bit)>>1;
+          bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
+          row++;
+          if(row==mark){
+            totalDown[totalCond]=down[row];
+            totalLeft[totalCond]=left[row];
+            totalRight[totalCond]=right[row];
+            totalCond++;
+            if(totalCond==steps){
+              if(matched){
+                cudaMemcpy(results,resultsCuda,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+                matched=false;
+              }
+              cudaMemcpy(downCuda,totalDown,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(leftCuda,totalLeft,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(rightCuda,totalRight,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              /** backTrack+bitmap*/
+              sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+              matched=true;
+              totalCond=0;
+            }
+            row--;
+          }
+        }else{row--;}
+      }
+    }
+  }
+  if(matched){
+    cudaMemcpy(results,resultsCuda,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+    matched=false;
+  }
+  cudaMemcpy(downCuda,totalDown,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(leftCuda,totalLeft,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(rightCuda,totalRight,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  /** backTrack+bitmap*/
+  sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+    >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+  cudaMemcpy(results,resultsCuda,
+      sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+  for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}	
+  total*=2;
+
+
+  if(size%2==1){
+    matched=false;
+    totalCond=0;
+    bit=(1<<(size-1)/2);
+    bitmap[0]|=bit;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=(down[1]|left[1]|right[1]);
+    row=1;
+    while(row>0){
+      if((bitmap[row]&mask)==mask){row--;}
+      else{
+        bit=(bitmap[row]+1)&~bitmap[row];
+        bitmap[row]|=bit;
+        if((bit&mask)!=0){
+          down[row+1]=down[row]|bit;
+          left[row+1]=(left[row]|bit)<<1;
+          right[row+1]=(right[row]|bit)>>1;
+          bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
+          row++;
+          if(row==mark){
+            totalDown[totalCond]=down[row];
+            totalLeft[totalCond]=left[row];
+            totalRight[totalCond]=right[row];
+            totalCond++;
+            if(totalCond==steps){
+              if(matched){
+                cudaMemcpy(results,resultsCuda,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+                matched=false;
+              }
+              cudaMemcpy(downCuda,totalDown,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(leftCuda,totalLeft,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(rightCuda,totalRight,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              /** backTrack+bitmap*/
+              sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+              matched=true;
+              totalCond=0;
+            }
+            row--;
+          }
+        }else{row--;}
+      }
+    }
+    if(matched){
+      cudaMemcpy(results,resultsCuda,
+          sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+      for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+      matched=false;
+    }
+    cudaMemcpy(downCuda,totalDown,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(leftCuda,totalLeft,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(rightCuda,totalRight,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    /** backTrack+bitmap*/
+    sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+      >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+    cudaMemcpy(results,resultsCuda,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=results[col];}
+  }
+  cudaFree(downCuda);
+  cudaFree(leftCuda);
+  cudaFree(rightCuda);
+  cudaFree(resultsCuda);
+  delete[] totalDown;
+  delete[] totalLeft;
+  delete[] totalRight;
+  delete[] results;
+  return total;
+}
 //
 __global__
 void nqueen_cuda(int *d_aBoard,int *d_down,int *d_results,int *d_count,int COUNT,int row,int size){
@@ -641,7 +872,7 @@ int main(int argc,char** argv) {
     argstart=2;
   }
   if(argc<argstart){
-    printf("Usage: %s [-c|-g|-r]\n",argv[0]);
+    printf("Usage: %s [-c|-g|-r|-s]\n",argv[0]);
     printf("  -c: CPU only\n");
     printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
