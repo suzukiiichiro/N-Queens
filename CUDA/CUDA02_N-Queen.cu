@@ -3,12 +3,13 @@
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
- コンパイル
- $ nvcc CUDA02_N-Queen.cu -o CUDA02_N-Queen
+ コンパイルと実行
+ $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
+                    -c:cpu 
+                    -r cpu再帰 
+                    -g GPU 
+                    -s SGPU(サマーズ版と思われる)
 
- 実行
- $ ./CUDA02_N-Queen (-c|-r|-g)
-                    -c:cpu -r cpu再帰 -g GPU
 
  ２．配置フラグ（制約テスト高速化）
 
