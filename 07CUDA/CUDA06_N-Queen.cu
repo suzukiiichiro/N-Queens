@@ -148,10 +148,10 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -r
 11:         2680               0            0.00
 12:        14200               0            0.01
 13:        73712               0            0.04
-14:       365596               0            0.23
-15:      2279184               0            1.40
-16:     14772512               0            9.37
-17:     95815104               0         1:05.71
+14:       365596               0            0.19
+15:      2279184               0            1.24
+16:     14772512               0            7.79
+17:     95815104               0           57.57
 
 $ nvcc CUDA06_N-Queen.cu  && ./a.out -c
 ６．CPU 非再帰 バックトラック＋ビットマップ
@@ -166,42 +166,46 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -c
 11:         2680               0            0.00
 12:        14200               0            0.01
 13:        73712               0            0.04
-14:       365596               0            0.24
-15:      2279184               0            1.47
-16:     14772512               0            9.75
-17:     95815104               0         1:08.46
+14:       365596               0            0.21
+15:      2279184               0            1.40
+16:     14772512               0            8.78
+17:     95815104               0         1:05.00
 
 $ nvcc CUDA06_N-Queen.cu  && ./a.out -g
 ６．GPU 非再帰 バックトラック＋ビットマップ
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.02
- 5:           10               0  00:00:00:00.00
- 6:            4               0  00:00:00:00.00
- 7:           40               0  00:00:00:00.00
- 8:           92               0  00:00:00:00.00
- 9:          352               0  00:00:00:00.01
-10:          724               0  00:00:00:00.07
-11:         2680               0  00:00:00:00.30
-12:        14200               0  00:00:00:01.22
-13:        73712               0  00:00:00:05.78
-
-bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
-６．SGPU 非再帰 バックトラック＋ビットマップ
- N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.02
+ 4:            2               0  00:00:00:00.03
  5:           10               0  00:00:00:00.00
  6:            4               0  00:00:00:00.00
  7:           40               0  00:00:00:00.00
  8:           92               0  00:00:00:00.00
  9:          352               0  00:00:00:00.00
 10:          724               0  00:00:00:00.00
-11:         2680               0  00:00:00:00.00
-12:        14200               0  00:00:00:00.02
-13:        73712               0  00:00:00:00.03
-14:       365596               0  00:00:00:00.08
+11:         2680               0  00:00:00:00.02
+12:        14200               0  00:00:00:00.03
+13:        73712               0  00:00:00:00.05
+14:       365596               0  00:00:00:00.09
 15:      2279184               0  00:00:00:00.50
 16:     14772512               0  00:00:00:02.41
-17:     95815104               0  00:00:00:18.26
+17:     95815104               0  00:00:00:18.30
+
+bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
+６．SGPU 非再帰 バックトラック＋ビットマップ
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2               0  00:00:00:00.05
+ 5:           10               0  00:00:00:00.00
+ 6:            4               0  00:00:00:00.00
+ 7:           40               0  00:00:00:00.00
+ 8:           92               0  00:00:00:00.00
+ 9:          352               0  00:00:00:00.02
+10:          724               0  00:00:00:00.00
+11:         2680               0  00:00:00:00.01
+12:        14200               0  00:00:00:00.02
+13:        73712               0  00:00:00:00.05
+14:       365596               0  00:00:00:00.09
+15:      2279184               0  00:00:00:00.49
+16:     14772512               0  00:00:00:02.43
+17:     95815104               0  00:00:00:18.44
 */
 
 #include <stdio.h>
@@ -216,109 +220,29 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 //変数宣言
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
+//関数宣言 SGPU
+__global__ 
+void sgpu_cuda_kernel(int size,int mark,
+		unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
+		unsigned int* results,int totalCond);
+long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 GPU
 __global__
-void nqueen_cuda(long *d_results,int *d_aStack,int *d_down,int *d_right,int *d_left,long TOTAL,int size,int mask,int row);
-void solve_nqueen_cuda(int si,int mask,int row,long results[2],int steps);
-//関数宣言 SGPU
-__global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
-long long sgpu_solve_nqueen_cuda(int size,int steps); 
+void cuda_kernel(
+    int size,int mark,
+    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
+    unsigned int* d_results,int totalCond);
+long long solve_nqueen_cuda(int size,int steps);
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
 void NQueen(int size,int mask,int row);
+//関数宣言 CPUR
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
-__global__
-void nqueen_cuda(long *d_results,int *d_aStack,int *d_down,int *d_right,int *d_left,long TOTAL,int size,int mask,int row){
-  int* pnStack;
-  int bit;
-  int bitmap;
-  int sizeE=size-1;
-  d_aStack[0]=-1; 
-  pnStack=d_aStack+1;
-  bit=0;
-  bitmap=mask;
-  d_down[0]=d_left[0]=d_right[0]=0;
-  while(true){
-    if(bitmap){
-      bitmap^=bit=(-bitmap&bitmap); 
-      if(row==sizeE){
-        d_results[0]=++TOTAL; 
-        bitmap=*--pnStack;
-        --row;
-        continue;
-      }else{
-        int n=row++;
-        d_left[row]=(d_left[n]|bit)<<1;
-        d_down[row]=d_down[n]|bit;
-        d_right[row]=(d_right[n]|bit)>>1;
-        *pnStack++=bitmap;
-        bitmap=mask&~(d_left[row]|d_down[row]|d_right[row]);
-        continue;
-      }
-    }else{ 
-      bitmap=*--pnStack;
-      if(pnStack==d_aStack){ break ; }
-      --row;
-      continue;
-    }
-  }
-}
-//
-void solve_nqueen_cuda(int si,int mask,int row,long results[2],int steps){
-  //メモリ登録
-  int *h_aStack;
-  int *h_down;
-  int *h_right;
-  int *h_left;
-  long *h_results;
-  cudaMallocHost((void**)&h_aStack,sizeof(int)*MAX);
-  cudaMallocHost((void**)&h_down,sizeof(int)*2*MAX-1);
-  cudaMallocHost((void**)&h_right,sizeof(int)*2*MAX-1);
-  cudaMallocHost((void**)&h_left,sizeof(int)*2*MAX-1);
-  cudaMallocHost((void**)&h_results,sizeof(long)*steps);
-  int *d_aStack;
-  int *d_down;
-  int *d_right;
-  int *d_left;
-  long *d_results;
-  cudaMalloc((void**)&d_aStack,sizeof(int)*MAX);
-  cudaMalloc((void**)&d_down,sizeof(int)*2*MAX-1);
-  cudaMalloc((void**)&d_right,sizeof(int)*2*MAX-1);
-  cudaMalloc((void**)&d_left,sizeof(int)*2*MAX-1);
-  cudaMalloc((void**)&d_results,sizeof(long)*steps);
-  //host to device
-  cudaMemcpy(d_aStack,h_aStack,
-    sizeof(int)*MAX,cudaMemcpyHostToDevice);
-  cudaMemcpy(d_down,h_down,
-    sizeof(int)*2*MAX-1,cudaMemcpyHostToDevice);
-  cudaMemcpy(d_right,h_right,
-    sizeof(int)*2*MAX-1,cudaMemcpyHostToDevice);
-  cudaMemcpy(d_left,h_left,
-    sizeof(int)*2*MAX-1,cudaMemcpyHostToDevice);
-  cudaMemcpy(d_results,h_results,
-    sizeof(long)*steps,cudaMemcpyHostToDevice);
-  //実行
-  nqueen_cuda<<<1,1>>>(d_results,d_aStack,d_down,d_right,d_left,0,si,mask,row);
-  //device to host
-  cudaMemcpy(h_results,d_results,
-    sizeof(long)*steps,cudaMemcpyDeviceToHost);
-  //解を代入 
-  results[0]=h_results[0];
-  //メモリ解放
-  cudaFreeHost(h_aStack);
-  cudaFreeHost(h_down);
-  cudaFreeHost(h_right);
-  cudaFreeHost(h_left);
-  cudaFreeHost(h_results);
-  cudaFree(d_aStack);
-  cudaFree(d_down);
-  cudaFree(d_left);
-  cudaFree(d_right);
-  cudaFree(d_results);
-}
-//
-__global__ void sgpu_cuda_kernel(
+//SGPU
+__global__ 
+void sgpu_cuda_kernel(
     int size,int mark,
     unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,
     unsigned int* results,int totalCond){
@@ -368,6 +292,7 @@ __global__ void sgpu_cuda_kernel(
   __syncthreads();if(tid==0){results[bid]=sum[0];}
 }
 //
+//SGPU
 long long sgpu_solve_nqueen_cuda(int size,int steps) {
   unsigned int down[32];
   unsigned int left[32];
@@ -546,7 +471,252 @@ long long sgpu_solve_nqueen_cuda(int size,int steps) {
   delete[] results;
   return total;
 }
-/** CUDA 初期化 **/
+//
+// GPU
+__global__ 
+void cuda_kernel(
+    int size,int mark,
+    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
+    unsigned int* d_results,int totalCond){
+  const int tid=threadIdx.x;
+  const int bid=blockIdx.x;
+  const int idx=bid*blockDim.x+tid;
+  __shared__ unsigned int down[THREAD_NUM][10];
+  __shared__ unsigned int left[THREAD_NUM][10];
+  __shared__ unsigned int right[THREAD_NUM][10];
+  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ unsigned int sum[THREAD_NUM];
+  const unsigned int mask=(1<<size)-1;
+  int total=0;
+  int row=0;
+  unsigned int bit;
+  if(idx<totalCond){//余分なスレッドは動かさない
+    down[tid][row]=t_down[idx];
+    left[tid][row]=t_left[idx];
+    right[tid][row]=t_right[idx];
+    bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
+    while(row>=0){
+      if(bitmap[tid][row]==0){
+        --row;
+      }else{
+        bitmap[tid][row]^=bit=(-bitmap[tid][row]&bitmap[tid][row]); 
+        if((bit&mask)!=0){//置く場所があるかどうか
+          if(row+1==mark){
+            total++;
+            --row;
+          }else{
+            int n=row++;
+            down[tid][row]=down[tid][n]|bit;
+            left[tid][row]=(left[tid][n]|bit)<<1;
+            right[tid][row]=(right[tid][n]|bit)>>1;
+            bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
+          }
+        }else{
+            --row;
+        }//置く場所がなければ１個上に
+      }
+    }
+    sum[tid]=total;//最後sum[tid]に加算する
+  }else{//totalCond未満は回らないのでtotal加算しない
+      sum[tid]=0;
+      } 
+  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} 
+  __syncthreads();if(tid<32){sum[tid]+=sum[tid+32];} 
+  __syncthreads();if(tid<16){sum[tid]+=sum[tid+16];} 
+  __syncthreads();if(tid<8){sum[tid]+=sum[tid+8];} 
+  __syncthreads();if(tid<4){sum[tid]+=sum[tid+4];} 
+  __syncthreads();if(tid<2){sum[tid]+=sum[tid+2];} 
+  __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
+  __syncthreads();if(tid==0){d_results[bid]=sum[0];}
+}
+//
+// GPU
+long long solve_nqueen_cuda(int size,int steps) {
+  register int bitmap[32];
+  register int bit;
+  register int h_down[size],h_right[size],h_left[size];
+  if(size<=0||size>32){return 0;}
+  unsigned int* t_down=new unsigned int[steps];
+  unsigned int* t_left=new unsigned int[steps];
+  unsigned int* t_right=new unsigned int[steps];
+  unsigned int* h_results=new unsigned int[steps];
+  unsigned int* d_down;
+  unsigned int* d_left;
+  unsigned int* d_right;
+  unsigned int* d_results;
+  cudaMalloc((void**) &d_down,sizeof(int)*steps);
+  cudaMalloc((void**) &d_left,sizeof(int)*steps);
+  cudaMalloc((void**) &d_right,sizeof(int)*steps);
+  cudaMalloc((void**) &d_results,sizeof(int)*steps/THREAD_NUM);
+  const unsigned int mask=(1<<size)-1;
+  const unsigned int mark=size>11?size-10:2;//何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+  long long total=0;
+  int totalCond=0;
+  int row=0;
+  bit=0;
+  h_down[0]=h_left[0]=h_right[0]=0;
+  bool matched=false;
+  for(int col=0;col<size/2;col++){//右側半分だけやる
+    bit=(1<<col);
+    bitmap[0]=mask;
+    h_down[1]=bit;
+    h_left[1]=bit<<1;
+    h_right[1]=bit>>1;
+    bitmap[1]=mask&~(h_down[1]|h_left[1]|h_right[1]);
+    row=1;
+    while(row>0){
+      if(bitmap[row]==0){
+          row--;
+      }else{//おける場所があれば進む
+        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){//置く場所があれば先に進む
+          int n=row++;
+          h_down[row]=h_down[n]|bit;
+          h_left[row]=(h_left[n]|bit)<<1;
+          h_right[row]=(h_right[n]|bit)>>1;
+          bitmap[row]=mask&~(h_down[row]|h_left[row]|h_right[row]);
+          if(row==mark){
+            //2行目(mark)にクイーンを１個ずつ置いていって、down,left,right情報を格納、
+            //その次の行へは進まない。その行で可能な場所にクイーン置き終わったらGPU並列実行
+            t_down[totalCond]=h_down[row];
+            t_left[totalCond]=h_left[row];
+            t_right[totalCond]=h_right[row];
+            totalCond++;
+            //最大GPU数に達してしまったらここでGPUを実行する。stepsはGPUの同時並行稼働数を制御
+            if(totalCond==steps){//ここではtotalCond==stepsの場合だけこの中へ
+              if(matched){//matched=trueの時にCOUNT追加 //GPU内でカウントしているので、GPUから出たらmatched=trueになってる
+                cudaMemcpy(h_results,d_results,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}
+                matched=false;
+              }
+              cudaMemcpy(d_down,t_down,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(d_left,t_left,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(d_right,t_right,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              /** backTrack+bitmap*/
+              cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,d_down,d_left,d_right,d_results,totalCond);
+              matched=true;//GPU内でカウントしているので、GPUから出たらmatched=trueになってる
+              totalCond=0;
+              
+            }
+            //GPUに渡す行数についてはクイーンを１個ずつ置く
+            //GPU呼び出してなくても上に上がる
+            --row;
+          }
+        }else{
+          --row;
+        }//置く場所がなければ上に上がる
+      }
+    }
+  }
+  if(matched){//matche=trueの時COUNT追加
+    cudaMemcpy(h_results,d_results,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}
+    matched=false;
+  }
+  cudaMemcpy(d_down,t_down,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(d_left,t_left,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(d_right,t_right,
+      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  /** backTrack+bitmap*/
+  cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+    >>>(size,size-mark,d_down,d_left,d_right,d_results,totalCond);
+  cudaMemcpy(h_results,d_results,
+      sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+  for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}	
+  total*=2;//ミラーなので２倍する
+  //
+  if(size%2==1){//奇数の場合はミラーがないので1倍で同じ処理をする
+    matched=false;
+    totalCond=0;
+    bit=(1<<(size-1)/2);
+    bitmap[0]=mask;
+    h_down[1]=bit;
+    h_left[1]=bit<<1;
+    h_right[1]=bit>>1;
+    bitmap[1]=mask&~(h_down[1]|h_left[1]|h_right[1]);
+    row=1;
+    while(row>0){
+      if(bitmap[row]==0){
+        row--;
+      }else{
+        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]);
+        if((bit&mask)!=0){
+          int n=row++;
+          h_down[row]=h_down[n]|bit;
+          h_left[row]=(h_left[n]|bit)<<1;
+          h_right[row]=(h_right[n]|bit)>>1;
+          bitmap[row]=mask&~(h_down[row]|h_left[row]|h_right[row]);
+          if(row==mark){
+            t_down[totalCond]=h_down[row];
+            t_left[totalCond]=h_left[row];
+            t_right[totalCond]=h_right[row];
+            totalCond++;
+            if(totalCond==steps){
+              if(matched){
+                cudaMemcpy(h_results,d_results,
+                    sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+                for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}
+                matched=false;
+              }
+              cudaMemcpy(d_down,t_down,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(d_left,t_left,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              cudaMemcpy(d_right,t_right,
+                  sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+              /** backTrack+bitmap*/
+              cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+                >>>(size,size-mark,d_down,d_left,d_right,d_results,totalCond);
+              matched=true;
+              totalCond=0;
+            }
+            --row;
+          }
+        }else{--row;}
+      }
+    }
+    if(matched){
+      cudaMemcpy(h_results,d_results,
+          sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+      for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}
+      matched=false;
+    }
+    cudaMemcpy(d_down,t_down,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(d_left,t_left,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    cudaMemcpy(d_right,t_right,
+        sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+    /** backTrack+bitmap*/
+    cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
+      >>>(size,size-mark,d_down,d_left,d_right,d_results,totalCond);
+    cudaMemcpy(h_results,d_results,
+        sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    for(int col=0;col<steps/THREAD_NUM;col++){total+=h_results[col];}
+  }
+  cudaFree(d_down);
+  cudaFree(d_left);
+  cudaFree(d_right);
+  cudaFree(d_results);
+  cudaFreeHost(t_down);
+  cudaFreeHost(t_left);
+  cudaFreeHost(t_right);
+  cudaFreeHost(h_down);
+  cudaFreeHost(h_left);
+  cudaFreeHost(h_right);
+  cudaFreeHost(h_results);
+  return total;
+}
+//
+//CUDA 初期化
 bool InitCUDA(){
   int count;
   cudaGetDeviceCount(&count);
@@ -560,6 +730,7 @@ bool InitCUDA(){
   cudaSetDevice(i);
   return true;
 }
+//
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
   int dd,hh,mm;
@@ -580,58 +751,118 @@ void TimeFormat(clock_t utime,char *form){
   else
     sprintf(form,"           %5.2f",ss);
 }
+//
 //CPU 非再帰版 ロジックメソッド
 void NQueen(int size,int mask,int row){
-  register int aStack[size];
-  register int* pnStack;
   register int bit;
-  register int bitmap;
+  register int bitmap[32];
   register int sizeE=size-1;
   register int down[size],right[size],left[size];
-  aStack[0]=-1; 
-  pnStack=aStack+1;
+  if(size<=0||size>32){return;}
   bit=0;
-  bitmap=mask;
   down[0]=left[0]=right[0]=0;
-  while(true){
-    if(bitmap){
-      bitmap^=bit=(-bitmap&bitmap); 
-      if(row==sizeE){
-        TOTAL++;
-        bitmap=*--pnStack;
-        --row;
-        continue;
+  for(int col=0;col<size/2;col++){//右側半分だけやる
+    bit=(1<<col);
+    bitmap[0]=mask;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    row=1;
+    while(row>0){
+      if(bitmap[row]==0){
+        row--;
       }else{
-        int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        *pnStack++=bitmap;
-        bitmap=mask&~(left[row]|down[row]|right[row]);
-        continue;
-      }
-    }else{ 
-      bitmap=*--pnStack;
-      if(pnStack==aStack){ break ; }
-      --row;
-      continue;
+        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){
+          if(row==sizeE){
+            TOTAL++;
+            --row;
+            continue;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+            continue;
+          }
+        }else{
+           --row;
+          continue;
+        }
+      }  
     }
   }
+  TOTAL*=2;
+  if(size%2==1){
+    bit=(1<<(sizeE)/2);
+    bitmap[0]=mask;
+    down[1]=bit;
+    left[1]=bit<<1;
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    row=1;
+    while(row>0){
+      if(bitmap[row]==0){
+        row--;
+      }else{
+        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){
+          if(row==sizeE){
+            TOTAL++;
+            --row;
+            continue;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+            continue;
+          }
+        }else{
+          --row;
+          continue;
+        }    
+      }  
+    }
+  }  
 }
+//
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask, int row,int left,int down,int right){
-  int bitmap=0;
-  int bit=0;
-  if(row==size){
-    TOTAL++;
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+    if(bitmap){
+      TOTAL++;
+    }
   }else{
-    bitmap=(mask&~(left|down|right));
     while(bitmap){
       bitmap^=bit=(-bitmap&bitmap);
-      NQueenR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
+//
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask, int row,int left,int down,int right){
+  int bit=0;
+  int sizeE=size-1;
+  for(int col=0;col<size/2;col++){
+    bit=(1<<col);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+  TOTAL*=2;
+  if(size%2==1){
+    bit=(1<<(sizeE)/2);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+}
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -684,21 +915,19 @@ int main(int argc,char** argv) {
   }
   if(gpu||sgpu){
     if(!InitCUDA()){return 0;}
-    int min=4;int targetN=18;int mask;
+    int min=4;int targetN=17;
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     long TOTAL,UNIQUE;
-    long results[2];//結果格納用
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     for(int i=min;i<=targetN;i++){
       gettimeofday(&t0,NULL);  // 計測開始
       if(gpu){
-        mask=((1<<i)-1);
-        solve_nqueen_cuda(i,mask,0,results,steps);
-        TOTAL=results[0];
-        UNIQUE=results[1];
+      	TOTAL=solve_nqueen_cuda(i,steps);
+      	UNIQUE=0;
       }else if(sgpu){
         TOTAL=sgpu_solve_nqueen_cuda(i,steps);
+      	UNIQUE=0;
       }
       gettimeofday(&t1,NULL);  // 計測終了
       if(t1.tv_usec<t0.tv_usec) {
