@@ -214,10 +214,8 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
  int sizeE=size-1;
  bitmap=(mask&~(left|down|right));
  if(row==sizeE){
-    if(bitmap){
-      aBoard[size]=(-bitmap&bitmap);
-      symmetryOps_bitmap(size);
-    }
+   aBoard[row]=(-bitmap&bitmap);
+   symmetryOps_bitmap(size);
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
@@ -282,12 +280,19 @@ int main(int argc,char** argv) {
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
+      COUNT2=0;
+      COUNT4=0;
+      COUNT8=0;
       mask=((1<<i)-1);
       st=clock();
       if(cpu){ NQueen(i,mask,0); }
       if(cpur){ NQueenR(i,mask,0,0,0,0); }
       TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      if(cpur){
+        printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      }else{
+	printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+      }
     }
   }
   return 0;
