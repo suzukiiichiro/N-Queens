@@ -172,13 +172,13 @@ void NQueen(int size,int mask,int row){
 void NQueenR(int size,int mask,int row,int left,int down,int right){
   int bit;
   int bitmap=mask&~(left|down|right);
-  if(row==size){
+  int sizeE=size-1;
+  if(row==sizeE){
     /* 対称解除法の追加 */
-    //TOTAL++;
+    aBoard[row]=(-bitmap&bitmap);
     symmetryOps_bitmap(size);
   }else{
     while(bitmap){
-      //bitmap^=bit=(-bitmap&bitmap);
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
