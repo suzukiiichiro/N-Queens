@@ -262,13 +262,13 @@ int main(int argc,char** argv) {
   }
   /** 出力と実行 */
   if(cpu){
-    printf("\n\n８．CPU 非再帰 バックトラック＋ビットマップ＋ミラー\n");
+    printf("\n\n８．CPU 非再帰 バックトラック＋ビットマップ＋ミラー＋対象解除\n");
   }else if(cpur){
-    printf("\n\n８．CPUR 再帰 バックトラック＋ビットマップ＋ミラー\n");
+    printf("\n\n８．CPUR 再帰 バックトラック＋ビットマップ＋ミラー＋対象解除\n");
   }else if(gpu){
-    printf("\n\n８．GPU 非再帰 バックトラック＋ビットマップ＋ミラー\n");
+    printf("\n\n８．GPU 非再帰 バックトラック＋ビットマップ＋ミラー＋対象解除\n");
   }else if(sgpu){
-    printf("\n\n８．SGPU 非再帰 バックトラック＋ビットマップ＋ミラー\n");
+    printf("\n\n８．SGPU 非再帰 バックトラック＋ビットマップ＋ミラー＋対象解除\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
