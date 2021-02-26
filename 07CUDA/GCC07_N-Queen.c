@@ -9,7 +9,7 @@
 //変数宣言
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
-nt aBoard[MAX];
+int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
 int COUNT2,COUNT4,COUNT8;
@@ -41,7 +41,6 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"           %5.2f",ss);
 }
 //
-__device__ __host__
 int rh(int a,int sz){
   int tmp=0;
   for(int i=0;i<=sz;i++){
@@ -50,7 +49,6 @@ int rh(int a,int sz){
   return tmp;
 }
 //
-__device__ __host__
 void vMirror_bitmap(int bf[],int af[],int si){
   int score ;
   for(int i=0;i<si;i++) {
@@ -59,7 +57,6 @@ void vMirror_bitmap(int bf[],int af[],int si){
   }
 }
 //
-__device__ __host__
 void rotate_bitmap(int bf[],int af[],int si){
   for(int i=0;i<si;i++){
     int t=0;
@@ -70,7 +67,6 @@ void rotate_bitmap(int bf[],int af[],int si){
   }
 }
 //
-__device__ __host__
 int intncmp(int lt[],int rt[],int n){
   int rtn=0;
   for(int k=0;k<n;k++){
@@ -82,6 +78,47 @@ int intncmp(int lt[],int rt[],int n){
   return rtn;
 }
 //
+//CPU
+void symmetryOps_bitmap(int si){
+  int nEquiv;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aT[i]=aBoard[i];}
+  rotate_bitmap(aT,aS,si);    //時計回りに90度回転
+  int k=intncmp(aBoard,aS,si);
+  if(k>0)return;
+  if(k==0){ nEquiv=2;}else{
+    rotate_bitmap(aS,aT,si);  //時計回りに180度回転
+    k=intncmp(aBoard,aT,si);
+    if(k>0)return;
+    if(k==0){ nEquiv=4;}else{
+      rotate_bitmap(aT,aS,si);//時計回りに270度回転
+      k=intncmp(aBoard,aS,si);
+      if(k>0){ return;}
+      nEquiv=8;
+    }
+  }
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
+  vMirror_bitmap(aS,aT,si);   //垂直反転
+  k=intncmp(aBoard,aT,si);
+  if(k>0){ return; }
+  if(nEquiv>2){             //-90度回転 対角鏡と同等
+    rotate_bitmap(aT,aS,si);
+    k=intncmp(aBoard,aS,si);
+    if(k>0){return;}
+    if(nEquiv>4){           //-180度回転 水平鏡像と同等
+      rotate_bitmap(aS,aT,si);
+      k=intncmp(aBoard,aT,si);
+      if(k>0){ return;}       //-270度回転 反対角鏡と同等
+      rotate_bitmap(aT,aS,si);
+      k=intncmp(aBoard,aS,si);
+      if(k>0){ return;}
+    }
+  }
+  if(nEquiv==2){COUNT2++;}
+  if(nEquiv==4){COUNT4++;}
+  if(nEquiv==8){COUNT8++;}
+}
 long getUnique(){
   return COUNT2+COUNT4+COUNT8;
 }
@@ -174,9 +211,11 @@ void NQueenR(int size,int mask,int row,int left,int down,int right){
   int bitmap=mask&~(left|down|right);
   int sizeE=size-1;
   if(row==sizeE){
-    /* 対称解除法の追加 */
-    aBoard[row]=(-bitmap&bitmap);
-    symmetryOps_bitmap(size);
+    if(bitmap){
+      /* 対称解除法の追加 */
+      aBoard[row]=(-bitmap&bitmap);
+      symmetryOps_bitmap(size);
+    }
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
@@ -209,13 +248,13 @@ int main(int argc,char** argv) {
   }
   /** 出力と実行 */
   if(cpu){
-    printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(cpur){
-    printf("\n\n６．CPUR 再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(gpu){
-    printf("\n\n６．GPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(sgpu){
-    printf("\n\n６．SGPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n７．SGPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
@@ -225,6 +264,8 @@ int main(int argc,char** argv) {
     int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
+      TOTAL=0;
+      UNIQUE=0;
       COUNT2=0;
       COUNT4=0;
       COUNT8=0;
@@ -233,8 +274,12 @@ int main(int argc,char** argv) {
       if(cpu){ NQueen(i,mask,0); }
       if(cpur){ NQueenR(i,mask,0,0,0,0); }
       TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
-    }
+      if(cpur){
+        printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
+      }else{
+	printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+      }
+     }
   }
   return 0;
 }
