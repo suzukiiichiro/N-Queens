@@ -225,8 +225,9 @@ int main(int argc,char** argv) {
     int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
-      TOTAL=0;
-      UNIQUE=0;
+      COUNT2=0;
+      COUNT4=0;
+      COUNT8=0;
       mask=((1<<i)-1);
       st=clock();
       if(cpu){ NQueen(i,mask,0); }
