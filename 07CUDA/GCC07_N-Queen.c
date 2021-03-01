@@ -27,7 +27,7 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask,int row);
-void NQueenR(int size,int mask,int row,int left,int down,int right);
+void NQueenR(int size,int mask);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -177,21 +177,33 @@ void NQueen(int size,int mask,int row){
   }
 }
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask,int row,int left,int down,int right){
-  int bit;
-  int bitmap=mask&~(left|down|right);
-  if(row==size){
-    /* 対称解除法の追加 */
-    //TOTAL++;
-    symmetryOps_bitmap(size);
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+    if(bitmap){
+      aBoard[row]=(-bitmap&bitmap);
+      symmetryOps_bitmap(size);
+    }
   }else{
     while(bitmap){
-      //bitmap^=bit=(-bitmap&bitmap);
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask){
+  int bit=0;
+  //1行目全てにクイーンを置く
+  for(int col=0;col<size;col++){
+    aBoard[0]=bit=(1<<col);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+}
+
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -236,7 +248,7 @@ int main(int argc,char** argv) {
       mask=(1<<i)-1;
       st=clock();
       if(cpu){ NQueen(i,mask,0); }
-      if(cpur){ NQueenR(i,mask,0,0,0,0); }
+      if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
