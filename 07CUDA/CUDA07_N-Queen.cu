@@ -183,7 +183,11 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask,int row);
-void NQueenR(int size,int mask,int row,int left,int down,int right);
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
+//GPUへの移行版
+void NQueenR(int size,int mask);
+//通常の再帰版
+void _NQueenR(int size,int mask,int row,int left,int down,int right);
 //
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
@@ -744,7 +748,34 @@ void NQueen(int size,int mask,int row){
   }
 }
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask,int row,int left,int down,int right){
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+    if(bitmap){
+      aBoard[row]=(-bitmap&bitmap);
+      symmetryOps_bitmap(size);
+    }
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+    }
+  }
+}
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask){
+  int bit=0;
+  //1行目全てにクイーンを置く
+  for(int col=0;col<size;col++){
+    aBoard[0]=bit=(1<<col);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+}
+//【通常版】CPUR 再帰版 ロジックメソッド
+void _NQueenR(int size,int mask,int row,int left,int down,int right){
   int bit;
   int bitmap=mask&~(left|down|right);
   if(row==size){
@@ -755,7 +786,7 @@ void NQueenR(int size,int mask,int row,int left,int down,int right){
     while(bitmap){
       //bitmap^=bit=(-bitmap&bitmap);
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      _NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
@@ -803,7 +834,10 @@ int main(int argc,char** argv) {
       mask=(1<<i)-1;
       st=clock();
       if(cpu){ NQueen(i,mask,0); }
-      if(cpur){ NQueenR(i,mask,0,0,0,0); }
+      //【通常版】
+      //if(cpur){ _NQueenR(i,mask,0,0,0,0); }
+      //【GPUへの移行版】
+      if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
@@ -841,6 +875,6 @@ int main(int argc,char** argv) {
       ss%=60;
       printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
-  /* } */
+  }
   return 0;
 }
