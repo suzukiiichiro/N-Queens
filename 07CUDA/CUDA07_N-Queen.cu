@@ -182,7 +182,7 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask,int row);
-void NQueenR(int size,int mask,int down,int left,int right);
+void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
@@ -840,6 +840,6 @@ int main(int argc,char** argv) {
       ss%=60;
       printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
-  }
+  /* } */
   return 0;
 }
