@@ -210,6 +210,7 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 #include <cuda.h>
