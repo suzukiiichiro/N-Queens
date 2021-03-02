@@ -294,52 +294,66 @@ void NQueen(int size,int mask){
     ENDBIT>>=1;
   }
 }
-//
-void backTrack2(int size,int mask,int row,int left,int down,int right){
-  int bit;
-  int bitmap=mask&~(left|down|right); /* 配置可能フィールド */
-  if(row==size){
-    aBoard[row]=bitmap; //symmetryOpsの時は代入します。
-    symmetryOps_bitmap(size);
+//CPUR 再帰版 ロジックメソッド
+void backTrack1(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     aBoard[row]=(-bitmap&bitmap);
+     symmetryOps_bitmap(size);
+   }
   }else{
     while(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack1(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
-//
-void backTrack1(int size,int mask,int row,int left,int down,int right){
-  int bit;
-  int bitmap=mask&~(left|down|right);   //BOUNDで対応済み
-  if(row==size){
-    aBoard[row]=bitmap; //symmetryOpsの時は代入します。
-    symmetryOps_bitmap(size);
+void backTrack2(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     aBoard[row]=(-bitmap&bitmap);
+     symmetryOps_bitmap(size);
+   }
   }else{
     while(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //最も下位の１ビットを抽出
-      backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack2(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask){
-  int bit;
-  TOPBIT=1<<(size-1);
-  aBoard[0]=1;
-  for(BOUND1=2;BOUND1<size-1;BOUND1++){
-    aBoard[1]=bit=(1<<BOUND1);
-    backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  int bit=0;
+  //10では枝借りはまだしない
+  //backtrack1
+  //1行め右端 0
+  int col=0;
+  aBoard[0]=bit=(1<<col);
+  int left=bit<<1;
+  int down=bit;
+  int right=bit>>1;
+  //2行目は右から3列目から左端から2列目まで
+  for(int col_j=2;col_j<size-1;col_j++){
+      aBoard[1]=bit=(1<<col_j);
+      backTrack1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1);
   }
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aBoard[0]=bit=(1<<BOUND1);
-    backTrack2(size,mask,1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
+  //backtrack2
+  //1行目右から2列目から
+  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
+  for(int col=1,col2=size-2;col<col2;col++,col2--){
+      aBoard[0]=bit=(1<<col);
+      backTrack2(size,mask,1,bit<<1,bit,bit>>1);
   }
 }
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
