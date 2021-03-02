@@ -127,6 +127,9 @@ void symmetryOps_bitmap(int si);
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
+//【通常版】
+void _NQueenR(int size,int mask);
+//【GPU移行版】
 void NQueenR(int size,int mask);
 //
 __global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
@@ -758,6 +761,50 @@ void NQueen(int size,int mask){
   }
 }
 //
+//CPUR 再帰版 ロジックメソッド
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     aBoard[row]=(-bitmap&bitmap);
+     symmetryOps_bitmap(size);
+   }
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+    }
+  }
+}
+//
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask){
+  int bit=0;
+  //09では枝借りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない
+  //backtrack1
+  //1行め右端 0
+  int col=0;
+  aBoard[0]=bit=(1<<col);
+  int left=bit<<1;
+  int down=bit;
+  int right=bit>>1;
+  //2行目は右から3列目から左端から2列目まで
+  for(int col_j=2;col_j<size-1;col_j++){
+      aBoard[1]=bit=(1<<col_j);
+      solve_nqueenr(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1);
+  }
+  //backtrack2
+  //1行目右から2列目から
+  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
+  for(int col=1,col2=size-2;col<col2;col++,col2--){
+      aBoard[0]=bit=(1<<col);
+      solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+}
+//
 void backTrack1(int size,int mask,int row,int left,int down,int right){
   int bit;
   int bitmap=(mask&~(left|down|right));
@@ -774,7 +821,7 @@ void backTrack1(int size,int mask,int row,int left,int down,int right){
 }
 //
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask){
+void _NQueenR(int size,int mask){
   int bit;
   TOPBIT=1<<(size-1);
   aBoard[0]=1;
@@ -838,7 +885,11 @@ int main(int argc,char** argv) {
       //非再帰は-1で初期化
       // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
       if(cpu){ NQueen(i,mask); }
+      //【通常版】
+      //if(cpur){ _NQueenR(i,mask); }
+      //【GPUへの移行版】
       if(cpur){ NQueenR(i,mask); }
+
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }

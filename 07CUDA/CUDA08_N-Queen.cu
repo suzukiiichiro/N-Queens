@@ -107,7 +107,10 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask);
-void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
+void NQueenR(int size,int mask);
+void _NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
+//
 //
 __global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
   const int tid=threadIdx.x;
@@ -694,8 +697,54 @@ void NQueen(int size,int mask){
   }
 }
 //CPUR 再帰版 ロジックメソッド
-/* void NQueenR(int size,int mask,int row,int left,int down,int right){ */
-void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     aBoard[row]=(-bitmap&bitmap);
+     symmetryOps_bitmap(size);
+   }
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+    }
+  }
+}
+//
+//CPUR 再帰版 ロジックメソッド
+void NQueenR(int size,int mask){
+  int bit=0;
+  int sizeE=size-1;
+  //偶数、奇数ともに右半分にクイーンを置く
+  for(int col=0;col<size/2;col++){
+    //ex n=6 xxxooo n=7 xxxxooo 
+    bit=aBoard[0]=(1<<col);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+  }
+  //奇数については中央にもクイーンを置く
+  if(size%2==1){
+    int col=(sizeE)/2;
+    //1行目はクイーンを中央に置く
+    bit=aBoard[0]=(1<<col);
+    int left=bit<<1;
+    int down=bit;
+    int right=bit>>1;
+    for(int col_j=0;col_j<(size/2)-1;col_j++){
+    //1行目にクイーンが中央に置かれた場合は2行目の左側半分にクイーンを置けない
+    //0001000
+    //xxxdroo  左側半分にクイーンを置けないがさらに1行目のdown,rightもクイーンを置けないので (size/2)-1となる
+      //2行目にクイーンを置く
+      aBoard[1]=bit=(1<<col_j);
+      solve_nqueenr(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1);
+    }
+  }
+}
+//【通常版】CPUR 再帰版 ロジックメソッド
+void _NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
   int bit;
   int bitmap=(mask&~(left|down|right|ex1));
   if(row==size){
@@ -710,8 +759,7 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int e
         bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       }
       //ここは２行目の処理。ex2を前にずらし除外するようにする
-      //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-      NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
+      _NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
       //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
       //しないので0にする
       ex2=0;
@@ -786,10 +834,10 @@ int main(int argc,char** argv) {
       //   aBoard[j]=-1;
       // }
       if(cpu){ NQueen(i,mask); }
-      if(cpur){ 
-        /* NQueenR(i,mask,0,0,0,0);  */
-        NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);
-      }
+      //【通常版】
+      //if(cpur){ _NQueenR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);}
+      //【GPUへの移行版】
+      if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
