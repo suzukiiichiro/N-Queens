@@ -332,7 +332,7 @@ void backTrack2(int size,int mask, int row,int left,int down,int right){
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask){
   int bit=0;
-  //10では枝借りはまだしない
+  //10では枝借りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない
   //backtrack1
   //1行め右端 0
   int col=0;
