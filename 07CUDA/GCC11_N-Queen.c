@@ -323,18 +323,39 @@ void NQueen(int size,int mask){
   }
 }
 //
-void backTrack2(int size,int mask,int row,int left,int down,int right){
-  int bit;
-  int bitmap=mask&~(left|down|right);
-  // 【枝刈り】
-  if(row==size-1){ 								
-    if(bitmap){
-      //【枝刈り】 最下段枝刈り
-      if((bitmap&LASTMASK)==0){ 	
-        aBoard[row]=bitmap; //symmetryOpsの時は代入します。
-        symmetryOps_bitmap(size);
-      }
+//CPUR 再帰版 ロジックメソッド
+void backTrack1(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     COUNT8++;
+   }
+  }else{
+    if(row<BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
     }
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack1(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+    }
+  }
+}
+void backTrack2(int size,int mask, int row,int left,int down,int right){
+ int bitmap=0;
+ int bit=0;
+ int sizeE=size-1;
+ bitmap=(mask&~(left|down|right));
+ if(row==sizeE){
+   if(bitmap){
+     //【枝刈り】 最下段枝刈り
+     if((bitmap&LASTMASK)==0){ 	
+       aBoard[row]=(-bitmap&bitmap);
+       symmetryOps_bitmap(size);
+     }
+   }
   }else{
     //【枝刈り】上部サイド枝刈り
     if(row<BOUND1){             	
@@ -346,49 +367,42 @@ void backTrack2(int size,int mask,int row,int left,int down,int right){
     }
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack2(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
     }
   }
 }
 //
-void backTrack1(int size,int mask,int row,int left,int down,int right){
-int bit;
-int bitmap=mask&~(left|down|right);
-//【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-if(row==size-1) {
-  if(bitmap){
-    // aBoard[row]=bitmap;
-    COUNT8++;
-  }
-}else{
-  //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-  // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-  if(row<BOUND1) {
-    bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-  }
-  while(bitmap){
-    bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-    backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-  }
-}
-}
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask){
-int bit;
-TOPBIT=1<<(size-1);
-aBoard[0]=1;
-for(BOUND1=2;BOUND1<size-1;BOUND1++){
-  aBoard[1]=bit=(1<<BOUND1);
-  backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-}
-SIDEMASK=LASTMASK=(TOPBIT|1);
-ENDBIT=(TOPBIT>>1);
-for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-  aBoard[0]=bit=(1<<BOUND1);
-  backTrack2(size,mask,1,bit<<1,bit,bit>>1);
-  LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-  ENDBIT>>=1;
-}
+  int bit=0;
+  TOPBIT=1<<(size-1);
+  //10では枝借りはまだしない
+  //backtrack1
+  //1行め右端 0
+  int col=0;
+  aBoard[0]=bit=(1<<col);
+  int left=bit<<1;
+  int down=bit;
+  int right=bit>>1;
+  //2行目は右から3列目から左端から2列目まで
+  for(int col_j=2;col_j<size-1;col_j++){
+      aBoard[1]=bit=(1<<col_j);
+      BOUND1=col_j;
+      backTrack1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1);
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  //backtrack2
+  //1行目右から2列目から
+  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
+  for(int col=1,col2=size-2;col<col2;col++,col2--){
+      aBoard[0]=bit=(1<<col);
+      BOUND1=col;
+      BOUND2=col2;
+      backTrack2(size,mask,1,bit<<1,bit,bit>>1);
+      LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+      ENDBIT>>=1;
+  }
 }
 //メインメソッド
 int main(int argc,char** argv) {
