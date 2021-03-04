@@ -26,7 +26,7 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
-void NQueen(int size,int mask,int row);
+void NQueen(int size,int mask);
 void NQueenR(int size,int mask);
 //
 //hh:mm:ss.ms形式に処理時間を出力
@@ -137,45 +137,51 @@ void symmetryOps_bitmap(int si){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask,int row){
-  register int aStack[size];
-  register int* pnStack;
-  register int bit;
-  register int bitmap;
-  register int sizeE=size-1;
-  register int down[size],right[size],left[size];
-  aStack[0]=-1; 
-  pnStack=aStack+1;
-  bit=0;
-  bitmap=mask;
-  down[0]=left[0]=right[0]=0;
-  while(true){
-    if(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
-      if(row==sizeE){
-        /* 対称解除法の追加 */
-        //TOTAL++;
-        symmetryOps_bitmap(size); 
-        bitmap=*--pnStack;
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+    unsigned int bit;
+    unsigned int sizeE=size-1;
+    while(row>0){
+      if(bitmap[row]==0){
         --row;
-        continue;
       }else{
-        int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        *pnStack++=bitmap;
-        bitmap=mask&~(left[row]|down[row]|right[row]);
-        continue;
-      }
-    }else{ 
-      bitmap=*--pnStack;
-      if(pnStack==aStack){ break ; }
-      --row;
-      continue;
+        bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){
+          if(row==sizeE){
+            symmetryOps_bitmap(size);
+            --row;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           --row;
+        }
+      }  
     }
+}
+void NQueen(int size,int mask){
+  register int bitmap[size];
+  register int down[size],right[size],left[size];
+  register int bit;
+  if(size<=0||size>32){return;}
+  int row=0;
+  bit=0;
+  bitmap[0]=mask;
+  down[0]=left[0]=right[0]=0;
+  //偶数、奇数共通
+  for(int col=0;col<size;col++){
+    aBoard[0]=bit=(1<<col);
+    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    solve_nqueen(size,mask,1,left,down,right,bitmap);
   }
 }
+//
 //CPUR 再帰版 ロジックメソッド
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;
@@ -247,7 +253,7 @@ int main(int argc,char** argv) {
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
       st=clock();
-      if(cpu){ NQueen(i,mask,0); }
+      if(cpu){ NQueen(i,mask); }
       if(cpur){ NQueenR(i,mask); }
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
