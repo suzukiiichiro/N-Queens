@@ -42,7 +42,9 @@ void TimeFormat(clock_t utime,char *form){
 void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
     unsigned int bit;
     unsigned int sizeE=size-1;
-    while(row>0){
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
       if(bitmap[row]==0){
         --row;
       }else{
