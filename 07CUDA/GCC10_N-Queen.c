@@ -109,14 +109,14 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//非再帰版
 void backTrack2_NR(int si,int mask,int y,int l,int d,int r);
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
-//【通常版】
+//再起版
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueenR(int size,int mask);
-//【GPU移行版】
 
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){

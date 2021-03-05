@@ -106,6 +106,7 @@ $ nvcc CUDA09_N-Queen.cu  && ./a.out -g
 int aBoard[MAX];
 int aT[MAX];
 int aS[MAX];
+int TOTAL,UNIQUE;
 int COUNT2,COUNT4,COUNT8;
 int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
 //関数宣言 GPU
@@ -124,13 +125,16 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//非再帰版
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
 void NQueen(int size,int mask);
+//共通
 void backTrack1(int si,int mask,int y,int l,int d,int r);
-//【通常版】
-void _NQueenR(int size,int mask);
 //【GPU移行版】
 void NQueenR(int size,int mask);
+//【通常版】
+void _NQueenR(int size,int mask);
 //
 __global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
   const int tid=threadIdx.x;
@@ -684,6 +688,7 @@ void symmetryOps_bitmap(int size){
   }
 }
 //
+//
 void backTrack1_NR(int size,int mask,int row,int left,int down,int right){
   int bitmap,bit;
   int b[100], *p=b;
@@ -741,25 +746,77 @@ b1volta:if(p<=b)
   }
 }
 //CPU 非再帰版 ロジックメソッド
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+    unsigned int bit;
+    unsigned int sizeE=size-1;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
+        row--;
+      }else{
+        bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){
+          if(row==sizeE){
+            symmetryOps_bitmap(size);
+            row--;
+	    TOTAL++;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           row--;
+        }
+      }  
+    }
+}
+//非再帰版
 void NQueen(int size,int mask){
-  int bit;
-  TOPBIT=1<<(size-1);
-  aBoard[0]=1;
-  for(BOUND1=2;BOUND1<size-1;BOUND1++){
-    aBoard[1]=bit=(1<<BOUND1);
-    //backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
-    backTrack1_NR(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  register int bitmap[size];
+  register int down[size],right[size],left[size];
+  register int bit;
+  if(size<=0||size>32){return;}
+  bit=0;
+  bitmap[0]=mask;
+  down[0]=left[0]=right[0]=0;
+  //09では枝借りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない
+  //backtrack1
+  //1行め右端 0
+  //偶数、奇数ともに右半分にクイーンを置く
+  int col=0;
+  aBoard[0]=bit=(1<<col);
+  down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+  left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+  right[1]=bit>>1;
+  bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+  //2行目は右から3列目から左端から2列目まで
+  for(int col_j=2;col_j<size-1;col_j++){
+      aBoard[1]=bit=(1<<col_j);
+      down[2]=(down[1]|bit);//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+      left[2]=(left[1]|bit)<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+      right[2]=(right[1]|bit)>>1;
+      bitmap[2]=mask&~(left[2]|down[2]|right[2]);
+      solve_nqueen(size,mask,2,left,down,right,bitmap);
   }
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
-    aBoard[0]=bit=(1<<BOUND1);
-    //backTrack1(size,mask,1,bit<<1,bit,bit>>1);
-    backTrack1_NR(size,mask,1,bit<<1,bit,bit>>1);
-    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-    ENDBIT>>=1;
+  //backtrack2
+  //1行目右から2列目から
+  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
+  bitmap[0]=mask;
+  down[0]=left[0]=right[0]=0;
+  for(int col=1,col2=size-2;col<col2;col++,col2--){
+      aBoard[0]=bit=(1<<col);
+      down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+      left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+      right[1]=bit>>1;
+      bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+      solve_nqueen(size,mask,1,left,down,right,bitmap);
   }
 }
+//
 //
 //CPUR 再帰版 ロジックメソッド
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
@@ -877,7 +934,7 @@ int main(int argc,char** argv) {
     int min=4; int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
-      //TOTAL=0; UNIQUE=0;
+      TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
       st=clock();

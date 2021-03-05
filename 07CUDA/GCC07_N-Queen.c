@@ -133,7 +133,11 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//非再帰版
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
 void NQueen(int size,int mask);
+//再起版
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask);
 //
 //hh:mm:ss.ms形式に処理時間を出力

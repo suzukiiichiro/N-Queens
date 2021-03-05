@@ -106,9 +106,13 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//GPU移行非再帰版
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
 void NQueen(int size,int mask);
+//GPU移行再起版
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask);
+//通常版
 void _NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
 //
 //
@@ -643,59 +647,81 @@ void solve_nqueen_cuda(int si,int mask,int row,long results[2],int steps){
   cudaFree(d_left);
   cudaFree(d_right);
 }
+//
 //CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask){
-  int aStack[size];
-  register int* pnStack;
-  register int row=0;
-  register int bit;
-  register int bitmap;
-  int odd=size&1; //奇数:1 偶数:0
-  int sizeE=size-1;
-  /* センチネルを設定-スタックの終わりを示します*/
-  aStack[0]=-1;
-  for(int i=0;i<(1+odd);++i){
-    bitmap=0;
-    if(0==i){
-      int half=size>>1; // size/2
-      bitmap=(1<<half)-1;
-      pnStack=aStack+1;
-    }else{
-      bitmap=1<<(size>>1);
-      down[1]=bitmap;
-      right[1]=(bitmap>>1);
-      left[1]=(bitmap<<1);
-      pnStack=aStack+1;
-      *pnStack++=0;
-    }
-    while(true){
-      if(bitmap){
-        bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
-        if(row==sizeE){
-          /* 対称解除法の追加 */
-          //TOTAL++;
-          symmetryOps_bitmap(size); 
-          bitmap=*--pnStack;
-          --row;
-          continue;
-        }else{
-          int n=row++;
-          left[row]=(left[n]|bit)<<1;
-          down[row]=down[n]|bit;
-          right[row]=(right[n]|bit)>>1;
-          *pnStack++=bitmap;
-          bitmap=mask&~(left[row]|down[row]|right[row]);
-          continue;
-        }
-      }else{ 
-        bitmap=*--pnStack;
-        if(pnStack==aStack){ break ; }
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+    unsigned int bit;
+    unsigned int sizeE=size-1;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
         --row;
-        continue;
-      }
+      }else{
+        bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&mask)!=0){
+          if(row==sizeE){
+            symmetryOps_bitmap(size);
+            --row;
+            continue;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+            continue;
+          }
+        }else{
+           --row;
+           continue;
+        }
+      }  
+    }
+}
+void NQueen(int size,int mask){
+  register int bitmap[size];
+  register int down[size],right[size],left[size];
+  register int bit;
+  if(size<=0||size>32){return;}
+  int sizeE=size-1;
+  bit=0;
+  bitmap[0]=mask;
+  down[0]=left[0]=right[0]=0;
+  //偶数、奇数ともに右半分にクイーンを置く
+  for(int col=0;col<size/2;col++){
+    //ex n=6 xxxooo n=7 xxxxooo 
+    aBoard[0]=bit=(1<<col);
+    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    solve_nqueen(size,mask,1,left,down,right,bitmap);
+  }
+  //奇数については中央にもクイーンを置く
+  if(size%2==1){
+    int col=(sizeE)/2;
+    //1行目はクイーンを中央に置く
+    bit=aBoard[0]=(1<<col);
+    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    for(int col_j=0;col_j<(size/2)-1;col_j++){
+    //1行目にクイーンが中央に置かれた場合は2行目の左側半分にクイーンを置けない
+    //0001000
+    //xxxdroo  左側半分にクイーンを置けないがさらに1行目のdown,rightもクイーンを置けないので (size/2)-1となる
+      //2行目にクイーンを置く
+      aBoard[1]=bit=(1<<col_j);
+      down[2]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+      left[2]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+      right[2]=bit>>1;
+      bitmap[2]=mask&~(left[2]|down[2]|right[2]);
+      solve_nqueen(size,mask,2,left,down,right,bitmap);
     }
   }
 }
+//
 //CPUR 再帰版 ロジックメソッド
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;

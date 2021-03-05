@@ -236,8 +236,9 @@ void cuda_kernel(
 long long solve_nqueen_cuda(int size,int steps);
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
-void NQueen(int size,int mask,int row);
 //関数宣言 CPUR
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
+void NQueen(int size,int mask);
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
 //
@@ -754,80 +755,62 @@ void TimeFormat(clock_t utime,char *form){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask,int row){
-  register int bit;
-  register int bitmap[32];
-  register int sizeE=size-1;
-  register int down[size],right[size],left[size];
-  if(size<=0||size>32){return;}
-  bit=0;
-  down[0]=left[0]=right[0]=0;
-  for(int col=0;col<size/2;col++){//右側半分だけやる
-    bit=(1<<col);
-    bitmap[0]=mask;
-    down[1]=bit;
-    left[1]=bit<<1;
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    row=1;
-    while(row>0){
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+    unsigned int bit;
+    unsigned int sizeE=size-1;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
       if(bitmap[row]==0){
-        row--;
+        --row;
       }else{
         bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
         if((bit&mask)!=0){
           if(row==sizeE){
             TOTAL++;
             --row;
-            continue;
           }else{
             int n=row++;
             left[row]=(left[n]|bit)<<1;
             down[row]=down[n]|bit;
             right[row]=(right[n]|bit)>>1;
             bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-            continue;
           }
         }else{
            --row;
-          continue;
         }
       }  
     }
+}
+//
+//非再帰版
+void NQueen(int size,int mask){
+  register int sizeE=size-1;
+  register int bitmap[size];
+  register int down[size],right[size],left[size];
+  register int bit;
+  if(size<=0||size>32){return;}
+  bit=0;
+  bitmap[0]=mask;
+  down[0]=left[0]=right[0]=0;
+  //偶数、奇数共通
+  for(int col=0;col<size/2;col++){//右側半分だけクイーンを置く
+    bit=(1<<col);//
+    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
+    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
+    right[1]=bit>>1;
+    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    solve_nqueen(size,mask,1,left,down,right,bitmap);
   }
-  TOTAL*=2;
+  TOTAL*=2;//ミラーなのでTOTALを２倍する
+  //奇数の場合はさらに中央にクイーンを置く
   if(size%2==1){
     bit=(1<<(sizeE)/2);
-    bitmap[0]=mask;
     down[1]=bit;
     left[1]=bit<<1;
     right[1]=bit>>1;
     bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    row=1;
-    while(row>0){
-      if(bitmap[row]==0){
-        row--;
-      }else{
-        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
-        if((bit&mask)!=0){
-          if(row==sizeE){
-            TOTAL++;
-            --row;
-            continue;
-          }else{
-            int n=row++;
-            left[row]=(left[n]|bit)<<1;
-            down[row]=down[n]|bit;
-            right[row]=(right[n]|bit)>>1;
-            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-            continue;
-          }
-        }else{
-          --row;
-          continue;
-        }    
-      }  
-    }
+    solve_nqueen(size,mask,1,left,down,right,bitmap);
   }  
 }
 //
@@ -908,7 +891,7 @@ int main(int argc,char** argv) {
       UNIQUE=0;
       mask=((1<<i)-1);
       st=clock();
-      if(cpu){ NQueen(i,mask,0); }
+      if(cpu){ NQueen(i,mask); }
       if(cpur){ NQueenR(i,mask,0,0,0,0); }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);

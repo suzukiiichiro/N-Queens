@@ -143,9 +143,11 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//非再帰版
 void backTrack2_NR(int si,int mask,int y,int l,int d,int r);
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
+//再起版
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueenR(int size,int mask);
@@ -750,6 +752,7 @@ void symmetryOps_bitmap(int size){
   if(nEquiv==4){ COUNT4++; }
   if(nEquiv==8){ COUNT8++; }
 }
+//
 //CPU 非再帰版 backTrack2
 void backTrack2_NR(int size,int mask,int row,int left,int down,int right){
   int bitmap,bit;
