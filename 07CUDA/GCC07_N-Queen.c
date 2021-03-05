@@ -275,6 +275,7 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
       }  
     }
 }
+//
 void NQueen(int size,int mask){
   register int bitmap[size];
   register int down[size],right[size],left[size];
