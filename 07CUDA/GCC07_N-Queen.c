@@ -134,7 +134,7 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 //非再帰版
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
+void solve_nqueen(int size,int mask, int row,int left,int down,int right);
 void NQueen(int size,int mask);
 //再起版
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
@@ -248,7 +248,15 @@ void symmetryOps_bitmap(int si){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+void solve_nqueen(int size,int mask, int row,int h_left,int h_down,int h_right){
+	unsigned int left[size];
+    unsigned int down[size];
+	unsigned int right[size];
+    unsigned int bitmap[size];
+	left[row]=h_left;
+	down[row]=h_down;
+	right[row]=h_right;
+	bitmap[row]=mask&~(left[row]|down[row]|right[row]);
     unsigned int bit;
     unsigned int sizeE=size-1;
     int mark=row;
@@ -277,22 +285,11 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
 }
 //
 void NQueen(int size,int mask){
-  register int bitmap[size];
-  register int down[size],right[size],left[size];
-  register int bit;
-  if(size<=0||size>32){return;}
-  int row=0;
-  bit=0;
-  bitmap[0]=mask;
-  down[0]=left[0]=right[0]=0;
+  int bit=0;
   //偶数、奇数共通
   for(int col=0;col<size;col++){
     aBoard[0]=bit=(1<<col);
-    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
-    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    solve_nqueen(size,mask,1,left,down,right,bitmap);
+    solve_nqueen(size,mask,1,bit<<1,bit,bit>>1);
   }
 }
 //
