@@ -173,10 +173,8 @@ int main(int argc,char** argv) {
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
-    //int min=4;
-    //int targetN=17;
-    int min=7;
-    int targetN=7;
+    int min=4;
+    int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
