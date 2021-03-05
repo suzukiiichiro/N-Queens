@@ -183,7 +183,15 @@ void symmetryOps_bitmap(int si){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+void solve_nqueen(int size,int mask, int row,int h_left,int h_down,int h_right){
+	unsigned int left[size];
+    unsigned int down[size];
+	unsigned int right[size];
+    unsigned int bitmap[size];
+	left[row]=h_left;
+	down[row]=h_down;
+	right[row]=h_right;
+	bitmap[row]=mask&~(left[row]|down[row]|right[row]);
     unsigned int bit;
     unsigned int sizeE=size-1;
     int mark=row;
@@ -197,62 +205,43 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
           if(row==sizeE){
             symmetryOps_bitmap(size);
             --row;
-            continue;
           }else{
             int n=row++;
             left[row]=(left[n]|bit)<<1;
             down[row]=down[n]|bit;
             right[row]=(right[n]|bit)>>1;
             bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-            continue;
           }
         }else{
            --row;
-           continue;
         }
       }  
     }
 }
 void NQueen(int size,int mask){
-  register int bitmap[size];
-  register int down[size],right[size],left[size];
-  register int bit;
-  if(size<=0||size>32){return;}
+  int bit=0;
   int sizeE=size-1;
-  int row=0;
-  bit=0;
-  bitmap[0]=mask;
-  down[0]=left[0]=right[0]=0;
   //偶数、奇数ともに右半分にクイーンを置く
   for(int col=0;col<size/2;col++){
     //ex n=6 xxxooo n=7 xxxxooo 
-    aBoard[0]=bit=(1<<col);
-    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
-    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    solve_nqueen(size,mask,1,left,down,right,bitmap);
+    bit=aBoard[0]=(1<<col);
+    solve_nqueen(size,mask,1,bit<<1,bit,bit>>1);
   }
   //奇数については中央にもクイーンを置く
   if(size%2==1){
     int col=(sizeE)/2;
     //1行目はクイーンを中央に置く
     bit=aBoard[0]=(1<<col);
-    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
-    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+    int left=bit<<1;
+    int down=bit;
+    int right=bit>>1;
     for(int col_j=0;col_j<(size/2)-1;col_j++){
     //1行目にクイーンが中央に置かれた場合は2行目の左側半分にクイーンを置けない
     //0001000
     //xxxdroo  左側半分にクイーンを置けないがさらに1行目のdown,rightもクイーンを置けないので (size/2)-1となる
       //2行目にクイーンを置く
       aBoard[1]=bit=(1<<col_j);
-      down[2]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
-      left[2]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
-      right[2]=bit>>1;
-      bitmap[2]=mask&~(left[2]|down[2]|right[2]);
-      solve_nqueen(size,mask,2,left,down,right,bitmap);
+      solve_nqueen(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1);
     }
   }
 }
