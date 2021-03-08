@@ -95,9 +95,15 @@ void symmetryOps(local *l);
 //非再帰
 void backTrack2D_NR(int y,int left,int down,int right,local *l);
 void backTrack1D_NR(int y,int left,int down,int right,local *l);
+//非再帰 通常版
+void backTrack2_NR(int y,int left,int down,int right,local *l);
+void backTrack1_NR(int y,int left,int down,int right,local *l);
 //再帰
 void backTrack2D(int y,int left,int down,int right,local *l);
 void backTrack1D(int y,int left,int down,int right,local *l);
+//再帰 通常版
+void backTrack2(int y,int left,int down,int right,local *l);
+void backTrack1(int y,int left,int down,int right,local *l);
 //pthread
 void *run(void *args);
 void *NQueenThread();
@@ -137,6 +143,15 @@ void symmetryOps(local *l){
 }
 //
 //CPU 非再帰版 backTrack2
+void backTrack2_NR(int row,int left,int down,int right,local *l){
+
+  /**
+   * ここに移植
+   **/
+
+}
+//
+//通常版 CPU 非再帰版 backTrack2
 void backTrack2D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
@@ -207,6 +222,14 @@ volta:if(p<=b)
   }
 }
 //CPU 非再帰版 backTrack
+void backTrack1_NR(int row,int left,int down,int right,local *l){
+
+  /**
+   * ここに移植
+   **/
+
+}
+//通常版 CPU 非再帰版 backTrack
 void backTrack1D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
@@ -269,6 +292,15 @@ b1volta:if(p<=b)
   }
 }
 //
+//CPU 再帰版 backTrack
+void backTrack2(int row,int left,int down,int right,local *l){
+
+  /**
+   * ここに移植
+   **/
+
+}
+//通常版 CPU 再帰版 backTrack
 void backTrack2D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
@@ -293,6 +325,15 @@ void backTrack2D(int row,int left,int down,int right,local *l){
   }
 }
 //
+//CPU 再帰版 backTrack
+void backTrack1(int row,int left,int down,int right,local *l){
+
+  /**
+   * ここに移植
+   **/
+
+}
+//通常版 CPU 再帰版 backTrack
 void backTrack1D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
@@ -321,7 +362,6 @@ void *run(void *args){
   l->aBoard[0]=1;
   l->TOPBIT=1<<(G.sizeE);
   l->mask=(1<<G.size)-1;
-
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
     if(l->BOUND1<G.sizeE) {
@@ -330,10 +370,12 @@ void *run(void *args){
       //２行目から探索
       if(NR==1){
         //非再帰
-        backTrack1D_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        //backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);//GPU適用版
+        backTrack1D_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);//通常版
       }else{
         //再帰
-        backTrack1D(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        //backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);//GPU適用版
+        backTrack1D(2,(2|bit)<<1,(1|bit),(bit>>1),l);//通常版
       }
     }
   }
@@ -351,10 +393,12 @@ void *run(void *args){
       //backTrack2(1,bit<<1,bit,bit>>1,l);
       if(NR==1){
         //printf("非再帰\n");
-        backTrack2D_NR(1,bit<<1,bit,bit>>1,l);
+        //backTrack2D_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
       }else{
         //printf("再帰\n");
-        backTrack2D(1,bit<<1,bit,bit>>1,l);
+        //backTrack2D(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        backTrack2D(1,bit<<1,bit,bit>>1,l);//通常版
       }
     }
     l->ENDBIT>>=G.size;
