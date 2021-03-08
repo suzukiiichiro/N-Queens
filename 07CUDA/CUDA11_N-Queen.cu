@@ -961,7 +961,7 @@ void backTrackR2(int size,int mask, int row,int left,int down,int right){
 void NQueenR(int size,int mask){
   int bit=0;
   TOPBIT=1<<(size-1);
-  //10では枝借りはまだしない
+  //11から枝借りする
   //backtrack1
   //1行め右端 0
   int col=0;
