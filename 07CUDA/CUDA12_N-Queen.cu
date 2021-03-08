@@ -101,17 +101,22 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps(int si);
+//関数宣言 CPU
 void backTrack2_NR(int si,int mask,int y,int l,int d,int r);
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
-//【GPU移行版】
+//関数宣言 CPUR
 void backTrack2(int size,int mask, int row,int left,int down,int right);
 void backTrack1(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask);
-//【通常版】
-void _backTrack2(int si,int mask,int y,int l,int d,int r);
-void _backTrack1(int si,int mask,int y,int l,int d,int r);
-void _NQueenR(int size,int mask);
+//関数宣言 通常版
+void backTrack2D_NR(int si,int mask,int y,int l,int d,int r);
+void backTrack1D_NR(int si,int mask,int y,int l,int d,int r);
+void NQueenD(int size,int mask);
+void backTrack2D(int si,int mask,int y,int l,int d,int r);
+void backTrack1D(int si,int mask,int y,int l,int d,int r);
+void NQueenDR(int size,int mask);
+
 //GPU
 __device__
 int symmetryOps(int si,int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT){
@@ -800,7 +805,6 @@ void NQueen(int size,int mask){
   }
 }
 //
-//【GPU移行版】
 //CPUR 再帰版 ロジックメソッド
 void backTrack1(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;
@@ -822,7 +826,6 @@ void backTrack1(int size,int mask, int row,int left,int down,int right){
   }
 }
 //
-//【GPU移行版】
 void backTrack2(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;
  int bit=0;
@@ -852,7 +855,6 @@ void backTrack2(int size,int mask, int row,int left,int down,int right){
   }
 }
 //
-//【GPU移行版】
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask){
   int bit=0;
@@ -886,39 +888,193 @@ void NQueenR(int size,int mask){
   }
 }
 //
-//【通常版】
-void _backTrack2(int size,int mask,int row,int left,int down,int right){
+//CPU 非再帰版 backTrack2
+void backTrack2D_NR(int size,int mask,int row,int left,int down,int right){
+	int bitmap,bit;
+	int b[100], *p=b;
+  int sizeE=size-1;
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
+    }
+    mais1:bitmap=mask&~(left|down|right);
+    // 【枝刈り】
+    //if(row==size){
+    if(row==sizeE){
+      //if(!bitmap){
+      if(bitmap){
+        //【枝刈り】 最下段枝刈り
+        if((bitmap&LASTMASK)==0){
+          aBoard[row]=bitmap; //symmetryOpsの時は代入します。
+          symmetryOps(size);
+        }
+      }
+    }else{
+      //【枝刈り】上部サイド枝刈り
+      if(row<BOUND1){
+        bitmap&=~SIDEMASK;
+        //【枝刈り】下部サイド枝刈り
+      }else if(row==BOUND2){
+        if(!(down&SIDEMASK))
+          goto volta;
+        if((down&SIDEMASK)!=SIDEMASK)
+          bitmap&=SIDEMASK;
+      }
+      if(bitmap){
+  outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto mais1;
+        //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+  volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto outro;
+        }else{
+          goto volta;
+        }
+      }
+    }
+    goto volta;
+  }
+}
+//CPU 非再帰版 backTrack
+void backTrack1D_NR(int size,int mask,int row,int left,int down,int right){
+	int bitmap,bit;
+	int b[100], *p=b;
+  int sizeE=size-1;
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
+    }
+    b1mais1:bitmap=mask&~(left|down|right);
+    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+    //if(row==size){
+    if(row==sizeE){
+      //if(!bitmap){
+      if(bitmap){
+        // aBoard[row]=bitmap;
+        //symmetryOps_bitmap(size);
+        COUNT8++;
+      }
+    }else{
+      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+      if(row<BOUND1) {
+        bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+      }
+      if(bitmap){
+  b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto b1mais1;
+        //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+  b1volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto b1outro;
+        }else{
+          goto b1volta;
+        }
+      }
+    }
+    goto b1volta;
+  }
+}
+//CPU 非再帰版 ロジックメソッド
+void NQueenD(int size,int mask){
+  int bit;
+  TOPBIT=1<<(size-1);
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<size-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1D_NR(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,1,bit<<1,bit,bit>>1);
+    backTrack2D_NR(size,mask,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
+}
+//
+void backTrack2D(int size,int mask,int row,int left,int down,int right){
   int bit;
   int bitmap=mask&~(left|down|right);
-  // 【枝刈り】
-  if(row==size-1){
+  if(row==size-1){ 								// 【枝刈り】
     if(bitmap){
-      //【枝刈り】 最下段枝刈り
-      if((bitmap&LASTMASK)==0){ 	
+      if((bitmap&LASTMASK)==0){ 	//【枝刈り】 最下段枝刈り
         aBoard[row]=bitmap; //symmetryOpsの時は代入します。
         symmetryOps(size);
       }
     }
   }else{
-    //【枝刈り】上部サイド枝刈り
-    if(row<BOUND1){
+    if(row<BOUND1){             	//【枝刈り】上部サイド枝刈り
       bitmap&=~SIDEMASK;
-    //【枝刈り】下部サイド枝刈り
-    }else if(row==BOUND2) {
+    }else if(row==BOUND2) {     	//【枝刈り】下部サイド枝刈り
       if((down&SIDEMASK)==0){ return; }
       if((down&SIDEMASK)!=SIDEMASK){ bitmap&=SIDEMASK; }
     }
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      _backTrack2(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack2D(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
 //
-//【通常版】
-void _backTrack1(int size,int mask,int row,int left,int down,int right){
-  int bit;
-  int bitmap=mask&~(left|down|right);
+void backTrack1D(int size,int mask,int row,int left,int down,int right){
+	int bit;
+	int bitmap=mask&~(left|down|right);
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(row==size-1) {
     if(bitmap){
@@ -933,30 +1089,29 @@ void _backTrack1(int size,int mask,int row,int left,int down,int right){
     }
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      _backTrack1(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      backTrack1D(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
-//
-//【通常版】
 //CPUR 再帰版 ロジックメソッド
-void _NQueenR(int size,int mask){
+void NQueenDR(int size,int mask){
   int bit;
   TOPBIT=1<<(size-1);
   aBoard[0]=1;
   for(BOUND1=2;BOUND1<size-1;BOUND1++){
     aBoard[1]=bit=(1<<BOUND1);
-    _backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1D(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
   }
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
   for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
     aBoard[0]=bit=(1<<BOUND1);
-    _backTrack2(size,mask,1,bit<<1,bit,bit>>1);
+    backTrack2D(size,mask,1,bit<<1,bit,bit>>1);
     LASTMASK|=LASTMASK>>1|LASTMASK<<1;
     ENDBIT>>=1;
   }
 }
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -1003,11 +1158,18 @@ int main(int argc,char** argv) {
       //初期化は不要です
       //非再帰は-1で初期化
       // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-      if(cpu){ NQueen(i,mask); }
-      //【通常版】
-      //if(cpur){ _NQueenR(i,mask); }
-      //【GPU移行版】
-      if(cpur){ NQueenR(i,mask); }
+      //
+      if(cpur){ 
+        NQueenR(i,mask); 
+        //printf("通常版\n");
+        //NQueenDR(i,mask); //通常版
+      }
+      if(cpu){ 
+        NQueen(i,mask); 
+        //printf("通常版\n");
+        //NQueenD(i,mask); //通常版
+      }
+      //
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }

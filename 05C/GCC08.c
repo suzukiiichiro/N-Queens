@@ -73,7 +73,6 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 void NQueen(int size,int mask);
-// void NQueenR(int size,int mask,int row,int left,int down,int right);
 void NQueenR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form){

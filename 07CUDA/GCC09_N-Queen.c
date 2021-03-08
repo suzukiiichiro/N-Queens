@@ -107,10 +107,17 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//関数宣言 非再帰版
 void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
 void NQueen(int size,int mask);
+//関数宣言 再帰版
 void backTrack1(int si,int mask,int y,int l,int d,int r);
 void NQueenR(int size,int mask);
+//関数宣言【通常版】
+void backTrack1D_NR(int size,int mask,int row,int left,int down,int right);
+void NQueenD(int size,int mask);
+void backTrack1D(int si,int mask,int y,int l,int d,int r);
+void NQueenDR(int size,int mask);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -409,6 +416,118 @@ void NQueenR(int size,int mask){
       solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
   }
 }
+//通常版
+void backTrack1D_NR(int size,int mask,int row,int left,int down,int right){
+  int bitmap,bit;
+  int b[100], *p=b;
+  int sizeE=size-1;
+  int odd=size&1; //奇数:1 偶数:0
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+    }else{
+      bitmap=1<<(size>>1);
+      // down[1]=bitmap;
+      // right[1]=(bitmap>>1);
+      // left[1]=(bitmap<<1);
+      // pnStack=aStack+1;
+      // *pnStack++=0;
+    }
+  b1mais1:bitmap=mask&~(left|down|right);
+  if(row==sizeE){
+    if(bitmap){
+      aBoard[row]=bitmap;
+      symmetryOps_bitmap(size);
+    }
+  }else{
+    if(bitmap){
+      b1outro:bitmap^=aBoard[row]=bit=-bitmap&bitmap;
+      if(bitmap){
+        *p++=left;
+        *p++=down;
+        *p++=right;
+      }
+      *p++=bitmap;
+      row++;
+      left=(left|bit)<<1;
+      down=down|bit;
+      right=(right|bit)>>1;
+      goto b1mais1;
+      //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+      b1volta:if(p<=b)
+        return;
+      row--;
+      bitmap=*--p;
+      if(bitmap){
+        right=*--p;
+        down=*--p;
+        left=*--p;
+        goto b1outro;
+      }else{
+        goto b1volta;
+      }
+    }
+  }
+  goto b1volta;
+  }
+}
+//CPU 非再帰版 ロジックメソッド
+void NQueenD(int size,int mask){
+  int bit;
+  TOPBIT=1<<(size-1);
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<size-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+    backTrack1D_NR(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    //backTrack1(size,mask,1,bit<<1,bit,bit>>1);
+    backTrack1D_NR(size,mask,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
+}
+//
+void backTrack1D(int size,int mask,int row,int left,int down,int right){
+  int bit;
+  int bitmap=(mask&~(left|down|right));
+  if(row==size){
+    // TOTAL++;
+    aBoard[row]=bitmap; //symmetryOpsの時は代入します。
+    symmetryOps_bitmap(size);
+  }else{
+    while(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); //ロジック用
+      backTrack1D(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
+}
+//
+//CPUR 再帰版 ロジックメソッド
+void NQueenDR(int size,int mask){
+  int bit;
+  TOPBIT=1<<(size-1);
+  aBoard[0]=1;
+  for(BOUND1=2;BOUND1<size-1;BOUND1++){
+    aBoard[1]=bit=(1<<BOUND1);
+    backTrack1D(size,mask,2,(2|bit)<<1,(1|bit),(bit>>1));
+  }
+  SIDEMASK=LASTMASK=(TOPBIT|1);
+  ENDBIT=(TOPBIT>>1);
+  for(BOUND1=1,BOUND2=size-2;BOUND1<BOUND2;BOUND1++,BOUND2--){
+    aBoard[0]=bit=(1<<BOUND1);
+    backTrack1D(size,mask,1,bit<<1,bit,bit>>1);
+    LASTMASK|=LASTMASK>>1|LASTMASK<<1;
+    ENDBIT>>=1;
+  }
+}
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -455,10 +574,20 @@ int main(int argc,char** argv) {
       //初期化は不要です
       //非再帰は-1で初期化
       // for(int j=0;j<=targetN;j++){ aBoard[j]=-1; }
-      if(cpu){ NQueen(i,mask); }
       //
-      //【通常版】
-      if(cpur){ NQueenR(i,mask); }
+      //CPUR
+      if(cpur){ 
+        NQueenR(i,mask); 
+        //printf("通常版\n");
+        //NQueenDR(i,mask);//通常版
+      }
+      //CPU
+      if(cpu){ 
+        NQueen(i,mask); 
+        //printf("通常版\n");
+        //NQueenD(i,mask);//通常版
+      }
+      //
 
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);

@@ -64,6 +64,11 @@ void NQueen(int size,int mask);
 //関数宣言 CPUR
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask);
+//関数宣言 通常版
+//  非再帰
+void NQueenD(int size,int mask,int row);
+//  再帰
+void NQueenDR(int size,int mask,int row,int left,int down,int right);
 //
 //
 //hh:mm:ss.ms形式に処理時間を出力
@@ -186,6 +191,60 @@ void NQueenR(int size,int mask){
   }
 }
 //
+//通常版 CPU 非再帰版 ロジックメソッド
+void NQueenD(int size,int mask,int row){
+  int aStack[size];
+  int* pnStack;
+  int bit;
+  int bitmap;
+  int sizeE=size-1;
+  int down[size],right[size],left[size];
+  aStack[0]=-1; 
+  pnStack=aStack+1;
+  bit=0;
+  bitmap=mask;
+  down[0]=left[0]=right[0]=0;
+  while(true){
+    if(bitmap){
+      bitmap^=bit=(-bitmap&bitmap); 
+      if(row==sizeE){
+        TOTAL++;
+        bitmap=*--pnStack;
+        --row;
+        continue;
+      }else{
+        int n=row++;
+        left[row]=(left[n]|bit)<<1;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        *pnStack++=bitmap;
+        bitmap=mask&~(left[row]|down[row]|right[row]);
+        continue;
+      }
+    }else{ 
+      bitmap=*--pnStack;
+      if(pnStack==aStack){ break ; }
+      --row;
+      continue;
+    }
+  }
+}
+//
+//通常版 CPUR 再帰版　ロジックメソッド
+void NQueenDR(int size,int mask,int row,int left,int down,int right){
+  int bitmap=0;
+  int bit=0;
+  if(row==size){
+    TOTAL++;
+  }else{
+    bitmap=(mask&~(left|down|right));
+    while(bitmap){
+      bitmap^=bit=(-bitmap&bitmap);
+      NQueenDR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+    }
+  }
+}
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -230,8 +289,18 @@ int main(int argc,char** argv) {
       UNIQUE=0;
       mask=((1<<i)-1);
       st=clock();
-      if(cpu){ NQueen(i,mask); }
-      if(cpur){ NQueenR(i,mask); }
+      //
+      //再帰
+      if(cpur){ 
+        NQueenR(i,mask); 
+        //NQueenDR(i,mask,0,0,0,0);//通常版
+      }
+      //非再帰
+      if(cpu){ 
+        NQueen(i,mask); 
+        //NQueenD(i,mask,0); //通常版
+      }
+      //
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }

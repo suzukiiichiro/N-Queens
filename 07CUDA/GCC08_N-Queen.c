@@ -72,8 +72,13 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
+//関数宣言 CPU
 void NQueen(int size,int mask);
+//関数宣言 GPU
 void NQueenR(int size,int mask);
+//関数宣言 通常版
+void NQueenD(int size,int mask);
+void NQueenDR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -293,6 +298,85 @@ void NQueenR(int size,int mask){
     }
   }
 }
+//
+//CPU 非再帰版 ロジックメソッド
+void NQueenD(int size,int mask){
+  int aStack[size];
+  register int* pnStack;
+  register int row=0;
+  register int bit;
+  register int bitmap;
+  int odd=size&1; //奇数:1 偶数:0
+  int sizeE=size-1;
+  /* センチネルを設定-スタックの終わりを示します*/
+  aStack[0]=-1;
+  for(int i=0;i<(1+odd);++i){
+    bitmap=0;
+    if(0==i){
+      int half=size>>1; // size/2
+      bitmap=(1<<half)-1;
+      pnStack=aStack+1;
+    }else{
+      bitmap=1<<(size>>1);
+      down[1]=bitmap;
+      right[1]=(bitmap>>1);
+      left[1]=(bitmap<<1);
+      pnStack=aStack+1;
+      *pnStack++=0;
+    }
+    while(true){
+      if(bitmap){
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
+        if(row==sizeE){
+          /* 対称解除法の追加 */
+          //TOTAL++;
+          symmetryOps_bitmap(size); 
+          bitmap=*--pnStack;
+          --row;
+          continue;
+        }else{
+          int n=row++;
+          left[row]=(left[n]|bit)<<1;
+          down[row]=down[n]|bit;
+          right[row]=(right[n]|bit)>>1;
+          *pnStack++=bitmap;
+          bitmap=mask&~(left[row]|down[row]|right[row]);
+          continue;
+        }
+      }else{ 
+        bitmap=*--pnStack;
+        if(pnStack==aStack){ break ; }
+        --row;
+        continue;
+      }
+    }
+  }
+}
+//CPUR 再帰版　ロジックメソッド
+//void NQueenR(int size,int mask,int row,int left,int down,int right){
+void NQueenDR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2){
+  int bit;
+  int bitmap=(mask&~(left|down|right|ex1));
+  if(row==size){
+    // TOTAL++;
+    symmetryOps_bitmap(size);
+  }else{
+    while(bitmap){
+      if(ex2!=0){
+      	//奇数個の１回目は真ん中にクイーンを置く
+        bitmap^=aBoard[row]=bit=(1<<(size/2+1));
+      }else{
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      }
+     	//ここは２行目の処理。ex2を前にずらし除外するようにする
+      //NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      NQueenDR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,ex2,0);
+      //ex2の除外は一度適用したら（１行目の真ん中にクイーンが来る場合）もう適用
+      //しないので0にする
+      ex2=0;
+    }
+  }
+}
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -331,21 +415,48 @@ int main(int argc,char** argv) {
     char t[20];           //hh:mm:ss.msを格納
     int min=4; int targetN=17;
     int mask;
+    int excl;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
+      //除外デフォルト ex 00001111  000001111
+      //これだと１行目の右側半分にクイーンが置けない
+      excl=(1<<((i/2)^0))-1;
+      //対象解除は右側にクイーンが置かれた場合のみ判定するので
+      //除外を反転させ１行目の左側半分にクイーンを置けなくする
+      //ex 11110000 111100000 
+      if(i%2){
+        excl=excl<<(i/2+1);
+      }else{
+        excl=excl<<(i/2);
+      }
+      //偶数の場合
+      //１行目の左側半分にクイーンを置けないようにする
+      //奇数の場合
+      //１行目の左側半分にクイーンを置けないようにする
+      //１行目にクイーンが中央に置かれた場合は２行目の左側半分にクイーンを置けない
+      //ようにする
+      //最終的に個数を倍にするのは対象解除のミラー判定に委ねる
       st=clock();
       //初期化は不要です
       /** 非再帰は-1で初期化 */
       // for(int j=0;j<=targetN;j++){
       //   aBoard[j]=-1;
       // }
-      if(cpu){ NQueen(i,mask); }
+      //再帰
       if(cpur){ 
-        /* NQueenR(i,mask,0,0,0,0);  */
-        NQueenR(i,mask);
+        NQueenR(i,mask); 
+        //printf("通常版\n");
+        //NQueenDR(i,mask,0,0,0,0,excl,i%2 ? excl : 0);//通常版
       }
+      //非再帰
+      if(cpu){ 
+        NQueen(i,mask); 
+        //printf("通常版\n");
+        //NQueenD(i,mask);//通常版
+      }
+      //
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }

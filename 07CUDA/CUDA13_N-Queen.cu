@@ -112,8 +112,10 @@ typedef struct{
 }local ;
 //関数宣言
 void symmetryOps(local *l);
+//非再帰版
 void backTrack2_NR(int y,int left,int down,int right,local *l);
 void backTrack1_NR(int y,int left,int down,int right,local *l);
+//再帰版
 void backTrack2(int y,int left,int down,int right,local *l);
 void backTrack1(int y,int left,int down,int right,local *l);
 void *run(void *args);
@@ -395,6 +397,7 @@ void symmetryOps(local *l){
   }
   l->COUNT8[l->BOUND1]++;
 }
+//
 //CPU 非再帰版 backTrack2
 void backTrack2_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
@@ -610,16 +613,15 @@ void *run(void *args){
       l->aBoard[0]=bit=(1<<l->BOUND1);
       //backTrack2(1,bit<<1,bit,bit>>1,l);
       if(NR==1){
-        //非再帰
+        //printf("非再帰\n");
         backTrack2_NR(1,bit<<1,bit,bit>>1,l);
       }else{
-        //再帰
+        //printf("再帰\n");
         backTrack2(1,bit<<1,bit,bit>>1,l);
       }
     }
     l->ENDBIT>>=G.size;
   }
-
   return 0;   //*run()の場合はreturn 0;が必要
 }
 //
@@ -654,7 +656,8 @@ void NQueen(){
   // 拡張子 CUDA はpthreadをサポートしていませんので実行できません
   // コンパイルが通らないので 以下をコメントアウトします
   // Cディレクトリの 並列処理はC13_N-Queen.c を参考にして下さい。
-  // iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
+  //iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
+
   if(iFbRet>0){
     printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
   }
@@ -699,7 +702,10 @@ int main(int argc,char** argv) {
       G.size=i; G.sizeE=i-1; //初期化
       G.lTOTAL=G.lUNIQUE=0;
       gettimeofday(&t0, NULL);
-      NQueen();
+      //再帰
+      if(cpur){NR=0;NQueen();}
+      //非再帰
+      if(cpu){ NR=1;NQueen();}
       gettimeofday(&t1, NULL);
       int ss;int ms;int dd;
       if(t1.tv_usec<t0.tv_usec) {

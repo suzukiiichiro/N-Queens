@@ -133,6 +133,7 @@ void symmetryOps(int si){
   }
   COUNT8++;
 }
+//
 //CPU 非再帰版 backTrack2
 void backTrack2_NR(int size,int mask,int row,int left,int down,int right){
 	int bitmap,bit;

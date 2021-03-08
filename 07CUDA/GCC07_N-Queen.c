@@ -133,12 +133,17 @@ void TimeFormat(clock_t utime,char *form);
 long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
-//非再帰版
+//関数宣言 非再帰版
 void solve_nqueen(int size,int mask, int row,int left,int down,int right);
 void NQueen(int size,int mask);
-//再起版
+//関数宣言 再起版
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask);
+//関数宣言 通常版
+//  再帰
+void NQueenDR(int size,int mask,int row,int left,int down,int right);
+//  非再帰
+void NQueenD(int size,int mask,int row);
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form){
@@ -320,7 +325,65 @@ void NQueenR(int size,int mask){
     solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
   }
 }
-
+//
+//通常版 CPU 非再帰版 ロジックメソッド
+void NQueenD(int size,int mask,int row){
+  int aStack[size];
+  int* pnStack;
+  int bit;
+  int bitmap;
+  int sizeE=size-1;
+  int down[size],right[size],left[size];
+  aStack[0]=-1; 
+  pnStack=aStack+1;
+  bit=0;
+  bitmap=mask;
+  down[0]=left[0]=right[0]=0;
+  while(true){
+    if(bitmap){
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
+      if(row==sizeE){
+        /* 対称解除法の追加 */
+        //TOTAL++;
+        symmetryOps_bitmap(size); 
+        bitmap=*--pnStack;
+        --row;
+        continue;
+      }else{
+        int n=row++;
+        left[row]=(left[n]|bit)<<1;
+        down[row]=down[n]|bit;
+        right[row]=(right[n]|bit)>>1;
+        *pnStack++=bitmap;
+        bitmap=mask&~(left[row]|down[row]|right[row]);
+        continue;
+      }
+    }else{ 
+      bitmap=*--pnStack;
+      if(pnStack==aStack){ break ; }
+      --row;
+      continue;
+    }
+  }
+}
+//
+//通常版 CPUR 再帰版　ロジックメソッド
+void NQueenDR(int size,int mask,int row,int left,int down,int right){
+  int bit;
+  int bitmap=mask&~(left|down|right);
+  if(row==size){
+    /* 対称解除法の追加 */
+    //TOTAL++;
+    symmetryOps_bitmap(size);
+  }else{
+    while(bitmap){
+      //bitmap^=bit=(-bitmap&bitmap);
+      bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
+      NQueenDR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
+}
+//
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -364,8 +427,18 @@ int main(int argc,char** argv) {
       COUNT2=COUNT4=COUNT8=0;
       mask=(1<<i)-1;
       st=clock();
-      if(cpu){ NQueen(i,mask); }
+      //
+      //再帰
       if(cpur){ NQueenR(i,mask); }
+        //printf("通常版\n");
+        //NQueenDR(i,mask,0,0,0,0); //通常版
+      //非再帰
+      if(cpu){ 
+        NQueen(i,mask); 
+        //printf("通常版\n");
+        //NQueenD(i,mask,0); //通常版
+      }
+      //
       TimeFormat(clock()-st,t); 
       printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
     }
