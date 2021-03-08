@@ -92,10 +92,13 @@ typedef struct{
 }local ;
 //関数宣言
 void symmetryOps(local *l);
-void backTrack2_NR(int y,int left,int down,int right,local *l);
-void backTrack1_NR(int y,int left,int down,int right,local *l);
-void backTrack2(int y,int left,int down,int right,local *l);
-void backTrack1(int y,int left,int down,int right,local *l);
+//非再帰
+void backTrack2D_NR(int y,int left,int down,int right,local *l);
+void backTrack1D_NR(int y,int left,int down,int right,local *l);
+//再帰
+void backTrack2D(int y,int left,int down,int right,local *l);
+void backTrack1D(int y,int left,int down,int right,local *l);
+//pthread
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -134,7 +137,7 @@ void symmetryOps(local *l){
 }
 //
 //CPU 非再帰版 backTrack2
-void backTrack2_NR(int row,int left,int down,int right,local *l){
+void backTrack2D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -204,7 +207,7 @@ volta:if(p<=b)
   }
 }
 //CPU 非再帰版 backTrack
-void backTrack1_NR(int row,int left,int down,int right,local *l){
+void backTrack1D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -266,7 +269,7 @@ b1volta:if(p<=b)
   }
 }
 //
-void backTrack2(int row,int left,int down,int right,local *l){
+void backTrack2D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
   if(row==G.sizeE){ 								// 【枝刈り】
@@ -285,12 +288,12 @@ void backTrack2(int row,int left,int down,int right,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      backTrack2D(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
 //
-void backTrack1(int row,int left,int down,int right,local *l){
+void backTrack1D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
@@ -307,7 +310,7 @@ void backTrack1(int row,int left,int down,int right,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      backTrack1D(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
@@ -325,13 +328,12 @@ void *run(void *args){
       // 角にクイーンを配置
       l->aBoard[1]=bit=(1<<l->BOUND1);
       //２行目から探索
-      //  backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
       if(NR==1){
         //非再帰
-        backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        backTrack1D_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
       }else{
         //再帰
-        backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        backTrack1D(2,(2|bit)<<1,(1|bit),(bit>>1),l);
       }
     }
   }
@@ -349,10 +351,10 @@ void *run(void *args){
       //backTrack2(1,bit<<1,bit,bit>>1,l);
       if(NR==1){
         //printf("非再帰\n");
-        backTrack2_NR(1,bit<<1,bit,bit>>1,l);
+        backTrack2D_NR(1,bit<<1,bit,bit>>1,l);
       }else{
         //printf("再帰\n");
-        backTrack2(1,bit<<1,bit,bit>>1,l);
+        backTrack2D(1,bit<<1,bit,bit>>1,l);
       }
     }
     l->ENDBIT>>=G.size;
@@ -437,9 +439,15 @@ int main(int argc,char** argv) {
       gettimeofday(&t0, NULL);
       //
       //再帰
-      if(cpur){NR=0;NQueen();}
+      if(cpur){
+        //NR=0;NQueen();
+        NR=0;NQueen();
+      }
       //非再帰
-      if(cpu){ NR=1;NQueen();}
+      if(cpu){ 
+        //NR=1;NQueen();
+        NR=1;NQueen();
+      }
       //
       gettimeofday(&t1, NULL);
       int ss;int ms;int dd;
