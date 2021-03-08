@@ -293,11 +293,33 @@ b1volta:if(p<=b)
 }
 //
 //CPU 再帰版 backTrack
+//ここに追記
 void backTrack2(int row,int left,int down,int right,local *l){
-
-  /**
-   * ここに移植
-   **/
+ int bitmap=0;
+ int bit=0;
+ bitmap=(l->mask&~(left|down|right));
+ if(row==G.sizeE){
+   if(bitmap){
+     //【枝刈り】 最下段枝刈り
+     if((bitmap&l->LASTMASK)==0){ 	
+       l->aBoard[row]=(-bitmap&bitmap);
+       symmetryOps(l);
+     }
+   }
+  }else{
+    //【枝刈り】上部サイド枝刈り
+    if(row<l->BOUND1){             	
+      bitmap&=~l->SIDEMASK;
+      //【枝刈り】下部サイド枝刈り
+    }else if(row==l->BOUND2) {     	
+      if((down&l->SIDEMASK)==0){ return; }
+      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; }
+    }
+    while(bitmap){
+      bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack2(row+1,(left|bit)<<1, down|bit,(right|bit)>>1,l);
+    }
+  }
 
 }
 //通常版 CPU 再帰版 backTrack
@@ -326,12 +348,24 @@ void backTrack2D(int row,int left,int down,int right,local *l){
 }
 //
 //CPU 再帰版 backTrack
+//ここに追記
 void backTrack1(int row,int left,int down,int right,local *l){
-
-  /**
-   * ここに移植
-   **/
-
+ int bitmap=0;
+ int bit=0;
+ bitmap=(l->mask&~(left|down|right));
+ if(row==G.sizeE){
+   if(bitmap){
+     l->COUNT8[l->BOUND1]++;
+   }
+  }else{
+    if(row<l->BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bitmap){
+      bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack1(row+1,(left|bit)<<1, down|bit,(right|bit)>>1,l);
+    }
+  }
 }
 //通常版 CPU 再帰版 backTrack
 void backTrack1D(int row,int left,int down,int right,local *l){
@@ -359,23 +393,27 @@ void backTrack1D(int row,int left,int down,int right,local *l){
 void *run(void *args){
   local *l=(local *)args;
   int bit=0;
-  l->aBoard[0]=1;
-  l->TOPBIT=1<<(G.sizeE);
-  l->mask=(1<<G.size)-1;
+  l->TOPBIT=1<<(G.size-1);
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
+    int col=0;
+    l->aBoard[0]=bit=(1<<0);
+    int left=bit<<1;
+    int down=bit;
+    int right=bit>>1;
     if(l->BOUND1<G.sizeE) {
       // 角にクイーンを配置
-      l->aBoard[1]=bit=(1<<l->BOUND1);
+      int col_j=l->BOUND1;
+      l->aBoard[1]=bit=(1<<col_j);
       //２行目から探索
       if(NR==1){
         //非再帰
-        //backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);//GPU適用版
-        backTrack1D_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);//通常版
+        //backTrack1_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
+        backTrack1D_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);
       }else{
         //再帰
-        //backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);//GPU適用版
-        backTrack1D(2,(2|bit)<<1,(1|bit),(bit>>1),l);//通常版
+        backTrack1(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
+        //backTrack1D(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//通常版
       }
     }
   }
@@ -389,16 +427,16 @@ void *run(void *args){
       l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1;
     }
     if(l->BOUND1<l->BOUND2) {
-      l->aBoard[0]=bit=(1<<l->BOUND1);
-      //backTrack2(1,bit<<1,bit,bit>>1,l);
+      int col=l->BOUND1;
+      l->aBoard[0]=bit=(1<<col);
       if(NR==1){
         //printf("非再帰\n");
-        //backTrack2D_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        //backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
         backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
       }else{
         //printf("再帰\n");
-        //backTrack2D(1,bit<<1,bit,bit>>1,l); //GPU適用版
-        backTrack2D(1,bit<<1,bit,bit>>1,l);//通常版
+        backTrack2(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        //backTrack2D(1,bit<<1,bit,bit>>1,l);//通常版
       }
     }
     l->ENDBIT>>=G.size;
@@ -410,6 +448,7 @@ void *NQueenThread(){
   local l[MAX];                //構造体 local型
   pthread_t pt[G.size];                 //スレッド childThread
   for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    l[BOUND1].mask=(1<<G.size)-1;
     l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;         //B1 と B2を初期化
     for(int j=0;j<G.size;j++){ l[l->BOUND1].aBoard[j]=j; } // aB[]の初期化
     l[BOUND1].COUNT2[BOUND1]=l[BOUND1].COUNT4[BOUND1]=l[BOUND1].COUNT8[BOUND1]=0;//カウンターの初期化
