@@ -110,12 +110,12 @@ long getUnique();
 long getTotal();
 void symmetryOps_bitmap(int si);
 //非再帰版
-void backTrack2_NR(int si,int mask,int y,int l,int d,int r);
-void backTrack1_NR(int si,int mask,int y,int l,int d,int r);
-void NQueen(int size,int mask);
-//再起版
 void backTrack2(int si,int mask,int y,int l,int d,int r);
 void backTrack1(int si,int mask,int y,int l,int d,int r);
+void NQueen(int size,int mask);
+//再帰版
+void backTrackR2(int si,int mask,int y,int l,int d,int r);
+void backTrackR1(int si,int mask,int y,int l,int d,int r);
 void NQueenR(int size,int mask);
 
 //hh:mm:ss.ms形式に処理時間を出力
@@ -337,6 +337,7 @@ void backTrack2(int size,int mask, int row,int h_left,int h_down,int h_right){
       }  
     }
 }
+//
 void backTrack1(int size,int mask, int row,int h_left,int h_down,int h_right){
 	unsigned int left[size];
     unsigned int down[size];
@@ -395,7 +396,7 @@ void NQueen(int size,int mask){
       backTrack2(size,mask,1,bit<<1,bit,bit>>1);
   }
 }
-//CPUR 再帰版 ロジックメソッド
+//
 void backTrackR1(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;
  int bit=0;
@@ -413,6 +414,7 @@ void backTrackR1(int size,int mask, int row,int left,int down,int right){
     }
   }
 }
+//
 void backTrackR2(int size,int mask, int row,int left,int down,int right){
  int bitmap=0;
  int bit=0;
