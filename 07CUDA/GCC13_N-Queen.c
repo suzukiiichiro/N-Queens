@@ -142,13 +142,51 @@ void symmetryOps(local *l){
   l->COUNT8[l->BOUND1]++;
 }
 //
-//CPU 非再帰版 backTrack2
-void backTrack2_NR(int row,int left,int down,int right,local *l){
-
-  /**
-   * ここに移植
-   **/
-
+//CPU 非再帰版 backTrack2//新しく記述
+void backTrack2_NR(int row,int h_left,int h_down,int h_right,local *l){
+    unsigned int left[G.size];
+    unsigned int down[G.size];
+    unsigned int right[G.size];
+    unsigned int bitmap[G.size];
+    left[row]=h_left;
+    down[row]=h_down;
+    right[row]=h_right;
+    bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+    unsigned int bit;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
+        --row;
+      }else{
+	//【枝刈り】上部サイド枝刈り
+	if(row<l->BOUND1){             	
+	  bitmap[row]&=~l->SIDEMASK;
+        //【枝刈り】下部サイド枝刈り
+        }else if(row==l->BOUND2) {     	
+          if((down[row]&l->SIDEMASK)==0){ row--; }
+          if((down[row]&l->SIDEMASK)!=l->SIDEMASK){ bitmap[row]&=l->SIDEMASK; }
+        }
+        int save_bitmap=bitmap[row];
+        bitmap[row]^=l->aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&l->mask)!=0){
+          if(row==G.sizeE){
+            if((save_bitmap&l->LASTMASK)==0){ 	
+              symmetryOps(l);
+              --row;
+		    }
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           --row;
+        }
+      }  
+    }
 }
 //
 //通常版 CPU 非再帰版 backTrack2
@@ -222,11 +260,43 @@ volta:if(p<=b)
   }
 }
 //CPU 非再帰版 backTrack
-void backTrack1_NR(int row,int left,int down,int right,local *l){
+void backTrack1_NR(int row,int h_left,int h_down,int h_right,local *l){
 
-  /**
-   * ここに移植
-   **/
+    unsigned int left[G.size];
+    unsigned int down[G.size];
+    unsigned int right[G.size];
+    unsigned int bitmap[G.size];
+    left[row]=h_left;
+    down[row]=h_down;
+    right[row]=h_right;
+    bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+    unsigned int bit;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
+        --row;
+      }else{
+        if(row<l->BOUND1) {
+          bitmap[row]&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+        }
+        bitmap[row]^=l->aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&l->mask)!=0){
+          if(row==G.sizeE){
+            l->COUNT8[l->BOUND1]++;
+            --row;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           --row;
+        }
+      }  
+    }
 
 }
 //通常版 CPU 非再帰版 backTrack
@@ -408,8 +478,8 @@ void *run(void *args){
       //２行目から探索
       if(NR==1){
         //非再帰
-        //backTrack1_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
-        backTrack1D_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);
+        backTrack1_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
+        //backTrack1D_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);
       }else{
         //再帰
         backTrack1(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
@@ -431,8 +501,8 @@ void *run(void *args){
       l->aBoard[0]=bit=(1<<col);
       if(NR==1){
         //printf("非再帰\n");
-        //backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
-        backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
+        backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        //backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
       }else{
         //printf("再帰\n");
         backTrack2(1,bit<<1,bit,bit>>1,l); //GPU適用版
