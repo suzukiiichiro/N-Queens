@@ -167,7 +167,7 @@ int COUNT2,COUNT4,COUNT8;
 __global__
 void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
-void NQueenG(int size,int mask,int row,int steps);
+void NQueenG(int size,int steps);
 //関数宣言 SGPU
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
@@ -1024,7 +1024,7 @@ int main(int argc,char** argv) {
   }
   if(gpu||sgpu){
     if(!InitCUDA()){return 0;}
-    int min=4;int targetN=18;
+    int min=4;int targetN=17;
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
