@@ -1,3 +1,4 @@
+
 /**
  CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
@@ -187,7 +188,7 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -g
 14:       365596               0  00:00:00:00.09
 15:      2279184               0  00:00:00:00.50
 16:     14772512               0  00:00:00:02.41
-17:     95815104               0  00:00:00:18.20
+17:     95815104               0  00:00:00:18.30
 
 bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 ６．SGPU 非再帰 バックトラック＋ビットマップ
@@ -228,9 +229,7 @@ void sgpu_cuda_kernel(int size,int mark,
 long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 GPU
 __global__
-void cuda_kernel(int size,int mark,
-    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
-    unsigned int* d_results,int totalCond);
+void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 CPU
@@ -461,7 +460,7 @@ void NQueenG(int size,int steps){
     TOTAL+=total;  
   }
 }
-
+//
 //SGPU
 __global__ 
 void sgpu_cuda_kernel(
@@ -924,13 +923,13 @@ int main(int argc,char** argv) {
       //
       //CPUR
       if(cpur){ 
-        //NQueenR(i,mask,0,0,0,0); 
-        NQueenDR(i,mask,0,0,0,0);//通常版
+        NQueenR(i,mask,0,0,0,0); 
+        //NQueenDR(i,mask,0,0,0,0);//通常版
       }
       //CPU
       if(cpu){ 
-        //NQueen(i,mask); 
-        NQueenD(i,mask,0); //通常版
+        NQueen(i,mask); 
+        //NQueenD(i,mask,0); //通常版
       }
       //
       TimeFormat(clock()-st,t);
