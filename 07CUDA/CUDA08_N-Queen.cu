@@ -58,15 +58,18 @@ $ nvcc CUDA08_N-Queen.cu  && ./a.out -g
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.02
  5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.00
+ 6:            4               1  00:00:00:00.01
  7:           40               6  00:00:00:00.01
  8:           92              12  00:00:00:00.00
  9:          352              46  00:00:00:00.02
-10:          724              92  00:00:00:00.06
-11:         2680             341  00:00:00:00.29
-12:        14200            1787  00:00:00:01.04
-13:        73712            9233  00:00:00:05.80
-14:            0               0  00:00:00:09.76
+10:          724              92  00:00:00:00.02
+11:         2680             341  00:00:00:00.07
+12:        14200            1787  00:00:00:00.18
+13:        73712            9233  00:00:00:00.47
+14:       365596           45752  00:00:00:01.84
+15:      2279184          285053  00:00:00:11.86
+16:     14772512         1846955  00:00:01:15.51
+17:     95815104        11977939  00:00:10:06.50
 */
 
 #include <stdio.h>
@@ -90,16 +93,15 @@ long TOTAL=0;
 long UNIQUE=0;
 int COUNT2,COUNT4,COUNT8;
 //関数宣言 GPU
-__global__
-void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
+__global__ void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 __device__ int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS);
-//関数宣言 GPU
-bool InitCUDA();
 //関数宣言 SGPU
 __global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
 long long sgpu_solve_nqueen_cuda(int size,int steps);
+//関数宣言 GPU
+bool InitCUDA();
 //関数宣言 CPU/GPU
 __device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
 __device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
@@ -621,33 +623,48 @@ void cuda_kernel(
 void solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps) {//NQueenに相当
   register int bitmap[32];//bitmapを配列で持つことによりstackを使わないで1行前に戻れる
   register int bit;
-  register int h_down[size],h_right[size],h_left[size];
+  register int h_down[size];
+  register int h_right[size];
+  register int h_left[size];
+
   h_left[row]=n_left;
   h_down[row]=n_down;
   h_right[row]=n_right;
   bitmap[row]=mask&~(h_left[row]|h_down[row]|h_right[row]);
+
+  //host
   unsigned int* t_down=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
   unsigned int* t_left=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
   unsigned int* t_right=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
   //unsigned int t_aBoard[steps][MAX];
   unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*MAX);
   unsigned int* h_total=new unsigned int[steps];
+  cudaMallocHost((void**) &h_total,sizeof(int)*steps/THREAD_NUM);
   unsigned int* h_uniq=new unsigned int[steps];
+  cudaMallocHost((void**) &h_uniq,sizeof(int)*steps/THREAD_NUM);
+
+  //device
   unsigned int* d_down;
-  unsigned int* d_left;
-  unsigned int* d_right;
-  unsigned int* d_total;
-  unsigned int* d_uniq;
-  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
-  unsigned int* d_aBoard;
-  
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
   cudaMalloc((void**) &d_down,sizeof(int)*steps);
+  unsigned int* d_left;
   cudaMalloc((void**) &d_left,sizeof(int)*steps);
+  unsigned int* d_right;
   cudaMalloc((void**) &d_right,sizeof(int)*steps);
+  unsigned int* d_aBoard;
+  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
+  unsigned int* d_total;
   cudaMalloc((void**) &d_total,sizeof(int)*steps/THREAD_NUM);
+  unsigned int* d_uniq;
   cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
-  const unsigned int mark=size>11?size-9:3;//何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+
+
+  //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+  const unsigned int mark=size>11?size-9:3;
   const unsigned int h_mark=row;
   //12行目までは3行目までCPU->row==mark以下で 3行目までのdown,left,right情報を t_down,t_left,t_rightに格納する->3行目以降をGPUマルチスレッドで実行し結果を取得
   //13行目以降はCPUで実行する行数が１個ずつ増えて行く　例えば n15だとrow=5までCPUで実行し、それ以降はGPU(現在の設定だとGPUでは最大10行実行するようになっている)

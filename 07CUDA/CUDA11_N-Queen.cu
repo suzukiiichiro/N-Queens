@@ -83,6 +83,24 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -c
 15:      2279184          285053            0.87
 16:     14772512         1846955            6.14
 17:     95815104        11977939           43.68
+
+bash-3.2$ nvcc CUDA11_N-Queen.cu && ./a.out -g
+１１．GPU 非再帰 枝刈り
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2               1  00:00:00:00.03
+ 5:           10               2  00:00:00:00.00
+ 6:            4               1  00:00:00:00.00
+ 7:           40               6  00:00:00:00.01
+ 8:           92              12  00:00:00:00.01
+ 9:          352              46  00:00:00:00.02
+10:          724              92  00:00:00:00.03
+11:         2680             341  00:00:00:00.05
+12:        14200            1787  00:00:00:00.14
+13:        73712            9233  00:00:00:00.24
+14:       365596           45752  00:00:00:00.98
+15:      2279184          285053  00:00:00:05.48
+16:     14772512         1846955  00:00:00:34.90
+17:     95815104        11977939  00:00:04:40.25
 */
 
 #include <stdio.h>
@@ -107,8 +125,7 @@ long UNIQUE=0;
 int COUNT2,COUNT4,COUNT8;
 int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
 //関数宣言 GPU
-__global__
-void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
+__global__ void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 __device__ int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS);
@@ -744,34 +761,52 @@ void cuda_kernel_b2(
 void backTrack1G(int size,int mask,int row,int n_left,int n_down,int n_right,int steps) {//NQueenに相当
   register int bitmap[32];//bitmapを配列で持つことによりstackを使わないで1行前に戻れる
   register int bit;
-  register int h_down[size],h_right[size],h_left[size];
+  
+  //host 
+  register int h_down[size];
+  cudaMallocHost((void**) &h_down,sizeof(int)*steps);
+  register int h_right[size];
+  cudaMallocHost((void**) &h_right,sizeof(int)*steps);
+  register int h_left[size];
+  cudaMallocHost((void**) &h_left,sizeof(int)*steps);
+  unsigned int* t_down=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
+  unsigned int* t_left=new unsigned int[steps];
+  cudaMallocHost((void**) &t_left,sizeof(int)*steps);
+  unsigned int* t_right=new unsigned int[steps];
+  cudaMallocHost((void**) &t_right,sizeof(int)*steps);
+  //unsigned int t_aBoard[steps][MAX];
+  unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*MAX);
+  unsigned int* h_total=new unsigned int[steps];
+  cudaMallocHost((void**) &h_total,sizeof(int)*steps/THREAD_NUM);
+  unsigned int* h_uniq=new unsigned int[steps];
+  cudaMallocHost((void**) &h_uniq,sizeof(int)*steps/THREAD_NUM);
+
+  //device 
+  unsigned int* d_down;
+  cudaMalloc((void**) &d_down,sizeof(int)*steps);
+  unsigned int* d_left;
+  cudaMalloc((void**) &d_left,sizeof(int)*steps);
+  unsigned int* d_right;
+  cudaMalloc((void**) &d_right,sizeof(int)*steps);
+  unsigned int* d_total;
+  cudaMalloc((void**) &d_total,sizeof(int)*steps/THREAD_NUM);
+  unsigned int* d_uniq;
+  cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
+  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
+  unsigned int* d_aBoard;
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
+
+  //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+  const unsigned int mark=size>11?size-9:3;
+  const unsigned int h_mark=row;
+
   h_left[row]=n_left;
   h_down[row]=n_down;
   h_right[row]=n_right;
   bitmap[row]=mask&~(h_left[row]|h_down[row]|h_right[row]);
-  unsigned int* t_down=new unsigned int[steps];
-  unsigned int* t_left=new unsigned int[steps];
-  unsigned int* t_right=new unsigned int[steps];
-  //unsigned int t_aBoard[steps][MAX];
-  unsigned int* t_aBoard=new unsigned int[steps*MAX];
-  unsigned int* h_total=new unsigned int[steps];
-  unsigned int* h_uniq=new unsigned int[steps];
-  unsigned int* d_down;
-  unsigned int* d_left;
-  unsigned int* d_right;
-  unsigned int* d_total;
-  unsigned int* d_uniq;
-  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
-  unsigned int* d_aBoard;
-  
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
-  cudaMalloc((void**) &d_down,sizeof(int)*steps);
-  cudaMalloc((void**) &d_left,sizeof(int)*steps);
-  cudaMalloc((void**) &d_right,sizeof(int)*steps);
-  cudaMalloc((void**) &d_total,sizeof(int)*steps/THREAD_NUM);
-  cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
-  const unsigned int mark=size>11?size-9:3;//何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
-  const unsigned int h_mark=row;
+
   //12行目までは3行目までCPU->row==mark以下で 3行目までのdown,left,right情報を t_down,t_left,t_rightに格納する->3行目以降をGPUマルチスレッドで実行し結果を取得
   //13行目以降はCPUで実行する行数が１個ずつ増えて行く　例えば n15だとrow=5までCPUで実行し、それ以降はGPU(現在の設定だとGPUでは最大10行実行するようになっている)
   int totalCond=0;
@@ -883,37 +918,53 @@ cudaMemcpy(d_aBoard,t_aBoard,sizeof(int)*totalCond*MAX,cudaMemcpyHostToDevice);
 void backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int steps) {//NQueenに相当
   register int bitmap[32];//bitmapを配列で持つことによりstackを使わないで1行前に戻れる
   register int bit;
-  register int h_down[size],h_right[size],h_left[size];
+
+  //host
+  register int h_down[size];
+  cudaMallocHost((void**) &h_down,sizeof(int)*steps);
+  register int h_right[size];
+  cudaMallocHost((void**) &h_right,sizeof(int)*steps);
+  register int h_left[size];
+  cudaMallocHost((void**) &h_left,sizeof(int)*steps);
+  unsigned int* t_down=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
+  unsigned int* t_left=new unsigned int[steps];
+  cudaMallocHost((void**) &t_left,sizeof(int)*steps);
+  unsigned int* t_right=new unsigned int[steps];
+  cudaMallocHost((void**) &t_right,sizeof(int)*steps);
+  //unsigned int t_aBoard[steps][MAX];
+  unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*MAX);
+  unsigned int* h_total=new unsigned int[steps];
+  cudaMallocHost((void**) &h_total,sizeof(int)*steps/THREAD_NUM);
+  unsigned int* h_uniq=new unsigned int[steps];
+  cudaMallocHost((void**) &h_uniq,sizeof(int)*steps/THREAD_NUM);
+
+  //device
+  unsigned int* d_down;
+  cudaMalloc((void**) &d_down,sizeof(int)*steps);
+  unsigned int* d_left;
+  cudaMalloc((void**) &d_left,sizeof(int)*steps);
+  unsigned int* d_right;
+  cudaMalloc((void**) &d_right,sizeof(int)*steps);
+  unsigned int* d_total;
+  cudaMalloc((void**) &d_total,sizeof(int)*steps/THREAD_NUM);
+  unsigned int* d_uniq;
+  cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
+  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
+  unsigned int* d_aBoard;
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
+
+  //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+  unsigned int mark=size>11?size-9:3;
+  if(size<8){ mark=2; }
+  const unsigned int h_mark=row;
+
   h_left[row]=n_left;
   h_down[row]=n_down;
   h_right[row]=n_right;
   bitmap[row]=mask&~(h_left[row]|h_down[row]|h_right[row]);
-  unsigned int* t_down=new unsigned int[steps];
-  unsigned int* t_left=new unsigned int[steps];
-  unsigned int* t_right=new unsigned int[steps];
-  //unsigned int t_aBoard[steps][MAX];
-  unsigned int* t_aBoard=new unsigned int[steps*MAX];
-  unsigned int* h_total=new unsigned int[steps];
-  unsigned int* h_uniq=new unsigned int[steps];
-  unsigned int* d_down;
-  unsigned int* d_left;
-  unsigned int* d_right;
-  unsigned int* d_total;
-  unsigned int* d_uniq;
-  //int** d_aBoard;//GPU内で２次元配列として使いたい場合
-  unsigned int* d_aBoard;
-  
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
-  cudaMalloc((void**) &d_down,sizeof(int)*steps);
-  cudaMalloc((void**) &d_left,sizeof(int)*steps);
-  cudaMalloc((void**) &d_right,sizeof(int)*steps);
-  cudaMalloc((void**) &d_total,sizeof(int)*steps/THREAD_NUM);
-  cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
-  unsigned int mark=size>11?size-9:3;//何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
-  if(size<8){
-    mark=2;
-  }
-  const unsigned int h_mark=row;
+
   //12行目までは3行目までCPU->row==mark以下で 3行目までのdown,left,right情報を t_down,t_left,t_rightに格納する->3行目以降をGPUマルチスレッドで実行し結果を取得
   //13行目以降はCPUで実行する行数が１個ずつ増えて行く　例えば n15だとrow=5までCPUで実行し、それ以降はGPU(現在の設定だとGPUでは最大10行実行するようになっている)
   int totalCond=0;

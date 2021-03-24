@@ -172,24 +172,6 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -c
 16:     14772512               0            8.78
 17:     95815104               0         1:05.00
 
-$ nvcc CUDA06_N-Queen.cu  && ./a.out -g
-６．GPU 非再帰 バックトラック＋ビットマップ
- N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.03
- 5:           10               0  00:00:00:00.00
- 6:            4               0  00:00:00:00.00
- 7:           40               0  00:00:00:00.00
- 8:           92               0  00:00:00:00.00
- 9:          352               0  00:00:00:00.00
-10:          724               0  00:00:00:00.00
-11:         2680               0  00:00:00:00.02
-12:        14200               0  00:00:00:00.03
-13:        73712               0  00:00:00:00.05
-14:       365596               0  00:00:00:00.09
-15:      2279184               0  00:00:00:00.50
-16:     14772512               0  00:00:00:02.41
-17:     95815104               0  00:00:00:18.30
-
 bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 ６．SGPU 非再帰 バックトラック＋ビットマップ
  N:        Total      Unique      dd:hh:mm:ss.ms
@@ -207,6 +189,25 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 15:      2279184               0  00:00:00:00.49
 16:     14772512               0  00:00:00:02.43
 17:     95815104               0  00:00:00:18.44
+
+$ nvcc CUDA06_N-Queen.cu  && ./a.out -g
+６．GPU 非再帰 バックトラック＋ビットマップ
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2               0  00:00:00:00.02
+ 5:           10               0  00:00:00:00.00
+ 6:            4               0  00:00:00:00.00
+ 7:           40               0  00:00:00:00.00
+ 8:           92               0  00:00:00:00.00
+ 9:          352               0  00:00:00:00.00
+10:          724               0  00:00:00:00.00
+11:         2680               0  00:00:00:00.02
+12:        14200               0  00:00:00:00.07
+13:        73712               0  00:00:00:00.10
+14:       365596               0  00:00:00:00.10
+15:      2279184               0  00:00:00:00.47
+16:     14772512               0  00:00:00:02.37
+17:     95815104               0  00:00:00:18.16
+
 */
 
 #include <stdio.h>
@@ -222,16 +223,14 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 //変数宣言
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
-//関数宣言 SGPU
-__global__ 
-void sgpu_cuda_kernel(int size,int mark,
-		unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
-long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 GPU
-__global__
-void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
+__global__ void cuda_kernel(int size,int mark,unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
+//関数宣言 SGPU
+__global__ void sgpu_cuda_kernel(int size,int mark,
+		unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
+long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
@@ -249,10 +248,12 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right);
 //GPU
 __global__ 
 void cuda_kernel(
-    int size,int mark,
-    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
-    unsigned int* d_results,int totalCond){
-     //threadIdx.x ブロック内のスレッドID,blockIdx.x – グリッド内のブロックID,blockDim.x – ブロックあたりのスレッドの数
+  int size,int mark,
+  unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
+  unsigned int* d_results,int totalCond){
+  //threadIdx.x ブロック内のスレッドID,
+  //blockIdx.x – グリッド内のブロックID,
+  //blockDim.x – ブロックあたりのスレッドの数
   const int tid=threadIdx.x;//ブロック内のスレッドID
   const int bid=blockIdx.x;//グリッド内のブロックID
   const int idx=bid*blockDim.x+tid;//全体通してのID
@@ -267,7 +268,6 @@ void cuda_kernel(
   unsigned int bit;
   if(idx<totalCond){//余分なスレッドは動かさない GPUはsteps数起動するがtotalCond以上は空回しする
   //printf("size:%d,mark:%d:t_down:%d:t_left:%d:t_right:%d,totalCond:%d\n",size,mark,t_down[idx],t_left[idx],t_right[idx],totalCond);
-  
     down[tid][row]=t_down[idx];//t_down,t_left,t_rightの情報をdown,left,rightに詰め直す 
     left[tid][row]=t_left[idx];//CPU で詰め込んだ t_はsteps個あるがブロック内ではブロックあたりのスレッドすうに限定されるので idxでよい
     right[tid][row]=t_right[idx];
@@ -291,14 +291,14 @@ void cuda_kernel(
             bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
           }
         }else{//置く場所がなければ１個上に
-            --row;
+          --row;
         }
       }
     }
     sum[tid]=total;//最後sum[tid]に加算する
   }else{//totalCond未満は空回しするので当然 totalは加算しない
       sum[tid]=0;
-      } 
+  } 
   //__syncthreads()で、ブロック内のスレッド間の同期をとれます。
   //同期を取るということは、全てのスレッドが__syncthreads()に辿り着くのを待つ
   __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} //__syncthreads();は複数個必要1個だけ記述したら数が違った
@@ -314,33 +314,48 @@ void cuda_kernel(
   //  d_results[bid]+=sum[k];
   //}
   //__syncthreads();
-
 }
 //
 // GPU
 long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps) {//NQueenに相当
   register int bitmap[32];//bitmapを配列で持つことによりstackを使わないで1行前に戻れる
   register int bit;
-  register int h_down[size],h_right[size],h_left[size];
+
+  //host
+  register int h_down[size];
+  cudaMallocHost((void**) &h_down,sizeof(int)*steps);
+  register int h_right[size];
+  cudaMallocHost((void**) &h_right,sizeof(int)*steps);
+  register int h_left[size];
+  cudaMallocHost((void**) &h_left,sizeof(int)*steps);
+  unsigned int* t_down=new unsigned int[steps];
+  cudaMallocHost((void**) &t_down,sizeof(int)*steps);
+  unsigned int* t_left=new unsigned int[steps];
+  cudaMallocHost((void**) &t_left,sizeof(int)*steps);
+  unsigned int* t_right=new unsigned int[steps];
+  cudaMallocHost((void**) &t_right,sizeof(int)*steps);
+  unsigned int* h_results=new unsigned int[steps];
+  cudaMallocHost((void**) &h_results,sizeof(int)*steps/THREAD_NUM);
+
+  //device
+  unsigned int* d_down;
+  cudaMalloc((void**) &d_down,sizeof(int)*steps);
+  unsigned int* d_left;
+  cudaMalloc((void**) &d_left,sizeof(int)*steps);
+  unsigned int* d_right;
+  cudaMalloc((void**) &d_right,sizeof(int)*steps);
+  unsigned int* d_results;
+  cudaMalloc((void**) &d_results,sizeof(int)*steps/THREAD_NUM);
+
+  //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
+  const unsigned int mark=size>11?size-10:2;
+  const unsigned int h_mark=row;
+
   h_left[row]=n_left;
   h_down[row]=n_down;
   h_right[row]=n_right;
   bitmap[row]=mask&~(h_left[row]|h_down[row]|h_right[row]);
-  //printf("h_left:%d:h_donw:%d:h_right:%d:bitmap%d\n",h_left[row],h_down[row],h_right[row],bitmap[row]);
-  unsigned int* t_down=new unsigned int[steps];
-  unsigned int* t_left=new unsigned int[steps];
-  unsigned int* t_right=new unsigned int[steps];
-  unsigned int* h_results=new unsigned int[steps];
-  unsigned int* d_down;
-  unsigned int* d_left;
-  unsigned int* d_right;
-  unsigned int* d_results;
-  cudaMalloc((void**) &d_down,sizeof(int)*steps);
-  cudaMalloc((void**) &d_left,sizeof(int)*steps);
-  cudaMalloc((void**) &d_right,sizeof(int)*steps);
-  cudaMalloc((void**) &d_results,sizeof(int)*steps/THREAD_NUM);
-  const unsigned int mark=size>11?size-10:2;//何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
-  const unsigned int h_mark=row;
+
   //12行目までは3行目までCPU->row==mark以下で 3行目までのdown,left,right情報を t_down,t_left,t_rightに格納する->3行目以降をGPUマルチスレッドで実行し結果を取得
   //13行目以降はCPUで実行する行数が１個ずつ増えて行く　例えば n15だとrow=5までCPUで実行し、それ以降はGPU(現在の設定だとGPUでは最大10行実行するようになっている)
   long total=0;
