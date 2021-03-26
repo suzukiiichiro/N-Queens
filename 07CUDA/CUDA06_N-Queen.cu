@@ -540,14 +540,16 @@ long long sgpu_solve_nqueen_cuda(int size,int steps) {
   unsigned int* totalLeft=new unsigned int[steps];
   unsigned int* totalRight=new unsigned int[steps];
   unsigned int* results=new unsigned int[steps];
+
   unsigned int* downCuda;
-  unsigned int* leftCuda;
-  unsigned int* rightCuda;
-  unsigned int* resultsCuda;
   cudaMalloc((void**) &downCuda,sizeof(int)*steps);
+  unsigned int* leftCuda;
   cudaMalloc((void**) &leftCuda,sizeof(int)*steps);
+  unsigned int* rightCuda;
   cudaMalloc((void**) &rightCuda,sizeof(int)*steps);
+  unsigned int* resultsCuda;
   cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
+
   const unsigned int mask=(1<<size)-1;
   const unsigned int mark=size>11?size-10:2;
   long long total=0;
