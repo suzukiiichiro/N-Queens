@@ -270,31 +270,39 @@ void cuda_kernel(
   int row=0;//row=0となってるが1行目からやっているわけではなくmask行目以降からスタート n=8 なら mask==2 なので そこからスタート
   unsigned int bit;
   if(idx<totalCond){//余分なスレッドは動かさない GPUはsteps数起動するがtotalCond以上は空回しする
-  //printf("size:%d,mark:%d:totalDown:%d:totalLeft:%d:totalRight:%d,totalCond:%d\n",size,mark,totalDown[idx],totalLeft[idx],totalRight[idx],totalCond);
     down[tid][row]=totalDown[idx];//totalDown,totalLeft,totalRightの情報をdown,left,rightに詰め直す 
     left[tid][row]=totalLeft[idx];//CPU で詰め込んだ t_はsteps個あるがブロック内ではブロックあたりのスレッドすうに限定されるので idxでよい
     right[tid][row]=totalRight[idx];
     bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);//down,left,rightからbitmapを出す
     while(row>=0){
+      //
+      //06のGPU
       if(bitmap[tid][row]==0){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
-        --row;
+      //06のSGPU
+      //if((bitmap[tid][row]&mask)==mask){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
+      //
+        row--;
       }else{
+        //
+        //06GPU
         bitmap[tid][row]^=bit=(-bitmap[tid][row]&bitmap[tid][row]); //クイーンを置く
+        //06SGPU
+        //bit=(bitmap[tid][row]+1)&~bitmap[tid][row];
+        //bitmap[tid][row]|=bit;
+        //
         if((bit&mask)!=0){//置く場所があるかどうか
-          //printf("row:%d:mark:%d\n",row,mark);
           if(row+1==mark){//最終行?最終行から１個前の行まで無事到達したら 加算する
             total++;
-            //printf("total:%d\n",total);
-            --row;
+            row--;
           }else{
-            int n=row++;//クイーン置いた位置から次の行へ渡すdown,left,right,bitmapを出す
-            down[tid][row]=down[tid][n]|bit;
-            left[tid][row]=(left[tid][n]|bit)<<1;
-            right[tid][row]=(right[tid][n]|bit)>>1;
-            bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
+            down[tid][row+1]=down[tid][row]|bit;
+            left[tid][row+1]=(left[tid][row]|bit)<<1;
+            right[tid][row+1]=(right[tid][row]|bit)>>1;
+            bitmap[tid][row+1]=mask&~(down[tid][row+1]|left[tid][row+1]|right[tid][row+1]);
+            row++;
           }
         }else{//置く場所がなければ１個上に
-          --row;
+          row--;
         }
       }
     }
@@ -304,7 +312,7 @@ void cuda_kernel(
   } 
   //__syncthreads()で、ブロック内のスレッド間の同期をとれます。
   //同期を取るということは、全てのスレッドが__syncthreads()に辿り着くのを待つ
-  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} //__syncthreads();は複数個必要1個だけ記述したら数が違った
+  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];}//__syncthreads();は複数個必要1個だけ記述したら数が違った
   __syncthreads();if(tid<32){sum[tid]+=sum[tid+32];} 
   __syncthreads();if(tid<16){sum[tid]+=sum[tid+16];} 
   __syncthreads();if(tid<8){sum[tid]+=sum[tid+8];} 
@@ -312,11 +320,6 @@ void cuda_kernel(
   __syncthreads();if(tid<2){sum[tid]+=sum[tid+2];} 
   __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
   __syncthreads();if(tid==0){d_results[bid]=sum[0];}
-  //__syncthreads();//これだとn13以降数が合わない
-  //for (int k = 0; k < THREAD_NUM; ++k){
-  //  d_results[bid]+=sum[k];
-  //}
-  //__syncthreads();
 }
 //
 // GPU
@@ -504,19 +507,31 @@ void sgpu_cuda_kernel(
   int row=0;//row=0となってるが1行目からやっているわけではなくmask行目以降からスタート n=8 なら mask==2 なので そこからスタート
   unsigned int bit;
   if(idx<totalCond){//余分なスレッドは動かさない GPUはsteps数起動するがtotalCond以上は空回しする
-  //printf("size:%d,mark:%d:totalDown:%d:totalLeft:%d:totalRight:%d,totalCond:%d\n",size,mark,totalDown[idx],totalLeft[idx],totalRight[idx],totalCond);
     down[tid][row]=totalDown[idx];//totalDown,totalLeft,totalRightの情報をdown,left,rightに詰め直す 
     left[tid][row]=totalLeft[idx];//CPU で詰め込んだ t_はsteps個あるがブロック内ではブロックあたりのスレッドすうに限定されるので idxでよい
     right[tid][row]=totalRight[idx];
     bitmap[tid][row]=down[tid][row]|left[tid][row]|right[tid][row];//down,left,rightからbitmapを出す
     while(row>=0){
+      //
+      //06のGPU
+      //if(bitmap[tid][row]==0){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
+      //06のSGPU
       if((bitmap[tid][row]&mask)==mask){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
+      //
         row--;
       }else{
+        //
+        //06GPU
+        //bitmap[tid][row]^=bit=(-bitmap[tid][row]&bitmap[tid][row]); //クイーンを置く
+        //06SGPU
         bit=(bitmap[tid][row]+1)&~bitmap[tid][row];
         bitmap[tid][row]|=bit;
-        if((bit&mask)!=0){
-          if(row+1==mark){total++;row--;}
+        //
+        if((bit&mask)!=0){//置く場所があるかどうか
+          if(row+1==mark){//最終行?最終行から１個前の行まで無事到達したら 加算する
+            total++;
+            row--;
+          }
           else{
             down[tid][row+1]=down[tid][row]|bit;
             left[tid][row+1]=(left[tid][row]|bit)<<1;
@@ -524,12 +539,18 @@ void sgpu_cuda_kernel(
             bitmap[tid][row+1]=(down[tid][row+1]|left[tid][row+1]|right[tid][row+1]);
             row++;
           }
-        }else{row--;}
+        }else{//置く場所がなければ１個上に
+          row--;
+        }
       }
     }
-    sum[tid]=total;
-  }else{sum[tid]=0;} 
-  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} 
+    sum[tid]=total;//最後sum[tid]に加算する
+  }else{//totalCond未満は空回しするので当然 totalは加算しない
+    sum[tid]=0;
+  } 
+  //__syncthreads()で、ブロック内のスレッド間の同期をとれます。
+  //同期を取るということは、全てのスレッドが__syncthreads()に辿り着くのを待つ
+  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];}//__syncthreads();は複数個必要1個だけ記述したら数が違った
   __syncthreads();if(tid<32){sum[tid]+=sum[tid+32];} 
   __syncthreads();if(tid<16){sum[tid]+=sum[tid+16];} 
   __syncthreads();if(tid<8){sum[tid]+=sum[tid+8];} 
