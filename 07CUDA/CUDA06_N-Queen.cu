@@ -353,7 +353,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   left[row]=n_left;
   down[row]=n_down;
   right[row]=n_right;
-  bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+  //06GPU
+  //bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+  bitmap[row]=(left[row]|down[row]|right[row]);
 
 
   //12行目までは3行目までCPU->row==mark以下で 3行目までのdown,left,right情報を totalDown,totalLeft,totalRightに格納する->3行目以降をGPUマルチスレッドで実行し結果を取得
@@ -366,27 +368,28 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   while(row>=0){
     //bitmap[row]=00000000 クイーンをどこにも置けないので1行上に戻る
     //06GPU こっちのほうが優秀
-    if(bitmap[row]==0){ row--; }
-    //if((bitmap[row]&mask)==mask){row--;}
+    //if(bitmap[row]==0){ row--; }
+    //06SGPU
+    if((bitmap[row]&mask)==mask){row--;}
     else{//おける場所があれば進む
       //06SGPU
-      //bit=(bitmap[row]+1)&~bitmap[row];
-      //bitmap[row]|=bit;
+      bit=(bitmap[row]+1)&~bitmap[row];
+      bitmap[row]|=bit;
       //06GPU こっちのほうが優秀
-      bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); //クイーンを置く
+      //bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); //クイーンを置く
       if((bit&mask)!=0){//置く場所があれば先に進む
         //06GPU こっちのほうが優秀
-        int n=row++;//クイーン置いた位置から次の行へ渡す down,left,right,bitmapを出す
-        down[row]=down[n]|bit;
-        left[row]=(left[n]|bit)<<1;
-        right[row]=(right[n]|bit)>>1;
-        bitmap[row]=mask&~(down[row]|left[row]|right[row]);
+        //int n=row++;//クイーン置いた位置から次の行へ渡す down,left,right,bitmapを出す
+        //down[row]=down[n]|bit;
+        //left[row]=(left[n]|bit)<<1;
+        //right[row]=(right[n]|bit)>>1;
+        //bitmap[row]=mask&~(down[row]|left[row]|right[row]);
         //06SGPU 
-        //down[row+1]=down[row]|bit;
-        //left[row+1]=(left[row]|bit)<<1;
-        //right[row+1]=(right[row]|bit)>>1;
-        //bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
-        //row++;
+        down[row+1]=down[row]|bit;
+        left[row+1]=(left[row]|bit)<<1;
+        right[row+1]=(right[row]|bit)>>1;
+        bitmap[row+1]=(down[row+1]|left[row+1]|right[row+1]);
+        row++;
         if(row==mark){
           //3行目(mark)にクイーンを１個ずつ置いていって、down,left,right情報を格納、
           //その次の行へは進まない。その行で可能な場所にクイーン置き終わったらGPU並列実行
