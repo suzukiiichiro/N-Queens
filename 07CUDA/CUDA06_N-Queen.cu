@@ -225,7 +225,7 @@ long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
 //関数宣言 GPU
 __global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond);
-long long solve_nqueen_cuda(int size,int steps);
+long solve_nqueen_cuda(int size,int row,int n_left,int n_down,int n_right,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 SGPU
 __global__ void sgpu_cuda_kernel(int size,int mark,
@@ -249,65 +249,98 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right);
 __global__ 
 void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
 {
-  //スレッド
-  const int tid=threadIdx.x;//ブロック内のスレッドID
-  const int bid=blockIdx.x;//グリッド内のブロックID
-  const int idx=bid*blockDim.x+tid;//全体通してのID
-  //シェアードメモリ
-  __shared__ unsigned int down[THREAD_NUM][10];//sharedメモリを使う ブロック内スレッドで共有
-  __shared__ unsigned int left[THREAD_NUM][10];//THREAD_NUMはブロックあたりのスレッド数
-  __shared__ unsigned int right[THREAD_NUM][10];//10で固定なのは現在のmaskの設定でGPUで実行するのは最大10だから
-  __shared__ unsigned int bitmap[THREAD_NUM][10];
-  __shared__ unsigned int sum[THREAD_NUM];
   //
   const unsigned int mask=(1<<size)-1;
   int total=0;
-  int row=0;//row=0となってるが1行目からやっているわけではなくmask行目以降からスタート n=8 なら mask==2 なので そこからスタート
+  //row=0となってるが1行目からやっているわけではなく
+  //mask行目以降からスタート 
+  //n=8 なら mask==2 なので そこからスタート
+  int row=0;
   unsigned int bit;
-  if(idx<totalCond){//余分なスレッドは動かさない GPUはsteps数起動するがtotalCond以上は空回しする
-    down[tid][row]=totalDown[idx];//totalDown,totalLeft,totalRightの情報をdown,left,rightに詰め直す 
-    left[tid][row]=totalLeft[idx];//CPU で詰め込んだ t_はsteps個あるがブロック内ではブロックあたりのスレッドすうに限定されるので idxでよい
-    right[tid][row]=totalRight[idx];
-    bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);//down,left,rightからbitmapを出す
+  //
+  //スレッド
+  //
+  //ブロック内のスレッドID
+  const int tid=threadIdx.x;
+  //グリッド内のブロックID
+  const int bid=blockIdx.x;
+  //全体通してのID
+  const int idx=bid*blockDim.x+tid;
+  //シェアードメモリ
+  //sharedメモリを使う ブロック内スレッドで共有
+  //10固定なのは現在のmask設定で
+  //GPUで実行するのは最大10だから
+  //THREAD_NUMはブロックあたりのスレッド数
+  __shared__ unsigned int down[THREAD_NUM][10];
+  down[tid][row]=totalDown[idx];
+  __shared__ unsigned int left[THREAD_NUM][10];
+  left[tid][row]=totalLeft[idx];
+  __shared__ unsigned int right[THREAD_NUM][10];
+  right[tid][row]=totalRight[idx];
+  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ unsigned int sum[THREAD_NUM];
+  //
+  //
+  //余分なスレッドは動かさない 
+  //GPUはsteps数起動するがtotalCond以上は空回しする
+  if(idx<totalCond){
+    //totalDown,totalLeft,totalRightの情報を
+    //down,left,rightに詰め直す 
+    //CPU で詰め込んだ t_はsteps個あるが
+    //ブロック内ではブロックあたりのスレッド数に限定
+    //されるので idxでよい
+    //
+    //down,left,rightからbitmapを出す
+    bitmap[tid][row]
+      =mask&~(
+           down[tid][row]
+          |left[tid][row]
+          |right[tid][row]);
     while(row>=0){
       //
-      //06のGPU
-      if(bitmap[tid][row]==0){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
-      //06のSGPU
-      //if((bitmap[tid][row]&mask)==mask){//bitmap[tid][row]=00000000 クイーンをどこにも置けないので1行上に戻る
-      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
+      if(bitmap[tid][row]==0){
         row--;
       }else{
-        //
-        //06GPU
-        bitmap[tid][row]^=bit=(-bitmap[tid][row]&bitmap[tid][row]); //クイーンを置く
-        //06SGPU
-        //bit=(bitmap[tid][row]+1)&~bitmap[tid][row];
-        //bitmap[tid][row]|=bit;
-        //
-        if((bit&mask)!=0){//置く場所があるかどうか
-          if(row+1==mark){//最終行?最終行から１個前の行まで無事到達したら 加算する
+        //クイーンを置く
+        bitmap[tid][row]
+          ^=bit
+          =(-bitmap[tid][row]&bitmap[tid][row]);
+        //置く場所があるかどうか
+        if((bit&mask)!=0){
+          //最終行?最終行から１個前の行まで
+          //無事到達したら 加算する
+          if(row+1==mark){
             total++;
             row--;
           }else{
-            down[tid][row+1]=down[tid][row]|bit;
-            left[tid][row+1]=(left[tid][row]|bit)<<1;
-            right[tid][row+1]=(right[tid][row]|bit)>>1;
-            bitmap[tid][row+1]=mask&~(down[tid][row+1]|left[tid][row+1]|right[tid][row+1]);
+            /**
+                要確認　インラインにする
+              */
+            int rowP=row+1;
+            down[tid][rowP]=down[tid][row]|bit;
+            left[tid][rowP]=(left[tid][row]|bit)<<1;
+            right[tid][rowP]=(right[tid][row]|bit)>>1;
+            bitmap[tid][rowP]=mask&~(down[tid][rowP]|left[tid][rowP]|right[tid][rowP]);
             row++;
           }
-        }else{//置く場所がなければ１個上に
+        }else{
+          //置く場所がなければ１個上に
           row--;
         }
       }
     }
-    sum[tid]=total;//最後sum[tid]に加算する
-  }else{//totalCond未満は空回しするので当然 totalは加算しない
-      sum[tid]=0;
+    //最後sum[tid]に加算する
+    sum[tid]=total;
+  }else{
+    //totalCond未満は空回しするのでtotalは加算しない
+    sum[tid]=0;
   } 
-  //__syncthreads()で、ブロック内のスレッド間の同期をとれます。
-  //同期を取るということは、全てのスレッドが__syncthreads()に辿り着くのを待つ
-  __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];}//__syncthreads();は複数個必要1個だけ記述したら数が違った
+  //__syncthreads()でブロック内のスレッド間の同期
+  //全てのスレッドが__syncthreads()に辿り着くのを待つ
+  __syncthreads();
+  if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];}
   __syncthreads();if(tid<32){sum[tid]+=sum[tid+32];} 
   __syncthreads();if(tid<16){sum[tid]+=sum[tid+16];} 
   __syncthreads();if(tid<8){sum[tid]+=sum[tid+8];} 
@@ -318,8 +351,9 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
 }
 //
 // GPU
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
-{//NQueenに相当
+long solve_nqueen_cuda(int size,int row,int n_left,int n_down,int n_right,int steps)
+{
+  const unsigned int mask=(1<<size)-1;
 
   //host
   unsigned int down[32];
@@ -453,22 +487,21 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
 //GPU
 void NQueenG(int size,int steps)
 {
-  register int sizeE=size-1;
-  register int bit=0;
-  register int mask=((1<<size)-1);
+  const unsigned int sizeE=size-1;
+  register unsigned int bit=0;
   if(size<=0||size>32){return;}
   //偶数、奇数共通 右側半分だけクイーンを置く
 	int lim=(size%2==0)?size/2:sizeE/2;
   for(int col=0;col<lim;col++){
     bit=(1<<col);
-    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
+    TOTAL+=solve_nqueen_cuda(size,1,bit<<1,bit,bit>>1,steps);
   }
   //ミラーなのでTOTALを２倍する
   TOTAL=TOTAL*2;
   //奇数の場合はさらに中央にクイーンを置く
   if(size%2==1){
     bit=(1<<(sizeE)/2);
-    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
+    TOTAL+=solve_nqueen_cuda(size,1,bit<<1,bit,bit>>1,steps);
   }
 }
 //
