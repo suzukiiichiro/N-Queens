@@ -250,7 +250,7 @@ __global__
 void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
 {
   //
-  int mask=(1<<size)-1;
+  const unsigned int mask=(1<<size)-1;
   int total=0;
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
@@ -266,7 +266,9 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
   const int bid=blockIdx.x;
   //全体通してのID
   const int idx=bid*blockDim.x+tid;
+  //
   //シェアードメモリ
+  //
   //sharedメモリを使う ブロック内スレッドで共有
   //10固定なのは現在のmask設定で
   //GPUで実行するのは最大10だから
@@ -278,6 +280,12 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
   __shared__ unsigned int right[THREAD_NUM][10];
   right[tid][row]=totalRight[idx];
   __shared__ unsigned int bitmap[THREAD_NUM][10];
+  //down,left,rightからbitmapを出す
+  bitmap[tid][row]
+    =mask&~(
+         down[tid][row]
+        |left[tid][row]
+        |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
   //
   //余分なスレッドは動かさない 
@@ -289,12 +297,6 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
     //
-    //down,left,rightからbitmapを出す
-    bitmap[tid][row]
-      =mask&~(
-           down[tid][row]
-          |left[tid][row]
-          |right[tid][row]);
     while(row>=0){
       //
       //bitmap[tid][row]=00000000 クイーンを
@@ -424,9 +426,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
           //その次の行へは進まない。その行で可能な場所にクイー
           //ン置き終わったらGPU並列実行
           //totalCond がthreadIdになる 各スレッドに down,left,right情報を渡す
-          totalDown[totalCond]=down[row];
           //row=2(13行目以降は増えていく。例えばn15だとrow=5)の情報を
           //totalDown,totalLeft,totalRightに格納する
+          totalDown[totalCond]=down[row];
           totalLeft[totalCond]=left[row];
           totalRight[totalCond]=right[row];
           //スレッド数をインクリメントする
