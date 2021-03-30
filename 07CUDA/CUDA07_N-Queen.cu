@@ -676,8 +676,8 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
     //されるので idxでよい
     //
     /***07 aBoard追加*********************/
-     for(int i=0;i<size;i++){
-      //c_aBoard[tid][i]=t_aBoard[idx][i];   
+    for(int i=0;i<size;i++){
+     //c_aBoard[tid][i]=t_aBoard[idx][i];   
       c_aBoard[tid][i]=t_aBoard[idx*MAX+i]; //２次元配列だが1次元的に利用      
     }
     /************************/
@@ -708,8 +708,8 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
            //print(size); //print()でTOTALを++しない
            //ホストに戻す配列にTOTALを入れる
            //スレッドが１つの場合は配列は１個
-              unique++; 
-              total+=s;   //対称解除で得られた解数を加算
+             unique++; 
+             total+=s;   //対称解除で得られた解数を加算
            }
            /************************/
            /***07 symmetryOpsの処理追加に伴いコメント*********************/
