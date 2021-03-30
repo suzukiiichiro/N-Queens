@@ -1487,7 +1487,7 @@ int main(int argc,char** argv) {
   }else if(gpu){
     printf("\n\n１２．GPU 非再帰 枝刈り\n");
   }else if(sgpu){
-    printf("\n\n１２．SGPU 非再帰 枝刈り\n");
+    printf("\n\n１２．SGPU 非再帰 バックトラック＋ビットマップ\n");
   }
 
   if(cpu||cpur){

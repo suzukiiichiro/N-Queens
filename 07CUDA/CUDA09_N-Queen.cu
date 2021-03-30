@@ -1093,7 +1093,7 @@ int main(int argc,char** argv) {
   }else if(gpu){
     printf("\n\n９．GPU 非再帰 クイーンの位置による分岐BOUND1\n");
   }else if(sgpu){
-    printf("\n\n９．SGPU 非再帰 クイーンの位置による分岐BOUND1\n");
+    printf("\n\n９．SGPU 非再帰 バックトラック＋ビットマップ\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");

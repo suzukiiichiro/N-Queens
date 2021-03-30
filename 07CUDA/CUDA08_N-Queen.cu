@@ -1031,7 +1031,7 @@ int main(int argc,char** argv) {
   }else if(gpu){
     printf("\n\n８．GPU 非再帰 ビットマップ＋対称解除法＋枝刈り\n");
   }else if(sgpu){
-    printf("\n\n８．SGPU 非再帰 ビットマップ＋対称解除法＋枝刈り\n");
+    printf("\n\n８．SGPU 非再帰 バックトラック＋ビットマップ\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");

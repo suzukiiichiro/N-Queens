@@ -1394,7 +1394,7 @@ int main(int argc,char** argv) {
   }else if(gpu){
     printf("\n\n１０．GPU 非再帰 クイーンの位置による分岐BOUND1,2\n");
   }else if(sgpu){
-    printf("\n\n１０．SGPU 非再帰 クイーンの位置による分岐BOUND1,2\n");
+    printf("\n\n１０．SGPU 非再帰 バックトラック＋ビットマップ\n");
   }
 
   if(cpu||cpur){
