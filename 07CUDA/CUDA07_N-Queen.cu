@@ -204,7 +204,8 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right);
 void NQueenD(int size,int mask,int row);
 //
 //hh:mm:ss.ms形式に処理時間を出力
-void TimeFormat(clock_t utime,char *form){
+void TimeFormat(clock_t utime,char *form)
+{
   int dd,hh,mm;
   float ftime,ss;
   ftime=(float)utime/CLOCKS_PER_SEC;
@@ -223,27 +224,30 @@ void TimeFormat(clock_t utime,char *form){
   else
     sprintf(form,"           %5.2f",ss);
 }
-//
+//CPU/GPU
 __device__ __host__
-int rh(int a,int sz){
+int rh(int a,int sz)
+{
   int tmp=0;
   for(int i=0;i<=sz;i++){
     if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
   }
   return tmp;
 }
-//
+//CPU/GPU
 __device__ __host__
-void vMirror_bitmap(int bf[],int af[],int si){
+void vMirror_bitmap(int bf[],int af[],int si)
+{
   int score ;
   for(int i=0;i<si;i++) {
     score=bf[i];
     af[i]=rh(score,si-1);
   }
 }
-//
+//CPU/GPU
 __device__ __host__
-void rotate_bitmap(int bf[],int af[],int si){
+void rotate_bitmap(int bf[],int af[],int si)
+{
   for(int i=0;i<si;i++){
     int t=0;
     for(int j=0;j<si;j++){
@@ -252,9 +256,10 @@ void rotate_bitmap(int bf[],int af[],int si){
     af[i]=t;                        // y[i] の j ビット目にする
   }
 }
-//
+//CPU/GPU
 __device__ __host__
-int intncmp(unsigned int lt[],int rt[],int n){
+int intncmp(unsigned int lt[],int rt[],int n)
+{
   int rtn=0;
   for(int k=0;k<n;k++){
     rtn=lt[k]-rt[k];
@@ -266,10 +271,9 @@ int intncmp(unsigned int lt[],int rt[],int n){
 }
 //
 //GPU マルチスレッド
-//
-//
 __device__
-int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS){
+int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS)
+{
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ d_aT[i]=d_aBoard[i];}
@@ -506,9 +510,7 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
       /************************/
     }
 }
-//
-//
-// GPU
+//GPU
 long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
@@ -777,9 +779,10 @@ void NQueenG(int size,int steps)
   //  TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
   //}
 }
-//
+//SGPU
 __global__ 
-void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond){
+void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
+{
   const int tid=threadIdx.x;
   const int bid=blockIdx.x;
   const int idx=bid*blockDim.x+tid;
@@ -825,8 +828,9 @@ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* to
   __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
   __syncthreads();if(tid==0){results[bid]=sum[0];}
 }
-//
-long long sgpu_solve_nqueen_cuda(int size,int steps) {
+//SGPU
+long long sgpu_solve_nqueen_cuda(int size,int steps)
+{
   unsigned int down[32];
   unsigned int left[32];
   unsigned int right[32];
@@ -1004,7 +1008,8 @@ long long sgpu_solve_nqueen_cuda(int size,int steps) {
   return total;
 }
 /** CUDA 初期化 **/
-bool InitCUDA(){
+bool InitCUDA()
+{
   int count;
   cudaGetDeviceCount(&count);
   if(count==0){fprintf(stderr,"There is no device.\n");return false;}
@@ -1018,15 +1023,18 @@ bool InitCUDA(){
   return true;
 }
 //CPU
-long getUnique(){
+long getUnique()
+{
   return COUNT2+COUNT4+COUNT8;
 }
 //CPU
-long getTotal(){
+long getTotal()
+{
   return COUNT2*2+COUNT4*4+COUNT8*8;
 }
 //CPU
-void symmetryOps_bitmap(int si){
+void symmetryOps_bitmap(int si)
+{
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=aBoard[i];}
@@ -1068,7 +1076,8 @@ void symmetryOps_bitmap(int si){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap)
+{
     unsigned int bit;
     unsigned int sizeE=size-1;
     int mark=row;
@@ -1097,7 +1106,8 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
 }
 //
 //非再帰版
-void NQueen(int size,int mask){
+void NQueen(int size,int mask)
+{
   register int bitmap[size];
   register int down[size],right[size],left[size];
   register int bit;
@@ -1116,7 +1126,8 @@ void NQueen(int size,int mask){
   }
 }
 //CPUR 再帰版 ロジックメソッド
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
+{
  int bitmap=0;
  int bit=0;
  int sizeE=size-1;
@@ -1134,7 +1145,8 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
   }
 }
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask){
+void NQueenR(int size,int mask)
+{
   int bit=0;
   //1行目全てにクイーンを置く
   for(int col=0;col<size;col++){
@@ -1144,7 +1156,8 @@ void NQueenR(int size,int mask){
 }
 //
 //通常版 CPU 非再帰版 ロジックメソッド
-void NQueenD(int size,int mask,int row){
+void NQueenD(int size,int mask,int row)
+{
   int aStack[size];
   int* pnStack;
   int bit;
@@ -1185,7 +1198,8 @@ void NQueenD(int size,int mask,int row){
 }
 //
 //通常版 CPUR 再帰版　ロジックメソッド
-void NQueenDR(int size,int mask,int row,int left,int down,int right){
+void NQueenDR(int size,int mask,int row,int left,int down,int right)
+{
   int bit;
   int bitmap=mask&~(left|down|right);
   if(row==size){
@@ -1201,7 +1215,8 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right){
   }
 }
 //メインメソッド
-int main(int argc,char** argv) {
+int main(int argc,char** argv)
+{
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
   int argstart=1,steps=24576;
   //int argstart=1,steps=1;
