@@ -379,7 +379,7 @@ long solve_nqueen_cuda(int size,int row,int n_left,int n_down,int n_right,int st
 
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   const unsigned int mark=size>11?size-10:2;
-
+  const unsigned int h_mark=row;
   left[row]=n_left;
   down[row]=n_down;
   right[row]=n_right;
@@ -395,7 +395,7 @@ long solve_nqueen_cuda(int size,int row,int n_left,int n_down,int n_right,int st
   //bit=0;
   //down[0]=left[0]=right[0]=0;
   bool matched=false;
-  while(row>=0){
+  while(row>=h_mark){
     //bitmap[row]=00000000 クイーンをどこにも置けないので1行上に戻る
     //06GPU こっちのほうが優秀
     //if(bitmap[row]==0){ row--; }
