@@ -831,31 +831,31 @@ void TimeFormat(clock_t utime,char *form){
 //
 //CPU 非再帰版 ロジックメソッド
 void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
-    unsigned int bit;
-    unsigned int sizeE=size-1;
-    int mark=row;
-    //固定していれた行より上はいかない
-    while(row>=mark){//row=1 row>=1, row=2 row>=2
-      if(bitmap[row]==0){
-        --row;
-      }else{
-        bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
-        if((bit&mask)!=0){
-          if(row==sizeE){
-            TOTAL++;
-            --row;
-          }else{
-            int n=row++;
-            left[row]=(left[n]|bit)<<1;
-            down[row]=down[n]|bit;
-            right[row]=(right[n]|bit)>>1;
-            bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-          }
+  unsigned int bit;
+  unsigned int sizeE=size-1;
+  int mark=row;
+  //固定していれた行より上はいかない
+  while(row>=mark){//row=1 row>=1, row=2 row>=2
+    if(bitmap[row]==0){
+      --row;
+    }else{
+      bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
+      if((bit&mask)!=0){
+        if(row==sizeE){
+          TOTAL++;
+          --row;
         }else{
-           --row;
+          int n=row++;
+          left[row]=(left[n]|bit)<<1;
+          down[row]=down[n]|bit;
+          right[row]=(right[n]|bit)>>1;
+          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
         }
-      }  
-    }
+      }else{
+         --row;
+      }
+    }  
+  }
 }
 //
 //非再帰版
