@@ -228,8 +228,7 @@ __global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned i
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 SGPU
-__global__ void sgpu_cuda_kernel(int size,int mark,
-		unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
+__global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
 long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
