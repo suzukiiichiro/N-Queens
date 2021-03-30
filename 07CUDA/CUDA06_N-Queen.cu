@@ -247,13 +247,8 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right);
 //
 //GPU
 __global__ 
-void cuda_kernel(
-  int size,int mark,
-  unsigned int* totalDown,
-  unsigned int* totalLeft,
-  unsigned int* totalRight,
-  unsigned int* d_results,
-  int totalCond){
+void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
+{
   //スレッド
   const int tid=threadIdx.x;//ブロック内のスレッドID
   const int bid=blockIdx.x;//グリッド内のブロックID
@@ -323,7 +318,8 @@ void cuda_kernel(
 }
 //
 // GPU
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps) {//NQueenに相当
+long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
+{//NQueenに相当
 
   //host
   unsigned int down[32];
@@ -455,37 +451,31 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
 }
 //
 //GPU
-void NQueenG(int size,int steps){
+void NQueenG(int size,int steps)
+{
   register int sizeE=size-1;
-  register int bit;
+  register int bit=0;
   register int mask=((1<<size)-1);
-  long total;
   if(size<=0||size>32){return;}
-  bit=0;
-  //偶数、奇数共通
-  for(int col=0;col<size/2;col++){//右側半分だけクイーンを置く
-    bit=(1<<col);//
-    total=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
-    TOTAL+=total;
+  //偶数、奇数共通 右側半分だけクイーンを置く
+	int lim=(size%2==0)?size/2:sizeE/2;
+  for(int col=0;col<lim;col++){
+    bit=(1<<col);
+    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
   }
-  TOTAL=TOTAL*2;//ミラーなのでTOTALを２倍する
+  //ミラーなのでTOTALを２倍する
+  TOTAL=TOTAL*2;
   //奇数の場合はさらに中央にクイーンを置く
   if(size%2==1){
     bit=(1<<(sizeE)/2);
-    total=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
-    TOTAL+=total;  
+    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
   }
 }
 //
 //SGPU
 __global__ 
-void sgpu_cuda_kernel(
-  int size,int mark,
-  unsigned int* totalDown,
-  unsigned int* totalLeft,
-  unsigned int* totalRight,
-  unsigned int* d_results,
-  int totalCond){
+void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
+{
   //スレッド
   const int tid=threadIdx.x;//ブロック内のスレッドID
   const int bid=blockIdx.x;//グリッド内のブロックID
@@ -556,7 +546,8 @@ void sgpu_cuda_kernel(
 }
 //
 //SGPU
-long long sgpu_solve_nqueen_cuda(int size,int steps) {
+long long sgpu_solve_nqueen_cuda(int size,int steps)
+{
   unsigned int down[32];
   unsigned int left[32];
   unsigned int right[32];
@@ -738,7 +729,8 @@ long long sgpu_solve_nqueen_cuda(int size,int steps) {
 }
 //
 //CUDA 初期化
-bool InitCUDA(){
+bool InitCUDA()
+{
   int count;
   cudaGetDeviceCount(&count);
   if(count==0){fprintf(stderr,"There is no device.\n");return false;}
