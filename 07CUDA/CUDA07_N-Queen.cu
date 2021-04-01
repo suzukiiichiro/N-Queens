@@ -368,9 +368,9 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
   /***07 aBoard,uniq追加*********************/
-  __shared__ unsigned int c_aBoard[THREAD_NUM][MAX];
-  __shared__ int c_aT[THREAD_NUM][MAX];
-  __shared__ int c_aS[THREAD_NUM][MAX];
+  unsigned int c_aBoard[MAX];
+  int c_aT[MAX];
+  int c_aS[MAX];
   __shared__ unsigned int usum[THREAD_NUM];
   /************************/
   //
@@ -386,7 +386,7 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
     /***07 aBoard追加*********************/
     for(int i=0;i<size;i++){
       //c_aBoard[tid][i]=t_aBoard[idx][i];   
-      c_aBoard[tid][i]=t_aBoard[idx*MAX+i]; //２次元配列だが1次元的に利用  
+      c_aBoard[i]=t_aBoard[idx*MAX+i]; //２次元配列だが1次元的に利用  
     }
     /************************/
     while(row>=0){
@@ -403,7 +403,7 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
         //置く場所があるかどうか
         /***07 aBoard追加*********************/
         bitmap[tid][row]
-          ^=c_aBoard[tid][row+h_row]
+          ^=c_aBoard[row+h_row]
           =bit
           =(-bitmap[tid][row]&bitmap[tid][row]);       
         /************************/
@@ -412,7 +412,7 @@ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLe
           //無事到達したら 加算する
           if(row+1==mark){
            /***07 symmetryOpsの処理を追加*********************/
-           int s=symmetryOps_bitmap_gpu(size,c_aBoard[tid],c_aT[tid],c_aS[tid]); 
+           int s=symmetryOps_bitmap_gpu(size,c_aBoard,c_aT,c_aS); 
            //int s=0;//=symmetryOps_bitmap_gpu(size,c_aBoard[tid],aT,aS); 
            if(s!=0){
            //print(size); //print()でTOTALを++しない
@@ -1344,4 +1344,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-
