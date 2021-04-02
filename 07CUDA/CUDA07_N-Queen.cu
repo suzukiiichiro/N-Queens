@@ -178,7 +178,6 @@ __device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
 __device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
 __device__ __host__ int intncmp(int lt[],int rt[],int n);
 __device__ int symmetryOps_bitmap_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
-__global__
 /***07 d_uniq,t_aBoard,h_row追加に伴いコメント*************************************/
 //void cuda_kernel(
 //    int size,int mark,
@@ -186,8 +185,9 @@ __global__
 //    unsigned int* d_results,int totalCond,unsigned);
 /****************************************/
 /***07 d_uniq,t_aBoard,h_row追加*************************************/
+__global__
 void cuda_kernel(
-    int size,int mark,
+    register int size,register int mark,
     unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
     unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row,int* aT,int* aS);
 /****************************************/
@@ -327,30 +327,42 @@ int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS)
 /************************/
 /***07 引数 d_uniq,t_aBoard,h_row追加 uniq,aBoardのため*********************/
 __global__
-void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row,int* aT,int* aS)
+void cuda_kernel(
+    register int size,
+    register int mark,
+    unsigned int* totalDown,
+    unsigned int* totalLeft,
+    unsigned int* totalRight,
+    unsigned int* d_results,
+    unsigned int* d_uniq,
+    register int totalCond,
+    unsigned int* t_aBoard,
+    register int h_row,
+    int* aT,
+    int* aS)
 {
   /************************/
-  const unsigned int mask=(1<<size)-1;
-  int total=0;
+  register const unsigned int mask=(1<<size)-1;
+  register int total=0;
   /***07 uniq,aBoard追加*********************/
-  int unique=0;
+  register int unique=0;
   //int aT[MAX];
   //int aS[MAX];
   /************************/
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
   //n=8 なら mask==2 なので そこからスタート
-  int row=0;
-  unsigned int bit;
+  register int row=0;
+  register unsigned int bit;
   //
   //スレッド
   //
   //ブロック内のスレッドID
-  const int tid=threadIdx.x;
+  register const int tid=threadIdx.x;
   //グリッド内のブロックID
-  const int bid=blockIdx.x;
+  register const int bid=blockIdx.x;
   //全体通してのID
-  const int idx=bid*blockDim.x+tid;
+  register const int idx=bid*blockDim.x+tid;
   //
   //シェアードメモリ
   //
@@ -523,12 +535,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   int totalCond=0;
   bool matched=false;
   //host
-  unsigned int down[32];
-  down[row]=n_down;
-  unsigned int right[32];
-  right[row]=n_right;
-  unsigned int left[32];
-  left[row]=n_left;
+  unsigned int down[32];  down[row]=n_down;
+  unsigned int right[32]; right[row]=n_right;
+  unsigned int left[32];  left[row]=n_left;
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
   unsigned int bitmap[32];
@@ -592,7 +601,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
   //while(row>=0) {
-  int rowP=0;
+  register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
     //どこにも置けないので1行上に戻る
