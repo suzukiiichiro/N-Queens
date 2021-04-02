@@ -537,13 +537,31 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
   /************************/
   unsigned int bit;
-  unsigned int* totalDown=new unsigned int[steps];
-  unsigned int* totalLeft=new unsigned int[steps];
-  unsigned int* totalRight=new unsigned int[steps];
-  unsigned int* h_results=new unsigned int[steps];
+
+  //unsigned int* totalDown=new unsigned int[steps];
+  unsigned int* totalDown;
+  cudaMallocHost((void**) &totalDown,sizeof(int)*steps);
+
+  //unsigned int* totalLeft=new unsigned int[steps];
+  unsigned int* totalLeft;
+  cudaMallocHost((void**) &totalLeft,sizeof(int)*steps);
+
+  //unsigned int* totalRight=new unsigned int[steps];
+  unsigned int* totalRight;
+  cudaMallocHost((void**) &totalRight,sizeof(int)*steps);
+
+  //unsigned int* h_results=new unsigned int[steps];
+  unsigned int* h_results;
+  cudaMallocHost((void**) &h_results,sizeof(int)*steps);
+
   /***07 uniq,aBoard追加*********************/
-  unsigned int* h_uniq=new unsigned int[steps];
-  unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  //unsigned int* h_uniq=new unsigned int[steps];
+  unsigned int* h_uniq;
+  cudaMallocHost((void**) &h_uniq,sizeof(int)*steps);
+
+  //unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  unsigned int* t_aBoard;
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*MAX);
   /************************/
   //device
   unsigned int* downCuda;
@@ -747,17 +765,21 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   cudaFree(leftCuda);
   cudaFree(rightCuda);
   cudaFree(resultsCuda);
-  /***07 uniq,aBoard追加*********************/
+  /***07 uniq,aBoard追加 cudaFreeHostへ変更**/
   cudaFree(d_uniq);
   cudaFree(d_aBoard);
-  /************************/
-  delete[] totalDown;
-  delete[] totalLeft;
-  delete[] totalRight;
-  delete[] h_results;
-  /***07 uniq aBoard追加*********************/
-  delete[] h_uniq;
-  delete[] t_aBoard;
+  //delete[] totalDown;
+  cudaFreeHost(totalDown);
+  //delete[] totalLeft;
+  cudaFreeHost(totalLeft);
+  //delete[] totalRight;
+  cudaFreeHost(totalRight);
+  //delete[] h_results;
+  cudaFreeHost(h_results);
+  //delete[] h_uniq;
+  cudaFreeHost(h_uniq);
+  //delete[] t_aBoard;
+  cudaFreeHost(t_aBoard);
   /************************/
   return total;
 }
