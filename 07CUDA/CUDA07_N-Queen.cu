@@ -129,22 +129,22 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 17:     95815104               0  00:00:00:18.30
 
 $ nvcc CUDA07_N-Queen.cu  && ./a.out -g
-．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
+７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.02
+ 4:            2               1  00:00:00:00.03
  5:           10               2  00:00:00:00.00
  6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.00
+ 7:           40               6  00:00:00:00.01
  8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.01
+ 9:          352              46  00:00:00:00.02
 10:          724              92  00:00:00:00.04
 11:         2680             341  00:00:00:00.13
-12:        14200            1787  00:00:00:00.54
-13:        73712            9233  00:00:00:01.05
-14:       365596           45752  00:00:00:01.11
-15:      2279184          285053  00:00:00:06.65
-16:     14772512         1846955  00:00:00:41.28
-17:     95815104        11977939  00:00:05:35.54
+12:        14200            1787  00:00:00:00.53
+13:        73712            9233  00:00:00:01.03
+14:       365596           45752  00:00:00:01.09
+15:      2279184          285053  00:00:00:06.43
+16:     14772512         1846955  00:00:00:39.79
+17:     95815104        11977939  00:00:05:24.45
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -191,7 +191,7 @@ void cuda_kernel(
     unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
     unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row,int* aT,int* aS);
 /****************************************/
-long long solve_nqueen_cuda(int size,int steps);
+long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 SGPU
 __global__ 
@@ -328,8 +328,8 @@ int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS)
 /***07 引数 d_uniq,t_aBoard,h_row追加 uniq,aBoardのため*********************/
 __global__
 void cuda_kernel(
-    register int size,
-    register int mark,
+    int size,
+    int mark,
     unsigned int* totalDown,
     unsigned int* totalLeft,
     unsigned int* totalRight,
@@ -337,7 +337,7 @@ void cuda_kernel(
     unsigned int* d_uniq,
     register int totalCond,
     unsigned int* t_aBoard,
-    register int h_row,
+    int h_row,
     int* aT,
     int* aS)
 {
@@ -385,10 +385,12 @@ void cuda_kernel(
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
   /***07 aBoard,uniq追加*********************/
-  unsigned int c_aBoard[MAX];
-  int c_aT[MAX];
-  int c_aS[MAX];
+  /***07 shared に変更 **********************/
   __shared__ unsigned int usum[THREAD_NUM];
+  /***07 registerに変更 *********************/
+  register int c_aT[MAX];
+  register int c_aS[MAX];
+  register unsigned int c_aBoard[MAX];
   /************************/
   //
   //余分なスレッドは動かさない 
