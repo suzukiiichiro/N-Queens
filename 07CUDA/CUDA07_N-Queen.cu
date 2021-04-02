@@ -406,11 +406,19 @@ void cuda_kernel(
       c_aBoard[i]=t_aBoard[idx*MAX+i]; //２次元配列だが1次元的に利用  
     }
     /************************/
+    /**07 スカラー変数に置き換えた**********/
+    register int bitmap_tid_row;
     while(row>=0){
+      //bitmap[tid][row]をスカラー変数に置き換え
+      bitmap_tid_row=bitmap[tid][row];
+    /***************************************/
       //
       //bitmap[tid][row]=00000000 クイーンを
       //どこにも置けないので1行上に戻る
-      if(bitmap[tid][row]==0){
+      /**07 スカラー変数に置き換えた**********/
+      //if(bitmap[tid][row]==0){
+      if(bitmap_tid_row==0){
+      /***************************************/
         row--;
       }else{
         //クイーンを置く
@@ -422,7 +430,10 @@ void cuda_kernel(
         bitmap[tid][row]
           ^=c_aBoard[row+h_row]
           =bit
-          =(-bitmap[tid][row]&bitmap[tid][row]);       
+          /**07 スカラー変数に置き換えた**********/
+          //=(-bitmap[tid][row]&bitmap[tid][row]);       
+          =(-bitmap_tid_row&bitmap_tid_row);       
+          /***************************************/
         /************************/
         if((bit&mask)!=0){
           //最終行?最終行から１個前の行まで
