@@ -401,9 +401,9 @@ void cuda_kernel(
     //されるので idxでよい
     //
     /***07 aBoard追加*********************/
-    for(int i=0;i<size;i++){
+    for(int i=0;i<h_row;i++){
       //c_aBoard[tid][i]=t_aBoard[idx][i];   
-      c_aBoard[i]=t_aBoard[idx*MAX+i]; //２次元配列だが1次元的に利用  
+      c_aBoard[i]=t_aBoard[idx*h_row+i]; //２次元配列だが1次元的に利用  
     }
     /************************/
     /**07 スカラー変数に置き換えた**********/
@@ -589,9 +589,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   unsigned int* h_uniq;
   cudaMallocHost((void**) &h_uniq,sizeof(int)*steps);
 
-  //unsigned int* t_aBoard=new unsigned int[steps*MAX];
+  //unsigned int* t_aBoard=new unsigned int[steps*mark];
   unsigned int* t_aBoard;
-  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*MAX);
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*mark);
   /************************/
   //device
   unsigned int* downCuda;
@@ -611,7 +611,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   unsigned int* d_uniq;
   cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
   unsigned int* d_aBoard;
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*MAX);
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*mark);
   /************************/
   //12行目までは3行目までCPU->row==mark以下で 3行目までの
   //down,left,right情報を totalDown,totalLeft,totalRight
@@ -669,9 +669,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
           totalLeft[totalCond]=left[row];
           totalRight[totalCond]=right[row];
           /***07 aBoard追加*********************/
-          for(int i=0;i<size;i++){
+          for(int i=0;i<mark;i++){
             //t_aBoard[totalCond][i]=aBoard[i];
-            t_aBoard[totalCond*MAX+i]=aBoard[i];
+            t_aBoard[totalCond*mark+i]=aBoard[i];
           }
           /************************/
           //スレッド数をインクリメントする
@@ -707,7 +707,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
                 sizeof(int)*totalCond,cudaMemcpyHostToDevice);
             /***07 aBoard追加*********************/
             cudaMemcpy(d_aBoard,t_aBoard,
-                sizeof(int)*totalCond*MAX,cudaMemcpyHostToDevice);
+                sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
             /************************/
             /** backTrack+bitmap*/
             //size-mark は何行GPUを実行するか totalCondはスレッド数
@@ -765,7 +765,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   /***07 aBoard追加*********************/
   cudaMemcpy(d_aBoard,t_aBoard,
-      sizeof(int)*totalCond*MAX,cudaMemcpyHostToDevice);
+      sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
   /************************/ 
   /** backTrack+bitmap*/
   //size-mark は何行GPUを実行するか totalCondはスレッド数
@@ -1401,3 +1401,4 @@ int main(int argc,char** argv)
   }
   return 0;
 }
+
