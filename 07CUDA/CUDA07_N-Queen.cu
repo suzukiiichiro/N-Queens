@@ -343,9 +343,9 @@ void cuda_kernel(
 {
   /************************/
   register const unsigned int mask=(1<<size)-1;
-  register int total=0;
+  register unsigned int total=0;
   /***07 uniq,aBoard追加*********************/
-  register int unique=0;
+  register unsigned int unique=0;
   //int aT[MAX];
   //int aS[MAX];
   /************************/
@@ -358,11 +358,11 @@ void cuda_kernel(
   //スレッド
   //
   //ブロック内のスレッドID
-  register const int tid=threadIdx.x;
+  register unsigned const int tid=threadIdx.x;
   //グリッド内のブロックID
-  register const int bid=blockIdx.x;
+  register unsigned const int bid=blockIdx.x;
   //全体通してのID
-  register const int idx=bid*blockDim.x+tid;
+  register unsigned const int idx=bid*blockDim.x+tid;
   //
   //シェアードメモリ
   //
@@ -407,10 +407,16 @@ void cuda_kernel(
     }
     /************************/
     /**07 スカラー変数に置き換えた**********/
-    register int bitmap_tid_row;
+    register unsigned int bitmap_tid_row;
+    register unsigned int down_tid_row;
+    register unsigned int left_tid_row;
+    register unsigned int right_tid_row;
     while(row>=0){
       //bitmap[tid][row]をスカラー変数に置き換え
       bitmap_tid_row=bitmap[tid][row];
+      down_tid_row=down[tid][row];
+      left_tid_row=left[tid][row];
+      right_tid_row=right[tid][row];
     /***************************************/
       //
       //bitmap[tid][row]=00000000 クイーンを
@@ -456,9 +462,13 @@ void cuda_kernel(
             row--;
           }else{
             int rowP=row+1;
-            down[tid][rowP]=down[tid][row]|bit;
-            left[tid][rowP]=(left[tid][row]|bit)<<1;
-            right[tid][rowP]=(right[tid][row]|bit)>>1;
+            /**07スカラー変数に置き換えてregister対応 ****/
+            //down[tid][rowP]=down[tid][row]|bit;
+            down[tid][rowP]=down_tid_row|bit;
+            //left[tid][rowP]=(left[tid][row]|bit)<<1;
+            left[tid][rowP]=(left_tid_row|bit)<<1;
+            //right[tid][rowP]=(right[tid][row]|bit)>>1;
+            right[tid][rowP]=(right_tid_row|bit)>>1;
             bitmap[tid][rowP]
               =mask&~(
                   down[tid][rowP]
