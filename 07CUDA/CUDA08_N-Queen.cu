@@ -86,7 +86,9 @@ $ nvcc CUDA08_N-Queen.cu  && ./a.out -g
 int down[2*MAX-1];  //CPU down:flagA 縦 配置フラグ　
 int left[2*MAX-1];  //CPU left:flagB 斜め配置フラグ　
 int right[2*MAX-1]; //CPU right:flagC 斜め配置フラグ　
+/***07 aBoard*************************************/
 unsigned int aBoard[MAX];//CPU,GPUで使用
+/****************************************/
 int aT[MAX];//CPUで使用
 int aS[MAX];//CPUで使用
 long TOTAL=0;//GPU,CPUで使用
@@ -767,7 +769,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //const unsigned int mark=size>11?size-10:2;
   /************************/
   /***08 クイーンを２行目まで固定で置くためmarkが3以上必要*********************/
-  const unsigned int mark=size>11?size-10:3;
+  const unsigned int mark=size>12?size-10:3;
   /************************/  
   const unsigned int h_mark=row;
   long total=0;
