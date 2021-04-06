@@ -127,7 +127,7 @@ long TOTAL=0;//GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
 /****************************************/
 int COUNT2,COUNT4,COUNT8;//CPUで使用
-int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;//CPUで使用
+int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;//CPUで使用 11からGPUで使用
 //関数宣言 GPU
 /***07 d_uniq,t_aBoard,h_row追加に伴いコメント*************************************/
 //void cuda_kernel(
