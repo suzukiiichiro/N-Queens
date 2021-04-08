@@ -13,7 +13,6 @@
 
 
  ７．バックトラック＋ビットマップ＋対称解除法
-
  *     一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
  *     ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
  * 
@@ -129,22 +128,22 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 17:     95815104               0  00:00:00:18.30
 
 $ nvcc CUDA07_N-Queen.cu  && ./a.out -g
-７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
+．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.03
+ 4:            2               1  00:00:00:00.02
  5:           10               2  00:00:00:00.00
  6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.01
+ 7:           40               6  00:00:00:00.00
  8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.02
+ 9:          352              46  00:00:00:00.01
 10:          724              92  00:00:00:00.04
 11:         2680             341  00:00:00:00.13
-12:        14200            1787  00:00:00:00.53
-13:        73712            9233  00:00:00:01.03
-14:       365596           45752  00:00:00:01.09
-15:      2279184          285053  00:00:00:06.43
-16:     14772512         1846955  00:00:00:39.79
-17:     95815104        11977939  00:00:05:24.45
+12:        14200            1787  00:00:00:00.54
+13:        73712            9233  00:00:00:01.05
+14:       365596           45752  00:00:00:01.11
+15:      2279184          285053  00:00:00:06.65
+16:     14772512         1846955  00:00:00:41.28
+17:     95815104        11977939  00:00:05:35.54
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -191,7 +190,7 @@ void cuda_kernel(
     unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
     unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row,int* aT,int* aS);
 /****************************************/
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
+long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 SGPU
 __global__ 
@@ -269,9 +268,50 @@ int intncmp(unsigned int lt[],int rt[],int n)
   return rtn;
 }
 /****************************************/
+//
 /***07 symmetryOps*************************************/
 __device__
-int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS)
+void vMirror_bitmap(unsigned int bf[],unsigned int af[],int si)
+{
+  int score ;
+  for(int i=0;i<si;i++) {
+    score=bf[i];
+    af[i]=rh(score,si-1);
+  }
+}
+/****************************************/
+//
+/***07 symmetryOps*************************************/
+__device__
+void rotate_bitmap(unsigned int bf[],unsigned int af[],int si)
+{
+  for(int i=0;i<si;i++){
+    int t=0;
+    for(int j=0;j<si;j++){
+      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
+    }
+    af[i]=t;                        // y[i] の j ビット目にする
+  }
+}
+/****************************************/
+//
+/***07 symmetryOps*************************************/
+__device__
+int intncmp(unsigned int lt[],unsigned int rt[],int n)
+{
+  int rtn=0;
+  for(int k=0;k<n;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){
+      break;
+    }
+  }
+  return rtn;
+}
+/****************************************/
+/***07 symmetryOps*************************************/
+__device__
+int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,unsigned int *d_aT,unsigned int *d_aS)
 {
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
@@ -328,8 +368,8 @@ int symmetryOps_bitmap_gpu(int si,unsigned int *d_aBoard,int *d_aT,int *d_aS)
 /***07 引数 d_uniq,t_aBoard,h_row追加 uniq,aBoardのため*********************/
 __global__
 void cuda_kernel(
-    int size,
-    int mark,
+    register int size,
+    register int mark,
     unsigned int* totalDown,
     unsigned int* totalLeft,
     unsigned int* totalRight,
@@ -337,7 +377,7 @@ void cuda_kernel(
     unsigned int* d_uniq,
     register int totalCond,
     unsigned int* t_aBoard,
-    int h_row,
+    register int h_row,
     int* aT,
     int* aS)
 {
@@ -385,12 +425,10 @@ void cuda_kernel(
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
   /***07 aBoard,uniq追加*********************/
-  /***07 shared に変更 **********************/
+  unsigned int c_aBoard[MAX];
+  unsigned int c_aT[MAX];
+  unsigned int c_aS[MAX];
   __shared__ unsigned int usum[THREAD_NUM];
-  /***07 registerに変更 *********************/
-  register int c_aT[MAX];
-  register int c_aS[MAX];
-  register unsigned int c_aBoard[MAX];
   /************************/
   //
   //余分なスレッドは動かさない 
@@ -504,43 +542,43 @@ void cuda_kernel(
     usum[tid]+=usum[tid+64];
     /************************/
   }
-  __syncthreads();if(tid<32){
+  __syncwarp();if(tid<32){
     sum[tid]+=sum[tid+32];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+32];
     /************************/
   } 
-  __syncthreads();if(tid<16){
+  __syncwarp();if(tid<16){
     sum[tid]+=sum[tid+16];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+16];
     /************************/  
   } 
-  __syncthreads();if(tid<8){
+  __syncwarp();if(tid<8){
     sum[tid]+=sum[tid+8];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+8];
     /************************/
   } 
-  __syncthreads();if(tid<4){
+  __syncwarp();if(tid<4){
     sum[tid]+=sum[tid+4];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+4];
     /************************/  
   } 
-  __syncthreads();if(tid<2){
+  __syncwarp();if(tid<2){
     sum[tid]+=sum[tid+2];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+2];
     /************************/  
   } 
-  __syncthreads();if(tid<1){
+  __syncwarp();if(tid<1){
     sum[tid]+=sum[tid+1];
     /***07 uniq追加*********************/
     usum[tid]+=usum[tid+1];
     /************************/  
   } 
-  __syncthreads();if(tid==0){
+  __syncwarp();if(tid==0){
     d_results[bid]=sum[0];
     /****07 uniq追加********************/
     d_uniq[bid]=usum[0];
