@@ -176,10 +176,12 @@ unsigned int aBoard[MAX];//CPU,GPUで使用
 /****************************************/
 //関数宣言 GPU
 //関数宣言 GPU/CPU
-__device__ __host__ int rh(int a,int sz);
+/***07 rh,vMirror同一化のためコメント*************************************/
+//__device__ __host__ int rh(int a,int sz);
+/****************************************
 __device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
 __device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
-__device__ __host__ int intncmp(int lt[],int rt[],int n);
+__device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
 /***07 aT,aSロカール化,CPU,GPU同一関数化*************************************/
 //__device__ int symmetryOps_bitmap_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
 /****************************************/
@@ -225,6 +227,8 @@ void NQueenD(int size,int mask,int row);
 //GPU マルチスレッド
 //
 /***07 symmetryOps*************************************/
+/***07 vMirror,rh同一化のためコメント*************************************/
+/**
 __device__ __host__
 int rh(int a,int sz)
 {
@@ -234,6 +238,7 @@ int rh(int a,int sz)
   }
   return tmp;
 }
+**/
 /****************************************/
 //
 /***07 symmetryOps*************************************/
@@ -243,9 +248,28 @@ void vMirror_bitmap(int bf[],int af[],int si)
   int score ;
   for(int i=0;i<si;i++) {
     score=bf[i];
-    af[i]=rh(score,si-1);
+    //af[i]=rh(score,si-1);
+    int tmp=0;
+    for(int j=0;j<=si-1;j++){
+      if(score&(1<<j)){ 
+        tmp|=(1<<(si-1-j)); 
+        break;                 
+      }
+    }
+    af[i]=tmp;
   }
 }
+/***07 vMirror,rh同一化のためコメント*************************************/
+/**
+__device__ __host__
+void vMirror_bitmap_old(int bf[],int af[],int si)
+{
+  int score ;
+  for(int i=0;i<si;i++) {
+    score=bf[i];
+    af[i]=rh(score,si-1);
+  }
+ **/
 /****************************************/
 //
 /***07 symmetryOps*************************************/
