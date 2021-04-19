@@ -161,9 +161,11 @@ long TOTAL=0; //GPU,CPUで使用
 /***07 uniq*************************************/
 long UNIQUE=0;//GPU,CPUで使用
 /****************************************/
-int down[2*MAX-1]; //down:flagA 縦 配置フラグ　//CPUで使用
-int left[2*MAX-1];  //left:flagB 斜め配置フラグ　//CPUで使用
-int right[2*MAX-1];  //right:flagC 斜め配置フラグ　//CPUで使用
+/***07 グローバルで使用していないためコメント*************************************/
+//int down[2*MAX-1]; //down:flagA 縦 配置フラグ　//CPUで使用
+//int left[2*MAX-1];  //left:flagB 斜め配置フラグ　//CPUで使用
+//int right[2*MAX-1];  //right:flagC 斜め配置フラグ　//CPUで使用
+/****************************************/
 /***07 aBoard*************************************/
 unsigned int aBoard[MAX];//CPU,GPUで使用
 /****************************************/
