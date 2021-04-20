@@ -1,6 +1,0 @@
-17:10:57 **** インクリメンタル・ビルド of configuration Debug for project N-Queens ****
-make all 
-make: Nothing to be done for `all'.
-
-17:10:57 Build Finished. 0 errors, 0 warnings. (経過 67ms)
-
