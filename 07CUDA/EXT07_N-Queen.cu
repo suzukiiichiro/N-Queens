@@ -182,8 +182,9 @@ long UNIQUE=0;//GPU,CPUで使用
 // **07 配列のポインタを戻り値で返却するように変更*************************************/
 //__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
 //__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
-__device__ __host__ int* vMirror_bitmap(int bf[],int af[],int si);
-__device__ __host__ int* rotate_bitmap(int bf[],int af[],int si);
+__device__ __host__ int* vMirror_bitmap(int bf,int af,int si);
+__device__ __host__ int* rotate_bitmap(int bf,int af,int si);
+__device__ __host__ int intncmp(unsigned int* lt,int* rt,int n);
 /****************************************
 __device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
 // 07 aT,aSロカール化,CPU,GPU同一関数化*********************************** **/
@@ -257,21 +258,20 @@ int rh(int a,int sz)
 /***07 symmetryOps*************************************/
 __device__ __host__
 //void vMirror_bitmap(int bf[],int af[],int si)
-int* vMirror_bitmap(int bf[],int af[],int si)
+int* vMirror_bitmap(int* bf,int* af,int si)
 {
-  int score ;
+  int bf_i;
+  int tmp;
   for(int i=0;i<si;i++) {
-    score=bf[i];
-    //af[i]=rh(score,si-1);
-    int t=0;
+    bf_i=bf[i];
+    tmp=0;
     for(int j=0;j<=si-1;j++){
-      if(score&(1<<j)){ 
-      //if(bf[i]&(1<<j)){ 
-        t|=(1<<(si-1-j)); 
+      if(bf_i&(1<<j)){ 
+        tmp|=(1<<(si-1-j)); 
         break;                 
       }
     }
-    af[i]=t;
+    af[i]=tmp;
   }
   return af;
 }
@@ -291,10 +291,11 @@ void vMirror_bitmap_old(int bf[],int af[],int si)
 /***07 symmetryOps*************************************/
 __device__ __host__
 //void rotate_bitmap(int bf[],int af[],int si)
-int* rotate_bitmap(int bf[],int af[],int si)
+int* rotate_bitmap(int* bf,int* af,int si)
 {
+  int t;
   for(int i=0;i<si;i++){
-    int t=0;
+    t=0;
     for(int j=0;j<si;j++){
       t|=((bf[j]>>i)&1)<<(si-j-1);
     }
@@ -306,30 +307,7 @@ int* rotate_bitmap(int bf[],int af[],int si)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-int ncmp(unsigned int lt[],int rt[],int n)
-{
-  int rtn;
-  for(int k=0;k<n;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){
-      break;
-    }
-  }
-  return rtn;
-}
-__device__ __host__
-int ncmp(unsigned int lt[],int rt[],int n,int icmp)
-{
-  for(int k=0;k<n;k++){
-    icmp=lt[k]-rt[k];
-    if(icmp!=0){
-      break;
-    }
-  }
-  return icmp;
-}
-__device__ __host__
-int intncmp(unsigned int lt[],int rt[],int n)
+int intncmp(unsigned int* lt,int* rt,int n)
 {
   int rtn=0;
   for(int k=0;k<n;k++){
@@ -346,26 +324,24 @@ int intncmp(unsigned int lt[],int rt[],int n)
 __device__ __host__
 int symmetryOps_bitmap(int si,unsigned int *aBoard)
 {
-  int nEquiv;
+  int nEquiv=0;
   int aT[MAX];
   int aS[MAX];
-  int icmp=0;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  //for(int i=0;i<si;i++){ aS[i]=aT[i]=aBoard[i];}
   memcpy(aT,aBoard,sizeof(int)*si);
   //時計回りに90度回転
   rotate_bitmap(aT,aS,si);
-  icmp=ncmp(aBoard,aS,si);
+  int icmp=intncmp(aBoard,aS,si);
   if(icmp>0){ return 0; }
-  if(icmp==0){ nEquiv=2; }
+  else if(icmp==0){ nEquiv=2; }
   else{//時計回りに180度回転
     rotate_bitmap(aS,aT,si);
-    icmp=ncmp(aBoard,aT,si);
+    icmp=intncmp(aBoard,aT,si);
     if(icmp>0){ return 0;}
-    if(icmp==0){ nEquiv=4;}
+    else if(icmp==0){ nEquiv=4;}
     else{//時計回りに270度回転
       rotate_bitmap(aT,aS,si);
-      icmp=ncmp(aBoard,aS,si);
+      icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
       nEquiv=8;
     }
@@ -375,21 +351,21 @@ int symmetryOps_bitmap(int si,unsigned int *aBoard)
   memcpy(aS,aBoard,sizeof(int)*si);
   //垂直反転
   vMirror_bitmap(aS,aT,si);   
-  icmp=ncmp(aBoard,aT,si);
+  icmp=intncmp(aBoard,aT,si);
   if(icmp>0){ return 0; }
   //-90度回転 対角鏡と同等
   if(nEquiv>2){
     rotate_bitmap(aT,aS,si);
-    icmp=ncmp(aBoard,aS,si);
+    icmp=intncmp(aBoard,aS,si);
     if(icmp>0){return 0;}
     //-180度回転 水平鏡像と同等
-    if(nEquiv>4){
+    else if(nEquiv>4){
       rotate_bitmap(aS,aT,si);
       icmp=intncmp(aBoard,aT,si);
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
       rotate_bitmap(aT,aS,si);
-      icmp=ncmp(aBoard,aS,si);
+      icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
     }
   }
