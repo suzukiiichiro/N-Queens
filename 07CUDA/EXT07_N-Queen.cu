@@ -300,6 +300,7 @@ int* rotate_bitmap(int* bf,int* af,int si)
       t|=((bf[j]>>i)&1)<<(si-j-1);
     }
     af[i]=t;
+    printf("bf: %d af: %d\n",bf[i],af[i]);
   }
   return af;
 }
