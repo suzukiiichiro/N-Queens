@@ -130,20 +130,20 @@ bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
 $ nvcc CUDA07_N-Queen.cu  && ./a.out -g
 ７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.02
- 5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.00
- 8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.02
-10:          724              92  00:00:00:00.04
-11:         2680             341  00:00:00:00.13
-12:        14200            1787  00:00:00:00.52
-13:        73712            9233  00:00:00:01.03
-14:       365596           45752  00:00:00:01.09
-15:      2279184          285053  00:00:00:06.45
-16:     14772512         1846955  00:00:00:40.24
-17:     95815104        11977939  00:00:05:26.62
+ 4:            2               1  00:00:00:00.03
+ 5:           10               5  00:00:00:00.00
+ 6:            4               2  00:00:00:00.00
+ 7:           40              20  00:00:00:00.01
+ 8:           92              46  00:00:00:00.00
+ 9:          352             176  00:00:00:00.01
+10:          724             362  00:00:00:00.04
+11:         2680            1340  00:00:00:00.12
+12:        14200            7100  00:00:00:00.50
+13:        73712           36856  00:00:00:00.90
+14:       365596          182798  00:00:00:00.94
+15:      2279184         1139592  00:00:00:05.50
+16:     14772512         7386256  00:00:00:37.28
+17:     95815104        47907552  00:00:04:44.32
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -179,11 +179,11 @@ long UNIQUE=0;//GPU,CPUで使用
 /***07 rh,vMirror同一化のためコメント*************************************/
 //__device__ __host__ int rh(int a,int sz);
 /****************************************
-/***07 配列のポインタを戻り値で返却するように変更*************************************/
+// **07 配列のポインタを戻り値で返却するように変更*************************************/
 //__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
 //__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
-__device__ __host__ int vMirror_bitmap(int bf[],int af[],int si);
-__device__ __host__ int rotate_bitmap(int bf[],int af[],int si);
+__device__ __host__ int* vMirror_bitmap(int bf[],int af[],int si);
+__device__ __host__ int* rotate_bitmap(int bf[],int af[],int si);
 /****************************************
 __device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
 // 07 aT,aSロカール化,CPU,GPU同一関数化*********************************** **/
@@ -256,10 +256,8 @@ int rh(int a,int sz)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-/***07 配列のポインタをreturnするように修正する*************************************/
 //void vMirror_bitmap(int bf[],int af[],int si)
-int vMirror_bitmap(int bf[],int af[],int si)
-/****************************************/
+int* vMirror_bitmap(int bf[],int af[],int si)
 {
   int score ;
   for(int i=0;i<si;i++) {
@@ -268,15 +266,14 @@ int vMirror_bitmap(int bf[],int af[],int si)
     int t=0;
     for(int j=0;j<=si-1;j++){
       if(score&(1<<j)){ 
+      //if(bf[i]&(1<<j)){ 
         t|=(1<<(si-1-j)); 
         break;                 
       }
     }
     af[i]=t;
   }
-  /***07 配列をreturnするように修正する*************************************/
-  return *af;
-  /****************************************/
+  return af;
 }
 /***07 vMirror,rh同一化のためコメント*************************************/
 /**
@@ -293,25 +290,32 @@ void vMirror_bitmap_old(int bf[],int af[],int si)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-/***07 配列をreturnするように修正する*************************************/
 //void rotate_bitmap(int bf[],int af[],int si)
-int rotate_bitmap(int bf[],int af[],int si)
-/****************************************/
+int* rotate_bitmap(int bf[],int af[],int si)
 {
   for(int i=0;i<si;i++){
     int t=0;
     for(int j=0;j<si;j++){
-      t|=((bf[j]>>i)&1)<<(si-j-1); // x[j] の i ビット目を
+      t|=((bf[j]>>i)&1)<<(si-j-1);
     }
-    af[i]=t;                        // y[i] の j ビット目にする
+    af[i]=t;
   }
-  /***07 配列をreturnするように修正する*************************************/
-  return *af;
-  /****************************************/
+  return af;
 }
 /****************************************/
 //
 /***07 symmetryOps*************************************/
+__device__ __host__
+int ncmp(unsigned int lt[],int rt[],int n,int icmp)
+{
+  for(int k=0;k<n;k++){
+    icmp=lt[k]-rt[k];
+    if(icmp!=0){
+      break;
+    }
+  }
+  return icmp;
+}
 __device__ __host__
 int intncmp(unsigned int lt[],int rt[],int n)
 {
@@ -328,53 +332,61 @@ int intncmp(unsigned int lt[],int rt[],int n)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-int symmetryOps_bitmap(int si,unsigned int *d_aBoard)
+int symmetryOps_bitmap(int si,unsigned int *aBoard)
 {
   int nEquiv;
   int aT[MAX];
   int aS[MAX];
+  int icmp=0;
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=d_aBoard[i];}
-  *aS=rotate_bitmap(aT,aS,si);    //時計回りに90度回転
-  int k=intncmp(d_aBoard,aS,si);
-  //printf("1_k:%d\n",k);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=2;}else{
-    *aT=rotate_bitmap(aS,aT,si);  //時計回りに180度回転
-    k=intncmp(d_aBoard,aT,si);
-    //printf("2_k:%d\n",k);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=4;}else{
-      *aS=rotate_bitmap(aT,aS,si);//時計回りに270度回転
-      k=intncmp(d_aBoard,aS,si);
-      //printf("3_k:%d\n",k);
-      if(k>0){ return 0;}
+  //for(int i=0;i<si;i++){ aS[i]=aT[i]=aBoard[i];}
+  memcpy(aT,aBoard,sizeof(int)*si);
+  //時計回りに90度回転
+  rotate_bitmap(aT,aS,si);
+  //icmp=intncmp(aBoard,aS,si);
+  ncmp(aBoard,aS,si,icmp);
+  //if(intncmp(aBoard,aS,si)>0){ return 0; }
+  if(icmp>0){ return 0; }
+  if(icmp==0){ nEquiv=2; }
+  else{
+    //時計回りに180度回転
+    rotate_bitmap(aS,aT,si);
+    //icmp=intncmp(aBoard,aT,si);
+    ncmp(aBoard,aT,si,icmp);
+    if(icmp>0){ return 0;}
+    if(icmp==0){ nEquiv=4;}
+    else{
+      //時計回りに270度回転
+      rotate_bitmap(aT,aS,si);
+      //icmp=intncmp(aBoard,aS,si);
+      ncmp(aBoard,aS,si,icmp);
+      if(icmp>0){ return 0;}
       nEquiv=8;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aS[i]=d_aBoard[i];}
-  *aT=vMirror_bitmap(aS,aT,si);   //垂直反転
-  k=intncmp(d_aBoard,aT,si);
-  //printf("4_k:%d\n",k);
-  if(k>0){ return 0; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等
-    *aS=rotate_bitmap(aT,aS,si);
-    k=intncmp(d_aBoard,aS,si);
-    //printf("5_k:%d\n",k);
-    if(k>0){return 0;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      *aT=rotate_bitmap(aS,aT,si);
-      k=intncmp(d_aBoard,aT,si);
-      //printf("6_k:%d\n",k);
-      if(k>0){ return 0;}       //-270度回転 反対角鏡と同等
-      *aS=rotate_bitmap(aT,aS,si);
-      k=intncmp(d_aBoard,aS,si);
-      //printf("7_k:%d\n",k);
-      if(k>0){ return 0;}
+  //for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
+  memcpy(aS,aBoard,sizeof(int)*si);
+  //垂直反転
+  vMirror_bitmap(aS,aT,si);   
+  icmp=ncmp(aBoard,aT,si,icmp);
+  if(icmp>0){ return 0; }
+  //-90度回転 対角鏡と同等
+  if(nEquiv>2){
+    rotate_bitmap(aT,aS,si);
+    icmp=ncmp(aBoard,aS,si,icmp);
+    if(icmp>0){return 0;}
+    //-180度回転 水平鏡像と同等
+    if(nEquiv>4){
+      rotate_bitmap(aS,aT,si);
+      icmp=ncmp(aBoard,aT,si,icmp);
+      //-270度回転 反対角鏡と同等
+      if(icmp>0){ return 0;}
+      rotate_bitmap(aT,aS,si);
+      icmp=ncmp(aBoard,aS,si,icmp);
+      if(icmp>0){ return 0;}
     }
   }
-  //printf("eq:%d\n",nEquiv);
   return nEquiv;  
 }
 /****************************************/
