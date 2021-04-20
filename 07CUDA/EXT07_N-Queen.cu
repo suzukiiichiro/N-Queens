@@ -306,6 +306,18 @@ int* rotate_bitmap(int bf[],int af[],int si)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
+int ncmp(unsigned int lt[],int rt[],int n)
+{
+  int rtn;
+  for(int k=0;k<n;k++){
+    rtn=lt[k]-rt[k];
+    if(rtn!=0){
+      break;
+    }
+  }
+  return rtn;
+}
+__device__ __host__
 int ncmp(unsigned int lt[],int rt[],int n,int icmp)
 {
   for(int k=0;k<n;k++){
@@ -343,23 +355,17 @@ int symmetryOps_bitmap(int si,unsigned int *aBoard)
   memcpy(aT,aBoard,sizeof(int)*si);
   //時計回りに90度回転
   rotate_bitmap(aT,aS,si);
-  //icmp=intncmp(aBoard,aS,si);
-  ncmp(aBoard,aS,si,icmp);
-  //if(intncmp(aBoard,aS,si)>0){ return 0; }
+  icmp=ncmp(aBoard,aS,si);
   if(icmp>0){ return 0; }
   if(icmp==0){ nEquiv=2; }
-  else{
-    //時計回りに180度回転
+  else{//時計回りに180度回転
     rotate_bitmap(aS,aT,si);
-    //icmp=intncmp(aBoard,aT,si);
-    ncmp(aBoard,aT,si,icmp);
+    icmp=ncmp(aBoard,aT,si);
     if(icmp>0){ return 0;}
     if(icmp==0){ nEquiv=4;}
-    else{
-      //時計回りに270度回転
+    else{//時計回りに270度回転
       rotate_bitmap(aT,aS,si);
-      //icmp=intncmp(aBoard,aS,si);
-      ncmp(aBoard,aS,si,icmp);
+      icmp=ncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
       nEquiv=8;
     }
@@ -369,21 +375,21 @@ int symmetryOps_bitmap(int si,unsigned int *aBoard)
   memcpy(aS,aBoard,sizeof(int)*si);
   //垂直反転
   vMirror_bitmap(aS,aT,si);   
-  icmp=ncmp(aBoard,aT,si,icmp);
+  icmp=ncmp(aBoard,aT,si);
   if(icmp>0){ return 0; }
   //-90度回転 対角鏡と同等
   if(nEquiv>2){
     rotate_bitmap(aT,aS,si);
-    icmp=ncmp(aBoard,aS,si,icmp);
+    icmp=ncmp(aBoard,aS,si);
     if(icmp>0){return 0;}
     //-180度回転 水平鏡像と同等
     if(nEquiv>4){
       rotate_bitmap(aS,aT,si);
-      icmp=ncmp(aBoard,aT,si,icmp);
+      icmp=intncmp(aBoard,aT,si);
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
       rotate_bitmap(aT,aS,si);
-      icmp=ncmp(aBoard,aS,si,icmp);
+      icmp=ncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
     }
   }
