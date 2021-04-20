@@ -166,8 +166,8 @@ long UNIQUE=0;//GPU,CPUで使用
 //int left[2*MAX-1];  //left:flagB 斜め配置フラグ　//CPUで使用
 //int right[2*MAX-1];  //right:flagC 斜め配置フラグ　//CPUで使用
 /****************************************/
-/***07 aBoard*************************************/
-unsigned int aBoard[MAX];//CPU,GPUで使用
+/***07 aBoardローカル化のためコメント*************************************/
+//unsigned int aBoard[MAX];//CPU,GPUで使用
 /****************************************/
 /***07 aT,aSローカル化のためコメント.CPU,GPU同一関数化のためコメント*************************************/
 //int aT[MAX];//CPUで使用
@@ -179,8 +179,12 @@ unsigned int aBoard[MAX];//CPU,GPUで使用
 /***07 rh,vMirror同一化のためコメント*************************************/
 //__device__ __host__ int rh(int a,int sz);
 /****************************************
-__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
-__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
+/***07 配列のポインタを戻り値で返却するように変更*************************************/
+//__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
+//__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
+__device__ __host__ int vMirror_bitmap(int bf[],int af[],int si);
+__device__ __host__ int rotate_bitmap(int bf[],int af[],int si);
+/****************************************
 __device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
 // 07 aT,aSロカール化,CPU,GPU同一関数化*********************************** **/
 //__device__ int symmetryOps_bitmap_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
@@ -199,8 +203,11 @@ void cuda_kernel(
     unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
     unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row);
 /****************************************/
-long long solve_nqueen_cuda(int size,int steps);
-void NQueenG(int size,int mask,int row,int steps);
+/***07 aBoardローカル化*************************************/
+//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
+long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard);
+/****************************************/
+void NQueenG(int size,int steps);
 //関数宣言 SGPU
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
@@ -213,10 +220,16 @@ void TimeFormat(clock_t utime,char *form);
 //long getTotal();
 //void symmetryOps_bitmap(int si);
 //関数宣言 非再帰版
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
+/***07 aBoardロカール化*************************************/
+//void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap,unsigned int* aBoard);
+/****************************************/
 void NQueen(int size,int mask);
 //関数宣言 GPUへの移行再帰版
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
+/***07 aBoardロカール化*************************************/
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard);
+//void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
+/****************************************/
 void NQueenR(int size,int mask);
 //関数宣言 通常版
 //  再帰
@@ -243,21 +256,27 @@ int rh(int a,int sz)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-void vMirror_bitmap(int bf[],int af[],int si)
+/***07 配列のポインタをreturnするように修正する*************************************/
+//void vMirror_bitmap(int bf[],int af[],int si)
+int vMirror_bitmap(int bf[],int af[],int si)
+/****************************************/
 {
   int score ;
   for(int i=0;i<si;i++) {
     score=bf[i];
     //af[i]=rh(score,si-1);
-    int tmp=0;
+    int t=0;
     for(int j=0;j<=si-1;j++){
       if(score&(1<<j)){ 
-        tmp|=(1<<(si-1-j)); 
+        t|=(1<<(si-1-j)); 
         break;                 
       }
     }
-    af[i]=tmp;
+    af[i]=t;
   }
+  /***07 配列をreturnするように修正する*************************************/
+  return *af;
+  /****************************************/
 }
 /***07 vMirror,rh同一化のためコメント*************************************/
 /**
@@ -270,11 +289,14 @@ void vMirror_bitmap_old(int bf[],int af[],int si)
     af[i]=rh(score,si-1);
   }
  **/
-/****************************************/
+
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
-void rotate_bitmap(int bf[],int af[],int si)
+/***07 配列をreturnするように修正する*************************************/
+//void rotate_bitmap(int bf[],int af[],int si)
+int rotate_bitmap(int bf[],int af[],int si)
+/****************************************/
 {
   for(int i=0;i<si;i++){
     int t=0;
@@ -283,6 +305,9 @@ void rotate_bitmap(int bf[],int af[],int si)
     }
     af[i]=t;                        // y[i] の j ビット目にする
   }
+  /***07 配列をreturnするように修正する*************************************/
+  return *af;
+  /****************************************/
 }
 /****************************************/
 //
@@ -310,17 +335,17 @@ int symmetryOps_bitmap(int si,unsigned int *d_aBoard)
   int aS[MAX];
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aT[i]=d_aBoard[i];}
-  rotate_bitmap(aT,aS,si);    //時計回りに90度回転
+  *aS=rotate_bitmap(aT,aS,si);    //時計回りに90度回転
   int k=intncmp(d_aBoard,aS,si);
   //printf("1_k:%d\n",k);
   if(k>0)return 0;
   if(k==0){ nEquiv=2;}else{
-    rotate_bitmap(aS,aT,si);  //時計回りに180度回転
+    *aT=rotate_bitmap(aS,aT,si);  //時計回りに180度回転
     k=intncmp(d_aBoard,aT,si);
     //printf("2_k:%d\n",k);
     if(k>0)return 0;
     if(k==0){ nEquiv=4;}else{
-      rotate_bitmap(aT,aS,si);//時計回りに270度回転
+      *aS=rotate_bitmap(aT,aS,si);//時計回りに270度回転
       k=intncmp(d_aBoard,aS,si);
       //printf("3_k:%d\n",k);
       if(k>0){ return 0;}
@@ -329,21 +354,21 @@ int symmetryOps_bitmap(int si,unsigned int *d_aBoard)
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
   for(int i=0;i<si;i++){ aS[i]=d_aBoard[i];}
-  vMirror_bitmap(aS,aT,si);   //垂直反転
+  *aT=vMirror_bitmap(aS,aT,si);   //垂直反転
   k=intncmp(d_aBoard,aT,si);
   //printf("4_k:%d\n",k);
   if(k>0){ return 0; }
   if(nEquiv>2){             //-90度回転 対角鏡と同等
-    rotate_bitmap(aT,aS,si);
+    *aS=rotate_bitmap(aT,aS,si);
     k=intncmp(d_aBoard,aS,si);
     //printf("5_k:%d\n",k);
     if(k>0){return 0;}
     if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate_bitmap(aS,aT,si);
+      *aT=rotate_bitmap(aS,aT,si);
       k=intncmp(d_aBoard,aT,si);
       //printf("6_k:%d\n",k);
       if(k>0){ return 0;}       //-270度回転 反対角鏡と同等
-      rotate_bitmap(aT,aS,si);
+      *aS=rotate_bitmap(aT,aS,si);
       k=intncmp(d_aBoard,aS,si);
       //printf("7_k:%d\n",k);
       if(k>0){ return 0;}
@@ -636,7 +661,10 @@ void cuda_kernel(
 }
 //
 // GPU
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
+ /****07 aBoardローカル化********************/
+//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
+long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
+/************************/
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   const unsigned int mark=size>11?size-10:2;
@@ -907,6 +935,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
 //GPU
 void NQueenG(int size,int steps)
 {
+  /***07 aBoardローカル化*********************/
+  unsigned int aBoard[MAX];
+  /************************/
   //register int sizeE=size-1;
   register int bit=0;
   register int mask=((1<<size)-1);
@@ -915,7 +946,10 @@ void NQueenG(int size,int steps)
   //偶数、奇数共通
   for(int col=0;col<size;col++){
     aBoard[0]=bit=(1<<col);
-    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
+    /***07 aBoardローカル化*********************/
+    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
+    //TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
+    /************************/
   }
   /************************/
   /***07 ミラーリングしないためコメント*********************/
@@ -1258,7 +1292,10 @@ void symmetryOps_bitmap(int si)
 **/
 //
 //CPU 非再帰版 ロジックメソッド
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap)
+/***07 aBoardローカル化*********************/
+//void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap)
+void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap,unsigned int* aBoard)
+/************************/
 {
     unsigned int bit;
     unsigned int sizeE=size-1;
@@ -1299,6 +1336,9 @@ void NQueen(int size,int mask)
   register int bitmap[size];
   register int down[size],right[size],left[size];
   register int bit;
+  /***07 aBoardローカル化*********************/
+  unsigned int aBoard[MAX];
+  /************************/  
   if(size<=0||size>32){return;}
   bit=0;
   bitmap[0]=mask;
@@ -1310,11 +1350,17 @@ void NQueen(int size,int mask)
     left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
     right[1]=bit>>1;
     bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    solve_nqueen(size,mask,1,left,down,right,bitmap);
+    /***07 aBoardローカル化*********************/
+    solve_nqueen(size,mask,1,left,down,right,bitmap,aBoard);
+    //solve_nqueen(size,mask,1,left,down,right,bitmap);
+    /************************/  
   }
 }
 //CPUR 再帰版 ロジックメソッド
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
+/***07 aBoardローカル化*********************/
+void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard)
+//void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
+/************************/
 {
  int bitmap=0;
  int bit=0;
@@ -1335,7 +1381,10 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+      /***07 aBoardローカル化*********************/
+      //solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
+      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1,aBoard);
+      /************************/
     }
   }
 }
@@ -1343,10 +1392,16 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
 void NQueenR(int size,int mask)
 {
   int bit=0;
+  /***07 aBoardローカル化*********************/
+  unsigned int aBoard[MAX];
+  /************************/  
   //1行目全てにクイーンを置く
   for(int col=0;col<size;col++){
     aBoard[0]=bit=(1<<col);
-    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+    /***07 aBoardローカル化*********************/
+    //solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
+    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1,aBoard);
+    /************************/  
   }
 }
 //
@@ -1359,6 +1414,9 @@ void NQueenD(int size,int mask,int row)
   int bitmap;
   int sizeE=size-1;
   int down[size],right[size],left[size];
+  /***07 aBoardローカル化*********************/
+  unsigned int aBoard[MAX];
+  /************************/  
   aStack[0]=-1; 
   pnStack=aStack+1;
   bit=0;
@@ -1403,6 +1461,9 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right)
 {
   int bit;
   int bitmap=mask&~(left|down|right);
+  /***07 aBoardローカル化*********************/
+  unsigned int aBoard[MAX];
+  /************************/  
   if(row==size){
     /* 対称解除法の追加 */
     //TOTAL++;
@@ -1528,4 +1589,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-
