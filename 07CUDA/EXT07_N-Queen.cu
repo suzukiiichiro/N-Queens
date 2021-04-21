@@ -1,3 +1,4 @@
+%%writefile cuda07.cu
 
 /**
  CUDAで学ぶアルゴリズムとデータ構造
@@ -241,6 +242,103 @@ void NQueenD(int size,int mask,int row);
 //GPU マルチスレッド
 //
 /***07 symmetryOps*************************************/
+typedef unsigned long long uint64;
+__device__ __host__
+uint64 reflect_vert (uint64 value)
+{
+    value = ((value & 0xFFFFFFFF00000000ull) >> 32) | ((value & 0x00000000FFFFFFFFull) << 32);
+    value = ((value & 0xFFFF0000FFFF0000ull) >> 16) | ((value & 0x0000FFFF0000FFFFull) << 16);
+    value = ((value & 0xFF00FF00FF00FF00ull) >>  8) | ((value & 0x00FF00FF00FF00FFull) <<  8);
+    return value;
+}
+__device__ __host__
+uint64 reflect_horiz (uint64 value)
+{
+    value = ((value & 0xF0F0F0F0F0F0F0F0ull) >> 4) | ((value & 0x0F0F0F0F0F0F0F0Full) << 4);
+    value = ((value & 0xCCCCCCCCCCCCCCCCull) >> 2) | ((value & 0x3333333333333333ull) << 2);
+    value = ((value & 0xAAAAAAAAAAAAAAAAull) >> 1) | ((value & 0x5555555555555555ull) << 1);
+    return value;
+}
+__device__ __host__
+uint64 reflect_diag (uint64 value)
+{
+    uint64 new_value = value & 0x8040201008040201ull; // stationary bits
+    new_value |= (value & 0x0100000000000000ull) >> 49;
+    new_value |= (value & 0x0201000000000000ull) >> 42;
+    new_value |= (value & 0x0402010000000000ull) >> 35;
+    new_value |= (value & 0x0804020100000000ull) >> 28;
+    new_value |= (value & 0x1008040201000000ull) >> 21;
+    new_value |= (value & 0x2010080402010000ull) >> 14;
+    new_value |= (value & 0x4020100804020100ull) >>  7;
+    new_value |= (value & 0x0080402010080402ull) <<  7;
+    new_value |= (value & 0x0000804020100804ull) << 14;
+    new_value |= (value & 0x0000008040201008ull) << 21;
+    new_value |= (value & 0x0000000080402010ull) << 28;
+    new_value |= (value & 0x0000000000804020ull) << 35;
+    new_value |= (value & 0x0000000000008040ull) << 42;
+    new_value |= (value & 0x0000000000000080ull) << 49;
+    return new_value;
+}
+__device__ __host__
+uint64 rotate_270 (uint64 value)
+{
+    return reflect_diag (reflect_vert (value));
+
+}
+__device__ __host__
+uint64 rotate_180 (uint64 value)
+{
+    return reflect_horiz (reflect_vert (value));
+}
+__device__ __host__
+uint64 rotate_90 (uint64 value)
+{
+    return reflect_diag (reflect_horiz (value));
+}
+__device__ __host__
+int symmetryOps(int si,unsigned int *aBoard)
+{
+  int nEquiv=0;
+  // 回転・反転・対称チェックのためにboard配列をコピー
+  uint64 aB=0;
+  uint64 aS;
+  uint64 aT;
+  for(int i=0;i<si;i++){
+      uint64 t=aBoard[i];
+      aB+=t<<(si*i);
+  }
+  //時計回りに90度回転
+  aS=rotate_90(aB);
+  if(aB>aS){ return 0; }
+  else if(aB==aS){ nEquiv=2; }
+  else{//時計回りに180度回転
+  aS=rotate_180(aB);
+  if(aB>aS){ return 0;}
+  else if(aB==aS){ nEquiv=4;}
+  else{//時計回りに270度回転
+   aS=rotate_270(aB);
+   if(aB>aS){ return 0;}
+      nEquiv=8;
+    }
+  }
+  //垂直反転
+  aT=reflect_horiz(aB);
+  if(aB>aT){ return 0; }
+  //-90度回転 対角鏡と同等
+  if(nEquiv>2){
+    aS=rotate_90(aT);
+    if(aB>aS){return 0;}
+    //-180度回転 水平鏡像と同等
+    else if(nEquiv>4){
+    aS=rotate_180(aT);
+    //-270度回転 反対角鏡と同等
+    if(aB>aS){ return 0;}
+    aS=rotate_270(aT);
+     if(aB>aS){ return 0;}
+    }
+  }
+  return nEquiv;  
+}
 /***07 vMirror,rh同一化のためコメント*************************************/
 /**
 __device__ __host__
@@ -555,7 +653,8 @@ void cuda_kernel(
           if(row+1==mark){
            /***07 symmetryOpsの処理を追加*********************/
            /***07 aT,aSローカル化*********************/
-           int s=symmetryOps_bitmap(size,c_aBoard); 
+           //int s=symmetryOps_bitmap(size,c_aBoard); 
+           int s=symmetryOps(size,c_aBoard); 
            //int s=symmetryOps_bitmap_gpu(size,c_aBoard,c_aT,c_aS);
            if(s!=0){
            //print(size); //print()でTOTALを++しない
@@ -1304,7 +1403,8 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
         if((bit&mask)!=0){
           if(row==sizeE){
             /***07 symmetryOps CPU,GPU同一化*********************/
-            int s=symmetryOps_bitmap(size,aBoard);
+            //int s=symmetryOps_bitmap(size,aBoard);
+            int s=symmetryOps(size,aBoard);
             if(s!=0){
               UNIQUE++;
               TOTAL+=s;
@@ -1365,7 +1465,8 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsign
     if(bitmap){
       aBoard[row]=(-bitmap&bitmap);
       /***07 symmetryOps CPU,GPU同一化*********************/
-      int s=symmetryOps_bitmap(size,aBoard);
+      //int s=symmetryOps_bitmap(size,aBoard);
+      int s=symmetryOps(size,aBoard);
       if(s!=0){
         UNIQUE++;
         TOTAL+=s;
@@ -1516,7 +1617,8 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    int min=4; int targetN=17;
+    //int min=4; int targetN=17;
+    int min=8;int targetN=8;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -1551,8 +1653,8 @@ int main(int argc,char** argv)
   }
   if(gpu||sgpu){
     if(!InitCUDA()){return 0;}
-    int min=4;int targetN=17;
-    //int min=7;int targetN=7;
+    //int min=4;int targetN=17;
+    int min=8;int targetN=8;
    
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
