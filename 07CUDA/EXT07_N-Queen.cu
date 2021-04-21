@@ -1,4 +1,3 @@
-%%writefile cuda07.cu
 
 /**
  CUDAで学ぶアルゴリズムとデータ構造
