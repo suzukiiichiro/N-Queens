@@ -5,7 +5,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイル
- $ nvcc CUDA09_N-Queen.cu -o CUDA09_N-Queen
+ $ nvcc -O3 CUDA09_N-Queen.cu -o CUDA09_N-Queen
 
  実行
  $ ./CUDA09_N-Queen (-c|-r|-g)
@@ -53,7 +53,7 @@
 
  実行結果
 
-$ nvcc CUDA09_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA09_N-Queen.cu  && ./a.out -r
 ９．CPUR 再帰 クイーンの位置による分岐BOUND1
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -71,7 +71,7 @@ $ nvcc CUDA09_N-Queen.cu  && ./a.out -r
 16:     14772512         1846955           15.74
 17:     95815104        11977939         1:41.91
 
-$ nvcc CUDA09_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA09_N-Queen.cu  && ./a.out -c
 ９．CPU 非再帰 クイーンの位置による分岐BOUND1
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -89,7 +89,7 @@ $ nvcc CUDA09_N-Queen.cu  && ./a.out -c
 16:     14772512         1846955           14.23
 17:     95815104        11977939         1:36.77
 
-$ nvcc CUDA09_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA09_N-Queen.cu  && ./a.out -g
 ９．GPU 非再帰 クイーンの位置による分岐BOUND1
 ９．GPU 非再帰 クイーンの位置による分岐BOUND1
  N:        Total      Unique      dd:hh:mm:ss.ms

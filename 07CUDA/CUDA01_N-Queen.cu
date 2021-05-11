@@ -4,7 +4,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g)
+ $ nvcc -O3 CUDA**_N-Queen.cu && ./a.out (-c|-r|-g)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -400,7 +400,7 @@
 
 
  実行結果
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -r
 1. CPU 再帰 ブルートフォース　力任せ探索
  :
  :
@@ -416,7 +416,7 @@ $ nvcc CUDA02_N-Queen.cu  && ./a.out -r
 3124: 4 4 4 4 3
 3125: 4 4 4 4 4
 
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -c
 1. CPU 非再帰 ブルートフォース　力任せ探索
  :
  :
@@ -433,7 +433,7 @@ $ nvcc CUDA02_N-Queen.cu  && ./a.out -c
 3125: 4 4 4 4 4
 
 
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -g
 
 1. GPU 非再帰 ブルートフォース　力任せ探索
 3112:00012444
@@ -450,6 +450,10 @@ $ nvcc CUDA02_N-Queen.cu  && ./a.out -g
 3123:00024444
 3124:00034444
 3125:00044444
+
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -g
+なし
+
 */
 
 #include <stdio.h>

@@ -4,7 +4,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g)
+ $ nvcc -O3 CUDA**_N-Queen.cu && ./a.out (-c|-r|-g)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -401,7 +401,7 @@
 
 
  実行結果
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -r
  ２．CPUR 再帰 配置フラグ（制約テスト高速化）
  :
  :
@@ -416,7 +416,7 @@ $ nvcc CUDA02_N-Queen.cu  && ./a.out -r
 119: 4 3 2 0 1 
 120: 4 3 2 1 0 
 
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -c
  ２．CPU 非再帰 配置フラグ（制約テスト高速化）
  :
  :
@@ -431,7 +431,8 @@ $ nvcc CUDA02_N-Queen.cu  && ./a.out -c
 119: 4 3 2 0 1 
 120: 4 3 2 1 0 
 
-$ nvcc CUDA02_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA02_N-Queen.cu  && ./a.out -g
+なし
 */
 
 #include <stdio.h>

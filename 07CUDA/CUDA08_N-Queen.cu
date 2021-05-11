@@ -5,7 +5,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
+ $ nvcc -O3 CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -17,7 +17,7 @@
 
  実行結果
 
-$ nvcc CUDA08_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA08_N-Queen.cu  && ./a.out -r
 ８．CPUR 再帰 ビットマップ＋対称解除法＋枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -35,7 +35,7 @@ $ nvcc CUDA08_N-Queen.cu  && ./a.out -r
 16:     14772512         1846955           14.94
 17:     95815104        11977939         2:08.89
 
-$ nvcc CUDA08_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA08_N-Queen.cu  && ./a.out -c
 ８．CPU 非再帰 ビットマップ＋対称解除法＋枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -53,7 +53,7 @@ $ nvcc CUDA08_N-Queen.cu  && ./a.out -c
 16:     14772512         1846955           14.41
 17:     95815104        11977939         1:48.61
 
-$ nvcc CUDA08_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA08_N-Queen.cu  && ./a.out -g
 ８．GPU 非再帰 ビットマップ＋対称解除法＋枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.02

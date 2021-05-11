@@ -47,7 +47,7 @@
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
 
 
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -r
+bash-3.2$ nvcc -O3 CUDA11_N-Queen.cu && ./a.out -r
 １１．CPUR 再帰 枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -66,7 +66,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -r
 17:     95815104        11977939           45.64
 
 
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -c
+bash-3.2$ nvcc -O3 CUDA11_N-Queen.cu && ./a.out -c
 １１．CPU 非再帰 枝刈り
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -84,7 +84,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -c
 16:     14772512         1846955            6.14
 17:     95815104        11977939           43.68
 
-bash-3.2$ nvcc CUDA11_N-Queen.cu && ./a.out -g
+bash-3.2$ nvcc -O3 CUDA11_N-Queen.cu && ./a.out -g
 １１．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.05

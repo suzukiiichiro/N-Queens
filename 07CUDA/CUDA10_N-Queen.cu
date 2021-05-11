@@ -46,7 +46,7 @@
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
 
 
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10.c && ./a.out -r
+bash-3.2$ nvcc -O3 CUDA10_N-Queen.cu && ./a.out -r
 １０．CPUR 再帰 クイーンの位置による分岐BOUND1,2
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -65,7 +65,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10.c && ./a.out -r
 17:     95815104        11977939         1:38.93
 
 
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10.c && ./a.out -c
+bash-3.2$ nvcc -O3 CUDA10_N-Queen.cu && ./a.out -c
 １０．CPU 非再帰 クイーンの位置による分岐BOUND1,2
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -83,7 +83,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10.c && ./a.out -c
 16:     14772512         1846955           13.55
 17:     95815104        11977939         1:33.01
 
-bash-3.2$ nvcc CUDA10_N-Queen.cu && ./a.out -g
+bash-3.2$ nvcc -O3 CUDA10_N-Queen.cu && ./a.out -g
 １０．GPU 非再帰 クイーンの位置による分岐BOUND1,2
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.03

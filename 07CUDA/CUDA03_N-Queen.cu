@@ -4,7 +4,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
+ $ nvcc -O3 CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -22,7 +22,7 @@
 
 
  実行結果
-$ nvcc CUDA03_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA03_N-Queen.cu  && ./a.out -r
 ３．CPUR 再帰 バックトラック
  4:            2               0            0.00
  5:           10               0            0.00
@@ -39,7 +39,7 @@ $ nvcc CUDA03_N-Queen.cu  && ./a.out -r
 16:     14772512               0         1:12.95
 17:     95815104               0         8:40.60
 
-$ nvcc CUDA03_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA03_N-Queen.cu  && ./a.out -c
 ３．CPU 非再帰 バックトラック
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               0            0.00
@@ -57,7 +57,7 @@ $ nvcc CUDA03_N-Queen.cu  && ./a.out -c
 16:     14772512               0         1:14.90
 17:     95815104               0         9:00.09
 
-$ nvcc CUDA03_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA03_N-Queen.cu  && ./a.out -g
 ３．GPU 非再帰 バックトラック
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               0  00:00:00:00.02

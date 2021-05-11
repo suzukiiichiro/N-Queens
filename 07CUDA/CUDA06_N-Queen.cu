@@ -5,7 +5,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ nvcc CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
+ $ nvcc -O3 CUDA**_N-Queen.cu && ./a.out (-c|-r|-g|-s)
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -136,7 +136,7 @@
  }
 
  実行結果
-$ nvcc CUDA06_N-Queen.cu  && ./a.out -r
+$ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -r
 ６．CPUR 再帰 バックトラック＋ビットマップ
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               0            0.00
@@ -154,7 +154,7 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -r
 16:     14772512               0            7.79
 17:     95815104               0           57.57
 
-$ nvcc CUDA06_N-Queen.cu  && ./a.out -c
+$ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -c
 ６．CPU 非再帰 バックトラック＋ビットマップ
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               0            0.00
@@ -172,26 +172,7 @@ $ nvcc CUDA06_N-Queen.cu  && ./a.out -c
 16:     14772512               0            8.78
 17:     95815104               0         1:05.00
 
-
-bash-3.2$ nvcc CUDA06_N-Queen.cu && ./a.out -s
-６．SGPU 非再帰 バックトラック＋ビットマップ
- N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.02
- 5:           10               0  00:00:00:00.00
- 6:            4               0  00:00:00:00.00
- 7:           40               0  00:00:00:00.00
- 8:           92               0  00:00:00:00.00
- 9:          352               0  00:00:00:00.00
-10:          724               0  00:00:00:00.00
-11:         2680               0  00:00:00:00.00
-12:        14200               0  00:00:00:00.02
-13:        73712               0  00:00:00:00.03
-14:       365596               0  00:00:00:00.07
-15:      2279184               0  00:00:00:00.48
-16:     14772512               0  00:00:00:02.40
-17:     95815104               0  00:00:00:18.30
-
-$ nvcc CUDA06_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -g
 ６．GPU 非再帰 バックトラック＋ビットマップ
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               0  00:00:00:00.02
