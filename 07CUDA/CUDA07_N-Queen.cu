@@ -179,17 +179,30 @@ long UNIQUE=0;//GPU,CPUで使用
 //__device__ __host__ int rh(int a,int sz);
 /****************************************
 // **07 配列のポインタを戻り値で返却するように変更*************************************/
+<<<<<<< HEAD
 //__device__ __host__ void vMirror(int bf[],int af[],int si);
 //__device__ __host__ void rotate(int bf[],int af[],int si);
 __device__ __host__ int* vMirror(int bf,int af,int si);
 __device__ __host__ int* rotate(int bf,int af,int si);
+=======
+//__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
+//__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
+__device__ __host__ int* vMirror_bitmap(int bf,int af,int si);
+__device__ __host__ int* rotate_bitmap(int bf,int af,int si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 __device__ __host__ int intncmp(unsigned int* lt,int* rt,int n);
 /****************************************
 __device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
 // 07 aT,aSロカール化,CPU,GPU同一関数化*********************************** **/
+<<<<<<< HEAD
 //__device__ int symmetryOps_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
 /****************************************/
 __device__  __host__ int symmetryOps(int si,int *d_aBoard);
+=======
+//__device__ int symmetryOps_bitmap_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
+/****************************************/
+__device__  __host__ int symmetryOps_bitmap(int si,int *d_aBoard);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 /***07 d_uniq,t_aBoard,h_row追加に伴いコメント*************************************/
 //void cuda_kernel(
 //    int size,int mark,
@@ -202,11 +215,19 @@ void cuda_kernel(
     register int size,register int mark,
     unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
     unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row);
+<<<<<<< HEAD
 /****************************************/
 /***07 aBoardローカル化*************************************/
 //long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
 long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard);
 /****************************************/
+=======
+/****************************************/
+/***07 aBoardローカル化*************************************/
+//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
+long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard);
+/****************************************/
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 void NQueenG(int size,int steps);
 //関数宣言 SGPU
 __global__ 
@@ -218,7 +239,11 @@ void TimeFormat(clock_t utime,char *form);
 /***07 symmetryOpsCPU,GPU同一関数化のためコメント*************************************/
 //long getUnique();
 //long getTotal();
+<<<<<<< HEAD
 //void symmetryOps(int si);
+=======
+//void symmetryOps_bitmap(int si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 //関数宣言 非再帰版
 /***07 aBoardロカール化*************************************/
 //void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
@@ -240,7 +265,10 @@ void NQueenD(int size,int mask,int row);
 //GPU マルチスレッド
 //
 /***07 symmetryOps*************************************/
+<<<<<<< HEAD
 /**
+=======
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 typedef unsigned long long uint64;
 __device__ __host__
 uint64 reflect_vert (uint64 value)
@@ -338,7 +366,10 @@ int symmetryOps(int si,unsigned int *aBoard)
   }
   return nEquiv;  
 }
+<<<<<<< HEAD
 */
+=======
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 /***07 vMirror,rh同一化のためコメント*************************************/
 /**
 __device__ __host__
@@ -355,8 +386,13 @@ int rh(int a,int sz)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
+<<<<<<< HEAD
 //void vMirror(int bf[],int af[],int si)
 int* vMirror(int* bf,int* af,int si)
+=======
+//void vMirror_bitmap(int bf[],int af[],int si)
+int* vMirror_bitmap(int* bf,int* af,int si)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int bf_i;
   int tmp;
@@ -376,7 +412,11 @@ int* vMirror(int* bf,int* af,int si)
 /***07 vMirror,rh同一化のためコメント*************************************/
 /**
 __device__ __host__
+<<<<<<< HEAD
 void vMirror_old(int bf[],int af[],int si)
+=======
+void vMirror_bitmap_old(int bf[],int af[],int si)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int score ;
   for(int i=0;i<si;i++) {
@@ -384,11 +424,20 @@ void vMirror_old(int bf[],int af[],int si)
     af[i]=rh(score,si-1);
   }
  **/
+<<<<<<< HEAD
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
 //void rotate(int bf[],int af[],int si)
 int* rotate(int* bf,int* af,int si)
+=======
+
+//
+/***07 symmetryOps*************************************/
+__device__ __host__
+//void rotate_bitmap(int bf[],int af[],int si)
+int* rotate_bitmap(int* bf,int* af,int si)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int t;
   for(int i=0;i<si;i++){
@@ -397,7 +446,11 @@ int* rotate(int* bf,int* af,int si)
       t|=((bf[j]>>i)&1)<<(si-j-1);
     }
     af[i]=t;
+<<<<<<< HEAD
     //printf("bf: %d af: %d\n",bf[i],af[i]);
+=======
+    printf("bf: %d af: %d\n",bf[i],af[i]);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   }
   return af;
 }
@@ -420,7 +473,11 @@ int intncmp(unsigned int* lt,int* rt,int n)
 //
 /***07 symmetryOps*************************************/
 __device__ __host__
+<<<<<<< HEAD
 int symmetryOps(int si,unsigned int *aBoard)
+=======
+int symmetryOps_bitmap(int si,unsigned int *aBoard)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int nEquiv=0;
   int aT[MAX];
@@ -428,17 +485,29 @@ int symmetryOps(int si,unsigned int *aBoard)
   // 回転・反転・対称チェックのためにboard配列をコピー
   memcpy(aT,aBoard,sizeof(int)*si);
   //時計回りに90度回転
+<<<<<<< HEAD
   rotate(aT,aS,si);
+=======
+  rotate_bitmap(aT,aS,si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   int icmp=intncmp(aBoard,aS,si);
   if(icmp>0){ return 0; }
   else if(icmp==0){ nEquiv=2; }
   else{//時計回りに180度回転
+<<<<<<< HEAD
     rotate(aS,aT,si);
+=======
+    rotate_bitmap(aS,aT,si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     icmp=intncmp(aBoard,aT,si);
     if(icmp>0){ return 0;}
     else if(icmp==0){ nEquiv=4;}
     else{//時計回りに270度回転
+<<<<<<< HEAD
       rotate(aT,aS,si);
+=======
+      rotate_bitmap(aT,aS,si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
       icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
       nEquiv=8;
@@ -448,21 +517,37 @@ int symmetryOps(int si,unsigned int *aBoard)
   //for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
   memcpy(aS,aBoard,sizeof(int)*si);
   //垂直反転
+<<<<<<< HEAD
   vMirror(aS,aT,si);   
+=======
+  vMirror_bitmap(aS,aT,si);   
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   icmp=intncmp(aBoard,aT,si);
   if(icmp>0){ return 0; }
   //-90度回転 対角鏡と同等
   if(nEquiv>2){
+<<<<<<< HEAD
     rotate(aT,aS,si);
+=======
+    rotate_bitmap(aT,aS,si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     icmp=intncmp(aBoard,aS,si);
     if(icmp>0){return 0;}
     //-180度回転 水平鏡像と同等
     else if(nEquiv>4){
+<<<<<<< HEAD
       rotate(aS,aT,si);
       icmp=intncmp(aBoard,aT,si);
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
       rotate(aT,aS,si);
+=======
+      rotate_bitmap(aS,aT,si);
+      icmp=intncmp(aBoard,aT,si);
+      //-270度回転 反対角鏡と同等
+      if(icmp>0){ return 0;}
+      rotate_bitmap(aT,aS,si);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
       icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
     }
@@ -472,7 +557,11 @@ int symmetryOps(int si,unsigned int *aBoard)
 /****************************************/
 /**
 __device__
+<<<<<<< HEAD
 int symmetryOps_gpu_old(int si,unsigned int *d_aBoard,unsigned int *d_aT,unsigned int *d_aS)
+=======
+int symmetryOps_bitmap_gpu_old(int si,unsigned int *d_aBoard,unsigned int *d_aT,unsigned int *d_aS)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
@@ -652,9 +741,15 @@ void cuda_kernel(
           if(row+1==mark){
            /***07 symmetryOpsの処理を追加*********************/
            /***07 aT,aSローカル化*********************/
+<<<<<<< HEAD
            //int s=symmetryOps(size,c_aBoard); 
            int s=symmetryOps(size,c_aBoard); 
            //int s=symmetryOps_gpu(size,c_aBoard,c_aT,c_aS);
+=======
+           //int s=symmetryOps_bitmap(size,c_aBoard); 
+           int s=symmetryOps(size,c_aBoard); 
+           //int s=symmetryOps_bitmap_gpu(size,c_aBoard,c_aT,c_aS);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
            if(s!=0){
            //print(size); //print()でTOTALを++しない
            //ホストに戻す配列にTOTALを入れる
@@ -1341,7 +1436,11 @@ long getTotal()
 //CPU
 /***07 symmetryOps_titmap CPU,GPU同関数化のためコメント*********************/
 /**
+<<<<<<< HEAD
 void symmetryOps(int si)
+=======
+void symmetryOps_bitmap(int si)
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int nEquiv;
   // 回転・反転・対称チェックのためにboard配列をコピー
@@ -1402,7 +1501,11 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
         if((bit&mask)!=0){
           if(row==sizeE){
             /***07 symmetryOps CPU,GPU同一化*********************/
+<<<<<<< HEAD
             //int s=symmetryOps(size,aBoard);
+=======
+            //int s=symmetryOps_bitmap(size,aBoard);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
             int s=symmetryOps(size,aBoard);
             if(s!=0){
               UNIQUE++;
@@ -1464,7 +1567,11 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsign
     if(bitmap){
       aBoard[row]=(-bitmap&bitmap);
       /***07 symmetryOps CPU,GPU同一化*********************/
+<<<<<<< HEAD
       //int s=symmetryOps(size,aBoard);
+=======
+      //int s=symmetryOps_bitmap(size,aBoard);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
       int s=symmetryOps(size,aBoard);
       if(s!=0){
         UNIQUE++;
@@ -1524,7 +1631,11 @@ void NQueenD(int size,int mask,int row)
         /* 対称解除法の追加 */
         //TOTAL++;
         /***07 symmetryOps CPU,GPU同一化*********************/
+<<<<<<< HEAD
         int s=symmetryOps(size,aBoard);
+=======
+        int s=symmetryOps_bitmap(size,aBoard);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
         if(s!=0){
           UNIQUE++;
           TOTAL+=s;
@@ -1563,7 +1674,11 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right)
     /* 対称解除法の追加 */
     //TOTAL++;
     /***07 symmetryOps CPU,GPU同一化*********************/
+<<<<<<< HEAD
     int s=symmetryOps(size,aBoard);
+=======
+    int s=symmetryOps_bitmap(size,aBoard);
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     if(s!=0){
       UNIQUE++;
       TOTAL+=s;
@@ -1616,7 +1731,8 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    int min=4; int targetN=17;
+    //int min=4; int targetN=17;
+    int min=8;int targetN=8;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -1646,11 +1762,21 @@ int main(int argc,char** argv)
       //printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
       /************************/
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     }
   }
   if(gpu||sgpu){
     if(!InitCUDA()){return 0;}
+<<<<<<< HEAD
     int min=4;int targetN=17;
+=======
+    //int min=4;int targetN=17;
+    int min=8;int targetN=8;
+   
+>>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
@@ -1681,4 +1807,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-
