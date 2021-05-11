@@ -91,7 +91,6 @@ $ nvcc -O3 CUDA09_N-Queen.cu  && ./a.out -c
 
 $ nvcc -O3 CUDA09_N-Queen.cu  && ./a.out -g
 ９．GPU 非再帰 クイーンの位置による分岐BOUND1
-９．GPU 非再帰 クイーンの位置による分岐BOUND1
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.02
  5:           10               2  00:00:00:00.00
