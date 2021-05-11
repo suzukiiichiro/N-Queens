@@ -153,246 +153,13 @@ $ nvcc CUDA07_N-Queen.cu  && ./a.out -g
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
-//#define THREAD_NUM		1
 #define MAX 27
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
-/***07 uniq*************************************/
 long UNIQUE=0;//GPU,CPUで使用
-/****************************************/
-/***07 グローバルで使用していないためコメント*************************************/
-//int down[2*MAX-1]; //down:flagA 縦 配置フラグ　//CPUで使用
-//int left[2*MAX-1];  //left:flagB 斜め配置フラグ　//CPUで使用
-//int right[2*MAX-1];  //right:flagC 斜め配置フラグ　//CPUで使用
-/****************************************/
-/***07 aBoardローカル化のためコメント*************************************/
-//unsigned int aBoard[MAX];//CPU,GPUで使用
-/****************************************/
-/***07 aT,aSローカル化のためコメント.CPU,GPU同一関数化のためコメント*************************************/
-//int aT[MAX];//CPUで使用
-//int aS[MAX];//CPUで使用
-//int COUNT2,COUNT4,COUNT8;//CPUで使用
-/****************************************/
-//関数宣言 GPU
-//関数宣言 GPU/CPU
-/***07 rh,vMirror同一化のためコメント*************************************/
-//__device__ __host__ int rh(int a,int sz);
-/****************************************
-// **07 配列のポインタを戻り値で返却するように変更*************************************/
-<<<<<<< HEAD
-//__device__ __host__ void vMirror(int bf[],int af[],int si);
-//__device__ __host__ void rotate(int bf[],int af[],int si);
-__device__ __host__ int* vMirror(int bf,int af,int si);
-__device__ __host__ int* rotate(int bf,int af,int si);
-=======
-//__device__ __host__ void vMirror_bitmap(int bf[],int af[],int si);
-//__device__ __host__ void rotate_bitmap(int bf[],int af[],int si);
-__device__ __host__ int* vMirror_bitmap(int bf,int af,int si);
-__device__ __host__ int* rotate_bitmap(int bf,int af,int si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-__device__ __host__ int intncmp(unsigned int* lt,int* rt,int n);
-/****************************************
-__device__ __host__ int intncmp(unsigned int lt[],int rt[],int n);
-// 07 aT,aSロカール化,CPU,GPU同一関数化*********************************** **/
-<<<<<<< HEAD
-//__device__ int symmetryOps_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
-/****************************************/
-__device__  __host__ int symmetryOps(int si,int *d_aBoard);
-=======
-//__device__ int symmetryOps_bitmap_gpu(int si,int *d_aBoard,int *d_aT,int *d_aS);
-/****************************************/
-__device__  __host__ int symmetryOps_bitmap(int si,int *d_aBoard);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-/***07 d_uniq,t_aBoard,h_row追加に伴いコメント*************************************/
-//void cuda_kernel(
-//    int size,int mark,
-//    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
-//    unsigned int* d_results,int totalCond,unsigned);
-/****************************************/
-/***07 d_uniq,t_aBoard,h_row追加*************************************/
-__global__
-void cuda_kernel(
-    register int size,register int mark,
-    unsigned int* t_down,unsigned int* t_left,unsigned int* t_right,
-    unsigned int* d_results,unsigned int* d_uniq,int totalCond,unsigned int* t_aBoard,int h_row);
-<<<<<<< HEAD
-/****************************************/
-/***07 aBoardローカル化*************************************/
-//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard);
-/****************************************/
-=======
-/****************************************/
-/***07 aBoardローカル化*************************************/
-//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps);
-long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard);
-/****************************************/
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-void NQueenG(int size,int steps);
-//関数宣言 SGPU
-__global__ 
-void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
-long long sgpu_solve_nqueen_cuda(int size,int steps);
-bool InitCUDA();
-//関数宣言 CPU
-void TimeFormat(clock_t utime,char *form);
-/***07 symmetryOpsCPU,GPU同一関数化のためコメント*************************************/
-//long getUnique();
-//long getTotal();
-<<<<<<< HEAD
-//void symmetryOps(int si);
-=======
-//void symmetryOps_bitmap(int si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-//関数宣言 非再帰版
-/***07 aBoardロカール化*************************************/
-//void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap,unsigned int* aBoard);
-/****************************************/
-void NQueen(int size,int mask);
-//関数宣言 GPUへの移行再帰版
-/***07 aBoardロカール化*************************************/
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard);
-//void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
-/****************************************/
-void NQueenR(int size,int mask);
-//関数宣言 通常版
-//  再帰
-void NQueenDR(int size,int mask,int row,int left,int down,int right);
-//  非再帰
-void NQueenD(int size,int mask,int row);
-//
-//GPU マルチスレッド
-//
-/***07 symmetryOps*************************************/
-<<<<<<< HEAD
-/**
-=======
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-typedef unsigned long long uint64;
+//GPU
 __device__ __host__
-uint64 reflect_vert (uint64 value)
-{
-    value = ((value & 0xFFFFFFFF00000000ull) >> 32) | ((value & 0x00000000FFFFFFFFull) << 32);
-    value = ((value & 0xFFFF0000FFFF0000ull) >> 16) | ((value & 0x0000FFFF0000FFFFull) << 16);
-    value = ((value & 0xFF00FF00FF00FF00ull) >>  8) | ((value & 0x00FF00FF00FF00FFull) <<  8);
-    return value;
-}
-__device__ __host__
-uint64 reflect_horiz (uint64 value)
-{
-    value = ((value & 0xF0F0F0F0F0F0F0F0ull) >> 4) | ((value & 0x0F0F0F0F0F0F0F0Full) << 4);
-    value = ((value & 0xCCCCCCCCCCCCCCCCull) >> 2) | ((value & 0x3333333333333333ull) << 2);
-    value = ((value & 0xAAAAAAAAAAAAAAAAull) >> 1) | ((value & 0x5555555555555555ull) << 1);
-    return value;
-}
-__device__ __host__
-uint64 reflect_diag (uint64 value)
-{
-    uint64 new_value = value & 0x8040201008040201ull; // stationary bits
-    new_value |= (value & 0x0100000000000000ull) >> 49;
-    new_value |= (value & 0x0201000000000000ull) >> 42;
-    new_value |= (value & 0x0402010000000000ull) >> 35;
-    new_value |= (value & 0x0804020100000000ull) >> 28;
-    new_value |= (value & 0x1008040201000000ull) >> 21;
-    new_value |= (value & 0x2010080402010000ull) >> 14;
-    new_value |= (value & 0x4020100804020100ull) >>  7;
-    new_value |= (value & 0x0080402010080402ull) <<  7;
-    new_value |= (value & 0x0000804020100804ull) << 14;
-    new_value |= (value & 0x0000008040201008ull) << 21;
-    new_value |= (value & 0x0000000080402010ull) << 28;
-    new_value |= (value & 0x0000000000804020ull) << 35;
-    new_value |= (value & 0x0000000000008040ull) << 42;
-    new_value |= (value & 0x0000000000000080ull) << 49;
-    return new_value;
-}
-__device__ __host__
-uint64 rotate_270 (uint64 value)
-{
-    return reflect_diag (reflect_vert (value));
-
-}
-__device__ __host__
-uint64 rotate_180 (uint64 value)
-{
-    return reflect_horiz (reflect_vert (value));
-}
-__device__ __host__
-uint64 rotate_90 (uint64 value)
-{
-    return reflect_diag (reflect_horiz (value));
-}
-__device__ __host__
-int symmetryOps(int si,unsigned int *aBoard)
-{
-  int nEquiv=0;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  uint64 aB=0;
-  uint64 aS;
-  uint64 aT;
-  for(int i=0;i<si;i++){
-      uint64 t=aBoard[i];
-      aB+=t<<(si*i);
-  }
-  //時計回りに90度回転
-  aS=rotate_90(aB);
-  if(aB>aS){ return 0; }
-  else if(aB==aS){ nEquiv=2; }
-  else{//時計回りに180度回転
-  aS=rotate_180(aB);
-  if(aB>aS){ return 0;}
-  else if(aB==aS){ nEquiv=4;}
-  else{//時計回りに270度回転
-   aS=rotate_270(aB);
-   if(aB>aS){ return 0;}
-      nEquiv=8;
-    }
-  }
-  //垂直反転
-  aT=reflect_horiz(aB);
-  if(aB>aT){ return 0; }
-  //-90度回転 対角鏡と同等
-  if(nEquiv>2){
-    aS=rotate_90(aT);
-    if(aB>aS){return 0;}
-    //-180度回転 水平鏡像と同等
-    else if(nEquiv>4){
-    aS=rotate_180(aT);
-    //-270度回転 反対角鏡と同等
-    if(aB>aS){ return 0;}
-    aS=rotate_270(aT);
-     if(aB>aS){ return 0;}
-    }
-  }
-  return nEquiv;  
-}
-<<<<<<< HEAD
-*/
-=======
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-/***07 vMirror,rh同一化のためコメント*************************************/
-/**
-__device__ __host__
-int rh(int a,int sz)
-{
-  int tmp=0;
-  for(int i=0;i<=sz;i++){
-    if(a&(1<<i)){ return tmp|=(1<<(sz-i)); }
-  }
-  return tmp;
-}
-**/
-/****************************************/
-//
-/***07 symmetryOps*************************************/
-__device__ __host__
-<<<<<<< HEAD
-//void vMirror(int bf[],int af[],int si)
 int* vMirror(int* bf,int* af,int si)
-=======
-//void vMirror_bitmap(int bf[],int af[],int si)
-int* vMirror_bitmap(int* bf,int* af,int si)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int bf_i;
   int tmp;
@@ -409,35 +176,9 @@ int* vMirror_bitmap(int* bf,int* af,int si)
   }
   return af;
 }
-/***07 vMirror,rh同一化のためコメント*************************************/
-/**
+//GPU
 __device__ __host__
-<<<<<<< HEAD
-void vMirror_old(int bf[],int af[],int si)
-=======
-void vMirror_bitmap_old(int bf[],int af[],int si)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-{
-  int score ;
-  for(int i=0;i<si;i++) {
-    score=bf[i];
-    af[i]=rh(score,si-1);
-  }
- **/
-<<<<<<< HEAD
-//
-/***07 symmetryOps*************************************/
-__device__ __host__
-//void rotate(int bf[],int af[],int si)
 int* rotate(int* bf,int* af,int si)
-=======
-
-//
-/***07 symmetryOps*************************************/
-__device__ __host__
-//void rotate_bitmap(int bf[],int af[],int si)
-int* rotate_bitmap(int* bf,int* af,int si)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int t;
   for(int i=0;i<si;i++){
@@ -446,17 +187,10 @@ int* rotate_bitmap(int* bf,int* af,int si)
       t|=((bf[j]>>i)&1)<<(si-j-1);
     }
     af[i]=t;
-<<<<<<< HEAD
-    //printf("bf: %d af: %d\n",bf[i],af[i]);
-=======
-    printf("bf: %d af: %d\n",bf[i],af[i]);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   }
   return af;
 }
-/****************************************/
-//
-/***07 symmetryOps*************************************/
+//GPU
 __device__ __host__
 int intncmp(unsigned int* lt,int* rt,int n)
 {
@@ -469,15 +203,9 @@ int intncmp(unsigned int* lt,int* rt,int n)
   }
   return rtn;
 }
-/****************************************/
-//
-/***07 symmetryOps*************************************/
+//GPU
 __device__ __host__
-<<<<<<< HEAD
 int symmetryOps(int si,unsigned int *aBoard)
-=======
-int symmetryOps_bitmap(int si,unsigned int *aBoard)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
 {
   int nEquiv=0;
   int aT[MAX];
@@ -485,162 +213,57 @@ int symmetryOps_bitmap(int si,unsigned int *aBoard)
   // 回転・反転・対称チェックのためにboard配列をコピー
   memcpy(aT,aBoard,sizeof(int)*si);
   //時計回りに90度回転
-<<<<<<< HEAD
   rotate(aT,aS,si);
-=======
-  rotate_bitmap(aT,aS,si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   int icmp=intncmp(aBoard,aS,si);
   if(icmp>0){ return 0; }
   else if(icmp==0){ nEquiv=2; }
   else{//時計回りに180度回転
-<<<<<<< HEAD
     rotate(aS,aT,si);
-=======
-    rotate_bitmap(aS,aT,si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     icmp=intncmp(aBoard,aT,si);
     if(icmp>0){ return 0;}
     else if(icmp==0){ nEquiv=4;}
     else{//時計回りに270度回転
-<<<<<<< HEAD
       rotate(aT,aS,si);
-=======
-      rotate_bitmap(aT,aS,si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
       icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
       nEquiv=8;
     }
   }
   // 回転・反転・対称チェックのためにboard配列をコピー
-  //for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
   memcpy(aS,aBoard,sizeof(int)*si);
   //垂直反転
-<<<<<<< HEAD
   vMirror(aS,aT,si);   
-=======
-  vMirror_bitmap(aS,aT,si);   
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
   icmp=intncmp(aBoard,aT,si);
   if(icmp>0){ return 0; }
   //-90度回転 対角鏡と同等
   if(nEquiv>2){
-<<<<<<< HEAD
     rotate(aT,aS,si);
-=======
-    rotate_bitmap(aT,aS,si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     icmp=intncmp(aBoard,aS,si);
     if(icmp>0){return 0;}
     //-180度回転 水平鏡像と同等
     else if(nEquiv>4){
-<<<<<<< HEAD
       rotate(aS,aT,si);
       icmp=intncmp(aBoard,aT,si);
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
       rotate(aT,aS,si);
-=======
-      rotate_bitmap(aS,aT,si);
       icmp=intncmp(aBoard,aT,si);
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
-      rotate_bitmap(aT,aS,si);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
+      rotate(aT,aS,si);
       icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
     }
   }
   return nEquiv;  
 }
-/****************************************/
-/**
-__device__
-<<<<<<< HEAD
-int symmetryOps_gpu_old(int si,unsigned int *d_aBoard,unsigned int *d_aT,unsigned int *d_aS)
-=======
-int symmetryOps_bitmap_gpu_old(int si,unsigned int *d_aBoard,unsigned int *d_aT,unsigned int *d_aS)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-{
-  int nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ d_aT[i]=d_aBoard[i];}
-  rotate(d_aT,d_aS,si);    //時計回りに90度回転
-  int k=intncmp(d_aBoard,d_aS,si);
-  //printf("1_k:%d\n",k);
-  if(k>0)return 0;
-  if(k==0){ nEquiv=2;}else{
-    rotate(d_aS,d_aT,si);  //時計回りに180度回転
-    k=intncmp(d_aBoard,d_aT,si);
-    //printf("2_k:%d\n",k);
-    if(k>0)return 0;
-    if(k==0){ nEquiv=4;}else{
-      rotate(d_aT,d_aS,si);//時計回りに270度回転
-      k=intncmp(d_aBoard,d_aS,si);
-      //printf("3_k:%d\n",k);
-      if(k>0){ return 0;}
-      nEquiv=8;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ d_aS[i]=d_aBoard[i];}
-  vMirror(d_aS,d_aT,si);   //垂直反転
-  k=intncmp(d_aBoard,d_aT,si);
-  //printf("4_k:%d\n",k);
-  if(k>0){ return 0; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等
-    rotate(d_aT,d_aS,si);
-    k=intncmp(d_aBoard,d_aS,si);
-    //printf("5_k:%d\n",k);
-    if(k>0){return 0;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate(d_aS,d_aT,si);
-      k=intncmp(d_aBoard,d_aT,si);
-      //printf("6_k:%d\n",k);
-      if(k>0){ return 0;}       //-270度回転 反対角鏡と同等
-      rotate(d_aT,d_aS,si);
-      k=intncmp(d_aBoard,d_aS,si);
-      //printf("7_k:%d\n",k);
-      if(k>0){ return 0;}
-    }
-  }
-  //printf("eq:%d\n",nEquiv);
-  return nEquiv;  
-}
-**/
-//
 //GPU
-/***07 引数 追加に伴いコメント*********************/
-//__global__ 
-//void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
-/************************/
-/***07 引数 d_uniq,t_aBoard,h_row追加 uniq,aBoardのため*********************/
 __global__
-void cuda_kernel(
-    register int size,
-    register int mark,
-    unsigned int* totalDown,
-    unsigned int* totalLeft,
-    unsigned int* totalRight,
-    unsigned int* d_results,
-    unsigned int* d_uniq,
-    register int totalCond,
-    unsigned int* t_aBoard,
-    register int h_row)
-    /***07 aT,aS ローカル化*********************/
-    //int* aT,
-    //int* aS
-    /************************/
+void cuda_kernel(register int size,register int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,unsigned int* d_uniq,register int totalCond,unsigned int* t_aBoard,register int h_row)
 {
-  /************************/
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
-  /***07 uniq,aBoard追加*********************/
   register unsigned int unique=0;
-  //int aT[MAX];
-  //int aS[MAX];
-  /************************/
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
   //n=8 なら mask==2 なので そこからスタート
@@ -676,14 +299,8 @@ void cuda_kernel(
         |left[tid][row]
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
-  /***07 aBoard,uniq追加*********************/
-  unsigned int c_aBoard[MAX];
-  /***07 aT,aSローカル化*********************/
-  //unsigned int c_aT[MAX];
-  //unsigned int c_aS[MAX];
-  /************************/
   __shared__ unsigned int usum[THREAD_NUM];
-  /************************/
+  unsigned int c_aBoard[MAX];
   //
   //余分なスレッドは動かさない 
   //GPUはsteps数起動するがtotalCond以上は空回しする
@@ -693,63 +310,35 @@ void cuda_kernel(
     //CPU で詰め込んだ t_はsteps個あるが
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
-    //
-    /***07 aBoard追加*********************/
     for(int i=0;i<h_row;i++){
-      //c_aBoard[tid][i]=t_aBoard[idx][i];   
       c_aBoard[i]=t_aBoard[idx*h_row+i]; //２次元配列だが1次元的に利用  
     }
-    /************************/
-    /**07 スカラー変数に置き換えた**********/
     register unsigned int bitmap_tid_row;
     register unsigned int down_tid_row;
     register unsigned int left_tid_row;
     register unsigned int right_tid_row;
     while(row>=0){
-      //bitmap[tid][row]をスカラー変数に置き換え
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
-    /***************************************/
       //
       //bitmap[tid][row]=00000000 クイーンを
       //どこにも置けないので1行上に戻る
-      /**07 スカラー変数に置き換えた**********/
-      //if(bitmap[tid][row]==0){
       if(bitmap_tid_row==0){
-      /***************************************/
         row--;
       }else{
         //クイーンを置く
-        //bitmap[tid][row]
-        //  ^=bit
-        //  =(-bitmap[tid][row]&bitmap[tid][row]);
         //置く場所があるかどうか
-        /***07 aBoard追加*********************/
         bitmap[tid][row]
           ^=c_aBoard[row+h_row]
           =bit
-          /**07 スカラー変数に置き換えた**********/
-          //=(-bitmap[tid][row]&bitmap[tid][row]);       
           =(-bitmap_tid_row&bitmap_tid_row);       
-          /***************************************/
-        /************************/
         if((bit&mask)!=0){
           //最終行?最終行から１個前の行まで
           //無事到達したら 加算する
           if(row+1==mark){
-           /***07 symmetryOpsの処理を追加*********************/
-           /***07 aT,aSローカル化*********************/
-<<<<<<< HEAD
-           //int s=symmetryOps(size,c_aBoard); 
            int s=symmetryOps(size,c_aBoard); 
-           //int s=symmetryOps_gpu(size,c_aBoard,c_aT,c_aS);
-=======
-           //int s=symmetryOps_bitmap(size,c_aBoard); 
-           int s=symmetryOps(size,c_aBoard); 
-           //int s=symmetryOps_bitmap_gpu(size,c_aBoard,c_aT,c_aS);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
            if(s!=0){
            //print(size); //print()でTOTALを++しない
            //ホストに戻す配列にTOTALを入れる
@@ -757,19 +346,11 @@ void cuda_kernel(
               unique++; 
               total+=s;   //対称解除で得られた解数を加算
            }
-           /************************/
-           /***07 symmetryOpsの処理追加に伴いコメント*********************/
-           //total++;
-           /************************/
             row--;
           }else{
             int rowP=row+1;
-            /**07スカラー変数に置き換えてregister対応 ****/
-            //down[tid][rowP]=down[tid][row]|bit;
             down[tid][rowP]=down_tid_row|bit;
-            //left[tid][rowP]=(left[tid][row]|bit)<<1;
             left[tid][rowP]=(left_tid_row|bit)<<1;
-            //right[tid][rowP]=(right[tid][row]|bit)>>1;
             right[tid][rowP]=(right_tid_row|bit)>>1;
             bitmap[tid][rowP]
               =mask&~(
@@ -786,73 +367,49 @@ void cuda_kernel(
     }
     //最後sum[tid]に加算する
     sum[tid]=total;
-    /***07 uniq追加*********************/
     usum[tid]=unique;
-    /************************/
   }else{
     //totalCond未満は空回しするのでtotalは加算しない
     sum[tid]=0;
-    /***07 uniq追加*********************/
     usum[tid]=0;
-    /************************/
   } 
   //__syncthreads()でブロック内のスレッド間の同期
   //全てのスレッドが__syncthreads()に辿り着くのを待つ
   __syncthreads();if(tid<64&&tid+64<THREAD_NUM){
     sum[tid]+=sum[tid+64];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+64];
-    /************************/
   }
   __syncwarp();if(tid<32){
     sum[tid]+=sum[tid+32];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+32];
-    /************************/
   } 
   __syncwarp();if(tid<16){
     sum[tid]+=sum[tid+16];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+16];
-    /************************/  
   } 
   __syncwarp();if(tid<8){
     sum[tid]+=sum[tid+8];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+8];
-    /************************/
   } 
   __syncwarp();if(tid<4){
     sum[tid]+=sum[tid+4];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+4];
-    /************************/  
   } 
   __syncwarp();if(tid<2){
     sum[tid]+=sum[tid+2];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+2];
-    /************************/  
   } 
   __syncwarp();if(tid<1){
     sum[tid]+=sum[tid+1];
-    /***07 uniq追加*********************/
     usum[tid]+=usum[tid+1];
-    /************************/  
   } 
   __syncwarp();if(tid==0){
     d_results[bid]=sum[0];
-    /****07 uniq追加********************/
     d_uniq[bid]=usum[0];
-    /************************/
   }
 }
-//
 // GPU
- /****07 aBoardローカル化********************/
-//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps)
 long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
-/************************/
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   const unsigned int mark=size>11?size-10:2;
@@ -867,37 +424,20 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
   unsigned int bitmap[32];
-  //bitmap[row]=(left[row]|down[row]|right[row]);
-  /***07 aBoard追加に伴いbit処理をGPU*********************/
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-  /************************/
   unsigned int bit;
-
-  //unsigned int* totalDown=new unsigned int[steps];
   unsigned int* totalDown;
   cudaMallocHost((void**) &totalDown,sizeof(int)*steps);
-
-  //unsigned int* totalLeft=new unsigned int[steps];
   unsigned int* totalLeft;
   cudaMallocHost((void**) &totalLeft,sizeof(int)*steps);
-
-  //unsigned int* totalRight=new unsigned int[steps];
   unsigned int* totalRight;
   cudaMallocHost((void**) &totalRight,sizeof(int)*steps);
-
-  //unsigned int* h_results=new unsigned int[steps];
   unsigned int* h_results;
   cudaMallocHost((void**) &h_results,sizeof(int)*steps);
-
-  /***07 uniq,aBoard追加*********************/
-  //unsigned int* h_uniq=new unsigned int[steps];
   unsigned int* h_uniq;
   cudaMallocHost((void**) &h_uniq,sizeof(int)*steps);
-
-  //unsigned int* t_aBoard=new unsigned int[steps*mark];
   unsigned int* t_aBoard;
   cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*mark);
-  /************************/
   //device
   unsigned int* downCuda;
   cudaMalloc((void**) &downCuda,sizeof(int)*steps);
@@ -907,18 +447,10 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   cudaMalloc((void**) &rightCuda,sizeof(int)*steps);
   unsigned int* resultsCuda;
   cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
-  /***07 uniq,aBoard追加*********************/
-  /***07 aT,aSローカル化*********************/
-  //unsigned int* d_aT;
-  //cudaMalloc((void**) &d_aT,sizeof(int)*steps*MAX);
-  //unsigned int* d_aS;
-  //cudaMalloc((void**) &d_aS,sizeof(int)*steps*MAX);
-  /************************/
   unsigned int* d_uniq;
   cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
   unsigned int* d_aBoard;
   cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*mark);
-  /************************/
   //12行目までは3行目までCPU->row==mark以下で 3行目までの
   //down,left,right情報を totalDown,totalLeft,totalRight
   //に格納
@@ -927,41 +459,20 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
     //どこにも置けないので1行上に戻る
-    /***07 aBoard追加に伴いbit操作変更*********************/
     //06GPU こっちのほうが優秀
     if(bitmap[row]==0){ row--; }
-    /************************/
-    /***07 aBoard追加に伴いbit操作変更でコメント*********************/
-    //06SGPU
-    //if((bitmap[row]&mask)==mask){row--;}
-    /************************/
     else{//おける場所があれば進む
-      //06SGPU
-      /***07 aBoard追加に伴いbit操作変更でコメント*********************/
-      //bit=(bitmap[row]+1)&~bitmap[row];
-      //bitmap[row]|=bit;
-      /************************/
-      //06GPU こっちのほうが優秀
-      //bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); //クイーンを置く
-      /***07 aBoard追加*********************/
       bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
-      /************************/ 
       if((bit&mask)!=0){//置く場所があれば先に進む
         rowP=row+1;
         down[rowP]=down[row]|bit;
         left[rowP]=(left[row]|bit)<<1;
         right[rowP]=(right[row]|bit)>>1;
-        /***07 aBoard追加に伴いbit操作変更でコメント*********************/
-        //bitmap[rowP]=(down[rowP]|left[rowP]|right[rowP]);
-        /************************/
-        /***07 aBoard追加に伴いbit操作変更*********************/
         bitmap[rowP]=mask&~(down[rowP]|left[rowP]|right[rowP]);
-        /************************/
         row++;
         if(row==mark){
           //3行目(mark)にクイーンを１個ずつ置いていって、
@@ -974,12 +485,9 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
           totalDown[totalCond]=down[row];
           totalLeft[totalCond]=left[row];
           totalRight[totalCond]=right[row];
-          /***07 aBoard追加*********************/
           for(int i=0;i<mark;i++){
-            //t_aBoard[totalCond][i]=aBoard[i];
             t_aBoard[totalCond*mark+i]=aBoard[i];
           }
-          /************************/
           //スレッド数をインクリメントする
           totalCond++;
           //最大GPU数に達してしまったら一旦ここでGPUを実行する。stepsはGPUの同
@@ -993,15 +501,11 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
             if(matched){
               cudaMemcpy(h_results,resultsCuda,
                   sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-              /***07 uniq追加*********************/
               cudaMemcpy(h_uniq,d_uniq,
                   sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-              /************************/
               for(int col=0;col<steps/THREAD_NUM;col++){
                 total+=h_results[col];
-                /****07 uniq追加********************/
                 UNIQUE+=h_uniq[col];
-                /************************/                                        
               }
               matched=false;
             }
@@ -1011,20 +515,10 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
                 sizeof(int)*totalCond,cudaMemcpyHostToDevice);
             cudaMemcpy(rightCuda,totalRight,
                 sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-            /***07 aBoard追加*********************/
             cudaMemcpy(d_aBoard,t_aBoard,
                 sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
-            /************************/
-            /** backTrack+bitmap*/
-            //size-mark は何行GPUを実行するか totalCondはスレッド数
-            /***07 d_uniq,d_aBoard,row追加に伴いコメント*********************/
-            //cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
-            //  >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-            /************************/
-            /***07 d_uniq,d_aBoard,row追加*********************/
             cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
               >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,d_uniq,totalCond,d_aBoard,row);
-            /************************/          
             //steps数の数だけマルチスレッドで起動するのだが、実際に計算が行われ
             //るのはtotalCondの数だけでそれ以外は空回しになる
             //GPU内でカウントしているので、GPUから出たらmatched=trueになってる
@@ -1050,16 +544,11 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   if(matched){
     cudaMemcpy(h_results,resultsCuda,
         sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-    /***07 uniq追加*********************/
     cudaMemcpy(h_uniq,d_uniq,
         sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-    /************************/
-   
     for(int col=0;col<steps/THREAD_NUM;col++){
       total+=h_results[col];
-      /***07 uniq追加*********************/
       UNIQUE+=h_uniq[col];
-      /************************/    
     }
     matched=false;
   }
@@ -1069,92 +558,50 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   cudaMemcpy(rightCuda,totalRight,
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-  /***07 aBoard追加*********************/
   cudaMemcpy(d_aBoard,t_aBoard,
       sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
-  /************************/ 
   /** backTrack+bitmap*/
   //size-mark は何行GPUを実行するか totalCondはスレッド数
   //steps数の数だけマルチスレッドで起動するのだが、実際に計算が行われるのは
   //totalCondの数だけでそれ以外は空回しになる
-  /***07 d_uniq,d_aBoard,mark追加に伴いコメント*********************/   
-  //cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
-  //  >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-  /***07 d_uniq,d_aBoard,mark追加*********************/  
   cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
     >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,d_uniq,totalCond,d_aBoard,mark);
-  /************************/
   cudaMemcpy(h_results,resultsCuda,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-  /***07 uniq追加*********************/
   cudaMemcpy(h_uniq,d_uniq,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-  /************************/   
   for(int col=0;col<steps/THREAD_NUM;col++){
     total+=h_results[col];
-    /***07 uniq追加*********************/
     UNIQUE+=h_uniq[col];
-    /************************/    
   }
   //
   cudaFree(downCuda);
   cudaFree(leftCuda);
   cudaFree(rightCuda);
   cudaFree(resultsCuda);
-  /***07 uniq,aBoard追加 cudaFreeHostへ変更**/
   cudaFree(d_uniq);
   cudaFree(d_aBoard);
-  //delete[] totalDown;
   cudaFreeHost(totalDown);
-  //delete[] totalLeft;
   cudaFreeHost(totalLeft);
-  //delete[] totalRight;
   cudaFreeHost(totalRight);
-  //delete[] h_results;
   cudaFreeHost(h_results);
-  //delete[] h_uniq;
   cudaFreeHost(h_uniq);
-  //delete[] t_aBoard;
   cudaFreeHost(t_aBoard);
-  /************************/
   return total;
 }
 //
 //GPU
 void NQueenG(int size,int steps)
 {
-  /***07 aBoardローカル化*********************/
   unsigned int aBoard[MAX];
-  /************************/
-  //register int sizeE=size-1;
   register int bit=0;
   register int mask=((1<<size)-1);
   if(size<=0||size>32){return;}
-  /***07 ミラーリングしない*********************/
   //偶数、奇数共通
   for(int col=0;col<size;col++){
     aBoard[0]=bit=(1<<col);
-    /***07 aBoardローカル化*********************/
     TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
-    //TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
-    /************************/
   }
-  /************************/
-  /***07 ミラーリングしないためコメント*********************/
-  //偶数、奇数共通 右側半分だけクイーンを置く
-	//int lim=(size%2==0)?size/2:sizeE/2;
-  //for(int col=0;col<lim;col++){
-  //  bit=(1<<col);
-  //  TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
-  //}
-  //ミラーなのでTOTALを２倍する
-  //TOTAL=TOTAL*2;
-  //奇数の場合はさらに中央にクイーンを置く
-  //if(size%2==1){
-  //  bit=(1<<(sizeE)/2);
-  //  TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps);
-  //}
-  /************************/
 }
 //SGPU
 __global__ 
@@ -1421,73 +868,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-/***07 CPU,GPU同一関数化のためコメント*********************/
-/**
-long getUnique()
-{
-  return COUNT2+COUNT4+COUNT8;
-}
-//
-long getTotal()
-{
-  return COUNT2*2+COUNT4*4+COUNT8*8;
-}
-**/
-//CPU
-/***07 symmetryOps_titmap CPU,GPU同関数化のためコメント*********************/
-/**
-<<<<<<< HEAD
-void symmetryOps(int si)
-=======
-void symmetryOps_bitmap(int si)
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
-{
-  int nEquiv;
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aT[i]=aBoard[i];}
-  rotate(aT,aS,si);    //時計回りに90度回転
-  int k=intncmp(aBoard,aS,si);
-  if(k>0)return;
-  if(k==0){ nEquiv=2;}else{
-    rotate(aS,aT,si);  //時計回りに180度回転
-    k=intncmp(aBoard,aT,si);
-    if(k>0)return;
-    if(k==0){ nEquiv=4;}else{
-      rotate(aT,aS,si);//時計回りに270度回転
-      k=intncmp(aBoard,aS,si);
-      if(k>0){ return;}
-      nEquiv=8;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  for(int i=0;i<si;i++){ aS[i]=aBoard[i];}
-  vMirror(aS,aT,si);   //垂直反転
-  k=intncmp(aBoard,aT,si);
-  if(k>0){ return; }
-  if(nEquiv>2){             //-90度回転 対角鏡と同等
-    rotate(aT,aS,si);
-    k=intncmp(aBoard,aS,si);
-    if(k>0){return;}
-    if(nEquiv>4){           //-180度回転 水平鏡像と同等
-      rotate(aS,aT,si);
-      k=intncmp(aBoard,aT,si);
-      if(k>0){ return;}       //-270度回転 反対角鏡と同等
-      rotate(aT,aS,si);
-      k=intncmp(aBoard,aS,si);
-      if(k>0){ return;}
-    }
-  }
-  if(nEquiv==2){COUNT2++;}
-  if(nEquiv==4){COUNT4++;}
-  if(nEquiv==8){COUNT8++;}
-}
-**/
-//
-//CPU 非再帰版 ロジックメソッド
-/***07 aBoardローカル化*********************/
-//void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap)
 void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap,unsigned int* aBoard)
-/************************/
 {
     unsigned int bit;
     unsigned int sizeE=size-1;
@@ -1500,18 +881,11 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
         bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
         if((bit&mask)!=0){
           if(row==sizeE){
-            /***07 symmetryOps CPU,GPU同一化*********************/
-<<<<<<< HEAD
-            //int s=symmetryOps(size,aBoard);
-=======
-            //int s=symmetryOps_bitmap(size,aBoard);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
             int s=symmetryOps(size,aBoard);
             if(s!=0){
               UNIQUE++;
               TOTAL+=s;
             }
-            /************************/
             --row;
           }else{
             int n=row++;
@@ -1533,9 +907,7 @@ void NQueen(int size,int mask)
   register int bitmap[size];
   register int down[size],right[size],left[size];
   register int bit;
-  /***07 aBoardローカル化*********************/
   unsigned int aBoard[MAX];
-  /************************/  
   if(size<=0||size>32){return;}
   bit=0;
   bitmap[0]=mask;
@@ -1547,17 +919,11 @@ void NQueen(int size,int mask)
     left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
     right[1]=bit>>1;
     bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    /***07 aBoardローカル化*********************/
     solve_nqueen(size,mask,1,left,down,right,bitmap,aBoard);
-    //solve_nqueen(size,mask,1,left,down,right,bitmap);
-    /************************/  
   }
 }
 //CPUR 再帰版 ロジックメソッド
-/***07 aBoardローカル化*********************/
 void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard)
-//void solve_nqueenr(int size,int mask, int row,int left,int down,int right)
-/************************/
 {
  int bitmap=0;
  int bit=0;
@@ -1566,27 +932,16 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsign
  if(row==sizeE){
     if(bitmap){
       aBoard[row]=(-bitmap&bitmap);
-      /***07 symmetryOps CPU,GPU同一化*********************/
-<<<<<<< HEAD
-      //int s=symmetryOps(size,aBoard);
-=======
-      //int s=symmetryOps_bitmap(size,aBoard);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
       int s=symmetryOps(size,aBoard);
       if(s!=0){
         UNIQUE++;
         TOTAL+=s;
       }
-      /************************/
-
     }
   }else{
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      /***07 aBoardローカル化*********************/
-      //solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
       solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1,aBoard);
-      /************************/
     }
   }
 }
@@ -1594,16 +949,11 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsign
 void NQueenR(int size,int mask)
 {
   int bit=0;
-  /***07 aBoardローカル化*********************/
   unsigned int aBoard[MAX];
-  /************************/  
   //1行目全てにクイーンを置く
   for(int col=0;col<size;col++){
     aBoard[0]=bit=(1<<col);
-    /***07 aBoardローカル化*********************/
-    //solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
     solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1,aBoard);
-    /************************/  
   }
 }
 //
@@ -1616,9 +966,7 @@ void NQueenD(int size,int mask,int row)
   int bitmap;
   int sizeE=size-1;
   int down[size],right[size],left[size];
-  /***07 aBoardローカル化*********************/
   unsigned int aBoard[MAX];
-  /************************/  
   aStack[0]=-1; 
   pnStack=aStack+1;
   bit=0;
@@ -1630,17 +978,11 @@ void NQueenD(int size,int mask,int row)
       if(row==sizeE){
         /* 対称解除法の追加 */
         //TOTAL++;
-        /***07 symmetryOps CPU,GPU同一化*********************/
-<<<<<<< HEAD
         int s=symmetryOps(size,aBoard);
-=======
-        int s=symmetryOps_bitmap(size,aBoard);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
         if(s!=0){
           UNIQUE++;
           TOTAL+=s;
         }
-        /************************/
         bitmap=*--pnStack;
         --row;
         continue;
@@ -1667,26 +1009,17 @@ void NQueenDR(int size,int mask,int row,int left,int down,int right)
 {
   int bit;
   int bitmap=mask&~(left|down|right);
-  /***07 aBoardローカル化*********************/
   unsigned int aBoard[MAX];
-  /************************/  
   if(row==size){
     /* 対称解除法の追加 */
     //TOTAL++;
-    /***07 symmetryOps CPU,GPU同一化*********************/
-<<<<<<< HEAD
     int s=symmetryOps(size,aBoard);
-=======
-    int s=symmetryOps_bitmap(size,aBoard);
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     if(s!=0){
       UNIQUE++;
       TOTAL+=s;
     }
-    /************************/
   }else{
     while(bitmap){
-      //bitmap^=bit=(-bitmap&bitmap);
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
       NQueenDR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
@@ -1697,8 +1030,6 @@ int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
   int argstart=1,steps=24576;
-  //int argstart=1,steps=1;
-  
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
@@ -1731,14 +1062,10 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    //int min=4; int targetN=17;
-    int min=8;int targetN=8;
+    int min=4; int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
-      /***07 symmetryOps CPU,GPU同一化*********************/
       TOTAL=0; UNIQUE=0;
-      //COUNT2=COUNT4=COUNT8=0;
-      /************************/
       mask=(1<<i)-1;
       st=clock();
       //
@@ -1758,25 +1085,12 @@ int main(int argc,char** argv)
       }
       //
       TimeFormat(clock()-st,t); 
-      /***07 symmetryOps CPU,GPU同一化*********************/
-      //printf("%2d:%13ld%16ld%s\n",i,getTotal(),getUnique(),t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
-      /************************/
-<<<<<<< HEAD
-=======
-
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     }
   }
   if(gpu||sgpu){
     if(!InitCUDA()){return 0;}
-<<<<<<< HEAD
     int min=4;int targetN=17;
-=======
-    //int min=4;int targetN=17;
-    int min=8;int targetN=8;
-   
->>>>>>> 1a2989aa8d77188615335d7810c2ad7556b2c42f
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
