@@ -1846,14 +1846,15 @@ int main(int argc,char** argv)
   }
   /** 出力と実行 */
   if(cpu){
-    printf("\n\n１０．CPU 非再帰 クイーンの位置による分岐BOUND1,2\n");
+    printf("\n\n１１．CPU 非再帰 枝刈り\n");
   }else if(cpur){
-    printf("\n\n１０．CPUR 再帰 クイーンの位置による分岐BOUND1,2\n");
+    printf("\n\n１１．CPUR 再帰 枝刈り\n");
   }else if(gpu){
-    printf("\n\n１０．GPU 非再帰 クイーンの位置による分岐BOUND1,2\n");
+    printf("\n\n１１．GPU 非再帰 枝刈り\n");
   }else if(sgpu){
-    printf("\n\n１０．SGPU 非再帰 バックトラック＋ビットマップ\n");
-  }
+    printf("\n\n１１．SGPU 非再帰 バックトラック＋ビットマップ\n");  
+  } 
+
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
