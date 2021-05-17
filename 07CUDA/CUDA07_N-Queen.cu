@@ -111,20 +111,20 @@ $ nvcc -O3 CUDA07_N-Queen.cu  && ./a.out -c
 $ nvcc -O3 CUDA07_N-Queen.cu  && ./a.out -g
 ７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.02
+ 4:            2               1  00:00:00:00.05
  5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.01
+ 6:            4               1  00:00:00:00.00
  7:           40               6  00:00:00:00.00
- 8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.02
-10:          724              92  00:00:00:00.04
-11:         2680             341  00:00:00:00.15
-12:        14200            1787  00:00:00:00.62
-13:        73712            9233  00:00:00:01.18
-14:       365596           45752  00:00:00:01.26
-15:      2279184          285053  00:00:00:07.47
-16:     14772512         1846955  00:00:00:48.32
-17:     95815104        11977939  00:00:06:27.08
+ 8:           92              12  00:00:00:00.02
+ 9:          352              46  00:00:00:00.03
+10:          724              92  00:00:00:00.07
+11:         2680             341  00:00:00:00.19
+12:        14200            1787  00:00:00:00.59
+13:        73712            9233  00:00:00:01.13
+14:       365596           45752  00:00:00:01.20
+15:      2279184          285053  00:00:00:07.10
+16:     14772512         1846955  00:00:00:45.59
+17:     95815104        11977939  00:00:06:04.57
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -139,7 +139,7 @@ $ nvcc -O3 CUDA07_N-Queen.cu  && ./a.out -g
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
-//GPU
+//
 __device__ __host__
 int* vMirror(int* bf,int* af,int si)
 {
@@ -158,7 +158,7 @@ int* vMirror(int* bf,int* af,int si)
   }
   return af;
 }
-//GPU
+//
 __device__ __host__
 int* rotate(int* bf,int* af,int si)
 {
@@ -172,7 +172,7 @@ int* rotate(int* bf,int* af,int si)
   }
   return af;
 }
-//GPU
+//
 __device__ __host__
 int intncmp(unsigned int* lt,int* rt,int n)
 {
@@ -185,7 +185,7 @@ int intncmp(unsigned int* lt,int* rt,int n)
   }
   return rtn;
 }
-//GPU
+//
 __device__ __host__
 int symmetryOps(int si,unsigned int *aBoard)
 {
@@ -229,19 +229,25 @@ int symmetryOps(int si,unsigned int *aBoard)
       //-270度回転 反対角鏡と同等
       if(icmp>0){ return 0;}
       rotate(aT,aS,si);
-      icmp=intncmp(aBoard,aT,si);
-      //-270度回転 反対角鏡と同等
-      if(icmp>0){ return 0;}
-      rotate(aT,aS,si);
       icmp=intncmp(aBoard,aS,si);
       if(icmp>0){ return 0;}
     }
   }
   return nEquiv;  
 }
-//GPU
+//
 __global__
-void cuda_kernel(register int size,register int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,unsigned int* d_uniq,register int totalCond,unsigned int* t_aBoard,register int h_row)
+void cuda_kernel(
+    register int size,
+    register int mark,
+    unsigned int* totalDown,
+    unsigned int* totalLeft,
+    unsigned int* totalRight,
+    unsigned int* d_results,
+    unsigned int* d_uniq,
+    register int totalCond,
+    unsigned int* t_aBoard,
+    register int h_row)
 {
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
@@ -292,6 +298,7 @@ void cuda_kernel(register int size,register int mark,unsigned int* totalDown,uns
     //CPU で詰め込んだ t_はsteps個あるが
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
+    //
     for(int i=0;i<h_row;i++){
       c_aBoard[i]=t_aBoard[idx*h_row+i]; //２次元配列だが1次元的に利用  
     }
@@ -390,11 +397,12 @@ void cuda_kernel(register int size,register int mark,unsigned int* totalDown,uns
     d_uniq[bid]=usum[0];
   }
 }
-// GPU
+//
 long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
-  const unsigned int mark=size>11?size-10:2;
+  /***08 クイーンを２行目まで固定で置くためmarkが3以上必要*********************/
+  const unsigned int mark=size>12?size-10:3;
   const unsigned int h_mark=row;
   long total=0;
   int totalCond=0;
@@ -542,7 +550,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   cudaMemcpy(d_aBoard,t_aBoard,
       sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
-  /** backTrack+bitmap*/
   //size-mark は何行GPUを実行するか totalCondはスレッド数
   //steps数の数だけマルチスレッドで起動するのだが、実際に計算が行われるのは
   //totalCondの数だけでそれ以外は空回しになる
@@ -572,7 +579,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   return total;
 }
 //
-//GPU
 void NQueenG(int size,int steps)
 {
   unsigned int aBoard[MAX];
@@ -702,7 +708,6 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
                   sizeof(int)*totalCond,cudaMemcpyHostToDevice);
               cudaMemcpy(rightCuda,totalRight,
                   sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              /** backTrack+bitmap*/
               sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
                 >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
               matched=true;
@@ -726,7 +731,6 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   cudaMemcpy(rightCuda,totalRight,
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-  /** backTrack+bitmap*/
   sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
     >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
   cudaMemcpy(results,resultsCuda,
@@ -772,7 +776,6 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
                   sizeof(int)*totalCond,cudaMemcpyHostToDevice);
               cudaMemcpy(rightCuda,totalRight,
                   sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-              /** backTrack+bitmap*/
               sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
                 >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
               matched=true;
@@ -795,7 +798,6 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
         sizeof(int)*totalCond,cudaMemcpyHostToDevice);
     cudaMemcpy(rightCuda,totalRight,
         sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-    /** backTrack+bitmap*/
     sgpu_cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
       >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
     cudaMemcpy(results,resultsCuda,
@@ -827,7 +829,6 @@ bool InitCUDA()
   cudaSetDevice(i);
   return true;
 }
-//CPU/GPU
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form)
 {
@@ -949,7 +950,7 @@ void NQueenD(int size,int mask,int row)
   int sizeE=size-1;
   int down[size],right[size],left[size];
   unsigned int aBoard[MAX];
-  aStack[0]=-1; 
+  aStack[0]=-1;
   pnStack=aStack+1;
   bit=0;
   bitmap=mask;
@@ -987,7 +988,13 @@ void NQueenD(int size,int mask,int row)
 }
 //
 //通常版 CPUR 再帰版　ロジックメソッド
-void NQueenDR(int size,int mask,int row,int left,int down,int right)
+void NQueenDR(
+    int size,
+    int mask,
+    int row,
+    int left,
+    int down,
+    int right)
 {
   int bit;
   int bitmap=mask&~(left|down|right);

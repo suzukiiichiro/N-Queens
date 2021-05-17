@@ -47,7 +47,10 @@
   lt, dn, lt 位置は効きチェックで配置不可能となる
   回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+ *
+ *
 
+ 実行結果
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC10.c && ./a.out -r
 １０．CPUR 再帰 クイーンの位置による分岐BOUND1,2
@@ -231,6 +234,9 @@ void cuda_kernel(
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
   register unsigned int unique=0;
+  //row=0となってるが1行目からやっているわけではなく
+  //mask行目以降からスタート 
+  //n=8 なら mask==2 なので そこからスタート
   register int row=0;
   register unsigned int bit;
   //
@@ -263,8 +269,9 @@ void cuda_kernel(
         |left[tid][row]
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
-  unsigned int c_aBoard[MAX];
   __shared__ unsigned int usum[THREAD_NUM];
+  unsigned int c_aBoard[MAX];
+  //
   //余分なスレッドは動かさない 
   //GPUはsteps数起動するがtotalCond以上は空回しする
   if(idx<totalCond){
@@ -286,6 +293,9 @@ void cuda_kernel(
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
+      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
       if(bitmap_tid_row==0){
         row--;
       }else{
@@ -307,7 +317,7 @@ void cuda_kernel(
               unique++; 
               total+=s;   //対称解除で得られた解数を加算
            }
-            row--;
+           row--;
           }else{
             int rowP=row+1;
             down[tid][rowP]=down_tid_row|bit;
@@ -370,8 +380,6 @@ void cuda_kernel(
   }
 }
 //
-/***10 関数名をbacktrack2Gにする*********************/
-//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
 long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
@@ -423,7 +431,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
@@ -431,7 +438,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
     //06GPU こっちのほうが優秀
     if(bitmap[row]==0){ row--; }
     else{//おける場所があれば進む
-      //06SGPU
       bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
       if((bit&mask)!=0){//置く場所があれば先に進む
         rowP=row+1;
@@ -555,8 +561,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   return total;
 }
 //
-/***10 関数名をbacktrack1Gにする*********************/
-//long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
 long backTrack1G(int size,int mask,int row,int n_left,int n_down,int n_right,int steps,unsigned int* aBoard)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
@@ -740,7 +744,6 @@ long backTrack1G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   return total;
 }
 //
-//GPU
 void NQueenG(int size,int steps)
 {
   unsigned int aBoard[MAX];
@@ -758,22 +761,18 @@ void NQueenG(int size,int steps)
   int right=bit>>1;
   //2行目は右から3列目から左端から2列目まで
   for(int col_j=2;col_j<size-1;col_j++){
-      aBoard[1]=bit=(1<<col_j);
-      /***10 関数名をbacktrack1Gにする*********************/
-      //TOTAL+=solve_nqueen_cuda(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,steps,aBoard);
-      TOTAL+=backTrack1G(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,steps,aBoard);
+    aBoard[1]=bit=(1<<col_j);
+    TOTAL+=backTrack1G(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,steps,aBoard);
   }
   /***09 backtrack2*********************/
   //1行目右から2列目から
   //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   for(int col=1,col2=size-2;col<col2;col++,col2--){
-      aBoard[0]=bit=(1<<col);
-      /***10 関数名をbacktrack2Gにする*********************/
-      //TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
-      TOTAL+=backTrack2G(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
+    aBoard[0]=bit=(1<<col);
+    TOTAL+=backTrack2G(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
   }
 }
-//SGPU
+//
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
 {
@@ -1124,8 +1123,8 @@ void NQueen(int size,int mask)
 {
   register int bit;
   unsigned int aBoard[MAX];
-  bit=0;
   if(size<=0||size>32){return;}
+  bit=0;
   /***09 枝借りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない***/
   //backtrack1
   //1行め右端 0
@@ -1136,24 +1135,18 @@ void NQueen(int size,int mask)
   int right=bit>>1;
   /***09 2行目は右から3列目から左端から2列目まで***/
   for(int col_j=2;col_j<size-1;col_j++){
-      aBoard[1]=bit=(1<<col_j);
-      /***10 関数名をbacktrack1にする*********************/
-      //solve_nqueen(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
-      backTrack1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
+    aBoard[1]=bit=(1<<col_j);
+    backTrack1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
   }
   /***09 backtrack2***/
   //1行目右から2列目から
   //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   for(int col=1,col2=size-2;col<col2;col++,col2--){
-      aBoard[0]=bit=(1<<col);
-      /***10 関数名をbacktrack2にする*********************/
-      //solve_nqueen(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
-      backTrack2(size,mask,1,bit<<1,bit,bit>>1,aBoard);
+    aBoard[0]=bit=(1<<col);
+    backTrack2(size,mask,1,bit<<1,bit,bit>>1,aBoard);
   }
 }
 //CPUR 再帰版 ロジックメソッド
-/***10 solve_nqueenrをbackTrackR２に変更*********************/
-//void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard)
 void backTrackR2(int size,int mask, int row,int left,int down,int right,unsigned int* aBoard)
 {
  int bitmap=0;
@@ -1217,18 +1210,14 @@ void NQueenR(int size,int mask)
   //2行目は右から3列目から左端から2列目まで
   for(int col_j=2;col_j<size-1;col_j++){
     aBoard[1]=bit=(1<<col_j);
-    /***10 関数名をbacktrack2にする*********************/
-    //solve_nqueenr(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
     backTrackR1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard);
   }
   /***09 backtrack2*********************/
   //1行目右から2列目から
   //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   for(int col=1,col2=size-2;col<col2;col++,col2--){
-      aBoard[0]=bit=(1<<col);
-      /***10 関数名をbacktrack2にする*********************/
-      //solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1,aBoard);
-      backTrackR2(size,mask,1,bit<<1,bit,bit>>1,aBoard);
+    aBoard[0]=bit=(1<<col);
+    backTrackR2(size,mask,1,bit<<1,bit,bit>>1,aBoard);
   }
 }
 //
@@ -1355,7 +1344,7 @@ void backTrack1D_NR(int size,int mask,int row,int left,int down,int right,unsign
   goto b1volta;
   }
 }
-// 
+//
 //通常版 CPU 非再帰版 ロジックメソッド
 /***09 backTrack登場メソッド名だけ枝刈りはまだしない*****/  
 void NQueenD(int size,int mask){
@@ -1425,7 +1414,7 @@ void backTrack1D(int size,int mask,int row,int left,int down,int right,unsigned 
     }
   }
 }
-// 
+//
 //通常版 CPUR 再帰版　ロジックメソッド
 void NQueenDR(int size,int mask)
 {
@@ -1552,4 +1541,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-

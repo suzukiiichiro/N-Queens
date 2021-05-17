@@ -196,6 +196,9 @@ void cuda_kernel(
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
   register unsigned int unique=0;
+  //row=0となってるが1行目からやっているわけではなく
+  //mask行目以降からスタート 
+  //n=8 なら mask==2 なので そこからスタート
   register int row=0;
   register unsigned int bit;
   //
@@ -228,8 +231,9 @@ void cuda_kernel(
         |left[tid][row]
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
-  unsigned int c_aBoard[MAX];
   __shared__ unsigned int usum[THREAD_NUM];
+  unsigned int c_aBoard[MAX];
+  //
   //余分なスレッドは動かさない 
   //GPUはsteps数起動するがtotalCond以上は空回しする
   if(idx<totalCond){
@@ -251,6 +255,9 @@ void cuda_kernel(
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
+      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
       if(bitmap_tid_row==0){
         row--;
       }else{
@@ -386,7 +393,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
@@ -394,7 +400,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
     //06GPU こっちのほうが優秀
     if(bitmap[row]==0){ row--; }
     else{//おける場所があれば進む
-      //06SGPU
       bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
       if((bit&mask)!=0){//置く場所があれば先に進む
         rowP=row+1;
@@ -517,18 +522,18 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   cudaFreeHost(t_aBoard);
   return total;
 }
-//GPU
+//
 void NQueenG(int size,int steps)
 {
   unsigned int aBoard[MAX];
-  register int sizeE=size-1;
   register int bit=0;
   register int mask=((1<<size)-1);
   if(size<=0||size>32){return;}
   //偶数、奇数共通 右側半分だけクイーンを置く
+  int sizeE=size-1;
 	int lim=(size%2==0)?size/2:sizeE/2;
   for(int col=0;col<lim;col++){
-    bit=aBoard[0]=(1<<col);
+    aBoard[0]=bit=(1<<col);
     TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
   }
   //symmetryOpsしてるので２倍の処理は不要
@@ -854,15 +859,13 @@ void NQueen(int size,int mask)
   register int bit;
   unsigned int aBoard[MAX];
   if(size<=0||size>32){return;}
-  /***08 右側半分にしかクイーンを置かない。偶数、奇数で処理を分ける***/
-  int sizeE=size-1;
   bit=0;
   bitmap[0]=mask;
   down[0]=left[0]=right[0]=0;
-  /***08 偶数、奇数ともに右半分にクイーンを置く*********************/
-  //for(int col=0;col<size;col++){
-  for(int col=0;col<size/2;col++){
+  // 08 偶数、奇数ともに右半分にクイーンを置く
   //ex n=6 xxxooo n=7 xxxxooo
+  int sizeE=size-1;
+  for(int col=0;col<size/2;col++){
     aBoard[0]=bit=(1<<col);
     down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
     left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
@@ -880,9 +883,9 @@ void NQueen(int size,int mask)
     right[1]=bit>>1;
     bitmap[1]=mask&~(left[1]|down[1]|right[1]);
     for(int col_j=0;col_j<(size/2)-1;col_j++){
-    //1行目にクイーンが中央に置かれた場合は2行目の左側半分にクイーンを置けない
-    //0001000
-    //xxxdroo  左側半分にクイーンを置けないがさらに1行目のdown,rightもクイーンを置けないので (size/2)-1となる
+      //1行目にクイーンが中央に置かれた場合は2行目の左側半分にクイーンを置けない
+      //0001000
+      //xxxdroo  左側半分にクイーンを置けないがさらに1行目のdown,rightもクイーンを置けないので (size/2)-1となる
       //2行目にクイーンを置く
       aBoard[1]=bit=(1<<col_j);
       down[2]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
@@ -920,13 +923,12 @@ void solve_nqueenr(int size,int mask, int row,int left,int down,int right,unsign
 void NQueenR(int size,int mask)
 {
   int bit=0;
-  /***08 右側半分にしかクイーンを置かない。偶数、奇数で処理を分ける***/
-  int sizeE=size-1;
   unsigned int aBoard[MAX];
-  /***08 偶数、奇数ともに右半分にクイーンを置く*********************/
+  // 08 偶数、奇数ともに右半分にクイーンを置く
+  // ex n=6 xxxooo n=7 xxxxooo 
+  int sizeE=size-1;
   //for(int col=0;col<size;col++){
   for(int col=0;col<size/2;col++){
-  //ex n=6 xxxooo n=7 xxxxooo 
     aBoard[0]=bit=(1<<col);
     solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1,aBoard);
   }
@@ -957,13 +959,12 @@ void NQueenD(int size,int mask,int row)
   int* pnStack;
   int bit;
   int bitmap;
-  /***08 右側半分にしかクイーンを置かない。偶数、奇数で処理を分ける*********/
-  int odd=size&1; //奇数:1 偶数:0
   int sizeE=size-1;
   int down[size],right[size],left[size];
   unsigned int aBoard[MAX];
   aStack[0]=-1;
   /***08 右側半分にしかクイーンを置かない。偶数、奇数で処理を分ける*********************/
+  int odd=size&1; //奇数:1 偶数:0
   for(int i=0;i<(1+odd);++i){
     bitmap=0;
     if(0==i){
@@ -978,41 +979,49 @@ void NQueenD(int size,int mask,int row)
       pnStack=aStack+1;
       *pnStack++=0;
     }
-  while(true){
-    if(bitmap){
-      bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
-      if(row==sizeE){
-        /* 対称解除法の追加 */
-        //TOTAL++;
-        int s=symmetryOps(size,aBoard);
-        if(s!=0){
-          UNIQUE++;
-          TOTAL+=s;
+    while(true){
+      if(bitmap){
+        bitmap^=aBoard[row]=bit=(-bitmap&bitmap); 
+        if(row==sizeE){
+          /* 対称解除法の追加 */
+          //TOTAL++;
+          int s=symmetryOps(size,aBoard);
+          if(s!=0){
+            UNIQUE++;
+            TOTAL+=s;
+          }
+          bitmap=*--pnStack;
+          --row;
+          continue;
+        }else{
+          int n=row++;
+          left[row]=(left[n]|bit)<<1;
+          down[row]=down[n]|bit;
+          right[row]=(right[n]|bit)>>1;
+          *pnStack++=bitmap;
+          bitmap=mask&~(left[row]|down[row]|right[row]);
+          continue;
         }
+      }else{ 
         bitmap=*--pnStack;
+        if(pnStack==aStack){ break ; }
         --row;
         continue;
-      }else{
-        int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        *pnStack++=bitmap;
-        bitmap=mask&~(left[row]|down[row]|right[row]);
-        continue;
       }
-    }else{ 
-      bitmap=*--pnStack;
-      if(pnStack==aStack){ break ; }
-      --row;
-      continue;
     }
   }
- }
 }
 //
 //通常版 CPUR 再帰版　ロジックメソッド
-void NQueenDR(int size,int mask,int row,int left,int down,int right,int ex1,int ex2)
+void NQueenDR(
+    int size,
+    int mask,
+    int row,
+    int left,
+    int down,
+    int right,
+    int ex1,
+    int ex2)
 {
   int bit;
   int bitmap=(mask&~(left|down|right|ex1));

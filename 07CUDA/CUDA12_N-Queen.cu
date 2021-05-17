@@ -54,20 +54,20 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 １２．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.02
+ 4:            2               1  00:00:00:00.04
  5:           10               2  00:00:00:00.00
  6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.00
- 8:           92              12  00:00:00:00.00
- 9:          352              46  00:00:00:00.01
-10:          724              92  00:00:00:00.01
-11:         2680             341  00:00:00:00.02
-12:        14200            1787  00:00:00:00.04
-13:        73712            9233  00:00:00:00.06
-14:       365596           45752  00:00:00:00.11
-15:      2279184          285053  00:00:00:00.36
-16:     14772512         1846955  00:00:00:01.77
-17:     95815104        11977939  00:00:00:11.93
+ 7:           40               6  00:00:00:00.01
+ 8:           92              12  00:00:00:00.02
+ 9:          352              46  00:00:00:00.02
+10:          724              92  00:00:00:00.02
+11:         2680             341  00:00:00:00.03
+12:        14200            1787  00:00:00:00.07
+13:        73712            9233  00:00:00:00.16
+14:       365596           45752  00:00:00:00.13
+15:      2279184          285053  00:00:00:00.34
+16:     14772512         1846955  00:00:00:01.62
+17:     95815104        11977939  00:00:00:10.87
 */
 
 #include <stdio.h>
@@ -84,15 +84,14 @@ bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
 //
-
 __device__  __host__
 int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT){
-      int own,ptn,you,bit;
+  int own,ptn,you,bit;
   //90度回転
   if(d_aBoard[BOUND2]==1){ own=1; ptn=2;
     while(own<=si-1){ bit=1; you=si-1;
       while((d_aBoard[you]!=ptn)&&(d_aBoard[own]>=bit)){ bit<<=1; you--; }
-      if(d_aBoard[own]>bit){ return 0; } if(d_aBoard[own]<bit){ break; }
+      if(d_aBoard[own]>bit){ return 0; } else if(d_aBoard[own]<bit){ break; }
       own++; ptn<<=1;
     }
     /** 90度回転して同型なら180度/270度回転も同型である */
@@ -102,7 +101,7 @@ int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,i
   if(d_aBoard[si-1]==ENDBIT){ own=1; you=si-1-1;
     while(own<=si-1){ bit=1; ptn=TOPBIT;
       while((d_aBoard[you]!=ptn)&&(d_aBoard[own]>=bit)){ bit<<=1; ptn>>=1; }
-      if(d_aBoard[own]>bit){ return 0; } if(d_aBoard[own]<bit){ break; }
+      if(d_aBoard[own]>bit){ return 0; } else if(d_aBoard[own]<bit){ break; }
       own++; you--;
     }
     /** 90度回転が同型でなくても180度回転が同型である事もある */
@@ -112,7 +111,7 @@ int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,i
   if(d_aBoard[BOUND1]==TOPBIT){ own=1; ptn=TOPBIT>>1;
     while(own<=si-1){ bit=1; you=0;
       while((d_aBoard[you]!=ptn)&&(d_aBoard[own]>=bit)){ bit<<=1; you++; }
-      if(d_aBoard[own]>bit){ return 0; } if(d_aBoard[own]<bit){ break; }
+      if(d_aBoard[own]>bit){ return 0; } else if(d_aBoard[own]<bit){ break; }
       own++; ptn>>=1;
     }
   }
@@ -368,6 +367,9 @@ void cuda_kernel_b2(
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
+      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
       if(bitmap_tid_row==0){
         row--;
       }else{
@@ -530,7 +532,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
@@ -604,7 +605,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
             //  >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,d_uniq,totalCond,d_aBoard,row,BOUND1,BOUND2,SIDEMASK,LASTMASK);
             cuda_kernel_b2<<<steps/THREAD_NUM,THREAD_NUM
               >>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,d_uniq,totalCond,d_aBoard,row,BOUND1,BOUND2,SIDEMASK,LASTMASK,TOPBIT,ENDBIT);
- 
             //steps数の数だけマルチスレッドで起動するのだが、実際に計算が行われ
             //るのはtotalCondの数だけでそれ以外は空回しになる
             //GPU内でカウントしているので、GPUから出たらmatched=trueになってる
@@ -929,7 +929,7 @@ void NQueenG(int size,int steps)
       ENDBIT>>=1;
   }
 }
-//SGPU
+//
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
 {
@@ -1816,4 +1816,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-

@@ -47,7 +47,10 @@
   lt, dn, lt 位置は効きチェックで配置不可能となる
   回転対称チェックが必要となるのは、クイーンがａ, ｂ, ｃにある場合だけなので、
   90度、180度、270度回転した状態のユニーク判定値との比較を行うだけで済む
+ *
+ *
 
+ 実行結果
 
 bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC11.c && ./a.out -r
 １１．CPUR 再帰 枝刈り
@@ -235,6 +238,9 @@ void cuda_kernel_b1(
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
   register unsigned int unique=0;
+  //row=0となってるが1行目からやっているわけではなく
+  //mask行目以降からスタート 
+  //n=8 なら mask==2 なので そこからスタート
   register int row=0;
   register unsigned int bit;
   //
@@ -462,6 +468,9 @@ void cuda_kernel_b2(
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
+      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
       if(bitmap_tid_row==0){
         row--;
       }else{
@@ -623,7 +632,6 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
@@ -855,7 +863,7 @@ long backTrack1G(int size,int mask,int row,int n_left,int n_down,int n_right,int
           //ン置き終わったらGPU並列実行
           //totalCond がthreadIdになる 各スレッドに down,left,right情報を渡す
           //row=2(13行目以降は増えていく。例えばn15だとrow=5)の情報を
-          //totalDown,totalLeft,totalRightに格納する         
+          //totalDown,totalLeft,totalRightに格納する
           totalDown[totalCond]=down[row];
           totalLeft[totalCond]=left[row];
           totalRight[totalCond]=right[row];
@@ -1026,7 +1034,7 @@ void NQueenG(int size,int steps)
       ENDBIT>>=1;
   }
 }
-//SGPU
+//
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
 {
@@ -1703,7 +1711,7 @@ void backTrack1D_NR(int size,int mask,int row,int left,int down,int right,int BO
   goto b1volta;
   }
 }
-// 
+//
 //通常版 CPU 非再帰版 ロジックメソッド
 /***09 backTrack登場メソッド名だけ枝刈りはまだしない*****/  
 void NQueenD(int size,int mask){
@@ -1804,7 +1812,7 @@ void NQueenDR(int size,int mask)
   int BOUND1;
   int BOUND2;
   int bit;
-  unsigned int aBoard[MAX]; 
+  unsigned int aBoard[MAX];
   TOPBIT=1<<(size-1);
   aBoard[0]=1;
   for(BOUND1=2;BOUND1<size-1;BOUND1++){
@@ -1918,4 +1926,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-

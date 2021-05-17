@@ -105,7 +105,6 @@ $ nvcc CUDA09_N-Queen.cu  && ./a.out -g
 15:      2279184          285053  00:00:00:05.00
 16:     14772512         1846955  00:00:00:32.69
 17:     95815104        11977939  00:00:04:09.32
-
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -234,6 +233,9 @@ void cuda_kernel(
   register const unsigned int mask=(1<<size)-1;
   register unsigned int total=0;
   register unsigned int unique=0;
+  //row=0となってるが1行目からやっているわけではなく
+  //mask行目以降からスタート 
+  //n=8 なら mask==2 なので そこからスタート
   register int row=0;
   register unsigned int bit;
   //
@@ -266,8 +268,9 @@ void cuda_kernel(
         |left[tid][row]
         |right[tid][row]);
   __shared__ unsigned int sum[THREAD_NUM];
-  unsigned int c_aBoard[MAX];
   __shared__ unsigned int usum[THREAD_NUM];
+  unsigned int c_aBoard[MAX];
+  //
   //余分なスレッドは動かさない 
   //GPUはsteps数起動するがtotalCond以上は空回しする
   if(idx<totalCond){
@@ -289,6 +292,9 @@ void cuda_kernel(
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
       right_tid_row=right[tid][row];
+      //
+      //bitmap[tid][row]=00000000 クイーンを
+      //どこにも置けないので1行上に戻る
       if(bitmap_tid_row==0){
         row--;
       }else{
@@ -424,7 +430,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  //while(row>=0) {
   register int rowP=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
@@ -432,7 +437,6 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
     //06GPU こっちのほうが優秀
     if(bitmap[row]==0){ row--; }
     else{//おける場所があれば進む
-      //06SGPU
       bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
       if((bit&mask)!=0){//置く場所があれば先に進む
         rowP=row+1;
@@ -555,13 +559,10 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   cudaFreeHost(t_aBoard);
   return total;
 }
-//GPU
+//
 void NQueenG(int size,int steps)
 {
   unsigned int aBoard[MAX];
-  /***09 sizeEここでは使用しないのでコメント*********************/
-  //register int sizeE=size-1;
-  /************************/
   register int bit=0;
   register int mask=((1<<size)-1);
   if(size<=0||size>32){return;}
@@ -576,18 +577,18 @@ void NQueenG(int size,int steps)
   int right=bit>>1;
   //2行目は右から3列目から左端から2列目まで
   for(int col_j=2;col_j<size-1;col_j++){
-      aBoard[1]=bit=(1<<col_j);
-      TOTAL+=solve_nqueen_cuda(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,steps,aBoard);
+    aBoard[1]=bit=(1<<col_j);
+    TOTAL+=solve_nqueen_cuda(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,steps,aBoard);
   }
   /***09 backtrack2*********************/
   //1行目右から2列目から
   //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   for(int col=1,col2=size-2;col<col2;col++,col2--){
-      aBoard[0]=bit=(1<<col);
-      TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
-  }
+    aBoard[0]=bit=(1<<col);
+    TOTAL+=solve_nqueen_cuda(size,mask,1,bit<<1,bit,bit>>1,steps,aBoard);
 }
-//SGPU
+}
+//
 __global__ 
 void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
 {
@@ -893,8 +894,8 @@ void NQueen(int size,int mask)
 {
   register int bit;
   unsigned int aBoard[MAX];
-  bit=0;
   if(size<=0||size>32){return;}
+  bit=0;
   /***09 枝借りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない***/
   //backtrack1
   //1行め右端 0
@@ -1028,6 +1029,7 @@ void backTrack1D_NR(int size,int mask,int row,int left,int down,int right,unsign
   goto b1volta;
   }
 }
+//
 //通常版 CPU 非再帰版 ロジックメソッド
 /***09 backTrack登場メソッド名だけ枝刈りはまだしない*****/  
 void NQueenD(int size,int mask){
@@ -1206,4 +1208,3 @@ int main(int argc,char** argv)
   }
   return 0;
 }
-
