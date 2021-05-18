@@ -495,7 +495,7 @@ void *run(void *args){
       l->aBoard[0]=bit=(1<<col);
       if(NR==1){
         //printf("非再帰\n");
-        backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        // backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
         //backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
       }else{
         //printf("再帰\n");
