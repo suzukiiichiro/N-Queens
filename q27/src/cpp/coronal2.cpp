@@ -203,7 +203,7 @@ int main(int const  argc, char const* const argv[]) {
     unsigned  idx = 0;
     for(unsigned  a = 0; a < N; a++) {
       for(unsigned  b = 0; b < N; b++) {
-	if(abs(a-b) <= 1)  continue;
+	if(abs((double)a-b) <= 1)  continue;
 	pres[idx].a = a;
 	pres[idx].b = b;
 	idx++;
