@@ -1,0 +1,263 @@
+/*****************************************************************************
+ * This file is part of the Queens@TUD solver suite
+ * for enumerating and counting the solutions of an N-Queens Puzzle.
+ *
+ * Copyright (C) 2008-2015
+ *      Thomas B. Preusser <thomas.preusser@utexas.edu>
+ *****************************************************************************
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ****************************************************************************/
+%header{
+#include "ParseException.hpp"
+#include <memory>
+
+namespace queens {
+  namespace range {
+    class SVal;
+    class SRange;
+  }
+}
+}
+
+/**
+ * @author Thomas B. Preußer <thomas.preusser@utexas.edu>
+ */
+%class queens::range::RangeParser {
+  
+  char const              *m_line;
+  std::shared_ptr<SRange>  m_range;
+
+//- Life Cycle ---------------------------------------------------------------
+public:
+  RangeParser() {}
+  ~RangeParser() {}
+
+//- Parser Interface Methods -------------------------------------------------
+private:
+  void error(std::string  msg);
+  unsigned nextToken(YYSVal &sval);
+
+//- Private Helpers ----------------------------------------------------------
+private:
+  void buildSpec(uint64_t &spec, unsigned &wild, SVal const &position);
+
+//- Usage Interface ----------------------------------------------------------
+public:
+  std::shared_ptr<SRange> parse(char const *line) throw (ParseException);
+}
+
+%sval std::shared_ptr<SVal>
+%impl {
+#include "RangeParser.hpp"
+#include "IR.hpp"
+
+#include <cassert>
+
+#include <string.h>
+
+  using namespace queens::range;
+
+//- Parser Interface Methods -------------------------------------------------
+inline void RangeParser::error(std::string  msg) {
+  throw  ParseException(msg, 0);
+}
+
+unsigned RangeParser::nextToken(YYSVal &sval) {
+  assert(m_line != 0);
+
+ again:
+  char const  c = *m_line;
+  switch(c) {
+  case 'f':
+    if(strncmp(m_line, "first", 5) == 0) {
+      m_line += 5;
+      return  FIRST;
+    }
+    break;
+
+  case 'i':
+    if(strncmp(m_line, "valid", 5) == 0) {
+      m_line += 5;
+      return  VALID;
+    }
+    break;
+
+  case 'l':
+    if(strncmp(m_line, "last", 4) == 0) {
+      m_line += 4;
+      return  LAST;
+    }
+    break;
+
+  case 's':
+    if(strncmp(m_line, "solved", 6) == 0) {
+      m_line += 6;
+      return  SOLVED;
+    }
+    break;
+
+  case 't':
+    if(strncmp(m_line, "taken", 5) == 0) {
+      m_line += 5;
+      return  TAKEN;
+    }
+    break;
+
+  case 'w':
+    if(strncmp(m_line, "wrapped", 7) == 0) {
+      m_line += 7;
+      return  WRAPPED;
+    }
+    break;
+
+  default:
+    if(isspace(c)) {
+      m_line++;
+      goto again;
+    }
+    if(isdigit(c)) {
+      char *end;
+      int  const  val = (int)strtol(m_line, &end, 0);
+      m_line = end;
+      sval = std::make_shared<SNumber>(val);
+      return  NUMBER;
+    }
+    m_line++;
+
+  case '\0':
+    return  c;
+  }    
+
+  error("Illegal Token");
+  assert(false);
+  return  0;
+}
+
+//- Public Usage Interface ---------------------------------------------------
+std::shared_ptr<SRange> RangeParser::parse(char const *line) throw (ParseException) {
+  try {
+    std::shared_ptr<SRange>  res;
+    m_line = line;
+    parse();
+    res.swap(m_range);
+    return  res;
+  }
+  catch(ParseException &e) {
+    e.position(m_line - line);
+    throw;
+  }
+}
+
+
+void RangeParser::buildSpec(uint64_t &spec, unsigned &wild, SVal const &position) {
+  int const  pos = static_cast<SNumber const&>(position);
+  spec <<= 5;
+  if(pos < 0)  wild++;
+  else {
+    if(wild > 0)  error("Fixed placement not allowed after wildcard.");
+    spec |= pos;
+  }
+}
+ 
+} // impl
+
+%%
+%token FIRST LAST TAKEN SOLVED WRAPPED VALID NUMBER
+%start range
+%%
+range : addr {
+          m_range = SRange::create(
+	              std::static_pointer_cast<SAddress>($1),
+		      std::static_pointer_cast<SAddress>($1)
+		    );
+        }
+      | addr ':' addr {
+          m_range = SRange::create(
+	              std::static_pointer_cast<SAddress>($1),
+		      std::static_pointer_cast<SAddress>($3)
+		    );
+	}
+      | addr ':' '+' NUMBER {
+          m_range = SRange::createSpan(
+	              std::static_pointer_cast<SAddress>($1),
+		      static_cast<SNumber const&>(*$4)
+		    );
+	}
+      | addr ':' '-' NUMBER {
+          m_range = SRange::createSpan(
+	              std::static_pointer_cast<SAddress>($1),
+		      -static_cast<SNumber const&>(*$4)
+		    );
+	}
+      | addr ':' '~' NUMBER {
+          m_range = SRange::createBiSpan(
+	              std::static_pointer_cast<SAddress>($1),
+		      static_cast<SNumber const&>(*$4)
+		    );
+        }
+
+addr : FIRST {
+        $$ = SAddress::createFirst(SPredicate::TRUE);
+       }
+     | FIRST '(' pred ')' {
+	$$ = SAddress::createFirst(std::static_pointer_cast<SPredicate>($3));
+       }
+     | LAST {
+	$$ = SAddress::createLast(SPredicate::TRUE);
+       }
+     | LAST '(' pred ')' {
+	$$ = SAddress::createLast(std::static_pointer_cast<SPredicate>($3));
+       }
+     | '(' pos ',' pos ')' '(' pos ',' pos ')' '(' pos ',' pos ')' '(' pos ',' pos ')' {
+         uint64_t  spec = 0L;
+	 unsigned  wild = 0;
+	 buildSpec(spec, wild, *$2);
+	 buildSpec(spec, wild, *$4);
+	 buildSpec(spec, wild, *$7);
+	 buildSpec(spec, wild, *$9);
+	 buildSpec(spec, wild, *$12);
+	 buildSpec(spec, wild, *$14);
+	 buildSpec(spec, wild, *$17);
+	 buildSpec(spec, wild, *$19);
+	 $$ = SAddress::create(spec, wild);
+       }
+     | '@' NUMBER {
+         $$ = SAddress::createOffset(SAddress::createFirst(SPredicate::TRUE),
+				     static_cast<SNumber const&>(*$2));
+       }
+     | addr '+' NUMBER {
+         $$ = SAddress::createOffset(std::static_pointer_cast<SAddress>($1),
+		                     static_cast<SNumber const&>(*$3));
+       }
+     | addr '-' NUMBER {
+         $$ = SAddress::createOffset(std::static_pointer_cast<SAddress>($1),
+		                     -static_cast<SNumber const&>(*$3));
+       }
+
+pred : TAKEN   { $$ = SPredicate::TAKEN; }
+     | SOLVED  { $$ = SPredicate::SOLVED; }
+     | WRAPPED { $$ = SPredicate::WRAPPED; }
+     | VALID   { $$ = SPredicate::VALID; }
+     | '!' pred {
+	$$ = SPredicate::createInverted(std::static_pointer_cast<SPredicate>($2));
+       }
+
+pos : NUMBER {
+        int const  v = static_cast<SNumber const&>(*$1);
+	if((v < 0) || (26 < v)) {
+	  error("Absolute position must be in the range [0, 27)");
+	}
+        $$ = $1;
+      }
+    | '*' { $$ = std::make_shared<SNumber>(-1); }

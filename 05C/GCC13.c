@@ -11,11 +11,11 @@
  Eclipse では -O3を追加しないと計算結果が合いません
  Eclipse では、threadを追加しないと高速処理になりません。
 
+ 実行方法
 
- １３．並列処理：pthreadと構造体
+ gccの場合は以下のコメントアウトを外す
+ iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
 
-
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13.c && ./a.out -r
 １３．CPUR 再帰 並列処理 pthread
  N:           Total           Unique          dd:hh:mm:ss.ms
  4:               2                1          00:00:00:00.00
@@ -28,13 +28,11 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13.c && ./a.out -r
 11:            2680              341          00:00:00:00.00
 12:           14200             1787          00:00:00:00.00
 13:           73712             9233          00:00:00:00.00
-14:          365596            45752          00:00:00:00.01
+14:          365596            45752          00:00:00:00.02
 15:         2279184           285053          00:00:00:00.10
-16:        14772512          1846955          00:00:00:00.65
-17:        95815104         11977939          00:00:00:04.33 
+16:        14772512          1846955          00:00:00:00.63
+17:        95815104         11977939          00:00:00:04.33
 
-
-bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13.c && ./a.out -c
 １３．CPU 非再帰 並列処理 pthread
  N:           Total           Unique          dd:hh:mm:ss.ms
  4:               2                1          00:00:00:00.00
@@ -49,21 +47,25 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13.c && ./a.out -c
 13:           73712             9233          00:00:00:00.00
 14:          365596            45752          00:00:00:00.01
 15:         2279184           285053          00:00:00:00.10
-16:        14772512          1846955          00:00:00:00.62
-17:        95815104         11977939          00:00:00:03.15
+16:        14772512          1846955          00:00:00:00.65
+17:        95815104         11977939          00:00:00:04.33
 */
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-#include <stdbool.h>
 #include <pthread.h>
 //
+#define THREAD_NUM		96
 #define MAX 27
 //
 
-/** 非再帰 再帰で実行 */
-int CPU,CPUR=0;
+int NR;
+// GPUで使います
+long Total=0 ;      //合計解
+long Unique=0;
 
 //
 //変数宣言
@@ -84,10 +86,19 @@ typedef struct{
 }local ;
 //関数宣言
 void symmetryOps(local *l);
+//非再帰
+void backTrack2D_NR(int y,int left,int down,int right,local *l);
+void backTrack1D_NR(int y,int left,int down,int right,local *l);
+//非再帰 通常版
 void backTrack2_NR(int y,int left,int down,int right,local *l);
 void backTrack1_NR(int y,int left,int down,int right,local *l);
+//再帰
+void backTrack2D(int y,int left,int down,int right,local *l);
+void backTrack1D(int y,int left,int down,int right,local *l);
+//再帰 通常版
 void backTrack2(int y,int left,int down,int right,local *l);
 void backTrack1(int y,int left,int down,int right,local *l);
+//pthread
 void *run(void *args);
 void *NQueenThread();
 void NQueen();
@@ -124,8 +135,56 @@ void symmetryOps(local *l){
   }
   l->COUNT8[l->BOUND1]++;
 }
-//CPU 非再帰版 backTrack2
-void backTrack2_NR(int row,int left,int down,int right,local *l){
+//
+//CPU 非再帰版 backTrack2//新しく記述
+void backTrack2_NR(int row,int h_left,int h_down,int h_right,local *l){
+    unsigned int left[G.size];
+    unsigned int down[G.size];
+    unsigned int right[G.size];
+    unsigned int bitmap[G.size];
+    left[row]=h_left;
+    down[row]=h_down;
+    right[row]=h_right;
+    bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+    unsigned int bit;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
+        --row;
+      }else{
+	//【枝刈り】上部サイド枝刈り
+	if(row<l->BOUND1){             	
+	  bitmap[row]&=~l->SIDEMASK;
+        //【枝刈り】下部サイド枝刈り
+        }else if(row==l->BOUND2) {     	
+          if((down[row]&l->SIDEMASK)==0){ row--; }
+          if((down[row]&l->SIDEMASK)!=l->SIDEMASK){ bitmap[row]&=l->SIDEMASK; }
+        }
+        int save_bitmap=bitmap[row];
+        bitmap[row]^=l->aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&l->mask)!=0){
+          if(row==G.sizeE){
+            if((save_bitmap&l->LASTMASK)==0){ 	
+              symmetryOps(l);
+              --row;
+		    }
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           --row;
+        }
+      }  
+    }
+}
+//
+//通常版 CPU 非再帰版 backTrack2
+void backTrack2D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -142,60 +201,100 @@ void backTrack2_NR(int row,int left,int down,int right,local *l){
       // pnStack=aStack+1;
       // *pnStack++=0;
     }
-  mais1:bitmap=l->mask&~(left|down|right);
-    // 【枝刈り】
-    if(row==G.sizeE){
+mais1:bitmap=l->mask&~(left|down|right);
+      // 【枝刈り】
+      if(row==G.sizeE){
+        if(bitmap){
+          //【枝刈り】 最下段枝刈り
+          if((bitmap&l->LASTMASK)==0){
+            l->aBoard[row]=bitmap;
+            symmetryOps(l);
+          }
+        }
+      }else{
+        //【枝刈り】上部サイド枝刈り
+        if(row<l->BOUND1){
+          bitmap&=~l->SIDEMASK;
+          //【枝刈り】下部サイド枝刈り
+        }else if(row==l->BOUND2){
+          if(!(down&l->SIDEMASK))
+            goto volta;
+          if((down&l->SIDEMASK)!=l->SIDEMASK)
+            bitmap&=l->SIDEMASK;
+        }
+        if(bitmap){
+outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
       if(bitmap){
-        //【枝刈り】 最下段枝刈り
-        if((bitmap&l->LASTMASK)==0){
-          l->aBoard[row]=bitmap;
-          symmetryOps(l);
+        *p++=left;
+        *p++=down;
+        *p++=right;
+      }
+      *p++=bitmap;
+      row++;
+      left=(left|bit)<<1;
+      down=down|bit;
+      right=(right|bit)>>1;
+      goto mais1;
+      //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+volta:if(p<=b)
+        return;
+      row--;
+      bitmap=*--p;
+      if(bitmap){
+        right=*--p;
+        down=*--p;
+        left=*--p;
+        goto outro;
+      }else{
+        goto volta;
+      }
         }
       }
-    }else{
-      //【枝刈り】上部サイド枝刈り
-      if(row<l->BOUND1){
-        bitmap&=~l->SIDEMASK;
-        //【枝刈り】下部サイド枝刈り
-      }else if(row==l->BOUND2){
-        if(!(down&l->SIDEMASK))
-          goto volta;
-        if((down&l->SIDEMASK)!=l->SIDEMASK)
-          bitmap&=l->SIDEMASK;
-      }
-      if(bitmap){
-  outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
-    if(bitmap){
-      *p++=left;
-      *p++=down;
-      *p++=right;
-    }
-    *p++=bitmap;
-    row++;
-    left=(left|bit)<<1;
-    down=down|bit;
-    right=(right|bit)>>1;
-    goto mais1;
-    //Backtrack2(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-  volta:if(p<=b)
-      return;
-    row--;
-    bitmap=*--p;
-    if(bitmap){
-      right=*--p;
-      down=*--p;
-      left=*--p;
-      goto outro;
-    }else{
       goto volta;
-    }
-      }
-    }
-    goto volta;
   }
 }
 //CPU 非再帰版 backTrack
-void backTrack1_NR(int row,int left,int down,int right,local *l){
+void backTrack1_NR(int row,int h_left,int h_down,int h_right,local *l){
+
+    unsigned int left[G.size];
+    unsigned int down[G.size];
+    unsigned int right[G.size];
+    unsigned int bitmap[G.size];
+    left[row]=h_left;
+    down[row]=h_down;
+    right[row]=h_right;
+    bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+    unsigned int bit;
+    int mark=row;
+    //固定していれた行より上はいかない
+    while(row>=mark){//row=1 row>=1, row=2 row>=2
+      if(bitmap[row]==0){
+        --row;
+      }else{
+        if(row<l->BOUND1) {
+          bitmap[row]&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+        }
+        bitmap[row]^=l->aBoard[row]=bit=(-bitmap[row]&bitmap[row]); 
+        if((bit&l->mask)!=0){
+          if(row==G.sizeE){
+            l->COUNT8[l->BOUND1]++;
+            --row;
+          }else{
+            int n=row++;
+            left[row]=(left[n]|bit)<<1;
+            down[row]=down[n]|bit;
+            right[row]=(right[n]|bit)>>1;
+            bitmap[row]=l->mask&~(left[row]|down[row]|right[row]);
+          }
+        }else{
+           --row;
+        }
+      }  
+    }
+
+}
+//通常版 CPU 非再帰版 backTrack
+void backTrack1D_NR(int row,int left,int down,int right,local *l){
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -212,52 +311,83 @@ void backTrack1_NR(int row,int left,int down,int right,local *l){
       // pnStack=aStack+1;
       // *pnStack++=0;
     }
-  b1mais1:bitmap=l->mask&~(left|down|right);
-    //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
-    if(row==G.sizeE){
-      if(bitmap){
-        // l->aBoard[row]=bitmap;
-        l->COUNT8[l->BOUND1]++;
-      }
-    }else{
-      //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-      // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-      if(row<l->BOUND1) {
-        bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-      }
-      if(bitmap){
-  b1outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
-    if(bitmap){
-      *p++=left;
-      *p++=down;
-      *p++=right;
-    }
-    *p++=bitmap;
-    row++;
-    left=(left|bit)<<1;
-    down=down|bit;
-    right=(right|bit)>>1;
-    goto b1mais1;
-    //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
-  b1volta:if(p<=b)
-      return;
-    row--;
-    bitmap=*--p;
-    if(bitmap){
-      right=*--p;
-      down=*--p;
-      left=*--p;
-      goto b1outro;
-    }else{
-      goto b1volta;
-    }
-      }
-    }
-    goto b1volta;
+b1mais1:bitmap=l->mask&~(left|down|right);
+        //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
+        if(row==G.sizeE){
+          if(bitmap){
+            // l->aBoard[row]=bitmap;
+            l->COUNT8[l->BOUND1]++;
+          }
+        }else{
+          //【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+          // ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+          if(row<l->BOUND1) {
+            bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+          }
+          if(bitmap){
+b1outro:bitmap^=l->aBoard[row]=bit=-bitmap&bitmap;
+        if(bitmap){
+          *p++=left;
+          *p++=down;
+          *p++=right;
+        }
+        *p++=bitmap;
+        row++;
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        goto b1mais1;
+        //Backtrack1(y+1, (left | bit)<<1, down | bit, (right | bit)>>1);
+b1volta:if(p<=b)
+          return;
+        row--;
+        bitmap=*--p;
+        if(bitmap){
+          right=*--p;
+          down=*--p;
+          left=*--p;
+          goto b1outro;
+        }else{
+          goto b1volta;
+        }
+          }
+        }
+        goto b1volta;
   }
 }
 //
+//CPU 再帰版 backTrack
+//ここに追記
 void backTrack2(int row,int left,int down,int right,local *l){
+ int bitmap=0;
+ int bit=0;
+ bitmap=(l->mask&~(left|down|right));
+ if(row==G.sizeE){
+   if(bitmap){
+     //【枝刈り】 最下段枝刈り
+     if((bitmap&l->LASTMASK)==0){ 	
+       l->aBoard[row]=(-bitmap&bitmap);
+       symmetryOps(l);
+     }
+   }
+  }else{
+    //【枝刈り】上部サイド枝刈り
+    if(row<l->BOUND1){             	
+      bitmap&=~l->SIDEMASK;
+      //【枝刈り】下部サイド枝刈り
+    }else if(row==l->BOUND2) {     	
+      if((down&l->SIDEMASK)==0){ return; }
+      if((down&l->SIDEMASK)!=l->SIDEMASK){ bitmap&=l->SIDEMASK; }
+    }
+    while(bitmap){
+      bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack2(row+1,(left|bit)<<1, down|bit,(right|bit)>>1,l);
+    }
+  }
+
+}
+//通常版 CPU 再帰版 backTrack
+void backTrack2D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
   if(row==G.sizeE){ 								// 【枝刈り】
@@ -276,18 +406,39 @@ void backTrack2(int row,int left,int down,int right,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      backTrack2D(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
 //
+//CPU 再帰版 backTrack
+//ここに追記
 void backTrack1(int row,int left,int down,int right,local *l){
+ int bitmap=0;
+ int bit=0;
+ bitmap=(l->mask&~(left|down|right));
+ if(row==G.sizeE){
+   if(bitmap){
+     l->COUNT8[l->BOUND1]++;
+   }
+  }else{
+    if(row<l->BOUND1) {
+      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+    }
+    while(bitmap){
+      bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
+      backTrack1(row+1,(left|bit)<<1, down|bit,(right|bit)>>1,l);
+    }
+  }
+}
+//通常版 CPU 再帰版 backTrack
+void backTrack1D(int row,int left,int down,int right,local *l){
   int bit;
   int bitmap=l->mask&~(left|down|right);
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
   if(row==G.sizeE) {
     if(bitmap){
-      // l->aBoard[row]=bitmap;
+      /* l->aBoard[row]=bitmap; */
       l->COUNT8[l->BOUND1]++;
     }
   }else{
@@ -298,30 +449,35 @@ void backTrack1(int row,int left,int down,int right,local *l){
     }
     while(bitmap){
       bitmap^=l->aBoard[row]=bit=(-bitmap&bitmap);
-      backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
+      backTrack1D(row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
 //
 void *run(void *args){
   local *l=(local *)args;
-  int bit;
-  l->aBoard[0]=1;
-  l->TOPBIT=1<<(G.sizeE);
-  l->mask=(1<<G.size)-1;
+  int bit=0;
+  l->TOPBIT=1<<(G.size-1);
   // 最上段のクイーンが角にある場合の探索
   if(l->BOUND1>1 && l->BOUND1<G.sizeE) {
+    int col=0;
+    l->aBoard[0]=bit=(1<<0);
+    int left=bit<<1;
+    int down=bit;
+    int right=bit>>1;
     if(l->BOUND1<G.sizeE) {
       // 角にクイーンを配置
-      l->aBoard[1]=bit=(1<<l->BOUND1);
+      int col_j=l->BOUND1;
+      l->aBoard[1]=bit=(1<<col_j);
       //２行目から探索
-      //  backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
-      if(CPU==1){
+      if(NR==1){
         //非再帰
-        backTrack1_NR(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        backTrack1_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
+        //backTrack1D_NR(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);
       }else{
         //再帰
-        backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1),l);
+        backTrack1(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//GPU適用版
+        //backTrack1D(2,(left|bit)<<1,(down|bit),(right|bit)>>1,l);//通常版
       }
     }
   }
@@ -335,14 +491,16 @@ void *run(void *args){
       l->LASTMASK=l->LASTMASK|l->LASTMASK>>1|l->LASTMASK<<1;
     }
     if(l->BOUND1<l->BOUND2) {
-      l->aBoard[0]=bit=(1<<l->BOUND1);
-      //backTrack2(1,bit<<1,bit,bit>>1,l);
-      if(CPU==1){
-        //非再帰
-        backTrack2_NR(1,bit<<1,bit,bit>>1,l);
+      int col=l->BOUND1;
+      l->aBoard[0]=bit=(1<<col);
+      if(NR==1){
+        //printf("非再帰\n");
+        backTrack2_NR(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        //backTrack2D_NR(1,bit<<1,bit,bit>>1,l);//通常版
       }else{
-        //再帰
-        backTrack2(1,bit<<1,bit,bit>>1,l);
+        //printf("再帰\n");
+        backTrack2(1,bit<<1,bit,bit>>1,l); //GPU適用版
+        //backTrack2D(1,bit<<1,bit,bit>>1,l);//通常版
       }
     }
     l->ENDBIT>>=G.size;
@@ -354,9 +512,9 @@ void *NQueenThread(){
   local l[MAX];                //構造体 local型
   pthread_t pt[G.size];                 //スレッド childThread
   for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
+    l[BOUND1].mask=(1<<G.size)-1;
     l[BOUND1].BOUND1=BOUND1; l[BOUND1].BOUND2=BOUND2;         //B1 と B2を初期化
-    //初期化は不要です
-    // for(int j=0;j<G.size;j++){ l[l->BOUND1].aBoard[j]=j; } // aB[]の初期化
+    for(int j=0;j<G.size;j++){ l[l->BOUND1].aBoard[j]=j; } // aB[]の初期化
     l[BOUND1].COUNT2[BOUND1]=l[BOUND1].COUNT4[BOUND1]=l[BOUND1].COUNT8[BOUND1]=0;//カウンターの初期化
     // チルドスレッドの生成
     int iFbRet=pthread_create(&pt[BOUND1],NULL,&run,&l[BOUND1]);
@@ -377,8 +535,12 @@ void *NQueenThread(){
 //
 void NQueen(){
   pthread_t pth;  //スレッド変数
+  int iFbRet;
   // メインスレッドの生成
-  int iFbRet = pthread_create(&pth, NULL, &NQueenThread, NULL);
+  // 拡張子 CUDA はpthreadをサポートしていませんので実行できません
+  // コンパイルが通らないので 以下をコメントアウトします
+  // Cディレクトリの 並列処理はC13_N-Queen.c を参考にして下さい。
+  iFbRet = pthread_create(&pth, NULL,&NQueenThread,NULL);
   if(iFbRet>0){
     printf("[main] pthread_create: %d\n", iFbRet); //エラー出力デバッグ用
   }
@@ -386,55 +548,70 @@ void NQueen(){
 }
 //メインメソッド
 int main(int argc,char** argv) {
-  /** 出力と実行 */
-  // 不要となります
-  // bool cpu=false,cpur=false;
-  int argstart=2;
-  /** 起動パラメータの処理 */
+  bool cpu=false,cpur=false,gpu=false;
+  int argstart=1,steps=24576;
+  /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){CPU=1;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){CPUR=1;}
-    else{ CPUR=1;}
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else
+      cpur=true;
+    argstart=2;
   }
   if(argc<argstart){
-    printf("Usage: %s [-c|-g]\n",argv[0]);
-    printf("  -c: CPU Without recursion\n");
-    printf("  -r: CPUR Recursion\n");
+    printf("Usage: %s [-c|-g|-r] n steps\n",argv[0]);
+    printf("  -c: CPU only\n");
+    printf("  -r: CPUR only\n");
+    printf("  -g: GPU only\n");
+    printf("Default to 8 queen\n");
   }
-  if(CPU){
+  /** 出力と実行 */
+  if(cpu){
     printf("\n\n１３．CPU 非再帰 並列処理 pthread\n");
-    
-  }else if(CPUR){
+  }else if(cpur){
     printf("\n\n１３．CPUR 再帰 並列処理 pthread\n");
+  }else if(gpu){
+    printf("\n\n１３．GPU 非再帰 並列処理 pthread\n");
   }
-  printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
-  struct timeval t0;
-  struct timeval t1;
-  int min=4; int targetN=17;
-  for(int i=min;i<=targetN;i++){
-    G.size=i; G.sizeE=i-1; //初期化
-    G.lTOTAL=G.lUNIQUE=0;
-    gettimeofday(&t0, NULL);
-    /**
-      aBoard配列の初期化は
-      void *NQueenThread()で行います。
-      が、実際不要です。(※)
-      */
-    NQueen();
-    gettimeofday(&t1, NULL);
-    int ss;int ms;int dd;
-    if(t1.tv_usec<t0.tv_usec) {
-      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
-      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-    }else {
-      dd=(t1.tv_sec-t0.tv_sec)/86400;
-      ss=(t1.tv_sec-t0.tv_sec)%86400;
-      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+  if(cpu||cpur){
+    printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
+    struct timeval t0;
+    struct timeval t1;
+    int min=4; int targetN=18;
+    for(int i=min;i<=targetN;i++){
+      //TOTAL=0; UNIQUE=0;
+      G.size=i; G.sizeE=i-1; //初期化
+      G.lTOTAL=G.lUNIQUE=0;
+      gettimeofday(&t0, NULL);
+      //
+      //再帰
+      if(cpur){
+        //NR=0;NQueenD();
+        NR=0;NQueen();
+      }
+      //非再帰
+      if(cpu){ 
+        //NR=1;NQueenD();
+        NR=1;NQueen();
+      }
+      //
+      gettimeofday(&t1, NULL);
+      int ss;int ms;int dd;
+      if(t1.tv_usec<t0.tv_usec) {
+        dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+      }else {
+        dd=(t1.tv_sec-t0.tv_sec)/86400;
+        ss=(t1.tv_sec-t0.tv_sec)%86400;
+        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+      }
+      int hh=ss/3600;
+      int mm=(ss-hh*3600)/60;
+      ss%=60;
+      printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,G.lTOTAL,G.lUNIQUE,dd,hh,mm,ss,ms);
     }
-    int hh=ss/3600;
-    int mm=(ss-hh*3600)/60;
-    ss%=60;
-    printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n", i,G.lTOTAL,G.lUNIQUE,dd,hh,mm,ss,ms);
   }
+  return 0;
 }
