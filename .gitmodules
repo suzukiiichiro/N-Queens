@@ -1,0 +1,3 @@
+[submodule "q27/src/cpp/Externals/libuv"]
+	path = q27/src/cpp/Externals/libuv
+	url = https://github.com/libuv/libuv
