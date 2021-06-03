@@ -62,7 +62,10 @@ namespace {
 
   public:
     Explorer(bool const &full) : cnt(full? new uint64_t[4] : 0) {
-      for(Symmetry  s : Symmetry::RANGE)  pre[s] = 0;
+      for(Symmetry  s : Symmetry::RANGE){  
+        pre[s] = 0;
+        cnt[s] = 0;
+      }
     }
     ~Explorer() {}
 
@@ -70,18 +73,26 @@ namespace {
     void process(Board const &brd, Symmetry  sym) {
       printf("process_start\n");
       pre[sym]++;
-      printf("sym:pre_sym:%d\n",pre[sym]);
+      printf("pre_sym:%d:\n",pre[sym]);
       if(cnt) {
 	unsigned const  N = brd.N;
         printf("N:%d\n",N);
+        //BVは行 x 
         printf("getBV:%d\n",brd.getBV());
+        //BHはdown y
         printf("getBH:%d\n",brd.getBH());
+        //BU left N-1-x+y 右上から左下
         printf("getBU:%d\n",brd.getBU());
+        //BD right x+y 左上から右下
         printf("getBD:%d\n",brd.getBD());
 	cnt[sym] += countCompletions(brd.getBV() >> 2,
 				     ((((brd.getBH()>>2)|(~0<<(N-4)))+1)<<(brd.N-5))-1,
 				     brd.getBU()>>4,
 				     (brd.getBD()>>4)<<(N-5));
+      //行 brd.getBV()>>2 右2ビット削除 すでに上２行はクイーンを置いているので進める BVは右端を１ビットずつ削っていく
+      //列 down ((((brd.getBH()>>2)|(~0<<(N-4)))+1)<<(brd.N-5))-1 8だと左に1シフト 9:2 10:3 
+      //brd.getBU()>>4 left  右４ビット削除
+      //(brd.getBD()>>4)<<(N-5)) right 右４ビット削除後N-5個分左にシフト
         printf("cnt_sym:%d\n",cnt[sym]);
       }
     } // process()
@@ -129,18 +140,25 @@ namespace {
       printf("bh:%d\n",bh);
       printf("bu:%d\n",bu);
       printf("bd:%d\n",bd);
-      if(bh+1 == 0)  return  1;
+      //bh=-1 1111111111 すべての列にクイーンを置けると-1になる
+      if(bh+1 == 0){
+        printf("return_bh+1==0:%d\n",bh);  
+        return  1;
+      }
 
       // -> at least one more queen to place
       while((bv&1) != 0) { // Column is covered by pre-placement
-	bv >>= 1;
-	bu <<= 1;
-	bd >>= 1;
+      //bv 右端にクイーンがすでに置かれていたら。クイーンを置かずに１行下に移動する
+      //bvを右端から１ビットずつ削っていく。ここではbvはすでにクイーンが置かれているかどうかだけで使う
+	bv >>= 1;//右に１ビットシフト
+	bu <<= 1;//left 左に１ビットシフト
+	bd >>= 1;//right 右に１ビットシフト
         printf("while:bv:%d\n",bv);
         printf("while:bu:%d\n",bu);
         printf("while:bd:%d\n",bd);
         printf("while:bv&1:%d\n",bv&1);
       }
+      //１行下に移動する
       bv >>= 1;
       printf("onemore_bv:%d\n",bv);
       printf("onemore_bh:%d\n",bh);
@@ -149,8 +167,12 @@ namespace {
 
       // Column needs to be placed
       uint64_t  cnt = 0;
+      //bh:down bu:left bd:right
+      //クイーンを置いていく
+      //slotsはクイーンの置ける場所
       for(uint64_t  slots = ~(bh|bu|bd); slots != 0;) {
         printf("colunm needs to be placed\n");
+        printf("slots:%d\n",slots);
 	uint64_t const  slot = slots & -slots;
         printf("slot:%d\n",slot);
         printf("bv:%d:bh|slot:%d:(bu|slot)<<1:%d:(bd|slot)>>1:%d\n",bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
@@ -158,6 +180,7 @@ namespace {
 	slots ^= slot;
         printf("slots:%d\n",slots);
       }
+      //途中でクイーンを置くところがなくなるとここに来る
       printf("return_cnt:%d\n",cnt);
       return  cnt;
 
@@ -196,8 +219,10 @@ namespace {
   }
 
   Action* parseAction(char const *const  arg) {
+    //初期化処理っぽいこと
     printf("parseAction_start\n");
     if(strncmp(arg, "-db:", 4) == 0) {
+      printf("DBCreator\n");
       return  new DBCreator(arg+4);
     }
     return  new Explorer(strcmp(arg, "-x") == 0);
@@ -241,11 +266,12 @@ int main(int const  argc, char const* const argv[]) {
 	if(abs((double)a-b) <= 1)  continue;
 	pres[idx].a = a;
 	pres[idx].b = b;
-        //printf("a:%d\n",a);
-        //printf("b:%d\n",b);
+        printf("a:%d\n",a);
+        printf("b:%d\n",b);
 	idx++;
       }
     }
+    printf("idx:%d\n",idx);
     assert(idx == (N-2)*(N-1)); // Wrong number of pre-placements
   }
   std::cout << "First side bound: ("
@@ -257,18 +283,20 @@ int main(int const  argc, char const* const argv[]) {
   Board  board(N);
   printf("(N/2)*(N-3):%d\n",(N/2)*(N-3));
   for(unsigned  w = 0; w <= (N/2)*(N-3); w++) {
-    printf("wloop:w:%d\n",w);
+    //上１行は２分の１だけ実行
     unsigned const  wa = pres[w].a;
     unsigned const  wb = pres[w].b;
+    printf("wloop:w:%d:p.a:%d,p.b:%d:wa:%d:wb:%d\n",w,pres[w].a,pres[w].b,wa,wb);
 #ifdef TRACE
     std::cerr << '(' << wa << ", " << wb << ')' << std::endl;
 #else
     std::cout << "\rProgress: " << w << '/' << ((N/2)*(N-3)) << std::flush;
 #endif
-
-    printf("placement_pwa:xk(0):0:y:%d\n",0,wa);
+    //上２行　0行目,1行目にクイーンを置く
+    //xは行 yは
+    printf("placement_pwa:xk(0):0:y:%d\n",wa);
     Board::Placement  pwa(board.place(0, wa));
-    printf("placement_pwb:xk(1):1:y:%d\n",1,wb);
+    printf("placement_pwb:xk(1):1:y:%d\n",wb);
     Board::Placement  pwb(board.place(1, wb));
     assert(pwa && pwb);  // NO conflicts on first side possible
 
@@ -281,7 +309,7 @@ int main(int const  argc, char const* const argv[]) {
       std::cerr << '(' << wa << ", " << wb << ')'
 		<< '(' << na << ", " << nb << ')' << std::endl;
 #endif
-//pre-place 下２行にクイーンを置く
+//pre-place 左２列にクイーンを置く
       printf("placement_pna:x:%d:yk(N-1):%d\n",na,N-1);
       Board::Placement  pna(board.place(na, N-1)); 
       std::cout << "pna:" << pna << std::endl;
@@ -307,7 +335,7 @@ int main(int const  argc, char const* const argv[]) {
 		  << '(' << na << ", " << nb << ')'
 		  << '(' << ea << ", " << eb << ')' << std::endl;
 #endif
-
+        //下２行に置く
         printf("placement_pea:xk(N-1):%d:y:%d\n",N-1,N-1-ea);
 	Board::Placement  pea(board.place(N-1, N-1-ea)); 
         std::cout << "pea:" << pea << std::endl;
@@ -322,6 +350,7 @@ int main(int const  argc, char const* const argv[]) {
           printf("pebskip:N-2:%d:N-1-eb:%d\n",N-2,N-1-eb);
 	  continue;
         }
+        //右２列に置く
 	for(unsigned  s = w; s < (N-2)*(N-1)-w; s++) {
           printf("sloop:s:%d\n",s);
 	  unsigned const  sa = pres[s].a;
@@ -334,30 +363,30 @@ int main(int const  argc, char const* const argv[]) {
 #endif
     //printf("sa:%d:sb:%d\n",sa,sb);
 
-          printf("psa:x:%d:yk(0):%d\n",N-1-sa,0);
+          printf("psa:x:%d:yk(0):0\n",N-1-sa);
 	  Board::Placement  psa(board.place(N-1-sa, 0)); 
           std::cout << "psa:" << psa << std::endl;
 	if(!psa){  
-                printf("psaskip:N-1-sa:%d:0:%d\n",N-1-sa,0);
+                printf("psaskip:N-1-sa:%d:0\n",N-1-sa);
 		continue;
 	}
-          printf("psb:x:%d:yk(1):%d\n",N-1-sb,1);
+          printf("psb:x:%d:yk(1):1\n",N-1-sb);
 	  Board::Placement  psb(board.place(N-1-sb, 1)); 
           std::cout << "psb:" << psb << std::endl;
 	if(!psb){  
-                printf("psbskip:N-1-sb:%d:1:%d\n",N-1-sb,1);
+                printf("psbskip:N-1-sb:%d:1\n",N-1-sb);
 		continue;
 	}
         printf("##################################\n");
         printf("noskip\n");
-        printf("pwa:xk(0):0:y:%d\n",0,wa);
-        printf("pwb:xk(1):1:y:%d\n",1,wb);
+        printf("pwa:xk(0):0:y:%d\n",wa);
+        printf("pwb:xk(1):1:y:%d\n",wb);
         printf("pna:x:%d:yk(N-1):%d\n",na,N-1);
         printf("pnb:x:%d:yk(N-2):%d\n",nb,N-2);
-        printf("psa:x:%d:yk(0):%d\n",N-1-sa,0);
-        printf("psb:x:%d:yk(1):%d\n",N-1-sb,1);
         printf("pea:xk(N-1):%d:y:%d\n",N-1,N-1-ea);
         printf("peb:xk(N-2):%d:y:%d\n",N-2,N-1-eb);
+        printf("psa:x:%d:yk(0):0\n",N-1-sa);
+        printf("psb:x:%d:yk(1):1\n",N-1-sb);
         printf("ww(N-2)*(N-1)-1-w:%d:w:%d:s:%d:e:%d:n:%d\n",(N-2)*(N-1)-1-w,w,s,e,n);
 
 	  // We have a successful complete pre-placement with
@@ -402,19 +431,23 @@ int main(int const  argc, char const* const argv[]) {
 	  // Check for minimum if n, e, s = w
 	  if(s == w) {
 	    // right rotation is smaller unless  w = n = e = s
+           //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
             printf("s==w n:%d != w:%d e:%d != w:%d\n",n,w,e,w);
 	    if((n != w) || (e != w)) {
 	      //print('s', wa, wb, na, nb, ea, eb, sa, sb);
 	      printf("s==w_skip\n");
 	      continue;
 	    }
+	    //w=n=e=sであれば90度回転で同じ可能性
             printf("act_rotate\n");
 	    (*act)(board, Symmetry::ROTATE);
 	    continue;
 	  }
 	  if(e == w) {
+          //e==wは180度回転して同じ
             printf("e==w n:%d >= s:%d \n",n,s);
 	    // check if 180°-rotation is smaller
+            //180度回転して同じ時n>=sの時はsmaller?
 	    if(n >= s) {
 	      if(n > s) {
 		//print('e', wa, wb, na, nb, ea, eb, sa, sb);

@@ -101,6 +101,7 @@ namespace queens {
         printf("board_placement_x:%d:y:%d\n",_x,_y);
 	if(parent(x, y)) {
 	  // Duplicate Placement
+         //同じ場所に置くのはOK
 	  valid = true;
 	  owner = false;
           printf("Duplicate x:%d:y:%d\n",x,y);
@@ -112,6 +113,8 @@ namespace queens {
 	uint64_t const  bh = UINT64_C(1)<<y;
 	uint64_t const  bu = UINT64_C(1)<<(parent.N-1-x+y);
 	uint64_t const  bd = UINT64_C(1)<<(           x+y);
+        //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
+        printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,parent.N-1-x+y,x+y);
         printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",parent.bv,bv,parent.bh,bh,parent.bu,bu,parent.bd,bd);
         printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",parent.bv&bv,parent.bh&bh,parent.bu&bu,parent.bd&bd);
 	if((parent.bv&bv)||(parent.bh&bh)||(parent.bu&bu)||(parent.bd&bd)) {
