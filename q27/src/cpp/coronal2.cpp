@@ -63,6 +63,7 @@ namespace {
   public:
     Explorer(bool const &full) : cnt(full? new uint64_t[4] : 0) {
       for(Symmetry  s : Symmetry::RANGE)  pre[s] = 0;
+      for(Symmetry  s : Symmetry::RANGE)  cnt[s] = 0;
     }
     ~Explorer() {}
 
