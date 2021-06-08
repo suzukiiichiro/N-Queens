@@ -4,7 +4,7 @@ CC	 := g++
 
 .PHONY: all range clean
 
-all: coronal2 q27db
+all: n27 coronal2 q27db
 range/%:
 	$(MAKE) -C range/ $*
 
@@ -15,4 +15,4 @@ q27db: Database.o DBEntry.o Symmetry.o range/IR.o range/RangeParser.o
 
 clean:
 	$(MAKE) -C range/ clean
-	rm -rf *~ *.o coronal2 q27db
+	rm -rf *~ *.o coronal2 q27db n27
