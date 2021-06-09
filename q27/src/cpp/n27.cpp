@@ -303,12 +303,12 @@ int main(int const  argc, char const* const argv[]) {
 	      //print('s', wa, wb, na, nb, ea, eb, sa, sb);
 	      continue;
 	    }
-	    //w=n=e=sであれば90度回転で同じ可能性
+	    //w=n=e=sであれば90度回転で同じ可能性*2
             process(board,0,pre,cnt);
 	    continue;
 	  }
 	  if(e == w) {
-          //e==wは180度回転して同じ
+          //e==wは180度回転して同じ*4
 	  // check if 180°-rotation is smaller
             //180度回転して同じ時n>=sの時はsmaller
 	    if(n >= s) {
@@ -321,7 +321,7 @@ int main(int const  argc, char const* const argv[]) {
 	    }
 	  }
 	  // n = w is okay
-
+          //*8
 	  //print('o', wa, wb, na, nb, ea, eb, sa, sb);
           process(board,2,pre,cnt);
 
@@ -330,7 +330,7 @@ int main(int const  argc, char const* const argv[]) {
     } // n
   } // w
 
-  //std::cout << "\n\n" << *act << std::endl;
+  //集計
   uint64_t  uniq;
   uint64_t  total;
   uniq=cnt[0]+cnt[1]+cnt[2];
