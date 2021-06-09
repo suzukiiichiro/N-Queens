@@ -10,7 +10,6 @@
 
 #include <string.h>
 
-namespace {
   class Board {
   public:
     unsigned const  N;
@@ -73,11 +72,7 @@ namespace {
     public:
       unsigned const  x;
       unsigned const  y;
-
-    private:
-      bool  valid;
-      bool  owner;
-
+private: bool  valid; bool  owner; 
     private:
       friend class Board;
       Placement(Board &_parent, unsigned const _x, unsigned const _y)
@@ -133,106 +128,55 @@ namespace {
     uint64_t getBD() const { return  bd; }
   }; // class Board
 
-
-  class Action {
-  protected:
-    Action() {}
-  public:
-    virtual ~Action() {}
-
-  public:
-    void operator()(Board const &brd, int  sym) {
-      this->process(brd, sym);
-    }
-
-  protected:
-    virtual void process(Board const &brd, int  sym) = 0;
-    virtual void dump(std::ostream &out) const = 0;
-    friend std::ostream& operator<<(std::ostream &out, Action const &act);
-  };
-
-  class Explorer : public Action {
-    uint64_t         pre[4];
-    uint64_t *const  cnt;
-
-  public:
-    Explorer(bool const &full) : cnt(full? new uint64_t[4] : 0) {
-      for(int s=0;s<3;s++){  
-        pre[s] = 0;
-        cnt[s] = 0;
-      }
-    }
-    ~Explorer() {}
-
-  protected:
-    void process(Board const &brd, int  sym) {
-      pre[sym]++;
-      if(cnt) {
-	unsigned const  N = brd.N;
-	cnt[sym] += countCompletions(brd.getBV() >> 2,
-				     ((((brd.getBH()>>2)|(~0<<(N-4)))+1)<<(brd.N-5))-1,
-				     brd.getBU()>>4,
-				     (brd.getBD()>>4)<<(N-5));
-      }
-    } // process()
-
-    void dump(std::ostream &out) const {
-      uint64_t  uniq;
-      uint64_t  total;
-      uniq=cnt[0]+cnt[1]+cnt[2];
-      total=cnt[0]*2+cnt[1]*4+cnt[2]*8;
-      printf("TOTAL:%llu UNIQ:%llu\n",total,uniq);
-    }
-
-  private:
-    static uint64_t countCompletions(uint64_t  bv,
+//再帰でクイーンを置いていく
+uint64_t countCompletions(uint64_t  bv,
 				     uint64_t  bh,
 				     uint64_t  bu,
 				     uint64_t  bd) {
-
-      // Placement Complete?
-      if(bh+1 == 0)  return  1;
-
-      // -> at least one more queen to place
-      while((bv&1) != 0) { // Column is covered by pre-placement
-	bv >>= 1;
-	bu <<= 1;
-	bd >>= 1;
-      }
-      bv >>= 1;
-
-      // Column needs to be placed
-      uint64_t  cnt = 0;
-      for(uint64_t  slots = ~(bh|bu|bd); slots != 0;) {
-	uint64_t const  slot = slots & -slots;
-	cnt   += countCompletions(bv, bh|slot, (bu|slot) << 1, (bd|slot) >> 1);
-	slots ^= slot;
-      }
-      return  cnt;
-
-    } // countCompletions()
-  };
-
-
-  std::ostream& operator<<(std::ostream &out, Action const &act) {
-    act.dump(out);
-    return  out;
+  // Placement Complete?
+  if(bh+1 == 0)  return  1;
+  // -> at least one more queen to place
+  while((bv&1) != 0) { // Column is covered by pre-placement
+    bv >>= 1;
+    bu <<= 1;
+    bd >>= 1;
   }
+  bv >>= 1;
 
-  Action* parseAction(char const *const  arg) {
-    return  new Explorer(strcmp(arg, "-x") == 0);
-  } // parseAction
-}
-
+  // Column needs to be placed
+  uint64_t  cnt = 0;
+  for(uint64_t  slots = ~(bh|bu|bd); slots != 0;) {
+    uint64_t const  slot = slots & -slots;
+    cnt += countCompletions(bv, bh|slot, (bu|slot) << 1, (bd|slot) >> 1);
+    slots ^= slot;
+  }
+  return  cnt;
+} // countCompletions()
+//クイーンを置いていく
+void process(Board const &brd, int  sym,uint64_t *pre,uint64_t *cnt) {
+  pre[sym]++;
+  if(cnt) {
+    unsigned const  N = brd.N;
+    cnt[sym] += countCompletions(brd.getBV() >> 2,
+				     ((((brd.getBH()>>2)|(~0<<(N-4)))+1)<<(brd.N-5))-1,
+				     brd.getBU()>>4,
+				     (brd.getBD()>>4)<<(N-5));
+  }
+} // process()
 int main(int const  argc, char const* const argv[]) {
   unsigned const  N = argc < 2? 0 : (unsigned)strtoul(argv[argc-1], 0, 0);
-
+  
+  uint64_t  cnt[3];
+  uint64_t  pre[3];
+  for(int s=0;s<3;s++){  
+    cnt[s] = 0;
+    pre[s] = 0;
+  }
   // Check Arguments
   if((N < 5) || (32 < N)) {
     return  1;
   }
   std::cout << N << "-Queens Puzzle\n" << std::endl;
-  std::unique_ptr<Action>  act(parseAction(argv[1]));
 
  /**
   * The number of valid pre-placements in two adjacent columns (rows) is
@@ -246,6 +190,7 @@ int main(int const  argc, char const* const argv[]) {
   std::unique_ptr<pres_t[]>  pres(new pres_t[(N-2)*(N-1)]);
 
   { // Compute all valid two-column pre-placements in order:
+  //上下左右２行、２列にクイーンを配置する
     // (a0, b0) < (a1, b1) if a0<a1 || (a0==a1 && b0<b1)
     unsigned  idx = 0;
     for(unsigned  a = 0; a < N; a++) {
@@ -266,6 +211,7 @@ int main(int const  argc, char const* const argv[]) {
 
   // Generate coronal Placements
   Board  board(N);
+  //上2行は2分の1だけ実行(ミラー)
   for(unsigned  w = 0; w <= (N/2)*(N-3); w++) {
     unsigned const  wa = pres[w].a;
     unsigned const  wb = pres[w].b;
@@ -275,6 +221,7 @@ int main(int const  argc, char const* const argv[]) {
     std::cout << "\rProgress: " << w << '/' << ((N/2)*(N-3)) << std::flush;
 #endif
 
+    //上２行　0行目,1行目にクイーンを置く
     Board::Placement  pwa(board.place(0, wa));
     Board::Placement  pwb(board.place(1, wb));
 
@@ -286,6 +233,7 @@ int main(int const  argc, char const* const argv[]) {
 		<< '(' << na << ", " << nb << ')' << std::endl;
 #endif
 
+      //pre-place 左２列にクイーンを置く
       Board::Placement  pna(board.place(na, N-1)); if(!pna)  continue;
       Board::Placement  pnb(board.place(nb, N-2)); if(!pnb)  continue;
 
@@ -298,6 +246,7 @@ int main(int const  argc, char const* const argv[]) {
 		  << '(' << ea << ", " << eb << ')' << std::endl;
 #endif
 
+        //下２行に置く
 	Board::Placement  pea(board.place(N-1, N-1-ea)); if(!pea)  continue;
 	Board::Placement  peb(board.place(N-2, N-1-eb)); if(!peb)  continue;
 
@@ -311,6 +260,7 @@ int main(int const  argc, char const* const argv[]) {
 		    << '(' << sa << ", " << sb << ')' << std::endl;
 #endif
 
+          //右２列に置く
 	  Board::Placement  psa(board.place(N-1-sa, 0)); if(!psa)  continue;
 	  Board::Placement  psb(board.place(N-1-sb, 1)); if(!psb)  continue;
 
@@ -347,34 +297,43 @@ int main(int const  argc, char const* const argv[]) {
 
 	  // Check for minimum if n, e, s = w
 	  if(s == w) {
+          //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
 	    // right rotation is smaller unless  w = n = e = s
 	    if((n != w) || (e != w)) {
 	      //print('s', wa, wb, na, nb, ea, eb, sa, sb);
 	      continue;
 	    }
-	    (*act)(board,0);
+	    //w=n=e=sであれば90度回転で同じ可能性
+            process(board,0,pre,cnt);
 	    continue;
 	  }
 	  if(e == w) {
-	    // check if 180°-rotation is smaller
+          //e==wは180度回転して同じ
+	  // check if 180°-rotation is smaller
+            //180度回転して同じ時n>=sの時はsmaller
 	    if(n >= s) {
 	      if(n > s) {
 		//print('e', wa, wb, na, nb, ea, eb, sa, sb);
 		continue;
 	      }
-	      (*act)(board,1);
+              process(board,1,pre,cnt);
 	      continue;
 	    }
 	  }
 	  // n = w is okay
 
 	  //print('o', wa, wb, na, nb, ea, eb, sa, sb);
-	  (*act)(board,2);
+          process(board,2,pre,cnt);
 
 	} // s
       } // e
     } // n
   } // w
 
-  std::cout << "\n\n" << *act << std::endl;
+  //std::cout << "\n\n" << *act << std::endl;
+  uint64_t  uniq;
+  uint64_t  total;
+  uniq=cnt[0]+cnt[1]+cnt[2];
+  total=cnt[0]*2+cnt[1]*4+cnt[2]*8;
+  printf("\nTOTAL:%llu UNIQ:%llu\n",total,uniq);
 }
