@@ -175,7 +175,8 @@ namespace {
   } // parseAction
 }
 
-int main(int const  argc, char const* const argv[]) {
+int main(int const  argc, char const* const argv[]) 
+{
   unsigned const  N = argc < 2? 0 : (unsigned)strtoul(argv[argc-1], 0, 0);
 
   // Check Arguments
@@ -184,17 +185,17 @@ int main(int const  argc, char const* const argv[]) {
       " [-x|-db:<file>] <board dimension from 5..32>\n\n"
       "\t-x\tExplore pre-placements and count solutions.\n"
       "\t-db\tGenerate a Database of the pre-placements.\n"
-	      << std::endl;
+      << std::endl;
     return  1;
   }
   std::cout << N << "-Queens Puzzle\n" << std::endl;
   std::unique_ptr<Action>  act(parseAction(argv[1]));
 
- /**
-  * The number of valid pre-placements in two adjacent columns (rows) is
-  * 2*(N-2) + (N-2)*(N-3) for the outmost and inner positions in the the
-  * first column, respectively. Thus, the total is (N-2)*(N-1).
-  */
+  /**
+   * The number of valid pre-placements in two adjacent columns (rows) is
+   * 2*(N-2) + (N-2)*(N-3) for the outmost and inner positions in the the
+   * first column, respectively. Thus, the total is (N-2)*(N-1).
+   */
   struct pres_t {
     char unsigned  a;
     char unsigned  b;
@@ -206,18 +207,20 @@ int main(int const  argc, char const* const argv[]) {
     unsigned  idx = 0;
     for(unsigned  a = 0; a < N; a++) {
       for(unsigned  b = 0; b < N; b++) {
-	if(abs((double)a-b) <= 1)  continue;
-	pres[idx].a = a;
-	pres[idx].b = b;
-	idx++;
+        if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+          continue;
+        }     
+        pres[idx].a = a;
+        pres[idx].b = b;
+        idx++;
       }
     }
     assert(idx == (N-2)*(N-1)); // Wrong number of pre-placements
   }
   std::cout << "First side bound: ("
-	    << (unsigned)pres[(N/2)*(N-3)  ].a << ", " << (unsigned)pres[(N/2)*(N-3)  ].b << ") / ("
-	    << (unsigned)pres[(N/2)*(N-3)+1].a << ", " << (unsigned)pres[(N/2)*(N-3)+1].b << ')'
-	    << std::endl;
+    << (unsigned)pres[(N/2)*(N-3)  ].a << ", " << (unsigned)pres[(N/2)*(N-3)  ].b << ") / ("
+    << (unsigned)pres[(N/2)*(N-3)+1].a << ", " << (unsigned)pres[(N/2)*(N-3)+1].b << ')'
+    << std::endl;
 
   // Generate coronal Placements
   Board  board(N);
@@ -239,95 +242,95 @@ int main(int const  argc, char const* const argv[]) {
       unsigned const  nb = pres[n].b;
 #ifdef TRACE
       std::cerr << '(' << wa << ", " << wb << ')'
-		<< '(' << na << ", " << nb << ')' << std::endl;
+        << '(' << na << ", " << nb << ')' << std::endl;
 #endif
 
       Board::Placement  pna(board.place(na, N-1)); if(!pna)  continue;
       Board::Placement  pnb(board.place(nb, N-2)); if(!pnb)  continue;
 
       for(unsigned  e = w; e < (N-2)*(N-1)-w; e++) {
-	unsigned const  ea = pres[e].a;
-	unsigned const  eb = pres[e].b;
+        unsigned const  ea = pres[e].a;
+        unsigned const  eb = pres[e].b;
 #ifdef TRACE
-	std::cerr << '(' << wa << ", " << wb << ')'
-		  << '(' << na << ", " << nb << ')'
-		  << '(' << ea << ", " << eb << ')' << std::endl;
+        std::cerr << '(' << wa << ", " << wb << ')'
+          << '(' << na << ", " << nb << ')'
+          << '(' << ea << ", " << eb << ')' << std::endl;
 #endif
 
-	Board::Placement  pea(board.place(N-1, N-1-ea)); if(!pea)  continue;
-	Board::Placement  peb(board.place(N-2, N-1-eb)); if(!peb)  continue;
+        Board::Placement  pea(board.place(N-1, N-1-ea)); if(!pea)  continue;
+        Board::Placement  peb(board.place(N-2, N-1-eb)); if(!peb)  continue;
 
-	for(unsigned  s = w; s < (N-2)*(N-1)-w; s++) {
-	  unsigned const  sa = pres[s].a;
-	  unsigned const  sb = pres[s].b;
+        for(unsigned  s = w; s < (N-2)*(N-1)-w; s++) {
+          unsigned const  sa = pres[s].a;
+          unsigned const  sb = pres[s].b;
 #ifdef TRACE
-	  std::cerr << '(' << wa << ", " << wb << ')'
-		    << '(' << na << ", " << nb << ')'
-		    << '(' << ea << ", " << eb << ')'
-		    << '(' << sa << ", " << sb << ')' << std::endl;
+          std::cerr << '(' << wa << ", " << wb << ')'
+            << '(' << na << ", " << nb << ')'
+            << '(' << ea << ", " << eb << ')'
+            << '(' << sa << ", " << sb << ')' << std::endl;
 #endif
 
-	  Board::Placement  psa(board.place(N-1-sa, 0)); if(!psa)  continue;
-	  Board::Placement  psb(board.place(N-1-sb, 1)); if(!psb)  continue;
+          Board::Placement  psa(board.place(N-1-sa, 0)); if(!psa)  continue;
+          Board::Placement  psb(board.place(N-1-sb, 1)); if(!psb)  continue;
 
-	  // We have a successful complete pre-placement with
-	  //   w <= n, e, s < (N-2)*(N-1)-w
-	  //
-	  // Thus, the placement is definitely a canonical minimum unless
-	  // one or more of n, e, s are equal to w or (N-2)*(N-1)-1-w.
+          // We have a successful complete pre-placement with
+          //   w <= n, e, s < (N-2)*(N-1)-w
+          //
+          // Thus, the placement is definitely a canonical minimum unless
+          // one or more of n, e, s are equal to w or (N-2)*(N-1)-1-w.
 
-	  { // Check for minimum if n, e, s = (N-2)*(N-1)-1-w
-	    unsigned const  ww = (N-2)*(N-1)-1-w;
-	    if(s == ww) {
-	      // check if flip about the up diagonal is smaller
-	      if(n < (N-2)*(N-1)-1-e) {
-		//print('S', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	    if(e == ww) {
-	      // check if flip about the vertical center is smaller
-	      if(n > (N-2)*(N-1)-1-n) {
-		//print('E', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	    if(n == ww) {
-	      // check if flip about the down diagonal is smaller
-	      if(e > (N-2)*(N-1)-1-s) {
-		//print('N', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	  }
+          { // Check for minimum if n, e, s = (N-2)*(N-1)-1-w
+            unsigned const  ww = (N-2)*(N-1)-1-w;
+            if(s == ww) {
+              // check if flip about the up diagonal is smaller
+              if(n < (N-2)*(N-1)-1-e) {
+                //print('S', wa, wb, na, nb, ea, eb, sa, sb);
+                continue;
+              }
+            }
+            if(e == ww) {
+              // check if flip about the vertical center is smaller
+              if(n > (N-2)*(N-1)-1-n) {
+                //print('E', wa, wb, na, nb, ea, eb, sa, sb);
+                continue;
+              }
+            }
+            if(n == ww) {
+              // check if flip about the down diagonal is smaller
+              if(e > (N-2)*(N-1)-1-s) {
+                //print('N', wa, wb, na, nb, ea, eb, sa, sb);
+                continue;
+              }
+            }
+          }
 
-	  // Check for minimum if n, e, s = w
-	  if(s == w) {
-	    // right rotation is smaller unless  w = n = e = s
-	    if((n != w) || (e != w)) {
-	      //print('s', wa, wb, na, nb, ea, eb, sa, sb);
-	      continue;
-	    }
-	    (*act)(board, Symmetry::ROTATE);
-	    continue;
-	  }
-	  if(e == w) {
-	    // check if 180°-rotation is smaller
-	    if(n >= s) {
-	      if(n > s) {
-		//print('e', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	      (*act)(board, Symmetry::POINT);
-	      continue;
-	    }
-	  }
-	  // n = w is okay
+          // Check for minimum if n, e, s = w
+          if(s == w) {
+            // right rotation is smaller unless  w = n = e = s
+            if((n != w) || (e != w)) {
+              //print('s', wa, wb, na, nb, ea, eb, sa, sb);
+              continue;
+            }
+            (*act)(board, Symmetry::ROTATE);
+            continue;
+          }
+          if(e == w) {
+            // check if 180°-rotation is smaller
+            if(n >= s) {
+              if(n > s) {
+                //print('e', wa, wb, na, nb, ea, eb, sa, sb);
+                continue;
+              }
+              (*act)(board, Symmetry::POINT);
+              continue;
+            }
+          }
+          // n = w is okay
 
-	  //print('o', wa, wb, na, nb, ea, eb, sa, sb);
-	  (*act)(board, Symmetry::NONE);
+          //print('o', wa, wb, na, nb, ea, eb, sa, sb);
+          (*act)(board, Symmetry::NONE);
 
-	} // s
+        } // s
       } // e
     } // n
   } // w
