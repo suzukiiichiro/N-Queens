@@ -39,7 +39,6 @@ typedef struct{
   uint64 bu;
   uint64 bd;
   int x[MAX];
-  int y[MAX];
 }Board ;
 Board B;
 
@@ -146,17 +145,14 @@ void process(int si,Board B,int sym){
     //printf("cnt_sym:%d\n",cnt[sym]);
 }
 //
-bool board_placement(int si,int x,int y,int pos){
+bool board_placement(int si,int x,int y){
    //同じ場所に置くかチェック
-   for(int i=0;i<8;i++){
        //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
-       if(B.x[i]==x&&B.y[i]==y){
-         //printf("Duplicate x:%d:y:%d\n",x,y);
-         return true;  
-       }
-   }
-   B.x[pos]=x;
-   B.y[pos]=y;
+  if(B.x[x]==y){
+    //printf("Duplicate x:%d:y:%d\n",x,y);
+    return true;  
+  }
+   B.x[x]=y;
    uint64 bv=1<<x;
    uint64 bh=1<<y;
    uint64 bu=1<<(si-1-x+y);
@@ -203,17 +199,16 @@ void NQueenR(int size)
       B.bh=0;
       B.bu=0;
       B.bd=0;
-      for(int i=0;i<8;i++){
-          B.x[i]=size;
-          B.y[i]=size;
+      for(int i=0;i<size;i++){
+          B.x[i]=-1;
       }
       int wa=pres_a[w];
       int wb=pres_b[w];
       //printf("wloop:w:%d:p.a:%d,p.b:%d:wa:%d:wb:%d\n",w,pres_a[w],pres_b[w],wa,wb);
       //printf("placement_pwa:xk(0):0:y:%d\n",wa);
-      board_placement(size,0,wa,0);
+      board_placement(size,0,wa);
       //printf("placement_pwb:xk(1):1:y:%d\n",wb);
-      board_placement(size,1,wb,1);
+      board_placement(size,1,wb);
       Board nB=B;
       for(int  n = w; n < (size-2)*(size-1)-w; n++) {
          B=nB;
@@ -223,13 +218,13 @@ void NQueenR(int size)
          //printf("placement_pwa:xk(0):0:y:%d\n",wa);
          //printf("placement_pwb:xk(1):1:y:%d\n",wb);
          //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
-         bool pna=board_placement(size,na,size-1,2);
+         bool pna=board_placement(size,na,size-1);
          if(pna==false){
              //printf("pnaskip:na:%d:N-1:%d\n",na,size-1);
              continue;
          }
          //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
-         bool pnb=board_placement(size,nb,size-2,3);
+         bool pnb=board_placement(size,nb,size-2);
          if(pnb==false){
              //printf("pnbskip:nb:%d:N-2:%d\n",nb,size-2);
              continue;
@@ -245,13 +240,13 @@ void NQueenR(int size)
             //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
             //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
             //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
-            bool pea=board_placement(size,size-1,size-1-ea,4);
+            bool pea=board_placement(size,size-1,size-1-ea);
             if(pea==false){
               //printf("peaskip:N-1:%d:N-1-ea:%d\n",size-1,size-1-ea);
               continue;
             }
             //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
-            bool peb=board_placement(size,size-2,size-1-eb,5);
+            bool peb=board_placement(size,size-2,size-1-eb);
             if(peb==false){
               //printf("pebskip:N-2:%d:N-1-eb:%d\n",size-2,size-1-eb);
               continue;
@@ -269,13 +264,13 @@ void NQueenR(int size)
                //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
                //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
                //printf("psa:x:%d:yk(0):0\n",size-1-sa);
-               bool psa=board_placement(size,size-1-sa,0,6);
+               bool psa=board_placement(size,size-1-sa,0);
                if(psa==false){
                 //printf("psaskip:N-1-sa:%d:0\n",size-1-sa);
                 continue;
                }
                //printf("psb:x:%d:yk(1):1\n",size-1-sb);
-               bool psb=board_placement(size,size-1-sb,1,7);
+               bool psb=board_placement(size,size-1-sb,1);
                if(psb==false){
                 //printf("psbskip:N-1-sb:%d:1\n",size-1-sb);
                 continue;
@@ -378,8 +373,8 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    int min=5; int targetN=17;
-    //int min=8;int targetN=8;
+    //int min=5; int targetN=17;
+    int min=17;int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
