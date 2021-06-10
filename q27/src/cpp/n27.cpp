@@ -10,6 +10,12 @@
 
 #include <string.h>
 
+//ローカル構造体
+typedef struct{
+  char unsigned  a;
+  char unsigned  b;
+}pres_t ;
+
   class Board {
   public:
     unsigned const  N;
@@ -183,12 +189,12 @@ int main(int const  argc, char const* const argv[]) {
   * 2*(N-2) + (N-2)*(N-3) for the outmost and inner positions in the the
   * first column, respectively. Thus, the total is (N-2)*(N-1).
   */
-  struct pres_t {
-    char unsigned  a;
-    char unsigned  b;
-  };
-  std::unique_ptr<pres_t[]>  pres(new pres_t[(N-2)*(N-1)]);
-
+  //struct pres_t {
+  //  char unsigned  a;
+  //  char unsigned  b;
+  //};
+  //std::unique_ptr<pres_t[]>  pres(new pres_t[(N-2)*(N-1)]);
+  pres_t pres[(N-2)*(N-1)];
   { // Compute all valid two-column pre-placements in order:
   //上下左右２行、２列にクイーンを配置する
     // (a0, b0) < (a1, b1) if a0<a1 || (a0==a1 && b0<b1)
@@ -198,9 +204,9 @@ int main(int const  argc, char const* const argv[]) {
          if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
           continue;
         }     
-	pres[idx].a = a;
-	pres[idx].b = b;
-	idx++;
+	      pres[idx].a = a;
+	      pres[idx].b = b;
+	      idx++;
       }
     }
   }
