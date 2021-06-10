@@ -1,33 +1,27 @@
 #undef TRACE
 //#define TRACE
-
 #include <cstdint>
 #include <cassert>
 #include <memory>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-
 #include <string.h>
-
 //ローカル構造体
 typedef struct{
   char unsigned  a;
   char unsigned  b;
 }pres_t ;
-
-  class Board {
+//
+class Board {
   public:
     unsigned const  N;
-
   private:
     signed *const  board;
-
     uint64_t  bv;
     uint64_t  bh;
     uint64_t  bu;
     uint64_t  bd;
-
   public:
     Board(unsigned const  dim)
       : N(dim), board(new signed[dim]),
@@ -37,16 +31,13 @@ typedef struct{
     ~Board() {
       delete [] board;
     }
-
   private:
     class Cell {
       signed         &col;
       unsigned const  y;
-
     public:
       Cell(signed &_col, unsigned const _y) : col(_col), y(_y) {}
       ~Cell() {}
-
     public:
       operator bool() const { return  col == (signed)y; }
       Cell& operator=(bool const  v) {
@@ -61,7 +52,6 @@ typedef struct{
 	return *this;
       }
     }; // class Cell
-
   public:
     bool operator()(unsigned  x, unsigned  y) const {
       return  board[x]==(signed)y;
@@ -70,11 +60,9 @@ typedef struct{
     Cell operator()(unsigned  x, unsigned  y) {
       return  Cell(board[x], y);
     }
-
   public:
     class Placement {
       Board &parent;
-
     public:
       unsigned const  x;
       unsigned const  y;
@@ -88,8 +76,7 @@ private: bool  valid; bool  owner;
 	  valid = true;
 	  owner = false;
 	  return;
-	}
-
+  }
 	// Check Validity of new Placement
 	uint64_t const  bv = UINT64_C(1)<<x;
 	uint64_t const  bh = UINT64_C(1)<<y;
@@ -118,21 +105,17 @@ private: bool  valid; bool  owner;
 	  parent(x, y) = false;
 	}
       }
-
     public:
       operator bool() { return  valid; }
-
     }; // class Placement
-
     Placement place(unsigned  x, unsigned  y) {
       return  Placement(*this, x, y);
     }
-
     uint64_t getBV() const { return  bv; }
     uint64_t getBH() const { return  bh; }
     uint64_t getBU() const { return  bu; }
     uint64_t getBD() const { return  bd; }
-  }; // class Board
+}; // class Board
 
 //再帰でクイーンを置いていく
 uint64_t countCompletions(uint64_t  bv,
