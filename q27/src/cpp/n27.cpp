@@ -171,7 +171,6 @@ void process(Board const &brd, int  sym,uint64_t *pre,uint64_t *cnt) {
 } // process()
 int main(int const  argc, char const* const argv[]) {
   unsigned const  N = argc < 2? 0 : (unsigned)strtoul(argv[argc-1], 0, 0);
-  
   uint64_t  cnt[3];
   uint64_t  pre[3];
   for(int s=0;s<3;s++){  
@@ -183,38 +182,30 @@ int main(int const  argc, char const* const argv[]) {
     return  1;
   }
   std::cout << N << "-Queens Puzzle\n" << std::endl;
-
- /**
+  /**
   * The number of valid pre-placements in two adjacent columns (rows) is
   * 2*(N-2) + (N-2)*(N-3) for the outmost and inner positions in the the
   * first column, respectively. Thus, the total is (N-2)*(N-1).
   */
-  //struct pres_t {
-  //  char unsigned  a;
-  //  char unsigned  b;
-  //};
-  //std::unique_ptr<pres_t[]>  pres(new pres_t[(N-2)*(N-1)]);
   pres_t pres[(N-2)*(N-1)];
-  { // Compute all valid two-column pre-placements in order:
+   // Compute all valid two-column pre-placements in order:
   //上下左右２行、２列にクイーンを配置する
     // (a0, b0) < (a1, b1) if a0<a1 || (a0==a1 && b0<b1)
-    unsigned  idx = 0;
-    for(unsigned  a = 0; a < N; a++) {
-      for(unsigned  b = 0; b < N; b++) {
-         if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
-          continue;
-        }     
-	      pres[idx].a = a;
-	      pres[idx].b = b;
-	      idx++;
-      }
+  unsigned  idx = 0;
+  for(unsigned  a = 0; a < N; a++) {
+    for(unsigned  b = 0; b < N; b++) {
+      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+        continue;
+      }     
+	    pres[idx].a = a;
+	    pres[idx].b = b;
+	    idx++;
     }
   }
   std::cout << "First side bound: ("
 	    << (unsigned)pres[(N/2)*(N-3)  ].a << ", " << (unsigned)pres[(N/2)*(N-3)  ].b << ") / ("
 	    << (unsigned)pres[(N/2)*(N-3)+1].a << ", " << (unsigned)pres[(N/2)*(N-3)+1].b << ')'
 	    << std::endl;
-
   // Generate coronal Placements
   Board  board(N);
   //上2行は2分の1だけ実行(ミラー)
@@ -226,11 +217,9 @@ int main(int const  argc, char const* const argv[]) {
 #else
     std::cout << "\rProgress: " << w << '/' << ((N/2)*(N-3)) << std::flush;
 #endif
-
     //上２行　0行目,1行目にクイーンを置く
     Board::Placement  pwa(board.place(0, wa));
     Board::Placement  pwb(board.place(1, wb));
-
     for(unsigned  n = w; n < (N-2)*(N-1)-w; n++) {
       unsigned const  na = pres[n].a;
       unsigned const  nb = pres[n].b;
@@ -238,104 +227,94 @@ int main(int const  argc, char const* const argv[]) {
       std::cerr << '(' << wa << ", " << wb << ')'
 		<< '(' << na << ", " << nb << ')' << std::endl;
 #endif
-
       //pre-place 左２列にクイーンを置く
       Board::Placement  pna(board.place(na, N-1)); if(!pna)  continue;
       Board::Placement  pnb(board.place(nb, N-2)); if(!pnb)  continue;
-
       for(unsigned  e = w; e < (N-2)*(N-1)-w; e++) {
-	unsigned const  ea = pres[e].a;
-	unsigned const  eb = pres[e].b;
+	      unsigned const  ea = pres[e].a;
+	      unsigned const  eb = pres[e].b;
 #ifdef TRACE
 	std::cerr << '(' << wa << ", " << wb << ')'
 		  << '(' << na << ", " << nb << ')'
 		  << '(' << ea << ", " << eb << ')' << std::endl;
 #endif
-
         //下２行に置く
-	Board::Placement  pea(board.place(N-1, N-1-ea)); if(!pea)  continue;
-	Board::Placement  peb(board.place(N-2, N-1-eb)); if(!peb)  continue;
-
-	for(unsigned  s = w; s < (N-2)*(N-1)-w; s++) {
-	  unsigned const  sa = pres[s].a;
-	  unsigned const  sb = pres[s].b;
+	      Board::Placement  pea(board.place(N-1, N-1-ea)); if(!pea)  continue;
+	      Board::Placement  peb(board.place(N-2, N-1-eb)); if(!peb)  continue;
+	      for(unsigned  s = w; s < (N-2)*(N-1)-w; s++) {
+	        unsigned const  sa = pres[s].a;
+	        unsigned const  sb = pres[s].b;
 #ifdef TRACE
 	  std::cerr << '(' << wa << ", " << wb << ')'
 		    << '(' << na << ", " << nb << ')'
 		    << '(' << ea << ", " << eb << ')'
 		    << '(' << sa << ", " << sb << ')' << std::endl;
 #endif
-
           //右２列に置く
-	  Board::Placement  psa(board.place(N-1-sa, 0)); if(!psa)  continue;
-	  Board::Placement  psb(board.place(N-1-sb, 1)); if(!psb)  continue;
-
+	        Board::Placement  psa(board.place(N-1-sa, 0)); if(!psa)  continue;
+	        Board::Placement  psb(board.place(N-1-sb, 1)); if(!psb)  continue;
 	  // We have a successful complete pre-placement with
 	  //   w <= n, e, s < (N-2)*(N-1)-w
 	  //
 	  // Thus, the placement is definitely a canonical minimum unless
 	  // one or more of n, e, s are equal to w or (N-2)*(N-1)-1-w.
-
-	  { // Check for minimum if n, e, s = (N-2)*(N-1)-1-w
-	    unsigned const  ww = (N-2)*(N-1)-1-w;
-	    if(s == ww) {
-	      // check if flip about the up diagonal is smaller
-	      if(n < (N-2)*(N-1)-1-e) {
-		//print('S', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	    if(e == ww) {
-	      // check if flip about the vertical center is smaller
-	      if(n > (N-2)*(N-1)-1-n) {
-		//print('E', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	    if(n == ww) {
-	      // check if flip about the down diagonal is smaller
-	      if(e > (N-2)*(N-1)-1-s) {
-		//print('N', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
-	    }
-	  }
-
+	        { // Check for minimum if n, e, s = (N-2)*(N-1)-1-w
+	        unsigned const  ww = (N-2)*(N-1)-1-w;
+	        if(s == ww) {
+	        // check if flip about the up diagonal is smaller
+	          if(n < (N-2)*(N-1)-1-e) {
+		        //print('S', wa, wb, na, nb, ea, eb, sa, sb);
+		          continue;
+	           }
+	        }
+	        if(e == ww) {
+	        // check if flip about the vertical center is smaller
+	          if(n > (N-2)*(N-1)-1-n) {
+		        //print('E', wa, wb, na, nb, ea, eb, sa, sb);
+		          continue;
+	          }
+	        }
+	        if(n == ww) {
+	        // check if flip about the down diagonal is smaller
+	          if(e > (N-2)*(N-1)-1-s) {
+		        //print('N', wa, wb, na, nb, ea, eb, sa, sb);
+		          continue;
+	           }
+	        }   
+	        }
 	  // Check for minimum if n, e, s = w
-	  if(s == w) {
+	        if(s == w) {
           //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
-	    // right rotation is smaller unless  w = n = e = s
-	    if((n != w) || (e != w)) {
-	      //print('s', wa, wb, na, nb, ea, eb, sa, sb);
-	      continue;
-	    }
-	    //w=n=e=sであれば90度回転で同じ可能性*2
+	        // right rotation is smaller unless  w = n = e = s
+	          if((n != w) || (e != w)) {
+	          //print('s', wa, wb, na, nb, ea, eb, sa, sb);
+	            continue;
+	          }
+	          //w=n=e=sであれば90度回転で同じ可能性*2
             process(board,0,pre,cnt);
-	    continue;
-	  }
-	  if(e == w) {
+	          continue;
+	        }
+	        if(e == w) {
           //e==wは180度回転して同じ*4
-	  // check if 180°-rotation is smaller
-            //180度回転して同じ時n>=sの時はsmaller
-	    if(n >= s) {
-	      if(n > s) {
-		//print('e', wa, wb, na, nb, ea, eb, sa, sb);
-		continue;
-	      }
+	        // check if 180°-rotation is smaller
+          //180度回転して同じ時n>=sの時はsmaller
+	          if(n >= s) {
+	            if(n > s) {
+		          //print('e', wa, wb, na, nb, ea, eb, sa, sb);
+		            continue;
+	            }
               process(board,1,pre,cnt);
-	      continue;
-	    }
-	  }
-	  // n = w is okay
+	            continue;
+	          } 
+	        }
+	        // n = w is okay
           //*8
-	  //print('o', wa, wb, na, nb, ea, eb, sa, sb);
+	        //print('o', wa, wb, na, nb, ea, eb, sa, sb);
           process(board,2,pre,cnt);
-
-	} // s
+	      } // s
       } // e
     } // n
   } // w
-
   //集計
   uint64_t  uniq;
   uint64_t  total;
