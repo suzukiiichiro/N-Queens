@@ -97,13 +97,13 @@ private: bool  valid; bool  owner;
       }
     public:
       ~Placement() {
-	if(owner) {
-	  parent.bv ^= UINT64_C(1)<<x;
-	  parent.bh ^= UINT64_C(1)<<y;
-	  parent.bu ^= UINT64_C(1)<<(parent.N-1-x+y);
-	  parent.bd ^= UINT64_C(1)<<(           x+y);
-	  parent(x, y) = false;
-	}
+	      if(owner) {
+	        parent.bv ^= UINT64_C(1)<<x;
+	        parent.bh ^= UINT64_C(1)<<y;
+	        parent.bu ^= UINT64_C(1)<<(parent.N-1-x+y);
+	        parent.bd ^= UINT64_C(1)<<(           x+y);
+	        parent(x, y) = false;
+	      }
       }
     public:
       operator bool() { return  valid; }
