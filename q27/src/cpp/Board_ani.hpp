@@ -98,7 +98,7 @@ namespace queens {
       friend class Board;
       Placement(Board &_parent, unsigned const _x, unsigned const _y)
 	: parent(_parent), x(_x), y(_y) {
-        printf("board_placement_x:%d:y:%d\n",_x,_y);
+    //    printf("board_placement_x:%d:y:%d\n",_x,_y);
 	if(parent(x, y)) {
 	  // Duplicate Placement
          //同じ場所に置くのはOK
@@ -137,11 +137,13 @@ namespace queens {
     public:
       ~Placement() {
 	if(owner) {
+    printf("before owner:pbv:%d:pbh:%d:pbu:%d:pbd:%d\n",parent.bv,parent.bh,parent.bu,parent.bd);
 	  parent.bv ^= UINT64_C(1)<<x;
 	  parent.bh ^= UINT64_C(1)<<y;
 	  parent.bu ^= UINT64_C(1)<<(parent.N-1-x+y);
 	  parent.bd ^= UINT64_C(1)<<(           x+y);
 	  parent(x, y) = false;
+    printf("after owner:pbv:%d:pbh:%d:pbu:%d:pbd:%d\n",parent.bv,parent.bh,parent.bu,parent.bd);
 	}
       }
 

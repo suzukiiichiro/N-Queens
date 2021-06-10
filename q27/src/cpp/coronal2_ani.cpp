@@ -263,12 +263,14 @@ int main(int const  argc, char const* const argv[]) {
       for(unsigned  b = 0; b < N; b++) {
         //printf("abs:%d\n",abs((double)a-b));
 	//ここできき筋は除外
-	if(abs((double)a-b) <= 1)  continue;
-	pres[idx].a = a;
-	pres[idx].b = b;
+         if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+          continue;
+        }     
+	      pres[idx].a = a;
+	      pres[idx].b = b;
         printf("a:%d\n",a);
         printf("b:%d\n",b);
-	idx++;
+	      idx++;
       }
     }
     printf("idx:%d\n",idx);
