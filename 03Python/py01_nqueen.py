@@ -420,23 +420,23 @@ ABOARD = [0 for i in range(MAX)] #版の配列
 COUNT = 0
 #
 def printout():
-    """printout  """
-    global COUNT              # pylint: disable=W0603
-    COUNT += 1                # インクリメントはこのように書きます
-    print(COUNT, end=": ")    # 改行したくないときは, を行末にいれます
-    for i in range(SIZE):
-        print(ABOARD[i], end="")
-    print("")
+  """printout()"""
+  global COUNT              # pylint: disable=W0603
+  COUNT += 1                # インクリメントはこのように書きます
+  print(COUNT, end=": ")    # 改行したくないときは end="" を行末にいれます
+  for i in range(SIZE):
+    print(ABOARD[i], end="")
+  print("")
 #
 def nqueen(row):
-    """NQueen"""
-    global ABOARD             # pylint: disable=W0603
-    if row is SIZE:           # SIZEは8で固定
-        printout()            # rowが8になったら出力
-    else:
-        for i in range(SIZE):
-            ABOARD[row] = i
-            nqueen(row+1)     #インクリメントしながら再帰
+  """nqueen()"""
+  global ABOARD             # pylint: disable=W0603
+  if row is SIZE:           # SIZEは8で固定
+    printout()              # rowが8になったら出力
+  else:
+    for i in range(SIZE):
+      ABOARD[row] = i
+      nqueen(row+1)     #インクリメントしながら再帰
 
 nqueen(0)     #ロジックメソッドを0を渡して呼び出し
 #

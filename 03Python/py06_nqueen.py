@@ -41,39 +41,39 @@ MASK = 0
 ABOARD = [0 for i in range(MAX)]
 #
 def nqueen(row, left, down, right):
-    """ nqueen() """
-    global TOTAL    # pylint: disable=W0603
-    if row == SIZE:
-        TOTAL += 1
-    else:
-        bitmap = (MASK&~(left|down|right))
-        while bitmap:
-            bit = (-bitmap&bitmap)
-            bitmap = (bitmap^bit)
-            nqueen(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
+  """ nqueen() """
+  global TOTAL    # pylint: disable=W0603
+  if row == SIZE:
+    TOTAL += 1
+  else:
+    bitmap = (MASK&~(left|down|right))
+    while bitmap:
+      bit = (-bitmap&bitmap)
+      bitmap = (bitmap^bit)
+      nqueen(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
 #
 def main():
-    """ main() """
-    global TOTAL    # pylint: disable=W0603
-    global UNIQUE   # pylint: disable=W0603
-    global ABOARD   # pylint: disable=W0603
-    global MASK     # pylint: disable=W0603
-    global SIZE     # pylint: disable=W0603
-    nmin = 4                         # Nの最小値（スタートの値）を格納
-    print(" N:        Total       Unique        hh:mm:ss.ms")
-    for i in range(nmin, MAX):
-        SIZE = i
-        TOTAL = 0
-        UNIQUE = 0                   # 初期化
-        for j in range(i):
-            ABOARD[j] = j            # 盤を初期化
-        MASK = ((1<<SIZE)-1)
-        start_time = datetime.now()
-        nqueen(0, 0, 0, 0)
-        time_elapsed = datetime.now()-start_time
-        _text = '{}'.format(time_elapsed)
-        text = _text[:-3]
-        print("%2d:%13d%13d%20s" % (SIZE, TOTAL, UNIQUE, text)) # 出力
+  """ main() """
+  global TOTAL    # pylint: disable=W0603
+  global UNIQUE   # pylint: disable=W0603
+  global ABOARD   # pylint: disable=W0603
+  global MASK     # pylint: disable=W0603
+  global SIZE     # pylint: disable=W0603
+  nmin = 4                         # Nの最小値（スタートの値）を格納
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for i in range(nmin, MAX):
+    SIZE = i
+    TOTAL = 0
+    UNIQUE = 0                   # 初期化
+    for j in range(i):
+      ABOARD[j] = j            # 盤を初期化
+    MASK = ((1<<SIZE)-1)
+    start_time = datetime.now()
+    nqueen(0, 0, 0, 0)
+    time_elapsed = datetime.now()-start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (SIZE, TOTAL, UNIQUE, text)) # 出力
 #
 main()
 #

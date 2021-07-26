@@ -436,39 +436,39 @@ FC = [0 for i in range(2*MAX-1)]	#斜め列にクイーンを一つだけ配置
 #
 # ロジックメソッド
 def nqueen(row, size):
-    """ nqueen() """
-    global FA           # pylint: disable=W0603
-    global FB           # pylint: disable=W0603
-    global FC           # pylint: disable=W0603
-    global TOTAL        # pylint: disable=W0603
-    if row == size:     #最後までこれたらカウント
-        TOTAL += 1
-    else:
-        for i in range(size):
-            ABOARD[row] = i
-            # 縦斜右斜左を判定
-            if FA[i] == 0 and FB[row-i+(size-1)] == 0 and FC[row+i] == 0:
-                FA[i] = FB[row-i+(size-1)] = FC[row+i] = 1
-                nqueen(row+1, size)   #再帰
-                FA[i] = FB[row-i+(size-1)] = FC[row+i] = 0
+  """nqueen()"""
+  global FA           # pylint: disable=W0603
+  global FB           # pylint: disable=W0603
+  global FC           # pylint: disable=W0603
+  global TOTAL        # pylint: disable=W0603
+  if row == size:     #最後までこれたらカウント
+    TOTAL += 1
+  else:
+    for i in range(size):
+      ABOARD[row] = i
+      # 縦斜右斜左を判定
+      if FA[i] == 0 and FB[row-i+(size-1)] == 0 and FC[row+i] == 0:
+        FA[i] = FB[row-i+(size-1)] = FC[row+i] = 1
+        nqueen(row+1, size)   #再帰
+        FA[i] = FB[row-i+(size-1)] = FC[row+i] = 0
 #
 def main():
-    """ main() """
-    global TOTAL                # pylint: disable=W0603
-    global UNIQUE               # pylint: disable=W0603
-    nmin = 4                    # Nの最小値（スタートの値）を格納
-    print(" N:        Total       Unique        hh:mm:ss.ms")
-    for i in range(nmin, MAX):
-        TOTAL = 0
-        UNIQUE = 0              # 初期化
-        for j in range(i):
-            ABOARD[j] = j       # 盤を初期化
-        start_time = datetime.now()
-        nqueen(0, i)
-        time_elapsed = datetime.now()-start_time
-        _text = '{}'.format(time_elapsed)
-        text = _text[:-3]
-        print("%2d:%13d%13d%20s" % (i, TOTAL, UNIQUE, text)) # 出力
+  """main()"""
+  global TOTAL                # pylint: disable=W0603
+  global UNIQUE               # pylint: disable=W0603
+  nmin = 4                    # Nの最小値（スタートの値）を格納
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for i in range(nmin, MAX):
+    TOTAL = 0
+    UNIQUE = 0                # 初期化
+    for j in range(i):
+      ABOARD[j] = j           # 盤を初期化
+    start_time = datetime.now()
+    nqueen(0, i)
+    time_elapsed = datetime.now()-start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (i, TOTAL, UNIQUE, text)) # 出力
 #
 main()
 #

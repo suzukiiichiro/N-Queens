@@ -420,30 +420,30 @@ MAX = 8
 SIZE = 8                        #Nを8に固定
 COUNT = 0
 ABOARD = [0 for i in range(MAX)]
-FA = [0 for i in range(SIZE)]   #縦列にクイーンを一つだけ配置
+FA = [0 for i in range(SIZE)] #縦列にクイーンを一つだけ配置
 #
 def printout():
-    """ printout() """
-    global COUNT                # pylint: disable=W0603
-    COUNT += 1                  #インクリメントはこのように書きます
-    print(COUNT, end=": ")      #改行したくないときは, を行末にいれます
-    for i in range(SIZE):
-        print(ABOARD[i], end=" ")
-    print("")
+  """printout()"""
+  global COUNT                # pylint: disable=W0603
+  COUNT += 1                  #インクリメントはこのように書きます
+  print(COUNT, end=": ")      #改行したくないときは, を行末にいれます
+  for i in range(SIZE):
+    print(ABOARD[i], end="")
+  print("")
 #
 def nqueen(row):
-    """ NQueen() """
-    global ABOARD                 # pylint: disable=W0603
-    global FA                     # pylint: disable=W0603
-    if row == SIZE-1:             #から始まるのでN = 8から1を引きます
-        printout()                #出力
-    else:
-        for i in range(SIZE):
-            ABOARD[row] = i
-            if FA[i] == 0:        #縦列にクイーンがない場合
-                FA[i] = 1
-                nqueen(row+1)     #1を足して再帰
-                FA[i] = 0
+  """nqueen()"""
+  global ABOARD               # pylint: disable=W0603
+  global FA                   # pylint: disable=W0603
+  if row == SIZE-1:           #から始まるのでN = 8から1を引きます
+    printout()                #出力
+  else:
+    for i in range(SIZE):
+      ABOARD[row] = i
+      if FA[i] == 0:          #縦列にクイーンがない場合
+        FA[i] = 1
+        nqueen(row+1)     #1を足して再帰
+        FA[i] = 0
 #
 nqueen(0)
 #

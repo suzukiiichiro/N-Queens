@@ -83,179 +83,179 @@ SIDEMASK = 0
 LASTMASK = 0
 #
 def rha(_ah, size):
-    """ rha() """
-    tmp = 0
-    for i in range(size+1):
-        if _ah&(1<<i):
-            tmp |= (1<<size-i)
-    return tmp
+  """ rha() """
+  tmp = 0
+  for i in range(size+1):
+    if _ah&(1<<i):
+      tmp |= (1<<size-i)
+  return tmp
 #
 def vmirror_bitmap(_bf, _af, size):
-    """ vmirrot_bitmap() """
-    score = 0
-    for i in range(size):
-        score = _bf[i]
-        _af[i] = rha(score, size-1)
+  """ vmirrot_bitmap() """
+  score = 0
+  for i in range(size):
+    score = _bf[i]
+    _af[i] = rha(score, size-1)
 #
 def rotate_bitmap(_bf, _af, size):
-    """ rotate_bitmap() """
-    for i in range(size):
-        tmp = 0
-        for j in range(size):
-            tmp |= ((_bf[j]>>i)&1)<<(size-j-1)  # x[j] の i ビット目を
-        _af[i] = tmp                          # y[i] の j ビット目にする
+  """ rotate_bitmap() """
+  for i in range(size):
+    tmp = 0
+    for j in range(size):
+      tmp |= ((_bf[j]>>i)&1)<<(size-j-1)  # x[j] の i ビット目を
+    _af[i] = tmp                          # y[i] の j ビット目にする
 #
 def intncmp(_lt, _rt, neg):
-    """ intncmp """
-    rtn = 0
-    for i in range(neg):
-        rtn = _lt[i] - _rt[i]
-        if rtn != 0:
-            break
-    return rtn
+  """ intncmp """
+  rtn = 0
+  for i in range(neg):
+    rtn = _lt[i] - _rt[i]
+    if rtn != 0:
+      break
+  return rtn
 #
 # ユニーク値を出力
 def getunique():
-    """ getunique() """
-    return COUNT2+COUNT4+COUNT8
+  """ getunique() """
+  return COUNT2+COUNT4+COUNT8
 #
 # 合計を出力
 def gettotal():
-    """ gettotal() """
-    return COUNT2*2+COUNT4*4+COUNT8*8
+  """ gettotal() """
+  return COUNT2*2+COUNT4*4+COUNT8*8
 #
 # 対称解除法
 def symmetryops_bitmap(size):      # pylint: disable=R0912,R0911
-    """ symmetryops_bitmap() """
-    nequiv = 0
-    global COUNT2 # pylint: disable=W0603
-    global COUNT4 # pylint: disable=W0603
-    global COUNT8 # pylint: disable=W0603
-    global AT     # pylint: disable=W0603
-    global AS     # pylint: disable=W0603
-    # 回転・反転・対称チェックのためにboard配列をコピー
-    for i in range(size):
-        AT[i] = ABOARD[i]
-    rotate_bitmap(AT, AS, size)    #時計回りに90度回転
-    k = intncmp(ABOARD, AS, size)
-    if k > 0:
-        return
-    if k == 0:
-        nequiv = 2
-    else:
-        rotate_bitmap(AS, AT, size)  #時計回りに180度回転
-        k = intncmp(ABOARD, AT, size)
-        if k > 0:
-            return
-        if k == 0:
-            nequiv = 4
-        else:
-            rotate_bitmap(AT, AS, size)#時計回りに270度回転
-            k = intncmp(ABOARD, AS, size)
-            if k > 0:
-                return
-            nequiv = 8
-    # 回転・反転・対称チェックのためにboard配列をコピー
-    for i in range(size):
-        AS[i] = ABOARD[i]
-    vmirror_bitmap(AS, AT, size)   # 垂直反転
+  """ symmetryops_bitmap() """
+  nequiv = 0
+  global COUNT2 # pylint: disable=W0603
+  global COUNT4 # pylint: disable=W0603
+  global COUNT8 # pylint: disable=W0603
+  global AT     # pylint: disable=W0603
+  global AS     # pylint: disable=W0603
+  # 回転・反転・対称チェックのためにboard配列をコピー
+  for i in range(size):
+    AT[i] = ABOARD[i]
+  rotate_bitmap(AT, AS, size)    #時計回りに90度回転
+  k = intncmp(ABOARD, AS, size)
+  if k > 0:
+    return
+  if k == 0:
+    nequiv = 2
+  else:
+    rotate_bitmap(AS, AT, size)  #時計回りに180度回転
     k = intncmp(ABOARD, AT, size)
     if k > 0:
+      return
+    if k == 0:
+      nequiv = 4
+    else:
+      rotate_bitmap(AT, AS, size)#時計回りに270度回転
+      k = intncmp(ABOARD, AS, size)
+      if k > 0:
         return
-    if nequiv > 2:                #-90度回転 対角鏡と同等
-        rotate_bitmap(AT, AS, size)
-        k = intncmp(ABOARD, AS, size)
-        if k > 0:
-            return
-        if nequiv > 4:              #-180度回転 水平鏡像と同等
-            rotate_bitmap(AS, AT, size)
-            k = intncmp(ABOARD, AT, size)
-            if k > 0:
-                return        #-270度回転 反対角鏡と同等
-            rotate_bitmap(AT, AS, size)
-            k = intncmp(ABOARD, AS, size)
-            if k > 0:
-                return
-    if nequiv == 2:
-        COUNT2 += 1
-    if nequiv == 4:
-        COUNT4 += 1
-    if nequiv == 8:
-        COUNT8 += 1
+      nequiv = 8
+  # 回転・反転・対称チェックのためにboard配列をコピー
+  for i in range(size):
+    AS[i] = ABOARD[i]
+  vmirror_bitmap(AS, AT, size)   # 垂直反転
+  k = intncmp(ABOARD, AT, size)
+  if k > 0:
+    return
+  if nequiv > 2:                #-90度回転 対角鏡と同等
+    rotate_bitmap(AT, AS, size)
+    k = intncmp(ABOARD, AS, size)
+    if k > 0:
+      return
+    if nequiv > 4:              #-180度回転 水平鏡像と同等
+      rotate_bitmap(AS, AT, size)
+      k = intncmp(ABOARD, AT, size)
+      if k > 0:
+        return        #-270度回転 反対角鏡と同等
+      rotate_bitmap(AT, AS, size)
+      k = intncmp(ABOARD, AS, size)
+      if k > 0:
+        return
+  if nequiv == 2:
+    COUNT2 += 1
+  if nequiv == 4:
+    COUNT4 += 1
+  if nequiv == 8:
+    COUNT8 += 1
 #
 # BackTrack1
 def backtrack1(size, mask, row, left, down, right): # pylint: disable=R0913
-    """ backtrack1() """
-    global ABOARD   # pylint: disable=W0603
-    bit = 0
-    bitmap = mask&~(left|down|right)
-    if row == size:
-        if bitmap:
-            pass
-        else:
-            ABOARD[row] = bitmap
-            symmetryops_bitmap(size)
+  """ backtrack1() """
+  global ABOARD   # pylint: disable=W0603
+  bit = 0
+  bitmap = mask&~(left|down|right)
+  if row == size:
+    if bitmap:
+      pass
     else:
-        # 枝刈り
-        if row != 0:
-            lim = size
-        else:
-            lim = (size+1)//2 # 割り算の結果を整数にするには //
-        # 枝刈り
-        for i in range(row, lim): # pylint: disable=W0612
-            while bitmap:
-                bit = (-bitmap&bitmap)
-                ABOARD[row] = bit
-                bitmap ^= ABOARD[row]
-                backtrack1(size, mask, row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
+      ABOARD[row] = bitmap
+      symmetryops_bitmap(size)
+  else:
+    # 枝刈り
+    if row != 0:
+      lim = size
+    else:
+      lim = (size+1)//2 # 割り算の結果を整数にするには //
+    # 枝刈り
+    for i in range(row, lim): # pylint: disable=W0612
+      while bitmap:
+        bit = (-bitmap&bitmap)
+        ABOARD[row] = bit
+        bitmap ^= ABOARD[row]
+        backtrack1(size, mask, row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
 #
 # メインメソッド
 def nqueen(size, mask):
-    """ nqueen() """
-    global ABOARD       # pylint: disable=W0603
-    global TOPBIT       # pylint: disable=W0603
-    global ENDBIT       # pylint: disable=W0603
-    global SIDEMASK     # pylint: disable=W0603
-    global LASTMASK     # pylint: disable=W0603
-    bit = 0
-    TOPBIT = 1<<(size-1)
-    ABOARD[0] = 1
-    #for(bound1 = 2bound1<size-1bound1++){
-    for bound1 in range(2, size-1):
-        ABOARD[1] = bit = (1<<bound1)
-        backtrack1(size, mask, 2, (2|bit)<<1, (1|bit), (bit>>1))
-    SIDEMASK = LASTMASK = (TOPBIT|1)
-    ENDBIT = (TOPBIT>>1)
-    #for(bound1 = 1, bound2 = size-2bound1<bound2bound1++, bound2--){
-    bound2 = size-2
-    for bound1 in range(1, bound2):
-        ABOARD[0] = bit = (1<<bound1)
-        backtrack1(size, mask, 1, bit<<1, bit, bit>>1)
-        LASTMASK |= LASTMASK>>1|LASTMASK<<1
-        ENDBIT >>= 1
-        bound2 -= 1
+  """ nqueen() """
+  global ABOARD       # pylint: disable=W0603
+  global TOPBIT       # pylint: disable=W0603
+  global ENDBIT       # pylint: disable=W0603
+  global SIDEMASK     # pylint: disable=W0603
+  global LASTMASK     # pylint: disable=W0603
+  bit = 0
+  TOPBIT = 1<<(size-1)
+  ABOARD[0] = 1
+  #for(bound1 = 2bound1<size-1bound1++){
+  for bound1 in range(2, size-1):
+    ABOARD[1] = bit = (1<<bound1)
+    backtrack1(size, mask, 2, (2|bit)<<1, (1|bit), (bit>>1))
+  SIDEMASK = LASTMASK = (TOPBIT|1)
+  ENDBIT = (TOPBIT>>1)
+  #for(bound1 = 1, bound2 = size-2bound1<bound2bound1++, bound2--){
+  bound2 = size-2
+  for bound1 in range(1, bound2):
+    ABOARD[0] = bit = (1<<bound1)
+    backtrack1(size, mask, 1, bit<<1, bit, bit>>1)
+    LASTMASK |= LASTMASK>>1|LASTMASK<<1
+    ENDBIT >>= 1
+    bound2 -= 1
 #
 # メインメソッド
 def main():
-    """ main() """
-    global COUNT2     # pylint: disable=W0603
-    global COUNT4     # pylint: disable=W0603
-    global COUNT8     # pylint: disable=W0603
-    global ABOARD     # pylint: disable=W0603
-    global MAX        # pylint: disable=W0603
-    nmin = 4                          # Nの最小値（スタートの値）を格納
-    print(" N:        Total       Unique        hh:mm:ss.ms")
-    for i in range(nmin, MAX):
-        COUNT2 = COUNT4 = COUNT8 = 0
-        mask = (1<<i)-1
-        for j in range(i):
-            ABOARD[j] = j              # 盤を初期化
-        start_time = datetime.now()
-        nqueen(i, mask)
-        time_elapsed = datetime.now()-start_time
-        _text = '{}'.format(time_elapsed)
-        text = _text[:-3]
-        print("%2d:%13d%13d%20s" % (i, gettotal(), getunique(), text)) # 出力
+  """ main() """
+  global COUNT2     # pylint: disable=W0603
+  global COUNT4     # pylint: disable=W0603
+  global COUNT8     # pylint: disable=W0603
+  global ABOARD     # pylint: disable=W0603
+  global MAX        # pylint: disable=W0603
+  nmin = 4                          # Nの最小値（スタートの値）を格納
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for i in range(nmin, MAX):
+    COUNT2 = COUNT4 = COUNT8 = 0
+    mask = (1<<i)-1
+    for j in range(i):
+      ABOARD[j] = j              # 盤を初期化
+    start_time = datetime.now()
+    nqueen(i, mask)
+    time_elapsed = datetime.now()-start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (i, gettotal(), getunique(), text)) # 出力
 #
 main()
 #
