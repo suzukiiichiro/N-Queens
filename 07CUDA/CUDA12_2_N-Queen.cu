@@ -53,20 +53,20 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 １２．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.03
+ 4:            2               1  00:00:00:00.13
  5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.01
- 7:           40               6  00:00:00:00.01
- 8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.02
-10:          724              92  00:00:00:00.02
-11:         2680             341  00:00:00:00.03
+ 6:            4               1  00:00:00:00.00
+ 7:           40               6  00:00:00:00.00
+ 8:           92              12  00:00:00:00.00
+ 9:          352              46  00:00:00:00.00
+10:          724              92  00:00:00:00.00
+11:         2680             341  00:00:00:00.01
 12:        14200            1787  00:00:00:00.04
-13:        73712            9233  00:00:00:00.06
-14:       365596           45752  00:00:00:00.18
-15:      2279184          285053  00:00:00:00.86
-16:     14772512         1846955  00:00:00:04.47
-17:     95815104        11977939  00:00:00:32.45
+13:        73712            9233  00:00:00:00.17
+14:       365596           45752  00:00:00:00.64
+15:      2279184          285053  00:00:00:02.91
+16:     14772512         1846955  00:00:00:16.12
+17:     95815104        11977939  00:00:01:34.11
 */
 
 #include <stdio.h>
@@ -128,7 +128,7 @@ void cuda_kernel_b1(unsigned int down[][32],unsigned int left[][32],unsigned int
     register unsigned int right_tid_row;
     register unsigned int total=0;
     register unsigned int unique=0;
-    while(row>=3){
+    while(row>=2){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
@@ -190,7 +190,7 @@ void cuda_kernel_b2(unsigned int down[][32],unsigned int left[][32],unsigned int
     register unsigned int right_tid_row;
     register unsigned int total=0;
     register unsigned int unique=0;
-    while(row>=3){
+    while(row>=2){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
@@ -328,11 +328,11 @@ void cuda_kernel_b(
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
     //
-    for(int i=0;i<3;i++){
-      c_aBoard[i]=t_aBoard[idx*3+i]; //２次元配列だが1次元的に利用  
+    for(int i=0;i<2;i++){
+      c_aBoard[i]=t_aBoard[idx*2+i]; //２次元配列だが1次元的に利用  
     }
     if(c_aBoard[0]==1){
-      row=3;
+      row=2;
       //THREAD_NUMはブロックあたりのスレッド数
       down[tid][row]=totalDown[idx];
       left[tid][row]=totalLeft[idx];
@@ -345,7 +345,7 @@ void cuda_kernel_b(
         |right[tid][row]);
       cuda_kernel_b1(down,left,right,bitmap,tid,size,mask,row,B1,sum,usum);
     }else{
-      row=3;
+      row=2;
       //THREAD_NUMはブロックあたりのスレッド数
       down[tid][row]=totalDown[idx];
       left[tid][row]=totalLeft[idx];
@@ -462,7 +462,7 @@ void NQueenG(int size,int steps)
   int BOUND1;
   int BOUND2;
   int row=0;
-  int mark=3;
+  int mark=2;
   unsigned int aBoard[MAX];
   unsigned int* t_aBoard;
   cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*mark);
@@ -483,45 +483,21 @@ void NQueenG(int size,int steps)
  
   //2行目は右から3列目から左端から2列目まで
   for(int col_j=2;col_j<size-1;col_j++){
-      aBoard[1]=bit=(1<<col_j);
-      /***11 BOUND1*********************/
-      BOUND1=col_j;
-      left[2]=(left[1]|bit)<<1;
-      down[2]=(down[1]|bit);
-      right[2]=(right[1]|bit)>>1;
-      bitmap[2]=mask&~(left[2]|down[2]|right[2]);
-      register int rowP=0;
-      row=2;
-      while(row>=2) {
-        if(bitmap[row]==0){ row--; }
-        else{//おける場所があれば進む
-          if(row<BOUND1) {
-            bitmap[row]&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-          }
-          bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
-          if((bit&mask)!=0){//置く場所があれば先に進む
-            rowP=row+1;
-            down[rowP]=down[row]|bit;
-            left[rowP]=(left[row]|bit)<<1;
-            right[rowP]=(right[row]|bit)>>1;
-            bitmap[rowP]=mask&~(down[rowP]|left[rowP]|right[rowP]);
-            row++;
-            if(row==mark){
-              totalDown[totalCond]=down[row];
-              totalLeft[totalCond]=left[row];
-              totalRight[totalCond]=right[row];
-              for(int i=0;i<mark;i++){
-                t_aBoard[totalCond*mark+i]=aBoard[i];
-              }
-              totalBOUND1[totalCond]=BOUND1;        
-              totalCond++;
-              row--;
-            }
-        }else{  
-          row--;
-        }  
-      }
-    }   
+    aBoard[1]=bit=(1<<col_j);
+    /***11 BOUND1*********************/
+    BOUND1=col_j;
+    left[2]=(left[1]|bit)<<1;
+    down[2]=(down[1]|bit);
+    right[2]=(right[1]|bit)>>1;
+    //2階層だとbacktrack1はwhileで回す必要がない
+    totalDown[totalCond]=down[2];
+    totalLeft[totalCond]=left[2];
+    totalRight[totalCond]=right[2];
+    for(int i=0;i<mark;i++){
+      t_aBoard[totalCond*mark+i]=aBoard[i];
+    }
+    totalBOUND1[totalCond]=BOUND1;        
+    totalCond++;       
   }  
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
