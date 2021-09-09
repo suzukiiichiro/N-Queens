@@ -120,14 +120,15 @@ int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,i
 //
 //
 __device__
-void cuda_kernel_b1(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],unsigned int* c_aBoard,register unsigned int tid,register int size,register unsigned int mask,register int row,register unsigned int bit,unsigned int B1,unsigned int B2,unsigned int SM,unsigned  int LM,register int TB,unsigned  int EB,unsigned int* sum,unsigned int* usum){
-register unsigned int bitmap_tid_row;
+void cuda_kernel_b1(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int* sum,unsigned int* usum){
+    register unsigned int bit;
+    register unsigned int bitmap_tid_row;
     register unsigned int down_tid_row;
     register unsigned int left_tid_row;
     register unsigned int right_tid_row;
     register unsigned int total=0;
     register unsigned int unique=0;
-    while(row>=2){
+    while(row>=3){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
@@ -181,14 +182,15 @@ register unsigned int bitmap_tid_row;
     usum[tid]=unique;
 }
 __device__
-void cuda_kernel_b2(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],unsigned int* c_aBoard,register unsigned int tid,register int size,register unsigned int mask,register int row,register unsigned int bit,unsigned int B1,unsigned int B2,unsigned int SM,unsigned  int LM,register int TB,unsigned  int EB,unsigned int* sum,unsigned int* usum){
+void cuda_kernel_b2(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],unsigned int* c_aBoard,register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int B2,unsigned int SM,unsigned  int LM,register int TB,unsigned  int EB,unsigned int* sum,unsigned int* usum){
+    register unsigned int bit;
     register unsigned int bitmap_tid_row;
     register unsigned int down_tid_row;
     register unsigned int left_tid_row;
     register unsigned int right_tid_row;
     register unsigned int total=0;
     register unsigned int unique=0;
-    while(row>=1){
+    while(row>=3){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
       left_tid_row=left[tid][row];
@@ -230,7 +232,7 @@ void cuda_kernel_b2(unsigned int down[][32],unsigned int left[][32],unsigned int
             if((save_bitmap&LM)==0){ 
               /***12 symmetryOps 省力化のためBOUND1,BOUND2,TOPBIT,ENDBITを渡す*****/ 
               //for(int i=0;i<size;i++){
-              //  printf("i:%d aBoard;%d",i,c_aBoard[i]);
+              //  printf("i:%d aBoard;%d\n",i,c_aBoard[i]);
               //}
               int s=symmetryOps(size,c_aBoard,B1,B2,TB,EB); 
               //printf("total:%d\n",s);
@@ -286,7 +288,7 @@ void cuda_kernel_b(
 {
   register const unsigned int mask=(1<<size)-1;
   
-  register unsigned int bit;
+  
   //
   //スレッド
   //
@@ -326,11 +328,11 @@ void cuda_kernel_b(
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
     //
-    for(int i=0;i<1;i++){
-      c_aBoard[i]=t_aBoard[idx*1+i]; //２次元配列だが1次元的に利用  
+    for(int i=0;i<3;i++){
+      c_aBoard[i]=t_aBoard[idx*3+i]; //２次元配列だが1次元的に利用  
     }
     if(c_aBoard[0]==1){
-      row=2;
+      row=3;
       //THREAD_NUMはブロックあたりのスレッド数
       down[tid][row]=totalDown[idx];
       left[tid][row]=totalLeft[idx];
@@ -341,9 +343,9 @@ void cuda_kernel_b(
          down[tid][row]
         |left[tid][row]
         |right[tid][row]);
-      cuda_kernel_b1(down,left,right,bitmap,c_aBoard,tid,size,mask,row,bit,B1,B2,SM,LM,TB,EB,sum,usum);
+      cuda_kernel_b1(down,left,right,bitmap,tid,size,mask,row,B1,sum,usum);
     }else{
-      row=1;
+      row=3;
       //THREAD_NUMはブロックあたりのスレッド数
       down[tid][row]=totalDown[idx];
       left[tid][row]=totalLeft[idx];
@@ -354,7 +356,7 @@ void cuda_kernel_b(
          down[tid][row]
         |left[tid][row]
         |right[tid][row]);
-      cuda_kernel_b2(down,left,right,bitmap,c_aBoard,tid,size,mask,row,bit,B1,B2,SM,LM,TB,EB,sum,usum);
+      cuda_kernel_b2(down,left,right,bitmap,c_aBoard,tid,size,mask,row,B1,B2,SM,LM,TB,EB,sum,usum);
     }
 
   }else{
@@ -404,15 +406,13 @@ void cuda_kernel_b(
 void NQueenG(int size,int steps)
 {
   int totalCond=0;
-  bool matched=false;
   //host  1階層だけの時は使用しない
-  //unsigned int down[32];  down[row]=n_down;
-  //unsigned int right[32]; right[row]=n_right;
-  //unsigned int left[32];  left[row]=n_left;
+  unsigned int down[32];
+  unsigned int right[32];
+  unsigned int left[32];
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
-  //unsigned int bitmap[32];
-  //bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+  unsigned int bitmap[32];
   unsigned int* totalDown;
   cudaMallocHost((void**) &totalDown,sizeof(int)*steps);
   unsigned int* totalLeft;
@@ -462,11 +462,12 @@ void NQueenG(int size,int steps)
   int BOUND1;
   int BOUND2;
   int row=0;
+  int mark=3;
   unsigned int aBoard[MAX];
   unsigned int* t_aBoard;
-  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps);
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*mark);
   unsigned int* d_aBoard;
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps);
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps*mark);
   
   register int bit=0;
   register int mask=((1<<size)-1);
@@ -475,46 +476,105 @@ void NQueenG(int size,int steps)
   /***09 backtrack1*********************/
   //1行め右端 0
   int col=0;
-  bit=(1<<col);
-  int left=bit<<1;
-  int down=bit;
-  int right=bit>>1;
+  aBoard[0]=bit=(1<<col);
+  left[1]=bit<<1;
+  down[1]=bit;
+  right[1]=bit>>1;
+ 
   //2行目は右から3列目から左端から2列目まで
   for(int col_j=2;col_j<size-1;col_j++){
-      bit=(1<<col_j);
+      aBoard[1]=bit=(1<<col_j);
       /***11 BOUND1*********************/
       BOUND1=col_j;
-      totalDown[totalCond]=(down|bit);
-      totalLeft[totalCond]=(left|bit)<<1;
-      totalRight[totalCond]=(right|bit)>>1;
-      t_aBoard[totalCond]=1;
-      totalBOUND1[totalCond]=BOUND1;
-      totalCond++;
-  }
+      left[2]=(left[1]|bit)<<1;
+      down[2]=(down[1]|bit);
+      right[2]=(right[1]|bit)>>1;
+      bitmap[2]=mask&~(left[2]|down[2]|right[2]);
+      register int rowP=0;
+      row=2;
+      while(row>=2) {
+        if(bitmap[row]==0){ row--; }
+        else{//おける場所があれば進む
+          if(row<BOUND1) {
+            bitmap[row]&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
+          }
+          bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
+          if((bit&mask)!=0){//置く場所があれば先に進む
+            rowP=row+1;
+            down[rowP]=down[row]|bit;
+            left[rowP]=(left[row]|bit)<<1;
+            right[rowP]=(right[row]|bit)>>1;
+            bitmap[rowP]=mask&~(down[rowP]|left[rowP]|right[rowP]);
+            row++;
+            if(row==mark){
+              totalDown[totalCond]=down[row];
+              totalLeft[totalCond]=left[row];
+              totalRight[totalCond]=right[row];
+              for(int i=0;i<mark;i++){
+                t_aBoard[totalCond*mark+i]=aBoard[i];
+              }
+              totalBOUND1[totalCond]=BOUND1;        
+              totalCond++;
+              row--;
+            }
+        }else{  
+          row--;
+        }  
+      }
+    }   
+  }  
   SIDEMASK=LASTMASK=(TOPBIT|1);
   ENDBIT=(TOPBIT>>1);
-  /***09 backtrack2*********************/
-  //1行目右から2列目から
-  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   for(int col=1,col2=size-2;col<col2;col++,col2--){
       aBoard[0]=bit=(1<<col);
       BOUND1=col;
       BOUND2=col2;
-      totalDown[totalCond]=bit;
-      totalLeft[totalCond]=bit<<1;
-      totalRight[totalCond]=bit>>1;
-      for(int i=0;i<1;i++){
-        t_aBoard[totalCond*1+i]=aBoard[i];
+      left[1]=bit<<1;
+      down[1]=bit;
+      right[1]=bit>>1;
+      bitmap[1]=mask&~(left[1]|down[1]|right[1]);
+      register int rowP=0;
+      row=1;
+      while(row>=1) {
+        if(bitmap[row]==0){ row--; }
+        else{
+          if(row<BOUND1){             	
+	          bitmap[row]&=~SIDEMASK;
+          }else if(row==BOUND2) {     	
+            if((down[row]&SIDEMASK)==0){ row--; }
+            if((down[row]&SIDEMASK)!=SIDEMASK){ bitmap[row]&=SIDEMASK; }
+          }
+          bitmap[row]^=aBoard[row]=bit=(-bitmap[row]&bitmap[row]);
+          if((bit&mask)!=0){//置く場所があれば先に進む
+            rowP=row+1;
+            down[rowP]=down[row]|bit;
+            left[rowP]=(left[row]|bit)<<1;
+            right[rowP]=(right[row]|bit)>>1;
+            bitmap[rowP]=mask&~(down[rowP]|left[rowP]|right[rowP]);
+            row++;
+            if(row==mark){
+              totalDown[totalCond]=down[row];
+              totalLeft[totalCond]=left[row];
+              totalRight[totalCond]=right[row];
+              for(int i=0;i<mark;i++){
+                t_aBoard[totalCond*mark+i]=aBoard[i];
+              }
+              totalBOUND1[totalCond]=BOUND1;
+              totalBOUND2[totalCond]=BOUND2;
+              totalSIDEMASK[totalCond]=SIDEMASK;
+              totalLASTMASK[totalCond]=LASTMASK;
+              totalENDBIT[totalCond]=ENDBIT;
+              totalCond++;
+              row--;
+            }
+          }else{
+              row--;
+          }
+        }
+  
       }
-      totalBOUND1[totalCond]=BOUND1;
-      totalBOUND2[totalCond]=BOUND2;
-      totalSIDEMASK[totalCond]=SIDEMASK;
-      totalLASTMASK[totalCond]=LASTMASK;
-      totalENDBIT[totalCond]=ENDBIT;
-      /***12 symmetryOps 省力化のためTOPBIT,ENDBITを渡す*****/ 
       LASTMASK|=LASTMASK>>1|LASTMASK<<1;
       ENDBIT>>=1;
-      totalCond++;
   }
   cudaMemcpy(downCuda,totalDown,
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
@@ -523,7 +583,7 @@ void NQueenG(int size,int steps)
   cudaMemcpy(rightCuda,totalRight,
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   cudaMemcpy(d_aBoard,t_aBoard,
-      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+      sizeof(int)*totalCond*mark,cudaMemcpyHostToDevice);
   cudaMemcpy(BOUND1Cuda,totalBOUND1,
       sizeof(int)*totalCond,cudaMemcpyHostToDevice);
   cudaMemcpy(BOUND2Cuda,totalBOUND2,
@@ -1402,7 +1462,9 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
+    //int min=4; int targetN=15;
     int min=4; int targetN=15;
+
     int mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0; UNIQUE=0;
@@ -1430,11 +1492,13 @@ int main(int argc,char** argv)
     }
   }
   if(gpu||sgpu){
-    steps=128;
+    steps=8192;
     
     if(!InitCUDA()){return 0;}
     //int min=4;int targetN=24;
+    //int min=4;int targetN=17;
     int min=4;int targetN=17;
+ 
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
@@ -1465,3 +1529,4 @@ int main(int argc,char** argv)
   }
   return 0;
 }
+
