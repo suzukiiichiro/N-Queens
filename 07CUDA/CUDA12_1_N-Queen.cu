@@ -50,7 +50,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 16:     14772512         1846955            2.24
 17:     95815104        11977939           15.72
 
-bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
+bash-3.2$ nvcc CUDA12_1_N-Queen.cu && ./a.out -g
 １２．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.13
@@ -286,7 +286,8 @@ void cuda_kernel_b(
 {
   register const unsigned int mask=(1<<size)-1;
   
-  register unsigned int bit;
+  //register unsigned int bit;
+  register unsigned int bit=0;//初期化が必要
   //
   //スレッド
   //
@@ -404,7 +405,7 @@ void cuda_kernel_b(
 void NQueenG(int size,int steps)
 {
   int totalCond=0;
-  bool matched=false;
+  //bool matched=false; //使われてない
   //host  1階層だけの時は使用しない
   //unsigned int down[32];  down[row]=n_down;
   //unsigned int right[32]; right[row]=n_right;
@@ -433,6 +434,8 @@ void NQueenG(int size,int steps)
   cudaMallocHost((void**) &h_results,sizeof(int)*steps);
   unsigned int* h_uniq;
   cudaMallocHost((void**) &h_uniq,sizeof(int)*steps);
+  unsigned int* t_aBoard;
+  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps);
   
   //device
   unsigned int* downCuda;
@@ -451,25 +454,23 @@ void NQueenG(int size,int steps)
   cudaMalloc((void**) &LASTMASKCuda,sizeof(int)*steps);
   unsigned int* ENDBITCuda;
   cudaMalloc((void**) &ENDBITCuda,sizeof(int)*steps);
+  unsigned int* d_aBoard;
+  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps);
   unsigned int* resultsCuda;
   cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
   unsigned int* d_uniq;
   cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
+
   int TOPBIT;
   int ENDBIT;
   int LASTMASK;
   int SIDEMASK;
   int BOUND1;
   int BOUND2;
-  int row=0;
+  // int row=0;// 使われてない
   unsigned int aBoard[MAX];
-  unsigned int* t_aBoard;
-  cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps);
-  unsigned int* d_aBoard;
-  cudaMalloc((void**) &d_aBoard,sizeof(int)*steps);
-  
   register int bit=0;
-  register int mask=((1<<size)-1);
+  //register int mask=((1<<size)-1);//使われてない
   TOPBIT=1<<(size-1);
   if(size<=0||size>32){return;}
   /***09 backtrack1*********************/
@@ -552,8 +553,10 @@ void NQueenG(int size,int steps)
   cudaFree(BOUND2Cuda);
   cudaFree(SIDEMASKCuda);
   cudaFree(LASTMASKCuda);
+  cudaFree(ENDBITCuda);
   cudaFree(resultsCuda);
   cudaFree(d_uniq);
+  cudaFree(d_aBoard);
   /***11 aBoardコメント**/
   //cudaFree(d_aBoard);
   cudaFreeHost(totalDown);
@@ -563,8 +566,10 @@ void NQueenG(int size,int steps)
   cudaFreeHost(totalBOUND2);
   cudaFreeHost(totalSIDEMASK);
   cudaFreeHost(totalLASTMASK);
+  cudaFreeHost(totalENDBIT);
   cudaFreeHost(h_results);
   cudaFreeHost(h_uniq);
+  cudaFreeHost(t_aBoard);
 }
 //SGPU
 __global__ 

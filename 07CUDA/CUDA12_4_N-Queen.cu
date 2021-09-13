@@ -50,7 +50,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 16:     14772512         1846955            2.24
 17:     95815104        11977939           15.72
 
-bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
+bash-3.2$ nvcc CUDA12_4_N-Queen.cu && ./a.out -g
 １２．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            0               0  00:00:00:00.13
