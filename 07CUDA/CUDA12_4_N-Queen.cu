@@ -1,5 +1,5 @@
 /**
-  CUDAで学ぶアルゴリズムとデータ構造
+ CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
@@ -77,24 +77,11 @@ bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#define THREAD_NUM		90
+#define THREAD_NUM		92
 #define MAX 27
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
-//
-constexpr unsigned shared_memory_size = 64 * 1024;
-//constexpr unsigned shared_memory_size = 64 * 9192;
-__global__ void kernel(float* const ptr) {
-	// 1.
-	extern __shared__ float smem[];
-
-	const unsigned long tid = blockIdx.x * blockDim.x + threadIdx.x;
-	if (tid >= shared_memory_size / sizeof(float)) return;
-
-	ptr[tid] = smem[tid];
-}
-
 
 __device__  __host__
 int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,int ENDBIT){
@@ -402,19 +389,31 @@ void cuda_kernel_b(
   }
 }
 //
-
-//
-//GPU
+//CPU側の処理 N階層分backtrack1,backtrack2を実行してtotal...配列にそれまでの実行結果を格納し,最後に1回CUDAを呼び出す
 void NQueenG(int size,int steps)
 {
-  int totalCond=0;
-  //host  1階層だけの時は使用しない
-  unsigned int down[32];
-  unsigned int right[32];
-  unsigned int left[32];
+  //Nで階層数を設定(少なくとも1階層はGPUで実行するようにプログラムを組んでる)
+  int N=size>4?4:3;
+  //CPU側で使用する変数
+  int row=0;
+  int TOPBIT;
+  int ENDBIT;
+  int LASTMASK;
+  int SIDEMASK;
+  int BOUND1;
+  int BOUND2;
+  //CPU側で使用する変数だがCPUで複数階層実行する場合、階層の上り下りがあるので配列で持つ必要がある
+  unsigned int down[MAX];
+  unsigned int right[MAX];
+  unsigned int left[MAX];
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
-  unsigned int bitmap[32];
+  unsigned int bitmap[MAX];
+  unsigned int aBoard[MAX];
+  
+  int totalCond=0;//GPU側へ渡す数
+  //totalDown,totalLeft,totalRight,totalBOUND1,totalBOUND2,totalSIDEMASK,totalLASTMASK,totalENDBIT
+  //CPU側でN階層まで実行した結果を配列に詰め込む
   unsigned int* totalDown;
   cudaMallocHost((void**) &totalDown,sizeof(int)*steps);
   unsigned int* totalLeft;
@@ -457,16 +456,6 @@ void NQueenG(int size,int steps)
   cudaMalloc((void**) &resultsCuda,sizeof(int)*steps/THREAD_NUM);
   unsigned int* d_uniq;
   cudaMalloc((void**) &d_uniq,sizeof(int)*steps/THREAD_NUM);
-  int TOPBIT;
-  int ENDBIT;
-  int LASTMASK;
-  int SIDEMASK;
-  int BOUND1;
-  int BOUND2;
-  int row=0;
-  //Nで階層数を設定
-  int N=size>4?4:3;
-  unsigned int aBoard[MAX];
   unsigned int* t_aBoard;
   cudaMallocHost((void**) &t_aBoard,sizeof(int)*steps*N);
   unsigned int* d_aBoard;
@@ -475,8 +464,8 @@ void NQueenG(int size,int steps)
   register int bit=0;
   register int mask=((1<<size)-1);
   TOPBIT=1<<(size-1);
-  if(size<=0||size>32){return;}
-  /***09 backtrack1*********************/
+  if(size<=0||size>MAX){return;}
+  /***backtrack1の処理*********************/
   //1行め右端 0
   int col=0;
   aBoard[0]=bit=(1<<col);
