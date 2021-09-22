@@ -53,7 +53,9 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 １２．GPU 非再帰 枝刈り
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            0               0  00:00:00:00.13
+１２．GPU 非再帰 枝刈り
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2               1  00:00:00:00.08
  5:           10               2  00:00:00:00.00
  6:            4               1  00:00:00:00.00
  7:           40               6  00:00:00:00.00
@@ -63,10 +65,10 @@ bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 11:         2680             341  00:00:00:00.00
 12:        14200            1787  00:00:00:00.00
 13:        73712            9233  00:00:00:00.00
-14:       365596           45752  00:00:00:00.02
-15:      2279184          285053  00:00:00:00.12
-16:     14772512         1846955  00:00:00:00.54
-17:     95815104        11977939  00:00:00:02.74
+14:       365596           45752  00:00:00:00.01
+15:      2279184          285053  00:00:00:00.04
+16:     14772512         1846955  00:00:00:00.20
+17:     95815104        11977939  00:00:00:01.25
 */
 
 #include <stdio.h>
@@ -77,7 +79,7 @@ bash-3.2$ nvcc CUDA12_N-Queen.cu && ./a.out -g
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#define THREAD_NUM		92
+#define THREAD_NUM	90
 #define MAX 27
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
@@ -119,7 +121,7 @@ int symmetryOps(int si,unsigned int *d_aBoard,int BOUND1,int BOUND2,int TOPBIT,i
 //
 //
 __device__
-void cuda_kernel_b1(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int* sum,unsigned int* usum,register int N){
+void cuda_kernel_b1(unsigned int down[][19],unsigned int left[][19],unsigned int right[][19],unsigned int bitmap[][19],register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int* sum,unsigned int* usum,register int N){
     register unsigned int bit;
     register unsigned int bitmap_tid_row;
     register unsigned int down_tid_row;
@@ -181,7 +183,7 @@ void cuda_kernel_b1(unsigned int down[][32],unsigned int left[][32],unsigned int
     usum[tid]=unique;
 }
 __device__
-void cuda_kernel_b2(unsigned int down[][32],unsigned int left[][32],unsigned int right[][32],unsigned int bitmap[][32],unsigned int* c_aBoard,register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int B2,unsigned int SM,unsigned  int LM,register int TB,unsigned  int EB,unsigned int* sum,unsigned int* usum,register int N){
+void cuda_kernel_b2(unsigned int down[][19],unsigned int left[][19],unsigned int right[][19],unsigned int bitmap[][19],unsigned int* c_aBoard,register unsigned int tid,register int size,register unsigned int mask,register int row,unsigned int B1,unsigned int B2,unsigned int SM,unsigned  int LM,register int TB,unsigned  int EB,unsigned int* sum,unsigned int* usum,register int N){
     register unsigned int bit;
     register unsigned int bitmap_tid_row;
     register unsigned int down_tid_row;
@@ -301,10 +303,10 @@ void cuda_kernel_b(
   //
   register int row=N;
   //シェアードメモリ
-   __shared__ unsigned int down[THREAD_NUM][32];
-  __shared__ unsigned int left[THREAD_NUM][32];
-  __shared__ unsigned int right[THREAD_NUM][32];
- __shared__ unsigned int bitmap[THREAD_NUM][32];
+  __shared__ unsigned int down[THREAD_NUM][19];
+  __shared__ unsigned int left[THREAD_NUM][19];
+  __shared__ unsigned int right[THREAD_NUM][19];
+ __shared__ unsigned int bitmap[THREAD_NUM][19];
   //
   //sharedメモリを使う ブロック内スレッドで共有
   //10固定なのは現在のmask設定で
