@@ -187,6 +187,9 @@ void NQueenR(int size)
   }
   //printf("idx:%d\n",idx);
   //printf("(N/2)*(N-3):%d\n",(size/2)*(size-3));
+
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
     B=wB;
@@ -201,6 +204,11 @@ void NQueenR(int size)
     int wb=pres_b[w];
     //printf("wloop:w:%d:p.a:%d,p.b:%d:wa:%d:wb:%d\n",w,pres_a[w],pres_b[w],wa,wb);
     //printf("placement_pwa:xk(0):0:y:%d\n",wa);
+
+    printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
+    printf("\r");
+    fflush(stdout);
+  
     board_placement(size,0,wa);
     //printf("placement_pwb:xk(1):1:y:%d\n",wb);
     board_placement(size,1,wb);
