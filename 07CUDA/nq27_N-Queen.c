@@ -71,47 +71,48 @@ long countCompletions(uint64_t bv,uint64_t bh,uint64_t bu,uint64_t  bd)
   //printf("bu:%d\n",bu);
   //printf("bd:%d\n",bd);
   //bh=-1 1111111111 すべての列にクイーンを置けると-1になる
-  if(bh+1 == 0){
+  if(bh+1==0){
     //printf("return_bh+1==0:%d\n",bh);  
     return  1;
   }
   // -> at least one more queen to place
-  while((bv&1) != 0) { // Column is covered by pre-placement
+  while((bv&1)!=0) { // Column is covered by pre-placement
     //bv 右端にクイーンがすでに置かれていたら。クイーンを置かずに１行下に移動する
     //bvを右端から１ビットずつ削っていく。ここではbvはすでにクイーンが置かれているかどうかだけで使う
-    bv >>= 1;//右に１ビットシフト
-    bu <<= 1;//left 左に１ビットシフト
-    bd >>= 1;//right 右に１ビットシフト
+    bv>>=1;//右に１ビットシフト
+    bu<<=1;//left 左に１ビットシフト
+    bd>>=1;//right 右に１ビットシフト
     //printf("while:bv:%d\n",bv);
     //printf("while:bu:%d\n",bu);
     //printf("while:bd:%d\n",bd);
     //printf("while:bv&1:%d\n",bv&1);
   }
   //１行下に移動する
-  bv >>= 1;
+  bv>>=1;
   //printf("onemore_bv:%d\n",bv);
   //printf("onemore_bh:%d\n",bh);
   //printf("onemore_bu:%d\n",bu);
   //printf("onemore_bd:%d\n",bd);
   //
   // Column needs to be placed
-  long  cnt = 0;
+  long  cnt=0;
+  uint64_t slot;
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64_t  slots = ~(bh|bu|bd); slots != 0;) {
+  for(uint64_t slots=~(bh|bu|bd);slots!=0;) {
     //printf("colunm needs to be placed\n");
     //printf("slots:%d\n",slots);
-    uint64_t const  slot = slots & -slots;
+    slot=slots&-slots;
     //printf("slot:%d\n",slot);
     //printf("bv:%d:bh|slot:%d:(bu|slot)<<1:%d:(bd|slot)>>1:%d\n",bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
-    cnt   += countCompletions(bv, bh|slot, (bu|slot) << 1, (bd|slot) >> 1);
-    slots ^= slot;
+    cnt+=countCompletions(bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
+    slots^=slot;
     //printf("slots:%d\n",slots);
   }
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
-  return  cnt;
+  return cnt;
 } // countCompletions()
 //
 void process(int si,Board B,int sym)
@@ -188,78 +189,123 @@ void NQueenR(int size)
   //printf("idx:%d\n",idx);
   //printf("(N/2)*(N-3):%d\n",(size/2)*(size-3));
 
+  //プログレス
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
 
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
     B=wB;
-    B.bv=0;
-    B.bh=0;
-    B.bu=0;
-    B.bd=0;
+    //
+    // B.bv=0;
+    // B.bh=0;
+    // B.bu=0;
+    // B.bd=0;
+    B.bv=B.bh=B.bu=B.bd=0;
+    //
     for(int i=0;i<size;i++){
       B.x[i]=-1;
     }
-    int wa=pres_a[w];
-    int wb=pres_b[w];
+    // 不要
+    // int wa=pres_a[w];
+    // int wb=pres_b[w];
+    //
     //printf("wloop:w:%d:p.a:%d,p.b:%d:wa:%d:wb:%d\n",w,pres_a[w],pres_b[w],wa,wb);
     //printf("placement_pwa:xk(0):0:y:%d\n",wa);
 
+    //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
     printf("\r");
     fflush(stdout);
   
-    board_placement(size,0,wa);
+    //
+    // 謎１
+    // 
+    // 置き換え
+    // board_placement(size,0,wa);
+    board_placement(size,0,pres_a[w]);
     //printf("placement_pwb:xk(1):1:y:%d\n",wb);
-    board_placement(size,1,wb);
+    //
+    //
+    // 謎２
+    // 
+    //置き換え
+    //board_placement(size,1,wb);
+    board_placement(size,1,pres_b[w]);
+
     Board nB=B;
-    for(int  n = w; n < (size-2)*(size-1)-w; n++) {
+    //追加
+    int lsize=(size-2)*(size-1)-w;
+    //for(int n=w;n<(size-2)*(size-1)-w;n++){
+    for(int n=w;n<lsize;n++){
       B=nB;
       //printf("nloop:n:%d\n",n);
-      int na=pres_a[n];
-      int nb=pres_b[n];   
+      //
+      // 不要
+      // int na=pres_a[n];
+      // int nb=pres_b[n];   
+      //
       //printf("placement_pwa:xk(0):0:y:%d\n",wa);
       //printf("placement_pwb:xk(1):1:y:%d\n",wb);
       //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
-      bool pna=board_placement(size,na,size-1);
-      if(pna==false){
+      //置き換え
+      //bool pna=board_placement(size,na,size-1);
+      //bool pna=board_placement(size,pres_a[n],size-1);
+      //インライン
+      //if(pna==false){
+      if(board_placement(size,pres_a[n],size-1)==false){
         //printf("pnaskip:na:%d:N-1:%d\n",na,size-1);
         continue;
       }
       //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
-      bool pnb=board_placement(size,nb,size-2);
-      if(pnb==false){
+      //置き換え
+      //bool pnb=board_placement(size,nb,size-2);
+      //bool pnb=board_placement(size,pres_b[n],size-2);
+      //インライン
+      //if(pnb==false){
+      if(board_placement(size,pres_b[n],size-2)==false){
         //printf("pnbskip:nb:%d:N-2:%d\n",nb,size-2);
         continue;
       }
       Board eB=B;
-      for(int  e = w; e < (size-2)*(size-1)-w; e++) {
+      //for(int e=w;e<(size-2)*(size-1)-w;e++){
+      for(int e=w;e<lsize;e++){
         B=eB;
         //printf("eloop:e:%d\n",e);
-        int ea=pres_a[e];
-        int eb=pres_b[e];
+        //不要
+        //int ea=pres_a[e];
+        //int eb=pres_b[e];
         //printf("placement_pwa:xk(0):0:y:%d\n",wa);
         //printf("placement_pwb:xk(1):1:y:%d\n",wb);
         //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
         //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
         //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
-        bool pea=board_placement(size,size-1,size-1-ea);
-        if(pea==false){
+        //置き換え
+        //bool pea=board_placement(size,size-1,size-1-ea);
+        //インライン
+        //if(pea==false){
+        if(board_placement(size,size-1,size-1-pres_a[e])==false){
           //printf("peaskip:N-1:%d:N-1-ea:%d\n",size-1,size-1-ea);
           continue;
         }
         //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
-        bool peb=board_placement(size,size-2,size-1-eb);
-        if(peb==false){
+        //置き換え
+        //bool peb=board_placement(size,size-2,size-1-eb);
+        //インライン
+        //if(peb==false){
+        if(board_placement(size,size-2,size-1-pres_b[e])==false){
           //printf("pebskip:N-2:%d:N-1-eb:%d\n",size-2,size-1-eb);
           continue;
         }
         Board sB=B;
-        for(int s = w; s < (size-2)*(size-1)-w; s++) {
+        //for(int s=w;s<(size-2)*(size-1)-w;s++){
+        for(int s=w;s<lsize;s++){
           B=sB;
           //printf("sloop:s:%d\n",s);
-          int sa =pres_a[s];
-          int sb =pres_b[s];
+          //
+          //不要
+          //int sa =pres_a[s];
+          //int sb =pres_b[s];
+          //
           //printf("placement_pwa:xk(0):0:y:%d\n",wa);
           //printf("placement_pwb:xk(1):1:y:%d\n",wb);
           //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
@@ -267,14 +313,18 @@ void NQueenR(int size)
           //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
           //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
           //printf("psa:x:%d:yk(0):0\n",size-1-sa);
-          bool psa=board_placement(size,size-1-sa,0);
-          if(psa==false){
+          //置き換え
+          //bool psa=board_placement(size,size-1-sa,0);
+          //インライン
+          //if(psa==false){
+          if(board_placement(size,size-1-pres_a[s],0)==false){
             //printf("psaskip:N-1-sa:%d:0\n",size-1-sa);
             continue;
           }
           //printf("psb:x:%d:yk(1):1\n",size-1-sb);
-          bool psb=board_placement(size,size-1-sb,1);
-          if(psb==false){
+          //bool psb=board_placement(size,size-1-sb,1);
+          //if(psb==false){
+          if(board_placement(size,size-1-pres_b[s],1)==false){
             //printf("psbskip:N-1-sb:%d:1\n",size-1-sb);
             continue;
           }
@@ -288,41 +338,47 @@ void NQueenR(int size)
           //printf("psa:x:%d:yk(0):0\n",size-1-sa);
           //printf("psb:x:%d:yk(1):1\n",size-1-sb);
           //
-          int ww = (size-2)*(size-1)-1-w;
-          if(s == ww) {
-            if(n < (size-2)*(size-1)-1-e) {
+          int ww=(size-2)*(size-1)-1-w;
+          //新設
+          int w2=(size-2)*(size-1)-1;
+          //if(s==ww){
+          if((s==ww)&&(n<(w2-e))){
+            //if(n<(size-2)*(size-1)-1-e){
+            //if(n<(w2-e)){
               continue;
-            }
+            //}
           }
-          if(e == ww) {
-            if(n > (size-2)*(size-1)-1-n) {
+          //if(e==ww){
+          if((e==ww)&&(n>(w2-n))){
+            //if(n>(size-2)*(size-1)-1-n){
+            //if(n>(w2-n)){
               continue;       
-            }
+            //}
           }
-          if(n == ww) {
-            if(e > (size-2)*(size-1)-1-s) {
+          //if(n==ww){
+          if((n==ww)&&(e>(w2-s))){
+            //if(e>(size-2)*(size-1)-1-s){
+            //if(e>(w2-s)){
               continue;
-            }
+            //}
           }
-          //
           if(s==w){
-            if((n != w) || (e != w)) {
+            if((n!=w)||(e!=w)){
               continue;
             }
             process(size,B,ROTATE);
             //(*act)(board, Symmetry::ROTATE);
             continue;
-
           }
-          if(e == w) {
-            if(n >= s) {
-              if(n > s) {
+          if((e==w)&&(n>=s)){
+            //if(n>=s){
+              if(n>s){
                 continue;
               }
               process(size,B,POINT);
               //(*act)(board, Symmetry::POINT);   
               continue;
-            }
+            //}
           }
           process(size,B,NONE);
           //(*act)(board, Symmetry::NONE);
