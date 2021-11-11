@@ -10,6 +10,85 @@
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
 
+１、上下左右２列ずつにクイーンを配置する
+上2行(0,0)(1,2) for(int w=0;w<=(size/2)*(size-3);w++){
+左2列(3,6)(6,5) for(int n=w;n<lsize;n++){
+下2行(6,5)(5,3) for(int e=w;e<lsize;e++){
+右2列(0,0)(4,1) for(int s=w;s<lsize;s++){
+
+(0,0)(6,5)は被っているので6個クイーンを置いた状態
+0000001
+0000100
+0000000
+1000000
+0000010
+0001000
+0100000
+
+２、回転チェックをして重複をスキップしたり、90度(*2),180度(*4),その他(*8)
+に分類する
+
+processに入る
+３、クイーンを置いていく
+B.bv 1111011
+bvはどの行にクイーンが置かれているかを示している
+0,1,3,4,5,6行目にクイーンが置かれていることがわかる
+B.bh 1101111
+bhはdown
+0,1,2,3,5,6列目にクイーンが置かれていることがわかる
+B.bu 1011111000
+buはleft
+B.bd 101100101001
+bdはright
+
+cnt[sym] += countCompletions(B.bv >> 2,
+  ¦ ¦ ((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+  ¦ ¦ B.bu>>4,
+  ¦ ¦ (B.bd>>4)<<(si-5));
+すでに上２行はクイーンを置いているので、３行目からcountCompletionsをスタートする
+
+B.bv >> 2 11110
+bvは1行進むごとに右端を1ビットずつ削っていく
+((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1 down  1101111
+B.bu>>4 left  右４ビット削除 101111
+(B.bd>>4)<<(si-5)) 右４ビット削除後N-5個分左にシフト 1011001000
+
+countCompletions １周目
+
+if(bh+1==0){
+全ての列にクイーンを置くことができると -1 1111111 となるので return 1して抜ける
+bhは1101111なのでこのif文の中には入らない
+
+while((bv&1)!=0) {
+bv&1だと右端が1ということ
+すでにクイーンが置かれていたらこの行ではクイーンを置かずleft,rightを1ビットシフトさせる。bvも右端を1ビット削る
+bvは11110なので右端は0
+３行目にはまだクイーンが置かれていないということになるのでこのif文の中には入らない
+
+for(uint64_t slots=~(bh|bu|bd);slots!=0;) {
+slotsはクイーンの置ける場所。0だとどこにもクイーンが置けない
+3行目はslots 0010000 なのでこのif文に入る
+slot=slots&-slots;
+slotは今回クイーンを置く場所
+今回３行目は0010000 にクイーンを置く
+
+0000001
+0000100
+0010000<---ここにクイーンを置く
+1000000
+0000010
+0001000
+0100000
+
+countCompletions １周目
+bv 1111
+bh down 1111111
+bu left 1111110
+bd right 1101100
+
+if(bh+1==0){
+全ての列にクイーンを置くことができると -1 1111111 となるので return 1して抜ける
+bhは1111111なのでこのif文に入って return 1して抜ける
 **/
  
 #include <stdio.h>
@@ -147,9 +226,11 @@ bool board_placement(int si,int x,int y)
   //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
   if(B.x[x]==y){
     //printf("Duplicate x:%d:y:%d\n",x,y);
+    ////同じ場所に置くのはOK
     return true;  
   }
   B.x[x]=y;
+  //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   uint64 bv=1<<x;
   uint64 bh=1<<y;
   uint64 bu=1<<(si-1-x+y);
@@ -186,14 +267,15 @@ void NQueenR(int size)
       idx++;
     }
   }
-  //printf("idx:%d\n",idx);
-  //printf("(N/2)*(N-3):%d\n",(size/2)*(size-3));
-
   //プログレス
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
 
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
+  //上２行にクイーンを置く
+  //上１行は２分の１だけ実行
+  //q=7なら (7/2)*(7-4)=12
+  //1行目は0,1,2で,2行目0,1,2,3,4,5,6 で利き筋を置かないと13パターンになる
     B=wB;
     //
     // B.bv=0;
@@ -209,34 +291,36 @@ void NQueenR(int size)
     // int wa=pres_a[w];
     // int wb=pres_b[w];
     //
-    //printf("wloop:w:%d:p.a:%d,p.b:%d:wa:%d:wb:%d\n",w,pres_a[w],pres_b[w],wa,wb);
-    //printf("placement_pwa:xk(0):0:y:%d\n",wa);
-
     //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
     printf("\r");
     fflush(stdout);
   
+    //上２行　0行目,1行目にクイーンを置く
     //
     // 謎１
     // 
     // 置き換え
     // board_placement(size,0,wa);
+    //0行目にクイーンを置く
     board_placement(size,0,pres_a[w]);
-    //printf("placement_pwb:xk(1):1:y:%d\n",wb);
+    //printf("placement_pwa:x:0:y:%d\n",pres_a[w]);
     //
     //
     // 謎２
     // 
     //置き換え
     //board_placement(size,1,wb);
+    //1行目にクイーンを置く
     board_placement(size,1,pres_b[w]);
+    //printf("placement_pwb:x:1:y:%d\n",pres_b[w]);
 
     Board nB=B;
     //追加
     int lsize=(size-2)*(size-1)-w;
     //for(int n=w;n<(size-2)*(size-1)-w;n++){
     for(int n=w;n<lsize;n++){
+    //左２列にクイーンを置く
       B=nB;
       //printf("nloop:n:%d\n",n);
       //
@@ -244,9 +328,6 @@ void NQueenR(int size)
       // int na=pres_a[n];
       // int nb=pres_b[n];   
       //
-      //printf("placement_pwa:xk(0):0:y:%d\n",wa);
-      //printf("placement_pwb:xk(1):1:y:%d\n",wb);
-      //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
       //置き換え
       //bool pna=board_placement(size,na,size-1);
       //bool pna=board_placement(size,pres_a[n],size-1);
@@ -256,7 +337,7 @@ void NQueenR(int size)
         //printf("pnaskip:na:%d:N-1:%d\n",na,size-1);
         continue;
       }
-      //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
+      //printf("placement_pna:x:%d:yk(N-1):%d\n",pres_a[n],size-1);
       //置き換え
       //bool pnb=board_placement(size,nb,size-2);
       //bool pnb=board_placement(size,pres_b[n],size-2);
@@ -266,19 +347,16 @@ void NQueenR(int size)
         //printf("pnbskip:nb:%d:N-2:%d\n",nb,size-2);
         continue;
       }
+      //printf("placement_pnb:x:%d:yk(N-2):%d\n",pres_b[n],size-2);
       Board eB=B;
       //for(int e=w;e<(size-2)*(size-1)-w;e++){
       for(int e=w;e<lsize;e++){
+      //下２行に置く
         B=eB;
         //printf("eloop:e:%d\n",e);
         //不要
         //int ea=pres_a[e];
         //int eb=pres_b[e];
-        //printf("placement_pwa:xk(0):0:y:%d\n",wa);
-        //printf("placement_pwb:xk(1):1:y:%d\n",wb);
-        //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
-        //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
-        //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
         //置き換え
         //bool pea=board_placement(size,size-1,size-1-ea);
         //インライン
@@ -287,7 +365,7 @@ void NQueenR(int size)
           //printf("peaskip:N-1:%d:N-1-ea:%d\n",size-1,size-1-ea);
           continue;
         }
-        //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
+        //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-pres_a[e]);
         //置き換え
         //bool peb=board_placement(size,size-2,size-1-eb);
         //インライン
@@ -296,9 +374,11 @@ void NQueenR(int size)
           //printf("pebskip:N-2:%d:N-1-eb:%d\n",size-2,size-1-eb);
           continue;
         }
+        //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-pres_b[e]);
         Board sB=B;
         //for(int s=w;s<(size-2)*(size-1)-w;s++){
         for(int s=w;s<lsize;s++){
+        ////右２列に置く
           B=sB;
           //printf("sloop:s:%d\n",s);
           //
@@ -306,13 +386,6 @@ void NQueenR(int size)
           //int sa =pres_a[s];
           //int sb =pres_b[s];
           //
-          //printf("placement_pwa:xk(0):0:y:%d\n",wa);
-          //printf("placement_pwb:xk(1):1:y:%d\n",wb);
-          //printf("placement_pna:x:%d:yk(N-1):%d\n",na,size-1);
-          //printf("placement_pnb:x:%d:yk(N-2):%d\n",nb,size-2);
-          //printf("placement_pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
-          //printf("placement_peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
-          //printf("psa:x:%d:yk(0):0\n",size-1-sa);
           //置き換え
           //bool psa=board_placement(size,size-1-sa,0);
           //インライン
@@ -321,28 +394,31 @@ void NQueenR(int size)
             //printf("psaskip:N-1-sa:%d:0\n",size-1-sa);
             continue;
           }
-          //printf("psb:x:%d:yk(1):1\n",size-1-sb);
+          //printf("psa:x:%d:yk(0):0\n",size-1-pres_a[s]);
           //bool psb=board_placement(size,size-1-sb,1);
           //if(psb==false){
           if(board_placement(size,size-1-pres_b[s],1)==false){
             //printf("psbskip:N-1-sb:%d:1\n",size-1-sb);
             continue;
           }
+          //printf("psb:x:%d:yk(1):1\n",size-1-pres_b[s]);
           //printf("noskip\n");
-          //printf("pwa:xk(0):0:y:%d\n",wa);
-          //printf("pwb:xk(1):1:y:%d\n",wb);
-          //printf("pna:x:%d:yk(N-1):%d\n",na,size-1);
-          //printf("pnb:x:%d:yk(N-2):%d\n",nb,size-2);
-          //printf("pea:xk(N-1):%d:y:%d\n",size-1,size-1-ea);
-          //printf("peb:xk(N-2):%d:y:%d\n",size-2,size-1-eb);
-          //printf("psa:x:%d:yk(0):0\n",size-1-sa);
-          //printf("psb:x:%d:yk(1):1\n",size-1-sb);
+          //printf("pwa:xk(0):0:y:%d\n",pres_a[w]);
+          //printf("pwb:xk(1):1:y:%d\n",pres_b[w]);
+          //printf("pna:x:%d:yk(N-1):%d\n",pres_a[n],size-1);
+          //printf("pnb:x:%d:yk(N-2):%d\n",pres_b[n],size-2);
+          //printf("pea:xk(N-1):%d:y:%d\n",size-1,size-1-pres_a[e]);
+          //printf("peb:xk(N-2):%d:y:%d\n",size-2,size-1-pres_b[e]);
+          //printf("psa:x:%d:yk(0):0\n",size-1-pres_a[s]);
+          //printf("psb:x:%d:yk(1):1\n",size-1-pres_b[s]);
           //
+          //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
           int ww=(size-2)*(size-1)-1-w;
           //新設
           int w2=(size-2)*(size-1)-1;
           //if(s==ww){
           if((s==ww)&&(n<(w2-e))){
+          //check if flip about the up diagonal is smaller
             //if(n<(size-2)*(size-1)-1-e){
             //if(n<(w2-e)){
               continue;
@@ -350,6 +426,7 @@ void NQueenR(int size)
           }
           //if(e==ww){
           if((e==ww)&&(n>(w2-n))){
+            //check if flip about the vertical center is smaller
             //if(n>(size-2)*(size-1)-1-n){
             //if(n>(w2-n)){
               continue;       
@@ -357,24 +434,33 @@ void NQueenR(int size)
           }
           //if(n==ww){
           if((n==ww)&&(e>(w2-s))){
+            //// check if flip about the down diagonal is smaller
             //if(e>(size-2)*(size-1)-1-s){
             //if(e>(w2-s)){
               continue;
             //}
           }
+          //// Check for minimum if n, e, s = w
           if(s==w){
             if((n!=w)||(e!=w)){
+            // right rotation is smaller unless  w = n = e = s
+            //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
               continue;
             }
+            //w=n=e=sであれば90度回転で同じ可能性
+            //この場合はミラーの2
             process(size,B,ROTATE);
             //(*act)(board, Symmetry::ROTATE);
             continue;
           }
           if((e==w)&&(n>=s)){
             //if(n>=s){
+            //e==wは180度回転して同じ
               if(n>s){
+              //180度回転して同じ時n>=sの時はsmaller?
                 continue;
               }
+              //この場合は4
               process(size,B,POINT);
               //(*act)(board, Symmetry::POINT);   
               continue;
@@ -382,6 +468,7 @@ void NQueenR(int size)
           }
           process(size,B,NONE);
           //(*act)(board, Symmetry::NONE);
+          //この場合は8
           continue;
         }
       }    
