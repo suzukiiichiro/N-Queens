@@ -141,7 +141,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-long countCompletions(uint64_t bv,uint64_t bh,uint64_t bu,uint64_t  bd)
+long countCompletions(uint64_t bv,uint64_t bu,uint64_t bh,uint64_t bd)
 {
   // Placement Complete?
   //printf("countCompletions_start\n");
@@ -179,14 +179,14 @@ long countCompletions(uint64_t bv,uint64_t bh,uint64_t bu,uint64_t  bd)
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64_t slots=~(bh|bu|bd);slots!=0;) {
+  for(uint64_t slots=~(bh|bu|bd);slots!=0;slots^=slot){
     //printf("colunm needs to be placed\n");
     //printf("slots:%d\n",slots);
     slot=slots&-slots;
     //printf("slot:%d\n",slot);
     //printf("bv:%d:bh|slot:%d:(bu|slot)<<1:%d:(bd|slot)>>1:%d\n",bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
-    cnt+=countCompletions(bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
-    slots^=slot;
+    cnt+=countCompletions(bv,(bu|slot)<<1,bh|slot,(bd|slot)>>1);
+    //slots^=slot;
     //printf("slots:%d\n",slots);
   }
   //途中でクイーンを置くところがなくなるとここに来る
@@ -209,8 +209,8 @@ void process(int si,Board B,int sym)
   //printf("getBD:%d\n",B.bd);
   //printf("before_cnt_sym:%d\n",cnt[sym]);
   cnt[sym] += countCompletions(B.bv >> 2,
-      ((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
       B.bu>>4,
+      ((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
       (B.bd>>4)<<(si-5));
 
   //行 brd.getBV()>>2 右2ビット削除 すでに上２行はクイーンを置いているので進める BVは右端を１ビットずつ削っていく
