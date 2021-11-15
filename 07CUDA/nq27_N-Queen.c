@@ -104,16 +104,16 @@ bhは1111111なのでこのif文に入って return 1して抜ける
 typedef unsigned long long uint64;
 typedef struct{
   uint64 bv;
-  uint64 bh;
-  uint64 bu;
-  uint64 bd;
+  uint64 down;
+  uint64 left;
+  uint64 right;
   int x[MAX];
 }Board ;
 //
 Board B;
-unsigned int NONE=2;
-unsigned int POINT=1;
-unsigned int ROTATE=0;
+unsigned int COUNT8=2;
+unsigned int COUNT4=1;
+unsigned int COUNT2=0;
 long cnt[3];
 long pre[3];
 //変数宣言
@@ -141,7 +141,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-long countCompletions(uint64_t bv,uint64_t bu,uint64_t bh,uint64_t bd)
+long solve_nqueenr(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
 {
   // Placement Complete?
   //printf("countCompletions_start\n");
@@ -150,7 +150,7 @@ long countCompletions(uint64_t bv,uint64_t bu,uint64_t bh,uint64_t bd)
   //printf("bu:%d\n",bu);
   //printf("bd:%d\n",bd);
   //bh=-1 1111111111 すべての列にクイーンを置けると-1になる
-  if(bh+1==0){
+  if(down+1==0){
     //printf("return_bh+1==0:%d\n",bh);  
     return  1;
   }
@@ -159,8 +159,8 @@ long countCompletions(uint64_t bv,uint64_t bu,uint64_t bh,uint64_t bd)
     //bv 右端にクイーンがすでに置かれていたら。クイーンを置かずに１行下に移動する
     //bvを右端から１ビットずつ削っていく。ここではbvはすでにクイーンが置かれているかどうかだけで使う
     bv>>=1;//右に１ビットシフト
-    bu<<=1;//left 左に１ビットシフト
-    bd>>=1;//right 右に１ビットシフト
+    left<<=1;//left 左に１ビットシフト
+    right>>=1;//right 右に１ビットシフト
     //printf("while:bv:%d\n",bv);
     //printf("while:bu:%d\n",bu);
     //printf("while:bd:%d\n",bd);
@@ -174,24 +174,24 @@ long countCompletions(uint64_t bv,uint64_t bu,uint64_t bh,uint64_t bd)
   //printf("onemore_bd:%d\n",bd);
   //
   // Column needs to be placed
-  long  cnt=0;
-  uint64_t slot;
+  long  s=0;
+  uint64_t bit;
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64_t slots=~(bh|bu|bd);slots!=0;slots^=slot){
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     //printf("colunm needs to be placed\n");
     //printf("slots:%d\n",slots);
-    slot=slots&-slots;
+    bit=bitmap&-bitmap;
     //printf("slot:%d\n",slot);
     //printf("bv:%d:bh|slot:%d:(bu|slot)<<1:%d:(bd|slot)>>1:%d\n",bv,bh|slot,(bu|slot)<<1,(bd|slot)>>1);
-    cnt+=countCompletions(bv,(bu|slot)<<1,bh|slot,(bd|slot)>>1);
+    s+=solve_nqueenr(bv,(left|bit)<<1,down|bit,(right|bit)>>1);
     //slots^=slot;
     //printf("slots:%d\n",slots);
   }
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
-  return cnt;
+  return s;
 } // countCompletions()
 //
 void process(int si,Board B,int sym)
@@ -208,10 +208,10 @@ void process(int si,Board B,int sym)
   //BD right x+y 左上から右下
   //printf("getBD:%d\n",B.bd);
   //printf("before_cnt_sym:%d\n",cnt[sym]);
-  cnt[sym] += countCompletions(B.bv >> 2,
-      B.bu>>4,
-      ((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-      (B.bd>>4)<<(si-5));
+  cnt[sym] += solve_nqueenr(B.bv >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+      (B.right>>4)<<(si-5));
 
   //行 brd.getBV()>>2 右2ビット削除 すでに上２行はクイーンを置いているので進める BVは右端を１ビットずつ削っていく
   //列 down ((((brd.getBH()>>2)|(~0<<(N-4)))+1)<<(brd.N-5))-1 8だと左に1シフト 9:2 10:3 
@@ -232,21 +232,21 @@ bool board_placement(int si,int x,int y)
   B.x[x]=y;
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   uint64 bv=1<<x;
-  uint64 bh=1<<y;
-  uint64 bu=1<<(si-1-x+y);
-  uint64 bd=1<<(x+y);
+  uint64 down=1<<y;
+  uint64 left=1<<(si-1-x+y);
+  uint64 right=1<<(x+y);
   //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
   //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
-  if((B.bv&bv)||(B.bh&bh)||(B.bu&bu)||(B.bd&bd)){
+  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
     //printf("valid_false\n");
     return false;
   }     
   //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   B.bv |=bv;
-  B.bh |=bh;
-  B.bu |=bu;
-  B.bd |=bd;
+  B.down |=down;
+  B.left |=left;
+  B.right |=right;
   //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   //printf("valid_true\n");
   return true;
@@ -282,7 +282,7 @@ void NQueenR(int size)
     // B.bh=0;
     // B.bu=0;
     // B.bd=0;
-    B.bv=B.bh=B.bu=B.bd=0;
+    B.bv=B.down=B.left=B.right=0;
     //
     for(int i=0;i<size;i++){
       B.x[i]=-1;
@@ -449,7 +449,7 @@ void NQueenR(int size)
             }
             //w=n=e=sであれば90度回転で同じ可能性
             //この場合はミラーの2
-            process(size,B,ROTATE);
+            process(size,B,COUNT2);
             //(*act)(board, Symmetry::ROTATE);
             continue;
           }
@@ -461,12 +461,12 @@ void NQueenR(int size)
                 continue;
               }
               //この場合は4
-              process(size,B,POINT);
+              process(size,B,COUNT4);
               //(*act)(board, Symmetry::POINT);   
               continue;
             //}
           }
-          process(size,B,NONE);
+          process(size,B,COUNT8);
           //(*act)(board, Symmetry::NONE);
           //この場合は8
           continue;
@@ -477,8 +477,8 @@ void NQueenR(int size)
   //printf("ROTATE_0:%d\n",cnt[ROTATE]);
   //printf("POINT_1:%d\n",cnt[POINT]);
   //printf("NONE_2:%d\n",cnt[NONE]);
-  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
+  UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
+  TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
 //メインメソッド
 int main(int argc,char** argv)
