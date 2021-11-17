@@ -41,11 +41,11 @@ buはleft
 B.bd 101100101001
 bdはright
 
-cnt[sym] += countCompletions(B.bv >> 2,
+cnt[sym] += solve_nqueenr(B.bv >> 2,
   ¦ ¦ ((((B.bh>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
   ¦ ¦ B.bu>>4,
   ¦ ¦ (B.bd>>4)<<(si-5));
-すでに上２行はクイーンを置いているので、３行目からcountCompletionsをスタートする
+すでに上２行はクイーンを置いているので、３行目からsolve_nqueenrをスタートする
 
 B.bv >> 2 11110
 bvは1行進むごとに右端を1ビットずつ削っていく
@@ -53,7 +53,7 @@ bvは1行進むごとに右端を1ビットずつ削っていく
 B.bu>>4 left  右４ビット削除 101111
 (B.bd>>4)<<(si-5)) 右４ビット削除後N-5個分左にシフト 1011001000
 
-countCompletions 1周目
+solve_nqueenr 1周目
 
 if(bh+1==0){
 全ての列にクイーンを置くことができると -1 1111111 となるので return 1して抜ける
@@ -80,7 +80,7 @@ slotは今回クイーンを置く場所
 0001000
 0100000
 
-countCompletions 2周目
+solve_nqueenr 2周目
 bv 1111
 bh down 1111111
 bu left 1111110
