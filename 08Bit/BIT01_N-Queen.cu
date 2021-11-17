@@ -53,7 +53,7 @@ bvは1行進むごとに右端を1ビットずつ削っていく
 B.bu>>4 left  右４ビット削除 101111
 (B.bd>>4)<<(si-5)) 右４ビット削除後N-5個分左にシフト 1011001000
 
-countCompletions １周目
+countCompletions 1周目
 
 if(bh+1==0){
 全ての列にクイーンを置くことができると -1 1111111 となるので return 1して抜ける
@@ -80,7 +80,7 @@ slotは今回クイーンを置く場所
 0001000
 0100000
 
-countCompletions １周目
+countCompletions 2周目
 bv 1111
 bh down 1111111
 bu left 1111110
