@@ -109,6 +109,7 @@ typedef struct{
   uint64 left;
   uint64 right;
   int x[MAX];
+  int y[MAX];
 }Board ;
 //
 Board B;
@@ -234,6 +235,7 @@ bool board_placement(int si,int x,int y)
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   uint64 bv=1<<x;
   uint64 down=1<<y;
+  B.y[x]=B.y[x]+down;
   uint64 left=1<<(si-1-x+y);
   uint64 right=1<<(x+y);
   //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
@@ -486,12 +488,22 @@ void _NQueenR(int size)
 }
 //出力
 int COUNT=0;
-void print(int size){
-  printf("%d: \n",++COUNT);
-  for(int j=0;j<size;j++){
-    printf("%d ",B.x[j]);
+void dec2bin(int size,int dec){
+
+  int i, b[32];
+  for (i = 0; i < size; i++) {
+    b[i] = dec % 2;
+    dec = dec / 2;
   }
-  printf("\n");
+  while (i > 0) printf("%1d",  b[--i]);
+
+}
+void print(int size){
+  for(int j=0;j<size;j++){
+    dec2bin(size,B.y[j]);
+    printf("\n");
+  }
+    printf("\n");
 }
 //
 void NQueenR(int size)
@@ -502,9 +514,9 @@ void NQueenR(int size)
   int idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
-      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
-        continue;
-      }     
+      //if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+      //  continue;
+      //}     
       pres_a[idx]=a;
       pres_b[idx]=b;
       idx++;
@@ -513,7 +525,8 @@ void NQueenR(int size)
 
 
   Board wB=B;
-  for(int w=0;w<=(size/2)*(size-3);w++){
+  //for(int w=0;w<=(size/2)*(size-3);w++){
+  for(int w=0;w<size*size;w++){
     //
     //N=5 の場合
     //for(int w=0;w<=(size/2)*(size-3);w++){
@@ -584,13 +597,16 @@ void NQueenR(int size)
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){
       B.x[i]=-1;
+      B.y[i]=0;
     }
     //結局、01ではboard_placement()の処理でまったく
     //効きを考慮しない状態からはじめたい。
     //０行目にクイーンを配置
     board_placement(size,0,pres_a[w]);
+    printf("%d (0,%d:",w,pres_a[w]);
     //１行目にクイーンを配置
     board_placement(size,1,pres_b[w]);
+    printf("1,%d)\n",pres_b[w]);
     //ボート情報を出力したい
     /**
       0 1 2 3 4
