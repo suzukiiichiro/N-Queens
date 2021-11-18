@@ -4,7 +4,8 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
  コンパイルと実行
- $ gcc -Wall -W -O3 -g -ftrapv -std=c99 nq27_N-Queen.c && ./a.out [-c|-r]
+ $ nvcc -O3 nq27_N-Queen.cu && ./a.out -r 
+ // $ nvcc -O3 nq27_N-Queen.cu && ./a.out [-c|-r|-g|-s]
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -243,16 +244,16 @@ bool board_placement(int si,int x,int y)
     return false;
   }     
   //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  B.bv |=bv;
-  B.down |=down;
-  B.left |=left;
-  B.right |=right;
+  B.bv|=bv;
+  B.down|=down;
+  B.left|=left;
+  B.right|=right;
   //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   //printf("valid_true\n");
   return true;
 }
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size)
+void _NQueenR(int size)
 {
   int pres_a[930];
   int pres_b[930];
@@ -303,6 +304,7 @@ void NQueenR(int size)
     // 置き換え
     // board_placement(size,0,wa);
     //0行目にクイーンを置く
+    // board_placement(size,x,y)
     board_placement(size,0,pres_a[w]);
     //printf("placement_pwa:x:0:y:%d\n",pres_a[w]);
     //
@@ -312,6 +314,7 @@ void NQueenR(int size)
     //置き換え
     //board_placement(size,1,wb);
     //1行目にクイーンを置く
+    // board_placement(size,x,y)
     board_placement(size,1,pres_b[w]);
     //printf("placement_pwb:x:1:y:%d\n",pres_b[w]);
 
@@ -480,11 +483,52 @@ void NQueenR(int size)
   UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
   TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
+//出力
+int COUNT=0;
+void print(int size){
+  printf("%d: ",++COUNT);
+  for(int j=0;j<size;j++){
+    printf("%d ",B.x[j]);
+  }
+  printf("\n");
+}
+//
+void NQueenR(int size)
+{
+  int pres_a[930];
+  int pres_b[930];
+  int idx=0;
+  for(int a=0;a<size;a++){
+    for(int b=0;b<size;b++){
+      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+        continue;
+      }     
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      idx++;
+    }
+  }
+  Board wB=B;
+  for(int w=0;w<=(size/2)*(size-3);w++){
+  //上２行にクイーンを置く
+  //上１行は２分の１だけ実行
+  //q=7なら (7/2)*(7-4)=12
+  //1行目は0,1,2で,2行目0,1,2,3,4,5,6 で利き筋を置かないと13パターンになる
+    B=wB;
+    B.bv=B.down=B.left=B.right=0;
+    //
+    for(int i=0;i<size;i++){
+      B.x[i]=-1;
+    }
+    print(size);
+  }
+}
 //メインメソッド
 int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
-  int argstart=1,steps=24576;
+  int argstart=1;
+  //int steps=24576;
   //int argstart=1,steps=1;
 
   /** パラメータの処理 */
@@ -520,8 +564,9 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=17;
-    int mask;
+    //int min=4;int targetN=17;
+    int min=5;int targetN=5;
+    //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
       TOTAL=0; UNIQUE=0;
@@ -531,7 +576,7 @@ int main(int argc,char** argv)
         cnt[j]=0;
       }
       /************************/
-      mask=(1<<i)-1;
+      //mask=(1<<i)-1;
       st=clock();
       //
       //【通常版】
