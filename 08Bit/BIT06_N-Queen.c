@@ -29,7 +29,7 @@ right/left の導入
     １３．並列処理
 
 bash-5.1$ gcc -O3 BIT06_N-Queen.c && ./a.out -r 
-７．CPUR right/leftの導入
+６．CPUR right/leftの導入
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               2            0.00
  5:           10              10            0.00
@@ -802,13 +802,13 @@ int main(int argc, char **argv)
   }
   /** 出力と実行 */
   if(cpu){
-    printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(cpur){
-    printf("\n\n７．CPUR right/leftの導入\n");
+    printf("\n\n６．CPUR right/leftの導入\n");
   }else if(gpu){
-    printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n６．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(sgpu){
-    printf("\n\n７．SGPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n６．SGPU 非再帰 バックトラック＋ビットマップ\n");
   }
   if(cpu||cpur){
     printf("%s\n", " N:        Total       Unique        hh:mm:ss.ms");

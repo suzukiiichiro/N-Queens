@@ -29,7 +29,7 @@
     １３．並列処理
 
 bash-5.1$ gcc -O3 BIT07_N-Queen.c && ./a.out -r
-７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
+７．CPUR 対称解除法
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -714,7 +714,7 @@ int main(int argc,char** argv)
   if(cpu){
     printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(cpur){
-    printf("\n\n７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n７．CPUR 対称解除法\n");
   }else if(gpu){
     printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(sgpu){

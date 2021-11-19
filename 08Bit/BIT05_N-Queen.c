@@ -29,7 +29,7 @@
     １３．並列処理
 
 bash-5.1$ gcc -O3 BIT05_N-Queen.c && ./a.out -r
-７．CPUR ブルートフォース
+５．CPUR ブルートフォース
 
 1: 上１列
 00001
@@ -821,24 +821,15 @@ int main(int argc, char **argv)
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
-  if (cpu)
-  {
-    printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
-  }
-  else if (cpur)
-  {
-    printf("\n\n７．CPUR ブルートフォース\n");
-  }
-  else if (gpu)
-  {
-    printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
-  }
-  else if (sgpu)
-  {
-    printf("\n\n７．SGPU 非再帰 バックトラック＋ビットマップ\n");
-  }
-  if (cpu || cpur)
-  {
+  if (cpu){
+    printf("\n\n５．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+  }else if (cpur){
+    printf("\n\n５．CPUR ブルートフォース\n");
+  }else if(gpu){
+    printf("\n\n５．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+  }else if(sgpu){
+    printf("\n\n５．SGPU 非再帰 バックトラック＋ビットマップ\n");
+  }if (cpu || cpur){
     printf("%s\n", " N:        Total       Unique        hh:mm:ss.ms");
     clock_t st; //速度計測用
     char t[20]; //hh:mm:ss.msを格納
