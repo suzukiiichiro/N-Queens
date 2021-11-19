@@ -4,48 +4,47 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-ミラーの導入
-
+動的分割統治法
 
 
  コンパイルと実行
- $ gcc -O3 BIT06_N-Queen.cu && ./a.out -r 
+ $ gcc -O3 BIT08_N-Queen.cu && ./a.out -r 
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
 
-    　 １．ブルートフォース　力任せ探索
-    　 ２．配置フラグ（制約テスト高速化）
-    　 ３．
-    　 ４．
-  * 　 ５．left/rightの導入
-    　 ６．ミラー
+    　 １．省略
+    　 ２．：
+    　 ３．：
+    　 ４．：
+    　 ５．ブルートフォース
+    　 ６．right/leftの導入
     　 ７．対称解除法
-    　 ８．枝刈り
+  * 　 ８．動的分割統治法
     　 ９．クイーンの位置による分岐BOUND1
     １０．クイーンの位置による分岐BOUND1,2
     １１．枝刈り
     １２．最適化
     １３．並列処理
 
-bash-5.1$ gcc -O3 BIT06_N-Queen.c && ./a.out -r
+bash-5.1$ gcc -O3 BIT07_N-Queen.c && ./a.out -r
 ７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
- 5:            4               2            0.00
- 6:            2               1            0.00
- 7:           12               6            0.00
- 8:           26              13            0.00
- 9:           94              47            0.00
-10:          186              93            0.00
-11:          700             350            0.01
-12:         3710            1855            0.02
-13:        18814            9407            0.06
-14:        92992           46496            0.23
-15:       577390          288695            1.08
-16:      3739696         1869848            6.33
-17:     24197308        12098654           40.85
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.02
+13:        73712            9237            0.06
+14:       365596           45771            0.22
+15:      2279184          285095            1.07
+16:     14772512         1847425            6.31
+17:     95815104        11979381           41.35
 
 
 １、上下左右２列ずつにクイーンを配置する
@@ -563,7 +562,7 @@ void NQueenR(int size)
     }
   }
   Board wB=B;
-  for(int w=0;w<=(size)*(size-3);w++){//5 size/2->size
+  for(int w=0;w<=(size/2)*(size-3);w++){
   //for(int w=0;w<size*size;w++){
     //
     //N=5 の場合
@@ -641,8 +640,8 @@ void NQueenR(int size)
     board_placement(size,1,pres_b[w]);
     if(DEBUG){print(size,"上２列");}
     Board nB=B;
-    int lsize=size*(size-3);//5 size*(size-3)
-    for(int n=0;n<lsize;n++){//5 n=w->n=0
+    int lsize=(size-2)*(size-1)-w;
+    for(int n=w;n<lsize;n++){
       //左２列に置く
       B=nB;
       if(board_placement(size,pres_a[n],size-1)==false){ continue; }
@@ -650,7 +649,7 @@ void NQueenR(int size)
       if(board_placement(size,pres_b[n],size-2)==false){ continue; }
       if(DEBUG){print(size,"左２列");}
       Board eB=B;
-      for(int e=0;e<lsize;e++){//5 e=w->e=0
+      for(int e=w;e<lsize;e++){
         //下２行に置く
         B=eB;
         if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
@@ -659,33 +658,32 @@ void NQueenR(int size)
         if(DEBUG){print(size,"下２列");}
         //右２列に置く
         Board sB=B;
-        for(int s=0;s<lsize;s++){//5 s=w->s=0
+        for(int s=w;s<lsize;s++){
           B=sB;
           if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(DEBUG){print(size,"右１列");}
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           if(DEBUG){print(size,"右２列");}
           //対称解除法
-          //int ww=(size-2)*(size-1)-1-w;
-          //int w2=(size-2)*(size-1)-1;
-          //if((s==ww)&&(n<(w2-e))){ continue; }
-          //if((e==ww)&&(n>(w2-n))){ continue; }
-          //if((n==ww)&&(e>(w2-s))){ continue; }
-          //if(s==w){ if((n!=w)||(e!=w)){ continue; }
+          int ww=(size-2)*(size-1)-1-w;
+          int w2=(size-2)*(size-1)-1;
+          if((s==ww)&&(n<(w2-e))){ continue; }
+          if((e==ww)&&(n>(w2-n))){ continue; }
+          if((n==ww)&&(e>(w2-s))){ continue; }
+          if(s==w){ if((n!=w)||(e!=w)){ continue; }
             process(size,B,COUNT2); continue;
-          //}
-          //if((e==w)&&(n>=s)){
-          //  if(n>s){ continue; } 
-          //  process(size,B,COUNT4); continue; 
-          //}
-          //process(size,B,COUNT8); continue;
+          }
+          if((e==w)&&(n>=s)){
+            if(n>s){ continue; } 
+            process(size,B,COUNT4); continue; 
+          }
+          process(size,B,COUNT8); continue;
         }
       }    
     }
   }
-  //UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
-  //TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
-  TOTAL=UNIQUE=cnt[COUNT2];
+  UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
+  TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
 //メインメソッド
 int main(int argc,char** argv)
@@ -727,7 +725,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=17;
+    int min=4;int targetN=15;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/

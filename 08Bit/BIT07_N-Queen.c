@@ -1,15 +1,51 @@
 /**
- CUDAで学ぶアルゴリズムとデータ構造
+ BITで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
+
+対称解除法
+
+
  コンパイルと実行
- $ nvcc -O3 nq27_N-Queen.cu && ./a.out -r 
- // $ nvcc -O3 nq27_N-Queen.cu && ./a.out [-c|-r|-g|-s]
+ $ gcc -O3 BIT07_N-Queen.cu && ./a.out -r 
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
+
+    　 １．省略
+    　 ２．：
+    　 ３．：
+    　 ４．：
+    　 ５．ブルートフォース
+    　 ６．right/leftの導入
+  * 　 ７．対称解除法
+    　 ８．動的分割統治法
+    　 ９．クイーンの位置による分岐BOUND1
+    １０．クイーンの位置による分岐BOUND1,2
+    １１．枝刈り
+    １２．最適化
+    １３．並列処理
+
+bash-5.1$ gcc -O3 BIT07_N-Queen.c && ./a.out -r
+７．CPUR 再帰 バックトラック＋ビットマップ＋対称解除法
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.02
+13:        73712            9237            0.06
+14:       365596           45771            0.22
+15:      2279184          285095            1.07
+16:     14772512         1847425            6.31
+17:     95815104        11979381           41.35
+
 
 １、上下左右２列ずつにクイーンを配置する
 上2行(0,0)(1,2) for(int w=0;w<=(size/2)*(size-3);w++){
@@ -112,6 +148,10 @@ typedef struct{
   int y[MAX];
 }Board ;
 //
+//関数宣言
+void print(int size,char* c);
+void dec2bin(int,int);
+//
 Board B;
 unsigned int COUNT8=2;
 unsigned int COUNT4=1;
@@ -121,6 +161,8 @@ long pre[3];
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
+int DEBUG=false; //ボードレイアウト出力
+int COUNT=0; //ボードレイアウト出力
 //
 void TimeFormat(clock_t utime,char *form)
 {
@@ -487,46 +529,41 @@ void _NQueenR(int size)
   TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
 //出力
-int COUNT=0;
 void dec2bin(int size,int dec){
-
   int i, b[32];
   for (i = 0; i < size; i++) {
     b[i] = dec % 2;
     dec = dec / 2;
   }
   while (i > 0) printf("%1d",  b[--i]);
-
 }
-void print(int size){
+void print(int size,char* c){
+  printf("%d: %s\n",++COUNT,c);
   for(int j=0;j<size;j++){
     dec2bin(size,B.y[j]);
     printf("\n");
   }
-    printf("\n");
+  printf("\n");
 }
 //
 void NQueenR(int size)
 {
-
   int pres_a[930];
   int pres_b[930];
   int idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
-      //if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
-      //  continue;
-      //}     
+      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+        continue;
+      }     
       pres_a[idx]=a;
       pres_b[idx]=b;
       idx++;
     }
   }
-
-
   Board wB=B;
-  //for(int w=0;w<=(size/2)*(size-3);w++){
-  for(int w=0;w<size*size;w++){
+  for(int w=0;w<=(size/2)*(size-3);w++){
+  //for(int w=0;w<size*size;w++){
     //
     //N=5 の場合
     //for(int w=0;w<=(size/2)*(size-3);w++){
@@ -593,32 +630,60 @@ void NQueenR(int size)
     //
     //
     B=wB;
-    //初期化
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){
       B.x[i]=-1;
-      B.y[i]=0;
     }
-    //結局、01ではboard_placement()の処理でまったく
-    //効きを考慮しない状態からはじめたい。
-    //０行目にクイーンを配置
+    //上２列に置く
     board_placement(size,0,pres_a[w]);
-    printf("%d (0,%d:",w,pres_a[w]);
-    //１行目にクイーンを配置
+    if(DEBUG){print(size,"上１列");}
     board_placement(size,1,pres_b[w]);
-    printf("1,%d)\n",pres_b[w]);
-    //ボート情報を出力したい
-    /**
-      0 1 2 3 4
-    0 Q x x x x
-    1 Q x x x x
-    2 x x x x x
-    3 x x x x x
-    4 x x x x x
-      */
-    print(size);
-    //
-  }//End for
+    if(DEBUG){print(size,"上２列");}
+    Board nB=B;
+    int lsize=(size-2)*(size-1)-w;
+    for(int n=w;n<lsize;n++){
+      //左２列に置く
+      B=nB;
+      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(DEBUG){print(size,"左１列");}
+      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      if(DEBUG){print(size,"左２列");}
+      Board eB=B;
+      for(int e=w;e<lsize;e++){
+        //下２行に置く
+        B=eB;
+        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(DEBUG){print(size,"下１列");}
+        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        if(DEBUG){print(size,"下２列");}
+        //右２列に置く
+        Board sB=B;
+        for(int s=w;s<lsize;s++){
+          B=sB;
+          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(DEBUG){print(size,"右１列");}
+          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          if(DEBUG){print(size,"右２列");}
+          //対称解除法
+          int ww=(size-2)*(size-1)-1-w;
+          int w2=(size-2)*(size-1)-1;
+          if((s==ww)&&(n<(w2-e))){ continue; }
+          if((e==ww)&&(n>(w2-n))){ continue; }
+          if((n==ww)&&(e>(w2-s))){ continue; }
+          if(s==w){ if((n!=w)||(e!=w)){ continue; }
+            process(size,B,COUNT2); continue;
+          }
+          if((e==w)&&(n>=s)){
+            if(n>s){ continue; } 
+            process(size,B,COUNT4); continue; 
+          }
+          process(size,B,COUNT8); continue;
+        }
+      }    
+    }
+  }
+  UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
+  TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
 //メインメソッド
 int main(int argc,char** argv)
@@ -626,7 +691,6 @@ int main(int argc,char** argv)
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
   int argstart=1;
   //int steps=24576;
-  //int argstart=1,steps=1;
 
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
@@ -661,8 +725,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    //int min=4;int targetN=17;
-    int min=5;int targetN=5;
+    int min=4;int targetN=15;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -680,7 +743,7 @@ int main(int argc,char** argv)
       //if(cpur){ _NQueenR(i,mask,0,0,0,0); }
       //CPUR
       if(cpur){ 
-        NQueenR(i); 
+        NQueenR(i);
         //printf("通常版\n");
       }
       //CPU
