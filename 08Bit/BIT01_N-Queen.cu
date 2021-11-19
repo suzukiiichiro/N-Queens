@@ -66,7 +66,7 @@ bv&1だと右端が1ということ
 bvは11110なので右端は0
 ３行目にはまだクイーンが置かれていないということになるのでこのif文の中には入らない
 
-for(uint64_t slots=~(bh|bu|bd);slots!=0;) {
+for(uint64 slots=~(bh|bu|bd);slots!=0;) {
 slotsはクイーンの置ける場所。0だとどこにもクイーンが置けない
 3行目はslots 0010000 なのでこのif文に入る
 slot=slots&-slots;
@@ -143,7 +143,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-long solve_nqueenr(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
+long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 {
   // Placement Complete?
   //printf("countCompletions_start\n");
@@ -177,11 +177,11 @@ long solve_nqueenr(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
   //
   // Column needs to be placed
   long  s=0;
-  uint64_t bit;
+  uint64 bit;
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  for(uint64 bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     //printf("colunm needs to be placed\n");
     //printf("slots:%d\n",slots);
     bit=bitmap&-bitmap;
