@@ -8,7 +8,7 @@
 
 
  コンパイルと実行
- $ gcc -O3 BIT05_N-Queen.cu && ./a.out -r 
+ $ gcc -O3 BIT01_N-Queen.c && ./a.out -r 
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
