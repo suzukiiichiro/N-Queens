@@ -4,11 +4,11 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-動的分割統治法
+ ミラー
 
 
  コンパイルと実行
- $ gcc -O3 BIT08_N-Queen.c && ./a.out -r 
+ $ gcc -O3 BIT06_N-Queen.c && ./a.out -r 
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
