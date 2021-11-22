@@ -4,23 +4,23 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-対称解除法
+７．対称解除法
 
 
  コンパイルと実行
- $ gcc -O3 BIT07_N-Queen.cu && ./a.out -r 
+ $ gcc -O3 BIT07_N-Queen.cu && ./a.out [-c|-r|-g|-s]
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
 
-    　 １．省略
+    　 １．ブルートフォース
     　 ２．：
-    　 ３．：
+    　 ３．バックトラック
     　 ４．：
-    　 ５．ブルートフォース
-    　 ６．right/leftの導入
-  * 　 ７．対称解除法
+    　 ５．：
+    　 ６．ミラー
+    　 ７．対称解除法
     　 ８．動的分割統治法
     　 ９．クイーンの位置による分岐BOUND1
     １０．クイーンの位置による分岐BOUND1,2
@@ -712,20 +712,20 @@ int main(int argc,char** argv)
   }
   /** 出力と実行 */
   if(cpu){
-    printf("\n\n７．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n７．CPU 対称解除法\n");
   }else if(cpur){
     printf("\n\n７．CPUR 対称解除法\n");
   }else if(gpu){
-    printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n７．GPU 対称解除法\n");
   }else if(sgpu){
-    printf("\n\n７．SGPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n７．SGPU 対称解除法\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=15;
+    int min=4;int targetN=17;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/

@@ -4,22 +4,22 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-ブルートフォース
+１．ブルートフォース
 
 
  コンパイルと実行
- $ gcc -O3 BIT01_N-Queen.c && ./a.out -r 
+ $ gcc -O3 BIT01_N-Queen.c && ./a.out [-c|-r|-g|-s] 
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
 
-    　 １．省略
+    　 １．ブルートフォース
     　 ２．：
-    　 ３．：
+    　 ３．バックトラック
     　 ４．：
-  * 　 ５．ブルートフォース
-    　 ６．right/leftの導入
+    　 ５．：
+    　 ６．ミラー
     　 ７．対称解除法
     　 ８．動的分割統治法
     　 ９．クイーンの位置による分岐BOUND1
@@ -822,13 +822,13 @@ int main(int argc, char **argv)
   }
   /** 出力と実行 */
   if (cpu){
-    printf("\n\n５．CPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n１．CPU ブルートフォース\n");
   }else if (cpur){
-    printf("\n\n５．CPUR ブルートフォース\n");
+    printf("\n\n１．CPUR ブルートフォース\n");
   }else if(gpu){
-    printf("\n\n５．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
+    printf("\n\n１．GPU ブルートフォース\n");
   }else if(sgpu){
-    printf("\n\n５．SGPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\n１．SGPU ブルートフォース\n");
   }if (cpu || cpur){
     printf("%s\n", " N:        Total       Unique        hh:mm:ss.ms");
     clock_t st; //速度計測用
