@@ -249,9 +249,36 @@ void process(int si,Board B,int sym)
   //(brd.getBD()>>4)<<(N-5)) right 右４ビット削除後N-5個分左にシフト
   //printf("cnt_sym:%d\n",cnt[sym]);
 }
-//
 bool board_placement(int si,int x,int y)
 {
+  //board_placementの利き筋判定
+  //left
+  //si-1-x+y 何行目に置こうとこの式で利き筋判定できる
+  //xxxoxxx (0,3) 7-1-0+3=9 1<<9=512
+  //xxoxxxx (1,4) 7-1-1+4=9 1<<9=512
+  //xoxxxxx (2,5) 7-1-2+5=9 1<<9=512
+  //oxxxxxx (3,6) 7-1-3+6=9 1<<9=512
+  //xxxxxxx
+  //xxxxxxx
+  //xxxxxxx
+  //down
+  //今までと同じ (0,3)だったら 1<<3=8
+  //xxxoxxx (0,3)
+  //xxxoxxx (1,3)
+  //xxxoxxx (2,3)
+  //xxxoxxx (3,3)
+  //xxxoxxx (4,3)
+  //xxxoxxx (5,3)
+  //xxxoxxx (6,3)
+  //right
+  //x+y 何行目に置こうとこの式で利き筋判定できる
+  //xxxoxxx (0,3) 0+3=3 1<<3=8
+  //xxxxoxx (1,2) 1+2=3 1<<3=8
+  //xxxxxox (2,1) 2+1=3 1<<3=8
+  //xxxxxxo (3,0) 3+0=3 1<<3=8
+  //xxxxxxx
+  //xxxxxxx
+  //xxxxxxx
   //同じ場所に置くかチェック
   //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
   if(B.x[x]==y){
@@ -262,21 +289,24 @@ bool board_placement(int si,int x,int y)
   B.x[x]=y;
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   uint64 bv=1<<x;
+  uint64 left=1<<(si-1-x+y);
   uint64 down=1<<y;
   B.y[x]=B.y[x]+down;
-  uint64 left=1<<(si-1-x+y);
   uint64 right=1<<(x+y);
   //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
-  //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
-  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
+  //printf("check valid B.bv:%d:bv:%d:B.down:%d:down:%d:B.left:%d:left:%d:B.right:%d:right:%d\n",B.bv,bv,B.down,down,B.left,left,B.right,right);
+  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.down&down,B.left&left,B.right&right);
+  //同じ行またはleft,down,rightに引っかかったらクイーンを置けない
+  if((B.bv&bv)||(B.left&left)||(B.down&down)||(B.right&right)){
     //printf("valid_false\n");
     return false;
   }     
   //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  //利き筋に引っ掛からなかったらクイーンを置く
+  //bv,left,down,rightを更新する
   B.bv|=bv;
-  B.down|=down;
   B.left|=left;
+  B.down|=down;
   B.right|=right;
   //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   //printf("valid_true\n");
@@ -712,6 +742,7 @@ int main(int argc,char** argv)
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
     int min=4;int targetN=17;
+    //int min=7;int targetN=7;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
