@@ -574,11 +574,13 @@ void NQueenR(int size)
       }     
       pres_a[idx]=a;
       pres_b[idx]=b;
+      //printf("a:%d,b:%d\n",a,b);	
       idx++;
     }
   }
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
+  //printf("w:%d\n",w);
   //for(int w=0;w<size*size;w++){
     //
     //N=5 の場合
@@ -652,37 +654,48 @@ void NQueenR(int size)
     }
     //上２列に置く
     board_placement(size,0,pres_a[w]);
+    //printf("x:0,y:%d\n",pres_a[w]);
     if(DEBUG){print(size,"上１列");}
     board_placement(size,1,pres_b[w]);
+    //printf("x:1,y:%d\n",pres_b[w]);
     if(DEBUG){print(size,"上２列");}
     Board nB=B;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //左２列に置く
+      //printf("n:%d\n",n);	
       B=nB;
       if(board_placement(size,pres_a[n],size-1)==false){ continue; }
+      //printf("左1列 x:%d,y:%d\n",pres_a[n],size-1); 
       if(DEBUG){print(size,"左１列");}
       if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      //printf("左2列 x:%d,y:%d\n",pres_b[n],size-2); 
       if(DEBUG){print(size,"左２列");}
       Board eB=B;
       for(int e=w;e<lsize;e++){
+        //printf("e:%d\n",e);	
         //下２行に置く
         B=eB;
         if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+	//printf("下1列 x:%d,y:%d\n",size-1,size-1-pres_a[e]);
         if(DEBUG){print(size,"下１列");}
         if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+	//printf("下2列 x:%d,y:%d\n",size-2,size-1-pres_b[e]);
         if(DEBUG){print(size,"下２列");}
         //右２列に置く
         Board sB=B;
         for(int s=w;s<lsize;s++){
           B=sB;
+	  //printf("s:%d\n",s);
           if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          //printf("右1列 x:%d,y:%d\n",size-1-pres_a[s],0);
           if(DEBUG){print(size,"右１列");}
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          //printf("右2列 x:%d,y:%d\n",size-1-pres_b[s],1);
           if(DEBUG){print(size,"右２列");}
           //対称解除法
           int ww=(size-2)*(size-1)-1-w;
-          int w2=(size-2)*(size-1)-1;
+	  int w2=(size-2)*(size-1)-1;
           if((s==ww)&&(n<(w2-e))){ continue; }
           if((e==ww)&&(n>(w2-n))){ continue; }
           if((n==ww)&&(e>(w2-s))){ continue; }
@@ -742,7 +755,7 @@ int main(int argc,char** argv)
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
     int min=4;int targetN=17;
-    //int min=7;int targetN=7;
+    //int min=5;int targetN=5;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
