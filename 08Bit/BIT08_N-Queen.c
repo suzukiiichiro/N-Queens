@@ -597,8 +597,6 @@ void NQueenR(int size)
     //            [E]ast
     //
 
-  //Board wB=B;
-  wB=B;
   /**
    * size/2 は 
    * for(int w=0;w<=(size/2)*(sizeEE-1);++w){
@@ -614,6 +612,8 @@ void NQueenR(int size)
    */
   //for(int w=0;w<=(size/2)*(sizeEE-1);++w){
   //for(int w=0;w<=(size<<1)*(sizeEE-1);++w){
+  //Board wB=B;
+  wB=B;
   for(int w=0;w<sizeEE*sizeE-w;++w){
     B=wB;
     B.bv=B.down=B.left=B.right=0;
