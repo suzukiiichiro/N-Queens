@@ -599,7 +599,22 @@ void NQueenR(int size)
 
   //Board wB=B;
   wB=B;
-  for(int w=0;w<=(size<<1)*(sizeEE-1);++w){
+  /**
+   * size/2 は 
+   * for(int w=0;w<=(size/2)*(sizeEE-1);++w){
+   *
+   * 以下と同一 
+   * for(int w=0;w<=(size<<1)*(sizeEE-1);++w){ 
+   * 
+   * さらに下の方にある int lsize にあわせると
+   * for(int w=0;w<sizeEE*sizeE-w;++w){
+   * 
+   * いずれが効率的なのかを教えて。 
+   * 
+   */
+  //for(int w=0;w<=(size/2)*(sizeEE-1);++w){
+  //for(int w=0;w<=(size<<1)*(sizeEE-1);++w){
+  for(int w=0;w<sizeEE*sizeE-w;++w){
     B=wB;
     B.bv=B.down=B.left=B.right=0;
     //printf("w:%d\n",w);
@@ -680,7 +695,7 @@ void NQueenR(int size)
     if(DEBUG){print(size,"上２列");}
     //Board nB=B;
     //int lsize=(size-2)*(size-1)-w;
-    int lsize=(sizeEE)*(sizeE)-w;
+    int lsize=sizeEE*sizeE-w;
     //for(int n=w;n<lsize;n++){
     nB=B; //左側
     for(int n=w;n<lsize;++n){
