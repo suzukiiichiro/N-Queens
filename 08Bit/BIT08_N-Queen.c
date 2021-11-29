@@ -614,6 +614,10 @@ void NQueenR(int size)
   //for(int w=0;w<=(size<<1)*(sizeEE-1);++w){
   //Board wB=B;
   wB=B;
+  /**
+   * 補足　North,Eest,Southで使われている szieは以下の通り
+     int lsize=sizeEE*sizeE-w;
+  */
   for(int w=0;w<sizeEE*sizeE-w;++w){
     B=wB;
     B.bv=B.down=B.left=B.right=0;
@@ -695,6 +699,7 @@ void NQueenR(int size)
     if(DEBUG){print(size,"上２列");}
     //Board nB=B;
     //int lsize=(size-2)*(size-1)-w;
+    //int lsize=sizeEE*sizeE-w;
     int lsize=sizeEE*sizeE-w;
     //for(int n=w;n<lsize;n++){
     nB=B; //左側
