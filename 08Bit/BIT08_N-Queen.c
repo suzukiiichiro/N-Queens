@@ -581,12 +581,29 @@ void NQueenR(int size)
       idx++;
     }
   }
-  Board wB=B;
+  Board wB; //上側
+  Board nB; //左側
+  Board eB; //下側
+  Board sB; //右側
   //for(int w=0;w<=(size/2)*(size-3);w++){
   //for(int w=0;w<=(size/2)*(size-3);++w){
+
+    //            [W]est 
+    //           0 0 0 0 0  
+    //           0 0 0 0 0  
+    //[N]orth    0 0 0 0 0   [S]outh
+    //           0 0 0 0 0  
+    //           0 0 0 0 0  
+    //            [E]ast
+    //
+
+  //Board wB=B;
+  wB=B;
   for(int w=0;w<=(size<<1)*(sizeEE-1);++w){
-  //printf("w:%d\n",w);
-  //for(int w=0;w<size*size;w++){
+    B=wB;
+    B.bv=B.down=B.left=B.right=0;
+    //printf("w:%d\n",w);
+    //for(int w=0;w<size*size;w++){
     //
     //N=5 の場合
     //for(int w=0;w<=(size/2)*(size-3);w++){
@@ -652,8 +669,6 @@ void NQueenR(int size)
     //
     //
     //
-    B=wB;
-    B.bv=B.down=B.left=B.right=0;
     //for(int i=0;i<size;i++){
     for(int i=0;i<size;++i){ B.x[i]=-1; }
     //上２列に置く
@@ -663,14 +678,15 @@ void NQueenR(int size)
     board_placement(size,1,pres_b[w]);
     //printf("x:1,y:%d\n",pres_b[w]);
     if(DEBUG){print(size,"上２列");}
-    Board nB=B;
+    //Board nB=B;
     //int lsize=(size-2)*(size-1)-w;
     int lsize=(sizeEE)*(sizeE)-w;
     //for(int n=w;n<lsize;n++){
+    nB=B; //左側
     for(int n=w;n<lsize;++n){
+      B=nB;
       //左２列に置く
       //printf("n:%d\n",n);	
-      B=nB;
       //if(board_placement(size,pres_a[n],size-1)==false){ continue; }
       if(board_placement(size,pres_a[n],sizeE)==false){ continue; }
       //printf("左1列 x:%d,y:%d\n",pres_a[n],size-1); 
@@ -679,12 +695,13 @@ void NQueenR(int size)
       if(board_placement(size,pres_b[n],sizeEE)==false){ continue; }
       //printf("左2列 x:%d,y:%d\n",pres_b[n],size-2); 
       if(DEBUG){print(size,"左２列");}
-      Board eB=B;
+      //Board eB=B;
       //for(int e=w;e<lsize;e++){
+      eB=B; //下側　End Board
       for(int e=w;e<lsize;++e){
+        B=eB;
         //printf("e:%d\n",e);	
         //下２行に置く
-        B=eB;
         //if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
         if(board_placement(size,sizeE,sizeE-pres_a[e])==false){ continue; }
 	      //printf("下1列 x:%d,y:%d\n",size-1,size-1-pres_a[e]);
@@ -694,8 +711,9 @@ void NQueenR(int size)
 	      //printf("下2列 x:%d,y:%d\n",size-2,size-1-pres_b[e]);
         if(DEBUG){print(size,"下２列");}
         //右２列に置く
-        Board sB=B;
+        //Board sB=B;
         //for(int s=w;s<lsize;s++){
+        sB=B; // 右側 Side Board
         for(int s=w;s<lsize;++s){
           B=sB;
 	        //printf("s:%d\n",s);
