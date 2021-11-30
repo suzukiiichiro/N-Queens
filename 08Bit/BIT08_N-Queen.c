@@ -147,8 +147,8 @@ long pre[3];
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
-//int DEBUG=false; //ボードレイアウト出力
-int DEBUG=true; //ボードレイアウト出力
+int DEBUG=false; //ボードレイアウト出力
+//int DEBUG=true; //ボードレイアウト出力
 int COUNT=0; //ボードレイアウト出力
 //
 void TimeFormat(clock_t utime,char *form)
@@ -554,6 +554,7 @@ void dec2bin(int size,int dec){
   }
   while (i > 0) printf("%1d",  b[--i]);
 }
+//
 void print(int size,char* c){
   printf("%d: %s\n",++COUNT,c);
   for(int j=0;j<size;j++){
@@ -584,6 +585,9 @@ void NQueenR(int size)
       idx++;
     }
   }
+  //プログレス
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+
   //
   //N=5 の場合
   //上２行目にクイーンを配置できるパターン数
@@ -650,6 +654,8 @@ void NQueenR(int size)
     //初期化
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;++i){ B.x[i]=-1; }
+    //プログレス
+    printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //
     //上２列に置く
     board_placement(size,0,pres_a[w]);
@@ -659,7 +665,6 @@ void NQueenR(int size)
     //
     //左２列に置く
     nB=B;
-    //for(int n=w;n<lsize;++n){
     for(int n=w;n<sizeEE*sizeE-w;++n){
       B=nB;
       if(board_placement(size,pres_a[n],sizeE)==false){ continue; }
@@ -794,8 +799,8 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    //int min=4;int targetN=15;
-    int min=5;int targetN=5;
+    int min=4;int targetN=15;
+    //int min=5;int targetN=5;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
