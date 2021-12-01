@@ -339,13 +339,12 @@ bool board_placement(int si,int x,int y)
 //
 void NQueenR(int size)
 {
-  //int DEBUG=false; //ボードレイアウト出力
-  int DEBUG=true; //ボードレイアウト出力
+  int DEBUG=false; //ボードレイアウト出力
+  //int DEBUG=true; //ボードレイアウト出力
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
-  int pres_a[930];
-  int pres_b[930];
+  int pres[2][930];
   int idx=0;
   Board wB; //上側
   Board nB; //左側
@@ -355,14 +354,14 @@ void NQueenR(int size)
   for(int a=0;a<size;++a){
     for(int b=0;b<size;++b){
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
-      pres_a[idx]=a;
-      pres_b[idx]=b;
+      pres[0][idx]=a;
+      pres[1][idx]=b;
       if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
       idx++;
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
   //
   //N=5 の場合
   //上２行目にクイーンを配置できるパターン数
@@ -433,37 +432,37 @@ void NQueenR(int size)
     //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //上２列に置く
-    board_placement(size,0,pres_a[w]);
-    if(DEBUG){ printf("w:%d x:0,y:%d\n",w,pres_a[w]); print(size,"上１列");getchar();}
-    board_placement(size,1,pres_b[w]);
-    if(DEBUG){ printf("w:%d x:1,y:%d\n",w,pres_b[w]); print(size,"上２列");getchar();}
+    board_placement(size,0,pres[0][w]);
+    if(DEBUG){ printf("w:%d x:0,y:%d\n",w,pres[0][w]); print(size,"上１列");getchar();}
+    board_placement(size,1,pres[1][w]);
+    if(DEBUG){ printf("w:%d x:1,y:%d\n",w,pres[1][w]); print(size,"上２列");getchar();}
     //
     //左２列に置く
     nB=B;
     for(int n=w;n<limit;++n){
       B=nB;
-      if(board_placement(size,pres_a[n],sizeE)==false){ continue; }
-      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres_a[n],size-1); print(size,"左１列");getchar();}
-      if(board_placement(size,pres_b[n],sizeEE)==false){ continue; }
-      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres_b[n],size-2); print(size,"左２列");getchar();}
+      if(board_placement(size,pres[0][n],sizeE)==false){ continue; }
+      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[0][n],size-1); print(size,"左１列");getchar();}
+      if(board_placement(size,pres[1][n],sizeEE)==false){ continue; }
+      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[1][n],size-2); print(size,"左２列");getchar();}
       //
       //下２列に置く
       eB=B;
       for(int e=w;e<limit;++e){
         B=eB;
-        if(board_placement(size,sizeE,sizeE-pres_a[e])==false){ continue; }
-	      if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-1,size-1-pres_a[e]); print(size,"下１列");getchar();}
-        if(board_placement(size,sizeEE,sizeE-pres_b[e])==false){ continue; }
-        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-2,size-1-pres_b[e]); print(size,"下２列");getchar();}
+        if(board_placement(size,sizeE,sizeE-pres[0][e])==false){ continue; }
+	      if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-1,size-1-pres[0][e]); print(size,"下１列");getchar();}
+        if(board_placement(size,sizeEE,sizeE-pres[1][e])==false){ continue; }
+        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-2,size-1-pres[1][e]); print(size,"下２列");getchar();}
         //
         //右２列に置く
         sB=B;
         for(int s=w;s<limit;++s){
           B=sB;
-          if(board_placement(size,sizeE-pres_a[s],0)==false){ continue; }
-          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres_a[s],0);print(size,"右１列");getchar(); }
-          if(board_placement(size,sizeE-pres_b[s],1)==false){ continue; }
-          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres_b[s],1);print(size,"右２列"); getchar(); }
+          if(board_placement(size,sizeE-pres[0][s],0)==false){ continue; }
+          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres[0][s],0);print(size,"右１列");getchar(); }
+          if(board_placement(size,sizeE-pres[1][s],1)==false){ continue; }
+          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres[1][s],1);print(size,"右２列"); getchar(); }
           //
           //対称解除法
           int ww=sizeEE*sizeE-1;
@@ -532,6 +531,7 @@ void NQueenR(int size)
   UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
   TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
+//
 //メインメソッド
 int main(int argc,char** argv)
 {
@@ -572,8 +572,8 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    //int min=4;int targetN=15;
-    int min=5;int targetN=5;
+    int min=4;int targetN=15;
+    //int min=5;int targetN=5;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
