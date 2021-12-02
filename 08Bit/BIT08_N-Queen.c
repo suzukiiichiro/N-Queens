@@ -345,30 +345,24 @@ void NQueenR(int size)
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
-  int pres[930][2];
+  int pres[2][930];
   int idx=0;
   Board wB; //上側
   Board nB; //左側
   Board eB; //下側
   Board sB; //右側
   //
-  int aBoard[32];
-  for(int col=0;col<size;++col){
-    //1行目にクイーンを置く
-    aBoard[0]=col;
-    for(int col2=0;col2<size;++col2){
-    //2行目にクイーンを置く
-      if(((col>=col2)&&(col-col2)<=1)||((col2>col)&&(col2-col)<=1)){ continue; }     
-      aBoard[1]=col2;
-      for(int i=0;i<depth;i++){
-        pres[idx][i]=aBoard[i];
-      }
-      if(DEBUG){ printf("col:%d,col2:%d\n",col,col2);	}
+  for(int a=0;a<size;++a){
+    for(int b=0;b<size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
+      pres[0][idx]=a;
+      pres[1][idx]=b;
+      if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
       idx++;
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[(size/2)*(size-3)  ][0],(unsigned)pres[(size/2)*(size-3)  ][1],(unsigned)pres[(size/2)*(size-3)+1][0],(unsigned)pres[(size/2)*(size-3)+1][1]);
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
   //
   //N=5 の場合
   //上２行目にクイーンを配置できるパターン数
@@ -440,36 +434,35 @@ void NQueenR(int size)
     printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //上２列に置く
     for(int j=0;j<depth;j++){
-      board_placement(size,j,pres[w][j]);
-      if(DEBUG){ printf("w:%d x:%d,y:%d\n",w,j,pres[w][j]); print(size,"上");getchar();}
+      board_placement(size,j,pres[j][w]);
+      if(DEBUG){ printf("w:%d x:%d,y:%d\n",w,j,pres[j][w]); print(size,"上");getchar();}
     }
     //
     //左２列に置く
     nB=B;
     for(int n=w;n<limit;++n){
       B=nB;
-      if(board_placement(size,pres[n][0],sizeE)==false){ continue; }
-      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[n][0],size-1); print(size,"左１列");getchar();}
-      if(board_placement(size,pres[n][1],sizeEE)==false){ continue; }
-      if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[n][1],size-2); print(size,"左２列");getchar();}
+      for(int j=0;j<depth;j++){
+        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
+        if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
+      } 
       //
       //下２列に置く
       eB=B;
       for(int e=w;e<limit;++e){
         B=eB;
-        if(board_placement(size,sizeE,sizeE-pres[e][0])==false){ continue; }
-	      if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-1,size-1-pres[e][0]); print(size,"下１列");getchar();}
-        if(board_placement(size,sizeEE,sizeE-pres[e][1])==false){ continue; }
-        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,size-2,size-1-pres[e][1]); print(size,"下２列");getchar();}
-        //
+        for(int j=0;j<depth;j++){
+          if(board_placement(size,sizeE-j,sizeE-pres[j][e])==false){ goto label_e; }
+	        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
+        }
         //右２列に置く
         sB=B;
         for(int s=w;s<limit;++s){
           B=sB;
-          if(board_placement(size,sizeE-pres[s][0],0)==false){ continue; }
-          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres[s][0],0);print(size,"右１列");getchar(); }
-          if(board_placement(size,sizeE-pres[s][1],1)==false){ continue; }
-          if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,size-1-pres[s][1],1);print(size,"右２列"); getchar(); }
+          for(int j=0;j<depth;j++){
+            if(board_placement(size,sizeE-pres[j][s],j)==false){ goto label_s; }
+            if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+          }
           //
           //対称解除法
           int ww=sizeEE*sizeE-1;
@@ -531,8 +524,11 @@ void NQueenR(int size)
             process(size,B,COUNT4); continue; 
           }
           process(size,B,COUNT8); continue;
+         label_s:{}
         }
+       label_e:{}
       }    
+     label_n:{}
     }
   }
   UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
