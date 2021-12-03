@@ -340,14 +340,15 @@ bool board_placement(int si,int x,int y)
 void NQueenR(int size)
 {
   int depth=3;
-  //int DEBUG=false; //ボードレイアウト出力
-  int DEBUG=true; //ボードレイアウト出力
+  int DEBUG=false; //ボードレイアウト出力
+  //int DEBUG=true; //ボードレイアウト出力
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
   //int pres[2][930];
-  int pres[3][930];
+  int pres[3][2300];
   int idx=0;
+  int wsize=0;
   Board wB; //上側
   Board nB; //左側
   Board eB; //下側
@@ -363,12 +364,16 @@ void NQueenR(int size)
       	pres[1][idx]=b;
       	pres[2][idx]=c;
       	if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
+	if(a<size/2){
+         wsize++;
+      	 if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
+	}
       	idx++;
       }
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][wsize  ],(unsigned)pres[1][wsize  ],(unsigned)pres[0][wsize+1],(unsigned)pres[1][wsize+1]);
   //
   //N=5 の場合
   //上２行目にクイーンを配置できるパターン数
@@ -431,8 +436,9 @@ void NQueenR(int size)
   //上２列に置く
   wB=B;
   //for(int w=0;w<sizeEE*sizeE-w;++w){
-  for(int w=0;w<18;++w){
-    int limit=sizeEE*sizeE-w;
+  for(int w=0;w<wsize;++w){
+    //int limit=sizeEE*sizeE-w;
+    int limit=idx-w;
     B=wB;
     //初期化
     B.bv=B.down=B.left=B.right=0;
@@ -582,8 +588,8 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    //int min=4;int targetN=15;
-    int min=6;int targetN=6;
+    int min=4;int targetN=15;
+    //int min=6;int targetN=6;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
