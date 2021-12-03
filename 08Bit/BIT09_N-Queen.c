@@ -358,7 +358,7 @@ void NQueenR(int size)
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
       for(int c=0;c<size;++c){
         if(((b>=c)&&(b-c)<=1)||((c>b)&&(c-b)<=1)){ continue; }     
-        if(((a>=c)&&(a-c)==2)||((c>a)&&(c-a)==2||a==c)){ continue; }     
+        if(((a>=c)&&(a-c)==2)||((c>a)&&(c-a)==2)||a==c){ continue; }     
       	pres[0][idx]=a;
       	pres[1][idx]=b;
       	pres[2][idx]=c;
