@@ -444,7 +444,8 @@ void NQueenR(int size)
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;++i){ B.x[i]=-1; }
     //プログレス
-    printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    //printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    printf("\r(%d/%d)",w,wsize); printf("\r"); fflush(stdout);
     //上２列に置く
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
@@ -455,8 +456,9 @@ void NQueenR(int size)
     nB=B;
     for(int n=w;n<limit;++n){
       B=nB;
+ 
       for(int j=0;j<depth;j++){
-        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
+       if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
         if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
       } 
       //
