@@ -424,8 +424,11 @@ void NQueenR(int size)
   //
   //上２列に置く
   wB=B;
-  for(int w=0;w<sizeEE*sizeE-w;++w){
-    int limit=sizeEE*sizeE-w;
+
+  for(int w=0;w<(size/2)*(size-3);++w){
+  //for(int w=0;w<sizeEE*sizeE-w;++w){
+    //int limit=sizeEE*sizeE-w;
+    int limit=idx-w;//limitは2,3ともにidxの数だった
     B=wB;
     //初期化
     B.bv=B.down=B.left=B.right=0;
