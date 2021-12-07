@@ -428,7 +428,7 @@ void NQueenR(int size)
       	  //if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
 	        if(a<size/2){
             wsize++;
-      	    if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
+      	    if(DEBUG){ printf("wsize:%d a:%d,b:%d,c:%d\n",wsize,a,b,c);	}
 	        }
       	  idx++;
         }
@@ -438,7 +438,7 @@ void NQueenR(int size)
       	//if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
 	      if(a<size/2){
           wsize++;
-      	  //if(DEBUG){ printf("wsize:a:%d,b:%d\n",a,b);	}
+      	  //if(DEBUG){ printf("wsize:%d a:%d,b:%d\n",wsize,a,b);	}
 	      }
       	idx++;
       }
