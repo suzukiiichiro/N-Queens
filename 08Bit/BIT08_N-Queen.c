@@ -427,6 +427,7 @@ void NQueenR(int size)
   for(int w=0;w<(size/2)*(size-3);++w){
   //for(int w=0;w<sizeEE*sizeE-w;++w){
     //int limit=sizeEE*sizeE-w;
+    //sizeEE*sizeEは2階層でのidxの数と同じ
     int limit=idx-w;//limitは2,3ともにidxの数だった
     B=wB;
     //初期化
@@ -467,7 +468,9 @@ void NQueenR(int size)
           }
           //
           //対称解除法
-          int ww=sizeEE*sizeE-1;
+          //int ww=sizeEE*sizeE-1;
+          //sizeEE*sizeEは2階層でのidxの数と同じ
+          int ww=idx-1;
           if(((s==(ww-w))&&(n<(ww-e)))||((e==(ww-w))&&(n>(ww-n)))||((n==(ww-w))&&(e>(ww-s)))){ continue; }
           if(s==w){ 
             if((n!=w)||(e!=w)){ 
