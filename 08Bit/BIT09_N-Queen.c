@@ -341,6 +341,7 @@ bool board_placement(int si,int x,int y)
 void NQueenR(int size)
 {
   int depth=3;
+  //int depth=2;
   int DEBUG=false; //ボードレイアウト出力
   //int DEBUG=true; //ボードレイアウト出力
   //
@@ -358,17 +359,28 @@ void NQueenR(int size)
   for(int a=0;a<size;++a){
     for(int b=0;b<size;++b){
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
-      for(int c=0;c<size;++c){
-        if(((b>=c)&&(b-c)<=1)||((c>b)&&(c-b)<=1)){ continue; }     
-        if(((a>=c)&&(a-c)==2)||((c>a)&&(c-a)==2)||a==c){ continue; }     
-      	pres[0][idx]=a;
-      	pres[1][idx]=b;
-      	pres[2][idx]=c;
-      	if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
-	if(a<size/2){
-         wsize++;
-      	 if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
-	}
+      if(depth>=3){
+        for(int c=0;c<size;++c){
+          if(((b>=c)&&(b-c)<=1)||((c>b)&&(c-b)<=1)){ continue; }     
+          if(((a>=c)&&(a-c)==2)||((c>a)&&(c-a)==2)||a==c){ continue; }     
+          pres[0][idx]=a;
+          pres[1][idx]=b;
+      	  pres[2][idx]=c;
+      	  if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
+	        if(a<size/2){
+            wsize++;
+      	    if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
+	        }
+      	  idx++;
+        }
+      }else{
+        pres[0][idx]=a;
+        pres[1][idx]=b;
+      	if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
+	      if(a<size/2){
+          wsize++;
+      	  if(DEBUG){ printf("wsize:a:%d,b:%d\n",a,b);	}
+	      }
       	idx++;
       }
     }
