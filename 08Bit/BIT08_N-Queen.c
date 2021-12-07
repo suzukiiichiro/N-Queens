@@ -4,7 +4,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-８．動的分割統治法
+８．動的分割統治法 ( 深さ２の場合）
 
 
  コンパイルと実行
@@ -345,7 +345,7 @@ void NQueenR(int size)
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
-  int pres[2][930];
+  int pres[depth][930];
   int idx=0;
   Board wB; //上側
   Board nB; //左側
@@ -424,7 +424,6 @@ void NQueenR(int size)
   //
   //上２列に置く
   wB=B;
-
   for(int w=0;w<(size/2)*(size-3);++w){
   //for(int w=0;w<sizeEE*sizeE-w;++w){
     //int limit=sizeEE*sizeE-w;
@@ -578,7 +577,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=15;
+    int min=4;int targetN=17;
     //int min=5;int targetN=5;
     //int mask;
     for(int i=min;i<=targetN;i++){
