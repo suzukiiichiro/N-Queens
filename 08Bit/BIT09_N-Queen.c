@@ -480,7 +480,8 @@ void NQueenR(int size)
           }
           //
           //対称解除法
-          int ww=sizeEE*sizeE-1;
+          //int ww=sizeEE*sizeE-1;
+          int ww=idx-1;
           if(((s==(ww-w))&&(n<(ww-e)))||((e==(ww-w))&&(n>(ww-n)))||((n==(ww-w))&&(e>(ww-s)))){ continue; }
           if(s==w){ 
             if((n!=w)||(e!=w)){ 
