@@ -425,7 +425,7 @@ void NQueenR(int size)
           pres[0][idx]=a;
           pres[1][idx]=b;
       	  pres[2][idx]=c;
-      	  if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
+      	  //if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
 	        if(a<size/2){
             wsize++;
       	    if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
@@ -435,17 +435,17 @@ void NQueenR(int size)
       }else{
         pres[0][idx]=a;
         pres[1][idx]=b;
-      	if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
+      	//if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
 	      if(a<size/2){
           wsize++;
-      	  if(DEBUG){ printf("wsize:a:%d,b:%d\n",a,b);	}
+      	  //if(DEBUG){ printf("wsize:a:%d,b:%d\n",a,b);	}
 	      }
       	idx++;
       }
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][wsize  ],(unsigned)pres[1][wsize  ],(unsigned)pres[0][wsize+1],(unsigned)pres[1][wsize+1]);
+  //printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][wsize  ],(unsigned)pres[1][wsize  ],(unsigned)pres[0][wsize+1],(unsigned)pres[1][wsize+1]);
   wB=B;
   int limit;
   for(int w=0;w<wsize;++w){
@@ -453,14 +453,15 @@ void NQueenR(int size)
     B=wB; B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;++i){ B.x[i]=-1; }
     //プログレス
-    printf("\r(%d/%d)",w,wsize); printf("\r"); fflush(stdout);
+    //printf("\r(%d/%d)",w,wsize); printf("\r"); fflush(stdout);
     //上
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
       if(DEBUG){ 
         if(j==0){
-          printf("w:%d x:%d,y:%d\n",w,j,pres[j][w]); print(size,"上");getchar();}
+          printf("wsize:%d w:%d x:%d,y:%d\n",wsize,w,j,pres[j][w]); print(size,"上");getchar();
         }
+      }
     }
     //左２列に置く
     nB=B;
@@ -470,7 +471,6 @@ void NQueenR(int size)
        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
         //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
       } 
-      //
       //下
       eB=B;
       for(int e=w;e<limit;++e){
