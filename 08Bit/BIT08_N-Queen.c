@@ -341,8 +341,8 @@ bool board_placement(int si,int x,int y)
 void NQueenR(int size)
 {
   int depth=2;
-  int DEBUG=false; //ボードレイアウト出力
-  //int DEBUG=true; //ボードレイアウト出力
+  //int DEBUG=false; //ボードレイアウト出力
+  int DEBUG=true; //ボードレイアウト出力
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
@@ -363,7 +363,7 @@ void NQueenR(int size)
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
+  //printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
   //
   //N=5 の場合
   //上２行目にクイーンを配置できるパターン数
@@ -425,7 +425,7 @@ void NQueenR(int size)
   //
   //上２列に置く
   wB=B;
-  for(int w=0;w<(size/2)*(size-3);++w){
+  for(int w=0;w<=(size/2)*(size-3);++w){
   //for(int w=0;w<sizeEE*sizeE-w;++w){
     //int limit=sizeEE*sizeE-w;
     //sizeEE*sizeEは2階層でのidxの数と同じ
@@ -435,7 +435,7 @@ void NQueenR(int size)
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;++i){ B.x[i]=-1; }
     //プログレス
-    printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    //printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //上２列に置く
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
@@ -448,7 +448,7 @@ void NQueenR(int size)
       B=nB;
       for(int j=0;j<depth;j++){
         if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
-        if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
+        //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
       } 
       //
       //下２列に置く
@@ -457,7 +457,7 @@ void NQueenR(int size)
         B=eB;
         for(int j=0;j<depth;j++){
           if(board_placement(size,sizeE-j,sizeE-pres[j][e])==false){ goto label_e; }
-	        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
+	        //if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
         }
         //右２列に置く
         sB=B;
@@ -465,7 +465,7 @@ void NQueenR(int size)
           B=sB;
           for(int j=0;j<depth;j++){
             if(board_placement(size,sizeE-pres[j][s],j)==false){ goto label_s; }
-            if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
           }
           //
           //対称解除法
@@ -581,8 +581,8 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=17;
-    //int min=5;int targetN=5;
+    //int min=4;int targetN=17;
+    int min=5;int targetN=5;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/

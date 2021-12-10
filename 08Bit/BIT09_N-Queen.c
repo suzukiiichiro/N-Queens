@@ -399,8 +399,8 @@ bool board_placement(int si,int x,int y)
 //
 void NQueenR(int size)
 {
-  int depth=3;
-  //int depth=2;
+  //int depth=3;
+  int depth=2;
   //int DEBUG=false; //ボードレイアウト出力
   int DEBUG=true; //ボードレイアウト出力
   //
@@ -458,9 +458,7 @@ void NQueenR(int size)
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
       if(DEBUG){ 
-        if(j==0){
           printf("wsize:%d w:%d x:%d,y:%d\n",wsize,w,j,pres[j][w]); print(size,"上");getchar();
-        }
       }
     }
     //左２列に置く
@@ -469,7 +467,7 @@ void NQueenR(int size)
       B=nB;
       for(int j=0;j<depth;j++){
        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
-        //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
+        if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
       } 
       //下
       eB=B;
