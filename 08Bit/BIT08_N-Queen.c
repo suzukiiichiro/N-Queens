@@ -352,6 +352,7 @@ void NQueenR(int size)
   Board nB; //左側
   Board eB; //下側
   Board sB; //右側
+  bool res;
   //
   for(int a=0;a<size;++a){
     for(int b=0;b<size;++b){
@@ -439,7 +440,7 @@ void NQueenR(int size)
     //上２列に置く
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
-      if(DEBUG){ printf("w:%d x:%d,y:%d\n",w,j,pres[j][w]); print(size,"上");getchar();}
+      if(DEBUG){ printf("w:%d j:%d x:%d,y:%d\n",w,j,j,pres[j][w]); print(size,"上");getchar();}
     }
     //
     //左２列に置く
@@ -447,8 +448,24 @@ void NQueenR(int size)
     for(int n=w;n<limit;++n){
       B=nB;
       for(int j=0;j<depth;j++){
-        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
-        //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
+        res=board_placement(size, pres[j][n], sizeE - j);
+        if (res==true){
+	//
+          if (DEBUG)
+          {
+            printf("w:%d n:%d j:%d x:%d,y:%d\n", w, n,j, pres[j][n], sizeE - j);
+            print(size, "左");
+            getchar();
+          }
+        }else{
+          if (DEBUG)
+          {
+            printf("w:%d n:%d j:%d x:%d,y:%d\n", w, n,j, pres[j][n], sizeE - j);
+	    printf("左クイーンを設置できませんでした\n");
+            getchar();
+          }
+          goto label_n;
+        }
       } 
       //
       //下２列に置く
@@ -456,16 +473,39 @@ void NQueenR(int size)
       for(int e=w;e<limit;++e){
         B=eB;
         for(int j=0;j<depth;j++){
-          if(board_placement(size,sizeE-j,sizeE-pres[j][e])==false){ goto label_e; }
-	        //if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
+          res=board_placement(size, sizeE - j, sizeE - pres[j][e]);
+          if(res==true){
+            if (DEBUG)
+            {
+             //if(DEBUG){ printf("w:%d n:%d e:%d j:%d x:%d,y:%d\n",w,n,e,j,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
+            }
+          }else{
+            if (DEBUG)
+            {
+             //printf("w:%d n:%d e:%d j:%d x:%d,y:%d\n",w,n,e,j,sizeE-j,sizeE-pres[1][e]);
+	     //printf("下クイーンを設置できませんでした\n");
+             //getchar();
+            }
+            goto label_e;
+          }
         }
         //右２列に置く
         sB=B;
         for(int s=w;s<limit;++s){
           B=sB;
           for(int j=0;j<depth;j++){
-            if(board_placement(size,sizeE-pres[j][s],j)==false){ goto label_s; }
-            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+            res=board_placement(size, sizeE - pres[j][s], j);
+	    if(res==true){
+            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+	    }else{
+             if (DEBUG)
+             {
+              //printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);
+	      //printf("右クイーンを設置できませんでした\n");
+              //getchar();
+             }
+             goto label_s;
+            }
           }
           //
           //対称解除法
