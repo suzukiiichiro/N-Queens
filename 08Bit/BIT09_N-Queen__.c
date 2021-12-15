@@ -4,11 +4,11 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-８．動的分割統治法 ( 深さ２の場合）
+９．動的分割統治法（深さ３の場合）
 
 
  コンパイルと実行
- $ gcc -O3 BIT08_N-Queen.cu && ./a.out [-c|-r|-g|-s]
+ $ gcc -O3 BIT09_N-Queen.cu && ./a.out [-c|-r|-g|-s]
                     -c:cpu 
                     -r cpu再帰 
                     -g GPU 
@@ -23,7 +23,7 @@
     　 ７．対称解除法
     　 ８．動的分割統治法（深さ２の場合）
     　 ９．動的分割統治法（深さ３の場合）
-    １０ ．クイーンの位置による分岐BOUND1
+    １０．クイーンの位置による分岐BOUND1
     １０．クイーンの位置による分岐BOUND1,2
     １１．枝刈り
     １２．最適化
@@ -338,16 +338,77 @@ bool board_placement(int si,int x,int y)
   return true;
 }
 //
+//
+//N=5 の場合
+//上２行目にクイーンを配置できるパターン数
+//for(int w=0;w<=(size/2)*(size-3);w++){
+// (5/2)*(5-3)=2*2=4
+// 1行目は0,1で,2行目0,1,2,3,4で利き筋を
+// 考慮すると0から4までなので５パターン
+//
+// 4 3 2 1 0
+// ----------
+// x x x 0 0 |0
+// 0 0 0 0 0 |1 ←　５パターン
+//
+//N=5 の場合
+//ミラーにより、後で２倍する関係で、
+//１行目は半分しかクイーンを置かない
+// (5-2)*(5-1)-w
+//N=5 の場合は、１行目は右から１番目、２番目に
+//だけクイーンを置く
+//
+//クイーンを１行目右端に置く場合
+//２行目には右から３、４、５番目に置ける
+//(0,0:1,2)(0,0:1,3)(0,0:1,4)
+//
+// 1パターン
+// 4 3 2 1 0
+// ----------
+// x x x x 0 |0
+// x x 0 x x |1
+//
+// 2パターン
+// 4 3 2 1 0
+// ----------
+// x x x x 0 |0
+// x 0 x x x |1
+//
+// 3パターン
+// 4 3 2 1 0
+// ----------
+// x x x x 0 |0
+// 0 x x x x |1
+//
+//クイーンを１行目右から２番目に置く場合
+//２行目には右から４、５番目に置ける
+//(0,1:1,3)(0,1:1,4)
+//
+// 5パターン
+// 4 3 2 1 0
+// ----------
+// x x x 0 x |0
+// x 0 x x x |1
+//
+//
+// 5パターン
+// 4 3 2 1 0
+// ----------
+// x x x 0 x |0
+// 0 x x x x |1
+//
 void NQueenR(int size)
 {
-  int depth=2;
+  int depth=3;
   int DEBUG=false; //ボードレイアウト出力
   //int DEBUG=true; //ボードレイアウト出力
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
-  int pres[depth][930];
+  //int pres[2][930];
+  int pres[depth][2300];
   int idx=0;
+  int wsize=0;
   Board wB; //上側
   Board nB; //左側
   Board eB; //下側
@@ -356,108 +417,56 @@ void NQueenR(int size)
   for(int a=0;a<size;++a){
     for(int b=0;b<size;++b){
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
-      pres[0][idx]=a;
-      pres[1][idx]=b;
-      if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
-      idx++;
+      for(int c=0;c<size;++c){
+        if(((b>=c)&&(b-c)<=1)||((c>b)&&(c-b)<=1)){ continue; }     
+        if(((a>=c)&&(a-c)==2)||((c>a)&&(c-a)==2)||a==c){ continue; }     
+        pres[0][idx]=a;
+        pres[1][idx]=b;
+        pres[2][idx]=c;
+        if(DEBUG){ printf("a:%d,b:%d,c:%d\n",a,b,c);	}
+        if(a<size/2){
+          wsize++;
+          if(DEBUG){ printf("wsize:a:%d,b:%d,c:%d\n",a,b,c);	}
+        }
+        idx++;
+      }
     }
   }
   //プログレス
-  //printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
-  //
-  //N=5 の場合
-  //上２行目にクイーンを配置できるパターン数
-  //for(int w=0;w<=(size/2)*(size-3);w++){
-  // (5/2)*(5-3)=2*2=4
-  // 1行目は0,1で,2行目0,1,2,3,4で利き筋を
-  // 考慮すると0から4までなので５パターン
-  //
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 0 |0
-  // 0 0 0 0 0 |1 ←　５パターン
-  //
-  //N=5 の場合
-  //ミラーにより、後で２倍する関係で、
-  //１行目は半分しかクイーンを置かない
-  // (5-2)*(5-1)-w
-  //N=5 の場合は、１行目は右から１番目、２番目に
-  //だけクイーンを置く
-  //
-  //クイーンを１行目右端に置く場合
-  //２行目には右から３、４、５番目に置ける
-  //(0,0:1,2)(0,0:1,3)(0,0:1,4)
-  //
-  // 1パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // x x 0 x x |1
-  //
-  // 2パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // x 0 x x x |1
-  //
-  // 3パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // 0 x x x x |1
-  //
-  //クイーンを１行目右から２番目に置く場合
-  //２行目には右から４、５番目に置ける
-  //(0,1:1,3)(0,1:1,4)
-  //
-  // 5パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 x |0
-  // x 0 x x x |1
-  //
-  //
-  // 5パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 x |0
-  // 0 x x x x |1
-  //
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][wsize  ],(unsigned)pres[1][wsize  ],(unsigned)pres[0][wsize+1],(unsigned)pres[1][wsize+1]);
   //上２列に置く
   wB=B;
-  for(int w=0;w<=(size/2)*(size-3);++w){
   //for(int w=0;w<sizeEE*sizeE-w;++w){
+  for(int w=0;w<wsize;++w){
     //int limit=sizeEE*sizeE-w;
-    //sizeEE*sizeEは2階層でのidxの数と同じ
-    int limit=idx-w;//limitは2,3ともにidxの数だった
+    int limit=idx-w;
     B=wB;
     //初期化
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;++i){ B.x[i]=-1; }
     //プログレス
     //printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    printf("\r(%d/%d)",w,wsize); printf("\r"); fflush(stdout);
     //上２列に置く
     for(int j=0;j<depth;j++){
       board_placement(size,j,pres[j][w]);
       if(DEBUG){ printf("w:%d x:%d,y:%d\n",w,j,pres[j][w]); print(size,"上");getchar();}
     }
-    //
     //左２列に置く
     nB=B;
     for(int n=w;n<limit;++n){
       B=nB;
       for(int j=0;j<depth;j++){
-        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
-        //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
+       if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
+        if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
       } 
-      //
       //下２列に置く
       eB=B;
       for(int e=w;e<limit;++e){
         B=eB;
         for(int j=0;j<depth;j++){
           if(board_placement(size,sizeE-j,sizeE-pres[j][e])==false){ goto label_e; }
-	        //if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
+	        if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
         }
         //右２列に置く
         sB=B;
@@ -465,12 +474,11 @@ void NQueenR(int size)
           B=sB;
           for(int j=0;j<depth;j++){
             if(board_placement(size,sizeE-pres[j][s],j)==false){ goto label_s; }
-            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+            if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
           }
           //
           //対称解除法
           //int ww=sizeEE*sizeE-1;
-          //sizeEE*sizeEは2階層でのidxの数と同じ
           int ww=idx-1;
           if(((s==(ww-w))&&(n<(ww-e)))||((e==(ww-w))&&(n>(ww-n)))||((n==(ww-w))&&(e>(ww-s)))){ continue; }
           if(s==w){ 
@@ -581,8 +589,8 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    //int min=4;int targetN=17;
-    int min=5;int targetN=5;
+    int min=4;int targetN=15;
+    //int min=6;int targetN=6;
     //int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/

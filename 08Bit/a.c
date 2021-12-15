@@ -4,7 +4,7 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-８．動的分割統治法 ( 深さ２の場合）
+８．動的分割統治法
 
 
  コンパイルと実行
@@ -21,9 +21,8 @@
     　 ５．：
     　 ６．ミラー
     　 ７．対称解除法
-    　 ８．動的分割統治法（深さ２の場合）
-    　 ９．動的分割統治法（深さ３の場合）
-    １０ ．クイーンの位置による分岐BOUND1
+    　 ８．動的分割統治法
+    　 ９．クイーンの位置による分岐BOUND1
     １０．クイーンの位置による分岐BOUND1,2
     １１．枝刈り
     １２．最適化
@@ -148,25 +147,8 @@ long pre[3];
 //変数宣言
 long TOTAL=0; //GPU,CPUで使用
 long UNIQUE=0;//GPU,CPUで使用
+int DEBUG=false; //ボードレイアウト出力
 int COUNT=0; //ボードレイアウト出力
-//出力
-void dec2bin(int size,int dec){
-  int i, b[32];
-  for (i = 0; i < size; i++) {
-    b[i] = dec % 2;
-    dec = dec / 2;
-  }
-  while (i > 0) printf("%1d",  b[--i]);
-}
-//
-void print(int size,char* c){
-  printf("%d: %s\n",++COUNT,c);
-  for(int j=0;j<size;j++){
-    dec2bin(size,B.y[j]);
-    printf("\n");
-  }
-  printf("\n");
-}
 //
 void TimeFormat(clock_t utime,char *form)
 {
@@ -191,8 +173,6 @@ void TimeFormat(clock_t utime,char *form)
 //
 long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 {
-  int DEBUG=false;
-  //
   // Placement Complete?
   //printf("countCompletions_start\n");
   //printf("bv:%d\n",bv);
@@ -246,8 +226,6 @@ long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 //
 void process(int si,Board B,int sym)
 {
-  int DEBUG=false;
-  //
   //printf("process\n");
   pre[sym]++;
   //printf("N:%d\n",si);
@@ -273,9 +251,6 @@ void process(int si,Board B,int sym)
 }
 bool board_placement(int si,int x,int y)
 {
-  int DEBUG=false;
-  //
-  //int DEBUG=true;
   //board_placementの利き筋判定
   //left
   //si-1-x+y 何行目に置こうとこの式で利き筋判定できる
@@ -336,319 +311,6 @@ bool board_placement(int si,int x,int y)
   //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
   //printf("valid_true\n");
   return true;
-}
-//
-void NQueenR(int size)
-{
-  int depth=2;
-  int DEBUG=false; //ボードレイアウト出力
-  //int DEBUG=true; //ボードレイアウト出力
-  //
-  int sizeE=size-1;
-  int sizeEE=sizeE-1;
-  int pres[depth][930];
-  int idx=0;
-  Board wB; //上側
-  Board nB; //左側
-  Board eB; //下側
-  Board sB; //右側
-  //
-  for(int a=0;a<size;++a){
-    for(int b=0;b<size;++b){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
-      pres[0][idx]=a;
-      pres[1][idx]=b;
-      if(DEBUG){ printf("a:%d,b:%d\n",a,b);	}
-      idx++;
-    }
-  }
-  //プログレス
-  //printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres[0][(size/2)*(size-3)  ],(unsigned)pres[1][(size/2)*(size-3)  ],(unsigned)pres[0][(size/2)*(size-3)+1],(unsigned)pres[1][(size/2)*(size-3)+1]);
-  //
-  //N=5 の場合
-  //上２行目にクイーンを配置できるパターン数
-  //for(int w=0;w<=(size/2)*(size-3);w++){
-  // (5/2)*(5-3)=2*2=4
-  // 1行目は0,1で,2行目0,1,2,3,4で利き筋を
-  // 考慮すると0から4までなので５パターン
-  //
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 0 |0
-  // 0 0 0 0 0 |1 ←　５パターン
-  //
-  //N=5 の場合
-  //ミラーにより、後で２倍する関係で、
-  //１行目は半分しかクイーンを置かない
-  // (5-2)*(5-1)-w
-  //N=5 の場合は、１行目は右から１番目、２番目に
-  //だけクイーンを置く
-  //
-  //クイーンを１行目右端に置く場合
-  //２行目には右から３、４、５番目に置ける
-  //(0,0:1,2)(0,0:1,3)(0,0:1,4)
-  //
-  // 1パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // x x 0 x x |1
-  //
-  // 2パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // x 0 x x x |1
-  //
-  // 3パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x x 0 |0
-  // 0 x x x x |1
-  //
-  //クイーンを１行目右から２番目に置く場合
-  //２行目には右から４、５番目に置ける
-  //(0,1:1,3)(0,1:1,4)
-  //
-  // 5パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 x |0
-  // x 0 x x x |1
-  //
-  //
-  // 5パターン
-  // 4 3 2 1 0
-  // ----------
-  // x x x 0 x |0
-  // 0 x x x x |1
-  //
-  //上２列に置く
-  wB=B;
-  for(int w=0;w<=(size/2)*(size-3);++w){
-  //for(int w=0;w<sizeEE*sizeE-w;++w){
-    //int limit=sizeEE*sizeE-w;
-    //sizeEE*sizeEは2階層でのidxの数と同じ
-    int limit=idx-w;//limitは2,3ともにidxの数だった
-    B=wB;
-    //初期化
-    B.bv=B.down=B.left=B.right=0;
-    for(int i=0;i<size;++i){ B.x[i]=-1; }
-    //プログレス
-    //printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
-    //上２列に置く
-    for(int j=0;j<depth;j++){
-      board_placement(size,j,pres[j][w]);
-      if(DEBUG){ printf("w:%d x:%d,y:%d\n",w,j,pres[j][w]); print(size,"上");getchar();}
-    }
-    //
-    //左２列に置く
-    nB=B;
-    for(int n=w;n<limit;++n){
-      B=nB;
-      for(int j=0;j<depth;j++){
-        if(board_placement(size,pres[j][n],sizeE-j)==false){ goto label_n; }
-        //if(DEBUG){ printf("w:%d n:%d x:%d,y:%d\n",w,n,pres[j][n],sizeE-j); print(size,"左");getchar();}
-      } 
-      //
-      //下２列に置く
-      eB=B;
-      for(int e=w;e<limit;++e){
-        B=eB;
-        for(int j=0;j<depth;j++){
-          if(board_placement(size,sizeE-j,sizeE-pres[j][e])==false){ goto label_e; }
-	        //if(DEBUG){ printf("w:%d n:%d e:%d x:%d,y:%d\n",w,n,e,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
-        }
-        //右２列に置く
-        sB=B;
-        for(int s=w;s<limit;++s){
-          B=sB;
-          for(int j=0;j<depth;j++){
-            if(board_placement(size,sizeE-pres[j][s],j)==false){ goto label_s; }
-            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d x:%d,y:%d\n",w,n,e,s,sizeE-pres[j][s],j);print(size,"右");getchar(); }
-          }
-          //
-          //対称解除法
-          //int ww=sizeEE*sizeE-1;
-          //sizeEE*sizeEは2階層でのidxの数と同じ
-          int ww=idx-1;
-          if(((s==(ww-w))&&(n<(ww-e)))||((e==(ww-w))&&(n>(ww-n)))||((n==(ww-w))&&(e>(ww-s)))){ continue; }
-          if(s==w){ 
-            if((n!=w)||(e!=w)){ 
-              //右回転で同じ場合w=n=e=sでなければ値が小>さいのでskip
-              //w:13,n:24,e:22,s:13 <--こちらをスキップ
-              //184: 配置
-              //00000100
-              //00100000
-              //00000010
-              //00000000
-              //10000000
-              //00000001
-              //01000000
-              //00001000
-              //w:13,n:13,e:24,s:22<--こちらを採用
-              //183: 配置
-              //00000100
-              //00100000
-              //10000000
-              //00000001
-              //00000000
-              //01000000
-              //00000010
-              //00001000
-              continue; 
-            }
-            process(size,B,COUNT2); continue;
-          }
-          if((e==w)&&(n>=s)){
-            if(n>s){ 
-              //e==wは180度回転した時に同じ
-              //n>s とすることで　n25 s15 をスキップしてn15 s25を採用する
-              //(e==w)&&(n>=s)
-              //w:6,n:25,e:6,s:15
-              //104: 配置
-              //00000010
-              //00001000
-              //00000000
-              //00000000
-              //10000000
-              //00000001
-              //00010000
-              //01000000
-              //
-              // w:6,n:15,e:6,s:25
-              //89: 配置
-              //00000010
-              //00001000
-              //10000000
-              //00000001
-              //00000000
-              //00000000
-              //00010000
-              continue; 
-            } 
-            process(size,B,COUNT4); continue; 
-          }
-          process(size,B,COUNT8); continue;
-         label_s:{}
-        }
-       label_e:{}
-      }    
-     label_n:{}
-    }
-  }
-  UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
-  TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
-}
-//
-//メインメソッド
-int main(int argc,char** argv)
-{
-  bool cpu=false,cpur=false,gpu=false,sgpu=false;
-  int argstart=1;
-  //int steps=24576;
-
-  /** パラメータの処理 */
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
-    else
-      cpur=true;
-    argstart=2;
-  }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g|-r|-s]\n",argv[0]);
-    printf("  -c: CPU only\n");
-    printf("  -r: CPUR only\n");
-    printf("  -g: GPU only\n");
-    printf("  -s: SGPU only\n");
-    printf("Default to 8 queen\n");
-  }
-  /** 出力と実行 */
-  if(cpu){
-    printf("\n\n８．CPU 動的分割統治法\n");
-  }else if(cpur){
-    printf("\n\n８．CPUR 動的分割統治法\n");
-  }else if(gpu){
-    printf("\n\n８．GPU 動的分割統治法\n");
-  }else if(sgpu){
-    printf("\n\n８．SGPU 動的分割統治法\n");
-  }
-  if(cpu||cpur){
-    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    clock_t st;           //速度計測用
-    char t[20];           //hh:mm:ss.msを格納
-    //int min=5; int targetN=17;
-    //int min=4;int targetN=17;
-    int min=5;int targetN=5;
-    //int mask;
-    for(int i=min;i<=targetN;i++){
-      /***07 symmetryOps CPU,GPU同一化*********************/
-      TOTAL=0; UNIQUE=0;
-      //COUNT2=COUNT4=COUNT8=0;
-      for(int j=0;j<=2;j++){
-        pre[j]=0;
-        cnt[j]=0;
-      }
-      /************************/
-      //mask=(1<<i)-1;
-      st=clock();
-      //
-      //【通常版】
-      //if(cpur){ _NQueenR(i,mask,0,0,0,0); }
-      //CPUR
-      if(cpur){ 
-        NQueenR(i);
-        //printf("通常版\n");
-      }
-      //CPU
-      if(cpu){ 
-        //NQueen(i,mask); 
-        printf("準備中\n");
-      }
-      //
-      TimeFormat(clock()-st,t); 
-      /***07 symmetryOps CPU,GPU同一化*********************/
-      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
-      /************************/
-    }
-  }
-  if(gpu||sgpu){
-    int min=5;int targetN=17;
-    //int min=8;int targetN=8;
-
-    struct timeval t0;struct timeval t1;
-    int ss;int ms;int dd;
-    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-    for(int i=min;i<=targetN;i++){
-      gettimeofday(&t0,NULL);   // 計測開始
-      if(gpu){
-        TOTAL=0;
-        UNIQUE=0;
-        //NQueenG(i,steps);
-      }else if(sgpu){
-        printf("準備中");
-        //TOTAL=sgpu_solve_nqueen_cuda(i,steps);
-      }
-      gettimeofday(&t1,NULL);   // 計測終了
-      if (t1.tv_usec<t0.tv_usec) {
-        dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
-        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-      } else {
-        dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
-        ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-      }
-      int hh=ss/3600;
-      int mm=(ss-hh*3600)/60;
-      ss%=60;
-      printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-    }
-  }
-  return 0;
 }
 //CPUR 再帰版 ロジックメソッド
 void _NQueenR(int size)
@@ -881,4 +543,280 @@ void _NQueenR(int size)
   //printf("NONE_2:%d\n",cnt[NONE]);
   UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
   TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
+}
+//出力
+void dec2bin(int size,int dec){
+  int i, b[32];
+  for (i = 0; i < size; i++) {
+    b[i] = dec % 2;
+    dec = dec / 2;
+  }
+  while (i > 0) printf("%1d",  b[--i]);
+}
+void print(int size,char* c){
+  printf("%d: %s\n",++COUNT,c);
+  for(int j=0;j<size;j++){
+    dec2bin(size,B.y[j]);
+    printf("\n");
+  }
+  printf("\n");
+}
+//
+void NQueenR(int size)
+{
+  int pres_a[930];
+  int pres_b[930];
+  int idx=0;
+  for(int a=0;a<size;a++){
+    for(int b=0;b<size;b++){
+      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+        continue;
+      }     
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      idx++;
+    }
+  }
+  printf("idx:%d\n",idx);
+  Board wB=B;
+  
+  //for(int w=0;w<=(size/2)*(size-3);w++){
+  for(int w=0;w<=(size-2)*(size-1);w++){
+  printf("s:%d\n",w);
+  //for(int w=0;w<size*size;w++){
+    //
+    //N=5 の場合
+    //for(int w=0;w<=(size/2)*(size-3);w++){
+    //
+    //上２行にクイーンを配置できるパターン数
+    //
+    // 4 3 2 1 0
+    // ----------
+    // x x x 0 0 |0
+    // 0 0 0 0 0 |1
+    //
+    //xxx00
+    //00000
+    //
+    // N=5 の場合
+    //(5/2)*(5-3)=4
+    //1行目は0,1で,2行目0,1,2,3,4で利き筋を
+    //考慮すると0から4までなので５パターン
+    //
+    //ミラーにより、後で２倍する関係で、
+    // １行目は半分しかクイーンを置かない
+    //N=5 の場合は、１行目は右から１番目、２番目に
+    //だけクイーンを置く
+    //
+    //クイーンを１行目右端に置く場合
+    //２行目には右から３、４、５番目に置ける
+    //(0,0:1,2)(0,0:1,3)(0,0:1,4)
+    //
+    // 1パターン
+    // 4 3 2 1 0
+    // ----------
+    // x x x x 0 |0
+    // x x 0 x x |1
+    //
+    // 2パターン
+    // 4 3 2 1 0
+    // ----------
+    // x x x x 0 |0
+    // x 0 x x x |1
+    //
+    // 3パターン
+    // 4 3 2 1 0
+    // ----------
+    // x x x x 0 |0
+    // 0 x x x x |1
+    //
+    //クイーンを１行目右から２番目に置く場合
+    //２行目には右から４、５番目に置ける
+    //(0,1:1,3)(0,1:1,4)
+    //
+    // 5パターン
+    // 4 3 2 1 0
+    // ----------
+    // x x x 0 x |0
+    // x 0 x x x |1
+    //
+    //
+    // 5パターン
+    // 4 3 2 1 0
+    // ----------
+    // x x x 0 x |0
+    // 0 x x x x |1
+    //
+    //
+    //
+    B=wB;
+    B.bv=B.down=B.left=B.right=0;
+    for(int i=0;i<size;i++){
+      B.x[i]=-1;
+    }
+    //上２列に置く
+    board_placement(size,0,pres_a[w]);
+    if(DEBUG){print(size,"上１列");}
+    board_placement(size,1,pres_b[w]);
+    if(DEBUG){print(size,"上２列");}
+    Board nB=B;
+    int lsize=(size-2)*(size-1)-w;
+    //int lsize=(size-2)*(size-1);
+    for(int n=w;n<lsize;n++){
+    //for(int n=0;n<lsize;n++){
+      //左２列に置く
+      B=nB;
+      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(DEBUG){print(size,"左１列");}
+      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      if(DEBUG){print(size,"左２列");}
+      Board eB=B;
+      for(int e=w;e<lsize;e++){
+      //for(int e=0;e<lsize;e++){
+        //下２行に置く
+        B=eB;
+        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(DEBUG){print(size,"下１列");}
+        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        if(DEBUG){print(size,"下２列");}
+        //右２列に置く
+        Board sB=B;
+        for(int s=w;s<lsize;s++){
+        //for(int s=0;s<lsize;s++){
+          B=sB;
+          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(DEBUG){print(size,"右１列");}
+          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          if(DEBUG){print(size,"右２列");}
+          printf("%d,%d,%d,%d\n",w,n,e,s);
+          print(size,"配置");
+          //対称解除法
+          int ww=(size-2)*(size-1)-1-w;
+          int w2=(size-2)*(size-1)-1;
+          if((s==ww)&&(n<(w2-e))){ continue; }
+          if((e==ww)&&(n>(w2-n))){ continue; }
+          if((n==ww)&&(e>(w2-s))){ continue; }
+          if(s==w){ if((n!=w)||(e!=w)){ continue; }
+            process(size,B,COUNT2); continue;
+          }
+          if((e==w)&&(n>=s)){
+            if(n>s){ continue; } 
+            process(size,B,COUNT4); continue; 
+          }
+          process(size,B,COUNT8); continue;
+        }
+      }    
+    }
+  }
+  UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
+  TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
+}
+//メインメソッド
+int main(int argc,char** argv)
+{
+  bool cpu=false,cpur=false,gpu=false,sgpu=false;
+  int argstart=1;
+  //int steps=24576;
+
+  /** パラメータの処理 */
+  if(argc>=2&&argv[1][0]=='-'){
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
+    else
+      cpur=true;
+    argstart=2;
+  }
+  if(argc<argstart){
+    printf("Usage: %s [-c|-g|-r|-s]\n",argv[0]);
+    printf("  -c: CPU only\n");
+    printf("  -r: CPUR only\n");
+    printf("  -g: GPU only\n");
+    printf("  -s: SGPU only\n");
+    printf("Default to 8 queen\n");
+  }
+  /** 出力と実行 */
+  if(cpu){
+    printf("\n\n８．CPU 動的分割統治法\n");
+  }else if(cpur){
+    printf("\n\n８．CPUR 動的分割統治法\n");
+  }else if(gpu){
+    printf("\n\n８．GPU 動的分割統治法\n");
+  }else if(sgpu){
+    printf("\n\n８．SGPU 動的分割統治法\n");
+  }
+  if(cpu||cpur){
+    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+    clock_t st;           //速度計測用
+    char t[20];           //hh:mm:ss.msを格納
+    //int min=5; int targetN=17;
+    //int min=4;int targetN=17;
+    int min=6;int targetN=6;
+    //int mask;
+    for(int i=min;i<=targetN;i++){
+      /***07 symmetryOps CPU,GPU同一化*********************/
+      TOTAL=0; UNIQUE=0;
+      //COUNT2=COUNT4=COUNT8=0;
+      for(int j=0;j<=2;j++){
+        pre[j]=0;
+        cnt[j]=0;
+      }
+      /************************/
+      //mask=(1<<i)-1;
+      st=clock();
+      //
+      //【通常版】
+      //if(cpur){ _NQueenR(i,mask,0,0,0,0); }
+      //CPUR
+      if(cpur){ 
+        NQueenR(i);
+        //printf("通常版\n");
+      }
+      //CPU
+      if(cpu){ 
+        //NQueen(i,mask); 
+        printf("準備中\n");
+      }
+      //
+      TimeFormat(clock()-st,t); 
+      /***07 symmetryOps CPU,GPU同一化*********************/
+      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+      /************************/
+    }
+  }
+  if(gpu||sgpu){
+    int min=5;int targetN=17;
+    //int min=8;int targetN=8;
+
+    struct timeval t0;struct timeval t1;
+    int ss;int ms;int dd;
+    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+    for(int i=min;i<=targetN;i++){
+      gettimeofday(&t0,NULL);   // 計測開始
+      if(gpu){
+        TOTAL=0;
+        UNIQUE=0;
+        //NQueenG(i,steps);
+      }else if(sgpu){
+        printf("準備中");
+        //TOTAL=sgpu_solve_nqueen_cuda(i,steps);
+      }
+      gettimeofday(&t1,NULL);   // 計測終了
+      if (t1.tv_usec<t0.tv_usec) {
+        dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
+        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+      } else {
+        dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
+        ss=(t1.tv_sec-t0.tv_sec)%86400;
+        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+      }
+      int hh=ss/3600;
+      int mm=(ss-hh*3600)/60;
+      ss%=60;
+      printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    }
+  }
+  return 0;
 }
