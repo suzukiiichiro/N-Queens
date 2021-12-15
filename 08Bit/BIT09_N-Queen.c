@@ -768,9 +768,9 @@ void NQueenR(int size)
 	    }else{
              if (DEBUG)
              {
-              printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);
-	      printf("右クイーンを設置できませんでした\n");
-              getchar();
+              //printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);
+	      //printf("右クイーンを設置できませんでした\n");
+              //getchar();
              }
              goto label_s;
             }
