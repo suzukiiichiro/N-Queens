@@ -341,8 +341,8 @@ bool board_placement(int si,int x,int y)
 void NQueenR(int size)
 {
   int depth=2;
-  int DEBUG=false; //ボードレイアウト出力
-  //int DEBUG=true; //ボードレイアウト出力
+  //int DEBUG=false; //ボードレイアウト出力
+  int DEBUG=true; //ボードレイアウト出力
   //
   int sizeE=size-1;
   int sizeEE=sizeE-1;
@@ -439,8 +439,15 @@ void NQueenR(int size)
     //printf("\r(%d/%d)",w,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //上２列に置く
     for(int j=0;j<depth;j++){
-      board_placement(size,j,pres[j][w]);
-      if(DEBUG){ printf("w:%d j:%d x:%d,y:%d\n",w,j,j,pres[j][w]); print(size,"上");getchar();}
+      res=board_placement(size,j,pres[j][w]);
+      //board_placement(size,j,pres[j][w]);
+      if(res==true){
+      //if(res==true||res==false||res==""){
+        if(DEBUG){ printf("w:%d j:%d x:%d,y:%d\n",w,j,j,pres[j][w]); print(size,"上");getchar();}
+      }else{
+        if(DEBUG){ printf("w:%d j:%d x:%d,y:%d\n",w,j,j,pres[j][w]); print(size,"上");getchar();}
+	      printf("上:クイーンを設置できませんでした\n"); print(size,"上"); getchar(); }
+      }
     }
     //
     //左２列に置く
@@ -448,22 +455,12 @@ void NQueenR(int size)
     for(int n=w;n<limit;++n){
       B=nB;
       for(int j=0;j<depth;j++){
-        res=board_placement(size, pres[j][n], sizeE - j);
-        if (res==true){
-	//
-          if (DEBUG)
-          {
-            printf("w:%d n:%d j:%d x:%d,y:%d\n", w, n,j, pres[j][n], sizeE - j);
-            print(size, "左");
-            getchar();
-          }
+        res=board_placement(size,pres[j][n],sizeE-j);
+        if(res==true){
+          if(DEBUG){ printf("w:%d n:%d j:%d x:%d,y:%d\n",w,n,j,pres[j][n],sizeE-j); print(size,"左"); getchar(); }
         }else{
-          if (DEBUG)
-          {
-            printf("w:%d n:%d j:%d x:%d,y:%d\n", w, n,j, pres[j][n], sizeE - j);
-	    printf("左クイーンを設置できませんでした\n");
-            getchar();
-          }
+          if(DEBUG){ printf("w:%d n:%d j:%d x:%d,y:%d\n",w,n,j,pres[j][n],sizeE-j);
+	        printf("左:クイーンを設置できませんでした\n"); print(size,"左"); getchar(); }
           goto label_n;
         }
       } 
@@ -473,15 +470,13 @@ void NQueenR(int size)
       for(int e=w;e<limit;++e){
         B=eB;
         for(int j=0;j<depth;j++){
-          res=board_placement(size, sizeE - j, sizeE - pres[j][e]);
+          res=board_placement(size,sizeE-j,sizeE-pres[j][e]);
           if(res==true){
-            if (DEBUG)
-            {
+            if(DEBUG){
              //if(DEBUG){ printf("w:%d n:%d e:%d j:%d x:%d,y:%d\n",w,n,e,j,sizeE-j,sizeE-pres[1][e]); print(size,"下");getchar();}
             }
           }else{
-            if (DEBUG)
-            {
+            if(DEBUG){
              //printf("w:%d n:%d e:%d j:%d x:%d,y:%d\n",w,n,e,j,sizeE-j,sizeE-pres[1][e]);
 	     //printf("下クイーンを設置できませんでした\n");
              //getchar();
@@ -494,12 +489,11 @@ void NQueenR(int size)
         for(int s=w;s<limit;++s){
           B=sB;
           for(int j=0;j<depth;j++){
-            res=board_placement(size, sizeE - pres[j][s], j);
-	    if(res==true){
-            //if(DEBUG){ printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);print(size,"右");getchar(); }
-	    }else{
-             if (DEBUG)
-             {
+            res=board_placement(size,sizeE-pres[j][s],j);
+            if(res==true){
+              //if(DEBUG){ printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);print(size,"右");getchar(); }
+            }else{
+             if(DEBUG){
               //printf("w:%d n:%d e:%d s:%d j:%d x:%d,y:%d\n",w,n,e,s,j,sizeE-pres[j][s],j);
 	      //printf("右クイーンを設置できませんでした\n");
               //getchar();

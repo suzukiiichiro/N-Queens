@@ -4,11 +4,11 @@
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
 
-１．ブルートフォース
+２．配置フラグ
 
 
  コンパイルと実行
- $ gcc -O3 BIT01_N-Queen.c && ./a.out [-c|-r] 
+ $ gcc -O3 BIT02_N-Queen.c && ./a.out [-c|-r] 
                     -c:cpu 
                     -r cpu再帰 
 
@@ -23,12 +23,27 @@
 //変数宣言
 int aBoard[MAX]; 	//版の配列
 int COUNT=0;		//カウント用
-//巻数宣言
-void output(int size);
-void NQueen(int size,int row);
-void NQueenR(int size,int row);
-//出力
-void output(int size){
+//関数宣言
+typedef struct {
+	int left, down, right, bitmap, bit;
+} rec;
+//
+void output(int size,rec *d);
+void outputR(int size);
+void NQueen(int size,int row,int down);
+void NQueenR(int size,int row,int down);
+//非再帰用出力
+void output(int size,rec *d){
+	printf("pattern %d\n", ++COUNT);
+	for(int i=0;i<size;i++){
+		for(int j=0;j<size;j++){
+			putchar(d[i].bit&1<<j?'Q':'*');
+		}
+		putchar('\n');
+	}
+}
+//再帰用出力
+void outputR(int size){
 	printf("pattern %d\n", ++COUNT);
 	for(int i=0;i<size;i++){
 		for(int j=0;j<size;j++){
@@ -38,39 +53,38 @@ void output(int size){
 	}
 }
 //CPU
-void NQueen(int size,int row){
-  bool matched;
-  while(row>=0){
-    matched=false;
-    for(int col=aBoard[row]+1;col<size;col++){
-      aBoard[row]=col;      //Qを配置
-      matched=true;
-      break;
-    }
-    if(matched){
-      row++;
-      if(row==size){
-        output(size);
-        row--;
-      }
-    }else{
-      if(aBoard[row]!=-1){
-        aBoard[row]=-1;
-      }
-      row--;
-    }
-  }
-}
-//CPUR 
-void NQueenR(int size,int row){
-	if(row==size){
-		output(size);
-	}else{
-		for(int col=aBoard[row]+1;col<size;col++){
-			aBoard[row]=col;	//Ｑを配置
-			NQueenR(size,row+1);
-			aBoard[row]=-1;		//空き地に戻す
+void NQueen(int size,int row,int down){
+	int MASK=((1<<size)-1);
+	rec d[size];
+	rec *p=d;
+    p->down=0;
+    p->bit=0;
+	p->bitmap=MASK;
+	while(1){
+		if(p->bitmap){
+			p->bit=-p->bitmap&p->bitmap;
+			p->bitmap&=~p->bit;
+			if (p-d<size-1) {
+				rec*p0=p++;
+				p->down=p0->down|p0->bit;
+				p->bitmap=~(p->down)&MASK;
+			}
+			else output(size,d);
 		}
+		else if (--p<d) return;
+	}
+}
+//CPUR
+void NQueenR(int size,int row,int down) {
+	int bit,bitmap;
+	int MASK=((1<<size)-1);
+	int sizeE=size-1;
+	for(bitmap=~(down)&MASK;bitmap;bitmap&=~bit){
+		aBoard[row]=bit=-bitmap&bitmap;
+		if(row<sizeE){
+			NQueenR(size,row+1,bit|down);
+		}
+		else outputR(size);
 	}
 }
 //メイン
@@ -92,8 +106,8 @@ int main(int argc,char** argv){
   // aBoard配列の初期化
   for(int i=0;i<size;i++){ aBoard[i]=-1; }
   /**  非再帰 */
-  if(cpu){ NQueen(size,0); }
+  if(cpu){ NQueen(size,0,0); }
   /**  再帰 */
-  if(cpur){ NQueenR(size,0); }
+  if(cpur){ NQueenR(size,0,0); }
   return 0;
 }
