@@ -25,7 +25,7 @@ long long nqueen(int depth) {
 			else n += 1 + (!(depth & 1) || d->t);
 		}
 		else if (--p < d) return n;
-		printf("%d %d %d %d %d\n", p - d, d[0].t, d[1].t, d[2].t, d[3].t);
+		printf("%ld %ld %ld %ld %ld\n", p - d, d[0].t, d[1].t, d[2].t, d[3].t);
 	}
 }
 
