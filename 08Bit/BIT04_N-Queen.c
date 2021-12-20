@@ -36,8 +36,8 @@ typedef struct {
 //
 void output(int size,rec *d);
 void outputR(int size);
-void NQueen(int size,int row,int left,int down,int right);
-void NQueenR(int size,int row,int left,int down,int right);
+void NQueen(int size);
+void NQueenR(int size,int row,int left,int down,int right,int mask);
 void TimeFormat(clock_t utime,char *form);
 //
 void TimeFormat(clock_t utime,char *form)
@@ -82,7 +82,7 @@ void outputR(int size){
 }
 // 非再帰
 //０３非再帰
-void NQueen(int size,int row,int left,int down,int right){
+void NQueen(int size){
 	int MASK=((1<<size)-1);
 	rec d[size];
 	rec *p=d;
@@ -107,17 +107,18 @@ void NQueen(int size,int row,int left,int down,int right){
 	}
 }
 //再帰
-void NQueenR(int size,int row,int left, int down, int right) {
+void NQueenR(int size,int row,int left, int down, int right,int mask) {
 	int bit,bitmap;
-	int MASK=((1<<size)-1);
 	int sizeE=size-1;
-	for(bitmap=~((left<<=1)|down|(right>>=1))&MASK;bitmap;bitmap&=~bit){
+	for(bitmap=~((left<<=1)|down|(right>>=1))&mask;bitmap;bitmap&=~bit){
 		aBoard[row]=bit=-bitmap&bitmap;
 		if(row<sizeE){
-			NQueenR(size,row+1,bit|left,bit|down,bit|right);
+			//２行目以降はmaskを戻す
+			NQueenR(size,row+1,bit|left,bit|down,bit|right,((1<<size)-1));
 		}else{
       //if(DEBUG){ outputR(size); }
-      TOTAL++;
+      //Nが偶数または,Nが奇数でクイーンが中央に置かれていない場合は２加算する
+      TOTAL+=1 + (!(size & 1)||!(aBoard[0]&(1<<(size/2))));
     }
 	}
 }
@@ -155,9 +156,11 @@ int main(int argc, char **argv){
       TOTAL=0;
       UNIQUE=0;
       st=clock();
-      if(cpur){ NQueenR(i,0,0,0,0); }
+      //1行目は右半分だけクイーンを置く
+      //奇数の場合は中央にもクイーンを置く
+      if(cpur){ NQueenR(i,0,0,0,0,(1<< ((i+1)>>1))-1); }
       //CPU
-      if(cpu){ NQueen(i,0,0,0,0); }
+      if(cpu){ NQueen(i); }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n", i, TOTAL, UNIQUE, t);
     }
