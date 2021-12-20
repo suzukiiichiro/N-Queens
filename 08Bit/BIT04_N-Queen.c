@@ -120,8 +120,8 @@ void NQueenR(int size,int row,int left, int down, int right,int mask) {
 		}else{
       if(DEBUG){ outputR(size); }
       //Nが偶数または,Nが奇数でクイーンが中央に置かれていない場合は２加算する
-      TOTAL+=1 + (!(size & 1)||!(aBoard[0]&(1<<(size/2))));
-      //TOTAL+=1 + (!(size & 1)||bitmap);
+      //TOTAL+=1 + (!(size & 1)||!(aBoard[0]&(1<<(size/2))));
+      TOTAL+=1 + (!(size & 1)||bitmap);
     }
 	}
 }
