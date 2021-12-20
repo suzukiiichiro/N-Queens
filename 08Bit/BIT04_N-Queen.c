@@ -108,17 +108,20 @@ void NQueen(int size){
 }
 //再帰
 void NQueenR(int size,int row,int left, int down, int right,int mask) {
-	int bit,bitmap;
+	//int bit,bitmap;
+	int bit;
 	int sizeE=size-1;
-	for(bitmap=~((left<<=1)|down|(right>>=1))&mask;bitmap;bitmap&=~bit){
-		aBoard[row]=bit=-bitmap&bitmap;
+	for(int bitmap=~((left<<=1)|down|(right>>=1))&mask;bitmap;bitmap&=~bit){
+    if(DEBUG){ aBoard[row]=bit=-bitmap&bitmap;
+    }else{ bit=-bitmap&bitmap; }
 		if(row<sizeE){
 			//２行目以降はmaskを戻す
 			NQueenR(size,row+1,bit|left,bit|down,bit|right,((1<<size)-1));
 		}else{
-      //if(DEBUG){ outputR(size); }
+      if(DEBUG){ outputR(size); }
       //Nが偶数または,Nが奇数でクイーンが中央に置かれていない場合は２加算する
       TOTAL+=1 + (!(size & 1)||!(aBoard[0]&(1<<(size/2))));
+      //TOTAL+=1 + (!(size & 1)||bitmap);
     }
 	}
 }

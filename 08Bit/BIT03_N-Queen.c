@@ -110,7 +110,9 @@ void NQueenR(int size,int row,int left, int down, int right) {
 	int MASK=((1<<size)-1);
 	int sizeE=size-1;
 	for(bitmap=~((left<<=1)|down|(right>>=1))&MASK;bitmap;bitmap&=~bit){
-		aBoard[row]=bit=-bitmap&bitmap;
+    if(DEBUG){ aBoard[row]=bit=-bitmap&bitmap;
+    }else{ bit=-bitmap&bitmap; }
+		bit=-bitmap&bitmap;
 		if(row<sizeE){
 			NQueenR(size,row+1,bit|left,bit|down,bit|right);
 		}else{
