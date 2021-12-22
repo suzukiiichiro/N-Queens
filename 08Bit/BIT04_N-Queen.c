@@ -37,7 +37,7 @@ typedef struct {
 void output(int size,rec *d);
 void outputR(int size);
 void NQueen(int size);
-void NQueenR(int size,int row,int left,int down,int right,int mask);
+void NQueenR(int size,int row,int left,int down,int right,int mask,int dbitmap);
 void TimeFormat(clock_t utime,char *form);
 //
 void TimeFormat(clock_t utime,char *form)
@@ -107,21 +107,23 @@ void NQueen(int size){
 	}
 }
 //再帰
-void NQueenR(int size,int row,int left, int down, int right,int mask) {
+void NQueenR(int size,int row,int left, int down, int right,int mask,int dbitmap) {
 	//int bit,bitmap;
 	int bit;
 	int sizeE=size-1;
 	for(int bitmap=~((left<<=1)|down|(right>>=1))&mask;bitmap;bitmap&=~bit){
-    if(DEBUG){ aBoard[row]=bit=-bitmap&bitmap;
-    }else{ bit=-bitmap&bitmap; }
+         if(DEBUG){ aBoard[row]=bit=-bitmap&bitmap;
+         }else{ bit=-bitmap&bitmap; }
+         if(row==0){
+           dbitmap=bit&(1<<(size/2));
+         }
 		if(row<sizeE){
 			//２行目以降はmaskを戻す
-			NQueenR(size,row+1,bit|left,bit|down,bit|right,((1<<size)-1));
+			NQueenR(size,row+1,bit|left,bit|down,bit|right,((1<<size)-1),dbitmap);
 		}else{
       if(DEBUG){ outputR(size); }
       //Nが偶数または,Nが奇数でクイーンが中央に置かれていない場合は２加算する
-      //TOTAL+=1 + (!(size & 1)||!(aBoard[0]&(1<<(size/2))));
-      TOTAL+=1 + (!(size & 1)||bitmap);
+      TOTAL+=1 + (!(size & 1)||!(dbitmap));
     }
 	}
 }
@@ -161,7 +163,7 @@ int main(int argc, char **argv){
       st=clock();
       //1行目は右半分だけクイーンを置く
       //奇数の場合は中央にもクイーンを置く
-      if(cpur){ NQueenR(i,0,0,0,0,(1<< ((i+1)>>1))-1); }
+      if(cpur){ NQueenR(i,0,0,0,0,(1<< ((i+1)>>1))-1,(1<< ((i+1)>>1))-1); }
       //CPU
       if(cpu){ NQueen(i); }
       TimeFormat(clock()-st,t);
