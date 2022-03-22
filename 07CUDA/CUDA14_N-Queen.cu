@@ -1,4 +1,3 @@
-
 /**
  CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
@@ -232,16 +231,9 @@ long long sgpu_solve_nqueen_cuda(int size,int steps);
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap);
 void NQueen(int size,int mask);
 //関数宣言 CPUR
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right);
 void NQueenR(int size,int mask,int row,int left,int down,int right);
-//関数宣言 通常版
-//  非再帰
-void NQueenD(int size,int mask,int row);
-//  再帰
-void NQueenDR(int size,int mask,int row,int left,int down,int right);
 //
 //GPU
 __global__ 
@@ -894,12 +886,16 @@ void TimeFormat(clock_t utime,char *form){
 }
 //
 //CPU 非再帰版 ロジックメソッド
-void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int* bitmap){
-  unsigned int bit;
-  unsigned int sizeE=size-1;
-  int mark=row;
-  //固定していれた行より上はいかない
-  while(row>=mark){//row=1 row>=1, row=2 row>=2
+void NQueen(int size,int mask){
+  int sizeE=size-1;
+  int bitmap[size];
+  int left[size],down[size],right[size];
+  int bit=0;
+  int row=0;
+  bitmap[0]=mask; 
+  down[0]=left[0]=right[0]=0;
+  if(size<=0||size>32){return;}
+  while(row>=0){
     if(bitmap[row]==0){
       --row;
     }else{
@@ -919,127 +915,31 @@ void solve_nqueen(int size,int mask, int row,int* left,int* down,int* right,int*
          --row;
       }
     }  
-  }
-}
-//
-//非再帰版
-void NQueen(int size,int mask){
-  register int sizeE=size-1;
-  register int bitmap[size];
-  register int down[size],right[size],left[size];
-  register int bit;
-  if(size<=0||size>32){return;}
-  bit=0;
-  bitmap[0]=mask;
-  down[0]=left[0]=right[0]=0;
-  //偶数、奇数共通
-  for(int col=0;col<size/2;col++){//右側半分だけクイーンを置く
-    bit=(1<<col);//
-    down[1]=bit;//再帰の場合は down,left,right,bitmapは現在の行だけで良いが
-    left[1]=bit<<1;//非再帰の場合は全行情報を配列に入れて行の上がり下がりをする
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    solve_nqueen(size,mask,1,left,down,right,bitmap);
-  }
-  TOTAL*=2;//ミラーなのでTOTALを２倍する
-  //奇数の場合はさらに中央にクイーンを置く
-  if(size%2==1){
-    bit=(1<<(sizeE)/2);
-    down[1]=bit;
-    left[1]=bit<<1;
-    right[1]=bit>>1;
-    bitmap[1]=mask&~(left[1]|down[1]|right[1]);
-    solve_nqueen(size,mask,1,left,down,right,bitmap);
   }  
 }
 //
 //CPUR 再帰版 ロジックメソッド
-void solve_nqueenr(int size,int mask, int row,int left,int down,int right){
- int bitmap=0;
- int bit=0;
- int sizeE=size-1;
- bitmap=(mask&~(left|down|right));
- if(row==sizeE){
-    if(bitmap){
-      TOTAL++;
-    }
-  }else{
-    while(bitmap){
-      bitmap^=bit=(-bitmap&bitmap);
-      solve_nqueenr(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
-    }
-  }
-}
-//
-//CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,int mask, int row,int left,int down,int right){
-  int bit=0;
-  int sizeE=size-1;
-  for(int col=0;col<size/2;col++){
-    bit=(1<<col);
-    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
-  }
-  TOTAL*=2;
-  if(size%2==1){
-    bit=(1<<(sizeE)/2);
-    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1);
-  }
-}
-//
-//通常版 CPU 非再帰版 ロジックメソッド
-void NQueenD(int size,int mask,int row){
-  int aStack[size];
-  int* pnStack;
-  int bit;
-  int bitmap;
-  int sizeE=size-1;
-  int down[size],right[size],left[size];
-  aStack[0]=-1; 
-  pnStack=aStack+1;
-  bit=0;
-  bitmap=mask;
-  down[0]=left[0]=right[0]=0;
-  while(true){
-    if(bitmap){
-      bitmap^=bit=(-bitmap&bitmap); 
-      if(row==sizeE){
-        TOTAL++;
-        bitmap=*--pnStack;
-        --row;
-        continue;
-      }else{
-        int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        *pnStack++=bitmap;
-        bitmap=mask&~(left[row]|down[row]|right[row]);
-        continue;
-      }
-    }else{ 
-      bitmap=*--pnStack;
-      if(pnStack==aStack){ break ; }
-      --row;
-      continue;
-    }
-  }
-}
-//
-//通常版 CPUR 再帰版　ロジックメソッド
-void NQueenDR(int size,int mask,int row,int left,int down,int right){
   int bitmap=0;
   int bit=0;
   if(row==size){
-    TOTAL++;
+      TOTAL++;
   }else{
-    bitmap=(mask&~(left|down|right));
-    while(bitmap){
-      bitmap^=bit=(-bitmap&bitmap);
-      NQueenDR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1);
-    }
+      bitmap=mask&~(left|down|right);
+      while(bitmap>0){
+          bit=(-bitmap&bitmap);
+          bitmap=(bitmap^bit);
+          NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      }
+
   }
 }
+
 //
+void validation(){
+   printf("validation\n");  
+
+}
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -1086,14 +986,13 @@ int main(int argc,char** argv) {
       st=clock();
       //
       //CPUR
-      if(cpur){ 
+      if(cpur){
+        validation; 
         NQueenR(i,mask,0,0,0,0); 
-        //NQueenDR(i,mask,0,0,0,0);//通常版
       }
       //CPU
       if(cpu){ 
         NQueen(i,mask); 
-        //NQueenD(i,mask,0); //通常版
       }
       //
       TimeFormat(clock()-st,t);
@@ -1135,4 +1034,3 @@ int main(int argc,char** argv) {
   }
   return 0;
 }
-
