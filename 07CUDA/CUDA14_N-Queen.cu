@@ -221,6 +221,18 @@ $ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -g
 //変数宣言
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
+typedef unsigned long long uint64;
+typedef struct{
+  uint64 bv;
+  uint64 down;
+  uint64 left;
+  uint64 right;
+  int x[MAX];
+  int y[MAX];
+}Board ;
+//
+Board B;
+
 //関数宣言 GPU
 __global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond);
 long long solve_nqueen_cuda(int size,int steps);
@@ -233,7 +245,7 @@ void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
 void NQueen(int size,int mask);
 //関数宣言 CPUR
-void NQueenR(int size,int mask,int row,int left,int down,int right);
+void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right);
 //
 //GPU
 __global__ 
@@ -918,28 +930,68 @@ void NQueen(int size,int mask){
   }  
 }
 //
+bool board_placement(int si,int x,int y)
+{
+  //同じ場所に置くかチェック
+  //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
+  if(B.x[x]==y){
+    //printf("Duplicate x:%d:y:%d\n",x,y);
+    ////同じ場所に置くのはOK
+    return true;  
+  }
+  B.x[x]=y;
+  //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
+  uint64 bv=1<<x;
+  uint64 down=1<<y;
+  B.y[x]=B.y[x]+down;
+  uint64 left=1<<(si-1-x+y);
+  uint64 right=1<<(x+y);
+  //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
+  //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
+  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
+    //printf("valid_false\n");
+    return false;
+  }     
+  //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  B.bv|=bv;
+  B.down|=down;
+  B.left|=left;
+  B.right|=right;
+  //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  //printf("valid_true\n");
+  return true;
+}
+
+//
+//
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,int mask, int row,int left,int down,int right){
-  int bitmap=0;
-  int bit=0;
+void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
+  uint64 bitmap=0;
+  uint64 bit=0;
+  //既にクイーンを置いている行はスキップする
+  while((bv&1)!=0) {
+    bv>>=1;//右に１ビットシフト
+    left<<=1;//left 左に１ビットシフト
+    right>>=1;//right 右に１ビットシフト  
+    row++; 
+  }
+  bv>>=1;
   if(row==size){
       TOTAL++;
   }else{
-      bitmap=mask&~(left|down|right);
+      //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
+      bitmap=~(left|down|right);
+     
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
-          NQueenR(size,mask,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+          NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
 
   }
 }
 
-//
-void validation(){
-   printf("validation\n");  
-
-}
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -978,17 +1030,79 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=17;
-    int mask;
+    uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
       mask=((1<<i)-1);
+      int size=i;
       st=clock();
       //
       //CPUR
       if(cpur){
-        validation; 
-        NQueenR(i,mask,0,0,0,0); 
+        int pres_a[930];
+        int pres_b[930];
+        int idx=0;
+        for(int a=0;a<size;a++){
+         for(int b=0;b<size;b++){
+          if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+           continue;
+          }     
+          pres_a[idx]=a;
+          pres_b[idx]=b;
+          idx++;
+        }
+       }
+       Board wB=B;
+       for(int w=0;w<idx;w++){
+         B=wB;
+         B.bv=B.down=B.left=B.right=0;
+         for(int j=0;j<size;j++){
+           B.x[j]=-1;
+         }
+         board_placement(size,0,pres_a[w]);
+         board_placement(size,1,pres_b[w]);
+         Board nB=B;
+         //int lsize=(size-2)*(size-1)-w;
+         //for(int n=w;n<lsize;n++){
+         for(int n=0;n<idx;n++){
+           B=nB;
+           if(board_placement(size,pres_a[n],size-1)==false){
+            continue;
+           }
+           if(board_placement(size,pres_b[n],size-2)==false){
+            continue;
+           }
+           Board eB=B;
+           //for(int e=w;e<lsize;e++){
+           for(int e=0;e<idx;e++){
+             B=eB;  
+             if(board_placement(size,size-1,size-1-pres_a[e])==false){
+              continue;
+             }
+             if(board_placement(size,size-2,size-1-pres_b[e])==false){
+              continue;
+             }
+             Board sB=B;
+             //for(int s=w;s<lsize;s++){
+             for(int s=0;s<idx;s++){
+               B=sB;
+               if(board_placement(size,size-1-pres_a[s],0)==false){
+                continue;
+               }
+               if(board_placement(size,size-1-pres_b[s],1)==false){
+                continue;
+               }
+               
+               NQueenR(i,mask,2,B.bv >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+      (B.right>>4)<<(size-5));
+    
+             }
+           }
+         } 
+       }
       }
       //CPU
       if(cpu){ 
