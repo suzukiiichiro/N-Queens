@@ -11,7 +11,19 @@
                     -s SGPU(サマーズ版と思われる)
 
 
-14．ビット(n27)
+14．バックトラック+ビット(n27)
+   上下左右２行にクイーンを配置したのち（ビット(n27)）バックトラックで解を求めます。
+   
+   バックトラック
+   各列、対角線上にクイーンがあるかどうかのフラグを用意し、途中で制約を満た
+ さない事が明らかな場合は、それ以降のパターン生成を行わない。
+ 　各列、対角線上にクイーンがあるかどうかのフラグを用意することで高速化を図る。
+ 　これまでは行方向と列方向に重複しない組み合わせを列挙するものですが、王妃
+ は斜め方向のコマをとることができるので、どの斜めライン上にも王妃をひとつだ
+ けしか配置できない制限を加える事により、深さ優先探索で全ての葉を訪問せず木
+ を降りても解がないと判明した時点で木を引き返すということができます。
+
+　　　　　ビット(n27)
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
    単純なバックトラックよりも２０〜３０倍高速
@@ -243,7 +255,7 @@ long long sgpu_solve_nqueen_cuda(int size,int steps);
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
-void NQueen(int size,int mask);
+void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r);
 //関数宣言 CPUR
 void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right);
 //
@@ -897,39 +909,6 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"           %5.2f",ss);
 }
 //
-//CPU 非再帰版 ロジックメソッド
-void NQueen(int size,int mask){
-  int sizeE=size-1;
-  int bitmap[size];
-  int left[size],down[size],right[size];
-  int bit=0;
-  int row=0;
-  bitmap[0]=mask; 
-  down[0]=left[0]=right[0]=0;
-  if(size<=0||size>32){return;}
-  while(row>=0){
-    if(bitmap[row]==0){
-      --row;
-    }else{
-      bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
-      if((bit&mask)!=0){
-        if(row==sizeE){
-          TOTAL++;
-          --row;
-        }else{
-          int n=row++;
-          left[row]=(left[n]|bit)<<1;
-          down[row]=down[n]|bit;
-          right[row]=(right[n]|bit)>>1;
-          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-        }
-      }else{
-         --row;
-      }
-    }  
-  }  
-}
-//
 bool board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
@@ -962,13 +941,63 @@ bool board_placement(int si,int x,int y)
   //printf("valid_true\n");
   return true;
 }
-
+//
+//CPU 非再帰版 ロジックメソッド
+void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
+  int sizeE=size-1;
+  int n;
+  uint64 bitmap[size];
+  uint64 bv[size];
+  uint64 left[size];
+  uint64 down[size];
+  uint64 right[size];
+  uint64 bit=0;
+  bitmap[row]=mask&~(l|d|r);
+  bv[row]=b;
+  down[row]=d;
+  left[row]=l;
+  right[row]=r;
+  while(row>=2){
+    printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv[row],left[row],down[row],right[row]);
+    while((bv[row]&1)!=0) {
+       n=row++;
+       bv[row]=bv[n]>>1;//右に１ビットシフト
+       left[row]=left[n]<<1;//left 左に１ビットシフト
+       right[row]=right[n]>>1;//right 右に１ビットシフト
+       down[row]=down[n];  
+       bitmap[row]=mask&~(left[row]|down[row]|right[row]);    
+   }
+    bv[row+1]=bv[row]>>1;
+    if(bitmap[row]==0){
+      --row;
+    }else{
+      bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
+      if((bit&mask)!=0||row>=sizeE){
+      //if((bit)!=0){
+        if(row>=sizeE){
+          TOTAL++;
+          --row;
+        }else{
+          n=row++;
+          left[row]=(left[n]|bit)<<1;
+          down[row]=down[n]|bit;
+          right[row]=(right[n]|bit)>>1;
+          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+          //bitmap[row]=~(left[row]|down[row]|right[row]);    
+        }
+      }else{
+         --row;
+      }
+    }
+  }  
+}
 //
 //
 //CPUR 再帰版 ロジックメソッド
 void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
   uint64 bitmap=0;
   uint64 bit=0;
+  printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv,left,down,right);
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
     bv>>=1;//右に１ビットシフト
@@ -981,8 +1010,7 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
       TOTAL++;
   }else{
       //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-      bitmap=~(left|down|right);
-     
+      bitmap=~(left|down|right);   
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
@@ -1028,8 +1056,8 @@ int main(int argc,char** argv) {
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
-    int min=4;
-    int targetN=17;
+    int min=5;
+    int targetN=5;
     uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
@@ -1039,7 +1067,6 @@ int main(int argc,char** argv) {
       st=clock();
       //
       //CPUR
-      if(cpur){
         int pres_a[930];
         int pres_b[930];
         int idx=0;
@@ -1093,21 +1120,24 @@ int main(int argc,char** argv) {
                if(board_placement(size,size-1-pres_b[s],1)==false){
                 continue;
                }
-               
+               if(cpur){
+               //CPUR
                NQueenR(i,mask,2,B.bv >> 2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
       (B.right>>4)<<(size-5));
-    
+               }else if(cpu){
+                //CPU
+                NQueen(i,mask,2,B.bv >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+      (B.right>>4)<<(size-5));  
+               } 
+               
              }
            }
          } 
        }
-      }
-      //CPU
-      if(cpu){ 
-        NQueen(i,mask); 
-      }
       //
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
