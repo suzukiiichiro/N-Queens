@@ -10,18 +10,17 @@
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
 
-
-16．対称解除(後ろ)+ビット(n27)
+17．n27対称解除(後ろ)+ビット(n27)
    上下左右２行にクイーンを配置したのち（ビット(n27)）対称解除で解を求めます。
    枝借りはまだ追加していない
 
    対称解除法
    一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
  　 ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
- 
 
+   対象解除をn27のものに変更した
 
-　　　　　ビット(n27)
+　ビット(n27)
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
    単純なバックトラックよりも２０〜３０倍高速
@@ -255,7 +254,7 @@ void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
 void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r);
 //関数宣言 CPUR
-void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right,unsigned int* aBoard);
+void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right,int w,int e,int n,int s);
 //
 //GPU
 __global__ 
@@ -906,104 +905,30 @@ void TimeFormat(clock_t utime,char *form){
   else
     sprintf(form,"           %5.2f",ss);
 }
-//対称解除
-__device__ __host__
-int* vMirror(int* bf,int* af,int si)
-{
-  int bf_i;
-  int tmp;
-  for(int i=0;i<si;i++) {
-    bf_i=bf[i];
-    tmp=0;
-    for(int j=0;j<=si-1;j++){
-      if(bf_i&(1<<j)){ 
-        tmp|=(1<<(si-1-j)); 
-        break;                 
-      }
-    }
-    af[i]=tmp;
-  }
-  return af;
-}
 //
-__device__ __host__
-int* rotate(int* bf,int* af,int si)
-{
-  int t;
-  for(int i=0;i<si;i++){
-    t=0;
-    for(int j=0;j<si;j++){
-      t|=((bf[j]>>i)&1)<<(si-j-1);
+int symmetryOps_n27(int w,int e,int n,int s){
+  //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
+  if(s==w){
+    if((n!=w)||(e!=w)){
+    // right rotation is smaller unless  w = n = e = s
+    //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
+      return 0;
     }
-    af[i]=t;
+    //w=n=e=sであれば90度回転で同じ可能性
+    //この場合はミラーの2
+    return 2;
   }
-  return af;
+  if((e==w)&&(n>=s)){
+  //e==wは180度回転して同じ
+    if(n>s){
+    //180度回転して同じ時n>=sの時はsmaller?
+      return 0;
+    }
+    //この場合は4
+    return 4;
+  }
+  return 8;   
 }
-//
-__device__ __host__
-int intncmp(unsigned int* lt,int* rt,int n)
-{
-  int rtn=0;
-  for(int k=0;k<n;k++){
-    rtn=lt[k]-rt[k];
-    if(rtn!=0){
-      break;
-    }
-  }
-  return rtn;
-}
-//
-__device__ __host__
-int symmetryOps(int si,unsigned int *aBoard)
-{
-  int nEquiv=0;
-  int aT[MAX];
-  int aS[MAX];
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  memcpy(aT,aBoard,sizeof(int)*si);
-  //時計回りに90度回転
-  rotate(aT,aS,si);
-  int icmp=intncmp(aBoard,aS,si);
-  if(icmp>0){ return 0; }
-  else if(icmp==0){ nEquiv=2; }
-  else{//時計回りに180度回転
-    rotate(aS,aT,si);
-    icmp=intncmp(aBoard,aT,si);
-    if(icmp>0){ return 0;}
-    else if(icmp==0){ nEquiv=4;}
-    else{//時計回りに270度回転
-      rotate(aT,aS,si);
-      icmp=intncmp(aBoard,aS,si);
-      if(icmp>0){ return 0;}
-      nEquiv=8;
-    }
-  }
-  // 回転・反転・対称チェックのためにboard配列をコピー
-  memcpy(aS,aBoard,sizeof(int)*si);
-  //垂直反転
-  vMirror(aS,aT,si);   
-  icmp=intncmp(aBoard,aT,si);
-  if(icmp>0){ return 0; }
-  //-90度回転 対角鏡と同等
-  if(nEquiv>2){
-    rotate(aT,aS,si);
-    icmp=intncmp(aBoard,aS,si);
-    if(icmp>0){return 0;}
-    //-180度回転 水平鏡像と同等
-    else if(nEquiv>4){
-      rotate(aS,aT,si);
-      icmp=intncmp(aBoard,aT,si);
-      //-270度回転 反対角鏡と同等
-      if(icmp>0){ return 0;}
-      rotate(aT,aS,si);
-      icmp=intncmp(aBoard,aS,si);
-      if(icmp>0){ return 0;}
-    }
-  }
-  return nEquiv;  
-}
-//
-
 
 //
 bool board_placement(int si,int x,int y)
@@ -1055,7 +980,6 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
   left[row]=l;
   right[row]=r;
   while(row>=2){
-    //printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv[row],left[row],down[row],right[row]);
     while((bv[row]&1)!=0) {
        n=row++;
        bv[row]=bv[n]>>1;//右に１ビットシフト
@@ -1091,7 +1015,7 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
 //
 //
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,unsigned int* aBoard){
+void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int w,int e,int n,int s){
   uint64 bitmap=0;
   uint64 bit=0;
   //既にクイーンを置いている行はスキップする
@@ -1103,33 +1027,19 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
   }
   bv>>=1;
   if(row==size){
-    /** 対称解除法の導入 */
-    //for(int i=0;i<size;i++){
-    //  printf("%d:",aBoard[i]);
-    //}
-    //printf("\n");
-    int s=symmetryOps(size,aBoard);
-    if(s!=0){
+    //TOTAL++;
+    int cnt=symmetryOps_n27(w,e,n,s);
+    if(cnt!=0){
       UNIQUE++;       //ユニーク解を加算
-      TOTAL+=s;       //対称解除で得られた解数を加算
+      TOTAL+=cnt;       //対称解除で得られた解数を加算
     }
   }else{
+      //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
       bitmap=~(left|down|right);   
       while(bitmap>0){
-          //bit=aBoard[row]=(-bitmap&bitmap);
-          //bitmap=(bitmap^bit);
-          bitmap^=bit=(-bitmap&bitmap);
-          if(size==5){
-            aBoard[row]=bit<<2;  
-          }else if(size==6){
-            aBoard[row]=bit<<1;  
-          }else{
-            aBoard[row]=bit>>size-7;    
-          }
-          
-          //aBoard[row]=bit<<row;
-          //printf("place:%d:row:%d\n",aBoard[row],row);
-          NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,aBoard);
+          bit=(-bitmap&bitmap);
+          bitmap=(bitmap^bit);
+          NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,w,e,n,s);
       }
 
   }
@@ -1177,7 +1087,6 @@ int main(int argc,char** argv) {
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
-      unsigned int aBoard[MAX];
       mask=((1<<i)-1);
       int size=i;
       st=clock();
@@ -1237,16 +1146,12 @@ int main(int argc,char** argv) {
                if(board_placement(size,size-1-pres_b[s],1)==false){
                 continue;
                }
-               for(int j=0;j<size;j++){
-                 aBoard[j]=(1<<B.x[j]);
-                 //printf("before:%d:%d\n",j,1<<B.x[j]);
-               }
                if(cpur){
                //CPUR
                NQueenR(i,mask,2,B.bv >> 2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5),aBoard);
+      (B.right>>4)<<(size-5),w,e,n,s);
                }else if(cpu){
                 //CPU
                 NQueen(i,mask,2,B.bv >> 2,

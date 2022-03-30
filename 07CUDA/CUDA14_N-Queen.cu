@@ -958,7 +958,7 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
   left[row]=l;
   right[row]=r;
   while(row>=2){
-    printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv[row],left[row],down[row],right[row]);
+    //printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv[row],left[row],down[row],right[row]);
     while((bv[row]&1)!=0) {
        n=row++;
        bv[row]=bv[n]>>1;//右に１ビットシフト
@@ -997,7 +997,7 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
 void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
   uint64 bitmap=0;
   uint64 bit=0;
-  printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv,left,down,right);
+  //printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv,left,down,right);
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
     bv>>=1;//右に１ビットシフト
@@ -1057,7 +1057,7 @@ int main(int argc,char** argv) {
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
     int min=5;
-    int targetN=5;
+    int targetN=15;
     uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
