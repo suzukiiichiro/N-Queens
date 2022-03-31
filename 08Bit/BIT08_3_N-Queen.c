@@ -1,5 +1,3 @@
-%%writefile cuda27.cu
-
 /**
  CUDAで学ぶアルゴリズムとデータ構造
  ステップバイステップでＮ−クイーン問題を最適化
@@ -11,7 +9,7 @@
                     -r cpu再帰 
                     -g GPU 
                     -s SGPU(サマーズ版と思われる)
-
+ 
     　 １．ブルートフォース
     　 ２．：
     　 ３．バックトラック（配列）
@@ -26,15 +24,17 @@
     １２．最適化
     １３．並列処理
 
-7．ミラー+ビット(n27)
-   上下左右２行にクイーンを配置したのち（ビット(n27)）ミラーで解を求めます。
+8-3．n27対称解除(前)+ビット(n27)
+   上下左右２行にクイーンを配置したのち（ビット(n27)）対称解除で解を求めます。
+   枝借りはまだ追加していない
 
-   ミラーはクイーンの配置は左右対称になるので、
-   １行目の右半分だけクイーンを置き結果を２倍するというものです。
-   nが偶数・奇数にかかわらず右半分にクイーンを置き結果を２倍します。
-   nが奇数の場合でクイーンを中央に置く場合は左右対称にならないので２倍にしません(x1)
-   
-   ビット(n27)
+   対称解除法
+   一つの解には、盤面を９０度、１８０度、２７０度回転、及びそれらの鏡像の合計
+ 　 ８個の対称解が存在する。対照的な解を除去し、ユニーク解から解を求める手法。
+
+   対象解除をn27のものに変更した
+
+　ビット(n27)
 
    ビット演算を使って高速化 状態をビットマップにパックし、処理する
    単純なバックトラックよりも２０〜３０倍高速
@@ -268,7 +268,7 @@ void TimeFormat(clock_t utime,char *form);
 //関数宣言 CPU
 void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r);
 //関数宣言 CPUR
-void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right);
+void NQueenR(int size,int mask,int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt);
 //
 //GPU
 __global__ 
@@ -920,6 +920,41 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"           %5.2f",ss);
 }
 //
+int symmetryOps_n27(int w,int e,int n,int s,int size){
+  int lsize=(size-2)*(size-1)-w;
+  if(n<w || n>=lsize){
+	  return 0;	
+  }
+  if(e<w || e>=lsize){
+	  return 0;
+  }
+  if(s<w || s>=lsize){
+	  return 0;
+  }
+  //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
+  if(s==w){
+    if((n!=w)||(e!=w)){
+    // right rotation is smaller unless  w = n = e = s
+    //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
+      return 0;
+    }
+    //w=n=e=sであれば90度回転で同じ可能性
+    //この場合はミラーの2
+    return 2;
+  }
+  if((e==w)&&(n>=s)){
+  //e==wは180度回転して同じ
+    if(n>s){
+    //180度回転して同じ時n>=sの時はsmaller?
+      return 0;
+    }
+    //この場合は4
+    return 4;
+  }
+  return 8;   
+}
+
+//
 bool board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
@@ -969,7 +1004,6 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
   left[row]=l;
   right[row]=r;
   while(row>=2){
-    //printf("row:%d,bv:%d,left:%d,down:%d,right:%d\n",row,bv[row],left[row],down[row],right[row]);
     while((bv[row]&1)!=0) {
        n=row++;
        bv[row]=bv[n]>>1;//右に１ビットシフト
@@ -1005,7 +1039,7 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
 //
 //
 //CPUR 再帰版 ロジックメソッド
-void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
+void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt){
   uint64 bitmap=0;
   uint64 bit=0;
   //既にクイーンを置いている行はスキップする
@@ -1017,14 +1051,16 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
   }
   bv>>=1;
   if(row==size){
-      TOTAL++;
+    //TOTAL++;
+      UNIQUE++;       //ユニーク解を加算
+      TOTAL+=cnt;       //対称解除で得られた解数を加算
   }else{
       //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
       bitmap=~(left|down|right);   
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
-          NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
+          NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt);
       }
 
   }
@@ -1090,9 +1126,9 @@ int main(int argc,char** argv) {
           idx++;
         }
        }
-       //偶数・奇数ともに1行目は右端半分にクイーンを置き結果を2倍にする
        Board wB=B;
-       for(int w=0;w<=(size/2)*(size-3);w++){
+       //for(int w=0;w<idx;w++){
+       for (int w = 0; w <= (size / 2) * (size - 3); w++){
          B=wB;
          B.bv=B.down=B.left=B.right=0;
          for(int j=0;j<size;j++){
@@ -1101,6 +1137,8 @@ int main(int argc,char** argv) {
          board_placement(size,0,pres_a[w]);
          board_placement(size,1,pres_b[w]);
          Board nB=B;
+         //int lsize=(size-2)*(size-1)-w;
+         //for(int n=w;n<lsize;n++){
          for(int n=0;n<idx;n++){
            B=nB;
            if(board_placement(size,pres_a[n],size-1)==false){
@@ -1110,6 +1148,7 @@ int main(int argc,char** argv) {
             continue;
            }
            Board eB=B;
+           //for(int e=w;e<lsize;e++){
            for(int e=0;e<idx;e++){
              B=eB;  
              if(board_placement(size,size-1,size-1-pres_a[e])==false){
@@ -1119,6 +1158,7 @@ int main(int argc,char** argv) {
               continue;
              }
              Board sB=B;
+             //for(int s=w;s<lsize;s++){
              for(int s=0;s<idx;s++){
                B=sB;
                if(board_placement(size,size-1-pres_a[s],0)==false){
@@ -1129,10 +1169,13 @@ int main(int argc,char** argv) {
                }
                if(cpur){
                //CPUR
-               NQueenR(i,mask,2,B.bv >> 2,
+                int cnt=symmetryOps_n27(w,e,n,s,size);
+                if(cnt !=0){
+                 NQueenR(i,mask,2,B.bv >> 2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5));
+      (B.right>>4)<<(size-5),cnt);
+                } 
                }else if(cpu){
                 //CPU
                 NQueen(i,mask,2,B.bv >> 2,
@@ -1141,67 +1184,9 @@ int main(int argc,char** argv) {
       (B.right>>4)<<(size-5));  
                } 
                
-              }
-            }
-          }
-        }
-       TOTAL=TOTAL*2;
-       //奇数の場合はクイーンを真ん中に置く。結果は2倍しない 
-       wB=B;
-       if ( size%2==1){
-        for(int w=(size/2)*(size-3)+1;w<=(size/2+1)*(size-3);w++){
-         B=wB;
-         B.bv=B.down=B.left=B.right=0;
-         for(int j=0;j<size;j++){
-           B.x[j]=-1;
-         }
-         board_placement(size,0,pres_a[w]);
-         board_placement(size,1,pres_b[w]);
-         Board nB=B;
-         for(int n=0;n<idx;n++){
-           B=nB;
-           if(board_placement(size,pres_a[n],size-1)==false){
-            continue;
-           }
-           if(board_placement(size,pres_b[n],size-2)==false){
-            continue;
-           }
-           Board eB=B;
-           for(int e=0;e<idx;e++){
-             B=eB;  
-             if(board_placement(size,size-1,size-1-pres_a[e])==false){
-              continue;
-             }
-             if(board_placement(size,size-2,size-1-pres_b[e])==false){
-              continue;
-             }
-             Board sB=B;
-             for(int s=0;s<idx;s++){
-               B=sB;
-               if(board_placement(size,size-1-pres_a[s],0)==false){
-                continue;
-               }
-               if(board_placement(size,size-1-pres_b[s],1)==false){
-                continue;
-               }
-               if(cpur){
-               //CPUR
-               NQueenR(i,mask,2,B.bv >> 2,
-      B.left>>4,
-      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5));
-               }else if(cpu){
-                //CPU
-                NQueen(i,mask,2,B.bv >> 2,
-      B.left>>4,
-      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5));  
-               } 
-             
              }
            }
          } 
-        }
        }
       //
       TimeFormat(clock()-st,t);
