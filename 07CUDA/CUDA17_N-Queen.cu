@@ -906,7 +906,17 @@ void TimeFormat(clock_t utime,char *form){
     sprintf(form,"           %5.2f",ss);
 }
 //
-int symmetryOps_n27(int w,int e,int n,int s){
+int symmetryOps_n27(int w,int e,int n,int s,int size){
+  int lsize=(size-2)*(size-1)-w;
+  if(n<w || n>=lsize){
+	  return 0;	
+  }
+  if(e<w || e>=lsize){
+	  return 0;
+  }
+  if(s<w || s>=lsize){
+	  return 0;
+  }
   //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
   if(s==w){
     if((n!=w)||(e!=w)){
@@ -1028,7 +1038,7 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
   bv>>=1;
   if(row==size){
     //TOTAL++;
-    int cnt=symmetryOps_n27(w,e,n,s);
+    int cnt=symmetryOps_n27(w,e,n,s,size);
     if(cnt!=0){
       UNIQUE++;       //ユニーク解を加算
       TOTAL+=cnt;       //対称解除で得られた解数を加算
@@ -1106,8 +1116,8 @@ int main(int argc,char** argv) {
         }
        }
        Board wB=B;
-       //for(int w=0;w<idx;w++){
-       for (int w = 0; w <= (size / 2) * (size - 3); w++){
+       for(int w=0;w<idx;w++){
+       //for (int w = 0; w <= (size / 2) * (size - 3); w++){
          B=wB;
          B.bv=B.down=B.left=B.right=0;
          for(int j=0;j<size;j++){
@@ -1116,9 +1126,9 @@ int main(int argc,char** argv) {
          board_placement(size,0,pres_a[w]);
          board_placement(size,1,pres_b[w]);
          Board nB=B;
-         int lsize=(size-2)*(size-1)-w;
-         for(int n=w;n<lsize;n++){
-         //for(int n=0;n<idx;n++){
+         //int lsize=(size-2)*(size-1)-w;
+         //for(int n=w;n<lsize;n++){
+         for(int n=0;n<idx;n++){
            B=nB;
            if(board_placement(size,pres_a[n],size-1)==false){
             continue;
@@ -1127,8 +1137,8 @@ int main(int argc,char** argv) {
             continue;
            }
            Board eB=B;
-           for(int e=w;e<lsize;e++){
-           //for(int e=0;e<idx;e++){
+           //for(int e=w;e<lsize;e++){
+           for(int e=0;e<idx;e++){
              B=eB;  
              if(board_placement(size,size-1,size-1-pres_a[e])==false){
               continue;
@@ -1137,8 +1147,8 @@ int main(int argc,char** argv) {
               continue;
              }
              Board sB=B;
-             for(int s=w;s<lsize;s++){
-             //for(int s=0;s<idx;s++){
+             //for(int s=w;s<lsize;s++){
+             for(int s=0;s<idx;s++){
                B=sB;
                if(board_placement(size,size-1-pres_a[s],0)==false){
                 continue;
