@@ -255,6 +255,7 @@ typedef struct{
   int y[MAX];
 }Board ;
 //
+Board b[2457600];
 Board B;
 
 //関数宣言 GPU
@@ -1028,60 +1029,15 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
           bitmap=(bitmap^bit);
           NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
-
   }
 }
-
-//メインメソッド
-int main(int argc,char** argv) {
-  bool cpu=false,cpur=false,gpu=false,sgpu=false;
-  int argstart=1,steps=24576;
-  /** パラメータの処理 */
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
-    else
-      cpur=true;
-    argstart=2;
-  }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g|-r|-s]\n",argv[0]);
-    printf("  -c: CPU only\n");
-    printf("  -r: CPUR only\n");
-    printf("  -g: GPU only\n");
-    printf("  -s: SGPU only\n");
-    printf("Default to 8 queen\n");
-  }
-  /** 出力と実行 */
-  if(cpu){
-    printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ\n");
-  }else if(cpur){
-    printf("\n\n６．CPUR 再帰 バックトラック＋ビットマップ\n");
-  }else if(gpu){
-    printf("\n\n６．GPU 非再帰 バックトラック＋ビットマップ\n");
-  }else if(sgpu){
-    printf("\n\n６．SGPU 非再帰 バックトラック＋ビットマップ\n");
-  }
-  if(cpu||cpur){
-    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    clock_t st;          //速度計測用
-    char t[20];          //hh:mm:ss.msを格納
-    int min=5;
-    int targetN=15;
-    uint64 mask;
-    for(int i=min;i<=targetN;i++){
-      TOTAL=0;
-      UNIQUE=0;
-      mask=((1<<i)-1);
-      int size=i;
-      st=clock();
-      //
+//
+long prepare(int size){
       //CPUR
         int pres_a[930];
         int pres_b[930];
         int idx=0;
+        long bcnt;
         for(int a=0;a<size;a++){
          for(int b=0;b<size;b++){
           if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
@@ -1132,7 +1088,65 @@ int main(int argc,char** argv) {
                if(board_placement(size,size-1-pres_b[s],1)==false){
                 continue;
                }
-               if(cpur){
+               b[bcnt]=B;
+               bcnt++;
+           }
+         } 
+       }
+      }
+  return bcnt;
+}
+//メインメソッド
+int main(int argc,char** argv) {
+  bool cpu=false,cpur=false,gpu=false,sgpu=false;
+  int argstart=1,steps=24576;
+  /** パラメータの処理 */
+  if(argc>=2&&argv[1][0]=='-'){
+    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
+    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
+    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
+    else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
+    else
+      cpur=true;
+    argstart=2;
+  }
+  if(argc<argstart){
+    printf("Usage: %s [-c|-g|-r|-s]\n",argv[0]);
+    printf("  -c: CPU only\n");
+    printf("  -r: CPUR only\n");
+    printf("  -g: GPU only\n");
+    printf("  -s: SGPU only\n");
+    printf("Default to 8 queen\n");
+  }
+  /** 出力と実行 */
+  if(cpu){
+    printf("\n\n６．CPU 非再帰 バックトラック＋ビットマップ\n");
+  }else if(cpur){
+    printf("\n\n６．CPUR 再帰 バックトラック＋ビットマップ\n");
+  }else if(gpu){
+    printf("\n\n６．GPU 非再帰 バックトラック＋ビットマップ\n");
+  }else if(sgpu){
+    printf("\n\n６．SGPU 非再帰 バックトラック＋ビットマップ\n");
+  }
+  if(cpu||cpur){
+    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
+    clock_t st;          //速度計測用
+    char t[20];          //hh:mm:ss.msを格納
+    int min=5;
+    int targetN=15;
+    uint64 mask;
+    for(int i=min;i<=targetN;i++){
+      TOTAL=0;
+      UNIQUE=0;
+      mask=((1<<i)-1);
+      int size=i;
+      //事前準備 上下左右2行2列にクイーンを配置する
+      long bcnt=prepare(size);
+      //事前準備が終わってから時間を計測する
+      st=clock();
+      for (long bc=0;bc<=bcnt;bc++){
+        B=b[bc];
+        if(cpur){
                //CPUR
                NQueenR(i,mask,2,B.bv >> 2,
       B.left>>4,
@@ -1144,13 +1158,9 @@ int main(int argc,char** argv) {
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
       (B.right>>4)<<(size-5));  
-               } 
+        } 
                
-             }
-           }
-         } 
-       }
-      //
+      }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }

@@ -250,10 +250,15 @@ typedef struct{
   uint64 down;
   uint64 left;
   uint64 right;
+  int w;
+  int e;
+  int n;
+  int s;
   int x[MAX];
   int y[MAX];
 }Board ;
 //
+Board b[2457600];
 Board B;
 
 //関数宣言 GPU
@@ -1068,7 +1073,75 @@ void NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uin
 
   }
 }
-
+//
+long prepare(int size){
+      //CPUR
+        int pres_a[930];
+        int pres_b[930];
+        int idx=0;
+        long bcnt;
+        for(int a=0;a<size;a++){
+         for(int b=0;b<size;b++){
+          if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
+           continue;
+          }     
+          pres_a[idx]=a;
+          pres_b[idx]=b;
+          idx++;
+        }
+       }
+       Board wB=B;
+       for(int w=0;w<idx;w++){
+         B=wB;
+         B.bv=B.down=B.left=B.right=0;
+         for(int j=0;j<size;j++){
+           B.x[j]=-1;
+         }
+         board_placement(size,0,pres_a[w]);
+         board_placement(size,1,pres_b[w]);
+         Board nB=B;
+         //int lsize=(size-2)*(size-1)-w;
+         //for(int n=w;n<lsize;n++){
+         for(int n=0;n<idx;n++){
+           B=nB;
+           if(board_placement(size,pres_a[n],size-1)==false){
+            continue;
+           }
+           if(board_placement(size,pres_b[n],size-2)==false){
+            continue;
+           }
+           Board eB=B;
+           //for(int e=w;e<lsize;e++){
+           for(int e=0;e<idx;e++){
+             B=eB;  
+             if(board_placement(size,size-1,size-1-pres_a[e])==false){
+              continue;
+             }
+             if(board_placement(size,size-2,size-1-pres_b[e])==false){
+              continue;
+             }
+             Board sB=B;
+             //for(int s=w;s<lsize;s++){
+             for(int s=0;s<idx;s++){
+               B=sB;
+               if(board_placement(size,size-1-pres_a[s],0)==false){
+                continue;
+               }
+               if(board_placement(size,size-1-pres_b[s],1)==false){
+                continue;
+               }
+               B.w=w;
+               B.e=e;
+               B.n=n;
+               B.s=s;
+               b[bcnt]=B;
+               bcnt++;
+           }
+         } 
+       }
+      }
+  return bcnt;
+}
 //メインメソッド
 int main(int argc,char** argv) {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -1113,81 +1186,28 @@ int main(int argc,char** argv) {
       UNIQUE=0;
       mask=((1<<i)-1);
       int size=i;
+      //事前準備 上下左右2行2列にクイーンを配置する
+      long bcnt=prepare(size);
+      //事前準備が終わってから時間を計測する
       st=clock();
-      //
-      //CPUR
-        int pres_a[930];
-        int pres_b[930];
-        int idx=0;
-        for(int a=0;a<size;a++){
-         for(int b=0;b<size;b++){
-          if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){
-           continue;
-          }     
-          pres_a[idx]=a;
-          pres_b[idx]=b;
-          idx++;
-        }
-       }
-       Board wB=B;
-       for(int w=0;w<idx;w++){
-       //for (int w = 0; w <= (size / 2) * (size - 3); w++){
-         B=wB;
-         B.bv=B.down=B.left=B.right=0;
-         for(int j=0;j<size;j++){
-           B.x[j]=-1;
-         }
-         board_placement(size,0,pres_a[w]);
-         board_placement(size,1,pres_b[w]);
-         Board nB=B;
-         //int lsize=(size-2)*(size-1)-w;
-         //for(int n=w;n<lsize;n++){
-         for(int n=0;n<idx;n++){
-           B=nB;
-           if(board_placement(size,pres_a[n],size-1)==false){
-            continue;
-           }
-           if(board_placement(size,pres_b[n],size-2)==false){
-            continue;
-           }
-           Board eB=B;
-           //for(int e=w;e<lsize;e++){
-           for(int e=0;e<idx;e++){
-             B=eB;  
-             if(board_placement(size,size-1,size-1-pres_a[e])==false){
-              continue;
-             }
-             if(board_placement(size,size-2,size-1-pres_b[e])==false){
-              continue;
-             }
-             Board sB=B;
-             //for(int s=w;s<lsize;s++){
-             for(int s=0;s<idx;s++){
-               B=sB;
-               if(board_placement(size,size-1-pres_a[s],0)==false){
-                continue;
-               }
-               if(board_placement(size,size-1-pres_b[s],1)==false){
-                continue;
-               }
-               if(cpur){
+      for (long bc=0;bc<=bcnt;bc++){
+        B=b[bc];
+        if(cpur){
                //CPUR
                NQueenR(i,mask,2,B.bv >> 2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5),w,e,n,s);
+      (B.right>>4)<<(size-5),B.w,B.e,B.n,B.s);
                }else if(cpu){
                 //CPU
                 NQueen(i,mask,2,B.bv >> 2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
       (B.right>>4)<<(size-5));  
-               } 
+        } 
                
-             }
-           }
-         } 
-       }
+      }
+      
       //
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
