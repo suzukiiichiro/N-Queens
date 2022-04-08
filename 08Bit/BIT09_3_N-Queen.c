@@ -197,20 +197,20 @@ void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r){
     }else{
       bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
       if((bit&mask)!=0||row>=sizeE){
-	//if((bit)!=0){
-	if(row>=sizeE){
-	  TOTAL++;
-	  --row;
-	}else{
-	  n=row++;
-	  left[row]=(left[n]|bit)<<1;
-	  down[row]=down[n]|bit;
-	  right[row]=(right[n]|bit)>>1;
-	  bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-	  //bitmap[row]=~(left[row]|down[row]|right[row]);    
-	}
+        //if((bit)!=0){
+        if(row>=sizeE){
+          TOTAL++;
+          --row;
+        }else{
+          n=row++;
+          left[row]=(left[n]|bit)<<1;
+          down[row]=down[n]|bit;
+          right[row]=(right[n]|bit)>>1;
+          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+          //bitmap[row]=~(left[row]|down[row]|right[row]);    
+        }
       }else{
-	--row;
+	      --row;
       }
     }
   }  
@@ -241,7 +241,8 @@ void bit93_backTrack1(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64
     while(bitmap>0){
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
-      bit93_backTrack1(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1);
+      bit93_backTrack1(size,mask,row+1,bv,
+          (left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1);
     }
   }
 }
@@ -406,10 +407,9 @@ void bit93_solvenqueen(int size,uint64 mask){
           ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
           (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK>>1,B.LASTMASK>>1);  
       }else{
-        bit93_backTrack2(size,mask,2,B.bv >> 2,
-          B.left>>4,
+        bit93_backTrack2(size,mask,2,B.bv >> 2,B.left>>4,
           ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-          (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK<<size-7,B.LASTMASK<<size-7);
+          (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK<<(size-7),B.LASTMASK<<(size-7));
       }
     }
   }
@@ -508,10 +508,8 @@ long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
     left <<= 1;//left 左に１ビットシフト
     right >>= 1;//right 右に１ビットシフト
   }
-  //１行下に移動する
-  bv >>= 1;
-  // Column needs to be placed
-  long  cnt = 0;
+  bv >>= 1;//１行下に移動する
+  long  cnt = 0;// Column needs to be placed
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
@@ -523,15 +521,14 @@ long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
   return  cnt;
-} // countCompletions()
+}
 //
 void q27_process(int si,Board B,int sym)
 {
   pre[sym]++;
   cnt[sym] += q27_countCompletions(B.bv >> 2,
-      ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-      B.left>>4,
-      (B.right>>4)<<(si-5));
+    ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+    B.left>>4,(B.right>>4)<<(si-5));
 }
 //
 void q27_solvenqueen(int size)
