@@ -563,6 +563,7 @@ int main(int argc,char** argv)
     printf("  -r: CPUR only\n");
     printf("  -g: GPU only\n");
     printf("  -s: SGPU only\n");
+    printf("  -q: q27 Version\n");
     printf("Default to 8 queen\n");
   }
   /** 出力と実行 */
@@ -606,6 +607,7 @@ int main(int argc,char** argv)
     }
   }
   if(q27){
+    printf("\n\nＱ２７．SGPU 非再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
