@@ -141,7 +141,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-long solve_nqueenr(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
+long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 {
   // Placement Complete?
   //printf("countCompletions_start\n");
@@ -175,11 +175,11 @@ long solve_nqueenr(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
   //
   // Column needs to be placed
   long  s=0;
-  uint64_t bit;
+  uint64 bit;
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  for(uint64 bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     //printf("colunm needs to be placed\n");
     //printf("slots:%d\n",slots);
     bit=bitmap&-bitmap;
