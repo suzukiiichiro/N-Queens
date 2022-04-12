@@ -626,8 +626,8 @@ int main(int argc,char** argv)
       int size=i;
       //事前準備 上下左右2行2列にクイーンを配置する
       q27_prepare(size);
-      st=clock();  
       //事前準備が終わってから時間を計測する
+      st=clock();  
       q27_solvenqueen(size);
       UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
       TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
