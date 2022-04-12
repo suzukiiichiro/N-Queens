@@ -45,7 +45,7 @@ typedef struct{
 }Board ;
 //
 Board B;
-Board b[2457600];
+Board *b;
 long bcnt=0;
 unsigned int NONE=2;
 unsigned int POINT=1;
@@ -545,6 +545,7 @@ int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
   int argstart=1;
+  b= (Board*)calloc(24576000, sizeof(Board));
   //,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
@@ -581,7 +582,7 @@ int main(int argc,char** argv)
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
     int min=5;
-    int targetN=15;
+    int targetN=17;
     uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
@@ -612,7 +613,7 @@ int main(int argc,char** argv)
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
     int min=5;
-    int targetN=15;
+    int targetN=17;
     uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
@@ -637,3 +638,4 @@ int main(int argc,char** argv)
   }
   return 0;
 }
+
