@@ -37,10 +37,6 @@ typedef struct{
   uint64 left;
   uint64 right;
   int cnt;
-  int TOPBIT;
-  int ENDBIT;
-  int LASTMASK;
-  int SIDEMASK;
   int x[MAX];
   int y[MAX];
 }Board ;
@@ -142,86 +138,8 @@ bool q27_board_placement(int si,int x,int y)
   return true;
 }
 //
-void bit93_solve_nqueen_backTrack1(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1)
-{
-  uint64 bitmap=0;
-  uint64 bit=0;
-  //既にクイーンを置いている行はスキップする
-  while((bv&1)!=0) {
-    bv>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
-    right>>=1;//right 右に１ビットシフト  
-    row++; 
-  }
-  bv>>=1;
-  if(row==size){
-    //TOTAL++;
-    UNIQUE++;       //ユニーク解を加算
-    TOTAL+=cnt;       //対称解除で得られた解数を加算
-  }else{
-    //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-    bitmap=~(left|down|right);  
-    if(row<BOUND1) {
-      bitmap&=~2; // bm|=2; bm^=2; (bm&=~2と同等)
-    }
-    while(bitmap>0){
-      bit=(-bitmap&bitmap);
-      bitmap=(bitmap^bit);
-      bit93_solve_nqueen_backTrack1(size,mask,row+1,bv,
-          (left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1);
-    }
-  }
-}
-//
-void bit93_solve_nqueen_backTrack2(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1,int BOUND2,int SIDEMASK,int LASTMASK)
-{
-  uint64 bitmap=0;
-  uint64 bit=0;
-  //既にクイーンを置いている行はスキップする
-  while((bv&1)!=0) {
-    bv>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
-    right>>=1;//right 右に１ビットシフト  
-    row++; 
-  }
-  bv>>=1;
-  if(row==size){
-    //TOTAL++;
-    UNIQUE++;       //ユニーク解を加算
-    TOTAL+=cnt;       //対称解除で得られた解数を加算
-  }else{
-    //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-    bitmap=~(left|down|right);  
-    /***11 【枝刈り】上部サイド枝刈*********************/
-    if(row<BOUND1){             	
-      bitmap&=~SIDEMASK;
-      /***11 【枝刈り】下部サイド枝刈り*********************/
-    }else if(row==BOUND2) {     	
-      if((down&SIDEMASK)==0){ return; }
-      if((down&SIDEMASK)!=SIDEMASK){ 
-	      bitmap&=SIDEMASK; 
-      }
-    }
-    while(bitmap>0){
-      bit=(-bitmap&bitmap);
-      bitmap=(bitmap^bit);
-      bit93_solve_nqueen_backTrack2(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1,BOUND2,SIDEMASK,LASTMASK);
-    }
-  }
-}
-//
 int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
 {
-  //int lsize=(size-2)*(size-1)-w;
-  //if(n<w || n>=lsize){
-  //  return 0;	
-  //}
-  //if(e<w || e>=lsize){
-  //  return 0;
-  //}
-  //if(s<w || s>=lsize){
-  //  return 0;
-  //}
   //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
   int ww=(size-2)*(size-1)-1-w;
   //新設
@@ -231,7 +149,7 @@ int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
     //check if flip about the up diagonal is smaller
     //if(n<(size-2)*(size-1)-1-e){
     //if(n<(w2-e)){
-    return 0;
+    return 3;
     //}
   }
   //if(e==ww){
@@ -239,7 +157,7 @@ int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
     //check if flip about the vertical center is smaller
     //if(n>(size-2)*(size-1)-1-n){
     //if(n>(w2-n)){
-    return 0;       
+    return 3;       
     //}
   }
   //if(n==ww){
@@ -247,29 +165,29 @@ int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
     //// check if flip about the down diagonal is smaller
     //if(e>(size-2)*(size-1)-1-s){
     //if(e>(w2-s)){
-    return 0;
+    return 3;
     //}
   }
   if(s==w){
     if((n!=w)||(e!=w)){
       // right rotation is smaller unless  w = n = e = s
       //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
-      return 0;
+      return 3;
     }
     //w=n=e=sであれば90度回転で同じ可能性
     //この場合はミラーの2
-    return 2;
+    return 0;
   }
   if((e==w)&&(n>=s)){
     //e==wは180度回転して同じ
     if(n>s){
       //180度回転して同じ時n>=sの時はsmaller?
-      return 0;
+      return 3;
     }
     //この場合は4
-    return 4;
+    return 1;
   }
-  return 8;   
+  return 2;   
 }
 //
 int q27_symmetryOps_n27(int w,int e,int n,int s,int size)
@@ -302,7 +220,7 @@ int q27_symmetryOps_n27(int w,int e,int n,int s,int size)
   return 2;   
 }
 //
-long q27_solve_nqueen(uint64 bv,uint64 down,uint64 left,uint64  right)
+long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
 {
   if(down+1 == 0){
     return  1;
@@ -317,52 +235,77 @@ long q27_solve_nqueen(uint64 bv,uint64 down,uint64 left,uint64  right)
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64  slots = ~(down|left|right); slots != 0;) {
-    uint64 const  slot = slots & -slots;
-    cnt   += q27_solve_nqueen(bv, down|slot, (left|slot) << 1, (right|slot) >> 1);
-    slots ^= slot;
+  for(uint64  bitmap = ~(down|left|right); bitmap != 0;) {
+    uint64 const  bit = bitmap & -bitmap;
+    cnt   += q27_countCompletions(bv, down|bit, (left|bit) << 1, (right|bit) >> 1);
+    bitmap ^= bit;
   }
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
   return  cnt;
 }
+//CPUR 再帰版 ロジックメソッド
+long bit93_countCompletions(int size, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
+  long cnt=0;
+  uint64 bitmap=0;
+  uint64 bit=0;
+  //既にクイーンを置いている行はスキップする
+  while((bv&1)!=0) {
+    bv>>=1;//右に１ビットシフト
+    left<<=1;//left 左に１ビットシフト
+    right>>=1;//right 右に１ビットシフト  
+    row++; 
+  }
+  bv>>=1;
+  if(row==size){
+    //TOTAL++;
+      //UNIQUE++;       //ユニーク解を加算
+      //TOTAL+=cnt;       //対称解除で得られた解数を加算
+      return 1;
+  }else{
+      //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
+      bitmap=~(left|down|right);   
+      while(bitmap>0){
+          bit=(-bitmap&bitmap);
+          bitmap=(bitmap^bit);
+          cnt +=bit93_countCompletions(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
+      }
+
+  }
+  return cnt;
+}
+
+void bit93_process(int si,Board B,int sym)
+{
+  pre[sym]++;
+  cnt[sym]+=bit93_countCompletions(si,2,B.bv >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+      (B.right>>4)<<(si-5));
+
+}
 //
-void bit93_NQueen(int size,uint64 mask)
+void bit93_NQueen(int size)
 {
   for (long bc=0;bc<=bcnt;bc++){
     B=b[bc];
-    if(B.x[0]==0){
-      bit93_solve_nqueen_backTrack1(size,mask,2,B.bv >> 2,B.left>>4,
-        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-        (B.right>>4)<<(size-5),8,B.x[1]);  
-    }else{     
-      if(size==5){
-	      bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,
-	        B.left>>4,
-	        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-	        (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK>>2,B.LASTMASK>>2);  
-      }else if(size==6){
-        bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,
-          B.left>>4,
-          ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-          (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK>>1,B.LASTMASK>>1);  
-      }else{
-        bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,B.left>>4,
-          ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-          (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK<<(size-7),B.LASTMASK<<(size-7));
-      }
-    }
+    bit93_process(size,B,B.cnt);
   }
+} 
+//
+void q27_process(int si,Board B,int sym)
+{
+  pre[sym]++;
+  cnt[sym] += q27_countCompletions(B.bv >> 2,
+    ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+    B.left>>4,(B.right>>4)<<(si-5));
 }
 //
 void q27_NQueen(int size)
 {
   for (long bc=0;bc<bcnt;bc++){
     B=b[bc];
-    pre[B.cnt]++;
-  cnt[B.cnt] += q27_solve_nqueen(B.bv >> 2,
-    ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-    B.left>>4,(B.right>>4)<<(size-5));
+    q27_process(size,B,B.cnt);
   }
 }
 //
@@ -371,14 +314,6 @@ void bit93_prepare(int size)
   //CPUR
   int pres_a[930];
   int pres_b[930];
-  int TOPBIT;
-  int ENDBIT;
-  int LASTMASK;
-  int SIDEMASK;
-  TOPBIT=1<<(size-1);
-  SIDEMASK=LASTMASK=(TOPBIT|1);
-  ENDBIT=(TOPBIT>>1);
-  int beforepres=0;
   int idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
@@ -395,12 +330,6 @@ void bit93_prepare(int size)
   Board wB=B;
   //for(int w=0;w<idx;w++){
   for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    if(pres_a[w]>1 && pres_a[w]>beforepres){
-      //printf("pres_a %d, before %d B1 %d B2 %d\n",pres_a[w],beforepres,pres_a[w],size-1-pres_a[w]);
-      LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-      ENDBIT>>=1;
-      beforepres=pres_a[w];
-    }
     B=wB;
     B.bv=B.down=B.left=B.right=0;
     for(int j=0;j<size;j++){ B.x[j]=-1; }
@@ -409,7 +338,6 @@ void bit93_prepare(int size)
       printf("\r");
       fflush(stdout);
       //プログレス
-
     bit93_board_placement(size,0,pres_a[w]);
     bit93_board_placement(size,1,pres_b[w]);
     Board nB=B;
@@ -431,21 +359,11 @@ void bit93_prepare(int size)
           B=sB;
           if(bit93_board_placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(bit93_board_placement(size,size-1-pres_b[s],1)==false){ continue; }
-          if(pres_a[w]==0){
-            B.cnt=8;
+          int scnt=bit93_symmetryOps_n27(w,e,n,s,size);
+          if(scnt !=3){
+            B.cnt=scnt;
             b[bcnt]=B;
-            bcnt++;      
-          }else{
-            int cnt=bit93_symmetryOps_n27(w,e,n,s,size);
-            if(cnt !=0){
-              B.TOPBIT=TOPBIT;
-              B.ENDBIT=ENDBIT;
-              B.LASTMASK=LASTMASK;
-              B.SIDEMASK=SIDEMASK; 
-              B.cnt=cnt;
-              b[bcnt]=B;
-              bcnt++;                
-            }
+            bcnt++;                
           }
         }
       } 
@@ -548,19 +466,25 @@ int main(int argc,char** argv)
     char t[20];          //hh:mm:ss.msを格納
     int min=5;
     int targetN=17;
-    uint64 mask;
+    //uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
       bcnt=0;
-      mask=((1<<i)-1);
+      for(int j=0;j<=2;j++){
+        pre[j]=0;
+        cnt[j]=0;
+      }
+      //mask=((1<<i)-1);
       int size=i;
       //事前準備 上下左右2行2列にクイーンを配置する
       bit93_prepare(size);
       //事前準備が終わってから時間を計測する
       st=clock();
       if(cpur){
-	      bit93_NQueen(size,mask);
+	      bit93_NQueen(size);
+        UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
+        TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
       }else if(cpu){
         //
         //開発中
@@ -577,7 +501,7 @@ int main(int argc,char** argv)
     char t[20];          //hh:mm:ss.msを格納
     int min=5;
     int targetN=17;
-    uint64 mask;
+    //uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
