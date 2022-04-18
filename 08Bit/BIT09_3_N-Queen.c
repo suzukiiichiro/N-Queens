@@ -76,7 +76,7 @@ void TimeFormat(clock_t utime,char *form)
     sprintf(form,"           %5.2f",ss);
 }
 //
-bool board_placement(int si,int x,int y)
+bool bit93_board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
   //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
@@ -109,56 +109,40 @@ bool board_placement(int si,int x,int y)
   return true;
 }
 //
-void NQueen(int size,int mask,int row,uint64 b,uint64 l,uint64 d,uint64 r)
+bool q27_board_placement(int si,int x,int y)
 {
-  int sizeE=size-1;
-  int n;
-  uint64 bitmap[size];
-  uint64 bv[size];
-  uint64 left[size];
-  uint64 down[size];
-  uint64 right[size];
-  uint64 bit=0;
-  bitmap[row]=mask&~(l|d|r);
-  bv[row]=b;
-  down[row]=d;
-  left[row]=l;
-  right[row]=r;
-  while(row>=2){
-    while((bv[row]&1)!=0) {
-      n=row++;
-      bv[row]=bv[n]>>1;//右に１ビットシフト
-      left[row]=left[n]<<1;//left 左に１ビットシフト
-      right[row]=right[n]>>1;//right 右に１ビットシフト
-      down[row]=down[n];  
-      bitmap[row]=mask&~(left[row]|down[row]|right[row]);    
-    }
-    bv[row+1]=bv[row]>>1;
-    if(bitmap[row]==0){
-      --row;
-    }else{
-      bitmap[row]^=bit=(-bitmap[row]&bitmap[row]); 
-      if((bit&mask)!=0||row>=sizeE){
-        //if((bit)!=0){
-        if(row>=sizeE){
-          TOTAL++;
-          --row;
-        }else{
-          n=row++;
-          left[row]=(left[n]|bit)<<1;
-          down[row]=down[n]|bit;
-          right[row]=(right[n]|bit)>>1;
-          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-          //bitmap[row]=~(left[row]|down[row]|right[row]);    
-        }
-      }else{
-	      --row;
-      }
-    }
-  }  
+  //同じ場所に置くかチェック
+  //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
+  if(B.x[x]==y){
+    //printf("Duplicate x:%d:y:%d\n",x,y);
+    ////同じ場所に置くのはOK
+    return true;  
+  }
+  B.x[x]=y;
+  //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
+  uint64 bv=1<<x;
+  uint64 down=1<<y;
+  B.y[x]=B.y[x]+down;
+  uint64 left=1<<(si-1-x+y);
+  uint64 right=1<<(x+y);
+  //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
+  //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
+  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
+    //printf("valid_false\n");
+    return false;
+  }     
+  //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  B.bv|=bv;
+  B.down|=down;
+  B.left|=left;
+  B.right|=right;
+  //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
+  //printf("valid_true\n");
+  return true;
 }
 //
-void bit93_backTrack1(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1)
+void bit93_solve_nqueen_backTrack1(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1)
 {
   uint64 bitmap=0;
   uint64 bit=0;
@@ -183,13 +167,13 @@ void bit93_backTrack1(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64
     while(bitmap>0){
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
-      bit93_backTrack1(size,mask,row+1,bv,
+      bit93_solve_nqueen_backTrack1(size,mask,row+1,bv,
           (left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1);
     }
   }
 }
 //
-void bit93_backTrack2(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1,int BOUND2,int SIDEMASK,int LASTMASK)
+void bit93_solve_nqueen_backTrack2(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt,int BOUND1,int BOUND2,int SIDEMASK,int LASTMASK)
 {
   uint64 bitmap=0;
   uint64 bit=0;
@@ -221,34 +205,7 @@ void bit93_backTrack2(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64
     while(bitmap>0){
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
-      bit93_backTrack2(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1,BOUND2,SIDEMASK,LASTMASK);
-    }
-  }
-}
-//
-void bit93_NQueenR(int size,uint64 mask, int row,uint64 bv,uint64 left,uint64 down,uint64 right,int cnt)
-{
-  uint64 bitmap=0;
-  uint64 bit=0;
-  //既にクイーンを置いている行はスキップする
-  while((bv&1)!=0) {
-    bv>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
-    right>>=1;//right 右に１ビットシフト  
-    row++; 
-  }
-  bv>>=1;
-  if(row==size){
-    //TOTAL++;
-    UNIQUE++;       //ユニーク解を加算
-    TOTAL+=cnt;       //対称解除で得られた解数を加算
-  }else{
-    //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-    bitmap=~(left|down|right);   
-    while(bitmap>0){
-      bit=(-bitmap&bitmap);
-      bitmap=(bitmap^bit);
-      bit93_NQueenR(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt);
+      bit93_solve_nqueen_backTrack2(size,mask,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,cnt,BOUND1,BOUND2,SIDEMASK,LASTMASK);
     }
   }
 }
@@ -345,7 +302,7 @@ int q27_symmetryOps_n27(int w,int e,int n,int s,int size)
   return 2;   
 }
 //
-long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
+long q27_solve_nqueen(uint64 bv,uint64 down,uint64 left,uint64  right)
 {
   if(down+1 == 0){
     return  1;
@@ -362,7 +319,7 @@ long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
   //slotsはクイーンの置ける場所
   for(uint64  slots = ~(down|left|right); slots != 0;) {
     uint64 const  slot = slots & -slots;
-    cnt   += q27_countCompletions(bv, down|slot, (left|slot) << 1, (right|slot) >> 1);
+    cnt   += q27_solve_nqueen(bv, down|slot, (left|slot) << 1, (right|slot) >> 1);
     slots ^= slot;
   }
   //途中でクイーンを置くところがなくなるとここに来る
@@ -370,35 +327,27 @@ long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
   return  cnt;
 }
 //
-void q27_process(int si,Board B,int sym)
-{
-  pre[sym]++;
-  cnt[sym] += q27_countCompletions(B.bv >> 2,
-    ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-    B.left>>4,(B.right>>4)<<(si-5));
-}
-//
-void bit93_solvenqueen(int size,uint64 mask)
+void bit93_NQueen(int size,uint64 mask)
 {
   for (long bc=0;bc<=bcnt;bc++){
     B=b[bc];
     if(B.x[0]==0){
-      bit93_backTrack1(size,mask,2,B.bv >> 2,B.left>>4,
+      bit93_solve_nqueen_backTrack1(size,mask,2,B.bv >> 2,B.left>>4,
         ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
         (B.right>>4)<<(size-5),8,B.x[1]);  
     }else{     
       if(size==5){
-	      bit93_backTrack2(size,mask,2,B.bv >> 2,
+	      bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,
 	        B.left>>4,
 	        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
 	        (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK>>2,B.LASTMASK>>2);  
       }else if(size==6){
-        bit93_backTrack2(size,mask,2,B.bv >> 2,
+        bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,
           B.left>>4,
           ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
           (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK>>1,B.LASTMASK>>1);  
       }else{
-        bit93_backTrack2(size,mask,2,B.bv >> 2,B.left>>4,
+        bit93_solve_nqueen_backTrack2(size,mask,2,B.bv >> 2,B.left>>4,
           ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
           (B.right>>4)<<(size-5),B.cnt,B.x[0],size-1-B.x[0],B.SIDEMASK<<(size-7),B.LASTMASK<<(size-7));
       }
@@ -406,14 +355,15 @@ void bit93_solvenqueen(int size,uint64 mask)
   }
 }
 //
-void q27_solvenqueen(int size)
+void q27_NQueen(int size)
 {
   for (long bc=0;bc<bcnt;bc++){
     B=b[bc];
-    q27_process(size,B,B.cnt);
+    pre[B.cnt]++;
+  cnt[B.cnt] += q27_solve_nqueen(B.bv >> 2,
+    ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+    B.left>>4,(B.right>>4)<<(size-5));
   }
-  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
 }
 //
 void bit93_prepare(int size)
@@ -460,27 +410,27 @@ void bit93_prepare(int size)
       fflush(stdout);
       //プログレス
 
-    board_placement(size,0,pres_a[w]);
-    board_placement(size,1,pres_b[w]);
+    bit93_board_placement(size,0,pres_a[w]);
+    bit93_board_placement(size,1,pres_b[w]);
     Board nB=B;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
       B=nB;
-      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      if(bit93_board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(bit93_board_placement(size,pres_b[n],size-2)==false){ continue; }
       Board eB=B;
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
         B=eB;  
-        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        if(bit93_board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(bit93_board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
         Board sB=B;
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
           B=sB;
-          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          if(bit93_board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(bit93_board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           if(pres_a[w]==0){
             B.cnt=8;
             b[bcnt]=B;
@@ -523,27 +473,27 @@ void q27_prepare(int size)
     B=wB;
     B.bv=B.down=B.left=B.right=0;
     for(int j=0;j<size;j++){ B.x[j]=-1; }
-    board_placement(size,0,pres_a[w]);
-    board_placement(size,1,pres_b[w]);
+    q27_board_placement(size,0,pres_a[w]);
+    q27_board_placement(size,1,pres_b[w]);
     Board nB=B;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
       B=nB;
-      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      if(q27_board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(q27_board_placement(size,pres_b[n],size-2)==false){ continue; }
       Board eB=B;
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
         B=eB;  
-        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        if(q27_board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(q27_board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
         Board sB=B;
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
           B=sB;
-          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          if(q27_board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(q27_board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           int scnt=q27_symmetryOps_n27(w,e,n,s,size);
           if(scnt !=3){
             B.cnt=scnt;
@@ -610,12 +560,10 @@ int main(int argc,char** argv)
       //事前準備が終わってから時間を計測する
       st=clock();
       if(cpur){
-	      bit93_solvenqueen(size,mask);
+	      bit93_NQueen(size,mask);
       }else if(cpu){
-        //CPU
-        NQueen(i,mask,2,B.bv >> 2,B.left>>4,
-          ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-          (B.right>>4)<<(size-5));  
+        //
+        //開発中
       }                
       //
       TimeFormat(clock()-st,t);
@@ -643,7 +591,7 @@ int main(int argc,char** argv)
       q27_prepare(size);
       //事前準備が終わってから時間を計測する
       st=clock();  
-      q27_solvenqueen(size);
+      q27_NQueen(size);
       UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
       TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
       //
