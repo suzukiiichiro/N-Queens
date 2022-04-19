@@ -32,17 +32,16 @@ long UNIQUE=0;        //CPU,CPUR
 typedef unsigned long long uint64;
 //typedef unsigned long uint64;
 typedef struct{
-  uint64 bv;
-  uint64 down;
-  uint64 left;
-  uint64 right;
+  int bv;
+  long down;
+  long left;
+  long right;
   int cnt;
   int x[MAX];
   int y[MAX];
 }Board ;
 //
-Board B;
-Board *b;
+Board *GBoard;
 long bcnt=0;
 unsigned int NONE=2;
 unsigned int POINT=1;
@@ -71,74 +70,35 @@ void TimeFormat(clock_t utime,char *form)
   else
     sprintf(form,"           %5.2f",ss);
 }
-//board_placementはq27,bit93で内容が同じなので共通化する
-bool bit93_board_placement(int si,int x,int y)
+//q27,bit93で内容が同じなので共通化する
+bool board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
-  //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
-  if(B.x[x]==y){
+  if(GBoard[bcnt].x[x]==y){
     //printf("Duplicate x:%d:y:%d\n",x,y);
     ////同じ場所に置くのはOK
     return true;  
   }
-  B.x[x]=y;
+  GBoard[bcnt].x[x]=y;
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
-  uint64 bv=1<<x;
-  uint64 down=1<<y;
-  B.y[x]=B.y[x]+down;
-  uint64 left=1<<(si-1-x+y);
-  uint64 right=1<<(x+y);
-  //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
-  //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
-  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
+  int bv=1<<x;
+  long down=1<<y;
+  GBoard[bcnt].y[x]=GBoard[bcnt].y[x]+down;
+  long left=1<<(si-1-x+y);
+  long right=1<<(x+y);
+  if((GBoard[bcnt].bv&bv)||(GBoard[bcnt].down&down)||(GBoard[bcnt].left&left)||(GBoard[bcnt].right&right)){
     //printf("valid_false\n");
     return false;
   }     
-  //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  B.bv|=bv;
-  B.down|=down;
-  B.left|=left;
-  B.right|=right;
-  //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  //printf("valid_true\n");
+  GBoard[bcnt].bv|=bv;
+  GBoard[bcnt].down|=down;
+  GBoard[bcnt].left|=left;
+  GBoard[bcnt].right|=right;
   return true;
 }
 //
-bool q27_board_placement(int si,int x,int y)
-{
-  //同じ場所に置くかチェック
-  //printf("i:%d:x:%d:y:%d\n",i,B.x[i],B.y[i]);
-  if(B.x[x]==y){
-    //printf("Duplicate x:%d:y:%d\n",x,y);
-    ////同じ場所に置くのはOK
-    return true;  
-  }
-  B.x[x]=y;
-  //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
-  uint64 bv=1<<x;
-  uint64 down=1<<y;
-  B.y[x]=B.y[x]+down;
-  uint64 left=1<<(si-1-x+y);
-  uint64 right=1<<(x+y);
-  //printf("check valid x:%d:y:%d:p.N-1-x+y:%d;x+y:%d\n",x,y,si-1-x+y,x+y);
-  //printf("check valid pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  //printf("bvcheck:%d:bhcheck:%d:bucheck:%d:bdcheck:%d\n",B.bv&bv,B.bh&bh,B.bu&bu,B.bd&bd);
-  if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){
-    //printf("valid_false\n");
-    return false;
-  }     
-  //printf("before pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  B.bv|=bv;
-  B.down|=down;
-  B.left|=left;
-  B.right|=right;
-  //printf("after pbv:%d:bv:%d:pbh:%d:bh:%d:pbu:%d:bu:%d:pbd:%d:bd:%d\n",B.bv,bv,B.bh,bh,B.bu,bu,B.bd,bd);
-  //printf("valid_true\n");
-  return true;
-}
-//
-int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
+//q27,bit93で内容が同じなので共通化する
+int symmetryOps_n27(int w,int e,int n,int s,int size)
 {
   //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
   int ww=(size-2)*(size-1)-1-w;
@@ -190,37 +150,7 @@ int bit93_symmetryOps_n27(int w,int e,int n,int s,int size)
   return 2;   
 }
 //
-int q27_symmetryOps_n27(int w,int e,int n,int s,int size)
-{
-  int ww = (size-2)*(size-1)-1-w;
-  if(s==ww) {
-    if(n < (size-2)*(size-1)-1-e) { return 3; }
-  }
-  if(e==ww) {
-    if(n > (size-2)*(size-1)-1-n) { return 3; }
-  }
-  if(n==ww) {
-    if(e > (size-2)*(size-1)-1-s) { return 3; }
-  }
-  // right rotation is smaller unless  w = n = e = s
-  //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
-  //w=n=e=sであれば90度回転で同じ可能性
-  //この場合はミラーの2
-  if(s==w){
-    if((n!=w)||(e!=w)){ return 3; }
-    return 0;
-  }
-  //e==wは180度回転して同じ
-  //180度回転して同じ時n>=sの時はsmaller?
-  //この場合は4
-  if((e==w)&&(n>=s)){
-    if(n>s){ return 3; }
-    return 1;
-  }
-  return 2;   
-}
-//
-long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
+long q27_countCompletions(int bv,long down,long left,long right)
 {
   if(down+1 == 0){
     return  1;
@@ -245,7 +175,7 @@ long q27_countCompletions(uint64 bv,uint64 down,uint64 left,uint64  right)
   return  cnt;
 }
 //CPUR 再帰版 ロジックメソッド
-long bit93_countCompletions(int size, int row,uint64 bv,uint64 left,uint64 down,uint64 right){
+long bit93_countCompletions(int size, int row,int bv,long left,long down,long right){
   long cnt=0;
   uint64 bitmap=0;
   uint64 bit=0;
@@ -275,42 +205,41 @@ long bit93_countCompletions(int size, int row,uint64 bv,uint64 left,uint64 down,
   return cnt;
 }
 
-void bit93_process(int si,Board B,int sym)
+void bit93_process(int si,Board lb,int sym)
 {
   pre[sym]++;
-  cnt[sym]+=bit93_countCompletions(si,2,B.bv >> 2,
-      B.left>>4,
-      ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-      (B.right>>4)<<(si-5));
+  cnt[sym]+=bit93_countCompletions(si,2,lb.bv >> 2,
+      lb.left>>4,
+      ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+      (lb.right>>4)<<(si-5));
 
 }
 //
 void bit93_NQueen(int size)
 {
   for (long bc=0;bc<=bcnt;bc++){
-    B=b[bc];
-    bit93_process(size,B,B.cnt);
+    bit93_process(size,GBoard[bc],GBoard[bc].cnt);
   }
 } 
 //
-void q27_process(int si,Board B,int sym)
+void q27_process(int si,Board lb,int sym)
 {
   pre[sym]++;
-  cnt[sym] += q27_countCompletions(B.bv >> 2,
-    ((((B.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-    B.left>>4,(B.right>>4)<<(si-5));
+  cnt[sym] += q27_countCompletions(lb.bv >> 2,
+    ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+    lb.left>>4,(lb.right>>4)<<(si-5));
 }
 //
 void q27_NQueen(int size)
 {
   for (long bc=0;bc<bcnt;bc++){
-    B=b[bc];
-    q27_process(size,B,B.cnt);
-    //bit93_process(size,B,B.cnt);
+    q27_process(size,GBoard[bc],GBoard[bc].cnt);
+    //bit93_process(size,GBoard[bc],GBoard[bc].cnt);
   }
 }
 //
-void bit93_prepare(int size)
+//q27,bit93で内容が同じなので共通化する
+void prepare(int size)
 {
   //CPUR
   int pres_a[930];
@@ -327,99 +256,45 @@ void bit93_prepare(int size)
   //プログレス
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
-
-  Board wB=B;
+  
+  Board wB=GBoard[bcnt];
   //for(int w=0;w<idx;w++){
   for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    B=wB;
-    B.bv=B.down=B.left=B.right=0;
-    for(int j=0;j<size;j++){ B.x[j]=-1; }
+    GBoard[bcnt]=wB;
+    GBoard[bcnt].bv=GBoard[bcnt].down=GBoard[bcnt].left=GBoard[bcnt].right=0;
+    for(int j=0;j<size;j++){ GBoard[bcnt].x[j]=-1; }
       //プログレス
       printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
       printf("\r");
       fflush(stdout);
       //プログレス
-    bit93_board_placement(size,0,pres_a[w]);
-    bit93_board_placement(size,1,pres_b[w]);
-    Board nB=B;
+    board_placement(size,0,pres_a[w]);
+    board_placement(size,1,pres_b[w]);
+    Board nB=GBoard[bcnt];
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
-      B=nB;
-      if(bit93_board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(bit93_board_placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=B;
+      GBoard[bcnt]=nB;
+      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      Board eB=GBoard[bcnt];
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
-        B=eB;  
-        if(bit93_board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(bit93_board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=B;
+        GBoard[bcnt]=eB;  
+        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        Board sB=GBoard[bcnt];
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
-          B=sB;
-          if(bit93_board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(bit93_board_placement(size,size-1-pres_b[s],1)==false){ continue; }
-          int scnt=bit93_symmetryOps_n27(w,e,n,s,size);
+          GBoard[bcnt]=sB;
+          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          int scnt=symmetryOps_n27(w,e,n,s,size);
           if(scnt !=3){
-            B.cnt=scnt;
-            b[bcnt]=B;
+            GBoard[bcnt].cnt=scnt;
             bcnt++;                
           }
         }
-      } 
-    }
-  }
-}
-//
-void q27_prepare(int size)
-{
-  //CPUR
-  int pres_a[930];
-  int pres_b[930];
-  int idx=0;
-  for(int a=0;a<size;a++){
-    for(int b=0;b<size;b++){
-      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){ continue; }     
-      pres_a[idx]=a;
-      pres_b[idx]=b;
-      idx++;
-    }
-  }
-  Board wB=B;
-  //for(int w=0;w<idx;w++){
-  for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    B=wB;
-    B.bv=B.down=B.left=B.right=0;
-    for(int j=0;j<size;j++){ B.x[j]=-1; }
-    q27_board_placement(size,0,pres_a[w]);
-    q27_board_placement(size,1,pres_b[w]);
-    Board nB=B;
-    int lsize=(size-2)*(size-1)-w;
-    for(int n=w;n<lsize;n++){
-      //for(int n=0;n<idx;n++){
-      B=nB;
-      if(q27_board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(q27_board_placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=B;
-      for(int e=w;e<lsize;e++){
-        //for(int e=0;e<idx;e++){
-        B=eB;  
-        if(q27_board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(q27_board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=B;
-        for(int s=w;s<lsize;s++){
-          //for(int s=0;s<idx;s++){
-          B=sB;
-          if(q27_board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(q27_board_placement(size,size-1-pres_b[s],1)==false){ continue; }
-          int scnt=q27_symmetryOps_n27(w,e,n,s,size);
-          if(scnt !=3){
-            B.cnt=scnt;
-            b[bcnt]=B;
-            bcnt++;                
-          }
-	      }
       } 
     }
   }
@@ -429,7 +304,7 @@ int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
   int argstart=1;
-  b= (Board*)calloc(24576000, sizeof(Board));
+  GBoard= (Board*)calloc(24576000, sizeof(Board));
   //,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
@@ -479,7 +354,7 @@ int main(int argc,char** argv)
       //mask=((1<<i)-1);
       int size=i;
       //事前準備 上下左右2行2列にクイーンを配置する
-      bit93_prepare(size);
+      prepare(size);
       //事前準備が終わってから時間を計測する
       st=clock();
     
@@ -514,7 +389,7 @@ int main(int argc,char** argv)
       }
       int size=i;
       //事前準備 上下左右2行2列にクイーンを配置する
-      q27_prepare(size);
+      prepare(size);
       //事前準備が終わってから時間を計測する
       st=clock();
       
