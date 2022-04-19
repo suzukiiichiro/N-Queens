@@ -71,7 +71,7 @@ void TimeFormat(clock_t utime,char *form)
   else
     sprintf(form,"           %5.2f",ss);
 }
-//
+//board_placementはq27,bit93で内容が同じなので共通化する
 bool bit93_board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
@@ -306,6 +306,7 @@ void q27_NQueen(int size)
   for (long bc=0;bc<bcnt;bc++){
     B=b[bc];
     q27_process(size,B,B.cnt);
+    //bit93_process(size,B,B.cnt);
   }
 }
 //
@@ -481,6 +482,7 @@ int main(int argc,char** argv)
       bit93_prepare(size);
       //事前準備が終わってから時間を計測する
       st=clock();
+    
       if(cpur){
 	      bit93_NQueen(size);
         UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
@@ -514,7 +516,8 @@ int main(int argc,char** argv)
       //事前準備 上下左右2行2列にクイーンを配置する
       q27_prepare(size);
       //事前準備が終わってから時間を計測する
-      st=clock();  
+      st=clock();
+      
       q27_NQueen(size);
       UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
       TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
