@@ -218,6 +218,11 @@ void bit93_process(int si,Board lb,int sym)
 void bit93_NQueen(int size)
 {
   for (long bc=0;bc<=bcnt;bc++){
+    //プログレス
+    printf("\r(%ld/%ld)",bc,bcnt);// << std::flush;
+    printf("\r");
+    fflush(stdout);
+    //プログレス
     bit93_process(size,GBoard[bc],GBoard[bc].cnt);
   }
 } 
@@ -233,6 +238,12 @@ void q27_process(int si,Board lb,int sym)
 void q27_NQueen(int size)
 {
   for (long bc=0;bc<bcnt;bc++){
+    //プログレス
+    printf("\r(%ld/%ld)",bc,bcnt);// << std::flush;
+    printf("\r");
+    fflush(stdout);
+    //プログレス
+
     q27_process(size,GBoard[bc],GBoard[bc].cnt);
     //bit93_process(size,GBoard[bc],GBoard[bc].cnt);
   }
@@ -263,11 +274,11 @@ void prepare(int size)
     GBoard[bcnt]=wB;
     GBoard[bcnt].bv=GBoard[bcnt].down=GBoard[bcnt].left=GBoard[bcnt].right=0;
     for(int j=0;j<size;j++){ GBoard[bcnt].x[j]=-1; }
-      //プログレス
-      printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
-      printf("\r");
-      fflush(stdout);
-      //プログレス
+    //プログレス
+    printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
+    printf("\r");
+    fflush(stdout);
+    //プログレス
     board_placement(size,0,pres_a[w]);
     board_placement(size,1,pres_b[w]);
     Board nB=GBoard[bcnt];
