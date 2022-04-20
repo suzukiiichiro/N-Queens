@@ -40,7 +40,7 @@ Board gBoard;
 unsigned int NONE=2;
 unsigned int POINT=1;
 unsigned int ROTATE=0;
-long cnt[3];
+long COUNT[3];
 
 void TimeFormat(clock_t utime,char *form)
 {
@@ -193,7 +193,7 @@ long bit93_countCompletions(int size, int row,int bv,long left,long down,long ri
 }
 void bit93_process(int si,Board lb,int sym)
 {
-  cnt[sym]+=bit93_countCompletions(si,2,lb.bv >> 2,
+  COUNT[sym]+=bit93_countCompletions(si,2,lb.bv >> 2,
       lb.left>>4,
       ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
       (lb.right>>4)<<(si-5));
@@ -201,14 +201,14 @@ void bit93_process(int si,Board lb,int sym)
 }
 void q27_process(int si,Board lb,int sym)
 {
-  cnt[sym] += q27_countCompletions(lb.bv >> 2,
+  COUNT[sym] += q27_countCompletions(lb.bv >> 2,
     ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
     lb.left>>4,(lb.right>>4)<<(si-5));
 }
 void bit93_NQueens(int size)
 {
   for(int j=0;j<=2;j++){
-    cnt[j]=0;
+    COUNT[j]=0;
   }
   //CPUR
   int pres_a[930];
@@ -266,13 +266,13 @@ void bit93_NQueens(int size)
       } 
     }
   }
-  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
+  UNIQUE=COUNT[ROTATE]+COUNT[POINT]+COUNT[NONE];
+  TOTAL=COUNT[ROTATE]*2+COUNT[POINT]*4+COUNT[NONE]*8;
 }
 void q27_NQueens(int size)
 {
   for(int j=0;j<=2;j++){
-    cnt[j]=0;
+    COUNT[j]=0;
   }
   //CPUR
   int pres_a[930];
@@ -330,8 +330,8 @@ void q27_NQueens(int size)
       } 
     }
   }
-  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
+  UNIQUE=COUNT[ROTATE]+COUNT[POINT]+COUNT[NONE];
+  TOTAL=COUNT[ROTATE]*2+COUNT[POINT]*4+COUNT[NONE]*8;
 }
 int main(int argc,char** argv)
 {
