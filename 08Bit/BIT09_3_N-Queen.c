@@ -35,12 +35,12 @@ typedef struct{
   long right;
   int x[MAX];
   int y[MAX];
+  long COUNT[2];
 }Board ;
 Board gBoard;
 unsigned int NONE=2;
 unsigned int POINT=1;
 unsigned int ROTATE=0;
-long COUNT[3];
 
 void TimeFormat(clock_t utime,char *form)
 {
@@ -138,10 +138,10 @@ int symmetryOps_n27(int w,int e,int n,int s,int size)
   }
   return 2;   
 }
-long q27_countCompletions(int bv,long down,long left,long right)
+void q27_countCompletions(int bv,long down,long left,long right,Board *lb,int sym)
 {
   if(down+1 == 0){
-    return  1;
+    lb->COUNT[sym]++;
   }
   while((bv&1) != 0) { // Column is covered by pre-placement
     bv >>= 1;//右に１ビットシフト
@@ -149,22 +149,19 @@ long q27_countCompletions(int bv,long down,long left,long right)
     right >>= 1;//right 右に１ビットシフト
   }
   bv >>= 1;//１行下に移動する
-  long  cnt = 0;// Column needs to be placed
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
   for(long  bitmap = ~(down|left|right); bitmap != 0;) {
     long const  bit = bitmap & -bitmap;
-    cnt   += q27_countCompletions(bv, down|bit, (left|bit) << 1, (right|bit) >> 1);
+    q27_countCompletions(bv, down|bit, (left|bit) << 1, (right|bit) >> 1,lb,sym);
     bitmap ^= bit;
   }
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
-  return  cnt;
 }
-long bit93_countCompletions(int size, int row,int bv,long left,long down,long right)
+void bit93_countCompletions(int size, int row,int bv,long left,long down,long right,Board *lb,int sym)
 {
-  long cnt=0;
   long bitmap=0;
   long bit=0;
   //既にクイーンを置いている行はスキップする
@@ -179,37 +176,34 @@ long bit93_countCompletions(int size, int row,int bv,long left,long down,long ri
     //TOTAL++;
       //UNIQUE++;       //ユニーク解を加算
       //TOTAL+=cnt;       //対称解除で得られた解数を加算
-      return 1;
+      lb->COUNT[sym]++;
   }else{
       //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
       bitmap=~(left|down|right);   
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
-          cnt +=bit93_countCompletions(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
+          bit93_countCompletions(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,lb,sym);
       }
   }
-  return cnt;
 }
-void bit93_process(int si,Board lb,int sym)
+void bit93_process(int si,Board *lb,int sym)
 {
-  COUNT[sym]+=bit93_countCompletions(si,2,lb.bv >> 2,
-      lb.left>>4,
-      ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-      (lb.right>>4)<<(si-5));
+  bit93_countCompletions(si,2,lb->bv >> 2,
+      lb->left>>4,
+      ((((lb->down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+      (lb->right>>4)<<(si-5),lb,sym);
 
 }
-void q27_process(int si,Board lb,int sym)
+void q27_process(int si,Board *lb,int sym)
 {
-  COUNT[sym] += q27_countCompletions(lb.bv >> 2,
-    ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
-    lb.left>>4,(lb.right>>4)<<(si-5));
+  q27_countCompletions(lb->bv >> 2,
+    ((((lb->down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
+    lb->left>>4,(lb->right>>4)<<(si-5),lb,sym);
+
 }
 void bit93_NQueens(int size)
 {
-  for(int j=0;j<=2;j++){
-    COUNT[j]=0;
-  }
   //CPUR
   int pres_a[930];
   int pres_b[930];
@@ -260,20 +254,26 @@ void bit93_NQueens(int size)
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           int sym=symmetryOps_n27(w,e,n,s,size);
           if(sym !=3){
-            bit93_process(size,gBoard,sym);
+            for(int j=0;j<=2;j++){
+              gBoard.COUNT[j]=0;
+            }
+            bit93_process(size,&gBoard,sym);
+            UNIQUE+=gBoard.COUNT[sym];
+            if(sym==0){
+              TOTAL+=gBoard.COUNT[sym]*2;
+            }else if(sym==1){
+              TOTAL+=gBoard.COUNT[sym]*4;
+            }else if(sym==2){
+              TOTAL+=gBoard.COUNT[sym]*8;
+            }
           }
         }
       } 
     }
   }
-  UNIQUE=COUNT[ROTATE]+COUNT[POINT]+COUNT[NONE];
-  TOTAL=COUNT[ROTATE]*2+COUNT[POINT]*4+COUNT[NONE]*8;
 }
 void q27_NQueens(int size)
 {
-  for(int j=0;j<=2;j++){
-    COUNT[j]=0;
-  }
   //CPUR
   int pres_a[930];
   int pres_b[930];
@@ -324,14 +324,23 @@ void q27_NQueens(int size)
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           int sym=symmetryOps_n27(w,e,n,s,size);
           if(sym !=3){
-            q27_process(size,gBoard,sym);
+            for(int j=0;j<=2;j++){
+              gBoard.COUNT[j]=0;
+            }
+            q27_process(size,&gBoard,sym);
+            UNIQUE+=gBoard.COUNT[sym];
+            if(sym==0){
+              TOTAL+=gBoard.COUNT[sym]*2;
+            }else if(sym==1){
+              TOTAL+=gBoard.COUNT[sym]*4;
+            }else if(sym==2){
+              TOTAL+=gBoard.COUNT[sym]*8;
+            }
           }
         }
       } 
     }
   }
-  UNIQUE=COUNT[ROTATE]+COUNT[POINT]+COUNT[NONE];
-  TOTAL=COUNT[ROTATE]*2+COUNT[POINT]*4+COUNT[NONE]*8;
 }
 int main(int argc,char** argv)
 {
