@@ -26,11 +26,8 @@
 #include <sys/time.h>
 #define THREAD_NUM		96
 #define MAX 27
-//変数宣言
-long TOTAL=0;         //CPU,CPUR
-long UNIQUE=0;        //CPU,CPUR
-typedef unsigned long long uint64;
-//typedef unsigned long uint64;
+long TOTAL=0;
+long UNIQUE=0;
 typedef struct{
   int bv;
   long down;
@@ -40,8 +37,6 @@ typedef struct{
   int x[MAX];
   int y[MAX];
 }Board ;
-//
-
 Board GBoard;
 unsigned int NONE=2;
 unsigned int POINT=1;
@@ -49,7 +44,6 @@ unsigned int ROTATE=0;
 long cnt[3];
 long pre[3];
 
-//hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char *form)
 {
   int dd,hh,mm;
@@ -70,7 +64,6 @@ void TimeFormat(clock_t utime,char *form)
   else
     sprintf(form,"           %5.2f",ss);
 }
-//q27,bit93で内容が同じなので共通化する
 bool board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
@@ -96,8 +89,6 @@ bool board_placement(int si,int x,int y)
   GBoard.right|=right;
   return true;
 }
-//
-//q27,bit93で内容が同じなので共通化する
 int symmetryOps_n27(int w,int e,int n,int s,int size)
 {
   //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
@@ -149,7 +140,6 @@ int symmetryOps_n27(int w,int e,int n,int s,int size)
   }
   return 2;   
 }
-//
 long q27_countCompletions(int bv,long down,long left,long right)
 {
   if(down+1 == 0){
@@ -165,8 +155,8 @@ long q27_countCompletions(int bv,long down,long left,long right)
   //bh:down bu:left bd:right
   //クイーンを置いていく
   //slotsはクイーンの置ける場所
-  for(uint64  bitmap = ~(down|left|right); bitmap != 0;) {
-    uint64 const  bit = bitmap & -bitmap;
+  for(long  bitmap = ~(down|left|right); bitmap != 0;) {
+    long const  bit = bitmap & -bitmap;
     cnt   += q27_countCompletions(bv, down|bit, (left|bit) << 1, (right|bit) >> 1);
     bitmap ^= bit;
   }
@@ -174,12 +164,11 @@ long q27_countCompletions(int bv,long down,long left,long right)
   //printf("return_cnt:%d\n",cnt);
   return  cnt;
 }
-//CPUR 再帰版 ロジックメソッド
 long bit93_countCompletions(int size, int row,int bv,long left,long down,long right)
 {
   long cnt=0;
-  uint64 bitmap=0;
-  uint64 bit=0;
+  long bitmap=0;
+  long bit=0;
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
     bv>>=1;//右に１ビットシフト
@@ -204,7 +193,6 @@ long bit93_countCompletions(int size, int row,int bv,long left,long down,long ri
   }
   return cnt;
 }
-
 void bit93_process(int si,Board lb,int sym)
 {
   pre[sym]++;
@@ -214,12 +202,6 @@ void bit93_process(int si,Board lb,int sym)
       (lb.right>>4)<<(si-5));
 
 }
-//
-void bit93_NQueen(int size)
-{
-  bit93_process(size,GBoard,GBoard.cnt);
-} 
-//
 void q27_process(int si,Board lb,int sym)
 {
   pre[sym]++;
@@ -227,13 +209,7 @@ void q27_process(int si,Board lb,int sym)
     ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
     lb.left>>4,(lb.right>>4)<<(si-5));
 }
-//
-void q27_NQueen(int size)
-{
-  q27_process(size,GBoard,GBoard.cnt);
-}
-//
-void bit93_prepare(int size)
+void bit93_NQueens(int size)
 {
   //CPUR
   int pres_a[930];
@@ -286,14 +262,14 @@ void bit93_prepare(int size)
           int scnt=symmetryOps_n27(w,e,n,s,size);
           if(scnt !=3){
             GBoard.cnt=scnt;
-	          bit93_NQueen(size);
+            bit93_process(size,GBoard,GBoard.cnt);
           }
         }
       } 
     }
   }
 }
-void q27_prepare(int size)
+void q27_NQueens(int size)
 {
   //CPUR
   int pres_a[930];
@@ -346,14 +322,13 @@ void q27_prepare(int size)
           int scnt=symmetryOps_n27(w,e,n,s,size);
           if(scnt !=3){
             GBoard.cnt=scnt;
-	          q27_NQueen(size);
+            q27_process(size,GBoard,GBoard.cnt);
           }
         }
       } 
     }
   }
 }
-//メインメソッド
 int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
@@ -366,8 +341,8 @@ int main(int argc,char** argv)
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
     else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
     else if(argv[1][1]=='q'||argv[1][1]=='Q'){q27=true;}
-    else
-      cpur=true;
+    else{ cpur=true;
+    }
     argstart=2;
   }
   if(argc<argstart){
@@ -379,23 +354,23 @@ int main(int argc,char** argv)
     printf("  -q: q27 Version\n");
     printf("Default to 8 queen\n");
   }
-  /** 出力と実行 */
   if(cpu){
-    printf("\n\n９−３．CPU 非再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．CPU 非再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }else if(cpur){
-    printf("\n\n９−３．CPUR 再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．CPUR 再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }else if(gpu){
-    printf("\n\n９−３．GPU 非再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．GPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
   }else if(sgpu){
-    printf("\n\n９−３．SGPU 非再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．SGPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+  }else if(q27){
+    printf("\n\nQ２７．CPUR 再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }
-  if(cpu||cpur){
+  if(cpu||cpur||q27){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    clock_t st;          //速度計測用
-    char t[20];          //hh:mm:ss.msを格納
+    clock_t st;
+    char t[20];
     int min=5;
     int targetN=17;
-    //uint64 mask;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
@@ -403,49 +378,14 @@ int main(int argc,char** argv)
         pre[j]=0;
         cnt[j]=0;
       }
-      //mask=((1<<i)-1);
-      int size=i;
-      //時間を計測する
       st=clock();
-      //事前準備 上下左右2行2列にクイーンを配置する
-      bit93_prepare(size);
-    
+      if(q27){ q27_NQueens(i); }
+      else{ bit93_NQueens(i); }
+      TimeFormat(clock()-st,t);
       UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
       TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
-      //
-      TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
-      //free(GBoard);
-    }
-  }
-  if(q27){
-    printf("\n\nＱ２７．SGPU 非再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
-    printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-    clock_t st;          //速度計測用
-    char t[20];          //hh:mm:ss.msを格納
-    int min=5;
-    int targetN=17;
-    //uint64 mask;
-    for(int i=min;i<=targetN;i++){
-      TOTAL=0;
-      UNIQUE=0;
-      for(int j=0;j<=2;j++){
-        pre[j]=0;
-        cnt[j]=0;
-      }
-      int size=i;
-      //時間を計測する
-      st=clock();
-      //事前準備 上下左右2行2列にクイーンを配置する
-      q27_prepare(size);
-      
-      UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-      TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
-      //
-      TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);             
     }
   }
   return 0;
 }
-
