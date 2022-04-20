@@ -211,6 +211,9 @@ void q27_process(int si,Board lb,int sym)
 }
 void bit93_NQueens(int size)
 {
+  for(int j=0;j<=2;j++){
+    cnt[j]=0;
+  }
   //CPUR
   int pres_a[930];
   int pres_b[930];
@@ -268,9 +271,14 @@ void bit93_NQueens(int size)
       } 
     }
   }
+  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
+  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
 }
 void q27_NQueens(int size)
 {
+  for(int j=0;j<=2;j++){
+    cnt[j]=0;
+  }
   //CPUR
   int pres_a[930];
   int pres_b[930];
@@ -328,6 +336,8 @@ void q27_NQueens(int size)
       } 
     }
   }
+  UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
+  TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
 }
 int main(int argc,char** argv)
 {
@@ -374,16 +384,10 @@ int main(int argc,char** argv)
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
-      for(int j=0;j<=2;j++){
-        pre[j]=0;
-        cnt[j]=0;
-      }
       st=clock();
       if(q27){ q27_NQueens(i); }
       else{ bit93_NQueens(i); }
       TimeFormat(clock()-st,t);
-      UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-      TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
     }
   }
