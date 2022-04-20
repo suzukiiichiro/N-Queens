@@ -33,7 +33,6 @@ typedef struct{
   long down;
   long left;
   long right;
-  int cnt;
   int x[MAX];
   int y[MAX];
 }Board ;
@@ -42,7 +41,6 @@ unsigned int NONE=2;
 unsigned int POINT=1;
 unsigned int ROTATE=0;
 long cnt[3];
-long pre[3];
 
 void TimeFormat(clock_t utime,char *form)
 {
@@ -195,7 +193,6 @@ long bit93_countCompletions(int size, int row,int bv,long left,long down,long ri
 }
 void bit93_process(int si,Board lb,int sym)
 {
-  pre[sym]++;
   cnt[sym]+=bit93_countCompletions(si,2,lb.bv >> 2,
       lb.left>>4,
       ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
@@ -204,7 +201,6 @@ void bit93_process(int si,Board lb,int sym)
 }
 void q27_process(int si,Board lb,int sym)
 {
-  pre[sym]++;
   cnt[sym] += q27_countCompletions(lb.bv >> 2,
     ((((lb.down>>2)|(~0<<(si-4)))+1)<<(si-5))-1,
     lb.left>>4,(lb.right>>4)<<(si-5));
@@ -262,10 +258,9 @@ void bit93_NQueens(int size)
           gBoard=sB;
           if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
-          int scnt=symmetryOps_n27(w,e,n,s,size);
-          if(scnt !=3){
-            gBoard.cnt=scnt;
-            bit93_process(size,gBoard,gBoard.cnt);
+          int sym=symmetryOps_n27(w,e,n,s,size);
+          if(sym !=3){
+            bit93_process(size,gBoard,sym);
           }
         }
       } 
@@ -327,10 +322,9 @@ void q27_NQueens(int size)
           gBoard=sB;
           if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
-          int scnt=symmetryOps_n27(w,e,n,s,size);
-          if(scnt !=3){
-            gBoard.cnt=scnt;
-            q27_process(size,gBoard,gBoard.cnt);
+          int sym=symmetryOps_n27(w,e,n,s,size);
+          if(sym !=3){
+            q27_process(size,gBoard,sym);
           }
         }
       } 
