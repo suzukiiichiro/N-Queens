@@ -41,8 +41,8 @@ typedef struct{
   int y[MAX];
 }Board ;
 //
-Board *GBoard;
-long bcnt=0;
+
+Board GBoard;
 unsigned int NONE=2;
 unsigned int POINT=1;
 unsigned int ROTATE=0;
@@ -74,26 +74,26 @@ void TimeFormat(clock_t utime,char *form)
 bool board_placement(int si,int x,int y)
 {
   //同じ場所に置くかチェック
-  if(GBoard[bcnt].x[x]==y){
+  if(GBoard.x[x]==y){
     //printf("Duplicate x:%d:y:%d\n",x,y);
     ////同じ場所に置くのはOK
     return true;  
   }
-  GBoard[bcnt].x[x]=y;
+  GBoard.x[x]=y;
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   int bv=1<<x;
   long down=1<<y;
-  GBoard[bcnt].y[x]=GBoard[bcnt].y[x]+down;
+  GBoard.y[x]=GBoard.y[x]+down;
   long left=1<<(si-1-x+y);
   long right=1<<(x+y);
-  if((GBoard[bcnt].bv&bv)||(GBoard[bcnt].down&down)||(GBoard[bcnt].left&left)||(GBoard[bcnt].right&right)){
+  if((GBoard.bv&bv)||(GBoard.down&down)||(GBoard.left&left)||(GBoard.right&right)){
     //printf("valid_false\n");
     return false;
   }     
-  GBoard[bcnt].bv|=bv;
-  GBoard[bcnt].down|=down;
-  GBoard[bcnt].left|=left;
-  GBoard[bcnt].right|=right;
+  GBoard.bv|=bv;
+  GBoard.down|=down;
+  GBoard.left|=left;
+  GBoard.right|=right;
   return true;
 }
 //
@@ -175,7 +175,8 @@ long q27_countCompletions(int bv,long down,long left,long right)
   return  cnt;
 }
 //CPUR 再帰版 ロジックメソッド
-long bit93_countCompletions(int size, int row,int bv,long left,long down,long right){
+long bit93_countCompletions(int size, int row,int bv,long left,long down,long right)
+{
   long cnt=0;
   uint64 bitmap=0;
   uint64 bit=0;
@@ -200,7 +201,6 @@ long bit93_countCompletions(int size, int row,int bv,long left,long down,long ri
           bitmap=(bitmap^bit);
           cnt +=bit93_countCompletions(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1);
       }
-
   }
   return cnt;
 }
@@ -217,14 +217,7 @@ void bit93_process(int si,Board lb,int sym)
 //
 void bit93_NQueen(int size)
 {
-  for (long bc=0;bc<=bcnt;bc++){
-    //プログレス
-    printf("\r(%ld/%ld)",bc,bcnt);// << std::flush;
-    printf("\r");
-    fflush(stdout);
-    //プログレス
-    bit93_process(size,GBoard[bc],GBoard[bc].cnt);
-  }
+  bit93_process(size,GBoard,GBoard.cnt);
 } 
 //
 void q27_process(int si,Board lb,int sym)
@@ -237,20 +230,10 @@ void q27_process(int si,Board lb,int sym)
 //
 void q27_NQueen(int size)
 {
-  for (long bc=0;bc<bcnt;bc++){
-    //プログレス
-    printf("\r(%ld/%ld)",bc,bcnt);// << std::flush;
-    printf("\r");
-    fflush(stdout);
-    //プログレス
-
-    q27_process(size,GBoard[bc],GBoard[bc].cnt);
-    //bit93_process(size,GBoard[bc],GBoard[bc].cnt);
-  }
+  q27_process(size,GBoard,GBoard.cnt);
 }
 //
-//q27,bit93で内容が同じなので共通化する
-void prepare(int size)
+void bit93_prepare(int size)
 {
   //CPUR
   int pres_a[930];
@@ -268,12 +251,12 @@ void prepare(int size)
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
   
-  Board wB=GBoard[bcnt];
+  Board wB=GBoard;
   //for(int w=0;w<idx;w++){
   for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    GBoard[bcnt]=wB;
-    GBoard[bcnt].bv=GBoard[bcnt].down=GBoard[bcnt].left=GBoard[bcnt].right=0;
-    for(int j=0;j<size;j++){ GBoard[bcnt].x[j]=-1; }
+    GBoard=wB;
+    GBoard.bv=GBoard.down=GBoard.left=GBoard.right=0;
+    for(int j=0;j<size;j++){ GBoard.x[j]=-1; }
     //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
     printf("\r");
@@ -281,29 +264,89 @@ void prepare(int size)
     //プログレス
     board_placement(size,0,pres_a[w]);
     board_placement(size,1,pres_b[w]);
-    Board nB=GBoard[bcnt];
+    Board nB=GBoard;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
-      GBoard[bcnt]=nB;
+      GBoard=nB;
       if(board_placement(size,pres_a[n],size-1)==false){ continue; }
       if(board_placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=GBoard[bcnt];
+      Board eB=GBoard;
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
-        GBoard[bcnt]=eB;  
+        GBoard=eB;  
         if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
         if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=GBoard[bcnt];
+        Board sB=GBoard;
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
-          GBoard[bcnt]=sB;
+          GBoard=sB;
           if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
           int scnt=symmetryOps_n27(w,e,n,s,size);
           if(scnt !=3){
-            GBoard[bcnt].cnt=scnt;
-            bcnt++;                
+            GBoard.cnt=scnt;
+	          bit93_NQueen(size);
+          }
+        }
+      } 
+    }
+  }
+}
+void q27_prepare(int size)
+{
+  //CPUR
+  int pres_a[930];
+  int pres_b[930];
+  int idx=0;
+  for(int a=0;a<size;a++){
+    for(int b=0;b<size;b++){
+      if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){ continue; }     
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      idx++;
+    }
+  }
+  //プログレス
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+  //プログレス
+  
+  Board wB=GBoard;
+  //for(int w=0;w<idx;w++){
+  for (int w = 0; w <= (size / 2) * (size - 3); w++){
+    GBoard=wB;
+    GBoard.bv=GBoard.down=GBoard.left=GBoard.right=0;
+    for(int j=0;j<size;j++){ GBoard.x[j]=-1; }
+    //プログレス
+    printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
+    printf("\r");
+    fflush(stdout);
+    //プログレス
+    board_placement(size,0,pres_a[w]);
+    board_placement(size,1,pres_b[w]);
+    Board nB=GBoard;
+    int lsize=(size-2)*(size-1)-w;
+    for(int n=w;n<lsize;n++){
+      //for(int n=0;n<idx;n++){
+      GBoard=nB;
+      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
+      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
+      Board eB=GBoard;
+      for(int e=w;e<lsize;e++){
+        //for(int e=0;e<idx;e++){
+        GBoard=eB;  
+        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
+        Board sB=GBoard;
+        for(int s=w;s<lsize;s++){
+          //for(int s=0;s<idx;s++){
+          GBoard=sB;
+          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          int scnt=symmetryOps_n27(w,e,n,s,size);
+          if(scnt !=3){
+            GBoard.cnt=scnt;
+	          q27_NQueen(size);
           }
         }
       } 
@@ -315,7 +358,6 @@ int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
   int argstart=1;
-  GBoard= (Board*)calloc(24576000, sizeof(Board));
   //,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
@@ -357,29 +399,23 @@ int main(int argc,char** argv)
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
-      bcnt=0;
       for(int j=0;j<=2;j++){
         pre[j]=0;
         cnt[j]=0;
       }
       //mask=((1<<i)-1);
       int size=i;
-      //事前準備 上下左右2行2列にクイーンを配置する
-      prepare(size);
-      //事前準備が終わってから時間を計測する
+      //時間を計測する
       st=clock();
+      //事前準備 上下左右2行2列にクイーンを配置する
+      bit93_prepare(size);
     
-      if(cpur){
-	      bit93_NQueen(size);
-        UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
-        TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
-      }else if(cpu){
-        //
-        //開発中
-      }                
+      UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
+      TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
       //
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+      //free(GBoard);
     }
   }
   if(q27){
@@ -393,18 +429,16 @@ int main(int argc,char** argv)
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
-      bcnt=0;
       for(int j=0;j<=2;j++){
         pre[j]=0;
         cnt[j]=0;
       }
       int size=i;
-      //事前準備 上下左右2行2列にクイーンを配置する
-      prepare(size);
-      //事前準備が終わってから時間を計測する
+      //時間を計測する
       st=clock();
+      //事前準備 上下左右2行2列にクイーンを配置する
+      q27_prepare(size);
       
-      q27_NQueen(size);
       UNIQUE=cnt[ROTATE]+cnt[POINT]+cnt[NONE];
       TOTAL=cnt[ROTATE]*2+cnt[POINT]*4+cnt[NONE]*8;
       //
