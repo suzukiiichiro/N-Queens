@@ -37,7 +37,6 @@ typedef struct{
   int y[MAX];
   long COUNT[2];
 }Board ;
-Board gBoard;
 unsigned int NONE=2;
 unsigned int POINT=1;
 unsigned int ROTATE=0;
@@ -62,29 +61,29 @@ void TimeFormat(clock_t utime,char *form)
   else
     sprintf(form,"           %5.2f",ss);
 }
-bool board_placement(int si,int x,int y)
+bool board_placement(int si,int x,int y,Board *lb)
 {
   //同じ場所に置くかチェック
-  if(gBoard.x[x]==y){
+  if(lb->x[x]==y){
     //printf("Duplicate x:%d:y:%d\n",x,y);
     ////同じ場所に置くのはOK
     return true;  
   }
-  gBoard.x[x]=y;
+  lb->x[x]=y;
   //xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   int bv=1<<x;
   long down=1<<y;
-  gBoard.y[x]=gBoard.y[x]+down;
+  lb->y[x]=lb->y[x]+down;
   long left=1<<(si-1-x+y);
   long right=1<<(x+y);
-  if((gBoard.bv&bv)||(gBoard.down&down)||(gBoard.left&left)||(gBoard.right&right)){
+  if((lb->bv&bv)||(lb->down&down)||(lb->left&left)||(lb->right&right)){
     //printf("valid_false\n");
     return false;
   }     
-  gBoard.bv|=bv;
-  gBoard.down|=down;
-  gBoard.left|=left;
-  gBoard.right|=right;
+  lb->bv|=bv;
+  lb->down|=down;
+  lb->left|=left;
+  lb->right|=right;
   return true;
 }
 int symmetryOps_n27(int w,int e,int n,int s,int size)
@@ -205,6 +204,7 @@ void q27_process(int si,Board *lb,int sym)
 void bit93_NQueens(int size)
 {
   //CPUR
+  Board lBoard;
   int pres_a[930];
   int pres_b[930];
   int idx=0;
@@ -220,51 +220,51 @@ void bit93_NQueens(int size)
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
   
-  Board wB=gBoard;
+  Board wB=lBoard;
   //for(int w=0;w<idx;w++){
   for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    gBoard=wB;
-    gBoard.bv=gBoard.down=gBoard.left=gBoard.right=0;
-    for(int j=0;j<size;j++){ gBoard.x[j]=-1; }
+    lBoard=wB;
+    lBoard.bv=lBoard.down=lBoard.left=lBoard.right=0;
+    for(int j=0;j<size;j++){ lBoard.x[j]=-1; }
     //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
     printf("\r");
     fflush(stdout);
     //プログレス
-    board_placement(size,0,pres_a[w]);
-    board_placement(size,1,pres_b[w]);
-    Board nB=gBoard;
+    board_placement(size,0,pres_a[w],&lBoard);
+    board_placement(size,1,pres_b[w],&lBoard);
+    Board nB=lBoard;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
-      gBoard=nB;
-      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=gBoard;
+      lBoard=nB;
+      if(board_placement(size,pres_a[n],size-1,&lBoard)==false){ continue; }
+      if(board_placement(size,pres_b[n],size-2,&lBoard)==false){ continue; }
+      Board eB=lBoard;
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
-        gBoard=eB;  
-        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=gBoard;
+        lBoard=eB;  
+        if(board_placement(size,size-1,size-1-pres_a[e],&lBoard)==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[e],&lBoard)==false){ continue; }
+        Board sB=lBoard;
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
-          gBoard=sB;
-          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          lBoard=sB;
+          if(board_placement(size,size-1-pres_a[s],0,&lBoard)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[s],1,&lBoard)==false){ continue; }
           int sym=symmetryOps_n27(w,e,n,s,size);
           if(sym !=3){
             for(int j=0;j<=2;j++){
-              gBoard.COUNT[j]=0;
+              lBoard.COUNT[j]=0;
             }
-            bit93_process(size,&gBoard,sym);
-            UNIQUE+=gBoard.COUNT[sym];
+            bit93_process(size,&lBoard,sym);
+            UNIQUE+=lBoard.COUNT[sym];
             if(sym==0){
-              TOTAL+=gBoard.COUNT[sym]*2;
+              TOTAL+=lBoard.COUNT[sym]*2;
             }else if(sym==1){
-              TOTAL+=gBoard.COUNT[sym]*4;
+              TOTAL+=lBoard.COUNT[sym]*4;
             }else if(sym==2){
-              TOTAL+=gBoard.COUNT[sym]*8;
+              TOTAL+=lBoard.COUNT[sym]*8;
             }
           }
         }
@@ -275,6 +275,7 @@ void bit93_NQueens(int size)
 void q27_NQueens(int size)
 {
   //CPUR
+  Board lBoard;
   int pres_a[930];
   int pres_b[930];
   int idx=0;
@@ -290,51 +291,51 @@ void q27_NQueens(int size)
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
   
-  Board wB=gBoard;
+  Board wB=lBoard;
   //for(int w=0;w<idx;w++){
   for (int w = 0; w <= (size / 2) * (size - 3); w++){
-    gBoard=wB;
-    gBoard.bv=gBoard.down=gBoard.left=gBoard.right=0;
-    for(int j=0;j<size;j++){ gBoard.x[j]=-1; }
+    lBoard=wB;
+    lBoard.bv=lBoard.down=lBoard.left=lBoard.right=0;
+    for(int j=0;j<size;j++){ lBoard.x[j]=-1; }
     //プログレス
     printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
     printf("\r");
     fflush(stdout);
     //プログレス
-    board_placement(size,0,pres_a[w]);
-    board_placement(size,1,pres_b[w]);
-    Board nB=gBoard;
+    board_placement(size,0,pres_a[w],&lBoard);
+    board_placement(size,1,pres_b[w],&lBoard);
+    Board nB=lBoard;
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       //for(int n=0;n<idx;n++){
-      gBoard=nB;
-      if(board_placement(size,pres_a[n],size-1)==false){ continue; }
-      if(board_placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=gBoard;
+      lBoard=nB;
+      if(board_placement(size,pres_a[n],size-1,&lBoard)==false){ continue; }
+      if(board_placement(size,pres_b[n],size-2,&lBoard)==false){ continue; }
+      Board eB=lBoard;
       for(int e=w;e<lsize;e++){
         //for(int e=0;e<idx;e++){
-        gBoard=eB;  
-        if(board_placement(size,size-1,size-1-pres_a[e])==false){ continue; }
-        if(board_placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=gBoard;
+        lBoard=eB;  
+        if(board_placement(size,size-1,size-1-pres_a[e],&lBoard)==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[e],&lBoard)==false){ continue; }
+        Board sB=lBoard;
         for(int s=w;s<lsize;s++){
           //for(int s=0;s<idx;s++){
-          gBoard=sB;
-          if(board_placement(size,size-1-pres_a[s],0)==false){ continue; }
-          if(board_placement(size,size-1-pres_b[s],1)==false){ continue; }
+          lBoard=sB;
+          if(board_placement(size,size-1-pres_a[s],0,&lBoard)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[s],1,&lBoard)==false){ continue; }
           int sym=symmetryOps_n27(w,e,n,s,size);
           if(sym !=3){
             for(int j=0;j<=2;j++){
-              gBoard.COUNT[j]=0;
+              lBoard.COUNT[j]=0;
             }
-            q27_process(size,&gBoard,sym);
-            UNIQUE+=gBoard.COUNT[sym];
+            q27_process(size,&lBoard,sym);
+            UNIQUE+=lBoard.COUNT[sym];
             if(sym==0){
-              TOTAL+=gBoard.COUNT[sym]*2;
+              TOTAL+=lBoard.COUNT[sym]*2;
             }else if(sym==1){
-              TOTAL+=gBoard.COUNT[sym]*4;
+              TOTAL+=lBoard.COUNT[sym]*4;
             }else if(sym==2){
-              TOTAL+=gBoard.COUNT[sym]*8;
+              TOTAL+=lBoard.COUNT[sym]*8;
             }
           }
         }
