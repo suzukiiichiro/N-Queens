@@ -384,16 +384,10 @@ void q27_process(int size,Board* lb,int sym)
 }
 void bit93_NQueens(int size)
 {
-  Board lBoard;
-  Board leftSideB,rightSideB,bottomSideB,topSideB;
-
   int pres_a[930];
   int pres_b[930];
   int idx=0;
-  int lsize;
-  int sym;
-  
-
+  // int sym;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
       if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){ continue; }     
@@ -405,86 +399,81 @@ void bit93_NQueens(int size)
   //プログレス
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
-  int TOPBIT=1<<(size-1);
-  int SIDEMASK=(TOPBIT|1);
-  int LASTMASK=SIDEMASK;
-  int BOUND2=size-2;
-  int beforepres=0;
-  topSideB=lBoard;
+  //for(int topSide=0;topSide<=(size/2)*(size-3);topSide++){
   for(int topSide=0;topSide<=(size/2)*(size-3);topSide++){
+    int lsize=(size-2)*(size-1)-topSide;
+    Board lBoard;
+    lBoard.topSide=topSide;
+    //Board leftSideB,rightSideB,bottomSideB,topSideB;
+    //int TOPBIT=1<<(size-1);
+    //int SIDEMASK=(TOPBIT|1);
+    //int LASTMASK=SIDEMASK;
+    // int BOUND2=size-2;
+    lBoard.TOPBIT=1<<(size-1);
+    lBoard.SIDEMASK=(lBoard.TOPBIT|1);
+    lBoard.LASTMASK=lBoard.SIDEMASK;
+    int beforepres=0;
     //プログレス
-    printf("\r(%d/%d)",topSide,((size/2)*(size-3)));// << std::flush;
-    printf("\r");
-    fflush(stdout);
+    printf("\r(%d/%d)",topSide,((size/2)*(size-3))); printf("\r"); fflush(stdout);
     //プログレス
     if(pres_a[topSide]>1 && pres_a[topSide]>beforepres){
-      
-      LASTMASK|=LASTMASK>>1|LASTMASK<<1;
-      BOUND2=size-1-pres_a[topSide];
+      lBoard.LASTMASK|=lBoard.LASTMASK>>1|lBoard.LASTMASK<<1;
+      lBoard.BOUND2=size-1-pres_a[topSide];
       beforepres=pres_a[topSide];
     }
-    lBoard=topSideB;
+    //Board topSideB=lBoard;
+    //lBoard=topSideB;
     lBoard.bv=lBoard.down=lBoard.left=lBoard.right=0;
-    lBoard.SIDEMASK=SIDEMASK;
-    lBoard.LASTMASK=LASTMASK;
-    lBoard.BOUND2=BOUND2;
+    // lBoard.SIDEMASK=SIDEMASK;
+    // lBoard.LASTMASK=LASTMASK;
+    // lBoard.BOUND2=BOUND2;
+    lBoard.BOUND2=size-2;//元に戻す
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1; }
     board_placement(size,0,pres_a[topSide],&lBoard);
-    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){
-      continue;
-    }
-    leftSideB=lBoard;
-    lsize=(size-2)*(size-1)-topSide;
+    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ continue; }
+    Board leftSideB=lBoard;
     for(int leftSide=topSide;leftSide<lsize;leftSide++){
       lBoard=leftSideB;
-      if(board_placement(size,pres_a[leftSide],size-1,&lBoard)==false){ 
-        continue; 
-      }
-      if(board_placement(size,pres_b[leftSide],size-2,&lBoard)==false){ 
-        continue; 
-      }
-      bottomSideB=lBoard;
+      lBoard.leftSide=leftSide;
+      if(board_placement(size,pres_a[leftSide],size-1,&lBoard)==false){ continue; }
+      if(board_placement(size,pres_b[leftSide],size-2,&lBoard)==false){ continue; }
+      Board bottomSideB=lBoard;
       for(int bottomSide=topSide;bottomSide<lsize;bottomSide++){
         lBoard=bottomSideB;  
-        if(board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard)==false){
-          continue; 
-        }
-        if(board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard)==false){
-          continue;
-        }
-        rightSideB=lBoard;
+        lBoard.bottomSide=bottomSide;
+        if(board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard)==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard)==false){ continue; }
+        Board rightSideB=lBoard;
         for(int rightSide=topSide;rightSide<lsize;rightSide++){
           lBoard=rightSideB;
-          if(board_placement(size,size-1-pres_a[rightSide],0,&lBoard)==false){
-            continue; 
-          }
-          if(board_placement(size,size-1-pres_b[rightSide],1,&lBoard)==false){
-            continue; 
-          }
-          lBoard.topSide=topSide;
-          lBoard.bottomSide=bottomSide;
-          lBoard.leftSide=leftSide;
           lBoard.rightSide=rightSide;
-          sym=bit93_symmetryOps_n27(size,&lBoard);
-          if(sym !=3){
+          if(board_placement(size,size-1-pres_a[rightSide],0,&lBoard)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[rightSide],1,&lBoard)==false){ continue; }
+          // lBoard.topSide=topSide;
+          // lBoard.bottomSide=bottomSide;
+          // lBoard.leftSide=leftSide;
+          // lBoard.rightSide=rightSide;
+          //int sym=bit93_symmetryOps_n27(size,&lBoard);
+          lBoard.sym=bit93_symmetryOps_n27(size,&lBoard);
+          if(lBoard.sym !=3){
             for(int j=0;j<=2;j++){ lBoard.COUNT[j]=0; }
             //NQueenの処理
             lBoard.row=2;
-            lBoard.sym=sym;
+            // lBoard.sym=sym;
             lBoard.bv=lBoard.bv>>2;
             lBoard.left=lBoard.left>>4;
             lBoard.down=((((lBoard.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1;
             lBoard.right=(lBoard.right>>4)<<(size-5);
             //１行目のQが角か角以外かで分岐する
             if(lBoard.aBoard[0]==0){
-              lBoard.COUNT[sym]+=bit93_countCompletions1(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
+              lBoard.COUNT[lBoard.sym]+=bit93_countCompletions1(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             }else{
-              lBoard.COUNT[sym]+=bit93_countCompletions2(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
+              lBoard.COUNT[lBoard.sym]+=bit93_countCompletions2(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             }
-            UNIQUE+=lBoard.COUNT[sym];
-            if(sym==0){ TOTAL+=lBoard.COUNT[sym]*2; }
-            else if(sym==1){ TOTAL+=lBoard.COUNT[sym]*4; }
-            else if(sym==2){ TOTAL+=lBoard.COUNT[sym]*8; }
+            UNIQUE+=lBoard.COUNT[lBoard.sym];
+            if(lBoard.sym==0){ TOTAL+=lBoard.COUNT[lBoard.sym]*2; }
+            else if(lBoard.sym==1){ TOTAL+=lBoard.COUNT[lBoard.sym]*4; }
+            else if(lBoard.sym==2){ TOTAL+=lBoard.COUNT[lBoard.sym]*8; }
           }
         }
       } 
@@ -571,7 +560,6 @@ int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
   int argstart=1;
-  //,steps=24576;
   /** パラメータの処理 */
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
@@ -579,8 +567,7 @@ int main(int argc,char** argv)
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
     else if(argv[1][1]=='s'||argv[1][1]=='S'){sgpu=true;}
     else if(argv[1][1]=='q'||argv[1][1]=='Q'){q27=true;}
-    else{ cpur=true;
-    }
+    else{ cpur=true; }
     argstart=2;
   }
   if(argc<argstart){
@@ -607,7 +594,7 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;
     char t[20];
-    int min=9;
+    int min=4;
     int targetN=17;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
