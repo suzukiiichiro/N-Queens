@@ -320,29 +320,23 @@ long bit93_countCompletions1(int size,int row,int bv,long left,long down,long ri
 {
   long bitmap=0;
   long bit=0;
-  //
+  long cnt = 0;
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
-    bv>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
+    bv>>=1;   //右に１ビットシフト
+    left<<=1; //left 左に１ビットシフト
     right>>=1;//right 右に１ビットシフト  
     row++; 
   }
   bv>>=1;
-  long  cnt = 0;
-  if(row==size){
-    //TOTAL++;
-      //UNIQUE++;       //ユニーク解を加算
-      //TOTAL+=cnt;       //対称解除で得られた解数を加算
-      return 1;
-  }else{
-      //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-      bitmap=~(left|down|right);   
-      while(bitmap>0){
-          bit=(-bitmap&bitmap);
-          bitmap=(bitmap^bit);
-          cnt+=bit93_countCompletions1(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
-      }
+  if(row==size){ return 1; }
+  else{
+    bitmap=~(left|down|right);   
+    while(bitmap>0){
+      bit=(-bitmap&bitmap);
+      bitmap=(bitmap^bit);
+      cnt+=bit93_countCompletions1(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
+    }
   }
   return cnt;
 }
@@ -350,29 +344,23 @@ long bit93_countCompletions2(int size,int row,int bv,long left,long down,long ri
 {
   long bitmap=0;
   long bit=0;
-  //
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
-    bv>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
+    bv>>=1;   //右に１ビットシフト
+    left<<=1; //left 左に１ビットシフト
     right>>=1;//right 右に１ビットシフト  
     row++; 
   }
   bv>>=1;
   long  cnt = 0;
-  if(row==size){
-    //TOTAL++;
-      //UNIQUE++;       //ユニーク解を加算
-      //TOTAL+=cnt;       //対称解除で得られた解数を加算
-      return 1;
-  }else{
-      //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
-      bitmap=~(left|down|right);   
-      while(bitmap>0){
-          bit=(-bitmap&bitmap);
-          bitmap=(bitmap^bit);
-          cnt+=bit93_countCompletions2(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
-      }
+  if(row==size){ return 1; }
+  else{
+    bitmap=~(left|down|right);   
+    while(bitmap>0){
+      bit=(-bitmap&bitmap);
+      bitmap=(bitmap^bit);
+      cnt+=bit93_countCompletions2(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
+    }
   }
   return cnt;
 }
