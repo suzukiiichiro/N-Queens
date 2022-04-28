@@ -3,7 +3,7 @@
  ステップバイステップでＮ−クイーン問題を最適化
  一般社団法人  共同通信社  情報技術局  鈴木  維一郎(suzuki.iichiro@kyodonews.jp)
 
-９−４．CPUR 再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2
+９−３．CPUR 再帰 ビットマップ＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2
  N:        Total       Unique        hh:mm:ss.ms
  5:           10               2            0.00
  6:            4               1            0.00
@@ -96,6 +96,7 @@ row>BOUND2 の時は両端にクイーンを置けないというもの
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
@@ -315,16 +316,10 @@ void q27_countCompletions(int bv,long down,long left,long right,Board* lb,int sy
   //途中でクイーンを置くところがなくなるとここに来る
   //printf("return_cnt:%d\n",cnt);
 }
-void bit93_countCompletions1(int size,Board* lb)
+long bit93_countCompletions1(int size,int row,int bv,long left,long down,long right,int sym)
 {
   long bitmap=0;
   long bit=0;
-  int row=lb->row;
-  int sym=lb->sym;
-  int bv=lb->bv;
-  long down=lb->down;
-  long left=lb->left;
-  long right=lb->right;
   //
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
@@ -334,36 +329,27 @@ void bit93_countCompletions1(int size,Board* lb)
     row++; 
   }
   bv>>=1;
+  long  cnt = 0;
   if(row==size){
     //TOTAL++;
       //UNIQUE++;       //ユニーク解を加算
       //TOTAL+=cnt;       //対称解除で得られた解数を加算
-      lb->COUNT[sym]++;
+      return 1;
   }else{
       //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
       bitmap=~(left|down|right);   
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
-          lb->bv=bv;
-          lb->left=(left|bit)<<1;
-          lb->down=down|bit;
-          lb->right=(right|bit)>>1;
-          lb->row=row+1;
-          bit93_countCompletions1(size,lb);
+          cnt+=bit93_countCompletions1(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
       }
   }
+  return cnt;
 }
-void bit93_countCompletions2(int size,Board* lb)
+long bit93_countCompletions2(int size,int row,int bv,long left,long down,long right,int sym)
 {
   long bitmap=0;
   long bit=0;
-  int row=lb->row;
-  int sym=lb->sym;
-  int bv=lb->bv;
-  long down=lb->down;
-  long left=lb->left;
-  long right=lb->right;
   //
   //既にクイーンを置いている行はスキップする
   while((bv&1)!=0) {
@@ -373,25 +359,22 @@ void bit93_countCompletions2(int size,Board* lb)
     row++; 
   }
   bv>>=1;
+  long  cnt = 0;
   if(row==size){
     //TOTAL++;
       //UNIQUE++;       //ユニーク解を加算
       //TOTAL+=cnt;       //対称解除で得られた解数を加算
-      lb->COUNT[sym]++;
+      return 1;
   }else{
       //bitmap=mask&~(left|down|right);//maskつけると10桁目以降数が出なくなるので外した
       bitmap=~(left|down|right);   
       while(bitmap>0){
           bit=(-bitmap&bitmap);
           bitmap=(bitmap^bit);
-          lb->bv=bv;
-          lb->left=(left|bit)<<1;
-          lb->down=down|bit;
-          lb->right=(right|bit)>>1;
-          lb->row=row+1;
-          bit93_countCompletions2(size,lb);
+          cnt+=bit93_countCompletions2(size,row+1,bv,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
       }
   }
+  return cnt;
 }
 void q27_process(int size,Board* lb,int sym)
 {
@@ -494,9 +477,9 @@ void bit93_NQueens(int size)
             lBoard.right=(lBoard.right>>4)<<(size-5);
             //１行目のQが角か角以外かで分岐する
             if(lBoard.aBoard[0]==0){
-              bit93_countCompletions1(size,&lBoard);
+              lBoard.COUNT[sym]+=bit93_countCompletions1(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             }else{
-              bit93_countCompletions2(size,&lBoard);
+              lBoard.COUNT[sym]+=bit93_countCompletions2(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             }
             UNIQUE+=lBoard.COUNT[sym];
             if(sym==0){ TOTAL+=lBoard.COUNT[sym]*2; }
@@ -610,13 +593,13 @@ int main(int argc,char** argv)
     printf("Default to 8 queen\n");
   }
   if(cpu){
-    printf("\n\n９−４．CPU 非再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
+    printf("\n\n９−３．CPU 非再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }else if(cpur){
-    printf("\n\n９−４．CPUR 再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
+    printf("\n\n９−３．CPUR 再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }else if(gpu){
-    printf("\n\n９−４．GPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．GPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
   }else if(sgpu){
-    printf("\n\n９−４．SGPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
+    printf("\n\n９−３．SGPU 非再帰 ビット＋対象解除＋q２７枝刈＋BackTrack1＋BackTrack2\n");
   }else if(q27){
     printf("\n\nQ２７．CPUR 再帰 ビット + 対象解除 + BackTrack1 ＋ BackTrack2 + 枝刈り\n");
   }
