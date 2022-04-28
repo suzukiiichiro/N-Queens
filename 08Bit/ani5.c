@@ -197,6 +197,9 @@ bool board_placement(int size,int x,int y,Board *lb)
   left=1<<(size-1-x+y);
   right=1<<(x+y);
   //if((lb->bv&bv)||(lb->down&down)||(lb->left&left)||(lb->right&right)){
+  if(lb->aBoard[x]!=-1){
+    return false;
+  }
   if((lb->down&down)||(lb->left&left)||(lb->right&right)){
     return false;
   }     
