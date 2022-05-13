@@ -124,6 +124,32 @@ typedef struct{
   long COUNT[3];
 }Board ;
 
+//出力
+void dec2bin(int size, int dec)
+{
+  int i, b[32];
+  for (i = 0; i < size; i++)
+  {
+    b[i] = dec % 2;
+    dec = dec / 2;
+  }
+  while (i > 0)
+    printf("%1d", b[--i]);
+}
+
+void print(int size, char *c,int aBoard[])
+{
+  printf("%s\n", c);
+  for (int j = 0; j < size; j++)
+  {
+    dec2bin(size, 1<<(aBoard[j]));
+    printf("\n");
+  }
+  printf("\n");
+  getchar();
+}
+
+
 void TimeFormat(clock_t utime,char *form)
 {
   int dd,hh,mm;
@@ -270,11 +296,15 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
     row++; 
   }
   //bv>>=1;
-  if(row==size){ return 1; }
+  if(row==size){ 
+    print(size,"全ての行にクイーンを置いた",aBoard);
+    return 1; 
+  }
   else{
     bitmap=~(left|down|right);   
     while(bitmap>0){
-      bit=(-bitmap&bitmap);
+      aBoard[row]=bit=(-bitmap&bitmap);
+      print(size,"クイーンを配置",aBoard);
       bitmap=(bitmap^bit);
       cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
     }
@@ -329,26 +359,70 @@ void bit93_NQueens(int size)
     // lBoard.BOUND2=BOUND2;
     //lBoard.BOUND2=size-2;//元に戻す
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1; }
+    printf("上1行目に配置 (行:%d 列:%d)\n",0,pres_a[topSide]);
     board_placement(size,0,pres_a[topSide],&lBoard);
-    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ continue; }
+    print(size,"配置成功",lBoard.aBoard);
+    printf("上2行目に配置 (行:%d 列:%d)\n",1,pres_b[topSide]);
+    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
+      print(size,"配置失敗",lBoard.aBoard);
+      continue; 
+    }else{
+      print(size,"配置成功または配置済み",lBoard.aBoard);
+    }
     Board leftSideB=lBoard;
     for(int leftSide=topSide;leftSide<lsize;leftSide++){
       lBoard=leftSideB;
       lBoard.leftSide=leftSide;
-      if(board_placement(size,pres_a[leftSide],size-1,&lBoard)==false){ continue; }
-      if(board_placement(size,pres_b[leftSide],size-2,&lBoard)==false){ continue; }
+      printf("左1行目に配置(行:%d 列:%d)\n",pres_a[leftSide],size-1);
+      if(board_placement(size,pres_a[leftSide],size-1,&lBoard)==false){ 
+        print(size,"配置失敗",lBoard.aBoard);
+        continue; 
+      }else{
+        print(size,"配置成功または配置済み",lBoard.aBoard);
+      }
+      printf("左2行目に配置(行:%d 列:%d)\n",pres_b[leftSide],size-2);
+      if(board_placement(size,pres_b[leftSide],size-2,&lBoard)==false){ 
+        print(size,"配置失敗",lBoard.aBoard);
+        continue; 
+      }else{
+        print(size,"配置成功または配置済み",lBoard.aBoard);
+      }
       Board bottomSideB=lBoard;
       for(int bottomSide=topSide;bottomSide<lsize;bottomSide++){
         lBoard=bottomSideB;  
         lBoard.bottomSide=bottomSide;
-        if(board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard)==false){ continue; }
-        if(board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard)==false){ continue; }
+        printf("下1行目に配置(行:%d 列:%d)\n",size-1,size-1-pres_a[bottomSide]);
+        if(board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard)==false){ 
+          print(size,"配置失敗",lBoard.aBoard);
+          continue; 
+        }else{
+          print(size,"配置成功または配置済み",lBoard.aBoard);
+        }
+        printf("下2行目に配置(行:%d 列:%d)\n",size-2,size-1-pres_b[bottomSide]);
+        if(board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard)==false){ 
+          print(size,"配置失敗",lBoard.aBoard);
+          continue; 
+        }else{
+          print(size,"配置成功または配置済み",lBoard.aBoard);
+        }
         Board rightSideB=lBoard;
         for(int rightSide=topSide;rightSide<lsize;rightSide++){
           lBoard=rightSideB;
           lBoard.rightSide=rightSide;
-          if(board_placement(size,size-1-pres_a[rightSide],0,&lBoard)==false){ continue; }
-          if(board_placement(size,size-1-pres_b[rightSide],1,&lBoard)==false){ continue; }
+          printf("右1行目に配置(行:%d 列:%d)\n",size-1-pres_a[rightSide],0);
+          if(board_placement(size,size-1-pres_a[rightSide],0,&lBoard)==false){ 
+            print(size,"配置失敗",lBoard.aBoard);
+            continue; 
+          }else{
+            print(size,"配置成功または配置済み",lBoard.aBoard);
+          }
+          printf("右2行目に配置(行:%d 列:%d)\n",size-1-pres_b[rightSide],1);
+          if(board_placement(size,size-1-pres_b[rightSide],1,&lBoard)==false){ 
+            print(size,"配置失敗",lBoard.aBoard);
+            continue; 
+          }else{
+            print(size,"配置成功または配置済み",lBoard.aBoard);
+          }
           // lBoard.topSide=topSide;
           // lBoard.bottomSide=bottomSide;
           // lBoard.leftSide=leftSide;
@@ -368,12 +442,25 @@ void bit93_NQueens(int size)
             //if(lBoard.aBoard[0]==0){
             //  lBoard.COUNT[lBoard.sym]+=bit93_countCompletions1(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             //}else{
+              printf("countCompletionsに入ります\n");
               lBoard.COUNT[lBoard.sym]+=bit93_countCompletions(size,lBoard.row,lBoard.aBoard,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             //}
             UNIQUE+=lBoard.COUNT[lBoard.sym];
-            if(lBoard.sym==0){ TOTAL+=lBoard.COUNT[lBoard.sym]*2; }
-            else if(lBoard.sym==1){ TOTAL+=lBoard.COUNT[lBoard.sym]*4; }
-            else if(lBoard.sym==2){ TOTAL+=lBoard.COUNT[lBoard.sym]*8; }
+            if(lBoard.sym==0){ TOTAL+=lBoard.COUNT[lBoard.sym]*2; 
+              printf("countCompletions終了:COUNT:%ld\n",lBoard.COUNT[lBoard.sym]*2);
+            }
+            else if(lBoard.sym==1){ TOTAL+=lBoard.COUNT[lBoard.sym]*4; 
+              printf("countCompletionsを実行:COUNT:%ld\n",lBoard.COUNT[lBoard.sym]*4);
+            
+            }
+            else if(lBoard.sym==2){ TOTAL+=lBoard.COUNT[lBoard.sym]*8; 
+              printf("countCompletionsを実行:COUNT:%ld\n",lBoard.COUNT[lBoard.sym]*8);
+            
+            }
+            printf("###########\n");
+          }else{
+            printf("symmetryOpsで枝刈り\n");
+            printf("###########\n");
           }
         }
       } 
@@ -420,6 +507,8 @@ int main(int argc,char** argv)
     char t[20];
     int min=4;
     int targetN=17;
+    min=5;
+    targetN=5;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
