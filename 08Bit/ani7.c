@@ -179,6 +179,7 @@ typedef struct{
   long left;
   long right;
   int aBoard[MAX];
+  int bBoard[MAX];
   int topSide;
   int leftSide;
   int bottomSide;
@@ -203,16 +204,45 @@ void dec2bin(int size, int dec)
     printf("%1d", b[--i]);
 }
 
-void print(int size, char *c,int aBoard[])
+void print(int size, char *c,int bBoard[],char *d)
 {
   printf("%s\n", c);
+  printf("%s%d:",d,size);
+  for(int i=0;i<size;i++){
+    if(bBoard[i]==1){
+      printf("0");
+    }else if(bBoard[i]==2){
+      printf("1");
+    }else if(bBoard[i]==4){
+      printf("2");
+    }else if(bBoard[i]==8){
+      printf("3");
+    }else if(bBoard[i]==16){
+      printf("4");
+    }else if(bBoard[i]==32){
+      printf("5");
+    }else if(bBoard[i]==64){
+      printf("6");
+    }else if(bBoard[i]==128){
+      printf("7");
+    }else if(bBoard[i]==256){
+      printf("8");
+    }else if(bBoard[i]==512){
+      printf("9");
+    }else if(bBoard[i]==1024){
+      printf("10");
+    }else if(bBoard[i]==-1){
+      printf("-");
+    }
+  }
+  printf("\n");
   for (int j = 0; j < size; j++)
   {
-    dec2bin(size, 1<<(aBoard[j]));
+    dec2bin(size, bBoard[j]);
     printf("\n");
   }
   printf("\n");
-  getchar();
+  //getchar();
 }
 
 
@@ -326,6 +356,7 @@ bool board_placement(int size,int x,int y,Board *lb)
   }
   //bv=1<<x;//xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
   down=1<<y;
+  lb->bBoard[x]=down;
   left=1<<(size-1-x+y);
   right=1<<(x+y);
   //if((lb->bv&bv)||(lb->down&down)||(lb->left&left)||(lb->right&right)){
@@ -388,7 +419,7 @@ int bit93_symmetryOps_n27(int size,Board* lb)
   return 2;   
 }
 //long bit93_countCompletions(int size,int row,int bv,long left,long down,long right,int sym)
-long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym)
+long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[])
 {
   ecnt++;
   long bitmap=0;
@@ -413,27 +444,16 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
       //aBoard[row]=bit=(-bitmap&bitmap);
       bit=(-bitmap&bitmap);
       //int abit;
-      //if(size==5){
-      //  abit=(bit<<2);  
-      //}else if(size==6){
-      //  abit=(bit<<1);  
-      //}else{
-      //  abit=(bit>>(size-7));    
-      //}
-      //if(abit==1){
-      //  aBoard[row]=0;
-      //}else if(abit==2){
-      //  aBoard[row]=1;
-      //}else if(abit==4){
-      //  aBoard[row]=2;
-      //}else if(abit==8){
-      //  aBoard[row]=3;
-      //}else if(abit==16){
-      //  aBoard[row]=4;
-      //}
-      //print(size,"クイーンを配置",aBoard);
+      if(size==5){
+        bBoard[row]=(bit<<2);
+      }else if(size==6){
+        bBoard[row]=(bit<<1);
+      }else{
+        bBoard[row]=(bit>>(size-7));
+      }
+      print(size,"クイーンを配置",bBoard,"N");
       bitmap=(bitmap^bit);
-      cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym);
+      cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym,bBoard);
     }
   }
   return cnt;
@@ -486,6 +506,7 @@ void bit93_NQueens(int size)
     // lBoard.BOUND2=BOUND2;
     //lBoard.BOUND2=size-2;//元に戻す
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1; }
+    for(int j=0;j<size;j++){ lBoard.bBoard[j]=-1; }
       if(edakari_1(size,0,pres_a[topSide],pres_a[topSide])==false){
         continue;
       }
@@ -597,7 +618,8 @@ void bit93_NQueens(int size)
             //  lBoard.COUNT[lBoard.sym]+=bit93_countCompletions1(size,lBoard.row,lBoard.bv,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
             //}else{
               //printf("countCompletionsに入ります\n");
-              lBoard.COUNT[lBoard.sym]+=bit93_countCompletions(size,lBoard.row,lBoard.aBoard,lBoard.left,lBoard.down,lBoard.right,lBoard.sym);
+              print(size,"countCompletionsに入ります",lBoard.bBoard,"C");
+              lBoard.COUNT[lBoard.sym]+=bit93_countCompletions(size,lBoard.row,lBoard.aBoard,lBoard.left,lBoard.down,lBoard.right,lBoard.sym,lBoard.bBoard);
             //}
             UNIQUE+=lBoard.COUNT[lBoard.sym];
             if(lBoard.sym==0){ TOTAL+=lBoard.COUNT[lBoard.sym]*2; 
@@ -661,8 +683,8 @@ int main(int argc,char** argv)
     char t[20];
     int min=4;
     int targetN=17;
-    //min=5;
-    //targetN=5;
+    min=9;
+    targetN=9;
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
