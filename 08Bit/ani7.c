@@ -238,7 +238,11 @@ void print(int size, char *c,int bBoard[],char *d)
   printf("\n");
   for (int j = 0; j < size; j++)
   {
-    dec2bin(size, bBoard[j]);
+    if(bBoard[j]==-1){
+      dec2bin(size, 0);
+    }else{
+      dec2bin(size, bBoard[j]);
+    }
     printf("\n");
   }
   printf("\n");
