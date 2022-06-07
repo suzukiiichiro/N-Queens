@@ -182,7 +182,8 @@ long ecnt=0;
  *
  *
  */
-typedef struct{
+struct Board
+{
   int row;
   int sym;
   long down;
@@ -195,46 +196,65 @@ typedef struct{
   int bottomSide;
   int rightSide;
   long COUNT[3];
-}Board ;
+};
 /**
  *
  *
  */
-void dec2bin(int size, int dec)
+void dec2bin(int size,int dec)
 {
   int i,b[32];
   for (i=0;i<size;i++){
     b[i]=dec%2;
     dec=dec/2;
   }
-  while (i){ printf("%1d", b[--i]); }
+ 
+  char* buf;
+  while (i){ 
+    printf("%2d ", b[--i]); 
+  }
 }
 /**
  *
  *
  */
-void print(int size, char *c,int bBoard[],char *d)
+void breakpoint(int size,char *c,int* board,char *d)
 {
   printf("%s\n", c);
   printf("%s%d:",d,size);
   for(int i=0;i<size;i++){
-    if(bBoard[i]==1){ printf("0"); }
-    else if(bBoard[i]==2){ printf("1"); }
-    else if(bBoard[i]==4){ printf("2"); }
-    else if(bBoard[i]==8){ printf("3"); }
-    else if(bBoard[i]==16){ printf("4"); }
-    else if(bBoard[i]==32){ printf("5"); }
-    else if(bBoard[i]==64){ printf("6"); }
-    else if(bBoard[i]==128){ printf("7"); }
-    else if(bBoard[i]==256){ printf("8"); }
-    else if(bBoard[i]==512){ printf("9"); }
-    else if(bBoard[i]==1024){ printf("10"); }
-    else if(bBoard[i]==-1){ printf("-"); }
+    if(board[i]==1){ printf("0"); }
+    else if(board[i]==2){ printf("1"); }
+    else if(board[i]==4){ printf("2"); }
+    else if(board[i]==8){ printf("3"); }
+    else if(board[i]==16){ printf("4"); }
+    else if(board[i]==32){ printf("5"); }
+    else if(board[i]==64){ printf("6"); }
+    else if(board[i]==128){ printf("7"); }
+    else if(board[i]==256){ printf("8"); }
+    else if(board[i]==512){ printf("9"); }
+    else if(board[i]==1024){ printf("10"); }
+    else if(board[i]==-1){ printf("-"); }
   }
   printf("\n");
-  for (int j = 0; j < size; j++){
-    if(bBoard[j]==-1){ dec2bin(size, 0); }
-    else{ dec2bin(size, bBoard[j]); }
+  //colの座標表示
+  printf("   ");
+  for (int j=0;j<size;j++){
+    printf(" %2d",j);
+  }
+  printf("\n");
+  printf(" =============");
+  for (int j=0;j<size;j++){
+    printf("==");
+  }
+  printf("\n");
+  //row
+  for (int j=0;j<size;j++){
+    printf("%2d| ",j);
+    if(board[j]==-1){ dec2bin(size,0); }
+    else{ 
+      dec2bin(size,board[j]); 
+    }
     printf("\n");
   }
   printf("\n");
@@ -243,7 +263,7 @@ void print(int size, char *c,int bBoard[],char *d)
  *
  *
  */
-void TimeFormat(clock_t utime,char *form)
+void TimeFormat(clock_t utime,char* form)
 {
   int dd,hh,mm;
   float ftime,ss;
@@ -268,7 +288,8 @@ void TimeFormat(clock_t utime,char *form)
  * 角に置いて良いのは右上だけ
  * それ以外の角にクイーンを置いてもsymmetryOpsでスキップされる
  */
-bool edakari_1(int size,int x,int y,int pa){
+bool edakari_1(int size,int x,int y,int pa)
+{
   if(pa==size-1||pa==0){
     if(x==0 && y==0){
     }else{
@@ -307,7 +328,7 @@ bool edakari_3(int size,int bpa,int pb)
  *
  *
  */
-bool board_placement(int size,int x,int y,Board *lb)
+bool board_placement(int size,int x,int y,struct Board* lb)
 {
   long down,left,right;
   long TOPBIT=1<<(size-1);
@@ -377,7 +398,11 @@ bool board_placement(int size,int x,int y,Board *lb)
   lb->right|=right;
   return true;
 }
-int bit93_symmetryOps_n27(int size,Board* lb)
+/**
+ *
+ *
+ */
+int bit93_symmetryOps_n27(int size,struct Board* lb)
 {
   int pressMinusTopSide;
   int press;
@@ -417,7 +442,8 @@ int bit93_symmetryOps_n27(int size,Board* lb)
  *
  *
  */
-long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int* bBoard)
+long bit93_countCompletions(int size,int row,int* aBoard,
+    long left,long down,long right,int sym,int* bBoard)
 {
   ecnt++;
   long bitmap,bit,cnt=0;
@@ -439,7 +465,7 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
        *
        *
        */
-      //print(size,"クイーンを配置",bBoard,"N");
+      breakpoint(size,"クイーンを配置",bBoard,"N");
       /**
        *
        *
@@ -455,7 +481,7 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
  *
  *
  */
-void symmetryOps(int size,Board* lBoard)
+void symmetryOps(int size,struct Board* lBoard)
 {
   /**
    *
@@ -514,6 +540,9 @@ void bit93_NQueens(int size)
    */
   int pres_a[930],pres_b[930],idx=0;
   pres_idx(size,pres_a,pres_b,idx); 
+  //
+  //breakpoint(size,"クイーンを配置",bBoard,"N");
+  
   /**
    * プログレス表示
    */
@@ -534,7 +563,7 @@ void bit93_NQueens(int size)
     /**
      *
      */
-    Board lBoard;
+    struct Board lBoard;
     lBoard.topSide=topSide;lBoard.down=lBoard.left=lBoard.right=0;
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1;lBoard.bBoard[j]=-1; }
     if((!edakari_1(size,0,pres_a[topSide],pres_a[topSide]))
@@ -546,7 +575,7 @@ void bit93_NQueens(int size)
      *
      *
      */
-    Board leftSideB=lBoard;
+    struct Board leftSideB=lBoard;
     for(int leftSide=topSide;leftSide<lsize;leftSide++){
       lBoard=leftSideB;lBoard.leftSide=leftSide;
       if((!edakari_1(size,pres_a[leftSide],size-1,pres_a[leftSide]))
@@ -559,7 +588,7 @@ void bit93_NQueens(int size)
        *
        *
        */
-      Board bottomSideB=lBoard;
+      struct Board bottomSideB=lBoard;
       for(int bottomSide=topSide;bottomSide<lsize;bottomSide++){
         lBoard=bottomSideB;lBoard.bottomSide=bottomSide;
         if((!edakari_1(size,size-1,size-1-pres_a[bottomSide],pres_a[bottomSide]))
@@ -572,9 +601,10 @@ void bit93_NQueens(int size)
          *
          *
          */
-        Board rightSideB=lBoard;
+        struct Board rightSideB=lBoard;
         for(int rightSide=topSide;rightSide<lsize;rightSide++){
-          lBoard=rightSideB;lBoard.rightSide=rightSide;
+          lBoard=rightSideB;
+          lBoard.rightSide=rightSide;
           if((!edakari_1(size,size-1-pres_a[rightSide],0,pres_a[rightSide]))
            ||(!edakari_2(size,pres_a[topSide],pres_a[rightSide]))
            ||(!edakari_3(size,pres_a[topSide],pres_b[rightSide]))
@@ -592,7 +622,10 @@ void bit93_NQueens(int size)
     }
   }
 }
-//
+/**
+ *
+ *
+ */
 int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false,q27=false;
