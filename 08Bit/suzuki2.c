@@ -240,7 +240,6 @@ ignore 1 10 だと10回ブレークポイントを通ったところから確認
   
 
 */
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -349,6 +348,22 @@ void breakpoint(int size,char *c,int* board,char *d)
     printf("\n");
   }
   printf("\n");
+
+  /**
+   *
+   *
+   */
+  	int moji;
+
+	//while ((moji = getchar()) != EOF){
+	while ((moji = getchar()) != EOF){
+		switch (moji){
+		case '\n':
+		  return;
+		default:
+			break;
+		}
+	}
 }
 /**
  *
@@ -528,7 +543,6 @@ int bit93_symmetryOps_n27(int size,struct Board* lb)
    */
   return 2;   
 }
-//
 /**
  *上から下に向かって1行ずつクイーンを置いていく
  *board_placementの処理で既にクイーンを置いている行はスキップする
@@ -539,6 +553,11 @@ long bit93_countCompletions(int size,int row,int* aBoard,
   ecnt++;
   long bitmap,bit,cnt=0;
   while((aBoard[row]!=-1)&&(row<size)) { left<<=1; right>>=1; row++; }
+  /**
+   *
+   *
+   */
+  breakpoint(size,"クイーンを配置",bBoard,"N");
   if(row==size){ return 1; }
   else{
     bitmap=~(left|down|right);   
@@ -552,11 +571,6 @@ long bit93_countCompletions(int size,int row,int* aBoard,
       if(size==5){ bBoard[row]=(bit<<2); }
       else if(size==6){ bBoard[row]=(bit<<1); }
       else{ bBoard[row]=(bit>>(size-7)); }
-      /**
-       *
-       *
-       */
-      breakpoint(size,"クイーンを配置",bBoard,"N");
       /**
        *
        *
