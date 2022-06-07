@@ -348,17 +348,15 @@ void breakpoint(int size,char *c,int* board,char *d)
     printf("\n");
   }
   printf("\n");
-
   /**
    *
    *
    */
-  	int moji;
-
-	//while ((moji = getchar()) != EOF){
+  int moji;
 	while ((moji = getchar()) != EOF){
 		switch (moji){
 		case '\n':
+      printf("row:%d\n",board);
 		  return;
 		default:
 			break;
