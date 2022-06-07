@@ -308,10 +308,10 @@ void dec2bin(int size,int dec)
  * 000000100
  * 000100000
  */
-void breakpoint(int size,char *c,int* board,char *d)
+void breakpoint(int size,int* board,int row,long bit)
 {
-  printf("%s\n", c);
-  printf("%s%d:",d,size);
+
+  printf("<>N=%d STEP:",size);
   for(int i=0;i<size;i++){
     if(board[i]==1){ printf("0"); }
     else if(board[i]==2){ printf("1"); }
@@ -326,10 +326,12 @@ void breakpoint(int size,char *c,int* board,char *d)
     else if(board[i]==1024){ printf("10"); }
     else if(board[i]==-1){ printf("-"); }
   }
+  printf("  ");
+  printf("row:%d  bit:%ld\n",row,bit);
   printf("\n");
   //colの座標表示
   printf("   ");
-  for (int j=0;j<size;j++){
+  for (int j=size-1;j>=0;j--){
     printf(" %2d",j);
   }
   printf("\n");
@@ -356,7 +358,6 @@ void breakpoint(int size,char *c,int* board,char *d)
 	while ((moji = getchar()) != EOF){
 		switch (moji){
 		case '\n':
-      printf("row:%d col:%d\n",board,board);
 		  return;
 		default:
 			break;
@@ -568,7 +569,7 @@ long bit93_countCompletions(int size,int row,int* aBoard,
        *
        *
        */
-      breakpoint(size,"クイーンを配置",bBoard,"N");
+      //breakpoint(size,"クイーンを配置",bBoard,"N",row,bit);
       /**
        *
        *
@@ -673,9 +674,20 @@ void bit93_NQueens(int size)
     struct Board lBoard;
     lBoard.topSide=topSide;lBoard.down=lBoard.left=lBoard.right=0;
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1;lBoard.bBoard[j]=-1; }
+
+    /**
     if((!edakari_1(size,0,pres_a[topSide],pres_a[topSide]))
      ||(!board_placement(size,0,pres_a[topSide],&lBoard))
      ||(!board_placement(size,1,pres_b[topSide],&lBoard))){ 
+     */
+    if(edakari_1(size,0,pres_a[topSide],pres_a[topSide])==false){
+      continue;
+    }
+    board_placement(size,0,pres_a[topSide],&lBoard);
+    breakpoint(size,lBoard.aBoard,0,pres_a[topSide]);
+
+    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
+      breakpoint(size,lBoard.aBoard,1,pres_b[topSide]);
       continue; 
     }
     /**
