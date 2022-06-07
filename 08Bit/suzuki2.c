@@ -251,6 +251,8 @@ ignore 1 10 だと10回ブレークポイントを通ったところから確認
 /**
  *
  */
+bool DEBUG=true;
+//bool DEBUG=false;
 long TOTAL=0;
 long UNIQUE=0;
 /**
@@ -308,9 +310,10 @@ void dec2bin(int size,int dec)
  * 000000100
  * 000100000
  */
-void breakpoint(int size,int* board,int row,long bit)
+void breakpoint(int size,char* string,int* board,int row,int bit)
 {
 
+  printf("%s\n",string);
   printf("<>N=%d STEP:",size);
   for(int i=0;i<size;i++){
     if(board[i]==1){ printf("0"); }
@@ -327,7 +330,7 @@ void breakpoint(int size,int* board,int row,long bit)
     else if(board[i]==-1){ printf("-"); }
   }
   printf("  ");
-  printf("row:%d  bit:%ld\n",row,bit);
+  printf("row:%d  bit:%d\n",row,bit);
   printf("\n");
   //colの座標表示
   printf("   ");
@@ -653,17 +656,22 @@ void bit93_NQueens(int size)
   
   /**
    * プログレス表示
+   * デバッグモードでなければ表示
    */
+  if(!DEBUG){
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+  }
   /**
    *上２行にクイーンを配置する
    *ミラーなので右側半分だけクイーンを設置する
    */
   for(int topSide=0;topSide<=(size/2)*(size-3);topSide++){
     /**
-     *
+     * デバッグモードでなければ表示
      */
-    printf("\r(%d/%d)",topSide,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    if(!DEBUG){
+      printf("\r(%d/%d)",topSide,((size/2)*(size-3))); printf("\r"); fflush(stdout);
+    }
     /**
      *
      */
@@ -674,21 +682,40 @@ void bit93_NQueens(int size)
     struct Board lBoard;
     lBoard.topSide=topSide;lBoard.down=lBoard.left=lBoard.right=0;
     for(int j=0;j<size;j++){ lBoard.aBoard[j]=-1;lBoard.bBoard[j]=-1; }
-
     /**
     if((!edakari_1(size,0,pres_a[topSide],pres_a[topSide]))
      ||(!board_placement(size,0,pres_a[topSide],&lBoard))
      ||(!board_placement(size,1,pres_b[topSide],&lBoard))){ 
      */
-    if(edakari_1(size,0,pres_a[topSide],pres_a[topSide])==false){
+    /**
+     *
+     */
+    if(edakari_1(size,0,pres_a[topSide],pres_a[topSide])==false){ continue; }
+    /**
+     * 上１列目に配置
+     */
+    if(board_placement(size,0,pres_a[topSide],&lBoard)==false){
+      if(DEBUG){ // トグルは+254
+        breakpoint(size,"bit93_NQueens():上１列目",lBoard.aBoard,0,pres_a[topSide]);
+      }
       continue;
+    }else{
+      if(DEBUG){ // トグルは+254
+        breakpoint(size,"bit93_NQueens():上１列目",lBoard.aBoard,0,pres_a[topSide]);
+      }
     }
-    board_placement(size,0,pres_a[topSide],&lBoard);
-    breakpoint(size,lBoard.aBoard,0,pres_a[topSide]);
-
+    /**
+     * 上２列目に配置
+     */
     if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
-      breakpoint(size,lBoard.aBoard,1,pres_b[topSide]);
+      if(DEBUG){
+        breakpoint(size,"bit93_NQueens():上２列目",lBoard.aBoard,1,pres_b[topSide]);
+      }
       continue; 
+    }else{
+      if(DEBUG){
+        breakpoint(size,"bit93_NQueens():上２列目",lBoard.aBoard,1,pres_b[topSide]);
+      }
     }
     /**
      *左側2行にクイーンを設置する
