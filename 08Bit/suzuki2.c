@@ -645,6 +645,45 @@ void pres_idx(int size,int* pres_a,int* pres_b,int idx)
  */
 void bit93_NQueens(int size)
 {
+  /***
+   * １．バックトラックに変更する
+   * →　これはできない
+   *
+   * １．board_placementに追記する
+   * 　１．その側に列が残るように真ん中に置けないルールを追記する
+   * ２．ネストのかたまりである、上、左、下、右に二列ずつＱを配置するロジックを、
+   * 　　普通にバックトラックで実行する
+   * ３．外側２列をboard_placementを使ってバックトラックする場合、OUTSIDEフラグ
+   * をtrueにしてboard_placementを実行し、通常の処理ではOUTSIDEフラグをfalseに
+   * して実行し、board_placement内で処理を分岐する。
+   *
+   *  ■■■■■
+   *  ■■■■■
+   *  ■■□■■
+   *  ■■■■■
+   *  ■■■■■
+   *
+   *  ■■■■■■
+   *  ■■■■■■
+   *  ■■□□■■
+   *  ■■□□■■
+   *  ■■■■■■
+   *  ■■■■■■
+   *
+   *  ■■■■■■■
+   *  ■■■■■■■
+   *  ■■□□□■■
+   *  ■■□□□■■
+   *  ■■□□□■■
+   *  ■■■■■■■
+   *  ■■■■■■■
+   *
+   * 　白四角の部分をさけてバックトラックと再帰で２列ずつ作ればよい。
+   * board_placement()にフラグをつけることがポイント
+   */
+
+
+
   /**
    *
    *
@@ -695,27 +734,19 @@ void bit93_NQueens(int size)
      * 上１列目に配置
      */
     if(board_placement(size,0,pres_a[topSide],&lBoard)==false){
-      if(DEBUG){ // トグルは+254
-        breakpoint(size,"bit93_NQueens():上１列目",lBoard.bBoard,0,pres_a[topSide]);
-      }
       continue;
-    }else{
-      if(DEBUG){ // トグルは+254
-        breakpoint(size,"bit93_NQueens():上１列目",lBoard.bBoard,0,pres_a[topSide]);
-      }
+    }
+    if(DEBUG){ // トグルは+254
+      breakpoint(size,"bit93_NQueens():上１列目",lBoard.bBoard,0,pres_a[topSide]);
     }
     /**
      * 上２列目に配置
      */
     if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
-      if(DEBUG){
-        breakpoint(size,"bit93_NQueens():上２列目",lBoard.bBoard,1,pres_b[topSide]);
-      }
       continue; 
-    }else{
-      if(DEBUG){
-        breakpoint(size,"bit93_NQueens():上２列目",lBoard.bBoard,1,pres_b[topSide]);
-      }
+    }
+    if(DEBUG){
+      breakpoint(size,"bit93_NQueens():上２列目",lBoard.bBoard,1,pres_b[topSide]);
     }
     /**
      *左側2行にクイーンを設置する
