@@ -356,7 +356,7 @@ void breakpoint(int size,char *c,int* board,char *d)
 	while ((moji = getchar()) != EOF){
 		switch (moji){
 		case '\n':
-      printf("row:%d\n",board);
+      printf("row:%d col:%d\n",board,board);
 		  return;
 		default:
 			break;
@@ -551,11 +551,6 @@ long bit93_countCompletions(int size,int row,int* aBoard,
   ecnt++;
   long bitmap,bit,cnt=0;
   while((aBoard[row]!=-1)&&(row<size)) { left<<=1; right>>=1; row++; }
-  /**
-   *
-   *
-   */
-  breakpoint(size,"クイーンを配置",bBoard,"N");
   if(row==size){ return 1; }
   else{
     bitmap=~(left|down|right);   
@@ -569,6 +564,11 @@ long bit93_countCompletions(int size,int row,int* aBoard,
       if(size==5){ bBoard[row]=(bit<<2); }
       else if(size==6){ bBoard[row]=(bit<<1); }
       else{ bBoard[row]=(bit>>(size-7)); }
+      /**
+       *
+       *
+       */
+      breakpoint(size,"クイーンを配置",bBoard,"N");
       /**
        *
        *
