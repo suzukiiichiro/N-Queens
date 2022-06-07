@@ -696,12 +696,12 @@ void bit93_NQueens(int size)
      */
     if(board_placement(size,0,pres_a[topSide],&lBoard)==false){
       if(DEBUG){ // トグルは+254
-        breakpoint(size,"bit93_NQueens():上１列目",lBoard.aBoard,0,pres_a[topSide]);
+        breakpoint(size,"bit93_NQueens():上１列目",lBoard.bBoard,0,pres_a[topSide]);
       }
       continue;
     }else{
       if(DEBUG){ // トグルは+254
-        breakpoint(size,"bit93_NQueens():上１列目",lBoard.aBoard,0,pres_a[topSide]);
+        breakpoint(size,"bit93_NQueens():上１列目",lBoard.bBoard,0,pres_a[topSide]);
       }
     }
     /**
@@ -709,12 +709,12 @@ void bit93_NQueens(int size)
      */
     if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
       if(DEBUG){
-        breakpoint(size,"bit93_NQueens():上２列目",lBoard.aBoard,1,pres_b[topSide]);
+        breakpoint(size,"bit93_NQueens():上２列目",lBoard.bBoard,1,pres_b[topSide]);
       }
       continue; 
     }else{
       if(DEBUG){
-        breakpoint(size,"bit93_NQueens():上２列目",lBoard.aBoard,1,pres_b[topSide]);
+        breakpoint(size,"bit93_NQueens():上２列目",lBoard.bBoard,1,pres_b[topSide]);
       }
     }
     /**
