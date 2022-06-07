@@ -75,7 +75,7 @@ row>BOUND2 の時は両端にクイーンを置けないというもの
 [backTrack1]
 　1、1行目角にクイーンがある場合、回転対称形チェックを省略することが出来る
 　　  1行目角にクイーンがある場合、他の角にクイーンを配置することは不可
-    ->90度回転、180度回転させて同じになることはないので正解がある場合は必ず88
+    ->90度回転、180度回転させて同じになることはないので正解がある場合は必ず8個
     ->symmetryOpsで2,4,8を判定させる必要はない
     　
   2、【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
@@ -255,7 +255,7 @@ ignore 1 10 だと10回ブレークポイントを通ったところから確認
 long TOTAL=0;
 long UNIQUE=0;
 /**
- *
+ * ecntはステップ数を確認するためのデバッグ用の変数。
  */
 long ecnt=0;
 /**
@@ -277,8 +277,9 @@ typedef struct{
   long COUNT[3];
 }Board ;
 /**
- *
- *
+ * デバッグ用
+ * 1行分のクイーンの位置を0,1で返却する
+ * 256->010000000(N9の場合)
  */
 void dec2bin(int size, int dec)
 {
@@ -290,8 +291,19 @@ void dec2bin(int size, int dec)
   while (i){ printf("%1d", b[--i]); }
 }
 /**
+ * デバッグ用
+ * クイーンの配置を表示する
  *
- *
+ * N9:316807425<--各行のクイーンの列番号
+ * 000001000   <--クイーンの置かれている場所が1、それ以外は0
+ * 000000010
+ * 001000000
+ * 100000000
+ * 000000001
+ * 010000000
+ * 000010000
+ * 000000100
+ * 000100000
  */
 void print(int size, char *c,int bBoard[],char *d)
 {
@@ -384,7 +396,7 @@ bool edakari_3(int size,int bpa,int pb)
  return true;
 }
 /**
- *
+ *上下左右２行２列にクイーンを配置する
  *
  */
 bool board_placement(int size,int x,int y,Board *lb)
@@ -445,7 +457,7 @@ bool board_placement(int size,int x,int y,Board *lb)
   left=1<<(size-1-x+y);
   right=1<<(x+y);
   /**
-   *
+   *left,down,rightの利き筋をチェックしてクイーンを置けるか判定する
    */
   if((lb->aBoard[x]!=-1)
    ||((lb->down&down)||(lb->left&left)||(lb->right&right))){
@@ -466,7 +478,7 @@ int bit93_symmetryOps_n27(int size,Board* lb)
   pressMinusTopSide=(size-2)*(size-1)-1-lb->topSide;
   press=(size-2)*(size-1)-1;
   /**
-   *
+   *TODOここの枝刈り内容は不明
    */
   if(((lb->rightSide==pressMinusTopSide)&&(lb->leftSide<(press-lb->bottomSide)))
    ||((lb->bottomSide==pressMinusTopSide)&&(lb->leftSide>(press-lb->leftSide)))
@@ -474,14 +486,14 @@ int bit93_symmetryOps_n27(int size,Board* lb)
     return 3;
   }
   /**
-   *
+   *90度回転して同じかチェック
    */
   if(lb->rightSide==lb->topSide){
     if((lb->leftSide!=lb->topSide)||(lb->bottomSide!=lb->topSide)){ return 3; }
     return 0;
   }
   /**
-   *
+   *180度回転して同じかチェック
    */
   if((lb->bottomSide==lb->topSide)&&(lb->leftSide>=lb->rightSide)){
     if(lb->leftSide>lb->rightSide){ return 3; }
@@ -494,8 +506,8 @@ int bit93_symmetryOps_n27(int size,Board* lb)
 }
 //
 /**
- *
- *
+ *上から下に向かって1行ずつクイーンを置いていく
+ *board_placementの処理で既にクイーンを置いている行はスキップする
  */
 long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int* bBoard)
 {
@@ -509,8 +521,8 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
       bit=(-bitmap&bitmap);
       bitmap=(bitmap^bit);
       /**
-       *
-       *
+       *sizeの数によってdownが数ビットスライドしているので
+       *何列目にクイーンが置かれたのか知りたい場合はスライドした分を戻す
        */
       if(size==5){ bBoard[row]=(bit<<2); }
       else if(size==6){ bBoard[row]=(bit<<1); }
@@ -538,10 +550,14 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
 void symmetryOps(int size,Board* lBoard)
 {
   /**
-   *
+   *symmetryOpsで回転対称判定させ点数の低いものは枝刈りする
    *
    */
   lBoard->sym=bit93_symmetryOps_n27(size,lBoard);
+  /**
+   *symmetryOps突破したらcountCompletionsで上から下に各行1個ずつクイーンを置いていく
+   *
+   */
   if(lBoard->sym!=3){
     for(int j=0;j<=2;j++){ lBoard->COUNT[j]=0; }
     lBoard->row=2;
@@ -562,7 +578,7 @@ void symmetryOps(int size,Board* lBoard)
   }
 }
 /**
- *
+ *2行だけ見た場合にクイーンを設置できる場所の組み合わせを作る
  *
  *
  */
@@ -599,8 +615,8 @@ void bit93_NQueens(int size)
    */
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   /**
-   *
-   *
+   *上２行にクイーンを配置する
+   *ミラーなので右側半分だけクイーンを設置する
    */
   for(int topSide=0;topSide<=(size/2)*(size-3);topSide++){
     /**
@@ -623,7 +639,7 @@ void bit93_NQueens(int size)
       continue; 
     }
     /**
-     *
+     *左側2行にクイーンを設置する
      *
      */
     Board leftSideB=lBoard;
@@ -636,7 +652,7 @@ void bit93_NQueens(int size)
         continue; 
       }
       /**
-       *
+       *下側2行にクイーンを設置する
        *
        */
       Board bottomSideB=lBoard;
@@ -649,7 +665,7 @@ void bit93_NQueens(int size)
           continue; 
         }
         /**
-         *
+         *右側2行にクイーンを設置する
          *
          */
         Board rightSideB=lBoard;
@@ -663,8 +679,8 @@ void bit93_NQueens(int size)
             continue; 
           }
           /**
-           *
-           *
+           *上左下右2行2列にクイーンを置くことができたらsymmetryOpsで枝刈りする
+           *symmetryOps抜けたらcountCompletionsで上から下に1行ずつクイーンを置いていく
            */
           symmetryOps(size,&lBoard);
         }
