@@ -568,7 +568,7 @@ void pres_idx(int size,int* pres_a,int* pres_b,int idx)
  *上下左右２行２列にクイーンを配置する
  *
  */
-bool board_placement(int size,int x,int y,struct Board* lb,bool build_2line)
+bool board_placement(int size,int x,int y,struct Board* lb)
 {
   long down,left,right;
   long TOPBIT=1<<(size-1);
@@ -632,13 +632,6 @@ bool board_placement(int size,int x,int y,struct Board* lb,bool build_2line)
    ||((lb->down&down)||(lb->left&left)||(lb->right&right))){
     return false;
   }     
-  /**
-   *
-   *
-   */
-  if(build_2line){
-
-  }
   lb->aBoard[x]=y;
   lb->down|=down;
   lb->left|=left;
@@ -711,7 +704,6 @@ void bit93_NQueens(int size)
    *上２行にクイーンを配置する
    *ミラーなので右側半分だけクイーンを設置する
    */
-  bool build_2line=true;
   for(int topSide=0;topSide<=(size/2)*(size-3);topSide++){
     /**
      * デバッグモードでなければ表示
@@ -741,7 +733,7 @@ void bit93_NQueens(int size)
     /**
      * 上１列目に配置
      */
-    if(board_placement(size,0,pres_a[topSide],&lBoard,build_2line)==false){
+    if(board_placement(size,0,pres_a[topSide],&lBoard)==false){
       continue;
     }
     if(DEBUG){ // トグルは+254
@@ -750,7 +742,7 @@ void bit93_NQueens(int size)
     /**
      * 上２列目に配置
      */
-    if(board_placement(size,1,pres_b[topSide],&lBoard,build_2line)==false){ 
+    if(board_placement(size,1,pres_b[topSide],&lBoard)==false){ 
       continue; 
     }
     if(DEBUG){
@@ -765,8 +757,8 @@ void bit93_NQueens(int size)
       lBoard=leftSideB;lBoard.leftSide=leftSide;
       if((!edakari_1(size,pres_a[leftSide],size-1,pres_a[leftSide]))
        ||(!edakari_3(size,pres_a[topSide],pres_b[leftSide]))
-       ||(!board_placement(size,pres_a[leftSide],size-1,&lBoard,build_2line))
-       ||(!board_placement(size,pres_b[leftSide],size-2,&lBoard,build_2line))){
+       ||(!board_placement(size,pres_a[leftSide],size-1,&lBoard))
+       ||(!board_placement(size,pres_b[leftSide],size-2,&lBoard))){
         continue; 
       }
       /**
@@ -778,8 +770,8 @@ void bit93_NQueens(int size)
         lBoard=bottomSideB;lBoard.bottomSide=bottomSide;
         if((!edakari_1(size,size-1,size-1-pres_a[bottomSide],pres_a[bottomSide]))
          ||(!edakari_3(size,pres_a[leftSide],pres_b[bottomSide]))
-         ||(!board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard,build_2line))
-         ||(!board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard,build_2line))){
+         ||(!board_placement(size,size-1,size-1-pres_a[bottomSide],&lBoard))
+         ||(!board_placement(size,size-2,size-1-pres_b[bottomSide],&lBoard))){
           continue; 
         }
         /**
@@ -793,8 +785,8 @@ void bit93_NQueens(int size)
           if((!edakari_1(size,size-1-pres_a[rightSide],0,pres_a[rightSide]))
            ||(!edakari_2(size,pres_a[topSide],pres_a[rightSide]))
            ||(!edakari_3(size,pres_a[topSide],pres_b[rightSide]))
-           ||(!board_placement(size,size-1-pres_a[rightSide],0,&lBoard,build_2line))
-           ||(!board_placement(size,size-1-pres_b[rightSide],1,&lBoard,build_2line))){ 
+           ||(!board_placement(size,size-1-pres_a[rightSide],0,&lBoard))
+           ||(!board_placement(size,size-1-pres_b[rightSide],1,&lBoard))){ 
             continue; 
           }
           /**
