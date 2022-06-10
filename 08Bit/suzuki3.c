@@ -433,80 +433,6 @@ bool edakari_3(int size,int bpa,int pb)
  return true;
 }
 /**
- *上下左右２行２列にクイーンを配置する
- *
- */
-bool board_placement(int size,int x,int y,struct Board* lb)
-{
-  long down,left,right;
-  long TOPBIT=1<<(size-1);
-  long SIDEMASK=(TOPBIT|1);
-  long LASTMASK=SIDEMASK;
-  for(int a=2;a<=lb->aBoard[0];a++){ LASTMASK|=LASTMASK>>1|LASTMASK<<1; }
-  /**
-   * １行目角にクイーンがある場合
-   * 【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
-   * ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
-   */
-  if(lb->aBoard[0]==0){
-    if(y==1 && lb->aBoard[1]>x){
-      return false;
-    }  
-  }else if(lb->aBoard[0] !=-1){
-    /**
-     * １行目角にクイーンがある場合以外
-     * 【枝刈り】上部サイド枝刈り
-     */
-    if(x<lb->aBoard[0]){
-      if((SIDEMASK&1<<y)==1){
-        return false;
-      }
-    }
-    /**
-     * 【枝刈り】下部サイド枝刈り
-     *
-     */
-    else if(x>size-1-lb->aBoard[0]){
-      if((SIDEMASK&1<<y)==1){
-        return false;
-      }
-    }
-    /**
-     * 【枝刈り】 最下段枝刈り
-     *
-     */
-    if(x==size-1){
-      if((LASTMASK&1<<y)!=0){
-        return false;
-      }
-    }
-  }
-  /**
-   * 同じ場所に置くかチェック
-   *
-   */
-  if(lb->aBoard[x]==y){  
-    return true;    //同じ場所に置くのはOK
-  }
-  //bv=1<<x;//xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
-  down=1<<y;
-  lb->bBoard[x]=down;
-  left=1<<(size-1-x+y);
-  right=1<<(x+y);
-  /**
-   *left,down,rightの利き筋をチェックしてクイーンを置けるか判定する
-   */
-  if((lb->aBoard[x]!=-1)
-   ||((lb->down&down)||(lb->left&left)||(lb->right&right))){
-    return false;
-  }     
-  lb->aBoard[x]=y;
-  lb->down|=down;
-  lb->left|=left;
-  lb->right|=right;
-  return true;
-}
-/**
  *
  *
  */
@@ -637,6 +563,80 @@ void pres_idx(int size,int* pres_a,int* pres_b,int idx)
       idx++;
     }
   }
+}
+/**
+ *上下左右２行２列にクイーンを配置する
+ *
+ */
+bool board_placement(int size,int x,int y,struct Board* lb)
+{
+  long down,left,right;
+  long TOPBIT=1<<(size-1);
+  long SIDEMASK=(TOPBIT|1);
+  long LASTMASK=SIDEMASK;
+  for(int a=2;a<=lb->aBoard[0];a++){ LASTMASK|=LASTMASK>>1|LASTMASK<<1; }
+  /**
+   * １行目角にクイーンがある場合
+   * 【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
+   * ２行目、２列目を数値とみなし、２行目＜２列目という条件を課せばよい
+   */
+  if(lb->aBoard[0]==0){
+    if(y==1 && lb->aBoard[1]>x){
+      return false;
+    }  
+  }else if(lb->aBoard[0] !=-1){
+    /**
+     * １行目角にクイーンがある場合以外
+     * 【枝刈り】上部サイド枝刈り
+     */
+    if(x<lb->aBoard[0]){
+      if((SIDEMASK&1<<y)==1){
+        return false;
+      }
+    }
+    /**
+     * 【枝刈り】下部サイド枝刈り
+     *
+     */
+    else if(x>size-1-lb->aBoard[0]){
+      if((SIDEMASK&1<<y)==1){
+        return false;
+      }
+    }
+    /**
+     * 【枝刈り】 最下段枝刈り
+     *
+     */
+    if(x==size-1){
+      if((LASTMASK&1<<y)!=0){
+        return false;
+      }
+    }
+  }
+  /**
+   * 同じ場所に置くかチェック
+   *
+   */
+  if(lb->aBoard[x]==y){  
+    return true;    //同じ場所に置くのはOK
+  }
+  //bv=1<<x;//xは行 yは列 p.N-1-x+yは右上から左下 x+yは左上から右下
+  down=1<<y;
+  lb->bBoard[x]=down;
+  left=1<<(size-1-x+y);
+  right=1<<(x+y);
+  /**
+   *left,down,rightの利き筋をチェックしてクイーンを置けるか判定する
+   */
+  if((lb->aBoard[x]!=-1)
+   ||((lb->down&down)||(lb->left&left)||(lb->right&right))){
+    return false;
+  }     
+  lb->aBoard[x]=y;
+  lb->down|=down;
+  lb->left|=left;
+  lb->right|=right;
+  return true;
 }
 /**
  *
