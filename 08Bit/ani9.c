@@ -95,57 +95,85 @@ void dec2bin(int size, int dec)
     printf("%1d", b[--i]);
 }
 
-void print(int size, char *c,int aBoard[])
+
+/**
+ * デバッグ用
+ * クイーンの配置を表示する
+ *
+ * N9:316807425<--各行のクイーンの列番号
+ * 000001000   <--クイーンの置かれている場所が1、それ以外は0
+ * 000000010
+ * 001000000
+ * 100000000
+ * 000000001
+ * 010000000
+ * 000010000
+ * 000000100
+ * 000100000
+ */
+void breakpoint(int size,char* string,int* board,int row,int bit)
 {
-  printf("%s\n", c);
-  printf("%d:",size);
+
+  printf("%s\n",string);
+  printf("<>N=%d STEP:",size);
   for(int i=0;i<size;i++){
-    if(aBoard[i]==1){
-      printf("0");
-    }else if(aBoard[i]==2){
-      printf("1");
-    }else if(aBoard[i]==4){
-      printf("2");
-    }else if(aBoard[i]==8){
-      printf("3");
-    }else if(aBoard[i]==16){
-      printf("4");
-    }else if(aBoard[i]==32){
-      printf("5");
-    }else if(aBoard[i]==64){
-      printf("6");
-    }else if(aBoard[i]==128){
-      printf("7");
-    }else if(aBoard[i]==256){
-      printf("8");
-    }else if(aBoard[i]==512){
-      printf("9");
-    }else if(aBoard[i]==1024){
-      printf("10");
-    }else if(aBoard[i]==-1){
-      printf("-");
-    }
+    if(board[i]==1){ printf("0"); }
+    else if(board[i]==2){ printf("1"); }
+    else if(board[i]==4){ printf("2"); }
+    else if(board[i]==8){ printf("3"); }
+    else if(board[i]==16){ printf("4"); }
+    else if(board[i]==32){ printf("5"); }
+    else if(board[i]==64){ printf("6"); }
+    else if(board[i]==128){ printf("7"); }
+    else if(board[i]==256){ printf("8"); }
+    else if(board[i]==512){ printf("9"); }
+    else if(board[i]==1024){ printf("10"); }
+    else if(board[i]==-1){ printf("-"); }
+  }
+  printf("  ");
+  printf("row:%d  bit:%d\n",row,bit);
+  printf("\n");
+  //colの座標表示
+  printf("   ");
+  for (int j=size-1;j>=0;j--){
+    printf(" %2d",j);
   }
   printf("\n");
-  for (int j = 0; j < size; j++)
-  {
-    if(aBoard[j]==-1){
-      dec2bin(size, 0);
-    }else{
-      dec2bin(size, aBoard[j]);
+  printf(" =============");
+  for (int j=0;j<size;j++){
+    printf("==");
+  }
+  printf("\n");
+  //row
+  for (int j=0;j<size;j++){
+    printf("%2d| ",j);
+    if(board[j]==-1){ dec2bin(size,0); }
+    else{ 
+      dec2bin(size,board[j]); 
     }
     printf("\n");
   }
   printf("\n");
-  //getchar();
+  /**
+   *
+   *
+   */
+  //int moji;
+	//while ((moji = getchar()) != EOF){
+//		switch (moji){
+//		case '\n':
+//		  return;
+//		default:
+//			break;
+//		}
+//	}
 }
-
 //通常版 CPUR 再帰版　ロジックメソッド
 void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[]){
   int bitmap=0;
   int bit=0;
   if(row==size){
-    print(size,"F",aBoard);
+    breakpoint(size,"クイーンを配置",aBoard,row,bit);
     TOTAL++;
   }else{
     int amask=mask;
@@ -153,16 +181,13 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[])
       amask=(((1<<(size-4))-1)<<2);
       if(amask&~(left|down|right)){
         aBoard[row]=-1;
-        //print(size,"N",aBoard);
         NQueenR(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard);
       }
      amask=amask^mask;
     }
-    //printf("row:%d:amask:%d\n",row,amask);
     bitmap=(amask&~(left|down|right));
     while(bitmap){
       bitmap^=aBoard[row]=bit=(-bitmap&bitmap);
-      //print(size,"P",aBoard);
       NQueenR(size,mask,row+1,(left|bit)<<1, down|bit,(right|bit)>>1,aBoard);
     }
   }
