@@ -226,6 +226,8 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
 }
 //通常版 CPUR 再帰版　ロジックメソッド
 //まず、backtrackを使って上下左右２行２列にクイーンを配置する
+//上下２行以外は両端２列にだけクイーンを置くようにしながら最後の行までbacktrackする
+//最後の行までbacktrackしたらcountCompletionsを呼びだす。
 //lleft,ldown,lrightはboardplacementで設定していたのと同じ値（全行共通のleft,down,right)
 void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
   //printf("a:nqueen start\n");
