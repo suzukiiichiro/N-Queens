@@ -172,7 +172,7 @@ void breakpoint(int size,char* string,int* board,int row,int bit)
 //	}
 }
 //
-//
+//countCompletionsは変更していない
 long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[],long bmask)
 {
   //printf("0:countCompletions start\n");
@@ -225,6 +225,8 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
   return cnt;
 }
 //通常版 CPUR 再帰版　ロジックメソッド
+//まず、backtrackを使って上下左右２行２列にクイーンを配置する
+//lleft,ldown,lrightはboardplacementで設定していたのと同じ値（全行共通のleft,down,right)
 void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
   //printf("a:nqueen start\n");
   int bitmap=0;
@@ -233,9 +235,11 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],
     //printf("b:all placed\n");
     //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
     int sym=0;
+    //上下左右２行２列に配置が完了したら3行目からcountCompletionsを呼び出して上からやる。
     TOTAL+=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
   }else{
     int amask=mask;
+    //上２行、下２行以外は左端２列、右端２列にだけクイーンを置くようにマスクを設置する
     if(row>1&&row<size-2){
       amask=(((1<<(size-4))-1)<<2);
       //printf("amask:%d,lll:%d,dddd:%d,rrr:%d\n",amask,left,down,right);
@@ -243,8 +247,10 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],
         //printf("f:amask\n");
         aBoard[row]=-1;
         bBoard[row]=-1;
+        //上２行、下２行以外で左端２列、右端２列以外にクイーンを置ける余地がある場合はその行を空白にして次の行へ進むルートも作る
         NQueenR(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask);
       }
+      //左端２列、右端２列にだけクイーンを置くようにマスクを設定する
       amask=amask^mask;
     }
     //printf("amask:%d left:%d down:%d right:%d\n",amask,left,down,right);
@@ -252,10 +258,10 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],
     //printf("bitmap:%d\n",bitmap);
     while(bitmap){
       //printf("c:place\n");
+      //クイーンを置く
       bitmap^=bBoard[row]=bit=(-bitmap&bitmap);
       //printf("bit:%d\n",bit);
-      //クイーンを置く
-      //
+      //board_placementに合わせた値を設定するためにbitだけでなく何列目にクイーンを置いたかを算出
       int y=0;
       if(bit==1){
         y=0;
@@ -295,6 +301,7 @@ void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],
         y=17;
       }
      aBoard[row]=y;
+     //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
      //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
       //printf("d:recursivele start\n");
       NQueenR(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+y),ldown|bit,lright|1<<(row+y),bBoard,bmask);
