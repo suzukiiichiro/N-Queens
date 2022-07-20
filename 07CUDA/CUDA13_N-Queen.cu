@@ -87,7 +87,7 @@ $ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -s
 17:     95815104               0  00:00:00:18.30
 
 
-$ nvcc -O3 CUDA12_4_N-Queen.cu  && ./a.out -g
+$ nvcc -O3 CUDA13_N-Queen.cu  && ./a.out -g
 １２．GPU 非再帰 並列処理 CUDA
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.37
@@ -1875,7 +1875,7 @@ int main(int argc,char** argv)
     */
     if(!InitCUDA()){return 0;}
     int steps=24576;
-    int min=4;int targetN=17;//実行の開始Nと終了Nの指定
+    int min=4;int targetN=21;//実行の開始Nと終了Nの指定
     /**
       処理時刻計測のための変数
       */
