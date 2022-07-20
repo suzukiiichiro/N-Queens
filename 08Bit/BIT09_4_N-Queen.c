@@ -506,30 +506,18 @@ void q27_NQueens(int size)
     lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
       lBoard=nB;
-      if(board_placement(size,pres_a[n],size-1,&lBoard)==false){ 
-        continue; 
-      }
-      if(board_placement(size,pres_b[n],size-2,&lBoard)==false){ 
-        continue; 
-      }
+      if(board_placement(size,pres_a[n],size-1,&lBoard)==false){ continue; }
+      if(board_placement(size,pres_b[n],size-2,&lBoard)==false){ continue; }
       eB=lBoard;
       for(int e=w;e<lsize;e++){
         lBoard=eB;  
-        if(board_placement(size,size-1,size-1-pres_a[e],&lBoard)==false){ 
-          continue; 
-        }
-        if(board_placement(size,size-2,size-1-pres_b[e],&lBoard)==false){ 
-          continue; 
-        }
+        if(board_placement(size,size-1,size-1-pres_a[e],&lBoard)==false){ continue; }
+        if(board_placement(size,size-2,size-1-pres_b[e],&lBoard)==false){ continue; }
         sB=lBoard;
         for(int s=w;s<lsize;s++){
           lBoard=sB;
-          if(board_placement(size,size-1-pres_a[s],0,&lBoard)==false){ 
-            continue; 
-          }
-          if(board_placement(size,size-1-pres_b[s],1,&lBoard)==false){ 
-            continue; 
-          }
+          if(board_placement(size,size-1-pres_a[s],0,&lBoard)==false){ continue; }
+          if(board_placement(size,size-1-pres_b[s],1,&lBoard)==false){ continue; }
           sym=symmetryOps_n27(w,e,n,s,size);
           if(sym !=3){
             for(int j=0;j<=2;j++){ lBoard.COUNT[j]=0; }
