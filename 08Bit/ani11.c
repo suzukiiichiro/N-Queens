@@ -113,7 +113,6 @@ void dec2bin(int size, int dec)
  */
 void breakpoint(int size,char* string,int* board,int row,int bit)
 {
-
   printf("%s\n",string);
   printf("<>N=%d STEP:",size);
   for(int i=0;i<size;i++){
@@ -207,13 +206,13 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
       //aBoard[row]=bit=(-bitmap&bitmap);
       bit=(-bitmap&bitmap);
       //int abit;
-      if(size==5){
-        bBoard[row]=(bit<<2);
-      }else if(size==6){
-        bBoard[row]=(bit<<1);
-      }else{
-        bBoard[row]=(bit>>(size-7));
-      }
+      //if(size==5){
+      //  bBoard[row]=(bit<<2);
+      //}else if(size==6){
+      //  bBoard[row]=(bit<<1);
+      //}else{
+      //  bBoard[row]=(bit>>(size-7));
+      //}
       //print(size,"クイーンを配置",bBoard,"N");
       bitmap=(bitmap^bit);
       //printf("5:start recursion\n");
@@ -229,84 +228,153 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
 //上下２行以外は両端２列にだけクイーンを置くようにしながら最後の行までbacktrackする
 //最後の行までbacktrackしたらcountCompletionsを呼びだす。
 //lleft,ldown,lrightはboardplacementで設定していたのと同じ値（全行共通のleft,down,right)
-void NQueenR(int size,int mask,int row,int left,int down,int right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
+int symmetryOps(int topSide_0,int topSide_1,int leftSide_0,int leftSide_1,int bottomSide_0,int bottomSide_1,int rightSide_0,int rightSide_1,int size){
+    if((topSide_0==-1)||(topSide_1==-1)||(leftSide_0==-1)||(leftSide_1==-1)||(bottomSide_0==-1)||(bottomSide_1==-1)||(rightSide_0==-1)||(rightSide_1==-1)){
+     return 3;
+    }
+    int sizeE=size-1;
+    int mtopSide_0=sizeE-topSide_0;
+    int mtopSide_1=sizeE-topSide_1;
+    int mleftSide_0=sizeE-leftSide_0;
+    int mleftSide_1=sizeE-leftSide_1;
+    int mbottomSide_0=sizeE-bottomSide_0;
+    int mbottomSide_1=sizeE-bottomSide_1;
+    int mrightSide_0=sizeE-rightSide_0;
+    int mrightSide_1=sizeE-rightSide_1;
+    //small判定
+    if(((topSide_0 > leftSide_0)||((topSide_0==leftSide_0)&&(topSide_1 > leftSide_1)))||((topSide_0 > bottomSide_0)||((topSide_0==bottomSide_0)&&(topSide_1 > bottomSide_1)))||((topSide_0 > rightSide_0)||((topSide_0==rightSide_0)&&(topSide_1 > rightSide_1)))||((topSide_0 > mtopSide_0)||((topSide_0==mtopSide_0)&&(topSide_1 > mtopSide_1)))||((topSide_0 > mleftSide_0)||((topSide_0==mleftSide_0)&&(topSide_1 > mleftSide_1)))||((topSide_0 > mbottomSide_0)||((topSide_0==mbottomSide_0)&&(topSide_1 > mbottomSide_1)))||((topSide_0 > mrightSide_0)||((topSide_0==mrightSide_0)&&(topSide_1 > mrightSide_1)))){
+      return 3;
+    }
+    //symmetryOpsを実行する
+    if(rightSide_0==topSide_0 && rightSide_1==topSide_1){
+      if(((leftSide_0 !=topSide_0)||(leftSide_1!=topSide_1))||((bottomSide_0!=topSide_0)||(bottomSide_1!=topSide_1))){
+        return 3;
+      }
+      return 0;
+    }
+    if((bottomSide_0==topSide_0)&&(bottomSide_1==topSide_1)&&((leftSide_0>=rightSide_0)||(leftSide_1>=rightSide_1))){
+      if((leftSide_0>rightSide_0)||(leftSide_1>rightSide_1)){
+        return 3;
+      }
+      return 1;
+    }
+    return 2;
+}
+void NQueenR(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask,int topSide_0,int topSide_1,int leftSide_0,int leftSide_1,int bottomSide_0,int bottomSide_1,int rightSide_0,int rightSide_1){
   //printf("a:nqueen start\n");
   int bitmap=0;
   int bit=0;
   if(row==size){
+    //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     //printf("b:all placed\n");
     //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
-    int sym=0;
+    int sym=symmetryOps(topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1,size);
+    //symmetryOpsを実行する
+    //aBoardの内容から
     //上下左右２行２列に配置が完了したら3行目からcountCompletionsを呼び出して上からやる。
-    TOTAL+=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+    if(sym !=3){
+      int rtn=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+      if(sym==0){
+        TOTAL+=rtn*2;
+      }else if(sym==1){
+        TOTAL+=rtn*4;
+      }else if(sym==2){
+        TOTAL+=rtn*8;
+      }
+    }
   }else{
-    int amask=mask;
+    long amask=mask;
     //上２行、下２行以外は左端２列、右端２列にだけクイーンを置くようにマスクを設置する
     if(row>1&&row<size-2){
       amask=(((1<<(size-4))-1)<<2);
-      //printf("amask:%d,lll:%d,dddd:%d,rrr:%d\n",amask,left,down,right);
+      //printf("row:%d amask:%d,lll:%d,dddd:%d,rrr:%d\n",row,amask,left,down,right);
       if(amask&~(left|down|right)){
         //printf("f:amask\n");
         aBoard[row]=-1;
         bBoard[row]=-1;
         //上２行、下２行以外で左端２列、右端２列以外にクイーンを置ける余地がある場合はその行を空白にして次の行へ進むルートも作る
-        NQueenR(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask);
+        NQueenR(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask,topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
       }
       //左端２列、右端２列にだけクイーンを置くようにマスクを設定する
       amask=amask^mask;
     }
-    //printf("amask:%d left:%d down:%d right:%d\n",amask,left,down,right);
+    //printf("row:%d bbbbamask:%d left:%d down:%d right:%d\n",row,amask,left,down,right);
     bitmap=(amask&~(left|down|right));
     //printf("bitmap:%d\n",bitmap);
     while(bitmap){
       //printf("c:place\n");
       //クイーンを置く
       bitmap^=bBoard[row]=bit=(-bitmap&bitmap);
-      //printf("bit:%d\n",bit);
+      //printf("row:%d bit:%d\n",row,bit);
       //board_placementに合わせた値を設定するためにbitだけでなく何列目にクイーンを置いたかを算出
-      int y=0;
+      int x=0;
       if(bit==1){
-        y=0;
+        x=0;
       }else if(bit==2){
-        y=1;
+        x=1;
       }else if(bit==4){
-        y=2;
+        x=2;
       }else if(bit==8){
-        y=3;
+        x=3;
       }else if(bit==16){
-        y=4;
+        x=4;
       }else if(bit==32){
-        y=5;
+        x=5;
       }else if(bit==64){
-        y=6;
+        x=6;
       }else if(bit==128){
-        y=7;
+        x=7;
       }else if(bit==256){
-        y=8;
+        x=8;
       }else if(bit==512){
-        y=9;
+        x=9;
       }else if(bit==1024){
-        y=10;
+        x=10;
       }else if(bit==2048){
-        y=11;
+        x=11;
       }else if(bit==4096){
-        y=12;
+        x=12;
       }else if(bit==8192){
-        y=13;
+        x=13;
       }else if(bit==16384){
-        y=14;
+        x=14;
       }else if(bit==32768){
-        y=15;
+        x=15;
       }else if(bit==65536){
-        y=16;
+        x=16;
       }else if(bit==131072){
-        y=17;
+        x=17;
       }
-     aBoard[row]=y;
+     aBoard[row]=x;
+     //symmetry
+     if (row==0){
+       topSide_0=x;
+     }
+     if (row==1){
+       topSide_1=x;
+     }
+     if (x==size-1){
+       leftSide_0=row;
+     }
+     if (x==size-2){
+       leftSide_1=row;
+     }
+     if (row==size-1){
+       bottomSide_0=size-1-x;
+     }
+     if (row==size-2){
+       bottomSide_1=size-1-x;
+     }
+     if (x==0){
+       rightSide_0=size-1-row;  
+     }
+     if (x==1){
+       rightSide_1=size-1-row;
+     }
      //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
      //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
       //printf("d:recursivele start\n");
-      NQueenR(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+y),ldown|bit,lright|1<<(row+y),bBoard,bmask);
+      NQueenR(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask,topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
       //printf("e:recursivele start\n");
     }
   }
@@ -350,8 +418,8 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=15;
-    min=5;
-    targetN=15;
+    //min=7;
+    //targetN=7;
     int mask;
     long bmask;
     int aBoard[MAX];
@@ -372,11 +440,11 @@ int main(int argc,char** argv) {
       //
       //再帰
       if(cpur){ 
-        NQueenR(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask);//通常版
+        NQueenR(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask,-1,-1,-1,-1,-1,-1,-1,-1);//通常版
       }
       //非再帰
       if(cpu){ 
-        NQueenR(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask);//通常版
+        NQueenR(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask,-1,-1,-1,-1,-1,-1,-1,-1);//通常版
       }
       //
       TimeFormat(clock()-st,t);
