@@ -87,7 +87,7 @@ nvcc -O3 CUDA13_N-Queen.cu  && ./a.out -g
 
                                                   
                                                      世界一        日本一      分解合成法    対照解除法 ビットマップ
- -------------------------------------- 共同通信社   dresden ProAct 電通大        QJH版     高橋謙一郎 Somers版(N22)
+ -------------------------------------- 鈴木維一郎   dresden ProAct 電通大        QJH版     高橋謙一郎 Somers版(N22)
  N:          Total       Unique        dd:hh:mm:ss                                                                    
  2:                 0                0 00:00:00:00                                                                    
  3:                 0                0 00:00:00:00                                                                    
