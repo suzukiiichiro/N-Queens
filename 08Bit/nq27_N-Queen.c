@@ -140,6 +140,85 @@ void TimeFormat(clock_t utime,char *form)
   else
     sprintf(form,"           %5.2f",ss);
 }
+//出力
+void dec2bin(int size, int dec)
+{
+  int i, b[32];
+  for (i = 0; i < size; i++)
+  {
+    b[i] = dec % 2;
+    dec = dec / 2;
+  }
+  while (i > 0)
+    printf("%1d", b[--i]);
+}
+
+
+/**
+ * デバッグ用
+ * クイーンの配置を表示する
+ *
+ * N9:316807425<--各行のクイーンの列番号
+ * 000001000   <--クイーンの置かれている場所が1、それ以外は0
+ * 000000010
+ * 001000000
+ * 100000000
+ * 000000001
+ * 010000000
+ * 000010000
+ * 000000100
+ * 000100000
+ */
+void breakpoint(int size,char* string,int* x,int row)
+{
+  printf("%s\n",string);
+  printf("<>N=%d STEP:",size);
+  for(int i=0;i<size;i++){
+    if(x[i]==-1){ 
+      printf("-"); 
+    }else{
+      printf("%d",x[i]);
+    }
+  }
+  printf("  ");
+  printf("row:%d\n",row);
+  printf("\n");
+  //colの座標表示
+  printf("   ");
+  for (int j=size-1;j>=0;j--){
+    printf(" %2d",j);
+  }
+  printf("\n");
+  printf(" =============");
+  for (int j=0;j<size;j++){
+    printf("==");
+  }
+  printf("\n");
+  //row
+  for (int j=0;j<size;j++){
+    printf("%2d| ",j);
+    if(x[j]==-1){ dec2bin(size,0); }
+    else{ 
+      dec2bin(size,1<<x[j]); 
+    }
+    printf("\n");
+  }
+  printf("\n");
+  /**
+   *
+   *
+   */
+  //int moji;
+	//while ((moji = getchar()) != EOF){
+//		switch (moji){
+//		case '\n':
+//		  return;
+//		default:
+//			break;
+//		}
+//	}
+}
+//
 //
 long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 {
@@ -268,7 +347,7 @@ void NQueenR(int size)
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+  //printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
 
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
@@ -292,9 +371,9 @@ void NQueenR(int size)
     // int wb=pres_b[w];
     //
     //プログレス
-    printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
-    printf("\r");
-    fflush(stdout);
+    //printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
+    //printf("\r");
+    //fflush(stdout);
   
     //上２行　0行目,1行目にクイーンを置く
     //
@@ -447,6 +526,8 @@ void NQueenR(int size)
             //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
               continue;
             }
+            printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
             //w=n=e=sであれば90度回転で同じ可能性
             //この場合はミラーの2
             process(size,B,COUNT2);
@@ -461,11 +542,15 @@ void NQueenR(int size)
                 continue;
               }
               //この場合は4
+              printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
               process(size,B,COUNT4);
               //(*act)(board, Symmetry::POINT);   
               continue;
             //}
           }
+            printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
           process(size,B,COUNT8);
           //(*act)(board, Symmetry::NONE);
           //この場合は8
@@ -520,7 +605,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=17;
+    int min=10;int targetN=10;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -554,8 +639,8 @@ int main(int argc,char** argv)
     }
   }
   if(gpu||sgpu){
-    int min=5;int targetN=17;
-    //int min=8;int targetN=8;
+    //int min=5;int targetN=17;
+    int min=8;int targetN=8;
 
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
