@@ -290,11 +290,11 @@ int symmetryOps(int size,int aBoard[]){
     }
     //２辺が同じ場合は３辺目を比較する
     //top == right left==top  bottom>left
-    //if(((topSide_0==rightSide_0)&&(topSide_1==rightSide_1))&&((leftSide_0==topSide_0)&&(leftSide_1==topSide_1))){
-    //  if((bottomSide_0>leftSide_0)||((bottomSide_0==leftSide_0)&&(bottomSide_1>leftSide_1))){
-    //    return 3;
-    //  }
-    //}
+    if(((topSide_0==rightSide_0)&&(topSide_1==rightSide_1))&&((leftSide_0==topSide_0)&&(leftSide_1==topSide_1))){
+      if((bottomSide_0>leftSide_0)||((bottomSide_0==leftSide_0)&&(bottomSide_1>leftSide_1))){
+        return 3;
+      }
+    }
     //top ==  bottom  left > right
     if((topSide_0==bottomSide_0)&&(topSide_1==bottomSide_1)){
       if((leftSide_0>rightSide_0)||((leftSide_0==rightSide_0)&&(leftSide_1>rightSide_1))){
@@ -308,11 +308,11 @@ int symmetryOps(int size,int aBoard[]){
       }
     }
     //top ==  left  left == bottom bottom > right
-    //if(((topSide_0==leftSide_0)&&(topSide_1==leftSide_1))&&((leftSide_0==bottomSide_0)&&(leftSide_1==bottomSide_1))){
-   //   if((bottomSide_0>rightSide_0)||((bottomSide_0==rightSide_0)&&(bottomSide_1>rightSide_1))){
-   //     return 3;
-   //   }
-   // }
+    if(((topSide_0==leftSide_0)&&(topSide_1==leftSide_1))&&((leftSide_0==bottomSide_0)&&(leftSide_1==bottomSide_1))){
+      if((bottomSide_0>rightSide_0)||((bottomSide_0==rightSide_0)&&(bottomSide_1>rightSide_1))){
+        return 3;
+      }
+    }
 
     //top == mtop     left > mleft
     if((topSide_0==mtopSide_0)&&(topSide_1==mtopSide_1)){
@@ -321,11 +321,11 @@ int symmetryOps(int size,int aBoard[]){
       }
     }
     //top ==  mtop  left == mleft bottom > mbottom 
-    //if(((topSide_0==mtopSide_0)&&(topSide_1==mtopSide_1))&&((leftSide_0==mleftSide_0)&&(leftSide_1==mleftSide_1))){
-    //  if((bottomSide_0>mbottomSide_0)||((bottomSide_0==mbottomSide_0)&&(bottomSide_1>mbottomSide_1))){
-    //    return 3;
-    //  }
-    //}
+    if(((topSide_0==mtopSide_0)&&(topSide_1==mtopSide_1))&&((leftSide_0==mleftSide_0)&&(leftSide_1==mleftSide_1))){
+      if((bottomSide_0>mbottomSide_0)||((bottomSide_0==mbottomSide_0)&&(bottomSide_1>mbottomSide_1))){
+        return 3;
+      }
+    }
     //top == mright   left > mtop
     if((topSide_0==mrightSide_0)&&(topSide_1==mrightSide_1)){
       if((leftSide_0>mtopSide_0)||((leftSide_0==mtopSide_0)&&(leftSide_1>mtopSide_1))){
@@ -333,11 +333,11 @@ int symmetryOps(int size,int aBoard[]){
       }
     }
     //top ==  mright  left == mtop bottom > mleft 
-    //if(((topSide_0==mrightSide_0)&&(topSide_1==mrightSide_1))&&((leftSide_0==mtopSide_0)&&(leftSide_1==mtopSide_1))){
-    //  if((bottomSide_0>mleftSide_0)||((bottomSide_0==mleftSide_0)&&(bottomSide_1>mleftSide_1))){
-    //    return 3;
-    //  }
-    //}
+    if(((topSide_0==mrightSide_0)&&(topSide_1==mrightSide_1))&&((leftSide_0==mtopSide_0)&&(leftSide_1==mtopSide_1))){
+      if((bottomSide_0>mleftSide_0)||((bottomSide_0==mleftSide_0)&&(bottomSide_1>mleftSide_1))){
+        return 3;
+      }
+    }
     //top == mbottom  left > mright
     if((topSide_0==mbottomSide_0)&&(topSide_1==mbottomSide_1)){
       if((leftSide_0>mrightSide_0)||((leftSide_0==mrightSide_0)&&(leftSide_1>mrightSide_1))){
@@ -345,11 +345,11 @@ int symmetryOps(int size,int aBoard[]){
       }
     }
     //top ==  mbottom  left == mright bottom > mtop 
-    //if(((topSide_0==mbottomSide_0)&&(topSide_1==mbottomSide_1))&&((leftSide_0==mrightSide_0)&&(leftSide_1==mrightSide_1))){
-    //  if((bottomSide_0>mtopSide_0)||((bottomSide_0==mtopSide_0)&&(bottomSide_1>mtopSide_1))){
-    //    return 3;
-    //  }
-    //}
+    if(((topSide_0==mbottomSide_0)&&(topSide_1==mbottomSide_1))&&((leftSide_0==mrightSide_0)&&(leftSide_1==mrightSide_1))){
+      if((bottomSide_0>mtopSide_0)||((bottomSide_0==mtopSide_0)&&(bottomSide_1>mtopSide_1))){
+        return 3;
+      }
+    }
     //top == mleft    left > mbottom  
     if((topSide_0==mleftSide_0)&&(topSide_1==mleftSide_1)){
       if((leftSide_0>mbottomSide_0)||((leftSide_0==mbottomSide_0)&&(leftSide_1>mbottomSide_1))){
@@ -357,11 +357,11 @@ int symmetryOps(int size,int aBoard[]){
       }
     }
     //top ==  mleft  left == mbottom  bottom > mright 
-    //if(((topSide_0==mleftSide_0)&&(topSide_1==mleftSide_1))&&((leftSide_0==mbottomSide_0)&&(leftSide_1==mbottomSide_1))){
-    //  if((bottomSide_0>mrightSide_0)||((bottomSide_0==mrightSide_0)&&(bottomSide_1>mrightSide_1))){
-    //    return 3;
-    //  }
-    //}
+    if(((topSide_0==mleftSide_0)&&(topSide_1==mleftSide_1))&&((leftSide_0==mbottomSide_0)&&(leftSide_1==mbottomSide_1))){
+      if((bottomSide_0>mrightSide_0)||((bottomSide_0==mrightSide_0)&&(bottomSide_1>mrightSide_1))){
+        return 3;
+      }
+    }
     //同じ時は反時計回りに９０度回転したものが同じかチェックする
     //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     if((rightSide_0==topSide_0 && rightSide_1==topSide_1)&&(leftSide_0==topSide_0 && leftSide_1==topSide_1)&&(bottomSide_0==topSide_0 && bottomSide_1==topSide_1)){
@@ -550,9 +550,9 @@ int main(int argc,char** argv) {
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
-    int targetN=15;
-    //min=11;
-    //targetN=11;
+    int targetN=17;
+    //min=12;
+    //targetN=12;
     int mask;
     long bmask;
     int aBoard[MAX];
