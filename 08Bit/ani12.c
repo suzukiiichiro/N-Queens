@@ -189,7 +189,7 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
   }
   //bv>>=1;
   if(row==size){ 
-    printf("2:all placed\n");
+    //printf("2:all placed\n");
     //breakpoint(size,"F",bBoard,row,bit);
     return 1; 
   }
@@ -363,12 +363,20 @@ int symmetryOps(int size,int aBoard[]){
     //  }
     //}
     //同じ時は反時計回りに９０度回転したものが同じかチェックする
-    printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
+    //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     if((rightSide_0==topSide_0 && rightSide_1==topSide_1)&&(leftSide_0==topSide_0 && leftSide_1==topSide_1)&&(bottomSide_0==topSide_0 && bottomSide_1==topSide_1)){
+      //printf("sym:0:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
       return 0;
     }else if(bottomSide_0==topSide_0 && bottomSide_1==topSide_1){
-      return 1;
+      if(leftSide_0==rightSide_0&&leftSide_1==rightSide_1){
+        //printf("sym:1:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
+
+        return 1;
+      }
+      //printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
+      return 2;
     }else{
+      //printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
       return 2;
     }
     
@@ -401,7 +409,7 @@ void NQueenR(int size,long mask,int row,long left,long down,long right,int aBoar
   if(row==size){
     //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     //printf("b:all placed\n");
-    breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+    //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
     int sym=symmetryOps(size,aBoard);
     if(sym!=3){
       //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
@@ -543,8 +551,8 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=15;
-    min=10;
-    targetN=10;
+    //min=11;
+    //targetN=11;
     int mask;
     long bmask;
     int aBoard[MAX];
