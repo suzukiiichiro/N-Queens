@@ -414,7 +414,7 @@ void NQueenR(int size,long mask,int row,long left,long down,long right,int aBoar
     if(sym!=3){
       //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
        int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
-       UNIQUE+=q;
+       UNIQUE+=q; 
        if(sym==0){
          TOTAL+=q*2;
        }else if(sym==1){
@@ -550,7 +550,7 @@ int main(int argc,char** argv) {
     clock_t st;          //速度計測用
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
-    int targetN=17;
+    int targetN=18;
     //min=12;
     //targetN=12;
     int mask;
