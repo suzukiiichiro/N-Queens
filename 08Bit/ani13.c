@@ -402,7 +402,7 @@ int symmetryOps(int size,int aBoard[]){
 
     return 2;
 }
-void solve_nqueenr(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
+void backTrackR1(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
   //printf("a:nqueen start\n");
   int bitmap=0;
   int bit=0;
@@ -451,7 +451,7 @@ void solve_nqueenr(int size,long mask,int row,long left,long down,long right,int
         aBoard[row]=-1;
         bBoard[row]=-1;
         //上２行、下２行以外で左端２列、右端２列以外にクイーンを置ける余地がある場合はその行を空白にして次の行へ進むルートも作る
-        solve_nqueenr(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask);
+        backTrackR1(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask);
       }
       //左端２列、右端２列にだけクイーンを置くようにマスクを設定する
       amask=amask^mask;
@@ -507,7 +507,117 @@ void solve_nqueenr(int size,long mask,int row,long left,long down,long right,int
      //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
      //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
       //printf("d:recursivele start\n");
-      solve_nqueenr(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
+      backTrackR1(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
+      //printf("e:recursivele start\n");
+    }
+  }
+}
+void backTrackR2(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
+  //printf("a:nqueen start\n");
+  int bitmap=0;
+  int bit=0;
+  if(row==size){
+    //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
+    //printf("b:all placed\n");
+    //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+    int sym=symmetryOps(size,aBoard);
+    if(sym!=3){
+      //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+       int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+       UNIQUE+=q; 
+       if(sym==0){
+         TOTAL+=q*2;
+       }else if(sym==1){
+         TOTAL+=q*4;
+       }else if(sym==2){
+         TOTAL+=q*8;
+       }
+
+    }
+    //symmetryOpsを実行する
+    //aBoardの内容から
+    //上下左右２行２列に配置が完了したら3行目からcountCompletionsを呼び出して上からやる。
+    //if(sym !=3){
+    //  int rtn=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+    //  if(sym==0){
+    //    TOTAL+=rtn*2;
+    //    UNIQUE+=rtn; 
+    //  }else if(sym==1){
+    //    TOTAL+=rtn*4;
+    //    UNIQUE+=rtn; 
+    //  }else if(sym==2){
+    //    TOTAL+=rtn*8;
+    //    UNIQUE+=rtn; 
+    //  }
+    //}
+  }else{
+    long amask=mask;
+    //上２行、下２行以外は左端２列、右端２列にだけクイーンを置くようにマスクを設置する
+    if(row>1&&row<size-2){
+      amask=(((1<<(size-4))-1)<<2);
+      //printf("row:%d amask:%d,lll:%d,dddd:%d,rrr:%d\n",row,amask,left,down,right);
+      if(amask&~(left|down|right)){
+        //printf("f:amask\n");
+        aBoard[row]=-1;
+        bBoard[row]=-1;
+        //上２行、下２行以外で左端２列、右端２列以外にクイーンを置ける余地がある場合はその行を空白にして次の行へ進むルートも作る
+        backTrackR2(size,mask,row+1,(left)<<1, down,(right)>>1,aBoard,lleft,ldown,lright,bBoard,bmask);
+      }
+      //左端２列、右端２列にだけクイーンを置くようにマスクを設定する
+      amask=amask^mask;
+    }
+    //printf("row:%d bbbbamask:%d left:%d down:%d right:%d\n",row,amask,left,down,right);
+    bitmap=(amask&~(left|down|right));
+    //printf("bitmap:%d\n",bitmap);
+    while(bitmap){
+      //printf("c:place\n");
+      //クイーンを置く
+      bitmap^=bBoard[row]=bit=(-bitmap&bitmap);
+      //printf("row:%d bit:%d\n",row,bit);
+      //board_placementに合わせた値を設定するためにbitだけでなく何列目にクイーンを置いたかを算出
+      int x=0;
+      if(bit==1){
+        x=0;
+      }else if(bit==2){
+        x=1;
+      }else if(bit==4){
+        x=2;
+      }else if(bit==8){
+        x=3;
+      }else if(bit==16){
+        x=4;
+      }else if(bit==32){
+        x=5;
+      }else if(bit==64){
+        x=6;
+      }else if(bit==128){
+        x=7;
+      }else if(bit==256){
+        x=8;
+      }else if(bit==512){
+        x=9;
+      }else if(bit==1024){
+        x=10;
+      }else if(bit==2048){
+        x=11;
+      }else if(bit==4096){
+        x=12;
+      }else if(bit==8192){
+        x=13;
+      }else if(bit==16384){
+        x=14;
+      }else if(bit==32768){
+        x=15;
+      }else if(bit==65536){
+        x=16;
+      }else if(bit==131072){
+        x=17;
+      }
+     aBoard[row]=x;
+     //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
+     //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
+      //printf("d:recursivele start\n");
+      backTrackR2(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
       //printf("e:recursivele start\n");
     }
   }
@@ -515,58 +625,147 @@ void solve_nqueenr(int size,long mask,int row,long left,long down,long right,int
 //
 void NQueenR(int size,long mask,int aBoard[],int bBoard[],long bmask){
   int bit;
-  int colsize;
-  //nが奇数の場合は真ん中もやる
-  if(size%2==1){
-   colsize=size/2+1;
-  }else{
-   colsize=size/2;
+  //枝刈りはまだしないのでTOPBIT,SIDEMASK,LASTMASK,ENDBITは使用しない
+  //backtrack1
+  //1行め右端 0 
+  int col=0;
+  bBoard[0]=bit=(1<<col);
+  int x=0;
+  if(bit==1){
+    x=0;
+  }else if(bit==2){
+    x=1;
+  }else if(bit==4){
+    x=2;
+  }else if(bit==8){
+    x=3;
+  }else if(bit==16){
+    x=4;
+  }else if(bit==32){
+    x=5;
+  }else if(bit==64){
+    x=6;
+  }else if(bit==128){
+    x=7;
+  }else if(bit==256){
+    x=8;
+  }else if(bit==512){
+    x=9;
+  }else if(bit==1024){
+    x=10;
+  }else if(bit==2048){
+    x=11;
+  }else if(bit==4096){
+    x=12;
+  }else if(bit==8192){
+    x=13;
+  }else if(bit==16384){
+    x=14;
+  }else if(bit==32768){
+    x=15;
+  }else if(bit==65536){
+    x=16;
+  }else if(bit==131072){
+    x=17;
   }
-  for(int col=0;col<colsize;col++){
-    bBoard[0]=bit=(1<<col);
-    int x=0;
-    if(bit==1){
+  aBoard[0]=x;
+  long left=bit<<1;
+  long down=bit;
+  long right=bit>>1;
+  long lleft=1<<(size-1+x);
+  long ldown=bit;
+  long lright=1<<(x);
+  //2行目は右から3列目から左端から2列目まで
+  for(int col_j=2;col_j<size-1;col_j++){
+      bBoard[1]=bit=(1<<col_j);
       x=0;
-    }else if(bit==2){
-      x=1;
-    }else if(bit==4){
-      x=2;
-    }else if(bit==8){
-      x=3;
-    }else if(bit==16){
-      x=4;
-    }else if(bit==32){
-      x=5;
-    }else if(bit==64){
-      x=6;
-    }else if(bit==128){
-      x=7;
-    }else if(bit==256){
-      x=8;
-    }else if(bit==512){
-      x=9;
-    }else if(bit==1024){
-      x=10;
-    }else if(bit==2048){
-      x=11;
-    }else if(bit==4096){
-      x=12;
-    }else if(bit==8192){
-      x=13;
-    }else if(bit==16384){
-      x=14;
-    }else if(bit==32768){
-      x=15;
-    }else if(bit==65536){
-      x=16;
-    }else if(bit==131072){
-      x=17;
-    }
-    aBoard[0]=x;
-    solve_nqueenr(size,mask,1,bit<<1,bit,bit>>1,aBoard,1<<(size-1+x),bit,1<<(x),bBoard,bmask);
-    //NQueenR(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
+      if(bit==1){
+        x=0;
+      }else if(bit==2){
+        x=1;
+      }else if(bit==4){
+        x=2;
+      }else if(bit==8){
+        x=3;
+      }else if(bit==16){
+        x=4;
+      }else if(bit==32){
+        x=5;
+      }else if(bit==64){
+        x=6;
+      }else if(bit==128){
+        x=7;
+      }else if(bit==256){
+        x=8;
+      }else if(bit==512){
+        x=9;
+      }else if(bit==1024){
+        x=10;
+      }else if(bit==2048){
+        x=11;
+      }else if(bit==4096){
+        x=12;
+      }else if(bit==8192){
+        x=13;
+      }else if(bit==16384){
+        x=14;
+      }else if(bit==32768){
+        x=15;
+      }else if(bit==65536){
+        x=16;
+      }else if(bit==131072){
+        x=17;
+      }
+      aBoard[1]=x;
+      backTrackR1(size,mask,2,(left|bit)<<1,(down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-1+x),ldown|bit,lright|1<<(1+x),bBoard,bmask);
   }
-  
+
+  //backtrack2
+  //1行目右から2列目から
+  //偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
+  for(int col=1,col2=size-2;col<col2;col++,col2--){
+      bBoard[0]=bit=(1<<col);
+      x=0;
+      if(bit==1){
+        x=0;
+      }else if(bit==2){
+        x=1;
+      }else if(bit==4){
+        x=2;
+      }else if(bit==8){
+        x=3;
+      }else if(bit==16){
+        x=4;
+      }else if(bit==32){
+        x=5;
+      }else if(bit==64){
+        x=6;
+      }else if(bit==128){
+        x=7;
+      }else if(bit==256){
+        x=8;
+      }else if(bit==512){
+        x=9;
+      }else if(bit==1024){
+        x=10;
+      }else if(bit==2048){
+        x=11;
+      }else if(bit==4096){
+        x=12;
+      }else if(bit==8192){
+        x=13;
+      }else if(bit==16384){
+        x=14;
+      }else if(bit==32768){
+        x=15;
+      }else if(bit==65536){
+        x=16;
+      }else if(bit==131072){
+        x=17;
+      }
+      aBoard[0]=x;
+      backTrackR2(size,mask,1,bit<<1,bit,bit>>1,aBoard,1<<(size-1+x),bit,1<<(x),bBoard,bmask);
+  }
 
 }
 //メインメソッド
