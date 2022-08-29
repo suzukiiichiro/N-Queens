@@ -413,7 +413,7 @@ void backTrackR1(int size,long mask,int row,long left,long down,long right,int a
     int sym=symmetryOps(size,aBoard);
     if(sym!=3){
       //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
-       int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+       int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(lright>>4)<<(size-5),sym,bBoard,bmask);
        UNIQUE+=q; 
        if(sym==0){
          TOTAL+=q*2;
@@ -428,7 +428,7 @@ void backTrackR1(int size,long mask,int row,long left,long down,long right,int a
     //aBoardの内容から
     //上下左右２行２列に配置が完了したら3行目からcountCompletionsを呼び出して上からやる。
     //if(sym !=3){
-    //  int rtn=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+    //  int rtn=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(lright>>4)<<(size-5),sym,bBoard,bmask);
     //  if(sym==0){
     //    TOTAL+=rtn*2;
     //    UNIQUE+=rtn; 
@@ -505,7 +505,7 @@ void backTrackR1(int size,long mask,int row,long left,long down,long right,int a
       }
      aBoard[row]=x;
      //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
-     //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
+     //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,right);
       //printf("d:recursivele start\n");
       backTrackR1(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
       //printf("e:recursivele start\n");
@@ -806,8 +806,8 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=18;
-    //min=12;
-    //targetN=12;
+    //min=8;
+    //targetN=8;
     int mask;
     long bmask;
     int aBoard[MAX];
