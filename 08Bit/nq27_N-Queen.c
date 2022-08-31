@@ -526,7 +526,7 @@ void NQueenR(int size)
             //右回転で同じ場合w=n=e=sでなければ値が小さいのでskip
               continue;
             }
-            printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
             //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
             //w=n=e=sであれば90度回転で同じ可能性
             //この場合はミラーの2
@@ -542,14 +542,14 @@ void NQueenR(int size)
                 continue;
               }
               //この場合は4
-              printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+              //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
             //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
               process(size,B,COUNT4);
               //(*act)(board, Symmetry::POINT);   
               continue;
             //}
           }
-            printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
             //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
           process(size,B,COUNT8);
           //(*act)(board, Symmetry::NONE);
@@ -605,7 +605,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=10;int targetN=10;
+    int min=4;int targetN=17;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -639,9 +639,7 @@ int main(int argc,char** argv)
     }
   }
   if(gpu||sgpu){
-    //int min=5;int targetN=17;
-    int min=8;int targetN=8;
-
+    int min=4;int targetN=17;
     struct timeval t0;struct timeval t1;
     int ss;int ms;int dd;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
