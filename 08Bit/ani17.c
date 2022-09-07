@@ -76,6 +76,9 @@ long UNIQUE=0;        //CPU,CPUR
 
 //デバッグ用
 long STEPCOUNT=0;
+long KOHO2=0;
+long KOHO4=0;
+long KOHO8=0;
 
 
 //関数宣言 CPU
@@ -362,6 +365,7 @@ int symmetryOps(int size,int aBoard[],int bBoard[],int BOUND1,int BOUND2,long TO
      if((topSide_0==rightSide_0)&&(topSide_1==rightSide_1)&&(leftSide_0==topSide_0)&&(leftSide_1==topSide_1)&&(bottomSide_0==leftSide_0)&&(bottomSide_1==leftSide_1)&&(rightSide_0==bottomSide_0)&&(rightSide_1==bottomSide_1)){
       //printf("sym:0:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
        //printf("5\n");
+       KOHO2++;
        return 0;
      }
    }
@@ -387,6 +391,7 @@ int symmetryOps(int size,int aBoard[],int bBoard[],int BOUND1,int BOUND2,long TO
      if((topSide_0==bottomSide_0)&&(topSide_1==bottomSide_1)&&(leftSide_0==rightSide_0)&&(leftSide_1==rightSide_1)&&(bottomSide_0==topSide_0)&&(bottomSide_1==topSide_1)&&(rightSide_0==leftSide_0)&&(rightSide_1==leftSide_1)){
        //printf("sym:1:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
        //printf("10\n");
+       KOHO4++;
        return 1;
      }
    }
@@ -414,6 +419,7 @@ int symmetryOps(int size,int aBoard[],int bBoard[],int BOUND1,int BOUND2,long TO
    //それ以外はCOUNT8
    //printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
    //printf("15\n");
+   KOHO8++;
    return 2;
 }
 void backTrackR1(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask,int BOUND1){
@@ -421,11 +427,52 @@ void backTrackR1(int size,long mask,int row,long left,long down,long right,int a
   int bitmap=0;
   int bit=0;
   if(row==size){
-    //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
+     int topSide_0=-1;
+     int topSide_1=-1;
+     int leftSide_0=-1;
+     int leftSide_1=-1;
+     int bottomSide_0=-1;
+     int bottomSide_1=-1;
+     int rightSide_0=-1;
+     int rightSide_1=-1;
+     for(int row=0;row<size;row++){
+       int x=aBoard[row]; 
+       //symmetry
+       if (row==0){
+         topSide_0=x;
+       }
+       if (row==1){ 
+         topSide_1=x;
+       }
+       if (x==size-1){
+         leftSide_0=row;
+       }
+       if (x==size-2){
+         leftSide_1=row;
+       }
+       if (row==size-1){
+         bottomSide_0=size-1-x;
+       }
+       if (row==size-2){
+         bottomSide_1=size-1-x;
+       }
+       if (x==0){
+         rightSide_0=size-1-row;  
+       }
+       if (x==1){
+         rightSide_1=size-1-row;
+       }
+     }
+    //割り当てられないものは枝刈り
+    if((topSide_0==-1)||(topSide_1==-1)||(leftSide_0==-1)||(leftSide_1==-1)||(bottomSide_0==-1)||(bottomSide_1==-1)||(rightSide_0==-1)||(rightSide_1==-1)){
+     return;
+    }
+    //printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     //printf("b:all placed\n");
     //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
     //int sym=symmetryOps(size,aBoard);
     int sym=2;
+    KOHO8++;
     int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(lright>>4)<<(size-5),sym,bBoard,bmask);
     UNIQUE+=q; 
     TOTAL+=q*8;
@@ -1056,6 +1103,7 @@ void NQueen_nq27(int size)
             //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
             //w=n=e=sであれば90度回転で同じ可能性
             //この場合はミラーの2
+            KOHO2++;
             process(size,B,COUNT2);
             //(*act)(board, Symmetry::ROTATE);
             continue;
@@ -1070,13 +1118,15 @@ void NQueen_nq27(int size)
               //この場合は4
               //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
             //breakpoint_nq27(size,"上下左右２行２列配置完了",B.x,size-1);
+              KOHO4++;
               process(size,B,COUNT4);
               //(*act)(board, Symmetry::POINT);   
               continue;
             //}
           }
-            //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
+            printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",pres_a[w],pres_b[w],pres_a[n],pres_b[n],pres_a[e],pres_b[e],pres_a[s],pres_b[s]);
             //breakpoint(size,"上下左右２行２列配置完了",B.x,size-1);
+          KOHO8++;
           process(size,B,COUNT8);
           //(*act)(board, Symmetry::NONE);
           //この場合は8
@@ -1133,8 +1183,8 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=18;
-    //min=13;
-    //targetN=13;
+    //min=7;
+    //targetN=7;
     int mask;
     long bmask;
     int aBoard[MAX];
@@ -1143,6 +1193,9 @@ int main(int argc,char** argv) {
       TOTAL=0;
       UNIQUE=0;
       STEPCOUNT=0;
+      KOHO2=0;
+      KOHO4=0;
+      KOHO8=0;
       for(int j=0;j<=2;j++){
         pre[j]=0;
         cnt[j]=0;
@@ -1173,7 +1226,7 @@ int main(int argc,char** argv) {
       }
       //
       TimeFormat(clock()-st,t);
-      printf("%2d:%13ld%16ld%s:STEP:%ld\n",i,TOTAL,UNIQUE,t,STEPCOUNT);
+      printf("%2d:%13ld%16ld%s:STEP:%ld:KOHO2:%ld:KOHO4:%ld:KOHO8:%ld\n",i,TOTAL,UNIQUE,t,STEPCOUNT,KOHO2,KOHO4,KOHO8);
     }
   }
   return 0;
