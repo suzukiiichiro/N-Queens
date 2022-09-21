@@ -7,13 +7,13 @@ using namespace std;
 
 bool solve(int n){
   int cnt=0;
-  if(n%2==1){//奇数を列挙
+  if(n%2==1){
     //printf("奇数：%d\n",n);
     for(int i=1;i<=n;i++){
-      if(i%2==0){//正の約数
-          //printf("%d: %d\n",n,i);
-          cnt++;
-        if(cnt==8){//８個持つ
+      if(i%2==0){
+        //printf("正の約数 %d: %d\n",n,i);
+        cnt++;
+        if(cnt==8){
           //printf("正の約数を８個持つ %d:",i);
           return true;
         }
