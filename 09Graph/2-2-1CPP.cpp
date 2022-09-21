@@ -7,7 +7,12 @@ using namespace std;
 
 bool solve(int n){
   int cnt=0;
-  if(n%2==0){
+  for(int i=1;i<=n;i++){
+    if(n%i==0){
+      cnt++;
+    }
+  }
+  if(cnt==8 && n%2==0){
     return true;
   }
   return false;
@@ -16,12 +21,12 @@ bool solve(int n){
 int main(){
   int N;
   int ans=0;
-  cout << "偶数を数えます"<<endl;
-  cout << "Nを入力してください(例 10)"<<endl;
+  cout << "105 は奇数であり正の約数を12個持ちます"<<endl;
+  cout << "Nを入力してください(例 105)"<<endl;
   cin >>N;
-  for(int i=1;i<=N;i++){//1から数え始める
+  for(int i=1;i<=N;i++){
     if(solve(i)==true){
-      ans+=1;
+      ans++;
     }
   }
   cout<<ans<<endl;
