@@ -29,11 +29,9 @@ int solve(int tmp){
 
 int main(){
   N=1000; //1000日間の気温データ
-  //printf("N:%d P:%d\n",N,P);
 
   for(int i=1;i<=N;i++){
-    //cin>>A[i];
-    A[i]=rand()%50+1;//40度までの気温を乱数で入力
+    A[i]=rand()%50+1;//50度までの気温を乱数で入力
     printf("A[i]: %d\n",A[i]);
   }
   cout<<"連続で暑いと感じた最小連続日時は";
