@@ -7,13 +7,18 @@ using namespace std;
 
 bool solve(int n){
   int cnt=0;
-  for(int i=1;i<=n;i++){
-    if(n%i==0){
-      cnt++;
+  if(n%2==1){//奇数を列挙
+    //printf("奇数：%d\n",n);
+    for(int i=1;i<=n;i++){
+      if(i%2==0){//正の約数
+          //printf("%d: %d\n",n,i);
+          cnt++;
+        if(cnt==8){//８個持つ
+          //printf("正の約数を８個持つ %d:",i);
+          return true;
+        }
+      }
     }
-  }
-  if(cnt==8 && n%2==0){
-    return true;
   }
   return false;
 }
@@ -21,14 +26,21 @@ bool solve(int n){
 int main(){
   int N;
   int ans=0;
+
   cout << "105 は奇数であり正の約数を12個持ちます"<<endl;
-  cout << "Nを入力してください(例 105)"<<endl;
+  cout << "200以下の奇数のうち正の約数を８個持つ数はいくつか"<<endl;
+
+  cout << "Nを入力してください(例200)"<<endl;
   cin >>N;
+
   for(int i=1;i<=N;i++){
     if(solve(i)==true){
       ans++;
     }
   }
+  cout<<"1<=N<=200以下の奇数で、";
+  cout<<"正の約数をちょうど８個持つ数の";
+  cout<<"個数は以下のとおりです。"<<endl;
   cout<<ans<<endl;
   return 0;
 }
