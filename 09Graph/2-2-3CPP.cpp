@@ -32,6 +32,7 @@ int main(){
   //printf("N:%d P:%d\n",N,P);
 
   for(int i=1;i<=N;i++){
+    //cin>>A[i];
     A[i]=rand()%50+1;//40度までの気温を乱数で入力
     printf("A[i]: %d\n",A[i]);
   }
