@@ -289,7 +289,6 @@ void dec2bin(int size,int dec)
     b[i]=dec%2;
     dec=dec/2;
   }
- 
   char* buf;
   while (i){ 
     printf("%2d ", b[--i]); 
