@@ -575,6 +575,14 @@ bool board_placement(int size,int x,int y,struct Board* lb)
   long SIDEMASK=(TOPBIT|1);
   long LASTMASK=SIDEMASK;
   for(int a=2;a<=lb->aBoard[0];a++){ LASTMASK|=LASTMASK>>1|LASTMASK<<1; }
+
+  if(size==5){
+    if( (x==2)&&(y==2) ){
+      return false;
+    }
+  }
+
+
   /**
    * １行目角にクイーンがある場合
    * 【枝刈り】鏡像についても主対角線鏡像のみを判定すればよい
@@ -834,8 +842,10 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;
     char t[20];
-    int min=4;
-    int targetN=19;
+    //int min=4;
+    int min=5;
+    //int targetN=19;
+    int targetN=5;
     for(int i=min;i<=targetN;i++){
       TOTAL=0; UNIQUE=0; ecnt=0; 
       st=clock();
@@ -846,7 +856,9 @@ int main(int argc,char** argv)
       /**
        *
        */
-      else{ bit93_NQueens(i); }
+      else{ 
+        bit93_NQueens(i); 
+      }
       TimeFormat(clock()-st,t);
       printf("%2d:%13ld%16ld%s::%ld\n",i,TOTAL,UNIQUE,t,ecnt);
     }
