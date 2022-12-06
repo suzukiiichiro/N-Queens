@@ -221,9 +221,10 @@ void rbreakpoint(int size,char* string,int* board)
 }
 //
 //countCompletionsは変更していない
-long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[],long bmask)
+long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[],long mask)
 {
   printf("0:countCompletions start\n");
+  printf("bit93 left:%ld down:%ld right:%ld mask:%ld\n",left,down,right,mask);
   long bitmap=0;
   long bit=0;
   long cnt = 0;
@@ -238,34 +239,30 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
   }
   //bv>>=1;
   if(row==size){ 
-    printf("2:all placed\n");
+    printf("bit_93_2:all placed\n");
     breakpoint(size,"F",bBoard,row,bit);
     return 1; 
   }
   else{
     printf("3:else\n");
-    long amask=0;
-    if(row>1&&row<size-2){
-     amask=bmask;
-    }
-    printf("row:%d:down:%d:left:%d:right:%d\n",row,down,left,right);
-    bitmap=~(amask|left|down|right);   
+    printf("row:%d:down:%d:left:%d:right:%d:mask:%d\n",row,down,left,right,mask);
+    bitmap=~(mask|left|down|right);   
     while(bitmap>0){
       printf("4:place:\n");
       //aBoard[row]=bit=(-bitmap&bitmap);
-      bit=(-bitmap&bitmap);
+      aBoard[row]=bit=(-bitmap&bitmap);
       //int abit;
-      //if(size==5){
-      //  bBoard[row]=(bit<<2);
-      //}else if(size==6){
-      //  bBoard[row]=(bit<<1);
-      //}else{
-      //  bBoard[row]=(bit>>(size-7));
-      //}
+      if(size==5){
+        bBoard[row]=(bit<<2);
+      }else if(size==6){
+        bBoard[row]=(bit<<1);
+      }else{
+        bBoard[row]=(bit>>(size-7));
+      }
       //print(size,"クイーンを配置",bBoard,"N");
       bitmap=(bitmap^bit);
       printf("5:start recursion\n");
-      cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym,bBoard,bmask);
+      cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym,bBoard,mask);
       printf("6:finish recursion\n");
     }
     printf("7:finish while");
@@ -455,6 +452,7 @@ int symmetryOps(int size,int aBoard[]){
 //９０度回転させてから残りの４行を実行する
 void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
   printf("a:rnqueen start\n");
+  printf("left:%ld down:%ld right:%ld\n",left,down,right);
   int bitmap=0;
   int bit=0;
   while(aBoard[row]!=-1&&row<size) {
@@ -462,14 +460,15 @@ void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoar
     //bv>>=1;   //右に１ビットシフト
     if(row==1){
      int jump=size-3;
-     left<<jump;
-     right>>jump;
+     left<<=jump;
+     right>>=jump;
      row+=jump;
     }else{
       left<<=1; //left 左に１ビットシフト
       right>>=1;//right 右に１ビットシフト  
       row++;
     } 
+    printf("already after left:%ld down:%ld right:%ld\n",left,down,right);
   }
   if(row==size){
     breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
@@ -541,6 +540,7 @@ void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoar
      //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
      //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
       //printf("d:recursivele start\n");
+      printf("rnqplace_row:%d x:%d rbit:%ld\n",row,x,rbit);
       if(row==1){
         int jump=size-3;
         RNQueen(size,mask,row+jump,(left|bit)<<jump, (down|bit),(right|bit)>>jump,aBoard,lleft|1<<(size-1-row+x),ldown|rbit,lright|1<<(row+x),bBoard,bmask);
@@ -580,7 +580,7 @@ void NQueen(int size,long mask,int row,long left,long down,long right,int aBoard
         rleft=rleft|1<<(size-1-rrow+rx);
         rdown=rdown|(1<<rx);
         rright=rright|1<<(rrow+rx);
-        printf("row:%d x:%d left:%d down:%d right:%d\n",rrow,rx,1<<(size-1-rrow+rx),1<<rx,1<<(rrow+rx));
+        printf("setbeforernq_row:%d x:%d left:%d down:%d right:%d\n",rrow,rx,1<<(size-1-rrow+rx),1<<rx,1<<(rrow+rx));
         if(rx==0){rbBoard[rrow]=1;}
         else if(rx==1){rbBoard[rrow]=2;}
         else if(rx==2){rbBoard[rrow]=4;}

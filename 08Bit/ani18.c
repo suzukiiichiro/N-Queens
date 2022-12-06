@@ -234,7 +234,8 @@ void breakpoint_nq27(int size,char* string,int* x,int row)
 //countCompletionsは変更していない
 long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[],long bmask)
 {
-  //printf("0:countCompletions start\n");
+  printf("0:countCompletions start\n");
+  printf("bit93 left:%ld down:%ld right:%ld mask:%ld\n",left,down,right,bmask);
   long bitmap=0;
   long bit=0;
   long cnt = 0;
@@ -250,7 +251,7 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
   //bv>>=1;
   if(row==size){ 
     //printf("2:all placed\n");
-    //breakpoint(size,"F",bBoard,row,bit);
+    breakpoint(size,"F",bBoard,row,bit);
     return 1; 
   }
   else{
@@ -457,7 +458,7 @@ void backTrackR1(int size,long mask,int row,long left,long down,long right,int a
     }
     //printf("sym:2:t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
     //printf("b:all placed\n");
-    //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+    breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
     //int sym=symmetryOps(size,aBoard);
     int sym=2;
     KOHO8++;
@@ -512,7 +513,7 @@ void backTrackR2(int size,long mask,int row,long left,long down,long right,int a
   if(row==size){
       int sym=symmetryOps(size,aBoard,bBoard,BOUND1,BOUND2,TOPBIT,ENDBIT);
       if(sym!=3){
-         //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+         breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
          int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
          UNIQUE+=q; 
          if(sym==0){
@@ -1027,8 +1028,8 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=18;
-    //min=7;
-    //targetN=7;
+    min=5;
+    targetN=5;
     int mask;
     long bmask;
     int aBoard[MAX];
