@@ -55,6 +55,7 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 GCC06.c && ./a.out -c
 #include <sys/time.h>
 #define THREAD_NUM		96
 #define MAX 27
+typedef unsigned long long uint64;
 //変数宣言
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
@@ -221,17 +222,17 @@ void rbreakpoint(int size,char* string,int* board)
 }
 //
 //countCompletionsは変更していない
-long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,long right,int sym,int bBoard[],long mask)
+uint64 bit93_countCompletions(int size,int row,int aBoard[],uint64 left,uint64 down,uint64 right,int sym,uint64 bBoard[],uint64 mask)
 {
-  printf("0:countCompletions start\n");
-  printf("bit93 left:%ld down:%ld right:%ld mask:%ld\n",left,down,right,mask);
-  long bitmap=0;
-  long bit=0;
+  //printf("0:countCompletions start\n");
+  //printf("bit93 left:%ld down:%ld right:%ld mask:%ld\n",left,down,right,mask);
+  uint64 bitmap=0;
+  uint64 bit=0;
   long cnt = 0;
   //既にクイーンを置いている行はスキップする
   //while((bv&1)!=0) {
   while(aBoard[row]!=-1&&row<size) {
-    printf("1:already placed\n");
+    //printf("1:already placed\n");
     //bv>>=1;   //右に１ビットシフト
     left<<=1; //left 左に１ビットシフト
     right>>=1;//right 右に１ビットシフト  
@@ -239,18 +240,18 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
   }
   //bv>>=1;
   if(row==size){ 
-    printf("bit_93_2:all placed\n");
-    breakpoint(size,"F",bBoard,row,bit);
+    //printf("bit_93_2:all placed\n");
+    //breakpoint(size,"F",bBoard,row,bit);
     return 1; 
   }
   else{
-    printf("3:else\n");
-    printf("row:%d:down:%d:left:%d:right:%d:mask:%d\n",row,down,left,right,mask);
+    //printf("3:else\n");
+    //printf("row:%d:down:%d:left:%d:right:%d:mask:%d\n",row,down,left,right,mask);
     bitmap=~(mask|left|down|right);   
     while(bitmap>0){
-      printf("4:place:\n");
+      //printf("4:place:\n");
       //aBoard[row]=bit=(-bitmap&bitmap);
-      aBoard[row]=bit=(-bitmap&bitmap);
+      bit=(-bitmap&bitmap);
       //int abit;
       if(size==5){
         bBoard[row]=(bit<<2);
@@ -261,11 +262,11 @@ long bit93_countCompletions(int size,int row,int aBoard[],long left,long down,lo
       }
       //print(size,"クイーンを配置",bBoard,"N");
       bitmap=(bitmap^bit);
-      printf("5:start recursion\n");
+      //printf("5:start recursion\n");
       cnt+=bit93_countCompletions(size,row+1,aBoard,(left|bit)<<1,down|bit,(right|bit)>>1,sym,bBoard,mask);
-      printf("6:finish recursion\n");
+      //printf("6:finish recursion\n");
     }
-    printf("7:finish while");
+    //printf("7:finish while");
   }
   return cnt;
 }
@@ -443,20 +444,18 @@ int symmetryOps(int size,int aBoard[]){
       //printf("t0:%d,t1:%d,l0:%d,l1:%d,b0:%d,b1:%d,r0:%d,r1:%d\n",topSide_0,topSide_1,leftSide_0,leftSide_1,bottomSide_0,bottomSide_1,rightSide_0,rightSide_1);
       return 1;
     }
-
-
-
     return 2;
 }
 
 //９０度回転させてから残りの４行を実行する
-void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
-  printf("a:rnqueen start\n");
-  printf("left:%ld down:%ld right:%ld\n",left,down,right);
+void RNQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,int aBoard[],uint64 lleft,uint64 ldown,uint64 lright,uint64 bBoard[],uint64 bmask,int bvBoard[]){
+   
+  //printf("a:rnqueen start\n");
+  //printf("left:%ld down:%ld right:%ld\n",left,down,right);
   int bitmap=0;
   int bit=0;
-  while(aBoard[row]!=-1&&row<size) {
-    printf("1:already placed row:%d\n",row);
+  while(bvBoard[row]!=-1&&row<size) {
+    //printf("1:already placed row:%d\n",row);
     //bv>>=1;   //右に１ビットシフト
     if(row==1){
      int jump=size-3;
@@ -468,15 +467,15 @@ void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoar
       right>>=1;//right 右に１ビットシフト  
       row++;
     } 
-    printf("already after left:%ld down:%ld right:%ld\n",left,down,right);
+    //printf("already after left:%ld down:%ld right:%ld\n",left,down,right);
   }
   if(row==size){
-    breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
+    //breakpoint(size,"上下左右２行２列配置完了",bBoard,row,bit);
     int sym=symmetryOps(size,aBoard);
-    printf("sym;%d\n",sym);
+    //printf("sym;%d\n",sym);
     if(sym!=3){
-       breakpoint(size,"symok",bBoard,row,bit);
-       int q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
+       //breakpoint(size,"symok",bBoard,row,bit);
+       long q=bit93_countCompletions(size,2,aBoard,lleft>>4,((((ldown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,lright=(lright>>4)<<(size-5),sym,bBoard,bmask);
        UNIQUE+=q; 
        if(sym==0){
          TOTAL+=q*2;
@@ -488,15 +487,15 @@ void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoar
     }
   }else{
     bitmap=(mask&~(left|down|right));
-    printf("mask:%ld bitmap:%ld",mask,bitmap);
+    //printf("mask:%ld bitmap:%ld",mask,bitmap);
     while(bitmap){
-      printf("c:place\n");
+      //printf("c:place\n");
       //クイーンを置く
       //bitmap^=bBoard[row]=bit=(-bitmap&bitmap);
       bitmap^=bit=(-bitmap&bitmap);
-      long rbit=bit>>size;
+      uint64 rbit=bit>>size;
       bBoard[row]=rbit;
-      printf("row:%d bit:%d\n",row,rbit);
+      //printf("row:%d bit:%d\n",row,rbit);
       //board_placementに合わせた値を設定するためにbitだけでなく何列目にクイーンを置いたかを算出
       int x=0;
       if(rbit==1){
@@ -540,47 +539,52 @@ void RNQueen(int size,long mask,int row,long left,long down,long right,int aBoar
      //left,down,rightだけでなく、全行でleft,down,rightを表現できる値も設定している(board_placementで設定していた値)
      //printf("row:%d,lleft:%d,ldown:%d,lright:%d\n",row,lleft,ldown,lright);
       //printf("d:recursivele start\n");
-      printf("rnqplace_row:%d x:%d rbit:%ld\n",row,x,rbit);
+      //printf("rnqplace_row:%d x:%d rbit:%ld\n",row,x,rbit);
       if(row==1){
         int jump=size-3;
-        RNQueen(size,mask,row+jump,(left|bit)<<jump, (down|bit),(right|bit)>>jump,aBoard,lleft|1<<(size-1-row+x),ldown|rbit,lright|1<<(row+x),bBoard,bmask);
+        RNQueen(size,mask,row+jump,(left|bit)<<jump, (down|bit),(right|bit)>>jump,aBoard,lleft|1<<(size-1-row+x),ldown|rbit,lright|1<<(row+x),bBoard,bmask,bvBoard);
       //printf("e:recursivele start\n");
       }else{
-        RNQueen(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|rbit,lright|1<<(row+x),bBoard,bmask);
+        RNQueen(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|rbit,lright|1<<(row+x),bBoard,bmask,bvBoard);
       //printf("e:recursivele start\n");
       }
     }
   }
 }
 //まず上２行下２行を実行してから９０度回転させる
-void NQueen(int size,long mask,int row,long left,long down,long right,int aBoard[],long lleft,long ldown,long lright,int bBoard[],long bmask){
-  printf("a:nqueen start\n");
+void NQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,int aBoard[],uint64 lleft,uint64 ldown,uint64 lright,uint64 bBoard[],uint64 bmask){
+  //printf("a:nqueen start\n");
   int bitmap=0;
   int bit=0;
   if(row==size){
     //breakpoint(size,"上下２行配置完了",bBoard,row,bit);
     int rBoard[MAX];
-    int rbBoard[MAX];
+    int bvBoard[MAX];
+    uint64 rbBoard[MAX];
     for(int j=0;j<size;j++){
       rBoard[j]=-1;
+    }
+    for(int j=0;j<size;j++){
+      bvBoard[j]=-1;
     }
     for(int j=0;j<size;j++){
       rbBoard[j]=-1;
     }
     int rrow;
     int rx; 
-    long rleft=0;
-    long rdown=0;
-    long rright=0;
+    uint64 rleft=0;
+    uint64 rdown=0;
+    uint64 rright=0;
     for(int j=0;j<size;j++){
       if(aBoard[j]!=-1){
         rrow=aBoard[j];
         rx=size-1-j; 
         rBoard[rrow]=rx;
+        bvBoard[rrow]=rx;
         rleft=rleft|1<<(size-1-rrow+rx);
         rdown=rdown|(1<<rx);
         rright=rright|1<<(rrow+rx);
-        printf("setbeforernq_row:%d x:%d left:%d down:%d right:%d\n",rrow,rx,1<<(size-1-rrow+rx),1<<rx,1<<(rrow+rx));
+        //printf("setbeforernq_row:%d x:%d left:%d down:%d right:%d\n",rrow,rx,1<<(size-1-rrow+rx),1<<rx,1<<(rrow+rx));
         if(rx==0){rbBoard[rrow]=1;}
         else if(rx==1){rbBoard[rrow]=2;}
         else if(rx==2){rbBoard[rrow]=4;}
@@ -595,13 +599,17 @@ void NQueen(int size,long mask,int row,long left,long down,long right,int aBoard
         else if(rx==11){rbBoard[rrow]=2048;}
         else if(rx==12){rbBoard[rrow]=4096;}
         else if(rx==13){rbBoard[rrow]=8192;}
+        else if(rx==14){rbBoard[rrow]=16384;}
+        else if(rx==15){rbBoard[rrow]=32768;}
+        else if(rx==16){rbBoard[rrow]=65536;}
+        else if(rx==17){rbBoard[rrow]=131072;}
       }
     }
-    rbreakpoint(size,"90上下２行配置完了",rBoard);
-    //RNQueen(size,mask,0,rleft>>4,((((rdown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(rright>>4)<<(size-5),rBoard,rleft,rdown,rright,rbBoard,mask);
-    RNQueen(size,mask<<size,0,rleft<<1,rdown<<size,rright<<size,rBoard,rleft,rdown,rright,rbBoard,mask);
+    //rbreakpoint(size,"90上下２行配置完了",rBoard);
+    //RNQueen(size,mask,0,rleft>>4,((((rdown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(rright>>4)<<(size-5),rBoard,rleft,rdown,rright,rbBoard,bmask);
+    RNQueen(size,mask<<size,0,rleft<<1,rdown<<size,rright<<size,rBoard,rleft,rdown,rright,rbBoard,bmask,bvBoard);
   }else{
-    long amask=mask;
+    uint64 amask=mask;
     bitmap=(amask&~(left|down|right));
     while(bitmap){
       //printf("c:place\n");
@@ -701,12 +709,12 @@ int main(int argc,char** argv) {
     char t[20];          //hh:mm:ss.msを格納
     int min=4;
     int targetN=18;
-    min=5;
-    targetN=5;
-    int mask;
-    long bmask;
+    min=17;
+    targetN=17;
+    uint64 mask;
+    uint64 bmask;
     int aBoard[MAX];
-    int bBoard[MAX];
+    uint64 bBoard[MAX];
     for(int i=min;i<=targetN;i++){
       TOTAL=0;
       UNIQUE=0;
