@@ -486,8 +486,11 @@ void RNQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,i
        }
     }
   }else{
-    bitmap=(mask&~(left|down|right));
-    //printf("mask:%ld bitmap:%ld",mask,bitmap);
+    if(row==0){
+      bitmap=(mask&((1<<(size/2))-1)<<size&~(left|down|right));
+    }else{
+      bitmap=(mask&~(left|down|right));
+    }
     while(bitmap){
       //printf("c:place\n");
       //クイーンを置く
@@ -552,7 +555,7 @@ void RNQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,i
   }
 }
 //まず上２行下２行を実行してから９０度回転させる
-void NQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,int aBoard[],uint64 lleft,uint64 ldown,uint64 lright,uint64 bBoard[],uint64 bmask){
+void NQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,int aBoard[],uint64 lleft,uint64 ldown,uint64 lright,uint64 bBoard[],uint64 bmask,uint64 zeromask){
   //printf("a:nqueen start\n");
   int bitmap=0;
   int bit=0;
@@ -609,8 +612,11 @@ void NQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,in
     //RNQueen(size,mask,0,rleft>>4,((((rdown>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(rright>>4)<<(size-5),rBoard,rleft,rdown,rright,rbBoard,bmask);
     RNQueen(size,mask<<size,0,rleft<<1,rdown<<size,rright<<size,rBoard,rleft,rdown,rright,rbBoard,bmask,bvBoard);
   }else{
-    uint64 amask=mask;
-    bitmap=(amask&~(left|down|right));
+    if(row<=1){
+      bitmap=(zeromask&~(left|down|right));
+    }else{
+      bitmap=(mask&~(left|down|right));
+    }
     while(bitmap){
       //printf("c:place\n");
       //クイーンを置く
@@ -661,10 +667,10 @@ void NQueen(int size,uint64 mask,int row,uint64 left,uint64 down,uint64 right,in
       //printf("d:recursivele start\n");
       if(row==1){
         int jump=size-3;
-        NQueen(size,mask,row+jump,(left|bit)<<jump, (down|bit),(right|bit)>>jump,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
+        NQueen(size,mask,row+jump,(left|bit)<<jump, (down|bit),(right|bit)>>jump,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask,zeromask);
       //printf("e:recursivele start\n");
       }else{
-        NQueen(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask);
+        NQueen(size,mask,row+1,(left|bit)<<1, (down|bit),(right|bit)>>1,aBoard,lleft|1<<(size-1-row+x),ldown|bit,lright|1<<(row+x),bBoard,bmask,zeromask);
       //printf("e:recursivele start\n");
       }
     }
@@ -712,6 +718,7 @@ int main(int argc,char** argv) {
     min=16;
     targetN=16;
     uint64 mask;
+    uint64 zeromask;
     uint64 bmask;
     int aBoard[MAX];
     uint64 bBoard[MAX];
@@ -719,6 +726,7 @@ int main(int argc,char** argv) {
       TOTAL=0;
       UNIQUE=0;
       mask=((1<<i)-1);
+      zeromask=((1<<(i-1))-1)<<1;
       bmask=(1<<(i-1)|1<<(i-2)|2|1);
       bmask=((((bmask>>2)|(~0<<(i-4)))+1)<<(i-5))-1;
       st=clock();
@@ -731,11 +739,11 @@ int main(int argc,char** argv) {
       //
       //再帰
       if(cpur){ 
-        NQueen(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask);//通常版
+        NQueen(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask,zeromask);//通常版
       }
       //非再帰
       if(cpu){ 
-        NQueen(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask);//通常版
+        NQueen(i,mask,0,0,0,0,aBoard,0,0,0,bBoard,bmask,zeromask);//通常版
       }
       //
       TimeFormat(clock()-st,t);
