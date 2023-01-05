@@ -1,15 +1,22 @@
 <html>
 <body>
 <script>
-//https://fuuno.net/web02/arrow/arrow.html
+//基本的な動きは以下の通り
+//・１行ずつ進む幅優先的な動き
+//・各行ごとにcombineメソッドで全パターン出した後
+//・filter,safeメソッドで利き筋判定をして突破したものだけ次の行に進む
+
 //アロー関数
+//https://fuuno.net/web02/arrow/arrow.html
 //(変数/定数名) = (引数) => { 処理 };
 //const foo = a => a+2;
 //const foo = function(a) {
 //  return a+2;
 //      };
+
 function queen(n) {
   // a array of numerical sequence from 0 to n - 1
+  //nの数だけ配列を作る n8だったら[0,1,2,3,4,5,6,7]
   var sequence = enumerateInterval(0, n - 1)
   console.log(sequence);
   // returns the sub-solution for n-queen's problem while placing k(k < n) queens on the first k rows of the board
@@ -17,17 +24,15 @@ function queen(n) {
     if (k == 0) {
       return [[]]
     } else {
+      //再帰呼び出しで１行ずつ進む
       var restQueens = queenRow(k - 1)
       // just place the nth queen on any place of the new row to generate a bunch of new solutions
-      //まず全ての組み合わせを作る
+      //まず利き筋を見ずに次の行に置ける全ての組み合わせを作る
       //0,1,2,3,4,5,6,7
       //->0,0 0,1 0,2 0,3 0,4 0,5 0,6 0,7 1,0 1,1 ....
-      console.log("before");
-      console.log(restQueens);
       var solutions = combine(restQueens, sequence)
-      console.log("after");
-      console.log(solutions);
       // and filter solutions that is safe
+      //ここで利き筋判定をする
       return filter(function(positions){
         return safe(positions)      
       }, solutions)
@@ -126,6 +131,7 @@ function filter(proc, list) {
 }
 
 // test
+//mainメソッド
 var result = queen(8)
 console.log(result)
 console.log(result.length) // 92
