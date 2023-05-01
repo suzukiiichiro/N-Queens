@@ -1,5 +1,50 @@
 #!/usr/bin/bash
 
+: '
+エイト・クイーンの解説をしています。ご興味のある方はどうぞ。
+
+Ｎクイーン問題（１８）第四章　偉人のソースを読む「エイト・クイーンノスタルジー」
+https://suzukiiichiro.github.io/posts/2023-04-18-01-n-queens-suzuki/
+Ｎクイーン問題（１７）第四章　偉人のソースを読む「Ｎ２４を発見 Ｊｅｆｆ Ｓｏｍｅｒｓ」
+https://suzukiiichiro.github.io/posts/2023-04-21-01-n-queens-suzuki/
+Ｎクイーン問題（１６）第三章　対象解除法 ソース解説
+https://suzukiiichiro.github.io/posts/2023-04-18-01-n-queens-suzuki/
+Ｎクイーン問題（１５）第三章　対象解除法 ロジック解説
+https://suzukiiichiro.github.io/posts/2023-04-13-02-nqueens-suzuki/
+Ｎクイーン問題（１４）第三章　ミラー
+https://suzukiiichiro.github.io/posts/2023-04-13-01-nqueens-suzuki/
+Ｎクイーン問題（１３）第三章　ビットマップ
+https://suzukiiichiro.github.io/posts/2023-04-05-01-nqueens-suzuki/
+Ｎクイーン問題（１２）第二章　まとめ
+https://suzukiiichiro.github.io/posts/2023-03-17-02-n-queens-suzuki/
+Ｎクイーン問題（１１）第二章　配置フラグの再帰・非再帰
+https://suzukiiichiro.github.io/posts/2023-03-17-01-n-queens-suzuki/
+Ｎクイーン問題（１０）第二章　バックトラックの再帰・非再帰
+https://suzukiiichiro.github.io/posts/2023-03-16-01-n-queens-suzuki/
+Ｎクイーン問題（９）第二章　ブルートフォースの再帰・非再帰
+https://suzukiiichiro.github.io/posts/2023-03-14-01-n-queens-suzuki/
+Ｎクイーン問題（８）第一章　まとめ
+https://suzukiiichiro.github.io/posts/2023-03-09-01-n-queens-suzuki/
+Ｎクイーン問題（７）第一章　ブルートフォース再び
+https://suzukiiichiro.github.io/posts/2023-03-08-01-n-queens-suzuki/
+Ｎクイーン問題（６）第一章　配置フラグ
+https://suzukiiichiro.github.io/posts/2023-03-07-01-n-queens-suzuki/
+Ｎクイーン問題（５）第一章　進捗表示テーブルの作成
+https://suzukiiichiro.github.io/posts/2023-03-06-01-n-queens-suzuki/
+Ｎクイーン問題（４）第一章　バックトラック
+https://suzukiiichiro.github.io/posts/2023-02-21-01-n-queens-suzuki/
+Ｎクイーン問題（３）第一章　バックトラック準備編
+https://suzukiiichiro.github.io/posts/2023-02-14-03-n-queens-suzuki/
+Ｎクイーン問題（２）第一章　ブルートフォース
+https://suzukiiichiro.github.io/posts/2023-02-14-02-n-queens-suzuki/
+Ｎクイーン問題（１）第一章　エイトクイーンについて
+https://suzukiiichiro.github.io/posts/2023-02-14-01-n-queens-suzuki/
+
+エイト・クイーンのソース置き場 BashもJavaもPythonも！
+https://github.com/suzukiiichiro/N-Queens
+';
+
+
 declare -i TOTAL=0;     # カウンター
 #
 : 'ボードレイアウトを出力';
