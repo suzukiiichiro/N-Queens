@@ -22,13 +22,13 @@ long UNIQUE=0;
 //
 // void process(int sym)
 // {
-//   cnt[sym] += solve_nqueenr(B.row >> 2,
+//   cnt[sym] += solve(B.row >> 2,
 //       B.left>>4,
 //       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
 //       (B.right>>4)<<(size-5));
 // }
 //
-long solve_nqueenr(int row,int left,int down,int right)
+long solve(int row,int left,int down,int right)
 {
   // Placement Complete?
   //bh=-1 1111111111 すべての列にクイーンを置けると-1になる
@@ -49,12 +49,12 @@ long solve_nqueenr(int row,int left,int down,int right)
   while(bitmap!=0){
     bit=bitmap&-bitmap;
     bitmap^=bit;
-    s+=solve_nqueenr(row,(left|bit)<<1,down|bit,(right|bit)>>1);
+    s+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
   }
   return s; //途中でクイーンを置くところがなくなるとここに来る
 } 
 //
-bool board_placement(int dimx,int dimy)
+bool placement(int dimx,int dimy)
 {
   if(B.x[dimx]==dimy){ return true;  }  //同じ場所に置くのはOK
   B.x[dimx]=dimy;                       //xは行 yは列
@@ -96,8 +96,8 @@ void NQueenR()
     B=wB;
     B.row=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){ B.x[i]=-1; }
-    board_placement(0,pres_a[w]); //0行目にクイーンを置く
-    board_placement(1,pres_b[w]); //1行目にクイーンを置く
+    placement(0,pres_a[w]); //0行目にクイーンを置く
+    placement(1,pres_b[w]); //1行目にクイーンを置く
     //
     //
     //
@@ -106,8 +106,8 @@ void NQueenR()
     Board nB=B;
     for(int n=w;n<(size-2)*(size-1)-w;n++){
       B=nB;
-      if(board_placement(pres_a[n],size-1)==false){ continue; }
-      if(board_placement(pres_b[n],size-2)==false){ continue; }
+      if(placement(pres_a[n],size-1)==false){ continue; }
+      if(placement(pres_b[n],size-2)==false){ continue; }
       //
       //
       //
@@ -116,8 +116,8 @@ void NQueenR()
       Board eB=B;
       for(int e=w;e<(size-2)*(size-1)-w;e++){
         B=eB;
-        if(board_placement(size-1,size-1-pres_a[e])==false){ continue; }
-        if(board_placement(size-2,size-1-pres_b[e])==false){ continue; }
+        if(placement(size-1,size-1-pres_a[e])==false){ continue; }
+        if(placement(size-2,size-1-pres_b[e])==false){ continue; }
         Board sB=B;
         //
         //
@@ -126,8 +126,8 @@ void NQueenR()
         // ４ 右２列に置く
         for(int s=w;s<(size-2)*(size-1)-w;s++){
           B=sB;
-          if(board_placement(size-1-pres_a[s],0)==false){ continue; }
-          if(board_placement(size-1-pres_b[s],1)==false){ continue; }
+          if(placement(size-1-pres_a[s],0)==false){ continue; }
+          if(placement(size-1-pres_b[s],1)==false){ continue; }
           //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
           int ww=(size-2)*(size-1)-1-w;
           int w2=(size-2)*(size-1)-1;
@@ -145,8 +145,8 @@ void NQueenR()
           //この場合はミラーの2
           if(s==w){ if((n!=w)||(e!=w)){ continue; } 
             // process(COUNT2); 
-          // cnt[COUNT2] += solve_nqueenr(B.row >> 2,
-          COUNT2 += solve_nqueenr(B.row >> 2,
+          // cnt[COUNT2] += solve(B.row >> 2,
+          COUNT2 += solve(B.row >> 2,
               B.left>>4,
               ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
               (B.right>>4)<<(size-5));
@@ -158,8 +158,8 @@ void NQueenR()
           //この場合は4
           if((e==w)&&(n>=s)){ if(n>s){ continue; } 
             // process(COUNT4); 
-            // cnt[COUNT4] += solve_nqueenr(B.row >> 2,
-            COUNT4 += solve_nqueenr(B.row >> 2,
+            // cnt[COUNT4] += solve(B.row >> 2,
+            COUNT4 += solve(B.row >> 2,
                 B.left>>4,
                 ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
                 (B.right>>4)<<(size-5));
@@ -167,8 +167,8 @@ void NQueenR()
           }
           //この場合は8
           // process(COUNT8);
-          //cnt[COUNT8] += solve_nqueenr(B.row >> 2,
-          COUNT8 += solve_nqueenr(B.row >> 2,
+          //cnt[COUNT8] += solve(B.row >> 2,
+          COUNT8 += solve(B.row >> 2,
               B.left>>4,
               ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
               (B.right>>4)<<(size-5));
