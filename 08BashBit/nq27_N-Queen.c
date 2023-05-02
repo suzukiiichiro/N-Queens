@@ -5,6 +5,12 @@
 #include <sys/time.h>
 #define THREAD_NUM		96
 #define MAX 27
+int size;
+long TOTAL=0; 
+long UNIQUE=0;
+int COUNT8=0;
+int COUNT4=0;
+int COUNT2=0;
 typedef struct{
   int row;
   int down;
@@ -13,12 +19,6 @@ typedef struct{
   int x[MAX];
 }Board ;
 Board B;
-int size;
-int COUNT8=0;
-int COUNT4=0;
-int COUNT2=0;
-long TOTAL=0; 
-long UNIQUE=0;
 //
 // void process(int sym)
 // {
