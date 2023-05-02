@@ -32,13 +32,16 @@ long solve(int row,int left,int down,int right)
 {
   // Placement Complete?
   //bh=-1 1111111111 すべての列にクイーンを置けると-1になる
-  if(down+1==0){ return  1; }
+  if(down+1==0){ 
+    return  1; 
+  }
   // -> at least one more queen to place
-  while((row&1)!=0) { // Column is covered by pre-placement
-    //row 右端にクイーンがすでに置かれていたら。クイーンを置かずに１行下に移動する
-    //rowを右端から１ビットずつ削っていく。ここではrowはすでにクイーンが置かれているかどうかだけで使う
-    row>>=1;//右に１ビットシフト
-    left<<=1;//left 左に１ビットシフト
+  // Column is covered by pre-placement
+  //row 右端にクイーンがすでに置かれていたら。クイーンを置かずに１行下に移動する
+  //rowを右端から１ビットずつ削っていく。ここではrowはすでにクイーンが置かれているかどうかだけで使う
+  while((row&1)!=0) { 
+    row>>=1;  //右に１ビットシフト
+    left<<=1; //left 左に１ビットシフト
     right>>=1;//right 右に１ビットシフト
   }
   row>>=1; //１行下に移動する
@@ -67,7 +70,7 @@ bool placement(int dimx,int dimy)
   if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){
     return false;
   }     
-  B.row |=row; B.down |=down; B.left |=left; B.right |=right;
+  B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
 }
 //
@@ -100,7 +103,7 @@ void NQueenR()
     for(int i=0;i<size;i++){ B.x[i]=-1; }
     int pna;
     pna=placement(0,pres_a[w]); //0行目にクイーンを置く
-    printf("pna:%d\n",pna);
+    // printf("pna:%d\n",pna);
     placement(1,pres_b[w]); //1行目にクイーンを置く
     //
     //
