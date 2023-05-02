@@ -22,8 +22,6 @@ declare -A B=(
   ["down"]="0" 
   ["right"]="0"
 );
-declare -a pres_a;
-declare -a pres_b;
 declare -a B_x;
 #
 : '';
@@ -33,25 +31,34 @@ function solve()
   local -i left="$2";
   local -i down="$3";
   local -i right="$4";
+  # Placement Complete?
+  # bh=-1 1111111111 すべての列にクイーンを置けると-1になる
   if (( (down+1)==0 ));then 
-    #return 1; 
-    return ; 
+    return 1; 
   fi
+  # at least one more queen to place
+  # Column is covered by pre-placement
+  # row 右端にクイーンがすでに置かれていたら
+  # クイーンを置かずに１行下に移動する
+  # rowを右端から１ビットずつ削っていく。
+  # ここではrowはすでにクイーンが置かれているか
+  # どうかだけで使う
   while (( (row&1)!=0 ));do
-    ((row>>=1))
-    ((left<<=1));
-    ((right>>=1));
+    ((row>>=1))     # 右に１ビットシフト
+    ((left<<=1));   # left 左に１ビットシフト
+    ((right>>=1));  # right 右に１ビットシフト
   done
-  ((row>>=1));
+  ((row>>=1));      # １行下に移動する
+  # Column needs to be placed
   local -i bit=0;
   local -i bitmap=$(( ~(left|down|right) ));
   while (( bitmap!=0 ));do
     bit=$(( bitmap&-bitmap ));
     bitmap=$(( bitmap^bit ));
     solve "$row" "(left|bit)<<1" "(down|bit)" "(right|bit)>>1"  ; 
-    total+=$?;
+    total+=$?;      # total はグローバル変数
   done
-  return $total;
+  return $total;    # 途中でクイーンを置くところがなくなるとここに来る
 }
 #
 : 'クイーンの効きをチェック';
@@ -60,7 +67,7 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  flag=0;       # グローバル変数
+  local -i flag=0;       
   if (( B_x[$dimx]==$dimy ));then   # 同じ場所の配置を許す
     flag=1;
     return $?; 
@@ -89,6 +96,8 @@ function placement()
 : 'キャリーチェーン';
 function carryChain()
 {
+  local -a pres_a;
+  local -a pres_b;
   : '
     N5
     0 0 0 1 1
