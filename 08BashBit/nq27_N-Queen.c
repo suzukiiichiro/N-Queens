@@ -56,7 +56,9 @@ long solve(int row,int left,int down,int right)
 //
 bool placement(int dimx,int dimy)
 {
-  if(B.x[dimx]==dimy){ return true;  }  //同じ場所に置くのはOK
+  if(B.x[dimx]==dimy){ 
+    return true;  //同じ場所に置くのはOK
+  }  
   B.x[dimx]=dimy;                       //xは行 yは列
   int row=1<<dimx;
   int down=1<<dimy;
@@ -96,7 +98,9 @@ void NQueenR()
     B=wB;
     B.row=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){ B.x[i]=-1; }
-    placement(0,pres_a[w]); //0行目にクイーンを置く
+    int pna;
+    pna=placement(0,pres_a[w]); //0行目にクイーンを置く
+    printf("pna:%d\n",pna);
     placement(1,pres_b[w]); //1行目にクイーンを置く
     //
     //
