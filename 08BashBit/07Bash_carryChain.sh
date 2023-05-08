@@ -6,27 +6,18 @@ declare -i UNIQUE=0;
 declare -i COUNT2=0;
 declare -i COUNT4=0;
 declare -i COUNT8=0;
-declare -i total=0;
-# declare -A board=(
-#   ["row"]="0" 
-#   ["bh"]="0" 
-#   ["bu"]="0" 
-#   ["bd"]="0" 
-#   ["left"]="0" 
-#   ["down"]="0" 
-#   ["right"]="0"
-# );
 declare -A B=(
   ["row"]="0" 
   ["left"]="0" 
   ["down"]="0" 
   ["right"]="0"
 );
-declare -a B_x;
+declare -A B_x;
 #
 : '';
 function solve()
 {
+  local -i total=0;
   local -i row="$1";
   local -i left="$2";
   local -i down="$3";
@@ -53,12 +44,12 @@ function solve()
   local -i bit=0;
   local -i bitmap=$(( ~(left|down|right) ));
   while (( bitmap!=0 ));do
-    bit=$(( bitmap&-bitmap ));
-    bitmap=$(( bitmap^bit ));
-    solve "$row" "(left|bit)<<1" "(down|bit)" "(right|bit)>>1"  ; 
+    ((bit=bitmap&-bitmap ));
+    ((bitmap^=bit ));
+    solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     total+=$?;      # total はグローバル変数
   done
-  return $total;    # 途中でクイーンを置くところがなくなるとここに来る
+  return $total;
 }
 #
 : 'クイーンの効きをチェック';
@@ -66,42 +57,32 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  local -i flag=1;
-  if (( B[$dimx]=="$dimy" ));then   # 同じ場所の配置を許す
-    flag=1;
-    return $?;
+  local -i _row=_down=_left=_right=0;
+  if (( B_x[$dimx]=="$dimy" ));then   # 同じ場所の配置を許す
+    return 1;
   fi
-  B[$dimx]=$dimy;               # dimxは行 dimyは列 
-  local -i row=$((1<<$dimx));
-  local -i down=$((1<<$dimy));
-  local -i left=$((1<<($size-1-$dimx+$dimy)));  #右上から左下 
-  local -i right=$((1<<($dimx+$dimy)));   # x+yは左上から右下
-  if (( (B[row] & $row)||
-        (B[down] & $down)||
-        (B[left] & $left)||
-        (B[right] & $right) ));then
-    flag=0;
-    return $?;
+  B_x[$dimx]="$dimy";                 # dimxは行 dimyは列 
+  ((_row=1<<dimx));
+  ((_down=1<<dimy));
+  ((_left=1<<(size-1-dimx+dimy)));    #右上から左下 
+  ((_right=1<<(dimx+dimy)));          # x+yは左上から右下
+  if (( (B[row] & $_row)||
+        (B[down] & $_down)||
+        (B[left] & $_left)||
+        (B[right] & $_right) ));then
+    return 0;
   fi 
-  B[row]=$((B[row]| $row));
-  B[down]=$((B[down]| $down));
-  B[left]=$((B[left]| $left));
-  B[right]=$((B[right]| $right));
-  flag=1;
-
-  [[ $flag -eq 0 ]]
-  return $?;
+  ((B[row]|=_row));
+  ((B[down]|=_down));
+  ((B[left]|=_left));
+  ((B[right]|=_right));
+  return 1;
 }
 : 'キャリーチェーン';
 function carryChain()
 {
   local -a pres_a;
   local -a pres_b;
-  : '
-    N5
-    0 0 0 1 1
-    2 3 4 3 4
-  ';
   local -i idx=0;
   local -i a=0;
   local -i b=0;
@@ -111,194 +92,158 @@ function carryChain()
             ( (b>a)&& ((b-a)<=1) ) ));then
         continue;
       fi
-      pres_a[$idx]="$a";
-      pres_b[$idx]="$b";
+      pres_a[$idx]=$a;
+      pres_b[$idx]=$b;
       ((idx++));
     done
   done
-  #
-  #
   # Bの初期化
   B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
-  # 確認
-  # for key_B in ${!B[@]};do 
-  #   echo "$key_B:${B[$key_B]}";
-  # done
   #
   #
-  # 1 上２行にクイーンを置く 上１行は２分の１だけ実行
-  # 90度回転
+  #
+  # 1 
+  # 上２行にクイーンを置く 
+  # 上１行は２分の１だけ実行 90度回転
+  #
+  #
+  #
+  local -A wB;
+  local -A wB_x;
   # wB=( $B[@] );
   for key_B in ${!B[@]};do 
     wB["$key_B"]="${B[$key_B]}" ; 
   done
-  # 確認
-  # for key_B in ${!B[@]};do 
-  #   echo "$key_B:${wB[$key_B]}";
-  # done
-  # q=7なら (7/2)*(7-4)=12
-  # 1行目は0,1,2で,2行目0,1,2,3,4,5,6 で
-  # 利き筋を置かないと13パターンになる
+  for key_B_x in ${!B_x[@]};do 
+    wB_x["$key_B_x"]="${B_x[$key_B_x]}" ; 
+  done
+  : '
+    q=7なら (7/2)*(7-4)=12
+    1行目は0,1,2で,2行目0,1,2,3,4,5,6 で
+    利き筋を置かないと13パターンになる
+  ';
   for ((w=0;w<=(size/2)*(size-3);w++));do
-    #
+    # echo "w:$w 上";
     # B=( $wB[@] );
     for key_wB in ${!wB[@]};do 
       B["$key_wB"]="${wB[$key_wB]}" ; 
     done
-    # 確認
-    # for key_wB in ${!B[@]};do 
-    #   echo "wB.$key_wB:${B[$key_wB]}";
-    # done
+    for key_wB_x in ${!wB_x[@]};do 
+      B_x["$key_wB_x"]="${wB_x[$key_wB_x]}" ; 
+    done
     #
     # B構造体の初期化
     B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
-    # 確認
-    # for key_B in ${!B[@]};do 
-    #   echo "B.$key_B:${B[$key_B]}";
-    # done
-    #
     # board配列の初期化
     for ((bx_i=0;bx_i<size;bx_i++));do B_x[$bx_i]=-1; done
-    # 確認
-    # for ((bx_i=0;bx_i<size;bx_i++));do 
-    #   echo "${B_x[$bx_i]}";
-    # done
-
-    #
-    # ０行目にQを配置
-    local -i pna;
-    : ' Cの結果
-        pna:1
-        pna:1
-        pna:1
-        pna:1
-        pna:1 ';
-    #
-    # １
+    # ０行目にQを配置 
     placement "0" "$((pres_a[w]))";
-    echo "pna: $?";
-    : '
-    pna:1
-    pna:1
-    pna:1
-    pna:1
-    pna:1
-    ';
-    #
     # １行目にQを配置
     placement "1" "$((pres_b[w]))";
-    #echo "pna: $?";
-    : ' Cの結果
-    pna:1
-    pna:1
-    pna:1
-    pna:1
-    pna:1 ';
-
-
-
-
     #
-    # ２ 左２列にクイーンを置く
     #
-    # 90度回転
+    #
+    # ２ 
+    # 左２列にクイーンを置く 90度回転
+    #
+    #
     # nBの初期化
     local -A nB;
+    local -A nB_x;
     #nB=( ${B[@]} );
     for key_B in "${!B[@]}";do 
       nB["$key_B"]="${B[$key_B]}"; 
     done
-    # 確認
-    # for key_nB in "${!nB[@]}";do 
-    #   echo "nB.$key_nB:${nB[$key_nB]}";
-    # done
+    for key_B_x in "${!B_x[@]}";do 
+      nB_x["$key_B_x"]="${B_x[$key_B_x]}"; 
+    done
     for ((n=w;n<(size-2)*(size-1)-w;n++));do 
+      # echo "n:$n 左";
       #B=( $nB[@] );
       for key_nB in ${!nB[@]};do 
         B["$key_nB"]="${nB[$key_nB]}"; 
       done
-      # 確認
-      # for key_B in ${!B[@]};do 
-      #   echo "B.$key_B:${B["$key_B"]}";
-      # done
-      #
-      # Qを配置
+      for key_nB_x in ${!nB_x[@]};do 
+        B_x["$key_nB_x"]="${nB_x[$key_nB_x]}"; 
+      done
+      placement "$((pres_a[n]))" "$((size-1))"; 
+      ret="$?"
+      # echo -n "$ret";
       : 'Cの結果
       0000011000000000001100011000000000001000
          bashの結果
-      0000011000000000001100000000000000000000
+      0000011000000000001100011000000000001
       ';
-      #echo "pres_a:${pres_a[$n]}";
-      placement "$((pres_a[n]))" "$((size-1))";
-      if (( $?==0 ));then continue; fi
-      #echo "pres_b:${pres_b[$n]}";
+      if (( $ret==0 ));then continue; fi
       placement "$((pres_b[n]))" "$((size-2))";
-      if (( $?==0 ));then continue; fi
-      : ' Cの結果
-      pres_b:4
-      pres_b:1
-      pres_b:4
-      pres_b:4
-          Bashの結果
-      pres_b:0
-      pres_b:4
-      pres_b:0
-      pres_b:1
-      ';
+      ret="$?"
+      if (( $ret==0 ));then continue; fi
       #
-      # 3 下２行に置く
       #
-      # 90度回転
+      #
+      # ３ 
+      # 下２行に置く 90度回転
+      #
+      #
+      # eBの初期化
       local -A eB;
+      local  -A eB_x;
       #eB=( ${B[@]} );
       for key_B in ${!B[@]};do 
         eB["$key_B"]="${B[$key_B]}"; 
       done
-      # 確認
-      # for key_eB in ${!eB[@]};do 
-      #   echo "eB.$key_eB:${eB["$key_eB"]}";
-      # done
+      for key_B_x in ${!B_x[@]};do 
+        eB_x["$key_B_x"]="${B_x[$key_B_x]}"; 
+      done
       for ((e=w;e<(size-2)*(size-1)-w;e++));do 
+        # echo "e:$e 下";
         #B=( ${eB[@]} );
         for key_eB in ${!eB[@]};do 
           B["$key_eB"]="${eB[$key_eB]}"; 
         done
-        # 確認
-        # for key_eB in ${!B[@]};do 
-        #   echo "B.key_eB:${B[$key_eB]}"; 
-        # done
+        for key_eB_x in ${!eB_x[@]};do 
+          B_x["$key_eB_x"]="${eB_x[$key_eB_x]}"; 
+        done
         placement "$((size-1))" "$((size-1-pres_a[e]))"; 
-        if (( $?==0 ));then continue; fi
+        ret="$?";
+        if (( $ret==0 ));then continue; fi
         placement "$((size-2))" "$((size-1-pres_b[e]))"; 
-        if (( $?==0 ));then continue; fi
+        ret="$?";
+        if (( $ret==0 ));then continue; fi
         #
-        # 4 右２列に置く
         #
-        # 90度回転
+        # ４ 
+        # 右２列に置く 90度回転
+        #
+        #
         local -A sB;
+        local  -A sB_x;
         #sB=( ${B[@]} );
         for key_B in ${!B[@]};do 
           sB["$key_B"]="${B[$key_B]}"; 
         done
-        # 確認
-        # for key_sB in ${!sB[@]};do 
-        #   echo "${sB["$key_sB"]}"; 
-        # done
+        for key_B_x in ${!B_x[@]};do 
+          sB_x["$key_B_x"]="${B_x[$key_B_x]}"; 
+        done
         for ((s=w;s<(size-2)*(size-1)-w;s++));do
+          # echo "s:$s 右";
           # B=( ${sB[@]} );
           for key_sB in ${!sB[@]};do 
             B["$key_sB"]="${sB[$key_sB]}"; 
           done
-          # 確認
-          # for key_B in ${!B[@]};do 
-          #   echo "${B["$key_B"]}"; 
-          # done
+          for key_sB_x in ${!sB_x[@]};do 
+            B_x["$key_sB_x"]="${sB_x[$key_sB_x]}"; 
+          done
           placement "$((size-1-pres_a[s]))" "0";
-          if (( $?==0 ));then continue; fi
-          placement "$((size-1-pres_b[s]))" "1";
-          if (( $?==0 ));then continue; fi
+          ret="$?";
+          if (( $ret==0 ));then continue; fi
+          placement "$((size-1-pres_b[s]))" "1"; 
+          ret="$?";
+          if (( $ret==0 ));then continue; fi
+          #
           #
           # 対象解除法
+          #
           #
           # Check for minimum if n, e, s = (N-2)*(N-1)-1-w
           local -i ww=$(( (size-2)*(size-1)-1-w ));
@@ -317,8 +262,8 @@ function carryChain()
             # 上下左右２行２列配置完了
             # w=n=e=sであれば90度回転で同じ可能性
             # この場合はミラーの2
-            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
-            COUNT2+=$?; total=0;
+            solve "$(( B[row]>>2 ))" "$(( B[left]>>4 ))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
+            COUNT2+=$?; 
             continue;
           fi
           # e==wは180度回転して同じ
@@ -327,13 +272,13 @@ function carryChain()
             if((n>s));then continue; fi
             # この場合は4
             # 上下左右２行２列配置完了
-            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
-            COUNT4+=$?;total=0;
+            solve "$(( B[row]>>2 ))" "$(( B[left]>>4 ))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
+            COUNT4+=$?;
             continue;
           fi
           # 上下左右２行２列配置完了"
-            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
-          COUNT8+=$?;total=0;
+          solve "$(( B[row]>>2 ))" "$(( B[left]>>4 ))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
+          COUNT8+=$?;
           continue;
         done
       done
@@ -344,7 +289,7 @@ function carryChain()
 }
 #
 size=5;
-carryChain "$size";
+time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
 echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
