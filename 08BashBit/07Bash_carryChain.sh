@@ -66,16 +66,16 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  local -i flag=0;
+  local -i flag=1;
   if (( B[$dimx]=="$dimy" ));then   # 同じ場所の配置を許す
     flag=1;
     return $?;
   fi
   B[$dimx]=$dimy;               # dimxは行 dimyは列 
-  row=$((1<<dimx));
-  down=$((1<<dimy));
-  left=$((1<<(size-1-dimx+dimy)));  #右上から左下 
-  right=$((1<<(dimx+dimy)));        # x+yは左上から右下
+  local -i row=$((1<<$dimx));
+  local -i down=$((1<<$dimy));
+  local -i left=$((1<<($size-1-$dimx+$dimy)));  #右上から左下 
+  local -i right=$((1<<($dimx+$dimy)));   # x+yは左上から右下
   if (( (B[row] & $row)||
         (B[down] & $down)||
         (B[left] & $left)||
@@ -83,11 +83,12 @@ function placement()
     flag=0;
     return $?;
   fi 
-  B[row]=$((B[row]|row));
-  B[down]=$((B[down]|down));
-  B[left]=$((B[left]|left));
-  B[right]=$((B[right]|right));
+  B[row]=$((B[row]| $row));
+  B[down]=$((B[down]| $down));
+  B[left]=$((B[left]| $left));
+  B[right]=$((B[right]| $right));
   flag=1;
+
   [[ $flag -eq 0 ]]
   return $?;
 }
@@ -175,7 +176,7 @@ function carryChain()
     #
     # １
     placement "0" "$((pres_a[w]))";
-    #echo "pna: $?";
+    echo "pna: $?";
     : '
     pna:1
     pna:1
