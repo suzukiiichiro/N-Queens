@@ -66,8 +66,7 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  local -i flag=0;       
-  #if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
+  local -i flag=0;
   if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
     echo "p0";
     #flag=1;
@@ -319,6 +318,7 @@ function carryChain()
         # 4 右２列に置く
         #
         # 90度回転
+        local -A sB;
         #sB=( ${B[@]} );
         for key_B in ${!B[@]};do 
           sB["$key_B"]="${B[$key_B]}"; 
