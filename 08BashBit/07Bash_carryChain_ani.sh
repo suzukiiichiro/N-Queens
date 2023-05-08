@@ -70,7 +70,7 @@ function placement()
   #if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
   if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
     echo "p0";
-    flag=1;
+    #flag=1;
     return 1;
     # return ;
     # [[ $flag -eq 1 ]]
@@ -94,7 +94,7 @@ function placement()
         (B["left"] & $left)||
         (B["right"] & $right) ));then
     echo "p1";
-    flag=0;
+    #flag=0;
     return 0;
   fi 
   B["row"]=$((B["row"]|row));
@@ -106,7 +106,7 @@ function placement()
   #   echo "B.$key_B:${B[$key_B]}";
   # done
   echo "p2";
-  flag=1;
+  #flag=1;
   return 1;
 
   #[[ $flag -eq 0 ]]
