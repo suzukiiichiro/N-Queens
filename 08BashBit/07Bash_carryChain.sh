@@ -66,44 +66,28 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  local -i flag=0;       
-  #if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
-  if (( B["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
+  local -i flag=0;
+  if (( B[$dimx]=="$dimy" ));then   # 同じ場所の配置を許す
     flag=1;
-    # return ;
-    # [[ $flag -eq 1 ]]
-    # return $?; 
+    return $?;
   fi
-  B["$dimx"]="$dimy";               # dimxは行 dimyは列 
-  # 確認
-  # for key_B in "${!B[@]}";do
-  #   echo "B.$key_B:${B[$key_B]}";
-  # done
-  row="$((1<<dimx))";
-  down="$((1<<dimy))";
-  left="$((1<<(size-1-dimx+dimy)))";  #右上から左下 
-  right="$((1<<(dimx+dimy)))";        # x+yは左上から右下
-  # 確認
-  # for key_B in "${!B[@]}";do
-  #   echo "B.$key_B:${B[$key_B]}";
-  # done
-  if (( (B["row"] & $row)||
-        (B["down"] & $down)||
-        (B["left"] & $left)||
-        (B["right"] & $right) ));then
+  B[$dimx]=$dimy;               # dimxは行 dimyは列 
+  row=$((1<<dimx));
+  down=$((1<<dimy));
+  left=$((1<<(size-1-dimx+dimy)));  #右上から左下 
+  right=$((1<<(dimx+dimy)));        # x+yは左上から右下
+  if (( (B[row] & $row)||
+        (B[down] & $down)||
+        (B[left] & $left)||
+        (B[right] & $right) ));then
     flag=0;
-    return;
+    return $?;
   fi 
-  B["row"]=$((B["row"]|row));
-  B["down"]=$((B["down"]|down));
-  B["left"]=$((B["left"]|left));
-  B["right"]=$((B["right"]|right));
-  # 確認
-  # for key_B in "${!B[@]}";do
-  #   echo "B.$key_B:${B[$key_B]}";
-  # done
+  B[row]=$((B[row]|row));
+  B[down]=$((B[down]|down));
+  B[left]=$((B[left]|left));
+  B[right]=$((B[right]|right));
   flag=1;
-
   [[ $flag -eq 0 ]]
   return $?;
 }
@@ -126,8 +110,8 @@ function carryChain()
             ( (b>a)&& ((b-a)<=1) ) ));then
         continue;
       fi
-      pres_a[$idx]=$a;
-      pres_b[$idx]=$b;
+      pres_a[$idx]="$a";
+      pres_b[$idx]="$b";
       ((idx++));
     done
   done
@@ -189,20 +173,26 @@ function carryChain()
         pna:1
         pna:1 ';
     #
-    # return で返却する場合
+    # １
     placement "0" "$((pres_a[w]))";
     #echo "pna: $?";
+    : '
+    pna:1
+    pna:1
+    pna:1
+    pna:1
+    pna:1
+    ';
     #
     # １行目にQを配置
     placement "1" "$((pres_b[w]))";
-    # return で返却する場合
     #echo "pna: $?";
     : ' Cの結果
-        pna:1
-        pna:1
-        pna:1
-        pna:1
-        pna:1 ';
+    pna:1
+    pna:1
+    pna:1
+    pna:1
+    pna:1 ';
 
 
 
@@ -212,11 +202,7 @@ function carryChain()
     #
     # 90度回転
     # nBの初期化
-    local -A nB=( ["row"]="0" ["left"]="0" ["down"]="0" ["right"]="0");
-    # 確認
-    # for key_nB in ${!nB[@]};do 
-    #   echo "nB.$key_nB:${nB[$key_nB]}";
-    # done
+    local -A nB;
     #nB=( ${B[@]} );
     for key_B in "${!B[@]}";do 
       nB["$key_B"]="${B[$key_B]}"; 
@@ -236,20 +222,33 @@ function carryChain()
       # done
       #
       # Qを配置
-      placement "$((pres_a[n]))" "$((size-1))"; 
-      echo -n "$?";
       : 'Cの結果
       0000011000000000001100011000000000001000
          bashの結果
       0000011000000000001100000000000000000000
       ';
+      #echo "pres_a:${pres_a[$n]}";
+      placement "$((pres_a[n]))" "$((size-1))";
       if (( $?==0 ));then continue; fi
+      #echo "pres_b:${pres_b[$n]}";
       placement "$((pres_b[n]))" "$((size-2))";
       if (( $?==0 ));then continue; fi
+      : ' Cの結果
+      pres_b:4
+      pres_b:1
+      pres_b:4
+      pres_b:4
+          Bashの結果
+      pres_b:0
+      pres_b:4
+      pres_b:0
+      pres_b:1
+      ';
       #
       # 3 下２行に置く
       #
       # 90度回転
+      local -A eB;
       #eB=( ${B[@]} );
       for key_B in ${!B[@]};do 
         eB["$key_B"]="${B[$key_B]}"; 
@@ -275,6 +274,7 @@ function carryChain()
         # 4 右２列に置く
         #
         # 90度回転
+        local -A sB;
         #sB=( ${B[@]} );
         for key_B in ${!B[@]};do 
           sB["$key_B"]="${B[$key_B]}"; 
@@ -294,7 +294,7 @@ function carryChain()
           # done
           placement "$((size-1-pres_a[s]))" "0";
           if (( $?==0 ));then continue; fi
-          placement "$((size-1-pres_b[s]))" "1"; 
+          placement "$((size-1-pres_b[s]))" "1";
           if (( $?==0 ));then continue; fi
           #
           # 対象解除法
@@ -327,12 +327,12 @@ function carryChain()
             # この場合は4
             # 上下左右２行２列配置完了
             solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
-            COUNT4+=$total;total=0;
+            COUNT4+=$?;total=0;
             continue;
           fi
           # 上下左右２行２列配置完了"
             solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
-          COUNT8+=$total;total=0;
+          COUNT8+=$?;total=0;
           continue;
         done
       done
