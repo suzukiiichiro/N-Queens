@@ -67,12 +67,18 @@ function placement()
   local -i dimx="$1";
   local -i dimy="$2";
   # local -i flag=0;       
-  if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
+  #if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
+  if (( B["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
     # flag=1;
+    # [[ $flag -eq 1 ]]
     # return $?; 
     return 1;
   fi
-  B_x["$dimx"]="$dimy";               # dimxは行 dimyは列 
+  B["$dimx"]="$dimy";               # dimxは行 dimyは列 
+  # 確認
+  # for key_B in "${!B[@]}";do
+  #   echo "B.$key_B:${B[$key_B]}";
+  # done
   row="$((1<<dimx))";
   down="$((1<<dimy))";
   left="$((1<<(size-1-dimx+dimy)))";  #右上から左下 
@@ -89,10 +95,10 @@ function placement()
     # return $?;
     return 0;
   fi 
-  B["row"]=$((B[row]|row));
-  B["down"]=$((B[down]|down));
-  B["left"]=$((B[left]|left));
-  B["right"]=$((B[right]|right));
+  B["row"]=$((B["row"]|row));
+  B["down"]=$((B["down"]|down));
+  B["left"]=$((B["left"]|left));
+  B["right"]=$((B["right"]|right));
   # 確認
   # for key_B in "${!B[@]}";do
   #   echo "B.$key_B:${B[$key_B]}";
@@ -100,6 +106,7 @@ function placement()
   # flag=1;
   # [[ $flag -eq 0 ]]
   # return $?;
+  # echo "HOE:$flag";
   return 1;
 }
 : 'キャリーチェーン';
@@ -220,7 +227,6 @@ function carryChain()
     # for key_nB in "${!nB[@]}";do 
     #   echo "nB.$key_nB:${nB[$key_nB]}";
     # done
-
     for ((n=w;n<(size-2)*(size-1)-w;n++));do 
       #B=( $nB[@] );
       for key_nB in ${!nB[@]};do 
@@ -246,7 +252,6 @@ function carryChain()
       # 3 下２行に置く
       #
       # 90度回転
-      local -A eB=( ["row"]="0" ["left"]="0" ["down"]="0" ["right"]="0");
       #eB=( ${B[@]} );
       for key_B in ${!B[@]};do 
         eB["$key_B"]="${B[$key_B]}"; 
