@@ -22,8 +22,6 @@ declare -A B=(
   ["down"]="0" 
   ["right"]="0"
 );
-declare -a pres_a;
-declare -a pres_b;
 declare -a B_x;
 #
 : '';
@@ -33,25 +31,34 @@ function solve()
   local -i left="$2";
   local -i down="$3";
   local -i right="$4";
+  # Placement Complete?
+  # bh=-1 1111111111 すべての列にクイーンを置けると-1になる
   if (( (down+1)==0 ));then 
-    #return 1; 
-    return ; 
+    return 1; 
   fi
+  # at least one more queen to place
+  # Column is covered by pre-placement
+  # row 右端にクイーンがすでに置かれていたら
+  # クイーンを置かずに１行下に移動する
+  # rowを右端から１ビットずつ削っていく。
+  # ここではrowはすでにクイーンが置かれているか
+  # どうかだけで使う
   while (( (row&1)!=0 ));do
-    ((row>>=1))
-    ((left<<=1));
-    ((right>>=1));
+    ((row>>=1))     # 右に１ビットシフト
+    ((left<<=1));   # left 左に１ビットシフト
+    ((right>>=1));  # right 右に１ビットシフト
   done
-  ((row>>=1));
+  ((row>>=1));      # １行下に移動する
+  # Column needs to be placed
   local -i bit=0;
   local -i bitmap=$(( ~(left|down|right) ));
   while (( bitmap!=0 ));do
     bit=$(( bitmap&-bitmap ));
     bitmap=$(( bitmap^bit ));
     solve "$row" "(left|bit)<<1" "(down|bit)" "(right|bit)>>1"  ; 
-    total+=$?;
+    total+=$?;      # total はグローバル変数
   done
-  return $total;
+  return $total;    # 途中でクイーンを置くところがなくなるとここに来る
 }
 #
 : 'クイーンの効きをチェック';
@@ -60,7 +67,7 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  flag=0;       # グローバル変数
+  local -i flag=0;       
   if (( B_x[$dimx]==$dimy ));then   # 同じ場所の配置を許す
     flag=1;
     return $?; 
@@ -70,25 +77,26 @@ function placement()
   down=$((1<<dimy));
   left=$((1<<(size-1-dimx+dimy)));  #右上から左下 
   right=$((1<<(dimx+dimy)));        # x+yは左上から右下
-  if (( (B["row"]&row)||
-        (B["down"]&down)||
-        (B["left"]&left)||
-        (B["right"]&right) ));then
+  if (( (B[row]&row)||
+        (B[down]&down)||
+        (B[left]&left)||
+        (B[right]&right) ));then
     flag=0;
     return $?;
   fi 
-  B["row"]=$((B["row"]|row));
-  B["down"]=$((B["down"]|down));
-  B["left"]=$((B["left"]|left));
-  B["right"]=$((B["right"]|right));
+  B[row]=$((B[row]|row));
+  B[down]=$((B[down]|down));
+  B[left]=$((B[left]|left));
+  B[right]=$((B[right]|right));
   flag=1;
-
   [[ $flag -eq 0 ]]
   return $?;
 }
 : 'キャリーチェーン';
 function carryChain()
 {
+  local -a pres_a;
+  local -a pres_b;
   : '
     N5
     0 0 0 1 1
@@ -135,14 +143,10 @@ function carryChain()
     local -i i=0;
     for ((i=0;i<size;i++));do B_x[$i]=-1; done
     #
-    # 上２行　0行目,1行目にQを配置
     # ０行目にQを配置
     local -i pna;
-    #
-    # echo の場合
-    #pna=$( placement "0" "$((pres_a[w]))" );
-    #echo "pna: $bpFlag";
-    : ' pna:1
+    : ' Cの結果
+        pna:1
         pna:1
         pna:1
         pna:1
@@ -150,15 +154,14 @@ function carryChain()
     #
     # return で返却する場合
     placement "0" "$((pres_a[w]))";
-    echo "pna: $?";
+    #echo "pna: $?";
     #
-    # グローバルフラグの場合
-    #placement "0" "$((pres_a[w]))";
-    # echo "pna: $bpFlag";
     # １行目にQを配置
     placement "1" "$((pres_b[w]))";
-    #echo "pna:$bpFlag";
-    : ' pna:1
+    # return で返却する場合
+    #echo "pna: $?";
+    : ' Cの結果
+        pna:1
         pna:1
         pna:1
         pna:1
@@ -186,7 +189,12 @@ function carryChain()
       #
       # Qを配置
       placement "$((pres_a[n]))" "$((size-1))"; 
-      # 0000011000000000001100011000000000001000
+      echo -n "$?";
+      : 'Cの結果
+      0000011000000000001100011000000000001000
+         bashの結果
+      0000010000000000001000000000000000000000
+      ';
       if (( $?==0 ));then continue; fi
       # if (( bpFlag==0 ));then continue; fi
       placement "$((pres_b[n]))" "$((size-2))";
@@ -268,7 +276,7 @@ function carryChain()
             # 上下左右２行２列配置完了
             # w=n=e=sであれば90度回転で同じ可能性
             # この場合はミラーの2
-            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<($size-4)))+1)<<($size-5))-1 ))" "$(( (B[right]>>4)<<($size-5) ))";
+            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
             COUNT2+=$?; total=0;
             continue;
           fi
@@ -278,12 +286,12 @@ function carryChain()
             if((n>s));then continue; fi
             # この場合は4
             # 上下左右２行２列配置完了
-            solve "B[row]>>2" "B[left]>>4" "((((B[down]>>2)|(~0<<($size-4)))+1)<<($size-5))-1" "(B[right]>>4)<<($size-5)";
+            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
             COUNT4+=$total;total=0;
             continue;
           fi
           # 上下左右２行２列配置完了"
-          solve "B[row]>>2" "B[left]>>4" "((((B[down]>>2)|(~0<<($size-4)))+1)<<($size-5))-1" "(B[right]>>4)<<($size-5)";
+            solve "$((B[row]>>2))" "$((B[left]>>4))" "$(( ((((B[down]>>2)|(~0<<(size-4)))+1)<<(size-5))-1 ))" "$(( (B[right]>>4)<<(size-5) ))";
           COUNT8+=$total;total=0;
           continue;
         done
