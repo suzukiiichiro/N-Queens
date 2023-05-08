@@ -66,13 +66,13 @@ function placement()
 {
   local -i dimx="$1";
   local -i dimy="$2";
-  # local -i flag=0;       
+  local -i flag=0;       
   #if (( B_x["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
   if (( B["$dimx"]=="$dimy" ));then   # 同じ場所の配置を許す
-    # flag=1;
+    flag=1;
+    # return ;
     # [[ $flag -eq 1 ]]
     # return $?; 
-    return 1;
   fi
   B["$dimx"]="$dimy";               # dimxは行 dimyは列 
   # 確認
@@ -91,9 +91,8 @@ function placement()
         (B["down"] & $down)||
         (B["left"] & $left)||
         (B["right"] & $right) ));then
-    # flag=0;
-    # return $?;
-    return 0;
+    flag=0;
+    return;
   fi 
   B["row"]=$((B["row"]|row));
   B["down"]=$((B["down"]|down));
@@ -103,11 +102,10 @@ function placement()
   # for key_B in "${!B[@]}";do
   #   echo "B.$key_B:${B[$key_B]}";
   # done
-  # flag=1;
-  # [[ $flag -eq 0 ]]
-  # return $?;
-  # echo "HOE:$flag";
-  return 1;
+  flag=1;
+
+  [[ $flag -eq 0 ]]
+  return $?;
 }
 : 'キャリーチェーン';
 function carryChain()
