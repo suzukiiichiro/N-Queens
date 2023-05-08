@@ -84,10 +84,27 @@ function placement()
     flag=0;
     return $?;
   fi 
-  B[row]=$((B[row]|row));
+  # 連想配列への代入方法が違う可能性がある。
+  : '
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  B.row:
+  ';
+   B[row]=$((B[row]|row));
+  # B=( [row]=$((B[row]|row)) );
   B[down]=$((B[down]|down));
   B[left]=$((B[left]|left));
   B[right]=$((B[right]|right));
+  # 確認
+  # for key_B in "${!B[@]}";do
+  #   echo "B.$key_B:${B[$key_B]}";
+  # done
   flag=1;
   [[ $flag -eq 0 ]]
   return $?;
