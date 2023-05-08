@@ -118,30 +118,52 @@ function carryChain()
   done
   #
   #
+  # Bの初期化
+  B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
+  # 確認
+  # for key_B in ${!B[@]};do 
+  #   echo "$key_B:${B[$key_B]}";
+  # done
+  #
   #
   # 1 上２行にクイーンを置く 上１行は２分の１だけ実行
-  #
   # 90度回転
   # wB=( $B[@] );
-  for i in ${!B[@]};do wB[$i]=${B[$i]} ; done
+  for key_B in ${!B[@]};do 
+    wB["$key_B"]="${B[$key_B]}" ; 
+  done
+  # 確認
+  # for key_B in ${!B[@]};do 
+  #   echo "$key_B:${wB[$key_B]}";
+  # done
   # q=7なら (7/2)*(7-4)=12
   # 1行目は0,1,2で,2行目0,1,2,3,4,5,6 で
   # 利き筋を置かないと13パターンになる
-  local -i w=0;
   for ((w=0;w<=(size/2)*(size-3);w++));do
     #
     # B=( $wB[@] );
-    for i in ${!wB[@]};do B[$i]=${wB[$i]} ; done
+    for key_wB in ${!wB[@]};do 
+      B["$key_wB"]="${wB[$key_wB]}" ; 
+    done
+    # 確認
+    # for key_wB in ${!B[@]};do 
+    #   echo "wB.$key_wB:${B[$key_wB]}";
+    # done
     #
     # B構造体の初期化
-    B["row"]="0";
-    B["down"]="0";
-    B["left"]="0";
-    B["right"]="0";
+    B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
+    # 確認
+    # for key_B in ${!B[@]};do 
+    #   echo "B.$key_B:${B[$key_B]}";
+    # done
     #
     # board配列の初期化
-    local -i i=0;
-    for ((i=0;i<size;i++));do B_x[$i]=-1; done
+    for ((bx_i=0;bx_i<size;bx_i++));do B_x[$bx_i]=-1; done
+    # 確認
+    # for ((bx_i=0;bx_i<size;bx_i++));do 
+    #   echo "${B_x[$bx_i]}";
+    # done
+
     #
     # ０行目にQを配置
     local -i pna;
@@ -174,70 +196,78 @@ function carryChain()
     # ２ 左２列にクイーンを置く
     #
     # 90度回転
-    local -A nB=( 
-      ["row"]="0"
-      ["left"]="0"
-      ["down"]="0"
-      ["right"]="0"
-    );
+    # nBの初期化
+    local -A nB=( ["row"]="0" ["left"]="0" ["down"]="0" ["right"]="0");
+    # 確認
+    # for key_nB in ${!nB[@]};do 
+    #   echo "nB.$key_nB:${nB[$key_nB]}";
+    # done
     #nB=( ${B[@]} );
-    for i in ${!B[@]};do nB[$i]=${B[$i]}; done
-    local -i n;
+    for key_B in "${!B[@]}";do 
+      nB["$key_B"]="${B[$key_B]}"; 
+    done
+    # 確認
+    # for key_nB in "${!nB[@]}";do 
+    #   echo "nB.$key_nB:${nB[$key_nB]}";
+    # done
+
     for ((n=w;n<(size-2)*(size-1)-w;n++));do 
       #B=( $nB[@] );
-      for i in ${!nB[@]};do B[$i]=${nB[$i]}; done
+      for key_nB in ${!nB[@]};do 
+        B["$key_nB"]="${nB[$key_nB]}"; 
+      done
+      # 確認
+      # for key_B in ${!B[@]};do 
+      #   echo "B.$key_B:${B["$key_B"]}";
+      # done
       #
       # Qを配置
       placement "$((pres_a[n]))" "$((size-1))"; 
-      echo -n "$?";
+      #echo -n "$?";
       : 'Cの結果
       0000011000000000001100011000000000001000
          bashの結果
       0000010000000000001000000000000000000000
       ';
-      if (( $?==0 ));then continue; fi
+      if (( $?==1 ));then continue; fi
       # if (( bpFlag==0 ));then continue; fi
       placement "$((pres_b[n]))" "$((size-2))";
       if (( $?==0 ));then continue; fi
       # if (( bpFlag==0 ));then continue; fi
 
 
-
       #
       # 3 下２行に置く
       #
       # 90度回転
-      local -A eB=( 
-        ["row"]="0"
-        ["left"]="0"
-        ["down"]="0"
-        ["right"]="0"
-      );
+      local -A eB=( ["row"]="0" ["left"]="0" ["down"]="0" ["right"]="0");
       #eB=( ${B[@]} );
-      for i in ${!B[@]};do eB[$i]=${B[$i]}; done
-      local -i e;
+      for key_B in ${!B[@]};do 
+        eB["$key_B"]="${B[$key_B]}"; 
+      done
+      # 確認
+      # for key_eB in ${!eB[@]};do 
+      #   echo "eB.$key_eB:${eB["$key_eB"]}";
+      # done
+
+
       for ((e=w;e<(size-2)*(size-1)-w;e++));do 
         #B=( ${eB[@]} );
         for i in ${!eB[@]};do B[$i]=${eB[$i]}; done
         placement "$((size-1))" "$((size-1-pres_a[e]))"; 
         if (( $?==0 ));then continue; fi
+echo "HOE";
         # if (( bpFlag==0 ));then continue; fi
         placement "$((size-2))" "$((size-1-pres_b[e]))"; 
         if (( $?==0 ));then continue; fi
         # if (( bpFlag==0 ));then continue; fi
 
 
-
         #
         # 4 右２列に置く
         #
         # 90度回転
-        local -A sB=( 
-          ["row"]="0"
-          ["left"]="0"
-          ["down"]="0"
-          ["right"]="0"
-        );
+        local -A sB=( ["row"]="0" ["left"]="0" ["down"]="0" ["right"]="0");
         #sB=( ${B[@]} );
         for i in ${!B[@]};do sB[$i]=${B[$i]}; done
         #
@@ -245,6 +275,7 @@ function carryChain()
         for ((s=w;s<(size-2)*(size-1)-w;s++));do
           #
           # B=( ${sB[@]} );
+          local -i i;
           for i in ${!sB[@]};do B[$i]=${sB[$i]}; done
           #
           placement "$((size-1-pres_a[s]))" "0";
@@ -253,7 +284,6 @@ function carryChain()
           placement "$((size-1-pres_b[s]))" "1"; 
           if (( $?==0 ));then continue; fi
           # if (( bpFlag==0 ));then continue; fi
-
 
 
           #
