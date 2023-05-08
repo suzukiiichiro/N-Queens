@@ -129,16 +129,20 @@ void NQueenR()
         B=eB;
         if(placement(size-1,size-1-pres_a[e])==false){ continue; }
         if(placement(size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=B;
         //
         //
         //
         //
         // ４ 右２列に置く
+        Board sB=B;
         for(int s=w;s<(size-2)*(size-1)-w;s++){
           B=sB;
           if(placement(size-1-pres_a[s],0)==false){ continue; }
           if(placement(size-1-pres_b[s],1)==false){ continue; }
+          //
+          //
+          //対象解除法
+          //
           //// Check for minimum if n, e, s = (N-2)*(N-1)-1-w
           int ww=(size-2)*(size-1)-1-w;
           int w2=(size-2)*(size-1)-1;
