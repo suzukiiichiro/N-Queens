@@ -63,7 +63,6 @@ bool placement(int dimx,int dimy)
     return true;  //同じ場所に置くのはOK
   }  
   B.x[dimx]=dimy;                       //xは行 yは列
-  // printf("B.x[%d]=%d\n",dimx,B.x[dimx]);
   int row=1<<dimx;
   int down=1<<dimy;
   int left=1<<(size-1-dimx+dimy);    //右上から左下
@@ -115,10 +114,14 @@ void NQueenR()
     Board nB=B;
     for(int n=w;n<(size-2)*(size-1)-w;n++){
       B=nB;
+      // printf("pres_a:%d\n",pres_a[n]);
       pna=placement(pres_a[n],size-1);
-      printf("%d",pna);
+      // printf("%d",pna);
       if(pna==false){ continue; }
-      if(placement(pres_b[n],size-2)==false){ continue; }
+      // printf("pres_a:%d\n",pres_a[n]);
+      pna=placement(pres_b[n],size-2);
+      if(pna==false){ continue; }
+      // printf("pres_b:%d\n",pres_b[n]);
       //
       //
       //
