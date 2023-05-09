@@ -8,8 +8,8 @@ declare -i COUNT4=0;
 declare -i COUNT8=0;
 declare -a pres_a;
 declare -a pres_b;
+declare -A x;
 declare -A B;
-declare -A B_x;
 declare -i w;
 declare -i n;
 declare -i e;
@@ -23,17 +23,11 @@ function solve()
   local -i left="$2";
   local -i down="$3";
   local -i right="$4";
-  # 配置完了の確認
-  # bh=-1 1111111111 
-  # すべての列にクイーンを置けると-1になる
+  # 配置完了の確認 # bh=-1 1111111111 すべての列にクイーンを置けると-1になる
   if (( (down+1)==0 ));then return 1; fi
-  # 新たなQを配置
-  # colは置き換える
-  # row 右端にクイーンがすでに置かれていたら
-  # クイーンを置かずに１行下に移動する
-  # rowを右端から１ビットずつ削っていく。
-  # ここではrowはすでにクイーンが置かれているか
-  # どうかだけで使う
+  # 新たなQを配置 colは置き換える。row 右端にクイーンがすでに置かれていたらクイー
+  # ンを置かずに１行下に移動する。rowを右端から１ビットずつ削っていく。ここでは
+  # rowはすでにクイーンが置かれているかどうかだけで使う
   while(( (row&1)!=0 ));do
     (( row>>=1 ))     # 右に１ビットシフト
     (( left<<=1 ));   # left 左に１ビットシフト
@@ -64,11 +58,14 @@ function solveQueen()
 : 'クイーンの効きをチェック';
 function placement()
 {
+  # dimxは行 dimyは列
   local -i dimx="$1";
   local -i dimy="$2";
   # 同じ場所の配置を許す
-  if (( B_x[$dimx]=="$dimy" ));then return 1; fi
-  B_x[$dimx]="$dimy";     # dimxは行 dimyは列 
+  local t_x=(${B[x]});
+  if (( t_x[$dimx]=="$dimy" ));then return 1; fi
+  t_x[$dimx]="$dimy"
+  B[x]=${t_x[@]}  
   local -i _row=_down=_left=_right=0;
   ((_row=1<<dimx));
   ((_down=1<<dimy));
@@ -126,27 +123,24 @@ function carryChainSymmetry()
 function buildChain()
 {
   # Bの初期化
-  B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
+  B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${x[@]});
   #
   # １ 上２行にクイーンを置く 
   #    上１行は２分の１だけ実行 90度回転 ';
   #
   local -A wB;
-  local -A wB_x;
   # wB=( $B[@] );
   for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
-  for key_B_x in ${!B_x[@]};do wB_x["$key_B_x"]="${B_x[$key_B_x]}" ; done
   # q=7なら (7/2)*(7-4)=12
   # 1行目は0,1,2で,2行目0,1,2,3,4,5,6 で
   # 利き筋を置かないと13パターンになる
   for ((w=0;w<=(size/2)*(size-3);w++));do
+    #B=wB;
     # B=( $wB[@] );
     for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
-    for key_wB_x in ${!wB_x[@]};do B_x["$key_wB_x"]="${wB_x[$key_wB_x]}" ; done
     # B構造体の初期化
-    B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0");
-    # board配列の初期化
-    for ((bx_i=0;bx_i<size;bx_i++));do B_x[$bx_i]=-1; done
+    for ((bx_i=0;bx_i<size;bx_i++));do x[$bx_i]=-1; done
+    B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${x[@]});
     #
     # １　０行目と１行目にクイーンを配置
     # 
@@ -156,15 +150,12 @@ function buildChain()
     # ２ 90度回転
     #
     local -A nB;
-    local -A nB_x;
-    #nB=( ${B[@]} );
+    # nB=( ${B[@]} );
     for key_B in "${!B[@]}";do nB["$key_B"]="${B[$key_B]}"; done
-    for key_B_x in "${!B_x[@]}";do nB_x["$key_B_x"]="${B_x[$key_B_x]}"; done
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
-      #B=( $nB[@] );
+      # B=( $nB[@] );
       for key_nB in ${!nB[@]};do B["$key_nB"]="${nB[$key_nB]}"; done
-      for key_nB_x in ${!nB_x[@]};do B_x["$key_nB_x"]="${nB_x[$key_nB_x]}"; done
       placement "$((pres_a[n]))" "$((size-1))"; 
       if (( $?==0 ));then continue; fi
       placement "$((pres_b[n]))" "$((size-2))";
@@ -173,14 +164,11 @@ function buildChain()
       # ３ 90度回転
       #
       local -A eB;
-      local -A eB_x;
-      #eB=( ${B[@]} );
+      # eB=( ${B[@]} );
       for key_B in ${!B[@]};do eB["$key_B"]="${B[$key_B]}"; done
-      for key_B_x in ${!B_x[@]};do eB_x["$key_B_x"]="${B_x[$key_B_x]}"; done
       for ((e=w;e<mirror;e++));do 
         #B=( ${eB[@]} );
         for key_eB in ${!eB[@]};do B["$key_eB"]="${eB[$key_eB]}"; done
-        for key_eB_x in ${!eB_x[@]};do B_x["$key_eB_x"]="${eB_x[$key_eB_x]}"; done
         placement "$((size-1))" "$((size-1-pres_a[e]))"; 
         if (( $?==0 ));then continue; fi
         placement "$((size-2))" "$((size-1-pres_b[e]))"; 
@@ -189,14 +177,11 @@ function buildChain()
         # ４ 90度回転
         #
         local -A sB;
-        local -A sB_x;
-        #sB=( ${B[@]} );
+        # sB=( ${B[@]} );
         for key_B in ${!B[@]};do sB["$key_B"]="${B[$key_B]}"; done
-        for key_B_x in ${!B_x[@]};do sB_x["$key_B_x"]="${B_x[$key_B_x]}"; done
         for ((s=w;s<mirror;s++));do
           # B=( ${sB[@]} );
           for key_sB in ${!sB[@]};do B["$key_sB"]="${sB[$key_sB]}"; done
-          for key_sB_x in ${!sB_x[@]};do B_x["$key_sB_x"]="${sB_x[$key_sB_x]}"; done
           placement "$((size-1-pres_a[s]))" "0";
           if (( $?==0 ));then continue; fi
           placement "$((size-1-pres_b[s]))" "1"; 
@@ -248,5 +233,3 @@ size=8;
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
-
-
