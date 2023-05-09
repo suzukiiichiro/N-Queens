@@ -88,7 +88,7 @@ $ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -s
 
 
 $ nvcc -O3 CUDA13_N-Queen.cu  && ./a.out -g
-１２．GPU 非再帰 並列処理 CUDA
+１３．GPU 非再帰 並列処理 CUDA
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               1  00:00:00:00.37
  5:           10               2  00:00:00:00.00
