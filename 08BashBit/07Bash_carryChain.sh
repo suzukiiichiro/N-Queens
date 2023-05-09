@@ -39,7 +39,7 @@ function solve()
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit ));do
     (( bit=bitmap&-bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
-    total+=$?;      # total はグローバル変数
+    total+=$?;
   done
   return $total;
 }
