@@ -94,25 +94,25 @@ function carryChainSymmetry()
   local -i ww=$(( (size-2)*(size-1)-1-w ));
   local -i w2=$(( (size-2)*(size-1)-1 ));
   # 対角線上の反転が小さいかどうか確認する
-  if (( (s==ww)&&(n<(w2-e)) ));then continue; fi
+  if (( (s==ww)&&(n<(w2-e)) ));then return; fi
   # 垂直方向の中心に対する反転が小さいかを確認
-  if (( (e==ww)&&(n>(w2-n)) ));then continue; fi
+  if (( (e==ww)&&(n>(w2-n)) ));then return; fi
   # 斜め下方向への反転が小さいかをチェックする
-  if (( (n==ww)&&(e>(w2-s)) ));then continue; fi
+  if (( (n==ww)&&(e>(w2-s)) ));then return; fi
   # n,e,s==w の場合は最小値を確認する。
   if ((s==w));then
-    : '右回転で同じ場合は、
-    w=n=e=sでなければ値が小さいのでskip
-    w=n=e=sであれば90度回転で同じ可能性 ';
-    if(( (n!=w)||(e!=w) ));then continue; fi
+    # : '右回転で同じ場合は、
+    # w=n=e=sでなければ値が小さいのでskip
+    # w=n=e=sであれば90度回転で同じ可能性 ';
+    if(( (n!=w)||(e!=w) ));then return; fi
     solveQueen;
     COUNT2+=$?; 
     return ;
   fi
-  : 'e==wは180度回転して同じ
-  180度回転して同じ時n>=sの時はsmaller?  ';
+  # : 'e==wは180度回転して同じ
+  # 180度回転して同じ時n>=sの時はsmaller?  ';
   if (( (e==w)&&(n>=s) ));then
-    if((n>s));then continue; fi
+    if((n>s));then return;  fi
     solveQueen;
     COUNT4+=$?;
     return ;
@@ -204,39 +204,7 @@ function buildChain()
           #
           #  対象解除法
           #
-          # carryChainSymmetry; 
-  # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
-  local -i ww=$(( (size-2)*(size-1)-1-w ));
-  local -i w2=$(( (size-2)*(size-1)-1 ));
-  # 対角線上の反転が小さいかどうか確認する
-  if (( (s==ww)&&(n<(w2-e)) ));then continue; fi
-  # 垂直方向の中心に対する反転が小さいかを確認
-  if (( (e==ww)&&(n>(w2-n)) ));then continue; fi
-  # 斜め下方向への反転が小さいかをチェックする
-  if (( (n==ww)&&(e>(w2-s)) ));then continue; fi
-  # n,e,s==w の場合は最小値を確認する。
-  if ((s==w));then
-    : '右回転で同じ場合は、
-    w=n=e=sでなければ値が小さいのでskip
-    w=n=e=sであれば90度回転で同じ可能性 ';
-    if(( (n!=w)||(e!=w) ));then continue; fi
-    solveQueen;
-    COUNT2+=$?; 
-    # return ;
-    continue;
-  fi
-  : 'e==wは180度回転して同じ
-  180度回転して同じ時n>=sの時はsmaller?  ';
-  if (( (e==w)&&(n>=s) ));then
-    if((n>s));then continue; fi
-    solveQueen;
-    COUNT4+=$?;
-    # return ;
-    continue;
-  fi
-  solveQueen;
-  COUNT8+=$?;
-  # return ;
+          carryChainSymmetry; 
           continue;
         done
       done
