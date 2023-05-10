@@ -43,27 +43,29 @@ function solve()
 
   #
   # Qが角にあるときの枝刈り
-  bitmap=$(( bitmap|2 ));
-  bitmap=$(( bitmap^2 ));
-  #
-  #
-  # Qが角にないときの枝刈り
-  #
-  : '
-  if ((row<BOUND1));then        # 上部サイド枝刈り
-    bitmap=$(( bitmap|SIDEMASK ));
-    bitmap=$(( bitmap^=SIDEMASK ));
-  else 
-    if ((row==BOUND2));then     # 下部サイド枝刈り
-      if (( !(down&SIDEMASK) ));then
-        return ;
-      fi
-      if (( (down&SIDEMASK)!=SIDEMASK ));then
-        bitmap=$(( bitmap&SIDEMASK ));
+  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
+  if (( t_x[0]==0 ));then # 角だったら
+    bitmap=$(( bitmap|2 ));
+    bitmap=$(( bitmap^2 ));
+  else
+    :
+    # Qが角にないときの枝刈り
+    : '
+    if ((row<BOUND1));then        # 上部サイド枝刈り
+      bitmap=$(( bitmap|SIDEMASK ));
+      bitmap=$(( bitmap^=SIDEMASK ));
+    else 
+      if ((row==BOUND2));then     # 下部サイド枝刈り
+        if (( !(down&SIDEMASK) ));then
+          return ;
+        fi
+        if (( (down&SIDEMASK)!=SIDEMASK ));then
+          bitmap=$(( bitmap&SIDEMASK ));
+        fi
       fi
     fi
+    ';
   fi
-  ';
   #
   while (( bitmap!=0 ));do
     (( bit=bitmap&-bitmap ));
