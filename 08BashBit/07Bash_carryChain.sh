@@ -118,6 +118,17 @@ function carryChainSymmetry()
   (( (e==ww)&&(n>(w2-n)) ))&& return;
   # 斜め下方向への反転が小さいかをチェックする
   (( (n==ww)&&(e>(w2-s)) ))&& return ;
+  #
+  # 枝刈り
+  #
+  #１行目が角の場合回転対称チェックせずCOUNT8にする
+  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
+  (( t_x[0]==0 ))&&{
+    solveQueen;
+    COUNT8+=$?; 
+    return;
+  }
+  #
   # n,e,s==w の場合は最小値を確認する。
   # : '右回転で同じ場合は、
   # w=n=e=sでなければ値が小さいのでskip
