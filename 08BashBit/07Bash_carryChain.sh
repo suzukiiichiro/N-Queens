@@ -40,15 +40,11 @@ function solve()
 
   #(( bitmap=~(left|down|right) ));
   (( bitmap=MASK&~(left|down|right) ));
-  #
-  # Qが角にあるときの枝刈り
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
-  if (( t_x[0]==0 ));then # 角だったら
-    bitmap=$(( bitmap|2 ));
-    bitmap=$(( bitmap^2 ));
-  else
-    :
-    # Qが角にないときの枝刈り
+  #
+  # Qが角にないときの枝刈り
+  #
+  if (( t_x[0]!=0 ));then 
     : '
     local -i TOPBIT=$(( 1<<(size-1) )); 
     local -i SIDEMASK=$(( TOPBIT|1 ));
@@ -69,6 +65,7 @@ function solve()
     fi
     ';
   fi
+  #
   #
   while (( bitmap!=0 ));do
     (( bit=bitmap&-bitmap ));
@@ -94,9 +91,21 @@ function placement()
 {
   local -i dimx="$1";     # dimxは行 dimyは列
   local -i dimy="$2";
-  
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
+  #
+  # Qが角にある場合の枝刈り
+  #
+  #Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
+  #BOUND1行目までは2列目にクイーンを置くことはできない
+  ((t_x[1]!=-1&&t_x[0]==0))&&{
+    # bitmap=$(( bitmap|2 ));
+    # bitmap=$(( bitmap^2 ));
+    # 上と下は同じ趣旨
+    ((t_x[1]>=dimx&&dimy==1))&&{ return 0; }
+  }
+  #
+  #
   t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
