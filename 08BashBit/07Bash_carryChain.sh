@@ -49,8 +49,7 @@ function solveQueen()
 {
   solve "$(( B[row]>>2 ))" \
         "$(( B[left]>>4 ))" \
-        "$(( (((B[down]>>2 | \
-        ~0<<size-4)+1)<<size-5)-1 ))" \
+        "$(( (((B[down]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
         "$(( B[right]>>4<<size-5 ))";
   return $?;
 }
@@ -58,11 +57,9 @@ function solveQueen()
 : 'クイーンの効きをチェック';
 function placement()
 {
-  # dimxは行 dimyは列
-  local -i dimx="$1";
+  local -i dimx="$1"; # dimxは行 dimyは列
   local -i dimy="$2";
-  # 同じ場所の配置を許す
-  local t_x=(${B[x]});
+  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   if (( t_x[$dimx]=="$dimy" ));then return 1; fi
   t_x[$dimx]="$dimy"
   B[x]=${t_x[@]}  
@@ -125,70 +122,76 @@ function buildChain()
   # Bの初期化
   B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${x[@]});
   #
-  # １ 上２行にクイーンを置く 
-  #    上１行は２分の１だけ実行 90度回転 ';
-  #
-  local -A wB;
+  # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
+  #--------------
   # wB=( $B[@] );
+  local -A wB=B; # bashの連想配列は↓が必要
   for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
-  # q=7なら (7/2)*(7-4)=12
-  # 1行目は0,1,2で,2行目0,1,2,3,4,5,6 で
-  # 利き筋を置かないと13パターンになる
+  #--------------
   for ((w=0;w<=(size/2)*(size-3);w++));do
-    #B=wB;
+    #--------------
     # B=( $wB[@] );
+    B=wB;  # bashの連想配列は↓が必要
     for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
-    # B構造体の初期化
+    #--------------
     for ((bx_i=0;bx_i<size;bx_i++));do x[$bx_i]=-1; done
     B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${x[@]});
-    #
-    # １　０行目と１行目にクイーンを配置
-    # 
-    placement "0" "$((pres_a[w]))";
+    placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
     placement "1" "$((pres_b[w]))";
     #
     # ２ 90度回転
-    #
-    local -A nB;
+    #--------------
     # nB=( ${B[@]} );
+    local -A nB=B;  # bashの連想配列は↓が必要
     for key_B in "${!B[@]}";do nB["$key_B"]="${B[$key_B]}"; done
+    #--------------
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
+      #--------------
       # B=( $nB[@] );
+      B=nB;  # bashの連想配列は↓が必要
       for key_nB in ${!nB[@]};do B["$key_nB"]="${nB[$key_nB]}"; done
+      #--------------
       placement "$((pres_a[n]))" "$((size-1))"; 
       if (( $?==0 ));then continue; fi
       placement "$((pres_b[n]))" "$((size-2))";
       if (( $?==0 ));then continue; fi
       #
       # ３ 90度回転
-      #
-      local -A eB;
+      #--------------
       # eB=( ${B[@]} );
+      local -A eB=B;  # bashの連想配列は↓が必要
       for key_B in ${!B[@]};do eB["$key_B"]="${B[$key_B]}"; done
+      #--------------
       for ((e=w;e<mirror;e++));do 
+        #--------------
         #B=( ${eB[@]} );
+        B=eB; # bashの連想配列は↓が必要
         for key_eB in ${!eB[@]};do B["$key_eB"]="${eB[$key_eB]}"; done
+        #--------------
         placement "$((size-1))" "$((size-1-pres_a[e]))"; 
         if (( $?==0 ));then continue; fi
         placement "$((size-2))" "$((size-1-pres_b[e]))"; 
         if (( $?==0 ));then continue; fi
         #
         # ４ 90度回転
-        #
-        local -A sB;
-        # sB=( ${B[@]} );
+        #--------------
+        #sB=( ${B[@]} );
+        local -A sB=B; # bashの連想配列は↓が必要
         for key_B in ${!B[@]};do sB["$key_B"]="${B[$key_B]}"; done
+        #--------------
         for ((s=w;s<mirror;s++));do
-          # B=( ${sB[@]} );
+          #--------------
+          #B=( ${sB[@]} );
+          B=sB; # bashの連想配列は↓が必要
           for key_sB in ${!sB[@]};do B["$key_sB"]="${sB[$key_sB]}"; done
+          #--------------
           placement "$((size-1-pres_a[s]))" "0";
           if (( $?==0 ));then continue; fi
           placement "$((size-1-pres_b[s]))" "1"; 
           if (( $?==0 ));then continue; fi
           #
           #  対象解除法
-          #
           carryChainSymmetry; 
           continue;
         done
