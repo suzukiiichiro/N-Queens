@@ -33,14 +33,13 @@ function solve()
   local -i bitmap=0;
   local -i total=0;
   local -i MASK=$(( (1<<size)-1 ));
-  #(( bitmap=~(left|down|right) ));
-  (( bitmap=MASK&~(left|down|right) ));
-
   # local -i TOPBIT=$(( 1<<(size-1) )); 
   # local -i ENDBIT=$(( TOPBIT>>1 ));
   # local -i SIDEMASK=$(( TOPBIT|1 ));
   # local -i LASTMASK=$(( TOPBIT|1 )); 
 
+  #(( bitmap=~(left|down|right) ));
+  (( bitmap=MASK&~(left|down|right) ));
   #
   # Qが角にあるときの枝刈り
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
@@ -51,6 +50,10 @@ function solve()
     :
     # Qが角にないときの枝刈り
     : '
+    local -i TOPBIT=$(( 1<<(size-1) )); 
+    local -i SIDEMASK=$(( TOPBIT|1 ));
+    local -i BOUND1=;
+    local -i BOUND2=;
     if ((row<BOUND1));then        # 上部サイド枝刈り
       bitmap=$(( bitmap|SIDEMASK ));
       bitmap=$(( bitmap^=SIDEMASK ));
