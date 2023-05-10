@@ -59,10 +59,11 @@ function placement()
 {
   local -i dimx="$1"; # dimxは行 dimyは列
   local -i dimy="$2";
+
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   if (( t_x[$dimx]=="$dimy" ));then return 1; fi
-  t_x[$dimx]="$dimy"
-  B[x]=${t_x[@]}  
+  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
+
   local -i _row=_down=_left=_right=0;
   ((_row=1<<dimx));
   ((_down=1<<dimy));
