@@ -32,8 +32,47 @@ function solve()
   local -i bit=0;
   local -i bitmap=0;
   local -i total=0;
-  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit ));do
+  #local -i MASK=$(( (1<<size)-1 ));
+  # local -i TOPBIT=$(( 1<<(size-1) )); 
+  # local -i ENDBIT=$(( TOPBIT>>1 ));
+  # local -i SIDEMASK=$(( TOPBIT|1 ));
+  # local -i LASTMASK=$(( TOPBIT|1 )); 
+
+  (( bitmap=~(left|down|right) ));
+  #(( bitmap=MASK&~(left|down|right) ));
+  #
+  # Qが角にあるときの枝刈り
+  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
+  if (( t_x[0]==0 ));then # 角だったら
+    bitmap=$(( bitmap|2 ));
+    bitmap=$(( bitmap^2 ));
+  else
+    :
+    # Qが角にないときの枝刈り
+    : '
+    local -i TOPBIT=$(( 1<<(size-1) )); 
+    local -i SIDEMASK=$(( TOPBIT|1 ));
+    local -i BOUND1=;
+    local -i BOUND2=;
+    if ((row<BOUND1));then        # 上部サイド枝刈り
+      bitmap=$(( bitmap|SIDEMASK ));
+      bitmap=$(( bitmap^=SIDEMASK ));
+    else 
+      if ((row==BOUND2));then     # 下部サイド枝刈り
+        if (( !(down&SIDEMASK) ));then
+          return ;
+        fi
+        if (( (down&SIDEMASK)!=SIDEMASK ));then
+          bitmap=$(( bitmap&SIDEMASK ));
+        fi
+      fi
+    fi
+    ';
+  fi
+  #
+  while (( bitmap!=0 ));do
     (( bit=bitmap&-bitmap ));
+    (( bitmap^=bit ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     total+=$?;
   done
@@ -55,8 +94,22 @@ function placement()
 {
   local -i dimx="$1";     # dimxは行 dimyは列
   local -i dimy="$2";
+  
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
+  #backtrack1の枝刈りを追加
+  ((t_x[1]!=-1&&t_x[0]==0))&&{
+    #backtrack1では2行目のクイーンの位置t_x[1]がBOUND1
+    #BOUND1行目までは2列目にクイーンを置くことができない
+    #bitmap=$(( bitmap|2 ));
+    #bitmap=$(( bitmap^2 ));
+    #
+    ((t_x[1]>=dimx&&dimy==1))&&{ 
+     return 0;
+    }
+  }
+
+
   t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
@@ -83,14 +136,17 @@ function carryChainSymmetry()
   (( (e==ww)&&(n>(w2-n)) ))&& return;
   # 斜め下方向への反転が小さいかをチェックする
   (( (n==ww)&&(e>(w2-s)) ))&& return ;
-  #1行目が角の場合
+  #
+  # 枝刈り
+  #
+  #１行目が角の場合回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[0]==0 ))&&{
     solveQueen;
     COUNT8+=$?; 
     return;
   }
-
+  #
   # n,e,s==w の場合は最小値を確認する。
   # : '右回転で同じ場合は、
   # w=n=e=sでなければ値が小さいのでskip
