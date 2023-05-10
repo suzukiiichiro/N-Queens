@@ -59,26 +59,19 @@ function placement()
 {
   local -i dimx="$1"; # dimxは行 dimyは列
   local -i dimy="$2";
-
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
-  if (( t_x[$dimx]=="$dimy" ));then return 1; fi
+  if (( t_x[dimx]==dimy ));then return 1; fi
   t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
-
-  local -i _row=_down=_left=_right=0;
-  ((_row=1<<dimx));
-  ((_down=1<<dimy));
-  ((_left=1<<(size-1-dimx+dimy))); #右上から左下 
-  ((_right=1<<(dimx+dimy)));     # x+yは左上から右下
-  if (( (B[row] & _row)||
-        (B[down] & _down)||
-        (B[left] & _left)||
-        (B[right] & _right) ));then
+  if (( (B[row] & 1<<dimx)||
+        (B[down] & 1<<dimy)||
+        (B[left] & 1<<(size-1-dimx+dimy))||
+        (B[right] & 1<<(dimx+dimy)) ));then
     return 0;
   fi 
-  ((B[row]|=_row));
-  ((B[down]|=_down));
-  ((B[left]|=_left));
-  ((B[right]|=_right));
+  ((B[row]|=1<<dimx));
+  ((B[down]|=1<<dimy));
+  ((B[left]|=1<<(size-1-dimx+dimy)));
+  ((B[right]|=1<<(dimx+dimy)));
   return 1;
 }
 #
