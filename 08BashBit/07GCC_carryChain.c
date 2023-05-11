@@ -1,5 +1,10 @@
+/**
+ *
+ * キャリーチェーンC言語版
+ ビルドと実行
+ $ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC
+ */
 
-// $ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC
 
 
 #include <stdio.h>
@@ -27,6 +32,7 @@ typedef struct{
 }Board ;
 Board B;
 //
+// ボード外側２列を除く内側のクイーン配置処理
 long solve(int row,int left,int down,int right)
 {
   if(down+1==0){ return  1; }
@@ -44,7 +50,7 @@ long solve(int row,int left,int down,int right)
   }
   return total;
 } 
-//
+// クイーンの効きをチェック
 bool placement(int dimx,int dimy)
 {
   if(B.x[dimx]==dimy){ return true;  }  
@@ -65,9 +71,32 @@ bool placement(int dimx,int dimy)
       bitmap=$(( bitmap|SIDEMASK ));
       bitmap=$(( bitmap^=SIDEMASK ));
     BOUND1はt_x[0]
+  
+      if ((row==BOUND2));then     # 下部サイド枝刈り
+        if (( !(down&SIDEMASK) ));then
+          return ;
+        fi
+        if (( (down&SIDEMASK)!=SIDEMASK ));then
+          bitmap=$(( bitmap&SIDEMASK ));
+        fi
+      fi
+    BOUND2はsize-t_x[0]
+  
+  【枝刈り】 最下段枝刈り
+   LSATMASKの意味は最終行でBOUND1以下または
+   BOUND2以上にクイーンは置けないということ
+    if(row==sizeE){
+      //if(!bitmap){
+      if(bitmap){
+        if((bitmap&LASTMASK)==0){
   **/
-  if(( (B.x[0]!=-1) && (B.x[0]!=0) )){
-    if (((dimx<B.x[0])&&(dimy==0||dimy==size-1))){
+  if( (B.x[0]!=-1 && B.x[0]!=0) ){
+    if(( (dimx<B.x[0]||dimx>=size-B.x[0])
+      && (dimy==0 || dimy==size-1)
+    )){ return 0; } 
+    //最下段枝刈り
+    if ((  (dimx==size-1)&&((dimy<=B.x[0])||
+        dimy>=size-B.x[0]))){
       return 0;
     } 
   }
@@ -80,14 +109,34 @@ bool placement(int dimx,int dimy)
   B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
 }
-//
+// キャリーチェーン対象解除法
 void carryChainSymmetry()
 {
+  // # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
   if((s==ww)&&(n<(w2-e))){ return; }
+  // # 垂直方向の中心に対する反転が小さいかを確認
   if((e==ww)&&(n>(w2-n))){ return; }
+  // # 斜め下方向への反転が小さいかをチェックする
   if((n==ww)&&(e>(w2-s))){ return; }
+  /*
+   枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  **/
+  if(B.x[0]==0){
+    COUNT8 += solve(B.row >> 2,
+        B.left>>4,
+        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+        (B.right>>4)<<(size-5));
+    return ;
+  }
+  /**
+  # n,e,s==w の場合は最小値を確認する。
+  # : '右回転で同じ場合は、
+  # w=n=e=sでなければ値が小さいのでskip
+  # w=n=e=sであれば90度回転で同じ可能性 ';
+   */
   if(s==w){ 
     if((n!=w)||(e!=w)){ return; } 
     COUNT2 += solve(B.row >> 2,
@@ -96,6 +145,8 @@ void carryChainSymmetry()
         (B.right>>4)<<(size-5));
     return ;
   }
+  // # : 'e==wは180度回転して同じ
+  // # 180度回転して同じ時n>=sの時はsmaller?  ';
   if((e==w)&&(n>=s)){ 
     if(n>s){ return; } 
     COUNT4 += solve(B.row >> 2,
@@ -108,8 +159,9 @@ void carryChainSymmetry()
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
       (B.right>>4)<<(size-5));
+  return ;
 }
-//
+// チェーンの構築
 void buildChain()
 {
   Board wB=B;
@@ -142,20 +194,20 @@ void buildChain()
     }
   }
 }
-//
+// チェーンの初期化
 void initChain()
 {
   int idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }     
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
       pres_a[idx]=a;
       pres_b[idx]=b;
       idx++;
     }
   }
 }
-//
+// キャリーチェーン
 void carryChain()
 {
   initChain() ;     // チェーンの初期化
