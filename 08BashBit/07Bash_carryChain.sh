@@ -70,14 +70,14 @@ function placement()
   #  Qが角にある場合は、
   #  2行目のクイーンの位置 t_x[1]が BOUND1
   #  BOUND1行目までは2列目にクイーンを置けない
-  (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
-    # bitmap=$(( bitmap|2 ));
-    # bitmap=$(( bitmap^2 ));
-    # 上と下は同じ趣旨
-    (( (t_x[1]>=dimx) && (dimy==1) ))&&{ return 0; }
-  }
-  #
-  #
+  if (( t_x[0]==0 ));then
+    if (( t_x[1]!=-1));then
+      # bitmap=$(( bitmap|2 ));
+      # bitmap=$(( bitmap^2 ));
+      # 上と下は同じ趣旨
+      (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
+    fi
+  else
   # 【枝刈り】Qが角にない場合
   #   １．上部サイド枝刈り
   #  if ((row<BOUND1));then        
@@ -86,7 +86,8 @@ function placement()
   #
   #  BOUND1はt_x[0]
   #
-  #  if ((row==BOUND2));then     # 下部サイド枝刈り
+  #  ２．下部サイド枝刈り
+  #  if ((row==BOUND2));then     
   #    if (( !(down&SIDEMASK) ));then
   #      return ;
   #    fi
@@ -103,17 +104,17 @@ function placement()
   #    //if(!bitmap){
   #    if(bitmap){
   #      if((bitmap&LASTMASK)==0){
-  #
-  (( (t_x[0]!=-1) && (t_x[0]!=0) ))&&{
-    ((  (dimx<t_x[0]||dimx>=size-t_x[0])
-      &&(dimy==0||dimy==size-1)))&&{
-      return 0;
-    } 
-    ((  (dimx==size-1)&&((dimy<=t_x[0])||
-        dimy>=size-t_x[0])))&&{
-      return 0;
-    } 
-  }
+    if (( t_x[0]!=-1));then
+      ((  (dimx<t_x[0]||dimx>=size-t_x[0])
+        &&(dimy==0||dimy==size-1)))&&{
+        return 0;
+      } 
+      ((  (dimx==size-1)&&((dimy<=t_x[0])||
+          dimy>=size-t_x[0])))&&{
+        return 0;
+      } 
+    fi
+  fi
   #
   t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
