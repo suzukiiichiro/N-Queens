@@ -107,6 +107,18 @@ function placement()
   }
   #
   #
+  # Qが角にない場合の上部サイド枝刈り
+  #  if ((row<BOUND1));then        
+  #    bitmap=$(( bitmap|SIDEMASK ));
+  #    bitmap=$(( bitmap^=SIDEMASK ));
+  # BOUND1はt_x[0]
+  #
+  (( (t_x[0]!=-1) && (t_x[0]!=0) ))&&{
+    (((dimx<t_x[0])&&(dimy==0||dimy==size-1)))&&{
+      return 0;
+    } 
+  }
+
   t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
@@ -184,7 +196,9 @@ function buildChain()
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
     B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
     placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
+    [[ $? -eq 0 ]] && continue;
     placement "1" "$((pres_b[w]))";
+    [[ $? -eq 0 ]] && continue;
     #
     # ２ 90度回転
     # nB=( ${B[@]} );
