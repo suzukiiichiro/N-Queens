@@ -1,5 +1,8 @@
 #!/usr/bin/bash
 
+: '
+
+';
 declare -i size;
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
@@ -59,10 +62,13 @@ function placement()
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
   #
-  # Qが角にある場合の枝刈り
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry()内にあります）
   #
-  #Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
-  #BOUND1行目までは2列目にクイーンを置くことはできない
+  #Qが角にある場合は、
+  # 2行目のクイーンの位置 t_x[1]が BOUND1
+  # BOUND1行目までは2列目にクイーンを置けない
   (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
     # bitmap=$(( bitmap|2 ));
     # bitmap=$(( bitmap^2 ));
@@ -71,25 +77,26 @@ function placement()
   }
   #
   #
-  # Qが角にない場合の上部サイド枝刈り
+  # 【枝刈り】Qが角にない場合
+     １．上部サイド枝刈り
   #  if ((row<BOUND1));then        
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
   #
-  # BOUND1はt_x[0]
-  #    if ((row==BOUND2));then     # 下部サイド枝刈り
-  #      if (( !(down&SIDEMASK) ));then
-  #        return ;
-  #      fi
-  #      if (( (down&SIDEMASK)!=SIDEMASK ));then
-  #        bitmap=$(( bitmap&SIDEMASK ));
-  #      fi
+  #  BOUND1はt_x[0]
+  #  if ((row==BOUND2));then     # 下部サイド枝刈り
+  #    if (( !(down&SIDEMASK) ));then
+  #      return ;
   #    fi
+  #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+  #      bitmap=$(( bitmap&SIDEMASK ));
+  #    fi
+  #  fi
   #
-  #【枝刈り】 最下段枝刈り
-  # LSATMASKの意味は最終行でBOUND1以下または
-  # BOUND2以上にクイーンは置けないということ
-  # BOUND2はsize-t_x[0]
+  #  ２．最下段枝刈り
+  #  LSATMASKの意味は最終行でBOUND1以下または
+  #  BOUND2以上にクイーンは置けないということ
+  #  BOUND2はsize-t_x[0]
   #  if(row==sizeE){
   #    //if(!bitmap){
   #    if(bitmap){
@@ -100,7 +107,6 @@ function placement()
       &&(dimy==0||dimy==size-1)))&&{
       return 0;
     } 
-    #最下段枝刈り
     ((  (dimx==size-1)&&((dimy<=t_x[0])||
         dimy>=size-t_x[0])))&&{
       return 0;
@@ -134,9 +140,8 @@ function carryChainSymmetry()
   # 斜め下方向への反転が小さいかをチェックする
   (( (n==ww)&&(e>(w2-s)) ))&& return ;
   #
-  # 枝刈り
-  #
-  #１行目が角の場合回転対称チェックせずCOUNT8にする
+  # 【枝刈り】 １行目が角の場合
+  #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[0]==0 ))&&{
     solveQueen;
