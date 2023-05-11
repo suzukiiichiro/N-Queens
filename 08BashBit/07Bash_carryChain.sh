@@ -75,8 +75,8 @@ function placement()
   #  if ((row<BOUND1));then        
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
-  # BOUND1はt_x[0]
   #
+  # BOUND1はt_x[0]
   #    if ((row==BOUND2));then     # 下部サイド枝刈り
   #      if (( !(down&SIDEMASK) ));then
   #        return ;
@@ -85,11 +85,11 @@ function placement()
   #        bitmap=$(( bitmap&SIDEMASK ));
   #      fi
   #    fi
-  # BOUND2はsize-t_x[0]
   #
   #【枝刈り】 最下段枝刈り
   # LSATMASKの意味は最終行でBOUND1以下または
   # BOUND2以上にクイーンは置けないということ
+  # BOUND2はsize-t_x[0]
   #  if(row==sizeE){
   #    //if(!bitmap){
   #    if(bitmap){
