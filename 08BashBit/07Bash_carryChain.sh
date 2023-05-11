@@ -33,39 +33,8 @@ function solve()
   local -i bit=0;
   local -i bitmap=0;
   local -i total=0;
-  local -i MASK=$(( (1<<size)-1 ));
-  #(( bitmap=~(left|down|right) ));
-  (( bitmap=MASK&~(left|down|right) ));
-  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
-  #
-  # Qが角にないときの枝刈り
-  #
-  if (( t_x[0]!=0 ));then 
-    : '
-    local -i TOPBIT=$(( 1<<(size-1) )); 
-    local -i SIDEMASK=$(( TOPBIT|1 ));
-    local -i BOUND1=;
-    local -i BOUND2=;
-    if ((row<BOUND1));then        # 上部サイド枝刈り
-      bitmap=$(( bitmap|SIDEMASK ));
-      bitmap=$(( bitmap^=SIDEMASK ));
-    else 
-      if ((row==BOUND2));then     # 下部サイド枝刈り
-        if (( !(down&SIDEMASK) ));then
-          return ;
-        fi
-        if (( (down&SIDEMASK)!=SIDEMASK ));then
-          bitmap=$(( bitmap&SIDEMASK ));
-        fi
-      fi
-    fi
-    ';
-  fi
-  #
-  #
-  while (( bitmap!=0 ));do
+  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
     (( bit=bitmap&-bitmap ));
-    (( bitmap^=bit ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     total+=$?;
   done
