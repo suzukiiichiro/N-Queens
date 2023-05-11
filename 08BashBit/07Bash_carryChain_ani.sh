@@ -10,6 +10,7 @@ declare -a pres_a;
 declare -a pres_b;
 declare -A B; # B=(row left down right X[@])
 declare -A X; # dimx=(0 0 0 0 0)
+declare -i n=w=s=e=0;
 #
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
@@ -32,23 +33,19 @@ function solve()
   local -i bit=0;
   local -i bitmap=0;
   local -i total=0;
-  #local -i MASK=$(( (1<<size)-1 ));
+  local -i MASK=$(( (1<<size)-1 ));
   # local -i TOPBIT=$(( 1<<(size-1) )); 
   # local -i ENDBIT=$(( TOPBIT>>1 ));
   # local -i SIDEMASK=$(( TOPBIT|1 ));
   # local -i LASTMASK=$(( TOPBIT|1 )); 
 
-  (( bitmap=~(left|down|right) ));
-  #(( bitmap=MASK&~(left|down|right) ));
-  #
-  # Qが角にあるときの枝刈り
+  #(( bitmap=~(left|down|right) ));
+  (( bitmap=MASK&~(left|down|right) ));
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
-  if (( t_x[0]==0 ));then # 角だったら
-    bitmap=$(( bitmap|2 ));
-    bitmap=$(( bitmap^2 ));
-  else
-    :
-    # Qが角にないときの枝刈り
+  #
+  # Qが角にないときの枝刈り
+  #
+  if (( t_x[0]!=0 ));then 
     : '
     local -i TOPBIT=$(( 1<<(size-1) )); 
     local -i SIDEMASK=$(( TOPBIT|1 ));
@@ -69,6 +66,7 @@ function solve()
     fi
     ';
   fi
+  #
   #
   while (( bitmap!=0 ));do
     (( bit=bitmap&-bitmap ));
@@ -94,29 +92,39 @@ function placement()
 {
   local -i dimx="$1";     # dimxは行 dimyは列
   local -i dimy="$2";
-  
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
-  #backtrack1の枝刈りを追加
-  ((t_x[1]!=-1&&t_x[0]==0))&&{
-    #backtrack1では2行目のクイーンの位置t_x[1]がBOUND1
-    #BOUND1行目までは2列目にクイーンを置くことができない
-    #bitmap=$(( bitmap|2 ));
-    #bitmap=$(( bitmap^2 ));
-    #
-    ((t_x[1]>=dimx&&dimy==1))&&{ 
-     return 0;
-    }
+  #
+  # Qが角にある場合の枝刈り
+  #
+  #Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
+  #BOUND1行目までは2列目にクイーンを置くことはできない
+  (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
+    # bitmap=$(( bitmap|2 ));
+    # bitmap=$(( bitmap^2 ));
+    # 上と下は同じ趣旨
+    (( (t_x[1]>=dimx) && (dimy==1) ))&&{ return 0; }
   }
-
-
-  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
+  #Qに角がない場合
+  #上部サイド枝刈り
+  #  if ((row<BOUND1));then        # 
+  #    bitmap=$(( bitmap|SIDEMASK ));
+  #    bitmap=$(( bitmap^=SIDEMASK ));
+  #BOUND1はt_x[0]
+  #
+  (( (t_x[0]!=-1) && (t_x[0]!=0) ))&&{
+    (((dimx<t_x[0])&&(dimy==0||dimy==size-1)))&&{
+      return 0;
+    } 
+  }
+  #
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
         (B[left] & 1<<(size-1-dimx+dimy))||
         (B[right] & 1<<(dimx+dimy)) ));then
     return 0;
   fi 
+  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   ((B[row]|=1<<dimx));
   ((B[down]|=1<<dimy));
   ((B[left]|=1<<(size-1-dimx+dimy)));
@@ -188,6 +196,7 @@ function buildChain()
     B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
     placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
     placement "1" "$((pres_b[w]))";
+    [[ $? -eq 0 ]] && continue;
     #
     # ２ 90度回転
     # nB=( ${B[@]} );
