@@ -94,50 +94,61 @@ bool placement(int dimx,int dimy)
 {
   if(B.x[dimx]==dimy){ return true;  }  
   /** 
-    Qが角にある場合の枝刈り
-    Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
-    BOUND1行目までは2列目にクイーンを置くことはできない
+  #
+  #
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry()内にあります）
+  #
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
   */ 
-  if ((B.x[1]!=-1)&&(B.x[0]==0)){
-    // bitmap=$(( bitmap|2 ));
-    // bitmap=$(( bitmap^2 ));
-    // 上と下は同じ趣旨
-    if((B.x[1]>=dimx)&&(dimy==1)){ return false; }
-  }
-  /**
-    Qが角にない場合の上部サイド枝刈り
-    if ((row<BOUND1));then        
-      bitmap=$(( bitmap|SIDEMASK ));
-      bitmap=$(( bitmap^=SIDEMASK ));
-    BOUND1はt_x[0]
-  
-      if ((row==BOUND2));then     # 下部サイド枝刈り
-        if (( !(down&SIDEMASK) ));then
-          return ;
-        fi
-        if (( (down&SIDEMASK)!=SIDEMASK ));then
-          bitmap=$(( bitmap&SIDEMASK ));
-        fi
-      fi
-    BOUND2はsize-t_x[0]
-  
-  【枝刈り】 最下段枝刈り
-   LSATMASKの意味は最終行でBOUND1以下または
-   BOUND2以上にクイーンは置けないということ
-    if(row==sizeE){
-      //if(!bitmap){
-      if(bitmap){
-        if((bitmap&LASTMASK)==0){
-  **/
-  if( (B.x[0]!=-1 && B.x[0]!=0) ){
-    if(( (dimx<B.x[0]||dimx>=size-B.x[0])
-      && (dimy==0 || dimy==size-1)
-    )){ return 0; } 
-    //最下段枝刈り
-    if ((  (dimx==size-1)&&((dimy<=B.x[0])||
-        dimy>=size-B.x[0]))){
-      return 0;
-    } 
+  if (B.x[0]==0){
+    if (B.x[1]!=-1){
+      // bitmap=$(( bitmap|2 ));
+      // bitmap=$(( bitmap^2 ));
+      // 上と下は同じ趣旨
+      if((B.x[1]>=dimx)&&(dimy==1)){ return false; }
+    }
+  }else{
+    /**
+    # 【枝刈り】Qが角にない場合
+    #   １．上部サイド枝刈り
+    #  if ((row<BOUND1));then        
+    #    bitmap=$(( bitmap|SIDEMASK ));
+    #    bitmap=$(( bitmap^=SIDEMASK ));
+    #
+    #  BOUND1はt_x[0]
+    #
+    #  ２．下部サイド枝刈り
+    #  if ((row==BOUND2));then     
+    #    if (( !(down&SIDEMASK) ));then
+    #      return ;
+    #    fi
+    #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+    #      bitmap=$(( bitmap&SIDEMASK ));
+    #    fi
+    #  fi
+    #
+    #  ２．最下段枝刈り
+    #  LSATMASKの意味は最終行でBOUND1以下または
+    #  BOUND2以上にクイーンは置けないということ
+    #  BOUND2はsize-t_x[0]
+    #  if(row==sizeE){
+    #    //if(!bitmap){
+    #    if(bitmap){
+    #      if((bitmap&LASTMASK)==0){
+    **/
+    if( (B.x[0]!=-1) ){
+      if(( (dimx<B.x[0]||dimx>=size-B.x[0])
+        && (dimy==0 || dimy==size-1)
+      )){ return 0; } 
+      if ((  (dimx==size-1)&&((dimy<=B.x[0])||
+          dimy>=size-B.x[0]))){
+        return 0;
+      } 
+    }
   }
   B.x[dimx]=dimy;                    //xは行 yは列
   uint64 row=1<<dimx;
