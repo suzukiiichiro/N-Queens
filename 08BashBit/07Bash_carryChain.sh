@@ -62,13 +62,14 @@ function placement()
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
   #
+  #
   # 【枝刈り】Qが角にある場合の枝刈り
   #  ２．２列めにクイーンは置かない
   #  （１はcarryChainSymmetry()内にあります）
   #
-  #Qが角にある場合は、
-  # 2行目のクイーンの位置 t_x[1]が BOUND1
-  # BOUND1行目までは2列目にクイーンを置けない
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
   (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
     # bitmap=$(( bitmap|2 ));
     # bitmap=$(( bitmap^2 ));
@@ -78,12 +79,13 @@ function placement()
   #
   #
   # 【枝刈り】Qが角にない場合
-     １．上部サイド枝刈り
+  #   １．上部サイド枝刈り
   #  if ((row<BOUND1));then        
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
   #
   #  BOUND1はt_x[0]
+  #
   #  if ((row==BOUND2));then     # 下部サイド枝刈り
   #    if (( !(down&SIDEMASK) ));then
   #      return ;
