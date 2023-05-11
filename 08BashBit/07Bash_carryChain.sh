@@ -10,6 +10,7 @@ declare -a pres_a;
 declare -a pres_b;
 declare -A B; # B=(row left down right X[@])
 declare -A X; # dimx=(0 0 0 0 0)
+declare -i n=w=s=e=0;
 #
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
@@ -98,11 +99,11 @@ function placement()
   #
   #Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
   #BOUND1行目までは2列目にクイーンを置くことはできない
-  ((t_x[1]!=-1&&t_x[0]==0))&&{
+  (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
     # bitmap=$(( bitmap|2 ));
     # bitmap=$(( bitmap^2 ));
     # 上と下は同じ趣旨
-    ((t_x[1]>=dimx&&dimy==1))&&{ return 0; }
+    (( (t_x[1]>=dimx) && (dimy==1) ))&&{ return 0; }
   }
   #
   #
