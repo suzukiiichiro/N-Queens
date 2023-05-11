@@ -1,13 +1,13 @@
 
+// $ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC
 
-// gcc -Wall -W -O3 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
 
-#define THREAD_NUM		96
 #define MAX 27
 int size;
 long TOTAL=0; 
@@ -17,7 +17,6 @@ int COUNT4=0;
 int COUNT2=0;
 int pres_a[930];
 int pres_b[930];
-int cnt[3];
 int w,s,e,n;
 typedef struct{
   int row;
@@ -61,19 +60,17 @@ bool placement(int dimx,int dimy)
     if((B.x[1]>=dimx)&&(dimy==1)){ return false; }
   }
   /**
-  # Qが角にない場合の上部サイド枝刈り
-  #  if ((row<BOUND1));then        
-  #    bitmap=$(( bitmap|SIDEMASK ));
-  #    bitmap=$(( bitmap^=SIDEMASK ));
-  # BOUND1はt_x[0]
+    Qが角にない場合の上部サイド枝刈り
+    if ((row<BOUND1));then        
+      bitmap=$(( bitmap|SIDEMASK ));
+      bitmap=$(( bitmap^=SIDEMASK ));
+    BOUND1はt_x[0]
   **/
   if(( (B.x[0]!=-1) && (B.x[0]!=0) )){
     if (((dimx<B.x[0])&&(dimy==0||dimy==size-1))){
       return 0;
     } 
   }
-
-  //
   B.x[dimx]=dimy;                    //xは行 yは列
   int row=1<<dimx;
   int down=1<<dimy;
