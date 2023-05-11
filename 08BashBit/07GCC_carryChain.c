@@ -1,9 +1,46 @@
 /**
  *
  * キャリーチェーンC言語版
- ビルドと実行
+
+ 
  $ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC
- */
+ ７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.37
+15:      2279184          285095            1.40
+16:     14383852         1798833            7.08
+17:    115862840        14485547           43.29
+18:   1757371356       219689335         5:14.07
+
+ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -r
+１２．CPUR 再帰 対称解除法の最適化
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.00
+12:        14200            1787            0.00
+13:        73712            9233            0.01
+14:       365596           45752            0.07
+15:      2279184          285053            0.40
+16:     14772512         1846955            2.61
+17:     95815104        11977939           18.05
+
+  */
 
 
 
@@ -17,23 +54,24 @@
 int size;
 long TOTAL=0; 
 long UNIQUE=0;
-int COUNT8=0;
-int COUNT4=0;
-int COUNT2=0;
+long COUNT8=0;
+long COUNT4=0;
+long COUNT2=0;
 int pres_a[930];
 int pres_b[930];
 int w,s,e,n;
+typedef unsigned long long uint64;
 typedef struct{
-  int row;
-  int down;
-  int left;
-  int right;
-  int x[MAX];
+  uint64 row;
+  uint64 down;
+  uint64 left;
+  uint64 right;
+  uint64 x[MAX];
 }Board ;
 Board B;
 //
 // ボード外側２列を除く内側のクイーン配置処理
-long solve(int row,int left,int down,int right)
+long solve(uint64 row,uint64 left,uint64 down,uint64 right)
 {
   if(down+1==0){ return  1; }
   while((row&1)!=0) { 
@@ -42,9 +80,9 @@ long solve(int row,int left,int down,int right)
     right>>=1;
   }
   row>>=1;
-  int total=0;
-  int bit;
-  for(int bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  long total=0;
+  uint64 bit;
+  for(uint64 bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=bitmap&-bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
   }
@@ -101,10 +139,10 @@ bool placement(int dimx,int dimy)
     } 
   }
   B.x[dimx]=dimy;                    //xは行 yは列
-  int row=1<<dimx;
-  int down=1<<dimy;
-  int left=1<<(size-1-dimx+dimy);    //右上から左下
-  int right=1<<(dimx+dimy);          // 左上から右下
+  uint64 row=1<<dimx;
+  uint64 down=1<<dimy;
+  uint64 left=1<<(size-1-dimx+dimy);    //右上から左下
+  uint64 right=1<<(dimx+dimy);          // 左上から右下
   if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }     
   B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
