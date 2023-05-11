@@ -39,8 +39,8 @@ function solve()
   # local -i SIDEMASK=$(( TOPBIT|1 ));
   # local -i LASTMASK=$(( TOPBIT|1 )); 
 
-  #(( bitmap=~(left|down|right) ));
-  (( bitmap=MASK&~(left|down|right) ));
+  (( bitmap=~(left|down|right) ));
+  #(( bitmap=MASK&~(left|down|right) ));
   local -a t_x=(${B[x]}); # 同じ場所の配置を許す
   #
   # Qが角にないときの枝刈り
@@ -105,26 +105,49 @@ function placement()
     # 上と下は同じ趣旨
     (( (t_x[1]>=dimx) && (dimy==1) ))&&{ return 0; }
   }
-  #Qに角がない場合
-  #上部サイド枝刈り
-  #  if ((row<BOUND1));then        # 
+  #
+  #
+  # Qが角にない場合の上部サイド枝刈り
+  #  if ((row<BOUND1));then        
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
-  #BOUND1はt_x[0]
+  # BOUND1はt_x[0]
+  # Qが角にない場合の下部サイド枝刈り
+  #    if ((row==BOUND2));then     # 下部サイド枝刈り
+  #      if (( !(down&SIDEMASK) ));then
+  #        return ;
+  #      fi
+  #      if (( (down&SIDEMASK)!=SIDEMASK ));then
+  #        bitmap=$(( bitmap&SIDEMASK ));
+  #      fi
+  #    fi
+  # BOUND2はsize-t_x[0]
+  #
+  #【枝刈り】 最下段枝刈り
+  #LSATMASKの意味は最終行でBOUND1以下またはBOUND2以上にクイーンは置けないということ
+  #  if(row==sizeE){
+  #    //if(!bitmap){
+  #    if(bitmap){
+  #      if((bitmap&LASTMASK)==0){
   #
   (( (t_x[0]!=-1) && (t_x[0]!=0) ))&&{
-    (((dimx<t_x[0])&&(dimy==0||dimy==size-1)))&&{
+    #
+    ((((dimx<t_x[0])||dimx>=size-t_x[0])&&(dimy==0||dimy==size-1)))&&{
+      return 0;
+    } 
+    #最下段枝刈り
+    (((dimx==size-1)&&((dimy<=t_x[0])||dimy>=size-t_x[0])))&&{
       return 0;
     } 
   }
-  #
+
+  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
         (B[left] & 1<<(size-1-dimx+dimy))||
         (B[right] & 1<<(dimx+dimy)) ));then
     return 0;
   fi 
-  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   ((B[row]|=1<<dimx));
   ((B[down]|=1<<dimy));
   ((B[left]|=1<<(size-1-dimx+dimy)));
@@ -195,6 +218,7 @@ function buildChain()
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
     B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
     placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
+    [[ $? -eq 0 ]] && continue;
     placement "1" "$((pres_b[w]))";
     [[ $? -eq 0 ]] && continue;
     #
