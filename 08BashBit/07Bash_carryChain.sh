@@ -146,21 +146,22 @@ function solve()
   # 配置完了の確認 
   # bh=-1 1111111111 すべての列にクイーンを置けると
   # -1になる
-  (( (down+1)==0 ))&& return 1;
+  (( !(down+1) ))&& return 1;
   # 新たなQを配置 colは置き換える。
   # row 右端にクイーンがすでに置かれていたら
   # クイーンを置かずに１行下に移動する。
   # rowを右端から１ビットずつ削っていく。
   # ここではrowはすでにクイーンが置かれているか
   # どうかだけで使う
-  while(( (row&1)!=0 ));do
-    (( row>>=1 ))     # 右に１ビットシフト
-    (( left<<=1 ));   # left 左に１ビットシフト
-    (( right>>=1 ));  # right 右に１ビットシフト
+  while(( row&1 ));do
+    # (( row>>=1 ))     # 右に１ビットシフト
+    # (( left<<=1 ));   # left 左に１ビットシフト
+    # (( right>>=1 ));  # right 右に１ビットシフト
+    (( row>>=1,left<<=1,right>>=1 ));
   done
   (( row>>=1 ));      # １行下に移動する
-  local -i bit=0;
-  local -i bitmap=0;
+  local -i bit;
+  local -i bitmap;
   local -i total=0;
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
     (( bit=bitmap&-bitmap ));
@@ -271,14 +272,14 @@ function placement()
     fi
   fi
   #
-  if (( (B[row] & 1<<dimx)||
+  (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
         (B[left] & 1<<(size-1-dimx+dimy))||
-        (B[right] & 1<<(dimx+dimy)) ));then
-    return 0;
-  fi 
-  t_x[$dimx]="$dimy"; B[x]=${t_x[@]}; # Bに反映  
-  #
+        (B[right] & 1<<(dimx+dimy)) )) && return 0;
+
+  t_x[$dimx]="$dimy"; 
+  B[x]=${t_x[@]}; # Bに反映  
+
   #
   # ボードレイアウト出力
   board[$dimx]=$((1<<dimy));
@@ -289,10 +290,11 @@ function placement()
   fi
   #
   #
+  #
   ((B[row]|=1<<dimx));
   ((B[down]|=1<<dimy));
   ((B[left]|=1<<(size-1-dimx+dimy)));
-  # ((B[right]|=1<<(dimx+dimy)));
+  ((B[right]|=1<<(dimx+dimy)));
   return 1;
 }
 #
@@ -420,10 +422,8 @@ function initChain()
   local -i a=b=0;
   for ((a=0;a<size;a++));do
     for ((b=0;b<size;b++));do
-      if (( ( (a>=b)&&((a-b)<=1) )||
-            ( (b>a)&& ((b-a)<=1) ) ));then
-        continue;
-      fi
+      (( ( (a>=b)&&((a-b)<=1) )||
+            ( (b>a)&& ((b-a)<=1) ) )) && continue;
       pres_a[$idx]=$a;
       pres_b[$idx]=$b;
       ((idx++));
@@ -444,8 +444,8 @@ function carryChain()
 }
 #
 # 実行
-size=5;
-DISPLAY=1; # 0:出力しない 1:ディスプレイ出力
+size=8;
+DISPLAY=0; # 0:出力しない 1:ディスプレイ出力
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
