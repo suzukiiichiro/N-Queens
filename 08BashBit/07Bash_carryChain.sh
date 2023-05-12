@@ -14,6 +14,127 @@ declare -a pres_b;
 declare -A B; # B=(row left down right X[@])
 declare -A X; # dimx=(0 0 0 0 0)
 declare -i n=w=s=e=0;
+declare -i DISPLAY=0;
+declare -i board;
+#
+: 'ボードレイアウトを出力 ビットマップ対応版';
+function printRecordCarryChain()
+{
+  ((TOTAL++));
+  size="$1";
+  flag="$2"; # bitmap版は1 それ以外は 0
+  echo "$TOTAL";
+  sEcho=" ";  
+  : 'ビットマップ版
+     ビットマップ版からは、左から数えます
+     上下反転左右対称なので、これまでの上から数える手法と
+     rowを下にたどって左から数える方法と解の数に変わりはありません。
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | | 0
+    +-+-+-+-+-+
+    | | |O| | | 2
+    +-+-+-+-+-+
+    | | | | |O| 4
+    +-+-+-+-+-+
+    | |O| | | | 1
+    +-+-+-+-+-+
+    | | | |O| | 3
+    +-+-+-+-+-+
+  ';
+  if ((flag));then
+    local -i i=0;
+    local -i j=0;
+    for ((i=0;i<size;i++));do
+      for ((j=0;j<size;j++));do
+       if (( board[i]&1<<j ));then
+          sEcho="${sEcho}$((j)) ";
+       fi 
+      done
+    done
+  else 
+  : 'ビットマップ版以外
+     (ブルートフォース、バックトラック、配置フラグ)
+     上から数えます
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | |
+    +-+-+-+-+-+
+    | | | |O| |
+    +-+-+-+-+-+
+    | |O| | | |
+    +-+-+-+-+-+
+    | | | | |O|
+    +-+-+-+-+-+
+    | | |O| | |
+    +-+-+-+-+-+
+
+     ';
+    local -i i=0;
+    for((i=0;i<size;i++)){
+      sEcho="${sEcho}${board[i]} ";
+    }
+  fi
+  echo "$sEcho";
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }
+  echo "+";
+  local -i i=0;
+  local -i j=0;
+  for((i=0;i<size;i++)){
+    echo -n "|";
+    for((j=0;j<size;j++)){
+      if ((flag));then
+        if(( board[i]!=-1));then
+          if (( board[i]&1<<j ));then
+            echo -n "Q";
+          else
+            echo -n " ";
+          fi
+        else
+          echo -n " ";
+        fi
+      else
+        if((i==board[j]));then
+          echo -n "Q";
+        else
+          echo -n " ";
+        fi
+      fi
+      if((j<(size-1)));then
+        echo -n "|";
+      fi
+    }
+  echo "|";
+  if((i<(size-1)));then
+    echo -n "+";
+    local -i j=0;
+    for((j=0;j<size;j++)){
+      echo -n "-";
+      if((j<(size-1)));then
+        echo -n "+";
+      fi
+    }
+  echo "+";
+  fi
+  }
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }  
+  echo "+";
+  echo "";
+}
 #
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
@@ -116,6 +237,8 @@ function placement()
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
   #
+  #  | | | | | |       
+  #  +-+-+-+-+-+  
   #  BOUND1はt_x[0]
   #
   #  ２．下部サイド枝刈り
@@ -148,17 +271,28 @@ function placement()
     fi
   fi
   #
-  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
   if (( (B[row] & 1<<dimx)||
         (B[down] & 1<<dimy)||
         (B[left] & 1<<(size-1-dimx+dimy))||
         (B[right] & 1<<(dimx+dimy)) ));then
     return 0;
   fi 
+  t_x[$dimx]="$dimy"; B[x]=${t_x[@]}; # Bに反映  
+  #
+  #
+  # ボードレイアウト出力
+  board[$dimx]=$((1<<dimy));
+  if ((DISPLAY==1));then
+    # 出力 1:bitmap版 0:それ以外
+    printRecordCarryChain "$size" "1";
+    read -p "";
+  fi
+  #
+  #
   ((B[row]|=1<<dimx));
   ((B[down]|=1<<dimy));
   ((B[left]|=1<<(size-1-dimx+dimy)));
-  ((B[right]|=1<<(dimx+dimy)));
+  # ((B[right]|=1<<(dimx+dimy)));
   return 1;
 }
 #
@@ -218,6 +352,8 @@ function buildChain()
   local -A wB=B; # bashの連想配列は↓が必要
   for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
+    # ボードレイアウト出力変数boardの初期化
+    for((i=0;i<size;i++));do board[$i]=-1; done
     # B=( $wB[@] );
     B=wB;  # bashの連想配列は↓が必要
     for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
@@ -308,7 +444,8 @@ function carryChain()
 }
 #
 # 実行
-size=8;
+size=5;
+DISPLAY=1; # 0:出力しない 1:ディスプレイ出力
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
