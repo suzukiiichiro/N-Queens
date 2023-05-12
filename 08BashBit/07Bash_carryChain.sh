@@ -163,6 +163,8 @@ function solve()
   local -i bit;
   local -i bitmap;
   local -i total=0;
+  local -a pID; # 並列処理
+  local -i pID_index=0; # 並列処理
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
     (( bit=bitmap&-bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
@@ -288,7 +290,7 @@ function placement()
     printRecordCarryChain "$size" "1";
     read -p "";
   fi
-  #
+  # #
   #
   #
   ((B[row]|=1<<dimx));
@@ -354,8 +356,10 @@ function buildChain()
   local -A wB=B; # bashの連想配列は↓が必要
   for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
+    #
     # ボードレイアウト出力変数boardの初期化
     for((i=0;i<size;i++));do board[$i]=-1; done
+    #
     # B=( $wB[@] );
     B=wB;  # bashの連想配列は↓が必要
     for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
