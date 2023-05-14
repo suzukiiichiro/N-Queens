@@ -8,9 +8,131 @@ declare -i COUNT4=0;
 declare -i COUNT8=0;
 declare -a pres_a;
 declare -a pres_b;
-declare -A B; # B=(row left down right X[@])
-declare -A X; # dimx=(0 0 0 0 0)
+#declare -A B; # B=(row left down right X[@])
+declare -a B; # B=(row left down right X[@])
+declare -a X; # dimx=(0 0 0 0 0)
 declare -i n=w=s=e=0;
+declare -i DISPLAY=0;
+declare -i board;
+#
+: 'ボードレイアウトを出力 ビットマップ対応版';
+function printRecordCarryChain()
+{
+  ((TOTAL++));
+  size="$1";
+  flag="$2"; # bitmap版は1 それ以外は 0
+  echo "$TOTAL";
+  sEcho=" ";  
+  : 'ビットマップ版
+     ビットマップ版からは、左から数えます
+     上下反転左右対称なので、これまでの上から数える手法と
+     rowを下にたどって左から数える方法と解の数に変わりはありません。
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | | 0
+    +-+-+-+-+-+
+    | | |O| | | 2
+    +-+-+-+-+-+
+    | | | | |O| 4
+    +-+-+-+-+-+
+    | |O| | | | 1
+    +-+-+-+-+-+
+    | | | |O| | 3
+    +-+-+-+-+-+
+  ';
+  if ((flag));then
+    local -i i=0;
+    local -i j=0;
+    for ((i=0;i<size;i++));do
+      for ((j=0;j<size;j++));do
+       if (( board[i]&1<<j ));then
+          sEcho="${sEcho}$((j)) ";
+       fi 
+      done
+    done
+  else 
+  : 'ビットマップ版以外
+     (ブルートフォース、バックトラック、配置フラグ)
+     上から数えます
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | |
+    +-+-+-+-+-+
+    | | | |O| |
+    +-+-+-+-+-+
+    | |O| | | |
+    +-+-+-+-+-+
+    | | | | |O|
+    +-+-+-+-+-+
+    | | |O| | |
+    +-+-+-+-+-+
+
+     ';
+    local -i i=0;
+    for((i=0;i<size;i++)){
+      sEcho="${sEcho}${board[i]} ";
+    }
+  fi
+  echo "$sEcho";
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }
+  echo "+";
+  local -i i=0;
+  local -i j=0;
+  for((i=0;i<size;i++)){
+    echo -n "|";
+    for((j=0;j<size;j++)){
+      if ((flag));then
+        if(( board[i]!=-1));then
+          if (( board[i]&1<<j ));then
+            echo -n "Q";
+          else
+            echo -n " ";
+          fi
+        else
+          echo -n " ";
+        fi
+      else
+        if((i==board[j]));then
+          echo -n "Q";
+        else
+          echo -n " ";
+        fi
+      fi
+      if((j<(size-1)));then
+        echo -n "|";
+      fi
+    }
+  echo "|";
+  if((i<(size-1)));then
+    echo -n "+";
+    local -i j=0;
+    for((j=0;j<size;j++)){
+      echo -n "-";
+      if((j<(size-1)));then
+        echo -n "+";
+      fi
+    }
+  echo "+";
+  fi
+  }
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }  
+  echo "+";
+  echo "";
+}
 #
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
@@ -19,58 +141,30 @@ function solve()
   local -i left="$2";
   local -i down="$3";
   local -i right="$4";
-  # 配置完了の確認 # bh=-1 1111111111 すべての列にクイーンを置けると-1になる
-  (( (down+1)==0 ))&& return 1;
-  # 新たなQを配置 colは置き換える。row 右端にクイーンがすでに置かれていたらクイー
-  # ンを置かずに１行下に移動する。rowを右端から１ビットずつ削っていく。ここでは
-  # rowはすでにクイーンが置かれているかどうかだけで使う
-  while(( (row&1)!=0 ));do
-    (( row>>=1 ))     # 右に１ビットシフト
-    (( left<<=1 ));   # left 左に１ビットシフト
-    (( right>>=1 ));  # right 右に１ビットシフト
+  # 配置完了の確認 
+  # bh=-1 1111111111 すべての列にクイーンを置けると
+  # -1になる
+  (( !(down+1) ))&& return 1;
+  # 新たなQを配置 colは置き換える。
+  # row 右端にクイーンがすでに置かれていたら
+  # クイーンを置かずに１行下に移動する。
+  # rowを右端から１ビットずつ削っていく。
+  # ここではrowはすでにクイーンが置かれているか
+  # どうかだけで使う
+  while(( row&1 ));do
+    # (( row>>=1 ))     # 右に１ビットシフト
+    # (( left<<=1 ));   # left 左に１ビットシフト
+    # (( right>>=1 ));  # right 右に１ビットシフト
+    (( row>>=1,left<<=1,right>>=1 ));
   done
   (( row>>=1 ));      # １行下に移動する
-  local -i bit=0;
-  local -i bitmap=0;
+  local -i bit;
+  local -i bitmap;
   local -i total=0;
-  local -i MASK=$(( (1<<size)-1 ));
-  # local -i TOPBIT=$(( 1<<(size-1) )); 
-  # local -i ENDBIT=$(( TOPBIT>>1 ));
-  # local -i SIDEMASK=$(( TOPBIT|1 ));
-  # local -i LASTMASK=$(( TOPBIT|1 )); 
-
-  (( bitmap=~(left|down|right) ));
-  #(( bitmap=MASK&~(left|down|right) ));
-  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
-  #
-  # Qが角にないときの枝刈り
-  #
-  if (( t_x[0]!=0 ));then 
-    : '
-    local -i TOPBIT=$(( 1<<(size-1) )); 
-    local -i SIDEMASK=$(( TOPBIT|1 ));
-    local -i BOUND1=;
-    local -i BOUND2=;
-    if ((row<BOUND1));then        # 上部サイド枝刈り
-      bitmap=$(( bitmap|SIDEMASK ));
-      bitmap=$(( bitmap^=SIDEMASK ));
-    else 
-      if ((row==BOUND2));then     # 下部サイド枝刈り
-        if (( !(down&SIDEMASK) ));then
-          return ;
-        fi
-        if (( (down&SIDEMASK)!=SIDEMASK ));then
-          bitmap=$(( bitmap&SIDEMASK ));
-        fi
-      fi
-    fi
-    ';
-  fi
-  #
-  #
-  while (( bitmap!=0 ));do
+  local -a pID; # 並列処理
+  local -i pID_index=0; # 並列処理
+  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
     (( bit=bitmap&-bitmap ));
-    (( bitmap^=bit ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     total+=$?;
   done
@@ -80,10 +174,14 @@ function solve()
 : 'solve()を呼び出して再帰を開始する';
 function solveQueen()
 {
-  solve "$(( B[row]>>2 ))" \
-        "$(( B[left]>>4 ))" \
-        "$(( (((B[down]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
-        "$(( B[right]>>4<<size-5 ))";
+  # solve "$(( B[row]>>2 ))" \
+  #       "$(( B[left]>>4 ))" \
+  #       "$(( (((B[down]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+  #       "$(( B[right]>>4<<size-5 ))";
+  solve "$(( B[0]>>2 ))" \
+        "$(( B[1]>>4 ))" \
+        "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+        "$(( B[3]>>4<<size-5 ))";
   return $?;
 }
 #
@@ -92,66 +190,123 @@ function placement()
 {
   local -i dimx="$1";     # dimxは行 dimyは列
   local -i dimy="$2";
-  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
   #
-  # Qが角にある場合の枝刈り
   #
-  #Qが角にある場合は2行目のクイーンの位置t_x[1]がBOUND1
-  #BOUND1行目までは2列目にクイーンを置くことはできない
-  (( (t_x[1]!=-1) && (t_x[0]==0) ))&&{
-    # bitmap=$(( bitmap|2 ));
-    # bitmap=$(( bitmap^2 ));
-    # 上と下は同じ趣旨
-    (( (t_x[1]>=dimx) && (dimy==1) ))&&{ return 0; }
-  }
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry()内にあります）
   #
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
+  # 
+  #    +-+-+-+-+-+  
+  #    | | | |X|Q| 
+  #    +-+-+-+-+-+  
+  #    | |Q| |X| | 
+  #    +-+-+-+-+-+  
+  #    | | | |X| |       
+  #    +-+-+-+-+-+             
+  #    | | | |Q| | 
+  #    +-+-+-+-+-+ 
+  #    | | | | | |      
+  #    +-+-+-+-+-+  
   #
-  # Qが角にない場合の上部サイド枝刈り
+  if (( t_x[0]==0 ));then
+    if (( t_x[1]!=-1));then
+      # bitmap=$(( bitmap|2 ));
+      # bitmap=$(( bitmap^2 ));
+      # 上と下は同じ趣旨
+      (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
+    fi
+  else
+  #
+  # 【枝刈り】Qが角にない場合
+  #
+  #  +-+-+-+-+-+  
+  #  |X|X|Q|X|X| 
+  #  +-+-+-+-+-+  
+  #  |X| | | |X| 
+  #  +-+-+-+-+-+  
+  #  | | | | | |
+  #  +-+-+-+-+-+
+  #  |X| | | |X|
+  #  +-+-+-+-+-+
+  #  |X|X| |X|X|
+  #  +-+-+-+-+-+
+  #
+  #   １．上部サイド枝刈り
   #  if ((row<BOUND1));then        
   #    bitmap=$(( bitmap|SIDEMASK ));
   #    bitmap=$(( bitmap^=SIDEMASK ));
-  # BOUND1はt_x[0]
-  # Qが角にない場合の下部サイド枝刈り
-  #    if ((row==BOUND2));then     # 下部サイド枝刈り
-  #      if (( !(down&SIDEMASK) ));then
-  #        return ;
-  #      fi
-  #      if (( (down&SIDEMASK)!=SIDEMASK ));then
-  #        bitmap=$(( bitmap&SIDEMASK ));
-  #      fi
-  #    fi
-  # BOUND2はsize-t_x[0]
   #
-  #【枝刈り】 最下段枝刈り
-  #LSATMASKの意味は最終行でBOUND1以下またはBOUND2以上にクイーンは置けないということ
+  #  | | | | | |       
+  #  +-+-+-+-+-+  
+  #  BOUND1はt_x[0]
+  #
+  #  ２．下部サイド枝刈り
+  #  if ((row==BOUND2));then     
+  #    if (( !(down&SIDEMASK) ));then
+  #      return ;
+  #    fi
+  #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+  #      bitmap=$(( bitmap&SIDEMASK ));
+  #    fi
+  #  fi
+  #
+  #  ２．最下段枝刈り
+  #  LSATMASKの意味は最終行でBOUND1以下または
+  #  BOUND2以上にクイーンは置けないということ
+  #  BOUND2はsize-t_x[0]
   #  if(row==sizeE){
   #    //if(!bitmap){
   #    if(bitmap){
   #      if((bitmap&LASTMASK)==0){
+    if (( t_x[0]!=-1));then
+      ((  (dimx<t_x[0]||dimx>=size-t_x[0])
+        &&(dimy==0||dimy==size-1)))&&{
+        return 0;
+      } 
+      ((  (dimx==size-1)&&((dimy<=t_x[0])||
+          dimy>=size-t_x[0])))&&{
+        return 0;
+      } 
+    fi
+  fi
   #
-  (( (t_x[0]!=-1) && (t_x[0]!=0) ))&&{
-    #
-    ((((dimx<t_x[0])||dimx>=size-t_x[0])&&(dimy==0||dimy==size-1)))&&{
-      return 0;
-    } 
-    #最下段枝刈り
-    (((dimx==size-1)&&((dimy<=t_x[0])||dimy>=size-t_x[0])))&&{
-      return 0;
-    } 
-  }
+  # (( (B[row] & 1<<dimx)||
+  #       (B[down] & 1<<dimy)||
+  #       (B[left] & 1<<(size-1-dimx+dimy))||
+  #       (B[right] & 1<<(dimx+dimy)) )) && return 0;
+    (( (B[0] & 1<<dimx)||
+          (B[1] & 1<<(size-1-dimx+dimy))||
+          (B[2] & 1<<dimy)||
+          (B[3] & 1<<(dimx+dimy)) )) && return 0;
 
-  t_x[$dimx]="$dimy" B[x]=${t_x[@]}; # Bに反映  
-  if (( (B[row] & 1<<dimx)||
-        (B[down] & 1<<dimy)||
-        (B[left] & 1<<(size-1-dimx+dimy))||
-        (B[right] & 1<<(dimx+dimy)) ));then
-    return 0;
-  fi 
-  ((B[row]|=1<<dimx));
-  ((B[down]|=1<<dimy));
-  ((B[left]|=1<<(size-1-dimx+dimy)));
-  ((B[right]|=1<<(dimx+dimy)));
+  # #
+  #
+  #
+  # ((B[row]|=1<<dimx));
+  # ((B[left]|=1<<(size-1-dimx+dimy)));
+  # ((B[down]|=1<<dimy));
+  # ((B[right]|=1<<(dimx+dimy)));
+  ((B[0]|=1<<dimx));
+  ((B[1]|=1<<(size-1-dimx+dimy)));
+  ((B[2]|=1<<dimy));
+  ((B[3]|=1<<(dimx+dimy)));
+  t_x[$dimx]="$dimy"; 
+  B[4]=${t_x[@]}; # Bに反映  
+
+  #
+  # ボードレイアウト出力
+  board[$dimx]=$((1<<dimy));
+  if ((DISPLAY==1));then
+    # 出力 1:bitmap版 0:それ以外
+    printRecordCarryChain "$size" "1";
+    read -p "";
+  fi
   return 1;
 }
 #
@@ -168,10 +323,9 @@ function carryChainSymmetry()
   # 斜め下方向への反転が小さいかをチェックする
   (( (n==ww)&&(e>(w2-s)) ))&& return ;
   #
-  # 枝刈り
-  #
-  #１行目が角の場合回転対称チェックせずCOUNT8にする
-  local -a t_x=(${B[x]}); # 同じ場所の配置を許す
+  # 【枝刈り】 １行目が角の場合
+  #  １．回転対称チェックせずCOUNT8にする
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[0]==0 ))&&{
     solveQueen;
     COUNT8+=$?; 
@@ -205,30 +359,37 @@ function carryChainSymmetry()
 function buildChain()
 {
   # Bの初期化
-  B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
+  #B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
+  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
   #
   # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
-  # wB=( $B[@] );
-  local -A wB=B; # bashの連想配列は↓が必要
-  for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
+  local -a wB=( $B[@] );
+  # local -A wB;
+  # local -A wB=B; # bashの連想配列は↓が必要
+  # for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
-    # B=( $wB[@] );
-    B=wB;  # bashの連想配列は↓が必要
-    for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
+    #
+    # ボードレイアウト出力変数boardの初期化
+    for((i=0;i<size;i++));do board[$i]=-1; done
+    #
+    B=( $wB[@] );
+    # B=wB;  # bashの連想配列は↓が必要
+    # for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
-    B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
+    # B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
+    B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
     placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
     [[ $? -eq 0 ]] && continue;
     placement "1" "$((pres_b[w]))";
     [[ $? -eq 0 ]] && continue;
     #
     # ２ 90度回転
-    # nB=( ${B[@]} );
+    #local -a nB=( ${B[@]} );
     local -A nB=B;  # bashの連想配列は↓が必要
     for key_B in "${!B[@]}";do nB["$key_B"]="${B[$key_B]}"; done
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
-      # B=( $nB[@] );
+      #B=( $nB[@] );
       B=nB;  # bashの連想配列は↓が必要
       for key_nB in ${!nB[@]};do B["$key_nB"]="${nB[$key_nB]}"; done
       placement "$((pres_a[n]))" "$((size-1))"; 
@@ -237,7 +398,7 @@ function buildChain()
       [[ $? -eq 0 ]] && continue;
       #
       # ３ 90度回転
-      # eB=( ${B[@]} );
+      #local -a eB=( ${B[@]} );
       local -A eB=B;  # bashの連想配列は↓が必要
       for key_B in ${!B[@]};do eB["$key_B"]="${B[$key_B]}"; done
       for ((e=w;e<mirror;e++));do 
@@ -250,7 +411,7 @@ function buildChain()
         [[ $? -eq 0 ]] && continue;
         #
         # ４ 90度回転
-        #sB=( ${B[@]} );
+        #local -a sB=( ${B[@]} );
         local -A sB=B; # bashの連想配列は↓が必要
         for key_B in ${!B[@]};do sB["$key_B"]="${B[$key_B]}"; done
         for ((s=w;s<mirror;s++));do
@@ -278,10 +439,8 @@ function initChain()
   local -i a=b=0;
   for ((a=0;a<size;a++));do
     for ((b=0;b<size;b++));do
-      if (( ( (a>=b)&&((a-b)<=1) )||
-            ( (b>a)&& ((b-a)<=1) ) ));then
-        continue;
-      fi
+      (( ( (a>=b)&&((a-b)<=1) )||
+            ( (b>a)&& ((b-a)<=1) ) )) && continue;
       pres_a[$idx]=$a;
       pres_b[$idx]=$b;
       ((idx++));
@@ -303,6 +462,8 @@ function carryChain()
 #
 # 実行
 size=8;
+DISPLAY=0; # 0:出力しない 1:ディスプレイ出力
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
+
