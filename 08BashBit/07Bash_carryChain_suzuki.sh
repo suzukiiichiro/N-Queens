@@ -232,16 +232,9 @@ function carryChain()
   #
   # チェーンのビルド
   local -a wB=sB=eB=nB=X; 
-  # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
   wB=("${B[@]}");
-  # for key_B in ${!B[@]};do wB[$key_B]=${B[$key_B]} ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
-    #
     B=("${wB[@]}");
-    # for ((i=0;i<5;i++));do
-    #   B[$i]=${wB[$i]};
-    # done
-    # for key_wB in ${!wB[@]};do B[$key_wB]=${wB[$key_wB]} ; done
     # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
     B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
@@ -252,17 +245,9 @@ function carryChain()
     #
     # ２ 90度回転
     nB=("${B[@]}");
-    # for ((i=0;i<5;i++));do
-    #   nB[$i]=${B[$i]};
-    # done
-    # for key_B in "${!B[@]}";do nB[$key_B]=${B[$key_B]}; done
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
       B=("${nB[@]}");
-      # for ((i=0;i<5;i++));do
-      #   B[$i]=${nB[$i]};
-      # done
-      # for key_nB in ${!nB[@]};do B[$key_nB]=${nB[$key_nB]}; done
       placement "$size" "$((pres_a[n]))" "$((size-1))"; 
       [[ $? -eq 0 ]] && continue;
       placement "$size" "$((pres_b[n]))" "$((size-2))";
@@ -270,16 +255,8 @@ function carryChain()
       #
       # ３ 90度回転
       eB=("${B[@]}");
-      # for ((i=0;i<5;i++));do
-      #   eB[$i]=${B[$i]};
-      # done
-      # for key_B in ${!B[@]};do eB[$key_B]=${B[$key_B]}; done
       for ((e=w;e<mirror;e++));do 
         B=("${eB[@]}");
-        # for ((i=0;i<5;i++));do
-        #   B[$i]=${eB[$i]};
-        # done
-        # for key_eB in ${!eB[@]};do B[$key_eB]=${eB[$key_eB]}; done
         placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
         [[ $? -eq 0 ]] && continue;
         placement "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
@@ -287,16 +264,8 @@ function carryChain()
         #
         # ４ 90度回転
         sB=("${B[@]}");
-        # for ((i=0;i<5;i++));do
-        #   sB[$i]=${B[$i]};
-        # done
-        # for key_B in ${!B[@]};do sB[$key_B]=${B[$key_B]}; done
         for ((s=w;s<mirror;s++));do
           B=("${sB[@]}")
-          # for ((i=0;i<5;i++));do
-          #   B[$i]=${sB[$i]};
-          # done
-          # for key_sB in ${!sB[@]};do B[$key_sB]=${sB[$key_sB]}; done
           placement "$size" "$((size-1-pres_a[s]))" "0";
           [[ $? -eq 0 ]] && continue;
           placement "$size" "$((size-1-pres_b[s]))" "1"; 
