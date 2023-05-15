@@ -233,15 +233,14 @@ function carryChain()
   # チェーンのビルド
   local -a wB=sB=eB=nB=X; 
   # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
-  for ((i=0;i<5;i++));do
-    wB[$i]=${B[$i]};
-  done
+  wB=("${B[@]}");
   # for key_B in ${!B[@]};do wB[$key_B]=${B[$key_B]} ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
     #
-    for ((i=0;i<5;i++));do
-      B[$i]=${wB[$i]};
-    done
+    B=("${wB[@]}");
+    # for ((i=0;i<5;i++));do
+    #   B[$i]=${wB[$i]};
+    # done
     # for key_wB in ${!wB[@]};do B[$key_wB]=${wB[$key_wB]} ; done
     # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
@@ -252,18 +251,17 @@ function carryChain()
     [[ $? -eq 0 ]] && continue;
     #
     # ２ 90度回転
-    for ((i=0;i<5;i++));do
-      nB[$i]=${B[$i]};
-    done
+    nB=("${B[@]}");
+    # for ((i=0;i<5;i++));do
+    #   nB[$i]=${B[$i]};
+    # done
     # for key_B in "${!B[@]}";do nB[$key_B]=${B[$key_B]}; done
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
-      for ((i=0;i<5;i++));do
-        B[$i]=${nB[$i]};
-      done
-      for ((i=0;i<5;i++));do
-        B[$i]=${nB[$i]};
-      done
+      B=("${nB[@]}");
+      # for ((i=0;i<5;i++));do
+      #   B[$i]=${nB[$i]};
+      # done
       # for key_nB in ${!nB[@]};do B[$key_nB]=${nB[$key_nB]}; done
       placement "$size" "$((pres_a[n]))" "$((size-1))"; 
       [[ $? -eq 0 ]] && continue;
@@ -271,14 +269,16 @@ function carryChain()
       [[ $? -eq 0 ]] && continue;
       #
       # ３ 90度回転
-      for ((i=0;i<5;i++));do
-        eB[$i]=${B[$i]};
-      done
+      eB=("${B[@]}");
+      # for ((i=0;i<5;i++));do
+      #   eB[$i]=${B[$i]};
+      # done
       # for key_B in ${!B[@]};do eB[$key_B]=${B[$key_B]}; done
       for ((e=w;e<mirror;e++));do 
-        for ((i=0;i<5;i++));do
-          B[$i]=${eB[$i]};
-        done
+        B=("${eB[@]}");
+        # for ((i=0;i<5;i++));do
+        #   B[$i]=${eB[$i]};
+        # done
         # for key_eB in ${!eB[@]};do B[$key_eB]=${eB[$key_eB]}; done
         placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
         [[ $? -eq 0 ]] && continue;
@@ -286,14 +286,16 @@ function carryChain()
         [[ $? -eq 0 ]] && continue;
         #
         # ４ 90度回転
-        for ((i=0;i<5;i++));do
-          sB[$i]=${B[$i]};
-        done
+        sB=("${B[@]}");
+        # for ((i=0;i<5;i++));do
+        #   sB[$i]=${B[$i]};
+        # done
         # for key_B in ${!B[@]};do sB[$key_B]=${B[$key_B]}; done
         for ((s=w;s<mirror;s++));do
-          for ((i=0;i<5;i++));do
-            B[$i]=${sB[$i]};
-          done
+          B=("${sB[@]}")
+          # for ((i=0;i<5;i++));do
+          #   B[$i]=${sB[$i]};
+          # done
           # for key_sB in ${!sB[@]};do B[$key_sB]=${sB[$key_sB]}; done
           placement "$size" "$((size-1-pres_a[s]))" "0";
           [[ $? -eq 0 ]] && continue;
