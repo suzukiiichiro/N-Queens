@@ -12,7 +12,6 @@ declare -a pres_b;
 declare -a B; # B=(row left down right X[@])
 declare -a X; # dimx=(0 0 0 0 0)
 declare -i n=w=s=e=0;
-declare -i DISPLAY=0;
 declare -i board;
 #
 : 'ボードレイアウトを出力 ビットマップ対応版';
@@ -277,8 +276,8 @@ function placement()
   fi
   #
   # (( (B[row] & 1<<dimx)||
-  #       (B[down] & 1<<dimy)||
   #       (B[left] & 1<<(size-1-dimx+dimy))||
+  #       (B[down] & 1<<dimy)||
   #       (B[right] & 1<<(dimx+dimy)) )) && return 0;
     (( (B[0] & 1<<dimx)||
           (B[1] & 1<<(size-1-dimx+dimy))||
@@ -298,15 +297,6 @@ function placement()
   ((B[3]|=1<<(dimx+dimy)));
   t_x[$dimx]="$dimy"; 
   B[4]=${t_x[@]}; # Bに反映  
-
-  #
-  # ボードレイアウト出力
-  board[$dimx]=$((1<<dimy));
-  if ((DISPLAY==1));then
-    # 出力 1:bitmap版 0:それ以外
-    printRecordCarryChain "$size" "1";
-    read -p "";
-  fi
   return 1;
 }
 #
@@ -358,25 +348,23 @@ function carryChainSymmetry()
 : 'チェーンの構築';
 function buildChain()
 {
+  local -A wB=sB=eB=nB;
   # Bの初期化
   #B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
-  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
+  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]}); #0:row 1:left 2:down 3:right 4:dimx
   #
   # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
-  local -a wB=( $B[@] );
-  # local -A wB;
-  # local -A wB=B; # bashの連想配列は↓が必要
-  # for key_B in ${!B[@]};do wB["$key_B"]="${B[$key_B]}" ; done
+  # local -a wB=( $B[@] );
+  # local -A wB;  
+  # bashの連想配列は↓が必要
+  for key_B in ${!B[@]};do wB[$key_B]=${B[$key_B]} ; done
   for ((w=0;w<=(size/2)*(size-3);w++));do
-    #
     # ボードレイアウト出力変数boardの初期化
     for((i=0;i<size;i++));do board[$i]=-1; done
-    #
-    B=( $wB[@] );
-    # B=wB;  # bashの連想配列は↓が必要
-    # for key_wB in ${!wB[@]};do B["$key_wB"]="${wB[$key_wB]}" ; done
+    # B=( $wB[@] ); 
+    # bashの連想配列は↓が必要
+    for key_wB in ${!wB[@]};do B[$key_wB]=${wB[$key_wB]} ; done
     for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
-    # B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
     B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
     placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
     [[ $? -eq 0 ]] && continue;
@@ -385,39 +373,42 @@ function buildChain()
     #
     # ２ 90度回転
     #local -a nB=( ${B[@]} );
-    local -A nB=B;  # bashの連想配列は↓が必要
-    for key_B in "${!B[@]}";do nB["$key_B"]="${B[$key_B]}"; done
+    # local -A nB;  
+    # bashの連想配列は↓が必要
+    for key_B in "${!B[@]}";do nB[$key_B]=${B[$key_B]}; done
     local -i mirror=$(( (size-2)*(size-1)-w ));
     for ((n=w;n<mirror;n++));do 
-      #B=( $nB[@] );
-      B=nB;  # bashの連想配列は↓が必要
-      for key_nB in ${!nB[@]};do B["$key_nB"]="${nB[$key_nB]}"; done
+      # B=( $nB[@] ); 
+      # bashの連想配列は↓が必要
+      for key_nB in ${!nB[@]};do B[$key_nB]=${nB[$key_nB]}; done
       placement "$((pres_a[n]))" "$((size-1))"; 
       [[ $? -eq 0 ]] && continue;
       placement "$((pres_b[n]))" "$((size-2))";
       [[ $? -eq 0 ]] && continue;
       #
       # ３ 90度回転
-      #local -a eB=( ${B[@]} );
-      local -A eB=B;  # bashの連想配列は↓が必要
-      for key_B in ${!B[@]};do eB["$key_B"]="${B[$key_B]}"; done
+      # local -a eB=( ${B[@]} );
+      # local -A eB;  
+      # bashの連想配列は↓が必要
+      for key_B in ${!B[@]};do eB[$key_B]=${B[$key_B]}; done
       for ((e=w;e<mirror;e++));do 
-        #B=( ${eB[@]} );
-        B=eB; # bashの連想配列は↓が必要
-        for key_eB in ${!eB[@]};do B["$key_eB"]="${eB[$key_eB]}"; done
+        # B=( ${eB[@]} ); 
+        # bashの連想配列は↓が必要
+        for key_eB in ${!eB[@]};do B[$key_eB]=${eB[$key_eB]}; done
         placement "$((size-1))" "$((size-1-pres_a[e]))"; 
         [[ $? -eq 0 ]] && continue;
         placement "$((size-2))" "$((size-1-pres_b[e]))"; 
         [[ $? -eq 0 ]] && continue;
         #
         # ４ 90度回転
-        #local -a sB=( ${B[@]} );
-        local -A sB=B; # bashの連想配列は↓が必要
-        for key_B in ${!B[@]};do sB["$key_B"]="${B[$key_B]}"; done
+        # local -a sB=( ${B[@]} );
+        # local -A sB; 
+        # bashの連想配列は↓が必要
+        for key_B in ${!B[@]};do sB[$key_B]=${B[$key_B]}; done
         for ((s=w;s<mirror;s++));do
-          #B=( ${sB[@]} );
-          B=sB; # bashの連想配列は↓が必要
-          for key_sB in ${!sB[@]};do B["$key_sB"]="${sB[$key_sB]}"; done
+          # B=( ${sB[@]} ); 
+          # bashの連想配列は↓が必要
+          for key_sB in ${!sB[@]};do B[$key_sB]=${sB[$key_sB]}; done
           placement "$((size-1-pres_a[s]))" "0";
           [[ $? -eq 0 ]] && continue;
           placement "$((size-1-pres_b[s]))" "1"; 
@@ -462,7 +453,6 @@ function carryChain()
 #
 # 実行
 size=8;
-DISPLAY=0; # 0:出力しない 1:ディスプレイ出力
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
