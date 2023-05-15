@@ -10,7 +10,7 @@ declare -a pres_a;
 declare -a pres_b;
 #declare -A B; # B=(row left down right X[@])
 declare -a B; # B=(row left down right X[@])
-declare -a X; # dimx=(0 0 0 0 0)
+# declare -a X; # dimx=(0 0 0 0 0)
 declare -i n=w=s=e=0;
 declare -i board;
 #
@@ -348,6 +348,7 @@ function carryChainSymmetry()
 : 'チェーンの構築';
 function buildChain()
 {
+  local -a X; # dimx=(0 0 0 0 0)
   local -A wB=sB=eB=nB;
   # Bの初期化
   #B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
