@@ -23,7 +23,7 @@ function solve()
   # 配置完了の確認 
   # bh=-1 1111111111 すべての列にクイーンを置けると
   # -1になる
-  (( !(down+1) ))&& return 1;
+  (( down+1 ))|| return 1;
   # 新たなQを配置 colは置き換える。
   # row 右端にクイーンがすでに置かれていたら
   # クイーンを置かずに１行下に移動する。
@@ -41,9 +41,9 @@ function solve()
   local -i bitmap;
   local -i total=0;
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
-    (( bit=bitmap&-bitmap ));
+    (( bit=-bitmap&bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
-    total+=$?;
+    (( total+=$? ));
   done
   return $total;
 }
@@ -160,7 +160,6 @@ function placement()
   ((B[3]|=1<<(dimx+dimy)));
   t_x[$dimx]="$dimy"; 
   B[4]=${t_x[@]}; # Bに反映  
-
   return 1;
 }
 #
@@ -184,12 +183,11 @@ function carryChainSymmetry()
   # 【枝刈り】 １行目が角の場合
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
-  (( t_x[0]==0 ))&&{
+  (( t_x[0] ))||{
     solveQueen "$size";
-    COUNT8+=$?; 
+    [[ $? -eq 0 ]] || COUNT8+=$?; 
     return;
   }
-  #
   # n,e,s==w の場合は最小値を確認する。
   # : '右回転で同じ場合は、
   # w=n=e=sでなければ値が小さいのでskip
@@ -197,7 +195,7 @@ function carryChainSymmetry()
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
     solveQueen "$size";
-    COUNT2+=$?; 
+    [[ $? -eq 0 ]] || COUNT2+=$?; 
     return ;
   }
   # : 'e==wは180度回転して同じ
@@ -205,11 +203,11 @@ function carryChainSymmetry()
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
     solveQueen "$size";
-    COUNT4+=$?;
+    [[ $? -eq 0 ]] || COUNT4+=$?; 
     return ;
   }
   solveQueen "$size";
-  COUNT8+=$?;
+  [[ $? -eq 0 ]] || COUNT8+=$?; 
   return ;
 }
 #
