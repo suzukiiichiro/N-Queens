@@ -1,5 +1,11 @@
 /**
  *
+ * 兄とやること
+ * １．ユニーク界が違う
+ * ２．Cとの速度比較
+ *
+ *
+ *
  * キャリーチェーンC言語版
 
  
@@ -19,11 +25,9 @@
 14:       365596           45771            0.29
 15:      2279184          285095            1.22
 16:     14772512         1847425            6.68
-17:     95815104        11979381           42.67
-18:    657378384        82181924         4:52.48
-19:   4537821604       567267337        32:20.30
 
- bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -r
+
+ bash-3.2$ gcc -Wall -W -O3 GCC12.c && ./a.out -r
 １２．CPUR 再帰 対称解除法の最適化
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -37,11 +41,12 @@
 12:        14200            1787            0.00
 13:        73712            9233            0.01
 14:       365596           45752            0.07
-15:      2279184          285053            0.40
-16:     14772512         1846955            2.61
-17:     95815104        11977939           18.05
-
-  */
+15:      2279184          285053            0.41
+16:     14772512         1846955            2.66
+17:     95815104        11977939           18.41
+18:    666090624        83263591         2:14.44
+19:   4968057848       621012754        17:06.46
+*/
 
 
 
@@ -61,14 +66,14 @@ typedef struct{
   uint64 x[MAX];
 }Board ;
 Board B;
-long TOTAL=0; 
-long UNIQUE=0;
-long COUNTER[3];  //カウンター配列
-int COUNT2=0; //配列用
-int COUNT4=1; //配列用
-int COUNT8=2; //配列用
+uint64 TOTAL=0; 
+uint64 UNIQUE=0;
+uint64 COUNTER[3];  //カウンター配列
+unsigned int COUNT2=0; //配列用
+unsigned int COUNT4=1; //配列用
+unsigned int COUNT8=2; //配列用
 // ボード外側２列を除く内側のクイーン配置処理
-long solve(uint64 row,uint64 left,uint64 down,uint64 right)
+uint64 solve(uint64 row,uint64 left,uint64 down,uint64 right)
 {
   if(down+1==0){ return  1; }
   while((row&1)!=0) { 
@@ -77,7 +82,7 @@ long solve(uint64 row,uint64 left,uint64 down,uint64 right)
     right>>=1;
   }
   row>>=1;
-  long total=0;
+  uint64 total=0;
   uint64 bit;
   for(uint64 bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=bitmap&-bitmap;
@@ -88,7 +93,7 @@ long solve(uint64 row,uint64 left,uint64 down,uint64 right)
 //
 void process(int size,Board B,int sym)
 {
-  COUNTER[sym] += solve(B.row >> 2,
+  COUNTER[sym]+=solve(B.row>>2,
       B.left>>4,
       ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
       (B.right>>4)<<(size-5));
@@ -308,7 +313,7 @@ int main(int argc,char** argv)
   clock_t st;           //速度計測用
   char t[20];           //hh:mm:ss.msを格納
   int min=4;
-  int targetN=20;
+  int targetN=21;
   // sizeはグローバル
   for(int size=min;size<=targetN;size++){
     TOTAL=UNIQUE=COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
@@ -319,7 +324,7 @@ int main(int argc,char** argv)
       carryChain(size);
     }
     TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",size,TOTAL,UNIQUE,t);
+    printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);
   }
   return 0;
 }
