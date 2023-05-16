@@ -68,7 +68,7 @@ typedef struct{
   uint64_t down;
   uint64_t left;
   uint64_t right;
-  uint64_t x[MAX];
+  int x[MAX];
 }Board ;
 Board B;
 uint64_t TOTAL=0; 
@@ -88,10 +88,10 @@ uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
   }
   row>>=1;
   uint64_t total=0;
-  uint64_t bit;
-  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
-    bit=bitmap&-bitmap;
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;){
+    uint64_t const bit=bitmap&-bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
+    bitmap^=bit;
   }
   return total;
 } 
@@ -165,20 +165,24 @@ bool placement(int size,int dimx,int dimy)
     }
   }
   B.x[dimx]=dimy;                    //xは行 yは列
-  uint64_t row=1<<dimx;
-  uint64_t down=1<<dimy;
-  uint64_t left=1<<(size-1-dimx+dimy);    //右上から左下
-  uint64_t right=1<<(dimx+dimy);          // 左上から右下
+  // uint64_t row=1<<dimx;
+  // uint64_t down=1<<dimy;
+  // uint64_t left=1<<(size-1-dimx+dimy);    //右上から左下
+  // uint64_t right=1<<(dimx+dimy);          // 左上から右下
+  uint64_t row=UINT64_C(1)<<dimx;
+  uint64_t down=UINT64_C(1)<<dimy;
+  uint64_t left=UINT64_C(1)<<(size-1-dimx+dimy);    //右上から左下
+  uint64_t right=UINT64_C(1)<<(dimx+dimy);          // 左上から右下
   if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }     
   B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
 }
 // キャリーチェーン対象解除法
-void carryChainSymmetry(int size,int w,int s,int e,int n)
+void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,unsigned int n)
 {
   // # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
-  int ww=(size-2)*(size-1)-1-w;
-  int w2=(size-2)*(size-1)-1;
+  unsigned const int ww=(size-2)*(size-1)-1-w;
+  unsigned const int w2=(size-2)*(size-1)-1;
   // # 対角線上の反転が小さいかどうか確認する
   if((s==ww)&&(n<(w2-e))){ return; }
   // # 垂直方向の中心に対する反転が小さいかを確認
@@ -232,11 +236,11 @@ void carryChainSymmetry(int size,int w,int s,int e,int n)
 // キャリーチェーン
 void carryChain(int size)
 {
-  int pres_a[930];
-  int pres_b[930];
-  int idx=0;
-  for(int a=0;a<size;a++){
-    for(int b=0;b<size;b++){
+  unsigned int pres_a[930];
+  unsigned int pres_b[930];
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;a++){
+    for(unsigned int b=0;b<(unsigned)size;b++){
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
       pres_a[idx]=a;
       pres_b[idx]=b;
@@ -244,27 +248,26 @@ void carryChain(int size)
     }
   }
   //
-  int w,s,e,n;
   Board wB=B;
-  for(w=0;w<=(size/2)*(size-3);w++){
+  for(unsigned w=0;w<=(unsigned)(size/2)*(size-3);w++){
     B=wB;
     B.row=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){ B.x[i]=-1; }
     if(!placement(size,0,pres_a[w])){ continue; } 
     if(!placement(size,1,pres_b[w])){ continue; }
-    int lSize=(size-2)*(size-1)-w;
+    unsigned int lSize=(size-2)*(size-1)-w;
     Board nB=B;//２ 左２行に置く
-    for(n=w;n<lSize;n++){
+    for(unsigned n=w;n<lSize;n++){
       B=nB;
       if(!placement(size,pres_a[n],size-1)){ continue; }
       if(!placement(size,pres_b[n],size-2)){ continue; }
       Board eB=B;// ３ 下２行に置く
-      for(e=w;e<lSize;e++){
+      for(unsigned e=w;e<lSize;e++){
         B=eB;
         if(!placement(size,size-1,size-1-pres_a[e])){ continue; }
         if(!placement(size,size-2,size-1-pres_b[e])){ continue; }
         Board sB=B;// ４ 右２列に置く
-        for(s=w;s<lSize;s++){
+        for(unsigned s=w;s<lSize;s++){
           B=sB;
           if(!placement(size,size-1-pres_a[s],0)){ continue; }
           if(!placement(size,size-1-pres_b[s],1)){ continue; }
