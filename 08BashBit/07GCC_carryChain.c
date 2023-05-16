@@ -52,15 +52,6 @@
 #include <sys/time.h>
 
 #define MAX 27
-int size;
-long TOTAL=0; 
-long UNIQUE=0;
-long COUNT8=0;
-long COUNT4=0;
-long COUNT2=0;
-int pres_a[930];
-int pres_b[930];
-int w,s,e,n;
 typedef unsigned long long uint64;
 typedef struct{
   uint64 row;
@@ -70,7 +61,12 @@ typedef struct{
   uint64 x[MAX];
 }Board ;
 Board B;
-//
+long TOTAL=0; 
+long UNIQUE=0;
+long COUNTER[3];  //カウンター配列
+int COUNT2=0; //配列用
+int COUNT4=1; //配列用
+int COUNT8=2; //配列用
 // ボード外側２列を除く内側のクイーン配置処理
 long solve(uint64 row,uint64 left,uint64 down,uint64 right)
 {
@@ -89,8 +85,16 @@ long solve(uint64 row,uint64 left,uint64 down,uint64 right)
   }
   return total;
 } 
+//
+void process(int size,Board B,int sym)
+{
+  COUNTER[sym] += solve(B.row >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+      (B.right>>4)<<(size-5));
+}
 // クイーンの効きをチェック
-bool placement(int dimx,int dimy)
+bool placement(int size,int dimx,int dimy)
 {
   if(B.x[dimx]==dimy){ return true;  }  
   /** 
@@ -160,7 +164,7 @@ bool placement(int dimx,int dimy)
   return true;
 }
 // キャリーチェーン対象解除法
-void carryChainSymmetry()
+void carryChainSymmetry(int size,int w,int s,int e,int n)
 {
   // # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
   int ww=(size-2)*(size-1)-1-w;
@@ -175,10 +179,11 @@ void carryChainSymmetry()
    枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
   **/
   if(B.x[0]==0){
-    COUNT8 += solve(B.row >> 2,
-        B.left>>4,
-        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-        (B.right>>4)<<(size-5));
+    // COUNT8 += solve(B.row >> 2,
+    //     B.left>>4,
+    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+    //     (B.right>>4)<<(size-5));
+    process(size,B,COUNT8);
     return ;
   }
   /**
@@ -189,64 +194,36 @@ void carryChainSymmetry()
    */
   if(s==w){ 
     if((n!=w)||(e!=w)){ return; } 
-    COUNT2 += solve(B.row >> 2,
-        B.left>>4,
-        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-        (B.right>>4)<<(size-5));
+    // COUNT2 += solve(B.row >> 2,
+    //     B.left>>4,
+    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+    //     (B.right>>4)<<(size-5));
+    process(size,B,COUNT2);
     return ;
   }
   // # : 'e==wは180度回転して同じ
   // # 180度回転して同じ時n>=sの時はsmaller?  ';
   if((e==w)&&(n>=s)){ 
     if(n>s){ return; } 
-    COUNT4 += solve(B.row >> 2,
-        B.left>>4,
-        ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-        (B.right>>4)<<(size-5));
+    // COUNT4 += solve(B.row >> 2,
+    //     B.left>>4,
+    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+    //     (B.right>>4)<<(size-5));
+    process(size,B,COUNT4);
     return;
   }
-  COUNT8 += solve(B.row >> 2,
-      B.left>>4,
-      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B.right>>4)<<(size-5));
+  // COUNT8 += solve(B.row >> 2,
+  //     B.left>>4,
+  //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+  //     (B.right>>4)<<(size-5));
+  process(size,B,COUNT8);
   return ;
 }
-// チェーンの構築
-void buildChain()
+// キャリーチェーン
+void carryChain(int size)
 {
-  Board wB=B;
-  for(w=0;w<=(size/2)*(size-3);w++){
-    B=wB;
-    B.row=B.down=B.left=B.right=0;
-    for(int i=0;i<size;i++){ B.x[i]=-1; }
-    if(!placement(0,pres_a[w])){ continue; } 
-    if(!placement(1,pres_b[w])){ continue; }
-    int lSize=(size-2)*(size-1)-w;
-    Board nB=B;//２ 左２行に置く
-    for(n=w;n<lSize;n++){
-      B=nB;
-      if(!placement(pres_a[n],size-1)){ continue; }
-      if(!placement(pres_b[n],size-2)){ continue; }
-      Board eB=B;// ３ 下２行に置く
-      for(e=w;e<lSize;e++){
-        B=eB;
-        if(!placement(size-1,size-1-pres_a[e])){ continue; }
-        if(!placement(size-2,size-1-pres_b[e])){ continue; }
-        Board sB=B;// ４ 右２列に置く
-        for(s=w;s<lSize;s++){
-          B=sB;
-          if(!placement(size-1-pres_a[s],0)){ continue; }
-          if(!placement(size-1-pres_b[s],1)){ continue; }
-          carryChainSymmetry();//対象解除法
-          continue;
-        }
-      }    
-    }
-  }
-}
-// チェーンの初期化
-void initChain()
-{
+  int pres_a[930];
+  int pres_b[930];
   int idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
@@ -256,14 +233,39 @@ void initChain()
       idx++;
     }
   }
-}
-// キャリーチェーン
-void carryChain()
-{
-  initChain() ;     // チェーンの初期化
-  buildChain() ;    // チェーンの構築 
-  UNIQUE=COUNT2+COUNT4+COUNT8;// 集計
-  TOTAL=COUNT2*2+COUNT4*4+COUNT8*8;
+  //
+  int w,s,e,n;
+  Board wB=B;
+  for(w=0;w<=(size/2)*(size-3);w++){
+    B=wB;
+    B.row=B.down=B.left=B.right=0;
+    for(int i=0;i<size;i++){ B.x[i]=-1; }
+    if(!placement(size,0,pres_a[w])){ continue; } 
+    if(!placement(size,1,pres_b[w])){ continue; }
+    int lSize=(size-2)*(size-1)-w;
+    Board nB=B;//２ 左２行に置く
+    for(n=w;n<lSize;n++){
+      B=nB;
+      if(!placement(size,pres_a[n],size-1)){ continue; }
+      if(!placement(size,pres_b[n],size-2)){ continue; }
+      Board eB=B;// ３ 下２行に置く
+      for(e=w;e<lSize;e++){
+        B=eB;
+        if(!placement(size,size-1,size-1-pres_a[e])){ continue; }
+        if(!placement(size,size-2,size-1-pres_b[e])){ continue; }
+        Board sB=B;// ４ 右２列に置く
+        for(s=w;s<lSize;s++){
+          B=sB;
+          if(!placement(size,size-1-pres_a[s],0)){ continue; }
+          if(!placement(size,size-1-pres_b[s],1)){ continue; }
+          carryChainSymmetry(size,w,s,e,n);//対象解除法
+          continue;
+        }
+      }    
+    }
+  }
+  UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
+  TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
 }
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form)
@@ -308,13 +310,13 @@ int main(int argc,char** argv)
   int min=4;
   int targetN=20;
   // sizeはグローバル
-  for(size=min;size<=targetN;size++){
-    TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
+  for(int size=min;size<=targetN;size++){
+    TOTAL=UNIQUE=COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
     st=clock();
     if(cpu){
-      carryChain();
+      carryChain(size);
     }else{
-      carryChain();
+      carryChain(size);
     }
     TimeFormat(clock()-st,t);
     printf("%2d:%13ld%16ld%s\n",size,TOTAL,UNIQUE,t);

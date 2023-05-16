@@ -2,9 +2,10 @@
 
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
-declare -i COUNT2=0;
-declare -i COUNT4=0;
-declare -i COUNT8=0;
+declare -i COUNTER[3];    # カウンター配列
+declare -i COUNT2=0;  # 配列用
+declare -i COUNT4=1;  # 配列用
+declare -i COUNT8=2;  # 配列用
 declare -a B; 
 : 'B=(row     0:
       left    1:
@@ -169,14 +170,16 @@ function solve()
 }
 #
 : 'solve()を呼び出して再帰を開始する';
-function solveQueen()
+function process()
 {
   local -i size="$1";
+  local -i sym="$2";
   solve "$(( B[0]>>2 ))" \
         "$(( B[1]>>4 ))" \
         "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
         "$(( B[3]>>4<<size-5 ))";
-  return $?;
+  (( COUNTER[$sym]+=$? ));
+  # return $?;
 }
 #
 : 'クイーンの効きをチェック';
@@ -187,6 +190,7 @@ function placement()
   local -i dimy="$3";
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
+  : '
   #
   #
   # 【枝刈り】Qが角にある場合の枝刈り
@@ -208,7 +212,7 @@ function placement()
   #    +-+-+-+-+-+ 
   #    | | | | | |      
   #    +-+-+-+-+-+  
-  #
+  #';
   if (( t_x[0]==0 ));then
     if (( t_x[1]!=-1));then
       # bitmap=$(( bitmap|2 ));
@@ -217,6 +221,7 @@ function placement()
       (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
     fi
   else
+  : '
   #
   # 【枝刈り】Qが角にない場合
   #
@@ -259,6 +264,7 @@ function placement()
   #    //if(!bitmap){
   #    if(bitmap){
   #      if((bitmap&LASTMASK)==0){
+  ';
     if (( t_x[0]!=-1));then
       ((  (dimx<t_x[0]||dimx>=size-t_x[0])
         &&(dimy==0||dimy==size-1)))&&{
@@ -308,8 +314,7 @@ function carryChainSymmetry()
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[0] ))||{
-    solveQueen "$size";
-    [[ $? -eq 0 ]] || COUNT8+=$?; 
+    process "$size" "$COUNT8";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -322,8 +327,7 @@ function carryChainSymmetry()
   # w=n=e=sであれば90度回転で同じ可能性 ';
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
-    solveQueen "$size";
-    [[ $? -eq 0 ]] || COUNT2+=$?; 
+    process "$size" "$COUNT2";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -334,16 +338,14 @@ function carryChainSymmetry()
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
-    solveQueen "$size";
-    [[ $? -eq 0 ]] || COUNT4+=$?; 
+    process "$size" "$COUNT4";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
     #
     return ;
   }
-  solveQueen "$size";
-  [[ $? -eq 0 ]] || COUNT8+=$?; 
+  process "$size" "$COUNT8";
   #
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
   if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -419,22 +421,16 @@ function carryChain()
     done
   done
   # 集計
-  UNIQUE=$(($COUNT2+$COUNT4+$COUNT8));
-  TOTAL=$(($COUNT2*2+COUNT4*4+COUNT8*8));
+  UNIQUE=COUNTER[$COUNT2]+COUNTER[$COUNT4]+COUNTER[$COUNT8];
+  TOTAL=COUNTER[$COUNT2]*2+COUNTER[$COUNT4]*4+COUNTER[$COUNT8]*8;
 }
 #
 # 実行
-size=5;
-#DISPLAY=0; # ボードレイアウト表示しない
-DISPLAY=1; # ボードレイアウト表示する
+size=8;
+DISPLAY=0; # ボードレイアウト表示しない
+#DISPLAY=1; # ボードレイアウト表示する
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 
-read -p "N8に行きます";
-size=8;
-#DISPLAY=0; # ボードレイアウト表示しない
-DISPLAY=1; # ボードレイアウト表示する
-time carryChain "$size";
-echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
 
