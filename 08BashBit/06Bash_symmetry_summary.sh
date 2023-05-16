@@ -416,7 +416,7 @@ function symmetryOps()
 function symmetry_backTrack_NR()
 {
   local -i row="$1";
-  local -i mask="$(( (1<<size)-1 ))";
+  local -i MASK="$(( (1<<size)-1 ))";
   local -a bitmap[$size];
   local -a left[$size];
   local -a down[$size];
@@ -425,7 +425,7 @@ function symmetry_backTrack_NR()
   left[$row]="$2";
   down[$row]="$3";
   right[$row]="$4";
-  bitmap[$row]=$(( mask&~(left[row]|down[row]|right[row]) ));
+  bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
   while ((row>0));do
     if (( bitmap[row]>0 ));then
       # 一番右のビットを取り出す
@@ -441,7 +441,7 @@ function symmetry_backTrack_NR()
           return ;
         fi
         if (((down[row]&SIDEMASK)!=SIDEMASK));then
-          bitmap[row]=$(( bitmap[row]&SIDEMASK ));
+          bitmap[$row]=$(( bitmap[row]&SIDEMASK ));
         fi
       fi
       if (( row==(size-1) ));then
@@ -456,7 +456,7 @@ function symmetry_backTrack_NR()
         right[$row]=$(((right[n]|bit)>>1));
         board[$row]="$bit";         # Qを配置
         # クイーンが配置可能な位置を表す
-        bitmap[$row]=$(( mask&~(left[row]|down[row]|right[row]) ));
+        bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
       fi
     else
       ((row--));
@@ -468,7 +468,7 @@ function symmetry_backTrack_NR()
 function symmetry_backTrack_corner_NR()
 {
   local -i row="$1";
-  local -i mask="$(( (1<<size)-1 ))";
+  local -i MASK="$(( (1<<size)-1 ))";
   local -a bitmap[$size];
   local -a left[$size];
   local -a down[$size];
@@ -477,7 +477,7 @@ function symmetry_backTrack_corner_NR()
   left[$row]="$2";
   down[$row]="$3";
   right[$row]="$4";
-  bitmap[$row]=$(( mask&~(left[row]|down[row]|right[row]) ));
+  bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
   while ((row>0));do
     if (( bitmap[row]>0 ));then
       bit=$(( -bitmap[row]&bitmap[row] ));  # 一番右のビットを取り出す
@@ -496,8 +496,8 @@ function symmetry_backTrack_corner_NR()
         ((row--));
       else
         if ((row<BOUND1));then
-          bitmap[row]=$(( bitmap[row]|2 ));
-          bitmap[row]=$(( bitmap[row]^2 ));
+          bitmap[$row]=$(( bitmap[row]|2 ));
+          bitmap[$row]=$(( bitmap[row]^2 ));
         fi
         local -i n=$((row++));
         left[$row]=$(((left[n]|bit)<<1));
@@ -505,7 +505,7 @@ function symmetry_backTrack_corner_NR()
         right[$row]=$(((right[n]|bit)>>1));
         board[$row]="$bit";                # Qを配置
         # クイーンが配置可能な位置を表す
-        bitmap[$row]=$(( mask&~(left[row]|down[row]|right[row]) ));
+        bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
       fi
     else
       ((row--));
@@ -537,7 +537,7 @@ function symmetry_NR()
   SIDEMASK=$(( TOPBIT|1 ));
   LASTMASK=$(( TOPBIT|1 )); 
   BOUND1=1; 
-  BOUND2=size-2;
+  BOUND2=$size-2;
   while (( BOUND1>0 && BOUND2<size-1 && BOUND1<BOUND2 ));do
     if (( BOUND1<BOUND2 ));then
       bit=$(( 1<<BOUND1 ));
