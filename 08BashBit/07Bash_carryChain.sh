@@ -158,11 +158,9 @@ function solve()
     (( row>>=1,left<<=1,right>>=1 ));
   done
   (( row>>=1 ));      # １行下に移動する
-  local -i bit;
-  local -i bitmap;
   local -i total=0;
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
-    (( bit=-bitmap&bitmap ));
+    local -i bit=$(( -bitmap&bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     (( total+=$? ));
   done
