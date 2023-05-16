@@ -425,12 +425,37 @@ function carryChain()
   TOTAL=COUNTER[$COUNT2]*2+COUNTER[$COUNT4]*4+COUNTER[$COUNT8]*8;
 }
 #
-# 実行
-size=8;
+: '';
+function NQ()
+{
+  local selectName="$1";
+  local -i min=4;
+  local -i max=17;
+  local -i N="$min";
+  local startTime=endTime=hh=mm=ss=0; 
+  echo " N:        Total       Unique        hh:mm:ss" ;
+  local -i N;
+  for((N=min;N<=max;N++)){
+    TOTAL=0;
+    UNIQUE=0;
+    COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
+    B=0; 
+    startTime=$(date +%s);# 計測開始時間
+    "$selectName" "$N";
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
+    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
+  } 
+}
+#
+#
 DISPLAY=0; # ボードレイアウト表示しない
 #DISPLAY=1; # ボードレイアウト表示する
-time carryChain "$size";
-echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
-
+#
+NQ carryChain; 
 exit;
 
