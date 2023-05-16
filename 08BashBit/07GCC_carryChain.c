@@ -57,23 +57,23 @@
 #include <sys/time.h>
 
 #define MAX 27
-typedef unsigned long long uint64;
+//typedef unsigned long long uint64_t;
 typedef struct{
-  uint64 row;
-  uint64 down;
-  uint64 left;
-  uint64 right;
-  uint64 x[MAX];
+  uint64_t row;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  uint64_t x[MAX];
 }Board ;
 Board B;
-uint64 TOTAL=0; 
-uint64 UNIQUE=0;
-uint64 COUNTER[3];  //カウンター配列
+uint64_t TOTAL=0; 
+uint64_t UNIQUE=0;
+uint64_t COUNTER[3];  //カウンター配列
 unsigned int COUNT2=0; //配列用
 unsigned int COUNT4=1; //配列用
 unsigned int COUNT8=2; //配列用
 // ボード外側２列を除く内側のクイーン配置処理
-uint64 solve(uint64 row,uint64 left,uint64 down,uint64 right)
+uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
   if(down+1==0){ return  1; }
   while((row&1)!=0) { 
@@ -82,9 +82,9 @@ uint64 solve(uint64 row,uint64 left,uint64 down,uint64 right)
     right>>=1;
   }
   row>>=1;
-  uint64 total=0;
-  uint64 bit;
-  for(uint64 bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  uint64_t total=0;
+  uint64_t bit;
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=bitmap&-bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
   }
@@ -160,10 +160,10 @@ bool placement(int size,int dimx,int dimy)
     }
   }
   B.x[dimx]=dimy;                    //xは行 yは列
-  uint64 row=1<<dimx;
-  uint64 down=1<<dimy;
-  uint64 left=1<<(size-1-dimx+dimy);    //右上から左下
-  uint64 right=1<<(dimx+dimy);          // 左上から右下
+  uint64_t row=1<<dimx;
+  uint64_t down=1<<dimy;
+  uint64_t left=1<<(size-1-dimx+dimy);    //右上から左下
+  uint64_t right=1<<(dimx+dimy);          // 左上から右下
   if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }     
   B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
