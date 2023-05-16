@@ -165,10 +165,7 @@ bool placement(int size,int dimx,int dimy)
     }
   }
   B.x[dimx]=dimy;                    //xは行 yは列
-  // uint64_t row=1<<dimx;
-  // uint64_t down=1<<dimy;
-  // uint64_t left=1<<(size-1-dimx+dimy);    //右上から左下
-  // uint64_t right=1<<(dimx+dimy);          // 左上から右下
+  // UINT64_C(n)	64ビット幅を持つ、符号なし整数型の定数値
   uint64_t row=UINT64_C(1)<<dimx;
   uint64_t down=UINT64_C(1)<<dimy;
   uint64_t left=UINT64_C(1)<<(size-1-dimx+dimy);    //右上から左下
