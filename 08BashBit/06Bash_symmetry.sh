@@ -1701,7 +1701,7 @@ function symmetryOps()
 : '非再帰版 角にQがない時の対象解除バックトラック';
 function symmetry_backTrack_NR()
 {
- local -i row="$1";
+  local -i row="$1";
   local -i MASK="$(( (1<<size)-1 ))";
   local -a bitmap[$size];
   local -a left[$size];
@@ -1949,13 +1949,13 @@ function symmetry()
 DISPLAY=0; # DISPLAY表示をしない
 #DISPLAY=1;# DISPLAY表示をする
 
-size=5;
-#symmetry ;   # 再帰
-symmetry_NR ; # 非再帰
-echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
-echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
+# size=5;
+# #symmetry ;   # 再帰
+# symmetry_NR ; # 非再帰
+# echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
+# echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 
-size=8;
+size=9;
 #symmetry ;   # 再帰
 symmetry_NR ; # 非再帰
 echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
