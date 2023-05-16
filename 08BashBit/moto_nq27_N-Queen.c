@@ -101,24 +101,21 @@ if(bh+1==0){
     //#define THREAD_NUM		1
 #define MAX 27
     //
-    typedef unsigned long long uint64;
+typedef unsigned long long uint64;
 typedef struct{
   uint64 bv;
   uint64 down;
   uint64 left;
   uint64 right;
-  int x[MAX];
+  uint64 x[MAX];
 }Board ;
-//
 Board B;
+uint64 cnt[3];
+uint64 TOTAL=0; //GPU,CPUで使用
+uint64 UNIQUE=0;//GPU,CPUで使用
 unsigned int COUNT8=2;
 unsigned int COUNT4=1;
 unsigned int COUNT2=0;
-long cnt[3];
-// long pre[3];
-//変数宣言
-long TOTAL=0; //GPU,CPUで使用
-long UNIQUE=0;//GPU,CPUで使用
 //
 void TimeFormat(clock_t utime,char *form)
 {
@@ -217,7 +214,7 @@ void breakpoint(int size,char* string,int* x,int row)
   //	}
 }
 //
-long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
+uint64 solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
 {
   // Placement Complete?
   //printf("countCompletions_start\n");
@@ -250,7 +247,7 @@ long solve_nqueenr(uint64 bv,uint64 left,uint64 down,uint64 right)
   //printf("onemore_bd:%d\n",bd);
   //
   // Column needs to be placed
-  long  s=0;
+  uint64  s=0;
   uint64 bit;
   //bh:down bu:left bd:right
   //クイーンを置いていく
@@ -610,7 +607,7 @@ int main(int argc,char** argv)
   }else if(gpu){
     printf("\n\n７．GPU 非再帰 バックトラック＋ビットマップ＋対称解除法\n");
   }else if(sgpu){
-    printf("\n\n７．SGPU 非再帰 バックトラック＋ビットマップ\n");
+    printf("\n\nmoto_nq27_N-Queen.c\n");
   }
   if(cpu||cpur){
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
@@ -618,7 +615,7 @@ int main(int argc,char** argv)
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
     //int min=4;int targetN=17;
-    int min=5;int targetN=21;
+    int min=18;int targetN=21;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -647,7 +644,7 @@ int main(int argc,char** argv)
       //
       TimeFormat(clock()-st,t); 
       /***07 symmetryOps CPU,GPU同一化*********************/
-      printf("%2d:%13ld%16ld%s\n",i,TOTAL,UNIQUE,t);
+      printf("%2d:%13lld%16lld%s\n",i,TOTAL,UNIQUE,t);
       /************************/
     }
   }
@@ -679,7 +676,7 @@ int main(int argc,char** argv)
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%13lld%16lld%4.2d:%02d:%02d:%02d.%02d\n", i,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
   }
   return 0;
