@@ -56,10 +56,11 @@ bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC12.c && ./a.out -c
 #define THREAD_NUM		96
 #define MAX 27
 //変数宣言
-long Total=0 ;      //合計解
-long Unique=0;
-int aBoard[MAX];
-int COUNT2,COUNT4,COUNT8;
+typedef unsigned long long uint64;
+uint64 Total=0 ;      //合計解
+uint64 Unique=0;
+uint64 aBoard[MAX];
+uint64 COUNT2,COUNT4,COUNT8;
 int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
@@ -602,7 +603,7 @@ int main(int argc,char** argv) {
     printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
-    int min=4; int targetN=17;
+    int min=4; int targetN=21;
     int mask;
     for(int i=min;i<=targetN;i++){
       //TOTAL=0; UNIQUE=0;

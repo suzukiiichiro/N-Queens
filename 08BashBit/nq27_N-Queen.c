@@ -19,6 +19,7 @@ typedef struct{
   int x[MAX];
 }Board ;
 Board B;
+long cnt[3];
 //
 // void process(int sym)
 // {
@@ -56,6 +57,13 @@ long solve(int row,int left,int down,int right)
   }
   return s; //途中でクイーンを置くところがなくなるとここに来る
 } 
+void process(int size,Board B,int sym)
+{
+  cnt[sym] += solve(B.row >> 2,
+      B.left>>4,
+      ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+      (B.right>>4)<<(size-5));
+}
 //
 bool placement(int dimx,int dimy)
 {
@@ -200,13 +208,13 @@ void NQueenR()
 }
 
 int main(void){
-  size=5; 
-  TOTAL=0; UNIQUE=0; 
-  COUNT2=COUNT4=COUNT8=0;
-  NQueenR(); 
-  printf("%2d:%13ld%16ld\n", size,TOTAL,UNIQUE);
+  // size=5; 
+  // TOTAL=0; UNIQUE=0; 
+  // COUNT2=COUNT4=COUNT8=0;
+  // NQueenR(); 
+  // printf("%2d:%13ld%16ld\n", size,TOTAL,UNIQUE);
 
-  size=8; 
+  size=12; 
   TOTAL=0;UNIQUE=0;
   COUNT2=COUNT4=COUNT8=0;
   NQueenR(); 
