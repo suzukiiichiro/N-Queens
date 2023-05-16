@@ -1701,7 +1701,7 @@ function symmetryOps()
 : '非再帰版 角にQがない時の対象解除バックトラック';
 function symmetry_backTrack_NR()
 {
-  local -i row="$1";
+ local -i row="$1";
   local -i MASK="$(( (1<<size)-1 ))";
   local -a bitmap[$size];
   local -a left[$size];
@@ -1713,26 +1713,25 @@ function symmetry_backTrack_NR()
   right[$row]="$4";
   bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
   while ((row>0));do
-    if (( bitmap[row] ));then
+    if (( bitmap[row]>0 ));then
+      # 一番右のビットを取り出す
       bit=$(( -bitmap[row]&bitmap[row] ));  
+      # 配置可能なパターンが一つずつ取り出される
       bitmap[$row]=$(( bitmap[row]^bit ));  
       board[$row]="$bit";            # Qを配置
       if ((row<BOUND1));then         #上部サイド枝刈り
         bitmap[$row]=$(( bitmap[row]|SIDEMASK ));
         bitmap[$row]=$(( bitmap[row]^SIDEMASK ));
-      else
-        if ((row==BOUND2));then      #下部サイド枝刈り
-          if (( !(down[row]&SIDEMASK) ));then
-            return ;
-          fi
-          if (( (down[row]&SIDEMASK)!=SIDEMASK ));then
-            bitmap[$row]=$(( bitmap[row]&SIDEMASK ));
-          fi
+      elif ((row==BOUND2));then      #下部サイド枝刈り
+        if (( (down[row]&SIDEMASK) ==0));then
+          return ;
+        fi
+        if (((down[row]&SIDEMASK)!=SIDEMASK));then
+          bitmap[$row]=$(( bitmap[row]&SIDEMASK ));
         fi
       fi
       if (( row==(size-1) ));then
-        if (( !(bitmap[row]&LASTMASK) ));then
-          board[$row]="$bitmap";            # Qを配置
+        if ((!(bitmap[row]&LASTMASK)));then
           symmetryOps ;
         fi
         ((row--));
@@ -1766,17 +1765,19 @@ function symmetry_backTrack_corner_NR()
   right[$row]="$4";
   bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
   while ((row>0));do
-      bit=$(( -bitmap[row]&bitmap[row] ));  
-      bitmap[$row]=$(( bitmap[row]^bit ));  
+    if (( bitmap[row]>0 ));then
+      bit=$(( -bitmap[row]&bitmap[row] ));  # 一番右のビットを取り出す
+      bitmap[$row]=$(( bitmap[row]^bit ));  # 配置可能なパターンが一つずつ取り出される
       board[$row]="$bit";                   # Qを配置
       if (( row==(size-1) ));then
         if((bitmap[row]));then
-          board[$row]="$bitmap";
+          #枝刈りによりsymmetryOpsは不要
+          #symmetryOps ;
+          ((COUNT8++)) ;
           if ((DISPLAY==1));then
             # 出力 1:bitmap版 0:それ以外
             printRecord "$size" "1";          
           fi
-          ((COUNT8++)) ;
         fi
         ((row--));
       else
@@ -1791,9 +1792,10 @@ function symmetry_backTrack_corner_NR()
         board[$row]="$bit";                # Qを配置
         # クイーンが配置可能な位置を表す
         bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
-        ((row--));
       fi
-    ((row--));
+    else
+      ((row--));
+    fi
   done
 }
 #
@@ -1947,13 +1949,13 @@ function symmetry()
 DISPLAY=0; # DISPLAY表示をしない
 #DISPLAY=1;# DISPLAY表示をする
 
-# size=5;
-# symmetry ;   # 再帰
-# #symmetry_NR ; # 非再帰
-# echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
-# echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
+size=5;
+#symmetry ;   # 再帰
+symmetry_NR ; # 非再帰
+echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
+echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 
-size=9;
+size=8;
 #symmetry ;   # 再帰
 symmetry_NR ; # 非再帰
 echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
