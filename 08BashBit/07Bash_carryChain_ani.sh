@@ -1,18 +1,19 @@
 #!/usr/bin/bash
 
-declare -i size;
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
 declare -i COUNT2=0;
 declare -i COUNT4=0;
 declare -i COUNT8=0;
-declare -a pres_a;
-declare -a pres_b;
-#declare -A B; # B=(row left down right X[@])
-declare -a B; # B=(row left down right X[@])
-# declare -a X; # dimx=(0 0 0 0 0)
-declare -i n=w=s=e=0;
-declare -i board;
+declare -a B; 
+: 'B=(row     0:
+      left    1:
+      down    2:
+      right   3:
+      X[@]    4: 
+      )';
+declare -i DISPLAY=0;
+#
 #
 : 'ボードレイアウトを出力 ビットマップ対応版';
 function printRecordCarryChain()
@@ -21,6 +22,7 @@ function printRecordCarryChain()
   size="$1";
   flag="$2"; # bitmap版は1 それ以外は 0
   echo "$TOTAL";
+  local -a board=(${B[5]}); # 同じ場所の配置を許す
   sEcho=" ";  
   : 'ビットマップ版
      ビットマップ版からは、左から数えます
@@ -43,11 +45,15 @@ function printRecordCarryChain()
     local -i i=0;
     local -i j=0;
     for ((i=0;i<size;i++));do
-      for ((j=0;j<size;j++));do
-       if (( board[i]&1<<j ));then
-          sEcho="${sEcho}$((j)) ";
-       fi 
-      done
+      if(( board[i]!=-1));then
+        for ((j=0;j<size;j++));do
+          if (( board[i]&1<<j ));then
+            sEcho="${sEcho}$((j)) ";
+          fi 
+        done
+      else
+        sEcho="${sEcho}- ";
+      fi
     done
   else 
   : 'ビットマップ版以外
@@ -65,7 +71,6 @@ function printRecordCarryChain()
     +-+-+-+-+-+
     | | |O| | |
     +-+-+-+-+-+
-
      ';
     local -i i=0;
     for((i=0;i<size;i++)){
@@ -143,7 +148,7 @@ function solve()
   # 配置完了の確認 
   # bh=-1 1111111111 すべての列にクイーンを置けると
   # -1になる
-  (( !(down+1) ))&& return 1;
+  (( down+1 ))|| return 1;
   # 新たなQを配置 colは置き換える。
   # row 右端にクイーンがすでに置かれていたら
   # クイーンを置かずに１行下に移動する。
@@ -160,12 +165,10 @@ function solve()
   local -i bit;
   local -i bitmap;
   local -i total=0;
-  local -a pID; # 並列処理
-  local -i pID_index=0; # 並列処理
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
-    (( bit=bitmap&-bitmap ));
+    (( bit=-bitmap&bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
-    total+=$?;
+     total+=$?;
   done
   return $total;
 }
@@ -173,10 +176,7 @@ function solve()
 : 'solve()を呼び出して再帰を開始する';
 function solveQueen()
 {
-  # solve "$(( B[row]>>2 ))" \
-  #       "$(( B[left]>>4 ))" \
-  #       "$(( (((B[down]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
-  #       "$(( B[right]>>4<<size-5 ))";
+  local -i size="$1";
   solve "$(( B[0]>>2 ))" \
         "$(( B[1]>>4 ))" \
         "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
@@ -187,9 +187,11 @@ function solveQueen()
 : 'クイーンの効きをチェック';
 function placement()
 {
-  local -i dimx="$1";     # dimxは行 dimyは列
-  local -i dimy="$2";
+  local -i size="$1";
+  local -i dimx="$2";     # dimxは行 dimyは列
+  local -i dimy="$3";
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+  local -a board=(${B[5]}); # 同じ場所の配置を許す
   (( t_x[dimx]==dimy ))&& return 1;
   #
   #
@@ -274,35 +276,31 @@ function placement()
       } 
     fi
   fi
-  #
-  # (( (B[row] & 1<<dimx)||
-  #       (B[left] & 1<<(size-1-dimx+dimy))||
-  #       (B[down] & 1<<dimy)||
-  #       (B[right] & 1<<(dimx+dimy)) )) && return 0;
-    (( (B[0] & 1<<dimx)||
-          (B[1] & 1<<(size-1-dimx+dimy))||
-          (B[2] & 1<<dimy)||
-          (B[3] & 1<<(dimx+dimy)) )) && return 0;
-
-  # #
-  #
-  #
-  # ((B[row]|=1<<dimx));
-  # ((B[left]|=1<<(size-1-dimx+dimy)));
-  # ((B[down]|=1<<dimy));
-  # ((B[right]|=1<<(dimx+dimy)));
+  (( (B[0] & 1<<dimx)||
+        (B[1] & 1<<(size-1-dimx+dimy))||
+        (B[2] & 1<<dimy)||
+        (B[3] & 1<<(dimx+dimy)) )) && return 0;
   ((B[0]|=1<<dimx));
   ((B[1]|=1<<(size-1-dimx+dimy)));
   ((B[2]|=1<<dimy));
   ((B[3]|=1<<(dimx+dimy)));
   t_x[$dimx]="$dimy"; 
   B[4]=${t_x[@]}; # Bに反映  
+  #
+  # ボードレイアウト出力
+  board[$dimx]=$((1<<dimy));
+  B[5]=${board[@]}; # Bに反映  
+  #
   return 1;
 }
 #
 : 'キャリーチェーン対象解除法';
 function carryChainSymmetry()
 {
+  local -i n="$1";
+  local -i w="$2";
+  local -i s="$3";
+  local -i e="$4";
   # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
   local -i ww=$(( (size-2)*(size-1)-1-w ));
   local -i w2=$(( (size-2)*(size-1)-1 ));
@@ -316,117 +314,57 @@ function carryChainSymmetry()
   # 【枝刈り】 １行目が角の場合
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
-  (( t_x[0]==0 ))&&{
-    solveQueen;
-    COUNT8+=$?; 
+  (( t_x[0] ))||{
+    solveQueen "$size";
+    [[ $? -eq 0 ]] || COUNT8+=$?; 
+    #
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
+    #
     return;
   }
-  #
   # n,e,s==w の場合は最小値を確認する。
   # : '右回転で同じ場合は、
   # w=n=e=sでなければ値が小さいのでskip
   # w=n=e=sであれば90度回転で同じ可能性 ';
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
-    solveQueen;
-    COUNT2+=$?; 
+    solveQueen "$size";
+    [[ $? -eq 0 ]] || COUNT2+=$?; 
+    #
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
+    #
     return ;
   }
   # : 'e==wは180度回転して同じ
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
-    solveQueen;
-    COUNT4+=$?;
+    solveQueen "$size";
+    [[ $? -eq 0 ]] || COUNT4+=$?; 
+    #
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
+    #
     return ;
   }
-  solveQueen;
-  COUNT8+=$?;
+  solveQueen "$size";
+  [[ $? -eq 0 ]] || COUNT8+=$?; 
+  #
+  # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+  if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
+  #
   return ;
 }
 #
 : 'チェーンの構築';
-function buildChain()
+function carryChain()
 {
-  local -a X; # dimx=(0 0 0 0 0)
-  local -A wB=sB=eB=nB;
-  # Bの初期化
-  #B=(["row"]="0" ["down"]="0" ["left"]="0" ["right"]="0" ["x"]=${X[@]});
-  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]}); #0:row 1:left 2:down 3:right 4:dimx
-  #
-  # １ 上２行にクイーンを置く 上１行は２分の１だけ実行 90度回転
-  # local -a wB=( $B[@] );
-  # local -A wB;  
-  # bashの連想配列は↓が必要
-  for key_B in ${!B[@]};do wB[$key_B]=${B[$key_B]} ; done
-  for ((w=0;w<=(size/2)*(size-3);w++));do
-    # ボードレイアウト出力変数boardの初期化
-    for((i=0;i<size;i++));do board[$i]=-1; done
-    # B=( $wB[@] ); 
-    # bashの連想配列は↓が必要
-    for key_wB in ${!wB[@]};do B[$key_wB]=${wB[$key_wB]} ; done
-    for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
-    B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
-    placement "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
-    [[ $? -eq 0 ]] && continue;
-    placement "1" "$((pres_b[w]))";
-    [[ $? -eq 0 ]] && continue;
-    #
-    # ２ 90度回転
-    #local -a nB=( ${B[@]} );
-    # local -A nB;  
-    # bashの連想配列は↓が必要
-    for key_B in "${!B[@]}";do nB[$key_B]=${B[$key_B]}; done
-    local -i mirror=$(( (size-2)*(size-1)-w ));
-    for ((n=w;n<mirror;n++));do 
-      # B=( $nB[@] ); 
-      # bashの連想配列は↓が必要
-      for key_nB in ${!nB[@]};do B[$key_nB]=${nB[$key_nB]}; done
-      placement "$((pres_a[n]))" "$((size-1))"; 
-      [[ $? -eq 0 ]] && continue;
-      placement "$((pres_b[n]))" "$((size-2))";
-      [[ $? -eq 0 ]] && continue;
-      #
-      # ３ 90度回転
-      # local -a eB=( ${B[@]} );
-      # local -A eB;  
-      # bashの連想配列は↓が必要
-      for key_B in ${!B[@]};do eB[$key_B]=${B[$key_B]}; done
-      for ((e=w;e<mirror;e++));do 
-        # B=( ${eB[@]} ); 
-        # bashの連想配列は↓が必要
-        for key_eB in ${!eB[@]};do B[$key_eB]=${eB[$key_eB]}; done
-        placement "$((size-1))" "$((size-1-pres_a[e]))"; 
-        [[ $? -eq 0 ]] && continue;
-        placement "$((size-2))" "$((size-1-pres_b[e]))"; 
-        [[ $? -eq 0 ]] && continue;
-        #
-        # ４ 90度回転
-        # local -a sB=( ${B[@]} );
-        # local -A sB; 
-        # bashの連想配列は↓が必要
-        for key_B in ${!B[@]};do sB[$key_B]=${B[$key_B]}; done
-        for ((s=w;s<mirror;s++));do
-          # B=( ${sB[@]} ); 
-          # bashの連想配列は↓が必要
-          for key_sB in ${!sB[@]};do B[$key_sB]=${sB[$key_sB]}; done
-          placement "$((size-1-pres_a[s]))" "0";
-          [[ $? -eq 0 ]] && continue;
-          placement "$((size-1-pres_b[s]))" "1"; 
-          [[ $? -eq 0 ]] && continue;
-          #
-          #  対象解除法
-          carryChainSymmetry; 
-          continue;
-        done
-      done
-    done
-  done
-}
-#
-: 'チェーンの初期化';
-function initChain()
-{
+  local -i size="$1";
+  # チェーンの初期化
+  local -a pres_a;
+  local -a pres_b;
   local -i idx=0;
   local -i a=b=0;
   for ((a=0;a<size;a++));do
@@ -438,22 +376,74 @@ function initChain()
       ((idx++));
     done
   done
-}
-#
-: 'キャリーチェーン';
-function carryChain()
-{
-  # チェーンの初期化
-  initChain ;     
-  # チェーンの構築 
-  buildChain ;    
+  #
+  # チェーンのビルド
+  local -a wB=sB=eB=nB=X=board; 
+  wB=("${B[@]}");
+  for ((w=0;w<=(size/2)*(size-3);w++));do
+    B=("${wB[@]}");
+    # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
+    for ((bx_i=0;bx_i<size;bx_i++));do 
+       X[$bx_i]=-1; 
+       board[$bx_i]=-1;
+    done
+    B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]} [5]=${board[@]});
+    placement "$size" "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
+    [[ $? -eq 0 ]] && continue;
+    placement "$size" "1" "$((pres_b[w]))";
+    [[ $? -eq 0 ]] && continue;
+    #
+    # ２ 90度回転
+    nB=("${B[@]}");
+    local -i mirror=$(( (size-2)*(size-1)-w ));
+    for ((n=w;n<mirror;n++));do 
+      B=("${nB[@]}");
+      placement "$size" "$((pres_a[n]))" "$((size-1))"; 
+      [[ $? -eq 0 ]] && continue;
+      placement "$size" "$((pres_b[n]))" "$((size-2))";
+      [[ $? -eq 0 ]] && continue;
+      #
+      # ３ 90度回転
+      eB=("${B[@]}");
+      for ((e=w;e<mirror;e++));do 
+        B=("${eB[@]}");
+        placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
+        [[ $? -eq 0 ]] && continue;
+        placement "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
+        [[ $? -eq 0 ]] && continue;
+        #
+        # ４ 90度回転
+        sB=("${B[@]}");
+        for ((s=w;s<mirror;s++));do
+          B=("${sB[@]}")
+          placement "$size" "$((size-1-pres_a[s]))" "0";
+          [[ $? -eq 0 ]] && continue;
+          placement "$size" "$((size-1-pres_b[s]))" "1"; 
+          [[ $? -eq 0 ]] && continue;
+          #
+          #  対象解除法
+          carryChainSymmetry "$n" "$w" "$s" "$e" ; 
+          continue;
+        done
+      done
+    done
+  done
   # 集計
   UNIQUE=$(($COUNT2+$COUNT4+$COUNT8));
   TOTAL=$(($COUNT2*2+COUNT4*4+COUNT8*8));
 }
 #
 # 実行
+size=5;
+#DISPLAY=0; # ボードレイアウト表示しない
+DISPLAY=1; # ボードレイアウト表示する
+time carryChain "$size";
+echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
+TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
+read -p "N8に行きます";
 size=8;
+#DISPLAY=0; # ボードレイアウト表示しない
+DISPLAY=1; # ボードレイアウト表示する
 time carryChain "$size";
 echo "size:$size TOTAL:$TOTAL UNIQUE:$UNIQUE COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 exit;
