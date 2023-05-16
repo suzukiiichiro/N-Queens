@@ -618,7 +618,7 @@ int main(int argc,char** argv)
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
     //int min=4;int targetN=17;
-    int min=5;int targetN=17;
+    int min=5;int targetN=21;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
