@@ -1530,13 +1530,13 @@ function NQ()
   echo " N:        Total       Unique        hh:mm:ss" ;
   local -i N;
   for((N=min;N<=max;N++)){
-  row=0;
-  TOTAL=UNIQUE=0;
-  COUNT2=COUNT4=COUNT8=0;
-  MASK=SIDEMASK=LASTMASK=0;
-  TOPBIT=ENDBIT=0;
-  BOUND1=BOUND2=0;
-  COUNTER[0]=COUNTER[1]=COUNTER[2]=0;
+    row=0;
+    TOTAL=UNIQUE=0;
+    COUNT2=COUNT4=COUNT8=0;
+    MASK=SIDEMASK=LASTMASK=0;
+    TOPBIT=ENDBIT=0;
+    BOUND1=BOUND2=0;
+    COUNTER[0]=COUNTER[1]=COUNTER[2]=0;
     mask=$(( (1<<N)-1 ));
     startTime=$(date +%s);# 計測開始時間
 
