@@ -1718,9 +1718,9 @@ function symmetry_backTrack_NR()
         bitmap[$row]=$(( bitmap[row]|SIDEMASK ));
         bitmap[$row]=$(( bitmap[row]^SIDEMASK ));
       elif ((row==BOUND2));then      #下部サイド枝刈り
-        #if (( (down[row]&SIDEMASK) ==0));then
-        #  ((row--));
-        #fi
+        if (( (down[row]&SIDEMASK) ==0));then
+          ((row--));
+        fi
         if (((down[row]&SIDEMASK)!=SIDEMASK));then
           bitmap[$row]=$(( bitmap[row]&SIDEMASK ));
         fi
@@ -1731,9 +1731,9 @@ function symmetry_backTrack_NR()
       # 配置可能なパターンが一つずつ取り出される
       bitmap[$row]=$(( bitmap[row]^bit ));  
       board[$row]="$bit";            # Qを配置
+      if(((bit&MASK)!=0));then
       if (( row==(size-1) ));then
         if(((save_bitmap&LASTMASK)==0));then
-          echo "row:${board[0]},${board[1]},${board[2]},${board[3]},${board[4]},${board[5]},${board[6]},${board[7]},${board[8]}"
           symmetryOps ;
         fi
         ((row--));
@@ -1744,6 +1744,9 @@ function symmetry_backTrack_NR()
         right[$row]=$(((right[n]|bit)>>1));
         # クイーンが配置可能な位置を表す
         bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
+      fi
+      else
+        ((row--));
       fi
     else
       ((row--));
@@ -1777,7 +1780,6 @@ function symmetry_backTrack_corner_NR()
       if (( row==(size-1) ));then
           #枝刈りによりsymmetryOpsは不要
           #symmetryOps ;
-          ((CO++)) ;
           ((COUNT8++)) ;
           if ((DISPLAY==1));then
             # 出力 1:bitmap版 0:それ以外
@@ -1849,7 +1851,6 @@ function symmetry_backTrack()
     if ((bitmap));then
       if (( !(bitmap&LASTMASK) ));then
         board[$row]="$bitmap";     # Qを配置
-        echo "row:${board[0]}${board[1]}${board[2]}${board[3]}${board[4]}${board[5]}${board[6]}${board[7]}${board[8]}"
         symmetryOps ;             # 対象解除
       fi
     fi
@@ -1891,7 +1892,6 @@ function symmetry_backTrack_corner()
         printRecord "$size" 1 ;
       fi
       ((COUNT8++)) ;              
-      ((CO++)) ;              
     fi
   else
     if ((row<BOUND1));then        # 枝刈り
@@ -1962,5 +1962,4 @@ size=9;
 symmetry_NR ; # 非再帰
 echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
 echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
-echo "$CO"
 
