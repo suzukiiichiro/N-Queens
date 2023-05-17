@@ -1733,7 +1733,7 @@ function symmetry_backTrack_NR()
       board[$row]="$bit";            # Qを配置
       if (( row==(size-1) ));then
         if(((save_bitmap&LASTMASK)==0));then
-          echo "sssss"
+          echo "row:${board[0]},${board[1]},${board[2]},${board[3]},${board[4]},${board[5]},${board[6]},${board[7]},${board[8]}"
           symmetryOps ;
         fi
         ((row--));
@@ -1849,6 +1849,7 @@ function symmetry_backTrack()
     if ((bitmap));then
       if (( !(bitmap&LASTMASK) ));then
         board[$row]="$bitmap";     # Qを配置
+        echo "row:${board[0]}${board[1]}${board[2]}${board[3]}${board[4]}${board[5]}${board[6]}${board[7]}${board[8]}"
         symmetryOps ;             # 対象解除
       fi
     fi
@@ -1957,8 +1958,8 @@ DISPLAY=0; # DISPLAY表示をしない
 
 CO=0;
 size=9;
-symmetry ;   # 再帰
-#symmetry_NR ; # 非再帰
+#symmetry ;   # 再帰
+symmetry_NR ; # 非再帰
 echo "SIZE:$size TOTAL:$TOTAL UNIQUE:$UNIQUE";
 echo "COUNT2:$COUNT2 COUNT4:$COUNT4 COUNT8:$COUNT8";
 echo "$CO"
