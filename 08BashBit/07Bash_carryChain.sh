@@ -637,8 +637,8 @@ function NQ()
 }
 #
 #
-DISPLAY=0; # ボードレイアウト表示しない
-#DISPLAY=1; # ボードレイアウト表示する
+#DISPLAY=0; # ボードレイアウト表示しない
+DISPLAY=1; # ボードレイアウト表示する
 #
 NQ carryChain; 
 exit;
