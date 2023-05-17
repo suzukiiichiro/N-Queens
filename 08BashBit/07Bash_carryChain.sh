@@ -187,9 +187,9 @@ $ gcc -Wall -W -O3 nq27_N-Queen.c && ./a.out -r
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
 declare -i COUNTER[3];    # カウンター配列
-declare -i COUNT2=0;  # 配列用
-declare -i COUNT4=1;  # 配列用
-declare -i COUNT8=2;  # 配列用
+declare -i ccCOUNT2=0;  # 配列用
+declare -i ccCOUNT4=1;  # 配列用
+declare -i ccCOUNT8=2;  # 配列用
 declare -a B; 
 : 'B=(row     0:
       left    1:
@@ -498,7 +498,7 @@ function carryChainSymmetry()
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[0] ))||{
-    process "$size" "$COUNT8";
+    process "$size" "$ccCOUNT8";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -511,7 +511,7 @@ function carryChainSymmetry()
   # w=n=e=sであれば90度回転で同じ可能性 ';
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
-    process "$size" "$COUNT2";
+    process "$size" "$ccCOUNT2";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -522,14 +522,14 @@ function carryChainSymmetry()
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
-    process "$size" "$COUNT4";
+    process "$size" "$ccCOUNT4";
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
     #
     return ;
   }
-  process "$size" "$COUNT8";
+  process "$size" "$ccCOUNT8";
   #
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
   if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
@@ -605,8 +605,8 @@ function carryChain()
     done
   done
   # 集計
-  UNIQUE=COUNTER[$COUNT2]+COUNTER[$COUNT4]+COUNTER[$COUNT8];
-  TOTAL=COUNTER[$COUNT2]*2+COUNTER[$COUNT4]*4+COUNTER[$COUNT8]*8;
+  UNIQUE=$(( COUNTER[$ccCOUNT2]+COUNTER[$ccCOUNT4]+COUNTER[$ccCOUNT8] ));
+  TOTAL=$(( COUNTER[$ccCOUNT2]*2+COUNTER[$ccCOUNT4]*4+COUNTER[$ccCOUNT8]*8 ));
 }
 #
 : '';
