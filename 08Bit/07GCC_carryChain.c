@@ -125,6 +125,7 @@ bool placement(int size,int dimx,int dimy)
     if (B.x[1]!=-1){
       // bitmap=$(( bitmap|2 ));
       // bitmap=$(( bitmap^2 ));
+      // ((bitmap&=~2));
       // 上と下は同じ趣旨
       if((B.x[1]>=dimx)&&(dimy==1)){ return false; }
     }
