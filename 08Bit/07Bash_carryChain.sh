@@ -186,19 +186,14 @@ $ gcc -Wall -W -O3 nq27_N-Queen.c && ./a.out -r
 ';
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
-declare -i COUNTER[3];    # カウンター配列
-declare -i ccCOUNT2=0;  # 配列用
-declare -i ccCOUNT4=1;  # 配列用
-declare -i ccCOUNT8=2;  # 配列用
-declare -a B; 
 : 'B=(row     0:
       left    1:
       down    2:
       right   3:
       X[@]    4: 
       )';
+declare -a B; 
 declare -i DISPLAY=0;
-#
 #
 : 'ボードレイアウトを出力 ビットマップ対応版';
 function printRecordCarryChain()
@@ -326,8 +321,7 @@ function solve()
   local -i down="$3";
   local -i right="$4";
   # 配置完了の確認 
-  # bh=-1 1111111111 すべての列にクイーンを置けると
-  # -1になる
+  # bh=-1 1111111111 すべての列にクイーンを置けると-1になる
   (( down+1 ))|| return 1;
   # 新たなQを配置 colは置き換える。
   # row 右端にクイーンがすでに置かれていたら
@@ -342,38 +336,24 @@ function solve()
     (( row>>=1,left<<=1,right>>=1 ));
   done
   (( row>>=1 ));      # １行下に移動する
-  local -i bit;
   local -i bitmap;
   local -i total=0;
-  for (( bitmap=~(left|down|right);bitmap!=0;));do
-    (( bit=-bitmap&bitmap ));
+  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
+    local -i bit=$(( -bitmap&bitmap ));
     solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"  ; 
     (( total+=$? ));
-    ((bitmap^=bit));
   done
   return $total;
-}
-#
-: 'solve()を呼び出して再帰を開始する';
-function process()
-{
-  local -i size="$1";
-  local -i sym="$2";
-  solve "$(( B[0]>>2 ))" \
-        "$(( B[1]>>4 ))" \
-        "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
-        "$(( B[3]>>4<<size-5 ))";
-  (( COUNTER[$sym]+=$? ));
 }
 #
 : 'クイーンの効きをチェック';
 function placement()
 {
-  local -i size="$1";
-  local -i dimx="$2";     # dimxは行 dimyは列
-  local -i dimy="$3";
+  # local -i size="$1";
+  # local -i dimx="$2";     # dimxは行 dimyは列
+  # local -i dimy="$3";
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
-  (( t_x[dimx]==dimy ))&& return 1;
+  (( t_x[$2]==$3 ))&& return 1;
   : '
   #
   #
@@ -397,12 +377,17 @@ function placement()
   #    | | | | | |      
   #    +-+-+-+-+-+  
   #';
+  ((B[0] & 1<<$2)) && return 0;
+  ((B[1] & 1<<($1-1-$2+$3))) && return 0;
+  ((B[2] & 1<<$3)) && return 0;
+  ((B[3] & 1<<($2+$3))) && return 0;
   if (( t_x[0]==0 ));then
     if (( t_x[1]!=-1));then
       # bitmap=$(( bitmap|2 ));
       # bitmap=$(( bitmap^2 ));
+      #((bitmap&=~2));
       # 上と下は同じ趣旨
-      (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
+      (((t_x[1]>=$2) && ($3==1)))&&{ return 0; }
     fi
   else
   : '
@@ -443,104 +428,40 @@ function placement()
   #  ２．最下段枝刈り
   #  LSATMASKの意味は最終行でBOUND1以下または
   #  BOUND2以上にクイーンは置けないということ
-  #  BOUND2はsize-t_x[0]
-  #  if(row==sizeE){
+  #  BOUND2は$1-t_x[0]
+  #  if(row==$1E){
   #    //if(!bitmap){
   #    if(bitmap){
   #      if((bitmap&LASTMASK)==0){
   ';
     if (( t_x[0]!=-1));then
-      ((  (dimx<t_x[0]||dimx>=size-t_x[0])
-        &&(dimy==0||dimy==size-1)))&&{
-        return 0;
-      } 
-      ((  (dimx==size-1)&&((dimy<=t_x[0])||
-          dimy>=size-t_x[0])))&&{
-        return 0;
-      } 
-    fi
+      ((  ($3==0 || $3==$1-1) && 
+          ($2<t_x[0]||$2>=$1-t_x[0])
+      ))&&{ return 0; } 
+      ((  ($2==0 || $2==$1-1) &&
+          ($3<t_x[0]||$3>=$1-t_x[0])
+      ))&&{ return 0; } 
+     fi
   fi
-  (( (B[0] & 1<<dimx)||
-        (B[1] & 1<<(size-1-dimx+dimy))||
-        (B[2] & 1<<dimy)||
-        (B[3] & 1<<(dimx+dimy)) )) && return 0;
-  ((B[0]|=1<<dimx));
-  ((B[1]|=1<<(size-1-dimx+dimy)));
-  ((B[2]|=1<<dimy));
-  ((B[3]|=1<<(dimx+dimy)));
-  t_x[$dimx]="$dimy"; 
-  B[4]=${t_x[@]}; # Bに反映  
+  (( B[0]|=1<<$2, 
+  B[1]|=1<<($1-1-$2+$3),
+  B[2]|=1<<$3,
+  B[3]|=1<<($2+$3) ));
+  t_x[$2]="$3"; 
+  B[4]="${t_x[@]}"; # Bに反映  
   #
   # ボードレイアウト出力
-  board[$dimx]=$((1<<dimy));
+  (( $DISPLAY==1)) && board[$2]=$((1<<$3));
   #
   return 1;
 }
 #
-: 'キャリーチェーン対象解除法';
-function carryChainSymmetry()
-{
-  local -i n="$1";
-  local -i w="$2";
-  local -i s="$3";
-  local -i e="$4";
-  # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
-  local -i ww=$(( (size-2)*(size-1)-1-w ));
-  local -i w2=$(( (size-2)*(size-1)-1 ));
-  # 対角線上の反転が小さいかどうか確認する
-  (( (s==ww)&&(n<(w2-e)) ))&& return;
-  # 垂直方向の中心に対する反転が小さいかを確認
-  (( (e==ww)&&(n>(w2-n)) ))&& return;
-  # 斜め下方向への反転が小さいかをチェックする
-  (( (n==ww)&&(e>(w2-s)) ))&& return ;
-  #
-  # 【枝刈り】 １行目が角の場合
-  #  １．回転対称チェックせずCOUNT8にする
-  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
-  (( t_x[0] ))||{
-    process "$size" "$ccCOUNT8";
-    #
-    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
-    #
-    return;
-  }
-  # n,e,s==w の場合は最小値を確認する。
-  # : '右回転で同じ場合は、
-  # w=n=e=sでなければ値が小さいのでskip
-  # w=n=e=sであれば90度回転で同じ可能性 ';
-  ((s==w))&&{
-    (( (n!=w)||(e!=w) ))&& return;
-    process "$size" "$ccCOUNT2";
-    #
-    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
-    #
-    return ;
-  }
-  # : 'e==wは180度回転して同じ
-  # 180度回転して同じ時n>=sの時はsmaller?  ';
-  (( (e==w)&&(n>=s) ))&&{
-    ((n>s))&& return ;
-    process "$size" "$ccCOUNT4";
-    #
-    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
-    #
-    return ;
-  }
-  process "$size" "$ccCOUNT8";
-  #
-  # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-  if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
-  #
-  return ;
-}
-#
-: 'チェーンの構築';
+: 'キャリーチェーン';
 function carryChain()
 {
   local -i size="$1";
+  # カウンター配列 COUNT2:0 COUNT4:1 COUNT8:2
+  local -i COUNTER[0]=COUNTER[1]=COUNTER[2]=0;  
   # チェーンの初期化
   local -a pres_a;
   local -a pres_b;
@@ -598,15 +519,76 @@ function carryChain()
           [[ $? -eq 0 ]] && continue;
           #
           #  対象解除法
-          carryChainSymmetry "$n" "$w" "$s" "$e" ; 
+          # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+          local -i ww=$(( (size-2)*(size-1)-1-w ));
+          local -i w2=$(( (size-2)*(size-1)-1 ));
+          # 対角線上の反転が小さいかどうか確認する
+          (( (s==ww)&&(n<(w2-e)) ))&& continue;
+          # 垂直方向の中心に対する反転が小さいかを確認
+          (( (e==ww)&&(n>(w2-n)) ))&& continue;
+          # 斜め下方向への反転が小さいかをチェックする
+          (( (n==ww)&&(e>(w2-s)) ))&& continue ;
+          #
+          # 【枝刈り】 １行目が角の場合
+          #  １．回転対称チェックせずCOUNT8にする
+          local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+          (( t_x[0] ))||{
+            solve "$(( B[0]>>2 ))" \
+                  "$(( B[1]>>4 ))" \
+                  "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+                  "$(( B[3]>>4<<size-5 ))";
+            (( COUNTER[2]+=$? )); #COUNT8
+            #
+            # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+            if ((DISPLAY==1));then printRecordCarryChain "$size" "1"; read -p ""; fi
+            continue;
+          }
+          # n,e,s==w の場合は最小値を確認する。
+          # : '右回転で同じ場合は、
+          # w=n=e=sでなければ値が小さいのでskip
+          # w=n=e=sであれば90度回転で同じ可能性 ';
+          ((s==w))&&{
+            (( (n!=w)||(e!=w) ))&& continue;
+            solve "$(( B[0]>>2 ))" \
+                  "$(( B[1]>>4 ))" \
+                  "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+                  "$(( B[3]>>4<<size-5 ))";
+            (( COUNTER[0]+=$? )); #COUNT2
+            #
+            # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+            ((DISPLAY==1))&& { printRecordCarryChain "$size" "1"; read -p "" ;}
+            continue ;
+          }
+          # : 'e==wは180度回転して同じ
+          # 180度回転して同じ時n>=sの時はsmaller?  ';
+          (( (e==w)&&(n>=s) ))&&{
+            ((n>s))&& continue ;
+            solve "$(( B[0]>>2 ))" \
+                  "$(( B[1]>>4 ))" \
+                  "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+                  "$(( B[3]>>4<<size-5 ))";
+            (( COUNTER[1]+=$? )); #COUNT4
+            #
+            # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+            ((DISPLAY==1))&& { printRecordCarryChain "$size" "1"; read -p "" ;}
+            continue ;
+          }
+          solve "$(( B[0]>>2 ))" \
+                "$(( B[1]>>4 ))" \
+                "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+                "$(( B[3]>>4<<size-5 ))";
+          (( COUNTER[2]+=$? )); #COUNT8
+          #
+          # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+          ((DISPLAY==1))&& { printRecordCarryChain "$size" "1"; read -p "" ;}
           continue;
         done
       done
     done
   done
   # 集計
-  UNIQUE=$(( COUNTER[$ccCOUNT2]+COUNTER[$ccCOUNT4]+COUNTER[$ccCOUNT8] ));
-  TOTAL=$(( COUNTER[$ccCOUNT2]*2+COUNTER[$ccCOUNT4]*4+COUNTER[$ccCOUNT8]*8 ));
+  UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
+  TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
 }
 #
 : '';
@@ -620,10 +602,7 @@ function NQ()
   echo " N:        Total       Unique        hh:mm:ss" ;
   local -i N;
   for((N=min;N<=max;N++)){
-    TOTAL=0;
-    UNIQUE=0;
-    COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
-    B=0; 
+    TOTAL=UNIQUE=0;
     startTime=$(date +%s);# 計測開始時間
     "$selectName" "$N";
     endTime=$(date +%s); 	# 計測終了時間
@@ -637,8 +616,8 @@ function NQ()
 }
 #
 #
-#DISPLAY=0; # ボードレイアウト表示しない
-DISPLAY=1; # ボードレイアウト表示する
+DISPLAY=0; # ボードレイアウト表示しない
+#DISPLAY=1; # ボードレイアウト表示する
 #
 NQ carryChain; 
 exit;
