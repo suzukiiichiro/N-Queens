@@ -1,16 +1,5 @@
 /**
  *
- * 兄とやること
- * ０．１８からの解が違う！
- * １．ユニーク解が違う（もとのソースも違うことが判明）
- * ２．GCC12と07GCC_carryChain.cとの速度比較
- * 　　追いついてくれれば納得
- * ３．C/BashでNの連続処理（完了）
- * ４．C/BashでCOUNTの配列処理（完了）
- * ５．uint64_tに変更（完了）
- *
- *
- *
  * キャリーチェーンC言語版
 
 bash-3.2$ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC -r
@@ -75,10 +64,12 @@ typedef struct{
 Board B;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
-uint64_t COUNTER[3];  //カウンター配列
-unsigned int COUNT2=0; //配列用
-unsigned int COUNT4=1; //配列用
-unsigned int COUNT8=2; //配列用
+uint64_t COUNTER[3];      //カウンター配列
+unsigned int COUNT2=0;    //配列用
+unsigned int COUNT4=1;    //配列用
+unsigned int COUNT8=2;    //配列用
+unsigned int pres_a[930]; //チェーン
+unsigned int pres_b[930];
 // 
 // ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
@@ -98,7 +89,7 @@ uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
   }
   return total;
 } 
-//
+// solve()を呼び出して再帰を開始する
 void process(int size,Board B,int sym)
 {
   COUNTER[sym]+=solve(B.row>>2,
@@ -110,53 +101,11 @@ void process(int size,Board B,int sym)
 bool placement(int size,int dimx,int dimy)
 {
   if(B.x[dimx]==dimy){ return true;  }  
-  /** 
-  #
-  #
-  # 【枝刈り】Qが角にある場合の枝刈り
-  #  ２．２列めにクイーンは置かない
-  #  （１はcarryChainSymmetry()内にあります）
-  #
-  #  Qが角にある場合は、
-  #  2行目のクイーンの位置 t_x[1]が BOUND1
-  #  BOUND1行目までは2列目にクイーンを置けない
-  */ 
   if (B.x[0]==0){
     if (B.x[1]!=-1){
-      // bitmap=$(( bitmap|2 ));
-      // bitmap=$(( bitmap^2 ));
-      // 上と下は同じ趣旨
       if((B.x[1]>=dimx)&&(dimy==1)){ return false; }
     }
   }else{
-    /**
-    # 【枝刈り】Qが角にない場合
-    #   １．上部サイド枝刈り
-    #  if ((row<BOUND1));then        
-    #    bitmap=$(( bitmap|SIDEMASK ));
-    #    bitmap=$(( bitmap^=SIDEMASK ));
-    #
-    #  BOUND1はt_x[0]
-    #
-    #  ２．下部サイド枝刈り
-    #  if ((row==BOUND2));then     
-    #    if (( !(down&SIDEMASK) ));then
-    #      return ;
-    #    fi
-    #    if (( (down&SIDEMASK)!=SIDEMASK ));then
-    #      bitmap=$(( bitmap&SIDEMASK ));
-    #    fi
-    #  fi
-    #
-    #  ２．最下段枝刈り
-    #  LSATMASKの意味は最終行でBOUND1以下または
-    #  BOUND2以上にクイーンは置けないということ
-    #  BOUND2はsize-t_x[0]
-    #  if(row==sizeE){
-    #    //if(!bitmap){
-    #    if(bitmap){
-    #      if((bitmap&LASTMASK)==0){
-    **/
     if( (B.x[0]!=-1) ){
       if(( (dimx<B.x[0]||dimx>=size-B.x[0])
         && (dimy==0 || dimy==size-1)
@@ -168,16 +117,15 @@ bool placement(int size,int dimx,int dimy)
     }
   }
   B.x[dimx]=dimy;                    //xは行 yは列
-  // UINT64_C(n)	64ビット幅を持つ、符号なし整数型の定数値
   uint64_t row=UINT64_C(1)<<dimx;
   uint64_t down=UINT64_C(1)<<dimy;
-  uint64_t left=UINT64_C(1)<<(size-1-dimx+dimy);    //右上から左下
-  uint64_t right=UINT64_C(1)<<(dimx+dimy);          // 左上から右下
+  uint64_t left=UINT64_C(1)<<(size-1-dimx+dimy); //右上から左下
+  uint64_t right=UINT64_C(1)<<(dimx+dimy);       // 左上から右下
   if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }     
   B.row|=row; B.down|=down; B.left|=left; B.right|=right;
   return true;
 }
-// キャリーチェーン対象解除法
+// キャリーチェーン対称解除法
 void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,unsigned int n)
 {
   // # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
@@ -193,10 +141,6 @@ void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,un
    枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
   **/
   if(B.x[0]==0){
-    // COUNT8 += solve(B.row >> 2,
-    //     B.left>>4,
-    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-    //     (B.right>>4)<<(size-5));
     process(size,B,COUNT8);
     return ;
   }
@@ -208,10 +152,6 @@ void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,un
    */
   if(s==w){ 
     if((n!=w)||(e!=w)){ return; } 
-    // COUNT2 += solve(B.row >> 2,
-    //     B.left>>4,
-    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-    //     (B.right>>4)<<(size-5));
     process(size,B,COUNT2);
     return ;
   }
@@ -219,35 +159,15 @@ void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,un
   // # 180度回転して同じ時n>=sの時はsmaller?  ';
   if((e==w)&&(n>=s)){ 
     if(n>s){ return; } 
-    // COUNT4 += solve(B.row >> 2,
-    //     B.left>>4,
-    //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-    //     (B.right>>4)<<(size-5));
     process(size,B,COUNT4);
     return;
   }
-  // COUNT8 += solve(B.row >> 2,
-  //     B.left>>4,
-  //     ((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-  //     (B.right>>4)<<(size-5));
   process(size,B,COUNT8);
   return ;
 }
-// キャリーチェーン
-void carryChain(int size)
+// チェーンのビルド
+void buildChain(int size)
 {
-  unsigned int pres_a[930];
-  unsigned int pres_b[930];
-  unsigned int idx=0;
-  for(unsigned int a=0;a<(unsigned)size;a++){
-    for(unsigned int b=0;b<(unsigned)size;b++){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
-      pres_a[idx]=a;
-      pres_b[idx]=b;
-      idx++;
-    }
-  }
-  //
   Board wB=B;
   for(unsigned w=0;w<=(unsigned)(size/2)*(size-3);w++){
     B=wB;
@@ -271,12 +191,34 @@ void carryChain(int size)
           B=sB;
           if(!placement(size,size-1-pres_a[s],0)){ continue; }
           if(!placement(size,size-1-pres_b[s],1)){ continue; }
+          //
           carryChainSymmetry(size,w,s,e,n);//対象解除法
+          //
           continue;
         }
       }    
     }
   }
+}
+// チェーンの初期化
+void initChain(int size)
+{
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;a++){
+    for(unsigned int b=0;b<(unsigned)size;b++){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      idx++;
+    }
+  }
+}
+// キャリーチェーン
+void carryChain(int size)
+{
+  initChain(size); // チェーンの初期化
+  buildChain(size);// チェーンのビルド
+  // 集計
   UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
   TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
 }

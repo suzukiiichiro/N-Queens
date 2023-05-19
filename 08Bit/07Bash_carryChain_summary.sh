@@ -1,215 +1,5 @@
 #!/usr/bin/bash
 
-: '
-エイト・クイーンの解説をしています。ご興味のある方はどうぞ。
-
-Ｎクイーン問題（１８）第四章　偉人のソースを読む「エイト・クイーンノスタルジー」
-https://suzukiiichiro.github.io/posts/2023-04-18-01-n-queens-suzuki/
-Ｎクイーン問題（１７）第四章　偉人のソースを読む「Ｎ２４を発見 Ｊｅｆｆ Ｓｏｍｅｒｓ」
-https://suzukiiichiro.github.io/posts/2023-04-21-01-n-queens-suzuki/
-Ｎクイーン問題（１６）第三章　対象解除法 ソース解説
-https://suzukiiichiro.github.io/posts/2023-04-18-01-n-queens-suzuki/
-Ｎクイーン問題（１５）第三章　対象解除法 ロジック解説
-https://suzukiiichiro.github.io/posts/2023-04-13-02-nqueens-suzuki/
-Ｎクイーン問題（１４）第三章　ミラー
-https://suzukiiichiro.github.io/posts/2023-04-13-01-nqueens-suzuki/
-Ｎクイーン問題（１３）第三章　ビットマップ
-https://suzukiiichiro.github.io/posts/2023-04-05-01-nqueens-suzuki/
-Ｎクイーン問題（１２）第二章　まとめ
-https://suzukiiichiro.github.io/posts/2023-03-17-02-n-queens-suzuki/
-Ｎクイーン問題（１１）第二章　配置フラグの再帰・非再帰
-https://suzukiiichiro.github.io/posts/2023-03-17-01-n-queens-suzuki/
-Ｎクイーン問題（１０）第二章　バックトラックの再帰・非再帰
-https://suzukiiichiro.github.io/posts/2023-03-16-01-n-queens-suzuki/
-Ｎクイーン問題（９）第二章　ブルートフォースの再帰・非再帰
-https://suzukiiichiro.github.io/posts/2023-03-14-01-n-queens-suzuki/
-Ｎクイーン問題（８）第一章　まとめ
-https://suzukiiichiro.github.io/posts/2023-03-09-01-n-queens-suzuki/
-Ｎクイーン問題（７）第一章　ブルートフォース再び
-https://suzukiiichiro.github.io/posts/2023-03-08-01-n-queens-suzuki/
-Ｎクイーン問題（６）第一章　配置フラグ
-https://suzukiiichiro.github.io/posts/2023-03-07-01-n-queens-suzuki/
-Ｎクイーン問題（５）第一章　進捗表示テーブルの作成
-https://suzukiiichiro.github.io/posts/2023-03-06-01-n-queens-suzuki/
-Ｎクイーン問題（４）第一章　バックトラック
-https://suzukiiichiro.github.io/posts/2023-02-21-01-n-queens-suzuki/
-Ｎクイーン問題（３）第一章　バックトラック準備編
-https://suzukiiichiro.github.io/posts/2023-02-14-03-n-queens-suzuki/
-Ｎクイーン問題（２）第一章　ブルートフォース
-https://suzukiiichiro.github.io/posts/2023-02-14-02-n-queens-suzuki/
-Ｎクイーン問題（１）第一章　エイトクイーンについて
-https://suzukiiichiro.github.io/posts/2023-02-14-01-n-queens-suzuki/
-
-エイト・クイーンのソース置き場 BashもJavaもPythonも！
-https://github.com/suzukiiichiro/N-Queens
-';
-
-: '
- ## bash版
- <> symmetry.sh matome5.sh 対象解除
- N:        Total       Unique        hh:mm:ss
- 4:            2            1         0:00:00
- 5:           10            2         0:00:00
- 6:            4            1         0:00:00
- 7:           44            7         0:00:00
- 8:           92           12         0:00:00
- 9:          300           39         0:00:00
-10:          412           52         0:00:01
-11:          724           91         0:00:03
-12:         2288          287         0:00:11
-13:         8612         1078         0:00:49
-14:        35376         4425         0:04:24
-15:       204560        25582         0:23:51
-
- ## python版
- $ python py13_4_multiprocess_nqueen.py
-１３＿４マルチプロセス版
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.124
- 5:           10            2         0:00:00.110
- 6:            4            1         0:00:00.116
- 7:           40            6         0:00:00.115
- 8:           92           12         0:00:00.119
- 9:          352           46         0:00:00.118
-10:          724           92         0:00:00.121
-11:         2680          341         0:00:00.122
-12:        14200         1787         0:00:00.228
-13:        73712         9233         0:00:00.641
-14:       365596        45752         0:00:03.227
-15:      2279184       285053         0:00:19.973
-
-ちなみにpythonシングルプロセス版
-15:      2279184       285053         0:00:54.645
-
-
- ## Lua版
- $ luajit Lua12_N-Queen.lua
- N:            Total       Unique    hh:mm:ss
- 2:                0            0    00:00:00
- 3:                0            0    00:00:00
- 4:                2            1    00:00:00
- 5:               10            2    00:00:00
- 6:                4            1    00:00:00
- 7:               40            6    00:00:00
- 8:               92           12    00:00:00
- 9:              352           46    00:00:00
-10:              724           92    00:00:00
-11:             2680          341    00:00:00
-12:            14200         1787    00:00:00
-13:            73712         9233    00:00:00
-14:           365596        45752    00:00:00
-15:          2279184       285053    00:00:03
-16:         14772512      1846955    00:00:20
-17:         95815104     11977939    00:02:13
-
- ## OpenCL版
-$ gcc -Wall -W -O3 -std=c99 -pthread -lpthread -lm -o 07_52NQueen 07_52gpu_queens.c -framework OpenCL
-52. OpenCL (07_38 *N*si*si アルゴリムは全部のせ) 
- N:    Total          Unique      dd:hh:mm:ss.ms
- 4:        2                   1  00:00:00:00.43
- 5:       10                   2  00:00:00:00.35
- 6:        4                   1  00:00:00:00.35
- 7:       40                   6  00:00:00:00.35
- 8:       92                  12  00:00:00:00.35
- 9:      352                  46  00:00:00:00.35
-10:      724                  92  00:00:00:00.35
-11:     2680                 341  00:00:00:00.35
-12:    14200                1787  00:00:00:00.35
-13:    73712                9233  00:00:00:00.36
-14:   365596               45752  00:00:00:00.37
-15:  2279184              285053  00:00:00:01.58
-
- ## Java版
-$ javac -cp .:commons-lang3-3.4.jar Java13c_NQueen.java && java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java13c_NQueen  ;
-１３．Java 再帰 並列処理 
- N:        Total          Unique  hh:mm:ss.SSS
- 4:            2               1  00:00:00.001
- 5:           10               2  00:00:00.001
- 6:            4               1  00:00:00.000
- 7:           40               6  00:00:00.001
- 8:           92              12  00:00:00.001
- 9:          352              46  00:00:00.001
-10:          724              92  00:00:00.001
-11:         2680             341  00:00:00.003
-12:        14200            1787  00:00:00.002
-13:        73712            9233  00:00:00.005
-14:       365596           45752  00:00:00.021
-15:      2279184          285053  00:00:00.102
-16:     14772512         1846955  00:00:00.631
-17:     95815104        11977939  00:00:04.253
-
-ちなみにシングルスレッド
-15:      2279184          285053  00:00:00.324
-16:     14772512         1846955  00:00:02.089
-17:     95815104        11977939  00:00:14.524
-
-
- ## GCC版
-$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -pthread GCC13.c && ./a.out [-c|-r]
-１３．CPU 非再帰 並列処理 pthread
- N:        Total          Unique  dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.00
- 5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.00
- 8:           92              12  00:00:00:00.00
- 9:          352              46  00:00:00:00.00
-10:          724              92  00:00:00:00.00
-11:         2680             341  00:00:00:00.00
-12:        14200            1787  00:00:00:00.00
-13:        73712            9233  00:00:00:00.00
-14:       365596           45752  00:00:00:00.01
-15:      2279184          285053  00:00:00:00.10
-16:     14772512         1846955  00:00:00:00.65
-17:     95815104        11977939  00:00:00:04.33
-
-ちなみにシングルスレッド
-15:      2279184          285053            0.34
-16:     14772512         1846955            2.24
-17:     95815104        11977939           15.72
-
- ## GPU/CUDA版
-$ nvcc -O3 CUDA13_N-Queen.cu  && ./a.out -g
-１２．GPU 非再帰 並列処理 CUDA
- N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               1  00:00:00:00.37
- 5:           10               2  00:00:00:00.00
- 6:            4               1  00:00:00:00.00
- 7:           40               6  00:00:00:00.00
- 8:           92              12  00:00:00:00.01
- 9:          352              46  00:00:00:00.01
-10:          724              92  00:00:00:00.01
-11:         2680             341  00:00:00:00.01
-12:        14200            1787  00:00:00:00.02
-13:        73712            9233  00:00:00:00.03
-14:       365596           45752  00:00:00:00.03
-15:      2279184          285053  00:00:00:00.04
-16:     14772512         1846955  00:00:00:00.08
-17:     95815104        11977939  00:00:00:00.35
-
-ちなみにシングルスレッド
-15:      2279184          285053            0.34
-16:     14772512         1846955            2.24
-17:     95815104        11977939           15.72
-
- ## nq27版
-$ gcc -Wall -W -O3 nq27_N-Queen.c && ./a.out -r
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.01
-12:        14200            1788            0.02
-13:        73712            9237            0.06
-14:       365596           45771            0.25
-15:      2279184          285095            1.14
-16:     14772512         1847425            6.69
-17:     95815104        11979381           43.82
-';
 declare -i size;
 declare -a board;
 declare -i bit;
@@ -219,6 +9,16 @@ declare -i COUNT2=COUNT4=COUNT8=0;
 declare -i MASK=SIDEMASK=LASTMASK=0;
 declare -i TOPBIT=ENDBIT=0;
 declare -i BOUND1=BOUND2=0;
+declare -a pres_a;        # チェーン
+declare -a pres_b;        # チェーン
+declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
+: 'B=(row     0:
+      left    1:
+      down    2:
+      right   3:
+      X[@]    4: 
+      )';
+declare -a B; 
 
 #
 : 'ボードレイアウトを出力 ビットマップ対応版';
@@ -336,6 +136,341 @@ function printRecord()
   echo "";
 }
 #
+: 'ボード外側２列を除く内側のクイーン配置処理';
+function solve()
+{
+  local -i row="$1";
+  local -i left="$2";
+  local -i down="$3";
+  local -i right="$4";
+  # if (( !(down+1) ));then return 1; fi
+  ((down+1))||return 1; # ↑を高速化
+  while(( row&1 ));do
+    # ((row>>=1));
+    # ((left<<=1));
+    # ((right>>=1));
+    (( row>>=1,left<<=1,right>>=1 )); # 上記３行をまとめて書けます
+  done
+  (( row>>=1 ));      # １行下に移動する
+  #
+  local -i bitmap;  # 再帰に必要な変数は必ず定義する必要があります。
+  local -i total=0; 
+  #
+  # 以下のwhileを一行のforにまとめると高速化が期待できます。
+  # local -i bitmap=~(left|down|right);
+  # while ((bitmap!=0));do
+  # :
+  # (( bitmap^=bit ))
+  # done
+  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
+    local -i bit=$(( -bitmap&bitmap ));
+
+    # ret=$( solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))")  ; 
+    #  ret=$?;
+    # [[ $ret -gt 0 ]] && { 
+    # ((total+=$ret));
+    # }  # solve()で実行したreturnの値は $? に入ります。
+    # 上記はやや冗長なので以下の２行にまとめて書くことができます。
+  solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+    ((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
+  done
+  return $total;  # 合計を戻り値にします
+}
+#
+: 'solve()を呼び出して再帰を開始する';
+function process()
+{
+  local -i size="$1";
+  local -i sym="$2"; # COUNT2 COUNT4 COUNT8
+  # B[0]:row B[1]:left B[2]:down B[3]:right
+  solve "$(( B[0]>>2 ))" \
+        "$(( B[1]>>4 ))" \
+        "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+        "$(( B[3]>>4<<size-5 ))";
+  (( COUNTER[$sym]+=$? ));
+}
+#
+: 'クイーンの効きをチェック';
+function placement()
+{
+  local -i size="$1";
+  local -i dimx="$2";     # dimxは行 dimyは列
+  local -i dimy="$3";
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+  # if (( t_x[dimx]==dimy ));then
+  #   return 1;
+  # fi
+  # 上記を以下のように書くことができます
+  (( t_x[dimx]==dimy ))&& return 1;
+  : '
+  #
+  #
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry()内にあります）
+  #
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
+  # 
+  #    +-+-+-+-+-+  
+  #    | | | |X|Q| 
+  #    +-+-+-+-+-+  
+  #    | |Q| |X| | 
+  #    +-+-+-+-+-+  
+  #    | | | |X| |       
+  #    +-+-+-+-+-+             
+  #    | | | |Q| | 
+  #    +-+-+-+-+-+ 
+  #    | | | | | |      
+  #    +-+-+-+-+-+  
+  #';
+  if (( t_x[0] ));then
+  : '
+  #
+  # 【枝刈り】Qが角にない場合
+  #
+  #  +-+-+-+-+-+  
+  #  |X|X|Q|X|X| 
+  #  +-+-+-+-+-+  
+  #  |X| | | |X| 
+  #  +-+-+-+-+-+  
+  #  | | | | | |
+  #  +-+-+-+-+-+
+  #  |X| | | |X|
+  #  +-+-+-+-+-+
+  #  |X|X| |X|X|
+  #  +-+-+-+-+-+
+  #
+  #   １．上部サイド枝刈り
+  #  if ((row<BOUND1));then        
+  #    bitmap=$(( bitmap|SIDEMASK ));
+  #    bitmap=$(( bitmap^=SIDEMASK ));
+  #
+  #  | | | | | |       
+  #  +-+-+-+-+-+  
+  #  BOUND1はt_x[0]
+  #
+  #  ２．下部サイド枝刈り
+  #  if ((row==BOUND2));then     
+  #    if (( !(down&SIDEMASK) ));then
+  #      return ;
+  #    fi
+  #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+  #      bitmap=$(( bitmap&SIDEMASK ));
+  #    fi
+  #  fi
+  #
+  #  ２．最下段枝刈り
+  #  LSATMASKの意味は最終行でBOUND1以下または
+  #  BOUND2以上にクイーンは置けないということ
+  #  BOUND2はsize-t_x[0]
+  #  if(row==sizeE){
+  #    //if(!bitmap){
+  #    if(bitmap){
+  #      if((bitmap&LASTMASK)==0){
+  ';
+    #if (( t_x[0]!=-1));then
+    # 上記は if コマンドすら不要です
+    [[ t_x[0] -ne -1 ]]&&{    # -ne は != と同じです
+      (((dimx<t_x[0]||dimx>=size-t_x[0])
+        &&(dimy==0||dimy==size-1)))&&{ return 0; } 
+      (((dimx==size-1)&&((dimy<=t_x[0])||
+          dimy>=size-t_x[0])))&&{ return 0; } 
+    }
+  else
+    #if (( t_x[1]!=-1));then
+    # 上記は if コマンドすら不要です
+    [[ t_x[1] -ne -1 ]]&&{
+      # bitmap=$(( bitmap|2 )); # 枝刈り
+      # bitmap=$(( bitmap^2 )); # 枝刈り
+      #((bitmap&=~2)); # 上２行を一行にまとめるとこうなります
+      # ちなみに上と下は同じ趣旨
+      # if (( (t_x[1]>=dimx)&&(dimy==1) ));then
+      #   return 0;
+      # fi
+      (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
+    }
+  fi
+  # B[0]:row B[1]:left B[2]:down B[3]:right
+  (( (B[0] & 1<<dimx)|| (B[1] & 1<<(size-1-dimx+dimy))||
+     (B[2] & 1<<dimy)|| (B[3] & 1<<(dimx+dimy)) )) && return 0;
+  # ((B[0]|=1<<dimx));
+  # ((B[1]|=1<<(size-1-dimx+dimy)));
+  # ((B[2]|=1<<dimy));
+  # ((B[3]|=1<<(dimx+dimy)));
+  # 上記４行を一行にまとめることができます。
+  ((B[0]|=1<<dimx, B[1]|=1<<(size-1-dimx+dimy),B[2]|=1<<dimy,B[3]|=1<<(dimx+dimy) ));
+  #
+  # 配列の中に配列があるので仕方がないですが要検討箇所です。
+  t_x[$dimx]="$dimy"; 
+  B[4]=${t_x[@]}; # Bに反映  
+  #
+  # ボードレイアウト出力
+  # if [[ DISPLAY ]];then 
+  #   board[$dimx]=$((1<<dimy)); 
+  # fi
+  # 上記を一行にまとめることができます。
+  [[ $DISPLAY ]] && board[$dimx]=$((1<<dimy));
+  #
+  return 1;
+}
+#
+: 'キャリーチェーン対象解除法';
+function carryChainSymmetry()
+{
+  local -i n="$1";
+  local -i w="$2";
+  local -i s="$3";
+  local -i e="$4";
+  # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+  local -i ww=$(( (size-2)*(size-1)-1-w ));
+  local -i w2=$(( (size-2)*(size-1)-1 ));
+  # 対角線上の反転が小さいかどうか確認する
+  (( (s==ww)&&(n<(w2-e)) ))&& return;
+  # 垂直方向の中心に対する反転が小さいかを確認
+  (( (e==ww)&&(n>(w2-n)) ))&& return;
+  # 斜め下方向への反転が小さいかをチェックする
+  (( (n==ww)&&(e>(w2-s)) ))&& return ;
+  #
+  # 【枝刈り】 １行目が角の場合
+  #  １．回転対称チェックせずCOUNT8にする
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+  (( t_x[0] ))||{ # || は 条件が！であることを示します
+    process "$size" "2";  #COUNT8
+    #
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return;
+  }
+  # n,e,s==w の場合は最小値を確認する。
+  # : '右回転で同じ場合は、
+  # w=n=e=sでなければ値が小さいのでskip
+  # w=n=e=sであれば90度回転で同じ可能性 ';
+  ((s==w))&&{
+    (( (n!=w)||(e!=w) ))&& return;
+    process "$size" "0" # COUNT2
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return ;
+  }
+  # : 'e==wは180度回転して同じ
+  # 180度回転して同じ時n>=sの時はsmaller?  ';
+  (( (e==w)&&(n>=s) ))&&{
+    ((n>s))&& return ;
+    process "$size" "1" # COUNT4
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return ;
+  }
+  process "$size" "2" ; #COUNT8
+  # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+  ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+  return ;
+}
+#
+: 'チェーンのビルド';
+function buildChain()
+{
+  local -i size="$1";
+  local -a wB=sB=eB=nB=X; 
+  wB=("${B[@]}");
+  #
+  # １ 上の２行に配置
+  #
+  #for ((w=0;w<=(size/2)*(size-3);w++));do
+  # i++ よりも ++i のほうが断然高速です。
+  for ((w=0;w<=(size/2)*(size-3);++w));do
+    B=("${wB[@]}");
+    # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
+    #for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
+    # i++ よりも ++i のほうが断然高速です。
+    for ((bx_i=0;bx_i<size;++bx_i));do X[$bx_i]=-1; done
+    B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
+    placement "$size" "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
+    [[ $? -eq 0 ]] && continue;
+    placement "$size" "1" "$((pres_b[w]))";
+    [[ $? -eq 0 ]] && continue;
+    #
+    # ２ 90度回転
+    #
+    nB=("${B[@]}");
+    local -i mirror=$(( (size-2)*(size-1)-w ));
+    #for ((n=w;n<mirror;n++));do 
+    # i++ よりも ++i のほうが断然高速です。
+    for ((n=w;n<mirror;++n));do 
+      B=("${nB[@]}");
+      placement "$size" "$((pres_a[n]))" "$((size-1))"; 
+      [[ $? -eq 0 ]] && continue;
+      placement "$size" "$((pres_b[n]))" "$((size-2))";
+      [[ $? -eq 0 ]] && continue;
+      #
+      # ３ 90度回転
+      #
+      eB=("${B[@]}");
+      #for ((e=w;e<mirror;e++));do 
+      # i++ よりも ++i のほうが断然高速です。
+      for ((e=w;e<mirror;++e));do 
+        B=("${eB[@]}");
+        placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
+        [[ $? -eq 0 ]] && continue;
+        placement "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
+        [[ $? -eq 0 ]] && continue;
+        #
+        # ４ 90度回転
+        #
+        sB=("${B[@]}");
+        #for ((s=w;s<mirror;s++));do
+        # i++ よりも ++i のほうが断然高速です。
+        for ((s=w;s<mirror;++s));do
+          B=("${sB[@]}")
+          placement "$size" "$((size-1-pres_a[s]))" "0";
+          [[ $? -eq 0 ]] && continue;
+          placement "$size" "$((size-1-pres_b[s]))" "1"; 
+          [[ $? -eq 0 ]] && continue;
+          #
+          #  対象解除法
+          carryChainSymmetry "$n" "$w" "$s" "$e" ; 
+          #
+        done
+      done
+    done
+  done
+}
+#
+: 'チェーンの初期化';
+function initChain()
+{
+  local -i size="$1";
+  local -i idx=0;
+  local -i a=b=0;
+  for ((a=0;a<size;a++));do
+    for ((b=0;b<size;b++));do
+      (( ( (a>=b)&&((a-b)<=1) )||
+            ( (b>a)&& ((b-a)<=1) ) )) && continue;
+      pres_a[$idx]=$a;
+      pres_b[$idx]=$b;
+      ((idx++));
+    done
+  done
+}
+#
+: 'チェーンの構築';
+function carryChain()
+{
+  local -i size="$1";
+  # 初期化
+  pres_a=pres_b=0;
+  TOTAL=UNIQUE=0;
+  COUNTER[0]=COUNTER[1]=COUNTER[2]=0;
+  # 処理
+  initChain "$size";  # チェーンの初期化
+  buildChain "$size"; # チェーンのビルド
+  # 集計
+  UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
+  TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
+}
+#
 : '再帰・非再帰版 対象解除法';
 function symmetryOps()
 {
@@ -415,48 +550,48 @@ function symmetryOps()
 : '非再帰版 角にQがない時の対象解除バックトラック';
 function symmetry_backTrack_NR()
 {
-  local -i row="$1";
   local -i MASK="$(( (1<<size)-1 ))";
-  local -a bitmap[$size];
+  local -i row="$1";
   local -a left[$size];
-  local -a down[$size];
-  local -a right[$size];
-  local -i bit=0;
   left[$row]="$2";
+  local -a down[$size];
   down[$row]="$3";
+  local -a right[$size];
   right[$row]="$4";
+  local -a bitmap[$size];
   bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
   while ((row>0));do
     if (( bitmap[row]>0 ));then
-      # 一番右のビットを取り出す
-      bit=$(( -bitmap[row]&bitmap[row] ));  
-      # 配置可能なパターンが一つずつ取り出される
-      bitmap[$row]=$(( bitmap[row]^bit ));  
-      board[$row]="$bit";            # Qを配置
-      if ((row<BOUND1));then         #上部サイド枝刈り
-        bitmap[$row]=$(( bitmap[row]|SIDEMASK ));
-        bitmap[$row]=$(( bitmap[row]^SIDEMASK ));
-      elif ((row==BOUND2));then      #下部サイド枝刈り
-        if (( (down[row]&SIDEMASK) ==0));then
-          return ;
+      if ((row<BOUND1));then    #上部サイド枝刈り
+        (( bitmap[row]|=SIDEMASK ));
+        (( bitmap[row]^=SIDEMASK ));
+      elif ((row==BOUND2));then #下部サイド枝刈り
+        if (( (down[row]&SIDEMASK)==0));then
+          ((row--));
         fi
         if (((down[row]&SIDEMASK)!=SIDEMASK));then
-          bitmap[$row]=$(( bitmap[row]&SIDEMASK ));
+          (( bitmap[row]&=SIDEMASK ));
         fi
       fi
-      if (( row==(size-1) ));then
-        if ((!(bitmap[row]&LASTMASK)));then
-          symmetryOps ;
+      local -i save_bitmap=${bitmap[row]}
+      local -i bit=$(( -bitmap[row]&bitmap[row] ));  
+      (( bitmap[row]^=bit ));  
+      board[$row]="$bit";            # Qを配置
+      if(((bit&MASK)!=0));then
+        if (( row==(size-1) ));then
+          if(((save_bitmap&LASTMASK)==0));then
+            symmetryOps ;
+          fi
+          ((row--));
+        else
+          local -i n=$((row++));
+          left[$row]=$(((left[n]|bit)<<1));
+          down[$row]=$(((down[n]|bit)));
+          right[$row]=$(((right[n]|bit)>>1));
+          bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
         fi
-        ((row--));
       else
-        local -i n=$((row++));
-        left[$row]=$(((left[n]|bit)<<1));
-        down[$row]=$(((down[n]|bit)));
-        right[$row]=$(((right[n]|bit)>>1));
-        board[$row]="$bit";         # Qを配置
-        # クイーンが配置可能な位置を表す
-        bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
+        ((row--));
       fi
     else
       ((row--));
@@ -468,37 +603,32 @@ function symmetry_backTrack_NR()
 function symmetry_backTrack_corner_NR()
 {
   local -i row="$1";
-  local -i MASK="$(( (1<<size)-1 ))";
   local -a bitmap[$size];
   local -a left[$size];
-  local -a down[$size];
-  local -a right[$size];
-  local -i bit=0;
   left[$row]="$2";
+  local -a down[$size];
   down[$row]="$3";
+  local -a right[$size];
   right[$row]="$4";
+  local -i MASK="$(( (1<<size)-1 ))";
   bitmap[$row]=$(( MASK&~(left[row]|down[row]|right[row]) ));
-  while ((row>0));do
+  while ((row>=2));do
+    if ((row<BOUND1));then
+      # bitmap[$row]=$(( bitmap[row]|2 ));
+      # bitmap[$row]=$(( bitmap[row]^2 ));
+      ((bitmap[row]&=~2));
+    fi
     if (( bitmap[row]>0 ));then
-      bit=$(( -bitmap[row]&bitmap[row] ));  # 一番右のビットを取り出す
-      bitmap[$row]=$(( bitmap[row]^bit ));  # 配置可能なパターンが一つずつ取り出される
-      board[$row]="$bit";                   # Qを配置
+      local -i bit=$(( -bitmap[row]&bitmap[row] ));
+      (( bitmap[row]^=bit ));
+      board[$row]="$bit";
       if (( row==(size-1) ));then
-        if((bitmap[row]));then
-          #枝刈りによりsymmetryOpsは不要
-          #symmetryOps ;
-          ((COUNT8++)) ;
-          if ((DISPLAY==1));then
-            # 出力 1:bitmap版 0:それ以外
-            printRecord "$size" "1";          
-          fi
+        ((COUNT8++)) ;
+        if ((DISPLAY==1));then # 出力 1:bitmap版 0:それ以外
+          printRecord "$size" "1";          
         fi
         ((row--));
       else
-        if ((row<BOUND1));then
-          bitmap[$row]=$(( bitmap[row]|2 ));
-          bitmap[$row]=$(( bitmap[row]^2 ));
-        fi
         local -i n=$((row++));
         left[$row]=$(((left[n]|bit)<<1));
         down[$row]=$(((down[n]|bit)));
@@ -1114,7 +1244,11 @@ function NQ()
   echo " N:        Total       Unique        hh:mm:ss" ;
   local -i N;
   for((N=min;N<=max;N++)){
-    TOTAL=0; UNIQUE=0; COUNT2=0; row=0;
+    row=0;
+    TOTAL=UNIQUE=0;
+    COUNT2=COUNT4=COUNT8=0;
+    MASK=SIDEMASK=LASTMASK=0;
+    TOPBIT=ENDBIT=BOUND1=BOUND2=0;
     mask=$(( (1<<N)-1 ));
     startTime=$(date +%s);# 計測開始時間
 
@@ -1135,6 +1269,7 @@ do
 read -n1 -p "
 エイト・クイーン メニュー
 実行したい番号を選択
+7) キャリーチェーン
 6) 対象解除法
 5) ミラー
 4) ビットマップ
@@ -1147,6 +1282,32 @@ echo "行頭の番号を入力してください";
 " selectNo;
 echo 
 case "$selectNo" in
+  7)
+    while :
+    do 
+      read -n1 -p "
+      y|Y) ボード画面表示をする
+      n|N) ボード画面表示をしない
+      " select;
+      echo; 
+      case "$select" in
+        y|Y) DISPLAY=1; break; ;;
+        n|N) DISPLAY=0; break; ;;
+      esac
+    done
+    while :
+    do 
+      read -n1 -p "
+      y|Y) 再帰
+      n|N) 非再帰(未実装)
+      " select;
+      echo; 
+      case "$select" in
+        y|Y) NQ carryChain; break; ;;
+        n|N) NQ carryChain_NR; break; ;;
+      esac
+    done
+    ;;
   6)
     while :
     do 
