@@ -367,7 +367,9 @@ function carryChainSymmetry()
 }
 function execChain()
 {
-    w="$1";
+    local -i size="$1";
+    local -i w="$2";
+    echo "size:$size w:$w";
     local -a wB=sB=eB=nB=X; 
     B=("${wB[@]}");
     # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
@@ -376,9 +378,11 @@ function execChain()
     for ((bx_i=0;bx_i<size;++bx_i));do X[$bx_i]=-1; done
     B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
     placement "$size" "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
-    [[ $? -eq 0 ]] && return ;
+    #[[ $? -eq 0 ]] && continue ;
+    [[ $? -eq 0 ]] && return;
     placement "$size" "1" "$((pres_b[w]))";
-    [[ $? -eq 0 ]] && return ;
+    #[[ $? -eq 0 ]] && continue ;
+    [[ $? -eq 0 ]] && return;
     #
     # ２ 90度回転
     #
@@ -437,10 +441,13 @@ function buildChain()
   # i++ よりも ++i のほうが断然高速です。
   # for ((w=0;w<=(size/2)*(size-3);++w));do
 
+    export -f solve;
+    export -f carryChainSymmetry;
     export -f execChain;
     export -f placement;
-
-    seq $(( (size/2)*(size-3))) | xargs -I% -P$(( (size/2)*(size-3))) bash -c 'execChain %';
+    export size;
+    local -i w=$(( (size/2)*(size-3)-1));
+    echo "$(seq 0 $w)" | xargs -I% bash -c 'execChain $size %';
     wait;
   # done
 }
