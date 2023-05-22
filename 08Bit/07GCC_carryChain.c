@@ -44,14 +44,12 @@ bash-3.2$ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC -r
 19:   4968057848       621012754        17:06.46
 */
 
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-
+#include <assert.h>
 #define MAX 27
 //typedef unsigned long long uint64_t;
 typedef struct{
@@ -90,7 +88,7 @@ uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
   return total;
 } 
 // solve()を呼び出して再帰を開始する
-void process(int size,Board B,int sym)
+void process(int size,Board const B,int sym)
 {
   COUNTER[sym]+=solve(B.row>>2,
       B.left>>4,
@@ -169,32 +167,31 @@ void carryChainSymmetry(int size,unsigned int w,unsigned int s,unsigned int e,un
 void buildChain(int size)
 {
   Board wB=B;
-  for(unsigned w=0;w<=(unsigned)(size/2)*(size-3);w++){
+  for(unsigned w=0;w<=(unsigned)(size/2)*(size-3);++w){
     B=wB;
     B.row=B.down=B.left=B.right=0;
-    for(int i=0;i<size;i++){ B.x[i]=-1; }
+    for(int i=0;i<size;++i){ B.x[i]=-1; }
     if(!placement(size,0,pres_a[w])){ continue; } 
     if(!placement(size,1,pres_b[w])){ continue; }
+    //
     unsigned int lSize=(size-2)*(size-1)-w;
     Board nB=B;//２ 左２行に置く
-    for(unsigned n=w;n<lSize;n++){
+    for(unsigned n=w;n<lSize;++n){
       B=nB;
       if(!placement(size,pres_a[n],size-1)){ continue; }
       if(!placement(size,pres_b[n],size-2)){ continue; }
       Board eB=B;// ３ 下２行に置く
-      for(unsigned e=w;e<lSize;e++){
+      for(unsigned e=w;e<lSize;++e){
         B=eB;
         if(!placement(size,size-1,size-1-pres_a[e])){ continue; }
         if(!placement(size,size-2,size-1-pres_b[e])){ continue; }
         Board sB=B;// ４ 右２列に置く
-        for(unsigned s=w;s<lSize;s++){
+        for(unsigned s=w;s<lSize;++s){
           B=sB;
           if(!placement(size,size-1-pres_a[s],0)){ continue; }
           if(!placement(size,size-1-pres_b[s],1)){ continue; }
           //
           carryChainSymmetry(size,w,s,e,n);//対象解除法
-          //
-          continue;
         }
       }    
     }
@@ -203,15 +200,19 @@ void buildChain(int size)
 // チェーンの初期化
 void initChain(int size)
 {
-  unsigned int idx=0;
-  for(unsigned int a=0;a<(unsigned)size;a++){
-    for(unsigned int b=0;b<(unsigned)size;b++){
+  int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
       if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
       pres_a[idx]=a;
       pres_b[idx]=b;
-      idx++;
+      ++idx;
     }
   }
+  // Wrong number of pre-placements
+  assert(idx==(size-2)*(size-1)); 
+
+
 }
 // キャリーチェーン
 void carryChain(int size)
@@ -265,7 +266,7 @@ int main(int argc,char** argv)
   int min=4;
   int targetN=21;
   // sizeはグローバル
-  for(int size=min;size<=targetN;size++){
+  for(int size=min;size<=targetN;++size){
     TOTAL=UNIQUE=COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
     st=clock();
     if(cpu){
