@@ -16,6 +16,12 @@ declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
 declare -a B; 
 declare -a P;
 P[0]="";
+declare -a C2;
+C2[0]=0;
+declare -a C4;
+C4[0]=0;
+declare -a C8;
+C8[0]=0;
 declare -i PCOUNT=1; 
 declare -i DISPLAY=0;
 #
@@ -141,15 +147,10 @@ function printRecordCarryChain()
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
 {
-  local -i pid="$1";
-  echo "pid:$pid"
-  local -a p_a="${P[$pid]}"
-  local -i row="${p_a[0]}";
-  local -i left="${p_a[1]}";
-  local -i down="${p_a[2]}";
-  local -i right="${p_a[3]}";
-  local -i sym="${p_a[4]}";
-  #echo "pid:$pid"
+  local -i row="$1";
+  local -i left="$2";
+  local -i down="$3";
+  local -i right="$4";
   # if (( !(down+1) ));then return 1; fi
   ((down+1))||return 1; # ↑を高速化
   while(( row&1 ));do
@@ -181,7 +182,7 @@ function solve()
   solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
     ((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
   done
-  echo "$total:$sym"
+  #echo "$total:$sym"
   return $total;  # 合計を戻り値にします
 }
 #
@@ -191,10 +192,10 @@ function process()
   local -i size="$1";
   local -i sym="$2";
   local -a p_a=(
-        "$(( B[0]>>2 ))" \
-        "$(( B[1]>>4 ))" \
-        "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
-        "$(( B[3]>>4<<size-5 ))" \
+        "${B[0]}" \
+        "${B[1]}" \
+        "${B[2]}" \
+        "${B[3]}" \
         "$sym"
   )
   P[$PCOUNT]="${p_a[@]}";
@@ -474,6 +475,27 @@ function initChain()
     done
   done
 }
+function parallel(){
+  local -i pid="$1";
+  echo "pid:$pid"
+  local -a p_a="${P[$pid]}"
+  local -i sym="${p_a[4]}";
+  solve "$(( p_a[0]>>2 ))" \
+        "$(( p_a[1]>>4 ))" \
+        "$(( (((p_a[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+        "$(( p_a[3]>>4<<size-5 ))";
+  rst="$?"
+  echo "pidddd:$pid $rst"
+  if ((sym==0));then
+    C2[pid]=$rst;
+  elif ((sym==1));then
+    C4[pid]=$rst;
+  elif ((sym==2));then
+    C8[pid]=$rst;
+  fi 
+  #(( COUNTER[$sym]+=$? ));
+
+}
 #
 : 'チェーンの構築';
 function carryChain()
@@ -495,14 +517,18 @@ function carryChain()
     echo "##bb#####"
 
   done
+  export -f parallel;
   export -f solve;
   echo "pcount:$PCOUNT"
-  seq "$((PCOUNT-1))" | xargs -I % -P3 bash -c 'solve %'
+  seq "$((PCOUNT-1))" | xargs -I % -P3 bash -c 'parallel %'
   wait;
   echo "##ssss####";
   # 集計
-  UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
-  TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
+  for((pid=1;pid<=$PCOUNT;pid++)){
+   (( UNIQUE+=C2[pid]+C4[pid]+C8[pid] ));
+  }
+  #UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
+  #TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
 }
 #
 : 'Nを連続して実行';
