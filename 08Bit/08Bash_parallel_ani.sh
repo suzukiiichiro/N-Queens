@@ -497,6 +497,8 @@ function carryChain()
   para=$(buildChain "$size"); # チェーンのビルド
   paracnt=$(echo "$para"|wc -l);
   echo "$para" | xargs -I % -P"$paracnt" bash -c 'parallel %'|awk '{u += $1 ;t += $2} END {print  u " " t}'
+  #echo "$para" | xargs -I % -P"$paracnt" bash -c 'parallel %'
+  #wait;
 }
 #
 : 'Nを連続して実行';
@@ -514,9 +516,7 @@ function NQ()
     COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
     B=0; 
     startTime=$(date +%s);# 計測開始時間
-    cnt=$("$selectName" "$N");
-    TOTAL=$(echo "$cnt"|awk '{print $2}');
-    UNIQUE=$(echo "$cnt"|awk '{print $1}');
+    "$selectName" "$N";
     endTime=$(date +%s); 	# 計測終了時間
     ss=$((endTime-startTime));# hh:mm:ss 形式に変換
     hh=$((ss/3600));
