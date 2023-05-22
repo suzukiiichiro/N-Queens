@@ -14,15 +14,7 @@ declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
       X[@]    4: 
       )';
 declare -a B; 
-declare -a P;
-P[0]="";
-declare -a C2;
-C2[0]=0;
-declare -a C4;
-C4[0]=0;
-declare -a C8;
-C8[0]=0;
-declare -i PCOUNT=1; 
+declare -i PCOUNT=0; 
 declare -i DISPLAY=0;
 #
 #
@@ -151,8 +143,12 @@ function solve()
   local -i left="$2";
   local -i down="$3";
   local -i right="$4";
-  # if (( !(down+1) ));then return 1; fi
-  ((down+1))||return 1; # ↑を高速化
+  #echo "row:$row:left:$left:down:$down:right:$right"
+  #if (( !(down+1) ));then 
+  #   echo "1"; 
+  #   return; 
+  #fi
+  ((down+1))||return "1"; # ↑を高速化
   while(( row&1 ));do
     # ((row>>=1));
     # ((left<<=1));
@@ -183,7 +179,9 @@ function solve()
     ((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
   done
   #echo "$total:$sym"
-  return $total;  # 合計を戻り値にします
+  #return $total;  # 合計を戻り値にします
+  #echo "$total"
+  return "$total"
 }
 #
 : 'solve()を呼び出して再帰を開始する';
@@ -191,14 +189,7 @@ function process()
 {
   local -i size="$1";
   local -i sym="$2";
-  local -a p_a=(
-        "${B[0]}" \
-        "${B[1]}" \
-        "${B[2]}" \
-        "${B[3]}" \
-        "$sym"
-  )
-  P[$PCOUNT]="${p_a[@]}";
+  echo "$PCOUNT $(( B[0]>>2 )) $(( B[1]>>4 )) $(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 )) $(( B[3]>>4<<size-5 )) $sym"
   PCOUNT=$((PCOUNT+1));
 }
 function process_old()
@@ -360,7 +351,7 @@ function carryChainSymmetry()
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[0] ))||{ # || は 条件が！であることを示します
-    process "$size" "2";  #COUNT8
+    process "$size" "8";  #COUNT8
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
@@ -372,7 +363,7 @@ function carryChainSymmetry()
   # w=n=e=sであれば90度回転で同じ可能性 ';
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
-    process "$size" "0" # COUNT2
+    process "$size" "2" # COUNT2
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
@@ -381,12 +372,12 @@ function carryChainSymmetry()
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
-    process "$size" "1" # COUNT4
+    process "$size" "4" # COUNT4
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
   }
-  process "$size" "2" ; #COUNT8
+  process "$size" "8" ; #COUNT8
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
   ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
   return ;
@@ -476,24 +467,23 @@ function initChain()
   done
 }
 function parallel(){
-  local -i pid="$1";
-  echo "pid:$pid"
-  local -a p_a="${P[$pid]}"
-  local -i sym="${p_a[4]}";
-  solve "$(( p_a[0]>>2 ))" \
-        "$(( p_a[1]>>4 ))" \
-        "$(( (((p_a[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
-        "$(( p_a[3]>>4<<size-5 ))";
-  rst="$?"
-  echo "pidddd:$pid $rst"
-  if ((sym==0));then
-    C2[pid]=$rst;
-  elif ((sym==1));then
-    C4[pid]=$rst;
-  elif ((sym==2));then
-    C8[pid]=$rst;
-  fi 
-  #(( COUNTER[$sym]+=$? ));
+  local -i pid=$1;
+  local -i row=$2;
+  local -i left=$3;
+  local -i down=$4;
+  local -i right=$5;
+  local -i sym=$6;
+  #echo "pid $pid row:$row left:$left down:$down right:$right"
+  #solve "$(( row>>2 ))" \
+  #      "$(( left>>4 ))" \
+  #      "$(( (((down>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+  #      "$(( right>>4<<size-5 ))";
+  solve "$row" \
+        "$left" \
+        "$down" \
+        "$right";
+  local -i rst="$?";
+  echo "$rst" "$((rst * sym))"
 
 }
 #
@@ -501,34 +491,12 @@ function parallel(){
 function carryChain()
 {
   local -i size="$1";
-  initChain "$size";  # チェーンの初期化
-  buildChain "$size"; # チェーンのビルド
-  #並列処理
-  for ((i=0;i<PCOUNT;i++));do
-    echo "$i"
-    local -a p_a=(${P[$i]}); # 同じ場所の配置を許す
-  #  echo "${p_a[@]}"
-    echo "##aa#####"
-    echo "${p_a[0]}"
-    echo "${p_a[1]}"
-    echo "${p_a[2]}"
-    echo "${p_a[3]}"
-    echo "${p_a[4]}"
-    echo "##bb#####"
-
-  done
   export -f parallel;
   export -f solve;
-  echo "pcount:$PCOUNT"
-  seq "$((PCOUNT-1))" | xargs -I % -P3 bash -c 'parallel %'
-  wait;
-  echo "##ssss####";
-  # 集計
-  for((pid=1;pid<=$PCOUNT;pid++)){
-   (( UNIQUE+=C2[pid]+C4[pid]+C8[pid] ));
-  }
-  #UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
-  #TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
+  initChain "$size";  # チェーンの初期化
+  para=$(buildChain "$size"); # チェーンのビルド
+  paracnt=$(echo "$para"|wc -l);
+  echo "$para" | xargs -I % -P"$paracnt" bash -c 'parallel %'|awk '{u += $1 ;t += $2} END {print  u " " t}'
 }
 #
 : 'Nを連続して実行';
@@ -537,8 +505,6 @@ function NQ()
   local selectName="$1";
   local -i min=4;
   local -i max=10;
-  local -i min=5;
-  local -i max=5;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
@@ -548,12 +514,14 @@ function NQ()
     COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
     B=0; 
     startTime=$(date +%s);# 計測開始時間
-    "$selectName" "$N";
+    cnt=$("$selectName" "$N");
+    TOTAL=$(echo "$cnt"|awk '{print $2}');
+    UNIQUE=$(echo "$cnt"|awk '{print $1}');
     endTime=$(date +%s); 	# 計測終了時間
     ss=$((endTime-startTime));# hh:mm:ss 形式に変換
     hh=$((ss/3600));
     ss=$((ss%3600));
-    mm=$((ss/60));
+    mm=$((ss/60)); 
     ss=$((ss%60));
     printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
   } 
