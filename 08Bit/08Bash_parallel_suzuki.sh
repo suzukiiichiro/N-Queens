@@ -450,8 +450,8 @@ function buildChain()
     export pres_a;
     export pres_b;
     export COUNTER;
-    local -i w=$(( (size/2)*(size-3)-1)); # -1 してます
-    echo "$(seq 0 $w)" | xargs -I% bash -c 'execChain $size %';
+    local -i wMinus1=$(( (size/2)*(size-3)-1)); # -1 してます
+    echo "$(seq 0 $wMinus1)" | xargs -I% bash -c 'execChain $size %';
     wait;
   # done
 }
