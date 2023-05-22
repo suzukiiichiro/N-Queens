@@ -442,15 +442,15 @@ function buildChain()
   # for ((w=0;w<=(size/2)*(size-3);++w));do
 
     export -f solve;
+    export -f placement;
     export -f carryChainSymmetry;
     export -f execChain;
-    export -f placement;
     export size;
     export B;
     export pres_a;
     export pres_b;
     export COUNTER;
-    local -i w=$(( (size/2)*(size-3)-1));
+    local -i w=$(( (size/2)*(size-3)-1)); # -1 してます
     echo "$(seq 0 $w)" | xargs -I% bash -c 'execChain $size %';
     wait;
   # done
