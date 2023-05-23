@@ -371,7 +371,8 @@ function carryChainSymmetry()
     process "$size" "2";  #COUNT8
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    read -p ""; }
     return;
   }
   # n,e,s==w の場合は最小値を確認する。
@@ -382,7 +383,8 @@ function carryChainSymmetry()
     (( (n!=w)||(e!=w) ))&& return;
     process "$size" "0" # COUNT2
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    read -p ""; }
     return ;
   }
   # : 'e==wは180度回転して同じ
@@ -391,12 +393,14 @@ function carryChainSymmetry()
     ((n>s))&& return ;
     process "$size" "1" # COUNT4
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    read -p ""; }
     return ;
   }
   process "$size" "2" ; #COUNT8
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-  ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+  ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+  read -p ""; }
   return ;
 }
 : 'チェーンのビルド';
@@ -522,8 +526,8 @@ function NQ()
 }
 #
 #
-DISPLAY=0; # ボードレイアウト表示しない
-#DISPLAY=1; # ボードレイアウト表示する
+#DISPLAY=0; # ボードレイアウト表示しない
+DISPLAY=1; # ボードレイアウト表示する
 #
 NQ carryChain; 
 exit;
