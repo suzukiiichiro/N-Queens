@@ -52,6 +52,7 @@ declare -i DISPLAY=0;
 : 'ボードレイアウトを出力 ビットマップ対応版';
 function printRecordCarryChain()
 {
+  local -a board=(${B[4]}); # 同じ場所の配置を許す
   ((TOTAL++));
   size="$1";
   flag="$2"; # bitmap版は1 それ以外は 0
@@ -371,7 +372,7 @@ function carryChainSymmetry()
     process "$size" "2";  #COUNT8
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "0";
     read -p ""; }
     return;
   }
@@ -383,7 +384,7 @@ function carryChainSymmetry()
     (( (n!=w)||(e!=w) ))&& return;
     process "$size" "0" # COUNT2
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "0";
     read -p ""; }
     return ;
   }
@@ -393,13 +394,13 @@ function carryChainSymmetry()
     ((n>s))&& return ;
     process "$size" "1" # COUNT4
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+    ((DISPLAY==1))&& { printRecordCarryChain "$size" "0";
     read -p ""; }
     return ;
   }
   process "$size" "2" ; #COUNT8
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-  ((DISPLAY==1))&& { printRecordCarryChain "$size" "1";
+  ((DISPLAY==1))&& { printRecordCarryChain "$size" "0";
   read -p ""; }
   return ;
 }
