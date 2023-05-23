@@ -1,10 +1,58 @@
 #!/usr/bin/bash
 
+: '
+  ## bash版
+ <> 08Bash_carryChain_parallel.sh 並列処理
+ N:        Total       Unique        hh:mm:ss
+ 4:            0            0         0:00:00
+ 5:            8            1         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:01
+ 9:          352           46         0:00:03
+10:          724           92         0:00:15
+11:         2680          341         0:00:52
+12:        14200         1788         0:02:49
+13:        73712         9237         0:09:18
+14:       365596        45771         0:28:48
+15:      2279184       285095         1:49:12
+
+ <> 07Bash_carryChain.sh キャリーチェーン
+ N:        Total       Unique        hh:mm:ss
+ 4:            2            1         0:00:00
+ 5:           10            2         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:01
+ 8:           92           12         0:00:02
+ 9:          352           46         0:00:12
+10:          724           92         0:00:44
+11:         2680          341         0:02:39
+12:        14200         1788         0:08:35
+13:        73712         9237         0:27:05
+14:       365596        45771         1:30:40
+15:      2279184       285095         5:59:03
+
+ <> 06Bash_symmetry.sh 対称解除法
+ N:        Total       Unique        hh:mm:ss
+ 4:            2            1         0:00:00
+ 5:           10            2         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:00
+ 9:          352           46         0:00:00
+10:          724           92         0:00:02
+11:         2680          341         0:00:05
+12:        14200         1787         0:00:26
+13:        73712         9233         0:02:28
+14:       365596        45752         0:14:18
+15:      2279184       285053         1:23:34
+';
+
 declare -i TOTAL=0;
 declare -i UNIQUE=0;
 declare -a pres_a;        # チェーン
 declare -a pres_b;        # チェーン
-declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
+# declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
 : 'B=(row     0:
       left    1:
       down    2:
@@ -184,7 +232,9 @@ function process()
         "$(( B[1]>>4 ))" \
         "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
         "$(( B[3]>>4<<size-5 ))";
-  (( COUNTER[$sym]+=$? ));
+  local -i ret="$?";
+  #(( COUNTER[$sym]+=$? ));
+  echo "$ret" "$(( ret * sym ))";
 }
 #
 : 'クイーンの効きをチェック';
@@ -334,7 +384,7 @@ function carryChainSymmetry()
   #  １．回転対称チェックせずCOUNT8にする
   local -a t_x=(${B[4]}); # 同じ場所の配置を許す
   (( t_x[0] ))||{ # || は 条件が！であることを示します
-    process "$size" "2";  #COUNT8
+    process "$size" "8";  #COUNT8
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
@@ -346,7 +396,7 @@ function carryChainSymmetry()
   # w=n=e=sであれば90度回転で同じ可能性 ';
   ((s==w))&&{
     (( (n!=w)||(e!=w) ))&& return;
-    process "$size" "0" # COUNT2
+    process "$size" "2" # COUNT2
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
@@ -355,83 +405,122 @@ function carryChainSymmetry()
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   (( (e==w)&&(n>=s) ))&&{
     ((n>s))&& return ;
-    process "$size" "1" # COUNT4
+    process "$size" "4" # COUNT4
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
     ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
   }
-  process "$size" "2" ; #COUNT8
+  process "$size" "8" ; #COUNT8
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
   ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
   return ;
+  #
+}
+function execChain()
+{
+  local -i size="$1";
+  local -i w="$2";
+  #
+  # 元プロセスの配列変数をexportから子プロセスにコピー
+  #
+  pres_a=($_pres_a);
+  pres_b=($_pres_b);
+  B=($_B);
+  #
+  #
+  local -a wB=sB=eB=nB=X; 
+  B=("${wB[@]}");
+  #
+  # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
+  #
+  for ((bx_i=0;bx_i<size;++bx_i));do X[$bx_i]=-1; done
+  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
+  #
+  #
+  # １　０行目と１行目にクイーンを配置
+  placement "$size" "0" "$((pres_a[w]))"; 
+  [[ $? -eq 0 ]] && return;
+  placement "$size" "1" "$((pres_b[w]))";
+  [[ $? -eq 0 ]] && return;
+  #
+  # ２ 90度回転
+  #
+  nB=("${B[@]}");
+  local -i mirror=$(( (size-2)*(size-1)-w ));
+  for ((n=w;n<mirror;++n));do 
+    B=("${nB[@]}");
+    placement "$size" "$((pres_a[n]))" "$((size-1))"; 
+    [[ $? -eq 0 ]] && continue;
+    placement "$size" "$((pres_b[n]))" "$((size-2))";
+    [[ $? -eq 0 ]] && continue;
+    #
+    # ３ 90度回転
+    #
+    eB=("${B[@]}");
+    for ((e=w;e<mirror;++e));do 
+      B=("${eB[@]}");
+      placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
+      [[ $? -eq 0 ]] && continue;
+      placement "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
+      [[ $? -eq 0 ]] && continue;
+      #
+      # ４ 90度回転
+      #
+      sB=("${B[@]}");
+      for ((s=w;s<mirror;++s));do
+        B=("${sB[@]}")
+        placement "$size" "$((size-1-pres_a[s]))" "0";
+        [[ $? -eq 0 ]] && continue;
+        placement "$size" "$((size-1-pres_b[s]))" "1"; 
+        [[ $? -eq 0 ]] && continue;
+        #
+        #  対象解除法
+        carryChainSymmetry "$n" "$w" "$s" "$e" ; 
+        #
+      done
+    done
+  done
 }
 : 'チェーンのビルド';
 function buildChain()
 {
   local -i size="$1";
-  local -a wB=sB=eB=nB=X; 
+  # local -a wB=sB=eB=nB=X; 
   wB=("${B[@]}");
+  #
+  # 並列処理に必要な export など
+  #
+  export -f solve;
+  export -f process;
+  export -f placement;
+  export -f carryChainSymmetry;
+  export -f execChain;
+  export size;
+  export _pres_a=$(echo "${pres_a[@]}")
+  export _pres_b=$(echo "${pres_b[@]}")
+  export _B=$(echo "${B[@]}");
+  local -i wMinus=$(( (size/2)*(size-3)));
   #
   # １ 上の２行に配置
   #
-  #for ((w=0;w<=(size/2)*(size-3);w++));do
-  # i++ よりも ++i のほうが断然高速です。
-  for ((w=0;w<=(size/2)*(size-3);++w));do
-    B=("${wB[@]}");
-    # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
-    #for ((bx_i=0;bx_i<size;bx_i++));do X[$bx_i]=-1; done
-    # i++ よりも ++i のほうが断然高速です。
-    for ((bx_i=0;bx_i<size;++bx_i));do X[$bx_i]=-1; done
-    B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
-    placement "$size" "0" "$((pres_a[w]))"; # １　０行目と１行目にクイーンを配置
-    [[ $? -eq 0 ]] && continue;
-    placement "$size" "1" "$((pres_b[w]))";
-    [[ $? -eq 0 ]] && continue;
+  # for ((w=0;w<=(size/2)*(size-3);++w));do
     #
-    # ２ 90度回転
+    # 並列処理
     #
-    nB=("${B[@]}");
-    local -i mirror=$(( (size-2)*(size-1)-w ));
-    #for ((n=w;n<mirror;n++));do 
-    # i++ よりも ++i のほうが断然高速です。
-    for ((n=w;n<mirror;++n));do 
-      B=("${nB[@]}");
-      placement "$size" "$((pres_a[n]))" "$((size-1))"; 
-      [[ $? -eq 0 ]] && continue;
-      placement "$size" "$((pres_b[n]))" "$((size-2))";
-      [[ $? -eq 0 ]] && continue;
-      #
-      # ３ 90度回転
-      #
-      eB=("${B[@]}");
-      #for ((e=w;e<mirror;e++));do 
-      # i++ よりも ++i のほうが断然高速です。
-      for ((e=w;e<mirror;++e));do 
-        B=("${eB[@]}");
-        placement "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
-        [[ $? -eq 0 ]] && continue;
-        placement "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
-        [[ $? -eq 0 ]] && continue;
-        #
-        # ４ 90度回転
-        #
-        sB=("${B[@]}");
-        #for ((s=w;s<mirror;s++));do
-        # i++ よりも ++i のほうが断然高速です。
-        for ((s=w;s<mirror;++s));do
-          B=("${sB[@]}")
-          placement "$size" "$((size-1-pres_a[s]))" "0";
-          [[ $? -eq 0 ]] && continue;
-          placement "$size" "$((size-1-pres_b[s]))" "1"; 
-          [[ $? -eq 0 ]] && continue;
-          #
-          #  対象解除法
-          carryChainSymmetry "$n" "$w" "$s" "$e" ; 
-          #
-        done
-      done
-    done
-  done
+    GT=( $(echo "$(seq 0 $((wMinus-1)) )" | 
+    xargs -I% -P$wMinus bash -c 'execChain $size %'|
+    awk '{ 
+      unique+=$1;
+      total +=$2;
+    }END{ 
+      print unique " " total;
+    }'))&& wait; 
+    #
+    # 集計
+    UNIQUE=${GT[0]};
+    TOTAL=${GT[1]};
+  #
+  # done
 }
 : 'チェーンの初期化';
 function initChain()
@@ -456,9 +545,6 @@ function carryChain()
   local -i size="$1";
   initChain "$size";  # チェーンの初期化
   buildChain "$size"; # チェーンのビルド
-  # 集計
-  UNIQUE=$(( COUNTER[0]+COUNTER[1]+COUNTER[2] ));
-  TOTAL=$(( COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8 ));
 }
 #
 : 'Nを連続して実行';
@@ -466,14 +552,14 @@ function NQ()
 {
   local selectName="$1";
   local -i min=4;
-  local -i max=10;
+  local -i max=15;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
   local -i N;
   for((N=min;N<=max;N++)){
     TOTAL=UNIQUE=0;
-    COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
+    # COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
     B=0; 
     startTime=$(date +%s);# 計測開始時間
     "$selectName" "$N";
@@ -493,5 +579,6 @@ DISPLAY=0; # ボードレイアウト表示しない
 #
 NQ carryChain; 
 exit;
+
 
 
