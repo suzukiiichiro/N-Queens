@@ -358,7 +358,7 @@ function placement()
   #   board[$dimx]=$((1<<dimy)); 
   # fi
   # 上記を一行にまとめることができます。
-  [[ $DISPLAY ]] && board[$dimx]=$((1<<dimy));
+  # [[ $DISPLAY ]] && board[$dimx]=$((1<<dimy));
   #
   return 1;
 }
@@ -387,7 +387,7 @@ function carryChainSymmetry()
     process "$size" "8";  #COUNT8
     #
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return;
   }
   # n,e,s==w の場合は最小値を確認する。
@@ -398,7 +398,7 @@ function carryChainSymmetry()
     (( (n!=w)||(e!=w) ))&& return;
     process "$size" "2" # COUNT2
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
   }
   # : 'e==wは180度回転して同じ
@@ -407,12 +407,12 @@ function carryChainSymmetry()
     ((n>s))&& return ;
     process "$size" "4" # COUNT4
     # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-    ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
     return ;
   }
   process "$size" "8" ; #COUNT8
   # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
-  ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+  # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
   return ;
   #
 }
@@ -552,7 +552,7 @@ function NQ()
 {
   local selectName="$1";
   local -i min=4;
-  local -i max=15;
+  local -i max=17;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
