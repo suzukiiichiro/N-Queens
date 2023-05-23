@@ -11,7 +11,7 @@ declare -a B;
       down    2:
       right   3:
       X[@]    4: 
-      )';
+      board[@]5)';
 declare -i DISPLAY=0;
 #
 #
