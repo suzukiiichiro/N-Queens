@@ -511,7 +511,7 @@ function NQ()
 {
   local selectName="$1";
   local -i min=4;
-  local -i max=10;
+  local -i max=17;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
