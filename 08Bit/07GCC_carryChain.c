@@ -50,9 +50,7 @@ bash-3.2$ gcc -Wall -W -O3 07GCC_carryChain.c -o 07GCC && ./07GCC -r
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
 #include <sys/time.h>
-#include <assert.h>
 #define MAX 27
 typedef struct{
   uint64_t row;
@@ -63,12 +61,6 @@ typedef struct{
 }Board ;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
-uint64_t COUNTER[3];      //カウンター配列
-unsigned int COUNT2=0;    //配列用
-unsigned int COUNT4=1;    //配列用
-unsigned int COUNT8=2;    //配列用
-unsigned int pres_a[930]; //チェーン
-unsigned int pres_b[930];
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form)
 {
@@ -108,14 +100,6 @@ uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
   }
   return total;
 } 
-// solve()を呼び出して再帰を開始する
-void process(unsigned int size,unsigned int sym,const Board* B)
-{
-  COUNTER[sym]+=solve(B->row>>2,
-      B->left>>4,
-      ((((B->down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-      (B->right>>4)<<(size-5));
-}
 // クイーンの効きをチェック
 bool placement(unsigned int size,uint64_t dimx,uint64_t dimy,Board* B)
 {
@@ -144,41 +128,28 @@ bool placement(unsigned int size,uint64_t dimx,uint64_t dimy,Board* B)
   B->row|=row; B->down|=down; B->left|=left; B->right|=right;
   return true;
 }
-// キャリーチェーン対称解除法
-void carryChainSymmetry(unsigned int size,unsigned int w,unsigned int s,unsigned int e,unsigned int n,Board* B)
+// キャリーチェーン
+void carryChain(unsigned int size)
 {
-  // # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
-  unsigned const int ww=(size-2)*(size-1)-1-w;
-  unsigned const int w2=(size-2)*(size-1)-1;
-  // # 対角線上の反転が小さいかどうか確認する
-  if((s==ww)&&(n<(w2-e))){ return; }
-  // # 垂直方向の中心に対する反転が小さいかを確認
-  if((e==ww)&&(n>(w2-n))){ return; }
-  // # 斜め下方向への反転が小さいかをチェックする
-  if((n==ww)&&(e>(w2-s))){ return; }
-  /*
-   枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
-  **/
-  if(B->x[0]==0){ process(size,COUNT8,B); return ; }
-  /**
-  # n,e,s==w の場合は最小値を確認する。
-  # : '右回転で同じ場合は、
-  # w=n=e=sでなければ値が小さいのでskip
-  # w=n=e=sであれば90度回転で同じ可能性 ';
-   */
-  if(s==w){ if((n!=w)||(e!=w)){ return; } 
-    process(size,COUNT2,B); return ;
+  // カウンター
+  uint64_t COUNTER[3];      //カウンター配列
+  unsigned int COUNT2=0;
+  unsigned int COUNT4=1;
+  unsigned int COUNT8=2;
+  COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
+  // チェーンの初期化
+  unsigned int pres_a[930]; //チェーン
+  unsigned int pres_b[930];
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      ++idx;
+    }
   }
-  // # : 'e==wは180度回転して同じ
-  // # 180度回転して同じ時n>=sの時はsmaller?  ';
-  if((e==w)&&(n>=s)){ if(n>s){ return; } 
-    process(size,COUNT4,B); return;
-  }
-  process(size,COUNT8,B); return ;
-}
-// チェーンのビルド
-void buildChain(unsigned int size)
-{
+  // チェーンの構築
   Board B,nB,eB,sB,wB;B.row=B.down=B.left=B.right=0;
   for(unsigned int i=0;i<size;++i){ B.x[i]=-1; }
   wB=B;//１ 上２行に置く
@@ -201,32 +172,43 @@ void buildChain(unsigned int size)
           B=sB;
           if(!placement(size,size-1-pres_a[s],0,&B)){ continue; }
           if(!placement(size,size-1-pres_b[s],1,&B)){ continue; }
-          carryChainSymmetry(size,w,s,e,n,&B);//対象解除法
+          //
+          // 対称解除法 n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+          //
+          unsigned const int ww=(size-2)*(size-1)-1-w;
+          unsigned const int w2=(size-2)*(size-1)-1;
+          // # 対角線上の反転が小さいかどうか確認する
+          if((s==ww)&&(n<(w2-e))){ continue; }
+          // # 垂直方向の中心に対する反転が小さいかを確認
+          if((e==ww)&&(n>(w2-n))){ continue; }
+          // # 斜め下方向への反転が小さいかをチェックする
+          if((n==ww)&&(e>(w2-s))){ continue; }
+          // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+          if(&B.x[0]==0){ 
+            COUNTER[COUNT8]+=solve(B.row>>2,
+            B.left>>4,((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B.right>>4)<<(size-5));
+            continue;
+          }
+          // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+          // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+          if(s==w){ if((n!=w)||(e!=w)){ continue; } 
+            COUNTER[COUNT2]+=solve(B.row>>2,
+            B.left>>4,((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B.right>>4)<<(size-5));
+            continue;
+          }
+          // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+          if((e==w)&&(n>=s)){ if(n>s){ continue; } 
+            COUNTER[COUNT4]+=solve(B.row>>2,
+            B.left>>4,((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B.right>>4)<<(size-5));
+            continue;
+          }
+          COUNTER[COUNT8]+=solve(B.row>>2,
+          B.left>>4,((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B.right>>4)<<(size-5));
+          continue;
         }
       }    
     }
   }
-}
-// チェーンの初期化
-void initChain(unsigned int size)
-{
-  unsigned int idx=0;
-  for(unsigned int a=0;a<(unsigned)size;++a){
-    for(unsigned int b=0;b<(unsigned)size;++b){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
-      pres_a[idx]=a;
-      pres_b[idx]=b;
-      ++idx;
-    }
-  }
-}
-// キャリーチェーン
-void carryChain(unsigned int size)
-{
-  // チェーンの初期化
-  initChain(size); 
-  // チェーンのビルド
-  buildChain(size);
   // 集計
   UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
   TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
@@ -254,7 +236,7 @@ int main(int argc,char** argv)
   unsigned int targetN=21;
   // sizeはグローバル
   for(unsigned int size=min;size<=targetN;++size){
-    TOTAL=UNIQUE=COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
+    TOTAL=UNIQUE; 
     st=clock();
     if(cpu){
       carryChain(size);
