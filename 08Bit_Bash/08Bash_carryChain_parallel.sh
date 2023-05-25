@@ -195,7 +195,8 @@ function solve_parallel()
     # ((row>>=1));
     # ((left<<=1));
     # ((right>>=1));
-    (( row>>=1,left<<=1,right>>=1 )); # 上記３行をまとめて書けます
+    # 上記３行をまとめて書けます
+    (( row>>=1,left<<=1,right>>=1 )); 
   done
   (( row>>=1 ));      # １行下に移動する
   #
@@ -210,15 +211,15 @@ function solve_parallel()
   # done
   for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
     local -i bit=$(( -bitmap&bitmap ));
-
     # ret=$( solve_parallel "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))")  ; 
     #  ret=$?;
     # [[ $ret -gt 0 ]] && { 
     # ((total+=$ret));
-    # }  # solve_parallel()で実行したreturnの値は $? に入ります。
-    # 上記はやや冗長なので以下の２行にまとめて書くことができます。
-  solve_parallel "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
-    ((total+=$?));  # solve_parallel()で実行したreturnの値は $? に入ります。
+    # }  # solve_parallel()で実行したreturnの値は$?に入ります。
+    # 上記はやや冗長なので以下２行にまとめることができます。
+    solve_parallel "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+    # solve_parallel()で実行したreturnの値は $? に入ります。
+    ((total+=$?));  
   done
   return $total;  # 合計を戻り値にします
 }

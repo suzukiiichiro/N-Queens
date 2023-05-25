@@ -103,7 +103,8 @@ void *run(void *args);
 void *NQueenThread();
 void NQueen();
 //
-void symmetryOps(local *l){
+void symmetryOps(local *l)
+{
   int own,ptn,you,bit;
   //90度回転
   if(l->aBoard[l->BOUND2]==1){ own=1; ptn=2;
@@ -137,7 +138,8 @@ void symmetryOps(local *l){
 }
 //
 //CPU 非再帰版 backTrack2//新しく記述
-void backTrack2_NR(int row,int h_left,int h_down,int h_right,local *l){
+void backTrack2_NR(int row,int h_left,int h_down,int h_right,local *l)
+{
     unsigned int left[G.size];
     unsigned int down[G.size];
     unsigned int right[G.size];
@@ -184,7 +186,8 @@ void backTrack2_NR(int row,int h_left,int h_down,int h_right,local *l){
 }
 //
 //通常版 CPU 非再帰版 backTrack2
-void backTrack2D_NR(int row,int left,int down,int right,local *l){
+void backTrack2D_NR(int row,int left,int down,int right,local *l)
+{
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -254,7 +257,8 @@ volta:if(p<=b)
   }
 }
 //CPU 非再帰版 backTrack
-void backTrack1_NR(int row,int h_left,int h_down,int h_right,local *l){
+void backTrack1_NR(int row,int h_left,int h_down,int h_right,local *l)
+{
 
     unsigned int left[G.size];
     unsigned int down[G.size];
@@ -291,10 +295,10 @@ void backTrack1_NR(int row,int h_left,int h_down,int h_right,local *l){
         }
       }  
     }
-
 }
 //通常版 CPU 非再帰版 backTrack
-void backTrack1D_NR(int row,int left,int down,int right,local *l){
+void backTrack1D_NR(int row,int left,int down,int right,local *l)
+{
   int bitmap,bit;
   int b[100], *p=b;
   int odd=G.size&1; //奇数:1 偶数:0
@@ -357,8 +361,8 @@ b1volta:if(p<=b)
 }
 //
 //CPU 再帰版 backTrack
-//ここに追記
-void backTrack2(int row,int left,int down,int right,local *l){
+void backTrack2(int row,int left,int down,int right,local *l)
+{
  int bitmap=0;
  int bit=0;
  bitmap=(l->mask&~(left|down|right));
@@ -387,7 +391,8 @@ void backTrack2(int row,int left,int down,int right,local *l){
 
 }
 //通常版 CPU 再帰版 backTrack
-void backTrack2D(int row,int left,int down,int right,local *l){
+void backTrack2D(int row,int left,int down,int right,local *l)
+{
   int bit;
   int bitmap=l->mask&~(left|down|right);
   if(row==G.sizeE){ 								// 【枝刈り】
@@ -410,10 +415,9 @@ void backTrack2D(int row,int left,int down,int right,local *l){
     }
   }
 }
-//
 //CPU 再帰版 backTrack
-//ここに追記
-void backTrack1(int row,int left,int down,int right,local *l){
+void backTrack1(int row,int left,int down,int right,local *l)
+{
  int bitmap=0;
  int bit=0;
  bitmap=(l->mask&~(left|down|right));
@@ -432,7 +436,8 @@ void backTrack1(int row,int left,int down,int right,local *l){
   }
 }
 //通常版 CPU 再帰版 backTrack
-void backTrack1D(int row,int left,int down,int right,local *l){
+void backTrack1D(int row,int left,int down,int right,local *l)
+{
   int bit;
   int bitmap=l->mask&~(left|down|right);
   //【枝刈り】１行目角にクイーンがある場合回転対称チェックを省略
@@ -454,7 +459,8 @@ void backTrack1D(int row,int left,int down,int right,local *l){
   }
 }
 //
-void *run(void *args){
+void *run(void *args)
+{
   local *l=(local *)args;
   int bit=0;
   l->TOPBIT=1<<(G.size-1);
@@ -508,7 +514,8 @@ void *run(void *args){
   return 0;   //*run()の場合はreturn 0;が必要
 }
 //
-void *NQueenThread(){
+void *NQueenThread()
+{
   local l[MAX];                //構造体 local型
   pthread_t pt[G.size];                 //スレッド childThread
   for(int BOUND1=G.sizeE,BOUND2=0;BOUND2<G.sizeE;BOUND1--,BOUND2++){
@@ -533,7 +540,8 @@ void *NQueenThread(){
   return 0;
 }
 //
-void NQueen(){
+void NQueen()
+{
   pthread_t pth;  //スレッド変数
   int iFbRet;
   // メインスレッドの生成
