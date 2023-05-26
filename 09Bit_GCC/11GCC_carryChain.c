@@ -152,56 +152,32 @@ void process(unsigned const int sym,Board* B)
   B->left>>4,((((B->down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(B->right>>4)<<(g.size-5));
 }
 // クイーンの効きをチェック
-bool placement(uint64_t dimx,uint64_t dimy,Board* B)
-// bool placement(void* args)
+bool placement(void* args)
 {
-  // Local *l=(Local *)args;
-  // if(l->B.x[l->dimx]==l->dimy){ return true;  }  
-  // if (l->B.x[0]==0){
-  //   if (l->B.x[1]!=(uint64_t)-1){
-  //     if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
-  //   }
-  // }else{
-  //   if( (l->B.x[0]!=(uint64_t)-1) ){
-  //     if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
-  //       && (l->dimy==0 || l->dimy==g.size-1)
-  //     )){ return 0; } 
-  //     if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
-  //         l->dimy>=g.size-l->B.x[0]))){
-  //       return 0;
-  //     } 
-  //   }
-  // }
-  if(B->x[dimx]==dimy){ return true;  }  
-  if (B->x[0]==0){
-    if (B->x[1]!=(uint64_t)-1){
-      if((B->x[1]>=dimx)&&(dimy==1)){ return false; }
+  Local *l=(Local *)args;
+  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
+  if (l->B.x[0]==0){
+    if (l->B.x[1]!=(uint64_t)-1){
+      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
     }
   }else{
-    if( (B->x[0]!=(uint64_t)-1) ){
-      if(( (dimx<B->x[0]||dimx>=g.size-B->x[0])
-        && (dimy==0 || dimy==g.size-1)
+    if( (l->B.x[0]!=(uint64_t)-1) ){
+      if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
+        && (l->dimy==0 || l->dimy==g.size-1)
       )){ return 0; } 
-      if ((  (dimx==g.size-1)&&((dimy<=B->x[0])||
-          dimy>=g.size-B->x[0]))){
+      if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
+          l->dimy>=g.size-l->B.x[0]))){
         return 0;
       } 
     }
   }
-  // l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
-  // uint64_t row=UINT64_C(1)<<l->dimx;
-  // uint64_t down=UINT64_C(1)<<l->dimy;
-  // uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
-  // uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
-  // if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
-  // l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
-  B->x[dimx]=dimy;                    //xは行 yは列
-  uint64_t row=UINT64_C(1)<<dimx;
-  uint64_t down=UINT64_C(1)<<dimy;
-  uint64_t left=UINT64_C(1)<<(g.size-1-dimx+dimy); //右上から左下
-  uint64_t right=UINT64_C(1)<<(dimx+dimy);       // 左上から右下
-  if((B->row&row)||(B->down&down)||(B->left&left)||(B->right&right)){ return false; }     
-  B->row|=row; B->down|=down; B->left|=left; B->right|=right;
+  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
+  uint64_t row=UINT64_C(1)<<l->dimx;
+  uint64_t down=UINT64_C(1)<<l->dimy;
+  uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
+  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
+  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
+  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
   return true;
 }
 //対称解除法
@@ -236,7 +212,6 @@ void carryChain_symmetry(void* args)
 void buildChain()
 {
   Local l[(g.size/2)*(g.size-3)];
-  // Board B;
   // カウンターの初期化
   g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
   g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
@@ -244,57 +219,48 @@ void buildChain()
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-  // Board wB;
-  memcpy(&l->wB,&l->B,sizeof(Board));
-  // wB=B;//１ 上２行に置く
+  
+  //１ 上２行に置く
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-    // B=wB;
-    memcpy(&l->B,&l->wB,sizeof(Board));
-    // l->dimx=0; 
-    // l->dimy=g.pres_a[l->w]; 
-    if(!placement(l->dimx=0,l->dimy=g.pres_a[l->w],&l->B)){ continue; } 
-    // if(!placement(&l)){ continue; } 
-    // l->dimx=1;
-    // l->dimy=g.pres_b[l->w]; 
-    if(!placement(l->dimx=1,l->dimy=g.pres_b[l->w],&l->B)){ continue; }
-    // nB=B;//２ 左２行に置く
-    // Board nB;
-    memcpy(&l->nB,&l->B,sizeof(Board));
+    memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+    l->dimx=0; 
+    l->dimy=g.pres_a[l->w]; 
+    if(!placement(&l)){ continue; } 
+    l->dimx=1;
+    l->dimy=g.pres_b[l->w]; 
+    if(!placement(&l)){ continue; } 
+    //２ 左２行に置く
+    memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
     for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-      // B=nB;
-      memcpy(&l->B,&l->nB,sizeof(Board));
-      // l->dimx=g.pres_a[l->n]; 
-      // l->dimy=g.size-1; 
-      if(!placement(l->dimx=g.pres_a[l->n],l->dimy=g.size-1,&l->B)){ continue; }
-      // l->dimx=g.pres_b[l->n]; 
-      // l->dimy=g.size-2; 
-      if(!placement(l->dimx=g.pres_b[l->n],l->dimy=g.size-2,&l->B)){ continue; }
-      // eB=B;// ３ 下２行に置く
-      // Board eB;
-      memcpy(&l->eB,&l->B,sizeof(Board));
+      memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+      l->dimx=g.pres_a[l->n]; 
+      l->dimy=g.size-1; 
+      if(!placement(&l)){ continue; } 
+      l->dimx=g.pres_b[l->n]; 
+      l->dimy=g.size-2; 
+      if(!placement(&l)){ continue; } 
+      // ３ 下２行に置く
+      memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
       for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-        // B=eB;
-        memcpy(&l->B,&l->eB,sizeof(Board));
-        // l->dimx=g.size-1; 
-        // l->dimy=g.size-1-g.pres_a[l->e]; 
-        if(!placement(l->dimx=g.size-1,l->dimy=g.size-1-g.pres_a[l->e],&l->B)){ continue; }
-        // l->dimx=g.size-2; 
-        // l->dimy=g.size-1-g.pres_b[l->e]; 
-        if(!placement(l->dimx=g.size-2,l->dimy=g.size-1-g.pres_b[l->e],&l->B)){ continue; }
-        // sB=B;// ４ 右２列に置く
-        // Board sB;
-        memcpy(&l->sB,&l->B,sizeof(Board));
+        memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+        l->dimx=g.size-1; 
+        l->dimy=g.size-1-g.pres_a[l->e]; 
+        if(!placement(&l)){ continue; } 
+        l->dimx=g.size-2; 
+        l->dimy=g.size-1-g.pres_b[l->e]; 
+        if(!placement(&l)){ continue; } 
+        // ４ 右２列に置く
+        memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
         for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-          // B=sB;
-          memcpy(&l->B,&l->sB,sizeof(Board));
-          // l->dimx=g.size-1-g.pres_a[l->s]; 
-          // l->dimy=0; 
-          if(!placement(l->dimx=g.size-1-g.pres_a[l->s],l->dimy=0,&l->B)){ continue; }
-          // l->dimx=g.size-1-g.pres_b[l->s]; 
-          // l->dimx=1; 
-          if(!placement(l->dimx=g.size-1-g.pres_b[l->s],l->dimx=1,&l->B)){ continue; }
+          memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+          l->dimx=g.size-1-g.pres_a[l->s]; 
+          l->dimy=0; 
+          if(!placement(&l)){ continue; } 
+          l->dimx=g.size-1-g.pres_b[l->s]; 
+          l->dimy=1; 
+          if(!placement(&l)){ continue; } 
           // 対称解除法
-          // carryChain_symmetry(l->n,l->e,l->s,l->w,&l->B);
           carryChain_symmetry(&l);
         } //w
       } //e
