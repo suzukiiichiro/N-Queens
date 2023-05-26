@@ -5,11 +5,8 @@
  * 並列処理 pthread版の作成が目的
  *
  * 今回のテーマ
- * グローバル変数を廃止しglobal構造体に移動
- *
- * 第２段 
- * COUNTERとTOTAL/UNIQUEを検討する
- * COUNTERがGlobal g に格納することで良いのかは要検討
+ * pthread 処理を行う関数を抜き出す準備
+ * まず、initChain()とcarryChain_symmetry()を抜き出して作成
  *
  * これにより、pthread導入時の 構造体１つしか渡せない問題に対応
  * スレッドごとに変数を参照する煩わしさ
@@ -176,8 +173,35 @@ bool placement(uint64_t dimx,uint64_t dimy,Board* B)
   B->row|=row; B->down|=down; B->left|=left; B->right|=right;
   return true;
 }
-// キャリーチェーン
-void carryChain()
+//対称解除法
+void carryChain_symmetry(unsigned const int n,unsigned const int e,unsigned const int s,unsigned const int w,Board* B)
+{
+  // 対称解除法 
+  unsigned const int ww=(g.size-2)*(g.size-1)-1-w;
+  unsigned const int w2=(g.size-2)*(g.size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
+  if((s==ww)&&(n<(w2-e))){ return ; }
+  // # 垂直方向の中心に対する反転が小さいかを確認
+  if((e==ww)&&(n>(w2-n))){ return; }
+  // # 斜め下方向への反転が小さいかをチェックする
+  if((n==ww)&&(e>(w2-s))){ return; }
+  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  if(B->x[0]==0){ 
+    process(g.COUNT8,B); return ;
+  }
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+  // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+  if(s==w){ if((n!=w)||(e!=w)){ return; } 
+    process(g.COUNT2,B); return;
+  }
+  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+  if((e==w)&&(n>=s)){ if(n>s){ return; } 
+    process(g.COUNT4,B); return;
+  }
+  process(g.COUNT8,B); return;
+}
+// チェーンの初期化
+void initChain()
 {
   // チェーンの初期化
   unsigned int idx=0;
@@ -189,6 +213,12 @@ void carryChain()
       ++idx;
     }
   }
+}
+// キャリーチェーン
+void carryChain()
+{
+  //チェーンの初期化
+  initChain();
   // チェーンのビルド
   Board B;
   // カウンターの初期化
@@ -230,30 +260,8 @@ void carryChain()
           memcpy(&B,&sB,sizeof(Board));
           if(!placement(g.size-1-g.pres_a[s],0,&B)){ continue; }
           if(!placement(g.size-1-g.pres_b[s],1,&B)){ continue; }
-          //
-          // 対称解除法 
-          unsigned const int ww=(g.size-2)*(g.size-1)-1-w;
-          unsigned const int w2=(g.size-2)*(g.size-1)-1;
-          // # 対角線上の反転が小さいかどうか確認する
-          if((s==ww)&&(n<(w2-e))){ continue ; }
-          // # 垂直方向の中心に対する反転が小さいかを確認
-          if((e==ww)&&(n>(w2-n))){ continue; }
-          // # 斜め下方向への反転が小さいかをチェックする
-          if((n==ww)&&(e>(w2-s))){ continue; }
-          // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
-          if(B.x[0]==0){ 
-            process(g.COUNT8,&B); continue ;
-          }
-          // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
-          // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
-          if(s==w){ if((n!=w)||(e!=w)){ continue; } 
-            process(g.COUNT2,&B); continue;
-          }
-          // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
-          if((e==w)&&(n>=s)){ if(n>s){ continue; } 
-            process(g.COUNT4,&B); continue;
-          }
-          process(g.COUNT8,&B); continue;
+          // 対称解除法
+          carryChain_symmetry(n,e,s,w,&B);
         }
       }    
     }

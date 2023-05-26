@@ -5,15 +5,8 @@
  * 並列処理 pthread版の作成が目的
  *
  * 今回のテーマ
- * グローバル変数を廃止しglobal構造体に移動
- *
- * 第２段 
- * COUNTERとTOTAL/UNIQUEを検討する
- * COUNTERがGlobal g に格納することで良いのかは要検討
- *
- * これにより、pthread導入時の 構造体１つしか渡せない問題に対応
- * スレッドごとに変数を参照する煩わしさ
-
+ * carryChain_symmetry()に n,e,s,w,Bをわたしていたが、Local* l を渡すようにする
+    
  構造体のコピー
  https://yu-nix.com/archives/c-struct-copy/
  memcpy
@@ -92,6 +85,17 @@ typedef struct{
   uint64_t right;
   uint64_t x[MAX];
 }Board ;
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+}Local;
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form)
@@ -176,10 +180,90 @@ bool placement(uint64_t dimx,uint64_t dimy,Board* B)
   B->row|=row; B->down|=down; B->left|=left; B->right|=right;
   return true;
 }
-// キャリーチェーン
-void carryChain()
+//対称解除法
+void carryChain_symmetry(void* args)
 {
-  // チェーンの初期化
+  Local *l=(Local *)args;
+  // 対称解除法 
+  unsigned const int ww=(g.size-2)*(g.size-1)-1-l->w;
+  unsigned const int w2=(g.size-2)*(g.size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
+  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
+  // # 垂直方向の中心に対する反転が小さいかを確認
+  if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
+  // # 斜め下方向への反転が小さいかをチェックする
+  if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
+  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  if(l->B.x[0]==0){ 
+    process(g.COUNT8,&l->B); return ;
+  }
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+  // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; } 
+    process(g.COUNT2,&l->B); return;
+  }
+  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; } 
+    process(g.COUNT4,&l->B); return;
+  }
+  process(g.COUNT8,&l->B); return;
+}
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+
+  // Board B;
+  // カウンターの初期化
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+  // Board の初期化 nB,eB,sB,wB;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  // Board x[]の初期化
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  // Board wB;
+  memcpy(&l->wB,&l->B,sizeof(Board));
+  // wB=B;//１ 上２行に置く
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    // B=wB;
+    memcpy(&l->B,&l->wB,sizeof(Board));
+    if(!placement(0,g.pres_a[l->w],&l->B)){ continue; } 
+    if(!placement(1,g.pres_b[l->w],&l->B)){ continue; }
+    // nB=B;//２ 左２行に置く
+    // Board nB;
+    memcpy(&l->nB,&l->B,sizeof(Board));
+    for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+      // B=nB;
+      memcpy(&l->B,&l->nB,sizeof(Board));
+      if(!placement(g.pres_a[l->n],g.size-1,&l->B)){ continue; }
+      if(!placement(g.pres_b[l->n],g.size-2,&l->B)){ continue; }
+      // eB=B;// ３ 下２行に置く
+      // Board eB;
+      memcpy(&l->eB,&l->B,sizeof(Board));
+      for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+        // B=eB;
+        memcpy(&l->B,&l->eB,sizeof(Board));
+        if(!placement(g.size-1,g.size-1-g.pres_a[l->e],&l->B)){ continue; }
+        if(!placement(g.size-2,g.size-1-g.pres_b[l->e],&l->B)){ continue; }
+        // sB=B;// ４ 右２列に置く
+        // Board sB;
+        memcpy(&l->sB,&l->B,sizeof(Board));
+        for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+          // B=sB;
+          memcpy(&l->B,&l->sB,sizeof(Board));
+          if(!placement(g.size-1-g.pres_a[l->s],0,&l->B)){ continue; }
+          if(!placement(g.size-1-g.pres_b[l->s],1,&l->B)){ continue; }
+          // 対称解除法
+          // carryChain_symmetry(l->n,l->e,l->s,l->w,&l->B);
+          carryChain_symmetry(&l);
+        } //w
+      } //e
+    } //n
+  } //w
+}
+// チェーンのリストを作成
+void listChain()
+{
   unsigned int idx=0;
   for(unsigned int a=0;a<(unsigned)g.size;++a){
     for(unsigned int b=0;b<(unsigned)g.size;++b){
@@ -189,76 +273,13 @@ void carryChain()
       ++idx;
     }
   }
-  // チェーンのビルド
-  Board B;
-  // カウンターの初期化
-  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
-  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
-  // Board の初期化 nB,eB,sB,wB;
-  B.row=0; B.down=0; B.left=0; B.right=0;
-  // Board x[]の初期化
-  for(unsigned int i=0;i<g.size;++i){ B.x[i]=-1; }
-  // wB=B;//１ 上２行に置く
-  Board wB;
-  memcpy(&wB,&B,sizeof(Board));
-  for(unsigned w=0;w<=(unsigned)(g.size/2)*(g.size-3);++w){
-    // B=wB;
-    memcpy(&B,&wB,sizeof(Board));
-    if(!placement(0,g.pres_a[w],&B)){ continue; } 
-    if(!placement(1,g.pres_b[w],&B)){ continue; }
-    // nB=B;//２ 左２行に置く
-    Board nB;
-    memcpy(&nB,&B,sizeof(Board));
-    for(unsigned n=w;n<(g.size-2)*(g.size-1)-w;++n){
-      // B=nB;
-      memcpy(&B,&nB,sizeof(Board));
-      if(!placement(g.pres_a[n],g.size-1,&B)){ continue; }
-      if(!placement(g.pres_b[n],g.size-2,&B)){ continue; }
-      // eB=B;// ３ 下２行に置く
-      Board eB;
-      memcpy(&eB,&B,sizeof(Board));
-      for(unsigned e=w;e<(g.size-2)*(g.size-1)-w;++e){
-        // B=eB;
-        memcpy(&B,&eB,sizeof(Board));
-        if(!placement(g.size-1,g.size-1-g.pres_a[e],&B)){ continue; }
-        if(!placement(g.size-2,g.size-1-g.pres_b[e],&B)){ continue; }
-        // sB=B;// ４ 右２列に置く
-        Board sB;
-        memcpy(&sB,&B,sizeof(Board));
-        for(unsigned s=w;s<(g.size-2)*(g.size-1)-w;++s){
-          // B=sB;
-          memcpy(&B,&sB,sizeof(Board));
-          if(!placement(g.size-1-g.pres_a[s],0,&B)){ continue; }
-          if(!placement(g.size-1-g.pres_b[s],1,&B)){ continue; }
-          //
-          // 対称解除法 
-          unsigned const int ww=(g.size-2)*(g.size-1)-1-w;
-          unsigned const int w2=(g.size-2)*(g.size-1)-1;
-          // # 対角線上の反転が小さいかどうか確認する
-          if((s==ww)&&(n<(w2-e))){ continue ; }
-          // # 垂直方向の中心に対する反転が小さいかを確認
-          if((e==ww)&&(n>(w2-n))){ continue; }
-          // # 斜め下方向への反転が小さいかをチェックする
-          if((n==ww)&&(e>(w2-s))){ continue; }
-          // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
-          if(B.x[0]==0){ 
-            process(g.COUNT8,&B); continue ;
-          }
-          // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
-          // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
-          if(s==w){ if((n!=w)||(e!=w)){ continue; } 
-            process(g.COUNT2,&B); continue;
-          }
-          // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
-          if((e==w)&&(n>=s)){ if(n>s){ continue; } 
-            process(g.COUNT4,&B); continue;
-          }
-          process(g.COUNT8,&B); continue;
-        }
-      }    
-    }
-  }
-  calcChain();// 集計
+}
+// キャリーチェーン
+void carryChain()
+{
+  listChain();  //チェーンのリストを作成
+  buildChain(); // チェーンのビルド
+  calcChain();  // 集計
 }
 //メインメソッド
 int main(int argc,char** argv)
