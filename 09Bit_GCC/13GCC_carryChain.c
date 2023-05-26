@@ -226,41 +226,33 @@ void buildChain()
   memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
     memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
-    l->dimx=0; 
-    l->dimy=g.pres_a[l->w]; 
+    l->dimx=0; l->dimy=g.pres_a[l->w]; 
     if(!placement(&l)){ continue; } 
-    l->dimx=1;
-    l->dimy=g.pres_b[l->w]; 
+    l->dimx=1; l->dimy=g.pres_b[l->w]; 
     if(!placement(&l)){ continue; } 
     //２ 左２行に置く
     memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
     for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
       memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
-      l->dimx=g.pres_a[l->n]; 
-      l->dimy=g.size-1; 
+      l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
       if(!placement(&l)){ continue; } 
-      l->dimx=g.pres_b[l->n]; 
-      l->dimy=g.size-2; 
+      l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
       if(!placement(&l)){ continue; } 
       // ３ 下２行に置く
       memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
       for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
         memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
-        l->dimx=g.size-1; 
-        l->dimy=g.size-1-g.pres_a[l->e]; 
+        l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
         if(!placement(&l)){ continue; } 
-        l->dimx=g.size-2; 
-        l->dimy=g.size-1-g.pres_b[l->e]; 
+        l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
         if(!placement(&l)){ continue; } 
         // ４ 右２列に置く
         memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
         for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
           memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
-          l->dimx=g.size-1-g.pres_a[l->s]; 
-          l->dimy=0; 
+          l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
           if(!placement(&l)){ continue; } 
-          l->dimx=g.size-1-g.pres_b[l->s]; 
-          l->dimy=1; 
+          l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
           if(!placement(&l)){ continue; } 
           // 対称解除法
           carryChain_symmetry(&l);
