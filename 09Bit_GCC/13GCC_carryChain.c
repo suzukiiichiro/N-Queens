@@ -6,10 +6,10 @@
  *
  * 今回のテーマ
  *
- * 今回の作業は buildChain()のwの内側をpthreadの並列処理対称にして、
- * 並列処理部分を抜き出しrun()としてpthreadに備える
+ * 今回の作業は並列処理部分として、buildChain()の一番外側のfor(w)ブロックを抜き出し、
+ * run()としてpthreadに備える
  *
- * 
+ *  →　うまくいかん！
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -209,10 +209,11 @@ void carryChain_symmetry(void* args)
   l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
   return;
 }
-// チェーンのビルド
-void buildChain()
+// pthread run()
+void thread_run(void* args)
 {
-  Local l[(g.size/2)*(g.size-3)];
+  Local *l=(Local *)args;
+
   // カウンターの初期化
   g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
   g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
@@ -220,7 +221,6 @@ void buildChain()
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-  
   //１ 上２行に置く
   memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
@@ -259,6 +259,61 @@ void buildChain()
       } //e
     } //n
   } //w
+}
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+
+  // thread_run(&l);
+
+// /**
+  // カウンターの初期化
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  // Board の初期化 nB,eB,sB,wB;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  // Board x[]の初期化
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  //１ 上２行に置く
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+    l->dimx=0; l->dimy=g.pres_a[l->w]; 
+    if(!placement(&l)){ continue; } 
+    l->dimx=1; l->dimy=g.pres_b[l->w]; 
+    if(!placement(&l)){ continue; } 
+    //２ 左２行に置く
+    memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+    for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+      memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+      l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
+      if(!placement(&l)){ continue; } 
+      l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
+      if(!placement(&l)){ continue; } 
+      // ３ 下２行に置く
+      memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+      for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+        memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+        l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
+        if(!placement(&l)){ continue; } 
+        l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
+        if(!placement(&l)){ continue; } 
+        // ４ 右２列に置く
+        memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+        for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+          memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+          l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
+          if(!placement(&l)){ continue; } 
+          l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
+          if(!placement(&l)){ continue; } 
+          // 対称解除法
+          carryChain_symmetry(&l);
+        } //w
+      } //e
+    } //n
+  } //w
+//   */
 }
 // チェーンのリストを作成
 void listChain()
