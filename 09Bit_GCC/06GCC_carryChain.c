@@ -6,8 +6,10 @@
  *
  * 今回のテーマ
  * グローバル変数を廃止しglobal構造体に移動
- * 
+ *
+ * 第２段 
  * COUNTERとTOTAL/UNIQUEを検討する
+ * COUNTERがGlobal g に格納することで良いのかは要検討
  *
  * これにより、pthread導入時の 構造体１つしか渡せない問題に対応
  * スレッドごとに変数を参照する煩わしさ
@@ -71,16 +73,16 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 // グローバル変数
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
-//カウンター配列
-uint64_t COUNTER[3];      
-unsigned int COUNT2=0;
-unsigned int COUNT4=1;
-unsigned int COUNT8=2;
 // 構造体
 typedef struct{
   unsigned int size;
   unsigned int pres_a[930]; 
   unsigned int pres_b[930];
+  uint64_t COUNTER[3];      
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
 }Global; Global g;
 // 構造体
 typedef struct{
@@ -115,8 +117,12 @@ void TimeFormat(clock_t utime,char* form)
 // 集計
 void calcChain()
 {
-  UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
-  TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
+  UNIQUE= g.COUNTER[g.COUNT2]+
+          g.COUNTER[g.COUNT4]+
+          g.COUNTER[g.COUNT8];
+  TOTAL=  g.COUNTER[g.COUNT2]*2+
+          g.COUNTER[g.COUNT4]*4+
+          g.COUNTER[g.COUNT8]*8;
 }
 // ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
@@ -139,7 +145,7 @@ uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 // solve()を呼び出して再帰を開始する
 void process(unsigned const int sym,Board* B)
 {
-  COUNTER[sym]+=solve(B->row>>2,
+  g.COUNTER[sym]+=solve(B->row>>2,
   B->left>>4,((((B->down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(B->right>>4)<<(g.size-5));
 }
 // クイーンの効きをチェック
@@ -173,8 +179,6 @@ bool placement(uint64_t dimx,uint64_t dimy,Board* B)
 // キャリーチェーン
 void carryChain()
 {
-  // カウンターの初期化
-  COUNTER[COUNT2]=COUNTER[COUNT4]=COUNTER[COUNT8]=0;
   // チェーンの初期化
   unsigned int idx=0;
   for(unsigned int a=0;a<(unsigned)g.size;++a){
@@ -187,6 +191,9 @@ void carryChain()
   }
   // チェーンのビルド
   Board B;
+  // カウンターの初期化
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
   // Board の初期化 nB,eB,sB,wB;
   B.row=0; B.down=0; B.left=0; B.right=0;
   // Board x[]の初期化
@@ -235,18 +242,18 @@ void carryChain()
           if((n==ww)&&(e>(w2-s))){ continue; }
           // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
           if(B.x[0]==0){ 
-            process(COUNT8,&B); continue ;
+            process(g.COUNT8,&B); continue ;
           }
           // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
           // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
           if(s==w){ if((n!=w)||(e!=w)){ continue; } 
-            process(COUNT2,&B); continue;
+            process(g.COUNT2,&B); continue;
           }
           // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
           if((e==w)&&(n>=s)){ if(n>s){ continue; } 
-            process(COUNT4,&B); continue;
+            process(g.COUNT4,&B); continue;
           }
-          process(COUNT8,&B); continue;
+          process(g.COUNT8,&B); continue;
         }
       }    
     }
