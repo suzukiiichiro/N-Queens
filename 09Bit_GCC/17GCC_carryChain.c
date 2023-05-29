@@ -4,10 +4,15 @@
  * 最終的に 08Bash_carryChain_parallel.sh のように
  * 並列処理 pthread版の作成が目的
  *
+ * 簡単な実行
+ * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
+ *  
+ * 高速な実行 
+ * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
+ *
+ *
  * 今回のテーマ
- * pthreadの実装
- * THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
- * 
+ * pthreadの実装 
  * THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
  * 
  * スレッドオフだとちゃんと解が出る
@@ -16,47 +21,6 @@
  *
  *
  *
- * 簡単な実行
- * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
- *  
- * 高速な実行 
- * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
- *
- *
-bash-3.2$ gcc --version
-Configured with: --prefix=/Applications/Xcode.app/Contents/Developer/usr --with-gxx-include-dir=/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/c++/4.2.1
-Apple clang version 12.0.0 (clang-1200.0.32.29)
-Target: x86_64-apple-darwin19.6.0
-Thread model: posix
-InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
-bash-3.2$
-
-$ /usr/local/bin/ | grep gcc
-gcc-10@
-gcc-ar-10@
-gcc-nm-10@
-gcc-ranlib-10@
-x86_64-apple-darwin17-gcc-10@
-x86_64-apple-darwin17-gcc-10.2.0@
-x86_64-apple-darwin17-gcc-ar-10@
-x86_64-apple-darwin17-gcc-nm-10@
-x86_64-apple-darwin17-gcc-ranlib-10@
-
-
-bash-3.2$ /usr/local/bin/gcc-10 --version
-gcc-10 (Homebrew GCC 10.2.0_3) 10.2.0
-Copyright (C) 2020 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-bash-3.2$
-
-
-Macの場合は、ヘッダーファイルが消えるので、以下のコマンドを実行
-
-$ export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
-
-
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -291,10 +255,7 @@ void* thread_run(void* args)
   return 0;
 }
 // チェーンのビルド
-/**
- * スレッドするか 1:する 0:しない
- */
-bool THREAD=0; 
+bool THREAD=0;  //スレッドするか 1:する 0:しない
 // bool THREAD=1; 
 void buildChain()
 {
