@@ -6,9 +6,8 @@
  *
  * 今回のテーマ
  *
- * 今回の作業は並列処理部分として、buildChain()の一番外側のfor(w)ブロックを抜き出し、
- * run()としてpthreadに備える
- *
+ * スレッドに対応すべくCOUNTERをLocal構造体に移動
+ * よってcalcChain()を廃止してbuildChain()に統合
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -66,11 +65,11 @@ typedef struct{
   unsigned int size;
   unsigned int pres_a[930]; 
   unsigned int pres_b[930];
-  uint64_t COUNTER[3];      
-  //カウンター配列
-  unsigned int COUNT2;
-  unsigned int COUNT4;
-  unsigned int COUNT8;
+  // uint64_t COUNTER[3];      
+  // //カウンター配列
+  // unsigned int COUNT2;
+  // unsigned int COUNT4;
+  // unsigned int COUNT8;
 }Global; Global g;
 // 構造体
 typedef struct{
@@ -92,6 +91,11 @@ typedef struct{
   unsigned w;
   uint64_t dimx;
   uint64_t dimy;
+  uint64_t COUNTER[3];      
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
 }Local;
 //
 //hh:mm:ss.ms形式に処理時間を出力
@@ -116,15 +120,16 @@ void TimeFormat(clock_t utime,char* form)
     sprintf(form,"           %5.2f",ss);
 }
 // 集計
-void calcChain()
-{
-  UNIQUE= g.COUNTER[g.COUNT2]+
-          g.COUNTER[g.COUNT4]+
-          g.COUNTER[g.COUNT8];
-  TOTAL=  g.COUNTER[g.COUNT2]*2+
-          g.COUNTER[g.COUNT4]*4+
-          g.COUNTER[g.COUNT8]*8;
-}
+// void calcChain(void* args)
+// {
+//   Local *l=(Local *)args;
+//   UNIQUE= l->COUNTER[l->COUNT2]+
+//           l->COUNTER[l->COUNT4]+
+//           l->COUNTER[l->COUNT8];
+//   TOTAL=  l->COUNTER[l->COUNT2]*2+
+//           l->COUNTER[l->COUNT4]*4+
+//           l->COUNTER[l->COUNT8]*8;
+// }
 // ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
@@ -187,24 +192,24 @@ void carryChain_symmetry(void* args)
   if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
   // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
   if(l->B.x[0]==0){ 
-    g.COUNTER[g.COUNT8]+=solve(l->B.row>>2,
+    l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,
     l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
     return ;
   }
   // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
   // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
   if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; } 
-    g.COUNTER[g.COUNT2]+=solve(l->B.row>>2,
+    l->COUNTER[l->COUNT2]+=solve(l->B.row>>2,
     l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
     return;
   }
   // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
   if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; } 
-    g.COUNTER[g.COUNT4]+=solve(l->B.row>>2,
+    l->COUNTER[l->COUNT4]+=solve(l->B.row>>2,
     l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
     return;
   }
-  g.COUNTER[g.COUNT8]+=solve(l->B.row>>2,
+  l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,
   l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
   return;
 }
@@ -213,51 +218,42 @@ void thread_run(void* args)
 {
   Local *l=(Local *)args;
 
-  // // カウンターの初期化
-  // g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
-  // g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
-  // // Board の初期化 nB,eB,sB,wB;
-  // l->B.row=l->B.down=l->B.left=l->B.right=0;
-  // // Board x[]の初期化
-  // for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-  //１ 上２行に置く
-  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-    memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
-    l->dimx=0; l->dimy=g.pres_a[l->w]; 
+  memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  l->dimx=0; l->dimy=g.pres_a[l->w]; 
+  //if(!placement(l)){ continue; } 
+  if(!placement(l)){ return; } 
+  l->dimx=1; l->dimy=g.pres_b[l->w]; 
+  // if(!placement(l)){ continue; } 
+  if(!placement(l)){ return; } 
+  //２ 左２行に置く
+  memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+    memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
     if(!placement(l)){ continue; } 
-    l->dimx=1; l->dimy=g.pres_b[l->w]; 
+    l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
     if(!placement(l)){ continue; } 
-    //２ 左２行に置く
-    memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
-    for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-      memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
-      l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
+    // ３ 下２行に置く
+    memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+      memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
       if(!placement(l)){ continue; } 
-      l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
+      l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
       if(!placement(l)){ continue; } 
-      // ３ 下２行に置く
-      memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
-      for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-        memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
-        l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
+      // ４ 右２列に置く
+      memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+        memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
         if(!placement(l)){ continue; } 
-        l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
+        l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
         if(!placement(l)){ continue; } 
-        // ４ 右２列に置く
-        memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
-        for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-          memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
-          l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
-          if(!placement(l)){ continue; } 
-          l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
-          if(!placement(l)){ continue; } 
-          // 対称解除法
-          carryChain_symmetry(l);
-        } //w
-      } //e
-    } //n
-  } //w
+        // 対称解除法
+        carryChain_symmetry(l);
+      } //w
+    } //e
+  } //n
 }
 // チェーンのビルド
 void buildChain()
@@ -265,55 +261,26 @@ void buildChain()
   Local l[(g.size/2)*(g.size-3)];
 
   // カウンターの初期化
-  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
-  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
   // Board の初期化 nB,eB,sB,wB;
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-
-  //
-  // 以下を thread_run()へ移動
-  //
-  // //１ 上２行に置く
-  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  // for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-  //   memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
-  //   l->dimx=0; l->dimy=g.pres_a[l->w]; 
-  //   if(!placement(&l)){ continue; } 
-  //   l->dimx=1; l->dimy=g.pres_b[l->w]; 
-  //   if(!placement(&l)){ continue; } 
-    // //２ 左２行に置く
-    // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
-    // for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-    //   memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
-    //   l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
-    //   if(!placement(&l)){ continue; } 
-    //   l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
-    //   if(!placement(&l)){ continue; } 
-      // // ３ 下２行に置く
-      // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
-      // for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-      //   memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
-      //   l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
-      //   if(!placement(&l)){ continue; } 
-      //   l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
-      //   if(!placement(&l)){ continue; } 
-        // // ４ 右２列に置く
-        // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
-        // for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-        //   memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
-        //   l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
-        //   if(!placement(&l)){ continue; } 
-        //   l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
-        //   if(!placement(&l)){ continue; } 
-        //   // 対称解除法
-        //   carryChain_symmetry(&l);
-        // } //w
-      // } //e
-    // } //n
-  // } //w
-  thread_run(&l);
+  //１ 上２行に置く
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    thread_run(&l);
+  } //w
+  /**
+   * 集計
+   */
+  UNIQUE= l->COUNTER[l->COUNT2]+
+          l->COUNTER[l->COUNT4]+
+          l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+
+          l->COUNTER[l->COUNT4]*4+
+          l->COUNTER[l->COUNT8]*8;
 }
 // チェーンのリストを作成
 void listChain()
@@ -333,7 +300,7 @@ void carryChain()
 {
   listChain();  //チェーンのリストを作成
   buildChain(); // チェーンのビルド
-  calcChain();  // 集計
+  // calcChain(&l);  // 集計
 }
 //メインメソッド
 int main(int argc,char** argv)

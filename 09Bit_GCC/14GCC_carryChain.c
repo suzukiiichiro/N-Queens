@@ -6,8 +6,8 @@
  *
  * 今回のテーマ
  *
- * 今回の作業は並列処理部分として、buildChain()の一番外側のfor(w)ブロックを抜き出し、
- * run()としてpthreadに備える
+ * buildChain()の一番外側のfor(w)ブロックを抜き出し、
+ * run()としてpthreadに備えた内容を for(w)の内側のみをthread_run()に残して稼働を確認
  *
 
 最適化オプション含め以下を参考に
@@ -213,21 +213,18 @@ void thread_run(void* args)
 {
   Local *l=(Local *)args;
 
-  // // カウンターの初期化
-  // g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
-  // g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
-  // // Board の初期化 nB,eB,sB,wB;
-  // l->B.row=l->B.down=l->B.left=l->B.right=0;
-  // // Board x[]の初期化
-  // for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-  //１ 上２行に置く
-  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  // 以下２行をbuildChain()に残してthread_run()を呼び出す
+  // 
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  // for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  //
     memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
     l->dimx=0; l->dimy=g.pres_a[l->w]; 
-    if(!placement(l)){ continue; } 
+    //if(!placement(l)){ continue; } 
+    if(!placement(l)){ return; } 
     l->dimx=1; l->dimy=g.pres_b[l->w]; 
-    if(!placement(l)){ continue; } 
+    // if(!placement(l)){ continue; } 
+    if(!placement(l)){ return; } 
     //２ 左２行に置く
     memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
     for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
@@ -257,7 +254,7 @@ void thread_run(void* args)
         } //w
       } //e
     } //n
-  } //w
+  // } //w
 }
 // チェーンのビルド
 void buildChain()
@@ -271,13 +268,11 @@ void buildChain()
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
-
+  //１ 上２行に置く
   //
-  // 以下を thread_run()へ移動
-  //
-  // //１ 上２行に置く
-  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  // for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  // 以下２行をbuildChain()に残してthread_run()を呼び出す
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
   //   memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
   //   l->dimx=0; l->dimy=g.pres_a[l->w]; 
   //   if(!placement(&l)){ continue; } 
@@ -312,8 +307,8 @@ void buildChain()
         // } //w
       // } //e
     // } //n
-  // } //w
-  thread_run(&l);
+    thread_run(&l);
+  } //w
 }
 // チェーンのリストを作成
 void listChain()

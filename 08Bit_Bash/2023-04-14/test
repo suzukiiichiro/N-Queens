@@ -1,0 +1,11 @@
+#!/usr/bin/bash
+
+mask=31;
+left=4;
+down=2;
+right=1;
+# (left|down|right)を反転させてmaskで間引く
+bitmap=$(( mask&~(left|down|right) ))
+# 間引いた１０進数を２進数にして確認
+bc<<<"ibase=10;obase=2;$bitmap"
+
