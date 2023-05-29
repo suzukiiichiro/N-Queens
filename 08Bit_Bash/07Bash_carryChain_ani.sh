@@ -199,7 +199,11 @@ function solve()
         ((rrow--));
       elif ((row[rrow]&1));then
         ((rrow++));
-        (( row[rrow]=row[rrow-1]>>=1,left[rrow]=left[rrow-1]<<=1,right[rrow]=right[rrow-1]>>=1,down[rrow]=down[rrow-1] )); # 上記３行をまとめて書けます
+        local -i n=$((rrow++));
+        left[$rrow]=$(((left[n])<<1));
+        down[$rrow]=$(((down[n])));
+        right[$rrow]=$(((right[n])>>1));
+        row[$rrow]=$((row[n]>>1 ));        
         bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
       else
   
@@ -207,7 +211,7 @@ function solve()
         left[$rrow]=$(((left[n]|bit)<<1));
         down[$rrow]=$(((down[n]|bit)));
         right[$rrow]=$(((right[n]|bit)>>1));
-        row[$rrow]=$((row[n]>>=1 ));        
+        row[$rrow]=$((row[n]>>1 ));        
         bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
      fi
     else
