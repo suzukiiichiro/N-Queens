@@ -186,26 +186,29 @@ function solve()
   local -i bit=0;
   local -i total=0; 
   while ((rrow>-1));do
+    echo "rrow:$rrow"
+    echo "bitmap:${bitmap[$rrow]}"
     echo "row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
-    if (( bitmap[rrow]>0 ));then
-      bit=$(( -bitmap[row]&bitmap[row] ));  # 一番右のビットを取り出す
-      bitmap[$row]=$(( bitmap[row]^bit ));  # 配置可能なパターンが一つずつ取り出される
+    if (( bitmap[rrow]!=0 ||row[rrow]&1));then
+      bit=$(( -bitmap[rrow]&bitmap[rrow] ));  # 一番右のビットを取り出す
+      bitmap[$rrow]=$(( bitmap[rrow]^bit ));  # 配置可能なパターンが一つずつ取り出される
 
-      if (( row==(size-1) ));then
+      if (( rrow==(size-1) ));then
         ((total++));
-        echo "total:$total"
+        echo "tottttt:$total"
         ((rrow--));
       elif ((row[rrow]&1));then
         ((rrow++));
-        (( row[rrow]>>=1,left[rrow]<<=1,right[rrow]>>=1,down[rrow]=down[rrow-1] )); # 上記３行をまとめて書けます
-    else
+        (( row[rrow]=row[rrow-1]>>=1,left[rrow]=left[rrow-1]<<=1,right[rrow]=right[rrow-1]>>=1,down[rrow]=down[rrow-1] )); # 上記３行をまとめて書けます
+        bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
+      else
   
         local -i n=$((rrow++));
         left[$rrow]=$(((left[n]|bit)<<1));
         down[$rrow]=$(((down[n]|bit)));
         right[$rrow]=$(((right[n]|bit)>>1));
+        row[$rrow]=$((row[n]>>=1 ));        
         bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-        (( row[rrow]>>=1 ));        
      fi
     else
       ((rrow--));
