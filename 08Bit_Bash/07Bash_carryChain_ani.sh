@@ -182,39 +182,31 @@ function solve()
   left[$rrow]=$4;
   down[$rrow]=$5;
   right[$rrow]=$6;
-  echo "rsslwol;row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
   local -i bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
   local -i bit=0;
   local -i total=0; 
-  while true; do
-    echo "rrrow:$rrow"
-    if ((rrow==-1));then
-       echo "total:$total"
-       return $total;
-    fi
-    echo "bitmap:${bitmap[rrow]}"
-    echo "rrrrrro;${row[rrow]}"
-    echo $((row[rrow]&1))
-    if (( bitmap[rrow]!=0 || row[rrow]&1==1));then
-      while(( row[rrow]&1 ));do
-        echo "atttta"
+  while ((rrow>-1));do
+    echo "row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
+    if (( bitmap[rrow]>0 ));then
+      bit=$(( -bitmap[row]&bitmap[row] ));  # 一番右のビットを取り出す
+      bitmap[$row]=$(( bitmap[row]^bit ));  # 配置可能なパターンが一つずつ取り出される
+
+      if (( row==(size-1) ));then
+        ((total++));
+        echo "total:$total"
+        ((rrow--));
+      elif ((row[rrow]&1));then
         ((rrow++));
-        (( row[rrow]>>=1,left[rrow]<<=1,right[rrow]>>=1 )); # 上記３行をまとめて書けます
-      done
-      (( row[rrow]>>=1 ));        
+        (( row[rrow]>>=1,left[rrow]<<=1,right[rrow]>>=1,down[rrow]=down[rrow-1] )); # 上記３行をまとめて書けます
+    else
   
-      bit=$(( -bitmap[rrow]&bitmap[rrow] ));  # 一番右のビットを取り出す
-      bitmap[$rrow]=$(( bitmap[rrow]^bit ));  # 配置可能なパターンが一つずつ取り出される
-      if (( rrow==(size-1) ));then
-         ((total++));
-         ((rrow--));
-      else
         local -i n=$((rrow++));
         left[$rrow]=$(((left[n]|bit)<<1));
         down[$rrow]=$(((down[n]|bit)));
         right[$rrow]=$(((right[n]|bit)>>1));
         bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-      fi
+        (( row[rrow]>>=1 ));        
+     fi
     else
       ((rrow--));
     fi
@@ -565,8 +557,8 @@ function carryChain()
 function NQ()
 {
   local selectName="$1";
-  local -i min=4;
-  local -i max=17;
+  local -i min=5;
+  local -i max=5;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
@@ -588,8 +580,8 @@ function NQ()
 }
 #
 #
-#DISPLAY=0; # ボードレイアウト表示しない
-DISPLAY=1; # ボードレイアウト表示する
+DISPLAY=0; # ボードレイアウト表示しない
+#DISPLAY=1; # ボードレイアウト表示する
 #
 NQ carryChain; 
 exit;
