@@ -28,7 +28,8 @@
   Local l[(g.size/2)*(g.size-3)+1];
   pthread_t pt[(g.size/2)*(g.size-3)+1];
  *
- *
+ * pthreadはマルチプロセスで動くため、これまでの計測方法では、プロセスの合計で計測される。
+ * 実行段階から実行終了までの計測は、 gettimeofday(&t1, NULL);を使う必要がある。
  *
  *
 
@@ -152,6 +153,12 @@ typedef struct{
   uint64_t COUNT4;
   uint64_t COUNT8;
 }Local;
+//
+/**
+ * pthreadの実行
+ */
+// bool THREAD=0; // スレッドしない
+bool THREAD=1;  // スレッドする
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form)
@@ -313,13 +320,6 @@ void* thread_run(void* args)
   } //n
   return 0;
 }
-
-/**
- * pthreadの実行
- */
-// bool THREAD=0; // スレッドしない
-bool THREAD=1;  // スレッドする
-//
 // 構造体の初期化
 void initLocal(void* args)
 {
