@@ -8,6 +8,9 @@
  *
  * スレッドに対応すべくCOUNTERをLocal構造体に移動
  * よってcalcChain()を廃止してbuildChain()に統合
+ * 不安定と言われているmemcpyの廃止
+ * http://tsurujiro.blog.fc2.com/blog-entry-8.html
+ * https://www.kushiro-ct.ac.jp/yanagawa/ex-2017/1-tg/03/
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -218,7 +221,8 @@ void thread_run(void* args)
 {
   Local *l=(Local *)args;
 
-  memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  // memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  l->B=l->wB;
   l->dimx=0; l->dimy=g.pres_a[l->w]; 
   //if(!placement(l)){ continue; } 
   if(!placement(l)){ return; } 
@@ -226,25 +230,31 @@ void thread_run(void* args)
   // if(!placement(l)){ continue; } 
   if(!placement(l)){ return; } 
   //２ 左２行に置く
-  memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  l->nB=l->B;
   for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-    memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    // memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    l->B=l->nB;
     l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
     if(!placement(l)){ continue; } 
     l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
     if(!placement(l)){ continue; } 
     // ３ 下２行に置く
-    memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    l->eB=l->B;
     for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-      memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      // memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      l->B=l->eB;
       l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
       if(!placement(l)){ continue; } 
       l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
       if(!placement(l)){ continue; } 
       // ４ 右２列に置く
-      memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      l->sB=l->B;
       for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-        memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        l->B=l->sB;
         l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
         if(!placement(l)){ continue; } 
         l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
@@ -268,7 +278,8 @@ void buildChain()
   // Board x[]の初期化
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
   //１ 上２行に置く
-  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  l->wB=l->B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
     thread_run(&l);
   } //w
