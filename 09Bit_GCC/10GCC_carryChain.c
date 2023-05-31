@@ -187,25 +187,7 @@ void process(unsigned const int sym,Board* B)
 }
 // クイーンの効きをチェック
 bool placement(uint64_t dimx,uint64_t dimy,Board* B)
-// bool placement(void* args)
 {
-  // Local *l=(Local *)args;
-  // if(l->B.x[l->dimx]==l->dimy){ return true;  }  
-  // if (l->B.x[0]==0){
-  //   if (l->B.x[1]!=(uint64_t)-1){
-  //     if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
-  //   }
-  // }else{
-  //   if( (l->B.x[0]!=(uint64_t)-1) ){
-  //     if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
-  //       && (l->dimy==0 || l->dimy==g.size-1)
-  //     )){ return 0; } 
-  //     if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
-  //         l->dimy>=g.size-l->B.x[0]))){
-  //       return 0;
-  //     } 
-  //   }
-  // }
   if(B->x[dimx]==dimy){ return true;  }  
   if (B->x[0]==0){
     if (B->x[1]!=(uint64_t)-1){
@@ -222,13 +204,6 @@ bool placement(uint64_t dimx,uint64_t dimy,Board* B)
       } 
     }
   }
-  // l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
-  // uint64_t row=UINT64_C(1)<<l->dimx;
-  // uint64_t down=UINT64_C(1)<<l->dimy;
-  // uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
-  // uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
-  // if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
-  // l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
   B->x[dimx]=dimy;                    //xは行 yは列
   uint64_t row=UINT64_C(1)<<dimx;
   uint64_t down=UINT64_C(1)<<dimy;
@@ -286,10 +261,11 @@ void buildChain()
     memcpy(&l->B,&l->wB,sizeof(Board));
     // l->dimx=0; 
     // l->dimy=g.pres_a[l->w]; 
+    // if(!placement(0,g.pres_a[l->w],&l->B)){ continue; } 
     if(!placement(l->dimx=0,l->dimy=g.pres_a[l->w],&l->B)){ continue; } 
-    // if(!placement(&l)){ continue; } 
     // l->dimx=1;
     // l->dimy=g.pres_b[l->w]; 
+    // if(!placement(1,g.pres_b[l->w],&l->B)){ continue; }
     if(!placement(l->dimx=1,l->dimy=g.pres_b[l->w],&l->B)){ continue; }
     // nB=B;//２ 左２行に置く
     // Board nB;

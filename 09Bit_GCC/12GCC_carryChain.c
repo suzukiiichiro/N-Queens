@@ -250,8 +250,8 @@ void buildChain()
 {
   Local l[(g.size/2)*(g.size-3)];
   // カウンターの初期化
-  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
   g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
   // Board の初期化 nB,eB,sB,wB;
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化

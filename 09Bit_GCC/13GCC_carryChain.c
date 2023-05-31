@@ -47,7 +47,6 @@ bash-3.2$
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
 ７．キャリーチェーン
-７．キャリーチェーン
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
