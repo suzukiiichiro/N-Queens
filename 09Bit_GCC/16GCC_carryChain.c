@@ -12,7 +12,28 @@
  * オンだと出ない！
  *
  *
+ 困ったときには以下のＵＲＬがとても参考になります。
+
+ C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
+ https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
+ 値渡しとポインタ渡し
+ https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
+ C言語 値渡しとアドレス渡し
+ https://skpme.com/199/
+ アドレスとポインタ
+ https://yu-nix.com/archives/c-struct-pointer/
  *
+ 実行結果
+bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC && ./16GCC
+Usage: ./16GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+Segmentation fault: 11
+bash-3.2$
  *
  * 簡単な実行
  * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
@@ -20,41 +41,6 @@
  * 高速な実行 
  * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
  *
- *
-bash-3.2$ gcc --version
-Configured with: --prefix=/Applications/Xcode.app/Contents/Developer/usr --with-gxx-include-dir=/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/c++/4.2.1
-Apple clang version 12.0.0 (clang-1200.0.32.29)
-Target: x86_64-apple-darwin19.6.0
-Thread model: posix
-InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
-bash-3.2$
-
-$ /usr/local/bin/ | grep gcc
-gcc-10@
-gcc-ar-10@
-gcc-nm-10@
-gcc-ranlib-10@
-x86_64-apple-darwin17-gcc-10@
-x86_64-apple-darwin17-gcc-10.2.0@
-x86_64-apple-darwin17-gcc-ar-10@
-x86_64-apple-darwin17-gcc-nm-10@
-x86_64-apple-darwin17-gcc-ranlib-10@
-
-
-bash-3.2$ /usr/local/bin/gcc-10 --version
-gcc-10 (Homebrew GCC 10.2.0_3) 10.2.0
-Copyright (C) 2020 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-bash-3.2$
-
-
-Macの場合は、ヘッダーファイルが消えるので、以下のコマンドを実行
-
-$ export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
-
-
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -105,6 +91,7 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 #include <pthread.h>
 #define MAX 27
 // グローバル変数
+typedef unsigned long long uint64_t;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
 // 構造体

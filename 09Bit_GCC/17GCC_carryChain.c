@@ -1,14 +1,14 @@
 /**
  *
  * bash版キャリーチェーンのC言語版
- * 最終的に 08Bash_carryChain_parallel.sh のように
- * 並列処理 pthread版の作成が目的
+ * Ｃ言語版キャリーチェーン並列処理完成版
  *
  * 簡単な実行
  * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
  *  
  * 高速な実行 
  * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
+ *
  *
  *
  * 今回のテーマ
@@ -32,26 +32,67 @@
  * 実行段階から実行終了までの計測は、 gettimeofday(&t1, NULL);を使う必要がある。
  *
  *
+ 困ったときには以下のＵＲＬがとても参考になります。
 
-最適化オプション含め以下を参考に
-bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o nq27 && ./nq27 -r
+ C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
+ https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
+ 値渡しとポインタ渡し
+ https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
+ C言語 値渡しとアドレス渡し
+ https://skpme.com/199/
+ アドレスとポインタ
+ https://yu-nix.com/archives/c-struct-pointer/
 
-７．キャリーチェーン 17GCC_carryChain.c pthread
- N:        Total       Unique     dd:hh:mm:ss.ms
- 4:            2            1     00:00:00:00.00
- 5:           10            2     00:00:00:00.00
- 6:            4            1     00:00:00:00.00
- 7:           40            6     00:00:00:00.00
- 8:           92           12     00:00:00:00.00
- 9:          352           46     00:00:00:00.00
-10:          724           92     00:00:00:00.00
-11:         2680          341     00:00:00:00.00
-12:        14200         1788     00:00:00:00.00
-13:        73712         9237     00:00:00:00.02
-14:       365596        45771     00:00:00:00.06
-15:      2279184       285095     00:00:00:00.24
-16:     14772512      1847425     00:00:00:01.31
-17:     95815104     11979381     00:00:00:10.14
+普通の実行オプション
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+Usage: ./17GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.41
+16:     14772512      1847425        00:00:00:02.29
+17:     95815104     11979381        00:00:00:18.08
+bash-3.2$
+
+
+より最適で高速なコンパイルオプション
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o nq27 && ./nq27
+Usage: ./nq27 [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.00
+13:        73712         9237        00:00:00:00.02
+14:       365596        45771        00:00:00:00.05
+15:      2279184       285095        00:00:00:00.23
+16:     14772512      1847425        00:00:00:01.34
+17:     95815104     11979381        00:00:00:10.22
+bash-3.2$
 
 
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
@@ -120,6 +161,7 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 #include <pthread.h>
 #define MAX 27
 // グローバル変数
+typedef unsigned long long uint64_t;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
 // 構造体

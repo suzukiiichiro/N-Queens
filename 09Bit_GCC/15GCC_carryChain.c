@@ -12,6 +12,42 @@
  * http://tsurujiro.blog.fc2.com/blog-entry-8.html
  * https://www.kushiro-ct.ac.jp/yanagawa/ex-2017/1-tg/03/
 
+
+ 困ったときには以下のＵＲＬがとても参考になります。
+
+ C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
+ https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
+ 値渡しとポインタ渡し
+ https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
+ C言語 値渡しとアドレス渡し
+ https://skpme.com/199/
+ アドレスとポインタ
+ https://yu-nix.com/archives/c-struct-pointer/
+
+
+実行結果
+bash-3.2$ gcc 15GCC_carryChain.c -o 15GCC && ./15GCC
+Usage: ./15GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.05
+13:        73712            9237            0.14
+14:       365596           45771            0.47
+15:      2279184          285095            2.07
+bash-3.2$
+
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
 ７．キャリーチェーン
@@ -58,9 +94,9 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/time.h>
-#include <pthread.h>
 #define MAX 27
 // グローバル変数
+typedef unsigned long long uint64_t;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
 // 構造体
