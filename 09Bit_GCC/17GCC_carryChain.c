@@ -1,8 +1,7 @@
 /**
  *
  * bash版キャリーチェーンのC言語版
- * 最終的に 08Bash_carryChain_parallel.sh のように
- * 並列処理 pthread版の作成が目的
+ * Ｃ言語版キャリーチェーン並列処理完成版
  *
  * 簡単な実行
  * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
@@ -11,20 +10,92 @@
  * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
  *
  *
+ *
  * 今回のテーマ
  * pthreadの実装 
  * THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
  * 
- * スレッドオフだとちゃんと解が出る
- * オンだと出ない
+ * 構造体初期化メソッドの実装
  *
  *
+    誤
+    for(unsigned int w=0;w<=(unsigned)(g.size/2)*(g.size-3);++w){
+    正
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
  *
- *
+ * これにより以下の部分の末尾に１を加える必要がある
 
-最適化オプション含め以下を参考に
-bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
+  Local l[(g.size/2)*(g.size-3)+1];
+  pthread_t pt[(g.size/2)*(g.size-3)+1];
+ *
+ * pthreadはマルチプロセスで動くため、これまでの計測方法では、プロセスの合計で計測される。
+ * 実行段階から実行終了までの計測は、 gettimeofday(&t1, NULL);を使う必要がある。
+ *
+ *
+ 困ったときには以下のＵＲＬがとても参考になります。
+
+ C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
+ https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
+ 値渡しとポインタ渡し
+ https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
+ C言語 値渡しとアドレス渡し
+ https://skpme.com/199/
+ アドレスとポインタ
+ https://yu-nix.com/archives/c-struct-pointer/
+
+普通の実行オプション
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+Usage: ./17GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
 ７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.41
+16:     14772512      1847425        00:00:00:02.29
+17:     95815104     11979381        00:00:00:18.08
+bash-3.2$
+
+
+より最適で高速なコンパイルオプション
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o nq27 && ./nq27
+Usage: ./nq27 [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.00
+13:        73712         9237        00:00:00:00.02
+14:       365596        45771        00:00:00:00.05
+15:      2279184       285095        00:00:00:00.23
+16:     14772512      1847425        00:00:00:01.34
+17:     95815104     11979381        00:00:00:10.22
+bash-3.2$
+
+
+bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
 ７．キャリーチェーン
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -62,6 +133,25 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 17:     95815104        11977939           18.41
 18:    666090624        83263591         2:14.44
 19:   4968057848       621012754        17:06.46
+
+
+１３．05GCC/GCC13.c pthread 再帰 並列処理
+ N:           Total           Unique          dd:hh:mm:ss.ms
+ 4:               2                1          00:00:00:00.00
+ 5:              10                2          00:00:00:00.00
+ 6:               4                1          00:00:00:00.00
+ 7:              40                6          00:00:00:00.00
+ 8:              92               12          00:00:00:00.00
+ 9:             352               46          00:00:00:00.00
+10:             724               92          00:00:00:00.00
+11:            2680              341          00:00:00:00.00
+12:           14200             1787          00:00:00:00.00
+13:           73712             9233          00:00:00:00.00
+14:          365596            45752          00:00:00:00.02
+15:         2279184           285053          00:00:00:00.10
+16:        14772512          1846955          00:00:00:00.63
+17:        95815104         11977939          00:00:00:04.33
+
 */
 #include <string.h>
 #include <stdio.h>
@@ -71,6 +161,7 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 #include <pthread.h>
 #define MAX 27
 // グローバル変数
+typedef unsigned long long uint64_t;
 uint64_t TOTAL=0; 
 uint64_t UNIQUE=0;
 // 構造体
@@ -104,6 +195,12 @@ typedef struct{
   uint64_t COUNT4;
   uint64_t COUNT8;
 }Local;
+//
+/**
+ * pthreadの実行
+ */
+// bool THREAD=0; // スレッドしない
+bool THREAD=1;  // スレッドする
 //
 //hh:mm:ss.ms形式に処理時間を出力
 void TimeFormat(clock_t utime,char* form)
@@ -214,8 +311,10 @@ void* thread_run(void* args)
 {
   Local *l=(Local *)args;
 
-  memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  // memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  l->B=l->wB;
   l->dimx=0; l->dimy=g.pres_a[l->w]; 
+  if (!l) { printf("+228 l is NULL\n"); }
   //if(!placement(l)){ continue; } 
   // if(!placement(l)){ return; } 
   if(!placement(l)){ return 0; } 
@@ -224,25 +323,34 @@ void* thread_run(void* args)
   // if(!placement(l)){ return; } 
   if(!placement(l)){ return 0; } 
   //２ 左２行に置く
-  memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  l->nB=l->B;
   for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-    memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+  if (!l) { printf("+241 l is NULL\n"); }
+    // memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    l->B=l->nB;
     l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
     if(!placement(l)){ continue; } 
     l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
     if(!placement(l)){ continue; } 
     // ３ 下２行に置く
-    memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    l->eB=l->B;
     for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-      memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      if (!l) { printf("+251 l is NULL\n"); }
+      // memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      l->B=l->eB;
       l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
       if(!placement(l)){ continue; } 
       l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
       if(!placement(l)){ continue; } 
       // ４ 右２列に置く
-      memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      l->sB=l->B;
       for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-        memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        if (!l) { printf("+262 l is NULL\n"); }
+        // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        l->B=l->sB;
         l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
         if(!placement(l)){ continue; } 
         l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
@@ -254,31 +362,49 @@ void* thread_run(void* args)
   } //n
   return 0;
 }
+// 構造体の初期化
+void initLocal(void* args)
+{
+  Local *l=(Local *)args;
+  l->n=l->e=l->s=l->w=0;
+  l->dimx=l->dimy=0;
+  l->COUNT2=0; 
+  l->COUNT4=1; 
+  l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=
+  l->COUNTER[l->COUNT4]=
+  l->COUNTER[l->COUNT8]=0;
+  l->B.row=
+  l->B.down=
+  l->B.left=
+  l->B.right=0;
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+}
 // チェーンのビルド
-bool THREAD=0;  //スレッドするか 1:する 0:しない
-// bool THREAD=1; 
 void buildChain()
 {
-  Local l[(g.size/2)*(g.size-3)];
-
-  // カウンターの初期化
-  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
-  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
-  // Board の初期化 nB,eB,sB,wB;
-  l->B.row=l->B.down=l->B.left=l->B.right=0;
-  // Board x[]の初期化
-  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  Local l[(g.size/2)*(g.size-3)+1];
+  pthread_t pt[(g.size/2)*(g.size-3)+1];
+  if(THREAD){
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+      initLocal(&l[w]); //初期化
+      l[w].wB=l[w].B; // memcpy(&l->wB,&l->B,sizeof(Board));  // wB=B;
+    }
+  }else{
+    initLocal(&l); //初期化
+    l->wB=l->B; // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  }
   //１ 上２行に置く
-  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  pthread_t pt[(g.size/2)*(g.size-3)];
-  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-    if(THREAD){
+  for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+    if(THREAD){ // pthreadのスレッドの生成
+      l[w].w=w;
       int iFbRet;
-      iFbRet=pthread_create(&pt[l->w],NULL,&thread_run,&l[l->w]);
+      iFbRet=pthread_create(&pt[w],NULL,&thread_run,&l[w]);
       if(iFbRet>0){
-        printf("[mainThread] pthread_create #%d: %d\n", l[l->w].w, iFbRet);
+        printf("[mainThread] pthread_create #%d: %d\n", l[w].w, iFbRet);
       }
-    }else{
+    }else{ 
+      l->w=w;
       thread_run(&l);
     }
   } 
@@ -286,19 +412,21 @@ void buildChain()
    * スレッド版 joinする
    */
   if(THREAD){
-    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-      pthread_join(pt[l->w],NULL);
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+      pthread_join(pt[w],NULL);
     } 
-  }else{
-    //何もしない
   }
   /**
    * 集計
    */
   if(THREAD){
-    // スレッド版の集計
-    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-      // 集計
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+      UNIQUE+= l[w].COUNTER[l[w].COUNT2]+
+              l[w].COUNTER[l[w].COUNT4]+
+              l[w].COUNTER[l[w].COUNT8];
+      TOTAL+=  l[w].COUNTER[l[w].COUNT2]*2+
+              l[w].COUNTER[l[w].COUNT4]*4+
+              l[w].COUNTER[l[w].COUNT8]*8;
     } 
   }else{
     UNIQUE= l->COUNTER[l->COUNT2]+
@@ -345,23 +473,41 @@ int main(int argc,char** argv)
     printf("  -r: CPUR Recursion\n");
   }
   printf("\n\n７．キャリーチェーン\n");
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  clock_t st;           //速度計測用
-  char t[20];           //hh:mm:ss.msを格納
+  printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss.ms");
+  // clock_t st;           //速度計測用
+  // char t[20];           //hh:mm:ss.msを格納
   unsigned int min=4;
   unsigned int targetN=21;
+  // pthread用計測
+  struct timeval t0;
+  struct timeval t1;
   // sizeはグローバル
   for(unsigned int size=min;size<=targetN;++size){
     TOTAL=UNIQUE=0; 
     g.size=size;
-    st=clock();
-    if(cpu){
-      carryChain();
-    }else{
-      carryChain();
+    // pthread用計測
+    // st=clock();
+    gettimeofday(&t0, NULL);
+    if(cpu){ carryChain(); }
+    else{ carryChain(); }
+    // pthread用計測
+    // TimeFormat(clock()-st,t);
+    gettimeofday(&t1, NULL);
+    // printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);
+    int ss;int ms;int dd;
+    if(t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    }else {
+      dd=(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
     }
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13lld%13lld%10.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
   return 0;
 }
