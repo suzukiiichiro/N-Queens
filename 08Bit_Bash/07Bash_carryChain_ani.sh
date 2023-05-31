@@ -178,6 +178,8 @@ function solve()
   local -a left[$size];
   local -a down[$size];
   local -a right[$size];
+  local -a back[$size];
+  back[$rrow]=1;
   row[$rrow]=$3;
   left[$rrow]=$4;
   down[$rrow]=$5;
@@ -185,37 +187,48 @@ function solve()
   local -i bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
   local -i bit=0;
   local -i total=0; 
-  while ((rrow>-1));do
-    echo "rrow:$rrow"
-    echo "bitmap:${bitmap[$rrow]}"
-    echo "row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
-    if (( bitmap[rrow]!=0 ||row[rrow]&1));then
-      bit=$(( -bitmap[rrow]&bitmap[rrow] ));  # 一番右のビットを取り出す
-      bitmap[$rrow]=$(( bitmap[rrow]^bit ));  # 配置可能なパターンが一つずつ取り出される
-
-      if (( rrow==(size-1) ));then
-        ((total++));
-        echo "tottttt:$total"
-        ((rrow--));
-      elif ((row[rrow]&1));then
-        ((rrow++));
+  while ((rrow>=0));do
+    
+    echo "top:rrow :$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
+    if (( !(down[rrow]+1) ));then
+       echo "2:total:$total"
+      ((total++));
+      #((rrow--));
+      rrow=$((rrow-back[$rrow]));
+      continue;
+    fi
+    backcnt=0;
+    while(( row[rrow]&1 ));do
+        echo "3:bv:${row[$rrow]}"
         local -i n=$((rrow++));
         left[$rrow]=$(((left[n])<<1));
         down[$rrow]=$(((down[n])));
         right[$rrow]=$(((right[n])>>1));
         row[$rrow]=$((row[n]>>1 ));        
-        bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-      else
-  
-        local -i n=$((rrow++));
-        left[$rrow]=$(((left[n]|bit)<<1));
-        down[$rrow]=$(((down[n]|bit)));
-        right[$rrow]=$(((right[n]|bit)>>1));
-        row[$rrow]=$((row[n]>>1 ));        
-        bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-     fi
+        back[$rrow]=1;
+        backcnt=$((backcnt+1));
+    done
+    back[$rrow]=$((back[$rrow]+backcnt)); 
+    echo "back:${back[$rrow]}"
+    bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
+    if (( bitmap[rrow]!=0));then
+      echo "4:bitmap:$bitmap"
+      echo "before_bitmap:$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
+      bit=$(( -bitmap[rrow]&bitmap[rrow] ));  # 一番右のビットを取り出す
+      bitmap[$rrow]=$(( bitmap[rrow]^bit ));  # 配置可能なパターンが一つずつ取り出される
+      local -i n=$((rrow++));
+      left[$rrow]=$(((left[n]|bit)<<1));
+      down[$rrow]=$(((down[n]|bit)));
+      right[$rrow]=$(((right[n]|bit)>>1));
+      row[$rrow]=$((row[n]>>1 ));        
+      back[$rrow]=1;
+      echo "after_bitmap:$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
     else
-      ((rrow--));
+      echo "6:fin_bitmap:$bitmap"
+      rrow=$((rrow-back[$rrow]));
+    fi
+    if ((rrow==0));then
+      echo "$total"
     fi
   done 
 
@@ -564,8 +577,8 @@ function carryChain()
 function NQ()
 {
   local selectName="$1";
-  local -i min=5;
-  local -i max=5;
+  local -i min=7;
+  local -i max=7;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
