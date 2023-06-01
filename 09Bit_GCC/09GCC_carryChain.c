@@ -238,8 +238,7 @@ void carryChain_symmetry(void* args)
 void buildChain()
 {
   Local l[(g.size/2)*(g.size-3)];
-
-  // Board B;
+// Board B;
   // カウンターの初期化
   g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
   g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;

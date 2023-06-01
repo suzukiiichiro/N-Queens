@@ -23,8 +23,10 @@
  アドレスとポインタ
  https://yu-nix.com/archives/c-struct-pointer/
  *
+
+
  実行結果
-bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC && ./16GCC
+bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC -pthread && ./16GCC
 Usage: ./16GCC [-c|-g]
   -c: CPU Without recursion
   -r: CPUR Recursion
@@ -44,7 +46,6 @@ bash-3.2$
 
 最適化オプション含め以下を参考に
 bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
-７．キャリーチェーン
 ７．キャリーチェーン
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -336,7 +337,7 @@ void buildChain()
     UNIQUE= l->COUNTER[l->COUNT2]+
             l->COUNTER[l->COUNT4]+
             l->COUNTER[l->COUNT8];
-    TOTAL=  l->COUNTER[l->COUNT2]*2+
+    TOTAL = l->COUNTER[l->COUNT2]*2+
             l->COUNTER[l->COUNT4]*4+
             l->COUNTER[l->COUNT8]*8;
   }

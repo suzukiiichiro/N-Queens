@@ -314,7 +314,6 @@ void* thread_run(void* args)
   // memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
   l->B=l->wB;
   l->dimx=0; l->dimy=g.pres_a[l->w]; 
-  if (!l) { printf("+228 l is NULL\n"); }
   //if(!placement(l)){ continue; } 
   // if(!placement(l)){ return; } 
   if(!placement(l)){ return 0; } 
@@ -326,7 +325,6 @@ void* thread_run(void* args)
   // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
   l->nB=l->B;
   for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
-  if (!l) { printf("+241 l is NULL\n"); }
     // memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
     l->B=l->nB;
     l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
@@ -337,7 +335,6 @@ void* thread_run(void* args)
     // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
     l->eB=l->B;
     for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
-      if (!l) { printf("+251 l is NULL\n"); }
       // memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
       l->B=l->eB;
       l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
@@ -348,7 +345,6 @@ void* thread_run(void* args)
       // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
       l->sB=l->B;
       for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
-        if (!l) { printf("+262 l is NULL\n"); }
         // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
         l->B=l->sB;
         l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
@@ -421,10 +417,10 @@ void buildChain()
    */
   if(THREAD){
     for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
-      UNIQUE+= l[w].COUNTER[l[w].COUNT2]+
+      UNIQUE+=l[w].COUNTER[l[w].COUNT2]+
               l[w].COUNTER[l[w].COUNT4]+
               l[w].COUNTER[l[w].COUNT8];
-      TOTAL+=  l[w].COUNTER[l[w].COUNT2]*2+
+      TOTAL+= l[w].COUNTER[l[w].COUNT2]*2+
               l[w].COUNTER[l[w].COUNT4]*4+
               l[w].COUNTER[l[w].COUNT8]*8;
     } 
