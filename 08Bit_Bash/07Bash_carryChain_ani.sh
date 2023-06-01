@@ -172,108 +172,106 @@ function printRecordCarryChain()
 function solve()
 {
   local -i size="$1";
-  local -i rrow="$2";
-
-  local -a row[$size];  
-  local -a left[$size];
-  local -a down[$size];
-  local -a right[$size];
-  local -a back[$size];
-  back[$rrow]=1;
-  row[$rrow]=$3;
-  left[$rrow]=$4;
-  down[$rrow]=$5;
-  right[$rrow]=$6;
-  local -i bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-  local -i bit=0;
-  local -i total=0; 
-  while ((rrow>=0));do
-    
-    echo "top:rrow :$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
-    if (( !(down[rrow]+1) ));then
-       echo "2:total:$total"
+  local -i current="$2";
+  local -i row="$3";
+  local -i left="$4";
+  local -i down="$5";
+  local -i right="$6";
+  local -a row_a[$size];  
+  local -a left_a[$size];
+  local -a down_a[$size];
+  local -a right_a[$size];
+  local -a bitmap_a[$size];
+  for ((i=0;i<size;i++));do
+    row_a[$i]=0; 
+    left_a[$i]=0;
+    down_a[$i]=0;
+    right_a[$i]=0;
+    bitmap_a[$i]=0;	
+  done
+  row_a[$current]=$row;
+  left_a[$current]=$left;
+  down_a[$current]=$down;
+  right_a[$current]=$right;
+  bitmap_a[$current]=$(( ~(left_a[current]|down_a[current]|right_a[current]) ));
+  bend=0;
+  rflg=0;
+  local -i total=0;
+  while(true);do
+    #start:	
+    #d#echo "top:current :$current row ${row_a[$current]} left${left_a[$current]} down ${down_a[$current]} right ${right_a[$current]}"
+    if (( !(down+1) && rflg==0));then 
+      #goto ret;
       ((total++));
-      #((rrow--));
-      rrow=$((rrow-back[$rrow]));
+      #d#echo "2:total:$total"
+      rflg=1;
+    fi
+    if((rflg==0));then
+      while(( row&1 ));do
+        #d#echo "3:bv:${row_a[$current]}"
+        ((row>>=1));
+        ((left<<=1));
+        ((right>>=1));
+      done
+      (( row>>=1 ));      # １行下に移動する
+      local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
+      local -i total=0;
+    fi
+    while ((bitmap!=0||rflg==1));do
+    #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
+      if((rflg==0));then
+        #d#echo "4:bitmap:$bitmap"
+        #d#echo "before:bitmap:$bitmap row:$row left $left down $down right $right"
+        local -i bit=$(( -bitmap&bitmap ));
+        bitmap=$(( bitmap^bit )); 
+        if((current<size));then
+  	  row_a[$current]=$row;
+  	  left_a[$current]=$left;
+ 	  down_a[$current]=$down;
+  	  right_a[$current]=$right;
+  	  bitmap_a[$current]=$bitmap;
+          ((current++));  
+        fi       
+        left=$(((left|bit)<<1));
+        down=$(((down|bit)));
+        right=$(((right|bit)>>1));
+        #d#echo "after:bitmap:$bitmap row:$row left $left down $down right $right"
+        #goto start;
+        bend=1;
+        break;
+      fi
+      #solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+      #((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
+      #ret:
+      if((rflg==1));then
+        if((current>0));then
+	  ((current--));
+        fi
+        row=${row_a[$current]};
+        left=${left_a[$current]};
+        right=${right_a[$current]};
+        down=${down_a[$current]};
+        bitmap=${bitmap_a[$current]};
+        rflg=0;
+        #d#echo "5:returnrec"
+      fi
+    done
+    #d#echo "6:fin_bitmap:$bitmap"
+    if((bend==1&&rflg==0));then
+      bend=0;
       continue;
     fi
-    backcnt=0;
-    while(( row[rrow]&1 ));do
-        echo "3:bv:${row[$rrow]}"
-        local -i n=$((rrow++));
-        left[$rrow]=$(((left[n])<<1));
-        down[$rrow]=$(((down[n])));
-        right[$rrow]=$(((right[n])>>1));
-        row[$rrow]=$((row[n]>>1 ));        
-        back[$rrow]=1;
-        backcnt=$((backcnt+1));
-    done
-    back[$rrow]=$((back[$rrow]+backcnt)); 
-    echo "back:${back[$rrow]}"
-    bitmap[$rrow]=$(( ~(left[rrow]|down[rrow]|right[rrow]) ));
-    if (( bitmap[rrow]!=0));then
-      echo "4:bitmap:$bitmap"
-      echo "before_bitmap:$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
-      bit=$(( -bitmap[rrow]&bitmap[rrow] ));  # 一番右のビットを取り出す
-      bitmap[$rrow]=$(( bitmap[rrow]^bit ));  # 配置可能なパターンが一つずつ取り出される
-      local -i n=$((rrow++));
-      left[$rrow]=$(((left[n]|bit)<<1));
-      down[$rrow]=$(((down[n]|bit)));
-      right[$rrow]=$(((right[n]|bit)>>1));
-      row[$rrow]=$((row[n]>>1 ));        
-      back[$rrow]=1;
-      echo "after_bitmap:$rrow row ${row[$rrow]} left${left[$rrow]} down ${down[$rrow]} right ${right[$rrow]}"
+    #d#echo "current:$current"
+    if((current<=0));then
+      return $total;  # 合計を戻り値にします
+      break;
     else
-      echo "6:fin_bitmap:$bitmap"
-      rrow=$((rrow-back[$rrow]));
+      #goto ret;
+      rflg=1;
     fi
-    if ((rrow==0));then
-      echo "$total"
-    fi
-  done 
 
-
-}
-function solve_r()
-{
-  local -i row="$1";
-  local -i left="$2";
-  local -i down="$3";
-  local -i right="$4";
-  # if (( !(down+1) ));then return 1; fi
-  ((down+1))||return 1; # ↑を高速化
-  while(( row&1 ));do
-    # ((row>>=1));
-    # ((left<<=1));
-    # ((right>>=1));
-    (( row>>=1,left<<=1,right>>=1 )); # 上記３行をまとめて書けます
   done
-  (( row>>=1 ));      # １行下に移動する
-  #
-  local -i bitmap;  # 再帰に必要な変数は必ず定義する必要があります。
-  local -i total=0; 
-  #
-  # 以下のwhileを一行のforにまとめると高速化が期待できます。
-  # local -i bitmap=~(left|down|right);
-  # while ((bitmap!=0));do
-  # :
-  # (( bitmap^=bit ))
-  # done
-  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
-    local -i bit=$(( -bitmap&bitmap ));
-
-    # ret=$( solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))")  ; 
-    #  ret=$?;
-    # [[ $ret -gt 0 ]] && { 
-    # ((total+=$ret));
-    # }  # solve()で実行したreturnの値は $? に入ります。
-    # 上記はやや冗長なので以下の２行にまとめて書くことができます。
-  solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
-    ((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
-  done
-  return $total;  # 合計を戻り値にします
 }
-#
 : 'solve()を呼び出して再帰を開始する';
 function process()
 {
@@ -577,8 +575,8 @@ function carryChain()
 function NQ()
 {
   local selectName="$1";
-  local -i min=7;
-  local -i max=7;
+  local -i min=4;
+  local -i max=8;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
