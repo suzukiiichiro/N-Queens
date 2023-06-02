@@ -199,29 +199,28 @@ function solve()
   local -i total=0;
   while(true);do
     #start:	
-    #d#echo "top:current :$current row ${row_a[$current]} left${left_a[$current]} down ${down_a[$current]} right ${right_a[$current]}"
+    echo "top:current :$current row $row left $left down $down right $right"
     if (( !(down+1) && rflg==0));then 
       #goto ret;
       ((total++));
-      #d#echo "2:total:$total"
+      echo "2:total:$total"
       rflg=1;
     fi
+    while(( row&1 ));do
+      echo "3:bv:$row"
+      ((row>>=1));
+      ((left<<=1));
+      ((right>>=1));
+    done
+     (( row>>=1 ));      # １行下に移動する
     if((rflg==0));then
-      while(( row&1 ));do
-        #d#echo "3:bv:${row_a[$current]}"
-        ((row>>=1));
-        ((left<<=1));
-        ((right>>=1));
-      done
-      (( row>>=1 ));      # １行下に移動する
       local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
-      local -i total=0;
     fi
     while ((bitmap!=0||rflg==1));do
     #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
       if((rflg==0));then
-        #d#echo "4:bitmap:$bitmap"
-        #d#echo "before:bitmap:$bitmap row:$row left $left down $down right $right"
+        echo "4:bitmap:$bitmap"
+        echo "before:bitmap:$bitmap row:$row left $left down $down right $right"
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
         if((current<size));then
@@ -235,7 +234,7 @@ function solve()
         left=$(((left|bit)<<1));
         down=$(((down|bit)));
         right=$(((right|bit)>>1));
-        #d#echo "after:bitmap:$bitmap row:$row left $left down $down right $right"
+        echo "after:bitmap:$bitmap row:$row left $left down $down right $right"
         #goto start;
         bend=1;
         break;
@@ -253,15 +252,15 @@ function solve()
         down=${down_a[$current]};
         bitmap=${bitmap_a[$current]};
         rflg=0;
-        #d#echo "5:returnrec"
+        echo "5:returnrec"
       fi
     done
-    #d#echo "6:fin_bitmap:$bitmap"
+    echo "6:fin_bitmap:$bitmap"
     if((bend==1&&rflg==0));then
       bend=0;
       continue;
     fi
-    #d#echo "current:$current"
+    echo "current:$current"
     if((current<=0));then
       return $total;  # 合計を戻り値にします
       break;
@@ -575,8 +574,8 @@ function carryChain()
 function NQ()
 {
   local selectName="$1";
-  local -i min=4;
-  local -i max=8;
+  local -i min=9;
+  local -i max=9;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
