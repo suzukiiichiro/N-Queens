@@ -1,4 +1,4 @@
-#!/usr/bin/bash -x
+#!/usr/bin/bash 
 
 # :'
 #  ## bash版
@@ -168,10 +168,17 @@ function printRecordCarryChain()
   echo "";
 }
 #
+function debug(){
+  if [ "$DEBUG" == "true" ];then 
+    read -p "$1";
+  fi
+}
+#
+
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
 {
-set -x
+#set -x
   local -i size="$1";
   local -i current="$2";
   local -i row="$3";
@@ -200,27 +207,29 @@ set -x
   local -i total=0;
   while(true);do
     #start:	
-    read -p "1:top";
+    debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
     if (( !(down+1) && rflg==0));then 
       #goto ret;
       ((total++));
-      read -p "2:total";
+      debug "2:total:$total";
       rflg=1;
+      continue;
     fi
-    while(( row&1 ));do
-      read -p "3:bv";
-      ((row>>=1));
-      ((left<<=1));
-      ((right>>=1));
-    done
-     (( row>>=1 ));      # １行下に移動する
     if((rflg==0));then
+      while(( row&1 ));do
+        debug "3:bv:$row";
+        ((row>>=1));
+        ((left<<=1));
+        ((right>>=1));
+      done
+     (( row>>=1 ));      # １行下に移動する
       local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
     fi
     while ((bitmap!=0||rflg==1));do
     #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
       if((rflg==0));then
-        read -p "4:bitmap";
+        debug "4:bitmap:$bitmap";
+        debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
         if((current<size));then
@@ -234,6 +243,7 @@ set -x
         left=$(((left|bit)<<1));
         down=$(((down|bit)));
         right=$(((right|bit)>>1));
+        debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
         #goto start;
         bend=1;
         break;
@@ -251,10 +261,11 @@ set -x
         down=${down_a[$current]};
         bitmap=${bitmap_a[$current]};
         rflg=0;
-        read -p "5:returnrec"
+        debug "5:returnrec"
+        debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
       fi
     done
-    read -p "6:fin"
+    debug "6:fin_bitmap:$bitmap"
     if((bend==1&&rflg==0));then
       bend=0;
       continue;
@@ -268,7 +279,7 @@ set -x
     fi
 
   done
-set +x
+#set +x
 }
 : 'solve()を呼び出して再帰を開始する';
 function process()
@@ -573,8 +584,8 @@ function carryChain()
 function NQ()
 {
   local selectName="$1";
-  local -i min=9;
-  local -i max=9;
+  local -i min=4;
+  local -i max=11;
   local -i N="$min";
   local startTime=endTime=hh=mm=ss=0; 
   echo " N:        Total       Unique        hh:mm:ss" ;
@@ -599,6 +610,8 @@ function NQ()
 DISPLAY=0; # ボードレイアウト表示しない
 #DISPLAY=1; # ボードレイアウト表示する
 #
+DEBUG="false";#read -p を表示しない
+#DEBUG="true";#read -p を表示する
 NQ carryChain; 
 exit;
 
