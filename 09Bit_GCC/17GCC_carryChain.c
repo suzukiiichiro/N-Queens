@@ -43,6 +43,21 @@
  アドレスとポインタ
  https://yu-nix.com/archives/c-struct-pointer/
 
+  余談
+  Google Collaboでは、セッションを最大で２４時間までしか継続できません。
+  ときに数時間でセッションが途絶え、処理が終了してしまうことも多いです。
+  以下のスクリプトを実行し、ソース部分にカーソルを点滅させた状態であれば、
+  セッションを少しは長く継続できるようです。
+
+from pynput.mouse import Controller, Button
+import time
+mouse = Controller()
+while True:
+    mouse.click(Button.left, 1)
+    print('clicked')
+    time.sleep(5)
+
+
 普通の実行オプション
 bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
 Usage: ./17GCC [-c|-g]
