@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/bash -x
 
 # :'
 #  ## bash版
@@ -171,6 +171,7 @@ function printRecordCarryChain()
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve()
 {
+set -x
   local -i size="$1";
   local -i current="$2";
   local -i row="$3";
@@ -199,15 +200,15 @@ function solve()
   local -i total=0;
   while(true);do
     #start:	
-    echo "top:current :$current row $row left $left down $down right $right"
+    read -p "1:top";
     if (( !(down+1) && rflg==0));then 
       #goto ret;
       ((total++));
-      echo "2:total:$total"
+      read -p "2:total";
       rflg=1;
     fi
     while(( row&1 ));do
-      echo "3:bv:$row"
+      read -p "3:bv";
       ((row>>=1));
       ((left<<=1));
       ((right>>=1));
@@ -219,8 +220,7 @@ function solve()
     while ((bitmap!=0||rflg==1));do
     #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
       if((rflg==0));then
-        echo "4:bitmap:$bitmap"
-        echo "before:bitmap:$bitmap row:$row left $left down $down right $right"
+        read -p "4:bitmap";
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
         if((current<size));then
@@ -234,7 +234,6 @@ function solve()
         left=$(((left|bit)<<1));
         down=$(((down|bit)));
         right=$(((right|bit)>>1));
-        echo "after:bitmap:$bitmap row:$row left $left down $down right $right"
         #goto start;
         bend=1;
         break;
@@ -252,15 +251,14 @@ function solve()
         down=${down_a[$current]};
         bitmap=${bitmap_a[$current]};
         rflg=0;
-        echo "5:returnrec"
+        read -p "5:returnrec"
       fi
     done
-    echo "6:fin_bitmap:$bitmap"
+    read -p "6:fin"
     if((bend==1&&rflg==0));then
       bend=0;
       continue;
     fi
-    echo "current:$current"
     if((current<=0));then
       return $total;  # 合計を戻り値にします
       break;
@@ -270,6 +268,7 @@ function solve()
     fi
 
   done
+set +x
 }
 : 'solve()を呼び出して再帰を開始する';
 function process()
