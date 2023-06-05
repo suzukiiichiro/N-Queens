@@ -4,10 +4,10 @@
  * Ｃ言語版キャリーチェーン並列処理完成版
  *
  * 簡単な実行
- * bash-3.2$ /usr/local/bin/gcc-10 15GCC_carryChain.c -pthread && ./a.out -r
+ * bash-3.2$ gcc 17GCC_carryChain.c -pthread -o 17GCC && ./17GCC
  *  
  * 高速な実行 
- * $ /usr/local/bin/gcc-10 -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 15GCC_carryChain.c -o nq27 && ./nq27 -r
+ * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o 17GCC && ./17GCC -r
  *
  *
  *
@@ -70,8 +70,8 @@ bash-3.2$
 
 
 より最適で高速なコンパイルオプション
-bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o nq27 && ./nq27
-Usage: ./nq27 [-c|-g]
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o 17GCC && ./17GCC
+Usage: ./17GCC [-c|-g]
   -c: CPU Without recursion
   -r: CPUR Recursion
 
@@ -95,7 +95,7 @@ Usage: ./nq27 [-c|-g]
 bash-3.2$
 
 
-bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 && ./nq27 -r
+bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o 07GCC && ./07GCC
 ７．キャリーチェーン
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
@@ -160,6 +160,9 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o nq27 &&
 #include <sys/time.h>
 #include <pthread.h>
 #define MAX 27
+// システムによって以下のマクロが必要であればコメントを外してください。
+//#define UINT64_C(c) c ## ULL
+//
 // グローバル変数
 typedef unsigned long long uint64_t;
 uint64_t TOTAL=0; 
