@@ -60,6 +60,12 @@ declare -a pres_b;        # チェーン
       X[@]    4: 
       )';
 declare -a B; 
+####
+function debug(){
+  if [ "$DEBUG" == "true" ];then 
+    read -p "$1";
+  fi
+}
 # declare -i DISPLAY=0;
 #
 #
@@ -185,6 +191,111 @@ function printRecordCarryChain()
 : 'ボード外側２列を除く内側のクイーン配置処理';
 function solve_parallel()
 {
+#set -x
+  local -i size="$1";
+  local -i current="$2";
+  local -i row="$3";
+  local -i left="$4";
+  local -i down="$5";
+  local -i right="$6";
+  local -a row_a[$size];  
+  local -a left_a[$size];
+  local -a down_a[$size];
+  local -a right_a[$size];
+  local -a bitmap_a[$size];
+  for ((i=0;i<size;i++));do
+    row_a[$i]=0; 
+    left_a[$i]=0;
+    down_a[$i]=0;
+    right_a[$i]=0;
+    bitmap_a[$i]=0;	
+  done
+  row_a[$current]=$row;
+  left_a[$current]=$left;
+  down_a[$current]=$down;
+  right_a[$current]=$right;
+  bitmap_a[$current]=$(( ~(left_a[current]|down_a[current]|right_a[current]) ));
+  bend=0;
+  rflg=0;
+  local -i total=0;
+  while(true);do
+    #start:	
+    debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
+    if (( !(down+1) && rflg==0));then 
+      #goto ret;
+      ((total++));
+      debug "2:total:$total";
+      rflg=1;
+      continue;
+    fi
+    if((rflg==0));then
+      while(( row&1 ));do
+        debug "3:bv:$row";
+        ((row>>=1));
+        ((left<<=1));
+        ((right>>=1));
+      done
+     (( row>>=1 ));      # １行下に移動する
+      local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
+    fi
+    while ((bitmap!=0||rflg==1));do
+    #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
+      if((rflg==0));then
+        debug "4:bitmap:$bitmap";
+        debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
+        local -i bit=$(( -bitmap&bitmap ));
+        bitmap=$(( bitmap^bit )); 
+        if((current<size));then
+  	  row_a[$current]=$row;
+  	  left_a[$current]=$left;
+ 	  down_a[$current]=$down;
+  	  right_a[$current]=$right;
+  	  bitmap_a[$current]=$bitmap;
+          ((current++));  
+        fi       
+        left=$(((left|bit)<<1));
+        down=$(((down|bit)));
+        right=$(((right|bit)>>1));
+        debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
+        #goto start;
+        bend=1;
+        break;
+      fi
+      #solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+      #((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
+      #ret:
+      if((rflg==1));then
+        if((current>0));then
+	  ((current--));
+        fi
+        row=${row_a[$current]};
+        left=${left_a[$current]};
+        right=${right_a[$current]};
+        down=${down_a[$current]};
+        bitmap=${bitmap_a[$current]};
+        rflg=0;
+        debug "5:returnrec"
+        debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
+      fi
+    done
+    debug "6:fin_bitmap:$bitmap"
+    if((bend==1&&rflg==0));then
+      bend=0;
+      continue;
+    fi
+    if((current<=0));then
+      return $total;  # 合計を戻り値にします
+      break;
+    else
+      #goto ret;
+      rflg=1;
+    fi
+
+  done
+#set +x
+}
+function solve_parallel_R()
+{
   local -i row="$1";
   local -i left="$2";
   local -i down="$3";
@@ -230,7 +341,9 @@ function process_parallel()
   local -i size="$1";
   local -i sym="$2"; # COUNT2 COUNT4 COUNT8
   # B[0]:row B[1]:left B[2]:down B[3]:right
-  solve_parallel "$(( B[0]>>2 ))" \
+  solve_parallel "$size" \
+        "0" \
+        "$(( B[0]>>2 ))" \
         "$(( B[1]>>4 ))" \
         "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
         "$(( B[3]>>4<<size-5 ))";
@@ -492,6 +605,7 @@ function buildChain_parallel()
   #
   # 並列処理に必要な export など
   #
+  export -f debug;
   export -f printRecordCarryChain;
   export -f solve_parallel;
   export -f process_parallel;
@@ -579,6 +693,8 @@ function NQ()
 #
 DISPLAY=0; # ボードレイアウト表示しない
 #DISPLAY=1; # ボードレイアウト表示する
+DEBUG="false";#read -p を表示しない
+#DEBUG="true";#read -p を表示する
 #
 NQ carryChain_parallel; 
 exit;
