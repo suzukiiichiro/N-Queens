@@ -1608,7 +1608,7 @@ function symmetryOps()
   ンを加えて２個しかありません。
   ';
   ((board[BOUND2]==1))&&{
-    for((ptn=2,own=1;own<=size-1;own++,ptn<<=1)){
+    for((ptn=2,own=1;own<size;own++,ptn<<=1)){
       for((bit=1,you=size-1;(board[you]!=ptn)&&(board[own]>=bit);you--)){
         ((bit<<=1));
       }
