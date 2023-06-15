@@ -59,31 +59,68 @@
  # Python/Java/C/Lua/Bash版のN-Queen
  # https://github.com/suzukiiichiro/N-Queen
 
- 
- コンパイル（詳しくはディレクトリ内のREADMEを参照して下さい）
+
+
+# 最新のディレクトリ以下のディレクトリで、多くの部分をビット処理を行っています。
+
+08Bit_Bash
+09Bit_GCC
+10Bit_Python
+11Bit_CUDA
+
+こちらでロジックなどを詳細に説明しています。
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+================
+ディレクトリ説明
+================
 
 # Bash版
- $ bash BASH01_N-Queen.sh
+01Bash/
 
 # Lua版
- $ luajit Lua01_N-Queen.sh
+02Lua/
 
 # Python版
- $ python Py01_N-Queen.py
+03Python/
 
 # Java版
-javac -cp .:commons-lang3-3.4.jar Java13c_NQueen.java && java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy -XX:+UseConcMarkSweepGC Java13c_NQueen  ;
+04Java/
 
 # C版
-gcc -Wall -W -O3 -g -ftrapv -std=c99 -lm 07_01N-Queen.c && ./a.out -r
+05C/
+
+# OpenCL版
+06OpenCL/
 
 # GPU nvcc版 
-nvcc -O3 CUDA13_N-Queen.cu  && ./a.out -g
+07CUDA/
+
+# 08Bit_Bash/
+Bashでアルゴリズムを学ぶのに最適です。 並列処理に`xargs`を使っています。
+こちらでロジックなどを詳細に説明しています。
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+# 09Bit_GCC/
+Ｃ言語で安定と省メモリに特化したビット処理ロジックを`pthread`で並列処理しています。
+現存するエイトクイーンの中で最も高速で安定したプログラムです。
+こちらでロジックなどを詳細に説明しています。
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+# 10Bit_Python/
+09BIt_GCCをPythonに移植しています。マルチスレッド、マルチプロセスで動作しますが、処理速度は期待できません。
+こちらでロジックなどを詳細に説明しています。
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+# 11Bit_CUDA/
+09Bit_GCCをCUDAに移植したプログラムで、現在開発中です。過去の`07CUDA`は、Ｎ２５でメモリ量が肥大し、システムはバーストしましたが、新たなロジック「キャリーチェーン」は世界レコードＮ２７までは行けるのではないかと思います。
+こちらでロジックなどを詳細に説明しています。
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 
 
 
-    Ｎクイーンデモページ
-    https://suzukiiichiro.github.io/N-Queens/demo/
+Ｎクイーンデモページ
+https://suzukiiichiro.github.io/N-Queens/demo/
 
                                                   
                                                      世界一        日本一      分解合成法    対照解除法 ビットマップ
