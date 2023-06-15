@@ -102,15 +102,14 @@ B=[]
 #
 # ボード外側２列を除く内側のクイーン配置処理
 def solve(row,left,down,right):
+  total=0
   if not down+1:
     return 1
   while row&1:
     row>>=1
     left<<=1
     right>>=1
-  row>>=1
-  bitmap=0
-  total=0
+  row>>=1           # １行下に移動する
   bitmap=~(left|down|right)
   while bitmap!=0:
     bit=-bitmap&bitmap
@@ -122,6 +121,7 @@ def solve(row,left,down,right):
 def process(size,sym):
   global B
   global COUNTER
+  # sym 0:COUNT2 1:COUNT4 2:COUNT8
   COUNTER[sym]+=solve(
         B[0]>>2,
         B[1]>>4,
@@ -141,7 +141,6 @@ def carryChainSymmetry(size,n,w,s,e):
   if e==ww and n>(w2-n): return
   # 斜め下方向への反転が小さいかをチェックする
   if n==ww and e>(w2-s): return
-  #
   # 【枝刈り】１行目が角の場合
   # １．回転対称チェックせずにCOUNT8にする
   if not B[4][0]:
@@ -169,16 +168,16 @@ def placement(size,dimx,dimy):
   global B
   if B[4][dimx]==dimy:
     return 1
-  if B[4][0]==1:
-    if B[4][0]!= -1:
+  if B[4][0]:
+    if B[4][0]!=-1:
       if(
-        (dimx<B[4][0] or dimx>=(size-B[4][0])) and 
+        (dimx<B[4][0] or dimx>=size-B[4][0]) and 
         (dimy==0 or dimy==size-1) 
       ):
         return 0
       if(
-        (dimx==size-1 and dimy<=B[4][0]) or
-        (dimy>=size-B[4][0])
+        (dimx==size-1) and 
+        (dimy<=B[4][0] or dimy>=size-B[4][0])
       ):
         return 0
   else:
@@ -263,6 +262,8 @@ def carryChain(size):
   global TOTAL
   global UNIQUE
   global COUNTER
+  TOTAL=UNIQUE=0
+  COUNTER[0]=COUNTER[1]=COUNTER[2]=0
   # Bの初期化  [0, 0, 0, 0, [0, 0, 0, 0, 0]]
   B=[0]*5             # row/left/down/right/X
   B[4]=[-1]*size       # X を0でsize分を初期化

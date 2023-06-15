@@ -203,7 +203,7 @@ function solve()
     # ((total+=$ret));
     # }  # solve()で実行したreturnの値は $? に入ります。
     # 上記はやや冗長なので以下の２行にまとめて書くことができます。
-  solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+    solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
     ((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
   done
   return $total;  # 合計を戻り値にします
@@ -305,10 +305,14 @@ function placement()
     #if (( t_x[0]!=-1));then
     # 上記は if コマンドすら不要です
     [[ t_x[0] -ne -1 ]]&&{    # -ne は != と同じです
-      (((dimx<t_x[0]||dimx>=size-t_x[0])
-        &&(dimy==0||dimy==size-1)))&&{ return 0; } 
-      (((dimx==size-1)&&((dimy<=t_x[0])||
-          dimy>=size-t_x[0])))&&{ return 0; } 
+      ((
+      (dimx<t_x[0]||dimx>=size-t_x[0]) &&
+      (dimy==0||dimy==size-1)
+      ))&&{ return 0; } 
+      ((
+      dimx==size-1&&
+      (dimy<=t_x[0]||dimy>=size-t_x[0])
+      ))&&{ return 0; } 
     }
   else
     #if (( t_x[1]!=-1));then
@@ -533,8 +537,8 @@ function NQ()
 }
 #
 #
-#DISPLAY=0; # ボードレイアウト表示しない
-DISPLAY=1; # ボードレイアウト表示する
+DISPLAY=0; # ボードレイアウト表示しない
+#DISPLAY=1; # ボードレイアウト表示する
 #
 NQ carryChain; 
 exit;
