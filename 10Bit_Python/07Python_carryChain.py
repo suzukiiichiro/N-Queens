@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 # -*- coding: utf-8 -*-
+import copy
+
 """
 キャリーチェーン版 Ｎクイーン
 
@@ -119,45 +121,11 @@ def solve(row,left,down,right):
 # キャリーチェーン　solve()を呼び出して再起を開始する
 # sym: 0:COUNT2 1:COUNT4 2:COUNT8
 def process(size,sym):
+  global B
   global COUNTER
   COUNTER[sym]+=solve(B[0]>>2,B[1]>>4,
         ((((B[2]>>2|~0<<size-4)+1)<<size-5)-1),
         B[3]>>4<<size-5)
-#
-# キャリーチェーン 効きのチェック dimxは行 dimyは列
-def placement(size,dimx,dimy):
-  if B[4][dimx]==dimy:
-    return 1
-  if B[4][0]==1:
-    if B[4][0]!= -1:
-      if(
-        (dimx<B[4][0] or dimx>=(size-B[4][0])) and 
-        (dimy==0 or dimy==size-1) 
-      ):
-        return 0
-      if(
-        (dimx==size-1 and dimy<=B[4][0]) or
-        (dimy>=size-B[4][0])
-      ):
-        return 0
-  else:
-    if B[4][1]!=-1:
-      # bitmap=$(( bitmap|2 )); # 枝刈り
-      # bitmap=$(( bitmap^2 )); # 枝刈り
-      if B[4][1]>=dimx and dimy==1:
-        return 0
-  if( (B[0] & 1<<dimx) or 
-      (B[1] & 1<<(size-1-dimx+dimy)) or
-      (B[2] & 1<<dimy) or
-      (B[3] & 1<<(dimx+dimy)) 
-  ): 
-    return 0
-  B[0]|=1<<dimx
-  B[1]|=1<<(size-1-dimx+dimy)
-  B[2]|=1<<dimy
-  B[3]|=1<<(dimx+dimy)
-  B[4][dimx]=dimy
-  return 1
 #
 # キャリーチェーン　対象解除
 def carryChainSymmetry(size,n,w,s,e):
@@ -199,7 +167,42 @@ def carryChainSymmetry(size,n,w,s,e):
   process(size,2)   # COUNT8
   return
 #
-import copy
+# キャリーチェーン 効きのチェック dimxは行 dimyは列
+def placement(size,dimx,dimy):
+  global B
+  if B[4][dimx]==dimy:
+    return 1
+  if B[4][0]==1:
+    if B[4][0]!= -1:
+      if(
+        (dimx<B[4][0] or dimx>=(size-B[4][0])) and 
+        (dimy==0 or dimy==size-1) 
+      ):
+        return 0
+      if(
+        (dimx==size-1 and dimy<=B[4][0]) or
+        (dimy>=size-B[4][0])
+      ):
+        return 0
+  else:
+    if B[4][1]!=-1:
+      # bitmap=$(( bitmap|2 )); # 枝刈り
+      # bitmap=$(( bitmap^2 )); # 枝刈り
+      if B[4][1]>=dimx and dimy==1:
+        return 0
+  if( (B[0] & 1<<dimx) or 
+      (B[1] & 1<<(size-1-dimx+dimy)) or
+      (B[2] & 1<<dimy) or
+      (B[3] & 1<<(dimx+dimy)) 
+  ): 
+    return 0
+  B[0]|=1<<dimx
+  B[1]|=1<<(size-1-dimx+dimy)
+  B[2]|=1<<dimy
+  B[3]|=1<<(dimx+dimy)
+  B[4][dimx]=dimy
+  return 1
+#
 # チェーンのビルド
 def buildChain(size):
   global B
