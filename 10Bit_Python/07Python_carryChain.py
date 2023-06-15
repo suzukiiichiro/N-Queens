@@ -136,18 +136,15 @@ def carryChainSymmetry(size,n,w,s,e):
   ww=(size-2)*(size-1)-1-w
   w2=(size-2)*(size-1)-1
   # 対角線上の反転が小さいかどうか確認する
-  if s==ww and n<(w2-e):
-    return 
+  if s==ww and n<(w2-e): return 
   # 垂直方向の中心に対する反転が小さいかを確認
-  if e==ww and n>(w2-n):
-    return
+  if e==ww and n>(w2-n): return
   # 斜め下方向への反転が小さいかをチェックする
-  if e==ww and n>(w2-s):
-    return
+  if n==ww and e>(w2-s): return
   #
   # 【枝刈り】１行目が角の場合
   # １．回転対称チェックせずにCOUNT8にする
-  if B[4][0]!=1:
+  if not B[4][0]:
     process(size,2) # COUNT8
     return
   # n,e,s==w の場合は最小値を確認する。
@@ -155,15 +152,13 @@ def carryChainSymmetry(size,n,w,s,e):
   # w=n=e=sでなければ値が小さいのでskip
   # w=n=e=sであれば90度回転で同じ可能性 ';
   if s==w:
-    if n!=w or e!=w:
-      return
-    prodess(size,0) # COUNT2
+    if n!=w or e!=w: return
+    process(size,0) # COUNT2
     return
   # : 'e==wは180度回転して同じ
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   if e==w and n>=s:
-    if n>s:
-      return
+    if n>s: return
     process(size,1) # COUNT4
     return
   process(size,2)   # COUNT8
