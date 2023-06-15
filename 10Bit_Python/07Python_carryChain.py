@@ -102,7 +102,7 @@ B=[]
 #
 # ボード外側２列を除く内側のクイーン配置処理
 def solve(row,left,down,right):
-  if not (down+1==1):
+  if not down+1:
     return 1
   while row&1:
     row>>=1
@@ -123,8 +123,10 @@ def solve(row,left,down,right):
 def process(size,sym):
   global B
   global COUNTER
-  COUNTER[sym]+=solve(B[0]>>2,B[1]>>4,
-        ((((B[2]>>2|~0<<size-4)+1)<<size-5)-1),
+  COUNTER[sym]+=solve(
+        B[0]>>2,
+        B[1]>>4,
+        (((B[2]>>2|~0<<size-4)+1)<<size-5)-1,
         B[3]>>4<<size-5)
 #
 # キャリーチェーン　対象解除
