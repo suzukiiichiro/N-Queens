@@ -168,7 +168,70 @@ def placement(size,dimx,dimy):
   global B
   if B[4][dimx]==dimy:
     return 1
+  #
+  #
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry()内にあります）
+  #
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
+  # 
+  #    +-+-+-+-+-+  
+  #    | | | |X|Q| 
+  #    +-+-+-+-+-+  
+  #    | |Q| |X| | 
+  #    +-+-+-+-+-+  
+  #    | | | |X| |       
+  #    +-+-+-+-+-+             
+  #    | | | |Q| | 
+  #    +-+-+-+-+-+ 
+  #    | | | | | |      
+  #    +-+-+-+-+-+  
   if B[4][0]:
+    #
+    # 【枝刈り】Qが角にない場合
+    #
+    #  +-+-+-+-+-+  
+    #  |X|X|Q|X|X| 
+    #  +-+-+-+-+-+  
+    #  |X| | | |X| 
+    #  +-+-+-+-+-+  
+    #  | | | | | |
+    #  +-+-+-+-+-+
+    #  |X| | | |X|
+    #  +-+-+-+-+-+
+    #  |X|X| |X|X|
+    #  +-+-+-+-+-+
+    #
+    #   １．上部サイド枝刈り
+    #  if ((row<BOUND1));then        
+    #    bitmap=$(( bitmap|SIDEMASK ));
+    #    bitmap=$(( bitmap^=SIDEMASK ));
+    #
+    #  | | | | | |       
+    #  +-+-+-+-+-+  
+    #  BOUND1はt_x[0]
+    #
+    #  ２．下部サイド枝刈り
+    #  if ((row==BOUND2));then     
+    #    if (( !(down&SIDEMASK) ));then
+    #      return ;
+    #    fi
+    #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+    #      bitmap=$(( bitmap&SIDEMASK ));
+    #    fi
+    #  fi
+    #
+    #  ２．最下段枝刈り
+    #  LSATMASKの意味は最終行でBOUND1以下または
+    #  BOUND2以上にクイーンは置けないということ
+    #  BOUND2はsize-t_x[0]
+    #  if(row==sizeE){
+    #    //if(!bitmap){
+    #    if(bitmap){
+    #      if((bitmap&LASTMASK)==0){
     if B[4][0]!=-1:
       if(
         (dimx<B[4][0] or dimx>=size-B[4][0]) and 
@@ -184,6 +247,11 @@ def placement(size,dimx,dimy):
     if B[4][1]!=-1:
       # bitmap=$(( bitmap|2 )); # 枝刈り
       # bitmap=$(( bitmap^2 )); # 枝刈り
+      #((bitmap&=~2)); # 上２行を一行にまとめるとこうなります
+      # ちなみに上と下は同じ趣旨
+      # if (( (t_x[1]>=dimx)&&(dimy==1) ));then
+      #   return 0;
+      # fi
       if B[4][1]>=dimx and dimy==1:
         return 0
   if( (B[0] & 1<<dimx) or 
