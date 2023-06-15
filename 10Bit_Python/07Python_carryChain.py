@@ -119,7 +119,6 @@ def solve(row,left,down,right):
   return total
 #
 # キャリーチェーン　solve()を呼び出して再起を開始する
-# sym: 0:COUNT2 1:COUNT4 2:COUNT8
 def process(size,sym):
   global B
   global COUNTER
@@ -127,7 +126,8 @@ def process(size,sym):
         B[0]>>2,
         B[1]>>4,
         (((B[2]>>2|~0<<size-4)+1)<<size-5)-1,
-        B[3]>>4<<size-5)
+        B[3]>>4<<size-5
+  )
 #
 # キャリーチェーン　対象解除
 def carryChainSymmetry(size,n,w,s,e):
@@ -136,13 +136,13 @@ def carryChainSymmetry(size,n,w,s,e):
   ww=(size-2)*(size-1)-1-w
   w2=(size-2)*(size-1)-1
   # 対角線上の反転が小さいかどうか確認する
-  if s==ww and n<(w2-w):
+  if s==ww and n<(w2-e):
     return 
   # 垂直方向の中心に対する反転が小さいかを確認
   if e==ww and n>(w2-n):
     return
   # 斜め下方向への反転が小さいかをチェックする
-  if e==ww and n>(w2-n):
+  if e==ww and n>(w2-s):
     return
   #
   # 【枝刈り】１行目が角の場合
