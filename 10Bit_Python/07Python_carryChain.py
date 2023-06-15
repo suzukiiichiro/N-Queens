@@ -145,7 +145,7 @@ def carryChainSymmetry(size,n,w,s,e):
   #
   # 【枝刈り】１行目が角の場合
   # １．回転対称チェックせずにCOUNT8にする
-  if not B[X][0]==1:
+  if not B[4][0]==1:
     process(size,2) # COUNT8
     return
   # n,e,s==w の場合は最小値を確認する。
@@ -254,7 +254,7 @@ def initChain(size):
   idx=0
   for a in range(size):
     for b in range(size):
-      if (a>=b and (a-b)<=1) or ((b>a and b-a)<=1):
+      if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
         continue
       pres_a[idx]=a
       pres_b[idx]=b
@@ -262,6 +262,7 @@ def initChain(size):
 #
 # キャリーチェーン
 def carryChain(size):
+  global B
   global TOTAL
   global UNIQUE
   global COUNTER
