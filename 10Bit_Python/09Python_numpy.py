@@ -324,7 +324,7 @@ def carryChain(size):
   [0, 0, 0, 0, 0], 
   [-1,-1,-1,-1,-1]]
   """
-  B=np.array([[0 for i in range(size)] for j in range(size)])
+  B=np.array([[0 for i in range(size)] for j in range(5)])
   # B=[0]*5             # row/left/down/right/X
   #B[4]=array([-1]*size)       # X を -1 でsize分を初期化
   B[4]=np.array([-1 for i in range(size)])       # X を -1 でsize分を初期化
