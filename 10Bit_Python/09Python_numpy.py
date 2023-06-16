@@ -6,23 +6,32 @@ import copy
 from datetime import datetime
 """
 numpy対応版 Ｎクイーン
-以下の配列をnumpyへ移行しました
+
+以下の配列をnumpyへ移行しました。
+
+配列変数名=値
+↓
+配列変数名=np.array(値)
+
 ・COUNTER
 ・pres_a/pres_b
 ・B
 
-実行結果
-bash-3.2$ python 09Python_numpy.py
-キャリーチェーン
- N:        Total       Unique        hh:mm:ss.ms
- 5:           10            2         0:00:00.001
- 6:            4            1         0:00:00.005
- 7:           40            6         0:00:00.024
- 8:           92           12         0:00:00.113
- 9:          352           46         0:00:00.511
-10:          724           92         0:00:02.031
-11:         2680          341         0:00:07.158
-12:        14200         1788         0:00:22.111
+Bの構造を行列を揃えました
+  [ 0, 0, 0, 0, [-1,-1,-1,-1,] ]
+ 
+ ↓
+  
+  [
+  [0,0,0,0,0],
+  [0,0,0,0,0],
+  [0,0,0,0,0],
+  [0,0,0,0,0],
+  [-1,-1,-1,-1,]
+  ]
+
+併せて B[0]の呼び出しは B[0][0]へ変更しました。
+
 
 
 詳細はこちら。
@@ -53,10 +62,10 @@ bash-3.2$ python 08Python_stepN.py
 # グローバル変数
 TOTAL=0
 UNIQUE=0
-np.pres_a=[0]*930   # pres_a numpyへ移行
-np.pres_b=[0]*930
-np.COUNTER=[0]*3 # COUNTER=[0]*3  # numpyへ移行
-np.B=[]
+pres_a=np.array([0]*930)
+pres_b=np.array([0]*930)
+COUNTER=np.array([0]*3)  
+B=np.array([])          
 #
 # ボード外側２列を除く内側のクイーン配置処理
 def solve(row,left,down,right):
@@ -79,17 +88,26 @@ def solve(row,left,down,right):
 def process(size,sym):
   global B
   global COUNTER
+  ROW=0
+  LEFT=1
+  DOWN=2
+  RIGHT=3
   # sym 0:COUNT2 1:COUNT4 2:COUNT8
-  np.COUNTER[sym]+=solve(
-        np.B[0]>>2,
-        np.B[1]>>4,
-        ((((np.B[2]>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-        (np.B[3]>>4)<<(size-5)
+  COUNTER[sym]+=np.array(
+        solve(
+        B[ROW][0]>>2,
+        B[LEFT][0]>>4,
+        ((((B[DOWN][0]>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+        (B[RIGHT][0]>>4)<<(size-5)
+        )
   )
 #
 # キャリーチェーン　対象解除
 def carryChainSymmetry(size,n,w,s,e):
   global B
+  COUNT2=0
+  COUNT4=1
+  COUNT8=2
   # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
   ww=(size-2)*(size-1)-1-w
   w2=(size-2)*(size-1)-1
@@ -101,7 +119,7 @@ def carryChainSymmetry(size,n,w,s,e):
   if n==ww and e>(w2-s): return
   # 【枝刈り】１行目が角の場合
   # １．回転対称チェックせずにCOUNT8にする
-  if not np.B[4][0]:
+  if not B[4][0]:
     process(size,2) # COUNT8
     return
   # n,e,s==w の場合は最小値を確認する。
@@ -110,21 +128,25 @@ def carryChainSymmetry(size,n,w,s,e):
   # w=n=e=sであれば90度回転で同じ可能性 ';
   if s==w:
     if n!=w or e!=w: return
-    process(size,0) # COUNT2
+    process(size,COUNT2) # COUNT2
     return
   # : 'e==wは180度回転して同じ
   # 180度回転して同じ時n>=sの時はsmaller?  ';
   if e==w and n>=s:
     if n>s: return
-    process(size,1) # COUNT4
+    process(size,COUNT4) # COUNT4
     return
-  process(size,2)   # COUNT8
+  process(size,COUNT8)   # COUNT8
   return
 #
 # キャリーチェーン 効きのチェック dimxは行 dimyは列
 def placement(size,dimx,dimy):
   global B
-  if np.B[4][dimx]==dimy:
+  ROW=0
+  LEFT=1
+  DOWN=2
+  RIGHT=3
+  if B[4][dimx]==dimy:
     return 1
   #
   #
@@ -147,7 +169,7 @@ def placement(size,dimx,dimy):
   #    +-+-+-+-+-+ 
   #    | | | | | |      
   #    +-+-+-+-+-+  
-  if np.B[4][0]:
+  if B[4][0]:
     #
     # 【枝刈り】Qが角にない場合
     #
@@ -190,19 +212,19 @@ def placement(size,dimx,dimy):
     #    //if(!bitmap){
     #    if(bitmap){
     #      if((bitmap&LASTMASK)==0){
-    if np.B[4][0]!=-1:
+    if B[4][0]!=-1:
       if(
-        (dimx<np.B[4][0] or dimx>=size-np.B[4][0]) and 
+        (dimx<B[4][0] or dimx>=size-B[4][0]) and 
         (dimy==0 or dimy==size-1) 
       ):
         return 0
       if(
         (dimx==size-1) and 
-        (dimy<=np.B[4][0] or dimy>=size-np.B[4][0])
+        (dimy<=B[4][0] or dimy>=size-B[4][0])
       ):
         return 0
   else:
-    if np.B[4][1]!=-1:
+    if B[4][1]!=-1:
       # bitmap=$(( bitmap|2 )); # 枝刈り
       # bitmap=$(( bitmap^2 )); # 枝刈り
       #((bitmap&=~2)); # 上２行を一行にまとめるとこうなります
@@ -210,19 +232,19 @@ def placement(size,dimx,dimy):
       # if (( (t_x[1]>=dimx)&&(dimy==1) ));then
       #   return 0;
       # fi
-      if np.B[4][1]>=dimx and dimy==1:
+      if B[4][1]>=dimx and dimy==1:
         return 0
-  if( (np.B[0] & 1<<dimx) or 
-      (np.B[1] & 1<<(size-1-dimx+dimy)) or
-      (np.B[2] & 1<<dimy) or
-      (np.B[3] & 1<<(dimx+dimy)) 
+  if( (B[ROW][0] & 1<<dimx) or 
+      (B[LEFT][0] & 1<<(size-1-dimx+dimy)) or
+      (B[DOWN][0] & 1<<dimy) or
+      (B[RIGHT][0] & 1<<(dimx+dimy)) 
   ): 
     return 0
-  np.B[0]|=1<<dimx
-  np.B[1]|=1<<(size-1-dimx+dimy)
-  np.B[2]|=1<<dimy
-  np.B[3]|=1<<(dimx+dimy)
-  np.B[4][dimx]=dimy
+  B[ROW][0]|=np.array(1<<dimx)
+  B[LEFT][0]|=np.array(1<<(size-1-dimx+dimy))
+  B[DOWN][0]|=np.array(1<<dimy)
+  B[RIGHT][0]|=np.array(1<<(dimx+dimy))
+  B[4][dimx]=np.array(dimy)
   return 1
 #
 # チェーンのビルド
@@ -230,41 +252,43 @@ def buildChain(size):
   global B
   global pres_a
   global pres_b
-  np.B=[0,0,0,0,[-1]*size] # Bの初期化
-  np.wB=np.sB=np.eB=np.nB=[]
-  np.wB=copy.deepcopy(np.B)
+  # B=np.array([0,0,0,0,[-1]*size]) # Bの初期化
+  wB=sB=eB=nB=np.array([[0 for i in range(size)] for j in range(size)])
+  wB=np.array(copy.deepcopy(B))
   for w in range( (size//2)*(size-3) +1):
-    np.B=copy.deepcopy(np.wB)
-    np.B=[0,0,0,0,[-1]*size] # Bの初期化
+    B=np.array(wB.copy())
+    #B=np.array([0,0,0,0,[-1]*size]) # Bの初期化
+    B=[[0 for i in range(size)] for j in range(size)]
+    B[4]=[-1]*size       # X を -1 でsize分を初期化
     # １．０行目と１行目にクイーンを配置
-    if placement(size,0,np.pres_a[w])==0:
+    if placement(size,0,pres_a[w])==0:
       continue
-    if placement(size,1,np.pres_b[w])==0:
+    if placement(size,1,pres_b[w])==0:
       continue
     # ２．９０度回転
-    np.nB=copy.deepcopy(np.B)
+    nB=np.array(copy.deepcopy(B))
     mirror=(size-2)*(size-1)-w
     for n in range(w,mirror,1):
-      np.B=copy.deepcopy(np.nB)
-      if placement(size,np.pres_a[n],size-1)==0:
+      B=np.array(copy.deepcopy(nB,memo=None, _nil=[]))
+      if placement(size,pres_a[n],size-1)==0:
         continue
-      if placement(size,np.pres_b[n],size-2)==0:
+      if placement(size,pres_b[n],size-2)==0:
         continue
       # ３．９０度回転
-      np.eB=copy.deepcopy(np.B)
+      eB=np.array(copy.deepcopy(B))
       for e in range(w,mirror,1):
-        np.B=copy.deepcopy(np.eB)
-        if placement(size,size-1,size-1-np.pres_a[e])==0:
+        B=np.array(copy.deepcopy(eB,memo=None, _nil=[]))
+        if placement(size,size-1,size-1-pres_a[e])==0:
           continue
-        if placement(size,size-2,size-1-np.pres_b[e])==0:
+        if placement(size,size-2,size-1-pres_b[e])==0:
           continue
         # ４．９０度回転
-        np.sB=copy.deepcopy(np.B)
+        sB=np.array(copy.deepcopy(B))
         for s in range(w,mirror,1):
-          np.B=copy.deepcopy(np.sB)
-          if placement(size,size-1-np.pres_a[s],0)==0:
+          B=np.array(copy.deepcopy(sB,memo=None, _nil=[]))
+          if placement(size,size-1-pres_a[s],0)==0:
             continue
-          if placement(size,size-1-np.pres_b[s],1)==0:
+          if placement(size,size-1-pres_b[s],1)==0:
             continue
           # 対象解除法
           carryChainSymmetry(size,n,w,s,e)
@@ -278,8 +302,8 @@ def initChain(size):
     for b in range(size):
       if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
         continue
-      np.pres_a[idx]=a
-      np.pres_b[idx]=b
+      pres_a[idx]=np.array(a)
+      pres_b[idx]=np.array(b)
       idx+=1
 #
 # キャリーチェーン
@@ -289,16 +313,26 @@ def carryChain(size):
   global UNIQUE
   global COUNTER
   TOTAL=UNIQUE=0
-  #COUNTER[0]=COUNTER[1]=COUNTER[2]=0
-  np.COUNTER=([0,0,0])
+  COUNTER[0]=COUNTER[1]=COUNTER[2]=np.array(0)
   # Bの初期化  [0, 0, 0, 0, [0, 0, 0, 0, 0]]
-  np.B=[0]*5             # row/left/down/right/X
-  np.B[4]=[-1]*size       # X を0でsize分を初期化
+  # ↓
+  """
+  # [
+  [0, 0, 0, 0, 0], 
+  [0, 0, 0, 0, 0], 
+  [0, 0, 0, 0, 0], 
+  [0, 0, 0, 0, 0], 
+  [-1,-1,-1,-1,-1]]
+  """
+  B=np.array([[0 for i in range(size)] for j in range(size)])
+  # B=[0]*5             # row/left/down/right/X
+  #B[4]=array([-1]*size)       # X を -1 でsize分を初期化
+  B[4]=np.array([-1 for i in range(size)])       # X を -1 でsize分を初期化
   initChain(size)     # チェーンの初期化
   buildChain(size)    # チェーンのビルド
   # 集計
-  UNIQUE=np.COUNTER[0]+np.COUNTER[1]+np.COUNTER[2]
-  TOTAL=np.COUNTER[0]*2 + np.COUNTER[1]*4 + np.COUNTER[2]*8
+  UNIQUE=COUNTER[0]+COUNTER[1]+COUNTER[2]
+  TOTAL=COUNTER[0]*2 + COUNTER[1]*4 + COUNTER[2]*8
 #
 # メイン
 def main():
