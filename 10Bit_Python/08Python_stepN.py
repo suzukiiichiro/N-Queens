@@ -2,8 +2,9 @@
 
 # -*- coding: utf-8 -*-
 import copy
+from datetime import datetime
 """
-キャリーチェーン版 Ｎクイーン
+ステップＮ版 Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -17,10 +18,17 @@ https://github.com/suzukiiichiro/N-Queens
 $ python <filename.py>
 
 # 実行結果
-bash-3.2$ python 07Python_carryChain.py
-size: 5 TOTAL: 10 UNIQUE: 2
-bash-3.2$
-
+bash-3.2$ python 08Python_stepN.py
+キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.001
+ 6:            4            1         0:00:00.004
+ 7:           40            6         0:00:00.023
+ 8:           92           12         0:00:00.112
+ 9:          352           46         0:00:00.514
+10:          724           92         0:00:02.007
+11:         2680          341         0:00:06.930
+12:        14200         1788         0:00:21.436
 """
 #
 # グローバル変数
@@ -56,8 +64,8 @@ def process(size,sym):
   COUNTER[sym]+=solve(
         B[0]>>2,
         B[1]>>4,
-        (((B[2]>>2|~0<<size-4)+1)<<size-5)-1,
-        B[3]>>4<<size-5
+        ((((B[2]>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+        (B[3]>>4)<<(size-5)
   )
 #
 # キャリーチェーン　対象解除
@@ -272,8 +280,27 @@ def carryChain(size):
   UNIQUE=COUNTER[0]+COUNTER[1]+COUNTER[2]
   TOTAL=COUNTER[0]*2 + COUNTER[1]*4 + COUNTER[2]*8
 #
+# メイン
+def main():
+  global TOTAL
+  global UNIQUE
+  nmin = 5
+  nmax = 24
+  print("キャリーチェーン")
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for i in range(nmin, nmax,1):
+    start_time = datetime.now()
+    carryChain(i)
+    time_elapsed = datetime.now() - start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (i, TOTAL, UNIQUE,text))  # 出力
+#
+main()
+#
+#
 # 実行
-size=5
-carryChain(size)    # ７．キャリーチェーン
-print("size:",size,"TOTAL:",TOTAL,"UNIQUE:",UNIQUE)
+# size=5
+# carryChain(size)    # ７．キャリーチェーン
+# print("size:",size,"TOTAL:",TOTAL,"UNIQUE:",UNIQUE)
 #

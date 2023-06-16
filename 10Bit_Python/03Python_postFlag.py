@@ -157,6 +157,12 @@ $ python <filename.py>
 +-+-+-+-+-+
 |O| | | | |
 +-+-+-+-+-+
+
+
+bash-3.2$ python 07Python_carryChain.py
+size: 5 TOTAL: 10 UNIQUE: 2
+bash-3.2$
+
 """
 
 #

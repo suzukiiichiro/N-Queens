@@ -156,6 +156,9 @@ $ python <filename.py>
 +-+-+-+-+-+
 |O| | | | |
 +-+-+-+-+-+
+
+size: 5 TOTAL: 10 UNIQUE: 2
+
 """
 
 #
