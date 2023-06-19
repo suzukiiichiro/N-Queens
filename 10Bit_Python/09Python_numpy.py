@@ -47,7 +47,7 @@ $ python <filename.py>
 
 # 実行結果
 bash-3.2$ python 09Python_numpy.py
-キャリーチェーン
+numpyの導入
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            2         0:00:00.001
  6:            4            1         0:00:00.003
@@ -340,7 +340,7 @@ def main():
   global UNIQUE
   nmin = 5
   nmax = 24
-  print("キャリーチェーン")
+  print("numpyの導入")
   print(" N:        Total       Unique        hh:mm:ss.ms")
   for i in range(nmin, nmax,1):
     start_time = datetime.now()
