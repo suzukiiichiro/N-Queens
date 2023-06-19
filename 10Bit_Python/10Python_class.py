@@ -134,11 +134,7 @@ class nQueens(): # pylint:disable=RO902
     return 1
   #
   # チェーンのビルド
-  def buildChain(self,pres_a,pres_b):
-    #
-    # Boardクラスのインスタンス
-    B=Board(self.size)
-    # 
+  def buildChain(self,B,pres_a,pres_b):
     wB=copy.deepcopy(B)
     for w in range( (self.size//2)*(self.size-3) +1):
       B=copy.deepcopy(wB)
@@ -191,7 +187,8 @@ class nQueens(): # pylint:disable=RO902
     pres_a=[0]*930
     pres_b=[0]*930
     self.initChain(pres_a,pres_b)     # チェーンの初期化
-    self.buildChain(pres_a,pres_b)    # チェーンのビルド
+    B=Board(self.size)        # Boardクラスのインスタンス
+    self.buildChain(B,pres_a,pres_b)    # チェーンのビルド
   #
   # ユニーク数の集計
   def getUnique(self):
