@@ -43,8 +43,9 @@ UNIQUE=0
 # pres_b=np.array([0]*930)
 # COUNTER=np.array([0]*3)  
 # B=np.array([])          
+COUNTER=[0]*3
 #
-#
+# Board ボードクラス
 class Board:
   def __init__(self,size):
     self.row=0
@@ -52,21 +53,20 @@ class Board:
     self.down=0
     self.right=0
     self.X=[-1 for i in range(size)]
-    self.COUNTER=[0,0,0]
-  def getUnique(self):
-    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
-  def getTotal(self):
-    return self.COUNTER[0]*2 + self.COUNTER[1]*4 + self.COUNTER[2]*8
+  #   self.COUNTER=[0,0,0]
+  # def getUnique(self):
+  #   return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  # def getTotal(self):
+  #   return self.COUNTER[0]*2 + self.COUNTER[1]*4 + self.COUNTER[2]*8
 #
-#
+# nQueens メインスレッドクラス
 class nQueens(): # pylint:disable=RO902
   #
   # 初期化
-  def __init__(self,size,B): # pylint:disable=R0913
-    super(nQueens,self).__init__
+  def __init__(self,size): # pylint:disable=R0913
+    super(nQueens,self).__init__()
     self.size=size
-    self.B=B
-    # self.B=Board(self.size)
+    self.B=Board(size)
   #
   # ボード外側２列を除く内側のクイーン配置処理
   def solve(self,row,left,down,right):
@@ -88,23 +88,23 @@ class nQueens(): # pylint:disable=RO902
   # キャリーチェーン　solve()を呼び出して再起を開始する
   def process(self,size,sym):
     # global B
-    # global COUNTER
+    global COUNTER
     # ROW=0
     # LEFT=1
     # DOWN=2
     # RIGHT=3
-    # self.B.COUNTER[sym]+=self.solve(
-    #       self.B.row>>2,
-    #       self.B.left>>4,
-    #       ((((self.B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
-    #       (self.B.right>>4)<<(size-5)
-    #       )
-    return self.solve(
+    COUNTER[sym]+=self.solve(
           self.B.row>>2,
           self.B.left>>4,
           ((((self.B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
           (self.B.right>>4)<<(size-5)
           )
+    # return self.solve(
+    #       self.B.row>>2,
+    #       self.B.left>>4,
+    #       ((((self.B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,
+    #       (self.B.right>>4)<<(size-5)
+    #       )
   #
   # キャリーチェーン　対象解除
   def carryChainSymmetry(self,size,n,w,s,e):
@@ -124,8 +124,8 @@ class nQueens(): # pylint:disable=RO902
     # 【枝刈り】１行目が角の場合
     # １．回転対称チェックせずにCOUNT8にする
     if not self.B.X[0]:
-      #self.process(size,2) # COUNT8
-      self.B.COUNTER[2]+=self.process(size,2) # COUNT8
+      self.process(size,2) # COUNT8
+      #self.B.COUNTER[2]+=self.process(size,2) # COUNT8
       return
     # n,e,s==w の場合は最小値を確認する。
     # : '右回転で同じ場合は、
@@ -133,18 +133,18 @@ class nQueens(): # pylint:disable=RO902
     # w=n=e=sであれば90度回転で同じ可能性 ';
     if s==w:
       if n!=w or e!=w: return
-      #self.process(size,0) # COUNT2
-      self.B.COUNTER[0]+=self.process(size,0) # COUNT2
+      self.process(size,0) # COUNT2
+      #self.B.COUNTER[0]+=self.process(size,0) # COUNT2
       return
     # : 'e==wは180度回転して同じ
     # 180度回転して同じ時n>=sの時はsmaller?  ';
     if e==w and n>=s:
       if n>s: return
-      #self.process(size,1) # COUNT4
-      self.B.COUNTER[1]+=self.process(size,1) # COUNT4
+      self.process(size,1) # COUNT4
+      #self.B.COUNTER[1]+=self.process(size,1) # COUNT4
       return
-    #self.process(size,2)   # COUNT8
-    self.B.COUNTER[2]+=self.process(size,2)   # COUNT8
+    self.process(size,2)   # COUNT8
+    #self.B.COUNTER[2]+=self.process(size,2)   # COUNT8
     # print(self.B.COUNTER[2])
     return
   #
@@ -321,11 +321,10 @@ class nQueens(): # pylint:disable=RO902
   # キャリーチェーン
   def carryChain(self,size):
     # global B
-    # global TOTAL
-    # global UNIQUE
-    # global COUNTER
-    # TOTAL=UNIQUE=0
-    # COUNTER[0]=COUNTER[1]=COUNTER[2]=np.array(0)
+    global TOTAL
+    global UNIQUE
+    global COUNTER
+    TOTAL=UNIQUE=COUNTER[0]=COUNTER[1]=COUNTER[2]=0
     # Bの初期化  [0, 0, 0, 0, [0, 0, 0, 0, 0]]
     # ↓
     """
@@ -346,28 +345,31 @@ class nQueens(): # pylint:disable=RO902
     self.initChain(size,pres_a,pres_b)     # チェーンの初期化
     self.buildChain(size,pres_a,pres_b)    # チェーンのビルド
     # 集計
+    UNIQUE=COUNTER[0]+COUNTER[1]+COUNTER[2]
+    TOTAL=COUNTER[0]*2 + COUNTER[1]*4 + COUNTER[2]*8
     # UNIQUE=self.B.COUNTER[0]+self.B.COUNTER[1]+self.B.COUNTER[2]
     # TOTAL=self.B.COUNTER[0]*2 + self.B.COUNTER[1]*4 + self.B.COUNTER[2]*8
+    # UNIQUE+=self.B.getUnique()
+    # TOTAL +=self.B.getTotal()
 #
 # メイン
 def main():
-  # global TOTAL
-  # global UNIQUE
+  global TOTAL
+  global UNIQUE
   nmin = 5
   nmax = 24
-  print("キャリーチェーン")
+  print("キャリーチェーン シングルスレッド")
   print(" N:        Total       Unique        hh:mm:ss.ms")
   for size in range(nmin, nmax,1):
     start_time = datetime.now()
     # carryChain(i)
-    B=Board(size)
-    nq=nQueens(size,B)
+    # B=Board(size)
+    nq=nQueens(size)
     nq.carryChain(size)
     time_elapsed = datetime.now() - start_time
     _text = '{}'.format(time_elapsed)
     text = _text[:-3]
-    #print("%2d:%13d%13d%20s" % (i, TOTAL, UNIQUE,text))  # 出力
-    print("%2d:%13d%13d%20s" % (size, B.getTotal(),B.getUnique(),text))  # 出力
+    print("%2d:%13d%13d%20s" % (size, TOTAL, UNIQUE,text))  # 出力
 #
 main()
 #
