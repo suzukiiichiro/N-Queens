@@ -23,17 +23,16 @@ https://github.com/suzukiiichiro/N-Queens
 $ python <filename.py>
 
 # 実行結果
-bash-3.2$ python 09Python_numpy.py
-キャリーチェーン
+クラスの導入
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            2         0:00:00.001
- 6:            4            1         0:00:00.003
- 7:           40            6         0:00:00.016
- 8:           92           12         0:00:00.071
- 9:          352           46         0:00:00.300
-10:          724           92         0:00:01.223
-11:         2680          341         0:00:04.093
-12:        14200         1788         0:00:13.462
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.044
+ 8:           92           12         0:00:00.204
+ 9:          352           46         0:00:00.885
+10:          724           92         0:00:03.450
+11:         2680          341         0:00:11.908
+12:        14200         1788         0:00:36.707
 """
 #
 # Board ボードクラス
@@ -206,7 +205,7 @@ class nQueens(): # pylint:disable=RO902
 def main():
   nmin = 5
   nmax = 21
-  print("キャリーチェーン クラスの導入")
+  print("クラスの導入")
   print(" N:        Total       Unique        hh:mm:ss.ms")
   for size in range(nmin, nmax,1):
     start_time = datetime.now()
