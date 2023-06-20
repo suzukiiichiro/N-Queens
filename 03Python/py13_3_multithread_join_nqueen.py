@@ -205,15 +205,20 @@ class WorkingEngine(Thread): # pylint: disable=R0902
       else:
         self.child.join()
   #
+  # 対称解除法
   def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
     """ symmetryops() """
+    own = 0
+    ptn = 0
+    you = 0
+    bit = 0
     # 90度回転
     if self.aboard[self.bound2] == 1:
       own = 1
       ptn = 2
-      while own <= self.size - 1:
+      while own <= self.size-1:
         bit = 1
-        you = self.size - 1
+        you = self.size-1
         while (self.aboard[you] != ptn) and (self.aboard[own] >= bit):
           bit <<= 1
           you -= 1
@@ -223,15 +228,15 @@ class WorkingEngine(Thread): # pylint: disable=R0902
           break
         own += 1
         ptn <<= 1
-      # 90度回転して同型なら180度/270度回転も同型である */
-      if own > self.size - 1:
-        self.info.setcount(0, 0, 1)
+      #90度回転して同型なら180度/270度回転も同型である */
+      if own > self.size-1:
+        self.info.setcount(0,0,1)
         return
-    # 180度回転
-    if self.aboard[self.size - 1] == self.endbit:
+    #180度回転
+    if self.aboard[self.size-1] == self.endbit:
       own = 1
-      you = self.size - 1 - 1
-      while own <= self.size - 1:
+      you = self.size-1-1
+      while own <= self.size-1:
         bit = 1
         ptn = self.topbit
         while (self.aboard[you] != ptn) and (self.aboard[own] >= bit):
@@ -244,14 +249,14 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         own += 1
         you -= 1
       # 90度回転が同型でなくても180度回転が同型である事もある */
-      if own > self.size - 1:
-        self.info.setcount(0, 1, 0)
+      if own > self.size-1:
+        self.info.setcount(0,1,0)
         return
-    # 270度回転
+    #270度回転
     if self.aboard[self.bound1] == self.topbit:
       own = 1
-      ptn = self.topbit >> 1
-      while own <= self.size - 1:
+      ptn = self.topbit>>1
+      while own <= self.size-1:
         bit = 1
         you = 0
         while (self.aboard[you] != ptn) and (self.aboard[own] >= bit):
@@ -265,57 +270,73 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         ptn >>= 1
     self.info.setcount(1, 0, 0)
   #
-  def backtrack2(self, row, left, down, right):
+  # BackTrack2
+  def backtrack2(self, row, left, down, right): # pylint: disable=R0913
     """ backtrack2() """
-    bitmap = self.mask & ~(left | down | right)
-    # 枝刈り
-    if row == self.size - 1:
+    bit = 0
+    bitmap = self.mask&~(left|down|right)
+    #枝刈り
+    #if row == size:
+    if row == self.size-1:
       if bitmap:
-        # 枝刈り
-        if (bitmap & self.lastmask) == 0:
+        #枝刈り
+        if (bitmap&self.lastmask) == 0:
           self.aboard[row] = bitmap
+          #symmetryOps_bitmap(size)
           self.symmetryops()
+      #else:
+      #  self.aboard[row] = bitmap
+      #  symmetryOps_bitmap(size)
     else:
+      #枝刈り 上部サイド枝刈り
       if row < self.bound1:
         bitmap &= ~self.sidemask
+      #枝刈り 下部サイド枝刈り
       elif row == self.bound2:
-        if down & self.sidemask == 0:
+        if down&self.sidemask == 0:
           return
-        if down & self.sidemask != self.sidemask:
+        if down&self.sidemask != self.sidemask:
           bitmap &= self.sidemask
       # 枝刈り
       if row != 0:
         lim = self.size
       else:
-        lim = (self.size + 1) // 2  # 割り算の結果を整数にするには //
+        lim = (self.size+1)//2 # 割り算の結果を整数にするには //
       # 枝刈り
       for i in range(row, lim): # pylint: disable=W0612
         while bitmap:
-          bit = (-bitmap & bitmap)
+          bit = (-bitmap&bitmap)
           self.aboard[row] = bit
           bitmap ^= self.aboard[row]
-          self.backtrack2(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
+          self.backtrack2(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
   #
-  def backtrack1(self, row, left, down, right):
+  # BackTrack1
+  def backtrack1(self, row, left, down, right):  # pylint: disable=R0913
     """ backtrack1() """
-    bitmap = self.mask & ~(left | down | right)
-    if row == self.size - 1:
+    bit = 0
+    bitmap = self.mask&~(left|down|right)
+    #枝刈り
+    #if row =  = size:
+    if row == self.size-1:
       if bitmap:
         self.aboard[row] = bitmap
+        #枝刈りにてcount8に加算
         self.info.setcount(1, 0, 0)
     else:
       if row < self.bound1:
-        bitmap &= ~2  # bm|=2 bm^=2 (bm&=~2と同等)
+        bitmap &= ~2 # bm| = 2 bm^ = 2 (bm& = ~2と同等)
+      # 枝刈り
       if row != 0:
         lim = self.size
       else:
-        lim = (self.size + 1) // 2  # 割り算の結果を整数にするには //
-      for i in range(row, lim): # pylint: disable=W0612
+        lim = (self.size+1)//2 # 割り算の結果を整数にするには //
+      # 枝刈り
+      for i in range(row, lim):   # pylint: disable=W0612
         while bitmap:
-          bit = (-bitmap & bitmap)
+          bit = (-bitmap&bitmap)
           self.aboard[row] = bit
           bitmap ^= self.aboard[row]
-          self.backtrack1(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
+          self.backtrack1(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
   #
   def rec_bound2(self, bound1, bound2):
     """ rec_bound2() """

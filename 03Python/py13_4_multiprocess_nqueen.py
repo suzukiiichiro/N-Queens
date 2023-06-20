@@ -110,53 +110,6 @@ from multiprocessing import Pool as ThreadPool
 # グローバル変数
 #
 class Nqueen(): # pylint: disable=R0902
-  """ nqueen() """
-  # 初期化
-  def __init__(self, size):
-    """ __init__"""
-    self.size = size                    # N
-    self.sizeE = size -1
-    self._nthreads = self.size
-    self.total = 0                      # スレッド毎の合計
-    self.unique = 0
-    self.gttotal = [0] * self.size      #総合計
-    self.gtunique = [0] * self.size     #総合計
-    self.aboard = [[i for i in range(2*size-1)] for j in range(self.size)]
-    self.mask = (1<<size)-1
-    self.count2 = 0
-    self.count4 = 0
-    self.count8 = 0
-    self.bound1 = 0
-    self.bound2 = 0
-    self.sidemask = 0
-    self.lastmask = 0
-    self.topbit = 0
-    self.endbit = 0
-  #
-  # 解法
-  def solve(self):
-    """ solve() """
-    pool = ThreadPool(self.size)
-    #
-    ## ロジック確認用
-    ## シングル版 Nで割ると解が合う
-    ## gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
-    ##  8:          736           96         0:00:00.119
-    #
-    # self.gttotal = list(pool.map(self.nqueen_single, range(self.size)))
-    ##
-    ## マルチプロセス版
-    self.gttotal = list(pool.map(self.nqueen_multi, range(self.size)))
-    #
-    total = 0
-    unique = 0
-    for _t, _u in self.gttotal:
-      total += _t
-      unique += _u
-    pool.close()
-    pool.join()
-    #
-    return total, unique
   #
   # ユニーク値を出力
   def getunique(self):
@@ -169,7 +122,7 @@ class Nqueen(): # pylint: disable=R0902
     return self.count2*2+self.count4*4+self.count8*8
   #
   # 対称解除法
-  def symmetryops(self):      # pylint: disable=R0912,R0911,R0915
+  def symmetryops(self):  # pylint: disable=R0912,R0911,R0915
     """ symmetryops() """
     own = 0
     ptn = 0
@@ -266,7 +219,7 @@ class Nqueen(): # pylint: disable=R0902
       else:
         lim = (self.size+1)//2 # 割り算の結果を整数にするには //
       # 枝刈り
-      for i in range(row, lim):       # pylint: disable=W0612
+      for i in range(row, lim): # pylint: disable=W0612
         while bitmap:
           bit = (-bitmap&bitmap)
           self.aboard[row] = bit
@@ -360,7 +313,6 @@ class Nqueen(): # pylint: disable=R0902
   #
   # メインメソッド マルチプロセス版
   def nqueen_multi(self, thr_index):
-    """ nqueen_multi() """
     self.aboard[0] = 1
     self.sizeE = self.size -1
     self.topbit = 1<<self.sizeE
@@ -373,6 +325,51 @@ class Nqueen(): # pylint: disable=R0902
     if self.bound1 > 0 and self.bound2<self.sizeE and self.bound1 < self.bound2:
       self.BOUND2_multi(self.bound1, self.bound2)
     return self.gettotal(), self.getunique()
+  #
+  # 解法
+  def solve(self):
+    pool = threadpool(self.size)
+    #
+    ## ロジック確認用
+    ## シングル版 Nで割ると解が合う
+    ## gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
+    ##  8:          736           96         0:00:00.119
+    #
+    # self.gttotal = list(pool.map(self.nqueen_single, range(self.size)))
+    ##
+    ## マルチプロセス版
+    self.gttotal = list(pool.map(self.nqueen_multi, range(self.size)))
+    #
+    total = 0
+    unique = 0
+    for _t, _u in self.gttotal:
+      total += _t
+      unique += _u
+    pool.close()
+    pool.join()
+    #
+    return total, unique
+  #
+  # 初期化
+  def __init__(self, size):
+    self.size = size                    # N
+    self.sizeE = size -1
+    self._nthreads = self.size
+    self.total = 0                      # スレッド毎の合計
+    self.unique = 0
+    self.gttotal = [0] * self.size      #総合計
+    self.gtunique = [0] * self.size     #総合計
+    self.aboard = [[i for i in range(2*size-1)] for j in range(self.size)]
+    self.mask = (1<<size)-1
+    self.count2 = 0
+    self.count4 = 0
+    self.count8 = 0
+    self.bound1 = 0
+    self.bound2 = 0
+    self.sidemask = 0
+    self.lastmask = 0
+    self.topbit = 0
+    self.endbit = 0
 #end class
 #
 # メインメソッド
