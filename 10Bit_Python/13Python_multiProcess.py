@@ -7,6 +7,8 @@ from datetime import datetime
 import logging
 import threading
 from threading import Thread
+from multiprocessing import Pool as ThreadPool
+
 
 """
 マルチプロセス対応版 Ｎクイーン
@@ -26,16 +28,29 @@ $ python <filename.py>
 
 # 実行結果
 bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.046
+ 8:           92           12         0:00:00.205
+ 9:          352           46         0:00:00.910
+10:          724           92         0:00:03.542
+11:         2680          341         0:00:12.184
+12:        14200         1788         0:00:36.986
+
+
+bash-3.2$ python 12Python_multiThread.py
 キャリーチェーン マルチスレッド
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            2         0:00:00.004
- 6:            4            1         0:00:00.014
- 7:           40            6         0:00:00.052
- 8:           92           12         0:00:00.220
- 9:          352           46         0:00:00.935
-10:          724           92         0:00:03.596
-11:         2680          341         0:00:12.228
-12:        14200         1788         0:00:36.878
+ 5:           10            2         0:00:00.003
+ 6:            4            1         0:00:00.013
+ 7:           40            6         0:00:00.049
+ 8:           92           12         0:00:00.215
+ 9:          352           46         0:00:00.934
+10:          724           92         0:00:03.690
+11:         2680          341         0:00:12.708
+12:        14200         1788         0:00:40.294
 """
 #
 # Board ボードクラス
@@ -49,7 +64,7 @@ class Board:
     self.X=[-1 for i in range(size)]
 #
 # nQueens メインスレッドクラス
-class nQueens(Thread): # pylint:disable=RO902
+class nQueens(): # pylint:disable=RO902
   #
   # ユニーク数の集計
   def getUnique(self):
@@ -140,45 +155,7 @@ class nQueens(Thread): # pylint:disable=RO902
     self.B.right|=1<<(dimx+dimy)
     self.B.X[dimx]=dimy
     return 1
-  #
-  # チェーンのビルド
-  def buildChain(self):
-    wB=copy.deepcopy(self.B)
-    for w in range( (self.size//2)*(self.size-3) +1):
-      self.B=copy.deepcopy(wB)
-      # １．０行目と１行目にクイーンを配置
-      if self.placement(0,self.pres_a[w])==0:
-        continue
-      if self.placement(1,self.pres_b[w])==0:
-        continue
-      # ２．９０度回転
-      nB=copy.deepcopy(self.B)
-      mirror=(self.size-2)*(self.size-1)-w
-      for n in range(w,mirror,1):
-        self.B=copy.deepcopy(nB)
-        if self.placement(self.pres_a[n],self.size-1)==0:
-          continue
-        if self.placement(self.pres_b[n],self.size-2)==0:
-          continue
-        # ３．９０度回転
-        eB=copy.deepcopy(self.B)
-        for e in range(w,mirror,1):
-          self.B=copy.deepcopy(eB)
-          if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
-            continue
-          if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
-            continue
-          # ４．９０度回転
-          sB=copy.deepcopy(self.B)
-          for s in range(w,mirror,1):
-            self.B=copy.deepcopy(sB)
-            if self.placement(self.size-1-self.pres_a[s],0)==0:
-              continue
-            if self.placement(self.size-1-self.pres_b[s],1)==0:
-              continue
-            # 対象解除法
-            self.carryChainSymmetry(n,w,s,e)
-  # マルチスレッド版 チェーンのビルド
+  # マルチプロセス版 チェーンのビルド
   def buildChain_multiThread(self,w):
     wB=copy.deepcopy(self.B)
     # for w in range( (self.size//2)*(self.size-3) +1):
@@ -229,66 +206,49 @@ class nQueens(Thread): # pylint:disable=RO902
         self.pres_b[idx]=b
         idx+=1
   #
-  # キャリーチェーン
-  def carryChain(self):
-    self.initChain()     # チェーンの初期化
-  #
   # スレッド
-  def run(self):
-    if self.child is None:
-    # シングルスレッド
-      self.buildChain()  # チェーンのビルド
-    else:
-    # マルチスレッド
-      self.buildChain()  # チェーンのビルド
-      self.buildChain_multiThread(self.w)
-      self.child.join()
+  def carryChain(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_multiThread(w)
+    return self.getTotal(),self.getUnique()
+  #
+  # マルチプロセス
+  def execProcess(self):
+    pool=ThreadPool(self.size)
+    self.gttotal=list(pool.map(self.carryChain,range( (self.size//2)*(self.size-3) +1)))
+    #
+    # 集計処理
+    self.total = 0
+    self.unique = 0
+    for _t, _u in self.gttotal:
+      self.total+=_t
+      self.unique+=_u
+    pool.close()
+    pool.join()
+    return self.total, self.unique
   #
   # 初期化
-  def __init__(self,size,w,THREAD): # pylint:disable=R0913
-    super(nQueens,self).__init__()
+  def __init__(self,size): # pylint:disable=R0913
     self.size=size
     self.COUNTER=[0]*3
     self.pres_a=[0]*930
     self.pres_b=[0]*930
     self.B=Board(size)
-    self.w=w      # マルチスレッド版ビルドチェーン外側の`for` の w
-    self.child=None
-    self.THREAD=THREAD      # スレッドフラグ 
-    # マルチスレッド
-    #for w in range( (self.size//2)*(self.size-3) +1):
-    self.range=(self.size//2)*(self.size-3) +1
-    if w<self.range: 
-      self.child=nQueens(size,w+1,THREAD)
-      self.child.start()
-      # self.child.join()   # run()の末尾へ移動
-    else:   # シングルスレッド
-      self.child=None
-#
-# スレッドフラグ True:する False:しない
-THREAD=True
-# THREAD=False
+    self.total=0
+    self.unique=0
+    self.gttotal=[0 for i in range( (self.size//2)*(self.size-3) +1)]
 #
 # メイン
-def main():
+if __name__ == '__main__':
   nmin = 5
   nmax = 21
-  if THREAD:
-    print("キャリーチェーン マルチスレッド")
-  else:
-    print("キャリーチェーン シングルスレッド")
+  print("キャリーチェーン マルチプロセス")
   print(" N:        Total       Unique        hh:mm:ss.ms")
   for size in range(nmin, nmax,1):
     start_time = datetime.now()
-    w=0   # マルチスレッド用キャリーチェーンのbuildChain()内の一番外側のforのw
-    nq=nQueens(size,w,THREAD)
-    nq.carryChain()
-    nq.start()
-    nq.join()
+    nq=nQueens(size)
+    TOTAL,UNIQUE=nq.execProcess()
     time_elapsed = datetime.now() - start_time
     _text = '{}'.format(time_elapsed)
     text = _text[:-3]
-    print("%2d:%13d%13d%20s" % (size, nq.getTotal(),nq.getUnique(),text))  # 出力
-#
-main()
-#
+    print("%2d:%13d%13d%20s" % (size,TOTAL,UNIQUE,text))  # 出力
