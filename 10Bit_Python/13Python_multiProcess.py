@@ -74,10 +74,6 @@ class nQueens(): # pylint:disable=RO902
   def getTotal(self):
     return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
   #
-  # カウンター セッター
-  def setCount(self,sym,count):
-    self.COUNTER[sym]+=count
-  #
   # ボード外側２列を除く内側のクイーン配置処理
   def solve(self,row,left,down,right):
     total=0
@@ -97,7 +93,7 @@ class nQueens(): # pylint:disable=RO902
   #
   # キャリーチェーン　solve()を呼び出して再起を開始する
   def process(self,sym):
-    self.setCount(sym,self.solve(self.B.row>>2,self.B.left>>4,((((self.B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(self.B.right>>4)<<(self.size-5)))
+    self.COUNTER[sym]+=self.solve(self.B.row>>2,self.B.left>>4,((((self.B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(self.B.right>>4)<<(self.size-5))
   #
   # キャリーチェーン　対象解除
   def carryChainSymmetry(self,n,w,s,e):
@@ -215,17 +211,17 @@ class nQueens(): # pylint:disable=RO902
   # マルチプロセス
   def execProcess(self):
     pool=ThreadPool(self.size)
-    self.gttotal=list(pool.map(self.carryChain,range( (self.size//2)*(self.size-3) +1)))
+    gttotal=list(pool.map(self.carryChain,range( (self.size//2)*(self.size-3) +1)))
     #
     # 集計処理
-    self.total = 0
-    self.unique = 0
-    for _t, _u in self.gttotal:
-      self.total+=_t
-      self.unique+=_u
+    total = 0 # ローカル変数
+    unique = 0
+    for _t, _u in gttotal:
+      total+=_t
+      unique+=_u
     pool.close()
     pool.join()
-    return self.total, self.unique
+    return total,unique
   #
   # 初期化
   def __init__(self,size): # pylint:disable=R0913
@@ -234,8 +230,6 @@ class nQueens(): # pylint:disable=RO902
     self.pres_a=[0]*930
     self.pres_b=[0]*930
     self.B=Board(size)
-    self.total=0
-    self.unique=0
     self.gttotal=[0 for i in range( (self.size//2)*(self.size-3) +1)]
 #
 # メイン
