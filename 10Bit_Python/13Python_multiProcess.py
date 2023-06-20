@@ -151,6 +151,44 @@ class nQueens(): # pylint:disable=RO902
     self.B.right|=1<<(dimx+dimy)
     self.B.X[dimx]=dimy
     return 1
+  # シングルプロセス版 チェーンのビルド
+  def buildChain_singleThread(self,w):
+    wB=copy.deepcopy(self.B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      self.B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+      if self.placement(0,self.pres_a[w])==0:
+        continue
+      if self.placement(1,self.pres_b[w])==0:
+        continue
+      # ２．９０度回転
+      nB=copy.deepcopy(self.B)
+      mirror=(self.size-2)*(self.size-1)-w
+      for n in range(w,mirror,1):
+        self.B=copy.deepcopy(nB)
+        if self.placement(self.pres_a[n],self.size-1)==0:
+          continue
+        if self.placement(self.pres_b[n],self.size-2)==0:
+          continue
+        # ３．９０度回転
+        eB=copy.deepcopy(self.B)
+        for e in range(w,mirror,1):
+          self.B=copy.deepcopy(eB)
+          if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+            continue
+          if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+            continue
+          # ４．９０度回転
+          sB=copy.deepcopy(self.B)
+          for s in range(w,mirror,1):
+            self.B=copy.deepcopy(sB)
+            if self.placement(self.size-1-self.pres_a[s],0)==0:
+              continue
+            if self.placement(self.size-1-self.pres_b[s],1)==0:
+              continue
+            # 対象解除法
+            self.carryChainSymmetry(n,w,s,e)
+  #
   # マルチプロセス版 チェーンのビルド
   def buildChain_multiThread(self,w):
     wB=copy.deepcopy(self.B)
@@ -202,16 +240,29 @@ class nQueens(): # pylint:disable=RO902
         self.pres_b[idx]=b
         idx+=1
   #
-  # スレッド
-  def carryChain(self,w):
+  # シングルプロセス
+  def carryChain_single(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_singleThread(w)
+    return self.getTotal(),self.getUnique()
+  #
+  # マルチプロセス
+  def carryChain_multi(self,w):
     self.initChain()     # チェーンの初期化
     self.buildChain_multiThread(w)
     return self.getTotal(),self.getUnique()
   #
   # マルチプロセス
   def execProcess(self):
-    pool=ThreadPool(self.size)
-    gttotal=list(pool.map(self.carryChain,range( (self.size//2)*(self.size-3) +1)))
+    #pool=ThreadPool(self.size)
+    pool=ThreadPool((self.size//2)*(self.size-3) +1)
+    #
+    # シングルプロセスで実行
+    #gttotal=list(pool.map(self.carryChain_single,range(1)))
+    #
+    # マルチプロセスで実行
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+    #
     #
     # 集計処理
     total = 0 # ローカル変数
@@ -230,7 +281,6 @@ class nQueens(): # pylint:disable=RO902
     self.pres_a=[0]*930
     self.pres_b=[0]*930
     self.B=Board(size)
-    self.gttotal=[0 for i in range( (self.size//2)*(self.size-3) +1)]
 #
 # メイン
 if __name__ == '__main__':
