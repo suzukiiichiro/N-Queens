@@ -1,0 +1,2881 @@
+
+"Ｎクイーン問題（２１）第六章 C言語移植 その１"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## BashからC言語への移植、そして並列処理へ
+先の説明では、BashでＮクイーンのアルゴリズムを中心に説明してきました。
+複雑で緻密な言語でプログラムを構築するよりも、直感的に理解しやすい言語で、作り、実行しながら見て学ぶ方法をご紹介してきました。
+Bashはそこそこ実行速度の遅い言語ではありますが、その分、どこで何が行われているのかを、修正しながら、目で終える実行速度で確認するメリットがあります。
+
+ただ、Bashによる並列処理ではどうしても速度に限界があるのはそのとおりです。
+Bashに限定することなく、Bashで得た経験を他のプログラム言語に置き換えて、さらに学ぶことも重要です。
+
+そこで、今回から１７回に渡って「C言語への移植と並列処理」のシリーズを開始します。
+Bashでの並列処理にたどり着くまで８ステップかかりました。
+
+８ステップと行っても、ブルートフォース、バックトラック、配置フラグ、ビットマップ、ミラー、対称解除、キャリーチェーンといった過去の偉人が発見した優れたアルゴリズムを実装してきたそのものを理解するのは容易なことではありません。
+
+なんどでも読み返してほしいと思いますし、またわからなくなったら01Bash....shに戻ってより深く理解することをおすすめします。僕もそうやって何度となくスタート地点に戻って繰り返し実装してきました。
+
+今回からご紹介するC言語のソースは、Bashのソースの構造や関数名、変数名、序列、アルゴリズムなど、極力同等に書いてあります。
+
+また、BashやC言語のソースには、極力言語独自の関数や処理ライブラリ、外部コマンドを使わずに、基本的なプログラミング知識のみで、アルゴリズムに特化して理解できるようにしてあります。
+
+
+
+## C言語への移植
+まずは、移植のもととなるBashのソースを以下に貼ります。
+Bashのキャリーチェーンを並列処理したソースです。
+
+```bash:08Bash_carryChain_parallel.sh
+#!/usr/bin/bash
+
+: '
+  ## bash版
+ <> 08Bash_carryChain_parallel.sh 並列処理
+ N:        Total       Unique        hh:mm:ss
+ 4:            0            0         0:00:00
+ 5:            8            1         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:01
+ 9:          352           46         0:00:03
+10:          724           92         0:00:15
+11:         2680          341         0:00:52
+12:        14200         1788         0:02:49
+13:        73712         9237         0:09:18
+14:       365596        45771         0:28:48
+15:      2279184       285095         1:49:12
+
+ <> 07Bash_carryChain.sh キャリーチェーン
+ N:        Total       Unique        hh:mm:ss
+ 4:            2            1         0:00:00
+ 5:           10            2         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:01
+ 8:           92           12         0:00:02
+ 9:          352           46         0:00:12
+10:          724           92         0:00:44
+11:         2680          341         0:02:39
+12:        14200         1788         0:08:35
+13:        73712         9237         0:27:05
+14:       365596        45771         1:30:40
+15:      2279184       285095         5:59:03
+
+ <> 06Bash_symmetry.sh 対称解除法
+ N:        Total       Unique        hh:mm:ss
+ 4:            2            1         0:00:00
+ 5:           10            2         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:00
+ 9:          352           46         0:00:00
+10:          724           92         0:00:02
+11:         2680          341         0:00:05
+12:        14200         1787         0:00:26
+13:        73712         9233         0:02:28
+14:       365596        45752         0:14:18
+15:      2279184       285053         1:23:34
+';
+
+declare -i TOTAL=0;
+declare -i UNIQUE=0;
+declare -a pres_a;        # チェーン
+declare -a pres_b;        # チェーン
+# declare -i COUNTER[3];    # カウンター 0:COUNT2 1:COUNT4 2:COUNT8
+: 'B=(row     0:
+      left    1:
+      down    2:
+      right   3:
+      X[@]    4: 
+      )';
+declare -a B; 
+# declare -i DISPLAY=0;
+#
+#
+: 'ボードレイアウトを出力 ビットマップ対応版';
+function printRecordCarryChain()
+{
+  local -a board=(${B[4]}); # 同じ場所の配置を許す
+  ((TOTAL++));
+  size="$1";
+  flag="$2"; # bitmap版は1 それ以外は 0
+  echo "$TOTAL";
+  sEcho=" ";  
+  : 'ビットマップ版
+     ビットマップ版からは、左から数えます
+     上下反転左右対称なので、これまでの上から数える手法と
+     rowを下にたどって左から数える方法と解の数に変わりはありません。
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | | 0
+    +-+-+-+-+-+
+    | | |O| | | 2
+    +-+-+-+-+-+
+    | | | | |O| 4
+    +-+-+-+-+-+
+    | |O| | | | 1
+    +-+-+-+-+-+
+    | | | |O| | 3
+    +-+-+-+-+-+
+  ';
+  if ((flag));then
+    local -i i=0;
+    local -i j=0;
+    for ((i=0;i<size;i++));do
+      for ((j=0;j<size;j++));do
+       if (( board[i]&1<<j ));then
+          sEcho="${sEcho}$((j)) ";
+       fi 
+      done
+    done
+  else 
+  : 'ビットマップ版以外
+     (ブルートフォース、バックトラック、配置フラグ)
+     上から数えます
+     0 2 4 1 3 
+    +-+-+-+-+-+
+    |O| | | | |
+    +-+-+-+-+-+
+    | | | |O| |
+    +-+-+-+-+-+
+    | |O| | | |
+    +-+-+-+-+-+
+    | | | | |O|
+    +-+-+-+-+-+
+    | | |O| | |
+    +-+-+-+-+-+
+     ';
+    local -i i=0;
+    for((i=0;i<size;i++)){
+      sEcho="${sEcho}${board[i]} ";
+    }
+  fi
+  echo "$sEcho";
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }
+  echo "+";
+  local -i i=0;
+  local -i j=0;
+  for((i=0;i<size;i++)){
+    echo -n "|";
+    for((j=0;j<size;j++)){
+      if ((flag));then
+        if(( board[i]!=-1));then
+          if (( board[i]&1<<j ));then
+            echo -n "Q";
+          else
+            echo -n " ";
+          fi
+        else
+          echo -n " ";
+        fi
+      else
+        if((i==board[j]));then
+          echo -n "Q";
+        else
+          echo -n " ";
+        fi
+      fi
+      if((j<(size-1)));then
+        echo -n "|";
+      fi
+    }
+  echo "|";
+  if((i<(size-1)));then
+    echo -n "+";
+    local -i j=0;
+    for((j=0;j<size;j++)){
+      echo -n "-";
+      if((j<(size-1)));then
+        echo -n "+";
+      fi
+    }
+  echo "+";
+  fi
+  }
+  echo -n "+";
+  local -i i=0;
+  for((i=0;i<size;i++)){
+    echo -n "-";
+    if((i<(size-1)));then
+      echo -n "+";
+    fi
+  }  
+  echo "+";
+  echo "";
+}
+#
+: 'ボード外側２列を除く内側のクイーン配置処理';
+function solve_parallel()
+{
+  local -i row="$1";
+  local -i left="$2";
+  local -i down="$3";
+  local -i right="$4";
+  # if (( !(down+1) ));then return 1; fi
+  ((down+1))||return 1; # ↑を高速化
+  while(( row&1 ));do
+    # ((row>>=1));
+    # ((left<<=1));
+    # ((right>>=1));
+    # 上記３行をまとめて書けます
+    (( row>>=1,left<<=1,right>>=1 )); 
+  done
+  (( row>>=1 ));      # １行下に移動する
+  #
+  local -i bitmap;  # 再帰に必要な変数は必ず定義する必要があります。
+  local -i total=0; 
+  #
+  # 以下のwhileを一行のforにまとめると高速化が期待できます。
+  # local -i bitmap=~(left|down|right);
+  # while ((bitmap!=0));do
+  # :
+  # (( bitmap^=bit ))
+  # done
+  for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
+    local -i bit=$(( -bitmap&bitmap ));
+    # ret=$( solve_parallel "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))")  ; 
+    #  ret=$?;
+    # [[ $ret -gt 0 ]] && { 
+    # ((total+=$ret));
+    # }  # solve_parallel()で実行したreturnの値は$?に入ります。
+    # 上記はやや冗長なので以下２行にまとめることができます。
+    solve_parallel "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
+    # solve_parallel()で実行したreturnの値は $? に入ります。
+    ((total+=$?));  
+  done
+  return $total;  # 合計を戻り値にします
+}
+#
+: 'solve_parallel()を呼び出して再帰を開始する';
+function process_parallel()
+{
+  local -i size="$1";
+  local -i sym="$2"; # COUNT2 COUNT4 COUNT8
+  # B[0]:row B[1]:left B[2]:down B[3]:right
+  solve_parallel "$(( B[0]>>2 ))" \
+        "$(( B[1]>>4 ))" \
+        "$(( (((B[2]>>2 | ~0<<size-4)+1)<<size-5)-1 ))" \
+        "$(( B[3]>>4<<size-5 ))";
+  local -i ret="$?";
+  #(( COUNTER[$sym]+=$? ));
+  echo "$ret" "$(( ret * sym ))";
+}
+#
+: 'クイーンの効きをチェック';
+function placement_parallel()
+{
+  local -i size="$1";
+  local -i dimx="$2";     # dimxは行 dimyは列
+  local -i dimy="$3";
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+  # if (( t_x[dimx]==dimy ));then
+  #   return 1;
+  # fi
+  # 上記を以下のように書くことができます
+  (( t_x[dimx]==dimy ))&& return 1;
+  : '
+  #
+  #
+  # 【枝刈り】Qが角にある場合の枝刈り
+  #  ２．２列めにクイーンは置かない
+  #  （１はcarryChainSymmetry_parallel()内にあります）
+  #
+  #  Qが角にある場合は、
+  #  2行目のクイーンの位置 t_x[1]が BOUND1
+  #  BOUND1行目までは2列目にクイーンを置けない
+  # 
+  #    +-+-+-+-+-+  
+  #    | | | |X|Q| 
+  #    +-+-+-+-+-+  
+  #    | |Q| |X| | 
+  #    +-+-+-+-+-+  
+  #    | | | |X| |       
+  #    +-+-+-+-+-+             
+  #    | | | |Q| | 
+  #    +-+-+-+-+-+ 
+  #    | | | | | |      
+  #    +-+-+-+-+-+  
+  #';
+  if (( t_x[0] ));then
+  : '
+  #
+  # 【枝刈り】Qが角にない場合
+  #
+  #  +-+-+-+-+-+  
+  #  |X|X|Q|X|X| 
+  #  +-+-+-+-+-+  
+  #  |X| | | |X| 
+  #  +-+-+-+-+-+  
+  #  | | | | | |
+  #  +-+-+-+-+-+
+  #  |X| | | |X|
+  #  +-+-+-+-+-+
+  #  |X|X| |X|X|
+  #  +-+-+-+-+-+
+  #
+  #   １．上部サイド枝刈り
+  #  if ((row<BOUND1));then        
+  #    bitmap=$(( bitmap|SIDEMASK ));
+  #    bitmap=$(( bitmap^=SIDEMASK ));
+  #
+  #  | | | | | |       
+  #  +-+-+-+-+-+  
+  #  BOUND1はt_x[0]
+  #
+  #  ２．下部サイド枝刈り
+  #  if ((row==BOUND2));then     
+  #    if (( !(down&SIDEMASK) ));then
+  #      return ;
+  #    fi
+  #    if (( (down&SIDEMASK)!=SIDEMASK ));then
+  #      bitmap=$(( bitmap&SIDEMASK ));
+  #    fi
+  #  fi
+  #
+  #  ２．最下段枝刈り
+  #  LSATMASKの意味は最終行でBOUND1以下または
+  #  BOUND2以上にクイーンは置けないということ
+  #  BOUND2はsize-t_x[0]
+  #  if(row==sizeE){
+  #    //if(!bitmap){
+  #    if(bitmap){
+  #      if((bitmap&LASTMASK)==0){
+  ';
+    #if (( t_x[0]!=-1));then
+    # 上記は if コマンドすら不要です
+    [[ t_x[0] -ne -1 ]]&&{    # -ne は != と同じです
+      (((dimx<t_x[0]||dimx>=size-t_x[0])
+        &&(dimy==0||dimy==size-1)))&&{ return 0; } 
+      (((dimx==size-1)&&((dimy<=t_x[0])||
+          dimy>=size-t_x[0])))&&{ return 0; } 
+    }
+  else
+    #if (( t_x[1]!=-1));then
+    # 上記は if コマンドすら不要です
+    [[ t_x[1] -ne -1 ]]&&{
+      # bitmap=$(( bitmap|2 )); # 枝刈り
+      # bitmap=$(( bitmap^2 )); # 枝刈り
+      #((bitmap&=~2)); # 上２行を一行にまとめるとこうなります
+      # ちなみに上と下は同じ趣旨
+      # if (( (t_x[1]>=dimx)&&(dimy==1) ));then
+      #   return 0;
+      # fi
+      (((t_x[1]>=dimx) && (dimy==1)))&&{ return 0; }
+    }
+  fi
+  # B[0]:row B[1]:left B[2]:down B[3]:right
+  (( (B[0] & 1<<dimx)|| (B[1] & 1<<(size-1-dimx+dimy))||
+     (B[2] & 1<<dimy)|| (B[3] & 1<<(dimx+dimy)) )) && return 0;
+  # ((B[0]|=1<<dimx));
+  # ((B[1]|=1<<(size-1-dimx+dimy)));
+  # ((B[2]|=1<<dimy));
+  # ((B[3]|=1<<(dimx+dimy)));
+  # 上記４行を一行にまとめることができます。
+  ((B[0]|=1<<dimx, B[1]|=1<<(size-1-dimx+dimy),B[2]|=1<<dimy,B[3]|=1<<(dimx+dimy) ));
+  #
+  # 配列の中に配列があるので仕方がないですが要検討箇所です。
+  t_x[$dimx]="$dimy"; 
+  B[4]=${t_x[@]}; # Bに反映  
+  #
+  # ボードレイアウト出力
+  # if [[ DISPLAY ]];then 
+  #   board[$dimx]=$((1<<dimy)); 
+  # fi
+  # 上記を一行にまとめることができます。
+  # [[ $DISPLAY ]] && board[$dimx]=$((1<<dimy));
+  #
+  return 1;
+}
+#
+: 'キャリーチェーン対称解除法';
+function carryChainSymmetry_parallel()
+{
+  local -i n="$1";
+  local -i w="$2";
+  local -i s="$3";
+  local -i e="$4";
+  # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+  local -i ww=$(( (size-2)*(size-1)-1-w ));
+  local -i w2=$(( (size-2)*(size-1)-1 ));
+  # 対角線上の反転が小さいかどうか確認する
+  (( (s==ww)&&(n<(w2-e)) ))&& return;
+  # 垂直方向の中心に対する反転が小さいかを確認
+  (( (e==ww)&&(n>(w2-n)) ))&& return;
+  # 斜め下方向への反転が小さいかをチェックする
+  (( (n==ww)&&(e>(w2-s)) ))&& return ;
+  #
+  # 【枝刈り】 １行目が角の場合
+  #  １．回転対称チェックせずCOUNT8にする
+  local -a t_x=(${B[4]}); # 同じ場所の配置を許す
+  (( t_x[0] ))||{ # || は 条件が！であることを示します
+    process_parallel "$size" "8";  #COUNT8
+    #
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return;
+  }
+  # n,e,s==w の場合は最小値を確認する。
+  # : '右回転で同じ場合は、
+  # w=n=e=sでなければ値が小さいのでskip
+  # w=n=e=sであれば90度回転で同じ可能性 ';
+  ((s==w))&&{
+    (( (n!=w)||(e!=w) ))&& return;
+    process_parallel "$size" "2" # COUNT2
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return ;
+  }
+  # : 'e==wは180度回転して同じ
+  # 180度回転して同じ時n>=sの時はsmaller?  ';
+  (( (e==w)&&(n>=s) ))&&{
+    ((n>s))&& return ;
+    process_parallel "$size" "4" # COUNT4
+    # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+    # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+    return ;
+  }
+  process_parallel "$size" "8" ; #COUNT8
+  # ボードレイアウト出力 # 出力 1:bitmap版 0:それ以外
+  # ((DISPLAY==1))&& printRecordCarryChain "$size" "1";
+  return ;
+  #
+}
+function execChain_parallel()
+{
+  local -i size="$1";
+  local -i w="$2";
+  #
+  # 元プロセスの配列変数をexportから子プロセスにコピー
+  #
+  pres_a=($_pres_a);
+  pres_b=($_pres_b);
+  B=($_B);
+  #
+  #
+  local -a wB=sB=eB=nB=X; 
+  B=("${wB[@]}");
+  #
+  # Bの初期化 #0:row 1:left 2:down 3:right 4:dimx
+  #
+  for ((bx_i=0;bx_i<size;++bx_i));do X[$bx_i]=-1; done
+  B=([0]=0 [1]=0 [2]=0 [3]=0 [4]=${X[@]});
+  #
+  #
+  # １　０行目と１行目にクイーンを配置
+  placement_parallel "$size" "0" "$((pres_a[w]))"; 
+  [[ $? -eq 0 ]] && return;
+  placement_parallel "$size" "1" "$((pres_b[w]))";
+  [[ $? -eq 0 ]] && return;
+  #
+  # ２ 90度回転
+  #
+  nB=("${B[@]}");
+  local -i mirror=$(( (size-2)*(size-1)-w ));
+  for ((n=w;n<mirror;++n));do 
+    B=("${nB[@]}");
+    placement_parallel "$size" "$((pres_a[n]))" "$((size-1))"; 
+    [[ $? -eq 0 ]] && continue;
+    placement_parallel "$size" "$((pres_b[n]))" "$((size-2))";
+    [[ $? -eq 0 ]] && continue;
+    #
+    # ３ 90度回転
+    #
+    eB=("${B[@]}");
+    for ((e=w;e<mirror;++e));do 
+      B=("${eB[@]}");
+      placement_parallel "$size" "$((size-1))" "$((size-1-pres_a[e]))"; 
+      [[ $? -eq 0 ]] && continue;
+      placement_parallel "$size" "$((size-2))" "$((size-1-pres_b[e]))"; 
+      [[ $? -eq 0 ]] && continue;
+      #
+      # ４ 90度回転
+      #
+      sB=("${B[@]}");
+      for ((s=w;s<mirror;++s));do
+        B=("${sB[@]}")
+        placement_parallel "$size" "$((size-1-pres_a[s]))" "0";
+        [[ $? -eq 0 ]] && continue;
+        placement_parallel "$size" "$((size-1-pres_b[s]))" "1"; 
+        [[ $? -eq 0 ]] && continue;
+        #
+        #  対象解除法
+        carryChainSymmetry_parallel "$n" "$w" "$s" "$e" ; 
+        #
+      done
+    done
+  done
+}
+: 'チェーンのビルド';
+function buildChain_parallel()
+{
+  local -i size="$1";
+  # local -a wB=sB=eB=nB=X; 
+  wB=("${B[@]}");
+  #
+  # 並列処理に必要な export など
+  #
+  export -f printRecordCarryChain;
+  export -f solve_parallel;
+  export -f process_parallel;
+  export -f placement_parallel;
+  export -f carryChainSymmetry_parallel;
+  export -f execChain_parallel;
+  export size;
+  export _pres_a=$(echo "${pres_a[@]}")
+  export _pres_b=$(echo "${pres_b[@]}")
+  export _B=$(echo "${B[@]}");
+  local -i wMinus=$(( (size/2)*(size-3)));
+  #
+  # １ 上の２行に配置
+  #
+  # for ((w=0;w<=(size/2)*(size-3);++w));do
+    #
+    # 並列処理
+    #
+    GT=( $(echo "$(seq 0 $((wMinus-1)) )" | 
+    xargs -I% -P$wMinus bash -c 'execChain_parallel $size %'|
+    awk '{ 
+      unique+=$1;
+      total +=$2;
+    }END{ 
+      print unique " " total;
+    }'))&& wait; 
+    #
+    # 集計
+    UNIQUE=${GT[0]};
+    TOTAL=${GT[1]};
+  #
+  # done
+}
+: 'チェーンの初期化';
+function initChain_parallel()
+{
+  local -i size="$1";
+  local -i idx=0;
+  local -i a=b=0;
+  for ((a=0;a<size;a++));do
+    for ((b=0;b<size;b++));do
+      (( ( (a>=b)&&((a-b)<=1) )||
+            ( (b>a)&& ((b-a)<=1) ) )) && continue;
+      pres_a[$idx]=$a;
+      pres_b[$idx]=$b;
+      ((idx++));
+    done
+  done
+}
+#
+: 'チェーンの構築';
+function carryChain_parallel()
+{
+  local -i size="$1";
+  initChain_parallel "$size";  # チェーンの初期化
+  buildChain_parallel "$size"; # チェーンのビルド
+}
+#
+: 'Nを連続して実行';
+function NQ()
+{
+  local selectName="$1";
+  local -i min=4;
+  local -i max=15;
+  local -i N="$min";
+  local startTime=endTime=hh=mm=ss=0; 
+  echo " N:        Total       Unique        hh:mm:ss" ;
+  local -i N;
+  for((N=min;N<=max;N++)){
+    TOTAL=UNIQUE=0;
+    # COUNTER[0]=COUNTER[1]=COUNTER[2]=0;    # カウンター配列
+    B=0; 
+    startTime=$(date +%s);# 計測開始時間
+    "$selectName" "$N";
+    endTime=$(date +%s); 	# 計測終了時間
+    ss=$((endTime-startTime));# hh:mm:ss 形式に変換
+    hh=$((ss/3600));
+    ss=$((ss%3600));
+    mm=$((ss/60));
+    ss=$((ss%60));
+    printf "%2d:%13d%13d%10d:%.2d:%.2d\n" $N $TOTAL $UNIQUE $hh $mm $ss ;
+  } 
+}
+#
+#
+DISPLAY=0; # ボードレイアウト表示しない
+#DISPLAY=1; # ボードレイアウト表示する
+#
+NQ carryChain_parallel; 
+exit;
+```
+
+## 08Bash_carryChain_parallel.shの実行結果
+08Bash_carryChain_parallel.shの実行結果は以下のとおりです。
+Ｎが１５で１分４９秒かかりました。
+対称解除の方が速度は早いのですが、Ｎが大きくなるに連れて肥大するメモリ使用量や、効率を考えると、かならずしも速度だけで判断はできず、長時間の稼動に耐えるためのさまざまな工夫がキャリーチェーンには埋め込まれています。
+
+なんといっても、現段階で世界一となったＮ２７を叩き出したドイツ・ドレスデン大学のアルゴリズムです。
+今回のBash版のキャリーチェーンは、上記大学が公開しているソースを極力ロジックや構造を変えることなく移植し、鈴木が独自の枝刈や最適化を施しチューニングしたものです。
+自身を持って、Ｃ言語に移植して、さらなる高みを一緒に目指していきましょう。
+
+```
+  ## bash版
+ <> 08Bash_carryChain_parallel.sh 並列処理
+ N:        Total       Unique        hh:mm:ss
+ 4:            0            0         0:00:00
+ 5:            8            1         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:01
+ 9:          352           46         0:00:03
+10:          724           92         0:00:15
+11:         2680          341         0:00:52
+12:        14200         1788         0:02:49
+13:        73712         9237         0:09:18
+14:       365596        45771         0:28:48
+15:      2279184       285095         1:49:12
+```
+
+
+## 実行方法などの説明
+実行方法は以下のとおりです。
+
+```
+bash-3.2$ gcc 01GCC_carryChain.c -o 01GCC && ./01GCC
+Usage: ./01GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.44
+15:      2279184          285095            1.96
+bash-3.2$
+```
+Bashでの実行は
+```
+15:      2279184          285095         1:49:12
+```
+Ｃでの実行は
+```
+15:      2279184          285095               1.96
+```
+
+Bashだと１分４９秒かかっていたのに対して、Ｃ言語に置き換えただけで、１秒になりました。
+すごいですね。でももっともっと速くなります。
+
+## Ｃ言語に移植するにあたって
+Ｃ言語に移植するに当たって「Ｃはよくわからないから」と思うのは無理もありません。
+でも大丈夫です。
+難しいことはこちらでやります。安心してください。
+
+いくつか知っておいたほうが良いことをピックアップしてご説明します。
+
+### 実行
+```
+bash-3.2$ gcc 01GCC_carryChain.c -o 01GCC && ./01GCC
+```
+
+まず、`gcc`は、コマンドです。
+GNUという組織が管理しているCのコンパイラという意味の略文字です。
+`gcc`のバージョンが知りたければ
+```
+$ gcc --version
+```
+とすればよいです。
+`gcc`コマンドの次にファイル名を指定します。
+ここでは `01GCC_carryChain.c`を指定しています。
+`-o`オプションは、実行ファイルの出力ファイル名を指定しています。
+ここでは `01GCC`を指定しています。
+
+`&&` は、そこまでの実行に問題がなければ、右側を実行という意味で、ここでは、`./01GCC`を実行します。
+```
+./01GCC -r 
+```
+または
+```
+./01GCC -c
+```
+を指定するUsage（使い方）が表示されていますが、現段階では、指定せずに実行しましょう。
+いずれ、必要となるときにわかります。
+
+
+### include インクルード
+include は実行に必要なライブラリを指定して読み込みます。
+不要なライブラリは読み込む必要がないので、列挙する必要はありませんが、書いてあってもコンパイラが考えて不要であれば除去した上で実行ファイルを生成します。
+
+```c
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <sys/time.h>
+```
+
+### グローバル変数
+Bashは、全てグローバル変数です。
+関数内で `local`をつけた場合に限って、関数内でのみ活きる変数として宣言されます。
+Ｃは、関数の中で宣言された変数は「ローカル変数」、関数の外で宣言された変数は「グローバル変数」として扱われます。
+以下は、グローバル変数となります。
+
+```c
+typedef unsigned long long uint64_t;
+uint64_t TOTAL=0; 
+uint64_t UNIQUE=0;
+uint64_t COUNTER[3];      //カウンター配列
+unsigned int COUNT2=0;
+unsigned int COUNT4=1;
+unsigned int COUNT8=2;
+```
+
+typedef の行は、`uint64_t`という型は`unsingned long long`です。という意味となります。
+`unsigned` というのは、負の値がないという意味です。数値を扱うint でマイナスを扱わないのであれば、`unsigned int`とすればよいです。
+`long` は`int` よりも桁数が大きな変数となります。
+`long long`は`long`よりもさらに桁数が大きな型です。
+
+Ｎクイーンは、桁数が猛烈に大きな計算処理を行うので、`long long`であり、マイナスを扱うことがないものは`unsigned`をつけてあるということになります。
+
+### 構造体
+Ｃ言語では構造体をよく使います。
+Ｃ＋＋やＪａｖａではクラスが似ています。
+変数のグループを一つにまとめて管理できるので便利です。
+いずれわかることなので、あらためて勉強する必要はありません。
+
+動かしながら自然と身に着けていくことこそが、長く続けられる秘訣です。
+楽しみながらやりましょう。
+
+### 関数
+関数名の前に `void`とかついてますね。Bashにはありませんでしたが、「return で値を返すときの型」を書きます。なにも値を返す必要のない関数であれば「void」にして、関数の末尾で`return`する必要もありません。
+
+関数のパラメーターには、呼び出し元から渡される変数が列挙されます。
+Bashでは、`$1`,`$2`という扱いでしたが、Ｃ言語では、逐一列挙して明示する必要があります。
+
+ここでは、`int`の変数を渡した場合、関数のパラメータで受け取る場合は、方が同じである必要があります。
+先に説明した通り、マイナスの要素がない場合は、メモリを省力化できるので、`unsigned`をつけます。
+
+さらに、パラメータの変数を関数内で参照するだけであれば、言い換えれば、関数内でパラメータの変数を参照するだけではなく、変更をしないのであれば、`const`をつけます。
+
+こうした「制限」をつけることによって自助努力でバグを少なくしていくことに繋がります。
+
+## アドレスとポインタ
+あまりここでは深く理解する必要はありません。
+
+ 困ったときには以下のＵＲＬがとても参考になります。
+
+ C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
+ https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
+ 値渡しとポインタ渡し
+ https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
+ C言語 値渡しとアドレス渡し
+ https://skpme.com/199/
+ アドレスとポインタ
+ https://yu-nix.com/archives/c-struct-pointer/
+
+
+ まずは、実行して結果を見てください。
+ それだけでよいのです。ではまた次をお楽しみに。
+
+
+
+
+
+"Ｎクイーン問題（２２）第六章 C言語移植 その２"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+##  グローバル変数・構造体を極力減らす
+これにより、pthread導入時の 構造体１つしか渡せない問題に対応できます。
+
+ちょっと試しに COUNT2,COUNT4,COUNT8変数をなくしてみます。
+この変数には値が入っていて、配列の添字のかわりの変数です。
+```c
+COUNT2=0;
+COUNT4=1;
+COUNT8=2;
+```
+
+```c
+COUNTER[COUNT4]
+```
+
+となれば、
+```c
+COUNTER[1]
+```
+と等価です。
+
+試しにやってみます。（あとになってこの作業は戻すことになります）
+
+```c
++196
+process(size,COUNT8,B); return ;
+↓
+process(size,2,B); return ; //COUNT8
+```
+
+```c
++283
+  // 集計
+  UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
+  TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
+↓
+  UNIQUE=COUNTER[0]+COUNTER[1]+COUNTER[2];
+  TOTAL=COUNTER[0]*2+COUNTER[1]*4+COUNTER[2]*8;
+```
+
+
+ 
+## 実行結果
+実行結果は以下のとおりです。
+
+```
+bash-3.2$ gcc 02GCC_carryChain.c -o 02GCC && ./02GCC
+Usage: ./02GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.02
+12:        14200            1788            0.05
+13:        73712            9237            0.15
+14:       365596           45771            0.49
+15:      2279184          285095            2.10
+bash-3.2$
+```
+
+
+
+
+"Ｎクイーン問題（２３）第六章 C言語移植 その３"
+description: "initChain() buildChain() carryChain_symmetry() をcarryChain()に統合して変数のパラメータ渡しを極力減らす"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## initChain() buildChain() carryChain_symmetry() をcarryChain()に統合して変数のパラメータ渡しを極力減らす
+せっかく分割されている関数を一つの関数にまとめるメリットってなんでしょう。
+しいてあげれば、関数間における変数のやり取りによる負荷、さらにいえば、統合することによって、渡すことすら必要がなくなります。
+
+Ｃ言語による並列処理は `pthread`というライブラリを使うのですが、スレッド実行時に渡せるパラメータは、構造体一つです。
+その他には何も渡すことができません。
+渡すことができないということは、実行している関数から変数を参照することも、値を変更することもできないということです。
+
+そうした実情を踏まえて、しかたなく関数をまとめ、変数を減らし、さらにはグローバル変数も整理し、曲直構造化に統合して`pthread`に備えていきます。
+
+
+以下の関数の中身を
+```c
+void initChain(unsigned const int size,unsigned int* pres_a,unsigned int* pres_b)
+{
+  // チェーンの初期化
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      ++idx;
+    }
+  }
+}
+```
+以下のように追加します。
+↓
+```c
+// キャリーチェーン
+void carryChain(unsigned const int size)
+{
+  // カウンターの初期化
+  COUNTER[0]=COUNTER[1]=COUNTER[2]=0;
+  //
+  // チェーンの初期化
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      pres_a[idx]=a;
+      pres_b[idx]=b;
+      ++idx;
+    }
+  }
+```
+
+
+こちらも同様ですが、carryChain_symmetry()で呼び出している箇所に
+carryChain_symmetry()の中身で置き換えます。
+
+02GCC_carryChain.c
++245
+```c
+        for(unsigned s=w;s<(size-2)*(size-1)-w;++s){
+          // B=sB;
+          memcpy(&B,&sB,sizeof(Board));
+          if(!placement(size,size-1-pres_a[s],0,&B)){ continue; }
+          if(!placement(size,size-1-pres_b[s],1,&B)){ continue; }
+          //
+          carryChain_symmetry(size,n,w,s,e,&B);// 対称解除法 
+```
+
+03GCC_carryChain.c
++232
+```c
+        for(unsigned s=w;s<(size-2)*(size-1)-w;++s){
+          // B=sB;
+          memcpy(&B,&sB,sizeof(Board));
+          if(!placement(size,size-1-pres_a[s],0,&B)){ continue; }
+          if(!placement(size,size-1-pres_b[s],1,&B)){ continue; }
+          //
+          // 対称解除法 
+          unsigned const int ww=(size-2)*(size-1)-1-w;
+          unsigned const int w2=(size-2)*(size-1)-1;
+          // # 対角線上の反転が小さいかどうか確認する
+          if((s==ww)&&(n<(w2-e))){ continue ; }
+```
+
+同様に、buildChain()の中身を carryChain()のbuildchain()呼び出し部分と置き換えます。
+
+要するに carryChain()へひとまとめにしたということになります。
+
+
+## 実行方法
+```
+bash-3.2$ gcc 03GCC_carryChain.c -o 03GCC && ./03GCC
+Usage: ./03GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.02
+12:        14200            1788            0.05
+13:        73712            9237            0.15
+14:       365596           45771            0.50
+15:      2279184          285095            2.10
+bash-3.2$
+```
+
+
+
+
+
+"Ｎクイーン問題（２４）第六章 C言語移植 その４"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## Global構造体の新設
+carryChain()のpres_a[]とpres_b[]は並列化した際、スレッドごとに値が変化するものではないため、グローバル変数へ。さらに構造体Globalを作成し、Global構造体へpres_a[]とpres_b[]を格納、Globalはスレッドごとに変化しない、またはスレッドから公平にアクセスできる変数を格納することとします。
+
+
+04GCC_carryChain.c
++110
+```c
+// 構造体
+typedef struct{
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+}Global; Global g;
+```
+
+COUNT2,COUNT4,COUNT8変数は復活しました（ｗ
+04GCC_carryChain.c
++104
+```c
+//カウンター配列
+uint64_t COUNTER[3];      
+unsigned int COUNT2=0;
+unsigned int COUNT4=1;
+unsigned int COUNT8=2;
+```
+
+ですので、以下の部分（４箇所あります）を修正します。
+04GCC_carryChain.c
++266,271,275,277
+```c
+            process(size,2,&B); continue ;
+            ↓
+            process(size,COUNT8,&B); continue ;
+```
+
+
+集計処理を別関数にしました。
+04GCC_carryChain.c
++143
+```c
+// 集計
+void calcChain()
+{
+  UNIQUE=COUNTER[COUNT2]+COUNTER[COUNT4]+COUNTER[COUNT8];
+  TOTAL=COUNTER[COUNT2]*2+COUNTER[COUNT4]*4+COUNTER[COUNT8]*8;
+}
+```
+
+Global g 構造体に移動した pres_a,pres_bは g.pres_a,g.pres_bでアクセスすることができます。
+
+04GCC_carryChain.c
++208
+```c
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
+    }
+  }
+```
+
+チェーンのビルド部分も同様となります。
+04GCC_carryChain.c
++228
+```c
+    if(!placement(size,0,g.pres_a[w],&B)){ continue; } 
+    if(!placement(size,1,g.pres_b[w],&B)){ continue; }
+```
+
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 04GCC_carryChain.c -o 04GCC && ./04GCC
+Usage: ./04GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.43
+15:      2279184          285095            1.95
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（２５）第六章 C言語移植 その５"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## グローバル構造体への追加
+sizeをglobalへ移動。あわせて、sizeは関数間のパラメータでのやりとりもなくし、g.sizeでアクセスできるようにします。
+
+05GCC_carryChain.c
++107
+```c
+// 構造体
+typedef struct{
+  unsigned int size;
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+}Global; Global g;
+```
+
+これにより、size にアクセスしていた部分を適宜書き換えます。
+
+Global g に格納したsize は g.size に変更してアクセスします。
+
+05GCC_carryChain.c
++181
+```c
+    if( (B->x[0]!=(uint64_t)-1) ){
+      if(( (dimx<B->x[0]||dimx>=g.size-B->x[0])
+        && (dimy==0 || dimy==g.size-1)
+      )){ return 0; } 
+      if ((  (dimx==g.size-1)&&((dimy<=B->x[0])||
+          dimy>=g.size-B->x[0]))){
+        return 0;
+      } 
+```
+
+main()のsizeをg.sizeに変更するとともに、パラメータで渡していた carryChain(size)をcarryChain()に置き換えて、sizeが必要であれば関数の中で g.size としてアクセスします。
+
+05GCC_carryChain.c
++305
+```c
+  for(unsigned int size=min;size<=targetN;++size){
+    TOTAL=UNIQUE=0; 
+    g.size=size;
+    st=clock();
+    if(cpu){
+      carryChain();
+    }else{
+      carryChain();
+    }
+    TimeFormat(clock()-st,t);
+    printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);
+  }
+```
+
+ついでと言ってはなんですが、TOTAL=UNIQUE;は初期化が不十分なので、TOTAL=UNIQUE=0;に修正します。
+
+
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 05GCC_carryChain.c -o 05GCC && ./05GCC
+Usage: ./05GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.43
+15:      2279184          285095            1.96
+^C
+bash-3.2$
+```
+
+
+
+
+
+"Ｎクイーン問題（２６）第六章 C言語移植 その６"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## グローバル変数を廃止しglobal構造体に移動
+COUNTERとTOTAL/UNIQUEを検討する
+COUNTERがGlobal g に格納することで良いのかは要検討
+
+以下のカウンター配列とカウンター変数をGlobal g 構造体に移動します。
+
+05GCC_carryChain.c
++102
+```c
+//カウンター配列
+uint64_t COUNTER[3];      
+unsigned int COUNT2=0;
+unsigned int COUNT4=1;
+unsigned int COUNT8=2;
+```
+
+06GCC_carryChain.c
++102
+```c
+// 構造体
+typedef struct{
+  unsigned int size;
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+  uint64_t COUNTER[3];      
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
+}Global; Global g;
+```
+
+これにより、COUNTER,COUNT2,COUNT4,COUNT8へのアクセスを以下のように変更します。
+
+06GCC_carryChain.c
++143
+```c
+// 集計
+void calcChain()
+{
+  UNIQUE= g.COUNTER[g.COUNT2]+
+          g.COUNTER[g.COUNT4]+
+          g.COUNTER[g.COUNT8];
+  TOTAL=  g.COUNTER[g.COUNT2]*2+
+          g.COUNTER[g.COUNT4]*4+
+          g.COUNTER[g.COUNT8]*8;
+}
+```
+
+同様に process()でもCOUNTERを使っているので、以下のように変更します。
+
+06GCC_carryChain.c
++171
+```c
+// solve()を呼び出して再帰を開始する
+void process(unsigned const int sym,Board* B)
+{
+  g.COUNTER[sym]+=solve(B->row>>2,
+  B->left>>4,((((B->down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(B->right>>4)<<(g.size-5));
+}
+```
+
+また、COUNTERの初期化をチェーンのビルドの冒頭で行います。
+
+06GCC_carryChain.c
++220
+```c
+  // カウンターの初期化
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+```
+
+
+```c
+process(COUNT8,&B) continue;
+```
+
+も以下のように変更します。
+06GCC_carryChain.c
++270
+```c
+          if(B.x[0]==0){ 
+            process(g.COUNT8,&B); continue ;
+          }
+          // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+          // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+          if(s==w){ if((n!=w)||(e!=w)){ continue; } 
+            process(g.COUNT2,&B); continue;
+          }
+          // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+          if((e==w)&&(n>=s)){ if(n>s){ continue; } 
+            process(g.COUNT4,&B); continue;
+          }
+          process(g.COUNT8,&B); continue;
+```
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 06GCC_carryChain.c -o 06GCC && ./06GCC
+Usage: ./06GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.43
+15:      2279184          285095            1.97
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（２７）第六章 C言語移植 その７"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## pthread 処理を行う関数を抜き出す準備
+チェーンの初期化ブロックをinitChain()として関数にします。
+carryChain_symmetry()を抜き出して作成
+
+
+チェーンの初期化ブロックをinitChain()として関数にします。
+07GCC_carryChain.c
++229
+```c
+// チェーンの初期化
+void initChain()
+{
+  // チェーンの初期化
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)g.size;++a){
+    for(unsigned int b=0;b<(unsigned)g.size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
+    }
+  }
+}
+```
+
+これにより、carryChain()の冒頭で、initChain()を呼び出します。
+
+07GCC_carryChain.c
++229
+```c
+// キャリーチェーン
+void carryChain()
+{
+  //チェーンの初期化
+  initChain();
+```
+
+
+また、carryChain()の対称解除部分をcarryChain_symmetry()として抜き出して関数を独立させます。
+
+07GCC_carryChain.c
++202
+```c
+//対称解除法
+void carryChain_symmetry(unsigned const int n,unsigned const int e,unsigned const int s,unsigned const int w,Board* B)
+{
+  // 対称解除法 
+  unsigned const int ww=(g.size-2)*(g.size-1)-1-w;
+  unsigned const int w2=(g.size-2)*(g.size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
+  if((s==ww)&&(n<(w2-e))){ return ; }
+```
+
+これにより、carrychain()関数の対称解除呼び出し部分を以下のようにします。
+
+07GCC_carrychain.c
++284
+```c
+        for(unsigned s=w;s<(g.size-2)*(g.size-1)-w;++s){
+          // B=sB;
+          memcpy(&B,&sB,sizeof(Board));
+          if(!placement(g.size-1-g.pres_a[s],0,&B)){ continue; }
+          if(!placement(g.size-1-g.pres_b[s],1,&B)){ continue; }
+          // 対称解除法
+          carryChain_symmetry(n,e,s,w,&B);
+```
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 07GCC_carryChain.c -o 07GCC && ./07GCC
+Usage: ./07GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.43
+15:      2279184          285095            1.96
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（２８）第六章 C言語移植 その８"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## Local構造体 lを作成
+Local構造体 lを作成。
+このlは、スレッドごとに存在する。
+
+内包される変数は以下のとおりです。
+  B
+  nB
+  eB
+  sB
+  wB
+  n,e,s,w
+
+08GCC_carryChain.c
++124
+```c
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+}Local;
+```
+
+この Local構造体へのアクセスは buildChain()の冒頭で宣言されます。
++63 行目
+
+アクセスするには +73 行目のように行います。
+
+08GCC_carryChain.c
++246
+```c
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+
+  // Board B;
+  // カウンターの初期化
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+  // Board の初期化 nB,eB,sB,wB;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+
+```
+
+こういった事により carryChain()関数は以下のようになり、手続きがわかりやすくなりました。
+
+08GCC_carryChain.c
++311
+```c
+// キャリーチェーン
+void carryChain()
+{
+  listChain();  //チェーンのリストを作成
+  buildChain(); // チェーンのビルド
+  calcChain();  // 集計
+}
+```
+
+
+## 実行結果
+```
+bash-3.2$ gcc 08GCC_carryChain.c -o 08GCC && ./08GCC
+Usage: ./08GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.02
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.44
+15:      2279184          285095            1.98
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（２９）第六章 C言語移植 その９"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## carryChain_symmetry()の変数をLocal構造体に統合
+carryChain_symmetry()に n,e,s,w,Bをわたしていたが、Local* l を渡すようにする
+
+
+buildChain()内の carryChain_symmetry()の呼び出し部分は以下のように変更となります。
+
+08GCC_carryChain.c
++291
+```c
+          // 対称解除法
+          carryChain_symmetry(l->n,l->e,l->s,l->w,&l->B);
+```
+
+↓
+09GCC_carryChain.c
++282
+```c
+          // 対称解除法
+          // carryChain_symmetry(l->n,l->e,l->s,l->w,&l->B);
+          carryChain_symmetry(&l);
+```
+
+これまで、複数のパラメータをわたしていましたが、Local構造体に変数をまとめたことにより、渡すパラメータは一つとなりました。
+
+これは、pthread並列処理には絶対に必要なことなのです。
+pthread並列処理の実行にはパラメータを一つしか渡せないという制限があるので、スレッドにとって必要な変数は、構造体一つに上手にまとめて上げる必要があるのです。
+
+よって、受け取り側もシンプルになります。
+
+08GCC_carryChain.c
++219
+```c
+//対称解除法
+void carryChain_symmetry(unsigned const int n,unsigned const int e,unsigned const int s,unsigned const int w,Board* B)
+{
+```
+
+↓
+
+09GCC_carryChain.c
++209
+```c
+//対称解除法
+void carryChain_symmetry(void* args)
+{
+  Local *l=(Local *)args;
+```
+
+渡されたLocal構造体は、以下一行で `l->` で構造体の中の変数にアクセスできるようになります。
+
+```c
+  Local *l=(Local *)args;
+
+  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
+```
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 09GCC_carryChain.c -o 09GCC && ./09GCC
+Usage: ./09GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.02
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.44
+15:      2279184          285095            1.99
+bash-3.2$
+```
+
+
+
+
+
+
+
+"Ｎクイーン問題（３０）第六章 C言語移植 その１０"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## 前回に引き続き、&Bをわたしていた箇所を &lに統一
+`uint64_t` の`dimx`,`dimy` をLocal l に格納し`&l`に統合します。
+これにより影響を受ける関数はplacement()
+今回の作業は placement()の呼び出し部分で、２回に分けて作業します。
+
+10GCC_carryChain.c
++119
+```c
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+  uint64_t dimx;
+  uint64_t dimy;
+}Local;
+```
+
+
+上記の構造体の変更により、placement()の内容に変更が出てきます。
+２回に分ける作業の１回目に当たる今回の作業は、placement()の中身ではなく、placement()を呼び出す部分の変更にとどめます。
+
+09GCC_carryChain.c
++255
+```c
+    if(!placement(0,g.pres_a[l->w],&l->B)){ continue; } 
+    if(!placement(1,g.pres_b[l->w],&l->B)){ continue; }
+```
+
+↓
+１つ目のパラメータと２つ目のパラメータの値をそれぞれ、`l->dimx`,`l->dimy`に代入して placement()に渡します。
+
+10GCC_carryChain.c
++262
+```c
+    // if(!placement(0,g.pres_a[l->w],&l->B)){ continue; } 
+    // l->dimx=0; 
+    // l->dimy=g.pres_a[l->w]; 
+    if(!placement(l->dimx=0,l->dimy=g.pres_a[l->w],&l->B)){ continue; } 
+    // if(!placement(1,g.pres_b[l->w],&l->B)){ continue; }
+    // l->dimx=1;
+    // l->dimy=g.pres_b[l->w]; 
+    if(!placement(l->dimx=1,l->dimy=g.pres_b[l->w],&l->B)){ continue; }
+```
+
+次回は、placement()の修正に入ります。
+
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 10GCC_carryChain.c -o 10GCC && ./10GCC
+Usage: ./10GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.12
+14:       365596           45771            0.45
+15:      2279184          285095            2.01
+bash-3.2$
+```
+
+
+
+
+
+"Ｎクイーン問題（３１）第六章 C言語移植 その１１"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## 前回に引き続き、&Bをわたしていた箇所を &lに統一
+`uint64_t` の`dimx`,`dimy` をLocal l に格納し`&l`に統合します。
+これにより影響を受ける関数はplacement()
+今回の作業は placement()の受け取り部分で、２回に分けて作業します。
+
+`dimx`と`dimy`をLocal l 構造体へ格納したことで、
+placement()のパラメータを変更します。
+
+10GCC_carryChain.c
++188
+```c
+// クイーンの効きをチェック
+bool placement(uint64_t dimx,uint64_t dimy,Board* B)
+{
+```
+
+↓
+
+11GCC_carryChain.c
++188
+```c
+// クイーンの効きをチェック
+bool placement(void* args)
+{
+```
+
+格段とシンプルになりました。
+同時に placement()の呼び出し部分も変更します。
+
+10GCC_carryChain.
++262
+```c
+    // l->dimx=0; 
+    // l->dimy=g.pres_a[l->w]; 
+    // if(!placement(0,g.pres_a[l->w],&l->B)){ continue; } 
+    if(!placement(l->dimx=0,l->dimy=g.pres_a[l->w],&l->B)){ continue; } 
+    // l->dimx=1;
+    // l->dimy=g.pres_b[l->w]; 
+    // if(!placement(1,g.pres_b[l->w],&l->B)){ continue; }
+    if(!placement(l->dimx=1,l->dimy=g.pres_b[l->w],&l->B)){ continue; }
+```
+
+↓
+
+11GCC_carryChain.c
++260
+```c
+    l->dimx=0; 
+    l->dimy=g.pres_a[l->w]; 
+    if(!placement(&l)){ continue; } 
+    l->dimx=1;
+    l->dimy=g.pres_b[l->w]; 
+    if(!placement(&l)){ continue; } 
+```
+
+palcement()にわたすパラメータが`&l`一つになりました。
+これが重要でやりたかったことなのです。
+
+
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 11GCC_carryChain.c -o 11GCC && ./11GCC
+Usage: ./11GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.14
+14:       365596           45771            0.48
+15:      2279184          285095            2.08
+bash-3.2$
+```
+
+
+
+
+
+
+
+"Ｎクイーン問題（３２）第六章 C言語移植 その１２"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## 前回に引き続き、&Bをわたしていた箇所を &lに統一
+他にもポインタ渡しとなっている down,left,rightなども Local l に格納し、&lに統合する
+今回の作業は process()をなくしてinlineにする
+
+
+まず、こちらの関数をなくして、process()の内容をprocess()を呼び出している箇所に結合して`inline`(といいます）とします。
+
+
+11GCC_carryChain.c
++182
+``` C:
+// solve()を呼び出して再帰を開始する
+void process(unsigned const int sym,Board* B)
+{
+  g.COUNTER[sym]+=solve(B->row>>2,
+  B->left>>4,((((B->down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(B->right>>4)<<(g.size-5));
+}
+```
+
+具体的には３箇所あります。その１箇所を示します。
+以下の記述を
+
+11GCC_carryChain.c
++231
+``` C:
+  if(l->B.x[0]==0){ 
+    process(g.COUNT8,&l->B); return ;
+  }
+```
+
+このように書き換えます。
+12GCC_carryChain.c
++226
+``` C:
+  if(l->B.x[0]==0){ 
+    g.COUNTER[g.COUNT8]+=solve(l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return ;
+  }
+```
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 12GCC_carryChain.c -o 12GCC && ./12GCC
+Usage: ./12GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.04
+13:        73712            9237            0.14
+14:       365596           45771            0.49
+15:      2279184          285095            2.10
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（３３）第六章 C言語移植 その１３"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## 並列処理前準備
+今回の作業は並列処理部分として、buildChain()の一番外側のfor(w)ブロックを抜き出し、
+run()としてpthreadに備える
+
+
+まずは、buildChain()のスレッドを起動したい箇所を抜き出して thread_run()に移動します。
+とはいえ、いきなり色々やると動かなくなっても困るので、まずはちゃんと動くようにステップを踏んで進めたいと思います。
+
+１．buildChain()の移動したい箇所をコメントアウトします。
+    buildChain()関数の末尾に以下の一行を追記します。
+```c
+  thread_run(&l);
+```
+２．thread_run()関数を作成します。
+３．buildchain()でコメントアウトした箇所をthread_run()に入れます。
+
+では、まず１からやります。
+
+13GCC_carryChain.c
++295
+```c
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+
+  // カウンターの初期化
+  g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+  g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  // Board の初期化 nB,eB,sB,wB;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  // Board x[]の初期化
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+
+  //
+  // 以下を thread_run()へ移動
+  //
+  // //１ 上２行に置く
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  // for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  //   memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  //   l->dimx=0; l->dimy=g.pres_a[l->w]; 
+  //   if(!placement(&l)){ continue; } 
+  //   l->dimx=1; l->dimy=g.pres_b[l->w]; 
+  //   if(!placement(&l)){ continue; } 
+    // //２ 左２行に置く
+    // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+    // for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+    //   memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    //   l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
+    //   if(!placement(&l)){ continue; } 
+    //   l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
+    //   if(!placement(&l)){ continue; } 
+      // // ３ 下２行に置く
+      // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+      // for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+      //   memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      //   l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
+      //   if(!placement(&l)){ continue; } 
+      //   l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
+      //   if(!placement(&l)){ continue; } 
+        // // ４ 右２列に置く
+        // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+        // for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+        //   memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        //   l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
+        //   if(!placement(&l)){ continue; } 
+        //   l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
+        //   if(!placement(&l)){ continue; } 
+        //   // 対称解除法
+        //   carryChain_symmetry(&l);
+        // } //w
+      // } //e
+    // } //n
+  // } //w
+  thread_run(&l);
+}
+```
+
+buildChain()のコメントアウトした一番下 +349 に `thread_run()`を呼び出しを追加します。
+
+13GCC_carryChain.c
++349
+```c
+  thread_run(&l);
+```
+
+では２，`thread_run()`を作成します。
+13GCC_carrychain.c
++244
+```c
+// pthread run()
+void thread_run(void* args)
+{
+  Local *l=(Local *)args;
+
+}
+```
+
+最後に、buildChain()でコメントアウトした部分を貼り付けます。
+
+13GCC_carryChain.c
++244
+```c
+// pthread run()
+void thread_run(void* args)
+{
+  Local *l=(Local *)args;
+
+  // // カウンターの初期化
+  // g.COUNT2=0; g.COUNT4=1; g.COUNT8=2;
+  // g.COUNTER[g.COUNT2]=g.COUNTER[g.COUNT4]=g.COUNTER[g.COUNT8]=0;
+  // // Board の初期化 nB,eB,sB,wB;
+  // l->B.row=l->B.down=l->B.left=l->B.right=0;
+  // // Board x[]の初期化
+  // for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  //１ 上２行に置く
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+    l->dimx=0; l->dimy=g.pres_a[l->w]; 
+    if(!placement(l)){ continue; } 
+    l->dimx=1; l->dimy=g.pres_b[l->w]; 
+    if(!placement(l)){ continue; } 
+    //２ 左２行に置く
+    memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+    for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+      memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+      l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
+      if(!placement(l)){ continue; } 
+      l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
+      if(!placement(l)){ continue; } 
+      // ３ 下２行に置く
+      memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+      for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+        memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+        l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
+        if(!placement(l)){ continue; } 
+        l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
+        if(!placement(l)){ continue; } 
+        // ４ 右２列に置く
+        memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+        for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+          memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+          l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
+          if(!placement(l)){ continue; } 
+          l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
+          if(!placement(l)){ continue; } 
+          // 対称解除法
+          carryChain_symmetry(l);
+        } //w
+      } //e
+    } //n
+  } //w
+}
+```
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 13GCC_carryChain.c -o 13GCC && ./13GCC
+Usage: ./13GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.05
+13:        73712            9237            0.14
+14:       365596           45771            0.48
+15:      2279184          285095            2.09
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（３４）第六章 C言語移植 その１４"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+
+## 並列処理前準備編２
+buildChain()の一番外側のfor(w)ブロックを抜き出し、
+run()としてpthreadに備えた内容を for(w)の内側のみをthread_run()に残して稼働を確認
+
+まず、thread_run()の以下３行をコメントアウトします。
+forの閉じタグも忘れずにコメントアウトしてください。
+
+14GCC_carryChain.c
++257
+```c
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  // for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  :
+  :
+  // } //w
+```
+
+
+次に、buildChain()の以下の２行をコメント解除します。
+forの閉じタグのコメントアウトも忘れずに解除してください。
+14GCC_carryChain.c
++313
+```c
+  memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+  :
+  :
+    thread_run(&l);
+  } //w
+```
+
+
+
+
+## 実行結果
+```
+bash-3.2$ gcc 14GCC_carryChain.c -o 14GCC && ./14GCC
+Usage: ./14GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.05
+13:        73712            9237            0.14
+14:       365596           45771            0.48
+15:      2279184          285095            2.08
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（３５）第六章 C言語移植 その１５ pthread実装直前版完成"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## Local構造体へ統合
+スレッドに対応すべくCOUNTERをLocal構造体に移動
+よってcalcChain()を廃止してbuildChain()に統合
+不安定と言われているmemcpyの廃止
+
+参考
+http://tsurujiro.blog.fc2.com/blog-entry-8.html
+https://www.kushiro-ct.ac.jp/yanagawa/ex-2017/1-tg/03/
+
+
+まずは、COUNTER,COUNT2,COUNT4,COUNT8をLocal構造体へ移動します。
+
+15GCC_carryChain.c
++102
+```c
+// 構造体
+typedef struct{
+  unsigned int size;
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+  // uint64_t COUNTER[3];      
+  // //カウンター配列
+  // unsigned int COUNT2;
+  // unsigned int COUNT4;
+  // unsigned int COUNT8;
+}Global; Global g;
+// 構造体
+typedef struct{
+  uint64_t row;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  uint64_t x[MAX];
+}Board ;
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+  uint64_t dimx;
+  uint64_t dimy;
+  uint64_t COUNTER[3];      
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
+}Local;
+```
+
+次に、集計関数 calcChain()を廃止し、buildChain()の末尾に挿入し、inlineにします。
+
+15GCC_carryChain.c
++322
+```c
+  /**
+   * 集計
+   */
+  UNIQUE= l->COUNTER[l->COUNT2]+
+          l->COUNTER[l->COUNT4]+
+          l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+
+          l->COUNTER[l->COUNT4]*4+
+          l->COUNTER[l->COUNT8]*8;
+```
+
+さらに、carryChain()で呼び出していた caclChain()をコメントアウトします。
+
+15GCC_carryChain.c
++345
+```c
+// キャリーチェーン
+void carryChain()
+{
+  listChain();  //チェーンのリストを作成
+  buildChain(); // チェーンのビルド
+  // calcChain(&l);  // 集計
+}
+```
+
+カウンターの扱いが Local構造体に変わったことで、以下の部分も変更となります。
+具体的には、g.COUNT2=0;は l->COUNT2=0; に変更となります。
+
+15GCC_carryChain.c
++309
+```c
+  // カウンターの初期化
+  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
+```
+
+さらに、これまで memcpy()で行っていた構造体のコピーの方法を変更します。memcpy()はアドレスのコピーなので、スレッドでの利用は不安定です。
+
+15GCC_carryChain.c
++317
+```c
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  l->wB=l->B;
+```
+
+memcpy()は何箇所かで使っていますので、普通に代入でコピーすることにします。Ｃ言語での構造体のコピーは `=`で簡単に代入できます。
+
+
+
+
+## 実行結果
+```
+実行結果
+bash-3.2$ gcc 15GCC_carryChain.c -o 15GCC && ./15GCC
+Usage: ./15GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               1            0.00
+ 5:           10               2            0.00
+ 6:            4               1            0.00
+ 7:           40               6            0.00
+ 8:           92              12            0.00
+ 9:          352              46            0.00
+10:          724              92            0.00
+11:         2680             341            0.01
+12:        14200            1788            0.05
+13:        73712            9237            0.14
+14:       365596           45771            0.47
+15:      2279184          285095            2.07
+bash-3.2$
+```
+
+
+
+
+
+
+"Ｎクイーン問題（３６）第六章 C言語移植 その１６ pthreadの実装"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+## pthreadの実装
+THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
+
+スレッドオフだとちゃんと解が出る
+オンだと出ない！
+
+
+ここまできたら完成間近です。
+このページのソースは完成直前であることから、スレッドで実行してもうまく動きません。
+
+以下のフラグ THREAD=0 にしておけばスレッドを実行しない通常の処理となります。もちろんこの場合はちゃんと動きます。
+
+16GCC_carryChain.c
++286
+```c
+/**
+ * スレッドするか 1:する 0:しない
+ */
+// bool THREAD=0; 
+bool THREAD=1; 
+```
+THREAD=1; にした場合は、以下のようなエラーとなります。
+
+実行結果
+```
+ 実行結果
+bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC && ./16GCC
+Usage: ./16GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+Segmentation fault: 11
+bash-3.2$
+```
+
+## pthreadの実装
+
+pthreadの実装は、いくつかの手順を踏む必要があります。
+まず、pthreadライブラリを追加して読み込みます。
+
+16GCC_carryChain.c
++87
+```c
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <sys/time.h>
+#include <pthread.h>
+#define MAX 27
+```
+
+実行時に -pthreadを追加する必要があります。
+```
+bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC -pthread && ./16GCC
+```
+
+pthreadへの実装が正しいかどうかを常に比較して実行したいので、THREADフラグをつくり、THREADが 1 であれば pthreadの処理をし、THREADが 0であれば、pthreadの処理を行わないようにすることで、pthreadに係る処理以外に問題がないことを確認できるようにします。
+
+こうした方法は、難易度の高い処理を実装する上で、絶対に必要なことです。
+
+16GCC_carryChain.c
++287
+```c
+/**
+ * スレッドするか 1:する 0:しない
+ */
+// bool THREAD=0; 
+bool THREAD=1; 
+```
+
+16GCC_carryChain.c
++308
+```c
+  if(THREAD){
+    : //スレッド処理を行う
+  }else{
+    : //スレッド処理を行わない
+  }
+```
+
+では、pthreadについて簡単に説明します。
+
+16GCC_carryChain.c
++306
+```c
+  pthread_t pt[(g.size/2)*(g.size-3)+1];
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    if(THREAD){
+      int iFbRet;
+      iFbRet=pthread_create(&pt[l->w],NULL,&thread_run,&l[l->w]);
+      if(iFbRet>0){
+        printf("[mainThread] pthread_create #%d: %d\n", l[l->w].w, iFbRet);
+      }
+    }else{
+      thread_run(&l);
+    }
+  } 
+  /**
+   * スレッド版 joinする
+   */
+  if(THREAD){
+    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+      pthread_join(pt[l->w],NULL);
+    } 
+  }else{
+    //何もしない
+  }
+```
+
+以下の行で pthreadのスレッドを作成します。
+スレッドの数はＮの数によって変化します。
+pt配列を必要な数だけ生成します。
+
+```c
+  pthread_t pt[(g.size/2)*(g.size-3)+1];
+```
+
+以下の行では、スレッドを生成している箇所です。
+forループの w を添字にした pt配列を次々と生成します。
+このときに、Local構造体を最後のパラメータで渡しています。
+３番めのパラメータは、スレッドを実行する関数です。
+これまでに作成した thread_run()を呼び出しています。
+
+```c
+      int iFbRet;
+      iFbRet=pthread_create(&pt[l->w],NULL,&thread_run,&l[l->w]);
+      if(iFbRet>0){
+        printf("[mainThread] pthread_create #%d: %d\n", l[l->w].w, iFbRet);
+```
+
+pthreadに対応するために、大切なことがもう一点。
+スレッド関数 thread_run()の関数をポインタにする必要があり、さらに、`return 0;`を返す必要があります。
+
+16GCC_carryChain.c
++234
+```c
+// pthread run()
+void* thread_run(void* args)
+{
+  Local *l=(Local *)args;
+```
+
+16GCC_carryChain.c
++281
+```c
+      } //w
+    } //e
+  } //n
+  return 0;
+}
+```
+
+そして、スレッドがたくさん生成される一つ一つのスレッドの処理が終了した場合、勝手に何処かに行ってしまわないように、各スレッドの終了を待機させ、すべてのスレッドの終了をじっと待つようにします。
+この処理を `join()` するといいます。
+
+16GCC_carryChain.c
++318
+```c
+  /**
+   * スレッド版 joinする
+   */
+  if(THREAD){
+    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+      pthread_join(pt[l->w],NULL);
+    } 
+  }else{
+    //何もしない
+  }
+```
+
+すべてのスレッドの終了を待ち、すべてのスレッドの処理が完了したらいよいよ解の集計を行います。
+
+16GCC_carryChain.c
++328
+```c
+  /**
+   * 集計
+   */
+  if(THREAD){
+    // スレッド版の集計
+    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+      // 集計
+    } 
+  }else{
+    UNIQUE= l->COUNTER[l->COUNT2]+
+            l->COUNTER[l->COUNT4]+
+            l->COUNTER[l->COUNT8];
+    TOTAL=  l->COUNTER[l->COUNT2]*2+
+            l->COUNTER[l->COUNT4]*4+
+            l->COUNTER[l->COUNT8]*8;
+  }
+```
+
+今回のソースでは、 THREAD=0;（スレッドなし）ではきちんと解が出ますが、THREAD=1;（スレッドあり）では解が出ずエラーで終了します。
+
+次回は、このエラーを修正し、pthread並列処理が完了します。
+お楽しみに！
+
+
+
+
+
+
+## 実行結果
++289行目、+290行目にTHREADフラグがあります。
+この場合は、pthreadで実行します（今は動きません）
+```c
+// bool THREAD=0; 
+bool THREAD=1; 
+```
+
+以下の場合は、これまで通りスレッド無しでの実行となります。
+```c
+bool THREAD=0; 
+// bool THREAD=1; 
+```
+
+```
+bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC && ./16GCC
+Usage: ./16GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        hh:mm:ss.ms
+Segmentation fault: 11
+bash-3.2$
+```
+
+
+さて、いよいよ次は完成です。お楽しみに！
+
+
+
+
+
+
+"Ｎクイーン問題（３７）第六章 C言語移植 その１７ pthread並列処理完成"
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+エイト・クイーンのプログラムアーカイブ 
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+
+## pthread実装の完成
+THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
+構造体初期化メソッドの実装
+
+
+## THREADフラグの移動
+変数はソースの上の方にあったほうが良いので、移動します。
+
++199
+```c
+/**
+ * pthreadの実行
+ */
+// bool THREAD=0; // スレッドしない
+bool THREAD=1;  // スレッドする
+```
+
+## buildChain バグの修正１
+まず、バグを直します（ｗ）
+forの第２パラメータが`<`ではなく`<=`でした。
+ですので、想定していた配列が一つ少なかったのがエラーの原因です。
+配列の初期化で、１を加えて配列を一つ増やします。
+
+
+以下の２箇所
+17GCC_carryChain.c
++386
+```c
+  Local l[(g.size/2)*(g.size-3)];
+  ↓
+  Local l[(g.size/2)*(g.size-3)+1];
+```
+
++387
+```c
+  pthread_t pt[(g.size/2)*(g.size-3)];
+  ↓
+  pthread_t pt[(g.size/2)*(g.size-3)+1];
+```
+
+
+## buildChain バグの修正２
+さらにforループにもバグが（ｗ）
+
+バグとなりやすい forループの第２パラメータの `<=`を普通に `<` に変更し、末尾に`+1`とすることで処理のループ数を一つ増やします。
+
+この処理は２箇所、join部分に１箇所あります。
+
+17GCC_carryChain.c
++389
+```c
+    for(unsigned int w=0;w<=(unsigned)(g.size/2)*(g.size-3);++w){
+      ↓
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+```
+
++398
+```c
+  for(unsigned int w=0;w<=(unsigned)(g.size/2)*(g.size-3);++w){
+      ↓
+  for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+```
+
+## join 部分の修正
++415
+```c
+    for(unsigned int w=0;w<=(unsigned)(g.size/2)*(g.size-3);++w){
+      ↓
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+```
+
+
+## 集計部分の修正
+こちらはバグではなく、スレッド用の集計処理を追加します。
+forの第２パラメータの末尾に`+1`するのを忘れずに。
+
+17GCC_carryChain.c
++419
+```c
+  /**
+   * 集計
+   */
+  if(THREAD){
+    for(unsigned int w=0;w<(unsigned)(g.size/2)*(g.size-3)+1;++w){
+      UNIQUE+=l[w].COUNTER[l[w].COUNT2]+
+              l[w].COUNTER[l[w].COUNT4]+
+              l[w].COUNTER[l[w].COUNT8];
+      TOTAL+= l[w].COUNTER[l[w].COUNT2]*2+
+              l[w].COUNTER[l[w].COUNT4]*4+
+              l[w].COUNTER[l[w].COUNT8]*8;
+    } 
+  }else{
+    UNIQUE= l->COUNTER[l->COUNT2]+
+            l->COUNTER[l->COUNT4]+
+            l->COUNTER[l->COUNT8];
+    TOTAL=  l->COUNTER[l->COUNT2]*2+
+            l->COUNTER[l->COUNT4]*4+
+            l->COUNTER[l->COUNT8]*8;
+  }
+```
+
+## Local構造体の初期化関数の作成
+Local構造体の初期化ををbuildChain()で行ってきましたが、わかりやすく関数にして独立させます。
+初期化させたい関数を `&l` で渡して、 initLocal()で `return` するようにします。
+
+この方法はとってもナイスな処理です。
+
+
+17GCC_carryChain.c
++394
+```c
+    initLocal(&l); //初期化
+```
+
++365
+```c
+// 構造体の初期化
+void initLocal(void* args)
+{
+  Local *l=(Local *)args;
+  l->n=l->e=l->s=l->w=0;
+  l->dimx=l->dimy=0;
+  l->COUNT2=0; 
+  l->COUNT4=1; 
+  l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=
+  l->COUNTER[l->COUNT4]=
+  l->COUNTER[l->COUNT8]=0;
+  l->B.row=
+  l->B.down=
+  l->B.left=
+  l->B.right=0;
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+}
+```
+
+これであれば、 THREAD=0;（スレッドなし）でも、THREAD=1;（スレッドあり）でも同様に動きます。（ここがナイスなところ）
+
+
+## 計測方法の修正
+これまでの計測方法では、プロセスの合計で計測されます。
+pthreadはマルチプロセスで動くため、各プロセスの処理時間の合計が出力されても困ります。
+純粋に、プロセスの計測結果の合計ではなく、計測時間の開始と終了の差を出力するように変更します。
+
+実行段階から実行終了までの計測は、 gettimeofday(&t1, NULL);を使います。
+
++482
+```c
+  // pthread用計測
+  struct timeval t0;
+  struct timeval t1;
+  :
+  :
+    gettimeofday(&t0, NULL);
+    if(cpu){ carryChain(); }
+    else{ carryChain(); }
+    // pthread用計測
+    // TimeFormat(clock()-st,t);
+    gettimeofday(&t1, NULL);
+```
+
+動きました！
+```
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC -pthread && ./17GCC
+Usage: ./17GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.45
+16:     14772512      1847425        00:00:00:02.45
+bash-3.2$
+```
+
+実行パラメータを以下のように変更することでもっと速くなります。
+```
+bash-3.2$ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o 17GCC && ./17GCC
+Usage: ./17GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.00
+13:        73712         9237        00:00:00:00.02
+14:       365596        45771        00:00:00:00.06
+15:      2279184       285095        00:00:00:00.26
+16:     14772512      1847425        00:00:00:01.40
+bash-3.2$
+```
+
+
+
+## 実行結果
+
+普通の実行オプション
+```
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+Usage: ./17GCC [-c|-g]
+  -c: CPU Without recursion
+  -r: CPUR Recursion
+
+
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.41
+16:     14772512      1847425        00:00:00:02.29
+17:     95815104     11979381        00:00:00:18.08
+18:    666090624     83274576        00:00:03:40.04
+19:   4968057848    621051686        00:00:27:37.22
+20:  39029188884   4878995797        00:03:39:23.79
+bash-3.2$
+```
+
+より最適で高速なコンパイルオプション
+```
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o nq27 && ./nq27 -r
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.00
+13:        73712         9237        00:00:00:00.01
+14:       365596        45771        00:00:00:00.06
+15:      2279184       285095        00:00:00:00.25
+16:     14772512      1847425        00:00:00:01.42
+17:     95815104     11979381        00:00:00:10.25
+18:    666090624     83274576        00:00:01:17.58
+19:   4968057848    621051686        00:00:09:19.01
+20:  39029188884   4878995797        00:01:12:06.58
+bash-3.2$
+```
+
+
+世界一のドイツ・ドレスデン大学はＮ２７を解決しました。
+数年前に開発したエイトクイーンの処理を、１ヶ月くらい実行したままにしておいたらＮ２４を解決していました。
+今回のキャリーチェーンは、１７まではお世辞にも速くはありませんが、Ｎが大きくなるに連れて、Bitによるメモリの省力化、計算の効率化の効果が出ているのではないかと思います。
+
+行けそうな気がしてきました。
+
+次は、ＧＰＵ（ＣＵＤＡ）プログラミングでもっと速くさせたいと思います。
+
+お楽しみに！
+
+
+
