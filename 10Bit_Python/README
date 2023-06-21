@@ -7893,4 +7893,1802 @@ main()
 
 
 
+---
+title: "Ｎクイーン問題（４７）第七章 クラス Python編"
+date: 2023-06-21T11:09:15+09:00
+draft: false
+authors: suzuki
+image: chess.jpg
+categories:
+  - programming
+tags:
+  - N-Queens
+  - エイト・クイーン
+  - シェルスクリプト
+  - Bash
+  - アルゴリズム
+  - 鈴木維一郎
+---
+
+![](chess.jpg)
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+[エイト・クイーンのソース置き場 BashもJavaもPythonも！](https://github.com/suzukiiichiro/N-Queens)
+
+
+## クラス
+これまで配列（リスト）を使って表現してきたわけですが、並列処理を視野に入れて、オブジェクティブ（オブジェクト指向）に修正していきたいと思います。
+
+とはいえ、実際はクラスを導入するとＮクイーン問題における処理速度は低下します。しないという人がいたらその人はただの頑固者です。
+
+初心者にとって見れば「クラス」「継承」を使って、マルチプロセスを実装したほうがわかりやすいのです。
+
+クラスを理解できて
+↓
+シングルスレッドを実装できて
+↓
+マルチスレッドを実装できて（継承とロックが理解できた）
+↓
+マルチプロセスが実装できて（並列処理の同期が理解できた）
+
+こうした順番を経て最終的に、
+
+クラスを一つでも廃止、
+グローバル変数を極力廃止してローカル変数、パラメータ渡しに変更
+配列・オブジェクトの扱い方を工夫
+アルゴリズムの見直す
+
+というステージに上がるわけです。
+いずれにしても、今のところは「クラス」で行きましょう。
+
+## クラスとはこういうもの
+クラスはこういうものです。
+クラスがどういうものか？
+という人は、別のサイトに行って調べたほうが良いです。
+
+```python
+class Board:
+  def __init__(self,size):
+    self.size=size
+    self.row=0
+    self.left=0
+    self.down=0
+    self.right=0
+    self.X=[-1 for i in range(size)]
+```
+
+## クラスを作成する
+
+Javaで言うところのインスタンスを作成するには以下のようにします。
+以下は、BoardクラスをBという名前でインスタンスを作成しました。
+```python
+B=Board(self.size)
+```
+
+## クラスの変数にアクセスする
+
+こんな感じです。
+```python
+print( self.B.row )
+```
+
+## ソースコード
+```python
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+import numpy as np
+import copy
+from datetime import datetime
+"""
+クラス対応版 Ｎクイーン
+
+class Boardを作成
+グローバル変数を廃止
+クラス内のグローバル変数も極力パラメータ渡しにした。
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+# 実行 
+$ python <filename.py>
+
+# 実行結果
+クラスの導入
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.044
+ 8:           92           12         0:00:00.204
+ 9:          352           46         0:00:00.885
+10:          724           92         0:00:03.450
+11:         2680          341         0:00:11.908
+12:        14200         1788         0:00:36.707
+"""
+#
+# Board ボードクラス
+class Board:
+  def __init__(self,size):
+    self.size=size
+    self.row=0
+    self.left=0
+    self.down=0
+    self.right=0
+    self.X=[-1 for i in range(size)]
+#
+# nQueens メインスレッドクラス
+class nQueens(): # pylint:disable=RO902
+  #
+  # 初期化
+  def __init__(self,size): # pylint:disable=R0913
+    super(nQueens,self).__init__()
+    self.size=size
+    self.COUNTER=[0]*3
+    self.carryChain()
+  #
+  # ボード外側２列を除く内側のクイーン配置処理
+  def solve(self,row,left,down,right):
+    total=0
+    if not down+1:
+      return 1
+    while row&1:
+      row>>=1
+      left<<=1
+      right>>=1
+    row>>=1           # １行下に移動する
+    bitmap=~(left|down|right)
+    while bitmap!=0:
+      bit=-bitmap&bitmap
+      total+=self.solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
+      bitmap^=bit
+    return total
+  #
+  # キャリーチェーン　solve()を呼び出して再起を開始する
+  def process(self,B,sym):
+    self.COUNTER[sym]+=self.solve(B.row>>2,B.left>>4,((((B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(B.right>>4)<<(self.size-5))
+  #
+  # キャリーチェーン　対象解除
+  def carryChainSymmetry(self,B,n,w,s,e):
+    # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+    ww=(self.size-2)*(self.size-1)-1-w
+    w2=(self.size-2)*(self.size-1)-1
+    # 対角線上の反転が小さいかどうか確認する
+    if s==ww and n<(w2-e): return 
+    # 垂直方向の中心に対する反転が小さいかを確認
+    if e==ww and n>(w2-n): return
+    # 斜め下方向への反転が小さいかをチェックする
+    if n==ww and e>(w2-s): return
+    # 【枝刈り】１行目が角の場合
+    # １．回転対称チェックせずにCOUNT8にする
+    if not B.X[0]:
+      self.process(B,2) # COUNT8
+      return
+    # n,e,s==w の場合は最小値を確認する。
+    # : '右回転で同じ場合は、
+    # w=n=e=sでなければ値が小さいのでskip
+    # w=n=e=sであれば90度回転で同じ可能性 ';
+    if s==w:
+      if n!=w or e!=w: return
+      self.process(B,0) # COUNT2
+      return
+    # : 'e==wは180度回転して同じ
+    # 180度回転して同じ時n>=sの時はsmaller?  ';
+    if e==w and n>=s:
+      if n>s: return
+      self.process(B,1) # COUNT4
+      return
+    self.process(B,2)   # COUNT8
+    return
+  #
+  # キャリーチェーン 効きのチェック dimxは行 dimyは列
+  def placement(self,B,dimx,dimy):
+    if B.X[dimx]==dimy:
+      return 1
+    if B.X[0]:
+      if B.X[0]!=-1:
+        if((dimx<B.X[0] or dimx>=self.size-B.X[0]) and 
+          (dimy==0 or dimy==self.size-1)): return 0
+        if((dimx==self.size-1) and 
+          (dimy<=B.X[0] or dimy>=self.size-B.X[0])):return 0
+    else:
+      if B.X[1]!=-1:
+        if B.X[1]>=dimx and dimy==1: return 0
+    if( (B.row & 1<<dimx) or 
+        (B.left & 1<<(self.size-1-dimx+dimy)) or
+        (B.down & 1<<dimy) or
+        (B.right & 1<<(dimx+dimy))): return 0
+    B.row|=1<<dimx
+    B.left|=1<<(self.size-1-dimx+dimy)
+    B.down|=1<<dimy
+    B.right|=1<<(dimx+dimy)
+    B.X[dimx]=dimy
+    return 1
+  #
+  # チェーンのビルド
+  def buildChain(self,B,pres_a,pres_b):
+    wB=copy.deepcopy(B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+      if self.placement(B,0,pres_a[w])==0:
+        continue
+      if self.placement(B,1,pres_b[w])==0:
+        continue
+      # ２．９０度回転
+      nB=copy.deepcopy(B)
+      mirror=(self.size-2)*(self.size-1)-w
+      for n in range(w,mirror,1):
+        B=copy.deepcopy(nB)
+        if self.placement(B,pres_a[n],self.size-1)==0:
+          continue
+        if self.placement(B,pres_b[n],self.size-2)==0:
+          continue
+        # ３．９０度回転
+        eB=copy.deepcopy(B)
+        for e in range(w,mirror,1):
+          B=copy.deepcopy(eB)
+          if self.placement(B,self.size-1,self.size-1-pres_a[e])==0:
+            continue
+          if self.placement(B,self.size-2,self.size-1-pres_b[e])==0:
+            continue
+          # ４．９０度回転
+          sB=copy.deepcopy(B)
+          for s in range(w,mirror,1):
+            B=copy.deepcopy(sB)
+            if self.placement(B,self.size-1-pres_a[s],0)==0:
+              continue
+            if self.placement(B,self.size-1-pres_b[s],1)==0:
+              continue
+            # 対象解除法
+            self.carryChainSymmetry(B,n,w,s,e)
+  #
+  # チェーンの初期化
+  def initChain(self,pres_a,pres_b):
+    idx=0
+    for a in range(self.size):
+      for b in range(self.size):
+        if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+          continue
+        pres_a[idx]=a
+        pres_b[idx]=b
+        idx+=1
+  #
+  # キャリーチェーン
+  def carryChain(self):
+    pres_a=[0]*930
+    pres_b=[0]*930
+    self.initChain(pres_a,pres_b)     # チェーンの初期化
+    B=Board(self.size)        # Boardクラスのインスタンス
+    self.buildChain(B,pres_a,pres_b)    # チェーンのビルド
+  #
+  # ユニーク数の集計
+  def getUnique(self):
+    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  #
+  # 合計解の集計
+  def getTotal(self):
+    return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
+#
+# メイン
+def main():
+  nmin = 5
+  nmax = 21
+  print("クラスの導入")
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for size in range(nmin, nmax,1):
+    start_time = datetime.now()
+    nq=nQueens(size)
+    time_elapsed = datetime.now() - start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (size, nq.getTotal(),nq.getUnique(),text))  # 出力
+#
+main()
+#
+```
+
+## 実行結果
+```
+クラスの導入
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.044
+ 8:           92           12         0:00:00.204
+ 9:          352           46         0:00:00.885
+10:          724           92         0:00:03.450
+11:         2680          341         0:00:11.908
+12:        14200         1788         0:00:36.707
+```
+
+---
+title: "Ｎクイーン問題（４８）第七章 シングルスレッド Python編"
+date: 2023-06-21T11:23:16+09:00
+draft: false
+authors: suzuki
+image: chess.jpg
+categories:
+  - programming
+tags:
+  - N-Queens
+  - エイト・クイーン
+  - シェルスクリプト
+  - Bash
+  - アルゴリズム
+  - 鈴木維一郎
+---
+
+![](chess.jpg)
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+[エイト・クイーンのソース置き場 BashもJavaもPythonも！](https://github.com/suzukiiichiro/N-Queens)
+
+
+## シングルスレッド
+マルチスレッドを作成する前にシングルスレッドを作ってみます。
+「今までのも考えようによってはシングルスレッドだ」
+というばかちんがいそうですが、全然違います。
+シングルスレッドの構造になって初めてマルチスレッドに展開できるわけで、通常の処理とシングルスレッドは異なります。
+
+
+## シングルスレッドの実装
+
+前回やっておけばよかったのですが、`pres_a`と`pres_b`を母体クラスのグローバルへ移行します。
+というのも、チェーンを初期化してビルドするまでしか使わないので、いつまでも`Board`クラスにあっても意味ないですから。
+
+## シングルスレッド移行への段取り
+
+１．ソース冒頭に以下を追加しておきます。
+```python
+import logging
+import threading
+from threading import Thread
+```
+
+
+２．`nQueens`クラスの引数にThreadを追加
+これで`nQueens`クラスはThreadクラスを「継承した」ということになります。
+```python
+#
+# nQueens メインスレッドクラス
+class nQueens(Thread): # pylint:disable=RO902
+  #
+```
+
+
+３．Threadクラスを継承した`nQueens`クラスに `run()`を追加
+`Thread`にはもともと`run()`があります。
+`nQueens`クラスに`run()`を追加するというのは、元々ある`run()`をオーバーライド（上書き）するという意味です。
+JavaやPythonでは「Threadクラスのrun()メソッドをオーバーライドする」と言います。
+```python
+  #
+  # シングルスレッド
+  def run(self):
+    if self.child is None:
+      self.buildChain()  # チェーンのビルド
+  #
+```
+
+４．`main()`にスレッドを作成
+Threadを継承した`nQueens`クラスを`nq`でインスタンスします。
+その後、`nq.carryChain()`で処理を開始し、`nq.start()`で `run()`の処理を開始します。
+`run()`は一度しか実行されません。ぐるぐる回転するわけではありません。
+最後に、それぞれの処理がすべて終わるまで待機してくれる`nq.join()`を実行します。
+```python
+メインクラスにて親スレッドを作成して実行
+    start_time = datetime.now()
+    nq=nQueens(size)
+    nq.carryChain()
+    nq.start()
+    nq.join()
+    time_elapsed = datetime.now() - start_time
+```
+
+## ソースコード
+```python
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+import numpy as np
+import copy
+from datetime import datetime
+import logging
+import threading
+from threading import Thread
+
+"""
+シングルスレッド対応版 Ｎクイーン
+
+pres_a/pres_b/BはnQueensクラスのグローバルへ移行
+nQueensクラスの引数にThread
+nQueensクラスに`run()`を追加してスレッド時の関数を準備
+メインクラスにて親スレッドを作成して実行
+    start_time = datetime.now()
+    nq=nQueens(size)
+    nq.carryChain()
+    nq.start()
+    nq.join()
+    time_elapsed = datetime.now() - start_time
+
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+# 実行 
+$ python <filename.py>
+
+# 実行結果
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.044
+ 8:           92           12         0:00:00.204
+ 9:          352           46         0:00:00.885
+10:          724           92         0:00:03.527
+11:         2680          341         0:00:12.188
+12:        14200         1788         0:00:37.435
+"""
+#
+# Board ボードクラス
+class Board:
+  def __init__(self,size):
+    self.size=size
+    self.row=0
+    self.left=0
+    self.down=0
+    self.right=0
+    self.X=[-1 for i in range(size)]
+#
+# nQueens メインスレッドクラス
+class nQueens(Thread): # pylint:disable=RO902
+  #
+  # 初期化
+  def __init__(self,size): # pylint:disable=R0913
+    super(nQueens,self).__init__()
+    self.size=size
+    self.COUNTER=[0]*3
+    self.pres_a=[0]*930
+    self.pres_b=[0]*930
+    self.B=Board(size)
+    self.child=None
+  #
+  # ユニーク数の集計
+  def getUnique(self):
+    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  #
+  # 合計解の集計
+  def getTotal(self):
+    return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
+  #
+  # カウンター セッター
+  def setCount(self,sym,count):
+    self.COUNTER[sym]+=count
+  #
+  # ボード外側２列を除く内側のクイーン配置処理
+  def solve(self,row,left,down,right):
+    total=0
+    if not down+1:
+      return 1
+    while row&1:
+      row>>=1
+      left<<=1
+      right>>=1
+    row>>=1           # １行下に移動する
+    bitmap=~(left|down|right)
+    while bitmap!=0:
+      bit=-bitmap&bitmap
+      total+=self.solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
+      bitmap^=bit
+    return total
+  #
+  # キャリーチェーン　solve()を呼び出して再起を開始する
+  def process(self,sym):
+    self.setCount(sym,self.solve(self.B.row>>2,self.B.left>>4,((((self.B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(self.B.right>>4)<<(self.size-5)))
+  #
+  # キャリーチェーン　対象解除
+  def carryChainSymmetry(self,n,w,s,e):
+    # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+    ww=(self.size-2)*(self.size-1)-1-w
+    w2=(self.size-2)*(self.size-1)-1
+    # 対角線上の反転が小さいかどうか確認する
+    if s==ww and n<(w2-e): return 
+    # 垂直方向の中心に対する反転が小さいかを確認
+    if e==ww and n>(w2-n): return
+    # 斜め下方向への反転が小さいかをチェックする
+    if n==ww and e>(w2-s): return
+    # 【枝刈り】１行目が角の場合
+    # １．回転対称チェックせずにCOUNT8にする
+    if not self.B.X[0]:
+      self.process(2) # COUNT8
+      return
+    # n,e,s==w の場合は最小値を確認する。
+    # : '右回転で同じ場合は、
+    # w=n=e=sでなければ値が小さいのでskip
+    # w=n=e=sであれば90度回転で同じ可能性 ';
+    if s==w:
+      if n!=w or e!=w: return
+      self.process(0) # COUNT2
+      return
+    # : 'e==wは180度回転して同じ
+    # 180度回転して同じ時n>=sの時はsmaller?  ';
+    if e==w and n>=s:
+      if n>s: return
+      self.process(1) # COUNT4
+      return
+    self.process(2)   # COUNT8
+    return
+  #
+  # キャリーチェーン 効きのチェック dimxは行 dimyは列
+  def placement(self,dimx,dimy):
+    if self.B.X[dimx]==dimy:
+      return 1
+    if self.B.X[0]:
+      if self.B.X[0]!=-1:
+        if((dimx<self.B.X[0] or dimx>=self.size-self.B.X[0]) and 
+          (dimy==0 or dimy==self.size-1)): return 0
+        if((dimx==self.size-1) and 
+          (dimy<=self.B.X[0] or dimy>=self.size-self.B.X[0])):return 0
+    else:
+      if self.B.X[1]!=-1:
+        if self.B.X[1]>=dimx and dimy==1: return 0
+    if( (self.B.row & 1<<dimx) or 
+        (self.B.left & 1<<(self.size-1-dimx+dimy)) or
+        (self.B.down & 1<<dimy) or
+        (self.B.right & 1<<(dimx+dimy))): return 0
+    self.B.row|=1<<dimx
+    self.B.left|=1<<(self.size-1-dimx+dimy)
+    self.B.down|=1<<dimy
+    self.B.right|=1<<(dimx+dimy)
+    self.B.X[dimx]=dimy
+    return 1
+  #
+  # チェーンのビルド
+  def buildChain(self):
+    wB=copy.deepcopy(self.B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      self.B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+      if self.placement(0,self.pres_a[w])==0:
+        continue
+      if self.placement(1,self.pres_b[w])==0:
+        continue
+      # ２．９０度回転
+      nB=copy.deepcopy(self.B)
+      mirror=(self.size-2)*(self.size-1)-w
+      for n in range(w,mirror,1):
+        self.B=copy.deepcopy(nB)
+        if self.placement(self.pres_a[n],self.size-1)==0:
+          continue
+        if self.placement(self.pres_b[n],self.size-2)==0:
+          continue
+        # ３．９０度回転
+        eB=copy.deepcopy(self.B)
+        for e in range(w,mirror,1):
+          self.B=copy.deepcopy(eB)
+          if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+            continue
+          if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+            continue
+          # ４．９０度回転
+          sB=copy.deepcopy(self.B)
+          for s in range(w,mirror,1):
+            self.B=copy.deepcopy(sB)
+            if self.placement(self.size-1-self.pres_a[s],0)==0:
+              continue
+            if self.placement(self.size-1-self.pres_b[s],1)==0:
+              continue
+            # 対象解除法
+            self.carryChainSymmetry(n,w,s,e)
+  #
+  # チェーンの初期化
+  def initChain(self):
+    idx=0
+    for a in range(self.size):
+      for b in range(self.size):
+        if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+          continue
+        self.pres_a[idx]=a
+        self.pres_b[idx]=b
+        idx+=1
+  #
+  # シングルスレッド
+  def run(self):
+    if self.child is None:
+      self.buildChain()  # チェーンのビルド
+  #
+  # キャリーチェーン
+  def carryChain(self):
+    self.initChain()     # チェーンの初期化
+#
+# メイン
+def main():
+  nmin = 5
+  nmax = 21
+  print("キャリーチェーン シングルスレッド")
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for size in range(nmin, nmax,1):
+    start_time = datetime.now()
+    nq=nQueens(size)
+    nq.carryChain()
+    nq.start()
+    nq.join()
+    time_elapsed = datetime.now() - start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (size, nq.getTotal(),nq.getUnique(),text))  # 出力
+#
+main()
+#
+```
+## 実行結果
+```
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.044
+ 8:           92           12         0:00:00.204
+ 9:          352           46         0:00:00.885
+10:          724           92         0:00:03.527
+11:         2680          341         0:00:12.188
+12:        14200         1788         0:00:37.435
+```
+
+
+---
+title: "Ｎクイーン問題（４９）第七章 マルチスレッド Python編"
+date: 2023-06-21T11:44:12+09:00
+draft: false
+authors: suzuki
+image: chess.jpg
+categories:
+  - programming
+tags:
+  - N-Queens
+  - エイト・クイーン
+  - シェルスクリプト
+  - Python
+  - アルゴリズム
+  - 鈴木維一郎
+---
+
+![](chess.jpg)
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+[エイト・クイーンのソース置き場 BashもJavaもPythonも！](https://github.com/suzukiiichiro/N-Queens)
+
+
+## マルチスレッド
+やってきましたマルチスレッド。
+なんか速くなりそうですね。
+でもほぼシングルスレッドと速度は変わりません。
+
+並列処理された、バラバラに動いてる。
+ということに驚きがある人はそれで良いです。
+
+Pythonのマルチスレッドは、あくまでマルチプロセスへの橋渡しに過ぎません。速度はほとんど変わりません。
+Ｎクイーンでは、むしろ遅くなりました（笑）
+
+## シングルスレッドとマルチスレッドの切り替えトグルの作成
+マルチスレッドを実装する場合、最初のうちはまったく動きません。
+動かないのです。
+動いても、そう簡単に解の数があいません。
+下手をすると、Ｎが１１まではあっているけど、Ｎ１２から微妙に異なるということもあります。
+
+必ず何処かに間違いがあって、その間違いはＮが大きくなるに連れて顕著になるということなのですが、そういったバグを修正するにも、「ちゃんと正しく動く」という部分を軸に検証していくしかありません。
+
+ということで、以下のようなフラグを作成します。
+以下の場合だと、THREADはTrueなのでマルチスレッドモードになります。
+まずは、THREAD=Falseで動くようにするのが、第一歩です。
+```python
+#
+# スレッドフラグ True:する False:しない
+THREAD=True
+# THREAD=False
+#
+```
+
+
+## nQueens()クラスのコンストラクタ`__init__`
+以下のように、TREADフラグが渡されて、THREADがTrueのときと、Falseのときの条件分岐を追加します。
+まずは、Falseのときの条件分岐が実行できるようになるのが目標です。
+
+```python
+  #
+  # 初期化
+  def __init__(self,size,w,count,THREAD): # pylint:disable=R0913
+    super(nQueens,self).__init__()
+    self.size=size
+    # self.COUNTER=[0]*3
+    self.count=count
+    self.pres_a=[0]*930
+    self.pres_b=[0]*930
+    self.B=Board(size)
+    self.w=w      # マルチスレッド版ビルドチェーン外側の`for` の w
+    self.child=None
+    self.THREAD=THREAD      # スレッドフラグ 
+    # マルチスレッド
+    #for w in range( (self.size//2)*(self.size-3) +1):
+    self.range=(self.size//2)*(self.size-3) +1
+    if THREAD:  # THREAD フラグがTrueのときはマルチスレッド
+      if w<self.range: 
+        self.child=nQueens(size,w+1,count,THREAD)
+        self.carryChain()
+        self.child.start()
+        # self.child.join()   # run()の末尾へ移動
+    else:       # THREAD フラグがFalseのときはシングルスレッド
+      self.child=None
+```
+
+## `run()`関数
+以下のように`run()`関数に、THREADがTrueのとき、Falseのときの分岐を追加します。
+コンストラクタで条件を追加したら、`start()`で実行される`run()`の以下の条件分岐を追記してください。
+```python
+  #
+  # スレッド
+  def run(self):
+    if self.child is None:
+    # シングルスレッド
+      self.buildChain()  # チェーンのビルド
+    else:
+    # マルチスレッド
+      self.buildChain_multiThread(self.w)
+      self.child.join()
+```
+
+## カウンタークラス`Count`を作成
+やっぱり`nQueens`クラスからカウンターは外したほうが良いのです。
+`Board`クラスにカウンターを置いても、ビルドチェーンで、初期化や`copy.deepcopy()`されて、せっかくカウントしてもカウンターが０になってしまったりと心配です。
+今回は独立クラスに昇格させます。
+```python
+#
+# カウンタークラス　ロック付き
+class Count:
+  def __init__(self,lock):
+    self.COUNTER=[0]*3
+    self.lock=lock
+  #
+  # ユニーク数の集計
+  def getUnique(self):
+    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  #
+  # 合計解の集計
+  def getTotal(self):
+    return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
+  #
+  # カウンター セッター
+  def setCount(self,sym,count):
+    with self.lock:
+      self.COUNTER[sym]+=count
+      # print(str("sym:" + str(sym) + "count:" +str(count)))
+```
+
+## ロック
+カウンターは特にそうなのですが、ロック（排他処理）しないと、カウントしたい複数の処理がほぼ同時にカウンターにアクセスした場合、最悪は、両方とも衝突して正常な処理ができない場合も多いのです。
+ということで、読み込み、書き込みをし始めたらロックをして他の人がさわれないようにしてまっていてもらい、書き込みが終わって「いいよ」という合図があって初めてロックを解除して次の人が読み込んで書き込むという一連の安全機構が「ロック」なのです。
+
+main()クラスからロックの下準備が始まっています。
+```python
+    lock=threading.Lock()
+    count=Count(lock)
+    nq=nQueens(size,w,count,THREAD)
+    nq.carryChain()
+    nq.start()
+    nq.join()
+    time_elapsed = datetime.now() - start_time
+```
+
+該当のクラス`class Count`のコンストラクタに`lock`を渡していますね。
+渡された`class Count`を見てみましょう。
+
+```python
+#
+# カウンタークラス　ロック付き
+class Count:
+  def __init__(self,lock):
+    self.COUNTER=[0]*3
+    self.lock=lock
+  #
+```
+
+これで、`class Count`はロック機構が使えます。
+どこで使うかというと、書き込みのメソッドになります。
+具体的には、以下のメソッドです。
+```python
+  #
+  # カウンター セッター
+  def setCount(self,sym,count):
+    with self.lock:
+      self.COUNTER[sym]+=count
+      # print(str("sym:" + str(sym) + "count:" +str(count)))
+```
+
+with self.lock: 
+という部分が、「この関数はlock機構がついてますよ」という意味となります。
+
+
+## ソースコード
+```python
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+import numpy as np
+import copy
+from datetime import datetime
+import logging
+import threading
+from threading import Thread
+
+"""
+マルチスレッド対応版 Ｎクイーン
+
+
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+# 実行 
+$ python <filename.py>
+
+# 実行結果
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.046
+ 8:           92           12         0:00:00.205
+ 9:          352           46         0:00:00.910
+10:          724           92         0:00:03.542
+11:         2680          341         0:00:12.184
+12:        14200         1788         0:00:36.986
+
+
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン マルチスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.003
+ 6:            4            1         0:00:00.013
+ 7:           40            6         0:00:00.049
+ 8:           92           12         0:00:00.215
+ 9:          352           46         0:00:00.934
+10:          724           92         0:00:03.690
+11:         2680          341         0:00:12.708
+12:        14200         1788         0:00:40.294
+"""
+#
+# Board ボードクラス
+class Board:
+  def __init__(self,size):
+    self.size=size
+    self.row=0
+    self.left=0
+    self.down=0
+    self.right=0
+    self.X=[-1 for i in range(size)]
+#
+# カウンタークラス　ロック付き
+class Count:
+  def __init__(self,lock):
+    self.COUNTER=[0]*3
+    self.lock=lock
+  #
+  # ユニーク数の集計
+  def getUnique(self):
+    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  #
+  # 合計解の集計
+  def getTotal(self):
+    return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
+  #
+  # カウンター セッター
+  def setCount(self,sym,count):
+    with self.lock:
+      self.COUNTER[sym]+=count
+      # print(str("sym:" + str(sym) + "count:" +str(count)))
+#
+# nQueens メインスレッドクラス
+class nQueens(Thread): # pylint:disable=RO902
+  # ボード外側２列を除く内側のクイーン配置処理
+  def solve(self,row,left,down,right):
+    total=0
+    if not down+1:
+      return 1
+    while row&1:
+      row>>=1
+      left<<=1
+      right>>=1
+    row>>=1           # １行下に移動する
+    bitmap=~(left|down|right)
+    while bitmap!=0:
+      bit=-bitmap&bitmap
+      total+=self.solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
+      bitmap^=bit
+    return total
+  #
+  # キャリーチェーン　solve()を呼び出して再起を開始する
+  def process(self,sym):
+    self.count.setCount(sym,self.solve(self.B.row>>2,self.B.left>>4,((((self.B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(self.B.right>>4)<<(self.size-5)))
+  #
+  # キャリーチェーン　対象解除
+  def carryChainSymmetry(self,n,w,s,e):
+    # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+    ww=(self.size-2)*(self.size-1)-1-w
+    w2=(self.size-2)*(self.size-1)-1
+    # 対角線上の反転が小さいかどうか確認する
+    if s==ww and n<(w2-e): return 
+    # 垂直方向の中心に対する反転が小さいかを確認
+    if e==ww and n>(w2-n): return
+    # 斜め下方向への反転が小さいかをチェックする
+    if n==ww and e>(w2-s): return
+    # 【枝刈り】１行目が角の場合
+    # １．回転対称チェックせずにCOUNT8にする
+    if not self.B.X[0]:
+      self.process(2) # COUNT8
+      return
+    # n,e,s==w の場合は最小値を確認する。
+    # : '右回転で同じ場合は、
+    # w=n=e=sでなければ値が小さいのでskip
+    # w=n=e=sであれば90度回転で同じ可能性 ';
+    if s==w:
+      if n!=w or e!=w: return
+      self.process(0) # COUNT2
+      return
+    # : 'e==wは180度回転して同じ
+    # 180度回転して同じ時n>=sの時はsmaller?  ';
+    if e==w and n>=s:
+      if n>s: return
+      self.process(1) # COUNT4
+      return
+    self.process(2)   # COUNT8
+    return
+  #
+  # キャリーチェーン 効きのチェック dimxは行 dimyは列
+  def placement(self,dimx,dimy):
+    if self.B.X[dimx]==dimy:
+      return 1
+    if self.B.X[0]:
+      if self.B.X[0]!=-1:
+        if((dimx<self.B.X[0] or dimx>=self.size-self.B.X[0]) and 
+          (dimy==0 or dimy==self.size-1)): return 0
+        if((dimx==self.size-1) and 
+          (dimy<=self.B.X[0] or dimy>=self.size-self.B.X[0])):return 0
+    else:
+      if self.B.X[1]!=-1:
+        if self.B.X[1]>=dimx and dimy==1: return 0
+    if( (self.B.row & 1<<dimx) or 
+        (self.B.left & 1<<(self.size-1-dimx+dimy)) or
+        (self.B.down & 1<<dimy) or
+        (self.B.right & 1<<(dimx+dimy))): return 0
+    self.B.row|=1<<dimx
+    self.B.left|=1<<(self.size-1-dimx+dimy)
+    self.B.down|=1<<dimy
+    self.B.right|=1<<(dimx+dimy)
+    self.B.X[dimx]=dimy
+    return 1
+  #
+  # チェーンのビルド
+  def buildChain(self):
+    wB=copy.deepcopy(self.B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      self.B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+      if self.placement(0,self.pres_a[w])==0:
+        continue
+      if self.placement(1,self.pres_b[w])==0:
+        continue
+      # ２．９０度回転
+      nB=copy.deepcopy(self.B)
+      mirror=(self.size-2)*(self.size-1)-w
+      for n in range(w,mirror,1):
+        self.B=copy.deepcopy(nB)
+        if self.placement(self.pres_a[n],self.size-1)==0:
+          continue
+        if self.placement(self.pres_b[n],self.size-2)==0:
+          continue
+        # ３．９０度回転
+        eB=copy.deepcopy(self.B)
+        for e in range(w,mirror,1):
+          self.B=copy.deepcopy(eB)
+          if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+            continue
+          if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+            continue
+          # ４．９０度回転
+          sB=copy.deepcopy(self.B)
+          for s in range(w,mirror,1):
+            self.B=copy.deepcopy(sB)
+            if self.placement(self.size-1-self.pres_a[s],0)==0:
+              continue
+            if self.placement(self.size-1-self.pres_b[s],1)==0:
+              continue
+            # 対象解除法
+            self.carryChainSymmetry(n,w,s,e)
+  # マルチスレッド版 チェーンのビルド
+  def buildChain_multiThread(self,w):
+    wB=copy.deepcopy(self.B)
+    # for w in range( (self.size//2)*(self.size-3) +1):
+    self.B=copy.deepcopy(wB)
+    # １．０行目と１行目にクイーンを配置
+    if self.placement(0,self.pres_a[w])==0:
+      # continue
+      return 
+    if self.placement(1,self.pres_b[w])==0:
+      # continue
+      return 
+    # ２．９０度回転
+    nB=copy.deepcopy(self.B)
+    mirror=(self.size-2)*(self.size-1)-w
+    for n in range(w,mirror,1):
+      self.B=copy.deepcopy(nB)
+      if self.placement(self.pres_a[n],self.size-1)==0:
+        continue
+      if self.placement(self.pres_b[n],self.size-2)==0:
+        continue
+      # ３．９０度回転
+      eB=copy.deepcopy(self.B)
+      for e in range(w,mirror,1):
+        self.B=copy.deepcopy(eB)
+        if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+          continue
+        if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+          continue
+        # ４．９０度回転
+        sB=copy.deepcopy(self.B)
+        for s in range(w,mirror,1):
+          self.B=copy.deepcopy(sB)
+          if self.placement(self.size-1-self.pres_a[s],0)==0:
+            continue
+          if self.placement(self.size-1-self.pres_b[s],1)==0:
+            continue
+          # 対象解除法
+          self.carryChainSymmetry(n,w,s,e)
+  #
+  # チェーンの初期化
+  def initChain(self):
+    idx=0
+    for a in range(self.size):
+      for b in range(self.size):
+        if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+          continue
+        self.pres_a[idx]=a
+        self.pres_b[idx]=b
+        idx+=1
+  #
+  # キャリーチェーン
+  def carryChain(self):
+    self.initChain()     # チェーンの初期化
+  #
+  # スレッド
+  def run(self):
+    if self.child is None:
+    # シングルスレッド
+      self.buildChain()  # チェーンのビルド
+    else:
+    # マルチスレッド
+      self.buildChain_multiThread(self.w)
+      self.child.join()
+  #
+  # 初期化
+  def __init__(self,size,w,count,THREAD): # pylint:disable=R0913
+    super(nQueens,self).__init__()
+    self.size=size
+    # self.COUNTER=[0]*3
+    self.count=count
+    self.pres_a=[0]*930
+    self.pres_b=[0]*930
+    self.B=Board(size)
+    self.w=w      # マルチスレッド版ビルドチェーン外側の`for` の w
+    self.child=None
+    self.THREAD=THREAD      # スレッドフラグ 
+    # マルチスレッド
+    #for w in range( (self.size//2)*(self.size-3) +1):
+    self.range=(self.size//2)*(self.size-3) +1
+    if THREAD:  # THREAD フラグがTrueのときはマルチスレッド
+      if w<self.range: 
+        self.child=nQueens(size,w+1,count,THREAD)
+        self.carryChain()
+        self.child.start()
+        # self.child.join()   # run()の末尾へ移動
+    else:       # THREAD フラグがFalseのときはシングルスレッド
+      self.child=None
+#
+# スレッドフラグ True:する False:しない
+THREAD=True
+# THREAD=False
+#
+# メイン
+def main():
+  nmin = 5
+  nmax = 21
+  if THREAD:
+    print("キャリーチェーン マルチスレッド")
+  else:
+    print("キャリーチェーン シングルスレッド")
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for size in range(nmin, nmax,1):
+    start_time = datetime.now()
+    w=0   # マルチスレッド用キャリーチェーンのbuildChain()内の一番外側のforのw
+    lock=threading.Lock()
+    count=Count(lock)
+    nq=nQueens(size,w,count,THREAD)
+    nq.carryChain()
+    nq.start()
+    nq.join()
+    time_elapsed = datetime.now() - start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (size, count.getTotal(),count.getUnique(),text))  # 出力
+#
+main()
+#
+```
+## 実行結果
+```
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.046
+ 8:           92           12         0:00:00.205
+ 9:          352           46         0:00:00.910
+10:          724           92         0:00:03.542
+11:         2680          341         0:00:12.184
+12:        14200         1788         0:00:36.986
+
+
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン マルチスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.003
+ 6:            4            1         0:00:00.013
+ 7:           40            6         0:00:00.049
+ 8:           92           12         0:00:00.215
+ 9:          352           46         0:00:00.934
+10:          724           92         0:00:03.690
+11:         2680          341         0:00:12.708
+12:        14200         1788         0:00:40.294
+```
+
+
+
+---
+title: "Ｎクイーン問題（５０）第七章 マルチプロセス Python編"
+date: 2023-06-21T12:12:32+09:00
+draft: false
+authors: suzuki
+image: chess.jpg
+categories:
+  - programming
+tags:
+  - N-Queens
+  - エイト・クイーン
+  r Python
+  - アルゴリズム
+  - 鈴木維一郎
+---
+
+![](chess.jpg)
+[【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから](https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題)
+
+[エイト・クイーンのソース置き場 BashもJavaもPythonも！](https://github.com/suzukiiichiro/N-Queens)
+
+
+## マルチプロセス
+まずはBashの並列処理の実行結果を見てください。
+
+```
+ ## bash版
+ <> 08Bash_carryChain_parallel.sh 並列処理
+ N:        Total       Unique        hh:mm:ss
+ 4:            0            0         0:00:00
+ 5:            8            1         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:01
+ 9:          352           46         0:00:03
+10:          724           92         0:00:15
+11:         2680          341         0:00:52
+12:        14200         1788         0:02:49
+13:        73712         9237         0:09:18
+14:       365596        45771         0:28:48
+15:      2279184       285095         1:49:12 １時間４９分１２秒
+```
+
+遅いですね。
+でも、ロジックは十分に理解できたと思います。
+
+```
+## C pthread版
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.41
+16:     14772512      1847425        00:00:00:02.29
+17:     95815104     11979381        00:00:00:18.08
+18:    666090624     83274576        00:00:03:40.04
+19:   4968057848    621051686        00:00:27:37.22
+20:  39029188884   4878995797        00:03:39:23.79 ３時間３９分２３秒
+bash-3.2$
+```
+速い。。。やっぱりＣは速いのです。もう言うことなしです。
+で、Pythonのマルチプロセスはというと、
+
+```
+bash-3.2$ python 13Python_multiProcess.py
+キャリーチェーン マルチプロセス
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.061
+ 6:            4            1         0:00:00.126
+ 7:           40            6         0:00:00.135
+ 8:           92           12         0:00:00.327
+ 9:          352           46         0:00:00.766
+10:          724           92         0:00:02.327
+11:         2680          341         0:00:09.042
+12:        14200         1788         0:00:19.871
+13:        73712         9237         0:00:53.388
+14:       365596        45771         0:02:19.974
+15:      2279184       285095         0:05:51.522
+16:     14772512      1847425         0:17:01.656
+17:     95815104     11979381         1:07:04.713
+```
+
+ま、１時間かけてBashでＮ１５まで処理できたところが、PythonだとＮ１７まで処理できました。
+
+BashやPythonといったインタープリタの限界なのでしょうね。
+
+
+## 解説とか
+まずは以下を追加します。
+```python
+from multiprocessing import Pool as ThreadPool
+```
+
+マルチプロセスは`pool`が肝です。
+`pool`で検索したその箇所に違いがあります。
+ここでもシングルプロセス、マルチプロセスの切り替えフラグを作ります。
+といっても、実際にフラグを作ったわけではなくて、以下のようにしました。
+
+```python
+  #
+  # マルチプロセス
+  def execProcess(self):
+    #pool=ThreadPool(self.size)
+    pool=ThreadPool((self.size//2)*(self.size-3) +1)
+    #
+    # シングルプロセスで実行
+    #gttotal=list(pool.map(self.carryChain_single,range(1)))
+    #
+    # マルチプロセスで実行
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+
+```
+
+
+また、シングルプロセスとマルチプロセス時のメソッドの違いは、以下のとおりです。
+```python
+  #
+  # シングルプロセス
+  def carryChain_single(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_singleThread(w)
+    return self.getTotal(),self.getUnique()
+  #
+  # マルチプロセス
+  def carryChain_multi(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_multiThread(w)
+    return self.getTotal(),self.getUnique()
+```
+
+以下の２つの関数は、`for`行を一行コメントアウトしてあるかいないかだけの違いです。
+
+シングルプロセス版のビルドチェーン
+```python
+  #
+  # シングルプロセス版 チェーンのビルド
+  def buildChain_singleThread(self,w):
+    wB=copy.deepcopy(self.B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      self.B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+```
+
+マルチプロセス版のビルドチェーン
+`for`をコメントアウトした場合は、その下の行を関数末尾まで左インデントするのをお忘れなく。
+```python
+  #
+  # マルチプロセス版 チェーンのビルド
+  def buildChain_multiThread(self,w):
+    wB=copy.deepcopy(self.B)
+    # for w in range( (self.size//2)*(self.size-3) +1):
+    self.B=copy.deepcopy(wB)
+    # １．０行目と１行目にクイーンを配置
+```
+
+
+で、どうやってシングルプロセスとマルチプロセスで実行を切り分けているかというと、シングルプロセスの場合は、以下のソースで、
+
+```python
+    gttotal=list(pool.map(self.carryChain_single,range(1)))
+```
+
+range(1) 
+これで、プロセスは一つだけ起動します。
+
+
+```python
+
+  #
+  # マルチプロセス
+  def execProcess(self):
+    #pool=ThreadPool(self.size)
+    pool=ThreadPool((self.size//2)*(self.size-3) +1)
+    #
+    # シングルプロセスで実行
+    #gttotal=list(pool.map(self.carryChain_single,range(1)))
+    #
+    # マルチプロセスで実行
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+
+```
+
+逆にマルチプロセスで実行したい場合は、
+```python
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+```
+
+以下の行で、適宜プロセスがどどっと起動します。
+```python
+range( (self.size//2)*(self.size-3) +1)
+```
+
+
+## 集計
+集計も肝のひとつです。
+
+```python
+  #
+  # マルチプロセス
+  def execProcess(self):
+    #pool=ThreadPool(self.size)
+    pool=ThreadPool((self.size//2)*(self.size-3) +1)
+    #
+    # シングルプロセスで実行
+    #gttotal=list(pool.map(self.carryChain_single,range(1)))
+    #
+    # マルチプロセスで実行
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+    #
+    #
+    # 集計処理
+    total = 0 # ローカル変数
+    unique = 0
+    for _t, _u in gttotal:
+      total+=_t
+      unique+=_u
+    pool.close()
+    pool.join()
+    return total,unique
+```
+
+実行結果を`map()`に入れて、それを`list`に入れて、`gttotal`に格納しています。その`gttotal`を `for`で繰り返し、`total`と`unique`にそれぞれ代入し（できるんです）`pool.close()`、`pool.join()`して最後に、`total`と`unique`をそれぞれ`return`します（できるんです）。
+
+このソースは本当にトリッキーです。
+その分、マルチスレッドではなかった速度で動きます。
+スキルの向上にも手応えがあったと思います。
+
+
+## ソースコード
+```python
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+import numpy as np
+import copy
+from datetime import datetime
+import logging
+import threading
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+
+
+"""
+マルチプロセス対応版 Ｎクイーン
+
+
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+
+# 実行 
+$ python <filename.py>
+
+# 実行結果
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン シングルスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.002
+ 6:            4            1         0:00:00.010
+ 7:           40            6         0:00:00.046
+ 8:           92           12         0:00:00.205
+ 9:          352           46         0:00:00.910
+10:          724           92         0:00:03.542
+11:         2680          341         0:00:12.184
+12:        14200         1788         0:00:36.986
+
+
+bash-3.2$ python 12Python_multiThread.py
+キャリーチェーン マルチスレッド
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.003
+ 6:            4            1         0:00:00.013
+ 7:           40            6         0:00:00.049
+ 8:           92           12         0:00:00.215
+ 9:          352           46         0:00:00.934
+10:          724           92         0:00:03.690
+11:         2680          341         0:00:12.708
+12:        14200         1788         0:00:40.294
+
+bash-3.2$ python 13Python_multiProcess.py
+キャリーチェーン マルチプロセス
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.061
+ 6:            4            1         0:00:00.126
+ 7:           40            6         0:00:00.135
+ 8:           92           12         0:00:00.327
+ 9:          352           46         0:00:00.766
+10:          724           92         0:00:02.327
+11:         2680          341         0:00:09.042
+12:        14200         1788         0:00:19.871
+13:        73712         9237         0:00:53.388
+14:       365596        45771         0:02:19.974
+15:      2279184       285095         0:05:51.522
+16:     14772512      1847425         0:17:01.656
+17:     95815104     11979381         1:07:04.713
+
+ ## bash版
+ <> 08Bash_carryChain_parallel.sh 並列処理
+ N:        Total       Unique        hh:mm:ss
+ 4:            0            0         0:00:00
+ 5:            8            1         0:00:00
+ 6:            4            1         0:00:00
+ 7:           40            6         0:00:00
+ 8:           92           12         0:00:01
+ 9:          352           46         0:00:03
+10:          724           92         0:00:15
+11:         2680          341         0:00:52
+12:        14200         1788         0:02:49
+13:        73712         9237         0:09:18
+14:       365596        45771         0:28:48
+15:      2279184       285095         1:49:12 １時間４９分１２秒
+
+## C pthread版
+bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+７．キャリーチェーン
+ N:        Total       Unique        dd:hh:mm:ss.ms
+ 4:            2            1        00:00:00:00.00
+ 5:           10            2        00:00:00:00.00
+ 6:            4            1        00:00:00:00.00
+ 7:           40            6        00:00:00:00.00
+ 8:           92           12        00:00:00:00.00
+ 9:          352           46        00:00:00:00.00
+10:          724           92        00:00:00:00.00
+11:         2680          341        00:00:00:00.00
+12:        14200         1788        00:00:00:00.01
+13:        73712         9237        00:00:00:00.03
+14:       365596        45771        00:00:00:00.11
+15:      2279184       285095        00:00:00:00.41
+16:     14772512      1847425        00:00:00:02.29
+17:     95815104     11979381        00:00:00:18.08
+18:    666090624     83274576        00:00:03:40.04
+19:   4968057848    621051686        00:00:27:37.22
+20:  39029188884   4878995797        00:03:39:23.79
+bash-3.2$
+
+"""
+#
+# Board ボードクラス
+class Board:
+  def __init__(self,size):
+    self.size=size
+    self.row=0
+    self.left=0
+    self.down=0
+    self.right=0
+    self.X=[-1 for i in range(size)]
+#
+# nQueens メインスレッドクラス
+class nQueens(): # pylint:disable=RO902
+  #
+  # ユニーク数の集計
+  def getUnique(self):
+    return self.COUNTER[0]+self.COUNTER[1]+self.COUNTER[2]
+  #
+  # 合計解の集計
+  def getTotal(self):
+    return self.COUNTER[0]*2+self.COUNTER[1]*4+self.COUNTER[2]*8
+  #
+  # ボード外側２列を除く内側のクイーン配置処理
+  def solve(self,row,left,down,right):
+    total=0
+    if not down+1:
+      return 1
+    while row&1:
+      row>>=1
+      left<<=1
+      right>>=1
+    row>>=1           # １行下に移動する
+    bitmap=~(left|down|right)
+    while bitmap!=0:
+      bit=-bitmap&bitmap
+      total+=self.solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
+      bitmap^=bit
+    return total
+  #
+  # キャリーチェーン　solve()を呼び出して再起を開始する
+  def process(self,sym):
+    self.COUNTER[sym]+=self.solve(self.B.row>>2,self.B.left>>4,((((self.B.down>>2)|(~0<<(self.size-4)))+1)<<(self.size-5))-1,(self.B.right>>4)<<(self.size-5))
+  #
+  # キャリーチェーン　対象解除
+  def carryChainSymmetry(self,n,w,s,e):
+    # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
+    ww=(self.size-2)*(self.size-1)-1-w
+    w2=(self.size-2)*(self.size-1)-1
+    # 対角線上の反転が小さいかどうか確認する
+    if s==ww and n<(w2-e): return 
+    # 垂直方向の中心に対する反転が小さいかを確認
+    if e==ww and n>(w2-n): return
+    # 斜め下方向への反転が小さいかをチェックする
+    if n==ww and e>(w2-s): return
+    # 【枝刈り】１行目が角の場合
+    # １．回転対称チェックせずにCOUNT8にする
+    if not self.B.X[0]:
+      self.process(2) # COUNT8
+      return
+    # n,e,s==w の場合は最小値を確認する。
+    # : '右回転で同じ場合は、
+    # w=n=e=sでなければ値が小さいのでskip
+    # w=n=e=sであれば90度回転で同じ可能性 ';
+    if s==w:
+      if n!=w or e!=w: return
+      self.process(0) # COUNT2
+      return
+    # : 'e==wは180度回転して同じ
+    # 180度回転して同じ時n>=sの時はsmaller?  ';
+    if e==w and n>=s:
+      if n>s: return
+      self.process(1) # COUNT4
+      return
+    self.process(2)   # COUNT8
+    return
+  #
+  # キャリーチェーン 効きのチェック dimxは行 dimyは列
+  def placement(self,dimx,dimy):
+    if self.B.X[dimx]==dimy:
+      return 1
+    if self.B.X[0]:
+      if self.B.X[0]!=-1:
+        if((dimx<self.B.X[0] or dimx>=self.size-self.B.X[0]) and 
+          (dimy==0 or dimy==self.size-1)): return 0
+        if((dimx==self.size-1) and 
+          (dimy<=self.B.X[0] or dimy>=self.size-self.B.X[0])):return 0
+    else:
+      if self.B.X[1]!=-1:
+        if self.B.X[1]>=dimx and dimy==1: return 0
+    if( (self.B.row & 1<<dimx) or 
+        (self.B.left & 1<<(self.size-1-dimx+dimy)) or
+        (self.B.down & 1<<dimy) or
+        (self.B.right & 1<<(dimx+dimy))): return 0
+    self.B.row|=1<<dimx
+    self.B.left|=1<<(self.size-1-dimx+dimy)
+    self.B.down|=1<<dimy
+    self.B.right|=1<<(dimx+dimy)
+    self.B.X[dimx]=dimy
+    return 1
+  # シングルプロセス版 チェーンのビルド
+  def buildChain_singleThread(self,w):
+    wB=copy.deepcopy(self.B)
+    for w in range( (self.size//2)*(self.size-3) +1):
+      self.B=copy.deepcopy(wB)
+      # １．０行目と１行目にクイーンを配置
+      if self.placement(0,self.pres_a[w])==0:
+        continue
+      if self.placement(1,self.pres_b[w])==0:
+        continue
+      # ２．９０度回転
+      nB=copy.deepcopy(self.B)
+      mirror=(self.size-2)*(self.size-1)-w
+      for n in range(w,mirror,1):
+        self.B=copy.deepcopy(nB)
+        if self.placement(self.pres_a[n],self.size-1)==0:
+          continue
+        if self.placement(self.pres_b[n],self.size-2)==0:
+          continue
+        # ３．９０度回転
+        eB=copy.deepcopy(self.B)
+        for e in range(w,mirror,1):
+          self.B=copy.deepcopy(eB)
+          if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+            continue
+          if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+            continue
+          # ４．９０度回転
+          sB=copy.deepcopy(self.B)
+          for s in range(w,mirror,1):
+            self.B=copy.deepcopy(sB)
+            if self.placement(self.size-1-self.pres_a[s],0)==0:
+              continue
+            if self.placement(self.size-1-self.pres_b[s],1)==0:
+              continue
+            # 対象解除法
+            self.carryChainSymmetry(n,w,s,e)
+  #
+  # マルチプロセス版 チェーンのビルド
+  def buildChain_multiThread(self,w):
+    wB=copy.deepcopy(self.B)
+    # for w in range( (self.size//2)*(self.size-3) +1):
+    self.B=copy.deepcopy(wB)
+    # １．０行目と１行目にクイーンを配置
+    if self.placement(0,self.pres_a[w])==0:
+      # continue
+      return 
+    if self.placement(1,self.pres_b[w])==0:
+      # continue
+      return 
+    # ２．９０度回転
+    nB=copy.deepcopy(self.B)
+    mirror=(self.size-2)*(self.size-1)-w
+    for n in range(w,mirror,1):
+      self.B=copy.deepcopy(nB)
+      if self.placement(self.pres_a[n],self.size-1)==0:
+        continue
+      if self.placement(self.pres_b[n],self.size-2)==0:
+        continue
+      # ３．９０度回転
+      eB=copy.deepcopy(self.B)
+      for e in range(w,mirror,1):
+        self.B=copy.deepcopy(eB)
+        if self.placement(self.size-1,self.size-1-self.pres_a[e])==0:
+          continue
+        if self.placement(self.size-2,self.size-1-self.pres_b[e])==0:
+          continue
+        # ４．９０度回転
+        sB=copy.deepcopy(self.B)
+        for s in range(w,mirror,1):
+          self.B=copy.deepcopy(sB)
+          if self.placement(self.size-1-self.pres_a[s],0)==0:
+            continue
+          if self.placement(self.size-1-self.pres_b[s],1)==0:
+            continue
+          # 対象解除法
+          self.carryChainSymmetry(n,w,s,e)
+  #
+  # チェーンの初期化
+  def initChain(self):
+    idx=0
+    for a in range(self.size):
+      for b in range(self.size):
+        if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+          continue
+        self.pres_a[idx]=a
+        self.pres_b[idx]=b
+        idx+=1
+  #
+  # シングルプロセス
+  def carryChain_single(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_singleThread(w)
+    return self.getTotal(),self.getUnique()
+  #
+  # マルチプロセス
+  def carryChain_multi(self,w):
+    self.initChain()     # チェーンの初期化
+    self.buildChain_multiThread(w)
+    return self.getTotal(),self.getUnique()
+  #
+  # マルチプロセス
+  def execProcess(self):
+    #pool=ThreadPool(self.size)
+    pool=ThreadPool((self.size//2)*(self.size-3) +1)
+    #
+    # シングルプロセスで実行
+    #gttotal=list(pool.map(self.carryChain_single,range(1)))
+    #
+    # マルチプロセスで実行
+    gttotal=list(pool.map(self.carryChain_multi,range( (self.size//2)*(self.size-3) +1)))
+    #
+    #
+    # 集計処理
+    total = 0 # ローカル変数
+    unique = 0
+    for _t, _u in gttotal:
+      total+=_t
+      unique+=_u
+    pool.close()
+    pool.join()
+    return total,unique
+  #
+  # 初期化
+  def __init__(self,size): # pylint:disable=R0913
+    self.size=size
+    self.COUNTER=[0]*3
+    self.pres_a=[0]*930
+    self.pres_b=[0]*930
+    self.B=Board(size)
+#
+# メイン
+if __name__ == '__main__':
+  nmin = 5
+  nmax = 21
+  print("キャリーチェーン マルチプロセス")
+  print(" N:        Total       Unique        hh:mm:ss.ms")
+  for size in range(nmin, nmax,1):
+    start_time = datetime.now()
+    nq=nQueens(size)
+    TOTAL,UNIQUE=nq.execProcess()
+    time_elapsed = datetime.now() - start_time
+    _text = '{}'.format(time_elapsed)
+    text = _text[:-3]
+    print("%2d:%13d%13d%20s" % (size,TOTAL,UNIQUE,text))  # 出力
+```
+
+## 実行結果
+```
+bash-3.2$ python 13Python_multiProcess.py
+キャリーチェーン マルチプロセス
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            2         0:00:00.061
+ 6:            4            1         0:00:00.126
+ 7:           40            6         0:00:00.135
+ 8:           92           12         0:00:00.327
+ 9:          352           46         0:00:00.766
+10:          724           92         0:00:02.327
+11:         2680          341         0:00:09.042
+12:        14200         1788         0:00:19.871
+13:        73712         9237         0:00:53.388
+14:       365596        45771         0:02:19.974
+15:      2279184       285095         0:05:51.522
+16:     14772512      1847425         0:17:01.656
+17:     95815104     11979381         1:07:04.713
+```
+
+
+さ、これで退路が絶たれたわけです。
+もうGPU/CUDAしかやりようがなくなりました。
+次回からはGPU/CUDAをやっていきましょう。
+
 
