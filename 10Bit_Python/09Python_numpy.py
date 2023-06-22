@@ -213,15 +213,9 @@ def placement(size,dimx,dimy):
     #    if(bitmap){
     #      if((bitmap&LASTMASK)==0){
     if B[4][0]!=-1:
-      if(
-        (dimx<B[4][0] or dimx>=size-B[4][0]) and 
-        (dimy==0 or dimy==size-1) 
-      ):
+      if (dimx<B[4][0] or dimx>=size-B[4][0]) and (dimy==0 or dimy==size-1) :
         return 0
-      if(
-        (dimx==size-1) and 
-        (dimy<=B[4][0] or dimy>=size-B[4][0])
-      ):
+      if (dimx==size-1) and (dimy<=B[4][0] or dimy>=size-B[4][0]):
         return 0
   else:
     if B[4][1]!=-1:
@@ -234,11 +228,7 @@ def placement(size,dimx,dimy):
       # fi
       if B[4][1]>=dimx and dimy==1:
         return 0
-  if( (B[ROW][0] & 1<<dimx) or 
-      (B[LEFT][0] & 1<<(size-1-dimx+dimy)) or
-      (B[DOWN][0] & 1<<dimy) or
-      (B[RIGHT][0] & 1<<(dimx+dimy)) 
-  ): 
+  if (B[ROW][0] & 1<<dimx) or (B[LEFT][0] & 1<<(size-1-dimx+dimy)) or (B[DOWN][0] & 1<<dimy) or (B[RIGHT][0] & 1<<(dimx+dimy)) : 
     return 0
   B[ROW][0]|=np.array(1<<dimx)
   B[LEFT][0]|=np.array(1<<(size-1-dimx+dimy))

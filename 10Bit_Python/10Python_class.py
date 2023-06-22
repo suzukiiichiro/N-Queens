@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 # -*- coding: utf-8 -*-
-import numpy as np
 import copy
 from datetime import datetime
 """
@@ -115,17 +114,15 @@ class nQueens(): # pylint:disable=RO902
       return 1
     if B.X[0]:
       if B.X[0]!=-1:
-        if((dimx<B.X[0] or dimx>=self.size-B.X[0]) and 
-          (dimy==0 or dimy==self.size-1)): return 0
-        if((dimx==self.size-1) and 
-          (dimy<=B.X[0] or dimy>=self.size-B.X[0])):return 0
+        if (dimx<B.X[0] or dimx>=self.size-B.X[0]) and (dimy==0 or dimy==self.size-1): 
+          return 0
+        if (dimx==self.size-1) and (dimy<=B.X[0] or dimy>=self.size-B.X[0]):
+          return 0
     else:
       if B.X[1]!=-1:
         if B.X[1]>=dimx and dimy==1: return 0
-    if( (B.row & 1<<dimx) or 
-        (B.left & 1<<(self.size-1-dimx+dimy)) or
-        (B.down & 1<<dimy) or
-        (B.right & 1<<(dimx+dimy))): return 0
+    if (B.row & 1<<dimx) or (B.left & 1<<(self.size-1-dimx+dimy)) or (B.down & 1<<dimy) or (B.right & 1<<(dimx+dimy)): 
+      return 0
     B.row|=1<<dimx
     B.left|=1<<(self.size-1-dimx+dimy)
     B.down|=1<<dimy

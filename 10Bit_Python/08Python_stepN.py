@@ -172,15 +172,9 @@ def placement(size,dimx,dimy):
     #    if(bitmap){
     #      if((bitmap&LASTMASK)==0){
     if B[4][0]!=-1:
-      if(
-        (dimx<B[4][0] or dimx>=size-B[4][0]) and 
-        (dimy==0 or dimy==size-1) 
-      ):
+      if (dimx<B[4][0] or dimx>=size-B[4][0]) and (dimy==0 or dimy==size-1):
         return 0
-      if(
-        (dimx==size-1) and 
-        (dimy<=B[4][0] or dimy>=size-B[4][0])
-      ):
+      if (dimx==size-1) and (dimy<=B[4][0] or dimy>=size-B[4][0]):
         return 0
   else:
     if B[4][1]!=-1:
@@ -193,11 +187,7 @@ def placement(size,dimx,dimy):
       # fi
       if B[4][1]>=dimx and dimy==1:
         return 0
-  if( (B[0] & 1<<dimx) or 
-      (B[1] & 1<<(size-1-dimx+dimy)) or
-      (B[2] & 1<<dimy) or
-      (B[3] & 1<<(dimx+dimy)) 
-  ): 
+  if (B[0] & 1<<dimx) or (B[1] & 1<<(size-1-dimx+dimy)) or (B[2] & 1<<dimy) or (B[3] & 1<<(dimx+dimy)): 
     return 0
   B[0]|=1<<dimx
   B[1]|=1<<(size-1-dimx+dimy)
@@ -273,7 +263,7 @@ def carryChain(size):
   COUNTER[0]=COUNTER[1]=COUNTER[2]=0
   # Bの初期化  [0, 0, 0, 0, [0, 0, 0, 0, 0]]
   B=[0]*5             # row/left/down/right/X
-  B[4]=[-1]*size       # X を0でsize分を初期化
+  B[4]=[0]*size       # X を0でsize分を初期化
   initChain(size)     # チェーンの初期化
   buildChain(size)    # チェーンのビルド
   # 集計

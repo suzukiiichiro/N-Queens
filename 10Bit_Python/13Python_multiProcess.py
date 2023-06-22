@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 
 # -*- coding: utf-8 -*-
-import numpy as np
 import copy
 from datetime import datetime
-import logging
-import threading
-from threading import Thread
 from multiprocessing import Pool as ThreadPool
 
 
@@ -191,17 +187,15 @@ class nQueens(): # pylint:disable=RO902
       return 1
     if self.B.X[0]:
       if self.B.X[0]!=-1:
-        if((dimx<self.B.X[0] or dimx>=self.size-self.B.X[0]) and 
-          (dimy==0 or dimy==self.size-1)): return 0
-        if((dimx==self.size-1) and 
-          (dimy<=self.B.X[0] or dimy>=self.size-self.B.X[0])):return 0
+        if (dimx<self.B.X[0] or dimx>=self.size-self.B.X[0]) and (dimy==0 or dimy==self.size-1): 
+          return 0
+        if (dimx==self.size-1) and (dimy<=self.B.X[0] or dimy>=self.size-self.B.X[0]):
+          return 0
     else:
       if self.B.X[1]!=-1:
         if self.B.X[1]>=dimx and dimy==1: return 0
-    if( (self.B.row & 1<<dimx) or 
-        (self.B.left & 1<<(self.size-1-dimx+dimy)) or
-        (self.B.down & 1<<dimy) or
-        (self.B.right & 1<<(dimx+dimy))): return 0
+    if (self.B.row & 1<<dimx) or (self.B.left & 1<<(self.size-1-dimx+dimy)) or (self.B.down & 1<<dimy) or (self.B.right & 1<<(dimx+dimy)): 
+      return 0
     self.B.row|=1<<dimx
     self.B.left|=1<<(self.size-1-dimx+dimy)
     self.B.down|=1<<dimy
