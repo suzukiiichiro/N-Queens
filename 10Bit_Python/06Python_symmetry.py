@@ -67,6 +67,7 @@ board=[0 for i in range(MAX)]   # ボード配列格納用
 down=[0 for i in range(MAX)]    # 効き筋チェック
 left=[0 for i in range(MAX)]    # 効き筋チェック
 right=[0 for i in range(MAX)]   # 効き筋チェック
+DISPLAY=1;              # 表示 1:出力する 0: 出力しない
 #
 # ビットマップ版ボードレイアウト出力
 def printRecord_bitmap(size,flag):
@@ -334,7 +335,6 @@ def symmetry(size):
 #
 # 実行
 size=5
-DISPLAY=1;              # 表示 1:出力する 0: 出力しない
 symmetry(size)          # ６．対象解除法
 print("size:",size,"TOTAL:",TOTAL,"COUNT2:",COUNT2,"COUNT4:",COUNT4,"COUNT8:",COUNT8)
 #

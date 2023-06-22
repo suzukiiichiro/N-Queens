@@ -282,7 +282,7 @@ def mirror_solver(size,row,left,down,right):
       mirror_solver(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
 #
 # ミラー
-def Mirror(size):
+def Mirror(size: int):
   global COUNT2
   global TOTAL
   mask=(1<<size)-1
@@ -293,7 +293,7 @@ def Mirror(size):
   else:
     limit=size//2
   """
-  limit=size%2 if size/2-1 else size/2
+  limit=size%2 if size//2-1 else size//2
   # pythonでは割り算の切り捨ては`//`です
   for i in range(size//2):  # 奇数でも偶数でも通過
     bit=1<<i
