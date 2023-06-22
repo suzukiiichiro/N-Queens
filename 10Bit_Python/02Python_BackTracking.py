@@ -172,7 +172,7 @@ board=[0 for i in range(MAX)] # ボード配列格納用
 # ボードレイアウト出力
 def printRecord(size):
   global TOTAL
-  global baord
+  global board
 
   print(TOTAL)
   sEcho=""

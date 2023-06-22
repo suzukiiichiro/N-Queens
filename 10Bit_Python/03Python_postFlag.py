@@ -177,7 +177,7 @@ right=[0 for i in range(MAX)] # 効き筋チェック
 # ボードレイアウト出力
 def printRecord(size):
   global TOTAL
-  global baord
+  global board
 
   print(TOTAL)
   sEcho=""
