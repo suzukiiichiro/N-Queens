@@ -225,9 +225,7 @@ def postFlag(row,size):
   else:
     for col in range(size):
       board[row]=col
-      if(down[col]==0 and 
-          right[row-col+size-1]==0 and
-          left[row+col]==0):
+      if down[col]==0 and right[row-col+size-1]==0 and left[row+col]==0:
         down[col]=1
         right[row-col+(size-1)]=1
         left[row+col]=1
