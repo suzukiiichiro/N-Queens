@@ -4,7 +4,6 @@
 import copy
 from datetime import datetime
 from multiprocessing import Pool as ThreadPool
-
 """
 マルチプロセス対応版 Ｎクイーン
 
