@@ -222,9 +222,10 @@ function solve()
         ((left<<=1));
         ((right>>=1));
       done
-     (( row>>=1 ));      # １行下に移動する
+      (( row>>=1 ));      # １行下に移動する
       local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
     fi
+
     while ((bitmap!=0||rflg==1));do
     #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
       if((rflg==0));then
@@ -233,11 +234,11 @@ function solve()
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
         if((current<size));then
-  	  row_a[$current]=$row;
-  	  left_a[$current]=$left;
- 	  down_a[$current]=$down;
-  	  right_a[$current]=$right;
-  	  bitmap_a[$current]=$bitmap;
+          row_a[$current]=$row;
+          left_a[$current]=$left;
+          down_a[$current]=$down;
+          right_a[$current]=$right;
+          bitmap_a[$current]=$bitmap;
           ((current++));  
         fi       
         left=$(((left|bit)<<1));
@@ -253,7 +254,7 @@ function solve()
       #ret:
       if((rflg==1));then
         if((current>0));then
-	  ((current--));
+	        ((current--));
         fi
         row=${row_a[$current]};
         left=${left_a[$current]};
@@ -278,7 +279,7 @@ function solve()
       rflg=1;
     fi
 
-  done
+  done # end done
 #set +x
 }
 : 'solve()を呼び出して再帰を開始する';

@@ -1,49 +1,33 @@
 /**
  *
- * bash版キャリーチェーンのC言語版
- * 最終的に 08Bash_carryChain_parallel.sh のように
- * 並列処理 pthread版の作成が目的
+ * bash版ブルートフォースのC言語版
  *
- * 今回のテーマ
- * pthreadの実装
- * THREADフラグを作成して スレッドのオン・オフで動作を確認しながら実装
- * 
- * スレッドオフだとちゃんと解が出る
- * オンだと出ない！
+ 詳しい説明はこちらをどうぞ
+ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
- *
- 困ったときには以下のＵＲＬがとても参考になります。
-
- C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
- https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
- 値渡しとポインタ渡し
- https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
- C言語 値渡しとアドレス渡し
- https://skpme.com/199/
- アドレスとポインタ
- https://yu-nix.com/archives/c-struct-pointer/
- *
-
-
- 実行結果
-bash-3.2$ gcc 16GCC_carryChain.c -o 16GCC -pthread && ./16GCC
-Usage: ./16GCC [-c|-g]
-  -c: CPU Without recursion
-  -r: CPUR Recursion
-
-
-７．キャリーチェーン
+bash-3.2$ gcc 01GCC_BluteForce.c && ./a.out -r
+１．ブルートフォース
  N:        Total       Unique        hh:mm:ss.ms
-Segmentation fault: 11
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.01
+ 8:           92               0            0.28
+bash-3.2$ gcc 01GCC_BluteForce.c && ./a.out -c
+１．ブルートフォース
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.01
+ 8:           92               0            0.29
 bash-3.2$
- 
 */
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/time.h>
-#include <pthread.h>
 #define MAX 27
 // システムによって以下のマクロが必要であればコメントを外してください。
 //#define UINT64_C(c) c ## ULL
@@ -57,6 +41,11 @@ typedef struct{
   unsigned int size;
   unsigned int pres_a[930]; 
   unsigned int pres_b[930];
+  // uint64_t COUNTER[3];      
+  // //カウンター配列
+  // unsigned int COUNT2;
+  // unsigned int COUNT4;
+  // unsigned int COUNT8;
 }Global; Global g;
 // 構造体
 typedef struct{
@@ -79,9 +68,10 @@ typedef struct{
   uint64_t dimx;
   uint64_t dimy;
   uint64_t COUNTER[3];      
-  uint64_t COUNT2;
-  uint64_t COUNT4;
-  uint64_t COUNT8;
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
 }Local;
 //
 //hh:mm:ss.ms形式に処理時間を出力
@@ -105,6 +95,7 @@ void TimeFormat(clock_t utime,char* form)
   else
     sprintf(form,"           %5.2f",ss);
 }
+//
 // ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
@@ -189,7 +180,7 @@ void carryChain_symmetry(void* args)
   return;
 }
 // pthread run()
-void* thread_run(void* args)
+void thread_run(void* args)
 {
   Local *l=(Local *)args;
 
@@ -197,12 +188,10 @@ void* thread_run(void* args)
   l->B=l->wB;
   l->dimx=0; l->dimy=g.pres_a[l->w]; 
   //if(!placement(l)){ continue; } 
-  // if(!placement(l)){ return; } 
-  if(!placement(l)){ return 0; } 
+  if(!placement(l)){ return; } 
   l->dimx=1; l->dimy=g.pres_b[l->w]; 
   // if(!placement(l)){ continue; } 
-  // if(!placement(l)){ return; } 
-  if(!placement(l)){ return 0; } 
+  if(!placement(l)){ return; } 
   //２ 左２行に置く
   // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
   l->nB=l->B;
@@ -238,17 +227,11 @@ void* thread_run(void* args)
       } //w
     } //e
   } //n
-  return 0;
 }
 // チェーンのビルド
-/**
- * スレッドするか 1:する 0:しない
- */
-// bool THREAD=0; 
-bool THREAD=1; 
 void buildChain()
 {
-  Local l[(g.size/2)*(g.size-3)+1];
+  Local l[(g.size/2)*(g.size-3)];
 
   // カウンターの初期化
   l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
@@ -260,44 +243,18 @@ void buildChain()
   //１ 上２行に置く
   // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   l->wB=l->B;
-  pthread_t pt[(g.size/2)*(g.size-3)+1];
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-    if(THREAD){
-      int iFbRet;
-      iFbRet=pthread_create(&pt[l->w],NULL,&thread_run,&l[l->w]);
-      if(iFbRet>0){
-        printf("[mainThread] pthread_create #%d: %d\n", l[l->w].w, iFbRet);
-      }
-    }else{
-      thread_run(&l);
-    }
-  } 
-  /**
-   * スレッド版 joinする
-   */
-  if(THREAD){
-    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-      pthread_join(pt[l->w],NULL);
-    } 
-  }else{
-    //何もしない
-  }
+    thread_run(&l);
+  } //w
   /**
    * 集計
    */
-  if(THREAD){
-    // スレッド版の集計
-    for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-      // 集計
-    } 
-  }else{
-    UNIQUE= l->COUNTER[l->COUNT2]+
-            l->COUNTER[l->COUNT4]+
-            l->COUNTER[l->COUNT8];
-    TOTAL = l->COUNTER[l->COUNT2]*2+
-            l->COUNTER[l->COUNT4]*4+
-            l->COUNTER[l->COUNT8]*8;
-  }
+  UNIQUE= l->COUNTER[l->COUNT2]+
+          l->COUNTER[l->COUNT4]+
+          l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+
+          l->COUNTER[l->COUNT4]*4+
+          l->COUNTER[l->COUNT8]*8;
 }
 // チェーンのリストを作成
 void listChain()
@@ -319,6 +276,80 @@ void carryChain()
   buildChain(); // チェーンのビルド
   // calcChain(&l);  // 集計
 }
+unsigned int board[MAX];  //ボード配列
+// ブルートフォース 効き筋をチェック
+int check_bluteForce()
+{
+  unsigned int size=g.size; 
+  for(unsigned int r=1;r<size;++r){
+    unsigned int val=0;
+    for(unsigned int i=0;i<r;++i){
+      if(board[i]>=board[r]){
+        val=board[i]-board[r];
+      }else{
+        val=board[r]-board[i];
+      }
+      if(board[i]==board[r]||val==(r-i)){
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+//ブルートフォース 非再帰版
+void bluteForce_NR(int row)
+{
+  unsigned int size=g.size;
+  // １．非再帰は初期化が必要
+  for(unsigned int i=0;i<size;++i){
+    board[i]=-1;
+  }
+  // ２．再帰で呼び出される関数内を回す処理
+  while(row>-1){
+    unsigned int matched=0;   //クイーンを配置したか
+    // ３．再帰処理のループ部分
+    // 非再帰では過去の譜石を記憶するためにboard配列を使う
+    for(unsigned int col=board[row]+1;col<size;++col){
+      board[row]=col;
+      matched=1;
+      break;
+    }
+    // ４．配置したら実行したい処理
+    if(matched){
+      row++;
+      // ５．最下部まで到達したときの処理';
+      if(row==size){
+        row--;
+        // 効きをチェック
+        if(check_bluteForce()==1){
+          TOTAL++;
+        }
+      }
+      // ６．配置できなくてバックトラックしたい処理
+    }else{
+      if(board[row]!=-1){
+        board[row]=-1;
+      }
+      row--;
+    } // end if
+  }//end while
+}
+//
+//ブルートフォース 再帰版
+void bluteForce_R(int row)
+{
+  unsigned int size=g.size; 
+  if(row==size){
+    if(check_bluteForce()==1){
+      TOTAL++; // グローバル変数
+    }
+  }else{
+    for(int col=0;col<size;++col){
+      board[row]=col;
+      bluteForce_R(row+1);
+    }
+  }
+}
 //メインメソッド
 int main(int argc,char** argv)
 {
@@ -330,11 +361,12 @@ int main(int argc,char** argv)
     else{ cpur=true;}
   }
   if(argc<argstart){
-    printf("Usage: %s [-c|-g]\n",argv[0]);
+    printf("Usage: %s [-c|-r|-g]\n",argv[0]);
     printf("  -c: CPU Without recursion\n");
     printf("  -r: CPUR Recursion\n");
+    printf("  -g: GPU Without Recursion\n");
   }
-  printf("\n\n７．キャリーチェーン\n");
+  printf("１．ブルートフォース\n");
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   clock_t st;           //速度計測用
   char t[20];           //hh:mm:ss.msを格納
@@ -345,10 +377,12 @@ int main(int argc,char** argv)
     TOTAL=UNIQUE=0; 
     g.size=size;
     st=clock();
-    if(cpu){
-      carryChain();
-    }else{
-      carryChain();
+    if(cpu){  // 非再帰
+      bluteForce_NR(0); //ブルートフォース
+      // carryChain();
+    }else{    // 再帰
+      bluteForce_R(0);  //ブルートフォース
+      // carryChain();
     }
     TimeFormat(clock()-st,t);
     printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);

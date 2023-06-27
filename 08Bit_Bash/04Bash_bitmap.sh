@@ -189,39 +189,16 @@ function bitmap_NR()
       ((row--));
     fi
   done 
-
-  # while ((row>-1)) ;do
-  #   if (( bitmap ));then
-  #     bit=$(( -bitmap&bitmap ));        # 一番右のビットを取り出す
-  #     bitmap=$(( bitmap^bit ));         # 配置可能なパターンが一つずつ取り出される
-  #     board[$row]="$bit";               # Qを配置
-  #     if (( row==(size-1) ));then
-  #       ((TOTAL++));
-  #       printRecord "$size" "1";        # 出力 1:bitmap版 0:それ以外
-  #       bitmap=tmpBoard[row];
-  #       ((--row));
-  #     else
-  #       local -i n=$((row++));
-  #       left[$row]=$(((  left[n]|bit)<<1 ));
-  #       down[$row]=$((   down[n]|bit ));
-  #       right[$row]=$(((right[n]|bit)>>1 ));
-  #       tmpBoard[$row]=$bitmap;
-  #       board[$row]="$bit";             # Qを配置
-  #       # クイーンが配置可能な位置を表す
-  #       bitmap=$(( mask&~(left[row]|down[row]|right[row]) ));
-  #     fi
-  #   else
-  #     bitmap=tmpBoard[row];
-  #     (( row-- ));
-  #   fi
-  # done 
 }
 #
 : '再帰版ビットマップ';
 function bitmap_R()
 {
-  local -i size="$1"; local -i row="$2";
-  local -i left="$3"; local -i down="$4"; local -i right="$5";
+  local -i size="$1"; 
+  local -i row="$2";
+  local -i left="$3"; 
+  local -i down="$4"; 
+  local -i right="$5";
   local -i bitmap=;
   local -i bit=;
   local -i col=0;                     # 再帰に必要

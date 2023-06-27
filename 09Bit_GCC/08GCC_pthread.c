@@ -1,14 +1,16 @@
 /**
  *
  * bash版キャリーチェーンのC言語版
- * Ｃ言語版キャリーチェーン並列処理完成版
+ * Ｃ言語版キャリーチェーン並列処理版
  *
  * 簡単な実行
- * bash-3.2$ gcc 17GCC_carryChain.c -pthread -o 17GCC && ./17GCC
+ * bash-3.2$ gcc 08GCC_pthread.c -pthread && ./a.out
  *  
  * 高速な実行 
- * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o 17GCC && ./17GCC -r
+ * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
  *
+ * さらにより最適で高速なコンパイルオプション
+* $ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
  *
  *
  * 今回のテーマ
@@ -492,7 +494,7 @@ int main(int argc,char** argv)
     printf("  -c: CPU Without recursion\n");
     printf("  -r: CPUR Recursion\n");
   }
-  printf("\n\n７．キャリーチェーン\n");
+  printf("\n\n８．並列処理 pthread\n");
   printf("%s\n"," N:        Total       Unique        dd:hh:mm:ss.ms");
   // clock_t st;           //速度計測用
   // char t[20];           //hh:mm:ss.msを格納

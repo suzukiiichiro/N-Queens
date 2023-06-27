@@ -1,53 +1,38 @@
 /**
  *
- * bash版キャリーチェーンのC言語版
- * 最終的に 08Bash_carryChain_parallel.sh のように
- * 並列処理 pthread版の作成が目的
+ * bash版バックトラックのC言語版
  *
- * 今回のテーマ
+ 詳しい説明はこちらをどうぞ
+ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
- * スレッドに対応すべくCOUNTERをLocal構造体に移動
- * よってcalcChain()を廃止してbuildChain()に統合
- * 不安定と言われているmemcpyの廃止
- * http://tsurujiro.blog.fc2.com/blog-entry-8.html
- * https://www.kushiro-ct.ac.jp/yanagawa/ex-2017/1-tg/03/
-
-
- 困ったときには以下のＵＲＬがとても参考になります。
-
- C++ 値渡し、ポインタ渡し、参照渡しを使い分けよう
- https://qiita.com/agate-pris/items/05948b7d33f3e88b8967
- 値渡しとポインタ渡し
- https://tmytokai.github.io/open-ed/activity/c-pointer/text06/page01.html
- C言語 値渡しとアドレス渡し
- https://skpme.com/199/
- アドレスとポインタ
- https://yu-nix.com/archives/c-struct-pointer/
-
-
-実行結果
-bash-3.2$ gcc 15GCC_carryChain.c -o 15GCC && ./15GCC
-Usage: ./15GCC [-c|-g]
-  -c: CPU Without recursion
-  -r: CPUR Recursion
-
-
-７．キャリーチェーン
+bash-3.2$ gcc 02GCC_BackTracking.c && ./a.out -c
+２．バックトラック
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.01
-12:        14200            1788            0.05
-13:        73712            9237            0.14
-14:       365596           45771            0.47
-15:      2279184          285095            2.07
-bash-3.2$
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.01
+11:         2680               0            0.05
+12:        14200               0            0.27
+13:        73712               0            1.64
 
+bash-3.2$ gcc 02GCC_BackTracking.c && ./a.out -r
+２．バックトラック
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2               0            0.00
+ 5:           10               0            0.00
+ 6:            4               0            0.00
+ 7:           40               0            0.00
+ 8:           92               0            0.00
+ 9:          352               0            0.00
+10:          724               0            0.01
+11:         2680               0            0.05
+12:        14200               0            0.27
+13:        73712               0            1.62
+bash-3.2$
 */
 #include <string.h>
 #include <stdio.h>
@@ -121,17 +106,7 @@ void TimeFormat(clock_t utime,char* form)
   else
     sprintf(form,"           %5.2f",ss);
 }
-// 集計
-// void calcChain(void* args)
-// {
-//   Local *l=(Local *)args;
-//   UNIQUE= l->COUNTER[l->COUNT2]+
-//           l->COUNTER[l->COUNT4]+
-//           l->COUNTER[l->COUNT8];
-//   TOTAL=  l->COUNTER[l->COUNT2]*2+
-//           l->COUNTER[l->COUNT4]*4+
-//           l->COUNTER[l->COUNT8]*8;
-// }
+//
 // ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
@@ -312,6 +287,148 @@ void carryChain()
   buildChain(); // チェーンのビルド
   // calcChain(&l);  // 集計
 }
+unsigned int board[MAX];  //ボード配列
+// バックトラック　効き筋をチェック
+int check_backTracking(unsigned int row)
+{
+  for(unsigned int i=0;i<row;++i){
+    unsigned int val=0;
+    if(board[i]>=board[row]){
+      val=board[i]-board[row];
+    }else{
+      val=board[row]-board[i];
+    }
+    if(board[i]==board[row]||val==(row-i)){
+      return 0;
+    }
+  }
+  return 1;
+}
+// バックトラック 非再帰版
+void backTracking_NR(int row)
+{
+  unsigned int size=g.size;
+  // １．非再帰は初期化が必要
+  for(unsigned int i=0;i<size;++i){
+    board[i]=-1;
+  }
+  // ２．再帰で呼び出される関数内を回す処理
+  while(row>-1){
+    unsigned int matched=0;   //クイーンを配置したか
+    // ３．再帰処理のループ部分
+    for(unsigned int col=board[row]+1;col<size;++col){
+      board[row]=col;   // クイーンを配置
+      // 効きをチェック
+      if(check_backTracking(row)==1){
+        matched=1;
+        break;
+      } // end if
+    } // end for
+    // ４．配置したら実行したい処理
+    if(matched){
+      row++;
+      // ５．最下部まで到達したときの処理
+      if(row==size){
+        row--;
+        TOTAL++;
+      }
+    // ６．配置できなくてバックトラックしたい時の処理
+    }else{
+      if(board[row]!=-1){
+        board[row]=-1;
+      }
+      row--;
+    }
+  } //end while
+}
+// バックトラック 再帰版
+void backTracking_R(int row)
+{
+  unsigned int size=g.size;
+  if(row==size){
+    TOTAL++;
+  }else{
+    for(unsigned int col=0;col<size;++col){
+      board[row]=col;
+      if(check_backTracking(row)==1){
+        backTracking_R(row+1);
+      }
+    }// end for
+  }//end if
+}
+// ブルートフォース 効き筋をチェック
+int check_bluteForce()
+{
+  unsigned int size=g.size; 
+  for(unsigned int r=1;r<size;++r){
+    unsigned int val=0;
+    for(unsigned int i=0;i<r;++i){
+      if(board[i]>=board[r]){
+        val=board[i]-board[r];
+      }else{
+        val=board[r]-board[i];
+      }
+      if(board[i]==board[r]||val==(r-i)){
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+//ブルートフォース 非再帰版
+void bluteForce_NR(int row)
+{
+  unsigned int size=g.size;
+  // １．非再帰は初期化が必要
+  for(unsigned int i=0;i<size;++i){
+    board[i]=-1;
+  }
+  // ２．再帰で呼び出される関数内を回す処理
+  while(row>-1){
+    unsigned int matched=0;   //クイーンを配置したか
+    // ３．再帰処理のループ部分
+    // 非再帰では過去の譜石を記憶するためにboard配列を使う
+    for(unsigned int col=board[row]+1;col<size;++col){
+      board[row]=col;
+      matched=1;
+      break;
+    }
+    // ４．配置したら実行したい処理
+    if(matched){
+      row++;
+      // ５．最下部まで到達したときの処理';
+      if(row==size){
+        row--;
+        // 効きをチェック
+        if(check_bluteForce()==1){
+          TOTAL++;
+        }
+      }
+      // ６．配置できなくてバックトラックしたい処理
+    }else{
+      if(board[row]!=-1){
+        board[row]=-1;
+      }
+      row--;
+    } // end if
+  }//end while
+}
+//
+//ブルートフォース 再帰版
+void bluteForce_R(int row)
+{
+  unsigned int size=g.size; 
+  if(row==size){
+    if(check_bluteForce()==1){
+      TOTAL++; // グローバル変数
+    }
+  }else{
+    for(int col=0;col<size;++col){
+      board[row]=col;
+      bluteForce_R(row+1);
+    }
+  }
+}
 //メインメソッド
 int main(int argc,char** argv)
 {
@@ -323,11 +440,12 @@ int main(int argc,char** argv)
     else{ cpur=true;}
   }
   if(argc<argstart){
-    printf("Usage: %s [-c|-g]\n",argv[0]);
+    printf("Usage: %s [-c|-r|-g]\n",argv[0]);
     printf("  -c: CPU Without recursion\n");
     printf("  -r: CPUR Recursion\n");
+    printf("  -g: GPU Without Recursion\n");
   }
-  printf("\n\n７．キャリーチェーン\n");
+  printf("２．バックトラック\n");
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   clock_t st;           //速度計測用
   char t[20];           //hh:mm:ss.msを格納
@@ -338,10 +456,14 @@ int main(int argc,char** argv)
     TOTAL=UNIQUE=0; 
     g.size=size;
     st=clock();
-    if(cpu){
-      carryChain();
-    }else{
-      carryChain();
+    if(cpu){  // 非再帰
+      backTracking_NR(0);  //２．バックトラック
+      // bluteForce_NR(0); //１．ブルートフォース
+      // carryChain();
+    }else{    // 再帰
+      backTracking_R(0);  //２．バックトラック
+      // bluteForce_R(0);  //１．ブルートフォース
+      // carryChain();
     }
     TimeFormat(clock()-st,t);
     printf("%2d:%13lld%16lld%s\n",size,TOTAL,UNIQUE,t);

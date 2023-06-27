@@ -176,7 +176,7 @@ function bluteForce_NR(){
  done	
 }
 #
-: '再帰版ブルートフォース';
+# : '再帰版ブルートフォース';
 function bluteForce_R(){
   local -i row="$1";
   local -i size="$2";

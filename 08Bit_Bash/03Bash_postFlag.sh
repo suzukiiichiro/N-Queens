@@ -121,9 +121,6 @@ function postFlag_NR(){
       if (( !down[col]
         &&  !right[col-row+size-1]
         &&  !left[col+row] ));then
-        dix=$col;
-        rix=$((row-col+(size-1)));
-        lix=$((row+col));
         ## バックトラックではここで効きをチェックしていた
         # check_backTracking "$row";  # 効きをチェック
         ## 
