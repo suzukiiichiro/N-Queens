@@ -214,84 +214,70 @@ function solve_parallel()
   left_a[$current]=$left;
   down_a[$current]=$down;
   right_a[$current]=$right;
-  bitmap_a[$current]=$(( ~(left_a[current]|down_a[current]|right_a[current]) ));
+  bitmap=bitmap_a[$current]=$(( ~(left_a[current]|down_a[current]|right_a[current]) ));
   bend=0;
   rflg=0;
   local -i total=0;
-  while(true);do
-    #start:	
-    debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
-    if (( !(down+1) && rflg==0));then 
-      #goto ret;
-      ((total++));
-      debug "2:total:$total";
-      rflg=1;
-      continue;
-    fi
-    if((rflg==0));then
-      while(( row&1 ));do
-        debug "3:bv:$row";
-        ((row>>=1));
-        ((left<<=1));
-        ((right>>=1));
-      done
-     (( row>>=1 ));      # １行下に移動する
-      local -i bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
-    fi
-    while ((bitmap!=0||rflg==1));do
-    #for (( bitmap=~(left|down|right);bitmap!=0;bitmap^=bit));do
-      if((rflg==0));then
-        debug "4:bitmap:$bitmap";
-        debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
+  while((current>-1));do
+    #debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
+    if((bitmap!=0||row&1));then
+      if((!(down+1)));then
+        ((total++));
+        #debug "2:total:$total";
+        ####
+        #if((current>=0));then
+        ((current--));
+        #fi
+        row=${row_a[$current]};
+        left=${left_a[$current]};
+        right=${right_a[$current]};
+        down=${down_a[$current]};
+        bitmap=${bitmap_a[$current]};
+        continue;
+      elif((row&1));then
+        while(( row&1 ));do
+          #debug "3:bv:$row";
+          ((row>>=1));
+          ((left<<=1));
+          ((right>>=1));
+        done
+        bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
+        continue;
+      else
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
+        #debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
         if((current<size));then
-  	  row_a[$current]=$row;
+          row_a[$current]=$row;
   	  left_a[$current]=$left;
  	  down_a[$current]=$down;
   	  right_a[$current]=$right;
   	  bitmap_a[$current]=$bitmap;
           ((current++));  
         fi       
+        (( row>>=1 ));      # １行下に移動する
         left=$(((left|bit)<<1));
         down=$(((down|bit)));
         right=$(((right|bit)>>1));
-        debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
-        #goto start;
-        bend=1;
-        break;
+        #debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
+        bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
+        #debug "4:bitmap:$bitmap";
       fi
-      #solve "$row" "$(( (left|bit)<<1 ))" "$(( (down|bit) ))" "$(( (right|bit)>>1 ))"; 
-      #((total+=$?));  # solve()で実行したreturnの値は $? に入ります。
-      #ret:
-      if((rflg==1));then
-        if((current>0));then
-	  ((current--));
-        fi
-        row=${row_a[$current]};
-        left=${left_a[$current]};
-        right=${right_a[$current]};
-        down=${down_a[$current]};
-        bitmap=${bitmap_a[$current]};
-        rflg=0;
-        debug "5:returnrec"
-        debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
-      fi
-    done
-    debug "6:fin_bitmap:$bitmap"
-    if((bend==1&&rflg==0));then
-      bend=0;
-      continue;
-    fi
-    if((current<=0));then
-      return $total;  # 合計を戻り値にします
-      break;
     else
-      #goto ret;
-      rflg=1;
+      #if((current>=0));then
+      ((current--));
+      #fi
+      row=${row_a[$current]};
+      left=${left_a[$current]};
+      right=${right_a[$current]};
+      down=${down_a[$current]};
+      bitmap=${bitmap_a[$current]};
+      #debug "5:returnrec"
+      #debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
     fi
-
   done
+  return "$total";
+
 #set +x
 }
 function solve_parallel_R()

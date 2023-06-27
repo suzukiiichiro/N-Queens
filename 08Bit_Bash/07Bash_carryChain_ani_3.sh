@@ -207,15 +207,15 @@ function solve()
   rflg=0;
   local -i total=0;
   while((current>-1));do
-    debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
+    #debug "1:top row:${row_a[$current]} left:${left_a[$current]} down:${down_a[$current]} right:${right_a[$current]}"
     if((bitmap!=0||row&1));then
       if((!(down+1)));then
         ((total++));
-        debug "2:total:$total";
+        #debug "2:total:$total";
         ####
-        if((current>=0));then
-          ((current--));
-        fi
+        #if((current>=0));then
+        ((current--));
+        #fi
         row=${row_a[$current]};
         left=${left_a[$current]};
         right=${right_a[$current]};
@@ -224,7 +224,7 @@ function solve()
         continue;
       elif((row&1));then
         while(( row&1 ));do
-          debug "3:bv:$row";
+          #debug "3:bv:$row";
           ((row>>=1));
           ((left<<=1));
           ((right>>=1));
@@ -234,7 +234,7 @@ function solve()
       else
         local -i bit=$(( -bitmap&bitmap ));
         bitmap=$(( bitmap^bit )); 
-        debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
+        #debug "before:bitmap:row:$row,left:$left,down:$down,right:$right";
         if((current<size));then
           row_a[$current]=$row;
   	  left_a[$current]=$left;
@@ -247,21 +247,21 @@ function solve()
         left=$(((left|bit)<<1));
         down=$(((down|bit)));
         right=$(((right|bit)>>1));
-        debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
+        #debug "after:bitmap:row:$row,left:$left,down:$down,right:$right";
         bitmap=$((~(left|down|right)));  # 再帰に必要な変数は必ず定義する必要があります。
-        debug "4:bitmap:$bitmap";
+        #debug "4:bitmap:$bitmap";
       fi
     else
-      if((current>=0));then
-        ((current--));
-      fi
+      #if((current>=0));then
+      ((current--));
+      #fi
       row=${row_a[$current]};
       left=${left_a[$current]};
       right=${right_a[$current]};
       down=${down_a[$current]};
       bitmap=${bitmap_a[$current]};
-      debug "5:returnrec"
-      debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
+      #debug "5:returnrec"
+      #debug "rec:bitmap:$bitmap:row:$row,left:$left,down:$down,right:$right";
     fi
   done
   return "$total";
