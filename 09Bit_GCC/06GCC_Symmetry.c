@@ -1,12 +1,12 @@
 /**
  *
- * bash版対象解除法のC言語版
+ * bash版対称解除法のC言語版
  *
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
 bash-3.2$ gcc 06GCC_Symmetry.c && ./a.out -r
-６．対象解除法
+６．対称解除法
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -24,7 +24,7 @@ bash-3.2$ gcc 06GCC_Symmetry.c && ./a.out -r
 17:     95815104        11977939           24.08
 
 bash-3.2$ gcc 06GCC_Symmetry.c && ./a.out -c
-６．対象解除法
+６．対称解除法
  N:        Total       Unique        hh:mm:ss.ms
  4:            2               1            0.00
  5:           10               2            0.00
@@ -160,11 +160,11 @@ bool placement(void* args)
   l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
   return true;
 }
-//対称解除法
+//解除法
 void carryChain_symmetry(void* args)
 {
   Local *l=(Local *)args;
-  // 対称解除法 
+  // 解除法 
   unsigned const int ww=(g.size-2)*(g.size-1)-1-l->w;
   unsigned const int w2=(g.size-2)*(g.size-1)-1;
   // # 対角線上の反転が小さいかどうか確認する
@@ -173,7 +173,7 @@ void carryChain_symmetry(void* args)
   if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
   // # 斜め下方向への反転が小さいかをチェックする
   if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
-  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  // 枝刈り １行目が角の場合回転チェックせずCOUNT8にする
   if(l->B.x[0]==0){ 
     l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,
     l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
@@ -239,7 +239,7 @@ void thread_run(void* args)
         if(!placement(l)){ continue; } 
         l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
         if(!placement(l)){ continue; } 
-        // 対称解除法
+        // 解除法
         carryChain_symmetry(l);
       } //w
     } //e
@@ -298,16 +298,16 @@ unsigned int down[MAX];   //ポストフラグ/ビットマップ/ミラー
 unsigned int left[MAX];   //ポストフラグ/ビットマップ/ミラー
 unsigned int right[MAX];  //ポストフラグ/ビットマップ/ミラー
 unsigned int bitmap[MAX]; //ミラー
-unsigned long COUNT2=0;   //ミラー/対象解除法
-unsigned long COUNT4=0;   //対象解除法
-unsigned long COUNT8=0;   //対象解除法
-unsigned int BOUND1=0;    //対象解除法
-unsigned int BOUND2=0;    //対象解除法
-unsigned int SIDEMASK=0;  //対象解除法
-unsigned int LASTMASK=0;  //対象解除法
-unsigned int TOPBIT=0;    //対象解除法
-unsigned int ENDBIT=0;    //対象解除法
-// 対象解除法
+unsigned long COUNT2=0;   //ミラー/対称解除法
+unsigned long COUNT4=0;   //対称解除法
+unsigned long COUNT8=0;   //対称解除法
+unsigned int BOUND1=0;    //対称解除法
+unsigned int BOUND2=0;    //対称解除法
+unsigned int SIDEMASK=0;  //対称解除法
+unsigned int LASTMASK=0;  //対称解除法
+unsigned int TOPBIT=0;    //対称解除法
+unsigned int ENDBIT=0;    //対称解除法
+// 対称解除法
 void symmetryOps(unsigned int size)
 {
   /**
@@ -422,7 +422,7 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
       if((bit&mask)!=0){
         if(row==(size-1)){
           if( (save_bitmap&LASTMASK)==0){
-            symmetryOps(size);  //対象解除法
+            symmetryOps(size);  //対称解除法
           }
           row--;
         }else{
@@ -474,7 +474,7 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
     }
   }//end while
 }
-// 対象解除法 非再帰版
+// 対称解除法 非再帰版
 void symmetry_NR(unsigned int size)
 {
   TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
@@ -524,7 +524,7 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
     if(bitmap){
       if( (bitmap&LASTMASK)==0){
         board[row]=bitmap;  //Qを配置
-        symmetryOps(size);    //対象解除
+        symmetryOps(size);    //対称解除
       }
     }
   }else{
@@ -573,7 +573,7 @@ void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int l
     }
   }
 }
-// 対象解除法 再帰版
+// 対称解除法 再帰版
 void symmetry_R(unsigned int size)
 {
   TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
@@ -988,7 +988,7 @@ int main(int argc,char** argv)
     printf("  -r: CPUR Recursion\n");
     printf("  -g: GPU Without Recursion\n");
   }
-  printf("６．対象解除法\n");
+  printf("６．対称解除法\n");
   printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
   clock_t st;           //速度計測用
   char t[20];           //hh:mm:ss.msを格納
@@ -1000,7 +1000,7 @@ int main(int argc,char** argv)
     st=clock();
     g.size=size;
     if(cpu){  // 非再帰
-      symmetry_NR(size);      //６．対象解除法
+      symmetry_NR(size);      //６．対称解除法
       // mirror_NR(size);        //５．ミラー
       // bitmap_NR(size,0);      //４．ビットマップ
       // postFlag_NR(size,0);    //３．ポストフラグ
@@ -1008,7 +1008,7 @@ int main(int argc,char** argv)
       // bluteForce_NR(size,0);  //１．ブルートフォース
       // carryChain();
     }else{    // 再帰
-      symmetry_R(size);       //６．対象解除法
+      symmetry_R(size);       //６．対称解除法
       // mirror_R(size);         //５．ミラー
       // bitmap_R(size,0,0,0,0); //４．ビットマップ
       // postFlag_R(size,0);     //３．ポストフラグ

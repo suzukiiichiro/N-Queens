@@ -61,7 +61,7 @@ while True:
 
 
 普通の実行オプション
-bash-3.2$ gcc 17GCC_carryChain.c -o 17GCC && ./17GCC
+bash-3.2$ gcc 08GCC_pthread.c -o 17GCC && ./17GCC
 Usage: ./17GCC [-c|-g]
   -c: CPU Without recursion
   -r: CPUR Recursion
@@ -90,7 +90,7 @@ bash-3.2$
 
 
 より最適で高速なコンパイルオプション
-bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 17GCC_carryChain.c -o 17GCC && ./17GCC
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c -o 17GCC && ./17GCC
 Usage: ./17GCC [-c|-g]
   -c: CPU Without recursion
   -r: CPUR Recursion
