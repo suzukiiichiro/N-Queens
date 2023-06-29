@@ -968,6 +968,7 @@ int main(int argc,char** argv)
         // bitmap_R(size,0,0,0,0); //ビットマップ
         // mirror_R(size);         //ミラー
         // symmetry_R(size);       //対称解除法
+        g.size=size;
         carryChain();           //キャリーチェーン
       }
       if(cpu){ //非再帰
@@ -977,6 +978,7 @@ int main(int argc,char** argv)
         // bitmap_NR(size,0);  //ビットマップ
         // mirror_NR(size);         //ミラー
         // symmetry_NR(size);       //対称解除法
+        g.size=size;
         carryChain();           //キャリーチェーン
       }
       //
