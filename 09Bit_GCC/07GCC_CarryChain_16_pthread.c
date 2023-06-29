@@ -178,6 +178,7 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o 07GCC &
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
 #define MAX 27

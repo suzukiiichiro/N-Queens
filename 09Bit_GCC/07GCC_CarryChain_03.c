@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 #include <sys/time.h>
 #define MAX 27
 // システムによって以下のマクロが必要であればコメントを外してください。
