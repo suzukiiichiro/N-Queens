@@ -7,10 +7,10 @@
  * bash-3.2$ gcc 08GCC_pthread.c -pthread && ./a.out
  *  
  * 高速な実行 
- * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
+ * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native -pthread 08GCC_pthread.c && ./a.out
  *
  * さらにより最適で高速なコンパイルオプション
-* $ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
+* $ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native -pthread 08GCC_pthread.c && ./a.out
  *
  *
  * 今回のテーマ
@@ -181,10 +181,11 @@ bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o 07GCC &
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/time.h>
+#include <time.h>
 #include <pthread.h>
 #define MAX 27
 // システムによって以下のマクロが必要であればコメントを外してください。
-//#define UINT64_C(c) c ## ULL
+#define UINT64_C(c) c ## ULL
 //
 // グローバル変数
 typedef unsigned long long uint64_t;
