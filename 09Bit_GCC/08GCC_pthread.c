@@ -7,10 +7,10 @@
  * bash-3.2$ gcc 08GCC_pthread.c -pthread && ./a.out
  *  
  * 高速な実行 
- * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
+ * $ gcc -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native -pthread 08GCC_pthread.c && ./a.out
  *
  * さらにより最適で高速なコンパイルオプション
-* $ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c && ./a.out
+* $ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native -pthread 08GCC_pthread.c && ./a.out
  *
  *
  * 今回のテーマ
