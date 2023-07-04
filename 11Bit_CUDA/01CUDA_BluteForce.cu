@@ -177,6 +177,14 @@ void bluteForce_nodeLayer(int size)
   cudaMalloc((void**)&deviceNodes, nodeSize);
   cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
 
+  // board配列
+  size_t boardSize = size*sizeof(int);
+  int *board=(int*)malloc(boardSize);
+  int *deviceBoard;
+  cudaMalloc((void**)&deviceBoard,boardSize);
+  cudaMemcpy(deviceBoard,board,boardSize,cudaMemcpyHostToDevice);
+
+
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
   int numSolutions = nodes.size() / 6; // We only need half of the nodes, and each node is encoded by 3 integers.
@@ -221,25 +229,28 @@ bool InitCUDA()
 //メイン
 int main(int argc,char** argv)
 {
-  bool cpu=false,cpur=false,gpu=false,sgpu=false;
-  int argstart=1;
+  bool cpu=false,cpur=false,gpu=false,gpuNodeLayer=false;
+  int argstart=2;
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
     else if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else{ gpu=true; } //デフォルトをgpuとする
+    else if(argv[1][1]=='n'||argv[1][1]=='N'){gpu=true;}
+    else{ gpuNodeLayer=true; } //デフォルトをgpuとする
     argstart=2;
   }
   if(argc<argstart){
     printf("Usage: %s [-c|-g|-r|-s] n steps\n",argv[0]);
-    printf("  -r: CPUR only\n");
-    printf("  -c: CPU only\n");
-    printf("  -g: GPU only\n");
+    printf("  -r: CPU 再帰\n");
+    printf("  -c: CPU 非再帰\n");
+    printf("  -g: GPU 再帰\n");
+    printf("  -n: GPU ノードレイヤー\n");
   }
-  if(cpu){ printf("\n\nブルートフォース 非再帰 \n"); }
-  else if(cpur){ printf("\n\nブルートフォース 再帰 \n"); }
-  else if(gpu){ printf("\n\nブルートフォース GPU \n"); }
+  if(cpur){ printf("\n\nブルートフォース 再帰 \n"); }
+  else if(cpu){ printf("\n\nブルートフォース 非再帰 \n"); }
+  else if(gpu){ printf("\n\nブルートフォース GPU\n"); }
+  else if(gpuNodeLayer){ printf("\n\nブルートフォース GPUノードレイヤー \n"); }
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
@@ -274,7 +285,7 @@ int main(int argc,char** argv)
           size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
-  if(gpu||sgpu){
+  if(gpu||gpuNodeLayer){
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
     int min=4;
@@ -286,7 +297,10 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-				bluteForce_nodeLayer(size);
+        TOTAL=bluteForce_nQueens(size,0,0,0);
+      }else if(gpuNodeLayer){
+        TOTAL=UNIQUE=0;
+        bluteForce_nodeLayer(size);
       }
       gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;
