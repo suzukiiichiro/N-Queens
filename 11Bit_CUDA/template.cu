@@ -11,13 +11,13 @@
 unsigned long TOTAL;
 unsigned long UNIQUE;
 //
-// $B%/%$!<%s$N8z$-$rH=Dj$7$F2r$rJV$9(B
+// クイーンの効きを判定して解を返す
 __host__ __device__ 
 long nQueens(int size,long left,long down,long right)
 {
   long mask=(1<<size)-1;
   long counter = 0;
-  if (down==mask) { // down$B$,$9$Y$F@lM-$5$l2r$,8+$D$+$k(B
+  if (down==mask) { // downがすべて専有され解が見つかる
     return 1;
   }
   long bit=0;
@@ -28,7 +28,7 @@ long nQueens(int size,long left,long down,long right)
   return counter;
 }
 //
-// i $BHVL\$N%a%s%P$r(B i $BHVL\$NItJ,LZ$N2r$GKd$a$k(B
+// i 番目のメンバを i 番目の部分木の解で埋める
 __global__ 
 void calculateSolutions(int size,long* nodes, long* solutions, int numElements)
 {
@@ -38,23 +38,23 @@ void calculateSolutions(int size,long* nodes, long* solutions, int numElements)
   }
 }
 //
-// 0$B0J30$N(Bbit$B$r%+%&%s%H(B
+// 0以外のbitをカウント
 int countBits(long n)
 {
   int counter = 0;
   while (n){
-    n &= (n - 1); // $B1&C<$N%<%m0J30$N?t;z$r:o=|(B
+    n &= (n - 1); // 右端のゼロ以外の数字を削除
     counter++;
   }
   return counter;
 }
 //
-// $B%N!<%I$r(Bk$BHVL\$N%l%$%d!<$N%N!<%I$GKd$a$k(B
+// ノードをk番目のレイヤーのノードで埋める
 long kLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
 {
   long counter=0;
   long mask=(1<<size)-1;
-  // $B$9$Y$F$N(Bdown$B$,Kd$^$C$?$i!"2r7h:v$r8+$D$1$?$3$H$K$J$k!#(B
+  // すべてのdownが埋まったら、解決策を見つけたことになる。
   if (countBits(down) == k) {
     nodes.push_back(left);
     nodes.push_back(down);
@@ -64,13 +64,13 @@ long kLayer(int size,std::vector<long>& nodes, int k, long left, long down, long
   long bit=0;
   for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
-    // $B2r$r2C$($FBP3Q@~$r$:$i$9(B
+    // 解を加えて対角線をずらす
     counter+=kLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
   }
   return counter;
 }
 //
-// k $BHVL\$N%l%$%d$N$9$Y$F$N%N!<%I$r4^$`%Y%/%H%k$rJV$9!#(B
+// k 番目のレイヤのすべてのノードを含むベクトルを返す。
 std::vector<long> kLayer(int size,int k)
 {
   std::vector<long> nodes{};
@@ -78,18 +78,18 @@ std::vector<long> kLayer(int size,int k)
   return nodes;
 }
 //
-// $B%N!<%I%l%$%d!<$N:n@.(B
+// ノードレイヤーの作成
 void nodeLayer(int size)
 {
   //int size=16;
-  // $B%D%j!<$N(B3$BHVL\$N%l%$%d!<$K$"$k%N!<%I(B
-  //$B!J$=$l$>$lO"B3$9$k(B3$B$D$N?t;z$G%(%s%3!<%I$5$l$k!K$N%Y%/%H%k!#(B
-  // $B%l%$%d!<(B2$B0J9_$O%N!<%I$N?t$,6QEy$J$N$G!"BP>N@-$rMxMQ$G$-$k!#(B
-  // $B%l%$%d(B4$B$K$O==J,$J%N!<%I$,$"$k!J(BN16$B$N>l9g!"(B9844$B!K!#(B
+  // ツリーの3番目のレイヤーにあるノード
+  //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
+  // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
+  // レイヤ4には十分なノードがある（N16の場合、9844）。
   std::vector<long> nodes = kLayer(size,4); 
 
-  // $B%G%P%$%9$K$O%/%i%9$,$J$$$N$G!"(B
-  // $B:G=i$NMWAG$r;XDj$7$F$+$i%G%P%$%9$K%3%T!<$9$k!#(B
+  // デバイスにはクラスがないので、
+  // 最初の要素を指定してからデバイスにコピーする。
   size_t nodeSize = nodes.size() * sizeof(long);
   long* hostNodes = (long*)malloc(nodeSize);
   hostNodes = &nodes[0];
@@ -97,34 +97,34 @@ void nodeLayer(int size)
   cudaMalloc((void**)&deviceNodes, nodeSize);
   cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
 
-  // $B%G%P%$%9=PNO$N3d$jEv$F(B
+  // デバイス出力の割り当て
   long* deviceSolutions = NULL;
   int numSolutions = nodes.size() / 6; // We only need half of the nodes, and each node is encoded by 3 integers.
   size_t solutionSize = numSolutions * sizeof(long);
   cudaMalloc((void**)&deviceSolutions, solutionSize);
 
-  // nQueens CUDA$B%+!<%M%k$r5/F0$9$k!#(B
+  // nQueens CUDAカーネルを起動する。
   int threadsPerBlock = 256;
   int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
   calculateSolutions <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
 
-  // $B7k2L$r%[%9%H$K%3%T!<(B
+  // 結果をホストにコピー
   long* hostSolutions = (long*)malloc(solutionSize);
   cudaMemcpy(hostSolutions, deviceSolutions, solutionSize, cudaMemcpyDeviceToHost);
 
-  // $BItJ,2r$r2C;;$7!"7k2L$rI=<($9$k!#(B
+  // 部分解を加算し、結果を表示する。
   long solutions = 0;
   for (long i = 0; i < numSolutions; i++) {
       solutions += 2*hostSolutions[i]; // Symmetry
   }
 
-  // $B=PNO(B
+  // 出力
   //std::cout << "We have " << solutions << " solutions on a " << size << " by " << size << " board." << std::endl;
   TOTAL=solutions;
   //return 0;
 }
 //
-// CUDA $B=i4|2=(B
+// CUDA 初期化
 bool InitCUDA()
 {
   int count;
@@ -140,7 +140,7 @@ bool InitCUDA()
   return true;
 }
 //
-//$B%a%$%s(B
+//メイン
 int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,sgpu=false;
@@ -150,7 +150,7 @@ int main(int argc,char** argv)
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
     else if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else{ gpu=true; } //$B%G%U%)%k%H$r(Bgpu$B$H$9$k(B
+    else{ gpu=true; } //デフォルトをgpuとする
     argstart=2;
   }
   if(argc<argstart){
@@ -159,9 +159,9 @@ int main(int argc,char** argv)
     printf("  -c: CPU only\n");
     printf("  -g: GPU only\n");
   }
-  if(cpu){ printf("\n\n$B%-%c%j!<%A%'!<%s(B $BHs:F5"(B \n"); }
-  else if(cpur){ printf("\n\n$B%-%c%j!<%A%'!<%s(B $B:F5"(B \n"); }
-  else if(gpu){ printf("\n\n$B%-%c%j!<%A%'!<%s(B GPGPU/CUDA \n"); }
+  if(cpu){ printf("\n\nキャリーチェーン 非再帰 \n"); }
+  else if(cpur){ printf("\n\nキャリーチェーン 再帰 \n"); }
+  else if(gpu){ printf("\n\nキャリーチェーン GPGPU/CUDA \n"); }
   if(cpu||cpur){
     int min=4;
     int targetN=17;
@@ -170,31 +170,31 @@ int main(int argc,char** argv)
     printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       TOTAL=UNIQUE=0;
-      gettimeofday(&t0, NULL);//$B7WB,3+;O(B
-      if(cpur){ //$B:F5"(B
-        // bluteForce_R(size,0);//$B%V%k!<%H%U%)!<%9(B
-        // backTracking_R(size,0); //$B%P%C%/%H%i%C%/(B
-        // postFlag_R(size,0);     //$BG[CV%U%i%0(B
-        // bitmap_R(size,0,0,0,0); //$B%S%C%H%^%C%W(B
-        // mirror_R(size);         //$B%_%i!<(B
-        // symmetry_R(size);       //$BBP>N2r=|K!(B
+      gettimeofday(&t0, NULL);//計測開始
+      if(cpur){ //再帰
+        // bluteForce_R(size,0);//ブルートフォース
+        // backTracking_R(size,0); //バックトラック
+        // postFlag_R(size,0);     //配置フラグ
+        // bitmap_R(size,0,0,0,0); //ビットマップ
+        // mirror_R(size);         //ミラー
+        // symmetry_R(size);       //対称解除法
         // g.size=size;
-        // carryChain();           //$B%-%c%j!<%A%'!<%s(B
+        // carryChain();           //キャリーチェーン
         nodeLayer(size);
       }
-      if(cpu){ //$BHs:F5"(B
-        //bluteForce_NR(size,0);//$B%V%k!<%H%U%)!<%9(B
-        // backTracking_NR(size,0);//$B%P%C%/%H%i%C%/(B
-        // postFlag_NR(size,0);     //$BG[CV%U%i%0(B
-        // bitmap_NR(size,0);  //$B%S%C%H%^%C%W(B
-        // mirror_NR(size);         //$B%_%i!<(B
-        // symmetry_NR(size);       //$BBP>N2r=|K!(B
+      if(cpu){ //非再帰
+        //bluteForce_NR(size,0);//ブルートフォース
+        // backTracking_NR(size,0);//バックトラック
+        // postFlag_NR(size,0);     //配置フラグ
+        // bitmap_NR(size,0);  //ビットマップ
+        // mirror_NR(size);         //ミラー
+        // symmetry_NR(size);       //対称解除法
         // g.size=size;
-        // carryChain();           //$B%-%c%j!<%A%'!<%s(B
+        // carryChain();           //キャリーチェーン
         nodeLayer(size);
       }
       //
-      gettimeofday(&t1, NULL);//$B7WB,=*N;(B
+      gettimeofday(&t1, NULL);//計測終了
       int ss;int ms;int dd;
       if(t1.tv_usec<t0.tv_usec) {
         dd=(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -220,12 +220,12 @@ int main(int argc,char** argv)
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
-      gettimeofday(&t0,NULL);   // $B7WB,3+;O(B
+      gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
         nodeLayer(size);
       }
-      gettimeofday(&t1,NULL);   // $B7WB,=*N;(B
+      gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;
       if (t1.tv_usec<t0.tv_usec) {
         dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
