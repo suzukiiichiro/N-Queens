@@ -28,7 +28,8 @@ unsigned long TOTAL=0;
 unsigned long UNIQUE=0;
 // キャリーチェーン 非再帰版
 // 構造体
-typedef struct{
+typedef struct
+{
   unsigned int size;
   unsigned int pres_a[930]; 
   unsigned int pres_b[930];
@@ -39,14 +40,16 @@ typedef struct{
   // unsigned int COUNT8;
 }Global; Global g;
 // 構造体
-typedef struct{
+typedef struct
+{
   uint64_t row;
   uint64_t down;
   uint64_t left;
   uint64_t right;
   long long x[MAX];
 }Board ;
-typedef struct{
+typedef struct
+{
   Board B;
   Board nB;
   Board eB;
