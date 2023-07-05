@@ -27,10 +27,6 @@
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
 int board[MAX];  //ボード配列
-unsigned int down[MAX];   //対称解除法
-unsigned int left[MAX];   //対称解除法
-unsigned int right[MAX];  //対称解除法
-unsigned int bitmap[MAX]; //対称解除法
 unsigned long COUNT2=0;   //対称解除法
 unsigned long COUNT4=0;   //対称解除法
 unsigned long COUNT8=0;   //対称解除法
@@ -131,6 +127,10 @@ void symmetryOps(unsigned int size)
 void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right)
 {
   unsigned int mask=(1<<size)-1;
+  unsigned int down[size];
+  unsigned int left[size];
+  unsigned int right[size];
+  unsigned int bitmap[size];
   left[row]=_left;
   down[row]=_down;
   right[row]=_right;
@@ -178,6 +178,10 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bit=0;
+  unsigned int down[size];
+  unsigned int left[size];
+  unsigned int right[size];
+  unsigned int bitmap[size];
   left[row]=_left;
   down[row]=_down;
   right[row]=_right;

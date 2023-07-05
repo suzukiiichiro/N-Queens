@@ -26,22 +26,23 @@
 // グローバル変数
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
-int board[MAX];  //ボード配列
-unsigned int left[MAX];
-unsigned int down[MAX];
-unsigned int right[MAX];
 // ビットマップ 非再帰版
 void bitmap_NR(unsigned int size,int row)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap[size];
   unsigned int bit=0;
+  unsigned int left[size];
+  unsigned int down[size];
+  unsigned int right[size];
+  left[0]=0;
+  down[0]=0;
+  right[0]=0;
   bitmap[row]=mask;
   while(row>-1){
     if(bitmap[row]>0){
       bit=-bitmap[row]&bitmap[row];//一番右のビットを取り出す
       bitmap[row]=bitmap[row]^bit;//配置可能なパターンが一つずつ取り出される
-      board[row]=bit;
       if(row==(size-1)){
         TOTAL++;
         row--;
@@ -50,7 +51,6 @@ void bitmap_NR(unsigned int size,int row)
         left[row]=(left[n]|bit)<<1;
         down[row]=down[n]|bit;
         right[row]=(right[n]|bit)>>1;
-        board[row]=bit;
         //クイーンが配置可能な位置を表す
         bitmap[row]=mask&~(left[row]|down[row]|right[row]);
       }
@@ -70,7 +70,6 @@ void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int 
     // クイーンが配置可能な位置を表す
     for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
       bit=bitmap&-bitmap;
-      board[row]=bit;
       bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
