@@ -1,6 +1,6 @@
 /**
  *
- * bash版ビットマップのC言語版のGPU/CUDA移植版
+ * bash版キャリーチェーンのC言語版のGPU/CUDA移植版
  *
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -26,58 +26,227 @@
 // グローバル変数
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
-int board[MAX];  //ボード配列
-unsigned int left[MAX];
-unsigned int down[MAX];
-unsigned int right[MAX];
-// ビットマップ 非再帰版
-void bitmap_NR(unsigned int size,int row)
+// キャリーチェーン 非再帰版
+// 構造体
+typedef struct{
+  unsigned int size;
+  unsigned int pres_a[930]; 
+  unsigned int pres_b[930];
+  // uint64_t COUNTER[3];      
+  // //カウンター配列
+  // unsigned int COUNT2;
+  // unsigned int COUNT4;
+  // unsigned int COUNT8;
+}Global; Global g;
+// 構造体
+typedef struct{
+  uint64_t row;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  long long x[MAX];
+}Board ;
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+  uint64_t dimx;
+  uint64_t dimy;
+  uint64_t COUNTER[3];      
+  //カウンター配列
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
+}Local;
+// ボード外側２列を除く内側のクイーン配置処理
+uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap[size];
-  unsigned int bit=0;
-  bitmap[row]=mask;
-  while(row>-1){
-    if(bitmap[row]>0){
-      bit=-bitmap[row]&bitmap[row];//一番右のビットを取り出す
-      bitmap[row]=bitmap[row]^bit;//配置可能なパターンが一つずつ取り出される
-      board[row]=bit;
-      if(row==(size-1)){
-        TOTAL++;
-        row--;
-      }else{
-        unsigned int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        board[row]=bit;
-        //クイーンが配置可能な位置を表す
-        bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-      }
-    }else{
-      row--;
+  if(down+1==0){ return  1; }
+  while((row&1)!=0) { 
+    row>>=1;
+    left<<=1;
+    right>>=1;
+  }
+  row>>=1;
+  uint64_t total=0;
+  for(uint64_t carryChain=~(left|down|right);carryChain!=0;){
+    uint64_t const bit=carryChain&-carryChain;
+    total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
+    carryChain^=bit;
+  }
+  return total;
+} 
+// クイーンの効きをチェック
+bool placement(void* args)
+{
+  Local *l=(Local *)args;
+  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
+  if (l->B.x[0]==0){
+    if (l->B.x[1]!=(uint64_t)-1){
+      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
     }
-  }//end while
-}
-// ビットマップ 再帰版
-void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down, unsigned int right)
-{
-  unsigned int mask=(1<<size)-1;
-  unsigned int bit=0;
-  if(row==size){
-    TOTAL++;
   }else{
-    // クイーンが配置可能な位置を表す
-    for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
-      bit=bitmap&-bitmap;
-      board[row]=bit;
-      bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    if( (l->B.x[0]!=(uint64_t)-1) ){
+      if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
+        && (l->dimy==0 || l->dimy==g.size-1)
+      )){ return 0; } 
+      if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
+          l->dimy>=g.size-l->B.x[0]))){
+        return 0;
+      } 
+    }
+  }
+  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
+  uint64_t row=UINT64_C(1)<<l->dimx;
+  uint64_t down=UINT64_C(1)<<l->dimy;
+  uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
+  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
+  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
+  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
+  return true;
+}
+//対称解除法
+void carryChain_symmetry(void* args)
+{
+  Local *l=(Local *)args;
+  // 対称解除法 
+  unsigned const int ww=(g.size-2)*(g.size-1)-1-l->w;
+  unsigned const int w2=(g.size-2)*(g.size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
+  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
+  // # 垂直方向の中心に対する反転が小さいかを確認
+  if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
+  // # 斜め下方向への反転が小さいかをチェックする
+  if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
+  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  if(l->B.x[0]==0){ 
+    l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return ;
+  }
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+  // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; } 
+    l->COUNTER[l->COUNT2]+=solve(l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return;
+  }
+  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; } 
+    l->COUNTER[l->COUNT4]+=solve(l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return;
+  }
+  l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,
+  l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+  return;
+}
+// pthread run()
+void thread_run(void* args)
+{
+  Local *l=(Local *)args;
+
+  // memcpy(&l->B,&l->wB,sizeof(Board));       // B=wB;
+  l->B=l->wB;
+  l->dimx=0; l->dimy=g.pres_a[l->w]; 
+  //if(!placement(l)){ continue; } 
+  if(!placement(l)){ return; } 
+  l->dimx=1; l->dimy=g.pres_b[l->w]; 
+  // if(!placement(l)){ continue; } 
+  if(!placement(l)){ return; } 
+  //２ 左２行に置く
+  // memcpy(&l->nB,&l->B,sizeof(Board));       // nB=B;
+  l->nB=l->B;
+  for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+    // memcpy(&l->B,&l->nB,sizeof(Board));     // B=nB;
+    l->B=l->nB;
+    l->dimx=g.pres_a[l->n]; l->dimy=g.size-1; 
+    if(!placement(l)){ continue; } 
+    l->dimx=g.pres_b[l->n]; l->dimy=g.size-2; 
+    if(!placement(l)){ continue; } 
+    // ３ 下２行に置く
+    // memcpy(&l->eB,&l->B,sizeof(Board));     // eB=B;
+    l->eB=l->B;
+    for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+      // memcpy(&l->B,&l->eB,sizeof(Board));   // B=eB;
+      l->B=l->eB;
+      l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e]; 
+      if(!placement(l)){ continue; } 
+      l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e]; 
+      if(!placement(l)){ continue; } 
+      // ４ 右２列に置く
+      // memcpy(&l->sB,&l->B,sizeof(Board));   // sB=B;
+      l->sB=l->B;
+      for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+        // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+        l->B=l->sB;
+        l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0; 
+        if(!placement(l)){ continue; } 
+        l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1; 
+        if(!placement(l)){ continue; } 
+        // 対称解除法
+        carryChain_symmetry(l);
+      } //w
+    } //e
+  } //n
+}
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+
+  // カウンターの初期化
+  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
+  // Board の初期化 nB,eB,sB,wB;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  // Board x[]の初期化
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  //１ 上２行に置く
+  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
+  l->wB=l->B;
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    thread_run(&l);
+  } //w
+  /**
+   * 集計
+   */
+  UNIQUE= l->COUNTER[l->COUNT2]+
+          l->COUNTER[l->COUNT4]+
+          l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+
+          l->COUNTER[l->COUNT4]*4+
+          l->COUNTER[l->COUNT8]*8;
+}
+// チェーンのリストを作成
+void listChain()
+{
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)g.size;++a){
+    for(unsigned int b=0;b<(unsigned)g.size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
     }
   }
 }
+// キャリーチェーン
+void carryChain()
+{
+  listChain();  //チェーンのリストを作成
+  buildChain(); // チェーンのビルド
+  // calcChain(&l);  // 集計
+}
 // クイーンの効きを判定して解を返す
 __host__ __device__ 
-long bitmap_solve_nodeLayer(int size,long left,long down,long right)
+long carryChain_solve_nodeLayer(int size,long left,long down,long right)
 {
   long mask=(1<<size)-1;
   long counter = 0;
@@ -85,9 +254,9 @@ long bitmap_solve_nodeLayer(int size,long left,long down,long right)
     return 1;
   }
   long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
-    counter += bitmap_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+  for(long carryChain=mask&~(left|down|right);carryChain;carryChain^=bit){
+    bit=-carryChain&carryChain;
+    counter += carryChain_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
   }
   return counter;
 }
@@ -97,7 +266,7 @@ void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
 {
   int i=blockDim.x * blockIdx.x + threadIdx.x;
   if(i<numElements){
-    solutions[i]=bitmap_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    solutions[i]=carryChain_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
 // 0以外のbitをカウント
@@ -123,8 +292,8 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
     return 1;
   }
   long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
+  for(long carryChain=mask&~(left|down|right);carryChain;carryChain^=bit){
+    bit=-carryChain&carryChain;
     // 解を加えて対角線をずらす
     counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
   }
@@ -137,8 +306,8 @@ std::vector<long> kLayer_nodeLayer(int size,int k)
   kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
   return nodes;
 }
-// 【GPU ビットマップ】ノードレイヤーの作成
-void bitmap_build_nodeLayer(int size)
+// 【GPU キャリーチェーン】ノードレイヤーの作成
+void carryChain_build_nodeLayer(int size)
 {
   //int size=16;
   // ツリーの3番目のレイヤーにあるノード
@@ -218,10 +387,10 @@ int main(int argc,char** argv)
     printf("  -g: GPU 再帰\n");
     printf("  -n: GPU ノードレイヤー\n");
   }
-  if(cpur){ printf("\n\nビットマップ 再帰 \n"); }
-  else if(cpu){ printf("\n\nビットマップ 非再帰 \n"); }
-  else if(gpu){ printf("\n\nビットマップ GPU\n"); }
-  else if(gpuNodeLayer){ printf("\n\nビットマップ GPUノードレイヤー \n"); }
+  if(cpur){ printf("\n\nキャリーチェーン 再帰 \n"); }
+  else if(cpu){ printf("\n\nキャリーチェーン 非再帰 \n"); }
+  else if(gpu){ printf("\n\nキャリーチェーン GPU\n"); }
+  else if(gpuNodeLayer){ printf("\n\nキャリーチェーン GPUノードレイヤー \n"); }
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
@@ -232,10 +401,12 @@ int main(int argc,char** argv)
       TOTAL=UNIQUE=0;
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
-        bitmap_R(size,0,0,0,0);
+        g.size=size;
+        carryChain();
       }
       if(cpu){ //非再帰
-        bitmap_NR(size,0);
+        g.size=size;
+        carryChain();
       }
       //
       gettimeofday(&t1, NULL);//計測終了
@@ -268,10 +439,12 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-        TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //ビットマップ
+        g.size=size;
+        TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
-        bitmap_build_nodeLayer(size); // ビットマップ
+        g.size=size;
+        carryChain_build_nodeLayer(size); // キャリーチェーン
       }
       gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;

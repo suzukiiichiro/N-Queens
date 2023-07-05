@@ -1,6 +1,6 @@
 /**
  *
- * bash版ビットマップのC言語版のGPU/CUDA移植版
+ * bash版ミラーのC言語版のGPU/CUDA移植版
  *
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -27,57 +27,108 @@
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
 int board[MAX];  //ボード配列
-unsigned int left[MAX];
-unsigned int down[MAX];
-unsigned int right[MAX];
-// ビットマップ 非再帰版
-void bitmap_NR(unsigned int size,int row)
+unsigned int down[MAX];   //ポストフラグ/ビットマップ/ミラー
+unsigned int left[MAX];   //ポストフラグ/ビットマップ/ミラー
+unsigned int right[MAX];  //ポストフラグ/ビットマップ/ミラー
+unsigned int mirror[MAX]; //ミラー
+unsigned long COUNT2=0;   //ミラー
+//ミラー処理部分 非再帰版
+void mirror_solve_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down, unsigned int _right)
 {
   unsigned int mask=(1<<size)-1;
-  unsigned int bitmap[size];
   unsigned int bit=0;
-  bitmap[row]=mask;
-  while(row>-1){
-    if(bitmap[row]>0){
-      bit=-bitmap[row]&bitmap[row];//一番右のビットを取り出す
-      bitmap[row]=bitmap[row]^bit;//配置可能なパターンが一つずつ取り出される
+  left[row]=_left;
+  down[row]=_down;
+  right[row]=_right;
+  mirror[row]=mask&~(left[row]|down[row]|right[row]);
+  while(row>0){
+    if(mirror[row]>0){
+      bit=-mirror[row]&mirror[row];
+      mirror[row]=mirror[row]^bit;
       board[row]=bit;
       if(row==(size-1)){
-        TOTAL++;
+        COUNT2++;
         row--;
       }else{
         unsigned int n=row++;
         left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
+        down[row]=(down[n]|bit);
         right[row]=(right[n]|bit)>>1;
-        board[row]=bit;
+        board[row]=bit;   //Qを配置
         //クイーンが配置可能な位置を表す
-        bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+        mirror[row]=mask&~(left[row]|down[row]|right[row]);
       }
     }else{
       row--;
     }
-  }//end while
+  }
 }
-// ビットマップ 再帰版
-void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down, unsigned int right)
+// ミラー 非再帰版
+void mirror_NR(unsigned int size)
+{
+  COUNT2=0;
+  unsigned int bit=0;
+  unsigned int limit=size%2 ? size/2-1 : size/2;
+  for(unsigned int i=0;i<size/2;++i){ //奇数でも偶数でも通過
+    bit=1<<i;
+    board[0]=bit;             //１行目にQを置く
+    mirror_solve_NR(size,1,bit<<1,bit,bit>>1);
+  }
+  if(size%2){                 //奇数で通過
+    bit=1<<(size-1)/2;
+    board[0]=1<<(size-1)/2;   //１行目の中央にQを配置
+    unsigned int left=bit<<1;
+    unsigned int down=bit;
+    unsigned int right=bit>>1;
+    for(unsigned int i=0;i<limit;++i){
+      bit=1<<i;
+      mirror_solve_NR(size,2,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
+  TOTAL=COUNT2<<1;    //倍にする
+}
+//ミラーロジック 再帰版
+void mirror_solve_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bit=0;
   if(row==size){
-    TOTAL++;
+    COUNT2++;
   }else{
-    // クイーンが配置可能な位置を表す
-    for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
-      bit=bitmap&-bitmap;
+    for(unsigned int mirror=mask&~(left|down|right);mirror;mirror=mirror&~bit){
+      bit=-mirror&mirror;
       board[row]=bit;
-      bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      mirror_solve_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
 }
+// ミラー 再帰版
+void mirror_R(unsigned int size)
+{
+  COUNT2=0;
+  unsigned int bit=0;
+  unsigned int limit=size%2 ? size/2-1 : size/2;
+  for(unsigned int i=0;i<size/2;++i){
+    bit=1<<i;
+    board[0]=bit;           //１行目にQを置く
+    mirror_solve_R(size,1,bit<<1,bit,bit>>1);
+  }
+  if(size%2){               //奇数で通過
+    bit=1<<(size-1)/2;
+    board[0]=1<<(size-1)/2; //１行目の中央にQを配置
+    unsigned int left=bit<<1;
+    unsigned int down=bit;
+    unsigned int right=bit>>1;
+    for(unsigned int i=0;i<limit;++i){
+      bit=1<<i;
+      mirror_solve_R(size,2,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
+  TOTAL=COUNT2<<1;    //倍にする
+}
 // クイーンの効きを判定して解を返す
 __host__ __device__ 
-long bitmap_solve_nodeLayer(int size,long left,long down,long right)
+long mirror_solve_nodeLayer(int size,long left,long down,long right)
 {
   long mask=(1<<size)-1;
   long counter = 0;
@@ -85,9 +136,9 @@ long bitmap_solve_nodeLayer(int size,long left,long down,long right)
     return 1;
   }
   long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
-    counter += bitmap_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+  for(long mirror=mask&~(left|down|right);mirror;mirror^=bit){
+    bit=-mirror&mirror;
+    counter += mirror_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
   }
   return counter;
 }
@@ -97,7 +148,7 @@ void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
 {
   int i=blockDim.x * blockIdx.x + threadIdx.x;
   if(i<numElements){
-    solutions[i]=bitmap_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
 // 0以外のbitをカウント
@@ -123,8 +174,8 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
     return 1;
   }
   long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
+  for(long mirror=mask&~(left|down|right);mirror;mirror^=bit){
+    bit=-mirror&mirror;
     // 解を加えて対角線をずらす
     counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
   }
@@ -137,8 +188,8 @@ std::vector<long> kLayer_nodeLayer(int size,int k)
   kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
   return nodes;
 }
-// 【GPU ビットマップ】ノードレイヤーの作成
-void bitmap_build_nodeLayer(int size)
+// 【GPU ミラー】ノードレイヤーの作成
+void mirror_build_nodeLayer(int size)
 {
   //int size=16;
   // ツリーの3番目のレイヤーにあるノード
@@ -218,10 +269,10 @@ int main(int argc,char** argv)
     printf("  -g: GPU 再帰\n");
     printf("  -n: GPU ノードレイヤー\n");
   }
-  if(cpur){ printf("\n\nビットマップ 再帰 \n"); }
-  else if(cpu){ printf("\n\nビットマップ 非再帰 \n"); }
-  else if(gpu){ printf("\n\nビットマップ GPU\n"); }
-  else if(gpuNodeLayer){ printf("\n\nビットマップ GPUノードレイヤー \n"); }
+  if(cpur){ printf("\n\nミラー 再帰 \n"); }
+  else if(cpu){ printf("\n\nミラー 非再帰 \n"); }
+  else if(gpu){ printf("\n\nミラー GPU\n"); }
+  else if(gpuNodeLayer){ printf("\n\nミラー GPUノードレイヤー \n"); }
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
@@ -232,10 +283,10 @@ int main(int argc,char** argv)
       TOTAL=UNIQUE=0;
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
-        bitmap_R(size,0,0,0,0);
+        mirror_R(size);
       }
       if(cpu){ //非再帰
-        bitmap_NR(size,0);
+        mirror_NR(size);
       }
       //
       gettimeofday(&t1, NULL);//計測終了
@@ -268,10 +319,12 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-        TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //ビットマップ
+        // GPUは起動するがノードレイヤーは行わない
+        TOTAL=mirror_solve_nodeLayer(size,0,0,0); //ミラー
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
-        bitmap_build_nodeLayer(size); // ビットマップ
+        // GPUを起動し、ノードレイヤーも行う
+        mirror_build_nodeLayer(size); // ミラー
       }
       gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;

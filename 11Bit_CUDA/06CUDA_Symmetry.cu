@@ -124,7 +124,7 @@ void symmetryOps(unsigned int size)
   }//end if
   COUNT8++;
 }
-//
+// 非再帰 角にQがないときのバックトラック
 void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right)
 {
   unsigned int mask=(1<<size)-1;
@@ -170,6 +170,7 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
     }
   }//end while
 }
+// 非再帰 角にQがあるときのバックトラック
 void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down, unsigned int _right)
 {
   unsigned int mask=(1<<size)-1;
