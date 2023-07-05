@@ -7,10 +7,8 @@
 #include <string>
 #include <time.h>
 #include <sys/time.h>
-
 unsigned long TOTAL;
 unsigned long UNIQUE;
-//
 // クイーンの効きを判定して解を返す
 __host__ __device__ 
 long nQueens(int size,long left,long down,long right)
@@ -27,7 +25,6 @@ long nQueens(int size,long left,long down,long right)
   }
   return counter;
 }
-//
 // i 番目のメンバを i 番目の部分木の解で埋める
 __global__ 
 void calculateSolutions(int size,long* nodes, long* solutions, int numElements)
@@ -37,7 +34,6 @@ void calculateSolutions(int size,long* nodes, long* solutions, int numElements)
     solutions[i]=nQueens(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
-//
 // 0以外のbitをカウント
 int countBits(long n)
 {
@@ -48,7 +44,6 @@ int countBits(long n)
   }
   return counter;
 }
-//
 // ノードをk番目のレイヤーのノードで埋める
 long kLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
 {
@@ -69,7 +64,6 @@ long kLayer(int size,std::vector<long>& nodes, int k, long left, long down, long
   }
   return counter;
 }
-//
 // k 番目のレイヤのすべてのノードを含むベクトルを返す。
 std::vector<long> kLayer(int size,int k)
 {
@@ -77,7 +71,6 @@ std::vector<long> kLayer(int size,int k)
   kLayer(size,nodes, k, 0, 0, 0);
   return nodes;
 }
-//
 // ノードレイヤーの作成
 void nodeLayer(int size)
 {
@@ -123,7 +116,6 @@ void nodeLayer(int size)
   TOTAL=solutions;
   //return 0;
 }
-//
 // CUDA 初期化
 bool InitCUDA()
 {
@@ -139,7 +131,6 @@ bool InitCUDA()
   cudaSetDevice(i);
   return true;
 }
-//
 //メイン
 int main(int argc,char** argv)
 {

@@ -1,6 +1,6 @@
 /**
  *
- * bash版ビットマップのC言語版のGPU/CUDA移植版
+ * bash版ブルートフォースのC言語版のGPU/CUDA移植版
  *
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -27,57 +27,78 @@
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
 int board[MAX];  //ボード配列
-unsigned int left[MAX];
-unsigned int down[MAX];
-unsigned int right[MAX];
-// ビットマップ 非再帰版
-void bitmap_NR(unsigned int size,int row)
+// ブルートフォース 効き筋をチェック
+int check_bluteForce(unsigned int size)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap[size];
-  unsigned int bit=0;
-  bitmap[row]=mask;
-  while(row>-1){
-    if(bitmap[row]>0){
-      bit=-bitmap[row]&bitmap[row];//一番右のビットを取り出す
-      bitmap[row]=bitmap[row]^bit;//配置可能なパターンが一つずつ取り出される
-      board[row]=bit;
-      if(row==(size-1)){
-        TOTAL++;
-        row--;
+  for(unsigned int r=1;r<size;++r){
+    unsigned int val=0;
+    for(unsigned int i=0;i<r;++i){
+      if(board[i]>=board[r]){
+        val=board[i]-board[r];
       }else{
-        unsigned int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        board[row]=bit;
-        //クイーンが配置可能な位置を表す
-        bitmap[row]=mask&~(left[row]|down[row]|right[row]);
+        val=board[r]-board[i];
       }
-    }else{
-      row--;
+      if(board[i]==board[r]||val==(r-i)){
+        return 0;
+      }
     }
+  }
+  return 1;
+}
+//ブルートフォース 非再帰版
+void bluteForce_NR(unsigned int size,int row)
+{
+  // １．非再帰は初期化が必要
+  for(unsigned int i=0;i<size;++i){
+    board[i]=-1;
+  }
+  // ２．再帰で呼び出される関数内を回す処理
+  while(row>-1){
+    unsigned int matched=0;   //クイーンを配置したか
+    // ３．再帰処理のループ部分
+    // 非再帰では過去の譜石を記憶するためにboard配列を使う
+    for(unsigned int col=board[row]+1;col<size;++col){
+      board[row]=col;
+      matched=1;
+      break;
+    }
+    // ４．配置したら実行したい処理
+    if(matched){
+      row++;
+      // ５．最下部まで到達したときの処理';
+      if(row==size){
+        row--;
+        // 効きをチェック
+        if(check_bluteForce(size)==1){
+          TOTAL++;
+        }
+      }
+      // ６．配置できなくてバックトラックしたい処理
+    }else{
+      if(board[row]!=-1){
+        board[row]=-1;
+      }
+      row--;
+    } // end if
   }//end while
 }
-// ビットマップ 再帰版
-void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down, unsigned int right)
+//ブルートフォース 再帰版
+void bluteForce_R(unsigned int size,int row)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bit=0;
   if(row==size){
-    TOTAL++;
+    if(check_bluteForce(size)==1){
+      TOTAL++; // グローバル変数
+    }
   }else{
-    // クイーンが配置可能な位置を表す
-    for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
-      bit=bitmap&-bitmap;
-      board[row]=bit;
-      bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+    for(int col=0;col<size;++col){
+      board[row]=col;
+      bluteForce_R(size,row+1);
     }
   }
 }
 // クイーンの効きを判定して解を返す
 __host__ __device__ 
-long bitmap_solve_nodeLayer(int size,long left,long down,long right)
+long bluteForce_nQueens(int size,long left,long down,long right)
 {
   long mask=(1<<size)-1;
   long counter = 0;
@@ -87,21 +108,21 @@ long bitmap_solve_nodeLayer(int size,long left,long down,long right)
   long bit=0;
   for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
-    counter += bitmap_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+    counter += bluteForce_nQueens(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
   }
   return counter;
 }
 // i 番目のメンバを i 番目の部分木の解で埋める
 __global__ 
-void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
+void calculateSolutions(int size,long* nodes, long* solutions, int numElements)
 {
   int i=blockDim.x * blockIdx.x + threadIdx.x;
   if(i<numElements){
-    solutions[i]=bitmap_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    solutions[i]=bluteForce_nQueens(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
 // 0以外のbitをカウント
-int countBits_nodeLayer(long n)
+int countBits(long n)
 {
   int counter = 0;
   while (n){
@@ -111,12 +132,12 @@ int countBits_nodeLayer(long n)
   return counter;
 }
 // ノードをk番目のレイヤーのノードで埋める
-long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
+long kLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
 {
   long counter=0;
   long mask=(1<<size)-1;
   // すべてのdownが埋まったら、解決策を見つけたことになる。
-  if (countBits_nodeLayer(down) == k) {
+  if (countBits(down) == k) {
     nodes.push_back(left);
     nodes.push_back(down);
     nodes.push_back(right);
@@ -126,26 +147,26 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
   for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
     // 解を加えて対角線をずらす
-    counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
+    counter+=kLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
   }
   return counter;
 }
 // k 番目のレイヤのすべてのノードを含むベクトルを返す。
-std::vector<long> kLayer_nodeLayer(int size,int k)
+std::vector<long> kLayer(int size,int k)
 {
   std::vector<long> nodes{};
-  kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
+  kLayer(size,nodes, k, 0, 0, 0);
   return nodes;
 }
-// 【GPU ビットマップ】ノードレイヤーの作成
-void bitmap_build_nodeLayer(int size)
+// ノードレイヤーの作成
+void bluteForce_nodeLayer(int size)
 {
   //int size=16;
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
   // レイヤ4には十分なノードがある（N16の場合、9844）。
-  std::vector<long> nodes = kLayer_nodeLayer(size,4); 
+  std::vector<long> nodes = kLayer(size,4); 
 
   // デバイスにはクラスがないので、
   // 最初の要素を指定してからデバイスにコピーする。
@@ -156,6 +177,14 @@ void bitmap_build_nodeLayer(int size)
   cudaMalloc((void**)&deviceNodes, nodeSize);
   cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
 
+  // board配列
+  size_t boardSize = size*sizeof(int);
+  int *board=(int*)malloc(boardSize);
+  int *deviceBoard;
+  cudaMalloc((void**)&deviceBoard,boardSize);
+  cudaMemcpy(deviceBoard,board,boardSize,cudaMemcpyHostToDevice);
+
+
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
   int numSolutions = nodes.size() / 6; // We only need half of the nodes, and each node is encoded by 3 integers.
@@ -165,7 +194,7 @@ void bitmap_build_nodeLayer(int size)
   // CUDAカーネルを起動する。
   int threadsPerBlock = 256;
   int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
-  dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
+  calculateSolutions <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
 
   // 結果をホストにコピー
   long* hostSolutions = (long*)malloc(solutionSize);
@@ -207,7 +236,7 @@ int main(int argc,char** argv)
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
     else if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else if(argv[1][1]=='n'||argv[1][1]=='N'){gpuNodeLayer=true;}
+    else if(argv[1][1]=='n'||argv[1][1]=='N'){gpu=true;}
     else{ gpuNodeLayer=true; } //デフォルトをgpuとする
     argstart=2;
   }
@@ -218,10 +247,10 @@ int main(int argc,char** argv)
     printf("  -g: GPU 再帰\n");
     printf("  -n: GPU ノードレイヤー\n");
   }
-  if(cpur){ printf("\n\nビットマップ 再帰 \n"); }
-  else if(cpu){ printf("\n\nビットマップ 非再帰 \n"); }
-  else if(gpu){ printf("\n\nビットマップ GPU\n"); }
-  else if(gpuNodeLayer){ printf("\n\nビットマップ GPUノードレイヤー \n"); }
+  if(cpur){ printf("\n\nブルートフォース 再帰 \n"); }
+  else if(cpu){ printf("\n\nブルートフォース 非再帰 \n"); }
+  else if(gpu){ printf("\n\nブルートフォース GPU\n"); }
+  else if(gpuNodeLayer){ printf("\n\nブルートフォース GPUノードレイヤー \n"); }
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
@@ -232,10 +261,10 @@ int main(int argc,char** argv)
       TOTAL=UNIQUE=0;
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
-        bitmap_R(size,0,0,0,0);
+        bluteForce_R(size,0);
       }
       if(cpu){ //非再帰
-        bitmap_NR(size,0);
+        bluteForce_NR(size,0);
       }
       //
       gettimeofday(&t1, NULL);//計測終了
@@ -268,10 +297,10 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-        TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //ビットマップ
+        TOTAL=bluteForce_nQueens(size,0,0,0);
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
-        bitmap_build_nodeLayer(size); // ビットマップ
+        bluteForce_nodeLayer(size);
       }
       gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;
