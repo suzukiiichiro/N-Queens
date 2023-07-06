@@ -61,12 +61,7 @@ while True:
 
 
 普通の実行オプション
-bash-3.2$ gcc 08GCC_pthread.c -o 17GCC && ./17GCC
-Usage: ./17GCC [-c|-g]
-  -c: CPU Without recursion
-  -r: CPUR Recursion
-
-
+bash-3.2$ gcc 08GCC_pthread.c -pthread -o 08GCC && ./08GCC
 ７．キャリーチェーン
  N:        Total       Unique        dd:hh:mm:ss.ms
  4:            2            1        00:00:00:00.00
@@ -90,12 +85,7 @@ bash-3.2$
 
 
 より最適で高速なコンパイルオプション
-bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native 08GCC_pthread.c -o 17GCC && ./17GCC
-Usage: ./17GCC [-c|-g]
-  -c: CPU Without recursion
-  -r: CPUR Recursion
-
-
+bash-3.2$ gcc -Wshift-negative-value -Wall -W -O3 -g -ftrapv -std=c99 -mtune=native -march=native -pthread 08GCC_pthread.c -o 08GCC && ./08GCC
 ７．キャリーチェーン
  N:        Total       Unique        dd:hh:mm:ss.ms
  4:            2            1        00:00:00:00.00
@@ -116,65 +106,6 @@ Usage: ./17GCC [-c|-g]
 19:   4968057848    621051686        00:00:09:19.01
 20:  39029188884   4878995797        00:01:12:06.58
 bash-3.2$
-
-
-bash$ gcc -Wall -W -O3 -mtune=native -march=native 07GCC_carryChain.c -o 07GCC && ./07GCC
-７．キャリーチェーン
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1788            0.01
-13:        73712            9237            0.05
-14:       365596           45771            0.19
-15:      2279184          285095            1.01
-16:     14772512         1847425            6.10
-17:     95815104        11979381           40.53
-
-
- bash-3.2$ gcc -Wall -W -O3 GCC12.c && ./a.out -r
-１２．CPUR 再帰 対称解除法の最適化
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1787            0.00
-13:        73712            9233            0.01
-14:       365596           45752            0.07
-15:      2279184          285053            0.41
-16:     14772512         1846955            2.66
-17:     95815104        11977939           18.41
-18:    666090624        83263591         2:14.44
-19:   4968057848       621012754        17:06.46
-
-
-１３．05GCC/GCC13.c pthread 再帰 並列処理
- N:           Total           Unique          dd:hh:mm:ss.ms
- 4:               2                1          00:00:00:00.00
- 5:              10                2          00:00:00:00.00
- 6:               4                1          00:00:00:00.00
- 7:              40                6          00:00:00:00.00
- 8:              92               12          00:00:00:00.00
- 9:             352               46          00:00:00:00.00
-10:             724               92          00:00:00:00.00
-11:            2680              341          00:00:00:00.00
-12:           14200             1787          00:00:00:00.00
-13:           73712             9233          00:00:00:00.00
-14:          365596            45752          00:00:00:00.02
-15:         2279184           285053          00:00:00:00.10
-16:        14772512          1846955          00:00:00:00.63
-17:        95815104         11977939          00:00:00:04.33
-
 */
 #include <string.h>
 #include <stdio.h>
