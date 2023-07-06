@@ -198,7 +198,8 @@ void mirror_build_nodeLayer(int size)
 
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
-  int numSolutions = nodes.size() / 6; // We only need half of the nodes, and each node is encoded by 3 integers.
+  // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
+  int numSolutions = nodes.size() / 6; 
   size_t solutionSize = numSolutions * sizeof(long);
   cudaMalloc((void**)&deviceSolutions, solutionSize);
 
