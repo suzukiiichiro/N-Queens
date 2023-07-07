@@ -5,6 +5,27 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
+NQueens$ nvcc 02CUDA_Mirror_0707_suzuki.cu && ./a.out -n
+ptxas warning : Stack size for entry function '_Z13dim_nodeLayeriPlS_i' cannot be statically determined
+
+
+ミラー GPUノードレイヤー
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2               0  00:00:00:00.13
+ 5:           10               0  00:00:00:00.00
+ 6:            4               0  00:00:00:00.00
+ 7:           40               0  00:00:00:00.00
+ 8:           92               0  00:00:00:00.00
+ 9:          352               0  00:00:00:00.00
+10:          724               0  00:00:00:00.00
+11:         2680               0  00:00:00:00.00
+12:        14200               0  00:00:00:00.00
+13:        73712               0  00:00:00:00.00
+14:       365596               0  00:00:00:00.03
+15:      2279184               0  00:00:00:00.19
+16:     14772512               0  00:00:00:01.59
+17:     95815104               0  00:00:00:15.10
+
 */
 #include <iostream>
 #include <vector>
@@ -155,29 +176,18 @@ long mirror_solve_nodeLayer(int size,long left,long down,long right)
   }
   return counter<<1; // 倍にする
 }
-// バックアップ
-__host__ __device__ 
-long _mirror_solve_nodeLayer(int size,long left,long down,long right)
-{
-  long mask=(1<<size)-1;
-  long counter = 0;
-  if (down==mask) { // downがすべて専有され解が見つかる
-    return 1;
-  }
-  long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
-    counter += mirror_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
-  }
-  return counter;
-}
 // i 番目のメンバを i 番目の部分木の解で埋める
 __global__ 
 void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
 {
   int i=blockDim.x * blockIdx.x + threadIdx.x;
   if(i<numElements){
-    solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    /**
+      ミラーのGPUスレッド(-n)の場合は、予めCPU側で奇数と偶数で分岐させるので、
+      奇数と偶数を条件分岐するmirror_solve_nodeLayer()を通過させる必要がない
+      */
+    //solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    solutions[i]=mirror_logic_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
 // 0以外のbitをカウント
@@ -206,7 +216,8 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
   for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
     // 解を加えて対角線をずらす
-    counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
+    //counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
+    counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)<<1,(down|bit),(right|bit)>>1); 
   }
   return counter;
 }
@@ -214,7 +225,26 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
 std::vector<long> kLayer_nodeLayer(int size,int k)
 {
   std::vector<long> nodes{};
-  kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
+  /**
+    CPU側で奇数と偶数で条件分岐する
+    */
+  //kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
+  unsigned int bit=0;
+  unsigned int limit=size%2 ? size/2-1 : size/2;
+  for(unsigned int i=0;i<size/2;++i){
+    bit=1<<i;
+    kLayer_nodeLayer(size,nodes,k,bit<<1,bit,bit>>1);
+  }
+  if(size%2){               //奇数で通過
+    bit=1<<(size-1)/2;
+    unsigned int left=bit<<1;
+    unsigned int down=bit;
+    unsigned int right=bit>>1;
+    for(unsigned int i=0;i<limit;++i){
+      bit=1<<i;
+      kLayer_nodeLayer(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }
+  }
   return nodes;
 }
 // 【GPU ミラー】ノードレイヤーの作成
@@ -238,8 +268,12 @@ void mirror_build_nodeLayer(int size)
 
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
+  /**
+    ミラーでは/6 を /3に変更する
+    */
   // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
-  int numSolutions = nodes.size() / 6; 
+  //int numSolutions = nodes.size() / 6; 
+  int numSolutions = nodes.size() / 3; 
   size_t solutionSize = numSolutions * sizeof(long);
   cudaMalloc((void**)&deviceSolutions, solutionSize);
 
