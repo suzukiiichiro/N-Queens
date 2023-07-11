@@ -10,6 +10,7 @@ ptxas warning : Stack size for entry function '_Z13dim_nodeLayeriPlS_i' cannot b
 
 
 ミラー GPUノードレイヤー
+$ nvcc -O3 -arch=sm_13 02CUDA_Mirror.cu && ./a.out -n
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               0  00:00:00:00.13
  5:           10               0  00:00:00:00.00

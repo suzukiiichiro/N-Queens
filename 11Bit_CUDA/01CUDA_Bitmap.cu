@@ -6,6 +6,7 @@
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
 ビットマップ GPUノードレイヤー
+$ nvcc -O3 -arch=sm_13 01CUDA_Bitmap.cu && ./a.out -n
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               0  00:00:00:00.15
  5:           10               0  00:00:00:00.00
