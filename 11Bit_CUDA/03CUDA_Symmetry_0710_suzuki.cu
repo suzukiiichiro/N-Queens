@@ -24,18 +24,8 @@
 //#define UINT64_C(c) c ## ULL
 //
 // グローバル変数
-unsigned long TOTAL=0; 
+unsigned long TOTAL=0;
 unsigned long UNIQUE=0;
-int board[MAX];  //ボード配列
-unsigned long COUNT2=0;   //対称解除法
-unsigned long COUNT4=0;   //対称解除法
-unsigned long COUNT8=0;   //対称解除法
-unsigned int BOUND1=0;    //対称解除法
-unsigned int BOUND2=0;    //対称解除法
-unsigned int SIDEMASK=0;  //対称解除法
-unsigned int LASTMASK=0;  //対称解除法
-unsigned int TOPBIT=0;    //対称解除法
-unsigned int ENDBIT=0;    //対称解除法
 //GPU で使うローカル構造体
 typedef struct{
   unsigned int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
@@ -43,7 +33,7 @@ typedef struct{
   unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
 }local;
 // 対称解除法
-void symmetryOps(unsigned int size)
+void symmetryOps(unsigned int size,local* l)
 {
   /**
   ２．クイーンが右上角以外にある場合、
@@ -53,25 +43,25 @@ void symmetryOps(unsigned int size)
   こちらに該当するユニーク解が属するグループの要素数は、左右反転させたパター
   ンを加えて２個しかありません。
   */
-  if(board[BOUND2]==1){
+  if(l->board[l->BOUND2]==1){
     unsigned int ptn;
     unsigned int own;
     for(ptn=2,own=1;own<size;++own,ptn<<=1){
       unsigned int bit;
       unsigned int you;
-      for(bit=1,you=size-1;(board[you]!=ptn)&&board[own]>=bit;--you){
+      for(bit=1,you=size-1;(l->board[you]!=ptn)&&l->board[own]>=bit;--you){
         bit<<=1;
       }
-      if(board[own]>bit){
+      if(l->board[own]>bit){
         return ;
       }
-      if(board[own]<bit){
+      if(l->board[own]<bit){
         break;
       }
     }//end for
     // ９０度回転して同型なら１８０度回転しても２７０度回転しても同型である
     if(own>size-1){
-      COUNT2++;
+      l->COUNT2++;
       return ;
     }//end if
   }//end if
@@ -83,25 +73,25 @@ void symmetryOps(unsigned int size)
     型になる場合は４個(左右反転×縦横回転)
    */
   //１８０度回転
-  if(board[size-1]==ENDBIT){
+  if(l->board[size-1]==l->ENDBIT){
     unsigned int you;
     unsigned int own;
     for(you=size-1-1,own=1;own<=size-1;++own,--you){
       unsigned int bit;
       unsigned int ptn;
-      for(bit=1,ptn=TOPBIT;(ptn!=board[you])&&(board[own]>=bit);ptn>>=1){
+      for(bit=1,ptn=l->TOPBIT;(ptn!=l->board[you])&&(l->board[own]>=bit);ptn>>=1){
         bit<<=1;
       }
-      if(board[own]>bit){
+      if(l->board[own]>bit){
         return ;
       }
-      if(board[own]<bit){
+      if(l->board[own]<bit){
         break;
       }
     }//end for
     //９０度回転が同型でなくても１８０度回転が同型であることもある
     if(own>size-1){
-      COUNT4++;
+      l->COUNT4++;
       return ;
     }
   }//end if
@@ -110,27 +100,27 @@ void symmetryOps(unsigned int size)
     (3)180度回転させてもオリジナルと異なる場合は、８個(左右反転×縦横回転×上下反転)
   */
   //２７０度回転
-  if(board[BOUND1]==TOPBIT){
+  if(l->board[l->BOUND1]==l->TOPBIT){
     unsigned int ptn;
     unsigned int own;
     unsigned int you;
     unsigned int bit;
-    for(ptn=TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
-      for(bit=1,you=0;(board[you]!=ptn)&&(board[own]>=bit);++you){
+    for(ptn=l->TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
+      for(bit=1,you=0;(l->board[you]!=ptn)&&(l->board[own]>=bit);++you){
         bit<<=1;
       }
-      if(board[own]>bit){
+      if(l->board[own]>bit){
         return ;
       }
-      if(board[own]<bit){
+      if(l->board[own]<bit){
         break;
       }
     }//end for
   }//end if
-  COUNT8++;
+  l->COUNT8++;
 }
 // 非再帰 角にQがないときのバックトラック
-void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right)
+void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,local *l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int down[size];
@@ -143,25 +133,25 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
   while(row>0){
     if(bitmap[row]>0){
-      if(row<BOUND1){ //上部サイド枝刈り
-        bitmap[row]|=SIDEMASK;
-        bitmap[row]^=SIDEMASK;
-      }else if(row==BOUND2){ //下部サイド枝刈り
-        if((down[row]&SIDEMASK)==0){
+      if(row<l->BOUND1){ //上部サイド枝刈り
+        bitmap[row]|=l->SIDEMASK;
+        bitmap[row]^=l->SIDEMASK;
+      }else if(row==l->BOUND2){ //下部サイド枝刈り
+        if((down[row]&l->SIDEMASK)==0){
           row--; 
         }
-        if((down[row]&SIDEMASK)!=SIDEMASK){
-          bitmap[row]&=SIDEMASK;
+        if((down[row]&l->SIDEMASK)!=l->SIDEMASK){
+          bitmap[row]&=l->SIDEMASK;
         }
       }
       unsigned int save_bitmap=bitmap[row];
       unsigned int bit=-bitmap[row]&bitmap[row];
       bitmap[row]^=bit;
-      board[row]=bit; //Qを配置
+      l->board[row]=bit; //Qを配置
       if((bit&mask)!=0){
         if(row==(size-1)){
-          if( (save_bitmap&LASTMASK)==0){
-            symmetryOps(size);  //対称解除法
+          if( (save_bitmap&l->LASTMASK)==0){
+            symmetryOps(size,l);  //対称解除法
           }
           row--;
         }else{
@@ -180,7 +170,7 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
   }//end while
 }
 // 非再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down, unsigned int _right)
+void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down, unsigned int _right,local *l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bit=0;
@@ -193,7 +183,7 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
   right[row]=_right;
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
   while(row>=2){
-    if(row<BOUND1){
+    if(row<l->BOUND1){
       // bitmap[row]=bitmap[row]|2;
       // bitmap[row]=bitmap[row]^2;
       bitmap[row]&=~2;
@@ -202,14 +192,14 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
       bit=-bitmap[row]&bitmap[row];
       bitmap[row]^=bit;
       if(row==(size-1)){
-        COUNT8++;
+        l->COUNT8++;
         row--;
       }else{
         unsigned int n=row++;
         left[row]=(left[n]|bit)<<1;
         down[row]=(down[n]|bit);
         right[row]=(right[n]|bit)>>1;
-        board[row]=bit; //Qを配置
+        l->board[row]=bit; //Qを配置
         //クイーンが配置可能な位置を表す
         bitmap[row]=mask&~(left[row]|down[row]|right[row]);
       }
@@ -218,143 +208,143 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
     }
   }//end while
 }
-// 対称解除法 非再帰版
-void symmetry_NR(unsigned int size)
+// 非再帰 対称解除法
+void symmetry_NR(unsigned int size,local* l)
 {
-  TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
+  l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
   unsigned int bit=0;
-  TOPBIT=1<<(size-1);
-  ENDBIT=SIDEMASK=LASTMASK=0;
-  BOUND1=2;
-  BOUND2=0;
-  board[0]=1;
-  while(BOUND1>1&&BOUND1<size-1){
-    if(BOUND1<size-1){
-      bit=1<<BOUND1;
-      board[1]=bit;   //２行目にQを配置
+  l->TOPBIT=1<<(size-1);
+  l->ENDBIT=l->SIDEMASK=l->LASTMASK=0;
+  l->BOUND1=2;
+  l->BOUND2=0;
+  l->board[0]=1;
+  while(l->BOUND1>1&&l->BOUND1<size-1){
+    if(l->BOUND1<size-1){
+      bit=1<<l->BOUND1;
+      l->board[1]=bit;   //２行目にQを配置
       //角にQがあるときのバックトラック
-      symmetry_backTrack_corner_NR(size,2,(2|bit)<<1,1|bit,(2|bit)>>1);
+      symmetry_backTrack_corner_NR(size,2,(2|bit)<<1,1|bit,(2|bit)>>1,l);
     }
-    BOUND1++;
+    l->BOUND1++;
   }
-  TOPBIT=1<<(size-1);
-  ENDBIT=TOPBIT>>1;
-  SIDEMASK=TOPBIT|1;
-  LASTMASK=TOPBIT|1;
-  BOUND1=1;
-  BOUND2=size-2;
-  while(BOUND1>0 && BOUND2<size-1 && BOUND1<BOUND2){
-    if(BOUND1<BOUND2){
-      bit=1<<BOUND1;
-      board[0]=bit;   //Qを配置
+  l->TOPBIT=1<<(size-1);
+  l->ENDBIT=l->TOPBIT>>1;
+  l->SIDEMASK=l->TOPBIT|1;
+  l->LASTMASK=l->TOPBIT|1;
+  l->BOUND1=1;
+  l->BOUND2=size-2;
+  while(l->BOUND1>0 && l->BOUND2<size-1 && l->BOUND1<l->BOUND2){
+    if(l->BOUND1<l->BOUND2){
+      bit=1<<l->BOUND1;
+      l->board[0]=bit;   //Qを配置
       //角にQがないときのバックトラック
-      symmetry_backTrack_NR(size,1,bit<<1,bit,bit>>1);
+      symmetry_backTrack_NR(size,1,bit<<1,bit,bit>>1,l);
     }
-    BOUND1++;
-    BOUND2--;
-    ENDBIT=ENDBIT>>1;
-    LASTMASK=LASTMASK<<1|LASTMASK|LASTMASK>>1;
+    l->BOUND1++;
+    l->BOUND2--;
+    l->ENDBIT=l->ENDBIT>>1;
+    l->LASTMASK=l->LASTMASK<<1|l->LASTMASK|l->LASTMASK>>1;
   }//ene while
-  UNIQUE=COUNT2+COUNT4+COUNT8;
-  TOTAL=COUNT2*2+COUNT4*4+COUNT8*8;
+  UNIQUE=l->COUNT2+l->COUNT4+l->COUNT8;
+  TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
 }
 // 再帰 角にQがないときのバックトラック
-void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right)
+void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
   if(row==(size-1)){
     if(bitmap){
-      if( (bitmap&LASTMASK)==0){
-        board[row]=bitmap;  //Qを配置
-        symmetryOps(size);    //対称解除
+      if( (bitmap&l->LASTMASK)==0){
+        l->board[row]=bitmap;  //Qを配置
+        symmetryOps(size,l);    //対称解除
       }
     }
   }else{
-    if(row<BOUND1){
-      bitmap=bitmap|SIDEMASK;
-      bitmap=bitmap^SIDEMASK;
+    if(row<l->BOUND1){
+      bitmap=bitmap|l->SIDEMASK;
+      bitmap=bitmap^l->SIDEMASK;
     }else{
-      if(row==BOUND2){
-        if((down&SIDEMASK)==0){
+      if(row==l->BOUND2){
+        if((down&l->SIDEMASK)==0){
           return;
         }
-        if( (down&SIDEMASK)!=SIDEMASK){
-          bitmap=bitmap&SIDEMASK;
+        if( (down&l->SIDEMASK)!=l->SIDEMASK){
+          bitmap=bitmap&l->SIDEMASK;
         }
       }
     }
     while(bitmap){
       unsigned int bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
-      board[row]=bit;
-      symmetry_backTrack(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      l->board[row]=bit;
+      symmetry_backTrack(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }//end while
   }//end if
 }
 // 再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right)
+void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
   unsigned int bit=0;
   if(row==(size-1)){
     if(bitmap){
-      board[row]=bitmap;
-      COUNT8++;
+      l->board[row]=bitmap;
+      l->COUNT8++;
     }
   }else{
-    if(row<BOUND1){   //枝刈り
+    if(row<l->BOUND1){   //枝刈り
       bitmap=bitmap|2;
       bitmap=bitmap^2;
     }
     while(bitmap){
       bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
-      board[row]=bit;   //Qを配置
-      symmetry_backTrack_corner(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
+      l->board[row]=bit;   //Qを配置
+      symmetry_backTrack_corner(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
     }
   }
 }
 // 対称解除法 再帰版
-void symmetry_R(unsigned int size)
+void symmetry_R(unsigned int size,local* l)
 {
-  TOTAL=UNIQUE=COUNT2=COUNT4=COUNT8=0;
+  l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
   unsigned int bit=0;
-  TOPBIT=1<<(size-1);
-  ENDBIT=LASTMASK=SIDEMASK=0;
-  BOUND1=2;
-  BOUND2=0;
-  board[0]=1;
-  while(BOUND1>1 && BOUND1<size-1){
-    if(BOUND1<size-1){
-      bit=1<<BOUND1;
-      board[1]=bit;   //２行目にQを配置
+  l->TOPBIT=1<<(size-1);
+  l->ENDBIT=l->LASTMASK=l->SIDEMASK=0;
+  l->BOUND1=2;
+  l->BOUND2=0;
+  l->board[0]=1;
+  while(l->BOUND1>1 && l->BOUND1<size-1){
+    if(l->BOUND1<size-1){
+      bit=1<<l->BOUND1;
+      l->board[1]=bit;   //２行目にQを配置
       //角にQがあるときのバックトラック
-      symmetry_backTrack_corner(size,2,(2|bit)<<1,1|bit,(2|bit)>>1);
+      symmetry_backTrack_corner(size,2,(2|bit)<<1,1|bit,(2|bit)>>1,l);
     }
-    BOUND1++;
+    l->BOUND1++;
   }//end while
-  TOPBIT=1<<(size-1);
-  ENDBIT=TOPBIT>>1;
-  SIDEMASK=TOPBIT|1;
-  LASTMASK=TOPBIT|1;
-  BOUND1=1;
-  BOUND2=size-2;
-  while(BOUND1>0 && BOUND2<size-1 && BOUND1<BOUND2){
-    if(BOUND1<BOUND2){
-      bit=1<<BOUND1;
-      board[0]=bit;   //Qを配置
+  l->TOPBIT=1<<(size-1);
+  l->ENDBIT=l->TOPBIT>>1;
+  l->SIDEMASK=l->TOPBIT|1;
+  l->LASTMASK=l->TOPBIT|1;
+  l->BOUND1=1;
+  l->BOUND2=size-2;
+  while(l->BOUND1>0 && l->BOUND2<size-1 && l->BOUND1<l->BOUND2){
+    if(l->BOUND1<l->BOUND2){
+      bit=1<<l->BOUND1;
+      l->board[0]=bit;   //Qを配置
       //角にQがないときのバックトラック
-      symmetry_backTrack(size,1,bit<<1,bit,bit>>1);
+      symmetry_backTrack(size,1,bit<<1,bit,bit>>1,l);
     }
-    BOUND1++;
-    BOUND2--;
-    ENDBIT=ENDBIT>>1;
-    LASTMASK=LASTMASK<<1|LASTMASK|LASTMASK>>1;
+    l->BOUND1++;
+    l->BOUND2--;
+    l->ENDBIT=l->ENDBIT>>1;
+    l->LASTMASK=l->LASTMASK<<1|l->LASTMASK|l->LASTMASK>>1;
   }//ene while
-  UNIQUE=COUNT2+COUNT4+COUNT8;
-  TOTAL=COUNT2*2+COUNT4*4+COUNT8*8;
+  UNIQUE=l->COUNT2+l->COUNT4+l->COUNT8;
+  TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
 }
 // GPU対称解除法
 __host__ __device__
@@ -558,7 +548,7 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
   while(l->BOUND1>1 && l->BOUND1<size-1){
     if(l->BOUND1<size-1){
       bit=1<<l->BOUND1;
-      board[1]=bit;   //２行目にQを配置
+      l->board[1]=bit;   //２行目にQを配置
       //角にQがあるときのバックトラック
       GPU_symmetry_backTrack_corner(size,2,(2|bit)<<1,1|bit,(2|bit)>>1,l);
     }
@@ -706,13 +696,13 @@ int main(int argc,char** argv)
     struct timeval t1;
     printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
-      TOTAL=UNIQUE=0;
+      local l;
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
-        symmetry_R(size);
+        symmetry_R(size,&l);
       }
       if(cpu){ //非再帰
-        symmetry_NR(size);
+        symmetry_NR(size,&l);
       }
       //
       gettimeofday(&t1, NULL);//計測終了
