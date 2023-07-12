@@ -31,7 +31,7 @@ unsigned long TOTAL=0;
 unsigned long UNIQUE=0;
 //GPU で使うローカル構造体
 typedef struct{
-  unsigned int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  unsigned int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK,TYPE;
   unsigned long board[MAX];
   unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
 }local;
@@ -226,6 +226,7 @@ void symmetry_NR(unsigned int size,local* l)
       bit=1<<l->BOUND1;
       l->board[1]=bit;   //２行目にQを配置
       //角にQがあるときのバックトラック
+      l->TYPE=0;
       symmetry_backTrack_corner_NR(size,2,(2|bit)<<1,1|bit,(2|bit)>>1,l);
     }
     l->BOUND1++;
@@ -241,6 +242,7 @@ void symmetry_NR(unsigned int size,local* l)
       bit=1<<l->BOUND1;
       l->board[0]=bit;   //Qを配置
       //角にQがないときのバックトラック
+      l->TYPE=1;
       symmetry_backTrack_NR(size,1,bit<<1,bit,bit>>1,l);
     }
     l->BOUND1++;
@@ -349,95 +351,6 @@ void symmetry_R(unsigned int size,local* l)
   UNIQUE=l->COUNT2+l->COUNT4+l->COUNT8;
   TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
 }
-// GPU対称解除法
-__host__ __device__
-void GPU_symmetryOps(unsigned int size,local* l)
-{
-  /**
-  ２．クイーンが右上角以外にある場合、
-  (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルか
-  ら180度回転)させても、さらに90度回転(オリジナルから270度回転)させてもオリ
-  ジナルと同型になる。
-  こちらに該当するユニーク解が属するグループの要素数は、左右反転させたパター
-  ンを加えて２個しかありません。
-  */
-  if(l->board[l->BOUND2]==1){
-    unsigned int ptn;
-    unsigned int own;
-    for(ptn=2,own=1;own<size;++own,ptn<<=1){
-      unsigned int bit;
-      unsigned int you;
-      for(bit=1,you=size-1;(l->board[you]!=ptn)&& l->board[own]>=bit;--you){
-        bit<<=1;
-      }
-      if(l->board[own]>bit){
-        return ;
-      }
-      if(l->board[own]<bit){
-        break;
-      }
-    }//end for
-    // ９０度回転して同型なら１８０度回転しても２７０度回転しても同型である
-    if(own>size-1){
-      l->COUNT2++;
-      return ;
-    }//end if
-  }//end if
-  /**
-  ２．クイーンが右上角以外にある場合、
-    (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナル
-    とは異なる。ただし、180度回転させた場合はオリジナルと同型になることも有り得
-    る。こちらに該当するユニーク解が属するグループの要素数は、180度回転させて同
-    型になる場合は４個(左右反転×縦横回転)
-   */
-  //１８０度回転
-  if(l->board[size-1]==l->ENDBIT){
-    unsigned int you;
-    unsigned int own;
-    for(you=size-1-1,own=1;own<=size-1;++own,--you){
-      unsigned int bit;
-      unsigned int ptn;
-      for(bit=1,ptn=l->TOPBIT;(ptn!=l->board[you])&&(l->board[own]>=bit);ptn>>=1){
-        bit<<=1;
-      }
-      if(l->board[own]>bit){
-        return ;
-      }
-      if(l->board[own]<bit){
-        break;
-      }
-    }//end for
-    //９０度回転が同型でなくても１８０度回転が同型であることもある
-    if(own>size-1){
-      l->COUNT4++;
-      return ;
-    }
-  }//end if
-  /**
-  ２．クイーンが右上角以外にある場合、
-    (3)180度回転させてもオリジナルと異なる場合は、８個(左右反転×縦横回転×上下反転)
-  */
-  //２７０度回転
-  if(l->board[l->BOUND1]==l->TOPBIT){
-    unsigned int ptn;
-    unsigned int own;
-    unsigned int you;
-    unsigned int bit;
-    for(ptn=l->TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
-      for(bit=1,you=0;(l->board[you]!=ptn)&&(l->board[own]>=bit);++you){
-        bit<<=1;
-      }
-      if(l->board[own]>bit){
-        return ;
-      }
-      if(l->board[own]<bit){
-        break;
-      }
-    }//end for
-  }//end if
-  l->COUNT8++;
-}
-// GPU 角にQがないときのバックトラック
 __host__ __device__
 void GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
 {
@@ -447,7 +360,7 @@ void GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left
     if(bitmap){
       if( (bitmap& l->LASTMASK)==0){
         l->board[row]=bitmap;  //Qを配置
-        GPU_symmetryOps(size,l);    //対称解除
+       // GPU_symmetryOps(size,l);    //対称解除
       }
     }
   }else{
@@ -497,32 +410,111 @@ void GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned i
     }
   }
 }
-// GPU クイーンの効きを判定して解を返す
-__host__ __device__ 
-long bitmap_solve_nodeLayer(int size,long left,long down,long right)
+
+/*ここから*/
+
+
+
+
+
+// GPU対称解除法
+__host__ __device__
+int GPU_symmetryOps(unsigned int size,local* l)
 {
-  long mask=(1<<size)-1;
-  long counter = 0;
-  if (down==mask) { // downがすべて専有され解が見つかる
-    return 1;
-  }
-  long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
-    bit=-bitmap&bitmap;
-    counter += bitmap_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
-  }
-  return counter;
+  /**
+  ２．クイーンが右上角以外にある場合、
+  (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルか
+  ら180度回転)させても、さらに90度回転(オリジナルから270度回転)させてもオリ
+  ジナルと同型になる。
+  こちらに該当するユニーク解が属するグループの要素数は、左右反転させたパター
+  ンを加えて２個しかありません。
+  */
+  if(l->board[l->BOUND2]==1){
+    unsigned int ptn;
+    unsigned int own;
+    for(ptn=2,own=1;own<size;++own,ptn<<=1){
+      unsigned int bit;
+      unsigned int you;
+      for(bit=1,you=size-1;(l->board[you]!=ptn)&& l->board[own]>=bit;--you){
+        bit<<=1;
+      }
+      if(l->board[own]>bit){
+        return 0;
+      }
+      if(l->board[own]<bit){
+        break;
+      }
+    }//end for
+    // ９０度回転して同型なら１８０度回転しても２７０度回転しても同型である
+    if(own>size-1){
+      //l->COUNT2++;
+      return 2;
+    }//end if
+  }//end if
+  /**
+  ２．クイーンが右上角以外にある場合、
+    (2) 90度回転させてオリジナルと異なる場合は、270度回転させても必ずオリジナル
+    とは異なる。ただし、180度回転させた場合はオリジナルと同型になることも有り得
+    る。こちらに該当するユニーク解が属するグループの要素数は、180度回転させて同
+    型になる場合は４個(左右反転×縦横回転)
+   */
+  //１８０度回転
+  if(l->board[size-1]==l->ENDBIT){
+    unsigned int you;
+    unsigned int own;
+    for(you=size-1-1,own=1;own<=size-1;++own,--you){
+      unsigned int bit;
+      unsigned int ptn;
+      for(bit=1,ptn=l->TOPBIT;(ptn!=l->board[you])&&(l->board[own]>=bit);ptn>>=1){
+        bit<<=1;
+      }
+      if(l->board[own]>bit){
+        return 0;
+      }
+      if(l->board[own]<bit){
+        break;
+      }
+    }//end for
+    //９０度回転が同型でなくても１８０度回転が同型であることもある
+    if(own>size-1){
+      //l->COUNT4++;
+      return 4;
+    }
+  }//end if
+  /**
+  ２．クイーンが右上角以外にある場合、
+    (3)180度回転させてもオリジナルと異なる場合は、８個(左右反転×縦横回転×上下反転)
+  */
+  //２７０度回転
+  if(l->board[l->BOUND1]==l->TOPBIT){
+    unsigned int ptn;
+    unsigned int own;
+    unsigned int you;
+    unsigned int bit;
+    for(ptn=l->TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
+      for(bit=1,you=0;(l->board[you]!=ptn)&&(l->board[own]>=bit);++you){
+        bit<<=1;
+      }
+      if(l->board[own]>bit){
+        return 0;
+      }
+      if(l->board[own]<bit){
+        break;
+      }
+    }//end for
+  }//end if
+  //l->COUNT8++;
+  return 8;
 }
-// i 番目のメンバを i 番目の部分木の解で埋める
-__global__ 
-void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
-{
-  int i=blockDim.x * blockIdx.x + threadIdx.x;
-  if(i<numElements){
-    solutions[i]=bitmap_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
-  }
-}
+// GPU 角にQがないときのバックトラック
+
+
+
+
+
+
 // 0以外のbitをカウント
+__host__ __device__ 
 int countBits_nodeLayer(long n)
 {
   int counter = 0;
@@ -532,11 +524,94 @@ int countBits_nodeLayer(long n)
   }
   return counter;
 }
+// GPU クイーンの効きを判定して解を返す
+__host__ __device__ 
+long bitmap_solve_nodeLayer(int size,local* l,long left,long down,long right)
+{
+  long counter = 0;
+  long mask=(1<<size)-1;
+  long bitmap=mask&~(left|down|right);
+  int row=countBits_nodeLayer(down);
+  if(row==(size-1)){
+    if(bitmap){
+      if( (bitmap& l->LASTMASK)==0){
+        l->board[row]=bitmap;  //Qを配置
+        int s=GPU_symmetryOps(size,l);    //対称解除
+        return 1*s;
+      }
+    }
+  }else{
+    if(row<l->BOUND1){
+      bitmap=bitmap|l->SIDEMASK;
+      bitmap=bitmap^l->SIDEMASK;
+    }else{
+      if(row==l->BOUND2){
+        if((down&l->SIDEMASK)==0){
+          return 0;
+        }
+        if( (down&l->SIDEMASK)!=l->SIDEMASK){
+          bitmap=bitmap&l->SIDEMASK;
+        }
+      }
+    }
+    while(bitmap){
+      unsigned int bit=-bitmap&bitmap;
+      bitmap=bitmap^bit;
+      l->board[row]=bit;
+      bitmap_solve_nodeLayer(size,l,(left|bit)<<1,down|bit,(right|bit)>>1);
+    }//end while
+  }//end if
+  return counter;
+
+
+
+
+}
+
+__host__ __device__ 
+long bitmap_solve_nodeLayer_corner(int size,local* l,long left,long down,long right)
+{
+  long counter = 0;
+  long mask=(1<<size)-1;
+  long bitmap=mask&~(left|down|right);
+  long bit=0;
+  int row=countBits_nodeLayer(down);
+  if(row==(size-1)){
+    if(bitmap){
+      l->board[row]=bitmap;
+      return 8;
+    }
+  }else{
+    if(row<l->BOUND1){   //枝刈り
+      bitmap=bitmap|2;
+      bitmap=bitmap^2;
+    }
+    while(bitmap){
+      bit=-bitmap&bitmap;
+      bitmap=bitmap^bit;
+      l->board[row]=bit;   //Qを配置
+      counter += bitmap_solve_nodeLayer_corner(size,l,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+    }
+  }
+  return counter;
+}
+// i 番目のメンバを i 番目の部分木の解で埋める
+__global__ 
+void dim_nodeLayer(int size,local* L,long* nodes, long* solutions, int numElements)
+{
+  int i=blockDim.x * blockIdx.x + threadIdx.x;
+  if(i<numElements){
+    if(L[i].TYPE==0){
+    solutions[i]=bitmap_solve_nodeLayer_corner(size,&L[i],nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    } else{
+    solutions[i]=bitmap_solve_nodeLayer(size,&L[i],nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    }
+  }
+}
 // ノードをk番目のレイヤーのノードで埋める
 long kLayer_nodeLayer_backTrack(int size,std::vector<long>& nodes, int k, long left, long down, long right,std::vector<local>& L,local* l)
 {
   long counter=0;
-  /////
   unsigned long mask=(1<<size)-1;
   unsigned long bitmap=mask&~(left|down|right);
   int row=countBits_nodeLayer(down);
@@ -553,7 +628,7 @@ long kLayer_nodeLayer_backTrack(int size,std::vector<long>& nodes, int k, long l
     }else{
       if(row==l->BOUND2){
         if((down&l->SIDEMASK)==0){
-          return;
+          return 0;
         }
         if( (down&l->SIDEMASK)!=l->SIDEMASK){
           bitmap=bitmap&l->SIDEMASK;
@@ -567,30 +642,6 @@ long kLayer_nodeLayer_backTrack(int size,std::vector<long>& nodes, int k, long l
       counter+=kLayer_nodeLayer_backTrack(size,nodes,k,(left|bit)<<1,(down|bit),(right|bit)>>1,L,l); 
     }//end while
   }//end if
-
-
-
-
-
-
-  unsigned long bit=0;
-    if(row==k) {
-      nodes.push_back(left);
-      nodes.push_back(down);
-      nodes.push_back(right);
-      L.push_back(*l);
-      return 1;
-    }
-    if(row<l->BOUND1){   //枝刈り
-      bitmap=bitmap|2;
-      bitmap=bitmap^2;
-    }
-    while(bitmap){
-      bit=-bitmap&bitmap;
-      bitmap=bitmap^bit;
-      l->board[row]=bit;   //Qを配置
-      counter+=kLayer_nodeLayer_backTrack(size,nodes,k,(left|bit)<<1,(down|bit),(right|bit)>>1,L,l); 
-    }
   return counter;
 }
 long kLayer_nodeLayer_backTrack_corner(int size,std::vector<long>& nodes, int k, long left, long down, long right,std::vector<local>& L,local* l)
@@ -671,6 +722,9 @@ void bitmap_build_nodeLayer(int size)
   // レイヤ4には十分なノードがある（N16の場合、9844）。
   std::vector<local>L; // ローカル構造体
   std::vector<long> nodes = kLayer_nodeLayer(size,4,L); 
+  //for (long i = 0; i < L.size(); i++) {
+  //  printf("l:%d d:%d r:%d b1:%d b2:%d\n",nodes[i],nodes[i+1],nodes[i+2],L[i].BOUND1,L[i].BOUND2);
+  //}
 
 
   // デバイスにはクラスがないので、
@@ -682,6 +736,12 @@ void bitmap_build_nodeLayer(int size)
   cudaMalloc((void**)&deviceNodes, nodeSize);
   cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
 
+  size_t LSize = L.size() * sizeof(local);
+  local* hostL = (local*)malloc(LSize);
+  hostL = &L[0];
+  local* deviceL = NULL;
+  cudaMalloc((void**)&deviceL, LSize);
+  cudaMemcpy(deviceL, hostL, LSize, cudaMemcpyHostToDevice);
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
   // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
@@ -692,7 +752,7 @@ void bitmap_build_nodeLayer(int size)
   // CUDAカーネルを起動する。
   int threadsPerBlock = 256;
   int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
-  dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
+  dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceL,deviceNodes,deviceSolutions, numSolutions);
 
   // 結果をホストにコピー
   long* hostSolutions = (long*)malloc(solutionSize);
@@ -701,7 +761,7 @@ void bitmap_build_nodeLayer(int size)
   // 部分解を加算し、結果を表示する。
   long solutions = 0;
   for (long i = 0; i < numSolutions; i++) {
-      solutions += 2*hostSolutions[i]; // Symmetry
+      solutions += hostSolutions[i]; // Symmetry
   }
 
   // 出力
@@ -786,8 +846,8 @@ int main(int argc,char** argv)
   if(gpu||gpuNodeLayer){
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
-    int min=4;
-    int targetN=21;
+    int min=8;
+    int targetN=8;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
@@ -795,7 +855,7 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-        TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //対称解除法
+        //TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //対称解除法
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
         bitmap_build_nodeLayer(size); // 対称解除法
