@@ -575,7 +575,7 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
     l->LASTMASK=l->LASTMASK<<1|l->LASTMASK|l->LASTMASK>>1;
   }//ene while
   UNIQUE=l->COUNT2+l->COUNT4+l->COUNT8;
-  TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
+  TOTAL =l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
    
   /**
   long counter=0;
@@ -604,7 +604,7 @@ std::vector<long> kLayer_nodeLayer(int size,int k,local* l)
   return nodes;
 }
 // ノードレイヤーの作成
-void bitmap_build_nodeLayer(int size)
+void symmetry_build_nodeLayer(int size)
 {
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
@@ -730,7 +730,7 @@ int main(int argc,char** argv)
         TOTAL=symmetry_solve_nodeLayer(size,0,0,0); //対称解除法
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
-        bitmap_build_nodeLayer(size); // 対称解除法
+        symmetry_build_nodeLayer(size); // 対称解除法
       }
       gettimeofday(&t1,NULL);   // 計測終了
       int ss;int ms;int dd;
