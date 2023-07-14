@@ -31,7 +31,7 @@ unsigned long TOTAL=0;
 unsigned long UNIQUE=0;
 //GPU で使うローカル構造体
 typedef struct{
-  unsigned int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK,TYPE;
+  unsigned long BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK,TYPE;
   unsigned long board[MAX];
   unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
 }local;
@@ -258,6 +258,7 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
+  /*
   if(row==4){
     printf("left:%d down:%d right:%d B1:%d B2:%d TB:%d EB:%d ",left,down,right,l->BOUND1,l->BOUND2,l->TOPBIT,l->ENDBIT); 
     printf("aboard:");
@@ -267,6 +268,7 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
     }
     printf("\n");
   }
+  */
   if(row==(size-1)){
     if(bitmap){
       if( (bitmap&l->LASTMASK)==0){
@@ -302,6 +304,7 @@ void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int l
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
   unsigned int bit=0;
+  /*
   if(row==4){
     printf("left:%d down:%d right:%d B1:%d B2:%d TB:%d EB:%d ",left,down,right,l->BOUND1,l->BOUND2,l->TOPBIT,l->ENDBIT); 
     printf("aboard:");
@@ -311,6 +314,7 @@ void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int l
     }
     printf("\n");
   }
+  */
   if(row==(size-1)){
     if(bitmap){
       l->board[row]=bitmap;
@@ -437,7 +441,7 @@ void GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned i
 
 // GPU対称解除法
 __host__ __device__
-int GPU_symmetryOps(unsigned int size,local* l)
+long GPU_symmetryOps(unsigned int size,local* l)
 {
   /**
   ２．クイーンが右上角以外にある場合、
@@ -555,7 +559,7 @@ long bitmap_solve_nodeLayer(int size,local* l,long left,long down,long right)
       if( (bitmap& l->LASTMASK)==0){
         l->board[row]=bitmap;  //Qを配置
         int s=GPU_symmetryOps(size,l);    //対称解除
-        return 1*s;
+        return s;
       }
     }
   }else{
@@ -573,10 +577,10 @@ long bitmap_solve_nodeLayer(int size,local* l,long left,long down,long right)
       }
     }
     while(bitmap){
-      unsigned int bit=-bitmap&bitmap;
+      unsigned long bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
       l->board[row]=bit;
-      bitmap_solve_nodeLayer(size,l,(left|bit)<<1,down|bit,(right|bit)>>1);
+      counter+=bitmap_solve_nodeLayer(size,l,(left|bit)<<1,down|bit,(right|bit)>>1);
     }//end while
   }//end if
   return counter;
@@ -608,7 +612,7 @@ long bitmap_solve_nodeLayer_corner(int size,local* l,long left,long down,long ri
       bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
       l->board[row]=bit;   //Qを配置
-      counter += bitmap_solve_nodeLayer_corner(size,l,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+      counter += bitmap_solve_nodeLayer_corner(size,l,(left|bit)<<1,(down|bit),(right|bit)>> 1); 
     }
   }
   return counter;
@@ -671,7 +675,7 @@ long kLayer_nodeLayer_backTrack(int size,std::vector<long>& nodes, int k, long l
       }
     }
     while(bitmap){
-      unsigned int bit=-bitmap&bitmap;
+      unsigned long bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
       l->board[row]=bit;
       counter+=kLayer_nodeLayer_backTrack(size,nodes,k,(left|bit)<<1,(down|bit),(right|bit)>>1,L,l); 
@@ -732,6 +736,7 @@ std::vector<long> kLayer_nodeLayer(int size,int k,std::vector<local>& L)
       bit=1<<l.BOUND1;
       l.board[1]=bit;   //２行目にQを配置
       //角にQがあるときのバックトラック
+      l.TYPE=0;
       kLayer_nodeLayer_backTrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,L,&l);
     }
     l.BOUND1++;
@@ -747,6 +752,7 @@ std::vector<long> kLayer_nodeLayer(int size,int k,std::vector<local>& L)
       bit=1<<l.BOUND1;
       l.board[0]=bit;   //Qを配置
       //角にQがないときのバックトラック
+      l.TYPE=1;
       kLayer_nodeLayer_backTrack(size,nodes,k,bit<<1,bit,bit>>1,L,&l);
     }
     l.BOUND1++;
@@ -790,7 +796,6 @@ void bitmap_build_nodeLayer(int size)
   long* deviceSolutions = NULL;
   // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
   int numSolutions = nodes.size() / 3; 
-  printf("numSolutions:%d\n",numSolutions);
   size_t solutionSize = numSolutions * sizeof(long);
   cudaMalloc((void**)&deviceSolutions, solutionSize);
 
@@ -803,6 +808,7 @@ void bitmap_build_nodeLayer(int size)
   // CUDAカーネルを起動する。
   int threadsPerBlock = 256;
   int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
+  //printf("blocksPerGrid:%d\n",blocksPerGrid);
   dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceL,deviceNodes,deviceSolutions,numSolutions);
 
   // 結果をホストにコピー
@@ -865,8 +871,8 @@ int main(int argc,char** argv)
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
-    min=8;
-    targetN=8;
+    //min=8;
+    //targetN=8;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
@@ -901,8 +907,8 @@ int main(int argc,char** argv)
   if(gpu||gpuNodeLayer){
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
-    int min=8;
-    int targetN=8;
+    int min=4;
+    int targetN=17;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
