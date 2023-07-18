@@ -29,7 +29,8 @@ unsigned long UNIQUE=0;
 //GPU で使うローカル構造体
 typedef struct
 {
-  unsigned int BOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  unsigned int BOUND1,BOUND2;
+  unsigned int TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
   unsigned long board[MAX];
   unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
 }local;
@@ -172,7 +173,7 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
   }//end while
 }
 // 非再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down, unsigned int _right,local *l)
+void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,local *l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bit=0;
@@ -211,7 +212,7 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
   }//end while
 }
 // 非再帰 対称解除法
-void symmetry_NR(unsigned int size,local* l)
+void symmetry_NR(unsigned int size,struct local* l)
 {
   l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
   unsigned int bit=0;
@@ -251,7 +252,7 @@ void symmetry_NR(unsigned int size,local* l)
   TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
 }
 // 再帰 角にQがないときのバックトラック
-void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
+void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
@@ -285,7 +286,7 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
   }//end if
 }
 // 再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
+void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
@@ -309,7 +310,7 @@ void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int l
   }
 }
 // 再帰 対称解除法
-void symmetry_R(unsigned int size,local* l)
+void symmetry_R(unsigned int size,struct local* l)
 {
   l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
   unsigned int bit=0;
@@ -350,7 +351,7 @@ void symmetry_R(unsigned int size,local* l)
 }
 // GPU 対称解除法
 __host__ __device__
-void GPU_symmetryOps(unsigned int size,local* l)
+void GPU_symmetryOps(unsigned int size,struct local* l)
 {
   /**
   ２．クイーンが右上角以外にある場合、
@@ -438,7 +439,8 @@ void GPU_symmetryOps(unsigned int size,local* l)
 }
 // GPU 角にQがないときのバックトラック
 __host__ __device__
-void GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
+// long GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
+void GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
@@ -473,7 +475,7 @@ void GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left
 }
 // GPU 角にQがあるときのバックトラック
 __host__ __device__
-void GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,local* l)
+void GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bitmap=mask&~(left|down|right);
@@ -501,7 +503,7 @@ __host__ __device__
 long symmetry_solve_nodeLayer(unsigned int size,unsigned long left,unsigned long down,unsigned long right)
 {
   long mask=(1<<size)-1;
-  long counter = 0;
+  long counter=0;
   if (down==mask) { // downがすべて専有され解が見つかる
     return 1;
   }
@@ -516,7 +518,7 @@ long symmetry_solve_nodeLayer(unsigned int size,unsigned long left,unsigned long
 __global__ 
 void dim_nodeLayer(unsigned int size,long* nodes,long* solutions,unsigned int numElements)
 {
-  int i=blockDim.x * blockIdx.x + threadIdx.x;
+  int i=blockDim.x * blockIdx.x+threadIdx.x;
   if(i<numElements){
     solutions[i]=symmetry_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
@@ -524,15 +526,15 @@ void dim_nodeLayer(unsigned int size,long* nodes,long* solutions,unsigned int nu
 // ノードレイヤー 0以外のbitをカウント
 int countBits_nodeLayer(long n)
 {
-  int counter = 0;
+  int counter=0;
   while (n){
-    n &= (n - 1); // 右端のゼロ以外の数字を削除
+    n &= (n-1); // 右端のゼロ以外の数字を削除
     counter++;
   }
   return counter;
 }
 // ノードレイヤー ノードをk番目のレイヤーのノードで埋める
-long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
+long kLayer_nodeLayer(int size,std::vector<long>& nodes,int k,long left,long down,long right)
 {
   long counter=0;
   long mask=(1<<size)-1;
@@ -555,7 +557,7 @@ long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long 
 std::vector<long> kLayer_nodeLayer(int size,int k)
 {
   std::vector<long> nodes{};
-  kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
+  kLayer_nodeLayer(size,nodes,k,0,0,0);
   return nodes;
 }
 // ノードレイヤーの作成
@@ -566,31 +568,31 @@ void symmetry_build_nodeLayer(int size)
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
   // レイヤ4には十分なノードがある（N16の場合、9844）。
   /* local l[MAX]; // ローカル構造体 */
-  //std::vector<long> nodes = kLayer_nodeLayer(size,4,&l[0]); 
-  std::vector<long> nodes = kLayer_nodeLayer(size,4); 
+  //std::vector<long> nodes=kLayer_nodeLayer(size,4,&l[0]); 
+  std::vector<long> nodes=kLayer_nodeLayer(size,4); 
   // デバイスにはクラスがないので、
   // 最初の要素を指定してからデバイスにコピーする。
-  size_t nodeSize = nodes.size() * sizeof(long);
-  long* hostNodes = (long*)malloc(nodeSize);
-  hostNodes = &nodes[0];
-  long* deviceNodes = NULL;
-  cudaMalloc((void**)&deviceNodes, nodeSize);
-  cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
+  size_t nodeSize=nodes.size() * sizeof(long);
+  long* hostNodes=(long*)malloc(nodeSize);
+  hostNodes=&nodes[0];
+  long* deviceNodes=NULL;
+  cudaMalloc((void**)&deviceNodes,nodeSize);
+  cudaMemcpy(deviceNodes,hostNodes,nodeSize,cudaMemcpyHostToDevice);
   // デバイス出力の割り当て
-  long* deviceSolutions = NULL;
+  long* deviceSolutions=NULL;
   // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
-  int numSolutions = nodes.size() / 6; 
-  size_t solutionSize = numSolutions * sizeof(long);
-  cudaMalloc((void**)&deviceSolutions, solutionSize);
+  int numSolutions=nodes.size() / 6; 
+  size_t solutionSize=numSolutions * sizeof(long);
+  cudaMalloc((void**)&deviceSolutions,solutionSize);
   // CUDAカーネルを起動する。
-  int threadsPerBlock = 256;
-  int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
-  dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
+  int threadsPerBlock=256;
+  int blocksPerGrid=(numSolutions + threadsPerBlock - 1) / threadsPerBlock;
+  dim_nodeLayer <<<blocksPerGrid,threadsPerBlock >>> (size,deviceNodes,deviceSolutions,numSolutions);
   // 結果をホストにコピー
-  long* hostSolutions = (long*)malloc(solutionSize);
-  cudaMemcpy(hostSolutions, deviceSolutions, solutionSize, cudaMemcpyDeviceToHost);
+  long* hostSolutions=(long*)malloc(solutionSize);
+  cudaMemcpy(hostSolutions,deviceSolutions,solutionSize,cudaMemcpyDeviceToHost);
   // 部分解を加算し、結果を表示する。
-  long solutions = 0;
+  long solutions=0;
   for(long i=0;i<numSolutions;i++){
       solutions += 2*hostSolutions[i]; // Symmetry
   }
@@ -645,7 +647,7 @@ int main(int argc,char** argv)
     printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       local l;
-      gettimeofday(&t0, NULL);//計測開始
+      gettimeofday(&t0,NULL);//計測開始
       if(cpur){ //再帰
         symmetry_R(size,&l);
       }
@@ -653,7 +655,7 @@ int main(int argc,char** argv)
         symmetry_NR(size,&l);
       }
       //
-      gettimeofday(&t1, NULL);//計測終了
+      gettimeofday(&t1,NULL);//計測終了
       int ss;int ms;int dd;
       if(t1.tv_usec<t0.tv_usec) {
         dd=(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -671,7 +673,8 @@ int main(int argc,char** argv)
           size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
-  if(gpu||gpuNodeLayer){
+  if(gpu||gpuNodeLayer)
+  {
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
     int min=4;
