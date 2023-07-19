@@ -777,7 +777,8 @@ void symmetry_build_nodeLayer(unsigned int size)
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
   // レイヤ4には十分なノードがある（N16の場合、9844）。
   std::vector<local>L;
-  std::vector<long> nodes=kLayer_nodeLayer(size,6,L); 
+  // N18でabort
+  std::vector<long> nodes=kLayer_nodeLayer(size,5,L); 
   // デバイスにはクラスがないので、
   // 最初の要素を指定してからデバイスにコピーする。
   size_t nodeSize=nodes.size() * sizeof(long);
