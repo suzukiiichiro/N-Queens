@@ -592,11 +592,7 @@ void GPU_symmetry_R(unsigned int size,struct local* hostLocal)
 // ノードレイヤービットカウント 0以外のbitをカウント 右端のゼロ以外の数字を削除
 // GPU -n の 対称解除法
 __host__ __device__
-/**
-  変更点１
-  */
-long GPUN_symmetryOps(unsigned int size,struct dlocal* l)
-//long GPUN_symmetryOps(unsigned int size,struct local* l)
+long GPUN_symmetryOps(unsigned int size,struct local* l)
 {
   /**
   ２．クイーンが右上角以外にある場合、
@@ -692,11 +688,7 @@ unsigned int countBits_nodeLayer(unsigned long n)
 }
 // GPU -n ノードレイヤーによる対称解除法 -n の実行時に呼び出される
 __host__ __device__ 
-/**
-  変更点２
-  */
-long GPU_symmetry_solve_nodeLayer_corner(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct dlocal* l)
-//long GPU_symmetry_solve_nodeLayer_corner(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct local* l)
+long GPU_symmetry_solve_nodeLayer_corner(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct local* l)
 {
   unsigned long counter = 0;
   unsigned long mask=(1<<size)-1;
@@ -724,11 +716,7 @@ long GPU_symmetry_solve_nodeLayer_corner(unsigned int size,unsigned long left,un
 }
 // GPU -n ノードレイヤーによる対称解除法 -n の実行時に呼び出される
 __host__ __device__ 
-/**
-  変更点３
-  */
-long GPU_symmetry_solve_nodeLayer(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct dlocal* l)
-//long GPU_symmetry_solve_nodeLayer(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct local* l)
+long GPU_symmetry_solve_nodeLayer(unsigned int size,unsigned long left,unsigned long down,unsigned long right,struct local* l)
 {
   unsigned long counter = 0;
   unsigned long mask=(1<<size)-1;
@@ -769,32 +757,11 @@ __global__
 void dim_nodeLayer(unsigned int size,long* nodes,long* solutions,unsigned int numElements,struct local* l)
 {
   unsigned int i=blockDim.x*blockIdx.x+threadIdx.x;
-  struct dlocal* dl=NULL; // GPU 内部で利用するための構造体
-  dl[i].BOUND1=l[0].BOUND1;
-  dl[i].BOUND2=l[0].BOUND2;
-  dl[i].TOPBIT=l[0].TOPBIT;
-  dl[i].ENDBIT=l[0].ENDBIT;
-  dl[i].SIDEMASK=l[0].SIDEMASK;
-  dl[i].LASTMASK=l[0].LASTMASK;
-  dl[i].COUNT2=l[0].COUNT2;
-  dl[i].COUNT4=l[0].COUNT4;
-  dl[i].COUNT8=l[0].COUNT8;
-  dl[i].TYPE=l[i].TYPE;
-  for(int j=0;j<MAX;j++){ dl[i].board[j]=l[0].board[j]; }
-
   if(i<numElements){
     if(l[i].TYPE==0){
-      /**
-        変更点４
-        */
-      //solutions[i]=GPU_symmetry_solve_nodeLayer_corner(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&l[i]);
-      solutions[i]=GPU_symmetry_solve_nodeLayer_corner(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&dl[i]);
+      solutions[i]=GPU_symmetry_solve_nodeLayer_corner(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&l[i]);
     }else{
-      /**
-        変更点５
-        */
-      //solutions[i]=GPU_symmetry_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&l[i]);
-      solutions[i]=GPU_symmetry_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&dl[i]);
+      solutions[i]=GPU_symmetry_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],&l[i]);
     }
   }
 }
