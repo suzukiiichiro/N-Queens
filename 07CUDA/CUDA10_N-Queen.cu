@@ -148,12 +148,12 @@ void cuda_kernel(
     unsigned int* totalRight,
     unsigned int* d_results,
     unsigned int* d_uniq,
-    register int totalCond,
+    register long totalCond,
     unsigned int* t_aBoard,
     register int h_row)
 {
   register const unsigned int mask=(1<<size)-1;
-  register unsigned int total=0;
+  register unsigned long total=0;
   register unsigned int unique=0;
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
@@ -308,7 +308,7 @@ long backTrack2G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   const unsigned int mark=size>12?size-10:3;
   const unsigned int h_mark=row;
   long total=0;
-  int totalCond=0;
+  long totalCond=0;
   bool matched=false;
   //host
   unsigned int down[32];  down[row]=n_down;
@@ -489,7 +489,7 @@ long backTrack1G(int size,int mask,int row,int n_left,int n_down,int n_right,int
   const unsigned int mark=size>12?size-10:3;
   const unsigned int h_mark=row;
   long total=0;
-  int totalCond=0;
+  long totalCond=0;
   bool matched=false;
   //host
   unsigned int down[32];  down[row]=n_down;

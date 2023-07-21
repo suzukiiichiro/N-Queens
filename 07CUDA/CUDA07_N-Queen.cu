@@ -146,12 +146,12 @@ void cuda_kernel(
     unsigned int* totalRight,
     unsigned int* d_results,
     unsigned int* d_uniq,
-    register int totalCond,
+    register long totalCond,
     unsigned int* t_aBoard,
     register int h_row)
 {
   register const unsigned int mask=(1<<size)-1;
-  register unsigned int total=0;
+  register unsigned long total=0;
   register unsigned int unique=0;
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
@@ -306,7 +306,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   const unsigned int mark=size>12?size-10:3;
   const unsigned int h_mark=row;
   long total=0;
-  int totalCond=0;
+  long totalCond=0;
   bool matched=false;
   //host
   unsigned int down[32];  down[row]=n_down;
@@ -494,7 +494,7 @@ void NQueenG(int size,int steps)
 }
 //SGPU
 __global__ 
-void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond)
+void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,long totalCond)
 {
   const int tid=threadIdx.x;
   const int bid=blockIdx.x;
@@ -505,7 +505,7 @@ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* to
   __shared__ unsigned int bitmap[THREAD_NUM][10];
   __shared__ unsigned int sum[THREAD_NUM];
   const unsigned int mask=(1<<size)-1;
-  int total=0;
+  long total=0;
   int row=0;
   unsigned int bit;
   if(idx<totalCond){
@@ -565,7 +565,7 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
   const unsigned int mask=(1<<size)-1;
   const unsigned int mark=size>11?size-10:2;
   long long total=0;
-  int totalCond=0;
+  long totalCond=0;
   int row=0;
   down[0]=0;
   left[0]=0;

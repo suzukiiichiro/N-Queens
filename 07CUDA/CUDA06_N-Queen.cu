@@ -43,11 +43,11 @@ $ nvcc -O3 CUDA06_N-Queen.cu  && ./a.out -g
 long TOTAL=0;         //CPU,CPUR
 long UNIQUE=0;        //CPU,CPUR
 //関数宣言 GPU
-__global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond);
+__global__ void cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,long totalCond);
 long long solve_nqueen_cuda(int size,int steps);
 void NQueenG(int size,int mask,int row,int steps);
 //関数宣言 SGPU
-__global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,int totalCond);
+__global__ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* results,long totalCond);
 long long sgpu_solve_nqueen_cuda(int size,int steps); 
 //関数宣言 CPU
 void TimeFormat(clock_t utime,char *form);
@@ -72,10 +72,10 @@ void cuda_kernel(
     unsigned int* totalLeft,
     unsigned int* totalRight,
     unsigned int* d_results,
-    int totalCond)
+    long totalCond)
 {
   register const unsigned int mask=(1<<size)-1;
-  register unsigned int total=0;
+  register unsigned long total=0;
   //row=0となってるが1行目からやっているわけではなく
   //mask行目以降からスタート 
   //n=8 なら mask==2 なので そこからスタート
@@ -219,7 +219,7 @@ long solve_nqueen_cuda(int size,int mask,int row,int n_left,int n_down,int n_rig
   const unsigned int mark=size>11?size-10:2;
   const unsigned int h_mark=row;
   long total=0;
-  int totalCond=0;
+  long totalCond=0;
   bool matched=false;
   //host
   unsigned int down[32];  down[row]=n_down;
@@ -422,7 +422,7 @@ void NQueenG(int size,int steps)
 //
 //SGPU
 __global__ 
-void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,int totalCond)
+void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* totalLeft,unsigned int* totalRight,unsigned int* d_results,long totalCond)
 {
   //スレッド
   const int tid=threadIdx.x;//ブロック内のスレッドID
@@ -436,7 +436,7 @@ void sgpu_cuda_kernel(int size,int mark,unsigned int* totalDown,unsigned int* to
   __shared__ unsigned int sum[THREAD_NUM];
   //
   const unsigned int mask=(1<<size)-1;
-  int total=0;
+  long total=0;
   int row=0;//row=0となってるが1行目からやっているわけではなくmask行目以降からスタート n=8 なら mask==2 なので そこからスタート
   unsigned int bit;
   if(idx<totalCond){//余分なスレッドは動かさない GPUはsteps数起動するがtotalCond以上は空回しする
@@ -520,7 +520,7 @@ long long sgpu_solve_nqueen_cuda(int size,int steps)
   const unsigned int mask=(1<<size)-1;
   const unsigned int mark=size>11?size-10:2;
   long long total=0;
-  int totalCond=0;
+  long totalCond=0;
   int row=0;
   down[0]=0;
   left[0]=0;
