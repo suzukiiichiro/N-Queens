@@ -5,6 +5,20 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
+アーキテクチャの指定（なくても問題なし、あれば高速）
+-arch=sm_13 or -arch=sm_61
+
+CPUの再帰での実行
+$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -r
+
+CPUの非再帰での実行
+$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -c
+
+GPUのシングルスレッド
+$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -g
+
+GPUのマルチスレッド
+$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -n
 */
 #include <iostream>
 #include <vector>
@@ -67,7 +81,10 @@ typedef struct
   unsigned int COUNT4;
   unsigned int COUNT8;
 }Local;
-// ボード外側２列を除く内側のクイーン配置処理
+/**
+  CPU 
+*/
+// 再帰 ボード外側２列を除く内側のクイーン配置処理
 uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
   if(down+1==0){ return  1; }
@@ -247,114 +264,10 @@ void carryChain()
   buildChain(); // チェーンのビルド
   // calcChain(&l);  // 集計
 }
-// クイーンの効きを判定して解を返す
-__host__ __device__ 
-long carryChain_solve_nodeLayer(int size,long left,long down,long right)
-{
-  long mask=(1<<size)-1;
-  long counter = 0;
-  if (down==mask) { // downがすべて専有され解が見つかる
-    return 1;
-  }
-  long bit=0;
-  for(long carryChain=mask&~(left|down|right);carryChain;carryChain^=bit){
-    bit=-carryChain&carryChain;
-    counter += carryChain_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
-  }
-  return counter;
-}
-// i 番目のメンバを i 番目の部分木の解で埋める
-__global__ 
-void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
-{
-  int i=blockDim.x * blockIdx.x + threadIdx.x;
-  if(i<numElements){
-    solutions[i]=carryChain_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
-  }
-}
-// 0以外のbitをカウント
-int countBits_nodeLayer(long n)
-{
-  int counter = 0;
-  while (n){
-    n &= (n - 1); // 右端のゼロ以外の数字を削除
-    counter++;
-  }
-  return counter;
-}
-// ノードをk番目のレイヤーのノードで埋める
-long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
-{
-  long counter=0;
-  long mask=(1<<size)-1;
-  // すべてのdownが埋まったら、解決策を見つけたことになる。
-  if (countBits_nodeLayer(down) == k) {
-    nodes.push_back(left);
-    nodes.push_back(down);
-    nodes.push_back(right);
-    return 1;
-  }
-  long bit=0;
-  for(long carryChain=mask&~(left|down|right);carryChain;carryChain^=bit){
-    bit=-carryChain&carryChain;
-    // 解を加えて対角線をずらす
-    counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
-  }
-  return counter;
-}
-// k 番目のレイヤのすべてのノードを含むベクトルを返す。
-std::vector<long> kLayer_nodeLayer(int size,int k)
-{
-  std::vector<long> nodes{};
-  kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
-  return nodes;
-}
-// 【GPU キャリーチェーン】ノードレイヤーの作成
-void carryChain_build_nodeLayer(int size)
-{
-  //int size=16;
-  // ツリーの3番目のレイヤーにあるノード
-  //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
-  // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
-  // レイヤ4には十分なノードがある（N16の場合、9844）。
-  std::vector<long> nodes = kLayer_nodeLayer(size,4); 
 
-  // デバイスにはクラスがないので、
-  // 最初の要素を指定してからデバイスにコピーする。
-  size_t nodeSize = nodes.size() * sizeof(long);
-  long* hostNodes = (long*)malloc(nodeSize);
-  hostNodes = &nodes[0];
-  long* deviceNodes = NULL;
-  cudaMalloc((void**)&deviceNodes, nodeSize);
-  cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
-
-  // デバイス出力の割り当て
-  long* deviceSolutions = NULL;
-  // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
-  int numSolutions = nodes.size() / 6; 
-  size_t solutionSize = numSolutions * sizeof(long);
-  cudaMalloc((void**)&deviceSolutions, solutionSize);
-
-  // CUDAカーネルを起動する。
-  int threadsPerBlock = 256;
-  int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
-  dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
-
-  // 結果をホストにコピー
-  long* hostSolutions = (long*)malloc(solutionSize);
-  cudaMemcpy(hostSolutions, deviceSolutions, solutionSize, cudaMemcpyDeviceToHost);
-
-  // 部分解を加算し、結果を表示する。
-  long solutions = 0;
-  for (long i = 0; i < numSolutions; i++) {
-      solutions += 2*hostSolutions[i]; // Symmetry
-  }
-
-  // 出力
-  //std::cout << "We have " << solutions << " solutions on a " << size << " by " << size << " board." << std::endl;
-  TOTAL=solutions;
-  //return 0;
-}
+/**
+  GPU 
+ */
 // CUDA 初期化
 bool InitCUDA()
 {
@@ -391,16 +304,16 @@ int main(int argc,char** argv)
     printf("  -g: GPU 再帰\n");
     printf("  -n: GPU ノードレイヤー\n");
   }
-  if(cpur){ printf("\n\nキャリーチェーン 再帰 \n"); }
-  else if(cpu){ printf("\n\nキャリーチェーン 非再帰 \n"); }
-  else if(gpu){ printf("\n\nキャリーチェーン GPU\n"); }
-  else if(gpuNodeLayer){ printf("\n\nキャリーチェーン GPUノードレイヤー \n"); }
+  if(cpur){ printf("\n\nCPU キャリーチェーン 再帰 \n"); }
+  else if(cpu){ printf("\n\nCPU キャリーチェーン 非再帰 \n"); }
+  else if(gpu){ printf("\n\nGPU キャリーチェーン シングルスレッド\n"); }
+  else if(gpuNodeLayer){ printf("\n\nGPU キャリーチェーン マルチスレッド\n"); }
   if(cpu||cpur){
     int min=4; 
     int targetN=17;
     struct timeval t0;
     struct timeval t1;
-    printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
+    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       TOTAL=UNIQUE=0;
       gettimeofday(&t0, NULL);//計測開始
@@ -427,8 +340,7 @@ int main(int argc,char** argv)
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n",
-          size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
   if(gpu||gpuNodeLayer){
@@ -464,8 +376,7 @@ int main(int argc,char** argv)
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n",
-          size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }//end for
   }//end if
   return 0;
