@@ -5,18 +5,17 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 
-非再帰でのコンパイルと実行
-$ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -c
+ 非再帰でのコンパイルと実行
+ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -c
 
-再帰でのコンパイルと実行
-$ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -r
+ 再帰でのコンパイルと実行
+ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -r
 
-GPU で並列処理せずに実行
-$ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
-<<<<<<< HEAD
+ GPU で並列処理せずに実行
+ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
 
-GPU で並列処理で実行（ビットボード）
-$ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
+ GPU で並列処理で実行（ビットボード）
+ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
 
 
 *
