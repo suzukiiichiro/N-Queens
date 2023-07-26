@@ -5,12 +5,21 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
-NQueens$ nvcc 02CUDA_Mirror_0707_suzuki.cu && ./a.out -n
-ptxas warning : Stack size for entry function '_Z13dim_nodeLayeriPlS_i' cannot be statically determined
+アーキテクチャの指定（なくても問題なし、あれば高速）
+-arch=sm_13 or -arch=sm_61
 
+CPUの再帰での実行
+$ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -r
 
+CPUの非再帰での実行
+$ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -c
+
+GPUのシングルスレッド
+$ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -g
+
+GPUのマルチスレッド
 ミラー GPUノードレイヤー
-$ nvcc -O3 -arch=sm_13 02CUDA_Mirror.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -n
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2               0  00:00:00:00.13
  5:           10               0  00:00:00:00.00
@@ -24,9 +33,9 @@ $ nvcc -O3 -arch=sm_13 02CUDA_Mirror.cu && ./a.out -n
 13:        73712               0  00:00:00:00.00
 14:       365596               0  00:00:00:00.03
 15:      2279184               0  00:00:00:00.19
-16:     14772512               0  00:00:00:01.59
+16:     14772512               0  00:00:00:01.60
 17:     95815104               0  00:00:00:15.10
-
+18:    666090624               0  00:00:02:40.78
 */
 #include <iostream>
 #include <vector>

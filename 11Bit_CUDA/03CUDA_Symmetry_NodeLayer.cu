@@ -17,7 +17,6 @@ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_NodeLayer.cu && ./a.out -n
 GPU で並列処理で実行（ノードレイヤー）
 $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_NodeLayer.cu && ./a.out -n
 
-
 対称解除法 GPUノードレイヤー
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            0           0      00:00:00:00.13
@@ -35,7 +34,10 @@ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_NodeLayer.cu && ./a.out -n
 16:     14772512           0      00:00:00:05.50
 17:     95815104           0      00:00:00:38.87
 18:    666090624           0      00:00:04:46.16
- *
+
+以降はバーストします。
+
+*
 */
 #include <iostream>
 #include <vector>
