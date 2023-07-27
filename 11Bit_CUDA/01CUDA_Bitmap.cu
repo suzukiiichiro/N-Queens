@@ -36,6 +36,35 @@ $ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -n
 16:     14772512               0  00:00:00:02.05
 17:     95815104               0  00:00:00:19.56
 18:    666090624               0  00:00:03:15.21
+
+コメント追加
+・kLayer_nodeLayer 
+GPUで並列実行するためのleft,right,downを作成する
+kLayer_nodeLayer(size,4)
+第2引数の4は4行目までnqueenを実行し、それまでのleft,down,rightをnodes配列に格納する
+
+nodesはベクター配列で構造体でもなんでも格納できる
+push_backで追加。
+nodes配列は3個で１セットleft,dwon,rightの情報を同じ配列に格納する
+[0]left[1]down[2]right
+
+・dim_nodeLayer 
+GPU並列処理
+bitmap_solve_nodeLayerを再帰呼び出しし、counter(最終行までクイーンを置けると+1)をsolutionsに格納する
+solutionsは配列でGPUのステップ数分ある
+
+・bitmap_solve_ndoeLayer
+down==maskが最終行までクイーンを置けた状態
+ビットだとクイーンを置けない場所に1が立つ
+downだとクイーンを置いた場所に1が立つ
+
+maskは、size分1が立っているもの
+n8だと11111111
+
+downはクイーンが配置されるたびに配置された列に1が立って行くので最終行までクイーンを置くと全列に1が立った状態になりmaskと同じ内容になる
+
+
+
 */
 #include <iostream>
 #include <vector>
