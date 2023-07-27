@@ -48,6 +48,14 @@ push_backで追加。
 nodes配列は3個で１セットleft,dwon,rightの情報を同じ配列に格納する
 [0]left[1]down[2]right
 
+・bitmap_build_nodeLayer
+  int numSolutions = nodes.size() / 6; 
+  3個で1セットなので/3 さらにnodesの2分の1だけ実行すればミラーになるので/6
+
+  
+  solutions += 2*hostSolutions[i]; // Symmetry
+  GPUごとのTOTALを集計している。ミラー分最後に2倍する
+
 ・dim_nodeLayer 
 GPU並列処理
 bitmap_solve_nodeLayerを再帰呼び出しし、counter(最終行までクイーンを置けると+1)をsolutionsに格納する
