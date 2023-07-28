@@ -37,6 +37,13 @@ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_NodeLayer.cu && ./a.out -n
 
 以降はバーストします。
 
+コメント
+・std::vector<long> kLayer_nodeLayer(unsigned int size,unsigned int k,std::vector<local>& L)
+ 5行分backtrack1,2を実行し、実行結果をnodes,Lに格納する
+ Lは、vector 構造体 l を格納する
+ lはBOUND1,BOUND2,TOPBIT,ENDBIT,SIDEMASK,LASTMASK,board[MAX]を格納する
+ (COUNT2,4,8 TOTAL,UNIQUEは今回は不要)
+
 *
 */
 #include <iostream>
