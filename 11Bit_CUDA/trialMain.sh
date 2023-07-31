@@ -15,7 +15,8 @@
 # screen -r 
 
 sourceFile="04CUDA_Symmetry_BitBoard.cu";  # ソースファイル
-nvcc -O3 -arch=sm_61 $sourceFile && ./a.out -n ;
+nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false $sourceFile && POCL_DEBUG=all ./a.out -n ;
+# gcc -O3 -W -Wall -mtune=native -march=native -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n 
 
 # デタッチする（離れる）
 #  + d
