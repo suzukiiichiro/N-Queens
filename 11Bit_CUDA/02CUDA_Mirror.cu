@@ -36,6 +36,29 @@ $ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -n
 16:     14772512               0  00:00:00:01.60
 17:     95815104               0  00:00:00:15.10
 18:    666090624               0  00:00:02:40.78
+
+
+・std::vector<long> kLayer_nodeLayer(int size,int k)
+ここでミラー処理をしている。
+
+  for(unsigned int i=0;i<size/2;++i){
+  は偶数、奇数かかわらず半分だけ実行する
+  n4なら0,1 n5なら 0,1  n6なら 0,1,2 n7なら 0,1,2
+
+  if(size%2){                 
+  は奇数の場合だけ実行する
+  n5なら 2  n7 なら 3
+  この場合2行目は、半分だけ実行する
+
+・void mirror_build_nodeLayer(int size)
+  int numSolutions = nodes.size() / 3; 
+  left,down,rightで1セットなので/3 kLayer_nodeLayerで半分だけ実行しているのでここは/3のまま
+ 
+
+  for (long i = 0; i < numSolutions; i++) {
+      solutions += 2*hostSolutions[i]; // Symmetry
+  }
+  で最後にGPUの結果を2倍にする
 */
 #include <iostream>
 #include <vector>
