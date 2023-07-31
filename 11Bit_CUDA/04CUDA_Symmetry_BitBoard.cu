@@ -12,10 +12,13 @@
  $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -r
 
  GPU で並列処理せずに実行
- $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
+ $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -g
 
  GPU で並列処理で実行（ビットボード）
  $ nvcc -O3 -arch=sm_61 03CUDA_Symmetry_BitBoard.cu && ./a.out -n
+
+ CUDAのリアルタイム監視
+ $ watch nvidia-smi
 
 対称解除法 GPUビットボード
  N:        Total      Unique      dd:hh:mm:ss.ms
