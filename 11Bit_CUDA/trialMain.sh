@@ -9,7 +9,7 @@
 # https://qiita.com/hnishi/items/3190f2901f88e2594a5f
 # #
 # デタッチする（離れる）
-#  + d
+# Ctrl z + d
 #
 # アタッチする
 # screen -r 
