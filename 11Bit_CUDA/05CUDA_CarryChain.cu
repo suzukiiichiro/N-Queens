@@ -82,9 +82,8 @@ typedef struct
   unsigned int COUNT8;
 }Local;
 /**
-  CPU 
-*/
-//再帰、非再帰共通
+  CPU/CPUR 再帰・非再帰共通
+  */
 // チェーンのリストを作成
 void listChain()
 {
@@ -98,7 +97,9 @@ void listChain()
     }
   }
 }
-
+/**
+  CPU 非再帰
+*/
 // クイーンの効きをチェック
 bool placement(void* args)
 {
@@ -128,11 +129,7 @@ bool placement(void* args)
   l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
   return true;
 }
-
-
-//非再帰ここから
-//非再帰ここから
-
+//非再帰
 uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
   uint64_t row_a[MAX];
@@ -202,10 +199,7 @@ uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uin
   }
   return total;
 }
-
-
-
-//対称解除法
+//非再帰 対称解除法
 void carryChain_symmetry(void* args)
 {
   Local *l=(Local *)args;
@@ -241,8 +235,7 @@ void carryChain_symmetry(void* args)
   l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
   return;
 }
-
-// pthread run()
+//非再帰  pthread run()
 void thread_run(void* args)
 {
   Local *l=(Local *)args;
@@ -291,9 +284,7 @@ void thread_run(void* args)
     } //e
   } //n
 }
-
-
-// チェーンのビルド
+//非再帰  チェーンのビルド
 void buildChain()
 {
   Local l[(g.size/2)*(g.size-3)];
@@ -321,20 +312,17 @@ void buildChain()
           l->COUNTER[l->COUNT4]*4+
           l->COUNTER[l->COUNT8]*8;
 }
-
-// キャリーチェーン
+//非再帰  キャリーチェーン
 void carryChain()
 {
   listChain();  //チェーンのリストを作成
   buildChain(); // チェーンのビルド
   // calcChain(&l);  // 集計
 }
-
-
-
-
-//非再帰ここまで
-// 再帰 ボード外側２列を除く内側のクイーン配置処理
+/**
+  CPUR 再帰
+  */
+//再帰 ボード外側２列を除く内側のクイーン配置処理
 uint64_t solveR(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
   if(down+1==0){ return  1; }
@@ -352,9 +340,7 @@ uint64_t solveR(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
   }
   return total;
 } 
-
-
-//対称解除法
+//再帰 対称解除法
 void carryChain_symmetryR(void* args)
 {
   Local *l=(Local *)args;
@@ -390,8 +376,7 @@ void carryChain_symmetryR(void* args)
   l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
   return;
 }
-
-// pthread run()
+//再帰  pthread run()
 void thread_runR(void* args)
 {
   Local *l=(Local *)args;
@@ -440,7 +425,7 @@ void thread_runR(void* args)
     } //e
   } //n
 }
-// チェーンのビルド
+//再帰  チェーンのビルド
 void buildChainR()
 {
   Local l[(g.size/2)*(g.size-3)];
@@ -468,14 +453,13 @@ void buildChainR()
           l->COUNTER[l->COUNT4]*4+
           l->COUNTER[l->COUNT8]*8;
 }
-// キャリーチェーン
+//再帰  キャリーチェーン
 void carryChainR()
 {
   listChain();  //チェーンのリストを作成
   buildChainR(); // チェーンのビルド
   // calcChain(&l);  // 集計
 }
-
 /**
   GPU 
  */
@@ -519,7 +503,8 @@ int main(int argc,char** argv)
   else if(cpu){ printf("\n\nCPU キャリーチェーン 非再帰 \n"); }
   else if(gpu){ printf("\n\nGPU キャリーチェーン シングルスレッド\n"); }
   else if(gpuNodeLayer){ printf("\n\nGPU キャリーチェーン マルチスレッド\n"); }
-  if(cpu||cpur){
+  if(cpu||cpur)
+  {
     int min=4; 
     int targetN=17;
     struct timeval t0;
@@ -554,7 +539,8 @@ int main(int argc,char** argv)
       printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
-  if(gpu||gpuNodeLayer){
+  if(gpu||gpuNodeLayer)
+  {
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
     int min=4;
