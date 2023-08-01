@@ -623,6 +623,7 @@ void GPU_buildChainR(const unsigned int size,unsigned int STEPS)
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
     thread_runR(&l);
     //GPU_thread_runR<<<l->STEPS/THREAD_NUM,THREAD_NUM>>>(&l);
+    //GPU_thread_runR<<<l->STEPS/THREAD_NUM,THREAD_NUM>>>(&l);
   } //w
   cudaMemcpy(l,lDevice,
       sizeof(struct Local)*limit,cudaMemcpyDeviceToHost);
