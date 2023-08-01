@@ -9,16 +9,16 @@
 -arch=sm_13 or -arch=sm_61
 
 CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -r
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -r
 
 CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -c
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -c
 
 GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -g
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -g
 
 GPUのマルチスレッド
-$ nvcc -O3 -arch=sm_61 03CUDA_CarryChain.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
 */
 #include <iostream>
 #include <vector>
@@ -513,7 +513,7 @@ int main(int argc,char** argv)
     printf("  -r: CPU 再帰\n");
     printf("  -c: CPU 非再帰\n");
     printf("  -g: GPU 再帰\n");
-    printf("  -n: GPU ノードレイヤー\n");
+    printf("  -n: GPU キャリーチェーン\n");
   }
   if(cpur){ printf("\n\nCPU キャリーチェーン 再帰 \n"); }
   else if(cpu){ printf("\n\nCPU キャリーチェーン 非再帰 \n"); }
