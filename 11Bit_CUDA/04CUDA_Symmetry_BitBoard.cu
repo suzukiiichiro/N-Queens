@@ -43,6 +43,14 @@
 22:    2691008701644     336376244042      00:03:08:14.53
 23:   24233937684440    3029242658210      01:06:56:07.12
 *
+  for(l.BOUND1=2;l.BOUND1<size-1;l.BOUND1++){
+  for(l.BOUND1=1,l.BOUND2=size-1-1;l.BOUND1<l.BOUND2;l.BOUND1++,l.BOUND2--){
+  のfor文の単位で複数回GPUが実行される
+  そのため、BOUND1,BOUND2,TOPBIT,ENDBIT,LASTMASK,SIDEMASKはGPU内では同じ値になる
+
+  STEPS数がGPU 1回でできる最大数なので、STEPSまでノード（GPUに渡す、LEFT,DOWN,RIGHT,board)が溜まったら、）が溜まったら息継ぎできに1回GPUを実行する
+  
+
 */
 #include <iostream>
 #include <vector>
@@ -1140,6 +1148,7 @@ void BitBoard_backTrack1G(const unsigned int size,unsigned int row,unsigned int 
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   /***08 クイーンを２行目まで固定で置くためmarkが3以上必要*********************/
   const unsigned int mark=size>12?size-10:3;
+  //mark 行までCPU mark行以降はGPU
   const unsigned int h_mark=row;
   const unsigned int mask=(1<<size)-1;
   unsigned long totalCond=0;
@@ -1263,8 +1272,10 @@ void BitBoard_backTrack1G(const unsigned int size,unsigned int row,unsigned int 
       }
     }
   }
+  //if(totalCond==l->STEPS){で処理されなかった残りがここで実行される
   //matched=trueの時にCOUNT追加 //GPU内でカウントしているので、GPUから出たら
   //matched=trueになってる
+  //
   if(matched){
     // デバイスからホストへ転送
     cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*l->STEPS/THREAD_NUM,cudaMemcpyDeviceToHost);
