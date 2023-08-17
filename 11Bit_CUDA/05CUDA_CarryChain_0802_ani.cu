@@ -32,28 +32,28 @@ $ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+#include <unistd.h>
 #define THREAD_NUM		96
 #define MAX 27
 // システムによって以下のマクロが必要であればコメントを外してください。
 //#define UINT64_C(c) c ## ULL
 //
-// グローバル変数
+/**
+  グローバル変数
+*/
 unsigned long TOTAL=0; 
 unsigned long UNIQUE=0;
-// キャリーチェーン 非再帰版
-// 構造体
-typedef struct
+/**
+  CPU で使用する構造体
+*/
+typedef struct Global
 {
   unsigned int size;
   unsigned int pres_a[930]; 
   unsigned int pres_b[930];
-  // uint64_t COUNTER[3];      
-  // //カウンター配列
-  // unsigned int COUNT2;
-  // unsigned int COUNT4;
-  // unsigned int COUNT8;
+  unsigned int idx;
+  unsigned int STEPS;
 }Global; Global g;
-// 構造体
 typedef struct Board
 {
   uint64_t row;
@@ -81,7 +81,6 @@ typedef struct Local
   unsigned int COUNT2;
   unsigned int COUNT4;
   unsigned int COUNT8;
-  unsigned int STEPS;
 }Local;
 /**
   CPU/CPUR 再帰・非再帰共通
@@ -302,6 +301,7 @@ void buildChain()
   // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   l->wB=l->B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    fprintf(stderr, "\r[%d / %d]", l->w,(g.size/2)*(g.size-3));
     thread_run(&l);
   } //w
   /**
@@ -443,6 +443,7 @@ void buildChainR()
   // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   l->wB=l->B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
+    fprintf(stderr, "\r[%d / %d]", l->w,(g.size/2)*(g.size-3));
     thread_runR(&l);
   } //w
   /**
@@ -598,51 +599,87 @@ void GPU_thread_runR(void* args)
   } //n
 }
 //GPU 再帰  チェーンのビルド
-void GPU_buildChainR(const unsigned int size,unsigned int STEPS)
+void GPU_buildChainR(const unsigned int size,unsigned int STEPS,struct Global* g)
 {
-  Local l[(g.size/2)*(g.size-3)];
-  l->STEPS=STEPS;
-  l->size=size;
-  Local lDevice[(g.size/2)*(g.size-3)];
-  cudaMallocHost((void**) &l,   sizeof(struct Local)*l->STEPS);
-  cudaMalloc((void**) &lDevice, sizeof(struct Local)*l->STEPS);
+  /**
+      limit CUDAが起動する数
+    */
+  unsigned int limit=(unsigned)(size/2)*(size-3);
+  Local hostLocal[limit];
+  Local deviceLocal[limit];
+  cudaMallocHost((void**) &hostLocal, sizeof(struct Local)*limit);
+  cudaMalloc((void**) &deviceLocal,   sizeof(struct Local)*limit);
 
+  Global hostGlobal[limit];
+  Global deviceGlobal[limit];
+  cudaMallocHost((void**) &hostGlobal,sizeof(struct Global)*limit);
+  cudaMalloc((void**) &deviceGlobal,  sizeof(struct Global)*limit);
+
+  /**
+    g の内容を hostGlobalへコピー
+    */
+  hostGlobal[0].size=size;
+  hostGlobal[0].idx=g[0].idx;
+  hostGlobal[0].STEPS=g[0].STEPS;
+  for(int i=0;i<g[0].idx;i++){
+    hostGlobal[0].pres_a[i]=g[0].pres_a[i];
+  }
+  
   // カウンターの初期化
-  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
-  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
+  hostLocal->COUNT2=0; 
+  hostLocal->COUNT4=1; 
+  hostLocal->COUNT8=2;
+  hostLocal->COUNTER[hostLocal->COUNT2]=0;
+  hostLocal->COUNTER[hostLocal->COUNT4]=0;
+  hostLocal->COUNTER[hostLocal->COUNT8]=0;
   // Board の初期化 nB,eB,sB,wB;
-  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  hostLocal->B.row=0;
+  hostLocal->B.down=0;
+  hostLocal->B.left=0;
+  hostLocal->B.right=0;
   // Board x[]の初期化
-  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  for(unsigned int i=0;i<size;++i){ hostLocal->B.x[i]=-1; }
   //１ 上２行に置く
-  // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
-  l->wB=l->B;
-  unsigned int limit=(unsigned)(g.size/2)*(g.size-3);
-  cudaMemcpy(lDevice,l,
+  hostLocal->wB=hostLocal->B;
+  // ホストからデバイスへコピー
+  cudaMemcpy(deviceLocal,hostLocal,
       sizeof(struct Local)*limit,cudaMemcpyHostToDevice);
-  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
-    thread_runR(&l);
-    //GPU_thread_runR<<<l->STEPS/THREAD_NUM,THREAD_NUM>>>(&l);
-    //GPU_thread_runR<<<l->STEPS/THREAD_NUM,THREAD_NUM>>>(&l);
+  for(hostLocal->w=0;hostLocal->w<=limit;++hostLocal->w){
+    thread_runR(&hostLocal);
   } //w
-  cudaMemcpy(l,lDevice,
+  // デバイスからホストへコピー
+  cudaMemcpy(hostLocal,deviceLocal,
       sizeof(struct Local)*limit,cudaMemcpyDeviceToHost);
   /**
    * 集計
    */
-  UNIQUE= l->COUNTER[l->COUNT2]+
-          l->COUNTER[l->COUNT4]+
-          l->COUNTER[l->COUNT8];
-  TOTAL=  l->COUNTER[l->COUNT2]*2+
-          l->COUNTER[l->COUNT4]*4+
-          l->COUNTER[l->COUNT8]*8;
+  UNIQUE= hostLocal->COUNTER[hostLocal->COUNT2]+
+          hostLocal->COUNTER[hostLocal->COUNT4]+
+          hostLocal->COUNTER[hostLocal->COUNT8];
+  TOTAL=  hostLocal->COUNTER[hostLocal->COUNT2]*2+
+          hostLocal->COUNTER[hostLocal->COUNT4]*4+
+          hostLocal->COUNTER[hostLocal->COUNT8]*8;
+}
+// チェーンのリストを作成
+void GPU_listChain(const unsigned int size,unsigned int STEPS,struct Global* g)
+{
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)size;++a){
+    for(unsigned int b=0;b<(unsigned)size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g[0].pres_a[idx]=a;
+      g[0].pres_b[idx]=b;
+      ++idx;
+    }
+  }
+  g[0].idx=idx;
 }
 //GPU 再帰  キャリーチェーン
 void GPU_carryChainR(const unsigned int size,unsigned int STEPS)
 {
-  listChain();  //チェーンのリストを作成
-  GPU_buildChainR(size,STEPS); // チェーンのビルド
-  // calcChain(&l);  // 集計
+  struct Global g;          //pres_a[]/pres_b[]を格納する構造体
+  GPU_listChain(size,STEPS,&g);   //チェーンのリストを作成
+  GPU_buildChainR(size,STEPS,&g);    // チェーンのビルド
 }
 // CUDA 初期化
 bool InitCUDA()
@@ -733,11 +770,11 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
         TOTAL=UNIQUE=0;
-        g.size=size;
+        //g.size=size;
         GPU_carryChainR(size,STEPS); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
-        g.size=size;
+        //g.size=size;
         GPU_carryChainR(size,STEPS); // キャリーチェーン
       }
       gettimeofday(&t1,NULL);   // 計測終了
