@@ -282,7 +282,6 @@ std::vector<long> kLayer_nodeLayer(int size,int k)
 // 【GPU ミラー】ノードレイヤーの作成
 void mirror_build_nodeLayer(int size)
 {
-  //int size=16;
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
@@ -300,10 +299,9 @@ void mirror_build_nodeLayer(int size)
 
   // デバイス出力の割り当て
   long* deviceSolutions = NULL;
-  /**
-    ミラーでは/6 を /3に変更する
-    */
-  // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
+  /** ミラーでは/6 を /3に変更する */
+  // 必要なのはノードの半分だけで
+  // 各ノードは3つの整数で符号化される。
   //int numSolutions = nodes.size() / 6; 
   int numSolutions = nodes.size() / 3; 
   size_t solutionSize = numSolutions * sizeof(long);
@@ -323,11 +321,8 @@ void mirror_build_nodeLayer(int size)
   for (long i = 0; i < numSolutions; i++) {
       solutions += 2*hostSolutions[i]; // Symmetry
   }
-
   // 出力
-  //std::cout << "We have " << solutions << " solutions on a " << size << " by " << size << " board." << std::endl;
   TOTAL=solutions;
-  //return 0;
 }
 // CUDA 初期化
 bool InitCUDA()
@@ -369,7 +364,8 @@ int main(int argc,char** argv)
   else if(cpu){ printf("\n\nミラー 非再帰 \n"); }
   else if(gpu){ printf("\n\nミラー GPU\n"); }
   else if(gpuNodeLayer){ printf("\n\nミラー GPUノードレイヤー \n"); }
-  if(cpu||cpur){
+  if(cpu||cpur)
+  {
     int min=4; 
     int targetN=17;
     struct timeval t0;
