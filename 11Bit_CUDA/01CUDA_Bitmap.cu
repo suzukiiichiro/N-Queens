@@ -207,7 +207,6 @@ std::vector<long> kLayer_nodeLayer(int size,int k)
 // 【GPU ビットマップ】ノードレイヤーの作成
 void bitmap_build_nodeLayer(int size)
 {
-  //int size=16;
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
@@ -244,11 +243,8 @@ void bitmap_build_nodeLayer(int size)
   for (long i = 0; i < numSolutions; i++) {
       solutions += 2*hostSolutions[i]; // Symmetry
   }
-
   // 出力
-  //std::cout << "We have " << solutions << " solutions on a " << size << " by " << size << " board." << std::endl;
   TOTAL=solutions;
-  //return 0;
 }
 // CUDA 初期化
 bool InitCUDA()
@@ -290,7 +286,8 @@ int main(int argc,char** argv)
   else if(cpu){ printf("\n\nビットマップ 非再帰 \n"); }
   else if(gpu){ printf("\n\nビットマップ GPU\n"); }
   else if(gpuNodeLayer){ printf("\n\nビットマップ GPUノードレイヤー \n"); }
-  if(cpu||cpur){
+  if(cpu||cpur)
+  {
     int min=4; 
     int targetN=17;
     struct timeval t0;
@@ -324,7 +321,8 @@ int main(int argc,char** argv)
           size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
-  if(gpu||gpuNodeLayer){
+  if(gpu||gpuNodeLayer)
+  {
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
     int min=4;

@@ -134,7 +134,7 @@ void mirror_NR(unsigned int size)
   }
   TOTAL=TOTAL<<1;    //倍にする
 }
-//ミラーロジック 再帰版
+// ミラー処理部分 再帰版
 void mirror_solve_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right)
 {
   unsigned int mask=(1<<size)-1;
@@ -169,9 +169,9 @@ void mirror_R(unsigned int size)
   }
   TOTAL=TOTAL<<1;    //倍にする
 }
-// ロジック クイーンの効きを判定して解を返す
+// ミラー 処理部分
 __host__ __device__ 
-long mirror_logic_nodeLayer(int size,long left,long down,long right)
+long mirror_solve_nodeLayer(int size,long left,long down,long right)
 {
   unsigned int mask=(1<<size)-1;
   unsigned int bit=0;
@@ -181,21 +181,21 @@ long mirror_logic_nodeLayer(int size,long left,long down,long right)
   }else{
     for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
       bit=-bitmap&bitmap;
-      counter+=mirror_logic_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1);
+      counter+=mirror_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
   return counter;
 }
-// ロジック クイーンの効きを判定して解を返す
+// ミラー クイーンの効きを判定して解を返す
 __host__ __device__ 
-long mirror_solve_nodeLayer(int size,long left,long down,long right)
+long mirror_logic_nodeLayer(int size,long left,long down,long right)
 {
   unsigned long counter = 0;
   unsigned int bit=0;
   unsigned int limit=size%2 ? size/2-1 : size/2;
   for(unsigned int i=0;i<size/2;++i){
     bit=1<<i;
-    counter+=mirror_logic_nodeLayer(size,bit<<1,bit,bit>>1);
+    counter+=mirror_solve_nodeLayer(size,bit<<1,bit,bit>>1);
   }
   if(size%2){               //奇数で通過
     bit=1<<(size-1)/2;
@@ -204,7 +204,7 @@ long mirror_solve_nodeLayer(int size,long left,long down,long right)
     unsigned int right=bit>>1;
     for(unsigned int i=0;i<limit;++i){
       bit=1<<i;
-      counter+=mirror_logic_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1);
+      counter+=mirror_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }
   return counter<<1; // 倍にする
@@ -220,7 +220,7 @@ void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
       奇数と偶数を条件分岐するmirror_solve_nodeLayer()を通過させる必要がない
       */
     //solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
-    solutions[i]=mirror_logic_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+    solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
 // 0以外のbitをカウント
@@ -417,7 +417,7 @@ int main(int argc,char** argv)
       if(gpu){
         TOTAL=UNIQUE=0;
         // GPUは起動するがノードレイヤーは行わない
-        TOTAL=mirror_solve_nodeLayer(size,0,0,0); //ミラー
+        TOTAL=mirror_logic_nodeLayer(size,0,0,0); //ミラー
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
         // GPUを起動し、ノードレイヤーも行う
