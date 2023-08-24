@@ -53,7 +53,6 @@ $ nvcc -O3 -arch=sm_61 02CUDA_Mirror.cu && ./a.out -n
 ・void mirror_build_nodeLayer(int size)
   int numSolutions = nodes.size() / 3; 
   left,down,rightで1セットなので/3 kLayer_nodeLayerで半分だけ実行しているのでここは/3のまま
- 
 
   for (long i = 0; i < numSolutions; i++) {
       solutions += 2*hostSolutions[i]; // Symmetry

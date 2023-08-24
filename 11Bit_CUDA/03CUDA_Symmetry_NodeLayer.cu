@@ -610,7 +610,6 @@ void GPU_symmetry_R(unsigned int size,struct local* hostLocal)
 /**
   GPU -n
   */
-// ノードレイヤービットカウント 0以外のbitをカウント 右端のゼロ以外の数字を削除
 // GPU -n の 対称解除法
 __host__ __device__
 long GPUN_symmetryOps(unsigned int size,struct local* l)
@@ -700,6 +699,7 @@ long GPUN_symmetryOps(unsigned int size,struct local* l)
   l->COUNT8++;
   return 8;
 }
+// 0以外のbitをカウント
 __host__ __device__
 unsigned int countBits_nodeLayer(unsigned long n)
 {
@@ -896,11 +896,13 @@ void symmetry_build_nodeLayer(unsigned int size)
 {
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
-  // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
+  // レイヤー2以降はノードの数が均等なので対称性を利用できる。
   // レイヤ4には十分なノードがある（N16の場合、9844）。
+  // ここではレイヤーを５に設定、Ｎに併せて増やしていく
   std::vector<local>L;
-  // N18でabort
+  // NodeLayerは、N18でabortします。
   std::vector<long> nodes=kLayer_nodeLayer(size,5,L); 
+
   // デバイスにはクラスがないので、
   // 最初の要素を指定してからデバイスにコピーする。
   size_t nodeSize=nodes.size() * sizeof(long);
@@ -935,23 +937,14 @@ void symmetry_build_nodeLayer(unsigned int size)
   // 結果をホストにコピー
   long* hostSolutions=(long*)malloc(solutionSize);
   cudaMemcpy(hostSolutions,deviceSolutions,solutionSize,cudaMemcpyDeviceToHost);
-  //cudaMemcpy(hostLocal,deviceLocal,localSize,cudaMemcpyDeviceToHost);
   
-
   // 部分解を加算し、結果を表示する。
   unsigned long solutions=0;
-  //long totalSolutions=0;
-  //long uniqueSolutions=0;
-  // printf("numsol:%d\n",numSolutions);
   for(unsigned long i=0;i<numSolutions;i++){
        solutions += hostSolutions[i]; // Symmetry
-      //totalSolutions+=hostLocal[i].TOTAL;
-      //uniqueSolutions+=hostLocal[i].UNIQUE;
   }
   // 出力
   TOTAL=solutions;
-  //TOTAL=totalSolutions;
-  //UNIQUE=uniqueSolutions;
 }
 // CUDA 初期化
 bool InitCUDA()
