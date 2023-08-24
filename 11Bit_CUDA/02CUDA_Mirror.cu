@@ -217,9 +217,8 @@ void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
   if(i<numElements){
     /**
       ミラーのGPUスレッド(-n)の場合は、予めCPU側で奇数と偶数で分岐させるので、
-      奇数と偶数を条件分岐するmirror_solve_nodeLayer()を通過させる必要がない
+      奇数と偶数を条件分岐するmirror_logic_nodeLayer()を通過させる必要がない
       */
-    //solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
     solutions[i]=mirror_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
   }
 }
@@ -404,7 +403,8 @@ int main(int argc,char** argv)
           size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
   }//end if
-  if(gpu||gpuNodeLayer){
+  if(gpu||gpuNodeLayer)
+  {
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
     int min=4;
