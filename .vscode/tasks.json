@@ -1,20 +1,50 @@
 {
-    // tasks.json 形式の詳細についての資料は、
-    // https://go.microsoft.com/fwlink/?LinkId=733558 をご覧ください
     "version": "2.0.0",
     "tasks": [
         {
+            // build前に実行したい処理
+            "label": "prerun_make",
             "type": "shell",
-            //"type": "process",
-            "label": "c_build",
-            "command": "gcc",
-            "args": [
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
-            ],
-            "group": "build"
+            "command": "echo",
+            "args": ["make を実行します"],
+            "options": {
+            }
+        },
+        {
+            // release build を実行
+            "label": "make",
+            "type": "shell",
+            "command": "make",
+            "args": [""],
+            "options": {
+                "cwd": "${workspaceFolder}/11Bit_CUDA/QJH/"
+            },
+            "dependsOn": [
+                "prerun_make",              // 実行時の依存タスク
+            ]
+        },
+        {
+            // debug test を実行
+            "label": "make_debug",
+            "type": "shell",
+            "command": "make",
+            "args": ["debug"],
+            "options": {
+                "cwd": "${workspaceFolder}/11Bit_CUDA/QJH/"
+            },
+            "dependsOn": [
+                "prerun_make",
+            ]
+        },
+        {
+            // clean を実行
+            "label": "make_clean",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean"],
+            "options": {
+                "cwd": "${workspaceFolder}/11Bit_CUDA/QJH/"
+            }
         }
     ]
 }
