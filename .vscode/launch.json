@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      //"type": "cppdbg", // Linux
+      "type": "lldb",   // Mac
+      "request": "launch",
+      "cwd": "${workSpeceFolder}/11Bit_CUDA/QJH",
+      "program": "${workSpeceFolder}/11Bit_CUDA/QJH/a.out",
+      "args": []
+    }
+  ]
+}
