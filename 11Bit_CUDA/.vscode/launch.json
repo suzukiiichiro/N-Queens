@@ -1,0 +1,20 @@
+// buildができます Shift+Alt+B
+{
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "c_build",
+          "type": "shell",
+          "command": "gcc",
+          "args": [
+              "-g",
+              "-O0",
+              "${file}",
+          ],
+    "group": {
+      "kind": "build",
+      "isDefault": true
+    }
+      }
+  ]
+}
