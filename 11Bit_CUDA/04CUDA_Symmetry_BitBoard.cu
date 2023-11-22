@@ -1436,8 +1436,8 @@ int main(int argc,char** argv)
   {
     int STEPS=24576;
     if(!InitCUDA()){return 0;}
-    unsigned int min=4;
-    unsigned int targetN=27;
+    unsigned int min=25;
+    unsigned int targetN=26;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
