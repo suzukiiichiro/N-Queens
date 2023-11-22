@@ -1469,7 +1469,7 @@ int main(int argc,char** argv)
       unsigned int hh=ss/3600;
       unsigned int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%13ld%12ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
   }
   return 0;
