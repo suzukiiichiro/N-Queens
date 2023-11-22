@@ -1334,6 +1334,9 @@ void BitBoard_build(const unsigned int size,int STEPS)
   */
   for(l.BOUND1=2;l.BOUND1<size-1;l.BOUND1++){
     l.board[1]=bit=(1<<l.BOUND1);
+    printf("\rBOUND1(%d/%d)",l.BOUND1,size-1);// << std::flush;
+    printf("\r");
+    fflush(stdout);
     BitBoard_backTrack1G(size,2,(left|bit)<<1,(down|bit),(right|bit)>>1,&l);
   }
   l.TOPBIT=1<<(size-1);
@@ -1344,6 +1347,9 @@ void BitBoard_build(const unsigned int size,int STEPS)
     偶数個は1/2 n=8 なら 1,2,3 奇数個は1/2+1 n=9 なら 1,2,3,4
   */
   for(l.BOUND1=1,l.BOUND2=size-1-1;l.BOUND1<l.BOUND2;l.BOUND1++,l.BOUND2--){
+    printf("\r  BOUND2(%d/%d)",l.BOUND1,size/2-1);// << std::flush;
+    printf("\r");
+    fflush(stdout);
     l.board[0]=bit=(1<<l.BOUND1);
     BitBoard_backTrack2G(size,1,bit<<1,bit,bit>>1,&l);
     l.LASTMASK|=l.LASTMASK>>1|l.LASTMASK<<1;
