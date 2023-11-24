@@ -335,17 +335,18 @@ void cpu_kernel(
   
 } 
 
-void carryChain_(int){
+void carryChain(int){
   
   listChain();  //チェーンのリストを作成
   int totalCond=g.size/2*(g.size-3);
-  printf("totalCond:%d\n",totalCond);
-  int results[totalCond];
+  unsigned int* results=new unsigned int[totalCond];
   for(int i=0;i<totalCond;i++){
-    cpu_kernel(g.pres_a,g.pres_b,*results,totalCond,i,g.size);
+    cpu_kernel(g.pres_a,g.pres_b,results,totalCond,i,g.size);
   }
 
-  for(int col=0;col<totalCond;col++){TOTAL+=results[col];}	
+  for(int col=0;col<totalCond;col++){
+    TOTAL+=results[col];
+  }	
 }
 /**
   */
@@ -531,7 +532,7 @@ int main(int argc,char** argv)
       }
       if(cpu){ //非再帰
         g.size=size;
-      //  carryChain();
+        carryChain(size);
       }
       //
       gettimeofday(&t1, NULL);//計測終了
