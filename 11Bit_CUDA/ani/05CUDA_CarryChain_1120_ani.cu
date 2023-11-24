@@ -153,7 +153,6 @@ uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uin
   uint64_t bitmap=bitmap_a[current]=~(left_a[current]|down_a[current]|right_a[current]);
   uint64_t total=0;
   uint64_t bit;
-
   while(current>-1){
     if((bitmap!=0||row&1)&&current<size){
       if(!(down+1)){
@@ -162,11 +161,6 @@ uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uin
         row=row_a[current];
         left=left_a[current];
         right=right_a[current];
-    
-    
-    
-    
-    
         down=down_a[current];
         bitmap=bitmap_a[current];
         continue;
@@ -261,7 +255,6 @@ void cpu_kernel(
     //１ 上２行に置く
     // memcpy(&l.wB,&l.B,sizeof(Board));         // wB=B;
     l->wB=l->B;
-
     // memcpy(&l.B,&l.wB,sizeof(Board));       // B=wB;
     //l.B=l.wB;
     l->dimx=0; 
@@ -329,7 +322,6 @@ void cpu_kernel(
     results[idx]=l->COUNTER[l->COUNT2]*2+l->COUNTER[l->COUNT4]*4+l->COUNTER[l->COUNT8]*8;
   }else{
     results[idx]=0;
-
   }
   end:
   
@@ -343,7 +335,6 @@ void carryChain(int){
   for(int i=0;i<totalCond;i++){
     cpu_kernel(g.pres_a,g.pres_b,results,totalCond,i,g.size);
   }
-
   for(int col=0;col<totalCond;col++){
     TOTAL+=results[col];
   }	
@@ -389,7 +380,6 @@ __global__ void cuda_kernel(
     //１ 上２行に置く
     // memcpy(&l.wB,&l.B,sizeof(Board));         // wB=B;
     l->wB=l->B;
-
     // memcpy(&l.B,&l.wB,sizeof(Board));       // B=wB;
     //l.B=l.wB;
     l->dimx=0; 
@@ -457,7 +447,6 @@ __global__ void cuda_kernel(
     sum[tid]=l->COUNTER[l->COUNT2]*2+l->COUNTER[l->COUNT4]*4+l->COUNTER[l->COUNT8]*8;
   }else{
     sum[tid]=0;
-
   }
   end:
   __syncthreads();if(tid<64&&tid+64<THREAD_NUM){sum[tid]+=sum[tid+64];} 
@@ -472,8 +461,7 @@ __global__ void cuda_kernel(
 void carryChain_build_nodeLayer(int){
   unsigned int* pres_a_Cuda;
   unsigned int* pres_b_Cuda;
-  unsigned int* resultsCuda;
-  
+  unsigned int* resultsCuda;  
   listChain();  //チェーンのリストを作成
   cudaMalloc((void**) &pres_a_Cuda,sizeof(int)*steps);
   cudaMalloc((void**) &pres_b_Cuda,sizeof(int)*steps);
