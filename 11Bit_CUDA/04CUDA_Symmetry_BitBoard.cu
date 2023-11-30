@@ -1440,7 +1440,7 @@ int main(int argc,char** argv)
     unsigned int targetN=25;
     struct timeval t0;
     struct timeval t1;
-    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+    printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
     for(unsigned int size=min;size<=targetN;size++){
       gettimeofday(&t0,NULL);
       if(gpu){
@@ -1469,7 +1469,7 @@ int main(int argc,char** argv)
       unsigned int hh=ss/3600;
       unsigned int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%13ld%12ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%17ld%16ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
   }
   return 0;
