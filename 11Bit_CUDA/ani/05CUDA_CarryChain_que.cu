@@ -42,6 +42,18 @@ GPU
 13:        73712           0      00:00:00:01.59
 14:       365596           0      00:00:00:12.11
 
+・carryChain GPU 先にcarryChainだけ全部やる
+
+        Total      Unique      dd:hh:mm:ss.ms
+ 7:           40           0      00:00:00:00.34
+ 8:           92           0      00:00:00:00.00
+ 9:          352           0      00:00:00:00.00
+10:          724           0      00:00:00:00.00
+11:         2680           0      00:00:00:00.03
+12:        14200           0      00:00:00:00.09
+13:        73712           0      00:00:00:00.28
+14:       365596           0      00:00:00:00.77
+
  
 アーキテクチャの指定（なくても問題なし、あれば高速）
 -arch=sm_13 or -arch=sm_61
@@ -86,8 +98,8 @@ long totalcnt=0;
 typedef struct
 {
   unsigned int size;
-  unsigned int pres_a[930]; 
-  unsigned int pres_b[930];
+  unsigned int pres_a[400]; 
+  unsigned int pres_b[400];
   // uint64_t COUNTER[3];      
   // //カウンター配列
   // unsigned int COUNT2;
@@ -139,7 +151,7 @@ uint64_t* leftCuda;
 uint64_t* rightCuda;
 long* resultsCuda;
 int* typeCuda;
-Local totalL[steps*64];
+Local totalL[steps*420];
 /**
   CPU/CPUR 再帰・非再帰共通
   */
@@ -155,6 +167,7 @@ void listChain()
       ++idx;
     }
   }
+  printf("%d¥n",idx);
 }
 /**
   CPU 非再帰
@@ -577,7 +590,7 @@ int main(int argc,char** argv)
   if(cpu||cpur)
   {
     int min=7; 
-    int targetN=14;
+    int targetN=18;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
@@ -592,6 +605,7 @@ int main(int argc,char** argv)
       if(cpur){ //再帰
         g.size=size;
         //carryChainR();
+        carryChain();
       }
       if(cpu){ //非再帰
         g.size=size;
@@ -631,20 +645,24 @@ int main(int argc,char** argv)
   {
     if(!InitCUDA()){return 0;}
     /* int steps=24576; */
-    int min=8;
-    int targetN=8;
+    int min=7;
+    int targetN=18;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       gettimeofday(&t0,NULL);   // 計測開始
+      totalCond=0;
+      totalcnt=0;
       if(gpu){
         TOTAL=UNIQUE=0;
         g.size=size;
+        carryChain();
         //TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
         g.size=size;
+        carryChain();
         //carryChain_build_nodeLayer(size); // キャリーチェーン
       }
       gettimeofday(&t1,NULL);   // 計測終了
