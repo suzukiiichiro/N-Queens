@@ -151,7 +151,7 @@ uint64_t* leftCuda;
 uint64_t* rightCuda;
 long* resultsCuda;
 int* typeCuda;
-Local totalL[steps*420];
+Local totalL[steps*40];
 /**
   CPU/CPUR 再帰・非再帰共通
   */
@@ -167,7 +167,7 @@ void listChain()
       ++idx;
     }
   }
-  printf("%d¥n",idx);
+  //printf("%d¥n",idx);
 }
 /**
   CPU 非再帰

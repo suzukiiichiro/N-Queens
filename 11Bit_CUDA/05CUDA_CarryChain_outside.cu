@@ -553,6 +553,7 @@ int main(int argc,char** argv)
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
         g.size=size;
+        carryChain(size);
        // carryChainR();
       }
       if(cpu){ //非再帰
@@ -593,6 +594,7 @@ int main(int argc,char** argv)
       if(gpu){
         TOTAL=UNIQUE=0;
         g.size=size;
+        carryChain_build_nodeLayer(size); // キャリーチェーン
         //TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;

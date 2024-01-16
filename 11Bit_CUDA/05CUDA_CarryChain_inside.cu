@@ -546,6 +546,7 @@ int main(int argc,char** argv)
       gettimeofday(&t0, NULL);//計測開始
       if(cpur){ //再帰
         g.size=size;
+        carryChain();
         //carryChainR();
       }
       if(cpu){ //非再帰
@@ -593,13 +594,16 @@ int main(int argc,char** argv)
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       gettimeofday(&t0,NULL);   // 計測開始
+      totalCond=0;
       if(gpu){
         TOTAL=UNIQUE=0;
         g.size=size;
+        carryChain();
         //TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
         g.size=size;
+        carryChain();
         //carryChain_build_nodeLayer(size); // キャリーチェーン
       }
       gettimeofday(&t1,NULL);   // 計測終了
@@ -619,6 +623,18 @@ int main(int argc,char** argv)
       //printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
       printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,0,dd,hh,mm,ss,ms);
     }//end for
+      cudaFree(rowCuda);
+      cudaFree(downCuda);
+      cudaFree(leftCuda);
+      cudaFree(rightCuda);
+      cudaFree(typeCuda);
+      cudaFree(resultsCuda);
+      delete[] totalRow;
+      delete[] totalDown;
+      delete[] totalLeft;
+      delete[] totalRight;
+      delete[] totalType;
+      delete[] results;
   }//end if
   return 0;
 }

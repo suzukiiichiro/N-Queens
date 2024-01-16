@@ -670,8 +670,8 @@ int main(int argc,char** argv)
   else if(gpuNodeLayer){ printf("\n\nGPU キャリーチェーン マルチスレッド\n"); }
   if(cpu||cpur)
   {
-    int min=13; 
-    int targetN=13;
+    int min=12; 
+    int targetN=12;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
