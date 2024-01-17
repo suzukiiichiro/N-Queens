@@ -59,16 +59,20 @@ GPU
 -arch=sm_13 or -arch=sm_61
 
 CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -r
+$ nvcc -O3 -arch=sm_61 -lsqlite3 -L/usr/lib64/ -I/usr/include/ 08CUDA_CarryChain_que
+_sqlite.cu && ./a.out -c
 
 CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -c
+$ nvcc -O3 -arch=sm_61 -lsqlite3 -L/usr/lib64/ -I/usr/include/ 08CUDA_CarryChain_que
+_sqlite.cu && ./a.out -c
 
 GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -g
+$ nvcc -O3 -arch=sm_61 -lsqlite3 -L/usr/lib64/ -I/usr/include/ 08CUDA_CarryChain_que
+_sqlite.cu && ./a.out -c
 
 GPUのマルチスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61 -lsqlite3 -L/usr/lib64/ -I/usr/include/ 08CUDA_CarryChain_que
+_sqlite.cu && ./a.out -c
 */
 #include <iostream>
 #include <vector>
@@ -670,8 +674,8 @@ int main(int argc,char** argv)
   else if(gpuNodeLayer){ printf("\n\nGPU キャリーチェーン マルチスレッド\n"); }
   if(cpu||cpur)
   {
-    int min=12; 
-    int targetN=12;
+    int min=10; 
+    int targetN=10;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
@@ -681,6 +685,22 @@ int main(int argc,char** argv)
         printf("FILE Open Error \n");
         return -1;
       }
+      //データ削除
+      // テーブルの削除
+      char *errMsg = NULL;
+      int err = 0;
+
+      err = sqlite3_exec(db,
+        "delete from nqueen;",
+      NULL, NULL, &errMsg);
+
+      if(err != SQLITE_OK){
+        printf("%s\n", errMsg);
+        sqlite3_free(errMsg);
+        errMsg = NULL;
+        /* TODO: エラー処理 */
+      }
+      //printf("DELETE DATA!\n");
     
       TOTAL=UNIQUE=0;
       //for(int i=0;i<steps;i++){
@@ -754,12 +774,14 @@ int main(int argc,char** argv)
       if(gpu){
         TOTAL=UNIQUE=0;
         g.size=size;
-        carryChain();
+        printf("-c,-rでのみ動作します\n");
+        //carryChain();
         //TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
       }else if(gpuNodeLayer){
         TOTAL=UNIQUE=0;
         g.size=size;
-        carryChain();
+        printf("-c,-rでのみ動作します\n");
+        //carryChain();
         //carryChain_build_nodeLayer(size); // キャリーチェーン
       }
       gettimeofday(&t1,NULL);   // 計測終了
