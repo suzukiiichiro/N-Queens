@@ -59,16 +59,16 @@ GPU
 -arch=sm_13 or -arch=sm_61
 
 CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -r
+$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  07CUDA_CarryChain_que_memory.cu && ./a.out -r
 
 CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -c
+$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  07CUDA_CarryChain_que_memory.cu && ./a.out -c
 
 GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -g
+$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  07CUDA_CarryChain_que_memory.cu && ./a.out -g
 
 GPUのマルチスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  07CUDA_CarryChain_que_memory.cu && ./a.out -n
 */
 #include <iostream>
 #include <vector>
@@ -151,7 +151,7 @@ uint64_t* leftCuda;
 uint64_t* rightCuda;
 long* resultsCuda;
 int* typeCuda;
-Local totalL[steps*40];
+Local totalL[steps*420];
 /**
   CPU/CPUR 再帰・非再帰共通
   */
