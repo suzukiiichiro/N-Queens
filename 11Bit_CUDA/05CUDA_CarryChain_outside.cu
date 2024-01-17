@@ -1,7 +1,7 @@
 /**
  *
  * bash版キャリーチェーンのC言語版のGPU/CUDA移植版
- *
+ * CUDAの実行をfor文の一番外側（上2行にクイーンを置いた後）
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
@@ -27,35 +27,20 @@
 13:        73712           0      00:00:04:35.11
 14:       365596           0      00:00:13:57.61
 
-・carryChain GPU inside
-backTrack部分でGPUを起動
-stepsに達するまで貯めた
-
-GPU
-        Total      Unique      dd:hh:mm:ss.ms
- 7:           40           0      00:00:00:00.40
- 8:           92           0      00:00:00:00.00
- 9:          352           0      00:00:00:00.00
-10:          724           0      00:00:00:00.01
-11:         2680           0      00:00:00:00.03
-12:        14200           0      00:00:00:00.11
-13:        73712           0      00:00:00:01.59
-14:       365596           0      00:00:00:12.11
-
 アーキテクチャの指定（なくても問題なし、あれば高速）
 -arch=sm_13 or -arch=sm_61
 
 CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -r
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -r
 
 CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -c
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -c
 
 GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -g
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -g
 
   GPUのマルチスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -n
 */
 #include <iostream>
 #include <vector>
@@ -85,11 +70,6 @@ typedef struct
   unsigned int size;
   unsigned int pres_a[steps]; 
   unsigned int pres_b[steps];
-  // uint64_t COUNTER[3];      
-  // //カウンター配列
-  // unsigned int COUNT2;
-  // unsigned int COUNT4;
-  // unsigned int COUNT8;
 }Global; Global g;
 // 構造体
 typedef struct
@@ -136,6 +116,7 @@ void listChain()
   }
 }
 // クイーンの効きをチェック
+//CPU GPU共通
 __device__ __host__
 bool placement(void* args,int size)
 {
