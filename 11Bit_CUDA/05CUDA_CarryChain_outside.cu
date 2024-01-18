@@ -116,113 +116,9 @@ typedef struct
   unsigned int COUNT4;
   unsigned int COUNT8;
 }Local;
-
-
-//左、下、右２行２列にクイーンを置く
-//CPU限定 
-void cpu_kernel(
-  unsigned int* pres_a,unsigned int* pres_b,unsigned int* results,int totalCond,int idx,int size){
-  if(idx<totalCond){
-    //printf("test\n"); 
-    Local l[1];
-    l->w=idx;
-    // カウンターの初期化
-    l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
-    l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
-    // Board の初期化 nB,eB,sB,wB;
-    l->B.row=l->B.down=l->B.left=l->B.right=0;
-    // Board x[]の初期化
-    for(unsigned int i=0;i<size;++i){ l->B.x[i]=-1; }
-    //１ 上２行に置く
-    // memcpy(&l.wB,&l.B,sizeof(Board));         // wB=B;
-    l->wB=l->B;
-    // memcpy(&l.B,&l.wB,sizeof(Board));       // B=wB;
-    //l.B=l.wB;
-    l->dimx=0; 
-    l->dimy=pres_a[l->w];
-    //if(!placement(l)){ continue; }
-    if(!placement(l,size)){ 
-      //printf("p1\n");
-      results[idx]=0;
-      goto end; 
-    }
-    l->dimx=1; l->dimy=pres_b[l->w];
-    // if(!placement(l)){ continue; }
-    if(!placement(l,size)){ 
-      //printf("p2\n");
-      results[idx]=0;
-      goto end; 
-    }
-    //２ 左２行に置く
-    // memcpy(&l.nB,&l.B,sizeof(Board));       // nB=B;
-    l->nB=l->B;
-    for(l->n=l->w;l->n<(size-2)*(size-1)-l->w;++l->n){
-      // memcpy(&l.B,&l.nB,sizeof(Board));     // B=nB;
-      l->B=l->nB;
-      l->dimx=pres_a[l->n]; l->dimy=size-1;
-      if(!placement(l,size)){ 
-        continue; 
-      }
-      l->dimx=pres_b[l->n]; l->dimy=size-2;
-      if(!placement(l,size)){ 
-        continue; 
-      }
-      // ３ 下２行に置く
-      // memcpy(&l.eB,&l.B,sizeof(Board));     // eB=B;
-      l->eB=l->B;
-      for(l->e=l->w;l->e<(size-2)*(size-1)-l->w;++l->e){
-        // memcpy(&l.B,&l.eB,sizeof(Board));   // B=eB;
-        l->B=l->eB;
-        l->dimx=size-1; l->dimy=size-1-pres_a[l->e];
-        if(!placement(l,size)){ 
-          continue; 
-        }
-        l->dimx=size-2; l->dimy=size-1-pres_b[l->e];
-        if(!placement(l,size)){ 
-          continue; 
-        }
-        // ４ 右２列に置く
-        // memcpy(&l.sB,&l.B,sizeof(Board));   // sB=B;
-        l->sB=l->B;
-        for(l->s=l->w;l->s<(size-2)*(size-1)-l->w;++l->s){
-          // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
-          l->B=l->sB;
-          l->dimx=size-1-pres_a[l->s]; l->dimy=0;
-          if(!placement(l,size)){ 
-            continue; 
-          }
-          l->dimx=size-1-pres_b[l->s]; l->dimy=1;
-          if(!placement(l,size)){ 
-            continue; 
-          }
-          // 対称解除法
-          carryChain_symmetry(l,size);
-        } //w
-      } //e
-    } //n
-    results[idx]=l->COUNTER[l->COUNT2]*2+l->COUNTER[l->COUNT4]*4+l->COUNTER[l->COUNT8]*8;
-  }else{
-    results[idx]=0;
-  }
-  end:
-  
-} 
-//キャリーチェーン 
-//CPU限定
-//for 文の１番外側
-//上2行にクイーンを置く
-void carryChain(int){
-  
-  listChain();  //チェーンのリストを作成
-  int totalCond=g.size/2*(g.size-3);
-  unsigned int* results=new unsigned int[totalCond];
-  for(int i=0;i<totalCond;i++){
-    cpu_kernel(g.pres_a,g.pres_b,results,totalCond,i,g.size);
-  }
-  for(int col=0;col<totalCond;col++){
-    TOTAL+=results[col];
-  }	
-}
+/**
+  CPU/CPUR 再帰・非再帰共通
+  */
 // チェーンのリストを作成
 //CPU GPU共通
 //2行2列分のクイーンの設置場所を作る
@@ -381,7 +277,131 @@ void carryChain_symmetry(void* args,int size)
   l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
   return;
 }
-
+//左、下、右２行２列にクイーンを置く
+//CPU限定 
+void cpu_kernel(
+  unsigned int* pres_a,unsigned int* pres_b,unsigned int* results,int totalCond,int idx,int size){
+  if(idx<totalCond){
+    //printf("test\n"); 
+    Local l[1];
+    l->w=idx;
+    // カウンターの初期化
+    l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
+    l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
+    // Board の初期化 nB,eB,sB,wB;
+    l->B.row=l->B.down=l->B.left=l->B.right=0;
+    // Board x[]の初期化
+    for(unsigned int i=0;i<size;++i){ l->B.x[i]=-1; }
+    //１ 上２行に置く
+    // memcpy(&l.wB,&l.B,sizeof(Board));         // wB=B;
+    l->wB=l->B;
+    // memcpy(&l.B,&l.wB,sizeof(Board));       // B=wB;
+    //l.B=l.wB;
+    l->dimx=0; 
+    l->dimy=pres_a[l->w];
+    //if(!placement(l)){ continue; }
+    if(!placement(l,size)){ 
+      //printf("p1\n");
+      results[idx]=0;
+      goto end; 
+    }
+    l->dimx=1; l->dimy=pres_b[l->w];
+    // if(!placement(l)){ continue; }
+    if(!placement(l,size)){ 
+      //printf("p2\n");
+      results[idx]=0;
+      goto end; 
+    }
+    //２ 左２行に置く
+    // memcpy(&l.nB,&l.B,sizeof(Board));       // nB=B;
+    l->nB=l->B;
+    for(l->n=l->w;l->n<(size-2)*(size-1)-l->w;++l->n){
+      // memcpy(&l.B,&l.nB,sizeof(Board));     // B=nB;
+      l->B=l->nB;
+      l->dimx=pres_a[l->n]; l->dimy=size-1;
+      if(!placement(l,size)){ 
+        continue; 
+      }
+      l->dimx=pres_b[l->n]; l->dimy=size-2;
+      if(!placement(l,size)){ 
+        continue; 
+      }
+      // ３ 下２行に置く
+      // memcpy(&l.eB,&l.B,sizeof(Board));     // eB=B;
+      l->eB=l->B;
+      for(l->e=l->w;l->e<(size-2)*(size-1)-l->w;++l->e){
+        // memcpy(&l.B,&l.eB,sizeof(Board));   // B=eB;
+        l->B=l->eB;
+        l->dimx=size-1; l->dimy=size-1-pres_a[l->e];
+        if(!placement(l,size)){ 
+          continue; 
+        }
+        l->dimx=size-2; l->dimy=size-1-pres_b[l->e];
+        if(!placement(l,size)){ 
+          continue; 
+        }
+        // ４ 右２列に置く
+        // memcpy(&l.sB,&l.B,sizeof(Board));   // sB=B;
+        l->sB=l->B;
+        for(l->s=l->w;l->s<(size-2)*(size-1)-l->w;++l->s){
+          // memcpy(&l->B,&l->sB,sizeof(Board)); // B=sB;
+          l->B=l->sB;
+          l->dimx=size-1-pres_a[l->s]; l->dimy=0;
+          if(!placement(l,size)){ 
+            continue; 
+          }
+          l->dimx=size-1-pres_b[l->s]; l->dimy=1;
+          if(!placement(l,size)){ 
+            continue; 
+          }
+          // 対称解除法
+          carryChain_symmetry(l,size);
+        } //w
+      } //e
+    } //n
+    results[idx]=l->COUNTER[l->COUNT2]*2+l->COUNTER[l->COUNT4]*4+l->COUNTER[l->COUNT8]*8;
+  }else{
+    results[idx]=0;
+  }
+  end:
+  
+} 
+//キャリーチェーン 
+//CPU限定
+//
+void carryChain(int){
+  
+  listChain();  //チェーンのリストを作成
+  int totalCond=g.size/2*(g.size-3);
+  unsigned int* results=new unsigned int[totalCond];
+  for(int i=0;i<totalCond;i++){
+    cpu_kernel(g.pres_a,g.pres_b,results,totalCond,i,g.size);
+  }
+  for(int col=0;col<totalCond;col++){
+    TOTAL+=results[col];
+  }	
+}
+/**
+  */
+//再帰 ボード外側２列を除く内側のクイーン配置処理
+/**
+  GPU 
+ */
+// CUDA 初期化
+bool InitCUDA()
+{
+  int count;
+  cudaGetDeviceCount(&count);
+  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
+  int i;
+  for(i=0;i<count;i++){
+    struct cudaDeviceProp prop;
+    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
+  }
+  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
+  cudaSetDevice(i);
+  return true;
+}
 __global__ void cuda_kernel(
   unsigned int* pres_a,unsigned int* pres_b,unsigned int* results,int totalCond,int size){
   const int tid=threadIdx.x;
@@ -500,22 +520,6 @@ void carryChain_build_nodeLayer(int){
   cudaMemcpy(results,resultsCuda,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
   for(int col=0;col<steps/THREAD_NUM;col++){TOTAL+=results[col];}	
-}
-// CUDA 初期化
-//GPU限定
-bool InitCUDA()
-{
-  int count;
-  cudaGetDeviceCount(&count);
-  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
-  int i;
-  for(i=0;i<count;i++){
-    struct cudaDeviceProp prop;
-    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
-  }
-  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
-  cudaSetDevice(i);
-  return true;
 }
 //メイン
 int main(int argc,char** argv)
