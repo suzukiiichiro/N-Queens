@@ -116,164 +116,10 @@ typedef struct
   unsigned int COUNT4;
   unsigned int COUNT8;
 }Local;
-/**
-  CPU/CPUR 再帰・非再帰共通
-  */
-// チェーンのリストを作成
-void listChain()
-{
-  unsigned int idx=0;
-  for(unsigned int a=0;a<(unsigned)g.size;++a){
-    for(unsigned int b=0;b<(unsigned)g.size;++b){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
-      g.pres_a[idx]=a;
-      g.pres_b[idx]=b;
-      ++idx;
-    }
-  }
-}
-// クイーンの効きをチェック
-//CPU GPU共通
-__device__ __host__
-bool placement(void* args,int size)
-{
-  Local *l=(Local *)args;
-  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
-  if (l->B.x[0]==0){
-    if (l->B.x[1]!=(uint64_t)-1){
-      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
-    }
-  }else{
-    if( (l->B.x[0]!=(uint64_t)-1) ){
-      if(( (l->dimx<l->B.x[0]||l->dimx>=size-l->B.x[0])
-        && (l->dimy==0 || l->dimy==size-1)
-      )){ return 0; } 
-      if ((  (l->dimx==size-1)&&((l->dimy<=l->B.x[0])||
-          l->dimy>=size-l->B.x[0]))){
-        return 0;
-      } 
-    }
-  }
-  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
-  uint64_t row=UINT64_C(1)<<l->dimx;
-  uint64_t down=UINT64_C(1)<<l->dimy;
-  uint64_t left=UINT64_C(1)<<(size-1-l->dimx+l->dimy); //右上から左下
-  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
-  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
-  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
-  return true;
-}
-//非再帰
-__device__ __host__
-uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uint64_t right)
-{
-  //printf("solve\n");
-  printf("current:%d\n",current);
-  uint64_t row_a[MAX];
-  uint64_t right_a[MAX];
-  uint64_t left_a[MAX];
-  uint64_t down_a[MAX];
-  uint64_t bitmap_a[MAX];
-  for (int i=0;i<size;i++){
-    row_a[i]=0;
-    left_a[i]=0;
-    down_a[i]=0;
-    right_a[i]=0;
-    bitmap_a[i]=0;
-  }
-  row_a[current]=row;
-  left_a[current]=left;
-  down_a[current]=down;
-  right_a[current]=right;
-  uint64_t bitmap=bitmap_a[current]=~(left_a[current]|down_a[current]|right_a[current]);
-  uint64_t total=0;
-  uint64_t bit;
-  while(current>-1){
-    if((bitmap!=0||row&1)&&current<size){
-      if(!(down+1)){
-        total++;
-        current--;
-        row=row_a[current];
-        left=left_a[current];
-        right=right_a[current];
-        down=down_a[current];
-        bitmap=bitmap_a[current];
-        continue;
-      }else if(row&1){
-        while( row&1 ){
-          row>>=1;
-          left<<=1;
-          right>>=1;
-        }
-        bitmap=~(left|down|right);  //再帰に必要な変数は必ず定義する必要があります。
-        continue;
-      }else{
-        bit=-bitmap&bitmap;
-        bitmap=bitmap^bit;
-        if(current<size){
-          row_a[current]=row;
-          left_a[current]=left;
-          down_a[current]=down;
-          right_a[current]=right;
-          bitmap_a[current]=bitmap;
-          current++;
-        }
-        row>>=1;      //１行下に移動する
-        left=(left|bit)<<1;
-        down=down|bit;
-        right=(right|bit)>>1;
-        bitmap=~(left|down|right);  //再帰に必要な変数は必ず定義する必要があります。
-      }
-    }else{
-      current--;
-      row=row_a[current];
-      left=left_a[current];
-      right=right_a[current];
-      down=down_a[current];
-      bitmap=bitmap_a[current];
-    }
-  }
-  return total;
-}
-//非再帰 対称解除法
-__device__ __host__
-void carryChain_symmetry(void* args,int size)
-{
-  //printf("symmetry\n");
-  Local *l=(Local *)args;
-  // 対称解除法
-  unsigned const int ww=(size-2)*(size-1)-1-l->w;
-  unsigned const int w2=(size-2)*(size-1)-1;
-  // # 対角線上の反転が小さいかどうか確認する
-  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
-  // # 垂直方向の中心に対する反転が小さいかを確認
-  if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
-  // # 斜め下方向への反転が小さいかをチェックする
-  if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
-  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
-  if(l->B.x[0]==0){
-    l->COUNTER[l->COUNT8]+=solve(size,0,l->B.row>>2,
-    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
-    return ;
-  }
-  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
-  // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
-  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; }
-    l->COUNTER[l->COUNT2]+=solve(size,0,l->B.row>>2,
-    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
-    return;
-  }
-  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
-  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; }
-    l->COUNTER[l->COUNT4]+=solve(size,0,l->B.row>>2,
-    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
-    return;
-  }
-  l->COUNTER[l->COUNT8]+=solve(size,0,l->B.row>>2,
-  l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
-  return;
-}
-//CPU 非再帰
+
+
+//左、下、右２行２列にクイーンを置く
+//CPU限定 
 void cpu_kernel(
   unsigned int* pres_a,unsigned int* pres_b,unsigned int* results,int totalCond,int idx,int size){
   if(idx<totalCond){
@@ -361,7 +207,10 @@ void cpu_kernel(
   end:
   
 } 
-
+//キャリーチェーン 
+//CPU限定
+//for 文の１番外側
+//上2行にクイーンを置く
 void carryChain(int){
   
   listChain();  //チェーンのリストを作成
@@ -374,27 +223,165 @@ void carryChain(int){
     TOTAL+=results[col];
   }	
 }
-/**
-  */
-//再帰 ボード外側２列を除く内側のクイーン配置処理
-/**
-  GPU 
- */
-// CUDA 初期化
-bool InitCUDA()
+// チェーンのリストを作成
+//CPU GPU共通
+//2行2列分のクイーンの設置場所を作る
+void listChain()
 {
-  int count;
-  cudaGetDeviceCount(&count);
-  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
-  int i;
-  for(i=0;i<count;i++){
-    struct cudaDeviceProp prop;
-    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)g.size;++a){
+    for(unsigned int b=0;b<(unsigned)g.size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
+    }
   }
-  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
-  cudaSetDevice(i);
+}
+// クイーンの効きをチェック
+//CPU GPU共通
+__device__ __host__
+bool placement(void* args,int size)
+{
+  Local *l=(Local *)args;
+  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
+  if (l->B.x[0]==0){
+    if (l->B.x[1]!=(uint64_t)-1){
+      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
+    }
+  }else{
+    if( (l->B.x[0]!=(uint64_t)-1) ){
+      if(( (l->dimx<l->B.x[0]||l->dimx>=size-l->B.x[0])
+        && (l->dimy==0 || l->dimy==size-1)
+      )){ return 0; } 
+      if ((  (l->dimx==size-1)&&((l->dimy<=l->B.x[0])||
+          l->dimy>=size-l->B.x[0]))){
+        return 0;
+      } 
+    }
+  }
+  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
+  uint64_t row=UINT64_C(1)<<l->dimx;
+  uint64_t down=UINT64_C(1)<<l->dimy;
+  uint64_t left=UINT64_C(1)<<(size-1-l->dimx+l->dimy); //右上から左下
+  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
+  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
+  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
   return true;
 }
+//バックトラック
+//CPU,GPU共通
+__device__ __host__
+uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uint64_t right)
+{
+  //printf("solve\n");
+  printf("current:%d\n",current);//今はここをprintfしないと数が合わない
+  uint64_t row_a[MAX];
+  uint64_t right_a[MAX];
+  uint64_t left_a[MAX];
+  uint64_t down_a[MAX];
+  uint64_t bitmap_a[MAX];
+  for (int i=0;i<size;i++){
+    row_a[i]=0;
+    left_a[i]=0;
+    down_a[i]=0;
+    right_a[i]=0;
+    bitmap_a[i]=0;
+  }
+  row_a[current]=row;
+  left_a[current]=left;
+  down_a[current]=down;
+  right_a[current]=right;
+  uint64_t bitmap=bitmap_a[current]=~(left_a[current]|down_a[current]|right_a[current]);
+  uint64_t total=0;
+  uint64_t bit;
+  while(current>-1){
+    if((bitmap!=0||row&1)&&current<size){
+      if(!(down+1)){
+        total++;
+        current--;
+        row=row_a[current];
+        left=left_a[current];
+        right=right_a[current];
+        down=down_a[current];
+        bitmap=bitmap_a[current];
+        continue;
+      }else if(row&1){
+        while( row&1 ){
+          row>>=1;
+          left<<=1;
+          right>>=1;
+        }
+        bitmap=~(left|down|right);  //再帰に必要な変数は必ず定義する必要があります。
+        continue;
+      }else{
+        bit=-bitmap&bitmap;
+        bitmap=bitmap^bit;
+        if(current<size){
+          row_a[current]=row;
+          left_a[current]=left;
+          down_a[current]=down;
+          right_a[current]=right;
+          bitmap_a[current]=bitmap;
+          current++;
+        }
+        row>>=1;      //１行下に移動する
+        left=(left|bit)<<1;
+        down=down|bit;
+        right=(right|bit)>>1;
+        bitmap=~(left|down|right);  //再帰に必要な変数は必ず定義する必要があります。
+      }
+    }else{
+      current--;
+      row=row_a[current];
+      left=left_a[current];
+      right=right_a[current];
+      down=down_a[current];
+      bitmap=bitmap_a[current];
+    }
+  }
+  return total;
+}
+//対称解除法
+//CPU,GPU共通
+__device__ __host__
+void carryChain_symmetry(void* args,int size)
+{
+  //printf("symmetry\n");
+  Local *l=(Local *)args;
+  // 対称解除法
+  unsigned const int ww=(size-2)*(size-1)-1-l->w;
+  unsigned const int w2=(size-2)*(size-1)-1;
+  // # 対角線上の反転が小さいかどうか確認する
+  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
+  // # 垂直方向の中心に対する反転が小さいかを確認
+  if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
+  // # 斜め下方向への反転が小さいかをチェックする
+  if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
+  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  if(l->B.x[0]==0){
+    l->COUNTER[l->COUNT8]+=solve(size,0,l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
+    return ;
+  }
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、
+  // w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; }
+    l->COUNTER[l->COUNT2]+=solve(size,0,l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
+    return;
+  }
+  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; }
+    l->COUNTER[l->COUNT4]+=solve(size,0,l->B.row>>2,
+    l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
+    return;
+  }
+  l->COUNTER[l->COUNT8]+=solve(size,0,l->B.row>>2,
+  l->B.left>>4,((((l->B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(l->B.right>>4)<<(size-5));
+  return;
+}
+
 __global__ void cuda_kernel(
   unsigned int* pres_a,unsigned int* pres_b,unsigned int* results,int totalCond,int size){
   const int tid=threadIdx.x;
@@ -513,6 +500,22 @@ void carryChain_build_nodeLayer(int){
   cudaMemcpy(results,resultsCuda,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
   for(int col=0;col<steps/THREAD_NUM;col++){TOTAL+=results[col];}	
+}
+// CUDA 初期化
+//GPU限定
+bool InitCUDA()
+{
+  int count;
+  cudaGetDeviceCount(&count);
+  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
+  int i;
+  for(i=0;i<count;i++){
+    struct cudaDeviceProp prop;
+    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
+  }
+  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
+  cudaSetDevice(i);
+  return true;
 }
 //メイン
 int main(int argc,char** argv)
