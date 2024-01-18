@@ -2,9 +2,25 @@
  *
  * bash版キャリーチェーンのC言語版のGPU/CUDA移植版
  * CUDAの実行をfor文の一番外側（上2行にクイーンを置いた後）
- 詳しい説明はこちらをどうぞ
- https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
- *
+ * 
+ * ・処理の流れ
+ * 1,carryChain_build_nodeLayer()
+ *   listChain() CPU,GPU共通  
+ *     2行2列に配置するクイーンのパターンを作成する
+ *   cuda_kernel()
+ *     listChainで作成した、2行分クイーンを置くパターン数 size/2*(size-3)でCUDAを呼び出す
+ * 2,cuda_kernel() GPUのみ  
+ *   左2列、下2行、右2列にクイーンを置く  
+ *   placement() CPU,GPU共通
+ *     下左右2行2列でクイーンを置く処理、置けない場合は抜ける
+ *   carryChain_symmetry()　CPU,GPU共通
+ *     上下左右2行2列にクイーンを置けたものを対象解除してCOUNT2,COUT4,COUNT8,スキップを判定する
+ * 3,carryChain_symmetry()　CPU,GPU共通
+ *   対象解除判定
+ *   solve() CPU,GPU共通
+ *     バックトラックでクイーンを置いていく
+ * 4,solve()
+ *   バックトラック
 
 ・carryChain  CPU デフォルト
  7:           40           0      00:00:00:00.00
@@ -42,6 +58,7 @@ $ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -g
   GPUのマルチスレッド
 $ nvcc -O3 -arch=sm_61 05CUDA_CarryChain_outside.cu && ./a.out -n
 */
+
 #include <iostream>
 #include <vector>
 #include <stdio.h>
@@ -65,7 +82,7 @@ unsigned long TOTAL=0;
 unsigned long UNIQUE=0;
 // キャリーチェーン 非再帰版
 // 構造体
-typedef struct
+typedef  struct
 {
   unsigned int size;
   unsigned int pres_a[steps]; 
