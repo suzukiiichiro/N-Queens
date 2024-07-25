@@ -3,7 +3,8 @@ import java.util.HashSet;
 /**
  * 
  */
-class Constellation{
+class Constellation
+{
   private int id;
   private int ld;
   private int rd;
@@ -36,33 +37,36 @@ class Constellation{
 /**
  * 
  */
-public class Main {
+public class Main
+{
   private int L, mask, LD, RD, counter; 
   private int N=8;
   private int presetQueens;
   private HashSet<Integer> ijklList=new HashSet<Integer>();
   private static ArrayList<Constellation> constellations = new ArrayList<>(); 
   private long solutions, duration, storedDuration;
-  private final int N3, N4, L3, L4; // boardsize
-  private long tempcounter = 0; // tempcounter is #(unique solutions) of current start constellation, solvecounter is #(all solutions)
+  private final int N3, N4, L3, L4; // ボードサイズ
+  // tempcounter is #(unique solutions) of current start constellation, solvecounter is #(all solutions)
+  // tempcounterは現在の開始座標の#(ユニークな解)、solvecounterは#(すべての解)
+  private long tempcounter = 0; 
   private int mark1, mark2, endmark, jmark;
   //
-  // generate subconstellations for each starting constellation with 3 or 4 queens
-  private void setPreQueens(int ld, int rd, int col, int k, int l, int row, int queens){
-    // in row k and l just go further
+  // 3つまたは4つのクイーンを使って開始コンステレーションごとにサブコンステレーションを生成する。
+  private void setPreQueens(int ld, int rd, int col, int k, int l, int row, int queens)
+  {
+    // k行とl行はさらに進む
     if(row == k || row == l){
       setPreQueens(ld << 1, rd >>> 1, col, k, l, row + 1, queens);
       return;
     }
-    // add queens until we have preQueens queens
+    // preQueensのクイーンが揃うまでクイーンを追加する。
     if(queens == presetQueens){
-      // add the subconstellations to the list
+      // リストにサブカテゴリーを追加する
       constellations.add(new Constellation(-1, ld, rd, col, row << 20, -1));
       counter++;
       return;
     }
-    // if not done or row k or l, just place queens and occupy the board and go
-    // further
+    // k列かl列が終わっていなければ、クイーンを置いてボードを占領し、さらに先に進む。
     else {
       int free = (~(ld | rd | col | (LD >>> (N - 1 - row)) | (RD << (N - 1 - row)))) & mask;
       int bit;
@@ -73,8 +77,9 @@ public class Main {
       }
     }
   }
-  // true, if starting constellation rotated by any angle has already been found
-  boolean checkRotations(HashSet<Integer> ijklList, int i, int j, int k, int l){
+  // いずれかの角度で回転させた星座がすでに見つかっている場合、trueを返す。
+  boolean checkRotations(HashSet<Integer> ijklList, int i, int j, int k, int l)
+  {
     // rot90
     if(ijklList.contains(((N - 1 - k) << 15) + ((N - 1 - l) << 10) + (j << 5) + i))
       return true;
@@ -86,10 +91,10 @@ public class Main {
       return true;
     return false;
   }
-  // i, j, k, l to ijkl and functions to get specific entry
-  // rotate and mirror board, so that the queen closest to a corner is on the
-  // right side of the last row
-  int jasmin(int ijkl){
+  // i, j, k, lをijklに変換し、特定のエントリーを取得する関数 
+  // コーナーに最も近いクイーンが最後の列の右側になるようにボードを回転させミラーにする。
+  int jasmin(int ijkl)
+  {
     int min = Math.min(getj(ijkl), N - 1 - getj(ijkl)), arg = 0;
     if(Math.min(geti(ijkl), N - 1 - geti(ijkl)) < min){
       arg = 2;
@@ -110,45 +115,53 @@ public class Main {
       ijkl = mirvert(ijkl);
     return ijkl;
   }
-  // mirror left-right
-  int mirvert(int ijkl){
+  // 左右のミラー
+  int mirvert(int ijkl)
+  {
     return toijkl(N - 1 - geti(ijkl), N - 1 - getj(ijkl), getl(ijkl), getk(ijkl));
   }
-  // rotate 90 degrees clockwise
-  int rot90(int ijkl){
+  // 時計回りに90度回転
+  int rot90(int ijkl)
+  {
     return ((N - 1 - getk(ijkl)) << 15) + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl);
   }
-  // helper functions for doing the math
-  // for symmetry stuff and working with ijkl
-  // true, if starting constellation is symmetric for rot90
-  boolean symmetry90(int ijkl){
+  // 対称性のための計算と、ijklを扱うためのヘルパー関数。
+  // 開始コンステレーションが回転90に対して対称である場合
+  boolean symmetry90(int ijkl)
+  {
     if(((geti(ijkl) << 15) + (getj(ijkl) << 10) + (getk(ijkl) << 5) + getl(ijkl)) == (((N - 1 - getk(ijkl)) << 15)
           + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl)))
       return true;
     return false;
   }
-  // how often does a found solution count for this start constellation
-  int symmetry(int ijkl){
-    if(geti(ijkl) == N - 1 - getj(ijkl) && getk(ijkl) == N - 1 - getl(ijkl)) // starting constellation symmetric by rot180?
-      if(symmetry90(ijkl)) // even by rot90?
+  // この開始コンステレーションで、見つかった解がカウントされる頻度
+  int symmetry(int ijkl)
+  {
+    // コンステレーションをrot180で対称に開始するか？
+    if(geti(ijkl) == N - 1 - getj(ijkl) && getk(ijkl) == N - 1 - getl(ijkl)){
+      if(symmetry90(ijkl)) // 90？
         return 2;
       else
         return 4;
-    else
-      return 8; // none of the above?
+    }else{
+      return 8; // 上記のどれでもない？
+    }
   }
   //
-  public long getSolutions(){
+  public long getSolutions()
+  {
     return solutions;
   }
-  private void calcSolutions(){
+  private void calcSolutions()
+  {
     for (var c : constellations){
       if(c.getSolutions() >= 0){
         solutions += c.getSolutions();
       }
     }
   }
-  private void execSolutions(){
+  private void execSolutions()
+  {
     int j, k, l, ijkl, ld, rd, col, startIjkl, start, free, LD;
     final int smallmask = (1 << (N - 2)) - 1;
     for (Constellation constellation : constellations){
@@ -158,53 +171,53 @@ public class Main {
       j = getj(ijkl);
       k = getk(ijkl);
       l = getl(ijkl);
-      // IMPORTANT NOTE: we shift ld and rd one to the right, because the right
-      // column does not matter (always occupied by queen l)
-      // add occupation of ld from queens j and l from the bottom row upwards
+      // 重要な注意：ldとrdを1つずつ右にずらすが、これは右列は重要ではないから（常に女王lが占有している）。
+      // 最下段から上に、jとlのクイーンによるldの占有を追加する。
       LD = (L >>> j) | (L >>> l);
       ld = constellation.getLd() >>> 1;
       ld |= LD >>> (N - start);
-      // add occupation of rd from queens j and k from the bottom row upwards
+      // クイーンjとkのrdの占有率を下段から上に加算する。
       rd = constellation.getRd() >>> 1;
       if(start>k)
         rd |= (L >>> (start - k + 1));
-      if(j >= 2 * N - 33 - start) // only add the rd from queen j if it does not
-        rd |= (L >>> j) << (N - 2 - start); // occupy the sign bit!
-      // also occupy col and then calculate free
+      // クイーンjからのrdがない場合のみ追加する
+      if(j >= 2 * N - 33 - start){
+        // 符号ビットを占有する！
+        rd |= (L >>> j) << (N - 2 - start); 
+      }
+      // また、colを占有し、次にフリーを計算する
       col = (constellation.getCol() >>> 1) | (~smallmask);
       free = ~(ld | rd | col);
-      // big case distinction for deciding which soling algorithm to use
-      // if queen j is more than 2 columns away from the corner
+      // どのソリングアルゴリズムを使うかを決めるための大きなケースの区別
+      // クイーンjがコーナーから2列以上離れている場合
       if(j < N - 3){
         jmark = j + 1;
         endmark = N - 2;
-        // if the queen j is more than 2 columns away from the corner but the rd from
-        // the
-        // j-queen can be set right at start
+        // クイーンjがコーナーから2列以上離れているが、jクイーンからのrdが開始時に正しく設定できる場合。
         if(j>2 * N - 34 - start){
           // k < l
           if(k < l){
             mark1 = k - 1;
             mark2 = l - 1;
-            // if at least l is yet to come
+            // 少なくともlがまだ来ていない場合
             if(start < l){
-              // if also k is yet to come
+              // もしkがまだ来ていないなら
               if(start < k){
-                // if there are free rows between k and l
+                // kとlの間に空行がある場合
                 if(l != k + 1){
                   SQBkBlBjrB(ld, rd, col, start, free);
                 }
-                // if there are no free rows between k and l
+                // kとlの間に空行がない場合
                 else {
                   SQBklBjrB(ld, rd, col, start, free);
                 }
               }
-              // if k already came before start and only l is left
+              // もしkがすでに開始前に来ていて、lだけが残っている場合
               else {
                 SQBlBjrB(ld, rd, col, start, free);
               }
             }
-            // if both k and l already came before start
+            // kとlの両方が開始前にすでに来ていた場合
             else {
               SQBjrB(ld, rd, col, start, free);
             }
@@ -213,44 +226,42 @@ public class Main {
           else {
             mark1 = l - 1;
             mark2 = k - 1;
-            // if at least k is yet to come
+            // 少なくともkがまだ来ていない場合
             if(start < k){
               // if also l is yet to come
+              // lがまだ来ていない場合
               if(start < l){
-                // if there is at least one free row between l and k
+                // lとkの間に少なくとも1つの自由行がある場合
                 if(k != l + 1){
                   SQBlBkBjrB(ld, rd, col, start, free);
                 }
-                // if there is no free row between l and k
+                // lとkの間に自由行がない場合
                 else {
                   SQBlkBjrB(ld, rd, col, start, free);
                 }
               }
-              // if l already came and only k is yet to come
+              // lがすでに来ていて、kだけがまだ来ていない場合
               else {
                 SQBkBjrB(ld, rd, col, start, free);
               }
             }
-            // if both l and k already came before start
+            // lとkの両方が開始前にすでに来ていた場合
             else {
               SQBjrB(ld, rd, col, start, free);
             }
           }
         }
-        // if we have to set some queens first in order to reach the row N-1-jmark where
-        // the
-        // rd from queen j
-        // can be set
+        // クイーンjのrdをセットできる行N-1-jmarkに到達するために、最初にいくつかのクイーンをセットしなければならない場合。
         else {
           // k < l
           if(k < l){
             mark1 = k - 1;
             mark2 = l - 1;
-            // there is at least one free row between rows k and l
+            // k行とl行の間に少なくとも1つの空行がある。
             if(l != k + 1){
               SQBjlBkBlBjrB(ld, rd, col, start, free);
             }
-            // if l comes right after k
+            // lがkの直後に来る場合
             else {
               SQBjlBklBjrB(ld, rd, col, start, free);
             }
@@ -259,43 +270,43 @@ public class Main {
           else {
             mark1 = l - 1;
             mark2 = k - 1;
-            // there is at least on efree row between rows l and k
+            // l行とk行の間には、少なくともefree行が存在する。
             if(k != l + 1){
               SQBjlBlBkBjrB(ld, rd, col, start, free);
             }
-            // if k comes right after l
+            // kがlの直後に来る場合
             else {
               SQBjlBlkBjrB(ld, rd, col, start, free);
             }
           }
         }
       }
-      // if the queen j is exactly 2 columns away from the corner
+      // クイーンjがコーナーからちょうど2列離れている場合
       else if(j == N - 3){
-        // this means that the last row will always be row N-2
+        // これは、最終行が常にN-2行になることを意味する。
         endmark = N - 2;
         // k < l
         if(k < l){
           mark1 = k - 1;
           mark2 = l - 1;
-          // if at least l is yet to come
+          // 少なくともlがまだ来ていない場合
           if(start < l){
-            // if k is yet to come too
+            // もしkもまだ来ていないなら
             if(start < k){
-              // if there are free rows between k and l
+              // kとlの間に空行がある場合
               if(l != k + 1){
                 SQd2BkBlB(ld, rd, col, start, free);
               } else {
                 SQd2BklB(ld, rd, col, start, free);
               }
             }
-            // if k was set before start
+            // k が開始前に設定されていた場合
             else {
               mark2 = l - 1;
               SQd2BlB(ld, rd, col, start, free);
             }
           }
-          // if k and l already came before start
+          // もしkとlが開始前にすでに来ていた場合
           else {
             SQd2B(ld, rd, col, start, free);
           }
@@ -305,44 +316,43 @@ public class Main {
           mark1 = l - 1;
           mark2 = k - 1;
           endmark = N - 2;
-          // if at least k is yet to come
+          // 少なくともkがまだ来ていない場合
           if(start < k){
-            // if also l is yet to come
+            // lがまだ来ていない場合
             if(start < l){
-              // if there are free rows between l and k
+              // lとkの間に空行がある場合
               if(k != l + 1){
                 SQd2BlBkB(ld, rd, col, start, free);
               }
-              // if there are no free rows between l and k
+              // lとkの間に空行がない場合
               else {
                 SQd2BlkB(ld, rd, col, start, free);
               }
             }
-            // if l came before start
+            // l が開始前に来た場合
             else {
               mark2 = k - 1;
               SQd2BkB(ld, rd, col, start, free);
             }
           }
-          // if both l and k already came before start
+          // lとkの両方が開始前にすでに来ていた場合
           else {
             SQd2B(ld, rd, col, start, free);
           }
         }
       }
-      // if the queen j is exactly 1 column away from the corner
+      // クイーンjがコーナーからちょうど1列離れている場合
       else if(j == N - 2){
         // k < l
         if(k < l){
-          // k can not be first, l can not be last due to queen placement
-          // thus always end in line N-2
+          // kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれないので、常にN-2行目で終わる。
           endmark = N - 2;
-          // if at least l is yet to come
+          // 少なくともlがまだ来ていない場合
           if(start < l){
-            // if k is yet to come too
+            // もしkもまだ来ていないなら
             if(start < k){
               mark1 = k - 1;
-              // if k and l are next to each other
+              // kとlが隣り合っている場合
               if(l != k + 1){
                 mark2 = l - 1;
                 SQd1BkBlB(ld, rd, col, start, free);
@@ -352,116 +362,121 @@ public class Main {
                 SQd1BklB(ld, rd, col, start, free);
               }
             }
-            // if only l is yet to come
+            // lがまだ来ていないなら
             else {
               mark2 = l - 1;
               SQd1BlB(ld, rd, col, start, free);
             }
           }
-          // if k and l already came
+          // すでにkとlが来ている場合
           else {
             SQd1B(ld, rd, col, start, free);
           }
         }
         // l < k
         else {
-          // if at least k is yet to come
+          // 少なくともkがまだ来ていない場合
           if(start < k){
             // if also l is yet to come
+            // lがまだ来ていない場合
             if(start < l){
-              // if k is not at the end
+              // kが末尾にない場合
               if(k < N - 2){
                 mark1 = l - 1;
                 endmark = N - 2;
-                // if there are free rows between l and k
+                // lとkの間に空行がある場合
                 if(k != l + 1){
                   mark2 = k - 1;
                   SQd1BlBkB(ld, rd, col, start, free);
                 }
-                // if there are no free rows between l and k
+                // lとkの間に空行がない場合
                 else {
                   SQd1BlkB(ld, rd, col, start, free);
                 }
               }
-              // if k is at the end
+              // kが末尾の場合
               else {
-                // if l is not right before k
+                // lがkの直前でない場合
                 if(l != N - 3){
                   mark2 = l - 1;
                   endmark = N - 3;
                   SQd1BlB(ld, rd, col, start, free);
                 }
-                // if l is right before k
+                // lがkの直前にある場合
                 else {
                   endmark = N - 4;
                   SQd1B(ld, rd, col, start, free);
                 }
               }
             }
-            // if only k is yet to come
+            // もしkがまだ来ていないなら
             else {
-              // if k is not at the end
+              // kが末尾にない場合
               if(k != N - 2){
                 mark2 = k - 1;
                 endmark = N - 2;
                 SQd1BkB(ld, rd, col, start, free);
               } else {
-                // if k is at the end
+                // kが末尾の場合
                 endmark = N - 3;
                 SQd1B(ld, rd, col, start, free);
               }
             }
           }
-          // k and l came before start
+          // kとlはスタートの前
           else {
             endmark = N - 2;
             SQd1B(ld, rd, col, start, free);
           }
         }
       }
-      // if the queen j is placed in the corner
+      // クイーンjがコーナーに置かれている場合
       else {
         endmark = N - 2;
         if(start>k){
           SQd0B(ld, rd, col, start, free);
         }
-        // k can not be in the last row due to the way we construct start constellations
-        // with a queen in the corner and
-        // due to the way we apply jasmin
+        // クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法によって、Kは最後列に入ることはできない。
         else {
           mark1 = k - 1;
           SQd0BkB(ld, rd, col, start, free);
         }
       }
-      // for saving and loading progress remove the finished starting constellation
+      // 完成した開始コンステレーションを削除する。
       constellation.setSolutions(tempcounter * symmetry(ijkl));
       tempcounter = 0;
     }
   }
-  private void genConstellations(){
-    // halfN half of N rounded up
+  private void genConstellations()
+  {
+    // N の半分を切り上げる
     final int halfN = (N + 1) / 2;
     L = 1 << (N - 1);
     mask = (1 << N) - 1;
-    // calculate starting constellations for no Queens in corners
-    for (int k = 1; k < halfN; k++){ // go through first col
-      for (int l = k + 1; l < N - 1; l++){ // go through last col
-        for (int i = k + 1; i < N - 1; i++){ // go through first row
-          if(i == N - 1 - l) // skip if occupied
+    // コーナーにクイーンがいない場合の開始コンステレーションを計算する
+    // 最初のcolを通過する
+    for (int k = 1; k < halfN; k++){ 
+      // 最後のcolを通過する
+      for (int l = k + 1; l < N - 1; l++){ 
+        // 最初の行を通過する
+        for (int i = k + 1; i < N - 1; i++){ 
+          // 満員の場合はスキップする
+          if(i == N - 1 - l) 
             continue;
-          for (int j = N - k - 2; j>0; j--){ // go through last row
+          // 最後の行を通過する
+          for (int j = N - k - 2; j>0; j--){
             if(j == i || l == j)
               continue;
-            if(!checkRotations(ijklList, i, j, k, l)){ // if no rotation-symmetric starting
-              // constellation already
-              // found
+            // 回転対称でスタートしない場合
+            if(!checkRotations(ijklList, i, j, k, l)){
+              // すでにコンステレーションが見つかった
               ijklList.add(toijkl(i, j, k, l));
             }
           }
         }
       }
     }
-    // calculating start constellations with the first Queen on the corner square
+    // 最初のクイーンを角の正方形に置いてスタートコンステレーションを計算する
     // (0,0)
     for (int j = 1; j < N - 2; j++){ // j is idx of Queen in last row
       for (int l = j + 1; l < N - 1; l++){ // l is idx of Queen in last col
@@ -469,8 +484,8 @@ public class Main {
       }
     }
     HashSet<Integer> ijklListJasmin = new HashSet<Integer>();
-    // rotate and mirror all start constellations, such that the queen in the last
-    // row is as close to the right border as possible
+    // すべての開始星座を回転させ、ミラーリングする。
+    // 最後の行のクイーンができるだけ右のボーダーに近づくようにする。
     for (int startConstellation : ijklList){
       ijklListJasmin.add(jasmin(startConstellation));
     }
@@ -481,30 +496,30 @@ public class Main {
       j = getj(sc);
       k = getk(sc);
       l = getl(sc);
-      // fill up the board with preQueens queens and generate corresponding variables
-      // ld, rd, col, start_queens_ijkl for each constellation
-      // occupy the board corresponding to the queens on the borders of the board
-      // we are starting in the first row that can be free, namely row 1
+      // プレクイーンでボードを埋め、対応する変数を生成する。
+      // 各星座に対して ld, rd, col, start_queens_ijkl を設定する。
+      // 碁盤の境界線上のクイーンに対応する碁盤を占有する。
+      // 空いている最初の行、すなわち1行目から開始する。
       ld = (L >>> (i - 1)) | (1 << (N - k));
       rd = (L >>> (i + 1)) | (1 << (l - 1));
       col = 1 | L | (L >>> i) | (L >>> j);
-      // occupy diagonals of the queens j k l in the last row
-      // later we are going to shift them upwards the board
+      // 最後の列のクイーンj、k、lの対角線を占領しボード上方に移動させる
       LD = (L >>> j) | (L >>> l);
       RD = (L >>> j) | (1 << k);
-      // counts all subconstellations
+      // すべてのサブコンステレーションを数える
       counter = 0;
-      // generate all subconstellations
+      // すべてのサブコンステレーションを生成する
       setPreQueens(ld, rd, col, k, l, 1, j == N - 1 ? 3 : 4);
       currentSize = constellations.size();
-      // jkl and sym and start are the same for all subconstellations
+      // jklとsymとstartはすべてのサブコンステレーションで同じである。
       for (int a = 0; a < counter; a++){
         constellations.get(currentSize - a - 1)
           .setStartijkl(constellations.get(currentSize - a - 1).getStartijkl() | toijkl(i, j, k, l));
       }
     }
   }
-  public Main(int sn){
+  public Main(int sn)
+  {
     N=sn;
     presetQueens = 4;
     solutions=0;
@@ -514,7 +529,8 @@ public class Main {
     L3 = 1 << N3;
     L4 = 1 << N4;
   }   
-  public static void main(String[] args){
+  public static void main(String[] args)
+  {
     Main main = new Main(14);
     main.genConstellations();
     main.execSolutions();
@@ -529,7 +545,8 @@ public class Main {
   int getl(int ijkl){ return ijkl & 31; }
   int getjkl(int ijkl){ return ijkl & 0b111111111111111; }
   //
-  private void SQd0B(int ld, int rd, int col, int row, int free){
+  private void SQd0B(int ld, int rd, int col, int row, int free)
+  {
     if(row == endmark){
       tempcounter++;
       return;
@@ -553,7 +570,8 @@ public class Main {
       }
     }
   }
-  private void SQd0BkB(int ld, int rd, int col, int row, int free){
+  private void SQd0BkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -576,7 +594,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BklB(int ld, int rd, int col, int row, int free){
+  private void SQd1BklB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -599,7 +618,8 @@ public class Main {
       }
     }
   }
-  private void SQd1B(int ld, int rd, int col, int row, int free){
+  private void SQd1B(int ld, int rd, int col, int row, int free)
+  {
     if(row == endmark){
       tempcounter++;
       return;
@@ -623,7 +643,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BkBlB(int ld, int rd, int col, int row, int free){
+  private void SQd1BkBlB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -646,7 +667,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BlB(int ld, int rd, int col, int row, int free){
+  private void SQd1BlB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -677,7 +699,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BlkB(int ld, int rd, int col, int row, int free){
+  private void SQd1BlkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -700,7 +723,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BlBkB(int ld, int rd, int col, int row, int free){
+  private void SQd1BlBkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -723,7 +747,8 @@ public class Main {
       }
     }
   }
-  private void SQd1BkB(int ld, int rd, int col, int row, int free){
+  private void SQd1BkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -746,7 +771,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BlkB(int ld, int rd, int col, int row, int free){
+  private void SQd2BlkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -769,7 +795,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BklB(int ld, int rd, int col, int row, int free){
+  private void SQd2BklB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -792,7 +819,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BlBkB(int ld, int rd, int col, int row, int free){
+  private void SQd2BlBkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -815,7 +843,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BkBlB(int ld, int rd, int col, int row, int free){
+  private void SQd2BkBlB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -838,7 +867,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BlB(int ld, int rd, int col, int row, int free){
+  private void SQd2BlB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -861,7 +891,8 @@ public class Main {
       }
     }
   }
-  private void SQd2BkB(int ld, int rd, int col, int row, int free){
+  private void SQd2BkB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -884,7 +915,8 @@ public class Main {
       }
     }
   }
-  private void SQd2B(int ld, int rd, int col, int row, int free){
+  private void SQd2B(int ld, int rd, int col, int row, int free)
+  {
     if(row == endmark){
       if((free & (~1))>0){
         tempcounter++;
@@ -911,7 +943,8 @@ public class Main {
     }
   }
   // for d>2 but d <small enough>
-  private void SQBkBlBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBkBlBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -934,7 +967,8 @@ public class Main {
       }
     }
   }
-  private void SQBlBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBlBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -957,7 +991,8 @@ public class Main {
       }
     }
   }
-  private void SQBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == jmark){
@@ -982,7 +1017,8 @@ public class Main {
       }
     }
   }
-  private void SQB(int ld, int rd, int col, int row, int free){
+  private void SQB(int ld, int rd, int col, int row, int free)
+  {
     if(row == endmark){
       tempcounter++;
       return;
@@ -1007,7 +1043,8 @@ public class Main {
       }
     }
   }
-  private void SQBlBkBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBlBkBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -1030,7 +1067,8 @@ public class Main {
       }
     }
   }
-  private void SQBkBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBkBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark2){
@@ -1052,7 +1090,8 @@ public class Main {
         SQBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
     }
   }
-  private void SQBklBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBklBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -1074,7 +1113,8 @@ public class Main {
       }
     }
   }
-  private void SQBlkBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBlkBjrB(int ld, int rd, int col, int row, int free)
+  {
     int bit;
     int nextfree;
     if(row == mark1){
@@ -1097,7 +1137,8 @@ public class Main {
     }
   }
   // for d <big>
-  private void SQBjlBkBlBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBjlBkBlBjrB(int ld, int rd, int col, int row, int free)
+  {
     if(row == N - 1 - jmark){
       rd |= L;
       free &= ~L;
@@ -1115,7 +1156,8 @@ public class Main {
       }
     }
   }
-  private void SQBjlBlBkBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBjlBlBkBjrB(int ld, int rd, int col, int row, int free)
+  {
     if(row == N - 1 - jmark){
       rd |= L;
       free &= ~L;
@@ -1133,7 +1175,8 @@ public class Main {
       }
     }
   }
-  private void SQBjlBklBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBjlBklBjrB(int ld, int rd, int col, int row, int free)
+  {
     if(row == N - 1 - jmark){
       rd |= L;
       free &= ~L;
@@ -1151,7 +1194,8 @@ public class Main {
       }
     }
   }
-  private void SQBjlBlkBjrB(int ld, int rd, int col, int row, int free){
+  private void SQBjlBlkBjrB(int ld, int rd, int col, int row, int free)
+  {
     if(row == N - 1 - jmark){
       rd |= L;
       free &= ~L;
