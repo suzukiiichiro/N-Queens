@@ -93,18 +93,32 @@ public class Main
   }
   // i, j, k, lをijklに変換し、特定のエントリーを取得する関数 
   //各クイーンの位置を取得し、最も左上に近い位置を見つけます
-  // コーナーに最も近いクイーンが最後の列の右側になるようにボードを回転させミラーにする。
+  //最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
+  //最小値を持つクイーンの位置を最下行に移動させる
+  //i は最初の行（上端） 90度回転2回
+  //j は最後の行（下端） 90度回転0回　
+  //k は最初の列（左端） 90度回転3回
+  //l は最後の列（右端） 90度回転1回
+  //優先順位が l>k>i>j の理由は？
+  //l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
+  //k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
+  //i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
+  //j は下端の行に位置するため、優先順位が最も低くなります。
   int jasmin(int ijkl)
   {
+    //j は最後の行（下端） 90度回転0回
     int min=Math.min(getj(ijkl),N-1-getj(ijkl)),arg=0;
+    //i は最初の行（上端） 90度回転2回
     if(Math.min(geti(ijkl),N-1-geti(ijkl))<min){
       arg=2;
       min=Math.min(geti(ijkl),N-1-geti(ijkl));
     }
+    //k は最初の列（左端） 90度回転3回
     if(Math.min(getk(ijkl),N-1-getk(ijkl))<min){
       arg=3;
       min=Math.min(getk(ijkl),N-1-getk(ijkl));
     }
+    //l は最後の列（右端） 90度回転1回
     if(Math.min(getl(ijkl),N-1-getl(ijkl))<min){
       arg=1;
       min=Math.min(getl(ijkl),N-1-getl(ijkl));
@@ -124,6 +138,8 @@ public class Main
     return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
   }
   // 時計回りに90度回転
+  //rot90 メソッドは、90度の右回転（時計回り）を行います
+  //元の位置 (row, col) が、回転後の位置 (col, N-1-row) になります。
   int rot90(int ijkl)
   {
     return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl);
@@ -497,10 +513,14 @@ public class Main
       }
     }
     HashSet<Integer> ijklListJasmin=new HashSet<Integer>();
-    // すべての開始星座を回転させ、ミラーリングする。
+    // すべてのコンステレーションを回転させ、ミラーリングする。
     // 最後の行のクイーンができるだけ右のボーダーに近づくようにする。
     for (int startConstellation : ijklList){
-      //jasmin関数を使用して、全ての開始コンステレーションを回転・ミラーリングします。
+      //jasmin関数を使用して、クイーンの配置を回転およびミラーリングさせて、最も左上に近い標準形に変換します。
+      //同じクイーンの配置が標準形に変換された場合、同じ整数値が返されます。
+      //ijkListJasmin は HashSet です。
+      //jasmin メソッドを使用して変換された同じ値のクイーンの配置は、HashSet に一度しか追加されません。
+      //したがって、同じ値を持つクイーンの配置が複数回追加されても、HashSet のサイズは増えません。
       ijklListJasmin.add(jasmin(startConstellation));
     }
     ijklList=ijklListJasmin;
