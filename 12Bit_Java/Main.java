@@ -91,7 +91,8 @@ public class Main
       return true;
     return false;
   }
-  // i,j,k,lをijklに変換し、特定のエントリーを取得する関数 
+  // i, j, k, lをijklに変換し、特定のエントリーを取得する関数 
+  //各クイーンの位置を取得し、最も左上に近い位置を見つけます
   // コーナーに最も近いクイーンが最後の列の右側になるようにボードを回転させミラーにする。
   int jasmin(int ijkl)
   {
@@ -115,7 +116,9 @@ public class Main
       ijkl=mirvert(ijkl);
     return ijkl;
   }
-  // 左右のミラー
+  // 左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
+  //各クイーンの位置を取得し、列インデックスを N - 1 から引いた位置に変更します（左右反転）。
+  //行インデックスはそのままにします。
   int mirvert(int ijkl)
   {
     return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
@@ -485,8 +488,9 @@ public class Main
         }
       }
     }
-    // 最初のクイーンを角の正方形に置いてスタートコンステレーションを計算する
-    // (0,0)
+    // コーナーにクイーンがある場合の開始コンステレーションを計算する
+    // 最初のクイーンを盤面の左上隅（0,0）に固定
+    //j は最後の行に置かれるクイーンの列インデックスです。これは 1 から N-3 までの値を取ります。
     for (int j=1;j<N-2;j++){ // j is idx of Queen in last row
       for (int l=j+1;l<N-1;l++){ // l is idx of Queen in last col
         ijklList.add(toijkl(0,j,0,l));
