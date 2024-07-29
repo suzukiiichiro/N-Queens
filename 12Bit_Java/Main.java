@@ -52,6 +52,17 @@ public class Main
   private int mark1,mark2,endmark,jmark;
   //
   // 3つまたは4つのクイーンを使って開始コンステレーションごとにサブコンステレーションを生成する。
+  //この関数 setPreQueens は、与えられた配置に基づいて、指定された数のクイーン (presetQueens) 
+  //を配置するためのサブコンステレーション（部分配置）を生成します。
+  //この関数は再帰的に呼び出され、ボード上のクイーンの配置を計算します。
+  //ボード上に3つまたは4つのクイーンを使って、開始コンステレーションからサブコンステレーションを生成します。
+  //ld: 左対角線のビットマスク。
+  //rd: 右対角線のビットマスク。
+  //col: 列のビットマスク。
+  //k: クイーンを配置する行の1つ目のインデックス。
+  //l: クイーンを配置する行の2つ目のインデックス。
+  //row: 現在の行のインデックス。
+  //queens: 現在配置されているクイーンの数。
   private void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens)
   {
     // k行とl行はさらに進む
@@ -60,6 +71,8 @@ public class Main
       return;
     }
     // preQueensのクイーンが揃うまでクイーンを追加する。
+    //現在のクイーンの数が presetQueens に達した場合、
+    //現在の状態を新しいコンステレーションとして追加し、カウンターを増加させる。
     if(queens==presetQueens){
       // リストにサブカテゴリーを追加する
       constellations.add(new Constellation(-1,ld,rd,col,row<<20,-1));
@@ -68,11 +81,13 @@ public class Main
     }
     // k列かl列が終わっていなければ、クイーンを置いてボードを占領し、さらに先に進む。
    else{
+      //現在の行にクイーンを配置できる位置（自由な位置）を計算。
       int free=(~(ld|rd|col|(LD>>>(N-1-row))|(RD<<(N-1-row))))&mask;
       int bit;
       while(free>0){
         bit=free&(-free);
         free-=bit;
+        //自由な位置がある限り、その位置にクイーンを配置し、再帰的に次の行に進む。
         setPreQueens((ld|bit)<<1,(rd|bit)>>>1,col|bit,k,l,row+1,queens+1);
       }
     }
