@@ -104,7 +104,9 @@ public class Main
       }
     }
   }
-  // いずれかの角度で回転させた星座がすでに見つかっている場合、trueを返す。
+  /**
+   * いずれかの角度で回転させた星座がすでに見つかっている場合、trueを返す。
+   */
   boolean checkRotations(HashSet<Integer> ijklList,int i,int j,int k,int l)
   {
     // rot90
@@ -195,7 +197,9 @@ public class Main
       return true;
     return false;
   }
-  // この開始コンステレーションで、見つかった解がカウントされる頻度
+  /**
+   * この開始コンステレーションで、見つかった解がカウントされる頻度
+   */
   int symmetry(int ijkl)
   {
     // コンステレーションをrot180で対称に開始するか？
@@ -209,11 +213,16 @@ public class Main
       return 8;           // 上記のどれでもない？
     }
   }
-  //
+  /**
+   *
+   */
   public long getSolutions()
   {
     return solutions;
   }
+  /**
+   *
+   */
   private void calcSolutions()
   {
     for (var c : constellations){
@@ -222,6 +231,9 @@ public class Main
       }
     }
   }
+  /**
+   *
+   */
   private void execSolutions()
   {
     int j,k,l,ijkl,ld,rd,col,startIjkl,start,free,LD;
@@ -433,6 +445,9 @@ public class Main
       tempcounter=0;
     }
   }
+  /**
+   *
+   */
   private void genConstellations()
   {
     final int halfN=(N+1) / 2; // N の半分を切り上げる
@@ -587,7 +602,9 @@ public class Main
       }
     }
   }
-   // ゲッターメソッド
+  /**
+   *
+   */
   public Main(int sn)
   {
     N=sn;
@@ -601,6 +618,9 @@ public class Main
     ijklList=new HashSet<Integer>();
     constellations=new ArrayList<>();
   }
+  /**
+   *
+   */
   private static String format(long startTime, long endTime)
   {
     Calendar start = Calendar.getInstance();
@@ -613,6 +633,9 @@ public class Main
     SimpleDateFormat sdf = new SimpleDateFormat("mm:ss:SSS");
     return sdf.format(result.getTime());
   }
+  /**
+   *
+   */
   public static void main(String[] args)
   {
     /**
