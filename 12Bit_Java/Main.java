@@ -13,16 +13,7 @@ class Constellation
   private int col;
   private int startijkl;
   private long solutions;
-  public Constellation(){
-    this.id = -1;
-    this.ld = 0;
-    this.rd = 0;
-    this.col = 0;
-    this.startijkl = 0;
-    this.solutions = -1;
-
-
-  }
+  public Constellation(){ super();}
   public Constellation(int id,int ld,int rd,int col,int startijkl,long solutions){
     this.id=id;
     this.ld=ld;
@@ -51,32 +42,18 @@ class Constellation
 public class Main
 {
   private int L,mask,LD,RD,counter;
-  private int N;
+  private int N=8;
   private int presetQueens;
+  //private HashSet<Integer> ijklList=new HashSet<Integer>();
+  //private static ArrayList<Constellation> constellations=new ArrayList<>();
   private HashSet<Integer> ijklList;
   private static ArrayList<Constellation> constellations;
-  private long solutions;
+  private long solutions,duration,storedDuration;
   private final int N3,N4,L3,L4;// ボードサイズ
   // tempcounter is #(unique solutions) of current start constellation,solvecounter is #(all solutions)
   // tempcounterは現在の開始座標の#(ユニークな解)、solvecounterは#(すべての解)
   private long tempcounter=0;
   private int mark1,mark2,endmark,jmark;
-
-    public Main(int sn)
-  {
-    this.N = sn;
-    this.presetQueens = 4;
-    this.solutions = 0;
-    this.N3 = N - 3;
-    this.N4 = N - 4;
-    this.L = 1 << (N - 1);
-    this.L3 = 1 << N3;
-    this.L4 = 1 << N4;
-    this.mask = (1 << N) - 1;
-    this.ijklList = new HashSet<>();
-    constellations = new ArrayList<>();
-  }
-
   //
   // 3つまたは4つのクイーンを使って開始コンステレーションごとにサブコンステレーションを生成する。
   //この関数 setPreQueens は、与えられた配置に基づいて、指定された数のクイーン (presetQueens) 
@@ -237,14 +214,11 @@ public class Main
       LD=(L>>>j)|(L>>>l);
       ld=constellation.getLd()>>>1;
       ld|=LD>>>(N-start);
-      // クイーンjとkのrdの占有率を下段から上に加算する。
-      rd=constellation.getRd()>>>1;
+      rd=constellation.getRd()>>>1; // クイーンjとkのrdの占有率を下段から上に加算する。
       if(start>k)
         rd|=(L>>>(start-k+1));
-      // クイーンjからのrdがない場合のみ追加する
-      if(j >= 2 * N-33-start){
-        // 符号ビットを占有する！
-        rd|=(L>>>j)<<(N-2-start);
+      if(j >= 2 * N-33-start){    // クイーンjからのrdがない場合のみ追加する
+        rd|=(L>>>j)<<(N-2-start); // 符号ビットを占有する！
       }
       // また、colを占有し、次にフリーを計算する
       col=(constellation.getCol()>>>1)|(~smallmask);
@@ -256,245 +230,158 @@ public class Main
         endmark=N-2;
         // クイーンjがコーナーから2列以上離れているが、jクイーンからのrdが開始時に正しく設定できる場合。
         if(j>2 * N-34-start){
-          // k<l
           if(k<l){
             mark1=k-1;
             mark2=l-1;
-            // 少なくともlがまだ来ていない場合
-            if(start<l){
-              // もしkがまだ来ていないなら
-              if(start<k){
-                // kとlの間に空行がある場合
-                if(l != k+1){
+            if(start<l){ // 少なくともlがまだ来ていない場合
+              if(start<k){ // もしkがまだ来ていないなら
+                if(l != k+1){ // kとlの間に空行がある場合
                   SQBkBlBjrB(ld,rd,col,start,free);
-                }
-                // kとlの間に空行がない場合
-               else{
+                }else{ // kとlの間に空行がない場合
                   SQBklBjrB(ld,rd,col,start,free);
                 }
-              }
-              // もしkがすでに開始前に来ていて、lだけが残っている場合
-             else{
+              }else{ // もしkがすでに開始前に来ていて、lだけが残っている場合
                 SQBlBjrB(ld,rd,col,start,free);
               }
-            }
-            // kとlの両方が開始前にすでに来ていた場合
-           else{
+            }else{ // kとlの両方が開始前にすでに来ていた場合
               SQBjrB(ld,rd,col,start,free);
             }
-          }
-          // l<k
-         else{
+          }else{ // l<k 
             mark1=l-1;
             mark2=k-1;
-            // 少なくともkがまだ来ていない場合
-            if(start<k){
-              // if also l is yet to come
-              // lがまだ来ていない場合
-              if(start<l){
-                // lとkの間に少なくとも1つの自由行がある場合
-                if(k != l+1){
+            if(start<k){ // 少なくともkがまだ来ていない場合
+              if(start<l){ // lがまだ来ていない場合
+                if(k != l+1){ // lとkの間に少なくとも1つの自由行がある場合
                   SQBlBkBjrB(ld,rd,col,start,free);
-                }
-                // lとkの間に自由行がない場合
-               else{
+                }else{ // lとkの間に自由行がない場合
                   SQBlkBjrB(ld,rd,col,start,free);
                 }
-              }
-              // lがすでに来ていて、kだけがまだ来ていない場合
-             else{
+              }else{ // lがすでに来ていて、kだけがまだ来ていない場合
                 SQBkBjrB(ld,rd,col,start,free);
               }
-            }
-            // lとkの両方が開始前にすでに来ていた場合
-           else{
+            }else{ // lとkの両方が開始前にすでに来ていた場合
               SQBjrB(ld,rd,col,start,free);
             }
           }
-        }
-        // クイーンjのrdをセットできる行N-1-jmarkに到達するために、最初にいくつかのクイーンをセットしなければならない場合。
-       else{
-          // k<l
+        }else{ // クイーンjのrdをセットできる行N-1-jmarkに到達するために、最初にいくつかのクイーンをセットしなければならない場合。
           if(k<l){
             mark1=k-1;
             mark2=l-1;
-            // k行とl行の間に少なくとも1つの空行がある。
-            if(l != k+1){
+            if(l != k+1){ // k行とl行の間に少なくとも1つの空行がある。
               SQBjlBkBlBjrB(ld,rd,col,start,free);
-            }
-            // lがkの直後に来る場合
-           else{
+            }else{ // lがkの直後に来る場合
               SQBjlBklBjrB(ld,rd,col,start,free);
             }
-          }
-          // l<k
-         else{
+          }else{ // l<k
             mark1=l-1;
             mark2=k-1;
-            // l行とk行の間には、少なくともefree行が存在する。
-            if(k != l+1){
+            if(k != l+1){ // l行とk行の間には、少なくともefree行が存在する。
               SQBjlBlBkBjrB(ld,rd,col,start,free);
-            }
-            // kがlの直後に来る場合
-           else{
+            }else{// kがlの直後に来る場合 
               SQBjlBlkBjrB(ld,rd,col,start,free);
             }
           }
         }
-      }else if(j==N-3){
-      // クイーンjがコーナーからちょうど2列離れている場合
-        // これは、最終行が常にN-2行になることを意味する。
+      }else if(j==N-3){ // クイーンjがコーナーからちょうど2列離れている場合。これは、最終行が常にN-2行になることを意味する。
         endmark=N-2;
-        // k<l
         if(k<l){
           mark1=k-1;
           mark2=l-1;
-          // 少なくともlがまだ来ていない場合
-          if(start<l){
-            // もしkもまだ来ていないなら
-            if(start<k){
-              // kとlの間に空行がある場合
-              if(l != k+1){
+          if(start<l){ // 少なくともlがまだ来ていない場合
+            if(start<k){ // もしkもまだ来ていないなら
+              if(l != k+1){ // kとlの間に空行がある場合
                 SQd2BkBlB(ld,rd,col,start,free);
               }else{
                 SQd2BklB(ld,rd,col,start,free);
               }
-            }
-            // k が開始前に設定されていた場合
-           else{
+            }else{ // k が開始前に設定されていた場合
               mark2=l-1;
               SQd2BlB(ld,rd,col,start,free);
             }
-          }
-          // もしkとlが開始前にすでに来ていた場合
-         else{
+          }else{ // もしkとlが開始前にすでに来ていた場合
             SQd2B(ld,rd,col,start,free);
           }
-        }
-        // l<k
-        else{
+        }else{ // l<k
           mark1=l-1;
           mark2=k-1;
           endmark=N-2;
-          // 少なくともkがまだ来ていない場合
-          if(start<k){
-            // lがまだ来ていない場合
-            if(start<l){
-              // lとkの間に空行がある場合
-              if(k != l+1){
+          if(start<k){ // 少なくともkがまだ来ていない場合
+            if(start<l){ // lがまだ来ていない場合
+              if(k != l+1){ // lとkの間に空行がある場合
                 SQd2BlBkB(ld,rd,col,start,free);
-              }
-              // lとkの間に空行がない場合
-             else{
+              }else{ // lとkの間に空行がない場合
                 SQd2BlkB(ld,rd,col,start,free);
               }
-            }
-            // l が開始前に来た場合
-           else{
+            }else{ // l が開始前に来た場合
               mark2=k-1;
               SQd2BkB(ld,rd,col,start,free);
             }
-          }
-          // lとkの両方が開始前にすでに来ていた場合
-         else{
+          }else{// lとkの両方が開始前にすでに来ていた場合 
             SQd2B(ld,rd,col,start,free);
           }
         }
-      }else if(j==N-2){
-      // クイーンjがコーナーからちょうど1列離れている場合
-        // k<l
-        if(k<l){
-          // kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれないので、常にN-2行目で終わる。
+      }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
+        if(k<l){ // kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれないので、常にN-2行目で終わる。
           endmark=N-2;
-          // 少なくともlがまだ来ていない場合
-          if(start<l){
-            // もしkもまだ来ていないなら
-            if(start<k){
+          if(start<l){ // 少なくともlがまだ来ていない場合
+            if(start<k){ // もしkもまだ来ていないなら
               mark1=k-1;
-              // kとlが隣り合っている場合
-              if(l != k+1){
+              if(l != k+1){ // kとlが隣り合っている場合
                 mark2=l-1;
                 SQd1BkBlB(ld,rd,col,start,free);
-              }
-              //
-             else{
+              }else{
                 SQd1BklB(ld,rd,col,start,free);
               }
-            }
-            // lがまだ来ていないなら
-           else{
+            }else{ // lがまだ来ていないなら
               mark2=l-1;
               SQd1BlB(ld,rd,col,start,free);
             }
-          }
-          // すでにkとlが来ている場合
-         else{
+          }else{ // すでにkとlが来ている場合
             SQd1B(ld,rd,col,start,free);
           }
-        }
-        // l<k
-       else{
-          // 少なくともkがまだ来ていない場合
-          if(start<k){
-            // if also l is yet to come
-            // lがまだ来ていない場合
-            if(start<l){
-              // kが末尾にない場合
-              if(k<N-2){
+        }else{ // l<k
+          if(start<k){ // 少なくともkがまだ来ていない場合
+            if(start<l){ // lがまだ来ていない場合
+              if(k<N-2){ // kが末尾にない場合
                 mark1=l-1;
                 endmark=N-2;
-                // lとkの間に空行がある場合
-                if(k != l+1){
+                if(k != l+1){ // lとkの間に空行がある場合
                   mark2=k-1;
                   SQd1BlBkB(ld,rd,col,start,free);
                 }
-                // lとkの間に空行がない場合
-               else{
+               else{ // lとkの間に空行がない場合
                   SQd1BlkB(ld,rd,col,start,free);
                 }
-              }
-              // kが末尾の場合
-             else{
-                // lがkの直前でない場合
-                if(l != N-3){
+              }else{ // kが末尾の場合
+                if(l != N-3){ // lがkの直前でない場合
                   mark2=l-1;
                   endmark=N-3;
                   SQd1BlB(ld,rd,col,start,free);
-                }
-                // lがkの直前にある場合
-               else{
+                }else{ // lがkの直前にある場合
                   endmark=N-4;
                   SQd1B(ld,rd,col,start,free);
                 }
               }
-            }
-            // もしkがまだ来ていないなら
-           else{
-              // kが末尾にない場合
-              if(k != N-2){
+            }else{ // もしkがまだ来ていないなら
+              if(k != N-2){ // kが末尾にない場合
                 mark2=k-1;
                 endmark=N-2;
                 SQd1BkB(ld,rd,col,start,free);
-              }else{
-                // kが末尾の場合
+              }else{ // kが末尾の場合
                 endmark=N-3;
                 SQd1B(ld,rd,col,start,free);
               }
             }
-          }else{
-          // kとlはスタートの前
+          }else{ // kとlはスタートの前
             endmark=N-2;
             SQd1B(ld,rd,col,start,free);
           }
         }
-      }else{
-      // クイーンjがコーナーに置かれている場合
+      }else{ // クイーンjがコーナーに置かれている場合
         endmark=N-2;
         if(start>k){
           SQd0B(ld,rd,col,start,free);
-        }
-        // クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法によって、Kは最後列に入ることはできない。
-       else{
+        }else{ // クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法によって、Kは最後列に入ることはできない。
           mark1=k-1;
           SQd0BkB(ld,rd,col,start,free);
         }
@@ -506,12 +393,9 @@ public class Main
   }
   private void genConstellations()
   {
-    // N の半分を切り上げる
-    final int halfN=(N+1) / 2;
-    //Lは左端に1を立てる
-    L=1<<(N-1);
-    //maskはNビットの全てが1のビットマスクです
-    mask=(1<<N)-1;
+    final int halfN=(N+1) / 2; // N の半分を切り上げる
+    L=1<<(N-1); //Lは左端に1を立てる
+    mask=(1<<N)-1; //maskはNビットの全てが1のビットマスクです
     // コーナーにクイーンがいない場合の開始コンステレーションを計算する
     // 最初のcolを通過する
     //k: 最初の列（左端）に配置されるクイーンの行のインデックス。
@@ -616,7 +500,19 @@ public class Main
     }
   }
    // ゲッターメソッド
-
+  public Main(int sn)
+  {
+    N=sn;
+    presetQueens=4;
+    solutions=0;
+    N3=N-3;
+    N4=N-4;
+    L=1<<(N-1);
+    L3=1<<N3;
+    L4=1<<N4;
+    ijklList=new HashSet<Integer>();
+    constellations=new ArrayList<>();
+  }
   private static String format(long startTime, long endTime)
   {
     Calendar start = Calendar.getInstance();
@@ -638,7 +534,7 @@ public class Main
     main.calcSolutions();
     System.out.println(main.getSolutions());
     */
-    int min=6;
+    int min=4;
     int max=17;
     System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
     Main main;
