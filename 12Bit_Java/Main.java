@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Calendar;
+import java.text.SimpleDateFormat;
 /**
  * 
  */
@@ -588,6 +590,7 @@ public class Main
       }
     }
   }
+   // ゲッターメソッド
   public Main(int sn)
   {
     N=sn;
@@ -599,13 +602,41 @@ public class Main
     L3=1<<N3;
     L4=1<<N4;
   }
+  private static String format(long startTime, long endTime)
+  {
+    Calendar start = Calendar.getInstance();
+    Calendar end = Calendar.getInstance();
+    Calendar result = Calendar.getInstance();
+    start.setTimeInMillis(startTime);
+    end.setTimeInMillis(endTime);
+    long sa = end.getTimeInMillis() - start.getTimeInMillis() - result.getTimeZone().getRawOffset();
+    result.setTimeInMillis(sa);
+    SimpleDateFormat sdf = new SimpleDateFormat("mm:ss:SSS");
+    return sdf.format(result.getTime());
+  }
   public static void main(String[] args)
   {
-    Main main=new Main(14);
+    /**
+    Main main = new Main(12);
     main.genConstellations();
     main.execSolutions();
     main.calcSolutions();
     System.out.println(main.getSolutions());
+    */
+    int min=4;
+    int max=17;
+    System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
+    Main main;
+    for(int i=min;i<=max;i++){
+      long startTime = System.currentTimeMillis();
+      main=new Main(i);
+      main.genConstellations();
+      main.execSolutions();
+      main.calcSolutions();
+      long endTime = System.currentTimeMillis();
+      System.out.printf("%2d:%17d%13d%17s%n",i,main.getSolutions(),0,format(startTime, endTime));
+      main=null;
+    }
   }
   //
   int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l;}
