@@ -193,8 +193,9 @@ public class Main
   boolean symmetry90(int ijkl)
   {
     if(((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl))==(((N-1-getk(ijkl))<<15)
-         +((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)))
+         +((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl))){
       return true;
+    }
     return false;
   }
   /**
@@ -510,8 +511,8 @@ public class Main
       j は最後の行に置かれるクイーンの列インデックスです。これは 1 から N-3 ま
       での値を取ります。
     */
-    for (int j=1;j<N-2;j++){ // j is idx of Queen in last row
-      for (int l=j+1;l<N-1;l++){ // l is idx of Queen in last col
+    for (int j=1;j<N-2;j++){      // jは最終行のクイーンのidx
+      for (int l=j+1;l<N-1;l++){  // lは最終列のクイーンのidx
         ijklList.add(toijkl(0,j,0,l));
       }
     }
