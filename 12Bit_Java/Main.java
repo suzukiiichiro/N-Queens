@@ -44,8 +44,10 @@ public class Main
   private int L,mask,LD,RD,counter;
   private int N=8;
   private int presetQueens;
-  private HashSet<Integer> ijklList=new HashSet<Integer>();
-  private static ArrayList<Constellation> constellations=new ArrayList<>();
+  //private HashSet<Integer> ijklList=new HashSet<Integer>();
+  //private static ArrayList<Constellation> constellations=new ArrayList<>();
+  private HashSet<Integer> ijklList;
+  private static ArrayList<Constellation> constellations;
   private long solutions,duration,storedDuration;
   private final int N3,N4,L3,L4;// ボードサイズ
   // tempcounter is #(unique solutions) of current start constellation,solvecounter is #(all solutions)
@@ -601,6 +603,8 @@ public class Main
     L=1<<(N-1);
     L3=1<<N3;
     L4=1<<N4;
+    ijklList=new HashSet<Integer>();
+    constellations=new ArrayList<>();
   }
   private static String format(long startTime, long endTime)
   {
