@@ -309,7 +309,7 @@ public class Main
             }else{        // lがkの直後に来る場合
               SQBjlBklBjrB(ld,rd,col,start,free);
             }
-          }else{ // l<k
+          }else{          // l<k
             mark1=l-1;
             mark2=k-1;
             if(k != l+1){ // l行とk行の間には、少なくともefree行が存在する。
