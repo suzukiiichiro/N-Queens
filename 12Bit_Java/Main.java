@@ -242,8 +242,9 @@ public class Main
       ld=constellation.getLd()>>>1;
       ld|=LD>>>(N-start);
       rd=constellation.getRd()>>>1; // クイーンjとkのrdの占有率を下段から上に加算する。
-      if(start>k)
+      if(start>k){
         rd|=(L>>>(start-k+1));
+      }
       if(j >= 2 * N-33-start){    // クイーンjからのrdがない場合のみ追加する
         rd|=(L>>>j)<<(N-2-start); // 符号ビットを占有する！
       }
