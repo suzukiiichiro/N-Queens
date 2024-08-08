@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <time.h>
+#include <sys/time.h>
 
 // グローバル変数の宣言
 int L, mask, LD, RD, counter;
