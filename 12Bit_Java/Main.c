@@ -68,6 +68,7 @@ void SQBkBlBjrB(int ld, int rd, int col, int start, int free);
 void SQBklBjrB(int ld, int rd, int col, int start, int free);
 void SQBlBjrB(int ld, int rd, int col, int start, int free);
 void SQBjrB(int ld, int rd, int col, int start, int free);
+void SQB(int ld, int rd, int col, int raw, int free);
 void SQBlBkBjrB(int ld, int rd, int col, int start, int free);
 void SQBlkBjrB(int ld, int rd, int col, int start, int free);
 void SQBkBjrB(int ld, int rd, int col, int start, int free);
@@ -97,7 +98,6 @@ void setPreQueens(int ld, int rd, int col, int k, int l, int row, int queens);
 void execSolutions();
 void genConstellations();
 void initialize(int sn);
-void print_constellations(ConstellationArrayList* list);
 
 // 関数プロトタイプ宣言
 long getSolutions();
@@ -356,19 +356,6 @@ void initialize(int sn) {
     L4 = 1 << N4;
 }
 
-void print_constellations(ConstellationArrayList* list) {
-    for (size_t i = 0; i < list->size; i++) {
-        Constellation* c = &list->data[i];
-        printf("Constellation %zu:\n", i + 1);
-        printf("  id: %d\n", c->id);
-        printf("  ld: %d\n", c->ld);
-        printf("  rd: %d\n", c->rd);
-        printf("  col: %d\n", c->col);
-        printf("  startijkl: %d\n", c->startijkl);
-        printf("  solutions: %ld\n", c->solutions);
-        printf("\n");
-    }
-}
 
 void add_constellation(int ld, int rd, int col, int startijkl) {
     Constellation new_constellation = {0, ld, rd, col, startijkl, 0};
@@ -504,6 +491,7 @@ void execSolutions() {
                             SQd2BklB(ld, rd, col, start, free);
                         }
                     } else {
+                        mark2=l-1;
                         SQd2BlB(ld, rd, col, start, free);
                     }
                 } else {
@@ -522,6 +510,7 @@ void execSolutions() {
                             SQd2BlkB(ld, rd, col, start, free);
                         }
                     } else {
+                        mark2=k-1;
                         SQd2BkB(ld, rd, col, start, free);
                     }
                 } else {
@@ -552,7 +541,7 @@ void execSolutions() {
             } else {
                 if (start < k) {
                     if (start < l) {
-                        if (k != l + 1) {
+                        if(k<N-2){
                             mark1 = l - 1;
                             endmark = N - 2;
 
@@ -619,8 +608,8 @@ void genConstellations() {
                     if (j == i || l == j) {
                         continue;
                     }
-                    printf("check\n");
-                    printf("Checking i=%d, j=%d, k=%d, l=%d\n", i, j, k, l); // デバッグ用プリント
+                    //printf("check\n");
+                    //printf("Checking i=%d, j=%d, k=%d, l=%d\n", i, j, k, l); // デバッグ用プリント
                     if (!checkRotations(ijklList, i, j, k, l)) {
                         int_hashset_add(ijklList, toijkl(i, j, k, l));
                     }
@@ -643,23 +632,23 @@ void genConstellations() {
     free_int_hashset(ijklList);
     ijklList = ijklListJasmin;
 
-    int i, j, k, l, ld, rd, col, currentSize = 0;
-    for (size_t i = 0; i < ijklList->size; i++) {
-        int sc = ijklList->data[i];
-        i = geti(sc);
-        j = getj(sc);
-        k = getk(sc);
-        l = getl(sc);
+    //int i, j, k, l, ld, rd, col, currentSize = 0;
+    for (size_t s = 0; s < ijklList->size; s++) {
+        int sc = ijklList->data[s];
+        int i = geti(sc);
+        int j = getj(sc);
+        int k = getk(sc);
+        int l = getl(sc);
 
-        ld = (L >> (i - 1)) | (1 << (N - k));
-        rd = (L >> (i + 1)) | (1 << (l - 1));
-        col = 1 | L | (L >> i) | (L >> j);
+        int ld = (L >> (i - 1)) | (1 << (N - k));
+        int rd = (L >> (i + 1)) | (1 << (l - 1));
+        int col = 1 | L | (L >> i) | (L >> j);
         LD = (L >> j) | (L >> l);
         RD = (L >> j) | (1 << k);
         counter = 0;
 
         setPreQueens(ld, rd, col, k, l, 1, j == N - 1 ? 3 : 4);
-        currentSize = constellations->size;
+        int currentSize = constellations->size;
 
         for (int a = 0; a < counter; a++) {
             constellations->data[currentSize - a - 1].startijkl |= toijkl(i, j, k, l);
@@ -667,611 +656,686 @@ void genConstellations() {
     }
 }
 
-void SQd0B(int ld, int rd, int col, int row, int free) {
-    if (row == endmark) {
+   void SQd0B(int ld,int rd,int col,int row,int free)
+  {
+    if(row==endmark){
+      tempcounter++;
+      return;
+    }
+    int bit;
+    int nextfree;
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      int next_ld=((ld|bit)<<1);
+      int next_rd=((rd|bit)>>1);
+      int next_col=(col|bit);
+      nextfree=~(next_ld|next_rd|next_col);
+      if(nextfree>0){
+        if(row<endmark-1){
+          if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+            SQd0B(next_ld,next_rd,next_col,row+1,nextfree);
+        }else{
+          SQd0B(next_ld,next_rd,next_col,row+1,nextfree);
+        }
+      }
+    }
+  }
+   void SQd0BkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
+        if(nextfree>0){
+          SQd0B((ld|bit)<<2,((rd|bit)>>2)|L3,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1BklB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|L4);
+        if(nextfree>0){
+          SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1B(int ld,int rd,int col,int row,int free)
+  {
+    if(row==endmark){
+      tempcounter++;
+      return;
+    }
+    int bit;
+    int nextfree;
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      int next_ld=((ld|bit)<<1);
+      int next_rd=((rd|bit)>>1);
+      int next_col=(col|bit);
+      nextfree=~(next_ld|next_rd|next_col);
+      if(nextfree>0){
+        if(row+1<endmark){
+          if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+            SQd1B(next_ld,next_rd,next_col,row+1,nextfree);
+        }else{
+          SQd1B(next_ld,next_rd,next_col,row+1,nextfree);
+        }
+      }
+    }
+  }
+   void SQd1BkBlB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
+        if(nextfree>0){
+          SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1BlB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        int next_ld=((ld|bit)<<2)|1;
+        int next_rd=((rd|bit)>>2);
+        int next_col=(col|bit);
+        nextfree=~(next_ld|next_rd|next_col);
+        if(nextfree>0){
+          if(row+2<endmark){
+            if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+              SQd1B(next_ld,next_rd,next_col,row+2,nextfree);
+          }else{
+            SQd1B(next_ld,next_rd,next_col,row+2,nextfree);
+          }
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1BlkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|L3);
+        if(nextfree>0){
+          SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1BlBkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+        if(nextfree>0){
+          SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd1BkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
+        if(nextfree>0){
+          SQd1B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BlkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L3|2);
+        if(nextfree>0){
+          SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BklB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L4|1);
+        if(nextfree>0){
+          SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BlBkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+        if(nextfree>0){
+          SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BkBlB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+        if(nextfree>0){
+          SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BlB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+        if(nextfree>0){
+          SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2BkB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
+        if(nextfree>0){
+          SQd2B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQd2B(int ld,int rd,int col,int row,int free)
+  {
+    if(row==endmark){
+      if((free&(~1))>0){
         tempcounter++;
-        return;
-    }
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        int next_ld = ((ld | bit) << 1);
-        int next_rd = ((rd | bit) >> 1);
-        int next_col = (col | bit);
-        nextfree = ~(next_ld | next_rd | next_col);
-        if (nextfree > 0) {
-            if (row < endmark - 1) {
-                if (~((next_ld << 1) | (next_rd >> 1) | (next_col)) > 0)
-                    SQd0B(next_ld, next_rd, next_col, row + 1, nextfree);
-            } else {
-                SQd0B(next_ld, next_rd, next_col, row + 1, nextfree);
-            }
-        }
-    }
-}
-
-void SQd0BkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | L3);
-            if (nextfree > 0) {
-                SQd0B((ld | bit) << 2, ((rd | bit) >> 2) | L3, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd0BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1BklB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | 1 | L4);
-            if (nextfree > 0) {
-                SQd1B(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | L4, col | bit, row + 3, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BklB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1B(int ld, int rd, int col, int row, int free) {
-    if (row == endmark) {
-        tempcounter++;
-        return;
-    }
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        int next_ld = ((ld | bit) << 1);
-        int next_rd = ((rd | bit) >> 1);
-        int next_col = (col | bit);
-        nextfree = ~(next_ld | next_rd | next_col);
-        if (nextfree > 0) {
-            if (row + 1 < endmark) {
-                if (~((next_ld << 1) | (next_rd >> 1) | (next_col)) > 0)
-                    SQd1B(next_ld, next_rd, next_col, row + 1, nextfree);
-            } else {
-                SQd1B(next_ld, next_rd, next_col, row + 1, nextfree);
-            }
-        }
-    }
-}
-
-void SQd1BkBlB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | L3);
-            if (nextfree > 0) {
-                SQd1BlB(((ld | bit) << 2), ((rd | bit) >> 2) | L3, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BkBlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1BlB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1 | L4);
-            if (nextfree > 0) {
-                SQd1BkBlB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1BlkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1);
-            if (nextfree > 0) {
-                SQd1BlBkB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BlkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1BlBkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1 | L3);
-            if (nextfree > 0) {
-                SQd1BlkB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BlBkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd1BkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd1BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd2BlkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | 1 | L4);
-        if (nextfree > 0) {
-            SQd2BlB(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | L4, col | bit, row + 3, nextfree);
-        }
-    }
-}
-
-void SQd2BklB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit) | 1 | L4);
-            if (nextfree > 0) {
-                SQd2BlB(((ld | bit) << 1) | 1, ((rd | bit) >> 1) | L4, col | bit, row + 1, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd2BklB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd2BlBkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1 | L3);
-            if (nextfree > 0) {
-                SQd2BlkB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd2BlBkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd2BkBlB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1);
-            if (nextfree > 0) {
-                SQd2BlBkB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd2BkBlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd2BlB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQd2BlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-void SQd2BkB(int ld, int rd, int col, int row, int free) {
-    int bit, nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1);
-        if (nextfree > 0) {
-            SQd2BkB(((ld | bit) << 2) | 1, ((rd | bit) >> 2) | L4, col | bit, row + 2, nextfree);
-        }
-    }
-}
-
-void SQBkBlBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3));
-            if (nextfree > 0) {
-                SQBlBjrB((ld | bit) << 2, (rd | bit) >> 2 | (1 << N3), col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBklBjrB 関数
-void SQBklBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | L4 | 1);
-            if (nextfree > 0) {
-                SQBjrB(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | L4, col | bit, row + 3, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBlBjrB 関数
-void SQBlBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark2) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1);
-            if (nextfree > 0) {
-                SQBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBjrB 関数
-void SQBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == jmark) {
-        free &= (~1);
-        ld |= 1;
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-            if (nextfree > 0) {
-                SQd2B((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBlBkBjrB 関数
-void SQBlBkBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1);
-            if (nextfree > 0) {
-                SQBkBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBlkBjrB 関数
-void SQBlkBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark1) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | L3 | 2);
-            if (nextfree > 0) {
-                SQBjrB(((ld | bit) << 3) | 2, ((rd | bit) >> 3) | L3, col | bit, row + 3, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBkBjrB 関数
-void SQBkBjrB(int ld, int rd, int col, int row, int free) {
-    int bit;
-    int nextfree;
-
-    if (row == mark2) {
-        while (free > 0) {
-            bit = free & (-free);
-            free -= bit;
-            nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | L3);
-            if (nextfree > 0) {
-                SQBjrB((ld | bit) << 2, (rd | bit) >> 2 | L3, col | bit, row + 2, nextfree);
-            }
-        }
-        return;
-    }
-
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQBjlBkBlBjrB 関数
-void SQBjlBkBlBjrB(int ld, int rd, int col, int row, int free) {
-    if (row == N - 1 - jmark) {
-        rd |= L;
-        free &= ~L;
-        SQBkBlBjrB(ld, rd, col, row, free);
-        return;
+      }
+      return;
     }
     int bit;
     int nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBjlBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      int next_ld=((ld|bit)<<1);
+      int next_rd=((rd|bit)>>1);
+      int next_col=(col|bit);
+      nextfree=~(next_ld|next_rd|next_col);
+      if(nextfree>0){
+        if(row<endmark-1){
+          if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+            SQd2B(next_ld,next_rd,next_col,row+1,nextfree);
+        }else{
+          SQd2B(next_ld,next_rd,next_col,row+1,nextfree);
         }
+      }
     }
-}
-
-// SQBjlBklBjrB 関数
-void SQBjlBklBjrB(int ld, int rd, int col, int row, int free) {
-    if (row == N - 1 - jmark) {
-        rd |= L;
-        free &= ~L;
-        SQBklBjrB(ld, rd, col, row, free);
-        return;
+  }
+  // for d>2 but d <small enough>
+   void SQBkBlBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+        if(nextfree>0){
+          SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBlBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+        if(nextfree>0){
+          SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==jmark){
+      free&=(~1);
+      ld|=1;
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+        if(nextfree>0){
+          SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQB(int ld,int rd,int col,int row,int free)
+  {
+    if(row==endmark){
+      tempcounter++;
+      return;
     }
     int bit;
     int nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBjlBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      int next_ld=((ld|bit)<<1);
+      int next_rd=((rd|bit)>>1);
+      int next_col=(col|bit);
+      nextfree=~(next_ld|next_rd|next_col);
+      if(nextfree>0){
+        if(row<endmark-1){
+          if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0){
+            SQB(next_ld,next_rd,next_col,row+1,nextfree);
+          }
+        }else{
+          SQB(next_ld,next_rd,next_col,row+1,nextfree);
         }
+      }
     }
-}
-
-// SQBjlBlBkBjrB 関数
-void SQBjlBlBkBjrB(int ld, int rd, int col, int row, int free) {
-    if (row == N - 1 - jmark) {
-        rd |= L;
-        free &= ~L;
-        SQBlBkBjrB(ld, rd, col, row, free);
-        return;
+  }
+   void SQBlBkBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+        if(nextfree>0){
+          SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBkBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark2){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
+        if(nextfree>0){
+          SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBklBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L4|1);
+        if(nextfree>0){
+          SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree);
+        }
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBlkBjrB(int ld,int rd,int col,int row,int free)
+  {
+    int bit;
+    int nextfree;
+    if(row==mark1){
+      while(free>0){
+        bit=free&(-free);
+        free-=bit;
+        nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L3|2);
+        if(nextfree>0)
+          SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree);
+      }
+      return;
+    }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+  // for d <big>
+   void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free)
+  {
+    if(row==N-1-jmark){
+      rd|=L;
+      free&=~L;
+      SQBkBlBjrB(ld,rd,col,row,free);
+      return;
     }
     int bit;
     int nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBjlBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
     }
-}
-
-// SQBjlBlkBjrB 関数
-void SQBjlBlkBjrB(int ld, int rd, int col, int row, int free) {
-    if (row == N - 1 - jmark) {
-        rd |= L;
-        free &= ~L;
-        SQBlkBjrB(ld, rd, col, row, free);
-        return;
-    }
-    int bit;
-    int nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit));
-        if (nextfree > 0) {
-            SQBjlBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree);
-        }
-    }
-}
-
-// SQd2B 関数
-void SQd2B(int ld, int rd, int col, int row, int free) {
-    if (row == endmark) {
-        if ((free & (~1)) > 0) {
-            tempcounter++;
-        }
-        return;
+  }
+   void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free)
+  {
+    if(row==N-1-jmark){
+      rd|=L;
+      free&=~L;
+      SQBlBkBjrB(ld,rd,col,row,free);
+      return;
     }
     int bit;
     int nextfree;
-    while (free > 0) {
-        bit = free & (-free);
-        free -= bit;
-        int next_ld = ((ld | bit) << 1);
-        int next_rd = ((rd | bit) >> 1);
-        int next_col = (col | bit);
-        nextfree = ~(next_ld | next_rd | next_col);
-        if (nextfree > 0) {
-            if (row < endmark - 1) {
-                if (~((next_ld << 1) | (next_rd >> 1) | (next_col)) > 0) {
-                    SQd2B(next_ld, next_rd, next_col, row + 1, nextfree);
-                }
-            } else {
-                SQd2B(next_ld, next_rd, next_col, row + 1, nextfree);
-            }
-        }
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
     }
-}
+  }
+   void SQBjlBklBjrB(int ld,int rd,int col,int row,int free)
+  {
+    if(row==N-1-jmark){
+      rd|=L;
+      free&=~L;
+      SQBklBjrB(ld,rd,col,row,free);
+      return;
+    }
+    int bit;
+    int nextfree;
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree);
+      }
+    }
+  }
+   void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free)
+  {
+    if(row==N-1-jmark){
+      rd|=L;
+      free&=~L;
+      SQBlkBjrB(ld,rd,col,row,free);
+      return;
+    }
+    int bit;
+    int nextfree;
+    while(free>0){
+      bit=free&(-free);
+      free-=bit;
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree>0){
+        SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree );
+      }
+    }
+  }
 
 // メインメソッド
 int main(int argc, char** argv) {
-    initialize(6); // Example for 6-Queens problem
+  unsigned int min=6;
+  unsigned int targetN=17;
+  struct timeval t0;
+  struct timeval t1;
+  for(unsigned int size=min;size<=targetN;++size){
+    gettimeofday(&t0, NULL);
+    initialize(size); // Example for 6-Queens problem
     ijklList = create_int_hashset();
     constellations = create_constellation_arraylist();
 
@@ -1279,12 +1343,26 @@ int main(int argc, char** argv) {
     genConstellations();
     execSolutions();
     calcSolutions();
-    printf("%17ld\n", getSolutions());
-
-    print_constellations(constellations);
-
+    gettimeofday(&t1, NULL);
+    int ss;int ms;int dd;
+    if(t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    }else {
+      dd=(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13ld%10.2d:%02d:%02d:%02d.%02d\n",size,getSolutions(),dd,hh,mm,ss,ms);    
+   
     // 後処理
     free_int_hashset(ijklList);
     free_constellation_arraylist(constellations);
+    
+  }  
     return 0;
 }
