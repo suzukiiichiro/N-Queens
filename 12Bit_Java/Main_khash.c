@@ -9,7 +9,7 @@
 // グローバル変数の宣言
 
 int N,L,N3, N4, L3, L4,mask,presetQueens;
-long tempcounter = 0;
+
 
 // Constellation構造体の定義
 typedef struct {
@@ -56,34 +56,34 @@ int symmetry(int ijkl);
 void add_constellation(int ld, int rd, int col, int startijkl);
 
 // 関数プロトタイプ宣言
-void SQBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBklBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQB(int ld, int rd, int col, int raw, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBlBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBlkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBjlBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBjlBklBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBjlBlBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQBjlBlkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BkBlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BklB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2B(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BlBkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BlkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BkBlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BklB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1B(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BlBkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BlkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd0B(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd0BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd2BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2);
-void SQd1BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2);
+void SQBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBklBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQB(int ld, int rd, int col, int raw, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBlBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBlkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBjlBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBjlBklBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBjlBlBkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQBjlBlkBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2BkBlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2BklB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2BlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2B(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long *tempcounter);
+void SQd2BlBkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2BlkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1BkBlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1BklB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1BlB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1B(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long *tempcounter);
+void SQd1BlBkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1BlkB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd0B(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2 ,long *tempcounter);
+void SQd0BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd2BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
+void SQd1BkB(int ld, int rd, int col, int row, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter);
 
 // その他の関数プロトタイプ
 void setPreQueens(int ld, int rd, int col, int k, int l, int row, int queens, int LD, int RD, int *counter);
@@ -359,7 +359,9 @@ void setPreQueens(int ld, int rd, int col, int k, int l, int row, int queens, in
 void execSolutions() {
     int j, k, l, ijkl, ld, rd, col, startIjkl, start, free, LD,jmark,endmark,mark1,mark2;
     int smallmask = (1 << (N - 2)) - 1;
+    long tempcounter = 0;
     for (int i = 0; i < constellations->size; i++) {
+        
         Constellation* constellation = &constellations->data[i];
         startIjkl = constellation->startijkl;
         start = startIjkl >> 20;
@@ -396,15 +398,15 @@ void execSolutions() {
                     if (start < l) {
                         if (start < k) {
                             if (l != k + 1) {
-                                SQBkBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQBkBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                             } else {
-                                SQBklBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQBklBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                             }
                         } else {
-                            SQBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                         }
                     } else {
-                        SQBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                     }
                 } else {
                     mark1 = l - 1;
@@ -413,15 +415,15 @@ void execSolutions() {
                     if (start < k) {
                         if (start < l) {
                             if (k != l + 1) {
-                                SQBlBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQBlBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                             } else {
-                                SQBlkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQBlkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2, &tempcounter);
                             }
                         } else {
-                            SQBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         }
                     } else {
-                        SQBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 }
             } else {
@@ -430,18 +432,18 @@ void execSolutions() {
                     mark2 = l - 1;
 
                     if (l != k + 1) {
-                        SQBjlBkBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjlBkBlBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     } else {
-                        SQBjlBklBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjlBklBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 } else {
                     mark1 = l - 1;
                     mark2 = k - 1;
 
                     if (k != l + 1) {
-                        SQBjlBlBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjlBlBkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     } else {
-                        SQBjlBlkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQBjlBlkBjrB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 }
             }
@@ -455,16 +457,16 @@ void execSolutions() {
                 if (start < l) {
                     if (start < k) {
                         if (l != k + 1) {
-                            SQd2BkBlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd2BkBlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         } else {
-                            SQd2BklB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd2BklB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         }
                     } else {
                         mark2=l-1;
-                        SQd2BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQd2BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 } else {
-                    SQd2B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                    SQd2B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                 }
             } else {
                 mark1 = l - 1;
@@ -474,16 +476,16 @@ void execSolutions() {
                 if (start < k) {
                     if (start < l) {
                         if (k != l + 1) {
-                            SQd2BlBkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd2BlBkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         } else {
-                            SQd2BlkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd2BlkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         }
                     } else {
                         mark2=k-1;
-                        SQd2BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQd2BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 } else {
-                    SQd2B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                    SQd2B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                 }
             }
         } else if (j == N - 2) {
@@ -496,16 +498,16 @@ void execSolutions() {
 
                         if (l != k + 1) {
                             mark2 = l - 1;
-                            SQd1BkBlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd1BkBlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         } else {
-                            SQd1BklB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd1BklB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         }
                     } else {
                         mark2 = l - 1;
-                        SQd1BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                        SQd1BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                     }
                 } else {
-                    SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                    SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                 }
             } else {
                 if (start < k) {
@@ -516,43 +518,43 @@ void execSolutions() {
 
                             if (k != l + 1) {
                                 mark2 = k - 1;
-                                SQd1BlBkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQd1BlBkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                             } else {
-                                SQd1BlkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQd1BlkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                             }
                         } else {
                             if (l != N - 3) {
                                 mark2 = l - 1;
                                 endmark = N - 3;
-                                SQd1BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQd1BlB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                             } else {
                                 endmark = N - 4;
-                                SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                                SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                             }
                         }
                     } else {
                         if (k != N - 2) {
                             mark2 = k - 1;
                             endmark = N - 2;
-                            SQd1BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd1BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         } else {
                             endmark = N - 3;
-                            SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                            SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                         }
                     }
                 } else {
                     endmark = N - 2;
-                    SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                    SQd1B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
                 }
             }
         } else {
             endmark = N - 2;
 
             if (start > k) {
-                SQd0B(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                SQd0B(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
             } else {
                 mark1 = k - 1;
-                SQd0BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2);
+                SQd0BkB(ld, rd, col, start, free,jmark,endmark,mark1,mark2,&tempcounter);
             }
         }
 
@@ -643,10 +645,10 @@ void genConstellations() {
     }
 }
 
-   void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2, long* tempcounter)
   {
     if(row==endmark){
-      tempcounter++;
+      (*tempcounter)++;
       return;
     }
     int bit;
@@ -661,14 +663,14 @@ void genConstellations() {
       if(nextfree>0){
         if(row<endmark-1){
           if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
-            SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+            SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2, tempcounter);
         }else{
-          SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+          SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
     }
   }
-   void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -678,7 +680,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
         if(nextfree>0){
-          SQd0B((ld|bit)<<2,((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd0B((ld|bit)<<2,((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2, tempcounter);
         }
       }
       return;
@@ -688,11 +690,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -702,7 +704,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|L4);
         if(nextfree>0){
-          SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -712,14 +714,14 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2 ,long* tempcounter)
   {
     if(row==endmark){
-      tempcounter++;
+      (*tempcounter)++;
       return;
     }
     int bit;
@@ -734,14 +736,14 @@ void genConstellations() {
       if(nextfree>0){
         if(row+1<endmark){
           if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
-            SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+            SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }else{
-          SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+          SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
     }
   }
-   void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -751,7 +753,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
         if(nextfree>0){
-          SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -761,11 +763,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -780,9 +782,9 @@ void genConstellations() {
         if(nextfree>0){
           if(row+2<endmark){
             if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
-              SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2);
+              SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
           }else{
-            SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2);
+            SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
           }
         }
       }
@@ -793,11 +795,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -807,7 +809,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|L3);
         if(nextfree>0){
-          SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -817,11 +819,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -831,7 +833,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
         if(nextfree>0){
-          SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -841,11 +843,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -855,7 +857,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
         if(nextfree>0){
-          SQd1B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd1B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -865,11 +867,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -879,7 +881,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L3|2);
         if(nextfree>0){
-          SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -889,11 +891,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -903,7 +905,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L4|1);
         if(nextfree>0){
-          SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -913,11 +915,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -927,7 +929,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
         if(nextfree>0){
-          SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -937,11 +939,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -951,7 +953,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
         if(nextfree>0){
-          SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -961,11 +963,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -975,7 +977,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
         if(nextfree>0){
-          SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -985,11 +987,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -999,7 +1001,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
         if(nextfree>0){
-          SQd2B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQd2B(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1009,15 +1011,15 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2 ,long* tempcounter)
   {
     if(row==endmark){
       if((free&(~1))>0){
-        tempcounter++;
+        (*tempcounter)++;
       }
       return;
     }
@@ -1033,15 +1035,15 @@ void genConstellations() {
       if(nextfree>0){
         if(row<endmark-1){
           if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
-            SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+            SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }else{
-          SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+          SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
     }
   }
   // for d>2 but d <small enough>
-   void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1051,7 +1053,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
         if(nextfree>0){
-          SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1061,11 +1063,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1075,7 +1077,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
         if(nextfree>0){
-          SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1085,11 +1087,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1101,7 +1103,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
         if(nextfree>0){
-          SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+          SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1111,14 +1113,14 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     if(row==endmark){
-      tempcounter++;
+      (*tempcounter)++;
       return;
     }
     int bit;
@@ -1133,15 +1135,15 @@ void genConstellations() {
       if(nextfree>0){
         if(row<endmark-1){
           if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0){
-            SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+            SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
           }
         }else{
-          SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2);
+          SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
     }
   }
-   void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1151,7 +1153,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
         if(nextfree>0){
-          SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1161,11 +1163,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1175,7 +1177,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|L3);
         if(nextfree>0){
-          SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2);
+          SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|L3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1185,11 +1187,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1199,7 +1201,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L4|1);
         if(nextfree>0){
-          SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|L4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
         }
       }
       return;
@@ -1209,11 +1211,11 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     int bit;
     int nextfree;
@@ -1223,7 +1225,7 @@ void genConstellations() {
         free-=bit;
         nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|L3|2);
         if(nextfree>0)
-          SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2);
+          SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|L3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
       return;
     }
@@ -1232,17 +1234,17 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
   // for d <big>
-   void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     if(row==N-1-jmark){
       rd|=L;
       free&=~L;
-      SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2);
+      SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter);
       return;
     }
     int bit;
@@ -1252,16 +1254,16 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     if(row==N-1-jmark){
       rd|=L;
       free&=~L;
-      SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2);
+      SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter);
       return;
     }
     int bit;
@@ -1271,16 +1273,16 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     if(row==N-1-jmark){
       rd|=L;
       free&=~L;
-      SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2);
+      SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter);
       return;
     }
     int bit;
@@ -1290,16 +1292,16 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2);
+        SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter);
       }
     }
   }
-   void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2)
+   void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter)
   {
     if(row==N-1-jmark){
       rd|=L;
       free&=~L;
-      SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2);
+      SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter);
       return;
     }
     int bit;
@@ -1309,7 +1311,7 @@ void genConstellations() {
       free-=bit;
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree>0){
-        SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2 );
+        SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter );
       }
     }
   }
