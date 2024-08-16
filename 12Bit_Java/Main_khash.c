@@ -315,14 +315,15 @@ int symmetry(int ijkl) {
 }
 
 void initialize(int sn) {
-    N = sn;
-    presetQueens = 4;
-    N3 = N - 3;
-    N4 = N - 4;
-    L = 1 << (N - 1);
-    L3 = 1 << N3;
-    L4 = 1 << N4;
-    mask = (1 << N) - 1;
+    N = sn;//sizeのこと　いろんなところで使用
+    presetQueens = 4;//setPreQueensで使用
+    mask = (1 << N) - 1;//setPreQueensで使用
+    N3 = N - 3;//execSolutionで使用
+    N4 = N - 4;//execSolutionで使用
+    L = 1 << (N - 1);//execSolutionで使用
+    L3 = 1 << N3;//execSolutionで使用
+    L4 = 1 << N4;//execSolutionで使用
+    
 
 }
 
