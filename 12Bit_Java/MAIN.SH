@@ -1,6 +1,7 @@
 #!/bin/bash
 
 : '
+# コンパイルオプションなしの Main.c
 #  gcc Main.c;
 bash-3.2$ bash MAIN.SH gcc
  6:            4        00:00:00:00.00
@@ -17,6 +18,7 @@ bash-3.2$ bash MAIN.SH gcc
 17:     95815104        00:00:00:16.66
 bash-3.2$
 
+# コンパイルオプション付きの Main.c
 # gcc -Wall -W -O3 -g -ftrapv -std=c99 Main.c ;
 3 warnings generated.
  6:            4        00:00:00:00.00
@@ -33,6 +35,7 @@ bash-3.2$
 17:     95815104        00:00:00:09.36
 bash-3.2$
 
+# コンパイルオプション付きの Main_khash.c
 # gcc -Wall -W -O3 -g -ftrapv -std=c99 Main_khash.c ;
 5 warnings generated.
  6:            4        00:00:00:00.00
@@ -49,6 +52,7 @@ bash-3.2$
 17:     95815104        00:00:00:10.02
 bash-3.2$
 
+# コンパイルオプション付きの Main.java
 # bash-3.2$ bash MAIN.SH java
 bash-3.2$ bash MAIN.SH java
  N:            Total       Unique     hh:mm:ss.SSS
