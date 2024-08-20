@@ -1,7 +1,7 @@
 #!/bin/bash
 
 : '
-# $B%3%s%Q%$%k%*%W%7%g%s$J$7$N(B Main.c
+# コンパイルオプションなしの Main.c
 #  gcc Main.c;
 bash-3.2$ bash MAIN.SH gcc
  6:            4        00:00:00:00.00
@@ -18,7 +18,7 @@ bash-3.2$ bash MAIN.SH gcc
 17:     95815104        00:00:00:16.66
 bash-3.2$
 
-# $B%3%s%Q%$%k%*%W%7%g%sIU$-$N(B Main.c
+# コンパイルオプション付きの Main.c
 # gcc -Wall -W -O3 -g -ftrapv -std=c99 Main.c ;
 3 warnings generated.
  6:            4        00:00:00:00.00
@@ -35,7 +35,7 @@ bash-3.2$
 17:     95815104        00:00:00:09.36
 bash-3.2$
 
-# $B%3%s%Q%$%k%*%W%7%g%sIU$-$N(B Main_khash.c
+# コンパイルオプション付きの Main_khash.c
 # gcc -Wall -W -O3 -g -ftrapv -std=c99 Main_khash.c ;
 5 warnings generated.
  6:            4        00:00:00:00.00
@@ -52,7 +52,7 @@ bash-3.2$
 17:     95815104        00:00:00:10.02
 bash-3.2$
 
-# $B%3%s%Q%$%k%*%W%7%g%sIU$-$N(B Main.java
+# コンパイルオプション付きの Main.java
 # bash-3.2$ bash MAIN.SH java
 bash-3.2$ bash MAIN.SH java
  N:            Total       Unique     hh:mm:ss.SSS
@@ -73,12 +73,12 @@ bash-3.2$ bash MAIN.SH java
 bash-3.2$
 ';
 
-# $B%=!<%9%U%!%$%k$N;XDj(B
+# ソースファイルの指定
 JavaSourceFile="Main.java";
 # gccSourceFile="Main.c";
 gccSourceFile="Main_khash.c";
 #
-# $B<B9TJ}K!(B
+# 実行方法
 #
 # Java
 # $ bash MAIN.SH java
@@ -87,14 +87,14 @@ gccSourceFile="Main_khash.c";
 # $ bash MAIN.SH gcc
 #
 function func_Java(){
-  # $B%3%s%Q%$%k(B
+  # コンパイル
   javac -cp .:commons-lang3-3.4.jar $JavaSourceFile;  
-  # $B<B9T(B
+  # 実行
   java  -cp .:commons-lang3-3.4.jar: -server -Xms4G -Xmx8G -XX:-HeapDumpOnOutOfMemoryError -XX:NewSize=256m -XX:MaxNewSize=256m -XX:-UseAdaptiveSizePolicy  Main  ;
 }
 #
 function func_gcc(){
-  # $B%3%s%Q%$%k(B
+  # コンパイル
   # gcc $gccSourceFile ;
   gcc -Wall -W -O3 -g -ftrapv -std=c99 $gccSourceFile ;
   ./a.out  
