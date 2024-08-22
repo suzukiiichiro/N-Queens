@@ -95,7 +95,8 @@ function func_Java(){
 function func_gcc(){
   # コンパイル
   # gcc $gccSourceFile ;
-  gcc -Wall -W -O3 -g -ftrapv -std=c99 $gccSourceFile ;
+  # gcc -Wall -W -O3 -g -ftrapv -std=c99 $gccSourceFile ;
+  g++ -O3 -mtune=native -march=native -mfpmath=both $gccSourceFile;
   ./a.out  
 
 }
