@@ -1,15 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
 #endif
 
-/** Mac/win は math.h でいけるが linuxでは動かない */
-// #include <math.h>
-/** 以下は Mac/win/linuxで動くが多少遅い */
 //#define fmin(a,b) (((a) < (b)) ? (a) : (b))
 
 // Constellation構造体の定義
@@ -60,7 +58,6 @@ int rot90(int ijkl,int N);
 int symmetry90(int ijkl,int N);
 int symmetry(int ijkl,int N);
 void add_constellation(int ld, int rd, int col, int startijkl,ConstellationArrayList* constellations);
-int ffmin(int a,int b);
 
 // 関数プロトタイプ宣言
 void SQBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
@@ -294,29 +291,23 @@ int rot90(int ijkl,int N) {
   return ((N - 1 - getk(ijkl)) << 15) + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl);
 }
 
-int ffmin(int a,int b){
-  if(a<b){
-    return a;
-  }
-  return b;
-}
 int jasmin(int ijkl,int N) {
-  int min = ffmin(getj(ijkl), N - 1 - getj(ijkl));
+  int min = fmin(getj(ijkl), N - 1 - getj(ijkl));
   int arg = 0;
 
-  if (ffmin(geti(ijkl), N - 1 - geti(ijkl)) < min) {
+  if (fmin(geti(ijkl), N - 1 - geti(ijkl)) < min) {
     arg = 2;
-    min = ffmin(geti(ijkl), N - 1 - geti(ijkl));
+    min = fmin(geti(ijkl), N - 1 - geti(ijkl));
   }
 
-  if (ffmin(getk(ijkl), N - 1 - getk(ijkl)) < min) {
+  if (fmin(getk(ijkl), N - 1 - getk(ijkl)) < min) {
     arg = 3;
-    min = ffmin(getk(ijkl), N - 1 - getk(ijkl));
+    min = fmin(getk(ijkl), N - 1 - getk(ijkl));
   }
 
-  if (ffmin(getl(ijkl), N - 1 - getl(ijkl)) < min) {
+  if (fmin(getl(ijkl), N - 1 - getl(ijkl)) < min) {
     arg = 1;
-    min = ffmin(getl(ijkl), N - 1 - getl(ijkl));
+    min = fmin(getl(ijkl), N - 1 - getl(ijkl));
   }
 
   for (int i = 0; i < arg; i++) {
