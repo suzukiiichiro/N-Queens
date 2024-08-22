@@ -10,7 +10,7 @@
 /** Mac/win は math.h でいけるが linuxでは動かない */
 // #include <math.h>
 /** 以下は Mac/win/linuxで動くが多少遅い */
-#define fmin(a,b) (((a) < (b)) ? (a) : (b))
+//#define fmin(a,b) (((a) < (b)) ? (a) : (b))
 
 // Constellation構造体の定義
 typedef struct {
@@ -293,23 +293,30 @@ int rot90(int ijkl,int N) {
     return ((N - 1 - getk(ijkl)) << 15) + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl);
 }
 
+int ffmin(int a,int b){
+    if(a<b){
+      return a;
+    }else{
+      return b;
+    }
+}
 int jasmin(int ijkl,int N) {
-    int min = fmin(getj(ijkl), N - 1 - getj(ijkl));
+    int min = ffmin(getj(ijkl), N - 1 - getj(ijkl));
     int arg = 0;
 
-    if (fmin(geti(ijkl), N - 1 - geti(ijkl)) < min) {
+    if (ffmin(geti(ijkl), N - 1 - geti(ijkl)) < min) {
         arg = 2;
-        min = fmin(geti(ijkl), N - 1 - geti(ijkl));
+        min = ffmin(geti(ijkl), N - 1 - geti(ijkl));
     }
 
-    if (fmin(getk(ijkl), N - 1 - getk(ijkl)) < min) {
+    if (ffmin(getk(ijkl), N - 1 - getk(ijkl)) < min) {
         arg = 3;
-        min = fmin(getk(ijkl), N - 1 - getk(ijkl));
+        min = ffmin(getk(ijkl), N - 1 - getk(ijkl));
     }
 
-    if (fmin(getl(ijkl), N - 1 - getl(ijkl)) < min) {
+    if (ffmin(getl(ijkl), N - 1 - getl(ijkl)) < min) {
         arg = 1;
-        min = fmin(getl(ijkl), N - 1 - getl(ijkl));
+        min = ffmin(getl(ijkl), N - 1 - getl(ijkl));
     }
 
     for (int i = 0; i < arg; i++) {
