@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
+// #include <math.h>
 #include <stdint.h>
-#include <time.h>
+//#include <time.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
 #endif
 
-
+// #define fmin(a,b) (((a) < (b)) ? (a) : (b))
 
 // Constellation構造体の定義
 typedef struct {
@@ -169,7 +169,8 @@ Constellation* create_constellation() {
     return new_constellation;
 }
 
-Constellation* create_constellation_with_values(int id, int ld, int rd, int col, int startijkl,ConstellationArrayList* constellations, long solutions) {
+// Constellation* create_constellation_with_values(int id, int ld, int rd, int col, int startijkl,ConstellationArrayList* constellations, long solutions) {
+Constellation* create_constellation_with_values(int id, int ld, int rd, int col, int startijkl, long solutions) {
     Constellation* new_constellation = (Constellation*)malloc(sizeof(Constellation));
     if (new_constellation) {
         new_constellation->id = id;
@@ -378,10 +379,11 @@ void execSolutions(ConstellationArrayList* constellations,int N) {
     int L = 1 << (N - 1);//execSolutionで使用
     int L3 = 1 << N3;//execSolutionで使用
     int L4 = 1 << N4;//execSolutionで使用    
-    int j, k, l, ijkl, ld, rd, col, startIjkl, start, free, LD,jmark,endmark,mark1,mark2;
+    int j=0, k=0, l=0, ijkl=0, ld=0, rd=0, col=0, startIjkl=0, start=0, free=0, LD=0,jmark=0,endmark=0,mark1=0,mark2=0;
     int smallmask = (1 << (N - 2)) - 1;
     long tempcounter = 0;
-    for (int i = 0; i < constellations->size; i++) {
+    //for (int i = 0; i < constellations->size; i++) {
+    for (size_t i = 0; i < constellations->size; i++) {
         Constellation* constellation = &constellations->data[i];
         startIjkl = constellation->startijkl;
         start = startIjkl >> 20;
@@ -1317,8 +1319,13 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     }
   }
 
+// 未使用変数対応
+void f(int unuse,char* argv[]){
+  printf("%d%s\n",unuse,argv[0]);
+}
 // メインメソッド
 int main(int argc, char** argv) {
+  f(argc,argv);
   unsigned int min=6;
   unsigned int targetN=17;
   struct timeval t0;
