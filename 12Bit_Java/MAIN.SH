@@ -74,17 +74,16 @@ bash-3.2$
 ';
 
 # ソースファイルの指定
-JavaSourceFile="Main.java";
-# gccSourceFile="Main.c";
-gccSourceFile="Main_khash.c";
+JavaSourceFile="$1";
+gccSourceFile="$1";
 #
 # 実行方法
 #
 # Java
-# $ bash MAIN.SH java
+# $ bash MAIN.SH sourcefile java
 #
 # gcc
-# $ bash MAIN.SH gcc
+# $ bash MAIN.SH sourcefile gcc
 #
 function func_Java(){
   # コンパイル
@@ -100,14 +99,14 @@ function func_gcc(){
   ./a.out  
 
 }
-if [ "java" == "$1" ];then
+if [ "java" == "$2" ];then
   func_Java ;
-elif [ "gcc" == "$1" ];then
+elif [ "gcc" == "$2" ];then
   func_gcc;
 else 
   echo ""
   echo "usage"
-  echo "$ bash MAIN.SH java";
-  echo "$ bash MAIN.SH gcc";
+  echo "$ bash MAIN.SH sourcefile java";
+  echo "$ bash MAIN.SH sourcefile gcc";
 fi
 
