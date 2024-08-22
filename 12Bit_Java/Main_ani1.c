@@ -619,7 +619,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
         int startConstellation = ijklList->data[i];
         int_hashset_add(ijklListJasmin, jasmin(startConstellation,N));
     }
-    free_int_hashset(ijklList);
+    //free_int_hashset(ijklList);
     ijklList = ijklListJasmin;
 
     //int i, j, k, l, ld, rd, col, currentSize = 0;
