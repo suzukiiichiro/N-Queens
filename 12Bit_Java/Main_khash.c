@@ -30,7 +30,7 @@ typedef struct {
 
 // khashの定義
 KHASH_MAP_INIT_INT(ijkl_map, char)
-khash_t(ijkl_map) *ijklList;
+khash_t(ijkl_map)* ijklList;
 ConstellationArrayList* constellations;
 
 #define INITIAL_CAPACITY 20000
@@ -42,7 +42,7 @@ void constellation_arraylist_add(ConstellationArrayList* list, Constellation val
 
 
 // ビット操作関数プロトタイプ
-int checkRotations(khash_t(ijkl_map) *set, int i, int j, int k, int l);
+int checkRotations(khash_t(ijkl_map)* set, int i, int j, int k, int l);
 int toijkl(int i, int j, int k, int l);
 int geti(int sc);
 int getj(int sc);
@@ -211,7 +211,7 @@ int get_ijkl(Constellation* constellation) {
     return constellation->startijkl & 0xFFFFF; // Equivalent to 0b11111111111111111111
 }
 
-int checkRotations(khash_t(ijkl_map) *ijklList, int i, int j, int k, int l) {
+int checkRotations(khash_t(ijkl_map)* ijklList, int i, int j, int k, int l) {
     int rot90 = ((N-1-k) << 15) + ((N-1-l) << 10) + (j << 5) + i;
     int rot180 = ((N-1-j) << 15) + ((N-1-i) << 10) + ((N-1-l) << 5) + (N-1-k);
     int rot270 = (l << 15) + (k << 10) + ((N-1-i) << 5) + (N-1-j);
@@ -601,7 +601,7 @@ void genConstellations() {
         }
     }
 
-    khash_t(ijkl_map) *ijklListJasmin = kh_init(ijkl_map);
+    khash_t(ijkl_map)* ijklListJasmin = kh_init(ijkl_map);
     khint_t k;
     for (k = kh_begin(ijklList); k != kh_end(ijklList); ++k) {
         if (kh_exist(ijklList, k)) {

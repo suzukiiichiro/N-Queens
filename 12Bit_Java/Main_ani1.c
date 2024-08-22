@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
-// #include <math.h>
 #include <stdint.h>
-//#include <time.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
 #endif
 
-// #define fmin(a,b) (((a) < (b)) ? (a) : (b))
+/** Mac/win は math.h でいけるが linuxでは動かない */
+// #include <math.h>
+/** 以下は Mac/win/linuxで動くが多少遅い */
+#define fmin(a,b) (((a) < (b)) ? (a) : (b))
 
 // Constellation構造体の定義
 typedef struct {
