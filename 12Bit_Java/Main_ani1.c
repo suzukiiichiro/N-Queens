@@ -60,6 +60,7 @@ int rot90(int ijkl,int N);
 int symmetry90(int ijkl,int N);
 int symmetry(int ijkl,int N);
 void add_constellation(int ld, int rd, int col, int startijkl,ConstellationArrayList* constellations);
+int ffmin(int a,int b);
 
 // 関数プロトタイプ宣言
 void SQBkBlBjrB(int ld, int rd, int col, int start, int free, int jmark, int endmark, int mark1, int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
@@ -296,9 +297,8 @@ int rot90(int ijkl,int N) {
 int ffmin(int a,int b){
     if(a<b){
       return a;
-    }else{
-      return b;
     }
+    return b;
 }
 int jasmin(int ijkl,int N) {
     int min = ffmin(getj(ijkl), N - 1 - getj(ijkl));
