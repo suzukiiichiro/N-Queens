@@ -60,6 +60,17 @@ int symmetry(int ijkl,int N){
 #define getl(ijkl) ( ijkl & 31 )
 // int getl(int ijkl){ return ijkl & 31; }
 /**
+  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
+  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
+  行インデックスはそのままにします。
+*/
+#define mirvert(ijkl,N) ( toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)) )
+/**
+int mirvert(int ijkl,int N){
+  return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
+}
+*/
+/**
   Constellation構造体の定義
 */
 typedef struct{
@@ -103,6 +114,7 @@ int getl(int sc);
 int rot90(int ijkl,int N);
 int symmetry90(int ijkl,int N);
 int symmetry(int ijkl,int N);
+int mirvert(int ijkl,int N);
 void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
 void execSolutions(ConstellationArrayList* constellations,int N);
 void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
@@ -133,7 +145,6 @@ int get_ijkl(Constellation* constellation){
 }
 **/
 int jasmin(int ijkl,int N);
-int mirvert(int ijkl,int N);
 void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
 /**
  * 関数プロトタイプ
@@ -166,7 +177,6 @@ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
 void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
 void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
 void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-
 
 void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
 {
@@ -999,14 +1009,6 @@ int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
   if(int_hashset_contains(ijklList,rot180)){ return 1; }
   if(int_hashset_contains(ijklList,rot270)){ return 1; }
   return 0;
-}
-/**
-  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
-  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
-  行インデックスはそのままにします。
-*/
-int mirvert(int ijkl,int N){
-  return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
 }
 /**
   i,j,k,lをijklに変換し、特定のエントリーを取得する関数 
