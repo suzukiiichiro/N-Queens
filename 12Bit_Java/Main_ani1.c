@@ -74,28 +74,28 @@ int mirvert(int ijkl,int N){
   Constellation構造体の定義
 */
 typedef struct{
-  int id;
-  int ld;
-  int rd;
-  int col;
-  int startijkl;
-  long solutions;
+  unsigned int id;
+  unsigned int ld;
+  unsigned int rd;
+  unsigned int col;
+  unsigned int startijkl;
+  unsigned long solutions;
 }Constellation;
 /**
   IntHashSet構造体の定義
 */
 typedef struct{
   int* data;
-  size_t size;
-  size_t capacity;
+  unsigned int size;
+  unsigned int capacity;
 }IntHashSet;
 /**
   ConstellationArrayList構造体の定義
 */
 typedef struct{
   Constellation* data;
-  size_t size;
-  size_t capacity;
+  unsigned int size;
+  unsigned int capacity;
 }ConstellationArrayList;
 
 /**
@@ -199,7 +199,7 @@ void free_int_hashset(IntHashSet* set){
  *
  */
 int int_hashset_contains(IntHashSet* set,int value){
-  for(size_t i=0;i<set->size;i++){
+  for(unsigned int i=0;i<set->size;i++){
     if(set->data[i]==value){ return 1; }
   }
   return 0;
@@ -296,7 +296,7 @@ void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayLis
   queens: 現在配置されているクイーンの数。
 */
 void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N){
-  int mask=(1<<N)-1;//setPreQueensで使用
+  unsigned int mask=(1<<N)-1;//setPreQueensで使用
   // k行とl行はさらに進む
   if(row==k || row==l){
     setPreQueens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N);
@@ -316,9 +316,9 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   // k列かl列が終わっていなければ、クイーンを置いてボードを占領し、さらに先に進む。
   else{
     // 現在の行にクイーンを配置できる位置（自由な位置）を計算
-    int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
-    int bit;
-    while (free>0){
+    unsigned int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
+    unsigned int bit;
+    while(free>0){
       bit=free & (-free);
       free -= bit;
       // クイーンをおける場所があれば、その位置にクイーンを配置し、再帰的に次の行に進む
@@ -330,9 +330,9 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
  */
 int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
-  int rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i;
-  int rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k);
-  int rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j);
+  unsigned int rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i;
+  unsigned int rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k);
+  unsigned int rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j);
   if(int_hashset_contains(ijklList,rot90)){ return 1; }
   if(int_hashset_contains(ijklList,rot180)){ return 1; }
   if(int_hashset_contains(ijklList,rot270)){ return 1; }
@@ -359,8 +359,8 @@ int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
 */
 int jasmin(int ijkl,int N){
   //j は最後の行（下端） 90度回転0回
-  int min=fmin(getj(ijkl),N-1-getj(ijkl));
-  int arg=0;
+  unsigned int min=fmin(getj(ijkl),N-1-getj(ijkl));
+  unsigned int arg=0;
   //i は最初の行（上端） 90度回転2回
   if(fmin(geti(ijkl),N-1-geti(ijkl))<min){
     arg=2;
@@ -376,7 +376,7 @@ int jasmin(int ijkl,int N){
     arg=1;
     min=fmin(getl(ijkl),N-1-getl(ijkl));
   }
-  for(int i=0;i<arg;i++){
+  for(unsigned int i=0;i<arg;i++){
     ijkl=rot90(ijkl,N);
   }
   if(getj(ijkl)<N-1-getj(ijkl)){
@@ -389,7 +389,7 @@ int jasmin(int ijkl,int N){
  */
 long calcSolutions(ConstellationArrayList* constellations,long solutions){
   Constellation* c;
-  for(int i=0;i<constellations->size;i++){
+  for(unsigned int i=0;i<constellations->size;i++){
     c=&constellations->data[i];
     if(c->solutions >= 0){
       solutions += c->solutions;
@@ -423,8 +423,7 @@ void execSolutions(ConstellationArrayList* constellations,int N){
   int mark2=0;
   int smallmask=(1<<(N-2))-1;
   long tempcounter=0;
-  //for(int i=0;i<constellations->size;i++){
-  for(size_t i=0;i<constellations->size;i++){
+  for(unsigned i=0;i<constellations->size;i++){
     Constellation* constellation=&constellations->data[i];
     startIjkl=constellation->startijkl;
     start=startIjkl>>20;
@@ -641,14 +640,14 @@ void execSolutions(ConstellationArrayList* constellations,int N){
  *
  */
 void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N){
-  int halfN=(N+1) / 2;// N の半分を切り上げる
-  int L=1<<(N-1);//Lは左端に1を立てる
+  unsigned int halfN=(N+1) / 2;// N の半分を切り上げる
+  unsigned int L=1<<(N-1);//Lは左端に1を立てる
   /**
     コーナーにクイーンがいない場合の開始コンステレーションを計算する
     最初のcolを通過する
     k: 最初の列（左端）に配置されるクイーンの行のインデックス。
   */
-  for(int k=1;k<halfN;k++){
+  for(unsigned int k=1;k<halfN;k++){
     /**
       l: 最後の列（右端）に配置されるクイーンの行のインデックス。
       l を k より後の行に配置する理由は、回転対称性を考慮して配置の重複を避け
@@ -657,14 +656,14 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
       かつ効率的に行えるようになります。
       最後のcolを通過する
     */
-    for(int l=k+1;l<N-1;l++){
+    for(unsigned int l=k+1;l<N-1;l++){
       /**
         i: 最初の行（上端）に配置されるクイーンの列のインデックス。
         最初の行を通過する
         k よりも下の行に配置することで、ボード上の対称性や回転対称性を考慮し
         て、重複した解を避けるための配慮がされています。
       */
-      for(int i=k+1;i<N-1;i++){
+      for(unsigned int i=k+1;i<N-1;i++){
         // i==N-1-lは、行iが列lの「対角線上」にあるかどうかをチェックしています。
         if(i==N-1-l){
           continue;
@@ -673,7 +672,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
             j: 最後の行（下端）に配置されるクイーンの列のインデックス。  
             最後の行を通過する
         */
-        for(int j=N-k-2;j>0;j--){
+        for(unsigned int j=N-k-2;j>0;j--){
         /**
           同じ列や行にクイーンが配置されている場合は、その配置が有効でない
           ためスキップ
@@ -699,14 +698,14 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     j は最後の行に置かれるクイーンの列インデックスです。これは 1 から N-3 ま
     での値を取ります。
   */
-  for(int j=1;j<N-2;j++){// jは最終行のクイーンのidx
-    for(int l=j+1;l<N-1;l++){// lは最終列のクイーンのidx
+  for(unsigned int j=1;j<N-2;j++){// jは最終行のクイーンのidx
+    for(unsigned int l=j+1;l<N-1;l++){// lは最終列のクイーンのidx
       int_hashset_add(ijklList,toijkl(0,j,0,l));
     }
   }
   IntHashSet* ijklListJasmin=create_int_hashset();
   int startConstellation;
-  for(size_t i=0;i<ijklList->size;i++){
+  for(unsigned i=0;i<ijklList->size;i++){
     startConstellation=ijklList->data[i];
     int_hashset_add(ijklListJasmin,jasmin(startConstellation,N));
   }
@@ -735,7 +734,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   int RD=0;
   int counter=0;
   int currentSize=0;
-  for(size_t s=0;s<ijklList->size;s++){
+  for(unsigned s=0;s<ijklList->size;s++){
     sc=ijklList->data[s];
     i=geti(sc);
     j=getj(sc);
@@ -797,7 +796,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     setPreQueens(ld,rd,col,k,l,1,j==N-1 ? 3 : 4,LD,RD,&counter,constellations,N);
     currentSize=constellations->size;
      // jklとsymとstartはすべてのサブコンステレーションで同じである
-    for(int a=0;a<counter;a++){
+    for(unsigned int a=0;a<counter;a++){
       constellations->data[currentSize-a-1].startijkl |= toijkl(i,j,k,l);
     }
   }
@@ -867,12 +866,15 @@ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
   }
   int bit;
   int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
-    int next_ld=((ld|bit)<<1);
-    int next_rd=((rd|bit)>>1);
-    int next_col=(col|bit);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
     if(nextfree>0){
       if(row<endmark-1){
@@ -940,12 +942,15 @@ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
   }
   int bit;
   int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
-    int next_ld=((ld|bit)<<1);
-    int next_rd=((rd|bit)>>1);
-    int next_col=(col|bit);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
     if(nextfree>0){
       if(row+1<endmark){
@@ -985,13 +990,16 @@ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
 {
   int bit;
   int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      int next_ld=((ld|bit)<<2)|1;
-      int next_rd=((rd|bit)>>2);
-      int next_col=(col|bit);
+      next_ld=((ld|bit)<<2)|1;
+      next_rd=((rd|bit)>>2);
+      next_col=(col|bit);
       nextfree=~(next_ld|next_rd|next_col);
       if(nextfree>0){
         if(row+2<endmark){
@@ -1239,12 +1247,15 @@ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
   }
   int bit;
   int nextfree;
+  int next_ld;
+  int next_rd;
+  ;int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
-    int next_ld=((ld|bit)<<1);
-    int next_rd=((rd|bit)>>1);
-    int next_col=(col|bit);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
     if(nextfree>0){
       if(row<endmark-1){
@@ -1338,12 +1349,15 @@ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,
   }
   int bit;
   int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
-    int next_ld=((ld|bit)<<1);
-    int next_rd=((rd|bit)>>1);
-    int next_col=(col|bit);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
     if(nextfree>0){
       if(row<endmark-1){
