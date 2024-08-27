@@ -115,10 +115,6 @@ int rot90(int ijkl,int N);
 int symmetry90(int ijkl,int N);
 int symmetry(int ijkl,int N);
 int mirvert(int ijkl,int N);
-void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
-void execSolutions(ConstellationArrayList* constellations,int N);
-void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
-long calcSolutions(ConstellationArrayList* constellations,long solutions);
 */
 /**
 // ID
@@ -144,39 +140,99 @@ int get_ijkl(Constellation* constellation){
   return constellation->startijkl & 0xFFFFF;// Equivalent to 0b11111111111111111111
 }
 **/
+void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
+void execSolutions(ConstellationArrayList* constellations,int N);
+void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
+long calcSolutions(ConstellationArrayList* constellations,long solutions);
 int jasmin(int ijkl,int N);
 void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
 /**
  * 関数プロトタイプ
  */
-void SQBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQB(int ld,int rd,int col,int raw,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBjlBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBjlBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBjlBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQBjlBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
-void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4);
+void SQBkBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBklBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBlBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBlkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBjlBkBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBjlBklBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBjlBlBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQBjlBlkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BkBlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BklB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BlBkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BlkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BkBlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BklB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BlBkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BlkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd0B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd0BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd2BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
+void SQd1BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    );
 
 /**
  * IntHashSet の関数実装
@@ -858,17 +914,19 @@ int main(int argc,char** argv){
 /**
  * 関数プロトタイプ
  */
-void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd0B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==endmark){
     (*tempcounter)++;
     return;
   }
-  int bit;
-  int nextfree;
-  int next_ld;
-  int next_rd;
-  int next_col;
+  unsigned int bit;
+  unsigned int nextfree;
+  unsigned int next_ld;
+  unsigned int next_rd;
+  unsigned int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
@@ -886,10 +944,12 @@ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
     }
   }
 }
-void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd0BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -910,10 +970,12 @@ void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
     }
   }
 }
-void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BklB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -934,17 +996,19 @@ void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==endmark){
     (*tempcounter)++;
     return;
   }
-  int bit;
-  int nextfree;
-  int next_ld;
-  int next_rd;
-  int next_col;
+  unsigned int bit;
+  unsigned int nextfree;
+  unsigned int next_ld;
+  unsigned int next_rd;
+  unsigned int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
@@ -962,10 +1026,12 @@ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
     }
   }
 }
-void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BkBlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -986,13 +1052,15 @@ void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
     }
   }
 }
-void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
-  int next_ld;
-  int next_rd;
-  int next_col;
+  unsigned int bit;
+  unsigned int nextfree;
+  unsigned int next_ld;
+  unsigned int next_rd;
+  unsigned int next_col;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1021,10 +1089,12 @@ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
     }
   }
 }
-void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BlkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1045,10 +1115,12 @@ void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BlBkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1069,10 +1141,12 @@ void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
     }
   }
 }
-void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd1BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1093,10 +1167,12 @@ void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
     }
   }
 }
-void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BlkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1117,10 +1193,12 @@ void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BklB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1141,10 +1219,12 @@ void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1165,10 +1245,12 @@ void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
     }
   }
 }
-void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BlBkB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1189,10 +1271,12 @@ void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
     }
   }
 }
-void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1213,10 +1297,12 @@ void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int ma
     }
   }
 }
-void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2BkBlB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1237,7 +1323,9 @@ void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
     }
   }
 }
-void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQd2B(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==endmark){
     if((free&(~1))>0){
@@ -1245,11 +1333,11 @@ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
     }
     return;
   }
-  int bit;
-  int nextfree;
-  int next_ld;
-  int next_rd;
-  ;int next_col;
+  unsigned int bit;
+  unsigned int nextfree;
+  unsigned int next_ld;
+  unsigned int next_rd;
+  unsigned int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
@@ -1267,10 +1355,12 @@ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark
     }
   }
 }
-void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1291,10 +1381,12 @@ void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBkBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1315,10 +1407,12 @@ void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int
     }
   }
 }
-void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==jmark){
     free&=(~1);
     ld|=1;
@@ -1341,17 +1435,19 @@ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mar
     }
   }
 }
-void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==endmark){
     (*tempcounter)++;
     return;
   }
-  int bit;
-  int nextfree;
-  int next_ld;
-  int next_rd;
-  int next_col;
+  unsigned int bit;
+  unsigned int nextfree;
+  unsigned int next_ld;
+  unsigned int next_rd;
+  unsigned int next_col;
   while(free>0){
     bit=free&(-free);
     free-=bit;
@@ -1370,10 +1466,12 @@ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,
     }
   }
 }
-void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBlBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1394,10 +1492,12 @@ void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int
     }
   }
 }
-void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark2){
     while(free>0){
       bit=free&(-free);
@@ -1418,10 +1518,12 @@ void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int m
     }
   }
 }
-void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBklBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1442,10 +1544,12 @@ void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
     }
   }
 }
-void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBlkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
-  int bit;
-  int nextfree;
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==mark1){
     while(free>0){
       bit=free&(-free);
@@ -1466,16 +1570,18 @@ void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int 
   }
 }
 // for d <big>
-void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBjlBkBlBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
+  unsigned int bit;
+  unsigned int nextfree;
   if(row==N-1-jmark){
     rd|=L;
     free&=~L;
     SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     return;
   }
-  int bit;
-  int nextfree;
   while(free>0){
     bit=free&(-free);
     free-=bit;
@@ -1485,7 +1591,9 @@ void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,
     }
   }
 }
-void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBjlBlBkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==N-1-jmark){
     rd|=L;
@@ -1493,18 +1601,18 @@ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,
     SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     return;
   }
-  int bit;
-  int nextfree;
   while(free>0){
-    bit=free&(-free);
+    unsigned int bit=free&(-free);
     free-=bit;
-    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree>0){
       SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     }
   }
 }
-void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBjlBklBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==N-1-jmark){
     rd|=L;
@@ -1512,18 +1620,18 @@ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,i
     SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     return;
   }
-  int bit;
-  int nextfree;
   while(free>0){
-    bit=free&(-free);
+    unsigned int bit=free&(-free);
     free-=bit;
-    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree>0){
       SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     }
   }
 }
-void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N,int N3,int N4,int L,int L3,int L4)
+void SQBjlBlkBjrB(
+    unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N,unsigned int N3,unsigned int N4,unsigned int L,unsigned int L3,unsigned int L4
+    )
 {
   if(row==N-1-jmark){
     rd|=L;
@@ -1531,12 +1639,10 @@ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,i
     SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     return;
   }
-  int bit;
-  int nextfree;
   while(free>0){
-    bit=free&(-free);
+    unsigned int bit=free&(-free);
     free-=bit;
-    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree>0){
       SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree ,jmark,endmark,mark1,mark2,tempcounter,N,N3,N4,L,L3,L4);
     }
