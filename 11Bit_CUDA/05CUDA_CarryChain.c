@@ -373,7 +373,7 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
     // 現在の行にクイーンを配置できる位置（自由な位置）を計算
     unsigned int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
     unsigned int bit;
-    while(free>0){
+    while(free){
       bit=free & (-free);
       free -= bit;
       // クイーンをおける場所があれば、その位置にクイーンを配置し、再帰的に次の行に進む
@@ -921,14 +921,13 @@ void SQd0B(
   unsigned int next_ld;
   unsigned int next_rd;
   unsigned int next_col;
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);;
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
-    if(nextfree>0){
+    if(nextfree){
       if(row<endmark-1){
         if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
           SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -942,24 +941,23 @@ void SQd0BkB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(nextfree>0){
-        SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);;
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -968,24 +966,23 @@ void SQd1BklB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N4=N-4;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N-4));
-      if(nextfree>0){
-        SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N4));
+      if(nextfree){
+        SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);;
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1003,14 +1000,13 @@ void SQd1B(
   unsigned int next_ld;
   unsigned int next_rd;
   unsigned int next_col;
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);;
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
-    if(nextfree>0){
+    if(nextfree){
       if(row+1<endmark){
         if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
           SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1024,24 +1020,23 @@ void SQd1BkBlB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(nextfree>0){
-        SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1056,14 +1051,13 @@ void SQd1BlB(
   unsigned int next_rd;
   unsigned int next_col;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       next_ld=((ld|bit)<<2)|1;
       next_rd=((rd|bit)>>2);
       next_col=(col|bit);
       nextfree=~(next_ld|next_rd|next_col);
-      if(nextfree>0){
+      if(nextfree){
         if(row+2<endmark){
           if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
             SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1074,11 +1068,10 @@ void SQd1BlB(
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1087,24 +1080,23 @@ void SQd1BlkB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N-3));
-      if(nextfree>0){
-        SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N3));
+      if(nextfree){
+        SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1116,21 +1108,19 @@ void SQd1BlBkB(
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(nextfree>0){
+      if(nextfree){
         SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1139,24 +1129,23 @@ void SQd1BkB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(nextfree>0){
-        SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1165,24 +1154,23 @@ void SQd2BlkB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-3)|2);
-      if(nextfree>0){
-        SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
+      if(nextfree){
+        SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1191,24 +1179,23 @@ void SQd2BklB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N4=N-4;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-4)|1);
-      if(nextfree>0){
-        SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
+      if(nextfree){
+        SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1217,24 +1204,23 @@ void SQd2BkB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(nextfree>0){
-        SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1246,21 +1232,19 @@ void SQd2BlBkB(
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(nextfree>0){
+      if(nextfree){
         SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1272,21 +1256,19 @@ void SQd2BlB(
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(nextfree>0){
+      if(nextfree){
         SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1295,24 +1277,23 @@ void SQd2BkBlB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N-3)));
-      if(nextfree>0){
-        SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N-3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+      if(nextfree){
+        SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1332,14 +1313,13 @@ void SQd2B(
   unsigned int next_ld;
   unsigned int next_rd;
   unsigned int next_col;
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
-    if(nextfree>0){
+    if(nextfree){
       if(row<endmark-1){
         if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
           SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1356,21 +1336,19 @@ void SQBlBjrB(
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(nextfree>0){
+      if(nextfree){
         SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1379,24 +1357,23 @@ void SQBkBlBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N-3)));
-      if(nextfree>0){
-        SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N-3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+      if(nextfree){
+        SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1410,21 +1387,19 @@ void SQBjrB(
   if(row==jmark){
     free&=(~1);
     ld|=1;
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-      if(nextfree>0){
+      if(nextfree){
         SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1442,14 +1417,13 @@ void SQB(
   unsigned int next_ld;
   unsigned int next_rd;
   unsigned int next_col;
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
     nextfree=~(next_ld|next_rd|next_col);
-    if(nextfree>0){
+    if(nextfree){
       if(row<endmark-1){
         if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0){
           SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1467,21 +1441,19 @@ void SQBlBkBjrB(
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
+    while(free){
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(nextfree>0){
+      if(nextfree){
         SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1492,22 +1464,21 @@ void SQBkBjrB(
 {
   unsigned int bit;
   unsigned int nextfree;
+  unsigned int N3=N-3;
   if(row==mark2){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(nextfree>0){
-        SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1516,24 +1487,23 @@ void SQBklBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N4=N-4;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-4)|1);
-      if(nextfree>0){
-        SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
+      if(nextfree){
+        SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1542,45 +1512,43 @@ void SQBlkBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N3=N-3;
   unsigned int bit;
   unsigned int nextfree;
   if(row==mark1){
-    while(free>0){
-      bit=free&(-free);
-      free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-3)|2);
-      if(nextfree>0)
-        SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
+      if(nextfree)
+        SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-// for d <big>
 void SQBjlBkBlBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
+  unsigned int N1=N-1;
   unsigned int bit;
   unsigned int nextfree;
-  if(row==N-1-jmark){
-    rd|=1<<(N-1);
-    free&=~1<<(N-1);
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
     SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
     return;
   }
-  while(free>0){
-    bit=free&(-free);
-    free-=bit;
+  while(free){
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+    if(nextfree){
       SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1589,17 +1557,19 @@ void SQBjlBlBkBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
-  if(row==N-1-jmark){
-    rd|=1<<(N-1);
-    free&=~1<<(N-1);
+  unsigned int N1=N-1;
+  unsigned int bit;
+  unsigned int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
     SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
     return;
   }
-  while(free>0){
-    unsigned int bit=free&(-free);
-    free-=bit;
-    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
       SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1608,17 +1578,19 @@ void SQBjlBklBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
-  if(row==N-1-jmark){
-    rd|=1<<(N-1);
-    free&=~1<<(N-1);
+  unsigned int N1=N-1;
+  unsigned int bit;
+  unsigned int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
     SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
     return;
   }
-  while(free>0){
-    unsigned int bit=free&(-free);
-    free-=bit;
-    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
       SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
@@ -1627,17 +1599,19 @@ void SQBjlBlkBjrB(
     unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,long* tempcounter,unsigned int N
     )
 {
-  if(row==N-1-jmark){
-    rd|=1<<(N-1);
-    free&=~1<<(N-1);
+  unsigned int N1=N-1;
+  unsigned int bit;
+  unsigned int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
     SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
     return;
   }
-  while(free>0){
-    unsigned int bit=free&(-free);
-    free-=bit;
-    unsigned int nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(nextfree>0){
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
       SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree ,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
