@@ -1,0 +1,39 @@
+// 実行ファイルは a.out
+// buildとdebug ができます Fn+F5
+// Ctrl+Shift+B でビルドを行う
+{
+  "version": "2.0.0",
+  "tasks":[
+    {
+      "label": "cuda_build",  //vscode上で表示されるタスク名
+      "type": "shell",        //shell or process 
+      "command": "nvcc",      //コマンド名
+      "args": [               //コマンドに渡す引数
+        "-g",
+        "-G",
+        "-O0",
+        "-pg",
+        "${file}"
+      ], 
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "c",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "${file}",
+        "-pthread",
+       
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
+ 
