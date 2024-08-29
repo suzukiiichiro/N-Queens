@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# $ bash MAIN.SH Main4.c gcc
+
+
 : '
 # Java Main.java
 17:         95815104               0            00:12.79
@@ -11,6 +14,8 @@
 17:         95815104               0     000:00:00:13.77
 # GCC Main3.c
 17:         95815104               0     000:00:00:12.80
+# GCC Main4.c
+17:         95815104               0     000:00:00:12.79
 # GCC Symmetry
 17:         95815104        11977939               24.08
 # GCC Pthread
@@ -41,9 +46,9 @@ function func_Java(){
 function func_gcc(){
   # コンパイル
   # gcc $gccSourceFile ;
-  # gcc -Wall -W -O3 -g -ftrapv -std=c99 $gccSourceFile ;
+  # gcc -Wall -W -O3 -ftrapv -std=c99 -Wno-sign-compare $gccSourceFile&& ./a.out ;
   # g++ -O3 -mtune=native -march=native -mfpmath=both $gccSourceFile && ./a.out  
-  g++ -O3 -mtune=native -march=native $gccSourceFile && ./a.out  
+  g++ -O3 -mtune=native -march=native -falign-loops -fgcse-after-reload -finline-functions -finline-functions-called-once -fipa-cp-clone -fpredictive-commoning -ftree-vectorize -funswitch-loops -fmove-loop-invariants $gccSourceFile && ./a.out  
 
 }
 if [ "java" == "$2" ];then

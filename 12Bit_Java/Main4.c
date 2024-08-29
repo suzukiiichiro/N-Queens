@@ -446,7 +446,7 @@ long calcSolutions(ConstellationArrayList* constellations,long solutions){
   Constellation* c;
   for(unsigned int i=0;i<constellations->size;i++){
     c=&constellations->data[i];
-    if(c->solutions >= 0){
+    if(c->solutions > 0){
       solutions += c->solutions;
     }
   }
@@ -504,7 +504,7 @@ void execSolutions(ConstellationArrayList* constellations,int N){
       どのソリングアルゴリズムを使うかを決めるための大きなケースの区別
       クイーンjがコーナーから2列以上離れている場合
     */
-    if(j<N-3){
+    if(j<(N-3)){
       jmark=j+1;
       endmark=N-2;
       /**
@@ -569,7 +569,7 @@ void execSolutions(ConstellationArrayList* constellations,int N){
           }
         }
       }
-    }else if(j==N-3){// クイーンjがコーナーからちょうど2列離れている場合。
+    }else if(j==(N-3)){// クイーンjがコーナーからちょうど2列離れている場合。
      // これは、最終行が常にN-2行になることを意味する。
       endmark=N-2;
       if(k<l){
@@ -644,12 +644,12 @@ void execSolutions(ConstellationArrayList* constellations,int N){
                 SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{// kが末尾の場合
-              if(l != N-3){// lがkの直前でない場合
+              if(l != (N-3)){// lがkの直前でない場合
                 mark2=l-1;
-                endmark=N-3;
+                endmark=(N-3);
                 SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lがkの直前にある場合
-                endmark=N-4;
+                endmark=(N-4);
                 SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }
@@ -659,7 +659,7 @@ void execSolutions(ConstellationArrayList* constellations,int N){
               endmark=N-2;
               SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{// kが末尾の場合
-              endmark=N-3;
+              endmark=(N-3);
               SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }
@@ -706,16 +706,16 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
       かつ効率的に行えるようになります。
       最後のcolを通過する
     */
-    for(unsigned int l=k+1;l<N-1;l++){
+    for(int l=k+1;l<(N-1);l++){
       /**
         i: 最初の行（上端）に配置されるクイーンの列のインデックス。
         最初の行を通過する
         k よりも下の行に配置することで、ボード上の対称性や回転対称性を考慮し
         て、重複した解を避けるための配慮がされています。
       */
-      for(unsigned int i=k+1;i<N-1;i++){
+      for(int i=k+1;i<(N-1);i++){
         // i==N-1-lは、行iが列lの「対角線上」にあるかどうかをチェックしています。
-        if(i==N-1-l){
+        if(i==(N-1)-l){
           continue;
         }
         /**
@@ -748,8 +748,8 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     j は最後の行に置かれるクイーンの列インデックスです。これは 1 から N-3 ま
     での値を取ります。
   */
-  for(unsigned int j=1;j<N-2;j++){// jは最終行のクイーンのidx
-    for(unsigned int l=j+1;l<N-1;l++){// lは最終列のクイーンのidx
+  for(int j=1;j<N-2;j++){// jは最終行のクイーンのidx
+    for(int l=j+1;l<(N-1);l++){// lは最終列のクイーンのidx
       int_hashset_add(ijklList,toijkl(0,j,0,l));
     }
   }
@@ -846,7 +846,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     setPreQueens(ld,rd,col,k,l,1,j==N-1 ? 3 : 4,LD,RD,&counter,constellations,N);
     currentSize=constellations->size;
      // jklとsymとstartはすべてのサブコンステレーションで同じである
-    for(unsigned int a=0;a<counter;a++){
+    for(int a=0;a<counter;a++){
       constellations->data[currentSize-a-1].startijkl |= toijkl(i,j,k,l);
     }
   }
@@ -870,7 +870,7 @@ int main(int argc,char** argv){
   IntHashSet* ijklList;
   ConstellationArrayList* constellations;
   long TOTAL;
-  int UNIQUE;
+  long UNIQUE;
   int ss;
   int ms;
   int dd;
@@ -948,9 +948,9 @@ void SQd0BkB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<N-3);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
       if(nextfree>0){
-        SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<N-3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -974,9 +974,9 @@ void SQd1BklB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<N-4);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N-4));
       if(nextfree>0){
-        SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<N-4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1030,9 +1030,9 @@ void SQd1BkBlB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<N-3);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
       if(nextfree>0){
-        SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<N-3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1093,9 +1093,9 @@ void SQd1BlkB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<N-3);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N-3));
       if(nextfree>0){
-        SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<N-3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1145,9 +1145,9 @@ void SQd1BkB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<N-3);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
       if(nextfree>0){
-        SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<N-3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1171,9 +1171,9 @@ void SQd2BlkB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<N-3|2);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-3)|2);
       if(nextfree>0){
-        SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<N-3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1197,9 +1197,9 @@ void SQd2BklB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<N-4|1);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-4)|1);
       if(nextfree>0){
-        SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<N-4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1223,9 +1223,9 @@ void SQd2BkB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<N-3);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
       if(nextfree>0){
-        SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<N-3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1496,9 +1496,9 @@ void SQBkBjrB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<N-3);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
       if(nextfree>0){
-        SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<N-3,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N-3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1522,9 +1522,9 @@ void SQBklBjrB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<N-4|1);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-4)|1);
       if(nextfree>0){
-        SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<N-4,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N-4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
     return;
@@ -1548,9 +1548,9 @@ void SQBlkBjrB(
     while(free>0){
       bit=free&(-free);
       free-=bit;
-      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<N-3|2);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N-3)|2);
       if(nextfree>0)
-        SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<N-3,col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N-3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
     return;
   }
