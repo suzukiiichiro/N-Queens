@@ -863,7 +863,17 @@ void f(int unuse,char* argv[]){
 int main(int argc,char** argv){
   f(argc,argv);
   int min=4;
+  /**
+   * プロファイラの実行
+   * $ bash MAIN.SH gccSourceFile gmon
+   * カレントディレクトリに GMON.OUT が生成される
+   * GMON.OUT は実行が「完了したら」生成される
+   */
+  // GMON
+  //int min=15;
   int targetN=17;
+  // GMON
+  //int targetN=15;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");

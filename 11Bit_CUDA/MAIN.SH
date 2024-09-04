@@ -54,14 +54,22 @@ function func_gcc(){
   g++ -O3 -mtune=native -march=native -falign-loops -fgcse-after-reload -finline-functions -finline-functions-called-once -fipa-cp-clone -fpredictive-commoning -ftree-vectorize -funswitch-loops -fmove-loop-invariants $gccSourceFile && ./a.out  
 
 }
+function func_gmon(){
+  # 「実行が完了したら」 gmon.out が生成される
+  > GMON.OUT;
+  gcc -pg -std=c99 $gccSourceFile && gprof a.out gmon.out | tee -a  GMON.OUT ;
+}
 if [ "java" == "$2" ];then
   func_Java ;
 elif [ "gcc" == "$2" ];then
   func_gcc;
+elif [ "gmon" == "$2" ];then
+  func_gmon;
 else 
   echo ""
   echo "usage"
-  echo "$ bash MAIN.SH sourcefile java";
-  echo "$ bash MAIN.SH sourcefile gcc";
+  echo "$ bash MAIN.SH sourceFile java";
+  echo "$ bash MAIN.SH sourceFile gcc";
+  echo "$ bash MAIN.SH sourceFile gmon";
 fi
 
