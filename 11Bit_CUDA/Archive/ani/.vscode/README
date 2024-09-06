@@ -1,0 +1,34 @@
+
+
+１．秘密鍵ファイルpemファイルを配置して 600 に
+$ cp nlpkey.pem ~/.ssh/
+$ cd ~/.ssh/
+$ chmod 600 nlpkey.pem
+
+２．~/.ssh ディレクトリで接続テスト
+AWSの「接続」からコマンドをコピーして実行してみる
+$ ~/.ssh/
+$ ssh -i nlpkey.pem ec2-user@ec2-35-88-182-80.us-west-2.compute.amazonaws.com
+
+
+３．~/.ssh/config に以下を追記。 HostNameは都度変わります。
+$ vim ~/.ssh/config
+Host amazonaws 
+  HostName ec2-35-88-182-80.us-west-2.compute.amazonaws.com 
+  IdentityFile ~/.ssh/nlpkey.pem
+  User ec2-user 
+  AddKeysToAgent yes
+  UseKeychain yes
+
+４．VSCodeで "remote ssh" で拡張機能を検索してインストール
+５．VSCodeの画面左下 >< アイコンをクリックしてssh接続
+６．「ホストに接続する」を選択
+７．amazonawsを選択
+８．別ウインドウでVSCodeが起動して接続完了
+９．フォルダを開く「/home/ec2-user/GitHub/N-Queens/」までたどる
+１０．「はい、作成者を信頼します」をクリック
+１１．vscodeで拡張機能をインストールする
+vscodeでsshでログインできたら以下の拡張機能をインストール
+c/c++
+Nsight Visual Studio
+
