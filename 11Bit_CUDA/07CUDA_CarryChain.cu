@@ -46,13 +46,13 @@ int ffmin(int a,int b)
 // #define toijkl(i,j,k,l)  ( (i<<15)+(j<<10)+(k<<5)+l )
 int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l; }
 // #define geti(ijkl) ( ijkl>>15 )
-int geti(int ijkl){ return ijkl>>15; }
+__host__ __device__ int geti(int ijkl){ return ijkl>>15; }
 // #define getj(ijkl) ( (ijkl>>10) & 31 )
-int getj(int ijkl){ return (ijkl>>10) & 31; }
+__host__ __device__ int getj(int ijkl){ return (ijkl>>10) & 31; }
 // #define getk(ijkl) ( (ijkl>>5) & 31 )
-int getk(int ijkl){ return (ijkl>>5) & 31; }
+__host__ __device__ int getk(int ijkl){ return (ijkl>>5) & 31; }
 // #define getl(ijkl) ( ijkl & 31 )
-int getl(int ijkl){ return ijkl & 31; }
+__host__ __device__ int getl(int ijkl){ return ijkl & 31; }
 /**
   左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
   各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
@@ -72,14 +72,14 @@ int rot90(int ijkl,int N){ return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+
   開始コンステレーションが回転90に対して対称である場合
 */
 // #define symmetry90(ijkl,N) ( ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)) )
-int symmetry90(int ijkl,int N){
+__host__ __device__ int symmetry90(int ijkl,int N){
   return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl));
 }
 /**
   この開始コンステレーションで、見つかった解がカウントされる頻度
 */
 // #define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
-int symmetry(int ijkl,int N){
+__host__ __device__ int symmetry(int ijkl,int N){
   // コンステレーションをrot180で対称に開始するか？
   if(geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)){
     if(symmetry90(ijkl,N)){
@@ -128,13 +128,13 @@ void int_hashset_add(IntHashSet* set,int value);
 // ビット操作関数プロトタイプ
 int checkRotations(IntHashSet* set,int i,int j,int k,int l,int N);
 int toijkl(int i,int j,int k,int l);
-int geti(int sc);
-int getj(int sc);
-int getk(int sc);
-int getl(int sc);
+__device__ int geti(int sc);
+__device__ int getj(int sc);
+__device__ int getk(int sc);
+__device__ int getl(int sc);
 int rot90(int ijkl,int N);
 int symmetry90(int ijkl,int N);
-int symmetry(int ijkl,int N);
+__device__ int symmetry(int ijkl,int N);
 int mirvert(int ijkl,int N);
 */
 /**
@@ -170,88 +170,88 @@ void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayLis
 /**
  * 関数プロトタイプ
  */
-void SQBkBlBjrB(
+__device__ void SQBkBlBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBklBjrB(
+__device__ void SQBklBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBlBjrB(
+__device__ void SQBlBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBjrB(
+__device__ void SQBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQB(
+__device__ void SQB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBlBkBjrB(
+__device__ void SQBlBkBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBlkBjrB(
+__device__ void SQBlkBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBkBjrB(
+__device__ void SQBkBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBjlBkBlBjrB(
+__device__ void SQBjlBkBlBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBjlBklBjrB(
+__device__ void SQBjlBklBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBjlBlBkBjrB(
+__device__ void SQBjlBlBkBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQBjlBlkBjrB(
+__device__ void SQBjlBlkBjrB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BkBlB(
+__device__ void SQd2BkBlB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BklB(
+__device__ void SQd2BklB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BlB(
+__device__ void SQd2BlB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2B(
+__device__ void SQd2B(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BlBkB(
+__device__ void SQd2BlBkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BlkB(
+__device__ void SQd2BlkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BkBlB(
+__device__ void SQd1BkBlB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BklB(
+__device__ void SQd1BklB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BlB(
+__device__ void SQd1BlB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1B(
+__device__ void SQd1B(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BlBkB(
+__device__ void SQd1BlBkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BlkB(
+__device__ void SQd1BlkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd0B(
+__device__ void SQd0B(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd0BkB(
+__device__ void SQd0BkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd2BkB(
+__device__ void SQd2BkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
-void SQd1BkB(
+__device__ void SQd1BkB(
     int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     );
 
@@ -582,7 +582,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
       rd |= (1<<(N-1)>>j)<<(N-2-start);// 符号ビットを占有する！
     }
 
-    free=~(ld | rd | col);
+    int free=~(ld | rd | col);
     int jmark = j + 1;
     int endmark = N - 2;
     int mark1, mark2;
@@ -955,7 +955,7 @@ int main(int argc,char** argv){
   f(argc,argv);
   int min=4;
   int targetN=17;
-  int workgroupSize=256;
+  int workgroupSize=512;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
@@ -979,7 +979,7 @@ int main(int argc,char** argv){
     ConstellationArrayList* fillconstellations = fillWithTrash(constellations, workgroupSize);
     int totalSize = fillconstellations->size;
     for (int offset = 0; offset < totalSize; offset += workgroupSize) {
-      int currentSize = min(workgroupSize, totalSize - offset);
+      int currentSize = fmin(workgroupSize, totalSize - offset);
       Constellation* deviceMemory;
       cudaMalloc((void**)&deviceMemory, workgroupSize * sizeof(Constellation));
       // デバイスにコピー
@@ -988,7 +988,7 @@ int main(int argc,char** argv){
       int blockSize = 256;  // スレッド数
       int gridSize = (currentSize + blockSize - 1) / blockSize;  // グリッドサイズ
       // カーネルを実行
-      execSolutionsKernel<<<gridSize, blockSize>>>(deviceMemory, N, currentSize);
+      execSolutionsKernel<<<gridSize, blockSize>>>(deviceMemory, size, currentSize);
     
       // カーネル実行後にデバイスメモリからホストにコピー
       cudaMemcpy(&fillconstellations->data[offset], deviceMemory, currentSize * sizeof(Constellation), cudaMemcpyDeviceToHost);
@@ -1022,7 +1022,7 @@ int main(int argc,char** argv){
 /**
  * 関数プロトタイプ
  */
-void SQd0B(
+__device__ void SQd0B(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1051,7 +1051,7 @@ void SQd0B(
     }
   }
 }
-void SQd0BkB(
+__device__ void SQd0BkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1076,7 +1076,7 @@ void SQd0BkB(
     }
   }
 }
-void SQd1BklB(
+__device__ void SQd1BklB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1101,7 +1101,7 @@ void SQd1BklB(
     }
   }
 }
-void SQd1B(
+__device__ void SQd1B(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1130,7 +1130,7 @@ void SQd1B(
     }
   }
 }
-void SQd1BkBlB(
+__device__ void SQd1BkBlB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1155,7 +1155,7 @@ void SQd1BkBlB(
     }
   }
 }
-void SQd1BlB(
+__device__ void SQd1BlB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1190,7 +1190,7 @@ void SQd1BlB(
     }
   }
 }
-void SQd1BlkB(
+__device__ void SQd1BlkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1215,7 +1215,7 @@ void SQd1BlkB(
     }
   }
 }
-void SQd1BlBkB(
+__device__ void SQd1BlBkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1239,7 +1239,7 @@ void SQd1BlBkB(
     }
   }
 }
-void SQd1BkB(
+__device__ void SQd1BkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1264,7 +1264,7 @@ void SQd1BkB(
     }
   }
 }
-void SQd2BlkB(
+__device__ void SQd2BlkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1289,7 +1289,7 @@ void SQd2BlkB(
     }
   }
 }
-void SQd2BklB(
+__device__ void SQd2BklB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1314,7 +1314,7 @@ void SQd2BklB(
     }
   }
 }
-void SQd2BkB(
+__device__ void SQd2BkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1339,7 +1339,7 @@ void SQd2BkB(
     }
   }
 }
-void SQd2BlBkB(
+__device__ void SQd2BlBkB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1363,7 +1363,7 @@ void SQd2BlBkB(
     }
   }
 }
-void SQd2BlB(
+__device__ void SQd2BlB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1387,7 +1387,7 @@ void SQd2BlB(
     }
   }
 }
-void SQd2BkBlB(
+__device__ void SQd2BkBlB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1412,7 +1412,7 @@ void SQd2BkBlB(
     }
   }
 }
-void SQd2B(
+__device__ void SQd2B(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1443,7 +1443,7 @@ void SQd2B(
     }
   }
 }
-void SQBlBjrB(
+__device__ void SQBlBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1467,7 +1467,7 @@ void SQBlBjrB(
     }
   }
 }
-void SQBkBlBjrB(
+__device__ void SQBkBlBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1492,7 +1492,7 @@ void SQBkBlBjrB(
     }
   }
 }
-void SQBjrB(
+__device__ void SQBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1518,7 +1518,7 @@ void SQBjrB(
     }
   }
 }
-void SQB(
+__device__ void SQB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1548,7 +1548,7 @@ void SQB(
     }
   }
 }
-void SQBlBkBjrB(
+__device__ void SQBlBkBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1572,7 +1572,7 @@ void SQBlBkBjrB(
     }
   }
 }
-void SQBkBjrB(
+__device__ void SQBkBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1597,7 +1597,7 @@ void SQBkBjrB(
     }
   }
 }
-void SQBklBjrB(
+__device__ void SQBklBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1622,7 +1622,7 @@ void SQBklBjrB(
     }
   }
 }
-void SQBlkBjrB(
+__device__ void SQBlkBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1646,7 +1646,7 @@ void SQBlkBjrB(
     }
   }
 }
-void SQBjlBkBlBjrB(
+__device__ void SQBjlBkBlBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1667,7 +1667,7 @@ void SQBjlBkBlBjrB(
     }
   }
 }
-void SQBjlBlBkBjrB(
+__device__ void SQBjlBlBkBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1688,7 +1688,7 @@ void SQBjlBlBkBjrB(
     }
   }
 }
-void SQBjlBklBjrB(
+__device__ void SQBjlBklBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
@@ -1709,7 +1709,7 @@ void SQBjlBklBjrB(
     }
   }
 }
-void SQBjlBlkBjrB(
+__device__ void SQBjlBlkBjrB(
     int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
     )
 {
