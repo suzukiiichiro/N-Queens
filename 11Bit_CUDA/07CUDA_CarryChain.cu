@@ -400,10 +400,10 @@ void addTrashConstellation(ConstellationArrayList* list, int ijkl) {
 ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize) {
     // コンステレーションのリストをソート
     sortConstellations(constellations);
-
+    
     // 新しいリストを作成
     ConstellationArrayList* newConstellations = create_constellation_arraylist();
-
+    
     // 最初のコンステレーションの currentJkl を取得
     int currentJkl = constellations->data[0].startijkl & ((1 << 15) - 1);
 
@@ -421,7 +421,7 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, in
             }
             currentJkl = c.startijkl & ((1 << 15) - 1);
         }
-
+        
         // コンステレーションを追加
         add_constellation(c.ld, c.rd, c.col, c.startijkl, newConstellations);
     }
@@ -430,7 +430,7 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, in
     while (newConstellations->size % workgroupSize != 0) {
         addTrashConstellation(newConstellations, currentJkl);
     }
-
+    
     return newConstellations;
 }
 
@@ -495,13 +495,13 @@ int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
   return 0;
 }
 /**
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
+  i,j,k,lをijklに変換し、特定のエントリーを取得する関数 
   各クイーンの位置を取得し、最も左上に近い位置を見つけます
   最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近
   い標準形に変換します。
   最小値を持つクイーンの位置を最下行に移動させる
   i は最初の行（上端） 90度回転2回
-  j は最後の行（下端） 90度回転0回
+  j は最後の行（下端） 90度回転0回　
   k は最初の列（左端） 90度回転3回
   l は最後の列（右端） 90度回転1回
   優先順位が l>k>i>j の理由は？
@@ -569,7 +569,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
     int rd = constellation->rd >> 1;
     int col = (constellation->col >> 1) | (~((1 << (N - 2)) - 1));
     long tempcounter = 0;
-
+    
     int start = constellation->startijkl >> 20;
     int LD = (1 << (N - 1) >> j) | (1 << (N - 1) >> l);
 
@@ -615,7 +615,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
           }else{// kとlの両方が開始前にすでに来ていた場合
             SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
-        }else{// l<k
+        }else{// l<k 
           mark1=l-1;
           mark2=k-1;
           if(start<k){// 少なくともkがまだ来ていない場合
@@ -651,7 +651,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
           mark2=k-1;
           if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
             SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
-          }else{// kがlの直後に来る場合
+          }else{// kがlの直後に来る場合 
             SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }
@@ -770,7 +770,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
     }
     // 完成した開始コンステレーションを削除する。
     constellation->solutions=tempcounter * symmetry(ijkl,N);
-
+  
 }
 /**
  *
@@ -809,7 +809,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
           continue;
         }
         /**
-            j: 最後の行（下端）に配置されるクイーンの列のインデックス。
+            j: 最後の行（下端）に配置されるクイーンの列のインデックス。  
             最後の行を通過する
         */
         for(int j=N-k-2;j>0;j--){
@@ -955,7 +955,7 @@ int main(int argc,char** argv){
   f(argc,argv);
   int min=4;
   int targetN=17;
-  int workgroupSize=64;
+  int workgroupSize=512;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
@@ -978,22 +978,21 @@ int main(int argc,char** argv){
     // ソート
     ConstellationArrayList* fillconstellations = fillWithTrash(constellations, workgroupSize);
     int totalSize = fillconstellations->size;
-    int steps=24576;
-    for (int offset = 0; offset < totalSize; offset += steps) {
-      int currentSize = fmin(steps, totalSize - offset);
+    for (int offset = 0; offset < totalSize; offset += workgroupSize) {
+      int currentSize = fmin(workgroupSize, totalSize - offset);
       Constellation* deviceMemory;
-      cudaMalloc((void**)&deviceMemory, currentSize * sizeof(Constellation));
+      cudaMalloc((void**)&deviceMemory, workgroupSize * sizeof(Constellation));
       // デバイスにコピー
       cudaMemcpy(deviceMemory, &fillconstellations->data[offset], currentSize * sizeof(Constellation), cudaMemcpyHostToDevice);
-
-      int blockSize = workgroupSize;  // スレッド数
+    
+      int blockSize = 256;  // スレッド数
       int gridSize = (currentSize + blockSize - 1) / blockSize;  // グリッドサイズ
       // カーネルを実行
       execSolutionsKernel<<<gridSize, blockSize>>>(deviceMemory, size, currentSize);
-
+    
       // カーネル実行後にデバイスメモリからホストにコピー
       cudaMemcpy(&fillconstellations->data[offset], deviceMemory, currentSize * sizeof(Constellation), cudaMemcpyDeviceToHost);
-
+    
       // 取得したsolutionsをホスト側で集計
       for (int i = 0; i < currentSize; i++) {
         TOTAL += fillconstellations->data[offset + i].solutions;
@@ -1017,7 +1016,7 @@ int main(int argc,char** argv){
     free_int_hashset(ijklList);
     free_constellation_arraylist(constellations);
     free_constellation_arraylist(fillconstellations);
-  }
+  } 
   return 0;
 }
 /**
