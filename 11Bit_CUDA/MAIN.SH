@@ -18,6 +18,14 @@
 17:         95815104               0     000:00:00:12.74
 # 05CUDA_CarryChain.c 20240829
 17:         95815104               0     000:00:00:12.71
+# 06CUDA_CarryChain.c 20240924
+17:         95815104               0     000:00:00:12.11
+
+
+# 04CUDA_Symmetry_BitBoard.cu
+17:         95815104        11977939     000:00:00:00.26
+# 07CUDA_CarryChain.cu 20240924
+17:         95815104               0     000:00:00:03.41
 
 # GCC Symmetry
 17:         95815104        11977939               24.08
@@ -30,6 +38,7 @@
 # ソースファイルの指定
 JavaSourceFile="$1";
 gccSourceFile="$1";
+nvccSourceFile="$1";
 #
 # 実行方法
 #
@@ -59,17 +68,24 @@ function func_gmon(){
   > GMON.OUT;
   gcc -pg -std=c99 $gccSourceFile && gprof a.out gmon.out | tee -a  GMON.OUT ;
 }
+function func_cuda(){
+  # nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && ./a.out -n
+  nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && ./a.out -n
+}
 if [ "java" == "$2" ];then
   func_Java ;
 elif [ "gcc" == "$2" ];then
   func_gcc;
 elif [ "gmon" == "$2" ];then
   func_gmon;
+elif [ "nvcc" == "$2" ];then
+  func_cuda;
 else 
   echo ""
   echo "usage"
   echo "$ bash MAIN.SH sourceFile java";
   echo "$ bash MAIN.SH sourceFile gcc";
   echo "$ bash MAIN.SH sourceFile gmon";
+  echo "$ bash MAIN.SH sourceFile nvcc";
 fi
 
