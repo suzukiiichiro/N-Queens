@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # 使い方
-# $ bash trialMain.sh
+# $ bash trialMain.sh sourceFile
 #
 # 
 
@@ -20,11 +20,8 @@ rm -fr a.out;
 :>OUT
 clear;
 date;
-nvcc -O3 -arch=sm_61 -m64 04CUDA_Symmetry_BitBoard.cu && ./a.out -n|tee -a OUT
 
-# デタッチする（離れる）
-#  + d
-#
-# アタッチする
-# screen -r 
+#nvcc -O3 -arch=sm_61 -m64 $sourceFile && ./a.out -n|tee -a OUT
+
+nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false $sourceFile && POCL_DEBUG=all ./a.out -n ;
 
