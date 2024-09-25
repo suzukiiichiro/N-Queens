@@ -69,8 +69,10 @@ function func_gmon(){
   gcc -pg -std=c99 $gccSourceFile && gprof a.out gmon.out | tee -a  GMON.OUT ;
 }
 function func_cuda(){
-  # nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && ./a.out -n
-  nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && ./a.out -n
+  # POCL_DEBUG=all デバッグ出力を全開に
+  nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && POCL_DEBUG=all ./a.out -n ;
+  #nvcc -O3 -arch=sm_61 -m64 $nvccSourceFile && ./a.out -n
+  #nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false $nvccSourceFile && POCL_DEBUG=all ./a.out -n ;
 }
 if [ "java" == "$2" ];then
   func_Java ;
