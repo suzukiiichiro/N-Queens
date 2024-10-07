@@ -314,5 +314,5 @@ NQueen={}; NQueen.new=function()
   end
   return setmetatable( this,{__index=NQueen} );
 end
-  --
+--
 NQueen.new():NQueen();

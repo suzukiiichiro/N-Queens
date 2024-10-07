@@ -1,5 +1,322 @@
 #!/usr/bin/env luajit
 
+
+NQueens08={};
+NQueens08.new=function()
+  local this={
+    TOTAL=0;
+    UNIQUE=0;
+    COUNT2=0;
+    COUNT4=0;
+    COUNT8=0;
+    bit;
+    board={};
+    trial={};
+    scratch={};
+  };
+  function NQueens08:secstotime(secs)
+    sec=math.floor(secs);
+    if(sec>59) then
+    local hour = math.floor(sec*0.000277777778)
+    local minute = math.floor(sec*0.0166666667) - hour*60
+    sec=sec-hour*3600-minute*60;
+    if(sec<10)then sec="0"..sec end
+    if(hour<10)then hour="0"..hour end
+    if(minute<10)then minute="0"..minute end
+    return hour..":"..minute..":"..sec;
+    end
+    if(sec<10)then sec="0"..sec end
+    return "00:00:"..sec
+  end
+  function NQueens08:rotate(bf,af,size)
+    for i=0,size,1 do
+      local t=0;
+      for j=0,size,1 do
+        t=bit.bor(t,bit.lshift(bit.band(bit.rshift(bf[j],i),1),(size-j-1)));
+      end
+      af[i]=t;
+    end
+  end
+  function NQueens08:vMirror(bf,af,size)
+    local score;
+    for i=0,size,1 do
+      score=bf[i];
+      af[i]=self:rh(score,size-1)
+    end
+  end
+  function NQueens08:rh(a,size)
+    local tmp=0;
+    for i=0,size,1 do
+      if bit.band(a,bit.lshift(1,i))~=0 then
+        return bit.bor(tmp,bit.lshift(1,(size-i)));
+      end
+    end
+    return tmp;
+  end
+  function NQueens08:intncmp(lt,rt,size)
+    local rtn=0;
+    for k=0,size,1 do
+      rtn=lt[k]-rt[k];
+      if(rtn~=0)then break; end
+    end
+    return rtn;
+  end
+  function NQueens08:rbits(byte,size)
+    local score=0;
+    for i=size,0,-1 do
+      if bit.band(bit.arshift(byte,i),1)==0 then
+        score=score+2^i;
+      end
+    end
+    return score;
+  end
+  function NQueens08:symmetryOps(size)
+    local nEquiv;
+    for i=0,size,1 do self.trial[i]=self.board[i];end
+    --90
+    self:rotate(self.trial,self.scratch,size);
+    local k=self:intncmp(self.board,self.scratch,size);
+    if(k>0)then return; end
+    if(k==0)then nEquiv=2;
+    else
+      --180
+      self:rotate(self.scratch,self.trial,size);
+      k=self:intncmp(self.board,self.trial,size);
+      if(k>0)then return; end
+      if(k==0)then nEquiv=4;
+      else
+        --270
+        self:rotate(self.trial,self.scratch,size);
+        k=self:intncmp(self.board,self.scratch,size);
+        if(k>0)then return; end
+        nEquiv=8;
+      end
+    end
+    for i=0,size,1 do
+      self.scratch[i]=self.board[i];
+    end
+    self:vMirror(self.scratch,self.trial,size);
+    k=self:intncmp(self.board,self.trial,size);
+    if(k>0)then return; end
+    --90
+    if(nEquiv>2)then
+      self:rotate(self.trial,self.scratch,size);
+      k=self:intncmp(self.board,self.scratch,size);
+      if(k>0)then return; end
+      --180
+      if(nEquiv>4)then
+        self:rotate(self.scratch,self.trial,size);
+        k=self:intncmp(self.board,self.trial,size);
+        if(k>0)then return; end
+        --270
+        self:rotate(self.trial,self.scratch,size);
+        k=self:intncmp(self.board,self.scratch,size);
+        if(k>0)then return ; end
+      end
+    end
+    if(nEquiv==2)then self.COUNT2=self.COUNT2+1;end
+    if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end
+    if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
+  end
+  function NQueens08:NQueens_rec(size,min,left,down,right)
+    local MASK=bit.lshift(1,size)-1;
+    local bitmap=bit.band(MASK,self:rbits(bit.bor(left,down,right),size-1));
+    if min==size then
+      if bitmap==0 then
+        self.board[min]=bitmap;
+        self:symmetryOps(size);
+      end
+    else
+      if min~=0 then
+        lim=size;
+      else
+        lim=(size+1)/2;
+      end
+      for s=min+1,lim,1 do
+        if bitmap==0 then
+          break;
+        end
+        self.BIT=bit.band(-bitmap,bitmap);
+        self.board[min]=self.BIT;
+        bitmap=bit.bxor(bitmap,self.BIT);
+        self:NQueens_rec(size,min+1,bit.lshift(bit.bor(left,self.BIT),1),bit.bor(down,self.BIT),bit.rshift(bit.bor(right,self.BIT),1));
+      end
+    end
+  end
+  function NQueens08:NQueens()
+    local max=15;
+    print(" N:            Total       Unique    hh:mm:ss");
+    for size=2,max,1 do
+      self.TOTAL=0;
+      self.UNIQUE=0;
+      self.COUNT2=0;
+      self.COUNT4=0;
+      self.COUNT8=0;
+      for k=0,size-1,1 do self.board[k]=k; end
+      s=os.time();
+      self:NQueens_rec(size,0,0,0,0);
+      self.TOTAL=self.COUNT2*2+self.COUNT4*4+self.COUNT8*8;
+      self.UNIQUE=self.COUNT2+self.COUNT4+self.COUNT8;
+      print(string.format("%2d:%17d%13d%12s",size,self.TOTAL,self.UNIQUE,self:secstotime(os.difftime(os.time(),s))));
+    end 
+  end
+  return setmetatable(this,{__index=NQueens08});
+end
+
+NQueens07={};
+NQueens07.new=function()
+  local this={
+    TOTAL=0;
+    UNIQUE=0;
+    COUNT2=0;
+    COUNT4=0;
+    COUNT8=0;
+    bit;
+    board={};
+    trial={};
+    scratch={};
+  };
+  function NQueens07:rbits(byte,size)
+    local score=0;
+    for i=size,0,-1 do
+      if bit.band(bit.arshift(byte,i),1)==0 then
+        score=score+2^i;
+      end
+    end
+    return score;
+  end 
+  function NQueens07:rotate(bf,af,size)
+    for i=0,size,1 do
+      local t=0;
+      for j=0,size,1 do
+        --t=t|((bf[j]>>i)&1)<<(size-j-1); 
+        t=bit.bor(t,bit.lshift(bit.band(bit.rshift(bf[j],i),1),(size-j-1)));
+      end
+      af[i]=t;
+    end
+  end
+  function NQueens07:vMirror(bf,af,size)
+    local score;
+    for i=0,size,1 do
+      score=bf[i];
+      af[i]=self:rh(score,size-1);
+    end
+  end
+  function NQueens07:rh(a,size)
+    local tmp=0;
+    for i=0,size,1 do
+      --if(a&(1<<i))then  
+      if bit.band(a,bit.lshift(1,i))~=0 then
+        --return tmp|(1<<(size-i)); 
+        return bit.bor(tmp,bit.lshift(1,(size-i)));
+      end
+    end
+    return tmp;
+  end
+  function NQueens07:intncmp(lt,rt,size)
+    local rtn=0;
+    for k=0,size,1 do
+      rtn=lt[k]-rt[k];
+      if(rtn~=0)then break;end
+    end
+    return rtn;
+  end
+  function NQueens07:secstotime(secs)
+    sec=math.floor(secs);
+    if(sec>59) then
+      local hour = math.floor(sec*0.000277777778);
+      local minute = math.floor(sec*0.0166666667) - hour*60;
+      sec=sec-hour*3600-minute*60;
+      if(sec<10)then sec="0"..sec end
+      if(hour<10)then hour="0"..hour end
+      if(minute<10)then minute="0"..minute end
+      return hour..":"..minute..":"..sec;
+    end
+    if(sec<10)then sec="0"..sec end;
+    return "00:00:"..sec;
+  end
+  function NQueens07:symmetryOps(size)
+    local nEquiv;
+    for i=0,size,1 do self.trial[i]=self.board[i]; end
+    -- 90
+    self:rotate(self.trial,self.scratch,size);
+    local k=self:intncmp(self.board,self.scratch,size);
+    if(k>0)then return; end
+    if(k==0)then nEquiv=2;
+    else
+      --180
+      self:rotate(self.scratch,self.trial,size);
+      k=self:intncmp(self.board,self.trial,size);
+      if(k>0)then return; end
+      if(k==0)then nEquiv=4;
+      else
+        --270
+        self:rotate(self.trial,self.scratch,size);
+        k=self:intncmp(self.board,self.scratch,size);
+        if(k>0)then return; end
+        nEquiv=8;
+      end
+    end
+    for i=0,size,1 do
+      self.scratch[i]=self.board[i];
+    end
+    self:vMirror(self.scratch,self.trial,size);
+    k=self:intncmp(self.board,self.trial,size);
+    if(k>0)then return ;end
+    if(nEquiv>2)then
+      self:rotate(self.trial,self.scratch,size)
+      k=self:intncmp(self.board,self.scratch,size);
+      if(k>0)then return; end
+      if(nEquiv>4)then
+        self:rotate(self.scratch,self.trial,size);
+        k=self:intncmp(self.board,self.trial,size);
+        if(k>0)then return; end
+        self:rotate(self.trial,self.scratch,size);
+        k=self:intncmp(self.board,self.scratch,size);
+        if(k>0)then return; end
+      end
+    end
+    if(nEquiv==2)then self.COUNT2=self.COUNT2+1;end
+    if(nEquiv==4)then self.COUNT4=self.COUNT4+1;end
+    if(nEquiv==8)then self.COUNT8=self.COUNT8+1;end
+  end
+  function NQueens07:NQueens_rec(size,min,left,down,right)
+    local MASK=bit.lshift(1,size)-1;
+    local bitmap=bit.band(MASK,self:rbits(bit.bor(left,down,right),size-1));
+    if min==size then
+      if bitmap==0 then
+        self.board[min]=bitmap;
+        self:symmetryOps(size);
+      end
+    else
+      while bitmap~=0 do
+        self.BIT=bit.band(-bitmap,bitmap);
+        self.board[min]=self.BIT;
+        bitmap=bit.bxor(bitmap,self.BIT);
+        self:NQueens_rec(size,min+1,bit.lshift(bit.bor(left,self.BIT),1),bit.bor(down,self.BIT),bit.rshift(bit.bor(right,self.BIT),1));
+      end
+    end
+  end
+  function NQueens07:NQueens()
+    local max=15;
+    print(" N:            Total       Unique    hh:mm:ss");
+    for size=2,max,1 do
+      self.TOTAL=0;
+      self.UNIQUE=0;
+      self.COUNT2=0;
+      self.COUNT4=0;
+      self.COUNT8=0;
+      for k=0,size-1,1 do self.board[k]=k;end
+      s=os.time();
+      self:NQueens_rec(size,0,0,0,0);
+      self.TOTAL=self.COUNT2*2 + self.COUNT4*4 + self.COUNT8*8;
+      self.UNIQUE=self.COUNT2 + self.COUNT4 + self.COUNT8;
+      print(string.format("%2d:%17d%13d%12s",size,self.TOTAL,self.UNIQUE,self:secstotime(os.difftime(os.time(),s))));
+    end
+  end
+  return setmetatable(this,{__index=NQueens07});
+end
+
 NQueens06={};
 NQueens06.new=function()
   local this={
@@ -36,7 +353,7 @@ NQueens06.new=function()
     if min==size then
       self.TOTAL=self.TOTAL+1;
     else
-      bitmap=bit.band(mask,self:rbits(bit.bor(left,down,right),size-1));
+      bitmap=bit.band(self.MASK,self:rbits(bit.bor(left,down,right),size-1));
       while bitmap~=0 do
         BIT=bit.band(-bitmap,bitmap);
         bitmap=bit.bxor(bitmap,BIT);
@@ -491,21 +808,27 @@ NQueens01.new=function()
   return setmetatable(this,{__index=NQueens01});
 end
 
---$B%S%C%H%^%C%W(B
+--枝刈り
+NQueens08.new():NQueens();
+--
+--ビットマップ＋対象解除法
+--NQueens07.new():NQueens();
+--
+--ビットマップ
 --NQueens06.new():NQueens();
 --
---$B;^4"$j(B
+--枝刈り
 --NQueens05.new():NQueens();
 --
---$BBP>]2r=|K!(B
+--対象解除法
 --NQueens04.new():NQueens();
 --
---$B%P%C%/%H%i%C%/(B
+--バックトラック
 --NQueens03.new():NQueens();
 --
---$BG[CV%U%i%0(B
+--配置フラグ
 --NQueens02.new():NQueens(0);
 --
---$B%V%k!<%H%U%)!<%9(B
+--ブルートフォース
 --NQueens01.new():NQueens(0);
 
