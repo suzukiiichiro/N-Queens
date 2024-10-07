@@ -87,7 +87,7 @@ function Backtrack2(){
 	((min==sizeE))&&{ 
 		((bitmap))&&{
 			((!(bitmap&LASTMASK)))&&{
-					board[min]=$bitmap;
+					board[$min]=$bitmap;
 					symmetryOps ;
 			}
 		}
@@ -118,7 +118,7 @@ function Backtrack1(){
 	local bitmap=$((MASK&~(left|down|right)));
 	((min==sizeE))&&{
 		 ((bitmap))&&{
-			 	board[min]=$bm;
+			 	board[$min]=$bitmap;
         #枝刈りによりsymmetryOpsは不要
 				#symmetryOps ;
 				((COUNT8++)) ;

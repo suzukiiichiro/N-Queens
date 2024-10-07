@@ -156,6 +156,17 @@ NQueen={}; NQueen.new=function()
     UNIQUE=0;
     MASK=0;
   };
+  --ビット反転させるメソッド・・・
+  function NQueen:rbits(byte,sz)
+    local score=0;
+    for i=sz,0,-1 do
+    --io.write(bit.bnot(bit.band(bit.arshift(byte,i), 1)))
+      if bit.band(bit.arshift(byte,i), 1) ==0 then
+        score=score+2^i;
+      end
+    end
+    return score;
+  end
   --
   function NQueen:secstotime(secs)
     sec=math.floor(secs);
@@ -203,17 +214,6 @@ NQueen={}; NQueen.new=function()
   --
   return setmetatable( this,{__index=NQueen} );
 end
-  --ビット反転させるメソッド・・・
-  function NQueen:rbits(byte,sz)
-    local score=0;
-    for i=sz,0,-1 do
-    --io.write(bit.bnot(bit.band(bit.arshift(byte,i), 1)))
-      if bit.band(bit.arshift(byte,i), 1) ==0 then
-        score=score+2^i;
-      end
-    end
-    return score;
-  end
 --
 NQueen.new():NQueen();
 

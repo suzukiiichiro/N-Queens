@@ -284,7 +284,7 @@ NQueen={}; NQueen.new=function()
       if(k>0) then return 0; end
       if(k==0)then self.nEquiv=2; else
         --//時計回りに270度回転
-        self:rotate(trial,scratch,self.size,nil);
+        self:rotate(trial,scratch,size,nil);
         k=self:intncmp(self.board,trial,self.size);
         if(k>0) then return 0; end
         self.nEquiv=4;

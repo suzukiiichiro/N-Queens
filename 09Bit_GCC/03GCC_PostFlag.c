@@ -44,7 +44,7 @@ bash-3.2$
 #include <sys/time.h>
 #define MAX 27
 // システムによって以下のマクロが必要であればコメントを外してください。
-//#define UINT64_C(c) c ## ULL
+#define UINT64_C(c) c ## ULL
 //
 // グローバル変数
 typedef unsigned long long uint64_t;

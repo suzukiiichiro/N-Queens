@@ -310,7 +310,7 @@ function N-Queen7_rec(){
     board[$min]=$bitmap;
     symmetryOps_bm;
 	}||{
-    while ((bitmap)); do
+    while((bitmap)); do
       bit=$((-bitmap&bitmap)) ;
       board[$min]=$bit;
       bitmap=$((bitmap^bit)) ;

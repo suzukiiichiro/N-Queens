@@ -191,23 +191,22 @@ NQueen={}; NQueen.new=function()
           tmp=board[i];
           board[i]=board[row];
           board[row]=tmp;
-
-        if	self.antiChk[row+board[row]]==nil
-			  and self.diagChk[row-board[row]+(size-1)]==nil then
-          self.antiChk[row+board[row]],
-          self.diagChk[row-board[row]+(size-1)]=true,true;
-          self:NQueens(board,row+1,size);
-          self.antiChk[row+board[row]],
-          self.diagChk[row-board[row]+(size-1)]=nil,nil;
+          if	self.antiChk[row+board[row]]==nil
+          and self.diagChk[row-board[row]+(size-1)]==nil then
+            self.antiChk[row+board[row]],
+            self.diagChk[row-board[row]+(size-1)]=true,true;
+            self:NQueens(board,row+1,size);
+            self.antiChk[row+board[row]],
+            self.diagChk[row-board[row]+(size-1)]=nil,nil;
+          end
         end
+        -- 交換
+        tmp=board[row];
+        for i=row+1,size,1 do
+          board[i-1]=board[i];
+        end
+        board[size-1]=tmp;
       end
-      -- 交換
-      tmp=board[row];
-      for i=row+1,size,1 do
-        board[i-1]=board[i];
-      end
-      board[size-1]=tmp;
-    end
   end
 	--
   function NQueen:NQueen()
