@@ -1,4 +1,11 @@
 /**
+fillWithTrashが追加されている
+GPUで実行する前処理としてソートして近いものをグループ化してる
+４つのクイーンのうち３つ同じ位置のものでグループにする
+ダミーデータをいれて各グループを同じ数にする
+
+  
+ 
 [suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 06CUDA_CarryChain.c gcc
 1./a.out
  N:            Total          Unique      dd:hh:mm:ss.ms
@@ -985,6 +992,9 @@ int main(int argc,char** argv){
     gettimeofday(&t0,NULL);
     genConstellations(ijklList,constellations,size);
     // ソート
+    //GPUで実行する前処理としてソートする。
+    //４つのクイーンのうち３つ同じ位置のものでグループにする
+    //ダミーデータをいれて各グループを同じ数にする
     ConstellationArrayList* fillconstellations = fillWithTrash(constellations, workgroupSize);
     execSolutions(fillconstellations,size);
     TOTAL=calcSolutions(fillconstellations,TOTAL);
