@@ -4,6 +4,19 @@ GPUで実行する前処理としてソートして近いものをグループ�
 ４つのクイーンのうち３つ同じ位置のものでグループにする
 ダミーデータをいれて各グループを同じ数にする
 
+・全体のコンステレーションの数
+genConstellations()
+workloadSize=genConstellations()
+deviceWorkloadSizeは、各デバイスに割り当てられるworkloadSizeの部分量（分担量）
+（複数のデバイスを使用する場合にはデバイスごとに割り当てる）
+
+.wordgroupSize
+workgroupSizeは、GPUプログラムの並列処理において、各デバイスが一度に処理するスレッドのグループ（ワークグループ）のサイズを指します。これにより、各ワークグループ内のタスクが一度に実行され、デバイスの並列処理性能が最適化されます。
+
+device.config.workgroupSizeで設定する
+
+fillWithTrash()メソッドでの使用では、未解決のコンステレーションをworkgroupSizeに合うように調整しています。つまり、ワークグループサイズで割り切れない場合は、ダミーのコンステレーションを追加し、ワークグループが完全に埋まるようにしています。
+これにより、各ワークグループの処理がデバイス上で均等に行われ、計算のパフォーマンスが最適化されます。　
   
  
 [suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 06CUDA_CarryChain.c gcc
