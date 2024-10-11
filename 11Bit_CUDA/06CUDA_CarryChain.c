@@ -28,6 +28,12 @@ deviceCurrentWorkloadSize = device.config.maxGlobalWorkSize / device.config.work
 deviceCurrentWorkloadSize = 10,000 / 64 * 64 = 156 * 64 = 9,984
 10,000を64で割ると156（整数部分）で、64を掛けると9,984となります。このため、1回のワークロードとして処理するタスク数は、9,984に設定されます。  
  
+TODO
+集計するときにダミーデータをスキップすること
+if (device.workloadConstellations.get(i).getStartijkl() >> 20 == 69) // start=69 is for trash constellations
+各コンステレーションのgetStartijkl()の上位ビットをチェックし、「69」がセットされているものはダミー（trash）としてスキップします。
+ダミーは、ワークグループサイズに合わない部分を埋めるためのもので、実際には解く必要のない無効なコンステレーションです。
+
 [suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 06CUDA_CarryChain.c gcc
 1./a.out
  N:            Total          Unique      dd:hh:mm:ss.ms
