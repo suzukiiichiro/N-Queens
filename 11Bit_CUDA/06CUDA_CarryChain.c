@@ -17,7 +17,16 @@ device.config.workgroupSizeで設定する
 
 fillWithTrash()メソッドでの使用では、未解決のコンステレーションをworkgroupSizeに合うように調整しています。つまり、ワークグループサイズで割り切れない場合は、ダミーのコンステレーションを追加し、ワークグループが完全に埋まるようにしています。
 これにより、各ワークグループの処理がデバイス上で均等に行われ、計算のパフォーマンスが最適化されます。　
-  
+
+deviceCurrentWorkloadSizeは1回のGPUで処理する数
+device.config.maxGlobalWorkSizeはGPUが1度で処理可能な数
+
+以下の計算で、1回のGPUで処理する数をworkgroupSizeの倍数でdevice.config.maxGlobalWorkSizeの上限に最も近い数を算出する
+
+deviceCurrentWorkloadSize = device.config.maxGlobalWorkSize / device.config.workgroupSize
+        * device.config.workgroupSize;
+deviceCurrentWorkloadSize = 10,000 / 64 * 64 = 156 * 64 = 9,984
+10,000を64で割ると156（整数部分）で、64を掛けると9,984となります。このため、1回のワークロードとして処理するタスク数は、9,984に設定されます。  
  
 [suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 06CUDA_CarryChain.c gcc
 1./a.out
