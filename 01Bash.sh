@@ -172,7 +172,7 @@ function N-Queens12_rec()
 # 12.BOUND1,2と枝刈り、最適化
 function N-Queens12()
 {
-  local -i max=15;
+  local -i max=17;
   local -i min=2;
   local startTime=0;
   local endTime=0;
@@ -1028,7 +1028,7 @@ function N-Queens1()
 #
 # 実行は以下のコメント部分を解除してください
 #
-#echo "<> 12. BOUND1,2の枝刈りと最適化 N12=0:00:08
+echo "<> 12. BOUND1,2の枝刈りと最適化 N12=0:00:08
 N-Queens12 ;
 # 
 #echo "<> 11.BOUND1,2の枝刈り          N12=0:02:00
