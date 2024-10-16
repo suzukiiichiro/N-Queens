@@ -25,17 +25,17 @@ class NQueens03:
   def main(self):
     min=4;
     print(" N:        Total       Unique         hh:mm:ss.ms")
-    for i in range(min,self.max):
+    for size in range(min,self.max):
       self.total=0;
       self.unique=0;
-      for j in range(i):
+      for j in range(size):
         self.aboard[j]=j;
       start_time=datetime.now();
-      self.nqueens(0,i);
+      self.nqueens(0,size);
       time_elapsed=datetime.now()-start_time;
       _text='{}'.format(time_elapsed);
       text=_text[:-3]
-      print("%2d:%13d%13d%20s" % (i,self.total,self.unique,text)); 
+      print("%2d:%13d%13d%20s" % (size,self.total,self.unique,text)); 
 
 class NQueens02:
   def __init__(self):
