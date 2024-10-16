@@ -33,6 +33,7 @@ NQueen={}; NQueen.new=function()
   -- 
   local this={
     size=0;
+    TOTAL=0;
     UNIQUE=0;
     MASK=0;
     COUNT2=0;COUNT4=0;COUNT8=0;

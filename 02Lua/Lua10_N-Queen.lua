@@ -33,6 +33,7 @@ NQueen={}; NQueen.new=function()
   -- 
   local this={
     size=0;
+    TOTAL=0;
     UNIQUE=0;
     MASK=0;
     COUNT2=0;COUNT4=0;COUNT8=0;
@@ -103,7 +104,7 @@ NQueen={}; NQueen.new=function()
   function NQueen:rbits(byte,sz)
     local score=0;
     for i=sz,0,-1 do
-      if bit.band(bit.arshift(byte,i), 1) ==0 then
+      if bit.band(bit.arshift(byte,i),1)==0 then
         score=score+2^i;
       end
     end
@@ -141,11 +142,13 @@ NQueen={}; NQueen.new=function()
     self:vMirror(self.scratch,self.trial,si);   
     k=self:intncmp(self.board,self.trial,si);
     if(k>0)then return; end 
-    if(nEquiv>2)then    --//-90度回転 対角鏡と同等       
+    if(nEquiv>2)then    
+      --//-90度回転 対角鏡と同等       
       self:rotate(self.trial,self.scratch,si);
       k=self:intncmp(self.board,self.scratch,si);
       if(k>0)then return; end 
-      if(nEquiv>4)then  --//-180度回転 水平鏡像と同等
+      if(nEquiv>4)then  
+        --//-180度回転 水平鏡像と同等
         self:rotate(self.scratch,self.trial,si);
         k=self:intncmp(self.board,self.trial,si);
         if(k>0)then return; end
