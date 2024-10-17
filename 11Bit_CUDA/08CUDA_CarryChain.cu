@@ -580,7 +580,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     // 範囲外アクセスのチェック
     __shared__ unsigned int sum[THREAD_NUM];
     if (idx >= totalSize){
-      sun[tid]=0;
+      sum[tid]=0;
       return;
     } 
 
@@ -1028,12 +1028,11 @@ int main(int argc,char** argv){
     int steps=24576;
     for (int offset = 0; offset < totalSize; offset += steps) {
       int currentSize = fmin(steps, totalSize - offset);
-      int blockSize = THREAD_NUM;  // スレッド数
       int gridSize = (currentSize + THREAD_NUM - 1) / THREAD_NUM;  // グリッドサイズ
       unsigned int* hostTotal;
-      cudaMallocHost((void**) &hostTotal,sizeof(int)*l->currentSize/THREAD_NUM);
+      cudaMallocHost((void**) &hostTotal,sizeof(int)*currentSize/THREAD_NUM);
       unsigned int* deviceTotal;
-      cudaMalloc((void**) &deviceTotal,sizeof(int)*l->currentSize/THREAD_NUM);
+      cudaMalloc((void**) &deviceTotal,sizeof(int)*currentSize/THREAD_NUM);
 
       Constellation* deviceMemory;
       cudaMalloc((void**)&deviceMemory, currentSize * sizeof(Constellation));
@@ -1045,7 +1044,7 @@ int main(int argc,char** argv){
       execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,deviceTotal, size, currentSize);
 
       // カーネル実行後にデバイスメモリからホストにコピー
-      cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*l->currentSize/THREAD_NUM,cudaMemcpyDeviceToHost);
+      cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*currentSize/THREAD_NUM,cudaMemcpyDeviceToHost);
 
       // 取得したsolutionsをホスト側で集計
       for (int i = 0; i < THREAD_NUM; i++) {
