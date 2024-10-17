@@ -585,17 +585,22 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     } 
 
     Constellation* constellation = &constellations[idx];
-
+    int start = constellation->startijkl >> 20;
+    //dummy dataはスキップする
+    if (start == 69){
+      sum[tid]=0;
+      return;
+    } 
+    int ijkl = constellation->startijkl & ((1 << 20) - 1);
     int j = getj(constellation->startijkl);
     int k = getk(constellation->startijkl);
     int l = getl(constellation->startijkl);
-    int ijkl = constellation->startijkl & ((1 << 20) - 1);
     int ld = constellation->ld >> 1;
     int rd = constellation->rd >> 1;
     int col = (constellation->col >> 1) | (~((1 << (N - 2)) - 1));
     long tempcounter = 0;
 
-    int start = constellation->startijkl >> 20;
+    
     int LD = (1 << (N - 1) >> j) | (1 << (N - 1) >> l);
 
     ld |= LD>>(N-start);
@@ -1030,9 +1035,9 @@ int main(int argc,char** argv){
       int currentSize = fmin(steps, totalSize - offset);
       int gridSize = (currentSize + THREAD_NUM - 1) / THREAD_NUM;  // グリッドサイズ
       unsigned int* hostTotal;
-      cudaMallocHost((void**) &hostTotal,sizeof(int)*currentSize/THREAD_NUM);
+      cudaMallocHost((void**) &hostTotal,sizeof(int)*gridSize);
       unsigned int* deviceTotal;
-      cudaMalloc((void**) &deviceTotal,sizeof(int)*currentSize/THREAD_NUM);
+      cudaMalloc((void**) &deviceTotal,sizeof(int)*gridSize);
 
       Constellation* deviceMemory;
       cudaMalloc((void**)&deviceMemory, currentSize * sizeof(Constellation));
@@ -1044,10 +1049,10 @@ int main(int argc,char** argv){
       execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,deviceTotal, size, currentSize);
 
       // カーネル実行後にデバイスメモリからホストにコピー
-      cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*currentSize/THREAD_NUM,cudaMemcpyDeviceToHost);
+      cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*gridSize,cudaMemcpyDeviceToHost);
 
       // 取得したsolutionsをホスト側で集計
-      for (int i = 0; i < THREAD_NUM; i++) {
+      for (int i = 0; i < gridSize; i++) {
         TOTAL += hostTotal[i];
       }
       //cudaFreeを追加
