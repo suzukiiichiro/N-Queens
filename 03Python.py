@@ -21,6 +21,232 @@ class Board:
     return self.count2+self.count4+self.count8
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
+class multiThreadWorkingEngine(Thread):
+  logging.basicConfig(level=logging.DEBUG,
+      format='[%(levelname)s](%(threadName)-10s) %(message)s', )
+  def __init__(self,size,nmore,info,B1,B2,bthread):
+    super(multiThreadWorkingEngine,self).__init__()
+    BTHREAD=bthread
+    self.size=size
+    self.sizee=size-1
+    self.aboard=[0 for i in range(size)]
+    self.mask=(1<<size)-1
+    self.info=info
+    self.nmore=nmore
+    self.child=None
+    self.bound1=B1
+    self.bound2=B2
+    self.topbit=0
+    self.endbit=0
+    self.sidemask=0
+    self.lastmask=0
+    for i in range(size):
+      self.aboard[i]=i
+    if nmore>0:
+      # マルチスレッド
+      if bthread:
+        self.child=multiThreadWorkingEngine(size,nmore-1,info,B1-1,B2+1,bthread)
+        self.bound1=B1
+        self.bound2=B2
+        self.child.start()
+        if not runJoin:
+          self.child.join()
+      # シングルスレッド
+      else:
+        self.child=None
+  def run(self):
+    # シングルスレッド
+    if self.child is None:
+      if self.nmore>0:
+        self.aboard[0]=1
+        self.sizee=self.size-1
+        self.topbit=1<<(self.size-1)
+        self.bound1=2
+        while(self.bound1>1)and(self.bound1<self.sizee):
+          self.rec_bound1(self.bound1)
+          self.bound1+=1
+        self.sidemask=self.lastmask=(self.topbit|1)
+        self.endbit=(self.topbit>>1)
+        self.bound1=1
+        self.bound2=self.size-2
+        while(self.bound1>0)and(self.bound2<self.size-1)and(self.bound1<self.bound2):
+          self.rec_bound2(self.bound1,self.bound2)
+          self.bound1+=1
+          self.bound2-=1
+    # マルチスレッド
+    else:
+      self.aboard[0]=1
+      self.sizee=self.size-1
+      self.mask=(1<<self.size)-1
+      self.topbit=(1<<self.sizee)
+      if(self.bound1>1)and(self.bound1<self.sizee):
+        self.rec_bound1(self.bound1)
+      self.endbit=(self.topbit>>self.bound1)
+      self.sidemask=self.lastmask=(self.topbit|1)
+      if(self.bound1>0)and(self.bound2<self.size-1)and(self.bound1<self.bound2):
+        for i in range(1,self.bound1):
+          self.lastmask=self.lastmask|self.lastmask>>1|self.lastmask<<1
+        self.rec_bound2(self.bound1,self.bound2)
+        self.endbit>>=self.nmore
+      if runJoin:
+        self.child.join() 
+  def symmetryops(self):
+    # 90
+    if self.aboard[self.bound2]==1:
+      own=1
+      ptn=2
+      while own<=self.size-1:
+        bit=1
+        you=self.size-1
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          you-=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        ptn<<=1
+      # not 90 / 180/270
+      if own>self.size-1:
+        self.info.setcount(0,0,1)
+        return 
+    # 180
+    if self.aboard[self.size-1]==self.endbit:
+      own=1
+      you=self.size-1-1
+      while own<=self.size-1:
+        bit=1
+        ptn=self.topbit
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          ptn>>=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        you-=1
+      #not 90 180
+      if own>self.size-1:
+        self.info.setcount(0,1,0)
+        return
+    #270
+    if self.aboard[self.bound1]==self.topbit:
+      own=1
+      ptn=self.topbit>>1
+      while own<=self.size-1:
+        bit=1
+        you=0
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          you+=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        ptn>>=1
+    self.info.setcount(1,0,0)
+  def backTrack2(self,row,left,down,right):
+    bitmap=self.mask&~(left|down|right)
+    if row==self.size-1:
+      if bitmap:
+        if(bitmap&self.lastmask)==0:
+          self.aboard[row]=bitmap
+          self.symmetryops()
+    else:
+      if row<self.bound1:
+        bitmap&=~self.sidemask
+      elif row==self.bound2:
+        if down&self.sidemask==0:
+          return
+        if down&self.sidemask!=self.sidemask:
+          bitmap&=self.sidemask
+      if row!=0:
+        lim=self.size
+      else:
+        lim=(self.size+1)//2
+      for i in range(row,lim):
+        while bitmap:
+          bit=(-bitmap&bitmap)
+          self.aboard[row]=bit
+          bitmap^=self.aboard[row]
+          self.backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def backTrack1(self,row,left,down,right):
+    bit=0
+    bitmap=self.mask&~(left|down|right)
+    if row==self.size-1:
+      if bitmap:
+        self.aboard[row]=bitmap
+        self.info.setcount(1,0,0)
+    else:
+      if row<self.bound1:
+        bitmap&=~2 # bm|=2 bm^=2 と同等
+      if row!=0:
+        lim=self.size
+      else:
+        lim=(self.size+1)//2
+      for i in range(row,lim):
+        while bitmap:
+          bit=(-bitmap&bitmap)
+          self.aboard[row]=bit
+          bitmap^=self.aboard[row]
+          self.backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def rec_bound2(self,bound1,bound2):
+    self.bound1=bound1
+    self.bound2=bound2
+    self.aboard[0]=bit=(1<<bound1)
+    self.backTrack2(1,bit<<1,bit,bit>>1)
+    self.lastmask|=self.lastmask>>1|self.lastmask<<1
+    self.endbit>>=1
+  def rec_bound1(self,bound1):
+    self.bound1=bound1
+    self.aboard[1]=bit=(1<<bound1)
+    self.backTrack1(2,(2|bit)<<1,1|bit,bit>>1)
+  def nqueens(self):
+    if self.child is None:
+      if self.nmore>0:
+        self.topbit=1<<(self.size-1)
+        self.aboard[0]=1
+        self.sizee=self.size-1
+        self.bound1=2
+        while(self.bound1>1)and(self.bound1<self.sizee):
+          self.rec_bound1(self.bound1)
+          self.bound1+=1
+        self.sidemask=self.lastmask=(self.topbit|1)
+        self.endbit=(self.topbit>>1)
+        self.bound2=self.size-2
+        self.bound1=1
+        while(self.bound1>0)and(self.bound2<self.size-1)and(self.bound1<self.bound2):
+          self.rec_bound2(self.bound1,self.bound2)
+          self.bound1+=1
+          self.bound2-=1
+class NQueens13_2_multiThread:
+  def main():
+    nmax = 16
+    nmin = 4  
+    if BTHREAD:
+      print("マルチスレッド")
+      if runJoin:
+        print("run()末尾でjoin() 本来のマルチスレッド")
+      else:
+        print("コンストラクタでjoin() ほぼシングルスレッド")
+    else:
+      print("シングルスレッド")
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, nmax):
+      lock = threading.Lock()
+      info = Board(lock)
+      start_time = datetime.now()
+      child = multiThreadWorkingEngine(i, i, info, i - 1, 0,BTHREAD)
+      child.start()
+      child.join()
+      time_elapsed = datetime.now() - start_time
+      _text = '{}'.format(time_elapsed)
+      text = _text[:-3]
+      print("%2d:%13d%13d%20s" % (i, info.gettotal(), info.getunique(), text))  # 出力
+
 class singleThreadWorkingEngine(Thread):
   logging.basicConfig(level=logging.DEBUG,
       format='[%(levelname)s](%(threadName)-10s) %(message)s', )
@@ -1473,8 +1699,20 @@ class NQueens01:
         self.aboard[row]=i;
         self.nqueens(row+1);
 #
+# マルチスレッド
+BTHREAD = True          # マルチスレッド
 # シングルスレッド
-NQueens13_1_singleThread.main();
+#BTHREAD = False
+
+# マルチスレッド(run()の末尾でjoin()) 本来のマルチスレッド
+runJoin = True
+# マルチスレッド(コンストラクタでjoin()) ほとんどシングルスレッド
+#runJoin = False
+
+NQueens13_2_multiThread.main();
+#
+# シングルスレッド
+#NQueens13_1_singleThread.main();
 #
 # 最適化
 # NQueens12().main();
