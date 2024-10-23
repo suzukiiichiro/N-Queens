@@ -26,7 +26,7 @@ class multiThreadWorkingEngine(Thread):
       format='[%(levelname)s](%(threadName)-10s) %(message)s', )
   def __init__(self,size,nmore,info,B1,B2,bthread):
     super(multiThreadWorkingEngine,self).__init__()
-    BTHREAD=bthread
+    self.bthread=bthread
     self.size=size
     self.sizee=size-1
     self.aboard=[0 for i in range(size)]
@@ -43,20 +43,16 @@ class multiThreadWorkingEngine(Thread):
     for i in range(size):
       self.aboard[i]=i
     if nmore>0:
-      # マルチスレッド
-      if bthread:
+      if bthread: # マルチスレッド
         self.child=multiThreadWorkingEngine(size,nmore-1,info,B1-1,B2+1,bthread)
         self.bound1=B1
         self.bound2=B2
         self.child.start()
-        if not runJoin:
-          self.child.join()
-      # シングルスレッド
-      else:
+        self.child.join()
+      else: # シングルスレッド
         self.child=None
   def run(self):
-    # シングルスレッド
-    if self.child is None:
+    if self.child is None: # シングルスレッド
       if self.nmore>0:
         self.aboard[0]=1
         self.sizee=self.size-1
@@ -73,8 +69,7 @@ class multiThreadWorkingEngine(Thread):
           self.rec_bound2(self.bound1,self.bound2)
           self.bound1+=1
           self.bound2-=1
-    # マルチスレッド
-    else:
+    else: # マルチスレッド
       self.aboard[0]=1
       self.sizee=self.size-1
       self.mask=(1<<self.size)-1
@@ -88,8 +83,6 @@ class multiThreadWorkingEngine(Thread):
           self.lastmask=self.lastmask|self.lastmask>>1|self.lastmask<<1
         self.rec_bound2(self.bound1,self.bound2)
         self.endbit>>=self.nmore
-      if runJoin:
-        self.child.join() 
   def symmetryops(self):
     # 90
     if self.aboard[self.bound2]==1:
@@ -228,10 +221,6 @@ class NQueens13_2_multiThread:
     nmin = 4  
     if BTHREAD:
       print("マルチスレッド")
-      if runJoin:
-        print("run()末尾でjoin() 本来のマルチスレッド")
-      else:
-        print("コンストラクタでjoin() ほぼシングルスレッド")
     else:
       print("シングルスレッド")
     print(" N:        Total       Unique        hh:mm:ss.ms")
@@ -1703,11 +1692,6 @@ class NQueens01:
 BTHREAD = True          # マルチスレッド
 # シングルスレッド
 #BTHREAD = False
-
-# マルチスレッド(run()の末尾でjoin()) 本来のマルチスレッド
-runJoin = True
-# マルチスレッド(コンストラクタでjoin()) ほとんどシングルスレッド
-#runJoin = False
 
 NQueens13_2_multiThread.main();
 #
