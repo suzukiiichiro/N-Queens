@@ -3,7 +3,6 @@
 symmetry(2,4,8の判定を)CUDA内バックトラック完了後に実行していたが
 cの回転対称比較して最小値を決定するcheckRotationsの部分でsymmetryする
 まだ未完成
-
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.31
  5:               18               0     000:00:00:00.00
@@ -123,12 +122,14 @@ typedef struct{
   int col;
   int startijkl;
   long solutions;
+  int symmetry;  // シンメトリー判定結果を格納 (2, 4, 8)
 }Constellation;
 /**
   IntHashSet構造体の定義
 */
 typedef struct{
   int* data;
+  int* symmetry;    // symmetry値を保持
   int size;
   int capacity;
 }IntHashSet;
@@ -183,12 +184,12 @@ int get_ijkl(Constellation* constellation){
   return constellation->startijkl & 0xFFFFF;// Equivalent to 0b11111111111111111111
 }
 **/
-void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
+void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N,int symmetry);
 void execSolutions(ConstellationArrayList* constellations,int N);
 void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
 long calcSolutions(ConstellationArrayList* constellations,long solutions);
 int jasmin(int ijkl,int N);
-void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
+void add_constellation(int ld,int rd,int col,int startijkl,int symmetry,ConstellationArrayList* constellations);
 /**
  * 関数プロトタイプ
  */
@@ -283,6 +284,7 @@ __device__ void SQd1BkB(
 IntHashSet* create_int_hashset(){
   IntHashSet* set=(IntHashSet*)malloc(sizeof(IntHashSet));
   set->data=(int*)malloc(INITIAL_CAPACITY * sizeof(int));
+  set->symmetry = (int*)malloc(INITIAL_CAPACITY * sizeof(int));  // シンメトリー情報用のメモリ確保
   set->size=0;
   set->capacity=INITIAL_CAPACITY;
   return set;
@@ -292,6 +294,7 @@ IntHashSet* create_int_hashset(){
  */
 void free_int_hashset(IntHashSet* set){
   free(set->data);
+  free(set->symmetry);   // symmetryデータのメモリ解放
   free(set);
 }
 /**
@@ -306,13 +309,16 @@ int int_hashset_contains(IntHashSet* set,int value){
 /**
  *
  */
-void int_hashset_add(IntHashSet* set,int value){
+void int_hashset_add(IntHashSet* set,int value, int symmetryValue){
   if(!int_hashset_contains(set,value)){
     if(set->size==set->capacity){
       set->capacity *= 2;
       set->data=(int*)realloc(set->data,set->capacity * sizeof(int));
+      set->symmetry = (int*)realloc(set->symmetry, set->capacity * sizeof(int));
     }
-    set->data[set->size++]=value;
+    set->data[set->size]=value;
+    set->symmetry[set->size] = symmetryValue;
+    set->size++;
   }
 }
 /**
@@ -354,13 +360,14 @@ Constellation* create_constellation(){
     new_constellation->col=0;
     new_constellation->startijkl=0;
     new_constellation->solutions=-1;
+    new_constellation->symmetry = 1;  
   }
   return new_constellation;
 }
 /**
  *
  */
-Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions){
+Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions, int symmetry){
   Constellation* new_constellation=(Constellation*)malloc(sizeof(Constellation));
   if(new_constellation){
     new_constellation->id=id;
@@ -369,14 +376,15 @@ Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int
     new_constellation->col=col;
     new_constellation->startijkl=startijkl;
     new_constellation->solutions=solutions;
+     new_constellation->symmetry = symmetry;  // symmetry を追加
   }
   return new_constellation;
 }
 /**
  *
  */
-void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations){
-  Constellation new_constellation={0,ld,rd,col,startijkl,-1};
+void add_constellation(int ld,int rd,int col,int startijkl,int symmetry,ConstellationArrayList* constellations){
+  Constellation new_constellation={0,ld,rd,col,startijkl,-1, symmetry};
   constellation_arraylist_add(constellations,new_constellation);
 }
 // コンステレーションの比較関数
@@ -414,8 +422,9 @@ void addTrashConstellation(ConstellationArrayList* list, int ijkl) {
     int rd = -1;
     int col = -1;
     int startijkl = (69 << 20) | ijkl;
+    int symmetry = 0;  // ダミーのシンメトリー値を設定
     // トラッシュコンステレーションをリストに追加
-    add_constellation(ld, rd, col, startijkl, list);
+    add_constellation(ld, rd, col, startijkl,symmetry, list);
 }
 
 // fillWithTrash 関数
@@ -428,7 +437,7 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, in
 
     // 最初のコンステレーションの currentJkl を取得
     int currentJkl = constellations->data[0].startijkl & ((1 << 15) - 1);
-
+    int currentSymmetry = constellations->data[0].symmetry; // 初期シンメトリ値を取得
     // 各コンステレーションに対してループ
     for (int i = 0; i < constellations->size; i++) {
         Constellation c = constellations->data[i];
@@ -445,7 +454,7 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, in
         }
 
         // コンステレーションを追加
-        add_constellation(c.ld, c.rd, c.col, c.startijkl, newConstellations);
+        add_constellation(c.ld, c.rd, c.col, c.startijkl, currentSymmetry, newConstellations);
     }
 
     // 最後に残った分を埋める
@@ -473,11 +482,11 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, in
   row: 現在の行のインデックス。
   queens: 現在配置されているクイーンの数。
 */
-void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N){
+void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N,int symmetry){
   int mask=(1<<N)-1;//setPreQueensで使用
   // k行とl行はさらに進む
   if(row==k || row==l){
-    setPreQueens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N);
+    setPreQueens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,symmetry);
     return;
   }
   /**
@@ -487,7 +496,7 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   */
   if(queens==presetQueens){
     // リストに４個クイーンを置いたセットを追加する
-    add_constellation(ld,rd,col,row<<20,constellations);
+    add_constellation(ld,rd,col,row<<20,symmetry,constellations);
     (*counter)++;
     return;
   }
@@ -500,7 +509,7 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
       bit=free & (-free);
       free -= bit;
       // クイーンをおける場所があれば、その位置にクイーンを配置し、再帰的に次の行に進む
-      setPreQueens((ld | bit)<<1,(rd | bit)>>1,col | bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N);
+      setPreQueens((ld | bit)<<1,(rd | bit)>>1,col | bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,symmetry);
     }
   }
 }
@@ -508,13 +517,27 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
  */
 int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
+  int original = toijkl(i, j, k, l);
   int rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i;
   int rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k);
   int rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j);
-  if(int_hashset_contains(ijklList,rot90)){ return 1; }
-  if(int_hashset_contains(ijklList,rot180)){ return 1; }
-  if(int_hashset_contains(ijklList,rot270)){ return 1; }
-  return 0;
+  int mir = mirvert(original, N); // 左右ミラー
+   // 対称判定 (90度、180度、270度、左右ミラーのいずれかが既存であるか確認)
+    if (int_hashset_contains(ijklList, rot90) ||
+        int_hashset_contains(ijklList, rot180) ||
+        int_hashset_contains(ijklList, rot270) ||
+        int_hashset_contains(ijklList, mir)) {
+        return 1; // 回転やミラー対称が既に存在
+    }
+
+    // 回転対称性に基づいてsymmetryを設定
+    if (original == rot90) {
+        return 2; // 90度回転対称
+    } else if (original == rot180) {
+        return 4; // 180度回転対称
+    } else {
+        return 8; // 対称ではない
+    }
 }
 /**
   i,j,k,lをijklに変換し、特定のエントリーを取得する関数
@@ -802,7 +825,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
       }
     }
     // 完成した開始コンステレーションを削除する。
-    sum[tid]=tempcounter * symmetry(ijkl,N);
+    sum[tid]=tempcounter *  constellation->symmetry;
   __syncthreads();if(tid<64&&tid+64<THREAD_NUM){
     sum[tid]+=sum[tid+64];
   }
@@ -881,8 +904,9 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
             checkRotationsで回転対称性をチェックし、対称でない場合にijklList
             に配置を追加します。
           */
-          if(!checkRotations(ijklList,i,j,k,l,N)){
-            int_hashset_add(ijklList,toijkl(i,j,k,l));
+          int symmetry = checkRotations(ijklList, 0, i, 0, j, N);
+          if (symmetry != 1) {
+            int_hashset_add(ijklList,toijkl(i,j,k,l), symmetry);
           }
         }
       }
@@ -896,14 +920,16 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   */
   for(int j=1;j<N-2;j++){// jは最終行のクイーンのidx
     for(int l=j+1;l<(N-1);l++){// lは最終列のクイーンのidx
-      int_hashset_add(ijklList,toijkl(0,j,0,l));
+      int_hashset_add(ijklList,toijkl(0,j,0,l),8);
     }
   }
   IntHashSet* ijklListJasmin=create_int_hashset();
   int startConstellation;
+  int symmetry;
   for(int i=0;i<ijklList->size;i++){
     startConstellation=ijklList->data[i];
-    int_hashset_add(ijklListJasmin,jasmin(startConstellation,N));
+    symmetry = ijklList->symmetry[i]; 
+    int_hashset_add(ijklListJasmin,jasmin(startConstellation,N),symmetry);
   }
   //free_int_hashset(ijklList);
   ijklList=ijklListJasmin;
@@ -932,6 +958,7 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   int currentSize=0;
   for(int s=0;s<ijklList->size;s++){
     sc=ijklList->data[s];
+    int symmetry = ijklList->symmetry[s];  // シンメトリー値を取得
     i=geti(sc);
     j=getj(sc);
     k=getk(sc);
@@ -989,11 +1016,12 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     // すべてのサブコンステレーションを数える
     counter=0;
     // すべてのサブコンステレーションを生成する
-    setPreQueens(ld,rd,col,k,l,1,j==N-1 ? 3 : 4,LD,RD,&counter,constellations,N);
+    setPreQueens(ld,rd,col,k,l,1,j==N-1 ? 3 : 4,LD,RD,&counter,constellations,N, symmetry);
     currentSize=constellations->size;
      // jklとsymとstartはすべてのサブコンステレーションで同じである
     for(int a=0;a<counter;a++){
       constellations->data[currentSize-a-1].startijkl |= toijkl(i,j,k,l);
+      constellations->data[currentSize-a-1].symmetry = symmetry;  // symmetry を設定
     }
   }
 }
