@@ -300,7 +300,7 @@ def backtrack1(size, mask, row, left, down, right):  # pylint: disable=R0913
 # メインメソッド
 def nqueen(size, mask):
   """ nqueen() """
-  global ABOARD         # pylint: disable=W0603
+  # global ABOARD         # pylint: disable=W0603
   global TOPBIT         # pylint: disable=W0603
   global ENDBIT         # pylint: disable=W0603
   global SIDEMASK       # pylint: disable=W0603
