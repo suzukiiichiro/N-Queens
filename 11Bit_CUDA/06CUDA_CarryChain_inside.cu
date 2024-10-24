@@ -1,7 +1,8 @@
 /**
  *
  * bash版キャリーチェーンのC言語版のGPU/CUDA移植版
- *
+ * CUDAの実行をfor文の一番内側、クイーンを上下左右2行2列置いたあと
+ 
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *

@@ -1,7 +1,8 @@
 /**
  *
  * bash版キャリーチェーンのC言語版のGPU/CUDA移植版
- *
+ * キャリーチェーンを全件完了した後に、CUDAを実行する
+ キャリーチェーンの結果はメモリーに保存する
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *

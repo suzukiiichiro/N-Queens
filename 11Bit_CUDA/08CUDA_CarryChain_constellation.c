@@ -1,4 +1,7 @@
 /**
+クイーンを上下左右に４個置いてからバックトラックを実行する
+バックトラックする前に回転対称比較して最小値のものだけバックトラックする
+
 [suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 05CUDA_CarryChain.c gcc
 1./a.out
  N:            Total          Unique      dd:hh:mm:ss.ms
