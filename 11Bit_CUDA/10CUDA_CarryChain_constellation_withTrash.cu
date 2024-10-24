@@ -1,5 +1,5 @@
 /**
-06CUDA_CarryChain.cをcudaに変換したもの
+09CUDA_CarryChain_constellation_withTrash.cをcudaに変換したもの
 
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.31

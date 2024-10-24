@@ -1,5 +1,8 @@
 /**
-06CUDA_CarryChain.cをcudaに変換したもの
+10CUDA_CarryChain_constellation_withTrash.cuは
+symmetry(2,4,8の判定を)CUDA内バックトラック完了後に実行していたが
+cの回転対称比較して最小値を決定するcheckRotationsの部分でsymmetryする
+まだ未完成
 
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.31
