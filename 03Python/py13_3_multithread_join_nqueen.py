@@ -93,8 +93,9 @@ from datetime import datetime
 BTHREAD = True          # マルチスレッド
 #BTHREAD = False        # シングルスレッド
 #
-#ENABLEJOIN = True      # コンストラクタでjoinする 遅い
-ENABLEJOIN = False      # run()の処理末尾でjoin() マルチスレッド完成型
+ENABLEJOIN = True       
+#ENABLEJOIN = False      
+
 #
                         #
 #
@@ -157,8 +158,7 @@ class WorkingEngine(Thread): # pylint: disable=R0902
         self.bound1 = B1
         self.bound2 = B2
         self.child.start()
-        # コンストラクタでjoin()する
-        if ENABLEJOIN:
+        if not ENABLEJOIN:
           self.child.join()   # joinする
       # シングルスレッド
       else:
@@ -198,11 +198,8 @@ class WorkingEngine(Thread): # pylint: disable=R0902
           self.lastmask = self.lastmask | self.lastmask >> 1 | self.lastmask << 1
         self.rec_bound2(self.bound1, self.bound2)
         self.endbit >>= self.nmore
-      # コンストラクタでjoin()する
-      if ENABLEJOIN:
-        pass
       # run()の処理末尾でjoin()する
-      else:
+      if ENABLEJOIN:
         self.child.join()
   #
   # 対称解除法
@@ -380,14 +377,11 @@ def main():
   #
   if BTHREAD:
     if ENABLEJOIN:
-      print("マルチスレッドにて")
-      print("start/joinを連ねて遅くとも間違いなく実行")
-      print("やっていることはシングルスレッドと同等。")
+      print("マルチスレッド")
+      print("run()末でjoin()を実行。本来のマルチスレッド")
     else:
-      print("マルチスレッドにて")
-      print("コア一つを使い回しているにすぎない。遅い")
-      print("joinを処理末で実行。本来のマルチスレッド")
-      print("Nの数分スレッドが起動しそれぞれ並列処理")
+      print("マルチスレッド")
+      print("コンストラクタでjoin()を実行 シングルスレッドと同等。")
   else:
     print("シングルスレッドにて実行")
   #

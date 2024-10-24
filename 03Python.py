@@ -4,7 +4,212 @@
 import logging
 import threading
 from threading import Thread
+from multiprocessing import Pool as ThreadPool
 from datetime import datetime
+
+class NQueens():
+  def __init__(self,size):
+    self.size=size
+    self.sizeE=size-1
+    self.total=0
+    self.unique=0
+    self.gttotal=[0]*self.size
+    self.gtunique=[0]*self.size
+    self.aboard=[[i for i in range(2*size-1)]for j in range(self.size)]
+    self.mask=(1<<size)-1
+    self.count2=0
+    self.count4=0
+    self.count8=0
+    self.bound1=0
+    self.bound2=0
+    self.sidemask=0
+    self.lastmask=0
+    self.topbit=0
+    self.endbit=0
+  def getunique(self):
+    return self.count2+self.count4+self.count8
+  def gettotal(self):
+    return self.count2*2+self.count4*4+self.count8*8
+  def symmetryops(self):
+    own=0
+    ptn=0
+    you=0
+    bit=0
+    #90
+    if self.aboard[self.bound2]==1:
+      own=1
+      ptn=2
+      while own<=self.size-1:
+        bit=1
+        you=self.size-1
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          you-=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        ptn<<=1
+      #90 180/270
+      if own>self.size-1:
+        self.count2+=1
+        return
+    #180
+    if self.aboard[self.size-1]==self.endbit:
+      own=1
+      you=self.size-1-1
+      while own<=self.size-1:
+        bit=1
+        ptn=self.topbit
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          ptn>>=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        you-=1
+      #90 
+      if own>self.size-1:
+        self.count4+=1
+        return
+    #270
+    if self.aboard[self.bound1]==self.topbit:
+      own=1
+      ptn=self.topbit>>1
+      while own<=self.size-1:
+        bit=1
+        you=0
+        while(self.aboard[you]!=ptn)and(self.aboard[own]>=bit):
+          bit<<=1
+          you+=1
+        if self.aboard[own]>bit:
+          return
+        if self.aboard[own]<bit:
+          break
+        own+=1
+        ptn>>=1
+    self.count8+=1
+  def backTrack2(self,row,left,down,right):
+    bit=0
+    bitmap=self.mask&~(left|down|right)
+    if row==self.size-1:
+      if bitmap:
+        if(bitmap&self.lastmask)==0:
+          self.aboard[row]=bitmap
+          self.symmetryops()
+    else:
+      if row<self.bound1:
+        bitmap&=~self.sidemask
+      elif row==self.bound2:
+        if down&self.sidemask==0:
+          return
+        if down&self.sidemask!=self.sidemask:
+          bitmap&=self.sidemask
+      if row!=0:
+        lim=self.size
+      else:
+        lim=(self.size+1)//2
+      for i in range(row,lim):
+        while bitmap:
+          bit=(-bitmap&bitmap)
+          self.aboard[row]=bit
+          bitmap^=self.aboard[row]
+          self.backTrack2(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def backTrack1(self,row,left,down,right):
+    bit=0
+    bitmap=self.mask&~(left|down|right)
+    if row==self.size-1:
+      if bitmap:
+        self.aboard[row]=bitmap
+        self.count8+=1
+    else:
+      if row<self.bound1:
+        bitmap&=~2
+      if row!=0:
+        lim=self.size
+      else:
+        lim=(self.size+1)//2
+      for i in range(row,lim):
+        while bitmap:
+          bit=(-bitmap&bitmap)
+          self.aboard[row]=bit
+          bitmap^=self.aboard[row]
+          self.backTrack1(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def nqueen_single(self,thr_index):
+    self.bit=0
+    self.aboard[0]=1
+    self.sizeE=self.size-1
+    self.mask=(1<<self.size)-1
+    self.topbit=1<<self.sizeE
+    self.bound1=1
+    for self.bound1 in range(2,self.sizeE):
+      self.aboard[1]=bit=(1<<self.bound1)
+      self.backTrack1(2,(2|bit)<<1,1|bit,bit>>1)
+      self.bound1+=1
+    self.sidemask=self.lastmask=(self.topbit|1)
+    self.endbit=(self.topbit>>1)
+    self.bound1=1
+    self.bound2=self.sizeE-1
+    for self.bound1 in range(1,self.bound2):
+      self.aboard[0]=bit=(1<<self.bound1)
+      self.backTrack2(1,bit<<1,bit,bit>>1)
+      self.lastmask|=self.lastmask>>1|self.lastmask<<1
+      self.endbit>>=1
+      self.bound1+=1
+      self.bound2-=1
+    return self.gettotal(),self.getunique()
+  def nqueen_multi(self,thr_index):
+    self.aboard[0]=1
+    self.sizeE=self.size-1
+    self.topbit=1<<self.sizeE
+    self.bound1=self.size-thr_index-1
+    if self.bound1>1 and self.bound1<self.sizeE:
+      self.aboard[1]=bit=(1<<self.bound1)
+      self.backTrack1(2,(2|bit)<<1,(1|bit),(bit>>1))
+    self.endbit=(self.topbit>>1)
+    self.sidemask=self.lastmask=(self.topbit|1)
+    self.bound2=thr_index
+    if self.bound1>0 and self.bound2<self.sizeE and self.bound1<self.bound2:
+      self.aboard[0]=bit=(1<<self.bound1)
+      for i in range(1,self.bound1):
+        self.lastmask|=self.lastmask>>1|self.lastmask<<1
+        self.endbit>>=1
+      self.backTrack2(1,bit<<1,bit,bit>>1)
+    return self.gettotal(),self.getunique()
+  def solve(self):
+    pool=ThreadPool(self.size)
+
+    # シングル版 Nで割ると解が合う
+    # gttotal:[(92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12), (92, 12)]
+    # 8:          736           96         0:00:00.119
+    #self.gttotal=list(pool.map(self.nqueen_single,range(self.size)))
+    # マルチ版
+    self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
+    total=0
+    unique=0
+    for t,u in self.gttotal:
+      total+=t
+      unique+=u
+    pool.close()
+    pool.join()
+    return total,unique
+class NQueens13_3multiProcess:
+  def main():
+    nmin = 4
+    nmax = 16
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, nmax):
+      start_time = datetime.now()
+      nqueen_obj = NQueens(i)
+      total, unique = nqueen_obj.solve()
+      time_elapsed = datetime.now()-start_time
+      _text = '{}'.format(time_elapsed)
+      text = _text[:-3]
+      print("%2d:%13d%13d%20s" % (i,total,unique, text))  # 出力
+
 
 class Board:
   def __init__(self,lock):
@@ -1503,7 +1708,7 @@ class NQueens05:
 
 class NQueens04:
   def __init__(self):
-    self.max=15
+    self.max=16
     self.total=0
     self.unique=0
     self.aboard=[0 for i in range(self.max)]
@@ -1614,7 +1819,7 @@ class NQueens04:
 
 class NQueens03:
   def __init__(self):
-    self.max=15;
+    self.max=16;
     self.total=0;
     self.unique=0;
     self.aboard=[0 for i in range(self.max)];
@@ -1687,45 +1892,59 @@ class NQueens01:
       for i in range(self.size):
         self.aboard[row]=i;
         self.nqueens(row+1);
-#
-# マルチスレッド
-BTHREAD = True          # マルチスレッド
-# シングルスレッド
-#BTHREAD = False
 
-NQueens13_2_multiThread.main();
+#
+# マルチプロセス
+# 15:      2279184       285053         0:00:06.216
+#NQueens13_3multiProcess.main();
+#
+# マルチスレッド True/マルチスレッド False シングルスレッド
+# 15:      2279184       285053         0:00:07.983
+BTHREAD = True 
+#NQueens13_2_multiThread.main();
 #
 # シングルスレッド
+# 15:      2279184       285053         0:00:07.958
 #NQueens13_1_singleThread.main();
 #
 # 最適化
-# NQueens12().main();
+# 15:      2279184       285053         0:00:10.607
+#NQueens12().main();
 #
 # 枝刈り
-# NQueens11().main();
+# 15:      2279184       285053         0:00:10.927
+#NQueens11().main();
 #
 # BOUND1,2
-# NQueens10().main();
+# 15:      2279184       285053         0:00:26.210
+#NQueens10().main();
 #
 # BOUND1
-# NQueens09().main();
+# 15:      2279184       285053         0:00:25.239
+#NQueens09().main();
 #
 # 枝刈り
+# 15:      2279184       285053         0:00:28.357
 #NQueens08().main();
 #
 # 対象解除法とビットマップ
+# 15:      2279184       285053         0:00:19.711
 #NQueens07().main();
 #
 # バックトラックとビットマップ
+# 15:      2279184            0         0:00:11.417
 #NQueens06().main();
 #
 # 枝刈りと最適化
+# 15:      2279184       285053         0:00:15.677
 #NQueens05().main();
 #
 # 対象解除法
+# 15:      2279184       285053         0:00:49.855
 #NQueens04().main();
 #
 # バックトラック
+# 15:      2279184            0         0:00:44.558
 # NQueens03().main();
 #
 # 配置フラグ

@@ -5,6 +5,9 @@
 
 from datetime import datetime
 from multiprocessing import Pool as ThreadPool
+
+# ThreadPoolのインストール
+# $ pip install Pool 
 #
 # /**
 #   Pythonで学ぶアルゴリズムとデータ構造
@@ -110,6 +113,27 @@ from multiprocessing import Pool as ThreadPool
 # グローバル変数
 #
 class Nqueen(): # pylint: disable=R0902
+  #
+  # 初期化
+  def __init__(self, size):
+    self.size = size                    # N
+    self.sizeE = size -1
+    self._nthreads = self.size
+    self.total = 0                      # スレッド毎の合計
+    self.unique = 0
+    self.gttotal = [0] * self.size      #総合計
+    self.gtunique = [0] * self.size     #総合計
+    self.aboard = [[i for i in range(2*size-1)] for j in range(self.size)]
+    self.mask = (1<<size)-1
+    self.count2 = 0
+    self.count4 = 0
+    self.count8 = 0
+    self.bound1 = 0
+    self.bound2 = 0
+    self.sidemask = 0
+    self.lastmask = 0
+    self.topbit = 0
+    self.endbit = 0
   #
   # ユニーク値を出力
   def getunique(self):
@@ -328,7 +352,7 @@ class Nqueen(): # pylint: disable=R0902
   #
   # 解法
   def solve(self):
-    pool = threadpool(self.size)
+    pool = ThreadPool(self.size)
     #
     ## ロジック確認用
     ## シングル版 Nで割ると解が合う
@@ -349,27 +373,6 @@ class Nqueen(): # pylint: disable=R0902
     pool.join()
     #
     return total, unique
-  #
-  # 初期化
-  def __init__(self, size):
-    self.size = size                    # N
-    self.sizeE = size -1
-    self._nthreads = self.size
-    self.total = 0                      # スレッド毎の合計
-    self.unique = 0
-    self.gttotal = [0] * self.size      #総合計
-    self.gtunique = [0] * self.size     #総合計
-    self.aboard = [[i for i in range(2*size-1)] for j in range(self.size)]
-    self.mask = (1<<size)-1
-    self.count2 = 0
-    self.count4 = 0
-    self.count8 = 0
-    self.bound1 = 0
-    self.bound2 = 0
-    self.sidemask = 0
-    self.lastmask = 0
-    self.topbit = 0
-    self.endbit = 0
 #end class
 #
 # メインメソッド
