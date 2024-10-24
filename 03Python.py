@@ -1896,7 +1896,7 @@ class NQueens01:
 #
 # マルチプロセス
 # 15:      2279184       285053         0:00:06.216
-#NQueens13_3multiProcess.main();
+NQueens13_3multiProcess.main();
 #
 # マルチスレッド True/マルチスレッド False シングルスレッド
 # 15:      2279184       285053         0:00:07.983
