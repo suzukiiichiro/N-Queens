@@ -137,7 +137,7 @@ void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int 
   }else{
     // クイーンが配置可能な位置を表す
     for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
-      bit=bitmap&-bitmap;
+      bit=-bitmap&bitmap;
       bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
     }
   }

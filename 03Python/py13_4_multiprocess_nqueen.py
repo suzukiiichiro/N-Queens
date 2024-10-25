@@ -249,6 +249,7 @@ class Nqueen(): # pylint: disable=R0902
           self.aboard[row] = bit
           bitmap ^= self.aboard[row]
           self.backtrack2(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
+
   #
   # BackTrack1
   def backtrack1(self, row, left, down, right):  # pylint: disable=R0913
@@ -283,12 +284,6 @@ class Nqueen(): # pylint: disable=R0902
           bitmap ^= self.aboard[row]
           self.backtrack1(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
   #
-  def BOUND1_single(self, B1):
-    bit = 0
-    self.bound1 = B1 
-    self.aboard[1] = bit = (1<<self.bound1)
-    self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
-  #
   def BOUND2_single(self, B1, B2):
     bit = 0
     self.bound1 = B1
@@ -300,21 +295,12 @@ class Nqueen(): # pylint: disable=R0902
     self.bound1 += 1
     self.bound2 -= 1
   #
-  def BOUND1_multi(self, B1):
+  #
+  def BOUND1_single(self, B1):
     bit = 0
     self.bound1 = B1 
     self.aboard[1] = bit = (1<<self.bound1)
     self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
-  #
-  def BOUND2_multi(self, B1, B2):
-    bit = 0
-    self.bound1 = B1
-    self.bound2 = B2
-    self.aboard[0] = bit = (1<<self.bound1)
-    for i in range(1, self.bound1):
-      self.lastmask |= self.lastmask>>1|self.lastmask<<1
-      self.endbit >>= 1
-    self.backtrack2(1, bit<<1, bit, bit>>1)
   #
   #メインメソッド シングル版
   def nqueen_single(self, thr_index):
@@ -335,6 +321,21 @@ class Nqueen(): # pylint: disable=R0902
       self.BOUND2_single(self.bound1, self.bound2)
     return self.gettotal(), self.getunique()
   #
+  def BOUND1_multi(self, B1):
+    bit = 0
+    self.bound1 = B1 
+    self.aboard[1] = bit = (1<<self.bound1)
+    self.backtrack1(2, (2|bit)<<1, (1|bit), (bit>>1))
+  #
+  def BOUND2_multi(self, B1, B2):
+    bit = 0
+    self.bound1 = B1
+    self.bound2 = B2
+    self.aboard[0] = bit = (1<<self.bound1)
+    for i in range(1, self.bound1):
+      self.lastmask |= self.lastmask>>1|self.lastmask<<1
+      self.endbit >>= 1
+    self.backtrack2(1, bit<<1, bit, bit>>1)
   # メインメソッド マルチプロセス版
   def nqueen_multi(self, thr_index):
     self.aboard[0] = 1

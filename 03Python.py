@@ -7,6 +7,82 @@ from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
 
+class NQueens15():
+  def __init__(self):
+    self.total=0
+    self.unique=0
+  def mirror(self,size,row,left,down,right):
+    if row==size:
+      self.total+=1
+    else:
+      bit=0
+      mask=(1<<size)-1
+      bitmap=mask&~(left|down|right)
+      while bitmap:
+        bit=-bitmap&bitmap
+        bitmap=bitmap&~bit
+        self.mirror(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def NQueens(self,size,row,left,down,right):
+    bit=0
+    if size%2:
+      limit=size//2-1
+    else:
+      limit=size//2
+    for i in range(0,size//2):
+      bit=1<<i
+      self.mirror(size,1,bit<<1,bit,bit>>1)
+    if size%2:
+      bit=1<<(size-1)//2
+      left=bit<<1
+      down=bit
+      right=bit>>1
+      for i in range(0,limit):
+        bit=1<<i
+        self.mirror(size,2,(left|bit)<<1,down|bit,(right|bit)>>1)
+    self.total=self.total<<1; # 倍にする
+  def main(self):
+    nmin = 4
+    nmax = 16
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, nmax):
+      self.total=0
+      self.unique=0
+      start_time = datetime.now()
+      self.NQueens(i,0,0,0,0)
+      time_elapsed = datetime.now()-start_time
+      _text = '{}'.format(time_elapsed)
+      text = _text[:-3]
+      print("%2d:%13d%13d%20s" % (i,self.total,self.unique, text))  # 出力
+
+class NQueens14():
+  def __init__(self):
+    self.total=0
+    self.unique=0
+  def NQueens(self,size,row,left,down,right):
+    if row==size:
+      self.total+=1
+    else:
+      bit=0
+      mask=(1<<size)-1
+      bitmap=mask&~(left|down|right)
+      while bitmap:
+        bit=-bitmap&bitmap
+        bitmap=bitmap&~bit
+        self.NQueens(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  def main(self):
+    nmin = 4
+    nmax = 16
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, nmax):
+      self.total=0
+      self.unique=0
+      start_time = datetime.now()
+      self.NQueens(i,0,0,0,0)
+      time_elapsed = datetime.now()-start_time
+      _text = '{}'.format(time_elapsed)
+      text = _text[:-3]
+      print("%2d:%13d%13d%20s" % (i,self.total,self.unique, text))  # 出力
+
 class NQueens():
   def __init__(self,size):
     self.size=size
@@ -1551,13 +1627,12 @@ class NQueens06:
   def __init__(self):
     self.max=16
     self.total=0
-    self.unique=0
-    self.aboard=[0 for i in range(self.max)]
   def nqueens(self,size,row,left,down,right):
-    mask=(1<<size)-1
     if row==size:
       self.total+=1
     else:
+      bit=0
+      mask=(1<<size)-1
       bitmap=(mask&~(left|down|right))
       while bitmap:
         bit=(-bitmap&bitmap)
@@ -1570,8 +1645,6 @@ class NQueens06:
     for size in range(nmin,nmax):
       self.total=0
       self.unique=0
-      for j in range(size):
-        self.aboard[j]=j
       start_time=datetime.now()
       self.nqueens(size,0,0,0,0)
       time_elapsed=datetime.now()-start_time
@@ -1894,9 +1967,17 @@ class NQueens01:
         self.nqueens(row+1);
 
 #
+# ミラー
+# 15:      2279184            0         0:00:05.872
+# NQueens15().main();
+#
+# ビットマップ
+# 15:      2279184            0         0:00:11.504
+# NQueens14().main();
+#
 # マルチプロセス
 # 15:      2279184       285053         0:00:06.216
-NQueens13_3multiProcess.main();
+#NQueens13_3multiProcess.main();
 #
 # マルチスレッド True/マルチスレッド False シングルスレッド
 # 15:      2279184       285053         0:00:07.983
@@ -1933,7 +2014,7 @@ BTHREAD = True
 #
 # バックトラックとビットマップ
 # 15:      2279184            0         0:00:11.417
-#NQueens06().main();
+# NQueens06().main();
 #
 # 枝刈りと最適化
 # 15:      2279184       285053         0:00:15.677
