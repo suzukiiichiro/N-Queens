@@ -241,7 +241,7 @@ def backtrack2(size, mask, row, left, down, right): # pylint: disable=R0913
   else:
     #枝刈り 上部サイド枝刈り
     if row < BOUND1:
-      bitmap &= ~SIDEMASK
+      bitmap &=~SIDEMASK
     #枝刈り 下部サイド枝刈り
     elif row == BOUND2:
       if down&SIDEMASK == 0:
