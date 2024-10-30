@@ -173,9 +173,9 @@ class NQueens18():
   def solve(self):
     pool=ThreadPool(self.size)
     # シングル版
-    # self.gttotal=list(pool.map(self.nqueen_single,range(1)))
+    self.gttotal=list(pool.map(self.nqueen_single,range(1)))
     # マルチ版
-    self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
+    # self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
     """
     組み込み関数を活用：forループで直接加算するのではなく、Pythonの組み込み関数
     であるsumを使うと、計算をネイティブで高速に処理できます。
@@ -372,7 +372,7 @@ class NQueens17():
     pool=ThreadPool(self.size)
 
     # シングル版
-    #self.gttotal=list(pool.map(self.nqueen_single,range(1)))
+    # self.gttotal=list(pool.map(self.nqueen_single,range(1)))
     # マルチ版
     self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
     total=0
