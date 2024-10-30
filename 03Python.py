@@ -97,10 +97,10 @@ class NQueens18():
       self.aboard[row]=bitmap
       self.symmetryops(size)
     else:
-      # if row<bound1:
+      if row<bound1:
       #   # bitmap=bitmap|self.sidemask
       #   # bitmap=bitmap^self.sidemask
-      #   bitmap&=~sidemask
+        bitmap&=~sidemask
       # else:
       if row==bound2:
         if down&sidemask==0:
@@ -121,10 +121,10 @@ class NQueens18():
       self.aboard[row]=bitmap
       self.count8+=1
     else:
-      # if row<bound1:
+      if row<bound1:
       #   bitmap=bitmap|2
       #   bitmap=bitmap^2
-      #   # bitmap&=~2
+        bitmap&=~2
       while bitmap:
         bit=bitmap&-bitmap  # bit=-bitmap&bitmap
         bitmap&=bitmap-1    # bitmap^=bit
@@ -173,9 +173,9 @@ class NQueens18():
   def solve(self):
     pool=ThreadPool(self.size)
     # シングル版
-    self.gttotal=list(pool.map(self.nqueen_single,range(1)))
+    # self.gttotal=list(pool.map(self.nqueen_single,range(1)))
     # マルチ版
-    # self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
+    self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
     """
     組み込み関数を活用：forループで直接加算するのではなく、Pythonの組み込み関数
     であるsumを使うと、計算をネイティブで高速に処理できます。
@@ -2519,7 +2519,7 @@ class NQueens01:
         self.nqueens(row+1);
 #
 # ビット：マルチプロセス 最適化
-# 15:      2279184       285053         0:00:01.583
+# 15:      2279184       285053         0:00:01.476
 if __name__ == '__main__':
   NQueens18_multiProcess().main()
 #
