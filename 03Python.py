@@ -34,64 +34,61 @@ class NQueens18():
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
   def symmetryops(self,size):
-    board, bound1, bound2, endbit, topbit = self.aboard, self.bound1, self.bound2, self.endbit, self.topbit
-    if board[bound2] == 1:
-      own, ptn = 1, 2
-      for own in range(1, size):
-        bit = 1
-        you = size - 1
-        while board[you] != ptn and board[own] >= bit:
-          bit <<= 1
-          you -= 1
-        if board[own] > bit:
+    board,bound1,bound2,endbit,topbit=self.aboard,self.bound1,self.bound2,self.endbit,self.topbit
+    if board[bound2]==1:
+      own,ptn=1,2
+      for own in range(1,size):
+        bit=1
+        you=size-1
+        while board[you]!=ptn and board[own]>=bit:
+          bit<<=1
+          you-=1
+        if board[own]>bit:
           return
-        if board[own] < bit:
+        if board[own]<bit:
           break
-        ptn <<= 1
+        ptn<<=1
       else:
-        self.count2 += 1
+        self.count2+=1
         return
-    if board[size - 1] == endbit:
-      own, you = 1, size - 2
-      for own in range(1, size):
-        bit, ptn = 1, topbit
-        while board[you] != ptn and board[own] >= bit:
-          bit <<= 1
-          ptn >>= 1
-        if board[own] > bit:
+    if board[size-1]==endbit:
+      own,you=1,size-2
+      for own in range(1,size):
+        bit,ptn=1,topbit
+        while board[you]!=ptn and board[own]>=bit:
+          bit<<=1
+          ptn>>=1
+        if board[own]>bit:
           return
-        if board[own] < bit:
+        if board[own]<bit:
           break
-        you -= 1
+        you-=1
       else:
-        self.count4 += 1
+        self.count4+=1
         return
-    if board[bound1] == topbit:
-      ptn = topbit >> 1
-      for own in range(1, size):
-        bit = 1
-        you = 0
-        while board[you] != ptn and board[own] >= bit:
-          bit <<= 1
-          you += 1
-        if board[own] > bit:
+    if board[bound1]==topbit:
+      ptn=topbit>>1
+      for own in range(1,size):
+        bit=1
+        you=0
+        while board[you]!=ptn and board[own]>=bit:
+          bit<<=1
+          you+=1
+        if board[own]>bit:
           return
-        if board[own] < bit:
+        if board[own]<bit:
           break
-        ptn >>= 1
-    self.count8 += 1
+        ptn>>=1
+    self.count8+=1
   def backTrack2(self,size,row,left,down,right):
     bit=0
     mask=(1<<size)-1
     bitmap=mask&~(left|down|right)
-    # if row==(size-1):
-    #   if bitmap:
-    #     if (bitmap&self.lastmask==0):
-    #       self.aboard[row]=bitmap
-    #       self.symmetryops(size)
-    if row==(size-1)and bitmap and (bitmap&self.lastmask==0):
-      self.aboard[row]=bitmap
-      self.symmetryops(size)
+    if row==(size-1):
+      if bitmap:
+        if (bitmap&self.lastmask==0):
+          self.aboard[row]=bitmap
+          self.symmetryops(size)
     else:
       if row<self.bound1:
         bitmap&=~self.sidemask
@@ -104,29 +101,26 @@ class NQueens18():
           if (down&self.sidemask)!=self.sidemask:
             bitmap&=self.sidemask
       while bitmap:
-        bit=bitmap&-bitmap #bit=-bitmap&bitmap
-        bitmap&=bitmap-1 #bitmap^=bit
+        bit=bitmap&-bitmap  #bit=-bitmap&bitmap
+        bitmap&=bitmap-1    #bitmap^=bit
         self.aboard[row]=bit
         self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
   def backTrack1(self,size,row,left,down,right):
     mask=(1<<size)-1
     bitmap=mask&~(left|down|right)
     bit=0
-    # if row==(size-1):
-    #   if bitmap:
-    #     self.aboard[row]=bitmap
-    #     self.count8+=1
-    if row==(size-1)and bitmap:
-      self.aboard[row]=bitmap
-      self.count8+=1
+    if row==(size-1):
+      if bitmap:
+        self.aboard[row]=bitmap
+        self.count8+=1
     else:
       if row<self.bound1:
         bitmap&=~2
         # bitmap=bitmap|2
         # bitmap=bitmap^2
       while bitmap:
-        bit=bitmap&-bitmap #bit=-bitmap&bitmap
-        bitmap&=bitmap-1 #bitmap^=bit
+        bit=bitmap&-bitmap  #bit=-bitmap&bitmap
+        bitmap&=bitmap-1    #bitmap^=bit
         self.aboard[row]=bit
         self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
   def nqueen_single(self,thr_index):
@@ -2519,7 +2513,7 @@ class NQueens01:
 # シングル
 # 15:      2279184       285053         0:00:03.734
 # マルチ
-# 15:      2279184       285053         0:00:01.457
+# 15:      2279184       285053         0:00:01.379
 if __name__ == '__main__':
   NQueens18_multiProcess().main()
 #
