@@ -34,147 +34,151 @@ class NQueens18():
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
   def symmetryops(self,size):
-    board,bound1,bound2,endbit,topbit=self.aboard,self.bound1,self.bound2,self.endbit,self.topbit
-    if board[bound2]==1:
-      own,ptn=1,2
-      for own in range(1,size):
-        bit=1
-        you=size-1
-        while board[you]!=ptn and board[own]>=bit:
-          bit<<=1
-          you-=1
-        if board[own]>bit:
+    board, bound1, bound2, endbit, topbit = self.aboard, self.bound1, self.bound2, self.endbit, self.topbit
+    if board[bound2] == 1:
+      own, ptn = 1, 2
+      for own in range(1, size):
+        bit = 1
+        you = size - 1
+        while board[you] != ptn and board[own] >= bit:
+          bit <<= 1
+          you -= 1
+        if board[own] > bit:
           return
-        if board[own]<bit:
+        if board[own] < bit:
           break
-        ptn<<=1
+        ptn <<= 1
       else:
-        self.count2+=1
+        self.count2 += 1
         return
-    if board[size-1]==endbit:
-      own,you=1,size-2
-      for own in range(1,size):
-        bit,ptn=1,topbit
-        while board[you]!=ptn and board[own]>=bit:
-          bit<<=1
-          ptn>>=1
-        if board[own]>bit:
+    if board[size - 1] == endbit:
+      own, you = 1, size - 2
+      for own in range(1, size):
+        bit, ptn = 1, topbit
+        while board[you] != ptn and board[own] >= bit:
+          bit <<= 1
+          ptn >>= 1
+        if board[own] > bit:
           return
-        if board[own]<bit:
+        if board[own] < bit:
           break
-        you-=1
+        you -= 1
       else:
-        self.count4+=1
+        self.count4 += 1
         return
-    if board[bound1]==topbit:
-      ptn=topbit>>1
-      for own in range(1,size):
-        bit=1
-        you=0
-        while board[you]!=ptn and board[own]>=bit:
-          bit<<=1
-          you+=1
-        if board[own]>bit:
+    if board[bound1] == topbit:
+      ptn = topbit >> 1
+      for own in range(1, size):
+        bit = 1
+        you = 0
+        while board[you] != ptn and board[own] >= bit:
+          bit <<= 1
+          you += 1
+        if board[own] > bit:
           return
-        if board[own]<bit:
+        if board[own] < bit:
           break
-        ptn>>=1
-    self.count8+=1
+        ptn >>= 1
+    self.count8 += 1
   def backTrack2(self,size,row,left,down,right):
-    sidemask,lastmask,bound1,bound2=self.sidemask,self.lastmask,self.bound1,self.bound2
     bit=0
     mask=(1<<size)-1
     bitmap=mask&~(left|down|right)
-    if row==(size-1) and bitmap and (bitmap&lastmask==0):
-      # if bitmap:
-      #   if (bitmap&lastmask==0):
+    # if row==(size-1):
+    #   if bitmap:
+    #     if (bitmap&self.lastmask==0):
+    #       self.aboard[row]=bitmap
+    #       self.symmetryops(size)
+    if row==(size-1)and bitmap and (bitmap&self.lastmask==0):
       self.aboard[row]=bitmap
       self.symmetryops(size)
     else:
-      if row<bound1:
-      #   # bitmap=bitmap|self.sidemask
-      #   # bitmap=bitmap^self.sidemask
-        bitmap&=~sidemask
-      # else:
-      if row==bound2:
-        if down&sidemask==0:
-          return
-        if (down&sidemask)!=sidemask:
-          bitmap&=sidemask
+      if row<self.bound1:
+        bitmap&=~self.sidemask
+        # bitmap=bitmap|self.sidemask
+        # bitmap=bitmap^self.sidemask
+      else:
+        if row==self.bound2:
+          if down&self.sidemask==0:
+            return
+          if (down&self.sidemask)!=self.sidemask:
+            bitmap&=self.sidemask
       while bitmap:
-        bit=bitmap&-bitmap  # bit=-bitmap&bitmap
-        bitmap&=bitmap-1    # bitmap^=bit
+        bit=bitmap&-bitmap #bit=-bitmap&bitmap
+        bitmap&=bitmap-1 #bitmap^=bit
         self.aboard[row]=bit
         self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
   def backTrack1(self,size,row,left,down,right):
-    bound1=self.bound1
     mask=(1<<size)-1
     bitmap=mask&~(left|down|right)
-    if row==(size-1) and bitmap:
-      # if bitmap:
+    bit=0
+    # if row==(size-1):
+    #   if bitmap:
+    #     self.aboard[row]=bitmap
+    #     self.count8+=1
+    if row==(size-1)and bitmap:
       self.aboard[row]=bitmap
       self.count8+=1
     else:
-      if row<bound1:
-      #   bitmap=bitmap|2
-      #   bitmap=bitmap^2
+      if row<self.bound1:
         bitmap&=~2
+        # bitmap=bitmap|2
+        # bitmap=bitmap^2
       while bitmap:
-        bit=bitmap&-bitmap  # bit=-bitmap&bitmap
-        bitmap&=bitmap-1    # bitmap^=bit
+        bit=bitmap&-bitmap #bit=-bitmap&bitmap
+        bitmap&=bitmap-1 #bitmap^=bit
         self.aboard[row]=bit
         self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
   def nqueen_single(self,thr_index):
-    size,sizeE,topbit,endbit,sidemask,lastmask,bound1,bound2=self.size,self.size-1,self.topbit,self.endbit,self.sidemask,self.lastmask,self.bound1,self.bound2
-    bit=0
+    size,sizeE=self.size,self.sizeE
+    self.bit=0
     self.aboard[0]=1
-    topbit=1<<sizeE
-    bound1=1
-    for bound1 in range(2,sizeE):
-      self.aboard[1]=bit=(1<<bound1)
+    self.topbit=1<<sizeE
+    self.bound1=1
+    for self.bound1 in range(2,sizeE):
+      self.aboard[1]=bit=(1<<self.bound1)
       self.backTrack1(size,2,(2|bit)<<1,1|bit,bit>>1)
-      bound1+=1
-    sidemask=lastmask=(topbit|1)
-    endbit=(topbit>>1)
-    bound1=1
-    bound2=sizeE-1
-    for bound1 in range(1,bound2):
-      self.aboard[0]=bit=(1<<bound1)
+      self.bound1+=1
+    self.sidemask=self.lastmask=(self.topbit|1)
+    self.endbit=(self.topbit>>1)
+    self.bound1=1
+    self.bound2=sizeE-1
+    for self.bound1 in range(1,self.bound2):
+      self.aboard[0]=bit=(1<<self.bound1)
       self.backTrack2(size,1,bit<<1,bit,bit>>1)
-      lastmask|=lastmask>>1|lastmask<<1
-      endbit>>=1
-      bound1+=1
-      bound2-=1
-    return self.total,self.unique
+      self.lastmask|=self.lastmask>>1|self.lastmask<<1
+      self.endbit>>=1
+      self.bound1+=1
+      self.bound2-=1
+    return self.gettotal(),self.getunique()
   def nqueen_multi(self,thr_index):
-    size,sizeE,topbit,endbit,sidemask,lastmask,bound1,bound2=size,size-1,self.topbit,self.endbit,self.sidemask,self.lastmask,self.bound1,self.bound2
+    size,sizeE=self.size,self.sizeE
     self.aboard[0]=1
-    topbit=1<<sizeE
-    bound1=size-thr_index-1
-    if bound1>1 and bound1<sizeE:
-      self.aboard[1]=bit=(1<<bound1)
+    self.topbit=1<<sizeE
+    self.bound1=size-thr_index-1
+    # if self.bound1>1 and self.bound1<sizeE:
+    if 1<self.bound1<sizeE: 
+      self.aboard[1]=bit=1<<self.bound1
       self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1))
-    endbit=(topbit>>1)
-    sidemask=lastmask=(topbit|1)
-    bound2=thr_index
-    if bound1>0 and bound2<sizeE and bound1<bound2:
-      self.aboard[0]=bit=(1<<bound1)
-      for i in range(1,bound1):
-        lastmask|=lastmask>>1|lastmask<<1
-        endbit>>=1
+    self.endbit=self.topbit>>1
+    self.sidemask=self.lastmask=self.topbit|1
+    self.bound2=thr_index
+    # if self.bound1>0 and self.bound2<sizeE and self.bound1<self.bound2:
+    if 0<self.bound1<self.bound2<sizeE:
+      self.aboard[0]=bit=(1<<self.bound1)
+      for i in range(1,self.bound1):
+        self.lastmask|=self.lastmask>>1|self.lastmask<<1
+        self.endbit>>=1
       self.backTrack2(size,1,bit<<1,bit,bit>>1)
-    return self.total,self.unique
+    return self.gettotal(),self.getunique()
   def solve(self):
     pool=ThreadPool(self.size)
+    #
     # シングル版
     # self.gttotal=list(pool.map(self.nqueen_single,range(1)))
     # マルチ版
     self.gttotal=list(pool.map(self.nqueen_multi,range(self.size)))
-    """
-    組み込み関数を活用：forループで直接加算するのではなく、Pythonの組み込み関数
-    であるsumを使うと、計算をネイティブで高速に処理できます。
-    アンパックの削減：forループ内で(t, u)として要素をアンパックするコストを省略できます。
-    """
+    #
     # total=0
     # unique=0
     # for t,u in self.gttotal:
@@ -188,17 +192,16 @@ class NQueens18():
 class NQueens18_multiProcess:
   def main(self):
     nmin = 4
-    nmax = 20
+    nmax = 16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for i in range(nmin, nmax):
       start_time=datetime.now()
-      NQ=NQueens17(i)
+      NQ=NQueens18(i)
       total,unique=NQ.solve()
       time_elapsed=datetime.now()-start_time
       _text='{}'.format(time_elapsed)
       text=_text[:-3]
       print("%2d:%13d%13d%20s"%(i,total,unique, text))  
-
 
 class NQueens17():
   def __init__(self,size):
@@ -2513,7 +2516,10 @@ class NQueens01:
         self.nqueens(row+1);
 #
 # ビット：マルチプロセス 最適化
-# 15:      2279184       285053         0:00:01.476
+# シングル
+# 15:      2279184       285053         0:00:03.734
+# マルチ
+# 15:      2279184       285053         0:00:01.457
 if __name__ == '__main__':
   NQueens18_multiProcess().main()
 #
