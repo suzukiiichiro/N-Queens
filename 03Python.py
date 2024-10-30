@@ -34,12 +34,6 @@ class NQueens18():
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
   def symmetryops(self,size):
-    """
-    ビット操作の変数を先に計算：topbit、endbit、lastmaskなどのビット操作に基づ
-    く変数を事前に設定し、ループや条件の中で頻繁に計算しないようにしました。条
-    件分岐の評価回数を削減：複数の条件をまとめて評価することで、不要な条件判定
-    を減らしました。
-    """
     board,bound1,bound2,endbit,topbit=self.aboard,self.bound1,self.bound2,self.endbit,self.topbit
     if board[bound2]==1:
       own,ptn=1,2
