@@ -380,7 +380,7 @@ class Nqueen(): # pylint: disable=R0902
 if __name__ == '__main__':
   """ main() """
   nmin = 4                          # Nの最小値（スタートの値）を格納
-  nmax = 16
+  nmax = 20
   print(" N:        Total       Unique        hh:mm:ss.ms")
   for i in range(nmin, nmax):
     start_time = datetime.now()
