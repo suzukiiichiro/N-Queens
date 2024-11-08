@@ -9,6 +9,256 @@ from datetime import datetime
 # pypyで再帰が高速化できる
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
+# ThreadPoolとProcessPool
+import os
+import concurrent.futures
+
+class NQueens19():
+  def __init__(self):
+    self.count2=0
+    self.count4=0
+    self.count8=0
+  def getunique(self):
+    return self.count2+self.count4+self.count8
+  def gettotal(self):
+    return self.count2*2+self.count4*4+self.count8*8
+  def symmetryops(self,size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+    if aboard[bound2]==1:
+      ptn=2
+      for own in range(1,size):
+        bit=1
+        you=size-1
+        while aboard[you]!=ptn and aboard[own]>=bit:
+          bit<<=1
+          you-=1
+        if aboard[own]>bit:
+          return
+        if aboard[own]<bit:
+          break
+        ptn<<=1
+      else:
+        self.count2+=1
+        return
+    if aboard[size-1]==endbit:
+      you=size-2
+      for own in range(1,size):
+        bit,ptn=1,topbit
+        while aboard[you]!=ptn and aboard[own]>=bit:
+          bit<<=1
+          ptn>>=1
+        if aboard[own]>bit:
+          return
+        if aboard[own]<bit:
+          break
+        you-=1
+      else:
+        self.count4+=1
+        return
+    if aboard[bound1]==topbit:
+      ptn=topbit>>1
+      for own in range(1,size):
+        bit=1
+        you=own-1
+        while aboard[you]!=ptn and aboard[own]>=bit:
+          bit<<=1
+          you+=1
+        if aboard[own]>bit:
+          return
+        if aboard[own]<bit:
+          break
+        ptn>>=1
+    self.count8+=1
+  def backTrack2(self, size, row, left, down, right, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2):
+    mask = (1 << size) - 1
+    bitmap = mask & ~(left | down | right)
+    # 最下行の場合、最適化のための条件チェック
+    if row == size - 1:
+      if bitmap and (bitmap & lastmask) == 0:
+        aboard[row] = bitmap
+        self.symmetryops(size, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2)
+      return  # row == size - 1 の場合、処理を終了
+    # 上部の行であればサイドマスク適用
+    if row < bound1:
+      bitmap &= ~sidemask
+    elif row == bound2:
+      # `bound2` 行の場合、サイドマスクとの一致を確認し不要な分岐を排除
+      if (down & sidemask) == 0:
+        return
+      elif (down & sidemask) != sidemask:
+        bitmap &= sidemask
+    # 再帰的探索ループ
+    while bitmap:
+      bit = bitmap & -bitmap  # 最右ビットを抽出
+      bitmap ^= bit           # 最右ビットを消去
+      aboard[row] = bit
+      self.backTrack2(
+        size, row + 1,
+        (left | bit) << 1, down | bit, (right | bit) >> 1,
+        aboard, topbit, endbit, sidemask, lastmask, bound1, bound2
+      )
+  # def backTrack2(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+  #   bit=0
+  #   mask=(1<<size)-1
+  #   bitmap=mask&~(left|down|right)
+  #   if row==(size-1):
+  #     if bitmap:
+  #       if (bitmap&lastmask==0):
+  #         aboard[row]=bitmap
+  #         self.symmetryops(size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+  #   else:
+  #     if row<bound1:
+  #       bitmap&=~sidemask
+  #       # bitmap=bitmap|self.sidemask
+  #       # bitmap=bitmap^self.sidemask
+  #     else:
+  #       if row==bound2:
+  #         if down&sidemask==0:
+  #           return
+  #         if (down&sidemask)!=sidemask:
+  #           bitmap&=sidemask
+  #     while bitmap:
+  #       bit=bitmap&-bitmap  #bit=-bitmap&bitmap
+  #       bitmap&=bitmap-1    #bitmap^=bit
+  #       aboard[row]=bit
+  #       self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+  def backTrack1(self, size, row, left, down, right, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2):
+    mask = (1 << size) - 1
+    bitmap = mask & ~(left | down | right)
+    # 最下行に達した場合の処理
+    if row == size - 1:
+      if bitmap:
+        aboard[row] = bitmap
+        self.count8 += 1
+      return
+    # 上部の行であればマスク適用
+    if row < bound1:
+      bitmap &= ~2
+    # 再帰的探索ループ
+    while bitmap:
+      bit = bitmap & -bitmap  # 最右ビットを抽出
+      bitmap ^= bit           # 最右ビットを消去
+      aboard[row] = bit
+      self.backTrack1(
+        size, row + 1,
+        (left | bit) << 1, down | bit, (right | bit) >> 1,
+        aboard, topbit, endbit, sidemask, lastmask, bound1, bound2
+      )
+  # def backTrack1(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+  #   mask=(1<<size)-1
+  #   bitmap=mask&~(left|down|right)
+  #   bit=0
+  #   if row==(size-1):
+  #     if bitmap:
+  #       aboard[row]=bitmap
+  #       self.count8+=1
+  #   else:
+  #     if row<bound1:
+  #       bitmap&=~2
+  #       # bitmap=bitmap|2
+  #       # bitmap=bitmap^2
+  #     while bitmap:
+  #       bit=bitmap&-bitmap  #bit=-bitmap&bitmap
+  #       bitmap&=bitmap-1    #bitmap^=bit
+  #       aboard[row]=bit
+  #       self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+  def nqueen_single(self,value):
+    thr_index,size=value
+    sizeE=size-1
+    aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
+    aboard[0]=1
+    topbit=1<<sizeE
+    endbit=0
+    sidemask=0
+    lastmask=0
+    bound1=1
+    bound2=0
+    for bound1 in range(2,sizeE):
+      aboard[1]=bit=(1<<bound1)
+      self.backTrack1(size,2,(2|bit)<<1,1|bit,bit>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+      bound1+=1
+    sidemask=lastmask=(topbit|1)
+    endbit=(topbit>>1)
+    bound1=1
+    bound2=sizeE-1
+    for bound1 in range(1,bound2):
+      aboard[0]=bit=(1<<bound1)
+      self.backTrack2(size,1,bit<<1,bit,bit>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+      lastmask|=lastmask>>1|lastmask<<1
+      endbit>>=1
+      bound1+=1
+      bound2-=1
+    return self.gettotal(),self.getunique()
+  def nqueen_multi(self,value):
+    thr_index,size=value
+    sizeE=size-1
+    aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
+    aboard[0]=1
+    topbit=1<<sizeE
+    bound1=size-thr_index-1
+    if 1<bound1<sizeE: 
+      aboard[1]=bit=1<<bound1
+      self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+    endbit=topbit>>1
+    sidemask=lastmask=topbit|1
+    bound2=thr_index
+    if 0<bound1<bound2<sizeE:
+      aboard[0]=bit=(1<<bound1)
+      for i in range(1,bound1):
+        lastmask|=lastmask>>1|lastmask<<1
+        endbit>>=1
+      self.backTrack2(size,1,bit<<1,bit,bit>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+    return self.gettotal(),self.getunique()
+
+  def solve(self,size):
+    # ThreadPool
+    # 15:     10223176      1278551         0:00:04.080
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+
+    # ProcessPool max_workers=1
+    # 15:      2279184       285053         0:00:04.342
+    # with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+
+    # ProcessPool max_workers=size
+    # 15:      2279184       285053         0:00:01.846
+    # with concurrent.futures.ProcessPoolExecutor(max_workers=size) as executor:
+
+    # ProcessPool max_rowkers=os.process_cpu_count()
+    # 15:      2279184       285053         0:00:01.528
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+      value=[(thr_index,size) for thr_index in range(size) ]
+      gttotal=list(executor.map(self.nqueen_multi,value))
+
+    # multiprocessing Pool
+    # 15:      2279184       285053         0:00:01.969
+    # pool=ThreadPool(size)
+    # value=[(thr_index,size) for thr_index in range(size) ]
+    # gttotal=list(pool.map(self.nqueen_multi,value))
+
+    #
+    # total=0
+    # unique=0
+    # for t,u in gttotal:
+    #   total+=t
+    #   unique+=u
+    total = sum(t for t, _ in gttotal)
+    unique = sum(u for _, u in gttotal)
+    return total,unique
+class NQueens19_multiProcess:
+  def main(self):
+    nmin = 4
+    nmax = 18
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for i in range(nmin, nmax):
+      start_time=datetime.now()
+      NQ=NQueens19()
+      total,unique=NQ.solve(i)
+      time_elapsed=datetime.now()-start_time
+      _text='{}'.format(time_elapsed)
+      text=_text[:-3]
+      print("%2d:%13d%13d%20s"%(i,total,unique, text))  
+
 
 class NQueens18():
   def __init__(self):
@@ -2504,20 +2754,24 @@ class NQueens01:
         self.aboard[row]=i;
         self.nqueens(row+1);
 #
+# ビット：ProcessPool
+if __name__ == '__main__':
+  NQueens19_multiProcess().main()
+
 # ビット：マルチプロセス 最適化
 # マルチ
-# 15:      2279184       285053         0:00:01.379
+# 15:      2279184       285053         0:00:02.116
 # シングル
 # 15:      2279184       285053         0:00:04.151
-if __name__ == '__main__':
-  NQueens18_multiProcess().main()
+# if __name__ == '__main__':
+#  NQueens18_multiProcess().main()
 #
 # 【参考値】09Bit_GCC 06GCC_Symmetry.c
 # 15:      2279184          285053            0.54
 # 16:     14772512         1846955            3.48
 #
 # ビット：マルチプロセス
-# 15:      2279184       285053         0:00:01.593
+# 15:      2279184       285053         0:00:02.116
 # if __name__ == '__main__':
 #   NQueens17_multiProcess().main()
 #
