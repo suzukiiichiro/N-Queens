@@ -22,9 +22,10 @@ class NQueens19():
     return self.count2+self.count4+self.count8
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
+  #
   def symmetryops(self,size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
     if aboard[bound2]==1:
-      ptn=2
+      own,ptn=1,2
       for own in range(1,size):
         bit=1
         you=size-1
@@ -40,7 +41,7 @@ class NQueens19():
         self.count2+=1
         return
     if aboard[size-1]==endbit:
-      you=size-2
+      own,you=1,size-2
       for own in range(1,size):
         bit,ptn=1,topbit
         while aboard[you]!=ptn and aboard[own]>=bit:
@@ -58,7 +59,7 @@ class NQueens19():
       ptn=topbit>>1
       for own in range(1,size):
         bit=1
-        you=own-1
+        you=0
         while aboard[you]!=ptn and aboard[own]>=bit:
           bit<<=1
           you+=1
@@ -68,99 +69,56 @@ class NQueens19():
           break
         ptn>>=1
     self.count8+=1
-  def backTrack2(self, size, row, left, down, right, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2):
-    mask = (1 << size) - 1
-    bitmap = mask & ~(left | down | right)
+  def backTrack2(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+    mask=(1<<size)-1
+    bitmap=mask&~(left|down|right)
     # 最下行の場合、最適化のための条件チェック
-    if row == size - 1:
-      if bitmap and (bitmap & lastmask) == 0:
-        aboard[row] = bitmap
-        self.symmetryops(size, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2)
-      return  # row == size - 1 の場合、処理を終了
+    if row==size-1:
+      if bitmap and (bitmap&lastmask)==0:
+        aboard[row]=bitmap
+        self.symmetryops(size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+      return  # row==size-1 の場合、処理を終了
     # 上部の行であればサイドマスク適用
-    if row < bound1:
-      bitmap &= ~sidemask
-    elif row == bound2:
+    if row<bound1:
+      bitmap&=~sidemask
+    elif row==bound2:
       # `bound2` 行の場合、サイドマスクとの一致を確認し不要な分岐を排除
-      if (down & sidemask) == 0:
+      if (down&sidemask)==0:
         return
-      elif (down & sidemask) != sidemask:
-        bitmap &= sidemask
+      elif (down&sidemask)!=sidemask:
+        bitmap&=sidemask
     # 再帰的探索ループ
     while bitmap:
-      bit = bitmap & -bitmap  # 最右ビットを抽出
-      bitmap ^= bit           # 最右ビットを消去
-      aboard[row] = bit
+      bit=bitmap&-bitmap  # 最右ビットを抽出
+      bitmap^=bit           # 最右ビットを消去
+      aboard[row]=bit
       self.backTrack2(
-        size, row + 1,
-        (left | bit) << 1, down | bit, (right | bit) >> 1,
-        aboard, topbit, endbit, sidemask, lastmask, bound1, bound2
+        size,row+1,
+        (left|bit)<<1,down|bit,(right|bit) >> 1,
+        aboard,topbit,endbit,sidemask,lastmask,bound1,bound2
       )
-  # def backTrack2(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
-  #   bit=0
-  #   mask=(1<<size)-1
-  #   bitmap=mask&~(left|down|right)
-  #   if row==(size-1):
-  #     if bitmap:
-  #       if (bitmap&lastmask==0):
-  #         aboard[row]=bitmap
-  #         self.symmetryops(size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
-  #   else:
-  #     if row<bound1:
-  #       bitmap&=~sidemask
-  #       # bitmap=bitmap|self.sidemask
-  #       # bitmap=bitmap^self.sidemask
-  #     else:
-  #       if row==bound2:
-  #         if down&sidemask==0:
-  #           return
-  #         if (down&sidemask)!=sidemask:
-  #           bitmap&=sidemask
-  #     while bitmap:
-  #       bit=bitmap&-bitmap  #bit=-bitmap&bitmap
-  #       bitmap&=bitmap-1    #bitmap^=bit
-  #       aboard[row]=bit
-  #       self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
-  def backTrack1(self, size, row, left, down, right, aboard, topbit, endbit, sidemask, lastmask, bound1, bound2):
-    mask = (1 << size) - 1
-    bitmap = mask & ~(left | down | right)
+  def backTrack1(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+    mask=(1<<size)-1
+    bitmap=mask & ~(left|down|right)
     # 最下行に達した場合の処理
-    if row == size - 1:
+    if row==size-1:
       if bitmap:
-        aboard[row] = bitmap
+        aboard[row]=bitmap
         self.count8 += 1
       return
     # 上部の行であればマスク適用
-    if row < bound1:
+    if row<bound1:
       bitmap &= ~2
     # 再帰的探索ループ
     while bitmap:
-      bit = bitmap & -bitmap  # 最右ビットを抽出
-      bitmap ^= bit           # 最右ビットを消去
-      aboard[row] = bit
+      bit=bitmap&-bitmap  # 最右ビットを抽出
+      bitmap^=bit           # 最右ビットを消去
+      aboard[row]=bit
       self.backTrack1(
-        size, row + 1,
-        (left | bit) << 1, down | bit, (right | bit) >> 1,
-        aboard, topbit, endbit, sidemask, lastmask, bound1, bound2
+        size,row+1,
+        (left|bit)<<1,down|bit,(right|bit) >> 1,
+        aboard,topbit,endbit,sidemask,lastmask,bound1,bound2
       )
-  # def backTrack1(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
-  #   mask=(1<<size)-1
-  #   bitmap=mask&~(left|down|right)
-  #   bit=0
-  #   if row==(size-1):
-  #     if bitmap:
-  #       aboard[row]=bitmap
-  #       self.count8+=1
-  #   else:
-  #     if row<bound1:
-  #       bitmap&=~2
-  #       # bitmap=bitmap|2
-  #       # bitmap=bitmap^2
-  #     while bitmap:
-  #       bit=bitmap&-bitmap  #bit=-bitmap&bitmap
-  #       bitmap&=bitmap-1    #bitmap^=bit
-  #       aboard[row]=bit
-  #       self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
   def nqueen_single(self,value):
     thr_index,size=value
     sizeE=size-1
@@ -244,6 +202,8 @@ class NQueens19():
     #   unique+=u
     total = sum(t for t, _ in gttotal)
     unique = sum(u for _, u in gttotal)
+    # pool.close()
+    # pool.join()
     return total,unique
 class NQueens19_multiProcess:
   def main(self):
