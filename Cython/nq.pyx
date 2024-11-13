@@ -4,8 +4,8 @@ from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+#import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 # ThreadPoolとProcessPool
 import os
 import concurrent.futures
