@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # -*- coding: utf-8 -*-
 import logging
 import threading
@@ -7,8 +5,11 @@ from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
 # pypyで再帰が高速化できる
+
+# pypyを使う場合はコメントを解除
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
+
 # ThreadPoolとProcessPool
 import os
 import concurrent.futures
@@ -22,7 +23,6 @@ class NQueens19():
     return self.count2+self.count4+self.count8
   def gettotal(self):
     return self.count2*2+self.count4*4+self.count8*8
-  #
   def symmetryops(self,size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
     if aboard[bound2]==1:
       own,ptn=1,2
@@ -182,9 +182,14 @@ class NQueens19():
     # 15:      2279184       285053         0:00:01.846
     # with concurrent.futures.ProcessPoolExecutor(max_workers=size) as executor:
 
+
     # ProcessPool max_rowkers=os.process_cpu_count()
     # 15:      2279184       285053         0:00:01.528
+
+    # マルチプロセス
     with concurrent.futures.ProcessPoolExecutor() as executor:
+    # マルチスレッド
+    # with concurrent.futures.ThreadPoolExecutor() as executor:
       value=[(thr_index,size) for thr_index in range(size) ]
       gttotal=list(executor.map(self.nqueen_multi,value))
 
@@ -2715,6 +2720,8 @@ class NQueens01:
         self.nqueens(row+1);
 #
 # ビット：ProcessPool
+# Cython
+# 15:      2279184       285053         0:00:09.633
 if __name__ == '__main__':
   NQueens19_multiProcess().main()
 
