@@ -186,10 +186,15 @@ class NQueens19():
     # ProcessPool max_rowkers=os.process_cpu_count()
     # 15:      2279184       285053         0:00:01.528
 
+    """
+    マルチスレッドとマルチプロセスを切り替えます。
+    """
     # マルチプロセス
-    with concurrent.futures.ProcessPoolExecutor() as executor:
+    # with concurrent.futures.ProcessPoolExecutor() as executor:
+    #
     # マルチスレッド
-    # with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+    #
       value=[(thr_index,size) for thr_index in range(size) ]
       gttotal=list(executor.map(self.nqueen_multi,value))
 
