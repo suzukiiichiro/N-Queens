@@ -85,15 +85,15 @@ class NQueens19():
     if row<bound1:
       bitmap&=~sidemask
     elif row==bound2:
-      # `bound2` 行の場合、サイドマスクとの一致を確認し不要な分岐を排除
+      # `bound2` 行の場合、
+      # サイドマスクとの一致を確認し不要な分岐を排除
       if (down&sidemask)==0:
         return count2,count4,count8
       elif (down&sidemask)!=sidemask:
         bitmap&=sidemask
-    # 再帰的探索ループ
     while bitmap:
       bit=bitmap&-bitmap  # 最右ビットを抽出
-      bitmap^=bit           # 最右ビットを消去
+      bitmap^=bit         # 最右ビットを消去
       aboard[row]=bit
       c2,c4,c8=self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit) >> 1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
       count2+=c2
@@ -106,18 +106,16 @@ class NQueens19():
     count8=0
     mask=(1<<size)-1
     bitmap=mask & ~(left|down|right)
-    # 最下行に達した場合の処理
-    if row==size-1:
+    
+    if row==size-1: # 最下行に達した場合の処理
       if bitmap:
         aboard[row]=bitmap
         count8+=1
       return count2,count4,count8
-    # 上部の行であればマスク適用
-    if row<bound1:
+    if row<bound1:  # 上部の行であればマスク適用
       bitmap &= ~2
-    # 再帰的探索ループ
     while bitmap:
-      bit=bitmap&-bitmap  # 最右ビットを抽出
+      bit=bitmap&-bitmap    # 最右ビットを抽出
       bitmap^=bit           # 最右ビットを消去
       aboard[row]=bit
       c2,c4,c8=self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit) >> 1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
@@ -205,15 +203,12 @@ class NQueens19_multiProcess:
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for i in range(nmin, nmax):
       start_time=datetime.now()
-      lock=threading.Lock()
       NQ=NQueens19()
-      # NQ.setLock(lock)
       total,unique=NQ.solve(i)
       time_elapsed=datetime.now()-start_time
       _text='{}'.format(time_elapsed)
       text=_text[:-3]
       print("%2d:%13d%13d%20s"%(i,total,unique, text))  
-
 
 class NQueens18():
   def __init__(self):
