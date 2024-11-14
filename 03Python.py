@@ -188,18 +188,16 @@ class NQueens19():
       results=list(executor.map(self.nqueen_multiProcess,value))
 
     # マルチスレッド
+    # 15:      2279184       285053         0:00:04.684
     # with concurrent.futures.ThreadPoolExecutor() as executor:
     #   value=[(thr_index,size) for thr_index in range(size) ]
     #   results=list(executor.map(self.nqueen_multiProcess,value))
 
-    # total = sum(t for t, _ in gttotal)
-    # unique = sum(u for _, u in gttotal)
-    # return total,unique
     # スレッドごとの結果を集計
-    total_counts = [sum(x) for x in zip(*results)]
-    total = self.gettotal(total_counts)
-    unique = self.getunique(total_counts)
-    return total, unique
+    total_counts=[sum(x) for x in zip(*results)]
+    total=self.gettotal(total_counts)
+    unique=self.getunique(total_counts)
+    return total,unique
 class NQueens19_multiProcess:
   def main(self):
     nmin = 4
@@ -2712,8 +2710,10 @@ class NQueens01:
         self.nqueens(row+1);
 #
 # ビット：ProcessPool
-# Cython
-# 15:      2279184       285053         0:00:09.633
+# マルチプロセス
+# 15:      2279184       285053         0:00:01.528
+# マルチスレッド
+# 15:      2279184       285053         0:00:04.684
 if __name__ == '__main__':
   NQueens19_multiProcess().main()
 
