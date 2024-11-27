@@ -166,7 +166,7 @@ size: 5 TOTAL: 10 UNIQUE: 2
 MAX=21  # ボードサイズ最大値
 TOTAL=0 # 解
 board=[0 for i in range(MAX)] # ボード配列格納用
-# 
+#
 # ボードレイアウト出力
 def printRecord(size):
   global TOTAL
