@@ -2,8 +2,8 @@ import os
 from datetime import datetime
 # pypyで再帰が高速化できる
 # pypyを使う場合はコメントを解除
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 #
 class NQueens21():
   def __init__(self):
