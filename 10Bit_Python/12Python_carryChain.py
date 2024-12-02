@@ -2,26 +2,6 @@
 
 # -*- coding: utf-8 -*-
 import copy
-"""
-キャリーチェーン版 Ｎクイーン
-
-詳細はこちら。
-【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
-https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
-
-エイト・クイーンのプログラムアーカイブ
-Bash、Lua、C、Java、Python、CUDAまで！
-https://github.com/suzukiiichiro/N-Queens
-
-# 実行 
-$ python <filename.py>
-
-# 実行結果
-bash-3.2$ python 07Python_carryChain.py
-size: 5 TOTAL: 10 UNIQUE: 2
-bash-3.2$
-
-"""
 #
 # グローバル変数
 TOTAL=0

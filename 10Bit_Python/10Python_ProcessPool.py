@@ -13,7 +13,7 @@ from datetime import datetime
 # ThreadPoolとProcessPool
 import os
 import concurrent.futures
-class NQueens20():
+class NQueens10():
   def __init__(self):
     pass
   def getunique(self,counts):
@@ -194,24 +194,31 @@ class NQueens20():
     total=self.gettotal(total_counts)
     unique=self.getunique(total_counts)
     return total,unique
-class NQueens20_multiProcess:
+class NQueens10_processPool:
   def main(self):
-    nmin = 4
-    nmax = 18
+    nmin:int=4
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
-    for i in range(nmin, nmax):
+    for size in range(nmin, nmax):
       start_time=datetime.now()
-      NQ=NQueens20()
-      total,unique=NQ.solve(i)
+      NQ=NQueens10()
+      total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      _text='{}'.format(time_elapsed)
-      text=_text[:-3]
-      print("%2d:%13d%13d%20s"%(i,total,unique, text))  
+      # _text='{}'.format(time_elapsed)
+      # text=_text[:-3]
+      # print("%2d:%13d%13d%20s"%(i,total,unique, text))  
+      text = str(time_elapsed)[:-3]  
+      print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
+
 #
-# マルチプロセス
+# $ python <filename>
+# $ pypy <fileName>
+# $ codon build -release <filename>
+# codonではプロセスプールが動かなかった
+# プロセスプール
 # 15:      2279184       285053         0:00:01.528
 if __name__ == '__main__':
-  NQueens20_multiProcess().main()
+  NQueens10_processPool().main()
 
 
 

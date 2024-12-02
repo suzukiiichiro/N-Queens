@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ブルートフォース版 Ｎクイーン
+バックトラッキング版 Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -11,7 +11,6 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
-
 
 # 実行 
 $ python <filename.py>
@@ -157,87 +156,69 @@ $ python <filename.py>
 |O| | | | |
 +-+-+-+-+-+
 
+
+bash-3.2$ python 07Python_carryChain.py
 size: 5 TOTAL: 10 UNIQUE: 2
+bash-3.2$
 
 """
 
-#
-# グローバル変数
-MAX=21  # ボードサイズ最大値
-TOTAL=0 # 解
-board=[0 for i in range(MAX)] # ボード配列格納用
-#
-# ボードレイアウト出力
-def printRecord(size):
-  global TOTAL
-  global board
+from datetime import datetime
 
-  print(TOTAL)
-  sEcho=""
-  for i in range(size):
-    sEcho+=" " + str(board[i])
-  print(sEcho)
-  print ("+",end="")
-  for i in range(size):
-    print("-",end="")
-    if i<(size-1):
-      print("+",end="")
-  print("+")
-  for i in range(size):
-    print("|",end="")
-    for j in range(size):
-      if i==board[j]:
-        print("O",end="")
-      else:
-        print(" ",end="")
-      if j<(size-1):
-        print("|",end="")
-    print("|")
-    if i in range(size-1):
-      print("+",end="")
+# pypyを使う場合はコメントを解除
+# import pypyjit
+# pypyで再帰が高速化できる
+# pypyjit.set_param('max_unroll_recursion=-1')
+
+class NQueens03:
+  max:int
+  total:int
+  unique:int
+  aboard:list[int]
+  fa:list[int]
+  fb:list[int]
+  fc:list[int]
+  def __init__(self):
+    self.max=16;
+    self.total=0;
+    self.unique=0;
+    self.aboard=[0 for i in range(self.max)];
+    self.fa=[0 for i in range(2*self.max-1)];
+    self.fb=[0 for i in range(2*self.max-1)];
+    self.fc=[0 for i in range(2*self.max-1)];
+  def nqueens(self,row:int,size:int):
+    if row==size:
+      self.total+=1;
+    else:
+      for i in range(size):
+        self.aboard[row]=i;
+        if self.fa[i]==0 and self.fb[row-i+(size-1)]==0 and self.fc[row+i]==0:
+          self.fa[i]=self.fb[row-i+(size-1)]=self.fc[row+i]=1;
+          self.nqueens(row+1,size);
+          self.fa[i]=self.fb[row-i+(size-1)]=self.fc[row+i]=0;
+  def main(self):
+    min:int=4;
+    print(" N:        Total       Unique         hh:mm:ss.ms")
+    for size in range(min,self.max):
+      self.total=0;
+      self.unique=0;
       for j in range(size):
-        print("-",end="")
-        if j<(size-1):
-          print("+",end="")
-      print("+")
-  print("+",end="")
-  for i in range(size):
-    print("-",end="")
-    if i<(size-1):
-      print("+",end="")
-  print("+")
-  print("")
-#
-# ブルートフォース版効き筋チェック
-def check_bluteForce(size):
-  global board
-  for r in range(1,size,1):
-    for i in range(r):
-      if board[i]>=board[r]:
-        val=board[i]-board[r]
-      else:
-        val=board[r]-board[i]
-      if board[i]==board[r] or val==(r-i):
-        return 0
-  return 1
-#
-# ブルートフォース
-def bluteForce(row,size):
-  col=0
-  global TOTAL
-  global board
-  if row==size:
-    if check_bluteForce(size)==1:
-      TOTAL=TOTAL+1
-      printRecord(size)
-  else:
-    for col in range(size):
-      board[row]=col
-      bluteForce(row+1,size)
+        self.aboard[j]=j;
+      start_time=datetime.now();
+      self.nqueens(0,size);
+      time_elapsed=datetime.now()-start_time;
+      # _text='{}'.format(time_elapsed);
+      # text=_text[:-3]
+      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique,text)); 
+      # `.format` の代わりに文字列として直接処理
+      text = str(time_elapsed)[:-3]  
+      print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
-#
-# 実行
-size=5
-bluteForce(0,size) # ブルートフォース
-print("size:",size,"TOTAL:",TOTAL)
-#
+# 3.バックトラック
+# $ python <filename>
+# $ pypy <fileName>
+# $ codon build -release <filename>
+# 15:      2279184            0         0:00:16:449
+if __name__ == '__main__':
+  NQueens03().main();
+

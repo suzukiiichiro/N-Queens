@@ -4,10 +4,10 @@ import threading
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
-# pypyで再帰が高速化できる
 
 # pypyを使う場合はコメントを解除
 import pypyjit
+# pypyで再帰が高速化できる
 pypyjit.set_param('max_unroll_recursion=-1')
 
 # ThreadPoolとProcessPool
@@ -1025,6 +1025,7 @@ class NQueens15():
       _text = '{}'.format(time_elapsed)
       text = _text[:-3]
       print("%2d:%13d%13d%20s" % (i,self.total,self.unique, text))  
+
 class NQueens14():
   def __init__(self):
     self.total=0
@@ -1047,7 +1048,7 @@ class NQueens14():
     for i in range(nmin, nmax):
       self.total=0
       self.unique=0
-      start_time = datetime.now()
+      # start_time = datetime.now()
       self.NQueens(i,0,0,0,0)
       time_elapsed = datetime.now()-start_time
       _text = '{}'.format(time_elapsed)
@@ -2935,100 +2936,100 @@ class NQueens01:
         self.aboard[row]=i;
         self.nqueens(row+1);
 #
-# ノードレイヤー
+# 21.ノードレイヤー
 # 15:      2279184            0         0:00:05.148
 if __name__ == '__main__':
   NQueens21_NodeLayer().main()
 
 #
-# マルチプロセス
+# 20.マルチプロセス
 # 15:      2279184       285053         0:00:01.528
 # if __name__ == '__main__':
 #   NQueens20_multiProcess().main()
 
-# マルチスレッド
+# 19.マルチスレッド
 # 15:      2279184       285053         0:00:04.684
 # if __name__ == '__main__':
 #   NQueens19_multiThread().main()
 
-# ビット：マルチプロセス 最適化
+# 18.ビット：マルチプロセス 最適化
 # 15:      2279184       285053         0:00:02.116
 # if __name__ == '__main__':
 #  NQueens18_multiProcess().main()
 #
-# ビット：マルチプロセス
+# 17.ビット：マルチプロセス
 # 15:      2279184       285053         0:00:02.116
 # if __name__ == '__main__':
 #   NQueens17_multiProcess().main()
 #
-# ビット：対象解除法
+# 16.ビット：対象解除法
 # 15:      2279184       285053         0:00:05.181
 #NQueens16().main()
 # 
-# ビット：ミラー
+# 15.ビット：ミラー
 # 15:      2279184            0         0:00:05.872
 # NQueens15().main();
 #
-# ビット：ビットマップ
+# 14.ビット：ビットマップ
 # 15:      2279184            0         0:00:11.504
 # NQueens14().main();
 #
-# マルチプロセス
+# 13-3.マルチプロセス
 # 15:      2279184       285053         0:00:06.216
 #NQueens13_3multiProcess.main();
 #
-# マルチスレッド True/マルチスレッド False シングルスレッド
+# 13-2.マルチスレッド True/マルチスレッド False シングルスレッド
 # 15:      2279184       285053         0:00:07.983
 BTHREAD = True 
 #NQueens13_2_multiThread.main();
 #
-# シングルスレッド
+# 13-1.シングルスレッド
 # 15:      2279184       285053         0:00:07.958
 #NQueens13_1_singleThread.main();
 #
-# 最適化
+# 12.最適化
 # 15:      2279184       285053         0:00:10.607
 #NQueens12().main();
 #
-# 枝刈り
+# 11.枝刈り
 # 15:      2279184       285053         0:00:10.927
 #NQueens11().main();
 #
-# BOUND1,2
+# 10.BOUND1,2
 # 15:      2279184       285053         0:00:26.210
 #NQueens10().main();
 #
-# BOUND1
+# 9.BOUND1
 # 15:      2279184       285053         0:00:25.239
 #NQueens09().main();
 #
-# 枝刈り
+# 8.枝刈り
 # 15:      2279184       285053         0:00:28.357
 #NQueens08().main();
 #
-# 対象解除法とビットマップ
+# 7.対象解除法とビットマップ
 # 15:      2279184       285053         0:00:19.711
 #NQueens07().main();
 #
-# バックトラックとビットマップ
+# 6.バックトラックとビットマップ
 # 15:      2279184            0         0:00:11.417
 # NQueens06().main();
 #
-# 枝刈りと最適化
+# 5.枝刈りと最適化
 # 15:      2279184       285053         0:00:15.677
 #NQueens05().main();
 #
-# 対象解除法
+# 4.対象解除法
 # 15:      2279184       285053         0:00:49.855
 #NQueens04().main();
 #
-# バックトラック
+# 3.バックトラック
 # 15:      2279184            0         0:00:44.558
 # NQueens03().main();
 #
-# 配置フラグ
+# 2.配置フラグ
 # NQueens02().nqueens(0);
 #
-# ブルートフォース　ちからまかせ探索
-# NQueens01().nqueen(0);
-#
+# 1.ブルートフォース　ちからまかせ探索
+# NQueens01().nqueens(0);
+

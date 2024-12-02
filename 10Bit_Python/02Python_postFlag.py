@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-バックトラッキング版 Ｎクイーン
+ポストフラグ版 Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -11,6 +11,8 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+Bash版ですが内容は同じです。
+
 
 # 実行 
 $ python <filename.py>
@@ -156,87 +158,45 @@ $ python <filename.py>
 |O| | | | |
 +-+-+-+-+-+
 
-
-bash-3.2$ python 07Python_carryChain.py
 size: 5 TOTAL: 10 UNIQUE: 2
 bash-3.2$
-
 """
+# pypyを使う場合はコメントを解除
+# import pypyjit
+# pypyで再帰が高速化できる
+# pypyjit.set_param('max_unroll_recursion=-1')
 
-#
-# グローバル変数
-MAX=21  # ボードサイズ最大値
-TOTAL=0 # 解
-board=[0 for i in range(MAX)] # ボード配列格納用
-# 
-# ボードレイアウト出力
-def printRecord(size):
-  global TOTAL
-  global board
-
-  print(TOTAL)
-  sEcho=""
-  for i in range(size):
-    sEcho+=" " + str(board[i])
-  print(sEcho)
-  print ("+",end="")
-  for i in range(size):
-    print("-",end="")
-    if i<(size-1):
-      print("+",end="")
-  print("+")
-  for i in range(size):
-    print("|",end="")
-    for j in range(size):
-      if i==board[j]:
-        print("O",end="")
-      else:
-        print(" ",end="")
-      if j<(size-1):
-        print("|",end="")
-    print("|")
-    if i in range(size-1):
-      print("+",end="")
-      for j in range(size):
-        print("-",end="")
-        if j<(size-1):
-          print("+",end="")
-      print("+")
-  print("+",end="")
-  for i in range(size):
-    print("-",end="")
-    if i<(size-1):
-      print("+",end="")
-  print("+")
-  print("")
-#
-# バックトラック版効き筋をチェック
-def check_backTracking(row):
-  global board
-  for i in range(row):
-    if board[i]>=board[row]:
-      val=board[i]-board[row]
+class NQueens02:
+  size:int
+  count:int
+  aboard:list[int]
+  fa:list[int]
+  def __init__(self):
+    self.size=8;
+    self.count=0;
+    self.aboard=[0 for i in range(self.size)];
+    self.fa=[0 for i in range(self.size)];
+  def printout(self):
+    self.count+=1;
+    print(self.count,end=": ");
+    for i in range(self.size):
+      print(self.aboard[i],end="");
+    print("");
+  def nqueens(self,row:int):
+    if row==self.size-1:
+      self.printout();
     else:
-      val=board[row]-board[i]
-    if board[i]==board[row] or val==(row-i):
-      return 0
-  return 1
-#
-# バックトラック
-def backTracking(row,size):
-  global TOTAL
-  col=0
-  if row==size:
-    TOTAL=TOTAL+1
-    printRecord(size)
-  else:
-    for col in range(size):
-      board[row]=col
-      if check_backTracking(row)==1:
-        backTracking(row+1,size)
-#
-# 実行
-size=5
-backTracking(0,size) # バックトラッキング
-print("size:",size,"TOTAL:",TOTAL)
-#
+      for i in range(self.size):
+        self.aboard[row]=i;
+        if self.fa[i]==0:
+          self.fa[i]=1;
+          self.nqueens(row+1);
+          self.fa[i]=0;
+
+# 2.配置フラグ
+# $ python <filename>
+# $ pypy <fileName>
+# $ codon build -release <filename>
+if __name__ == '__main__':
+  NQueens02().nqueens(0);
+
