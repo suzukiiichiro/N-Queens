@@ -4,34 +4,26 @@ import threading
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
-# pypyで再帰が高速化できる
 
+# pypyで再帰が高速化できる
 # pypyを使う場合はコメントを解除
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 # ThreadPoolとProcessPool
 import os
 import concurrent.futures
-
 class NQueens09():
   def __init__(self):
     pass
-  def getunique(self,counts:int)->int:
+  def getunique(self,counts):
     count2,count4,count8=counts
     return count2+count4+count8
-  def gettotal(self,counts:int)->int:
+  def gettotal(self,counts):
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
-  def symmetryops(self,size:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
-    count2:int
-    count4:int
-    count8:int
+  def symmetryops(self,size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
     count2=count4=count8=0
-    own:int
-    ptn:int
-    bit:int
-    you:int
     if aboard[bound2]==1:
       own,ptn=1,2
       for own in range(1,size):
@@ -78,13 +70,10 @@ class NQueens09():
         ptn>>=1
     count8+=1
     return count2,count4,count8
-  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
-    count2:int
-    count4:int
-    count8:int
+  def backTrack2(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
     count2=count4=count8=0
-    mask:int=(1<<size)-1
-    bitmap:int=mask&~(left|down|right)
+    mask=(1<<size)-1
+    bitmap=mask&~(left|down|right)
     # 最下行の場合、最適化のための条件チェック
     if row==size-1:
       if bitmap and (bitmap&lastmask)==0:
@@ -109,14 +98,13 @@ class NQueens09():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2, count4, count8  
-  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
-    count2:int=0
-    count4:int=0
-    count8:int=0
-    mask:int=(1<<size)-1
-    bitmap:int=mask & ~(left|down|right)
-    
+    return count2, count4, count8
+  def backTrack1(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+    count2=0
+    count4=0
+    count8=0
+    mask=(1<<size)-1
+    bitmap=mask & ~(left|down|right)
     if row==size-1: # 最下行に達した場合の処理
       if bitmap:
         aboard[row]=bitmap
@@ -133,33 +121,16 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8  
-  def nqueen_threadPool(self,value:int)->list[int]:
-    thr_index:int
-    size:int
+  def nqueen_multiThread(self,value):
     thr_index,size=value
-    sizeE:int=size-1
-    aboard:list[int]
-    # aboard=[[0]*size*2]*size
+    sizeE=size-1
     aboard=[[i for i in range(2*size-1)]for j in range(size)]
-    bit:int
-    topbit:int
-    endbit:int
-    sidemask:int
-    lastmask:int
-    bound1:int
-    bound2:int
-    count2:int
-    count4:int
-    count8:int
     bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
     aboard[0]=1
     topbit=1<<sizeE
     bound1=size-thr_index-1
     if 1<bound1<sizeE: 
       aboard[1]=bit=1<<bound1
-      c2:int
-      c4:int
-      c8:int
       c2,c4,c8=self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
       count2+=c2
       count4+=c4
@@ -177,27 +148,28 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8
-  def solve(self,size:int)->list[int]:
+  def solve(self,size):
     # マルチプロセス
     # 15:      2279184       285053         0:00:01.528
     # with concurrent.futures.ProcessPoolExecutor() as executor:
     #   value=[(thr_index,size) for thr_index in range(size) ]
     #   results=list(executor.map(self.nqueen_multiProcess,value))
+
     # マルチスレッド
     # 15:      2279184       285053         0:00:04.684
     with concurrent.futures.ThreadPoolExecutor() as executor:
-      value:int=[(thr_index,size) for thr_index in range(size) ]
-      results:int=list(executor.map(self.nqueen_threadPool,value))
+      value=[(thr_index,size) for thr_index in range(size) ]
+      results=list(executor.map(self.nqueen_multiThread,value))
 
     # スレッドごとの結果を集計
-    total_counts:int=[sum(x) for x in zip(*results)]
-    total:int=self.gettotal(total_counts)
-    unique:int=self.getunique(total_counts)
+    total_counts=[sum(x) for x in zip(*results)]
+    total=self.gettotal(total_counts)
+    unique=self.getunique(total_counts)
     return total,unique
-class NQueens09_threadPool:
+class NQueens09_threadPool():
   def main(self):
-    nmin:int=4
-    nmax:int=18
+    nmin = 4
+    nmax = 18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()

@@ -4,15 +4,16 @@ import threading
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 from datetime import datetime
-# pypyで再帰が高速化できる
 
+# pypyで再帰が高速化できる
 # pypyを使う場合はコメントを解除
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 # ThreadPoolとProcessPool
 import os
 import concurrent.futures
+
 class NQueens10():
   def __init__(self):
     pass
@@ -194,19 +195,16 @@ class NQueens10():
     total=self.gettotal(total_counts)
     unique=self.getunique(total_counts)
     return total,unique
-class NQueens10_processPool:
+class NQueens10_processPool():
   def main(self):
-    nmin:int=4
-    nmax:int=18
+    nmin = 4
+    nmax = 18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
       NQ=NQueens10()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      # _text='{}'.format(time_elapsed)
-      # text=_text[:-3]
-      # print("%2d:%13d%13d%20s"%(i,total,unique, text))  
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
 
