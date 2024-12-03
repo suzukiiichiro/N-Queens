@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import logging
-import threading
-from threading import Thread
-from multiprocessing import Pool as ThreadPool
+# import logging
+# import threading
+# from threading import Thread
+# from multiprocessing import Pool as ThreadPool
 from datetime import datetime
 
 # pypyで再帰が高速化できる
@@ -17,14 +17,27 @@ import concurrent.futures
 class NQueens10():
   def __init__(self):
     pass
-  def getunique(self,counts):
+  def getunique(self,counts:list[int]):
+    count2:int
+    count4:int
+    count8:int
     count2,count4,count8=counts
     return count2+count4+count8
-  def gettotal(self,counts):
+  def gettotal(self,counts:list[int]):
+    count2:int
+    count4:int
+    count8:int
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
-  def symmetryops(self,size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+  def symmetryops(self,size:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+    count2:int
+    count4:int
+    count8:int
     count2=count4=count8=0
+    own:int
+    ptn:int
+    you:int
+    bit:int
     if aboard[bound2]==1:
       own,ptn=1,2
       for own in range(1,size):
@@ -126,7 +139,9 @@ class NQueens10():
   def nqueen_multiProcess(self,value):
     thr_index,size=value
     sizeE=size-1
-    aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    aboard:list[int]
+    aboard=[[0]*size*2]*size
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
     bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
     aboard[0]=1
     topbit=1<<sizeE

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import logging
-import threading
-from threading import Thread
-from multiprocessing import Pool as ThreadPool
+# import logging
+# import threading
+# from threading import Thread
+# from multiprocessing import Pool as ThreadPool
 from datetime import datetime
 # pypyで再帰が高速化できる
 
@@ -83,6 +83,7 @@ class NQueens09():
     count4:int
     count8:int
     count2=count4=count8=0
+    bit:int
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     # 最下行の場合、最適化のための条件チェック
@@ -101,6 +102,9 @@ class NQueens09():
         return count2,count4,count8
       elif (down&sidemask)!=sidemask:
         bitmap&=sidemask
+    c2:int
+    c4:int
+    c8:int
     while bitmap:
       bit=bitmap&-bitmap  # 最右ビットを抽出
       bitmap^=bit         # 最右ビットを消去
@@ -114,9 +118,12 @@ class NQueens09():
     count2:int=0
     count4:int=0
     count8:int=0
+    c2:int
+    c4:int
+    c8:int
+    bit:int
     mask:int=(1<<size)-1
     bitmap:int=mask & ~(left|down|right)
-    
     if row==size-1: # 最下行に達した場合の処理
       if bitmap:
         aboard[row]=bitmap
@@ -133,14 +140,14 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8  
-  def nqueen_threadPool(self,value:int)->list[int]:
+  def nqueen_threadPool(self,value:list[int])->list[int]:
     thr_index:int
     size:int
     thr_index,size=value
     sizeE:int=size-1
     aboard:list[int]
-    # aboard=[[0]*size*2]*size
-    aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    aboard=[[0]*size*2]*size
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
     bit:int
     topbit:int
     endbit:int
@@ -151,15 +158,15 @@ class NQueens09():
     count2:int
     count4:int
     count8:int
+    c2:int
+    c4:int
+    c8:int
     bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
     aboard[0]=1
     topbit=1<<sizeE
     bound1=size-thr_index-1
     if 1<bound1<sizeE: 
       aboard[1]=bit=1<<bound1
-      c2:int
-      c4:int
-      c8:int
       c2,c4,c8=self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
       count2+=c2
       count4+=c4
@@ -186,8 +193,8 @@ class NQueens09():
     # マルチスレッド
     # 15:      2279184       285053         0:00:04.684
     with concurrent.futures.ThreadPoolExecutor() as executor:
-      value:int=[(thr_index,size) for thr_index in range(size) ]
-      results:int=list(executor.map(self.nqueen_threadPool,value))
+      value:list[int]=[(thr_index,size) for thr_index in range(size) ]
+      results:list[int]=list(executor.map(self.nqueen_threadPool,value))
 
     # スレッドごとの結果を集計
     total_counts:int=[sum(x) for x in zip(*results)]
@@ -218,3 +225,4 @@ class NQueens09_threadPool:
 # 15:      2279184       285053         0:00:04.684
 if __name__ == '__main__':
   NQueens09_threadPool().main()
+
