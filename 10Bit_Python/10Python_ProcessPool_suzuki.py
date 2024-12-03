@@ -1,29 +1,34 @@
-# -*- coding: utf-8 -*-
-# import logging
-# import threading
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-from datetime import datetime
 
+from datetime import datetime
 # pypyで再帰が高速化できる
 # pypyを使う場合はコメントを解除
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
 
-# ThreadPoolとProcessPool
-import os
-import concurrent.futures
+# 並行処理
+from threading import Thread
+
+# 並列処理
+from multiprocessing import Pool as ThreadPool
+
+import concurrent
+# 並行処理
+from concurrent.futures import ThreadPoolExecutor
+# 並列処理
+from concurrent.futures import ProcessPoolExecutor
+
+
 
 class NQueens10():
   def __init__(self):
     pass
-  def getunique(self,counts:list[int]):
+  def getunique(self,counts:list[int])->list[int]:
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2+count4+count8
-  def gettotal(self,counts:list[int]):
+  def gettotal(self,counts:list[int])->list[int]:
     count2:int
     count4:int
     count8:int
@@ -84,10 +89,14 @@ class NQueens10():
         ptn>>=1
     count8+=1
     return count2,count4,count8
-  def backTrack2(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+    count2:int
+    count4:int
+    count8:int
     count2=count4=count8=0
-    mask=(1<<size)-1
-    bitmap=mask&~(left|down|right)
+    bit:int
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
     # 最下行の場合、最適化のための条件チェック
     if row==size-1:
       if bitmap and (bitmap&lastmask)==0:
@@ -104,6 +113,9 @@ class NQueens10():
         return count2,count4,count8
       elif (down&sidemask)!=sidemask:
         bitmap&=sidemask
+    c2:int
+    c4:int
+    c8:int
     while bitmap:
       bit=bitmap&-bitmap  # 最右ビットを抽出
       bitmap^=bit         # 最右ビットを消去
@@ -113,13 +125,16 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return count2, count4, count8  
-  def backTrack1(self,size,row,left,down,right,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2):
+  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
     count2=0
     count4=0
     count8=0
-    mask=(1<<size)-1
-    bitmap=mask & ~(left|down|right)
-    
+    c2:int
+    c4:int
+    c8:int
+    bit:int
+    mask:int=(1<<size)-1
+    bitmap:int=mask & ~(left|down|right)
     if row==size-1: # 最下行に達した場合の処理
       if bitmap:
         aboard[row]=bitmap
@@ -136,7 +151,9 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return count2,count4,count8  
-  def nqueen_multiProcess(self,value):
+  def nqueen_processPool(self,value:list[int])->list[int]:
+    thr_index:int
+    size:int
     thr_index,size=value
     sizeE=size-1
     aboard:list[int]
@@ -146,6 +163,9 @@ class NQueens10():
     aboard[0]=1
     topbit=1<<sizeE
     bound1=size-thr_index-1
+    c2:int
+    c4:int
+    c8:int
     if 1<bound1<sizeE: 
       aboard[1]=bit=1<<bound1
       c2,c4,c8=self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
@@ -165,10 +185,27 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return count2,count4,count8
-  def nqueen_multiThread(self,value):
+  def nqueen_threadPool(self,value:list[int])->list[int]:
+    thr_index:int
+    size:int
     thr_index,size=value
-    sizeE=size-1
-    aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    sizeE:int=size-1
+    aboard:list[int]
+    aboard=[[0]*size*2]*size
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    bit:int
+    topbit:int
+    endbit:int
+    sidemask:int
+    lastmask:int
+    bound1:int
+    bound2:int
+    count2:int
+    count4:int
+    count8:int
+    c2:int
+    c4:int
+    c8:int
     bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
     aboard[0]=1
     topbit=1<<sizeE
@@ -192,28 +229,41 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return count2,count4,count8
-  def solve(self,size):
-    # マルチプロセス
-    # 15:      2279184       285053         0:00:01.528
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-      value=[(thr_index,size) for thr_index in range(size) ]
-      results=list(executor.map(self.nqueen_multiProcess,value))
-
-    # マルチスレッド
-    # 15:      2279184       285053         0:00:04.684
+  def solve(self,size:int)->list[int]:
+    #
+    # concurrent.futuresマルチスレッド版
+    # 15:      2279184       285053         0:00:06.610
     # with concurrent.futures.ThreadPoolExecutor() as executor:
     #   value=[(thr_index,size) for thr_index in range(size) ]
-    #   results=list(executor.map(self.nqueen_multiThread,value))
-
+    #   results=list(executor.map(self.nqueen_threadPool,value))
+    #
+    # concurrent.futuresマルチプロセス版
+    # 15:      2279184       285053         0:00:03.133
+    # with concurrent.futures.ProcessPoolExecutor() as executor:
+    #   value=[(thr_index,size) for thr_index in range(size) ]
+    #   results=list(executor.map(self.nqueen_processPool,value))
+    #
+    # マルチスレッド版
+    # 15:      2279184       285053         0:00:02.421
+    # pool = ThreadPool(size)
+    # value=[(thr_index,size) for thr_index in range(size) ]
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    #
+    # マルチプロセス版
+    # 15:      2279184       285053         0:00:02.378
+    pool = ThreadPool(size)
+    value=[(thr_index,size) for thr_index in range(size) ]
+    results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    #
     # スレッドごとの結果を集計
-    total_counts=[sum(x) for x in zip(*results)]
-    total=self.gettotal(total_counts)
-    unique=self.getunique(total_counts)
+    total_counts:int=[sum(x) for x in zip(*results)]
+    total:int=self.gettotal(total_counts)
+    unique:int=self.getunique(total_counts)
     return total,unique
 class NQueens10_processPool():
   def main(self):
-    nmin = 4
-    nmax = 18
+    nmin:int = 4
+    nmax:int = 18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()

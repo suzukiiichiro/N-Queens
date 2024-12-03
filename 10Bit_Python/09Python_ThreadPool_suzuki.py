@@ -1,26 +1,35 @@
 # -*- coding: utf-8 -*-
-# import logging
-# import threading
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
+
 from datetime import datetime
 # pypyで再帰が高速化できる
-
 # pypyを使う場合はコメントを解除
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
-# ThreadPoolとProcessPool
-import os
-import concurrent.futures
+# 並行処理
+from threading import Thread
+
+# 並列処理
+from multiprocessing import Pool as ThreadPool
+
+import concurrent
+# 並行処理
+from concurrent.futures import ThreadPoolExecutor
+# 並列処理
+from concurrent.futures import ProcessPoolExecutor
+
+
 
 class NQueens09():
   def __init__(self):
     pass
-  def getunique(self,counts:int)->int:
+  def getunique(self,counts:list[int])->list[int]:
+    count2:int
+    count4:int
+    count8:int
     count2,count4,count8=counts
     return count2+count4+count8
-  def gettotal(self,counts:int)->int:
+  def gettotal(self,counts:list[int])->list[int]:
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
   def symmetryops(self,size:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
@@ -30,8 +39,8 @@ class NQueens09():
     count2=count4=count8=0
     own:int
     ptn:int
-    bit:int
     you:int
+    bit:int
     if aboard[bound2]==1:
       own,ptn=1,2
       for own in range(1,size):
@@ -78,7 +87,7 @@ class NQueens09():
         ptn>>=1
     count8+=1
     return count2,count4,count8
-  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
     count2:int
     count4:int
     count8:int
@@ -140,6 +149,40 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8  
+  def nqueen_processPool(self,value:list[int])->list[int]:
+    thr_index:int
+    size:int
+    thr_index,size=value
+    sizeE=size-1
+    aboard:list[int]
+    aboard=[[0]*size*2]*size
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
+    aboard[0]=1
+    topbit=1<<sizeE
+    bound1=size-thr_index-1
+    c2:int
+    c4:int
+    c8:int
+    if 1<bound1<sizeE: 
+      aboard[1]=bit=1<<bound1
+      c2,c4,c8=self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+      count2+=c2
+      count4+=c4
+      count8+=c8
+    endbit=topbit>>1
+    sidemask=lastmask=topbit|1
+    bound2=thr_index
+    if 0<bound1<bound2<sizeE:
+      aboard[0]=bit=(1<<bound1)
+      for i in range(1,bound1):
+        lastmask|=lastmask>>1|lastmask<<1
+        endbit>>=1
+      c2,c4,c8=self.backTrack2(size,1,bit<<1,bit,bit>>1,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
+      count2+=c2
+      count4+=c4
+      count8+=c8
+    return count2,count4,count8
   def nqueen_threadPool(self,value:list[int])->list[int]:
     thr_index:int
     size:int
@@ -185,17 +228,32 @@ class NQueens09():
       count8+=c8
     return count2,count4,count8
   def solve(self,size:int)->list[int]:
-    # マルチプロセス
-    # 15:      2279184       285053         0:00:01.528
+    #
+    # concurrent.futuresマルチスレッド版
+    # 15:      2279184       285053         0:00:06.610
+    # with concurrent.futures.ThreadPoolExecutor() as executor:
+    #   value=[(thr_index,size) for thr_index in range(size) ]
+    #   results=list(executor.map(self.nqueen_threadPool,value))
+    #
+    # concurrent.futuresマルチプロセス版
+    # 15:      2279184       285053         0:00:03.133
     # with concurrent.futures.ProcessPoolExecutor() as executor:
     #   value=[(thr_index,size) for thr_index in range(size) ]
-    #   results=list(executor.map(self.nqueen_multiProcess,value))
-    # マルチスレッド
-    # 15:      2279184       285053         0:00:04.684
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-      value:list[int]=[(thr_index,size) for thr_index in range(size) ]
-      results:list[int]=list(executor.map(self.nqueen_threadPool,value))
-
+    #   results=list(executor.map(self.nqueen_processPool,value))
+    #
+    # マルチスレッド版
+    # 15:      2279184       285053         0:00:02.875
+    pool = ThreadPool(size)
+    value=[(thr_index,size) for thr_index in range(size) ]
+    results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    #
+    # マルチプロセス版
+    # 15:      2279184       285053         0:00:02.378
+    # pool = ThreadPool(size)
+    # value=[(thr_index,size) for thr_index in range(size) ]
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    #
+    #
     # スレッドごとの結果を集計
     total_counts:int=[sum(x) for x in zip(*results)]
     total:int=self.gettotal(total_counts)
