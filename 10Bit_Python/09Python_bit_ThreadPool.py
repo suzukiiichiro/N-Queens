@@ -30,6 +30,7 @@ echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~
 
 # -*- coding: utf-8 -*-
 from datetime import datetime
+import itertools
 
 #
 # Pythonを使うときは以下を活かしてcodon部分をコメントアウト
@@ -56,21 +57,21 @@ class NQueens09():
   def __init__(self):
     pass
 
-  def getunique(self,counts:list[int,int,int])->int:
+  def getunique(self,counts:list)->int:
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2+count4+count8
 
-  def gettotal(self,counts:list[int,int,int])->int:
+  def gettotal(self,counts:list)->int:
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
 
-  def symmetryops(self,size:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
+  def symmetryops(self,size:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
     count2:int
     count4:int
     count8:int
@@ -126,7 +127,7 @@ class NQueens09():
     count8+=1
     return count2,count4,count8
 
-  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
+  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
     count2:int
     count4:int
     count8:int
@@ -161,9 +162,9 @@ class NQueens09():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2, count4, count8  
+    return count2,count4,count8
 
-  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
+  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
     count2:int=0
     count4:int=0
     count8:int=0
@@ -190,21 +191,35 @@ class NQueens09():
       count8+=c8
     return count2,count4,count8  
 
-  def nqueen_processPool(self,value:list[int])->list[int,int,int]:
-    thr_index:int
-    size:int
-    thr_index,size=value
+  # def nqueen_processPool(self,value:list)->list:
+  def nqueen_processPool(self,thr_index:int,size:int)->list:
+    # thr_index:int
+    # size:int
+    # thr_index,size=value
     sizeE=size-1
-    aboard:list[int]
-    aboard=[[0]*size*2]*size
+    aboard:list[int]=[0 for i in range(size)]
+    # aboard:list[int]
+    # for i in range(size):
+    #   aboard[i]=0
+    # aboard=[[0]*size*2]*size
     # aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    bit:int
+    topbit:int
+    endbit:int
+    sidemask:int
+    lastmask:int
+    bound1:int
+    bound2:int
+    count2:int
+    count4:int
+    count8:int
+    c2:int
+    c4:int
+    c8:int
     bit=topbit=endbit=sidemask=lastmask=bound1=bound2=count2=count4=count8=0
     aboard[0]=1
     topbit=1<<sizeE
     bound1=size-thr_index-1
-    c2:int
-    c4:int
-    c8:int
     if 1<bound1<sizeE: 
       aboard[1]=bit=1<<bound1
       c2,c4,c8=self.backTrack1(size,2,(2|bit)<<1,(1|bit),(bit>>1),aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
@@ -225,14 +240,18 @@ class NQueens09():
       count8+=c8
     return count2,count4,count8
 
-  def nqueen_threadPool(self,value:list[int])->list[int,int,int]:
+  # def nqueen_threadPool(self,value:list)->list:
+  def nqueen_threadPool(self,thr_index:int,size:int)->list:
     thr_index:int
-    size:int
-    thr_index,size=value
+    # size:int
+    # thr_index,size=value
     sizeE:int=size-1
     # aboard:list[int]
-    # aboard:list=[0 for i in range(size)]
-    aboard:list[int]=[[0]*size*2]*size
+    # aboard=[[0]*size*2]*size
+    # aboard:list[int]=[[0]*size*2]*size
+    aboard:list[int]=[0 for i in range(size)]
+    # for i in range(size):
+    #   aboard[i]=0
     # aboard=[[i for i in range(2*size-1)]for j in range(size)]
     # aboard:list[int]
     # for i in range(size):
@@ -274,25 +293,23 @@ class NQueens09():
       count8+=c8
     return count2,count4,count8
 
-  def solve(self,size:int)->list[int,int]:
+  def solve(self,size:int)->list:
     #
     # concurrent.futuresマルチスレッド版
     # 15:      2279184       285053         0:00:06.610
     with concurrent.futures.ThreadPoolExecutor() as executor:
-      value=[(thr_index,size) for thr_index in range(size) ]
-      results=list(executor.map(self.nqueen_threadPool,value))
+      results=list(executor.map(self.nqueen_threadPool,range(size),itertools.repeat(size)))
     #
     # concurrent.futuresマルチプロセス版
     # 15:      2279184       285053         0:00:03.133
     # with concurrent.futures.ProcessPoolExecutor() as executor:
-    #   value=[(thr_index,size) for thr_index in range(size) ]
-    #   results=list(executor.map(self.nqueen_processPool,value))
+    #   results=list(executor.map(self.nqueen_processPool,range(size),itertools.repeat(size)))
     #
     # マルチスレッド版
-    # 15:      2279184       285053         0:00:02.875
+    # 15:      2279184       285053         0:00:02.421
     # pool = ThreadPool(size)
     # value=[(thr_index,size) for thr_index in range(size) ]
-    # results=list(pool.map(self.nqueen_threadPool,value))
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,value))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
@@ -317,12 +334,9 @@ class NQueens09_threadPool:
       NQ=NQueens09()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      # _text='{}'.format(time_elapsed)
-      # text=_text[:-3]
-      # print("%2d:%13d%13d%20s"%(i,total,unique, text))  
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
-
+#
 # $ python <filename>
 # $ pypy <fileName>
 # $ codon build -release <filename>
