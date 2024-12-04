@@ -1,38 +1,76 @@
-# -*- coding: utf-8 -*-
+"""
+pyenvでpypyをインストール
+$ curl https://pyenv.run | bash
 
+codonのインストール
+/bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
+echo 'export PATH="$HOME/.codon/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+codon の実行
+JIT
+$ codon run -release file.py
+
+BUILD exe
+$ codon build -release file.py
+
+外部ライブラリの使い方
+
+libpython*.so を探します
+$ find / -name "libpython*.so"
+
+だいたい以下にあります
+$ locate libpython3
+/home/suzuki/.pyenv/versions/3.13.0/lib/libpython3.so
+
+CODON_PYTHONの環境変数を~/.bash_profileに追加します
+echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~/.bash_profile
+
+"""
+
+# -*- coding: utf-8 -*-
 from datetime import datetime
-# pypyで再帰が高速化できる
-# pypyを使う場合はコメントを解除
+
+#
+# Pythonを使うときは以下を活かしてcodon部分をコメントアウト
+#
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
-
-# 並行処理
 from threading import Thread
-
-# 並列処理
 from multiprocessing import Pool as ThreadPool
-
 import concurrent
-# 並行処理
 from concurrent.futures import ThreadPoolExecutor
-# 並列処理
 from concurrent.futures import ProcessPoolExecutor
 
+#
+# codonを使うときは以下を活かして上記をコメントアウト
+#
+# from python import ThreadPoolExecutor
+# from python import ProcessPoolExecutor
+# from python import Pool as ThreadPool
+# from python import Thread
+# from python import concurrent
 
 
 class NQueens09():
   def __init__(self):
     pass
-  def getunique(self,counts:list[int])->list[int]:
+
+  def getunique(self,counts:list[int,int,int])->int:
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2+count4+count8
-  def gettotal(self,counts:list[int])->list[int]:
+
+  def gettotal(self,counts:list[int,int,int])->int:
+    count2:int
+    count4:int
+    count8:int
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
-  def symmetryops(self,size:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+
+  def symmetryops(self,size:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
     count2:int
     count4:int
     count8:int
@@ -87,7 +125,8 @@ class NQueens09():
         ptn>>=1
     count8+=1
     return count2,count4,count8
-  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+
+  def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
     count2:int
     count4:int
     count8:int
@@ -123,7 +162,8 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2, count4, count8  
-  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:int,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int]:
+
+  def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list[int],topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list[int,int,int]:
     count2:int=0
     count4:int=0
     count8:int=0
@@ -149,7 +189,8 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8  
-  def nqueen_processPool(self,value:list[int])->list[int]:
+
+  def nqueen_processPool(self,value:list[int])->list[int,int,int]:
     thr_index:int
     size:int
     thr_index,size=value
@@ -183,14 +224,19 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8
-  def nqueen_threadPool(self,value:list[int])->list[int]:
+
+  def nqueen_threadPool(self,value:list[int])->list[int,int,int]:
     thr_index:int
     size:int
     thr_index,size=value
     sizeE:int=size-1
-    aboard:list[int]
-    aboard=[[0]*size*2]*size
+    # aboard:list[int]
+    # aboard:list=[0 for i in range(size)]
+    aboard:list[int]=[[0]*size*2]*size
     # aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    # aboard:list[int]
+    # for i in range(size):
+    #   aboard.insert(i,0)
     bit:int
     topbit:int
     endbit:int
@@ -227,13 +273,14 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return count2,count4,count8
-  def solve(self,size:int)->list[int]:
+
+  def solve(self,size:int)->list[int,int]:
     #
     # concurrent.futuresマルチスレッド版
     # 15:      2279184       285053         0:00:06.610
-    # with concurrent.futures.ThreadPoolExecutor() as executor:
-    #   value=[(thr_index,size) for thr_index in range(size) ]
-    #   results=list(executor.map(self.nqueen_threadPool,value))
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+      value=[(thr_index,size) for thr_index in range(size) ]
+      results=list(executor.map(self.nqueen_threadPool,value))
     #
     # concurrent.futuresマルチプロセス版
     # 15:      2279184       285053         0:00:03.133
@@ -243,9 +290,9 @@ class NQueens09():
     #
     # マルチスレッド版
     # 15:      2279184       285053         0:00:02.875
-    pool = ThreadPool(size)
-    value=[(thr_index,size) for thr_index in range(size) ]
-    results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    # pool = ThreadPool(size)
+    # value=[(thr_index,size) for thr_index in range(size) ]
+    # results=list(pool.map(self.nqueen_threadPool,value))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
@@ -259,6 +306,7 @@ class NQueens09():
     total:int=self.gettotal(total_counts)
     unique:int=self.getunique(total_counts)
     return total,unique
+
 class NQueens09_threadPool:
   def main(self):
     nmin:int=4
