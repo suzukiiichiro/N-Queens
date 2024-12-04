@@ -1,3 +1,31 @@
+"""
+codonのインストール
+/bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
+echo 'export PATH="$HOME/.codon/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+codon の実行
+JIT
+$ codon run -release file.py
+
+BUILD exe
+$ codon build -release file.py
+
+外部ライブラリの使い方
+
+libpython*.so を探します
+$ find / -name "libpython*.so"
+
+だいたい以下にあります
+$ locate libpython3
+/home/suzuki/.pyenv/versions/3.13.0/lib/libpython3.so
+
+CODON_PYTHONの環境変数を~/.bash_profileに追加します
+echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~/.bash_profile
+
+
+"""
+
 # -*- coding: utf-8 -*-
 import logging
 import threading
