@@ -44,11 +44,13 @@ from concurrent.futures import ProcessPoolExecutor
 #
 # codonを使うときは以下を活かして上記をコメントアウト
 #
+# from python import Pool as ThreadPool
+# from python import Thread 
+# from python import threading 
+# from python import multiprocessing
+# from python import concurrent
 # from python import ThreadPoolExecutor
 # from python import ProcessPoolExecutor
-# from python import Pool as ThreadPool
-# from python import Thread
-# from python import concurrent
 
 
 class NQueens10():

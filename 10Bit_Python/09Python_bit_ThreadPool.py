@@ -33,22 +33,24 @@ from datetime import datetime
 #
 # Pythonを使うときは以下を活かしてcodon部分をコメントアウト
 #
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
-from threading import Thread
-from multiprocessing import Pool as ThreadPool
-import concurrent
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
+# from threading import Thread
+# from multiprocessing import Pool as ThreadPool
+# import concurrent
+# from concurrent.futures import ThreadPoolExecutor
+# from concurrent.futures import ProcessPoolExecutor
 #
 #
 # codonを使うときは以下を活かして上記をコメントアウト
 #
-# from python import concurrent
-# from python import ThreadPoolExecutor
-# from python import ProcessPoolExecutor
-# from python import Pool as ThreadPool
-# from python import Thread 
+from python import Pool as ThreadPool
+from python import Thread 
+from python import threading 
+from python import multiprocessing
+from python import concurrent
+from python import ThreadPoolExecutor
+from python import ProcessPoolExecutor
 
 class NQueens09():
   def __init__(self):
