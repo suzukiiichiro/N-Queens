@@ -322,7 +322,7 @@ class NQueens09():
     total_counts:int=[sum(x) for x in zip(*results)]
     total:int=self.gettotal(total_counts)
     unique:int=self.getunique(total_counts)
-    return total,unique
+    return [total,unique]
 
 class NQueens09_threadPool:
   def main(self):
