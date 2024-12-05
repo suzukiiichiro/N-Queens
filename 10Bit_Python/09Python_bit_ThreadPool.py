@@ -298,7 +298,8 @@ class NQueens09():
     # concurrent.futuresマルチスレッド版
     # 15:      2279184       285053         0:00:06.610
     with concurrent.futures.ThreadPoolExecutor() as executor:
-      results=list(executor.map(self.nqueen_threadPool,range(size),itertools.repeat(size)))
+      # results=list(executor.map(self.nqueen_threadPool,range(size),itertools.repeat(size)))
+      results=executor.map(self.nqueen_threadPool,[i for i  in range(size)],[size for j in range(size)])
     #
     # concurrent.futuresマルチプロセス版
     # 15:      2279184       285053         0:00:03.133
