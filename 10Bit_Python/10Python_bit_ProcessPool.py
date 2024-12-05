@@ -31,7 +31,8 @@ echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~
 # -*- coding: utf-8 -*-
 from datetime import datetime
 #
-# Pythonを使うときは以下を活かしてcodon部分をコメントアウト
+# pypyを使うときは以下を活かしてcodon部分をコメントアウト
+# pypy では ThreadPool/ProcessPoolが動きます 
 #
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
@@ -43,6 +44,7 @@ from concurrent.futures import ProcessPoolExecutor
 #
 #
 # codonを使うときは以下を活かして上記をコメントアウト
+# ThreadPool/ProcessPoolはcodonでは動きません
 #
 # from python import Pool as ThreadPool
 # from python import Thread 

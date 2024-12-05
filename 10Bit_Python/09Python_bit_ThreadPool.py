@@ -31,7 +31,8 @@ echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~
 # -*- coding: utf-8 -*-
 from datetime import datetime
 #
-# Pythonを使うときは以下を活かしてcodon部分をコメントアウト
+# pypyを使うときは以下を活かしてcodon部分をコメントアウト
+# pypy では ThreadPool/ProcessPoolが動きます 
 #
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
@@ -43,14 +44,15 @@ from datetime import datetime
 #
 #
 # codonを使うときは以下を活かして上記をコメントアウト
+# ThreadPool/ProcessPoolはcodonでは動きません
 #
-from python import Pool as ThreadPool
-from python import Thread 
-from python import threading 
-from python import multiprocessing
-from python import concurrent
-from python import ThreadPoolExecutor
-from python import ProcessPoolExecutor
+# from python import Pool as ThreadPool
+# from python import Thread 
+# from python import threading 
+# from python import multiprocessing
+# from python import concurrent
+# from python import ThreadPoolExecutor
+# from python import ProcessPoolExecutor
 
 class NQueens09():
   def __init__(self):
