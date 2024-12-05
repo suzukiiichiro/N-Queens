@@ -304,7 +304,7 @@ class NQueens09():
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
-    # results:list[int]=list(pool.map(self.nqueen_threadPool,params))
+    # results:list[int]=list(pool.map(self.nqueen_processPool,params))
     #
     #
     # スレッドごとの結果を集計
