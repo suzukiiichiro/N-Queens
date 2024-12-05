@@ -35,22 +35,22 @@ import itertools
 #
 # Pythonを使うときは以下を活かしてcodon部分をコメントアウト
 #
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
-from threading import Thread
-from multiprocessing import Pool as ThreadPool
-import concurrent
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
+# from threading import Thread
+# from multiprocessing import Pool as ThreadPool
+# import concurrent
+# from concurrent.futures import ThreadPoolExecutor
+# from concurrent.futures import ProcessPoolExecutor
 
 #
 # codonを使うときは以下を活かして上記をコメントアウト
 #
-# from python import ThreadPoolExecutor
-# from python import ProcessPoolExecutor
-# from python import Pool as ThreadPool
-# from python import Thread
-# from python import concurrent
+from python import ThreadPoolExecutor
+from python import ProcessPoolExecutor
+from python import Pool as ThreadPool
+from python import Thread
+from python import concurrent
 
 
 class NQueens10():
@@ -89,13 +89,13 @@ class NQueens10():
           bit<<=1
           you-=1
         if aboard[own]>bit:
-          return count2,count4,count8
+          return [count2,count4,count8]
         if aboard[own]<bit:
           break
         ptn<<=1
       else:
         count2+=1
-        return count2,count4,count8
+        return [count2,count4,count8]
     if aboard[size-1]==endbit:
       own,you=1,size-2
       for own in range(1,size):
@@ -104,13 +104,13 @@ class NQueens10():
           bit<<=1
           ptn>>=1
         if aboard[own]>bit:
-          return count2,count4,count8
+          return [count2,count4,count8]
         if aboard[own]<bit:
           break
         you-=1
       else:
         count4+=1
-        return count2,count4,count8
+        return [count2,count4,count8]
     if aboard[bound1]==topbit:
       ptn=topbit>>1
       for own in range(1,size):
@@ -120,12 +120,12 @@ class NQueens10():
           bit<<=1
           you+=1
         if aboard[own]>bit:
-          return count2,count4,count8
+          return [count2,count4,count8]
         if aboard[own]<bit:
           break
         ptn>>=1
     count8+=1
-    return count2,count4,count8
+    return [count2,count4,count8]
 
   def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
     count2:int
@@ -140,7 +140,7 @@ class NQueens10():
       if bitmap and (bitmap&lastmask)==0:
         aboard[row]=bitmap
         count2,count4,count8=self.symmetryops(size,aboard,topbit,endbit,sidemask,lastmask,bound1,bound2)
-      return count2,count4,count8
+      return [count2,count4,count8]
     # 上部の行であればサイドマスク適用
     if row<bound1:
       bitmap&=~sidemask
@@ -148,7 +148,7 @@ class NQueens10():
       # `bound2` 行の場合、
       # サイドマスクとの一致を確認し不要な分岐を排除
       if (down&sidemask)==0:
-        return count2,count4,count8
+        return [count2,count4,count8]
       elif (down&sidemask)!=sidemask:
         bitmap&=sidemask
     c2:int
@@ -162,7 +162,7 @@ class NQueens10():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8  
+    return [count2,count4,count8]
 
   def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
     count2:int=0
@@ -178,7 +178,7 @@ class NQueens10():
       if bitmap:
         aboard[row]=bitmap
         count8+=1
-      return count2,count4,count8
+      return [count2,count4,count8]
     if row<bound1:  # 上部の行であればマスク適用
       bitmap &= ~2
     while bitmap:
@@ -189,7 +189,7 @@ class NQueens10():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8  
+    return [count2,count4,count8]
 
   # def nqueen_processPool(self,value:list)->list:
   def nqueen_processPool(self,thr_index:int,size:int)->list:
@@ -238,7 +238,7 @@ class NQueens10():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8
+    return [count2,count4,count8]
 
   # def nqueen_threadPool(self,value:list)->list:
   def nqueen_threadPool(self,thr_index:int,size:int)->list:
@@ -291,7 +291,7 @@ class NQueens10():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8
+    return [count2,count4,count8]
 
   def solve(self,size:int)->list:
     #
@@ -322,7 +322,7 @@ class NQueens10():
     total_counts:int=[sum(x) for x in zip(*results)]
     total:int=self.gettotal(total_counts)
     unique:int=self.getunique(total_counts)
-    return total,unique
+    return [total,unique]
 
 class NQueens10_processPool:
   def main(self):
