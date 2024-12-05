@@ -30,28 +30,25 @@ echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~
 
 # -*- coding: utf-8 -*-
 from datetime import datetime
-import itertools
-
 #
 # Pythonを使うときは以下を活かしてcodon部分をコメントアウト
 #
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
-
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+#
 #
 # codonを使うときは以下を活かして上記をコメントアウト
 #
-from python import ThreadPoolExecutor
-from python import ProcessPoolExecutor
-from python import Pool as ThreadPool
-from python import Thread
-from python import concurrent
-
+# from python import concurrent
+# from python import ThreadPoolExecutor
+# from python import ProcessPoolExecutor
+# from python import Pool as ThreadPool
+# from python import Thread 
 
 class NQueens09():
   def __init__(self):
@@ -191,11 +188,8 @@ class NQueens09():
       count8+=c8
     return [count2,count4,count8]
 
-  # def nqueen_processPool(self,value:list)->list:
-  def nqueen_processPool(self,thr_index:int,size:int)->list:
-    # thr_index:int
-    # size:int
-    # thr_index,size=value
+  def nqueen_processPool(self,value:list)->list:
+    thr_index,size=value
     sizeE=size-1
     aboard:list[int]=[0 for i in range(size)]
     # aboard:list[int]
@@ -240,16 +234,13 @@ class NQueens09():
       count8+=c8
     return count2,count4,count8
 
-  # def nqueen_threadPool(self,value:list)->list:
-  def nqueen_threadPool(self,thr_index:int,size:int)->list:
-    thr_index:int
-    # size:int
-    # thr_index,size=value
+  def nqueen_threadPool(self,value:list)->list:
+    thr_index,size=value
     sizeE:int=size-1
+    aboard:list[int]=[0 for i in range(size)]
     # aboard:list[int]
     # aboard=[[0]*size*2]*size
     # aboard:list[int]=[[0]*size*2]*size
-    aboard:list[int]=[0 for i in range(size)]
     # for i in range(size):
     #   aboard[i]=0
     # aboard=[[i for i in range(2*size-1)]for j in range(size)]
@@ -292,31 +283,28 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
-
   def solve(self,size:int)->list:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+      params=[(thr_index,size) for thr_index in range(size) ]
     #
     # concurrent.futuresマルチスレッド版
-    # 15:      2279184       285053         0:00:06.610
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-      # results=list(executor.map(self.nqueen_threadPool,range(size),itertools.repeat(size)))
-      results=executor.map(self.nqueen_threadPool,[i for i  in range(size)],[size for j in range(size)])
+    # 15:      2279184       285053         0:00:05.440
+      # results=executor.map(self.nqueen_threadPool,params)
     #
     # concurrent.futuresマルチプロセス版
-    # 15:      2279184       285053         0:00:03.133
-    # with concurrent.futures.ProcessPoolExecutor() as executor:
-    #   results=list(executor.map(self.nqueen_processPool,range(size),itertools.repeat(size)))
+    # 15:      2279184       285053         0:00:05.526
+      # results=executor.map(self.nqueen_processPool,params)
     #
+    #
+    pool = ThreadPool(size)
+    params=[(thr_index,size) for thr_index in range(size) ]
     # マルチスレッド版
-    # 15:      2279184       285053         0:00:02.421
-    # pool = ThreadPool(size)
-    # value=[(thr_index,size) for thr_index in range(size) ]
-    # results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    # 15:      2279184       285053         0:00:03.553
+    results:list[int]=list(pool.map(self.nqueen_threadPool,params))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
-    # pool = ThreadPool(size)
-    # value=[(thr_index,size) for thr_index in range(size) ]
-    # results:list[int]=list(pool.map(self.nqueen_threadPool,value))
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,params))
     #
     #
     # スレッドごとの結果を集計
