@@ -69,20 +69,18 @@ class NQueens21:
                   return
       else:
           if row<local.BOUND1:
-              bitmap |= local.SIDEMASK
-              bitmap ^= local.SIDEMASK
+              bitmap|=local.SIDEMASK
+              bitmap^=local.SIDEMASK
           elif row==local.BOUND2:
               if (down&local.SIDEMASK)==0:
                   return
-              if (down&local.SIDEMASK) != local.SIDEMASK:
-                  bitmap &= local.SIDEMASK
-
+              if (down&local.SIDEMASK)!=local.SIDEMASK:
+                  bitmap&=local.SIDEMASK
       while bitmap:
           bit:int=-bitmap&bitmap
-          bitmap ^= bit
+          bitmap ^=bit
           local.board[row]=bit
           self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
-
       return
 
   def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local):
@@ -90,20 +88,18 @@ class NQueens21:
       mask:int=(1<<size)-1
       bitmap:int=mask&~(left|down|right)
       row:int=self.count_bits_nodeLayer(down)
-
       if row==(size-1):
           if bitmap:
               local.board[row]=bitmap
-              local.COUNT8+= 1
+              local.COUNT8+=1
               return
       else:
           if row<local.BOUND1: # 枝刈り
-              bitmap |= 2
-              bitmap ^= 2
-
+              bitmap|=2
+              bitmap^=2
       while bitmap:
           bit:int=-bitmap&bitmap
-          bitmap ^= bit
+          bitmap^=bit
           local.board[row]=bit  # Qを配置
           self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
 
@@ -118,21 +114,19 @@ class NQueens21:
           while own<size:
               bit:int=1
               you:int=size-1
-              while you >= 0 and local.board[you] != ptn and local.board[own] >= bit:
-                  bit <<= 1
-                  you -= 1
+              while you>=0 and local.board[you] != ptn and local.board[own] >= bit:
+                  bit<<=1
+                  you-=1
               if local.board[own]>bit:
                   return
               if local.board[own]<bit:
                   break
-              ptn <<= 1
-              own+= 1
-
+              ptn<<=1
+              own+=1
           # 90度回転が同型
           if own>size-1:
-              local.COUNT2+= 1
+              local.COUNT2+=1
               return
-
       # 180度回転
       if local.board[size-1]==local.ENDBIT:
           you:int=size-2
@@ -140,40 +134,37 @@ class NQueens21:
           while own <= size-1:
               bit:int=1
               ptn:int=local.TOPBIT
-              while ptn != local.board[you] and local.board[own] >= bit:
-                  ptn >>= 1
-                  bit <<= 1
+              while ptn!=local.board[you] and local.board[own]>=bit:
+                  ptn>>=1
+                  bit<<=1
               if local.board[own]>bit:
                   return
               if local.board[own]<bit:
                   break
-              you -= 1
-              own+= 1
-
+              you-=1
+              own+=1
           # 180度回転が同型
           if own>size-1:
-              local.COUNT4+= 1
+              local.COUNT4+=1
               return
-
       # 270度回転
       if local.board[local.BOUND1]==local.TOPBIT:
           ptn:int=local.TOPBIT>>1
           own:int=1
-          while own <= size-1:
+          while own<=size-1:
               bit:int=1
               you:int=0
-              while you<size and local.board[you] != ptn and local.board[own] >= bit:
-                  bit <<= 1
-                  you+= 1
+              while you<size and local.board[you]!=ptn and local.board[own] >= bit:
+                  bit<<=1
+                  you+=1
               if local.board[own]>bit:
                   return
               if local.board[own]<bit:
                   break
-              ptn >>= 1
+              ptn>>=1
               own+= 1
-
       # すべての回転が異なる
-      local.COUNT8+= 1
+      local.COUNT8+=1
       return
 
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,
@@ -183,7 +174,6 @@ class NQueens21:
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int= self.count_bits_nodeLayer(down)
-
     if row==k:
       nodes.append(left)
       nodes.append(down)
@@ -199,17 +189,16 @@ class NQueens21:
       return
     else:
       if row<local.BOUND1:
-          bitmap |= local.SIDEMASK
-          bitmap ^= local.SIDEMASK
+          bitmap|=local.SIDEMASK
+          bitmap^=local.SIDEMASK
       elif row==local.BOUND2:
           if (down&local.SIDEMASK)==0:
-              return 0
-          if (down&local.SIDEMASK) != local.SIDEMASK:
-              bitmap &= local.SIDEMASK
-
+              return
+          if (down&local.SIDEMASK)!=local.SIDEMASK:
+              bitmap&=local.SIDEMASK
     while bitmap:
       bit:int=-bitmap&bitmap
-      bitmap ^= bit
+      bitmap^=bit
       local.board[row]=bit
       self.kLayer_nodeLayer_backtrack(
           size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,
@@ -223,7 +212,6 @@ class NQueens21:
     bitmap:int=mask&~(left|down|right)
     bit:int=0
     row:int= self.count_bits_nodeLayer(down)
-
     if row==k:
       nodes.append(left)
       nodes.append(down)
@@ -239,10 +227,9 @@ class NQueens21:
     if row<local.BOUND1:
       bitmap|=2
       bitmap^=2
-
     while bitmap:
-      bit= -bitmap&bitmap
-      bitmap ^= bit
+      bit=-bitmap&bitmap
+      bitmap^=bit
       local.board[row]=bit
       self.kLayer_nodeLayer_backtrack_corner(
           size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,
@@ -250,7 +237,6 @@ class NQueens21:
       )
     return
 
-  
   def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list[Local]):
     """kレイヤーのすべてのノードを含むベクトルを返す"""
     # 初期化
@@ -260,8 +246,6 @@ class NQueens21:
       BOUND1=2,BOUND2=0,TYPE=0,board=[0]*size
     )
     local.board[0]=1
-
-
     # 角にQがある場合のバックトラック
     while local.BOUND1>1 and local.BOUND1<size-1:
       if local.BOUND1<size-1:
@@ -300,7 +284,6 @@ class NQueens21:
     nodes:list[int]=[]
     types:list[int]=[]
     local_list:list[Local]=[]  # Localの配列を用意
-
     k:int=5  # 3番目のレイヤーを対象      
     self.kLayer_nodeLayer(size,nodes,k,types,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
