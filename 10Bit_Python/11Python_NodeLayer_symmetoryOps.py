@@ -115,57 +115,68 @@ class NQueens21:
 
     def symmetryOps(self, size: int, local: Local) -> int:
         """対称解除操作"""
+        # 90度回転
         if local.board[local.BOUND2] == 1:
-            ptn: int
-            own: int
-            for ptn, own in zip(range(2, size + 1), range(1, size)):
-                bit: int
-                you: int
-                for bit, you in zip(range(1, size + 1), range(size - 1, -1, -1)):
-                    if local.board[you] != ptn and local.board[own] >= bit:
-                        bit <<= 1
+            ptn: int = 2
+            own: int = 1
+            while own < size:
+                bit: int = 1
+                you: int = size - 1
+                while you >= 0 and local.board[you] != ptn and local.board[own] >= bit:
+                    bit <<= 1
+                    you -= 1
                 if local.board[own] > bit:
                     return 0
                 if local.board[own] < bit:
                     break
+                ptn <<= 1
+                own += 1
 
+            # 90度回転が同型
             if own > size - 1:
                 local.COUNT2 += 1
                 return 2
 
+        # 180度回転
         if local.board[size - 1] == local.ENDBIT:
-            you: int
-            own: int
-            for you, own in zip(range(size - 2, -1, -1), range(1, size)):
-                bit: int
-                ptn: int
-                for bit, ptn in zip(range(1, size + 1), range(local.TOPBIT, 0, -1)):
-                    if ptn != local.board[you] and local.board[own] >= bit:
-                        ptn >>= 1
-                        bit <<= 1
+            you: int = size - 2
+            own: int = 1
+            while own <= size - 1:
+                bit: int = 1
+                ptn: int = local.TOPBIT
+                while ptn != local.board[you] and local.board[own] >= bit:
+                    ptn >>= 1
+                    bit <<= 1
                 if local.board[own] > bit:
                     return 0
                 if local.board[own] < bit:
                     break
+                you -= 1
+                own += 1
 
+            # 180度回転が同型
             if own > size - 1:
                 local.COUNT4 += 1
                 return 4
 
+        # 270度回転
         if local.board[local.BOUND1] == local.TOPBIT:
-            ptn: int
-            own: int
-            for ptn, own in zip(range(local.TOPBIT >> 1, 0, -1), range(1, size)):
-                bit: int
-                you: int
-                for bit, you in zip(range(1, size + 1), range(0, size)):
-                    if local.board[you] != ptn and local.board[own] >= bit:
-                        bit <<= 1
+            ptn: int = local.TOPBIT >> 1
+            own: int = 1
+            while own <= size - 1:
+                bit: int = 1
+                you: int = 0
+                while you < size and local.board[you] != ptn and local.board[own] >= bit:
+                    bit <<= 1
+                    you += 1
                 if local.board[own] > bit:
                     return 0
                 if local.board[own] < bit:
                     break
+                ptn >>= 1
+                own += 1
 
+        # すべての回転が異なる
         local.COUNT8 += 1
         return 8
 
@@ -295,13 +306,11 @@ class NQueens21:
       types:list[int]=[]
       local_list: list[Local] = []  # Localの配列を用意
 
-      k:int=5  # 3番目のレイヤーを対象
+      k:int=5  # 3番目のレイヤーを対象      
       self.kLayer_nodeLayer(size,nodes,k,types,local_list)
       # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
       # ミラーでは/6 を /3に変更する 
       num_solutions=len(nodes)//3
-      print(nodes)
-      print(num_solutions)
       total:int=0
       for i in range(num_solutions):
         local = local_list[i]
@@ -315,7 +324,7 @@ class NQueens21:
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=7
-    nmax:int=8
+    nmax:int=15
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
