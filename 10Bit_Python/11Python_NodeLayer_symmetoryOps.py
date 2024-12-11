@@ -11,7 +11,6 @@ from datetime import datetime
 # from concurrent.futures import ThreadPoolExecutor
 # from concurrent.futures import ProcessPoolExecutor
 # Codon環境の判定
-
 # Codon用の型定義
 
 class Local:
@@ -102,7 +101,6 @@ class NQueens21:
           bitmap^=bit
           local.board[row]=bit  # Qを配置
           self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
-
       return
 
   def symmetryOps(self,size:int,local:Local):
@@ -276,8 +274,6 @@ class NQueens21:
       local.BOUND2-=1
       local.ENDBIT=local.ENDBIT>>1
       local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
-
-  
   
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成
