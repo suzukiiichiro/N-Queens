@@ -27,7 +27,6 @@ class Local:
 	board:list[int]
 	def __init__(self,TOTAL:int,UNIQUE:int,COUNT2:int,COUNT4:int,COUNT8:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,TYPE:int,board:list[int]):
   		self.TOTAL,self.UNIQUE,self.COUNT2,self.COUNT4,self.COUNT8,self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.TYPE,self.board=TOTAL,UNIQUE,COUNT2,COUNT4,COUNT8,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,TYPE,board
-
 class NQueens21:
   def __init__(self):
     pass
@@ -38,63 +37,6 @@ class NQueens21:
       n&=n-1
       counter+=1
     return counter 
-  # def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local):
-  """ノードレイヤーでの対称解除法"""
-  def symmetry_solve_nodeLayer(self,value:list):
-    size,left,down,right,local=value
-    mask:int=(1<<size)-1
-    bitmap:int=mask&~(left|down|right)
-    row:int=self.count_bits_nodeLayer(down)
-    if row==(size-1):
-      if bitmap:
-        if (bitmap&local.LASTMASK)==0:
-          local.board[row]=bitmap # Qを配置
-          self.symmetryOps(size,local)
-          return
-    else:
-      if row<local.BOUND1:
-        bitmap|=local.SIDEMASK
-        bitmap^=local.SIDEMASK
-      elif row==local.BOUND2:
-        if (down&local.SIDEMASK)==0:
-          return
-        if (down&local.SIDEMASK)!=local.SIDEMASK:
-          bitmap&=local.SIDEMASK
-    while bitmap:
-      bit:int=-bitmap&bitmap
-      bitmap ^=bit
-      local.board[row]=bit
-      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
-      self.symmetry_solve_nodeLayer(params)
-      # self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
-    return
-
-  # def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local):
-  """角にQがある場合の対称解除法"""
-  def symmetry_solve_nodeLayer_corner(self,value:list):
-    size,left,down,right,local=value
-    mask:int=(1<<size)-1
-    bitmap:int=mask&~(left|down|right)
-    row:int=self.count_bits_nodeLayer(down)
-    if row==(size-1):
-      if bitmap:
-        local.board[row]=bitmap
-        local.COUNT8+=1
-        return
-    else:
-      if row<local.BOUND1: # 枝刈り
-        bitmap|=2
-        bitmap^=2
-    while bitmap:
-      bit:int=-bitmap&bitmap
-      bitmap^=bit
-      local.board[row]=bit # Qを配置
-
-      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
-      # self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
-      self.symmetry_solve_nodeLayer_corner(params)
-    return
-
   def symmetryOps(self,size:int,local:Local):
     """対称解除操作"""
     # 90度回転
@@ -156,41 +98,94 @@ class NQueens21:
     # すべての回転が異なる
     local.COUNT8+=1
     return
+  # def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local):
+  """ノードレイヤーでの対称解除法"""
+  def symmetry_solve_nodeLayer(self,value:list):
+    size,left,down,right,local=value
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
+    row:int=self.count_bits_nodeLayer(down)
+    if row==(size-1):
+      if bitmap:
+        if (bitmap&local.LASTMASK)==0:
+          local.board[row]=bitmap # Qを配置
+          self.symmetryOps(size,local)
+          return
+    else:
+      if row<local.BOUND1:
+        bitmap|=local.SIDEMASK
+        bitmap^=local.SIDEMASK
+      elif row==local.BOUND2:
+        if (down&local.SIDEMASK)==0:
+          return
+        if (down&local.SIDEMASK)!=local.SIDEMASK:
+          bitmap&=local.SIDEMASK
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap ^=bit
+      local.board[row]=bit
+      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
+      self.symmetry_solve_nodeLayer(params)
+      # self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
+    return
+  # def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local):
+  """角にQがある場合の対称解除法"""
+  def symmetry_solve_nodeLayer_corner(self,value:list):
+    size,left,down,right,local=value
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
+    row:int=self.count_bits_nodeLayer(down)
+    if row==(size-1):
+      if bitmap:
+        local.board[row]=bitmap
+        local.COUNT8+=1
+        return
+    else:
+      if row<local.BOUND1: # 枝刈り
+        bitmap|=2
+        bitmap^=2
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap^=bit
+      local.board[row]=bit # Qを配置
 
+      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
+      # self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
+      self.symmetry_solve_nodeLayer_corner(params)
+    return
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,types:list,local_list:list[Local])->int:
-   counter:int=0
-   mask:int=(1<<size)-1
-   bitmap:int=mask&~(left|down|right)
-   row:int= self.count_bits_nodeLayer(down)
-   if row==k:
-     nodes.append(left)
-     nodes.append(down)
-     nodes.append(right)
-     types.append(1)
-     local_list.append(Local( # 現在の`local`のコピーを追加
-       TOTAL=local.TOTAL,UNIQUE=local.UNIQUE,COUNT2=local.COUNT2,
-       COUNT4=local.COUNT4,COUNT8=local.COUNT8,TOPBIT=local.TOPBIT,
-       ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,
-       BOUND1=local.BOUND1,BOUND2=local.BOUND2,TYPE=local.TYPE,
-       board=local.board.copy()
-     ))
-     return
-   else:
-     if row<local.BOUND1:
-       bitmap|=local.SIDEMASK
-       bitmap^=local.SIDEMASK
-     elif row==local.BOUND2:
-       if (down&local.SIDEMASK)==0:
-         return
-       if (down&local.SIDEMASK)!=local.SIDEMASK:
-         bitmap&=local.SIDEMASK
-   while bitmap:
-     bit:int=-bitmap&bitmap
-     bitmap^=bit
-     local.board[row]=bit
-     self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,types,local_list)
-   return counter
-
+    counter:int=0
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
+    row:int= self.count_bits_nodeLayer(down)
+    if row==k:
+      nodes.append(left)
+      nodes.append(down)
+      nodes.append(right)
+      types.append(1)
+      local_list.append(Local( # 現在の`local`のコピーを追加
+        TOTAL=local.TOTAL,UNIQUE=local.UNIQUE,COUNT2=local.COUNT2,
+        COUNT4=local.COUNT4,COUNT8=local.COUNT8,TOPBIT=local.TOPBIT,
+        ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,
+        BOUND1=local.BOUND1,BOUND2=local.BOUND2,TYPE=local.TYPE,
+        board=local.board.copy()
+      ))
+      return
+    else:
+      if row<local.BOUND1:
+        bitmap|=local.SIDEMASK
+        bitmap^=local.SIDEMASK
+      elif row==local.BOUND2:
+        if (down&local.SIDEMASK)==0:
+          return
+        if (down&local.SIDEMASK)!=local.SIDEMASK:
+          bitmap&=local.SIDEMASK
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap^=bit
+      local.board[row]=bit
+      self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,types,local_list)
+    return counter
   def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,types:list,local_list:list[Local]):
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
@@ -216,7 +211,6 @@ class NQueens21:
       bitmap^=bit
       local.board[row]=bit
       self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,types,local_list)
-
   """kレイヤーのすべてのノードを含むベクトルを返す"""
   def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list[Local]):
    # 初期化
@@ -284,7 +278,6 @@ class NQueens21:
     pool.map(self.symmetry_solve,params)
     total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
     return total
-
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=7
@@ -297,7 +290,6 @@ class NQueens21_NodeLayer:
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3] 
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
-
 # メイン実行部分
 if __name__=="__main__":
   NQueens21_NodeLayer().main()
