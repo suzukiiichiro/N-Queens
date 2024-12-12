@@ -281,12 +281,14 @@ class NQueens21:
     # ミラーでは/6 を /3に変更する 
     num_solutions=len(nodes)//3
     total:int=0
-
     pool=ThreadPool(num_solutions)
-    params=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions)]
-    pool.map(self.symmetry_solve,params)
-    total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
-    return total
+    params=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],
+          local_list[i]) for i in range(num_solutions)]
+    results:list[int]=list(pool.map(self.symmetry_solve,params))
+    # total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
+    total:int=sum(results)
+    # return total
+    return total*2
 
 class NQueens21_NodeLayer:
   def main(self)->None:
