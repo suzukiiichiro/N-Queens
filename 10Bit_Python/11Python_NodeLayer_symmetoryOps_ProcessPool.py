@@ -69,7 +69,7 @@ class NQueens21:
       bitmap ^=bit
       local.board[row]=bit
 
-      params=[size,left,down,right,local]
+      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
       self.symmetry_solve_nodeLayer(params)
       # self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return
@@ -95,7 +95,7 @@ class NQueens21:
       bitmap^=bit
       local.board[row]=bit # Qを配置
 
-      params=[size,left,down,right,local]
+      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
       # self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
       self.symmetry_solve_nodeLayer_corner(params)
     return
@@ -284,11 +284,13 @@ class NQueens21:
     pool=ThreadPool(num_solutions)
     params=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],
           local_list[i]) for i in range(num_solutions)]
-    results:list[int]=list(pool.map(self.symmetry_solve,params))
-    # total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
-    total:int=sum(results)
-    # return total
-    return total*2
+
+    # results:list[int]=list(pool.map(self.symmetry_solve,params))
+    # total:int=sum(results)
+    # return total*2
+    pool.map(self.symmetry_solve,params)
+    total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
+    return total
 
 class NQueens21_NodeLayer:
   def main(self)->None:
