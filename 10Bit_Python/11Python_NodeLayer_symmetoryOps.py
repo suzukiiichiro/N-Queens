@@ -2,14 +2,13 @@ from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-#
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 # Codon環境の判定
 # Codon用の型定義
 
@@ -285,8 +284,8 @@ class NQueens21:
 
 class NQueens21_NodeLayer:
   def main(self)->None:
-    nmin:int=7
-    nmax:int=15
+    nmin:int=5
+    nmax:int=16
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()

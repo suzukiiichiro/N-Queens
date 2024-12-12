@@ -10,10 +10,6 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
-# import sys
-# sys.setrecursionlimit(20000)
-
-
 class Local:
 	# フィールドをクラスレベルで定義
 	TOTAL:int
@@ -68,7 +64,6 @@ class NQueens21:
       bit:int=-bitmap&bitmap
       bitmap ^=bit
       local.board[row]=bit
-
       params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
       self.symmetry_solve_nodeLayer(params)
       # self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
@@ -261,7 +256,6 @@ class NQueens21:
     local.BOUND2-=1
     local.ENDBIT=local.ENDBIT>>1
     local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
-  
   def symmetry_solve(self,value:list):
     size,left,down,right,local=value
     params=[size,left,down,right,local]
@@ -269,7 +263,6 @@ class NQueens21:
       self.symmetry_solve_nodeLayer_corner(params)
     else:
       self.symmetry_solve_nodeLayer(params)
-
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
