@@ -31,14 +31,12 @@ class NQueens21:
   def __init__(self):
     pass
   def count_bits_nodeLayer(self,n:int)->int:
-    """ビットが1である数をカウント"""
     counter:int=0
     while n:
       n&=n-1
       counter+=1
     return counter 
   def symmetryOps(self,size:int,local:Local):
-    """対称解除操作"""
     # 90度回転
     if local.board[local.BOUND2]==1:
       ptn:int=2
@@ -98,10 +96,7 @@ class NQueens21:
     # すべての回転が異なる
     local.COUNT8+=1
     return
-  # def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local):
-  """ノードレイヤーでの対称解除法"""
-  def symmetry_solve_nodeLayer(self,value:list):
-    size,left,down,right,local=value
+  def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local):
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int=self.count_bits_nodeLayer(down)
@@ -124,14 +119,9 @@ class NQueens21:
       bit:int=-bitmap&bitmap
       bitmap ^=bit
       local.board[row]=bit
-      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
-      self.symmetry_solve_nodeLayer(params)
-      # self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
+      self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return
-  # def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local):
-  """角にQがある場合の対称解除法"""
-  def symmetry_solve_nodeLayer_corner(self,value:list):
-    size,left,down,right,local=value
+  def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local):
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int=self.count_bits_nodeLayer(down)
@@ -148,10 +138,7 @@ class NQueens21:
       bit:int=-bitmap&bitmap
       bitmap^=bit
       local.board[row]=bit # Qを配置
-
-      params=[size,(left|bit)<<1,down|bit,(right|bit)>>1,local]
-      # self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
-      self.symmetry_solve_nodeLayer_corner(params)
+      self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,types:list,local_list:list[Local])->int:
     counter:int=0
@@ -210,53 +197,51 @@ class NQueens21:
       bit=-bitmap&bitmap
       bitmap^=bit
       local.board[row]=bit
-      self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,types,local_list)
-  """kレイヤーのすべてのノードを含むベクトルを返す"""
-  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list[Local]):
-   # 初期化
-   local=Local(
-    TOTAL=0,UNIQUE=0,COUNT2=0,COUNT4=0,COUNT8=0,
-    TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,
-    BOUND1=2,BOUND2=0,TYPE=0,board=[0]*size
-   )
-   local.board[0]=1
-   # 角にQがある場合のバックトラック
-   while local.BOUND1>1 and local.BOUND1<size-1:
-    if local.BOUND1<size-1:
-      bit:int=1<<local.BOUND1
-      local.board[1]=bit
       self.kLayer_nodeLayer_backtrack_corner(
-        size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,local,types,local_list
-      )
-    local.BOUND1+= 1
+          size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,
+          local,types,local_list)
+    return
+  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list[Local]):
+    # 初期化
+    local=Local(
+      TOTAL=0,UNIQUE=0,COUNT2=0,COUNT4=0,COUNT8=0,
+      TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,
+      BOUND1=2,BOUND2=0,TYPE=0,board=[0]*size
+    )
+    local.board[0]=1
+    # 角にQがある場合のバックトラック
+    while local.BOUND1>1 and local.BOUND1<size-1:
+      if local.BOUND1<size-1:
+        bit:int=1<<local.BOUND1
+        local.board[1]=bit
+        self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,local,types,local_list)
+      local.BOUND1+= 1
+    local.TOPBIT=1<<(size-1)
+    local.ENDBIT=local.TOPBIT>>1
+    local.SIDEMASK=local.TOPBIT|1
+    local.LASTMASK=local.TOPBIT|1
+    local.BOUND1=1
+    local.BOUND2=size-2
 
-   local.TOPBIT=1<<(size-1)
-   local.ENDBIT=local.TOPBIT>>1
-   local.SIDEMASK=local.TOPBIT|1
-   local.LASTMASK=local.TOPBIT|1
-   local.BOUND1=1
-   local.BOUND2=size-2
-
-   #角にQがない場合のバックトラック
-   while local.BOUND1>0 and local.BOUND2<size-1 and local.BOUND1<local.BOUND2:
-    if local.BOUND1<local.BOUND2:
-      bit=1<<local.BOUND1
-      local.board[0]=bit
-      self.kLayer_nodeLayer_backtrack(
-        size,nodes,k,bit<<1,bit,bit>>1,
-        local,types,local_list
-      )
-    local.BOUND1+=1
-    local.BOUND2-=1
-    local.ENDBIT=local.ENDBIT>>1
-    local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
+    #角にQがない場合のバックトラック
+    while local.BOUND1>0 and local.BOUND2<size-1 and local.BOUND1<local.BOUND2:
+      if local.BOUND1<local.BOUND2:
+        bit=1<<local.BOUND1
+        local.board[0]=bit
+        self.kLayer_nodeLayer_backtrack(
+          size,nodes,k,bit<<1,bit,bit>>1,
+          local,types,local_list
+        )
+      local.BOUND1+=1
+      local.BOUND2-=1
+      local.ENDBIT=local.ENDBIT>>1
+      local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
   def symmetry_solve(self,value:list):
     size,left,down,right,local=value
-    params=[size,left,down,right,local]
     if local.board[0]==1 :
-      self.symmetry_solve_nodeLayer_corner(params)
+      self.symmetry_solve_nodeLayer_corner(size,left,down,right,local)
     else:
-      self.symmetry_solve_nodeLayer(params)
+      self.symmetry_solve_nodeLayer(size,left,down,right,local)
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
@@ -269,13 +254,12 @@ class NQueens21:
     num_solutions=len(nodes)//3
     total:int=0
     pool=ThreadPool(num_solutions)
-    params=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],
+    value=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],
           local_list[i]) for i in range(num_solutions)]
-
-    # results:list[int]=list(pool.map(self.symmetry_solve,params))
+    # results:list[int]=list(pool.map(self.symmetry_solve,value))
     # total:int=sum(results)
     # return total*2
-    pool.map(self.symmetry_solve,params)
+    pool.map(self.symmetry_solve,value)
     total=sum(l.COUNT2*2+l.COUNT4*4+l.COUNT8*8 for l in local_list)
     return total
 class NQueens21_NodeLayer:
