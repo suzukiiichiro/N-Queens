@@ -3,18 +3,20 @@ from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 # from threading import Thread
 # from multiprocessing import Pool as ThreadPool
 # import concurrent
 # from concurrent.futures import ThreadPoolExecutor
 # from concurrent.futures import ProcessPoolExecutor
-
+step=0
 class NQueens21:
     def __init__(self):
       pass
     def bitmap_solve_nodeLayer(self,size:int,left:int,down:int,right:int)->int:
+      global step
+      step+=1
       mask:int=(1<<size)-1
       counter:int=0
       if down==mask: # 解が見つかった場合
@@ -78,16 +80,18 @@ class NQueens21:
       num_solutions=len(nodes)//3
       #print(nodes)
       #print(num_solutions)
+      global step
       total:int=0
       for i in range(num_solutions):
         total+=self.bitmap_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2])
       total*=2
+      print(step)
       return total
 
 class NQueens21_NodeLayer:
   def main(self)->None:
-    nmin:int=5
-    nmax:int=17
+    nmin:int=7
+    nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()

@@ -2,8 +2,8 @@ from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-#import pypyjit
-#pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 import concurrent
@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 # Codon環境の判定
 # Codon用の型定義
-
+step=0
 class Local:
 	# フィールドをクラスレベルで定義
 	TOTAL:int
@@ -45,6 +45,8 @@ class NQueens21:
       return self.symmetry_solve_nodeLayer(size,left,down,right,local)
 
   def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local)->int:
+    global step
+    step+=1
     """ノードレイヤーでの対称解除法"""
     counter: int = 0
     mask:int=(1<<size)-1
@@ -72,6 +74,8 @@ class NQueens21:
     return counter
 
   def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local)->int:
+    global step
+    step+=1
     """角にQがある場合の対称解除法"""
     counter: int = 0
     mask:int=(1<<size)-1
@@ -258,11 +262,12 @@ class NQueens21:
      local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
 
   def symmetry_build_nodeLayer(self,size:int)->int:
+    global step
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
     types:list[int]=[]
     local_list:list[Local]=[] # Localの配列を用意
-    k:int=5 # 3番目のレイヤーを対象 
+    k:int=4 # 3番目のレイヤーを対象 
     self.kLayer_nodeLayer(size,nodes,k,types,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する 
@@ -270,11 +275,13 @@ class NQueens21:
     total:int=0
     for i in range(num_solutions):
       total+=self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i])
+    print(step)
+    
     return total
 
 class NQueens21_NodeLayer:
   def main(self)->None:
-    nmin:int=5
+    nmin:int=7
     nmax:int=16
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
