@@ -22,10 +22,10 @@ class Local:
 	SIDEMASK:int
 	BOUND1:int
 	BOUND2:int
-	board:list[int]
+	board:list
 	def __init__(self,TOTAL:int,UNIQUE:int,
        TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,
-       BOUND1:int,BOUND2:int,board:list[int]):
+       BOUND1:int,BOUND2:int,board:list):
   		self.TOTAL,self.UNIQUE,self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.board=TOTAL,UNIQUE,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board
 
 class NQueens21:
@@ -157,7 +157,7 @@ class NQueens21:
 
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,
                  left:int,down:int,right:int,
-                 local:Local,local_list:list[Local])->int:
+                 local:Local,local_list:Local)->int:
    counter:int=0
    mask:int=(1<<size)-1
    bitmap:int=mask&~(left|down|right)
