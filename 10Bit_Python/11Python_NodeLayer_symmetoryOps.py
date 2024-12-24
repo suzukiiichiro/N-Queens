@@ -193,7 +193,7 @@ class NQueens21:
    return counter
 
   def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,
-                    left:int,down:int,right:int,local:Local,local_list:list[Local]):
+                    left:int,down:int,right:int,local:Local,local_list:Local):
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     bit:int=0
@@ -221,7 +221,7 @@ class NQueens21:
       )
     return
 
-  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list[Local]):
+  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:Local):
    """kレイヤーのすべてのノードを含むベクトルを返す"""
    # 初期化
    local=Local(
@@ -266,7 +266,7 @@ class NQueens21:
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
     types:list[int]=[]
-    local_list:list[Local]=[] # Localの配列を用意
+    local_list:Local=[] # Localの配列を用意
     k:int=4 # 3番目のレイヤーを対象 
     self.kLayer_nodeLayer(size,nodes,k,types,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
