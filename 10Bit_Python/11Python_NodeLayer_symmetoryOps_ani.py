@@ -142,7 +142,6 @@ class NQueens21:
       return self.symmetry_solve_nodeLayer(size,left,down,right,local.TOPBIT,local.ENDBIT,local.LASTMASK,local.SIDEMASK,local.BOUND1,local.BOUND2,local.board)
   """ """
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->int:
-    counter:int=0
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int= self.count_bits_nodeLayer(down)
@@ -166,7 +165,7 @@ class NQueens21:
       bitmap^=bit
       board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
-    return counter
+    return 
   """ """
   def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local):
     mask:int=(1<<size)-1
