@@ -27,7 +27,7 @@ class NQueens11:
         n&=(n-1)  # 右端の1を削除
         counter+=1
       return counter
-    def kLayer_nodeLayer(self,size:int,nodes:list[int],k:int,left:int,down:int,right:int)->int:
+    def kLayer_nodeLayer(self,size:int,nodes:list,k:int,left:int,down:int,right:int)->int:
       counter:int=0
       mask:int=(1<<size)-1
       # すべてのdownが埋まったら、解決策を見つけたことになる
@@ -59,7 +59,7 @@ class NQueens11:
 class NQueens11_NodeLayer:
   def main(self):
     nmin:int=4
-    nmax:int=18
+    nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()

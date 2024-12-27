@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
 class NQueens21:
-  
+
     def __init__(self):
       pass
 

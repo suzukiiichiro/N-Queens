@@ -162,9 +162,9 @@ size: 5 TOTAL: 10 UNIQUE: 2
 bash-3.2$
 """
 # pypyを使う場合はコメントを解除
-# import pypyjit
 # pypyで再帰が高速化できる
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens02:
   size:int

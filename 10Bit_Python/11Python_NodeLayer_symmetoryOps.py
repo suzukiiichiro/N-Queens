@@ -4,6 +4,7 @@ from datetime import datetime
 # pypy では ThreadPool/ProcessPoolが動きます 
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
+
 # from threading import Thread
 # from multiprocessing import Pool as ThreadPool
 # import concurrent
@@ -144,6 +145,7 @@ class NQueens21:
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int= self.count_bits_nodeLayer(down)
+    bit:int=0
     if row==k:
       nodes.append(left)
       nodes.append(down)
@@ -159,9 +161,9 @@ class NQueens21:
         if (down&SIDEMASK)!=SIDEMASK:
           bitmap&=SIDEMASK
     while bitmap:
-      bit:int=-bitmap&bitmap
+      bit=-bitmap&bitmap
       bitmap^=bit
-      board[row]=bit
+      # board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
   """ 角にQがある場合のバックトラック """
   def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->None:
@@ -181,10 +183,11 @@ class NQueens21:
       while bitmap:
         bit=-bitmap&bitmap
         bitmap^=bit
-        board[row]=bit
+        # board[row]=bit
         self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
   """ kレイヤーのすべてのノードを含むベクトルを返す """
   def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:Local):
+    bit:int=0
     TOPBIT=1<<(size-1)
     ENDBIT=0
     LASTMASK=0
@@ -196,14 +199,14 @@ class NQueens21:
     # 角にQがある場合のバックトラック
     while BOUND1>1 and BOUND1<size-1:
       if BOUND1<size-1:
-       bit:int=1<<BOUND1
-       board[1]=bit
-       self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
+        bit=1<<BOUND1
+        board[1]=bit
+        self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
       BOUND1+= 1
     TOPBIT=1<<(size-1)
     ENDBIT=TOPBIT>>1
-    SIDEMASK=TOPBIT|1
-    LASTMASK=TOPBIT|1
+    SIDEMASK=LASTMASK=TOPBIT|1
+    # LASTMASK=TOPBIT|1
     BOUND1=1
     BOUND2=size-2
     # 角にQがない場合のバックトラック
@@ -215,7 +218,7 @@ class NQueens21:
       BOUND1+=1
       BOUND2-=1
       ENDBIT=ENDBIT>>1
-      LASTMASK=(LASTMASK<<1)|LASTMASK|(LASTMASK>>1)
+      LASTMASK=LASTMASK<<1|LASTMASK|LASTMASK>>1
   """ """
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成

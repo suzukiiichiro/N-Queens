@@ -166,9 +166,9 @@ bash-3.2$
 from datetime import datetime
 
 # pypyを使う場合はコメントを解除
-# import pypyjit
 # pypyで再帰が高速化できる
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens04:
   max:int

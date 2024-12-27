@@ -247,7 +247,7 @@ def carryChain(size):
   TOTAL=COUNTER[0]*2 + COUNTER[1]*4 + COUNTER[2]*8
 #
 # 実行
-size=5
+size=15
 carryChain(size)    # ７．キャリーチェーン
 print("size:",size,"TOTAL:",TOTAL,"UNIQUE:",UNIQUE)
 #

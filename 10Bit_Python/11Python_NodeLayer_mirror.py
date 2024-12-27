@@ -85,12 +85,12 @@ class NQueens21:
       for i in range(num_solutions):
         total+=self.bitmap_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2])
       total*=2
-      print(step)
+      # print(step)
       return total
 
 class NQueens21_NodeLayer:
   def main(self)->None:
-    nmin:int=7
+    nmin:int=4
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
