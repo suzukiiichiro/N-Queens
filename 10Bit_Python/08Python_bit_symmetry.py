@@ -1,7 +1,6 @@
 
 from datetime import datetime 
 # pypyを使う場合はコメントを解除
-# pypyで再帰が高速化できる
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
 
@@ -30,7 +29,9 @@ class NQueens08():
     self.count2=0
     self.count4=0
     self.count8=0
+  """ 対象解除 """
   def symmetryops(self,size:int):
+    # 90度回転
     if self.board[self.bound2]==1:
       own:int=1
       ptn:int=2
@@ -68,9 +69,11 @@ class NQueens08():
           break
         own+=1
         you-=1
+      # 180度回転が同型
       if own>size-1:
         self.count4+=1
         return
+    # 270度回転
     if self.board[self.bound1]==self.topbit:
       own=1
       ptn=self.topbit>>1
@@ -87,7 +90,7 @@ class NQueens08():
         own+=1
         ptn>>=1
     self.count8+=1
-  # 角にQがない場合のバックトラック
+  """ 角にQがない場合のバックトラック """
   def backTrack2(self,size:int,row:int,left:int,down:int,right:int):
     bit:int=0
     mask:int=(1<<size)-1
@@ -113,7 +116,7 @@ class NQueens08():
         bitmap^=bit
         self.board[row]=bit
         self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
-  # 角にQがある場合のバックトラック
+  """ 角にQがある場合のバックトラック """
   def backTrack1(self,size:int,row:int,left:int,down:int,right:int):
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
@@ -132,6 +135,7 @@ class NQueens08():
         bitmap^=bit
         self.board[row]=bit
         self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  """ """
   def NQueens(self,size:int):
     bit:int=0
     self.total=self.unique=self.count2=self.count4=self.count8=0
@@ -140,7 +144,6 @@ class NQueens08():
     self.bound1=2
     self.bound2=0
     self.board[0]=1
-    # 角にQがある場合のバックトラック
     while self.bound1>1 and self.bound1<size-1:
       if self.bound1<(size-1):
         bit=1<<self.bound1
@@ -152,13 +155,12 @@ class NQueens08():
     self.sidemask=self.lastmask=self.topbit|1
     self.bound1=1
     self.bound2=size-2
-    # 角にQがない場合のバックトラック
     while self.bound1>0 and self.bound2<size-1 and self.bound1<self.bound2:
       if self.bound1<self.bound2:
         bit=1<<self.bound1
         self.board[0]=bit
         self.backTrack2(size,1,bit<<1,bit,bit>>1)
-      # self.bound1+=1
+      self.bound1+=1
       self.bound2-=1
       self.endbit=self.endbit>>1
       self.lastmask=self.lastmask<<1|self.lastmask|self.lastmask>>1
@@ -186,8 +188,8 @@ class NQueens08():
       time_elapsed = datetime.now()-start_time
       # _text = '{}'.format(time_elapsed)
       # text = _text[:-3]
-      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique, text))
-      text = str(time_elapsed)[:-3]
+      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique, text))  
+      text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
 # $ python <filename>
