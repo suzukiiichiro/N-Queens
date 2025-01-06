@@ -4,14 +4,6 @@ from datetime import datetime
 # pypy では ThreadPool/ProcessPoolが動きます 
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
-# Codon環境の判定
-# Codon用の型定義
-# step=0
 class Local:
   TOPBIT:int
   ENDBIT:int
@@ -92,22 +84,24 @@ class NQueens21:
     return 8
 
   """ 角にQがある場合のバックトラック """
-  def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,BOUND1:int)->int:
+  def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,BOUND1:int,board:int)->int:
     counter:int=0
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int=self.count_bits_nodeLayer(down)
     if row==(size-1):
       if bitmap:
+        # board[row]=bitmap
         return 8
     else:
-      if row<BOUND1: # 枝刈り
+      if row<BOUND1:
         bitmap|=2
         bitmap^=2
     while bitmap:
       bit:int=-bitmap&bitmap
       bitmap^=bit
-      counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1)
+      # board[row]=bit
+      counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,board)
     return counter
 
 
@@ -133,19 +127,15 @@ class NQueens21:
           bitmap&=SIDEMASK
     while bitmap:
       bit:int=-bitmap&bitmap
-      bitmap ^=bit
+      bitmap^=bit
       board[row]=bit
       counter+=self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board)
     return counter
 
-
-
-
-
   """ """
   def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
     if local.board[0]==1:
-      return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local.BOUND1)
+      return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local.BOUND1,local.board)
     else:
       return self.symmetry_solve_nodeLayer(size,left,down,right,local.TOPBIT,local.ENDBIT,local.LASTMASK,local.SIDEMASK,local.BOUND1,local.BOUND2,local.board)
 
@@ -159,7 +149,6 @@ class NQueens21:
       nodes.append(left)
       nodes.append(down)
       nodes.append(right)
-      # local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
       local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
     else:
       if row<BOUND1:
@@ -168,15 +157,8 @@ class NQueens21:
       while bitmap:
         bit=-bitmap&bitmap
         bitmap^=bit
-        board[row]=bit
+        # board[row]=bit
         self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
-
-
-
-
-
-
-
 
   """ 角にQがない場合のバックトラック """
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->None:
@@ -188,6 +170,7 @@ class NQueens21:
       nodes.append(down)
       nodes.append(right)
       local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
+      return
     else:
       if row<BOUND1:
         bitmap|=SIDEMASK
@@ -202,24 +185,6 @@ class NQueens21:
       bitmap^=bit
       board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -256,16 +221,17 @@ class NQueens21:
       BOUND2-=1
       ENDBIT=ENDBIT>>1
       LASTMASK=(LASTMASK<<1)|LASTMASK|(LASTMASK>>1)
+
   """ """
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
     local_list:Local=[] # Localの配列を用意
     # local_list.append(Local(TOTAL=0,UNIQUE=0,TOPBIT=0,ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=0,BOUND2=0,board=[0]*size))
-    k:int=4 # 3番目のレイヤーを対象 
+    k:int=4 # 3番目のレイヤーを対象
     self.kLayer_nodeLayer(size,nodes,k,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
-    # ミラーでは/6 を /3に変更する 
+    # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
     # for i in range(num_solutions):
     #   total+=self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i])
