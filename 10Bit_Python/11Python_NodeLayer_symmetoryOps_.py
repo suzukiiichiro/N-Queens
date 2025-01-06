@@ -33,7 +33,7 @@ class NQueens21:
       while own<size:
         bit:int=1
         you:int=size-1
-        while you>=0 and local.board[you] != ptn and local.board[own] >= bit:
+        while you>=0 and local.board[you]!=ptn and local.board[own] >= bit:
           bit<<=1
           you-=1
         if local.board[own]>bit:
@@ -233,6 +233,7 @@ class NQueens21:
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
     return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
+
 """ """
 class NQueens21_NodeLayer:
   def main(self)->None:
