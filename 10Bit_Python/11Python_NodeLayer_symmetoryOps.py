@@ -26,14 +26,18 @@ class NQueens21:
     return counter
   """対称解除操作"""
   def symmetryOps(self,size:int,TOPBIT:int,ENDBIT:int,BOUND1:int,BOUND2:int,board:int)->int:
+    ptn:int=0
+    own:int=0
+    bit:int=0
+    you:int=0
     # 90度回転
     if board[BOUND2]==1:
-      ptn:int=2
-      own:int=1
+      ptn=2
+      own=1
       while own<size:
-        bit:int=1
-        you:int=size-1
-        while you>=0 and board[you] != ptn and board[own] >= bit:
+        bit=1
+        you=size-1
+        while you>=0 and board[you]!=ptn and board[own] >= bit:
           bit<<=1
           you-=1
         if board[own]>bit:
@@ -47,11 +51,11 @@ class NQueens21:
         return 2
     # 180度回転
     if board[size-1]==ENDBIT:
-      you:int=size-2
-      own:int=1
-      while own <= size-1:
-        bit:int=1
-        ptn:int=TOPBIT
+      you=size-2
+      own=1
+      while own<=size-1:
+        bit=1
+        ptn=TOPBIT
         while ptn!=board[you] and board[own]>=bit:
           ptn>>=1
           bit<<=1
@@ -66,11 +70,11 @@ class NQueens21:
         return 4
     # 270度回転
     if board[BOUND1]==TOPBIT:
-      ptn:int=TOPBIT>>1
-      own:int=1
+      ptn=TOPBIT>>1
+      own=1
       while own<=size-1:
-        bit:int=1
-        you:int=0
+        bit=1
+        you=0
         while you<size and board[you]!=ptn and board[own] >= bit:
           bit<<=1
           you+=1
@@ -89,18 +93,17 @@ class NQueens21:
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int=self.count_bits_nodeLayer(down)
+    bit:int=0
     if row==(size-1):
       if bitmap:
-        # board[row]=bitmap
         return 8
     else:
       if row<BOUND1:
         bitmap|=2
         bitmap^=2
     while bitmap:
-      bit:int=-bitmap&bitmap
+      bit=-bitmap&bitmap
       bitmap^=bit
-      # board[row]=bit
       counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1,board)
     return counter
 
@@ -111,6 +114,7 @@ class NQueens21:
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int=self.count_bits_nodeLayer(down)
+    bit:int=0
     if row==(size-1):
       if bitmap:
         if bitmap&LASTMASK==0:
@@ -126,7 +130,7 @@ class NQueens21:
         if (down&SIDEMASK)!=SIDEMASK:
           bitmap&=SIDEMASK
     while bitmap:
-      bit:int=-bitmap&bitmap
+      bit=-bitmap&bitmap
       bitmap^=bit
       board[row]=bit
       counter+=self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board)
@@ -157,7 +161,6 @@ class NQueens21:
       while bitmap:
         bit=-bitmap&bitmap
         bitmap^=bit
-        # board[row]=bit
         self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
 
   """ 角にQがない場合のバックトラック """
@@ -165,6 +168,7 @@ class NQueens21:
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int= self.count_bits_nodeLayer(down)
+    bit:int=0
     if row==k:
       nodes.append(left)
       nodes.append(down)
@@ -181,7 +185,7 @@ class NQueens21:
         if (down&SIDEMASK)!=SIDEMASK:
           bitmap&=SIDEMASK
     while bitmap:
-      bit:int=-bitmap&bitmap
+      bit=-bitmap&bitmap
       bitmap^=bit
       board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
@@ -198,12 +202,13 @@ class NQueens21:
     BOUND2=0
     board=[0]*size
     board[0]=1
+    bit:int=0
     # 角にQがある場合のバックトラック
     while BOUND1>1 and BOUND1<size-1:
       if BOUND1<size-1:
-       bit:int=1<<BOUND1
-       board[1]=bit
-       self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
+        bit=1<<BOUND1
+        board[1]=bit
+        self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(2|bit)<<1,1|bit,(2|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
       BOUND1+= 1
     TOPBIT=1<<(size-1)
     ENDBIT=TOPBIT>>1
@@ -233,11 +238,12 @@ class NQueens21:
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
     return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
+
 """ """
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=4
-    nmax:int=16
+    nmax:int=17
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
