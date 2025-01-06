@@ -88,7 +88,29 @@ class NQueens21:
           break
         ptn>>=1
         own+= 1
+    # すべての回転が異なる
     return 8
+
+  """ 角にQがある場合のバックトラック """
+  def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,BOUND1:int)->int:
+    counter:int=0
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
+    row:int=self.count_bits_nodeLayer(down)
+    if row==(size-1):
+      if bitmap:
+        return 8
+    else:
+      if row<BOUND1: # 枝刈り
+        bitmap|=2
+        bitmap^=2
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap^=bit
+      counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1)
+    return counter
+
+
   """ 角にQがない場合のバックトラック """
   def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int)->int:
     counter:int=0
@@ -115,30 +137,47 @@ class NQueens21:
       board[row]=bit
       counter+=self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board)
     return counter
-  """ 角にQがある場合のバックトラック """
-  def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,BOUND1:int)->int:
-    counter:int=0
-    mask:int=(1<<size)-1
-    bitmap:int=mask&~(left|down|right)
-    row:int=self.count_bits_nodeLayer(down)
-    if row==(size-1):
-      if bitmap:
-        return 8
-    else:
-      if row<BOUND1: # 枝刈り
-        bitmap|=2
-        bitmap^=2
-    while bitmap:
-      bit:int=-bitmap&bitmap
-      bitmap^=bit
-      counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,BOUND1)
-    return counter
+
+
+
+
+
   """ """
   def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
     if local.board[0]==1:
       return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local.BOUND1)
     else:
       return self.symmetry_solve_nodeLayer(size,left,down,right,local.TOPBIT,local.ENDBIT,local.LASTMASK,local.SIDEMASK,local.BOUND1,local.BOUND2,local.board)
+
+  """ 角にQがある場合のバックトラック """
+  def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->None:
+    mask:int=(1<<size)-1
+    bitmap:int=mask&~(left|down|right)
+    bit:int=0
+    row:int= self.count_bits_nodeLayer(down)
+    if row==k:
+      nodes.append(left)
+      nodes.append(down)
+      nodes.append(right)
+      # local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
+      local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
+    else:
+      if row<BOUND1:
+        bitmap|=2
+        bitmap^=2
+      while bitmap:
+        bit=-bitmap&bitmap
+        bitmap^=bit
+        board[row]=bit
+        self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
+
+
+
+
+
+
+
+
   """ 角にQがない場合のバックトラック """
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->None:
     mask:int=(1<<size)-1
@@ -163,27 +202,27 @@ class NQueens21:
       bitmap^=bit
       board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
-  """ 角にQがある場合のバックトラック """
-  def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:int,local_list:Local)->None:
-    mask:int=(1<<size)-1
-    bitmap:int=mask&~(left|down|right)
-    bit:int=0
-    row:int= self.count_bits_nodeLayer(down)
-    if row==k:
-      nodes.append(left)
-      nodes.append(down)
-      nodes.append(right)
-      # local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
-      local_list.append(Local(TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board.copy()))
-    else:
-      if row<BOUND1:
-        bitmap|=2
-        bitmap^=2
-      while bitmap:
-        bit=-bitmap&bitmap
-        bitmap^=bit
-        board[row]=bit
-        self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board,local_list)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   """ kレイヤーのすべてのノードを含むベクトルを返す """
   def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:Local):
     TOPBIT=1<<(size-1)
