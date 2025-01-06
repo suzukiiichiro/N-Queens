@@ -226,16 +226,12 @@ class NQueens21:
   def symmetry_build_nodeLayer(self,size:int)->int:
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
-    local_list:Local=[] # Localの配列を用意
-    # local_list.append(Local(TOTAL=0,UNIQUE=0,TOPBIT=0,ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=0,BOUND2=0,board=[0]*size))
+    local_list:list[Local]=[] # Localの配列を用意
     k:int=4 # 3番目のレイヤーを対象
     self.kLayer_nodeLayer(size,nodes,k,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
-    # for i in range(num_solutions):
-    #   total+=self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i])
-    # return total
     return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
 """ """
 class NQueens21_NodeLayer:

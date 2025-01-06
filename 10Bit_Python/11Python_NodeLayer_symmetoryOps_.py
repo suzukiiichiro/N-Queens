@@ -4,10 +4,7 @@ from datetime import datetime
 # pypy では ThreadPool/ProcessPoolが動きます 
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
-step=0
 class Local:
-  TOTAL:int
-  UNIQUE:int
   TOPBIT:int
   ENDBIT:int
   LASTMASK:int
@@ -192,7 +189,7 @@ class NQueens21:
 
 
   """ kレイヤーのすべてのノードを含むベクトルを返す """
-  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,types:list,local_list:list):
+  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:list):
     local=Local(TOTAL=0,UNIQUE=0,TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=2,BOUND2=0,board=[0]*size)
     local.board[0]=1
 
@@ -225,24 +222,18 @@ class NQueens21:
       local.ENDBIT=local.ENDBIT>>1
       local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
 
-  """" """
+  """ """
   def symmetry_build_nodeLayer(self,size:int)->int:
-    global step
     # ツリーの3番目のレイヤーにあるノードを生成
     nodes:list[int]=[]
-    types:list[int]=[]
     local_list:list[Local]=[] # Localの配列を用意
     k:int=4 # 3番目のレイヤーを対象
-    self.kLayer_nodeLayer(size,nodes,k,types,local_list)
+    self.kLayer_nodeLayer(size,nodes,k,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
-    total:int=0
-    for i in range(num_solutions):
-      total+=self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i])
-    # print(step)
-    return total
-
+    return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
+""" """
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=4
