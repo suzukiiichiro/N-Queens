@@ -1,4 +1,19 @@
 """
+CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.022
+ 5:           10            0         0:00:00.024
+ 6:            4            0         0:00:00.034
+ 7:           40            0         0:00:00.078
+ 8:           92            0         0:00:00.091
+ 9:          352            0         0:00:00.119
+10:          724            0         0:00:00.121
+11:         2680            0         0:00:00.156
+12:        14200            0         0:00:00.225
+13:        73712            0         0:00:00.337
+14:       365596            0         0:00:00.731
+15:      2279184            0         0:00:02.927
+
 CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
  N:        Total        Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:05.425
@@ -200,7 +215,10 @@ class NQueens21:
     return counter
 
   """ """
-  def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
+  # def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
+  def symmetry_solve(self,value:list)->int:
+    # ProcessPoolする
+    size,left,down,right,local=value
     if local.board[0]==1:
       return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local)
     else:
@@ -300,13 +318,21 @@ class NQueens21:
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
-    return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
 
+    pool=ThreadPool(size)
+    params=[(
+      size,
+      nodes[3*i],
+      nodes[3*i+1],
+      nodes[3*i+2],
+      local_list[i]
+    ) for i in range(num_solutions)]
+    return sum(list(pool.map(self.symmetry_solve,params)))
 """ """
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=4
-    nmax:int=17
+    nmax:int=16
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
