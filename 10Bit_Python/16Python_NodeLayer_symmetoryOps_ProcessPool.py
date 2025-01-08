@@ -216,7 +216,6 @@ class NQueens21:
 
   """ """
   # def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
-    # ProcessPoolする
   def symmetry_solve(self,value:list)->int:
     size,left,down,right,local=value
     if local.board[0]==1:
