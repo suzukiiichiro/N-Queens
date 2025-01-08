@@ -1,9 +1,59 @@
+"""
+bash-5.1$ python 11Python_NodeLayer_symmetoryOps_ani_.py
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.010
+10:          724            0         0:00:00.046
+11:         2680            0         0:00:00.149
+12:        14200            0         0:00:00.331
+13:        73712            0         0:00:00.758
+14:       365596            0         0:00:01.985
+15:      2279184            0         0:00:07.676
+
+bash-5.1$ pypy 11Python_NodeLayer_symmetoryOps_ani_.py
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.010
+10:          724            0         0:00:00.013
+11:         2680            0         0:00:00.025
+12:        14200            0         0:00:00.041
+13:        73712            0         0:00:00.167
+14:       365596            0         0:00:00.880
+15:      2279184            0         0:00:05.398
+
+bash-5.1$ codon build -release 11Python_NodeLayer_symmetoryOps_ani_.py
+bash-5.1$ ./11Python_NodeLayer_symmetoryOps_ani_
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.000
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.015
+14:       365596            0         0:00:00.084
+15:      2279184            0         0:00:00.504
+"""
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
+#codonの修正点は2点です
+#・board:list[int]　にする
+#・TOTAL,UNIQUEをなくす
 class Local:
   TOPBIT:int
   ENDBIT:int
@@ -11,9 +61,9 @@ class Local:
   SIDEMASK:int
   BOUND1:int
   BOUND2:int
-  board:list
-  def __init__(self,TOTAL:int,UNIQUE:int,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:list):
-    self.TOTAL,self.UNIQUE,self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.board=TOTAL,UNIQUE,TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board
+  board:list[int]
+  def __init__(self,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:list[int]):
+    self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.board=TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board
 class NQueens21:
   def __init__(self):
     pass
@@ -153,7 +203,7 @@ class NQueens21:
       nodes.append(left)
       nodes.append(down)
       nodes.append(right)
-      local_list.append(Local(TOTAL=local.TOTAL,UNIQUE=local.UNIQUE,TOPBIT=local.TOPBIT,ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,BOUND1=local.BOUND1,BOUND2=local.BOUND2,board=local.board.copy()))
+      local_list.append(Local(TOPBIT=local.TOPBIT,ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,BOUND1=local.BOUND1,BOUND2=local.BOUND2,board=local.board.copy()))
     else:
       if row<local.BOUND1:
         bitmap|=2
@@ -173,7 +223,7 @@ class NQueens21:
       nodes.append(left)
       nodes.append(down)
       nodes.append(right)
-      local_list.append(Local(TOTAL=local.TOTAL,UNIQUE=local.UNIQUE,TOPBIT=local.TOPBIT,ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,BOUND1=local.BOUND1,BOUND2=local.BOUND2,board=local.board.copy()))
+      local_list.append(Local(TOPBIT=local.TOPBIT,ENDBIT=local.ENDBIT,LASTMASK=local.LASTMASK,SIDEMASK=local.SIDEMASK,BOUND1=local.BOUND1,BOUND2=local.BOUND2,board=local.board.copy()))
       return
     else:
       if row<local.BOUND1:
@@ -194,7 +244,7 @@ class NQueens21:
 
   """ kレイヤーのすべてのノードを含むベクトルを返す """
   def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:list):
-    local=Local(TOTAL=0,UNIQUE=0,TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=2,BOUND2=0,board=[0]*size)
+    local=Local(TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=2,BOUND2=0,board=[0]*size)
 
 
 
