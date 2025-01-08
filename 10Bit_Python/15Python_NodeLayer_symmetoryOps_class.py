@@ -1,9 +1,56 @@
+"""
+bash-5.1$ python 11Python_NodeLayer_symmetoryOps_ani_.py
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.010
+10:          724            0         0:00:00.046
+11:         2680            0         0:00:00.149
+12:        14200            0         0:00:00.331
+13:        73712            0         0:00:00.758
+14:       365596            0         0:00:01.985
+15:      2279184            0         0:00:07.676
+
+bash-5.1$ pypy 11Python_NodeLayer_symmetoryOps_ani_.py
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.010
+10:          724            0         0:00:00.013
+11:         2680            0         0:00:00.025
+12:        14200            0         0:00:00.041
+13:        73712            0         0:00:00.167
+14:       365596            0         0:00:00.880
+15:      2279184            0         0:00:05.398
+
+bash-5.1$ codon build -release 11Python_NodeLayer_symmetoryOps_ani_.py
+bash-5.1$ ./11Python_NodeLayer_symmetoryOps_ani_
+ N:        Total        Unique        hh:mm:ss.ms
+ 4:            0            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.000
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.015
+14:       365596            0         0:00:00.084
+15:      2279184            0         0:00:00.504
+"""
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-#import pypyjit
-#pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 #codonの修正点は2点です
 #・board:list[int]　にする
 #・TOTAL,UNIQUEをなくす
