@@ -55,8 +55,8 @@ from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+#import pypyjit
+#pypyjit.set_param('max_unroll_recursion=-1')
 
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
@@ -200,7 +200,8 @@ class NQueens21:
     return counter
 
   """ """
-  def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
+  def symmetry_solve(self,value:list)->int:
+    size,left,down,right,local=value
     if local.board[0]==1:
       return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local)
     else:
@@ -300,7 +301,14 @@ class NQueens21:
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
-    return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
+    pool=ThreadPool(num_solutions)
+    params=[(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],
+          local_list[i]) for i in range(num_solutions)]
+    results:list[int]=list(pool.map(self.symmetry_solve,params))
+    total=0
+    for x in results:
+      total+=x
+    return total
 
 """ """
 class NQueens21_NodeLayer:
