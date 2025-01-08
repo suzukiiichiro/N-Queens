@@ -1,4 +1,35 @@
+"""
+CentOS-5.1$ pypy 07Python_bit_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.005
+10:          724            0         0:00:00.003
+11:         2680            0         0:00:00.006
+12:        14200            0         0:00:00.032
+13:        73712            0         0:00:00.175
+14:       365596            0         0:00:01.019
+15:      2279184            0         0:00:06.274
 
+CentOS-5.1$ pypy 06Python_bit_backTrack.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:12.610
+
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:14.413
+
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
+
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
+"""
 from datetime import datetime 
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる

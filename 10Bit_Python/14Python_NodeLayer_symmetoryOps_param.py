@@ -1,58 +1,70 @@
 """
-class構造体を使わず極力関数へパラメータ渡しのバージョン
-
-bash-5.1$ python 11Python_NodeLayer_symmetoryOps_ani.py
+CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
  N:        Total        Unique        hh:mm:ss.ms
  4:            0            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.004
- 9:          352            0         0:00:00.009
-10:          724            0         0:00:00.046
-11:         2680            0         0:00:00.142
-12:        14200            0         0:00:00.355
-13:        73712            0         0:00:00.751
-14:       365596            0         0:00:02.094
-15:      2279184            0         0:00:08.083
-
-bash-5.1$ pypy 11Python_NodeLayer_symmetoryOps_ani.py
- N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.000
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.004
+ 8:           92            0         0:00:00.003
  9:          352            0         0:00:00.009
 10:          724            0         0:00:00.014
-11:         2680            0         0:00:00.026
-12:        14200            0         0:00:00.045
-13:        73712            0         0:00:00.191
-14:       365596            0         0:00:01.011
-15:      2279184            0         0:00:06.119
+11:         2680            0         0:00:00.028
+12:        14200            0         0:00:00.049
+13:        73712            0         0:00:00.224
+14:       365596            0         0:00:01.063
+15:      2279184            0         0:00:06.345
 
-bash-5.1$ codon build -release 11Python_NodeLayer_symmetoryOps_ani.py
-bash-5.1$ ./11Python_NodeLayer_symmetoryOps_ani
- N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.000
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.000
-10:          724            0         0:00:00.000
-11:         2680            0         0:00:00.000
-12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.017
-14:       365596            0         0:00:00.088
-15:      2279184            0         0:00:00.557
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:02.926
+
+CentOS-5.1$ pypy 12Python_NodeLayer_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.241
+
+CentOS-5.1$ pypy 11Python_NodeLayer.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.160
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:01.998
+
+CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:02.111
+
+CentOS-5.1$ pypy 08Python_bit_symmetry.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.026
+
+CentOS-5.1$ pypy 07Python_bit_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.274
+
+CentOS-5.1$ pypy 06Python_bit_backTrack.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:12.610
+
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:14.413
+
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
+
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
 """
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
+
 #codonの修正点は2点です
 #・board:list[int]　にする
 #・local_list:list　にする
@@ -295,7 +307,7 @@ class NQueens21:
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=4
-    nmax:int=17
+    nmax:int=16
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()

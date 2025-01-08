@@ -1,3 +1,58 @@
+"""
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.021
+ 6:            4            0         0:00:00.045
+ 7:           40            0         0:00:00.049
+ 8:           92            0         0:00:00.077
+ 9:          352            0         0:00:00.076
+10:          724            0         0:00:00.094
+11:         2680            0         0:00:00.113
+12:        14200            0         0:00:00.135
+13:        73712            0         0:00:00.221
+14:       365596            0         0:00:00.609
+15:      2279184            0         0:00:02.926
+
+CentOS-5.1$ pypy 12Python_NodeLayer_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.241
+
+CentOS-5.1$ pypy 11Python_NodeLayer.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.160
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:01.998
+
+CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:02.111
+
+CentOS-5.1$ pypy 08Python_bit_symmetry.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.026
+
+CentOS-5.1$ pypy 07Python_bit_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.274
+
+CentOS-5.1$ pypy 06Python_bit_backTrack.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:12.610
+
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:14.413
+
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
+
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
+"""
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -112,8 +167,8 @@ class NQueens21:
 
 class NQueens21_NodeLayer:
   def main(self)->None:
-    nmin:int=5
-    nmax:int=17
+    nmin:int=4
+    nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()

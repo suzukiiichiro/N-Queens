@@ -1,5 +1,28 @@
+"""
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.000
+ 6:            4            1         0:00:00.001
+ 7:           40            6         0:00:00.001
+ 8:           92           12         0:00:00.015
+ 9:          352           46         0:00:00.009
+10:          724           92         0:00:00.010
+11:         2680          341         0:00:00.023
+12:        14200         1787         0:00:00.074
+13:        73712         9233         0:00:00.396
+14:       365596        45752         0:00:02.141
+15:      2279184       285053         0:00:14.413
 
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
 
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
+
+"""
 from datetime import datetime 
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる

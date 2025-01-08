@@ -1,4 +1,49 @@
 """
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            1         0:00:00.015
+ 5:           10            2         0:00:00.019
+ 6:            4            1         0:00:00.020
+ 7:           40            6         0:00:00.028
+ 8:           92           12         0:00:00.030
+ 9:          352           46         0:00:00.041
+10:          724           92         0:00:00.054
+11:         2680          341         0:00:00.074
+12:        14200         1787         0:00:00.119
+13:        73712         9233         0:00:00.197
+14:       365596        45752         0:00:00.446
+15:      2279184       285053         0:00:01.998
+
+CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:02.111
+
+CentOS-5.1$ pypy 08Python_bit_symmetry.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.026
+
+CentOS-5.1$ pypy 07Python_bit_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.274
+
+CentOS-5.1$ pypy 06Python_bit_backTrack.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:12.610
+
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:14.413
+
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
+
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
+"""
+
+"""
 pyenvでpypyをインストール
 $ curl https://pyenv.run | bash
 
@@ -34,13 +79,13 @@ from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 #
 #
 # codonを使うときは以下を活かして上記をコメントアウト
@@ -54,7 +99,8 @@ from datetime import datetime
 # from python import ThreadPoolExecutor
 # from python import ProcessPoolExecutor
 
-class NQueens09():
+
+class NQueens10():
   def __init__(self):
     pass
 
@@ -236,7 +282,7 @@ class NQueens09():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8
+    return [count2,count4,count8]
 
   def nqueen_threadPool(self,value:list)->list:
     thr_index,size=value
@@ -287,6 +333,7 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
+
   def solve(self,size:int)->list:
     with concurrent.futures.ThreadPoolExecutor() as executor:
       params=[(thr_index,size) for thr_index in range(size) ]
@@ -304,11 +351,11 @@ class NQueens09():
     params=[(thr_index,size) for thr_index in range(size) ]
     # マルチスレッド版
     # 15:      2279184       285053         0:00:03.553
-    results:list[int]=list(pool.map(self.nqueen_threadPool,params))
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,params))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
-    # results:list[int]=list(pool.map(self.nqueen_processPool,params))
+    results:list[int]=list(pool.map(self.nqueen_processPool,params))
     #
     #
     # スレッドごとの結果を集計
@@ -317,14 +364,14 @@ class NQueens09():
     unique:int=self.getunique(total_counts)
     return [total,unique]
 
-class NQueens09_threadPool:
+class NQueens10_processPool:
   def main(self):
     nmin:int=4
-    nmax:int=18
+    nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
-      NQ=NQueens09()
+      NQ=NQueens10()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
       text = str(time_elapsed)[:-3]  
@@ -333,9 +380,9 @@ class NQueens09_threadPool:
 # $ python <filename>
 # $ pypy <fileName>
 # $ codon build -release <filename>
-# codon ではスレッドプールが動かなかった
-# スレッドプール
-# 15:      2279184       285053         0:00:04.684
+# codonではプロセスプールが動かなかった
+# プロセスプール
+# 15:      2279184       285053         0:00:01.528
 if __name__ == '__main__':
-  NQueens09_threadPool().main()
+  NQueens10_processPool().main()
 
