@@ -76,7 +76,7 @@ import pypyjit
 # from concurrent.futures import ProcessPoolExecutor
 #
 
-class NQueens21:
+class NQueens17:
   def __init__(self):
     pass
   #
@@ -289,7 +289,6 @@ class NQueens21:
   #
   # キャリーチェーン
   def carryChain(self,size:int)->int:
-    #global B
     pres_a:list[int]=[0]*930
     pres_b:list[int]=[0]*930
     # Bの初期化  [0, 0, 0, 0, [0, 0, 0, 0, 0]]
@@ -300,14 +299,14 @@ class NQueens21:
 #
 # 実行
 #
-class NQueens21_NodeLayer:
+class NQueens17_carryCain:
   def main(self)->None:
     nmin:int=5
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      NQ=NQueens21()
+      NQ=NQueens17()
       total:int=NQ.carryChain(size)  
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]  
@@ -315,4 +314,4 @@ class NQueens21_NodeLayer:
 
 # メイン実行部分
 if __name__=="__main__":
-    NQueens21_NodeLayer().main()
+    NQueens17_carryChain().main()
