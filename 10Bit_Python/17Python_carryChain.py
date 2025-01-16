@@ -119,32 +119,27 @@ class NQueens17:
   #
   # キャリーチェーン　対象解除
   def carryChainSymmetry(self,size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
-    # n,e,s=(N-2)*(N-1)-1-w の場合は最小値を確認する。
-    ww:int=(size-2)*(size-1)-1-w
-    w2:int=(size-2)*(size-1)-1
+    # 前計算
+    ww=(size-2) * (size-1)-1-w
+    w2=(size-2) * (size-1)-1
     # 対角線上の反転が小さいかどうか確認する
     if s==ww and n<(w2-e): return 0
     # 垂直方向の中心に対する反転が小さいかを確認
     if e==ww and n>(w2-n): return 0
     # 斜め下方向への反転が小さいかをチェックする
     if n==ww and e>(w2-s): return 0
-    # 【枝刈り】１行目が角の場合
-    # １．回転対称チェックせずにCOUNT8にする
-    if not B4[0]:      
-      return self.process(size,8,B) # COUNT8
-    # n,e,s==w の場合は最小値を確認する。
-    # : '右回転で同じ場合は、
-    # w=n=e=sでなければ値が小さいのでskip
-    # w=n=e=sであれば90度回転で同じ可能性 ';
+    # 【枝刈り】1行目が角の場合
+    if not B4[0]: return self.process(size,8,B)  # COUNT8
+    # n,e,s==w の場合は最小値を確認
     if s==w:
-      if n!=w or e!=w: return 0      
-      return self.process(size,2,B) # COUNT2
-    # : 'e==wは180度回転して同じ
-    # 180度回転して同じ時n>=sの時はsmaller?  ';
+      if n!=w or e!=w: return 0
+      return self.process(size,2,B)  # COUNT2
+    # e==w は180度回転して同じ
     if e==w and n>=s:
       if n>s: return 0
-      return self.process(size,4,B) # COUNT4    
-    return self.process(size,8,B)   # COUNT8
+      return self.process(size,4,B)  # COUNT4
+    # その他の場合
+    return self.process(size,8,B)  # COUNT8
   #
   # キャリーチェーン 効きのチェック dimxは行 dimyは列
   def placement(self,size:int,dimx:int,dimy:int,B:list[int],B4:list[int]):
@@ -217,9 +212,9 @@ class NQueens17:
       if B4[0]!=-1:
         #if((dimx<B[4][0] or dimx>=size-B[4][0]) and (dimy==0 or dimy==size-1)):
         #  return 0
-        if ((dimx < B4[0] or dimx >= size - B4[0]) and (dimy == 0 or dimy == size - 1)):
+        if ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)):
           return 0
-        if ((dimx == size - 1) and (dimy <= B4[0] or dimy >= size - B4[0])):
+        if ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])):
           return 0
     else:
       if B4[1]!=-1:
@@ -232,10 +227,10 @@ class NQueens17:
       # fi
         if B4[1]>=dimx and dimy==1:
           return 0
-    if ((B[0] & (1 << dimx)) or 
-    (B[1] & (1 << (size - 1 - dimx + dimy))) or
-    (B[2] & (1 << dimy)) or
-    (B[3] & (1 << (dimx + dimy)))):
+    if ((B[0]&(1<<dimx)) or 
+    (B[1]&(1<<(size-1-dimx+dimy))) or
+    (B[2]&(1<<dimy)) or
+    (B[3]&(1<<(dimx+dimy)))):
       return 0
     B[0]|=1<<dimx
     B[1]|=1<<(size-1-dimx+dimy)
@@ -300,14 +295,18 @@ class NQueens17:
   #
   # チェーンの初期化
   def initChain(self,size:int,pres_a:list[int],pres_b:list[int]):
-    idx=0
-    for a in range(size):
-      for b in range(size):
-        if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
-          continue
-        pres_a[idx]=a
-        pres_b[idx]=b
-        idx+=1
+    idx:int=0
+    # for a in range(size):
+    #   for b in range(size):
+    #     if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+    #       continue
+    #     pres_a[idx]=a
+    #     pres_b[idx]=b
+    #     idx+=1
+    pairs=[(a,b) for a in range(size) for b in range(size) if not ((a>=b and (a-b)<=1) or (b>a and (b-a<=1)))]
+    pres_a[:len(pairs)],pres_b[:len(pairs)]=zip(*pairs)
+    idx=len(pairs)
+
   #
   # キャリーチェーン
   def carryChain(self,size:int)->int:
