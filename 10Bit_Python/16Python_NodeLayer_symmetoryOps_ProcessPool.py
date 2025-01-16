@@ -70,8 +70,8 @@ from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-#import pypyjit
-#pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 from threading import Thread
 from multiprocessing import Pool as ThreadPool

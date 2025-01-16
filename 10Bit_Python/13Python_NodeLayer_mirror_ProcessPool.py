@@ -60,6 +60,7 @@ from datetime import datetime
 #
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
+
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 import concurrent
@@ -67,10 +68,8 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
 class NQueens21:
-
     def __init__(self):
       pass
-
     # ProcessPoolしない
     # def bitmap_solve_nodeLayer(self,size:int,left:int,down:int,right:int)->int:
     # ProcessPoolする
