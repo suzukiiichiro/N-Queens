@@ -240,7 +240,7 @@ class NQueens17:
     B4[dimx]=dimy
     return 1
 	#
-	#
+	# 再帰によるオリジナルdeepcopy
   def deepcopy(self,lst)->list:
     return [self.deepcopy(item) if isinstance(item, list) else item for item in lst]
   #
