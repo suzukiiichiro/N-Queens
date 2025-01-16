@@ -242,7 +242,7 @@ class NQueens17:
 	#
 	#
   def deepcopy(self,lst)->list:
-        return [self.deepcopy(item) if isinstance(item, list) else item for item in lst]
+    return [self.deepcopy(item) if isinstance(item, list) else item for item in lst]
   #
   # チェーンのビルド
   def buildChain(self,size:int,pres_a:list[int],pres_b:list[int])->int:
