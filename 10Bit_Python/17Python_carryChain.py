@@ -15,8 +15,12 @@ CentOS-5.1$ pypy 17Python_carryChain.py
 15:      2279184            0         0:00:11.243
 
 # copy.deepcopy 
-CentOS-5.1$ pypy 18Python_carryChain_class.py
+CentOS-5.1$ pypy 17Python_carryChain_class.py
 15:      2279184            0         0:00:48.769
+
+CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:02.911
 
 CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
  N:        Total        Unique        hh:mm:ss.ms
