@@ -306,7 +306,6 @@ class NQueens17:
     pairs=[(a,b) for a in range(size) for b in range(size) if not ((a>=b and (a-b)<=1) or (b>a and (b-a<=1)))]
     pres_a[:len(pairs)],pres_b[:len(pairs)]=zip(*pairs)
     idx=len(pairs)
-
   #
   # キャリーチェーン
   def carryChain(self,size:int)->int:
