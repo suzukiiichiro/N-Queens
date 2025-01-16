@@ -241,8 +241,8 @@ class NQueens17:
     return 1
 	#
 	#
-  def deepcopy(self,lst):
-        return [deepcopy(item) if isinstance(item, list) else item for item in lst]
+  def deepcopy(self,lst)->list:
+        return [self.deepcopy(item) if isinstance(item, list) else item for item in lst]
   #
   # チェーンのビルド
   def buildChain(self,size:int,pres_a:list[int],pres_b:list[int])->int:
