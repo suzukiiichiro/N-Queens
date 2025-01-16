@@ -1,16 +1,21 @@
 """
-CentOS-5.1$ pypy 18Python_carryChain_class.py
+# オリジナルのdeepcopy
+CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.002
- 6:            4            0         0:00:00.009
- 7:           40            0         0:00:00.026
- 8:           92            0         0:00:00.080
- 9:          352            0         0:00:00.153
-10:          724            0         0:00:00.404
-11:         2680            0         0:00:01.042
-12:        14200            0         0:00:02.831
-13:        73712            0         0:00:07.429
-14:       365596            0         0:00:19.511
+ 5:           10            0         0:00:00.001
+ 6:            4            0         0:00:00.006
+ 7:           40            0         0:00:00.012
+ 8:           92            0         0:00:00.053
+ 9:          352            0         0:00:00.085
+10:          724            0         0:00:00.156
+11:         2680            0         0:00:00.285
+12:        14200            0         0:00:00.488
+13:        73712            0         0:00:01.128
+14:       365596            0         0:00:03.133
+15:      2279184            0         0:00:11.243
+
+# copy.deepcopy 
+CentOS-5.1$ pypy 18Python_carryChain_class.py
 15:      2279184            0         0:00:48.769
 
 CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
@@ -63,6 +68,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 """
 from datetime import datetime
 import copy
+
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
@@ -233,6 +239,10 @@ class NQueens17:
     B[3]|=1<<(dimx+dimy)
     B4[dimx]=dimy
     return 1
+	#
+	#
+  def deepcopy(self,lst):
+        return [deep_copy(item) if isinstance(item, list) else item for item in lst]
   #
   # チェーンのビルド
   def buildChain(self,size:int,pres_a:list[int],pres_b:list[int])->int:
@@ -240,8 +250,10 @@ class NQueens17:
     B:list[int]=[0,0,0,0]
     B4:list[int]=[-1]*size  # Bの初期化
     for w in range((size//2)*(size-3)+1):
-      wB=copy.deepcopy(B)
-      wB4=copy.deepcopy(B4)
+      # wB=copy.deepcopy(B)
+      wB=self.deepcopy(B)
+      # wB4=copy.deepcopy(B4)
+      wB4=self.deepcopy(B4)
       # １．０行目と１行目にクイーンを配置
       if self.placement(size,0,pres_a[w],wB,wB4)==0:
         continue
@@ -250,24 +262,30 @@ class NQueens17:
       # ２．９０度回転
       mirror=(size-2)*(size-1)-w
       for n in range(w,mirror,1):
-        nB=copy.deepcopy(wB)
-        nB4=copy.deepcopy(wB4)
+        # nB=copy.deepcopy(wB)
+        nB=self.deepcopy(wB)
+        # nB4=copy.deepcopy(wB4)
+        nB4=self.deepcopy(wB4)
         if self.placement(size,pres_a[n],size-1,nB,nB4)==0:
           continue
         if self.placement(size,pres_b[n],size-2,nB,nB4)==0:
           continue
         # ３．９０度回転
         for e in range(w,mirror,1):
-          eB=copy.deepcopy(nB)
-          eB4=copy.deepcopy(nB4)
+          # eB=copy.deepcopy(nB)
+          eB=self.deepcopy(nB)
+          # eB4=copy.deepcopy(nB4)
+          eB4=self.deepcopy(nB4)
           if self.placement(size,size-1,size-1-pres_a[e],eB,eB4)==0:
             continue
           if self.placement(size,size-2,size-1-pres_b[e],eB,eB4)==0:
             continue
           # ４．９０度回転
           for s in range(w,mirror,1):
-            sB=copy.deepcopy(eB)
-            sB4=copy.deepcopy(eB4)
+            # sB=copy.deepcopy(eB)
+            sB=self.deepcopy(eB)
+            # sB4=copy.deepcopy(eB4)
+            sB4=self.deepcopy(eB4)
             if self.placement(size,size-1-pres_a[s],0,sB,sB4)==0:
               continue
             if self.placement(size,size-1-pres_b[s],1,sB,sB4)==0:
@@ -299,7 +317,7 @@ class NQueens17:
 #
 # 実行
 #
-class NQueens17_carryCain:
+class NQueens17_carryChain():
   def main(self)->None:
     nmin:int=5
     nmax:int=16
