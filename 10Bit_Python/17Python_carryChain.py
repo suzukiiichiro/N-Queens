@@ -93,7 +93,7 @@ class NQueens17:
   def carryChain(self,size:int)->int:
     # process
     def process(size:int,sym:int,B:list[int])->int:
-      def solve(row:int,left:int,down:int,right:int):
+      def solve(row:int,left:int,down:int,right:int)->int:
         total:int=0
         if not down+1:
           return 1
@@ -160,8 +160,12 @@ class NQueens17:
         B[3]|=1<<(dimx+dimy)
         B4[dimx]=dimy
         return 1
+      # def deepcopy(lst: list[int]) -> list:
+      #   def _deepcopy(item):
+      #     return [_deepcopy(subitem) if isinstance(subitem, list) else subitem for subitem in item]
+      #   return _deepcopy(lst)
       # deepcopy
-      def deepcopy(lst)->list:
+      def deepcopy(lst:list[int])->list:
         return [deepcopy(item) if isinstance(item, list) else item for item in lst]
       #
       total:int=0
@@ -215,7 +219,7 @@ class NQueens17:
           pres_a[idx]=a
           pres_b[idx]=b
           idx+=1
-    # チェーンの初期化
+    # 
     initChain(size,pres_a,pres_b)
     return buildChain(size,pres_a,pres_b)    # チェーンのビルド
 #
