@@ -169,7 +169,7 @@ class NQueens17:
     # 
     # buildChain
     #
-    from collections.abc import Iterable
+    import numpy as np
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
       # deepcopy
       def deepcopy(lst:list[int])->list:
