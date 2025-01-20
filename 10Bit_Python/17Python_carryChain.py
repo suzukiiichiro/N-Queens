@@ -143,23 +143,11 @@ class NQueens17:
     # placement
     #
     def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
-      if B4[dimx]==dimy:
-        return 1
+      if B4[dimx]==dimy: return 1
       if B4[0]:
-        if B4[0]!=-1:
-          if ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)): 
-            return 0
-          if ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): 
-            return 0
-      else:
-        if B4[1]!=-1:
-          if B4[1]>=dimx and dimy==1:
-            return 0
-      if ((B[0]&(1<<dimx)) or 
-          (B[1]&(1<<(size-1-dimx+dimy))) or
-          (B[2]&(1<<dimy)) or
-          (B[3]&(1<<(dimx+dimy)))):
-        return 0
+        if ( B4[0]!=-1 and ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)) ) or ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): return 0
+      elif (B4[1]!=-1) and (B4[1]>=dimx and dimy==1): return 0
+      if ((B[0]&(1<<dimx)) or B[1]&(1<<(size-1-dimx+dimy))) or (B[2]&(1<<dimy)) or (B[3]&(1<<(dimx+dimy))): return 0
       B[0]|=1<<dimx
       B[1]|=1<<(size-1-dimx+dimy)
       B[2]|=1<<dimy
@@ -180,40 +168,51 @@ class NQueens17:
       B4:list[int]=[-1]*size  # Bの初期化
       sizeE:int=size-1
       sizeEE:int=size-2
-      for w in range((size//2)*(size-3)+1):
-        wB=deepcopy(B)
-        wB4=deepcopy(B4)
+      range_size:int=(size//2)*(size-3)+1
+      # for w in range((size//2)*(size-3)+1):
+      for w in range(range_size):
+        # wB=deepcopy(B)
+        # wB4=deepcopy(B4)
+        wB,wB4=deepcopy(B),deepcopy(B4)
         # １．０行目と１行目にクイーンを配置
-        if not placement(size,0,pres_a[w],wB,wB4):
-          continue
-        if not placement(size,1,pres_b[w],wB,wB4):
-          continue
+        # if not placement(size,0,pres_a[w],wB,wB4):
+        #   continue
+        # if not placement(size,1,pres_b[w],wB,wB4):
+        #   continue
+        if not placement(size,0,pres_a[w],wB,wB4) or not placement(size,1,pres_b[w],wB,wB4): continue
         # ２．９０度回転
-        mirror=(sizeEE)*(sizeE)-w
-        wMirror=set(range(w,mirror,1))
+        # mirror=(sizeEE)*(sizeE)-w
+        # wMirror=set(range(w,mirror,1))
+        wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
         for n in wMirror:
-          nB=deepcopy(wB)
-          nB4=deepcopy(wB4)
-          if not placement(size,pres_a[n],sizeE,nB,nB4):
-            continue
-          if not placement(size,pres_b[n],sizeEE,nB,nB4):
-            continue
+          # nB=deepcopy(wB)
+          # nB4=deepcopy(wB4)
+          nB,nB4=deepcopy(wB),deepcopy(wB4)
+          # if not placement(size,pres_a[n],sizeE,nB,nB4):
+          #   continue
+          # if not placement(size,pres_b[n],sizeEE,nB,nB4):
+          #   continue
+          if not placement(size,pres_a[n],sizeE,nB,nB4) or not placement(size,pres_b[n],sizeEE,nB,nB4): continue
           # ３．９０度回転
           for e in wMirror:
-            eB=deepcopy(nB)
-            eB4=deepcopy(nB4)
-            if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4):
-              continue
-            if not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4):
-              continue
+            # eB=deepcopy(nB)
+            # eB4=deepcopy(nB4)
+            eB,eB4=deepcopy(nB),deepcopy(nB4)
+            # if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4):
+            #   continue
+            # if not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4):
+            #   continue
+            if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
             # ４．９０度回転
             for s in wMirror:
-              sB=deepcopy(eB)
-              sB4=deepcopy(eB4)
-              if not placement(size,sizeE-pres_a[s],0,sB,sB4):
-                continue
-              if not placement(size,sizeE-pres_b[s],1,sB,sB4):
-                continue
+              # sB=deepcopy(eB)
+              # sB4=deepcopy(eB4)
+              sB,sB4=deepcopy(eB),deepcopy(eB4)
+              # if not placement(size,sizeE-pres_a[s],0,sB,sB4):
+              #   continue
+              # if not placement(size,sizeE-pres_b[s],1,sB,sB4):
+              #   continue
+              if not placement(size,sizeE-pres_a[s],0,sB,sB4) or not placement(size,sizeE-pres_b[s],1,sB,sB4): continue
               # 対象解除法
               total+=Symmetry(size,n,w,s,e,sB,sB4)
       return total
@@ -224,8 +223,8 @@ class NQueens17:
       idx:int=0
       for a in range(size):
         for b in range(size):
-          if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
-            continue
+          # if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
+          if abs(a-b)<=1: continue
           # pres_a[idx]=a
           # pres_b[idx]=b
           pres_a[idx],pres_b[idx]=a,b
