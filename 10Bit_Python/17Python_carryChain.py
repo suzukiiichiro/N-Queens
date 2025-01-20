@@ -91,7 +91,9 @@ class NQueens17:
     pass
   # キャリーチェーン
   def carryChain(self,size:int)->int:
+    #
     # process
+    #
     def process(size:int,sym:int,B:list[int])->int:
       def solve(row:int,left:int,down:int,right:int)->int:
         total:int=0
@@ -110,31 +112,35 @@ class NQueens17:
         return total
       # sym 0:COUNT2 1:COUNT4 2:COUNT8
       return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5)
+    #
+    # symmetry
+    #
+    def Symmetry(size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
+      # 前計算
+      ww=(size-2) * (size-1)-1-w
+      w2=(size-2) * (size-1)-1
+      # 対角線上の反転が小さいかどうか確認する
+      if s==ww and n<(w2-e): return 0
+      # 垂直方向の中心に対する反転が小さいかを確認
+      if e==ww and n>(w2-n): return 0
+      # 斜め下方向への反転が小さいかをチェックする
+      if n==ww and e>(w2-s): return 0
+      # 【枝刈り】1行目が角の場合
+      if not B4[0]: return process(size,8,B)  # COUNT8
+      # n,e,s==w の場合は最小値を確認
+      if s==w:
+        if n!=w or e!=w: return 0
+        return process(size,2,B)  # COUNT2
+      # e==w は180度回転して同じ
+      if e==w and n>=s:
+        if n>s: return 0
+        return process(size,4,B)  # COUNT4
+      # その他の場合
+      return process(size,8,B)    # COUNT8
+    #
     # buildChain
+    #
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
-      # symmetry
-      def carryChainSymmetry(size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
-        # 前計算
-        ww=(size-2) * (size-1)-1-w
-        w2=(size-2) * (size-1)-1
-        # 対角線上の反転が小さいかどうか確認する
-        if s==ww and n<(w2-e): return 0
-        # 垂直方向の中心に対する反転が小さいかを確認
-        if e==ww and n>(w2-n): return 0
-        # 斜め下方向への反転が小さいかをチェックする
-        if n==ww and e>(w2-s): return 0
-        # 【枝刈り】1行目が角の場合
-        if not B4[0]: return process(size,8,B)  # COUNT8
-        # n,e,s==w の場合は最小値を確認
-        if s==w:
-          if n!=w or e!=w: return 0
-          return process(size,2,B)  # COUNT2
-        # e==w は180度回転して同じ
-        if e==w and n>=s:
-          if n>s: return 0
-          return process(size,4,B)  # COUNT4
-        # その他の場合
-        return process(size,8,B)  # COUNT8
       # placement
       def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
         if B4[dimx]==dimy:
@@ -160,10 +166,6 @@ class NQueens17:
         B[3]|=1<<(dimx+dimy)
         B4[dimx]=dimy
         return 1
-      # def deepcopy(lst: list[int]) -> list:
-      #   def _deepcopy(item):
-      #     return [_deepcopy(subitem) if isinstance(subitem, list) else subitem for subitem in item]
-      #   return _deepcopy(lst)
       # deepcopy
       def deepcopy(lst:list[int])->list:
         return [deepcopy(item) if isinstance(item, list) else item for item in lst]
@@ -205,11 +207,13 @@ class NQueens17:
               if placement(size,size-1-pres_b[s],1,sB,sB4)==0:
                 continue
               # 対象解除法
-              total+=carryChainSymmetry(size,n,w,s,e,sB,sB4)
+              total+=Symmetry(size,n,w,s,e,sB,sB4)
       return total
     pres_a:list[int]=[0]*930
     pres_b:list[int]=[0]*930
+    #
     # チェーンの初期化
+    #
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
       for a in range(size):
