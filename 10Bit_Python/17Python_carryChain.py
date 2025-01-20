@@ -74,7 +74,7 @@ from datetime import datetime
 import copy
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-import pypyjit
+# import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
@@ -89,12 +89,13 @@ import pypyjit
 class NQueens17:
   def __init__(self):
     pass
-  # キャリーチェーン
+  #
+  # carryChain
+  #
   def carryChain(self,size:int)->int:
-    #
     # process
-    #
     def process(size:int,sym:int,B:list[int])->int:
+      # solve
       def solve(row:int,left:int,down:int,right:int)->int:
         total:int=0
         if not down+1:
@@ -138,81 +139,84 @@ class NQueens17:
       # その他の場合
       return process(size,8,B)    # COUNT8
     #
+    # placement
+    #
+    def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
+      if B4[dimx]==dimy:
+        return 1
+      if B4[0]:
+        if B4[0]!=-1:
+          if ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)): 
+            return 0
+          if ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): 
+            return 0
+      else:
+        if B4[1]!=-1:
+          if B4[1]>=dimx and dimy==1:
+            return 0
+      if ((B[0]&(1<<dimx)) or 
+          (B[1]&(1<<(size-1-dimx+dimy))) or
+          (B[2]&(1<<dimy)) or
+          (B[3]&(1<<(dimx+dimy)))):
+        return 0
+      B[0]|=1<<dimx
+      B[1]|=1<<(size-1-dimx+dimy)
+      B[2]|=1<<dimy
+      B[3]|=1<<(dimx+dimy)
+      B4[dimx]=dimy
+      return 1
+    # 
     # buildChain
     #
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
-      # placement
-      def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
-        if B4[dimx]==dimy:
-          return 1
-        if B4[0]:
-          if B4[0]!=-1:
-            if ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)): 
-              return 0
-            if ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): 
-              return 0
-        else:
-          if B4[1]!=-1:
-            if B4[1]>=dimx and dimy==1:
-              return 0
-        if ((B[0]&(1<<dimx)) or 
-            (B[1]&(1<<(size-1-dimx+dimy))) or
-            (B[2]&(1<<dimy)) or
-            (B[3]&(1<<(dimx+dimy)))):
-          return 0
-        B[0]|=1<<dimx
-        B[1]|=1<<(size-1-dimx+dimy)
-        B[2]|=1<<dimy
-        B[3]|=1<<(dimx+dimy)
-        B4[dimx]=dimy
-        return 1
       # deepcopy
       def deepcopy(lst:list[int])->list:
         return [deepcopy(item) if isinstance(item, list) else item for item in lst]
-      #
+      # buildChain
       total:int=0
       B:list[int]=[0,0,0,0]
       B4:list[int]=[-1]*size  # Bの初期化
+      sizeE:int=size-1
+      sizeEE:int=size-2
       for w in range((size//2)*(size-3)+1):
         wB=deepcopy(B)
         wB4=deepcopy(B4)
         # １．０行目と１行目にクイーンを配置
-        if placement(size,0,pres_a[w],wB,wB4)==0:
+        if not placement(size,0,pres_a[w],wB,wB4):
           continue
-        if placement(size,1,pres_b[w],wB,wB4)==0:
+        if not placement(size,1,pres_b[w],wB,wB4):
           continue
         # ２．９０度回転
-        mirror=(size-2)*(size-1)-w
-        for n in range(w,mirror,1):
+        mirror=(sizeEE)*(sizeE)-w
+        wMirror=set(range(w,mirror,1))
+        for n in wMirror:
           nB=deepcopy(wB)
           nB4=deepcopy(wB4)
-          if placement(size,pres_a[n],size-1,nB,nB4)==0:
+          if not placement(size,pres_a[n],sizeE,nB,nB4):
             continue
-          if placement(size,pres_b[n],size-2,nB,nB4)==0:
+          if not placement(size,pres_b[n],sizeEE,nB,nB4):
             continue
           # ３．９０度回転
-          for e in range(w,mirror,1):
+          for e in wMirror:
             eB=deepcopy(nB)
             eB4=deepcopy(nB4)
-            if placement(size,size-1,size-1-pres_a[e],eB,eB4)==0:
+            if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4):
               continue
-            if placement(size,size-2,size-1-pres_b[e],eB,eB4)==0:
+            if not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4):
               continue
             # ４．９０度回転
-            for s in range(w,mirror,1):
+            for s in wMirror:
               sB=deepcopy(eB)
               sB4=deepcopy(eB4)
-              if placement(size,size-1-pres_a[s],0,sB,sB4)==0:
+              if not placement(size,sizeE-pres_a[s],0,sB,sB4):
                 continue
-              if placement(size,size-1-pres_b[s],1,sB,sB4)==0:
+              if not placement(size,sizeE-pres_b[s],1,sB,sB4):
                 continue
               # 対象解除法
               total+=Symmetry(size,n,w,s,e,sB,sB4)
       return total
-    pres_a:list[int]=[0]*930
-    pres_b:list[int]=[0]*930
     #
-    # チェーンの初期化
+    # initChain
     #
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
@@ -223,9 +227,13 @@ class NQueens17:
           pres_a[idx]=a
           pres_b[idx]=b
           idx+=1
-    # 
+    #
+    #
+    #
+    pres_a:list[int]=[0]*930
+    pres_b:list[int]=[0]*930
     initChain(size,pres_a,pres_b)
-    return buildChain(size,pres_a,pres_b)    # チェーンのビルド
+    return buildChain(size,pres_a,pres_b)
 #
 # 実行
 #
