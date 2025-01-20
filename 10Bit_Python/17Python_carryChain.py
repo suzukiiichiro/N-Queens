@@ -255,4 +255,3 @@ class NQueens17_carryChain():
 """ メイン実行部分 """
 if __name__=="__main__":
     NQueens17_carryChain().main()
-
