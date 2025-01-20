@@ -74,7 +74,7 @@ from datetime import datetime
 import copy
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-import pypyjit
+# import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
@@ -157,7 +157,6 @@ class NQueens17:
     # 
     # buildChain
     #
-    import numpy as np
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
       # deepcopy
       def deepcopy(lst:list[int])->list:
