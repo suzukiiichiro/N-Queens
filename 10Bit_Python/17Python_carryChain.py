@@ -1,18 +1,16 @@
 """
-# オリジナルのdeepcopy
+CentOS-5.1$ codon build -release 17Python_carryChain.py
+CentOS-5.1$ ./17Python_carryChain
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:04.369
+
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.001
- 6:            4            0         0:00:00.006
- 7:           40            0         0:00:00.012
- 8:           92            0         0:00:00.053
- 9:          352            0         0:00:00.085
-10:          724            0         0:00:00.156
-11:         2680            0         0:00:00.285
-12:        14200            0         0:00:00.488
-13:        73712            0         0:00:01.128
-14:       365596            0         0:00:03.133
 15:      2279184            0         0:00:11.243
+
+CentOS-5.1$ codon run 17Python_carryChain.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:11.844
 
 # copy.deepcopy 
 CentOS-5.1$ pypy 17Python_carryChain.py
@@ -74,7 +72,7 @@ from datetime import datetime
 import copy
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-# import pypyjit
+import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
@@ -89,13 +87,7 @@ import copy
 class NQueens17:
   def __init__(self):
     pass
-  #
-  # carryChain
-  #
   def carryChain(self,size:int)->int:
-    #
-    # process
-    #
     def process(size:int,sym:int,B:list[int])->int:
       def solve(row:int,left:int,down:int,right:int)->int:
         total:int=0
@@ -112,11 +104,7 @@ class NQueens17:
           total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
           bitmap^=bit
         return total
-      # sym 0:COUNT2 1:COUNT4 2:COUNT8
-      return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5)
-    #
-    # symmetry
-    #
+      return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5) # sym 0:COUNT2 1:COUNT4 2:COUNT8
     def Symmetry(size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
       # 前計算
       ww=(size-2) * (size-1)-1-w
@@ -139,9 +127,6 @@ class NQueens17:
         return process(size,4,B)  # COUNT4
       # その他の場合
       return process(size,8,B)    # COUNT8
-    #
-    # placement
-    #
     def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
       if B4[dimx]==dimy: return 1
       if B4[0]:
@@ -154,70 +139,35 @@ class NQueens17:
       B[3]|=1<<(dimx+dimy)
       B4[dimx]=dimy
       return 1
-    # 
-    # buildChain
-    #
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
-      # deepcopy
       def deepcopy(lst:list[int])->list:
-        return [deepcopy(item) if isinstance(item, list) else item for item in lst]
-      # buildChain
+        return [deepcopy(item) if isinstance(item,list) else item for item in lst]
       total:int=0
       B:list[int]=[0,0,0,0]
       B4:list[int]=[-1]*size  # Bの初期化
       sizeE:int=size-1
       sizeEE:int=size-2
       range_size:int=(size//2)*(size-3)+1
-      # for w in range((size//2)*(size-3)+1):
       for w in range(range_size):
-        # wB=deepcopy(B)
-        # wB4=deepcopy(B4)
         wB,wB4=deepcopy(B),deepcopy(B4)
         # １．０行目と１行目にクイーンを配置
-        # if not placement(size,0,pres_a[w],wB,wB4):
-        #   continue
-        # if not placement(size,1,pres_b[w],wB,wB4):
-        #   continue
         if not placement(size,0,pres_a[w],wB,wB4) or not placement(size,1,pres_b[w],wB,wB4): continue
         # ２．９０度回転
-        # mirror=(sizeEE)*(sizeE)-w
-        # wMirror=set(range(w,mirror,1))
         wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
         for n in wMirror:
-          # nB=deepcopy(wB)
-          # nB4=deepcopy(wB4)
           nB,nB4=deepcopy(wB),deepcopy(wB4)
-          # if not placement(size,pres_a[n],sizeE,nB,nB4):
-          #   continue
-          # if not placement(size,pres_b[n],sizeEE,nB,nB4):
-          #   continue
           if not placement(size,pres_a[n],sizeE,nB,nB4) or not placement(size,pres_b[n],sizeEE,nB,nB4): continue
           # ３．９０度回転
           for e in wMirror:
-            # eB=deepcopy(nB)
-            # eB4=deepcopy(nB4)
             eB,eB4=deepcopy(nB),deepcopy(nB4)
-            # if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4):
-            #   continue
-            # if not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4):
-            #   continue
             if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
             # ４．９０度回転
             for s in wMirror:
-              # sB=deepcopy(eB)
-              # sB4=deepcopy(eB4)
               sB,sB4=deepcopy(eB),deepcopy(eB4)
-              # if not placement(size,sizeE-pres_a[s],0,sB,sB4):
-              #   continue
-              # if not placement(size,sizeE-pres_b[s],1,sB,sB4):
-              #   continue
               if not placement(size,sizeE-pres_a[s],0,sB,sB4) or not placement(size,sizeE-pres_b[s],1,sB,sB4): continue
               # 対象解除法
               total+=Symmetry(size,n,w,s,e,sB,sB4)
       return total
-    #
-    # initChain
-    #
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
       for a in range(size):
@@ -228,16 +178,10 @@ class NQueens17:
           # pres_b[idx]=b
           pres_a[idx],pres_b[idx]=a,b
           idx+=1
-    #
-    #
-    #
     pres_a:list[int]=[0]*930
     pres_b:list[int]=[0]*930
     initChain(size,pres_a,pres_b)
     return buildChain(size,pres_a,pres_b)
-#
-# 実行
-#
 class NQueens17_carryChain():
   def main(self)->None:
     nmin:int=5
