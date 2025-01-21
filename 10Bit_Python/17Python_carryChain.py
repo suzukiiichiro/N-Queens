@@ -16,6 +16,34 @@ CentOS-5.1$ codon run 17Python_carryChain.py
 CentOS-5.1$ pypy 17Python_carryChain.py
 15:      2279184            0         0:00:48.769
 
+#cProfileの実行結果
+ほとんどのコストがdeepcopyだが、solve(backtrack)自体もbit_symmetryより倍くらい遅い
+carryChainのbacktorackは桁数が多いせいかもしれない
+
+python -m cProfile 17Python_carryChain.py
+ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      2/1    0.000    0.000   48.384   48.384 {built-in method builtins.exec}
+        1    0.000    0.000   48.384   48.384 17Python_carryChain.py:1(<module>)
+        1    0.001    0.001   48.383   48.383 17Python_carryChain.py:233(main)
+        9    0.000    0.000   48.382    5.376 17Python_carryChain.py:93(carryChain)
+        9    6.241    0.693   48.381    5.376 17Python_carryChain.py:143(buildChain)
+ 12496302   20.181    0.000   35.483    0.000 17Python_carryChain.py:170(deepcopy)
+102959008   15.302    0.000   15.302    0.000 {built-in method builtins.isinstance}
+  7775262    3.633    0.000    3.633    0.000 17Python_carryChain.py:145(placement)
+   240841    0.168    0.000    3.025    0.000 17Python_carryChain.py:118(Symmetry)
+   235015    0.321    0.000    2.857    0.000 17Python_carryChain.py:97(process)
+  2805230    2.536    0.000    2.536    0.000 17Python_carryChain.py:98(solve)
+
+python -m cProfile 08Python_bit_symmetry.py
+ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      2/1    0.000    0.000    1.311    1.311 {built-in method builtins.exec}
+        1    0.000    0.000    1.311    1.311 08Python_bit_symmetry.py:1(<module>)
+        1    0.000    0.000    1.310    1.310 08Python_bit_symmetry.py:205(main)
+        9    0.000    0.000    1.309    0.145 08Python_bit_symmetry.py:175(NQueens)
+1118343/29   1.127    0.000    1.135    0.039 08Python_bit_symmetry.py:130(backTrack2)
+180952/54    0.174    0.000    0.174    0.003 08Python_bit_symmetry.py:156(backTrack1)
+    11697    0.009    0.000    0.009    0.000 08Python_bit_symmetry.py:69(symmetryops)  
+
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:02.911
