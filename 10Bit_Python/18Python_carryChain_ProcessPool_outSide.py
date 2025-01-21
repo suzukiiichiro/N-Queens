@@ -77,96 +77,106 @@ import pypyjit
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
 
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 #
 
 class NQueens17:
   def __init__(self):
     pass
+
+  def process(self,size:int,sym:int,B:list[int])->int:
+    def solve(row:int,left:int,down:int,right:int)->int:
+      total:int=0
+      if not down+1:
+        return 1
+      while row&1:
+        row>>=1
+        left<<=1
+        right>>=1
+      row>>=1           # １行下に移動する
+      bitmap:int=~(left|down|right)
+      while bitmap!=0:
+        bit=-bitmap&bitmap
+        total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
+        bitmap^=bit
+      return total
+    return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5) # sym 0:COUNT2 1:COUNT4 2:COUNT8
+
+  def Symmetry(self,size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
+    # 前計算
+    ww=(size-2) * (size-1)-1-w
+    w2=(size-2) * (size-1)-1
+    # 対角線上の反転が小さいかどうか確認する
+    if s==ww and n<(w2-e): return 0
+    # 垂直方向の中心に対する反転が小さいかを確認
+    if e==ww and n>(w2-n): return 0
+    # 斜め下方向への反転が小さいかをチェックする
+    if n==ww and e>(w2-s): return 0
+    # 【枝刈り】1行目が角の場合
+    if not B4[0]: return self.process(size,8,B)  # COUNT8
+    # n,e,s==w の場合は最小値を確認
+    if s==w:
+      if n!=w or e!=w: return 0
+      return self.process(size,2,B)  # COUNT2
+    # e==w は180度回転して同じ
+    if e==w and n>=s:
+      if n>s: return 0
+      return self.process(size,4,B)  # COUNT4
+    # その他の場合
+    return self.process(size,8,B)    # COUNT8
+  def placement(self,size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
+    if B4[dimx]==dimy: return 1
+    if B4[0]:
+      if ( B4[0]!=-1 and ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)) ) or ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): return 0
+    elif (B4[1]!=-1) and (B4[1]>=dimx and dimy==1): return 0
+    if ((B[0]&(1<<dimx)) or B[1]&(1<<(size-1-dimx+dimy))) or (B[2]&(1<<dimy)) or (B[3]&(1<<(dimx+dimy))): return 0
+    B[0]|=1<<dimx
+    B[1]|=1<<(size-1-dimx+dimy)
+    B[2]|=1<<dimy
+    B[3]|=1<<(dimx+dimy)
+    B4[dimx]=dimy
+    return 1
+  def deepcopy(self,lst:list[int])->list:
+    return [self.deepcopy(item) if isinstance(item,list) else item for item in lst]
+
+  def thread_run(self,size:int,pres_a:list[int],pres_b:list[int],B:list[int],B4:list[int],w:int)->int:
+    total:int=0
+    sizeE:int=size-1
+    sizeEE:int=size-2        
+    wB,wB4=self.deepcopy(B),self.deepcopy(B4)
+    # １．０行目と１行目にクイーンを配置
+    if not self.placement(size,0,pres_a[w],wB,wB4) or not self.placement(size,1,pres_b[w],wB,wB4): return total
+    # ２．９０度回転
+    wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
+    for n in wMirror:
+      nB,nB4=self.deepcopy(wB),self.deepcopy(wB4)
+      if not self.placement(size,pres_a[n],sizeE,nB,nB4) or not self.placement(size,pres_b[n],sizeEE,nB,nB4): continue
+      # ３．９０度回転
+      for e in wMirror:
+        eB,eB4=self.deepcopy(nB),self.deepcopy(nB4)
+        if not self.placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not self.placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
+        # ４．９０度回転
+        for s in wMirror:
+          sB,sB4=self.deepcopy(eB),self.deepcopy(eB4)
+          if not self.placement(size,sizeE-pres_a[s],0,sB,sB4) or not self.placement(size,sizeE-pres_b[s],1,sB,sB4): continue
+          # 対象解除法
+          total+=self.Symmetry(size,n,w,s,e,sB,sB4)
+    return total  
   def carryChain(self,size:int)->int:
-    def process(size:int,sym:int,B:list[int])->int:
-      def solve(row:int,left:int,down:int,right:int)->int:
-        total:int=0
-        if not down+1:
-          return 1
-        while row&1:
-          row>>=1
-          left<<=1
-          right>>=1
-        row>>=1           # １行下に移動する
-        bitmap:int=~(left|down|right)
-        while bitmap!=0:
-          bit=-bitmap&bitmap
-          total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1)
-          bitmap^=bit
-        return total
-      return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5) # sym 0:COUNT2 1:COUNT4 2:COUNT8
-    def Symmetry(size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
-      # 前計算
-      ww=(size-2) * (size-1)-1-w
-      w2=(size-2) * (size-1)-1
-      # 対角線上の反転が小さいかどうか確認する
-      if s==ww and n<(w2-e): return 0
-      # 垂直方向の中心に対する反転が小さいかを確認
-      if e==ww and n>(w2-n): return 0
-      # 斜め下方向への反転が小さいかをチェックする
-      if n==ww and e>(w2-s): return 0
-      # 【枝刈り】1行目が角の場合
-      if not B4[0]: return process(size,8,B)  # COUNT8
-      # n,e,s==w の場合は最小値を確認
-      if s==w:
-        if n!=w or e!=w: return 0
-        return process(size,2,B)  # COUNT2
-      # e==w は180度回転して同じ
-      if e==w and n>=s:
-        if n>s: return 0
-        return process(size,4,B)  # COUNT4
-      # その他の場合
-      return process(size,8,B)    # COUNT8
-    def placement(size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
-      if B4[dimx]==dimy: return 1
-      if B4[0]:
-        if ( B4[0]!=-1 and ((dimx<B4[0] or dimx>=size-B4[0]) and (dimy==0 or dimy==size-1)) ) or ((dimx==size-1) and (dimy<=B4[0] or dimy>=size-B4[0])): return 0
-      elif (B4[1]!=-1) and (B4[1]>=dimx and dimy==1): return 0
-      if ((B[0]&(1<<dimx)) or B[1]&(1<<(size-1-dimx+dimy))) or (B[2]&(1<<dimy)) or (B[3]&(1<<(dimx+dimy))): return 0
-      B[0]|=1<<dimx
-      B[1]|=1<<(size-1-dimx+dimy)
-      B[2]|=1<<dimy
-      B[3]|=1<<(dimx+dimy)
-      B4[dimx]=dimy
-      return 1
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
-      def deepcopy(lst:list[int])->list:
-        return [deepcopy(item) if isinstance(item,list) else item for item in lst]
       total:int=0
       B:list[int]=[0,0,0,0]
       B4:list[int]=[-1]*size  # Bの初期化
-      sizeE:int=size-1
-      sizeEE:int=size-2
       range_size:int=(size//2)*(size-3)+1
-      for w in range(range_size):
-        wB,wB4=deepcopy(B),deepcopy(B4)
-        # １．０行目と１行目にクイーンを配置
-        if not placement(size,0,pres_a[w],wB,wB4) or not placement(size,1,pres_b[w],wB,wB4): continue
-        # ２．９０度回転
-        wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
-        for n in wMirror:
-          nB,nB4=deepcopy(wB),deepcopy(wB4)
-          if not placement(size,pres_a[n],sizeE,nB,nB4) or not placement(size,pres_b[n],sizeEE,nB,nB4): continue
-          # ３．９０度回転
-          for e in wMirror:
-            eB,eB4=deepcopy(nB),deepcopy(nB4)
-            if not placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
-            # ４．９０度回転
-            for s in wMirror:
-              sB,sB4=deepcopy(eB),deepcopy(eB4)
-              if not placement(size,sizeE-pres_a[s],0,sB,sB4) or not placement(size,sizeE-pres_b[s],1,sB,sB4): continue
-              # 対象解除法
-              total+=Symmetry(size,n,w,s,e,sB,sB4)
+      pool=ThreadPool(size)
+      partial_thread_run = partial(self.thread_run, size, pres_a, pres_b, B, B4)
+      results = list(pool.map(partial_thread_run, range(range_size)))
+      total:int=sum(results)
       return total
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
