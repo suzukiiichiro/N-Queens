@@ -90,7 +90,6 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 """ """
 class NQueens18:
-  """ """
   def __init__(self):
     pass
   """ """
@@ -151,7 +150,9 @@ class NQueens18:
   def deepcopy(self,lst:list[int])->list:
     return [self.deepcopy(item) if isinstance(item,list) else item for item in lst]
   """ """
-  def thread_run(self,size:int,pres_a:list[int],pres_b:list[int],B:list[int],B4:list[int],w:int)->int:
+  # def thread_run(self,size:int,pres_a:list[int],pres_b:list[int],B:list[int],B4:list[int],w:int)->int:
+  def thread_run(self,params:list)->int:
+    size,pres_a,pres_b,B,B4,w=params
     total:int=0
     sizeE:int=size-1
     sizeEE:int=size-2        
@@ -181,7 +182,8 @@ class NQueens18:
     B4:list[int]=[-1]*size  # Bの初期化
     range_size:int=(size//2)*(size-3)+1
     pool=ThreadPool(size)
-    return sum(list(pool.map(partial(self.thread_run,size,pres_a,pres_b,B,B4),range(range_size))))
+    params=[(size,pres_a,pres_b,B,B4,w) for w in range(range_size)]
+    return sum(list(pool.map(self.thread_run,params)))
   """ """
   def initChain(self,size:int,pres_a:list[int],pres_b:list[int])->None:
     idx:int=0
