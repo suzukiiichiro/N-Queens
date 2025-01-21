@@ -77,15 +77,25 @@ import pypyjit
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
 
-from threading import Thread
-from multiprocessing import Pool as ThreadPool
-import concurrent
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
+from multiprocessing import Pool
+
+class MultiprocessManager:
+  """Multiprocessingの管理クラス"""
+  def __init__(self, process_count: int = None):
+    self.process_count = process_count
+
+  def run(self, func, tasks: list):
+    """指定された関数を並列処理で実行"""
+    results = []
+    with Pool(processes=self.process_count) as pool:
+      for task in tasks:
+        results.append(pool.apply_async(func, args=(task,)))
+      # すべての結果を取得
+      return [result.get() for result in results]
+
 #
 
-class NQueens18:
+class NQueens17:
   def __init__(self):
     pass
 
@@ -144,28 +154,25 @@ class NQueens18:
   def deepcopy(self,lst:list[int])->list:
     return [self.deepcopy(item) if isinstance(item,list) else item for item in lst]
 
-  def thread_run(self,size:int,pres_a:list[int],pres_b:list[int],B:list[int],B4:list[int],w:int)->int:
+  def thread_run(self,task)->int:
     total:int=0
+    size, w, n, pres_a, pres_b, wB, wB4 = task
     sizeE:int=size-1
     sizeEE:int=size-2        
-    wB,wB4=self.deepcopy(B),self.deepcopy(B4)
-    # １．０行目と１行目にクイーンを配置
-    if not self.placement(size,0,pres_a[w],wB,wB4) or not self.placement(size,1,pres_b[w],wB,wB4): return total
     # ２．９０度回転
     wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
-    for n in wMirror:
-      nB,nB4=self.deepcopy(wB),self.deepcopy(wB4)
-      if not self.placement(size,pres_a[n],sizeE,nB,nB4) or not self.placement(size,pres_b[n],sizeEE,nB,nB4): continue
-      # ３．９０度回転
-      for e in wMirror:
-        eB,eB4=self.deepcopy(nB),self.deepcopy(nB4)
-        if not self.placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not self.placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
-        # ４．９０度回転
-        for s in wMirror:
-          sB,sB4=self.deepcopy(eB),self.deepcopy(eB4)
-          if not self.placement(size,sizeE-pres_a[s],0,sB,sB4) or not self.placement(size,sizeE-pres_b[s],1,sB,sB4): continue
-          # 対象解除法
-          total+=self.Symmetry(size,n,w,s,e,sB,sB4)
+    nB,nB4=self.deepcopy(wB),self.deepcopy(wB4)
+    if not self.placement(size,pres_a[n],sizeE,nB,nB4) or not self.placement(size,pres_b[n],sizeEE,nB,nB4): return total
+    # ３．９０度回転
+    for e in wMirror:
+      eB,eB4=self.deepcopy(nB),self.deepcopy(nB4)
+      if not self.placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not self.placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
+      # ４．９０度回転
+      for s in wMirror:
+        sB,sB4=self.deepcopy(eB),self.deepcopy(eB4)
+        if not self.placement(size,sizeE-pres_a[s],0,sB,sB4) or not self.placement(size,sizeE-pres_b[s],1,sB,sB4): continue
+        # 対象解除法
+        total+=self.Symmetry(size,n,w,s,e,sB,sB4)
     return total  
   def carryChain(self,size:int)->int:
     def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
@@ -173,10 +180,22 @@ class NQueens18:
       B:list[int]=[0,0,0,0]
       B4:list[int]=[-1]*size  # Bの初期化
       range_size:int=(size//2)*(size-3)+1
-      pool=ThreadPool(size)
-      partial_thread_run = partial(self.thread_run, size, pres_a, pres_b, B, B4)
-      results = list(pool.map(partial_thread_run, range(range_size)))
-      total:int=sum(results)
+      multiprocess_manager = MultiprocessManager(process_count=size)
+      tasks = []
+      sizeE:int=size-1
+      sizeEE:int=size-2        
+      for w in range(range_size):
+        wB,wB4=self.deepcopy(B),self.deepcopy(B4)
+        # １．０行目と１行目にクイーンを配置
+        if not self.placement(size,0,pres_a[w],wB,wB4) or not self.placement(size,1,pres_b[w],wB,wB4): continue
+        # ２．９０度回転
+        wMirror=set(range(w,(sizeEE)*(sizeE)-w,1))
+        for n in wMirror:
+          tasks.append((size, w, n, pres_a, pres_b, wB, wB4))
+
+      results = multiprocess_manager.run(self.thread_run, tasks)
+      total = sum(results)
+
       return total
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
@@ -192,18 +211,18 @@ class NQueens18:
     pres_b:list[int]=[0]*930
     initChain(size,pres_a,pres_b)
     return buildChain(size,pres_a,pres_b)
-class NQueens18_carryChain():
+class NQueens17_carryChain():
   def main(self)->None:
     nmin:int=5
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      NQ=NQueens18()
+      NQ=NQueens17()
       total:int=NQ.carryChain(size)  
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 """ メイン実行部分 """
 if __name__=="__main__":
-    NQueens18_carryChain().main()
+    NQueens17_carryChain().main()
