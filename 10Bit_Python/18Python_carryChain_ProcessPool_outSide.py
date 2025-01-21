@@ -84,7 +84,7 @@ import pypyjit
 # from concurrent.futures import ProcessPoolExecutor
 #
 
-class NQueens17:
+class NQueens18:
   def __init__(self):
     pass
   def carryChain(self,size:int)->int:
@@ -182,18 +182,18 @@ class NQueens17:
     pres_b:list[int]=[0]*930
     initChain(size,pres_a,pres_b)
     return buildChain(size,pres_a,pres_b)
-class NQueens17_carryChain():
+class NQueens18_carryChain():
   def main(self)->None:
     nmin:int=5
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      NQ=NQueens17()
+      NQ=NQueens18()
       total:int=NQ.carryChain(size)  
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 """ メイン実行部分 """
 if __name__=="__main__":
-    NQueens17_carryChain().main()
+    NQueens18_carryChain().main()
