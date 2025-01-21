@@ -1,4 +1,9 @@
 """
+entOS-5.1$ pypy 18Python_carryChain_ProcessPool_outSide.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:09.231
+
+CentOS-5.1$
 CentOS-5.1$ codon build -release 17Python_carryChain.py
 CentOS-5.1$ ./17Python_carryChain
  N:        Total       Unique        hh:mm:ss.ms
@@ -73,7 +78,7 @@ import copy
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
 
@@ -174,10 +179,11 @@ class NQueens18:
       B4:list[int]=[-1]*size  # Bの初期化
       range_size:int=(size//2)*(size-3)+1
       pool=ThreadPool(size)
-      partial_thread_run = partial(self.thread_run, size, pres_a, pres_b, B, B4)
-      results = list(pool.map(partial_thread_run, range(range_size)))
-      total:int=sum(results)
-      return total
+      # partial_thread_run = partial(self.thread_run, size, pres_a, pres_b, B, B4)
+      # results = list(pool.map(partial_thread_run, range(range_size)))
+      # total:int=sum(results)
+      # return total
+      return sum(list(pool.map(partial(self.thread_run,size,pres_a,pres_b,B,B4),range(range_size))))
     def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
       idx:int=0
       for a in range(size):
