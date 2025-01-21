@@ -1,7 +1,7 @@
 """
 entOS-5.1$ pypy 18Python_carryChain_ProcessPool_outSide.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:09.231
+15:      2279184            0         0:00:07.138
 
 CentOS-5.1$
 CentOS-5.1$ codon build -release 17Python_carryChain.py
@@ -79,21 +79,21 @@ import copy
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
-# pypy では ThreadPool/ProcessPoolが動きます 
-#
 
+# pypy では ThreadPool/ProcessPoolが動きます 
+# codonでは ThreadPool/ProcessPoolは動きません
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-#
-
+""" """
 class NQueens18:
+  """ """
   def __init__(self):
     pass
-
+  """ """
   def process(self,size:int,sym:int,B:list[int])->int:
     def solve(row:int,left:int,down:int,right:int)->int:
       total:int=0
@@ -111,7 +111,7 @@ class NQueens18:
         bitmap^=bit
       return total
     return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<size-4)+1)<<size-5)-1,B[3]>>4<<size-5) # sym 0:COUNT2 1:COUNT4 2:COUNT8
-
+  """ """
   def Symmetry(self,size:int,n:int,w:int,s:int,e:int,B:list[int],B4:list[int])->int:
     # 前計算
     ww=(size-2) * (size-1)-1-w
@@ -134,6 +134,7 @@ class NQueens18:
       return self.process(size,4,B)  # COUNT4
     # その他の場合
     return self.process(size,8,B)    # COUNT8
+  """ """
   def placement(self,size:int,dimx:int,dimy:int,B:list[int],B4:list[int])->int:
     if B4[dimx]==dimy: return 1
     if B4[0]:
@@ -146,9 +147,10 @@ class NQueens18:
     B[3]|=1<<(dimx+dimy)
     B4[dimx]=dimy
     return 1
+  """ """
   def deepcopy(self,lst:list[int])->list:
     return [self.deepcopy(item) if isinstance(item,list) else item for item in lst]
-
+  """ """
   def thread_run(self,size:int,pres_a:list[int],pres_b:list[int],B:list[int],B4:list[int],w:int)->int:
     total:int=0
     sizeE:int=size-1
@@ -172,33 +174,31 @@ class NQueens18:
           # 対象解除法
           total+=self.Symmetry(size,n,w,s,e,sB,sB4)
     return total  
+  """ """
+  def buildChain(self,size:int,pres_a:list[int],pres_b:list[int])->int:
+    total:int=0
+    B:list[int]=[0,0,0,0]
+    B4:list[int]=[-1]*size  # Bの初期化
+    range_size:int=(size//2)*(size-3)+1
+    pool=ThreadPool(size)
+    return sum(list(pool.map(partial(self.thread_run,size,pres_a,pres_b,B,B4),range(range_size))))
+  """ """
+  def initChain(self,size:int,pres_a:list[int],pres_b:list[int])->None:
+    idx:int=0
+    for a in range(size):
+      for b in range(size):
+        if abs(a-b)<=1: continue
+        pres_a[idx],pres_b[idx]=a,b
+        idx+=1
+  """ """
   def carryChain(self,size:int)->int:
-    def buildChain(size:int,pres_a:list[int],pres_b:list[int])->int:
-      total:int=0
-      B:list[int]=[0,0,0,0]
-      B4:list[int]=[-1]*size  # Bの初期化
-      range_size:int=(size//2)*(size-3)+1
-      pool=ThreadPool(size)
-      # partial_thread_run = partial(self.thread_run, size, pres_a, pres_b, B, B4)
-      # results = list(pool.map(partial_thread_run, range(range_size)))
-      # total:int=sum(results)
-      # return total
-      return sum(list(pool.map(partial(self.thread_run,size,pres_a,pres_b,B,B4),range(range_size))))
-    def initChain(size:int,pres_a:list[int],pres_b:list[int])->None:
-      idx:int=0
-      for a in range(size):
-        for b in range(size):
-          # if (a>=b and (a-b)<=1) or (b>a and (b-a<=1)):
-          if abs(a-b)<=1: continue
-          # pres_a[idx]=a
-          # pres_b[idx]=b
-          pres_a[idx],pres_b[idx]=a,b
-          idx+=1
     pres_a:list[int]=[0]*930
     pres_b:list[int]=[0]*930
-    initChain(size,pres_a,pres_b)
-    return buildChain(size,pres_a,pres_b)
+    self.initChain(size,pres_a,pres_b)
+    return self.buildChain(size,pres_a,pres_b)
+""" """
 class NQueens18_carryChain():
+  """ """
   def main(self)->None:
     nmin:int=5
     nmax:int=16
