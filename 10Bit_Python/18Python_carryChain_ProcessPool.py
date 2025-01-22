@@ -1,17 +1,17 @@
 """
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool_outSide.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.067
+ 5:           10            0         0:00:00.061
  6:            4            0         0:00:00.061
- 7:           40            0         0:00:00.061
- 8:           92            0         0:00:00.099
- 9:          352            0         0:00:00.139
-10:          724            0         0:00:00.209
-11:         2680            0         0:00:00.293
-12:        14200            0         0:00:00.378
-13:        73712            0         0:00:00.652
-14:       365596            0         0:00:01.485
-15:      2279184            0         0:00:05.374
+ 7:           40            0         0:00:00.067
+ 8:           92            0         0:00:00.100
+ 9:          352            0         0:00:00.148
+10:          724            0         0:00:00.206
+11:         2680            0         0:00:00.289
+12:        14200            0         0:00:00.345
+13:        73712            0         0:00:00.607
+14:       365596            0         0:00:01.316
+15:      2279184            0         0:00:04.669
 
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -166,7 +166,8 @@ class NQueens18:
     sizeEE:int=size-2        
     # wB,wB4=self.deepcopy(B),self.deepcopy(B4)
     # wB,wB4=copy.copy(B),copy.copy(B4)
-    wB,wB4=B.copy(),B4.copy()
+    # wB,wB4=B.copy(),B4.copy()
+    wB,wB4=B[:],B4[:]
     # １．０行目と１行目にクイーンを配置
     if not self.placement(size,0,pres_a[w],wB,wB4) or not self.placement(size,1,pres_b[w],wB,wB4): return total
     # ２．９０度回転
@@ -174,19 +175,22 @@ class NQueens18:
     for n in wMirror:
       # nB,nB4=self.deepcopy(wB),self.deepcopy(wB4)
       # nB,nB4=copy.copy(wB),copy.copy(wB4)
-      nB,nB4=wB.copy(),wB4.copy()
+      # nB,nB4=wB.copy(),wB4.copy()
+      nB,nB4=wB[:],wB4[:]
       if not self.placement(size,pres_a[n],sizeE,nB,nB4) or not self.placement(size,pres_b[n],sizeEE,nB,nB4): continue
       # ３．９０度回転
       for e in wMirror:
         # eB,eB4=self.deepcopy(nB),self.deepcopy(nB4)
         # eB,eB4=copy.copy(nB),copy.copy(nB4)
-        eB,eB4=nB.copy(),nB4.copy()
+        # eB,eB4=nB.copy(),nB4.copy()
+        eB,eB4=nB[:],nB4[:]
         if not self.placement(size,sizeE,sizeE-pres_a[e],eB,eB4) or not self.placement(size,sizeEE,sizeE-pres_b[e],eB,eB4): continue
         # ４．９０度回転
         for s in wMirror:
           # sB,sB4=self.deepcopy(eB),self.deepcopy(eB4)
           # sB,sB4=copy.copy(eB),copy.copy(eB4)
-          sB,sB4=eB.copy(),eB4.copy()
+          # sB,sB4=eB.copy(),eB4.copy()
+          sB,sB4=eB[:],eB4[:]
           if not self.placement(size,sizeE-pres_a[s],0,sB,sB4) or not self.placement(size,sizeE-pres_b[s],1,sB,sB4): continue
           # 対象解除法
           total+=self.Symmetry(size,n,w,s,e,sB,sB4)
