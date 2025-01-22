@@ -1,5 +1,5 @@
 """
-CentOS-5.1$ pypy 18Python_carryChain_ProcessPool_outSide.py
+CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.061
  6:            4            0         0:00:00.061
@@ -16,10 +16,6 @@ CentOS-5.1$ pypy 18Python_carryChain_ProcessPool_outSide.py
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:11.243
-
-CentOS-5.1$ codon run 17Python_carryChain.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.844
 
 # copy.deepcopy 
 CentOS-5.1$ pypy 17Python_carryChain.py
