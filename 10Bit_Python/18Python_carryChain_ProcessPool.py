@@ -102,9 +102,10 @@ class NQueens18:
       if not down+1:
         return 1
       while row&1:
-        row>>=1
-        left<<=1
-        right>>=1
+        row,left,right=row>>1,left<<1,right>>1
+        # row>>=1
+        # left<<=1
+        # right>>=1
       row>>=1           # １行下に移動する
       bitmap:int=~(left|down|right)
       while bitmap!=0:
@@ -199,7 +200,10 @@ class NQueens18:
     return self.buildChain(size,pres_a,pres_b)
 """ """
 class NQueens18_carryChain():
-  """ """
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy 
+    p = subprocess.Popen("exec " + cmd, shell=True) 
+    p.kill()    
   def main(self)->None:
     nmin:int=5
     nmax:int=16
@@ -211,11 +215,8 @@ class NQueens18_carryChain():
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
-  def finalize(self)->None:
-    cmd="killall pypy" 
-    p = subprocess.Popen("exec " + cmd, shell=True) 
-    p.kill()    
+      self.finalize()
+
 """ メイン実行部分 """
 if __name__=="__main__":
     NQueens18_carryChain().main()
-    NQueens18_carryChain().finalize()
