@@ -11,7 +11,7 @@ CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
 12:        14200            0         0:00:00.345
 13:        73712            0         0:00:00.607
 14:       365596            0         0:00:01.316
-15:      2279184            0         0:00:04.669
+15:      2279184            0         0:00:04.610
 
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
