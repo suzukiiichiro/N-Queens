@@ -82,6 +82,10 @@ pypyjit.set_param('max_unroll_recursion=-1')
 
 # pypy では ThreadPool/ProcessPoolが動きます 
 # codonでは ThreadPool/ProcessPoolは動きません
+
+# のこったプロセスをkillallするために必要
+import subprocess
+
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
 import concurrent
@@ -207,6 +211,11 @@ class NQueens18_carryChain():
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+  def finalize(self)->None:
+    cmd="killall pypy" 
+    p = subprocess.Popen("exec " + cmd, shell=True) 
+    p.kill()    
 """ メイン実行部分 """
 if __name__=="__main__":
     NQueens18_carryChain().main()
+    NQueens18_carryChain().finalize()
