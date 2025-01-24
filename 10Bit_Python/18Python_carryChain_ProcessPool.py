@@ -216,7 +216,6 @@ class NQueens18_carryChain():
       text=str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
       self.finalize()
-
 """ メイン実行部分 """
 if __name__=="__main__":
-    NQueens18_carryChain().main()
+  NQueens18_carryChain().main()
