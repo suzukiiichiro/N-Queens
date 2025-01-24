@@ -7,7 +7,7 @@
 
  Java/C/Lua/Bash版
  https://github.com/suzukiiichiro/N-Queen 
- 			
+      
 
 コンパイル
 javac -cp .:commons-lang3-3.4.jar Java09_NQueen.java ;
@@ -208,7 +208,7 @@ class Java09_NQueen{
   public Java09_NQueen(){
     int min=4;
     int max=17;
-		System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
+    System.out.println(" N:            Total       Unique     hh:mm:ss.SSS");
     for(int i=min;i<=max;i++){
       COUNT2=COUNT4=COUNT8=0;
       MASK=(1<<i)-1;
@@ -219,16 +219,16 @@ class Java09_NQueen{
         board[j]=j;
       }
       size=i;
-			long start=System.currentTimeMillis();
-			NQueen(); // ０列目に王妃を配置してスタート
-			long end=System.currentTimeMillis();
-			String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
-			System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
+      long start=System.currentTimeMillis();
+      NQueen(); // ０列目に王妃を配置してスタート
+      long end=System.currentTimeMillis();
+      String TIME=DurationFormatUtils.formatPeriod(start,end,"HH:mm:ss.SSS");
+      System.out.printf("%2d:%17d%13d%17s%n",size,getTotal(),getUnique(),TIME);
     }
   }
   //
-	public static void main(String[] args){
-		new Java09_NQueen();
-	}
+  public static void main(String[] args){
+    new Java09_NQueen();
+  }
 }
 
