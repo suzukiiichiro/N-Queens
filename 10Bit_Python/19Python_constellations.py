@@ -1,3 +1,79 @@
+"""
+CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.061
+ 6:            4            0         0:00:00.061
+ 7:           40            0         0:00:00.067
+ 8:           92            0         0:00:00.100
+ 9:          352            0         0:00:00.148
+10:          724            0         0:00:00.206
+11:         2680            0         0:00:00.289
+12:        14200            0         0:00:00.345
+13:        73712            0         0:00:00.607
+14:       365596            0         0:00:01.316
+15:      2279184            0         0:00:04.610
+
+CentOS-5.1$ pypy 17Python_carryChain.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:11.243
+
+# copy.deepcopy 
+CentOS-5.1$ pypy 17Python_carryChain.py
+15:      2279184            0         0:00:48.769
+
+CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:02.911
+
+CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:05.425
+
+CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.345
+
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:02.926
+
+CentOS-5.1$ pypy 11Python_NodeLayer.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.160
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:01.998
+
+CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:02.111
+
+CentOS-5.1$ pypy 08Python_bit_symmetry.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.026
+
+CentOS-5.1$ pypy 07Python_bit_mirror.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.274
+
+CentOS-5.1$ pypy 06Python_bit_backTrack.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:12.610
+
+CentOS-5.1$ pypy 05Python_optimize.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:14.413
+
+CentOS-5.1$ pypy 04Python_symmetry.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184       285053         0:00:46.629
+
+CentOS-5.1$ pypy 03Python_backTracking.py
+ N:        Total       Unique         hh:mm:ss.ms
+15:      2279184            0         0:00:44.993
+"""
+from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
@@ -10,8 +86,10 @@ import pypyjit
 # from concurrent.futures import ThreadPoolExecutor
 # from concurrent.futures import ProcessPoolExecutor
 #
-from datetime import datetime
-def SQd0B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+class NQueens19:
+  def __init__(self):
+    pass
+  def SQd0B(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     if row == endmark:
         tempcounter[0] += 1
         return
@@ -27,11 +105,11 @@ def SQd0B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
         if next_free:
             if row < endmark - 1:
                 if ~((next_ld << 1) | (next_rd >> 1) | next_col) > 0:
-                    SQd0B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                    self.SQd0B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
             else:
-                SQd0B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd0B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQd0BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd0BkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N3 = N - 3
 
     if row == mark1:
@@ -40,7 +118,7 @@ def SQd0BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
             free -= bit
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3)) #<<注意
             if next_free:
-                SQd0B((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd0B((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -48,9 +126,9 @@ def SQd0BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQd0BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQd0BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQd1BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1BklB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N4 = N - 4
 
     if row == mark1:
@@ -59,7 +137,7 @@ def SQd1BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             free -= bit
             next_free = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | 1 | (1 << N4)) 
             if next_free:
-                SQd1B(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | (1 << N4), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd1B(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | (1 << N4), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -67,9 +145,9 @@ def SQd1BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit)) 
         if next_free:
-            SQd1BklB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQd1BklB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQd1B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1B(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     if row == endmark:
         tempcounter[0] += 1
         return
@@ -85,13 +163,13 @@ def SQd1B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
         if next_free:
             if row + 1 < endmark:
                 if ~((next_ld << 1) | (next_rd >> 1) | next_col) > 0:
-                    SQd1B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                    self.SQd1B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
             else:
-                SQd1B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd1B(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
 
-##
-def SQd1BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  ##
+  def SQd1BkBlB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python version of the SQd1BkBlB function from the C code.
 
@@ -118,7 +196,7 @@ def SQd1BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
             if next_free:
                 # Recursive call with updated values
-                SQd1BlB(
+                self.SQd1BlB(
                     ((ld | bit) << 2),
                     ((rd | bit) >> 2) | (1 << N3),
                     col | bit,
@@ -141,7 +219,7 @@ def SQd1BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
 
         if next_free:
             # Recursive call with updated values
-            SQd1BkBlB(
+            self.SQd1BkBlB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -155,7 +233,7 @@ def SQd1BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
                 N
             )
 
-def SQd1BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1BlB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python version of the SQd1BlB function from the C code.
 
@@ -189,9 +267,9 @@ def SQd1BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
             if next_free:
                 if row + 2 < endmark:
                     if ~((next_ld << 1) | (next_rd >> 1) | next_col) > 0:
-                        SQd1B(next_ld, next_rd, next_col, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                        self.SQd1B(next_ld, next_rd, next_col, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
                 else:
-                    SQd1B(next_ld, next_rd, next_col, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                    self.SQd1B(next_ld, next_rd, next_col, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     # General case when row != mark2
@@ -205,9 +283,9 @@ def SQd1BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
 
         # Recursive call if there are available positions
         if next_free:
-            SQd1BlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQd1BlB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQd1BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1BlkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python implementation of SQd1BlkB function.
 
@@ -233,7 +311,7 @@ def SQd1BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             free -= bit
             nextfree = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | 2 | (1 << N3))
             if nextfree:
-                SQd1B(
+                self.SQd1B(
                     ((ld | bit) << 3) | 2,
                     ((rd | bit) >> 3) | (1 << N3),
                     col | bit,
@@ -254,7 +332,7 @@ def SQd1BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
         free -= bit
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if nextfree:
-            SQd1BlkB(
+            self.SQd1BlkB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -268,7 +346,7 @@ def SQd1BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
                 N,
             )
 
-def SQd1BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1BlBkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python implementation of SQd1BlBkB function.
 
@@ -292,7 +370,7 @@ def SQd1BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             free -= bit
             nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1)
             if nextfree:
-                SQd1BkB(
+                self.SQd1BkB(
                     ((ld | bit) << 2) | 1,
                     (rd | bit) >> 2,
                     col | bit,
@@ -313,7 +391,7 @@ def SQd1BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
         free -= bit
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if nextfree:
-            SQd1BlBkB(
+            self.SQd1BlBkB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -327,7 +405,7 @@ def SQd1BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
                 N,
             )
 
-def SQd1BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd1BkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python implementation of the SQd1BkB function.
 
@@ -354,7 +432,7 @@ def SQd1BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
             # Calculate the next free positions
             nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
             if nextfree:
-                SQd1B((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd1B((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     # General case
@@ -364,10 +442,10 @@ def SQd1BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
         # Calculate the next free positions
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if nextfree:
-            SQd1BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQd1BkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
 
 
-def SQd2BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BlkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     SQd2BlkB 関数をPythonで実装。
 
@@ -400,7 +478,7 @@ def SQd2BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
 
             # 再帰的に SQd2B を呼び出す
             if nextfree:
-                SQd2B((ld | bit) << 3 | 2, (rd | bit) >> 3 | (1 << N3), col | bit, row + 3, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd2B((ld | bit) << 3 | 2, (rd | bit) >> 3 | (1 << N3), col | bit, row + 3, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     # 一般的な再帰処理
@@ -413,9 +491,9 @@ def SQd2BlkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
 
         # 再帰的に SQd2BlkB を呼び出す
         if nextfree:
-            SQd2BlkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQd2BlkB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQd2BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BklB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python translation of SQd2BklB.
     """
@@ -428,7 +506,7 @@ def SQd2BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             free -= bit  # 使用済みのビットを削除
             next_free = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | (1 << N4) | 1)
             if next_free:
-                SQd2B(
+                self.SQd2B(
                     ((ld | bit) << 3) | 1,
                     ((rd | bit) >> 3) | (1 << N4),
                     col | bit,
@@ -449,7 +527,7 @@ def SQd2BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
         free -= bit  # 使用済みのビットを削除
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQd2BklB(
+            self.SQd2BklB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -464,7 +542,7 @@ def SQd2BklB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             )
 
 
-def SQd2BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python translation of SQd2BkB with attention to the placement of the `if row == mark2` condition.
     """
@@ -477,7 +555,7 @@ def SQd2BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
             free -= bit  # 使用済みビットを削除
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
             if next_free:
-                SQd2B(
+                self.SQd2B(
                     ((ld | bit) << 2),
                     ((rd | bit) >> 2) | (1 << N3),
                     col | bit,
@@ -498,7 +576,7 @@ def SQd2BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
         free -= bit  # 使用済みビットを削除
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQd2BkB(
+            self.SQd2BkB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -512,7 +590,7 @@ def SQd2BkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
                 N,
             )
 
-def SQd2BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BlBkB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python translation of SQd2BlBkB function.
 
@@ -535,7 +613,7 @@ def SQd2BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             free -= bit  # Remove the lowest bit
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1)
             if next_free:
-                SQd2BkB(
+                self.SQd2BkB(
                     ((ld | bit) << 2) | 1,
                     (rd | bit) >> 2,
                     col | bit,
@@ -555,7 +633,7 @@ def SQd2BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
         free -= bit  # Remove the lowest bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQd2BlBkB(
+            self.SQd2BlBkB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -569,7 +647,7 @@ def SQd2BlBkB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
                 N,
             )
 
-def SQd2BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BlB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python translation of SQd2BlB function.
 
@@ -592,7 +670,7 @@ def SQd2BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
             free -= bit  # Remove the lowest bit
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1)
             if next_free:
-                SQd2B(
+                self.SQd2B(
                     ((ld | bit) << 2) | 1,
                     (rd | bit) >> 2,
                     col | bit,
@@ -612,7 +690,7 @@ def SQd2BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
         free -= bit  # Remove the lowest bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQd2BlB(
+            self.SQd2BlB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -626,7 +704,7 @@ def SQd2BlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N
                 N,
             )
 
-def SQd2BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2BkBlB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python版の SQd2BkBlB 関数
     """
@@ -639,7 +717,7 @@ def SQd2BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             free -= bit
             nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
             if nextfree:
-                SQd2BlB(
+                self.SQd2BlB(
                     (ld | bit) << 2,
                     ((rd | bit) >> 2) | (1 << N3),
                     col | bit,
@@ -660,7 +738,7 @@ def SQd2BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
         free -= bit
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if nextfree:
-            SQd2BkBlB(
+            self.SQd2BkBlB(
                 (ld | bit) << 1,
                 (rd | bit) >> 1,
                 col | bit,
@@ -675,7 +753,7 @@ def SQd2BkBlB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             )            
 
 
-def SQd2B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQd2B(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python版のSQd2B関数。
     """
@@ -702,11 +780,11 @@ def SQd2B(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
             # 次の行に進む前に、最終行手前のチェックを行う
             if row < endmark - 1:
                 if ~((next_ld << 1) | (next_rd >> 1) | (next_col)) > 0:
-                    SQd2B(next_ld, next_rd, next_col, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                    self.SQd2B(next_ld, next_rd, next_col, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
             else:
-                SQd2B(next_ld, next_rd, next_col, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQd2B(next_ld, next_rd, next_col, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBlBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python implementation of the SQBlBjrB function.
     
@@ -729,7 +807,7 @@ def SQBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             free -= bit
             nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1)
             if nextfree:
-                SQBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -737,10 +815,10 @@ def SQBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
         free -= bit
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if nextfree:
-            SQBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
 
 
-def SQBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBkBlBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python implementation of SQBkBlBjrB function.
 
@@ -770,7 +848,7 @@ def SQBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter
             nextfree = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
 
             if nextfree:
-                SQBlBjrB((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBlBjrB((ld | bit) << 2, ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -780,10 +858,10 @@ def SQBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter
         nextfree = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
 
         if nextfree:
-            SQBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, nextfree, jmark, endmark, mark1, mark2, tempcounter, N)
 
 
-def SQBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     """
     Python translation of SQBjrB with while loop and row == jmark condition properly implemented.
 
@@ -817,7 +895,7 @@ def SQBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
             next_free = ~((next_ld | next_rd | next_col))
 
             if next_free:
-                SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -831,12 +909,12 @@ def SQBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
         next_free = ~((next_ld | next_rd | next_col))
 
         if next_free:
-            SQBjrB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+           self.SQBjrB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
 
 
 
-def SQB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     if row == endmark:
         tempcounter[0] += 1
         return
@@ -852,18 +930,18 @@ def SQB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
         if next_free:
             if row < endmark - 1:
                 if ~((next_ld << 1) | (next_rd >> 1) | next_col) > 0:
-                    SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                    self.SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
             else:
-                SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQB(next_ld, next_rd, next_col, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBlBkBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     if row == mark1:
         while free:
             bit = free & -free
             free -= bit
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | 1)
             if next_free:
-                SQBkBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBkBjrB(((ld | bit) << 2) | 1, (rd | bit) >> 2, col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -871,9 +949,9 @@ def SQBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBkBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N3 = N - 3
     if row == mark2:
         while free:
@@ -881,7 +959,7 @@ def SQBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
             free -= bit
             next_free = ~(((ld | bit) << 2) | ((rd | bit) >> 2) | (col | bit) | (1 << N3))
             if next_free:
-                SQBjrB(((ld | bit) << 2), ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBjrB(((ld | bit) << 2), ((rd | bit) >> 2) | (1 << N3), col | bit, row + 2, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -889,9 +967,9 @@ def SQBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, 
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBklBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N4 = N - 4
     if row == mark1:
         while free:
@@ -899,7 +977,7 @@ def SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             free -= bit
             next_free = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | (1 << N4) | 1)
             if next_free:
-                SQBjrB(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | (1 << N4), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBjrB(((ld | bit) << 3) | 1, ((rd | bit) >> 3) | (1 << N4), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -907,9 +985,9 @@ def SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBlkBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N3 = N - 3
     if row == mark1:
         while free:
@@ -917,7 +995,7 @@ def SQBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
             free -= bit
             next_free = ~(((ld | bit) << 3) | ((rd | bit) >> 3) | (col | bit) | (1 << N3) | 2)
             if next_free:
-                SQBjrB(((ld | bit) << 3) | 2, ((rd | bit) >> 3) | (1 << N3), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+                self.SQBjrB(((ld | bit) << 3) | 2, ((rd | bit) >> 3) | (1 << N3), col | bit, row + 3, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -925,14 +1003,14 @@ def SQBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter,
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBjlBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBjlBkBlBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N1 = N - 1
     if row == N1 - jmark:
         rd |= 1 << N1
         free &= ~(1 << N1)
-        SQBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
+        self.SQBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -940,14 +1018,14 @@ def SQBjlBkBlBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcoun
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBjlBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+           self.SQBjlBkBlBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBjlBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBjlBlBkBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N1 = N - 1
     if row == N1 - jmark:
         rd |= 1 << N1
         free &= ~(1 << N1)
-        SQBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
+        self.SQBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -955,14 +1033,14 @@ def SQBjlBlBkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcoun
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBjlBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+           self.SQBjlBlBkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBjlBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBjlBklBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N1 = N - 1
     if row == N1 - jmark:
         rd |= 1 << N1
         free &= ~(1 << N1)
-        SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
+        self.SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -970,14 +1048,14 @@ def SQBjlBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcount
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBjlBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBjlBklBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
-def SQBjlBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
+  def SQBjlBlkBjrB(self,ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N):
     N1 = N - 1
     if row == N1 - jmark:
         rd |= 1 << N1
         free &= ~(1 << N1)
-        SQBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
+        self.SQBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcounter, N)
         return
 
     while free:
@@ -985,11 +1063,11 @@ def SQBjlBlkBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, tempcount
         free -= bit
         next_free = ~(((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
         if next_free:
-            SQBjlBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
+            self.SQBjlBlkBjrB((ld | bit) << 1, (rd | bit) >> 1, col | bit, row + 1, next_free, jmark, endmark, mark1, mark2, tempcounter, N)
 
 ###
 
-def symmetry90(ijkl, N):
+  def symmetry90(self,ijkl, N):
     """
     Check if the constellation is symmetric by 90 degrees.
 
@@ -1000,11 +1078,11 @@ def symmetry90(ijkl, N):
     Returns:
         bool: True if symmetric by 90 degrees, False otherwise.
     """
-    return ((geti(ijkl) << 15) + (getj(ijkl) << 10) + (getk(ijkl) << 5) + getl(ijkl)) == \
-           (((N - 1 - getk(ijkl)) << 15) + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl))
+    return ((self.geti(ijkl) << 15) + (self.getj(ijkl) << 10) + (self.getk(ijkl) << 5) + self.getl(ijkl)) == \
+           (((N - 1 - self.getk(ijkl)) << 15) + ((N - 1 - self.getl(ijkl)) << 10) + (self.getj(ijkl) << 5) + self.geti(ijkl))
 
 
-def symmetry(ijkl, N):
+  def symmetry(self,ijkl, N):
     """
     Determine the symmetry type of a constellation and return the frequency of its solutions.
 
@@ -1016,16 +1094,16 @@ def symmetry(ijkl, N):
         int: Frequency of the solutions for the given constellation.
     """
     # Check if the constellation is symmetric by 180 degrees
-    if geti(ijkl) == N - 1 - getj(ijkl) and getk(ijkl) == N - 1 - getl(ijkl):
+    if self.geti(ijkl) == N - 1 - self.getj(ijkl) and self.getk(ijkl) == N - 1 - self.getl(ijkl):
         # Check if the constellation is also symmetric by 90 degrees
-        if symmetry90(ijkl, N):
+        if self.symmetry90(ijkl, N):
             return 2
         else:
             return 4
     else:
         return 8
 
-def exec_solutions(constellations, N):
+  def exec_solutions(self,constellations, N):
     jmark = 0  # ここで初期化
     k = 0
     l = 0
@@ -1047,9 +1125,9 @@ def exec_solutions(constellations, N):
         start_ijkl = constellation["startijkl"]
         start = start_ijkl >> 20
         ijkl = start_ijkl & ((1 << 20) - 1)
-        j = getj(ijkl)
-        k = getk(ijkl)
-        l = getl(ijkl)
+        j = self.getj(ijkl)
+        k = self.getk(ijkl)
+        l = self.getl(ijkl)
     
         # 左右対角線と列の占有状況を設定
         LD = (1 << (N - 1 - j)) | (1 << (N - 1 - l))
@@ -1073,38 +1151,38 @@ def exec_solutions(constellations, N):
                     if start < l:
                         if start < k:
                             if l != k + 1:
-                                SQBkBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                                self.SQBkBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                             else:
-                                SQBklBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                                self.SQBklBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                         else:
-                            SQBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
-                        SQBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:
                     mark1, mark2 = l - 1, k - 1
                     if start < k:
                         if start < l:
                             if k != l + 1:
-                                SQBlBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                                self.SQBlBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                             else:
-                                SQBlkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                                self.SQBlkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                         else:
-                            SQBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
-                        SQBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
             else:
                 if k < l:
                     mark1, mark2 = k - 1, l - 1
                     if l != k + 1:
-                        SQBjlBkBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjlBkBlBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
-                        SQBjlBklBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjlBklBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:
                     mark1, mark2 = l - 1, k - 1
                     if k != l + 1:
-                        SQBjlBlBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjlBlBkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
-                        SQBjlBlkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQBjlBlkBjrB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
         elif j == (N - 3):
             endmark = N - 2
             if k < l:
@@ -1112,28 +1190,28 @@ def exec_solutions(constellations, N):
                 if start < l:
                     if start < k:
                         if l != k + 1:
-                            SQd2BkBlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQd2BkBlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                         else:
-                            SQd2BklB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQd2BklB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
                         mark2=l-1
-                        SQd2BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd2BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:
-                    SQd2B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd2B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
             else:
                 mark1, mark2 = l - 1, k - 1
                 endmark=N-2
                 if start < k:
                     if start < l:
                         if k != l + 1:
-                            SQd2BlBkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQd2BlBkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                         else:
-                            SQd2BlkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                            self.SQd2BlkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:
                         mark2=k-1
-                        SQd2BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd2BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:
-                    SQd2B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd2B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
         elif j == N - 2:  # クイーンjがコーナーからちょうど1列離れている場合
           if k < l:  # kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれない
             endmark = N - 2
@@ -1144,14 +1222,14 @@ def exec_solutions(constellations, N):
 
                 if l != k + 1:  # kとlが隣り合っている場合
                     mark2 = l - 1
-                    SQd1BkBlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd1BkBlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:
-                    SQd1BklB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd1BklB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
               else:  # lがまだ来ていないなら
                 mark2 = l - 1
-                SQd1BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                self.SQd1BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
             else:  # すでにkとlが来ている場合
-              SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+              self.SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
           else:  # l < k
             if start < k:  # 少なくともkがまだ来ていない場合
               if start < l:  # lがまだ来ていない場合
@@ -1161,39 +1239,39 @@ def exec_solutions(constellations, N):
 
                     if k != l + 1:  # lとkの間に空行がある場合
                         mark2 = k - 1
-                        SQd1BlBkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd1BlBkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:  # lとkの間に空行がない場合
-                        SQd1BlkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd1BlkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:  # kが末尾の場合
                     if l != (N - 3):  # lがkの直前でない場合
                         mark2 = l - 1
                         endmark = N - 3
-                        SQd1BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd1BlB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                     else:  # lがkの直前にある場合
                         endmark = N - 4
-                        SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                        self.SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
               else:  # もしkがまだ来ていないなら
                 if k != N - 2:  # kが末尾にない場合
                     mark2 = k - 1
                     endmark = N - 2
-                    SQd1BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd1BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
                 else:  # kが末尾の場合
                     endmark = N - 3
-                    SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+                    self.SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
             else:  # kとlはスタートの前
               endmark = N - 2
-              SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+              self.SQd1B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
         else:  # クイーンjがコーナーに置かれている場合
           endmark = N - 2
           if start > k:
-            SQd0B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+            self.SQd0B(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
           else:
           # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
             mark1 = k - 1
-            SQd0BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
+            self.SQd0BkB(ld, rd, col, start, free, jmark, endmark, mark1, mark2, temp_counter, N)
 
         # 各コンステレーションのソリューション数を更新
-        constellation["solutions"] = temp_counter[0] * symmetry(ijkl, N)
+        constellation["solutions"] = temp_counter[0] * self.symmetry(ijkl, N)
         temp_counter[0] = 0
 
 
@@ -1206,7 +1284,7 @@ def exec_solutions(constellations, N):
 
 
 
-def gen_constellations(ijkl_list, constellations, N):
+  def gen_constellations(self,ijkl_list, constellations, N):
     halfN = (N + 1) // 2  # Nの半分を切り上げ
     L = 1 << (N - 1)  # Lは左端に1を立てる
 
@@ -1219,26 +1297,26 @@ def gen_constellations(ijkl_list, constellations, N):
                 for j in range(N - k - 2, 0, -1):
                     if j == i or l == j:
                         continue
-                    if not check_rotations(ijkl_list, i, j, k, l, N):
-                        ijkl_list.add(to_ijkl(i, j, k, l))
+                    if not self.check_rotations(ijkl_list, i, j, k, l, N):
+                        ijkl_list.add(self.to_ijkl(i, j, k, l))
 
     # コーナーにクイーンがある場合の開始コンステレーションを計算する
     for j in range(1, N - 2):
         for l in range(j + 1, N - 1):
-            ijkl_list.add(to_ijkl(0, j, 0, l))
+            ijkl_list.add(self.to_ijkl(0, j, 0, l))
 
     # Jasmin変換
     ijkl_list_jasmin = set()
     for start_constellation in ijkl_list:
-        ijkl_list_jasmin.add(jasmin(start_constellation, N))
+        ijkl_list_jasmin.add(self.jasmin(start_constellation, N))
     ijkl_list = ijkl_list_jasmin
 
     # 各星座の処理
     for sc in ijkl_list:
-        i = geti(sc)
-        j = getj(sc)
-        k = getk(sc)
-        l = getl(sc)
+        i = self.geti(sc)
+        j = self.getj(sc)
+        k = self.getk(sc)
+        l = self.getl(sc)
 
         # 左対角線
         ld = (L >> (i - 1)) | (1 << (N - k))
@@ -1253,15 +1331,15 @@ def gen_constellations(ijkl_list, constellations, N):
 
         # サブコンステレーションを生成
         counter = [0]
-        set_pre_queens(ld, rd, col, k, l, 1, 3 if j == N - 1 else 4, LD, RD, counter, constellations, N, preset_queens)
+        self.set_pre_queens(ld, rd, col, k, l, 1, 3 if j == N - 1 else 4, LD, RD, counter, constellations, N, preset_queens)
         current_size = len(constellations)
 
         # 生成されたサブコンステレーションにスタート情報を追加
         for a in range(counter[0]):
-            constellations[current_size - a - 1]["startijkl"] |= to_ijkl(i, j, k, l)
+            constellations[current_size - a - 1]["startijkl"] |= self.to_ijkl(i, j, k, l)
 
-# ヘルパー関数
-def check_rotations(ijkl_list, i, j, k, l, N):
+  # ヘルパー関数
+  def check_rotations(self,ijkl_list, i, j, k, l, N):
     """
     回転対称性をチェックする関数
     Args:
@@ -1289,7 +1367,7 @@ def check_rotations(ijkl_list, i, j, k, l, N):
 
     return False
 
-def to_ijkl(i, j, k, l):
+  def to_ijkl(self,i, j, k, l):
     """
     i, j, k, l のインデックスを1つの整数に変換する関数
 
@@ -1301,11 +1379,11 @@ def to_ijkl(i, j, k, l):
     """
     return (i << 15) + (j << 10) + (k << 5) + l
 
-def ffmin(a, b):
+  def ffmin(self,a, b):
     """2つの値のうち最小値を返す"""
     return min(a, b)
 
-def jasmin(ijkl, N):
+  def jasmin(self,ijkl, N):
     """
     クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する。
 
@@ -1317,51 +1395,51 @@ def jasmin(ijkl, N):
         int: 標準形の配置をエンコードした整数
     """
     # 最初の最小値と引数を設定
-    min_val = ffmin(getj(ijkl), N - 1 - getj(ijkl))
+    min_val = self.ffmin(self.getj(ijkl), N - 1 - self.getj(ijkl))
     arg = 0
 
     # i: 最初の行（上端） 90度回転2回
-    if ffmin(geti(ijkl), N - 1 - geti(ijkl)) < min_val:
+    if self.ffmin(self.geti(ijkl), N - 1 - self.geti(ijkl)) < min_val:
         arg = 2
-        min_val = ffmin(geti(ijkl), N - 1 - geti(ijkl))
+        min_val = self.ffmin(self.geti(ijkl), N - 1 - self.geti(ijkl))
 
     # k: 最初の列（左端） 90度回転3回
-    if ffmin(getk(ijkl), N - 1 - getk(ijkl)) < min_val:
+    if self.ffmin(self.getk(ijkl), N - 1 - self.getk(ijkl)) < min_val:
         arg = 3
-        min_val = ffmin(getk(ijkl), N - 1 - getk(ijkl))
+        min_val = self.ffmin(self.getk(ijkl), N - 1 - self.getk(ijkl))
 
     # l: 最後の列（右端） 90度回転1回
-    if ffmin(getl(ijkl), N - 1 - getl(ijkl)) < min_val:
+    if self.ffmin(self.getl(ijkl), N - 1 - self.getl(ijkl)) < min_val:
         arg = 1
-        min_val = ffmin(getl(ijkl), N - 1 - getl(ijkl))
+        min_val = self.ffmin(self.getl(ijkl), N - 1 - self.getl(ijkl))
 
     # 90度回転を arg 回繰り返す
     for _ in range(arg):
-        ijkl = rot90(ijkl, N)
+        ijkl = self.rot90(ijkl, N)
 
     # 必要に応じて垂直方向のミラーリングを実行
-    if getj(ijkl) < N - 1 - getj(ijkl):
-        ijkl = mirvert(ijkl, N)
+    if self.getj(ijkl) < N - 1 - self.getj(ijkl):
+        ijkl = self.mirvert(ijkl, N)
 
     return ijkl
 
-def geti(ijkl):
+  def geti(self,ijkl):
     """iを抽出"""
     return (ijkl >> 15) & 0x1F
 
-def getj(ijkl):
+  def getj(self,ijkl):
     """jを抽出"""
     return (ijkl >> 10) & 0x1F
 
-def getk(ijkl):
+  def getk(self,ijkl):
     """kを抽出"""
     return (ijkl >> 5) & 0x1F
 
-def getl(ijkl):
+  def getl(self,ijkl):
     """lを抽出"""
     return ijkl & 0x1F
 
-def mirvert(ijkl, N):
+  def mirvert(self,ijkl, N):
     """
     垂直方向のミラーリングを行う。
 
@@ -1372,9 +1450,9 @@ def mirvert(ijkl, N):
     Returns:
         int: ミラーリング後の配置をエンコードした整数
     """
-    return to_ijkl(N - 1 - geti(ijkl), N - 1 - getj(ijkl), getl(ijkl), getk(ijkl))
+    return self.to_ijkl(N - 1 - self.geti(ijkl), N - 1 - self.getj(ijkl), self.getl(ijkl), self.getk(ijkl))
 
-def rot90(ijkl, N):
+  def rot90(self,ijkl, N):
     """
     時計回りに90度回転する。
 
@@ -1385,9 +1463,9 @@ def rot90(ijkl, N):
     Returns:
         int: 90度回転後の配置をエンコードした整数
     """
-    return ((N - 1 - getk(ijkl)) << 15) + ((N - 1 - getl(ijkl)) << 10) + (getj(ijkl) << 5) + geti(ijkl)
+    return ((N - 1 - self.getk(ijkl)) << 15) + ((N - 1 - self.getl(ijkl)) << 10) + (self.getj(ijkl) << 5) + self.geti(ijkl)
 
-def set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens):
+  def set_pre_queens(self,ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens):
     """
     ld: 左対角線の占領状態
     rd: 右対角線の占領状態
@@ -1407,7 +1485,7 @@ def set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellatio
 
     # k行とl行はスキップ
     if row == k or row == l:
-        set_pre_queens(ld << 1, rd >> 1, col, k, l, row + 1, queens, LD, RD, counter, constellations, N, preset_queens)
+        self.set_pre_queens(ld << 1, rd >> 1, col, k, l, row + 1, queens, LD, RD, counter, constellations, N, preset_queens)
         return
 
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
@@ -1425,7 +1503,7 @@ def set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellatio
         free -= bit  # 使用済みビットを削除
 
         # クイーンを配置し、次の行に進む
-        set_pre_queens(
+        self.set_pre_queens(
             (ld | bit) << 1,  # 左対角線を更新
             (rd | bit) >> 1,  # 右対角線を更新
             col | bit,  # 列を更新
@@ -1442,13 +1520,6 @@ def set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellatio
         )
 
 
-
-
-
-
-
-
-
 preset_queens = 4  # 必要に応じて変更
 
 class NQueens19_constellations():
@@ -1461,12 +1532,12 @@ class NQueens19_constellations():
       # 必要なデータ構造を初期化
       ijkl_list = set()  # ijkl_listをセットで初期化
       constellations = []  # constellationsをリストで初期化
-
+      NQ=NQueens19()
       # preset_queensの設定 (Nに応じて定義)
 
       # gen_constellations関数の呼び出し
-      gen_constellations(ijkl_list, constellations, size)
-      exec_solutions(constellations, size)
+      NQ.gen_constellations(ijkl_list, constellations, size)
+      NQ.exec_solutions(constellations, size)
       total:int = sum(c['solutions'] for c in constellations if c['solutions'] > 0)
 
       
