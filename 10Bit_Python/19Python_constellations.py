@@ -62,6 +62,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
+from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
@@ -78,7 +79,8 @@ class NQueens19:
   def __init__(self):
     pass
   #
-  def SQd0B(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+ # def SQd0B(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
       return
@@ -96,7 +98,7 @@ class NQueens19:
         else:
           self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd0BkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N3=N-3
     if row==mark1:
       while free:
@@ -113,7 +115,7 @@ class NQueens19:
       if next_free:
         self.SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd1BklB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N4=N-4
     if row==mark1:
       while free:
@@ -130,7 +132,7 @@ class NQueens19:
       if next_free:
         self.SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd1B(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
       return
@@ -148,7 +150,7 @@ class NQueens19:
         else:
           self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd1BkBlB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python version of the SQd1BkBlB function from the C code.
     Args:
@@ -208,7 +210,7 @@ class NQueens19:
           N
         )
   #
-  def SQd1BlB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python version of the SQd1BlB function from the C code.
     Args:
@@ -254,7 +256,7 @@ class NQueens19:
       if next_free:
         self.SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd1BlkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python implementation of SQd1BlkB function.
     Args:
@@ -312,7 +314,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd1BlBkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python implementation of SQd1BlBkB function.
     Args:
@@ -369,7 +371,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd1BkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python implementation of the SQd1BkB function.
     Args:
@@ -405,7 +407,7 @@ class NQueens19:
       if nextfree:
         self.SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd2BlkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     SQd2BlkB 関数をPythonで実装。
     Args:
@@ -445,7 +447,7 @@ class NQueens19:
       if nextfree:
         self.SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQd2BklB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python translation of SQd2BklB.
     """
@@ -491,7 +493,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd2BkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python translation of SQd2BkB with attention to the placement of the `if row==mark2` condition.
     """
@@ -537,7 +539,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd2BlBkB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python translation of SQd2BlBkB function.
     Args:
@@ -592,7 +594,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd2BlB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python translation of SQd2BlB function.
     Args:
@@ -647,7 +649,7 @@ class NQueens19:
           N,
         )
   #
-  def SQd2BkBlB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python版の SQd2BkBlB 関数
     """
@@ -693,7 +695,7 @@ class NQueens19:
           N,
         )            
   #
-  def SQd2B(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python版のSQd2B関数。
     """
@@ -720,7 +722,7 @@ class NQueens19:
         else:
           self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBlBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python implementation of the SQBlBjrB function.
     
@@ -752,7 +754,7 @@ class NQueens19:
       if nextfree:
         self.SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBkBlBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python implementation of SQBkBlBjrB function.
     Args:
@@ -786,7 +788,7 @@ class NQueens19:
       if nextfree:
         self.SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     """
     Python translation of SQBjrB with while loop and row==jmark condition properly implemented.
     Args:
@@ -829,7 +831,7 @@ class NQueens19:
       if next_free:
         self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
       return
@@ -847,7 +849,7 @@ class NQueens19:
         else:
           self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBlBkBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==mark1:
       while free:
         bit=free&-free
@@ -863,7 +865,7 @@ class NQueens19:
       if next_free:
         self.SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBkBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N3=N-3
     if row==mark2:
       while free:
@@ -880,7 +882,7 @@ class NQueens19:
       if next_free:
         self.SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBklBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N4=N-4
     if row==mark1:
       while free:
@@ -897,7 +899,7 @@ class NQueens19:
       if next_free:
         self.SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBlkBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N3=N-3
     if row==mark1:
       while free:
@@ -914,7 +916,7 @@ class NQueens19:
       if next_free:
         self.SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBjlBkBlBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N1=N-1
     if row==N1-jmark:
       rd|=1<<N1
@@ -927,7 +929,7 @@ class NQueens19:
       next_free=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
         self.SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
-  def SQBjlBlBkBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N1=N-1
     if row==N1-jmark:
       rd|=1<<N1
@@ -941,7 +943,7 @@ class NQueens19:
       if next_free:
         self.SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBjlBklBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N1=N-1
     if row==N1-jmark:
       rd|=1<<N1
@@ -955,7 +957,7 @@ class NQueens19:
       if next_free:
           self.SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def SQBjlBlkBjrB(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
+  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N1=N-1
     if row==N1-jmark:
       rd|=1<<N1
@@ -969,7 +971,7 @@ class NQueens19:
       if next_free:
         self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def symmetry90(self,ijkl,N):
+  def symmetry90(self,ijkl:int,N:int)->bool:
     """
     Check if the constellation is symmetric by 90 degrees.
     Args:
@@ -981,7 +983,7 @@ class NQueens19:
     return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==\
            (((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
   #
-  def symmetry(self,ijkl,N):
+  def symmetry(self,ijkl:int,N:int)->int:
     """
     Determine the symmetry type of a constellation and return the frequency of its solutions.
     Args:
@@ -1000,7 +1002,7 @@ class NQueens19:
     else:
       return 8
   #
-  def exec_solutions(self,constellations,N):
+  def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     jmark=0  # ここで初期化
     k=0
     l=0
@@ -1164,7 +1166,7 @@ class NQueens19:
       constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
       temp_counter[0]=0
   #
-  def gen_constellations(self,ijkl_list,constellations,N):
+  def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1) // 2  # Nの半分を切り上げ
     L=1<<(N-1)  # Lは左端に1を立てる
     # コーナーにクイーンがいない場合の開始コンステレーションを計算する
@@ -1211,7 +1213,7 @@ class NQueens19:
       for a in range(counter[0]):
         constellations[current_size-a-1]["startijkl"]|=self.to_ijkl(i,j,k,l)
   # ヘルパー関数
-  def check_rotations(self,ijkl_list,i,j,k,l,N):
+  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
     """
     回転対称性をチェックする関数
     Args:
@@ -1236,7 +1238,7 @@ class NQueens19:
       return True
     return False
   #
-  def to_ijkl(self,i,j,k,l):
+  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
     """
     i,j,k,l のインデックスを1つの整数に変換する関数
     Args:
@@ -1246,11 +1248,11 @@ class NQueens19:
     """
     return (i<<15)+(j<<10)+(k<<5)+l
   #
-  def ffmin(self,a,b):
+  def ffmin(self,a:int,b:int)->int:
     """2つの値のうち最小値を返す"""
     return min(a,b)
   #
-  def jasmin(self,ijkl,N):
+  def jasmin(self,ijkl:int,N:int)->int:
     """
     クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する。
     Args:
@@ -1282,23 +1284,23 @@ class NQueens19:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
   #
-  def geti(self,ijkl):
+  def geti(self,ijkl:int)->int:
     """iを抽出"""
     return (ijkl>>15)&0x1F
   #
-  def getj(self,ijkl):
+  def getj(self,ijkl:int)->int:
     """jを抽出"""
     return (ijkl>>10)&0x1F
   #
-  def getk(self,ijkl):
+  def getk(self,ijkl:int)->int:
     """kを抽出"""
     return (ijkl>>5)&0x1F
   #
-  def getl(self,ijkl):
+  def getl(self,ijkl:int)->int:
     """lを抽出"""
     return ijkl&0x1F
   #
-  def mirvert(self,ijkl,N):
+  def mirvert(self,ijkl:int,N:int)->int:
     """
     垂直方向のミラーリングを行う。
     Args:
@@ -1309,7 +1311,7 @@ class NQueens19:
     """
     return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
   #
-  def rot90(self,ijkl,N):
+  def rot90(self,ijkl:int,N:int)->int:
     """
     時計回りに90度回転する。
     Args:
@@ -1320,7 +1322,8 @@ class NQueens19:
     """
     return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
   #
-  def set_pre_queens(self,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens):
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,
+                       counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     """
     ld: 左対角線の占領状態
     rd: 右対角線の占領状態
@@ -1368,13 +1371,14 @@ class NQueens19:
         N,
         preset_queens
       )
-preset_queens=4  # 必要に応じて変更
+
 #
 class NQueens19_constellations():
   #
   def main(self)->None:
-    nmin:int=6
+    nmin:int=7
     nmax:int=16
+    preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
@@ -1384,7 +1388,7 @@ class NQueens19_constellations():
       NQ=NQueens19()
       # preset_queensの設定 (Nに応じて定義)
       # gen_constellations関数の呼び出し
-      NQ.gen_constellations(ijkl_list,constellations,size)
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
