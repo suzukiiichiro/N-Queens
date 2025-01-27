@@ -65,8 +65,8 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
 # from threading import Thread
@@ -1383,8 +1383,10 @@ class NQueens19_constellations():
     for size in range(nmin,nmax):
       start_time=datetime.now()
       # 必要なデータ構造を初期化
-      ijkl_list=set()  # ijkl_listをセットで初期化
-      constellations=[]  # constellationsをリストで初期化
+      # ijkl_list=set()  # ijkl_listをセットで初期化
+      ijkl_list:Set[int]=set()  # ijkl_listをセットで初期化
+      # constellations=[]  # constellationsをリストで初期化
+      constellations:List[Dict[str,int]]=[]  # constellationsをリストで初期化
       NQ=NQueens19()
       # preset_queensの設定 (Nに応じて定義)
       # gen_constellations関数の呼び出し
