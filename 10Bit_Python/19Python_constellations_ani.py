@@ -672,7 +672,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N
+            N,
           )
       return
     # 通常の処理
@@ -692,7 +692,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N
+          N,
         )            
   #
   def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -1093,7 +1093,6 @@ class NQueens19:
               else:
                 self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:
-              mark1=mark1
               mark2=l-1
               self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
           else:
@@ -1108,7 +1107,6 @@ class NQueens19:
               else:
                 self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:
-              mark1=mark1
               mark2=k-1
               self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
           else:
@@ -1119,15 +1117,12 @@ class NQueens19:
           if start<l:  # 少なくともlがまだ来ていない場合
             if start<k:  # もしkもまだ来ていないなら
               mark1=k-1
-              mark2=mark2
-              if l != k+1:# kとlが隣り合っている場合
-                mark1=mark1
+              if l != k+1:  # kとlが隣り合っている場合
                 mark2=l-1
                 self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
               else:
                 self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:  # lがまだ来ていないなら
-              mark1=mark1
               mark2=l-1
               self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
           else:  # すでにkとlが来ている場合
@@ -1137,17 +1132,14 @@ class NQueens19:
             if start<l:  # lがまだ来ていない場合
               if k<N-2:  # kが末尾にない場合
                 mark1=l-1
-                mark2=mark2
                 endmark=N-2
                 if k != l+1:  # lとkの間に空行がある場合
-                  mark1=mark1
                   mark2=k-1
                   self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
                 else:  # lとkの間に空行がない場合
                   self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
               else:  # kが末尾の場合
                 if l != (N-3):  # lがkの直前でない場合
-                  mark1=mark1
                   mark2=l-1
                   endmark=N-3
                   self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
@@ -1156,7 +1148,6 @@ class NQueens19:
                   self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:  # もしkがまだ来ていないなら
               if k != N-2:  # kが末尾にない場合
-                mark1=mark1
                 mark2=k-1
                 endmark=N-2
                 self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
@@ -1173,7 +1164,6 @@ class NQueens19:
         else:
         # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
           mark1=k-1
-          mark2=mark2
           self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       # 各コンステレーションのソリューション数を更新
       constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
