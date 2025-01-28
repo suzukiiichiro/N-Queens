@@ -62,6 +62,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
+
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -291,7 +292,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
             )
       return
     # General case
@@ -311,7 +312,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -348,7 +349,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
           )
       return
     # General case
@@ -368,7 +369,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -470,7 +471,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
           )
       return  # この分岐の処理が終わったらリターン
     # 通常の処理
@@ -490,7 +491,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -516,7 +517,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
           )
       return  # `if row==mark2` の処理終了後に関数を終了
     # 通常の処理
@@ -536,7 +537,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -572,7 +573,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
           )
       return
     while free:
@@ -591,7 +592,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -627,7 +628,7 @@ class NQueens19:
             mark1,
             mark2,
             tempcounter,
-            N,
+            N
           )
       return
     while free:
@@ -646,7 +647,7 @@ class NQueens19:
           mark1,
           mark2,
           tempcounter,
-          N,
+          N
         )
   #
   def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -1004,6 +1005,7 @@ class NQueens19:
   #
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     jmark=0  # ここで初期化
+    j=0
     k=0
     l=0
     ijkl=0
@@ -1020,6 +1022,8 @@ class NQueens19:
     small_mask=(1<<(N-2))-1
     temp_counter=[0]
     for constellation in constellations:
+      mark1=mark1
+      mark2=mark2
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
       ijkl=start_ijkl&((1<<20)-1)
@@ -1377,7 +1381,7 @@ class NQueens19_constellations():
   #
   def main(self)->None:
     nmin:int=7
-    nmax:int=16
+    nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
