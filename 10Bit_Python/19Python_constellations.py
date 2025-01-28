@@ -66,8 +66,8 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
 # from threading import Thread
@@ -1381,7 +1381,7 @@ class NQueens19_constellations():
   #
   def main(self)->None:
     nmin:int=7
-    nmax:int=18
+    nmax:int=16
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
