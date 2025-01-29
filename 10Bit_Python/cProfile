@@ -1,231 +1,231 @@
  N:        Total       Unique        hh:mm:ss.ms
-11:         2680            0         0:00:00.104
-         58599 function calls (44954 primitive calls) in 0.109 seconds
+11:         2680            0         0:00:00.101
+         58599 function calls (44954 primitive calls) in 0.111 seconds
 
-   Ordered by: standard name
+   Ordered by: cumulative time
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.000    0.000    0.109    0.109 19Python_constellations.py:1(<module>)
-   844/90    0.001    0.000    0.009    0.000 19Python_constellations.py:101(SQd0BkB)
-        1    0.002    0.002    0.031    0.031 19Python_constellations.py:1114(gen_constellations)
-      417    0.004    0.000    0.015    0.000 19Python_constellations.py:1130(<genexpr>)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1136(<listcomp>)
+      2/1    0.000    0.000    0.111    0.111 {built-in function exec}
+        1    0.000    0.000    0.111    0.111 19Python_constellations.py:1(<module>)
+        1    0.000    0.000    0.102    0.102 19Python_constellations.py:1168(main)
+        1    0.003    0.003    0.072    0.072 19Python_constellations.py:947(exec_solutions)
+        1    0.002    0.002    0.029    0.029 19Python_constellations.py:1114(gen_constellations)
+ 3086/517    0.017    0.000    0.017    0.000 19Python_constellations.py:83(SQd0B)
+ 2007/593    0.011    0.000    0.014    0.000 19Python_constellations.py:314(SQd1BkB)
+   708/87    0.002    0.000    0.014    0.000 19Python_constellations.py:153(SQd1BkBlB)
+        1    0.000    0.000    0.013    0.013 {method 'update' of 'set' objects}
+      417    0.003    0.000    0.013    0.000 19Python_constellations.py:1130(<genexpr>)
+3335/1328    0.013    0.000    0.013    0.000 19Python_constellations.py:135(SQd1B)
+ 1389/479    0.007    0.000    0.012    0.000 19Python_constellations.py:198(SQd1BlB)
         1    0.000    0.000    0.012    0.012 19Python_constellations.py:1141(<listcomp>)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1167(NQueens19_constellations)
-        1    0.000    0.000    0.105    0.105 19Python_constellations.py:1168(main)
-   448/33    0.001    0.000    0.004    0.000 19Python_constellations.py:118(SQd1BklB)
-      243    0.000    0.000    0.000    0.000 19Python_constellations.py:1182(<genexpr>)
-3335/1328    0.015    0.000    0.015    0.000 19Python_constellations.py:135(SQd1B)
-   708/87    0.002    0.000    0.015    0.000 19Python_constellations.py:153(SQd1BkBlB)
- 1389/479    0.006    0.000    0.014    0.000 19Python_constellations.py:198(SQd1BlB)
-   427/33    0.001    0.000    0.002    0.000 19Python_constellations.py:229(SQd1BlkB)
-   743/87    0.001    0.000    0.007    0.000 19Python_constellations.py:272(SQd1BlBkB)
- 2007/593    0.010    0.000    0.014    0.000 19Python_constellations.py:314(SQd1BkB)
-   436/22    0.001    0.000    0.002    0.000 19Python_constellations.py:335(SQd2BlkB)
-   285/14    0.001    0.000    0.001    0.000 19Python_constellations.py:358(SQd2BklB)
+      452    0.003    0.000    0.012    0.000 19Python_constellations.py:886(jasmin)
+   844/90    0.001    0.000    0.010    0.000 19Python_constellations.py:101(SQd0BkB)
+      962    0.008    0.000    0.009    0.000 19Python_constellations.py:799(check_rotations)
+   743/87    0.001    0.000    0.008    0.000 19Python_constellations.py:272(SQd1BlBkB)
+      4/2    0.000    0.000    0.007    0.004 <frozen importlib._bootstrap>:1117(__import__)
+      6/3    0.000    0.000    0.007    0.002 <frozen importlib._bootstrap>:1038(_gcd_import)
+      6/3    0.000    0.000    0.007    0.002 <frozen importlib._bootstrap>:1022(_find_and_load)
+      4/2    0.000    0.000    0.007    0.003 <frozen importlib._bootstrap>:987(_find_and_load_unlocked)
+      3/2    0.000    0.000    0.006    0.003 <frozen importlib._bootstrap>:664(_load_unlocked)
+        1    0.000    0.000    0.006    0.006 frozen importlib._bootstrap_external:891(exec_module)
+   462/42    0.001    0.000    0.006    0.000 19Python_constellations.py:444(SQd2BlBkB)
+ 1666/792    0.005    0.000    0.005    0.000 19Python_constellations.py:567(SQd2B)
   757/360    0.001    0.000    0.005    0.000 19Python_constellations.py:401(SQd2BkB)
-   462/42    0.001    0.000    0.005    0.000 19Python_constellations.py:444(SQd2BlBkB)
-  487/278    0.001    0.000    0.001    0.000 19Python_constellations.py:484(SQd2BlB)
-   301/24    0.001    0.000    0.002    0.000 19Python_constellations.py:524(SQd2BkBlB)
- 1666/792    0.006    0.000    0.006    0.000 19Python_constellations.py:567(SQd2B)
-       52    0.000    0.000    0.000    0.000 19Python_constellations.py:591(SQBlBjrB)
-     47/3    0.000    0.000    0.000    0.000 19Python_constellations.py:607(SQBkBlBjrB)
-  680/334    0.001    0.000    0.001    0.000 19Python_constellations.py:624(SQBjrB)
-    62/60    0.000    0.000    0.000    0.000 19Python_constellations.py:650(SQB)
-   128/10    0.000    0.000    0.001    0.000 19Python_constellations.py:668(SQBlBkBjrB)
-  167/132    0.000    0.000    0.001    0.000 19Python_constellations.py:684(SQBkBjrB)
-     91/3    0.000    0.000    0.000    0.000 19Python_constellations.py:701(SQBklBjrB)
-    154/8    0.000    0.000    0.001    0.000 19Python_constellations.py:718(SQBlkBjrB)
-      962    0.007    0.000    0.011    0.000 19Python_constellations.py:799(check_rotations)
-        1    0.000    0.000    0.001    0.001 19Python_constellations.py:80(NQueens19)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:81(__init__)
-     2760    0.005    0.000    0.005    0.000 19Python_constellations.py:811(<genexpr>)
+        1    0.000    0.000    0.004    0.004 frozen importlib._bootstrap_external:964(get_code)
+        1    0.000    0.000    0.004    0.004 frozen importlib._bootstrap_external:684(_compile_bytecode)
+        1    0.004    0.004    0.004    0.004 {built-in function marshal.loads}
       580    0.001    0.000    0.004    0.000 19Python_constellations.py:813(symmetry)
-      580    0.002    0.000    0.003    0.000 19Python_constellations.py:825(symmetry90)
- 3086/517    0.016    0.000    0.016    0.000 19Python_constellations.py:83(SQd0B)
-     1448    0.000    0.000    0.000    0.000 19Python_constellations.py:835(to_ijkl)
+     1112    0.001    0.000    0.004    0.000 19Python_constellations.py:905(<lambda>)
+   448/33    0.001    0.000    0.003    0.000 19Python_constellations.py:118(SQd1BklB)
      1112    0.001    0.000    0.003    0.000 19Python_constellations.py:846(rot90)
-      416    0.001    0.000    0.001    0.000 19Python_constellations.py:857(mirvert)
-     2330    0.002    0.000    0.002    0.000 19Python_constellations.py:860(ffmin)
-     5008    0.001    0.000    0.001    0.000 19Python_constellations.py:864(geti)
-     6104    0.002    0.000    0.002    0.000 19Python_constellations.py:868(getj)
-     5336    0.001    0.000    0.001    0.000 19Python_constellations.py:872(getk)
-     4680    0.001    0.000    0.001    0.000 19Python_constellations.py:876(getl)
-      452    0.004    0.000    0.012    0.000 19Python_constellations.py:886(jasmin)
-     1112    0.001    0.000    0.003    0.000 19Python_constellations.py:905(<lambda>)
-  699/452    0.001    0.000    0.001    0.000 19Python_constellations.py:926(set_pre_queens)
-        1    0.003    0.003    0.073    0.073 19Python_constellations.py:947(exec_solutions)
-        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:100(acquire)
-      6/3    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:1022(_find_and_load)
-      6/3    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:1038(_gcd_import)
-      4/2    0.000    0.000    0.003    0.002 <frozen importlib._bootstrap>:1117(__import__)
-        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:125(release)
-        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:165(__init__)
-        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:169(__enter__)
-        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:173(__exit__)
-        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:179(_get_module_lock)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:216(_lock_unlock_module)
+      580    0.001    0.000    0.003    0.000 19Python_constellations.py:825(symmetry90)
       5/3    0.000    0.000    0.002    0.001 <frozen importlib._bootstrap>:233(_call_with_frames_removed)
-       25    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:244(_verbose_message)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:254(_requires_builtin_wrapper)
-        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:357(__init__)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:391(cached)
-        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:404(parent)
-        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:412(has_location)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:421(spec_from_loader)
-        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:48(_new_module)
-        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:492(_init_module_attrs)
-        3    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:564(module_from_spec)
-      3/2    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:664(_load_unlocked)
-        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:71(__init__)
-        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:746(find_spec)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:770(create_module)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:778(exec_module)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:795(is_package)
-        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:826(find_spec)
-       12    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:893(__enter__)
-       12    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:897(__exit__)
-        4    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:921(_find_spec)
-        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:968(_sanity_check)
-      4/2    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:987(_find_and_load_unlocked)
-        4    0.000    0.000    0.000    0.000 __init__.py:89(find_spec)
-        4    0.000    0.000    0.000    0.000 __init__.py:96(<lambda>)
-       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:118(_is_typevar)
-       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:122(_make_parameters)
-       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:16(__new__)
+     2330    0.002    0.000    0.002    0.000 19Python_constellations.py:860(ffmin)
         1    0.000    0.000    0.002    0.002 datetime.py:1(<module>)
-        1    0.000    0.000    0.000    0.000 datetime.py:1125(tzinfo)
-        3    0.000    0.000    0.000    0.000 datetime.py:1195(__new__)
-        1    0.000    0.000    0.000    0.000 datetime.py:1199(IsoCalendarDate)
-        1    0.000    0.000    0.000    0.000 datetime.py:1230(time)
-        2    0.000    0.000    0.000    0.000 datetime.py:1255(__new__)
-        1    0.000    0.000    0.000    0.000 datetime.py:1580(datetime)
-        7    0.000    0.000    0.000    0.000 datetime.py:1588(__new__)
-        2    0.000    0.000    0.001    0.000 datetime.py:1657(_fromtimestamp)
-        2    0.000    0.000    0.001    0.000 datetime.py:1701(fromtimestamp)
-        2    0.000    0.000    0.001    0.000 datetime.py:1716(now)
-        3    0.000    0.000    0.000    0.000 datetime.py:2110(__sub__)
-        1    0.000    0.000    0.000    0.000 datetime.py:2274(timezone)
-        3    0.000    0.000    0.000    0.000 datetime.py:2297(_create)
-        9    0.000    0.000    0.000    0.000 datetime.py:392(_check_date_fields)
-        9    0.000    0.000    0.000    0.000 datetime.py:405(_check_time_fields)
-       11    0.000    0.000    0.000    0.000 datetime.py:422(_check_tzinfo_arg)
-        1    0.000    0.000    0.000    0.000 datetime.py:449(timedelta)
+        9    0.000    0.000    0.002    0.000 {built-in function __build_class__}
+     6104    0.002    0.000    0.002    0.000 19Python_constellations.py:868(getj)
+   301/24    0.001    0.000    0.002    0.000 19Python_constellations.py:524(SQd2BkBlB)
+   427/33    0.001    0.000    0.002    0.000 19Python_constellations.py:229(SQd1BlkB)
+     2760    0.002    0.000    0.002    0.000 19Python_constellations.py:811(<genexpr>)
+   436/22    0.001    0.000    0.002    0.000 19Python_constellations.py:335(SQd2BlkB)
+     5008    0.001    0.000    0.001    0.000 19Python_constellations.py:864(geti)
+     5336    0.001    0.000    0.001    0.000 19Python_constellations.py:872(getk)
+        1    0.000    0.000    0.001    0.001 19Python_constellations.py:80(NQueens19)
+      416    0.001    0.000    0.001    0.000 19Python_constellations.py:857(mirvert)
+     4680    0.001    0.000    0.001    0.000 19Python_constellations.py:876(getl)
+   285/14    0.001    0.000    0.001    0.000 19Python_constellations.py:358(SQd2BklB)
+  487/278    0.001    0.000    0.001    0.000 19Python_constellations.py:484(SQd2BlB)
+   128/10    0.000    0.000    0.001    0.000 19Python_constellations.py:668(SQBlBkBjrB)
+  699/452    0.001    0.000    0.001    0.000 19Python_constellations.py:926(set_pre_queens)
+        4    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:921(_find_spec)
+  680/334    0.001    0.000    0.001    0.000 19Python_constellations.py:624(SQBjrB)
+        3    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:564(module_from_spec)
+        8    0.000    0.000    0.001    0.000 typing.py:306(inner)
+  167/132    0.000    0.000    0.001    0.000 19Python_constellations.py:684(SQBkBjrB)
+     2332    0.001    0.000    0.001    0.000 {built-in function min}
+        2    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:770(create_module)
+    154/8    0.000    0.000    0.001    0.000 19Python_constellations.py:718(SQBlkBjrB)
+        2    0.000    0.000    0.000    0.000 datetime.py:1716(now)
+        2    0.000    0.000    0.000    0.000 datetime.py:1701(fromtimestamp)
+        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1445(find_spec)
+        2    0.000    0.000    0.000    0.000 datetime.py:1657(_fromtimestamp)
+        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1413(_get_spec)
+     1448    0.000    0.000    0.000    0.000 19Python_constellations.py:835(to_ijkl)
        19    0.000    0.000    0.000    0.000 datetime.py:468(__new__)
-        9    0.000    0.000    0.000    0.000 datetime.py:52(_days_before_year)
+        3    0.000    0.000    0.000    0.000 typing.py:1138(__getitem__)
+       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:16(__new__)
+     47/3    0.000    0.000    0.000    0.000 19Python_constellations.py:607(SQBkBlBjrB)
+        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1550(find_spec)
+       52    0.000    0.000    0.000    0.000 19Python_constellations.py:591(SQBlBjrB)
+        3    0.000    0.000    0.000    0.000 typing.py:1147(copy_with)
+       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:122(_make_parameters)
+        3    0.000    0.000    0.000    0.000 typing.py:1016(__init__)
+     91/3    0.000    0.000    0.000    0.000 19Python_constellations.py:701(SQBklBjrB)
+        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:169(__enter__)
+        4    0.000    0.000    0.000    0.000 {built-in function time.localtime}
+        7    0.000    0.000    0.000    0.000 datetime.py:1588(__new__)
+        9    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:140(_path_stat)
+      243    0.000    0.000    0.000    0.000 19Python_constellations.py:1182(<genexpr>)
+        4    0.000    0.000    0.000    0.000 __init__.py:89(find_spec)
+       24    0.000    0.000    0.000    0.000 typing.py:986(__setattr__)
+        9    0.000    0.000    0.000    0.000 {built-in function posix.stat}
+        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:179(_get_module_lock)
+      348    0.000    0.000    0.000    0.000 {built-in function isinstance}
+        8    0.000    0.000    0.000    0.000 functools.py:460(_make_key)
+      488    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
+        3    0.000    0.000    0.000    0.000 datetime.py:2110(__sub__)
+        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:492(_init_module_attrs)
+      467    0.000    0.000    0.000    0.000 {built-in function len}
+      592    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        3    0.000    0.000    0.000    0.000 typing.py:947(__init__)
+        2    0.000    0.000    0.000    0.000 {built-in function _imp.create_builtin}
+        7    0.000    0.000    0.000    0.000 typing.py:1143(<genexpr>)
+       22    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:126(_path_join)
+        4    0.000    0.000    0.000    0.000 typing.py:146(_type_check)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1084(get_data)
+        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:746(find_spec)
+        1    0.000    0.000    0.000    0.000 datetime.py:2274(timezone)
+        8    0.000    0.000    0.000    0.000 functools.py:453(__init__)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1136(<listcomp>)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:391(cached)
+       24    0.000    0.000    0.000    0.000 typing.py:935(_is_dunder)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:421(spec_from_loader)
+        1    0.000    0.000    0.000    0.000 datetime.py:1580(datetime)
+        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:173(__exit__)
+       22    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:128(<listcomp>)
+        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:394(cache_from_source)
+       28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:118(_is_typevar)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:524(_get_cached)
+        9    0.000    0.000    0.000    0.000 datetime.py:392(_check_date_fields)
+        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:100(acquire)
+        2    0.000    0.000    0.000    0.000 datetime.py:1255(__new__)
+       25    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:244(_verbose_message)
+        1    0.000    0.000    0.000    0.000 datetime.py:773(date)
+        1    0.000    0.000    0.000    0.000 {built-in function _imp._fix_co_filename}
+    62/60    0.000    0.000    0.000    0.000 19Python_constellations.py:650(SQB)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1545(_get_spec)
+        2    0.000    0.000    0.000    0.000 datetime.py:641(__neg__)
+        8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:125(release)
+        1    0.000    0.000    0.000    0.000 datetime.py:449(timedelta)
+        9    0.000    0.000    0.000    0.000 datetime.py:405(_check_time_fields)
+        2    0.000    0.000    0.000    0.000 datetime.py:627(__sub__)
+        1    0.000    0.000    0.000    0.000 datetime.py:1230(time)
+        4    0.000    0.000    0.000    0.000 {built-in function locals}
+        3    0.000    0.000    0.000    0.000 typing.py:206(_collect_type_vars)
+        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1370(_path_importer_cache)
+        6    0.000    0.000    0.000    0.000 datetime.py:986(toordinal)
+        1    0.000    0.000    0.000    0.000 {method 'read' of '_io.BufferedReader' objects}
+        3    0.000    0.000    0.000    0.000 datetime.py:2297(_create)
+        1    0.000    0.000    0.000    0.000 {built-in function _io.open_code}
+     11/8    0.000    0.000    0.000    0.000 {built-in function hash}
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:254(_requires_builtin_wrapper)
+       18    0.000    0.000    0.000    0.000 {built-in function getattr}
+        5    0.000    0.000    0.000    0.000 {method 'format' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:159(_path_isfile)
+       24    0.000    0.000    0.000    0.000 {method '__setattr__' of '_BaseGenericAlias' objects}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:735(spec_from_file_location)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:150(_path_is_mode_type)
+       31    0.000    0.000    0.000    0.000 {method '__new__' of 'type' objects}
+        6    0.000    0.000    0.000    0.000 datetime.py:69(_ymd2ord)
+        2    0.000    0.000    0.000    0.000 datetime.py:803(__new__)
+       97    0.000    0.000    0.000    0.000 {built-in function divmod}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1103(path_stats)
+        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:71(__init__)
+      152    0.000    0.000    0.000    0.000 {built-in function abs}
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:216(_lock_unlock_module)
+       21    0.000    0.000    0.000    0.000 {built-in function round}
+        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:968(_sanity_check)
+       12    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:897(__exit__)
+        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:132(_path_split)
+       18    0.000    0.000    0.000    0.000 {built-in function hasattr}
+       14    0.000    0.000    0.000    0.000 functools.py:457(__hash__)
+       25    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
+        4    0.000    0.000    0.000    0.000 utf_8.py:19(encode)
+       12    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:893(__enter__)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        2    0.000    0.000    0.000    0.000 {built-in function posix.getcwd}
+        3    0.000    0.000    0.000    0.000 datetime.py:1195(__new__)
+        3    0.000    0.000    0.000    0.000 typing.py:1037(__hash__)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:599(_classify_pyc)
        15    0.000    0.000    0.000    0.000 datetime.py:57(_days_in_month)
         1    0.000    0.000    0.000    0.000 datetime.py:583(__str__)
-        2    0.000    0.000    0.000    0.000 datetime.py:601(days)
-        2    0.000    0.000    0.000    0.000 datetime.py:627(__sub__)
-        6    0.000    0.000    0.000    0.000 datetime.py:64(_days_before_month)
-        2    0.000    0.000    0.000    0.000 datetime.py:641(__neg__)
-        6    0.000    0.000    0.000    0.000 datetime.py:69(_ymd2ord)
-        1    0.000    0.000    0.000    0.000 datetime.py:773(date)
-        2    0.000    0.000    0.000    0.000 datetime.py:803(__new__)
-        6    0.000    0.000    0.000    0.000 datetime.py:986(toordinal)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1054(__init__)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1079(get_filename)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1084(get_data)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1103(path_stats)
-       22    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:126(_path_join)
-       22    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:128(<listcomp>)
-        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:132(_path_split)
-        4    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:134(<genexpr>)
-        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1370(_path_importer_cache)
-        9    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:140(_path_stat)
-        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1413(_get_spec)
-        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1445(find_spec)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:150(_path_is_mode_type)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1545(_get_spec)
-        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1550(find_spec)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:159(_path_isfile)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:180(_path_isabs)
-        2    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:394(cache_from_source)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:524(_get_cached)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:556(_check_name_wrapper)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:599(_classify_pyc)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:632(_validate_timestamp_pyc)
-        1    0.000    0.000    0.001    0.001 frozen importlib._bootstrap_external:684(_compile_bytecode)
-        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:71(_relax_case)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:735(spec_from_file_location)
-        3    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:84(_unpack_uint32)
-        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:888(create_module)
-        1    0.000    0.000    0.002    0.002 frozen importlib._bootstrap_external:891(exec_module)
-        1    0.000    0.000    0.001    0.001 frozen importlib._bootstrap_external:964(get_code)
-        8    0.000    0.000    0.000    0.000 functools.py:453(__init__)
-       14    0.000    0.000    0.000    0.000 functools.py:457(__hash__)
-        8    0.000    0.000    0.000    0.000 functools.py:460(_make_key)
-        3    0.000    0.000    0.000    0.000 typing.py:1016(__init__)
-        7    0.000    0.000    0.000    0.000 typing.py:1022(<genexpr>)
-        6    0.000    0.000    0.000    0.000 typing.py:1031(__eq__)
-        3    0.000    0.000    0.000    0.000 typing.py:1037(__hash__)
-        3    0.000    0.000    0.000    0.000 typing.py:1138(__getitem__)
-        7    0.000    0.000    0.000    0.000 typing.py:1143(<genexpr>)
-        3    0.000    0.000    0.000    0.000 typing.py:1147(copy_with)
-        4    0.000    0.000    0.000    0.000 typing.py:137(_type_convert)
-        4    0.000    0.000    0.000    0.000 typing.py:146(_type_check)
-        3    0.000    0.000    0.000    0.000 typing.py:206(_collect_type_vars)
-        1    0.000    0.000    0.000    0.000 typing.py:219(<listcomp>)
-        3    0.000    0.000    0.000    0.000 typing.py:223(_check_generic)
-        8    0.000    0.000    0.000    0.000 typing.py:306(inner)
-       24    0.000    0.000    0.000    0.000 typing.py:935(_is_dunder)
-        3    0.000    0.000    0.000    0.000 typing.py:947(__init__)
-       24    0.000    0.000    0.000    0.000 typing.py:986(__setattr__)
-        4    0.000    0.000    0.000    0.000 utf_8.py:19(encode)
-        9    0.000    0.000    0.001    0.000 {built-in function __build_class__}
-        4    0.000    0.000    0.000    0.000 {built-in function _codecs.utf_8_encode}
-        1    0.000    0.000    0.000    0.000 {built-in function _imp._fix_co_filename}
-       20    0.000    0.000    0.000    0.000 {built-in function _imp.acquire_lock}
-        2    0.000    0.000    0.000    0.000 {built-in function _imp.create_builtin}
-        2    0.000    0.000    0.000    0.000 {built-in function _imp.exec_builtin}
-        4    0.000    0.000    0.000    0.000 {built-in function _imp.is_builtin}
-        2    0.000    0.000    0.000    0.000 {built-in function _imp.is_frozen}
-       20    0.000    0.000    0.000    0.000 {built-in function _imp.release_lock}
-        1    0.000    0.000    0.000    0.000 {built-in function _io.open_code}
-       63    0.000    0.000    0.000    0.000 {built-in function _operator.index}
-        8    0.000    0.000    0.000    0.000 {built-in function _thread.allocate_lock}
-       16    0.000    0.000    0.000    0.000 {built-in function _thread.get_ident}
-      152    0.000    0.000    0.000    0.000 {built-in function abs}
-        1    0.000    0.000    0.000    0.000 {built-in function callable}
-       97    0.000    0.000    0.000    0.000 {built-in function divmod}
-      2/1    0.000    0.000    0.109    0.109 {built-in function exec}
-       18    0.000    0.000    0.000    0.000 {built-in function getattr}
-       18    0.000    0.000    0.000    0.000 {built-in function hasattr}
-     11/8    0.000    0.000    0.000    0.000 {built-in function hash}
-      348    0.000    0.000    0.000    0.000 {built-in function isinstance}
-      467    0.000    0.000    0.000    0.000 {built-in function len}
-        4    0.000    0.000    0.000    0.000 {built-in function locals}
-        1    0.001    0.001    0.001    0.001 {built-in function marshal.loads}
-        2    0.000    0.000    0.000    0.000 {built-in function math.modf}
         2    0.000    0.000    0.000    0.000 {built-in function max}
-     2332    0.001    0.000    0.001    0.000 {built-in function min}
-        3    0.000    0.000    0.000    0.000 {built-in function posix.fspath}
-        2    0.000    0.000    0.000    0.000 {built-in function posix.getcwd}
-        9    0.000    0.000    0.000    0.000 {built-in function posix.stat}
-        1    0.000    0.000    0.000    0.000 {built-in function pypyjit.set_param}
-       21    0.000    0.000    0.000    0.000 {built-in function round}
-        4    0.000    0.000    0.000    0.000 {built-in function time.localtime}
-        2    0.000    0.000    0.000    0.000 {built-in function time.time}
-        1    0.000    0.000    0.000    0.000 {method '__exit__' of '_io._IOBase' objects}
-       16    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
-       31    0.000    0.000    0.000    0.000 {method '__new__' of 'type' objects}
-       24    0.000    0.000    0.000    0.000 {method '__setattr__' of '_BaseGenericAlias' objects}
-      488    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
-      592    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
-        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
-       13    0.000    0.000    0.000    0.000 {method 'endswith' of 'str' objects}
-        1    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
-        5    0.000    0.000    0.000    0.000 {method 'format' of 'str' objects}
-        3    0.000    0.000    0.000    0.000 {method 'from_bytes' of 'type' objects}
-        6    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
-       24    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
-        2    0.000    0.000    0.000    0.000 {method 'partition' of 'str' objects}
-        3    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
-        1    0.000    0.000    0.000    0.000 {method 'read' of '_io.BufferedReader' objects}
-        2    0.000    0.000    0.000    0.000 {method 'rfind' of 'str' objects}
+       63    0.000    0.000    0.000    0.000 {built-in function _operator.index}
+        3    0.000    0.000    0.000    0.000 typing.py:223(_check_generic)
+       20    0.000    0.000    0.000    0.000 {built-in function _imp.acquire_lock}
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:778(exec_module)
+        6    0.000    0.000    0.000    0.000 typing.py:1031(__eq__)
        16    0.000    0.000    0.000    0.000 {method 'rpartition' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:48(_new_module)
+        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:404(parent)
+        4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:357(__init__)
+        3    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:84(_unpack_uint32)
        46    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
-       25    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
-        1    0.000    0.000    0.016    0.016 {method 'update' of 'set' objects}
+        2    0.000    0.000    0.000    0.000 {built-in function time.time}
+        4    0.000    0.000    0.000    0.000 typing.py:137(_type_convert)
+       20    0.000    0.000    0.000    0.000 {built-in function _imp.release_lock}
+       13    0.000    0.000    0.000    0.000 {method 'endswith' of 'str' objects}
+        9    0.000    0.000    0.000    0.000 datetime.py:52(_days_before_year)
+       24    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 {method '__exit__' of '_io._IOBase' objects}
+        6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:165(__init__)
+        1    0.000    0.000    0.000    0.000 datetime.py:1199(IsoCalendarDate)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:556(_check_name_wrapper)
+        2    0.000    0.000    0.000    0.000 {built-in function math.modf}
+        7    0.000    0.000    0.000    0.000 typing.py:1022(<genexpr>)
+        4    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:134(<genexpr>)
+        3    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
+        8    0.000    0.000    0.000    0.000 {built-in function _thread.allocate_lock}
+        6    0.000    0.000    0.000    0.000 datetime.py:64(_days_before_month)
+       11    0.000    0.000    0.000    0.000 datetime.py:422(_check_tzinfo_arg)
+        4    0.000    0.000    0.000    0.000 {built-in function _imp.is_builtin}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:632(_validate_timestamp_pyc)
+        1    0.000    0.000    0.000    0.000 {built-in function pypyjit.set_param}
+        6    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:180(_path_isabs)
+        1    0.000    0.000    0.000    0.000 datetime.py:1125(tzinfo)
+       16    0.000    0.000    0.000    0.000 {built-in function _thread.get_ident}
+        4    0.000    0.000    0.000    0.000 {built-in function _codecs.utf_8_encode}
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:826(find_spec)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1167(NQueens19_constellations)
+        3    0.000    0.000    0.000    0.000 {method 'from_bytes' of 'type' objects}
+       16    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
+        4    0.000    0.000    0.000    0.000 __init__.py:96(<lambda>)
+        7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:71(_relax_case)
+        2    0.000    0.000    0.000    0.000 {method 'partition' of 'str' objects}
+        3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:412(has_location)
+        3    0.000    0.000    0.000    0.000 {built-in function posix.fspath}
+        2    0.000    0.000    0.000    0.000 {built-in function _imp.is_frozen}
+        2    0.000    0.000    0.000    0.000 {built-in function _imp.exec_builtin}
+        2    0.000    0.000    0.000    0.000 {method 'rfind' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 {built-in function callable}
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1054(__init__)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:795(is_package)
+        2    0.000    0.000    0.000    0.000 datetime.py:601(days)
+        1    0.000    0.000    0.000    0.000 typing.py:219(<listcomp>)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:888(create_module)
+        1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:1079(get_filename)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:81(__init__)
 
 
