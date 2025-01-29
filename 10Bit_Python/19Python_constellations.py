@@ -939,7 +939,7 @@ class NQueens19:
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
-      bit=free&-free  # 最も下位の1ビットを取得
+      bit=-free&free  # 最も下位の1ビットを取得
       free-=bit  # 使用済みビットを削除
       # クイーンを配置し、次の行に進む
       self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
