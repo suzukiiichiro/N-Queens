@@ -1,55 +1,70 @@
  N:        Total       Unique        hh:mm:ss.ms
- 8:           92            0         0:00:00.005
-         6669 function calls (6519 primitive calls) in 0.013 seconds
+15:      2279184            0         0:00:10.010
+         18280254 function calls (3612134 primitive calls) in 10.015 seconds
 
    Ordered by: standard name
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.000    0.000    0.013    0.013 19Python_constellations.py:1(<module>)
-        1    0.000    0.000    0.001    0.001 19Python_constellations.py:1006(exec_solutions)
-     13/9    0.000    0.000    0.000    0.000 19Python_constellations.py:102(SQd0BkB)
-        1    0.001    0.001    0.005    0.005 19Python_constellations.py:1173(gen_constellations)
-     13/9    0.000    0.000    0.000    0.000 19Python_constellations.py:119(SQd1BklB)
-      150    0.000    0.000    0.000    0.000 19Python_constellations.py:1220(check_rotations)
-      233    0.000    0.000    0.000    0.000 19Python_constellations.py:1245(to_ijkl)
-      381    0.000    0.000    0.000    0.000 19Python_constellations.py:1255(ffmin)
-       78    0.001    0.000    0.004    0.000 19Python_constellations.py:1259(jasmin)
-      623    0.000    0.000    0.000    0.000 19Python_constellations.py:1291(geti)
-      813    0.000    0.000    0.000    0.000 19Python_constellations.py:1295(getj)
-      664    0.000    0.000    0.000    0.000 19Python_constellations.py:1299(getk)
-      584    0.000    0.000    0.000    0.000 19Python_constellations.py:1303(getl)
-       63    0.000    0.000    0.000    0.000 19Python_constellations.py:1307(mirvert)
-      158    0.002    0.000    0.003    0.000 19Python_constellations.py:1318(rot90)
-   138/78    0.000    0.000    0.000    0.000 19Python_constellations.py:1329(set_pre_queens)
-    36/25    0.000    0.000    0.000    0.000 19Python_constellations.py:136(SQd1B)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1380(NQueens19_constellations)
-        1    0.000    0.000    0.006    0.006 19Python_constellations.py:1382(main)
-       13    0.000    0.000    0.000    0.000 19Python_constellations.py:1401(<genexpr>)
-     12/9    0.000    0.000    0.000    0.000 19Python_constellations.py:154(SQd1BkBlB)
-    13/11    0.000    0.000    0.000    0.000 19Python_constellations.py:214(SQd1BlB)
-     13/9    0.000    0.000    0.000    0.000 19Python_constellations.py:260(SQd1BlkB)
-     11/9    0.000    0.000    0.000    0.000 19Python_constellations.py:318(SQd1BlBkB)
-    28/19    0.000    0.000    0.000    0.000 19Python_constellations.py:375(SQd1BkB)
-      8/4    0.000    0.000    0.000    0.000 19Python_constellations.py:411(SQd2BlkB)
-      5/2    0.000    0.000    0.000    0.000 19Python_constellations.py:451(SQd2BklB)
-        2    0.000    0.000    0.000    0.000 19Python_constellations.py:497(SQd2BkB)
-        3    0.000    0.000    0.000    0.000 19Python_constellations.py:543(SQd2BlBkB)
-     15/9    0.000    0.000    0.000    0.000 19Python_constellations.py:699(SQd2B)
-        1    0.000    0.000    0.002    0.002 19Python_constellations.py:79(NQueens19)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:80(__init__)
-    45/24    0.000    0.000    0.000    0.000 19Python_constellations.py:84(SQd0B)
-        1    0.000    0.000    0.000    0.000 19Python_constellations.py:903(SQBlkBjrB)
-        9    0.000    0.000    0.000    0.000 19Python_constellations.py:975(symmetry90)
-       92    0.000    0.000    0.000    0.000 19Python_constellations.py:987(symmetry)
+        1    0.000    0.000   10.015   10.015 19Python_constellations.py:1(<module>)
+310945/450    0.193    0.000    1.042    0.002 19Python_constellations.py:101(SQd0BkB)
+        1    0.022    0.022    0.148    0.148 19Python_constellations.py:1114(gen_constellations)
+     2233    0.012    0.000    0.029    0.000 19Python_constellations.py:1130(<genexpr>)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1136(<listcomp>)
+        1    0.004    0.004    0.084    0.084 19Python_constellations.py:1141(<listcomp>)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:1167(NQueens19_constellations)
+        1    0.002    0.002   10.011   10.011 19Python_constellations.py:1168(main)
+125910/95    0.084    0.000    0.263    0.003 19Python_constellations.py:118(SQd1BklB)
+     2879    0.002    0.000    0.002    0.000 19Python_constellations.py:1182(<genexpr>)
+2963649/672145    1.603    0.000    1.603    0.000 19Python_constellations.py:135(SQd1B)
+256129/435    0.151    0.000    1.121    0.003 19Python_constellations.py:153(SQd1BkBlB)
+972764/145462    0.514    0.000    1.045    0.000 19Python_constellations.py:198(SQd1BlB)
+126761/95    0.090    0.000    0.273    0.003 19Python_constellations.py:229(SQd1BlkB)
+263971/435    0.148    0.000    1.295    0.003 19Python_constellations.py:272(SQd1BlBkB)
+1260881/171542    0.616    0.000    1.285    0.000 19Python_constellations.py:314(SQd1BkB)
+149338/76    0.102    0.000    0.306    0.004 19Python_constellations.py:335(SQd2BlkB)
+110462/60    0.080    0.000    0.248    0.004 19Python_constellations.py:358(SQd2BklB)
+886337/162416    0.446    0.000    0.938    0.000 19Python_constellations.py:401(SQd2BkB)
+248054/282    0.142    0.000    1.080    0.004 19Python_constellations.py:444(SQd2BlBkB)
+603692/122945    0.305    0.000    0.670    0.000 19Python_constellations.py:484(SQd2BlB)
+162832/216    0.122    0.000    0.792    0.004 19Python_constellations.py:524(SQd2BkBlB)
+2464473/663136    1.229    0.000    1.229    0.000 19Python_constellations.py:567(SQd2B)
+354205/116613    0.189    0.000    0.663    0.000 19Python_constellations.py:591(SQBlBjrB)
+98120/114    0.078    0.000    0.741    0.007 19Python_constellations.py:607(SQBkBlBjrB)
+3114076/777792    1.666    0.000    1.860    0.000 19Python_constellations.py:624(SQBjrB)
+309335/263055    0.194    0.000    0.194    0.000 19Python_constellations.py:650(SQB)
+168901/177    0.116    0.000    1.130    0.006 19Python_constellations.py:668(SQBlBkBjrB)
+534679/162162    0.281    0.000    1.014    0.000 19Python_constellations.py:684(SQBkBjrB)
+115749/50    0.084    0.000    0.346    0.007 19Python_constellations.py:701(SQBklBjrB)
+176206/75    0.108    0.000    0.499    0.007 19Python_constellations.py:718(SQBlkBjrB)
+     4830    0.012    0.000    0.016    0.000 19Python_constellations.py:799(check_rotations)
+        1    0.000    0.000    0.001    0.001 19Python_constellations.py:80(NQueens19)
+        1    0.000    0.000    0.000    0.000 19Python_constellations.py:81(__init__)
+    14144    0.004    0.000    0.004    0.000 19Python_constellations.py:811(<genexpr>)
+     2884    0.007    0.000    0.037    0.000 19Python_constellations.py:813(symmetry)
+     2884    0.014    0.000    0.028    0.000 19Python_constellations.py:825(symmetry90)
+2301528/151913    1.231    0.000    1.231    0.000 19Python_constellations.py:83(SQd0B)
+     7426    0.003    0.000    0.003    0.000 19Python_constellations.py:835(to_ijkl)
+     6196    0.005    0.000    0.011    0.000 19Python_constellations.py:846(rot90)
+     2232    0.006    0.000    0.009    0.000 19Python_constellations.py:857(mirvert)
+    12213    0.005    0.000    0.006    0.000 19Python_constellations.py:860(ffmin)
+    26070    0.011    0.000    0.011    0.000 19Python_constellations.py:864(geti)
+    31508    0.009    0.000    0.009    0.000 19Python_constellations.py:868(getj)
+    28066    0.009    0.000    0.009    0.000 19Python_constellations.py:872(getk)
+    24186    0.008    0.000    0.008    0.000 19Python_constellations.py:876(getl)
+     2310    0.043    0.000    0.078    0.000 19Python_constellations.py:886(jasmin)
+     6196    0.003    0.000    0.014    0.000 19Python_constellations.py:905(<lambda>)
+3157/2310    0.005    0.000    0.005    0.000 19Python_constellations.py:926(set_pre_queens)
+        1    0.047    0.047    9.858    9.858 19Python_constellations.py:947(exec_solutions)
         8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:100(acquire)
-      6/3    0.000    0.000    0.004    0.001 <frozen importlib._bootstrap>:1022(_find_and_load)
-      6/3    0.000    0.000    0.004    0.001 <frozen importlib._bootstrap>:1038(_gcd_import)
-      4/2    0.000    0.000    0.004    0.002 <frozen importlib._bootstrap>:1117(__import__)
+      6/3    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:1022(_find_and_load)
+      6/3    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:1038(_gcd_import)
+      4/2    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:1117(__import__)
         8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:125(release)
         6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:165(__init__)
         6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:169(__enter__)
         6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:173(__exit__)
         8    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:179(_get_module_lock)
+       75    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:198(cb)
         2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:216(_lock_unlock_module)
       5/3    0.000    0.000    0.002    0.001 <frozen importlib._bootstrap>:233(_call_with_frames_removed)
        25    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:244(_verbose_message)
@@ -62,10 +77,10 @@
         1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:48(_new_module)
         3    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:492(_init_module_attrs)
         3    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:564(module_from_spec)
-      3/2    0.000    0.000    0.004    0.002 <frozen importlib._bootstrap>:664(_load_unlocked)
+      3/2    0.000    0.000    0.002    0.001 <frozen importlib._bootstrap>:664(_load_unlocked)
         4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:71(__init__)
         4    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:746(find_spec)
-        2    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:770(create_module)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:770(create_module)
         2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:778(exec_module)
         2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:795(is_package)
         2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:826(find_spec)
@@ -73,7 +88,7 @@
        12    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:897(__exit__)
         4    0.000    0.000    0.001    0.000 <frozen importlib._bootstrap>:921(_find_spec)
         6    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:968(_sanity_check)
-      4/2    0.000    0.000    0.004    0.002 <frozen importlib._bootstrap>:987(_find_and_load_unlocked)
+      4/2    0.000    0.000    0.003    0.001 <frozen importlib._bootstrap>:987(_find_and_load_unlocked)
         4    0.000    0.000    0.000    0.000 __init__.py:89(find_spec)
         4    0.000    0.000    0.000    0.000 __init__.py:96(<lambda>)
        28    0.000    0.000    0.000    0.000 _pypy_generic_alias.py:118(_is_typevar)
@@ -131,13 +146,13 @@
         1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:556(_check_name_wrapper)
         1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:599(_classify_pyc)
         1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:632(_validate_timestamp_pyc)
-        1    0.000    0.000    0.002    0.002 frozen importlib._bootstrap_external:684(_compile_bytecode)
+        1    0.000    0.000    0.001    0.001 frozen importlib._bootstrap_external:684(_compile_bytecode)
         7    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:71(_relax_case)
         1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:735(spec_from_file_location)
         3    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:84(_unpack_uint32)
         1    0.000    0.000    0.000    0.000 frozen importlib._bootstrap_external:888(create_module)
-        1    0.000    0.000    0.004    0.004 frozen importlib._bootstrap_external:891(exec_module)
-        1    0.000    0.000    0.002    0.002 frozen importlib._bootstrap_external:964(get_code)
+        1    0.000    0.000    0.002    0.002 frozen importlib._bootstrap_external:891(exec_module)
+        1    0.000    0.000    0.001    0.001 frozen importlib._bootstrap_external:964(get_code)
         8    0.000    0.000    0.000    0.000 functools.py:453(__init__)
        14    0.000    0.000    0.000    0.000 functools.py:457(__hash__)
         8    0.000    0.000    0.000    0.000 functools.py:460(_make_key)
@@ -153,20 +168,20 @@
         3    0.000    0.000    0.000    0.000 typing.py:206(_collect_type_vars)
         1    0.000    0.000    0.000    0.000 typing.py:219(<listcomp>)
         3    0.000    0.000    0.000    0.000 typing.py:223(_check_generic)
-        8    0.001    0.000    0.002    0.000 typing.py:306(inner)
+        8    0.000    0.000    0.000    0.000 typing.py:306(inner)
        24    0.000    0.000    0.000    0.000 typing.py:935(_is_dunder)
         3    0.000    0.000    0.000    0.000 typing.py:947(__init__)
        24    0.000    0.000    0.000    0.000 typing.py:986(__setattr__)
-        4    0.000    0.000    0.000    0.000 utf_8.py:19(encode)
-        9    0.000    0.000    0.002    0.000 {built-in function __build_class__}
-        4    0.000    0.000    0.000    0.000 {built-in function _codecs.utf_8_encode}
-        1    0.001    0.001    0.001    0.001 {built-in function _imp._fix_co_filename}
-       20    0.000    0.000    0.000    0.000 {built-in function _imp.acquire_lock}
+        4    0.000    0.000    0.001    0.000 utf_8.py:19(encode)
+        9    0.000    0.000    0.001    0.000 {built-in function __build_class__}
+        4    0.001    0.000    0.001    0.000 {built-in function _codecs.utf_8_encode}
+        1    0.000    0.000    0.000    0.000 {built-in function _imp._fix_co_filename}
+       95    0.000    0.000    0.000    0.000 {built-in function _imp.acquire_lock}
         2    0.000    0.000    0.000    0.000 {built-in function _imp.create_builtin}
         2    0.000    0.000    0.000    0.000 {built-in function _imp.exec_builtin}
         4    0.000    0.000    0.000    0.000 {built-in function _imp.is_builtin}
         2    0.000    0.000    0.000    0.000 {built-in function _imp.is_frozen}
-       20    0.000    0.000    0.000    0.000 {built-in function _imp.release_lock}
+       95    0.000    0.000    0.000    0.000 {built-in function _imp.release_lock}
         1    0.000    0.000    0.000    0.000 {built-in function _io.open_code}
        63    0.000    0.000    0.000    0.000 {built-in function _operator.index}
         8    0.000    0.000    0.000    0.000 {built-in function _thread.allocate_lock}
@@ -174,17 +189,17 @@
       152    0.000    0.000    0.000    0.000 {built-in function abs}
         1    0.000    0.000    0.000    0.000 {built-in function callable}
        97    0.000    0.000    0.000    0.000 {built-in function divmod}
-      2/1    0.000    0.000    0.013    0.013 {built-in function exec}
+      2/1    0.000    0.000   10.015   10.015 {built-in function exec}
        18    0.000    0.000    0.000    0.000 {built-in function getattr}
        18    0.000    0.000    0.000    0.000 {built-in function hasattr}
      11/8    0.000    0.000    0.000    0.000 {built-in function hash}
       348    0.000    0.000    0.000    0.000 {built-in function isinstance}
-       93    0.000    0.000    0.000    0.000 {built-in function len}
+     2325    0.000    0.000    0.000    0.000 {built-in function len}
         4    0.000    0.000    0.000    0.000 {built-in function locals}
         1    0.001    0.001    0.001    0.001 {built-in function marshal.loads}
         2    0.000    0.000    0.000    0.000 {built-in function math.modf}
         2    0.000    0.000    0.000    0.000 {built-in function max}
-      383    0.000    0.000    0.000    0.000 {built-in function min}
+    12215    0.001    0.000    0.001    0.000 {built-in function min}
         3    0.000    0.000    0.000    0.000 {built-in function posix.fspath}
         2    0.000    0.000    0.000    0.000 {built-in function posix.getcwd}
         9    0.000    0.000    0.000    0.000 {built-in function posix.stat}
@@ -196,14 +211,14 @@
        16    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
        31    0.000    0.000    0.000    0.000 {method '__new__' of 'type' objects}
        24    0.000    0.000    0.000    0.000 {method '__setattr__' of '_BaseGenericAlias' objects}
-      156    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
-      104    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+     2388    0.002    0.000    0.002    0.000 {method 'add' of 'set' objects}
+     2896    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
         1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
        13    0.000    0.000    0.000    0.000 {method 'endswith' of 'str' objects}
         1    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
         5    0.000    0.000    0.000    0.000 {method 'format' of 'str' objects}
         3    0.000    0.000    0.000    0.000 {method 'from_bytes' of 'type' objects}
-        6    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+       81    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
        24    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
         2    0.000    0.000    0.000    0.000 {method 'partition' of 'str' objects}
         3    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
@@ -212,5 +227,6 @@
        16    0.000    0.000    0.000    0.000 {method 'rpartition' of 'str' objects}
        46    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
        25    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
+        1    0.002    0.002    0.031    0.031 {method 'update' of 'set' objects}
 
 
