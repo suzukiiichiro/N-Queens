@@ -63,6 +63,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 15:      2279184            0         0:00:44.993
 """
 
+from functools import reduce
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -79,7 +80,6 @@ pypyjit.set_param('max_unroll_recursion=-1')
 class NQueens19:
   def __init__(self):
     pass
-  #
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
@@ -787,19 +787,162 @@ class NQueens19:
       if next_free:
         self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
-  def symmetry90(self,ijkl:int,N:int)->bool:
-    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+  """
+  回転対称性をチェックする関数
+  Args:
+      ijkl_list (set): 回転対称性を保持する集合
+      i,j,k,l (int): 配置のインデックス
+      N (int): ボードのサイズ
+  Returns:
+      bool: 回転対称性が見つかった場合はTrue、見つからない場合はFalse
+  """
+  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
+    rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
+    rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
+    rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
+    # 回転対称性をチェック
+    # if rot90 in ijkl_list:
+    #   return True
+    # if rot180 in ijkl_list:
+    #   return True
+    # if rot270 in ijkl_list:
+    #   return True
+    # return False
+    return any(rot in ijkl_list for rot in (rot90, rot180, rot270))
   #
   def symmetry(self,ijkl:int,N:int)->int:
-    # Check if the constellation is symmetric by 180 degrees
+    """
     if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl):
-      # Check if the constellation is also symmetric by 90 degrees
       if self.symmetry90(ijkl,N):
         return 2
       else:
         return 4
     else:
       return 8
+    """
+    return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  #
+  def symmetry90(self,ijkl:int,N:int)->bool:
+    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+  #
+  """
+  i,j,k,l のインデックスを1つの整数に変換する関数
+  Args:
+      i,j,k,l (int): 各インデックス
+  Returns:
+      int: i,j,k,l を基にした1つの整数
+  """
+  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
+    return (i<<15)+(j<<10)+(k<<5)+l
+  #
+  """
+  時計回りに90度回転する。
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: 90度回転後の配置をエンコードした整数
+  """
+  def rot90(self,ijkl:int,N:int)->int:
+    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+  #
+  """
+  垂直方向のミラーリングを行う。
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: ミラーリング後の配置をエンコードした整数
+  """
+  def mirvert(self,ijkl:int,N:int)->int:
+    return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+  """2つの値のうち最小値を返す"""
+  def ffmin(self,a:int,b:int)->int:
+    return min(a,b)
+  #
+  """iを抽出"""
+  def geti(self,ijkl:int)->int:
+    return (ijkl>>15)&0x1F
+  #
+  """jを抽出"""
+  def getj(self,ijkl:int)->int:
+    return (ijkl>>10)&0x1F
+  #
+  """kを抽出"""
+  def getk(self,ijkl:int)->int:
+    return (ijkl>>5)&0x1F
+  #
+  """lを抽出"""
+  def getl(self,ijkl:int)->int:
+    return ijkl&0x1F
+  """
+  クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: 標準形の配置をエンコードした整数
+  """
+  def jasmin(self,ijkl:int,N:int)->int:
+    # 最初の最小値と引数を設定
+    min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
+    arg=0
+    # i: 最初の行（上端） 90度回転2回
+    if self.ffmin(self.geti(ijkl),N-1-self.geti(ijkl))<min_val:
+      arg=2
+      min_val=self.ffmin(self.geti(ijkl),N-1-self.geti(ijkl))
+    # k: 最初の列（左端） 90度回転3回
+    if self.ffmin(self.getk(ijkl),N-1-self.getk(ijkl))<min_val:
+      arg=3
+      min_val=self.ffmin(self.getk(ijkl),N-1-self.getk(ijkl))
+    # l: 最後の列（右端） 90度回転1回
+    if self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))<min_val:
+      arg=1
+      min_val=self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))
+    # 90度回転を arg 回繰り返す
+    # for _ in range(arg):
+    #   ijkl=self.rot90(ijkl,N)
+    ijkl=reduce(lambda acc,_:self.rot90(acc,N),range(arg),ijkl)
+    # 必要に応じて垂直方向のミラーリングを実行
+    if self.getj(ijkl)<N-1-self.getj(ijkl):
+      ijkl=self.mirvert(ijkl,N)
+    return ijkl
+  #
+  """
+  ld: 左対角線の占領状態
+  rd: 右対角線の占領状態
+  col: 列の占領状態
+  k: 特定の行
+  l: 特定の行
+  row: 現在の行
+  queens: 配置済みのクイーンの数
+  LD: 左端の特殊な占領状態
+  RD: 右端の特殊な占領状態
+  counter: コンステレーションのカウント
+  constellations: コンステレーションリスト
+  N: ボードサイズ
+  preset_queens: 必要なクイーンの数
+  """
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+    mask=(1<<N)-1  # setPreQueensで使用
+    # k行とl行はスキップ
+    if row==k or row==l:
+      self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
+      return
+    # クイーンの数がpreset_queensに達した場合、現在の状態を保存
+    if queens==preset_queens:
+      constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
+      # 新しいコンステレーションをリストに追加
+      constellations.append(constellation)
+      counter[0]+=1
+      return
+    # 現在の行にクイーンを配置できる位置を計算
+    free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
+    while free:
+      bit=free&-free  # 最も下位の1ビットを取得
+      free-=bit  # 使用済みビットを削除
+      # クイーンを配置し、次の行に進む
+      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
   #
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     jmark=0  # ここで初期化
@@ -1020,151 +1163,8 @@ class NQueens19:
       # 生成されたサブコンステレーションにスタート情報を追加
       for a in range(counter[0]):
         constellations[current_size-a-1]["startijkl"]|=self.to_ijkl(i,j,k,l)
-  """
-  回転対称性をチェックする関数
-  Args:
-      ijkl_list (set): 回転対称性を保持する集合
-      i,j,k,l (int): 配置のインデックス
-      N (int): ボードのサイズ
-  Returns:
-      bool: 回転対称性が見つかった場合はTrue、見つからない場合はFalse
-  """
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
-    rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
-    rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
-    # 回転対称性をチェック
-    # if rot90 in ijkl_list:
-    #   return True
-    # if rot180 in ijkl_list:
-    #   return True
-    # if rot270 in ijkl_list:
-    #   return True
-    # return False
-    return any(rot in ijkl_list for rot in (rot90, rot180, rot270))
-  #
-  """
-  i,j,k,l のインデックスを1つの整数に変換する関数
-  Args:
-      i,j,k,l (int): 各インデックス
-  Returns:
-      int: i,j,k,l を基にした1つの整数
-  """
-  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
-    return (i<<15)+(j<<10)+(k<<5)+l
-  #
-  """2つの値のうち最小値を返す"""
-  def ffmin(self,a:int,b:int)->int:
-    return min(a,b)
-  #
-  """
-  クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する。
-  Args:
-      ijkl (int): 配置のエンコードされた整数
-      N (int): ボードサイズ
-  Returns:
-      int: 標準形の配置をエンコードした整数
-  """
-  def jasmin(self,ijkl:int,N:int)->int:
-    # 最初の最小値と引数を設定
-    min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
-    arg=0
-    # i: 最初の行（上端） 90度回転2回
-    if self.ffmin(self.geti(ijkl),N-1-self.geti(ijkl))<min_val:
-      arg=2
-      min_val=self.ffmin(self.geti(ijkl),N-1-self.geti(ijkl))
-    # k: 最初の列（左端） 90度回転3回
-    if self.ffmin(self.getk(ijkl),N-1-self.getk(ijkl))<min_val:
-      arg=3
-      min_val=self.ffmin(self.getk(ijkl),N-1-self.getk(ijkl))
-    # l: 最後の列（右端） 90度回転1回
-    if self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))<min_val:
-      arg=1
-      min_val=self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))
-    # 90度回転を arg 回繰り返す
-    for _ in range(arg):
-      ijkl=self.rot90(ijkl,N)
-    # 必要に応じて垂直方向のミラーリングを実行
-    if self.getj(ijkl)<N-1-self.getj(ijkl):
-      ijkl=self.mirvert(ijkl,N)
-    return ijkl
-  #
-  """iを抽出"""
-  def geti(self,ijkl:int)->int:
-    return (ijkl>>15)&0x1F
-  #
-  """jを抽出"""
-  def getj(self,ijkl:int)->int:
-    return (ijkl>>10)&0x1F
-  #
-  """kを抽出"""
-  def getk(self,ijkl:int)->int:
-    return (ijkl>>5)&0x1F
-  #
-  """lを抽出"""
-  def getl(self,ijkl:int)->int:
-    return ijkl&0x1F
-  #
-  """
-  垂直方向のミラーリングを行う。
-  Args:
-      ijkl (int): 配置のエンコードされた整数
-      N (int): ボードサイズ
-  Returns:
-      int: ミラーリング後の配置をエンコードした整数
-  """
-  def mirvert(self,ijkl:int,N:int)->int:
-    return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
-  #
-  """
-  時計回りに90度回転する。
-  Args:
-      ijkl (int): 配置のエンコードされた整数
-      N (int): ボードサイズ
-  Returns:
-      int: 90度回転後の配置をエンコードした整数
-  """
-  def rot90(self,ijkl:int,N:int)->int:
-    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
-  #
-  """
-  ld: 左対角線の占領状態
-  rd: 右対角線の占領状態
-  col: 列の占領状態
-  k: 特定の行
-  l: 特定の行
-  row: 現在の行
-  queens: 配置済みのクイーンの数
-  LD: 左端の特殊な占領状態
-  RD: 右端の特殊な占領状態
-  counter: コンステレーションのカウント
-  constellations: コンステレーションリスト
-  N: ボードサイズ
-  preset_queens: 必要なクイーンの数
-  """
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
-    mask=(1<<N)-1  # setPreQueensで使用
-    # k行とl行はスキップ
-    if row==k or row==l:
-      self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
-      return
-    # クイーンの数がpreset_queensに達した場合、現在の状態を保存
-    if queens==preset_queens:
-      constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
-      # 新しいコンステレーションをリストに追加
-      constellations.append(constellation)
-      counter[0]+=1
-      return
-    # 現在の行にクイーンを配置できる位置を計算
-    free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
-    while free:
-      bit=free&-free  # 最も下位の1ビットを取得
-      free-=bit  # 使用済みビットを削除
-      # クイーンを配置し、次の行に進む
-      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
 #
 class NQueens19_constellations():
-  #
   def main(self)->None:
     nmin:int=5
     nmax:int=16
@@ -1172,14 +1172,9 @@ class NQueens19_constellations():
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      # 必要なデータ構造を初期化
-      # ijkl_list=set()  # ijkl_listをセットで初期化
-      ijkl_list:Set[int]=set()  # ijkl_listをセットで初期化
-      # constellations=[]  # constellationsをリストで初期化
-      constellations:List[Dict[str,int]]=[]  # constellationsをリストで初期化
+      ijkl_list:Set[int]=set() 
+      constellations:List[Dict[str,int]]=[]
       NQ=NQueens19()
-      # preset_queensの設定 (Nに応じて定義)
-      # gen_constellations関数の呼び出し
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
