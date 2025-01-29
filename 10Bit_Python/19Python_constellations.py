@@ -19,7 +19,7 @@ CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:11.243
-# copy.deepcopy 
+# copy.deepcopy
 CentOS-5.1$ pypy 17Python_carryChain.py
 15:      2279184            0         0:00:48.769
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
@@ -68,7 +68,7 @@ from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
-# pypy では ThreadPool/ProcessPoolが動きます 
+# pypy では ThreadPool/ProcessPoolが動きます
 #
 # from threading import Thread
 # from multiprocessing import Pool as ThreadPool
@@ -80,7 +80,6 @@ class NQueens19:
   def __init__(self):
     pass
   #
- # def SQd0B(self,ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N):
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
@@ -152,21 +151,6 @@ class NQueens19:
           self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python version of the SQd1BkBlB function from the C code.
-    Args:
-        ld (int): Left diagonal occupancy.
-        rd (int): Right diagonal occupancy.
-        col (int): Column occupancy.
-        row (int): Current row.
-        free (int): Available positions for queens.
-        jmark (int): Marker for queen j's constraints.
-        endmark (int): Ending row marker.
-        mark1 (int): Row marker for specific processing.
-        mark2 (int): Unused in this function.
-        tempcounter (list): Counter for solutions (passed as a list to modify in place).
-        N (int): Size of the board.
-    """
     N3=N-3
     # When row reaches mark1
     if row==mark1:
@@ -212,21 +196,6 @@ class NQueens19:
         )
   #
   def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python version of the SQd1BlB function from the C code.
-    Args:
-        ld (int): Left diagonal occupancy.
-        rd (int): Right diagonal occupancy.
-        col (int): Column occupancy.
-        row (int): Current row.
-        free (int): Available positions for queens.
-        jmark (int): Marker for queen j's constraints.
-        endmark (int): Ending row marker.
-        mark1 (int): Row marker for specific processing.
-        mark2 (int): Secondary row marker for specific processing.
-        tempcounter (list): Counter for solutions (passed as a list to modify in place).
-        N (int): Size of the board.
-    """
     # When row reaches mark2
     if row==mark2:
       while free:
@@ -258,21 +227,6 @@ class NQueens19:
         self.SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python implementation of SQd1BlkB function.
-    Args:
-        ld (int): Left diagonal occupancy.
-        rd (int): Right diagonal occupancy.
-        col (int): Column occupancy.
-        row (int): Current row being processed.
-        free (int): Available positions for queens.
-        jmark (int): Marker for queen j's constraints.
-        endmark (int): Row marker for ending recursion.
-        mark1 (int): Specific row marker for additional processing.
-        mark2 (int): Secondary row marker for processing.
-        tempcounter (list): Counter for solutions (passed as a mutable list).
-        N (int): Size of the board.
-    """
     N3=N-3  # Precomputed value for performance
     # Special case when row==mark1
     if row==mark1:
@@ -316,21 +270,6 @@ class NQueens19:
         )
   #
   def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python implementation of SQd1BlBkB function.
-    Args:
-        ld (int): Left diagonal occupancy.
-        rd (int): Right diagonal occupancy.
-        col (int): Column occupancy.
-        row (int): Current row being processed.
-        free (int): Available positions for queens.
-        jmark (int): Marker for queen j's constraints.
-        endmark (int): Row marker for ending recursion.
-        mark1 (int): Specific row marker for additional processing.
-        mark2 (int): Secondary row marker for processing.
-        tempcounter (list): Counter for solutions (passed as a mutable list).
-        N (int): Size of the board.
-    """
     # Special case when row==mark1
     if row==mark1:
       while free:
@@ -373,21 +312,6 @@ class NQueens19:
         )
   #
   def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python implementation of the SQd1BkB function.
-    Args:
-        ld (int): Left diagonal occupancy.
-        rd (int): Right diagonal occupancy.
-        col (int): Column occupancy.
-        row (int): Current row being processed.
-        free (int): Available positions for queens.
-        jmark (int): Marker for queen j's constraints.
-        endmark (int): Row marker for ending recursion.
-        mark1 (int): Specific row marker for additional processing.
-        mark2 (int): Secondary row marker for processing.
-        tempcounter (list): Counter for solutions (passed as a mutable list).
-        N (int): Size of the board.
-    """
     N3=N-3
     # Special case: when row equals mark2
     if row==mark2:
@@ -409,23 +333,6 @@ class NQueens19:
         self.SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    SQd2BlkB 関数をPythonで実装。
-    Args:
-        ld (int): 左対角線のビットマスク
-        rd (int): 右対角線のビットマスク
-        col (int): 列のビットマスク
-        row (int): 現在の行
-        free (int): 利用可能な位置のビットマスク
-        jmark (int): クイーンの特定位置を示すマーカー
-        endmark (int): 終了行マーカー
-        mark1 (int): 特定の行マーカー1
-        mark2 (int): 特定の行マーカー2
-        tempcounter (list): 解のカウント（リストで参照渡し）
-        N (int): ボードのサイズ
-    Returns:
-        None: 再帰的に解を探索し、tempcounterを更新。
-    """
     N3=N-3
     # 行が mark1 に達した場合の特別処理
     if row==mark1:
@@ -449,9 +356,6 @@ class NQueens19:
         self.SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python translation of SQd2BklB.
-    """
     N4=N-4
     # row==mark1 の場合の処理
     if row==mark1:
@@ -495,9 +399,6 @@ class NQueens19:
         )
   #
   def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python translation of SQd2BkB with attention to the placement of the `if row==mark2` condition.
-    """
     N3=N-3
     # `row==mark2` の場合の処理
     if row==mark2:
@@ -541,21 +442,6 @@ class NQueens19:
         )
   #
   def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python translation of SQd2BlBkB function.
-    Args:
-        ld (int): Left diagonal mask
-        rd (int): Right diagonal mask
-        col (int): Column mask
-        row (int): Current row
-        free (int): Free positions mask
-        jmark (int): Mark for j
-        endmark (int): End mark for the row
-        mark1 (int): Mark for specific row
-        mark2 (int): Another mark for specific row
-        tempcounter (list): Counter (used as a reference)
-        N (int): Size of the board
-    """
     if row==mark1:
       while free:
         bit=free&-free  # Get the lowest bit
@@ -596,21 +482,6 @@ class NQueens19:
         )
   #
   def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python translation of SQd2BlB function.
-    Args:
-        ld (int): Left diagonal mask
-        rd (int): Right diagonal mask
-        col (int): Column mask
-        row (int): Current row
-        free (int): Free positions mask
-        jmark (int): Mark for j
-        endmark (int): End mark for the row
-        mark1 (int): Mark for specific row
-        mark2 (int): Another mark for specific row
-        tempcounter (list): Counter (used as a reference)
-        N (int): Size of the board
-    """
     if row==mark2:
       while free:
         bit=free&-free  # Get the lowest bit
@@ -651,9 +522,6 @@ class NQueens19:
         )
   #
   def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python版の SQd2BkBlB 関数
-    """
     N3=N-3
     # row==mark1 の場合を先に処理
     if row==mark1:
@@ -694,12 +562,9 @@ class NQueens19:
           mark2,
           tempcounter,
           N,
-        )            
+        )
   #
   def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python版のSQd2B関数。
-    """
     # rowがendmarkの場合の処理
     if row==endmark:
       if (free&(~1))>0:
@@ -724,22 +589,6 @@ class NQueens19:
           self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python implementation of the SQBlBjrB function.
-    
-    Args:
-        ld (int): Left diagonal.
-        rd (int): Right diagonal.
-        col (int): Column.
-        row (int): Current row.
-        free (int): Free positions.
-        jmark (int): Marker.
-        endmark (int): End marker.
-        mark1 (int): First marker.
-        mark2 (int): Second marker.
-        tempcounter (list): Temporary counter (mutable to allow modification).
-        N (int): Board size.
-    """
     if row==mark2:
       while free:
         bit=free&-free
@@ -756,23 +605,6 @@ class NQueens19:
         self.SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python implementation of SQBkBlBjrB function.
-    Args:
-        ld (int): Left diagonal bitmask.
-        rd (int): Right diagonal bitmask.
-        col (int): Column bitmask.
-        row (int): Current row.
-        free (int): Free positions bitmask.
-        jmark (int): Mark for j position.
-        endmark (int): End marker.
-        mark1 (int): First mark position.
-        mark2 (int): Second mark position.
-        tempcounter (list): Counter for temporary solutions.
-        N (int): Size of the board.
-    Returns:
-        None
-    """
     N3=N-3
     if row==mark1:
       while free:
@@ -790,23 +622,6 @@ class NQueens19:
         self.SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-    """
-    Python translation of SQBjrB with while loop and row==jmark condition properly implemented.
-    Args:
-        ld (int): Left diagonal occupied state.
-        rd (int): Right diagonal occupied state.
-        col (int): Column occupied state.
-        row (int): Current row.
-        free (int): Free positions available for queen placement.
-        jmark (int): Specific row mark for special handling.
-        endmark (int): Last row mark.
-        mark1 (int): Not used in this function but part of the signature.
-        mark2 (int): Not used in this function but part of the signature.
-        tempcounter (list): Counter for solutions.
-        N (int): Board size.
-    Returns:
-        None
-    """
     if row==jmark:
       free&=~1  # Clear the least significant bit (mark position 0 unavailable).
       ld|=1  # Mark left diagonal as occupied for position 0.
@@ -973,26 +788,9 @@ class NQueens19:
         self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
   #
   def symmetry90(self,ijkl:int,N:int)->bool:
-    """
-    Check if the constellation is symmetric by 90 degrees.
-    Args:
-        ijkl (int): Encoded constellation.
-        N (int): Board size.
-    Returns:
-        bool: True if symmetric by 90 degrees,False otherwise.
-    """
-    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==\
-           (((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
   #
   def symmetry(self,ijkl:int,N:int)->int:
-    """
-    Determine the symmetry type of a constellation and return the frequency of its solutions.
-    Args:
-        ijkl (int): Encoded constellation.
-        N (int): Board size.
-    Returns:
-        int: Frequency of the solutions for the given constellation.
-    """
     # Check if the constellation is symmetric by 180 degrees
     if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl):
       # Check if the constellation is also symmetric by 90 degrees
@@ -1174,6 +972,7 @@ class NQueens19:
     halfN=(N+1) // 2  # Nの半分を切り上げ
     L=1<<(N-1)  # Lは左端に1を立てる
     # コーナーにクイーンがいない場合の開始コンステレーションを計算する
+    """
     for k in range(1,halfN):
       for l in range(k+1,N-1):
         for i in range(k+1,N-1):
@@ -1184,14 +983,19 @@ class NQueens19:
               continue
             if not self.check_rotations(ijkl_list,i,j,k,l,N):
               ijkl_list.add(self.to_ijkl(i,j,k,l))
+    """
+    ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i != (N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N)
+    )
     # コーナーにクイーンがある場合の開始コンステレーションを計算する
-    for j in range(1,N-2):
-      for l in range(j+1,N-1):
-        ijkl_list.add(self.to_ijkl(0,j,0,l))
+    # for j in range(1,N-2):
+    #   for l in range(j+1,N-1):
+    #     ijkl_list.add(self.to_ijkl(0,j,0,l))
+    [ijkl_list.add(self.to_ijkl(0,j,0,l)) for j in range(1,N-2) for l in range(j+1,N-1)]
     # Jasmin変換
     ijkl_list_jasmin=set()
-    for start_constellation in ijkl_list:
-      ijkl_list_jasmin.add(self.jasmin(start_constellation,N))
+    # for start_constellation in ijkl_list:
+    #   ijkl_list_jasmin.add(self.jasmin(start_constellation,N))
+    [ijkl_list_jasmin.add(self.jasmin(start_constellation,N)) for start_constellation in ijkl_list]
     ijkl_list=ijkl_list_jasmin
     # 各星座の処理
     for sc in ijkl_list:
@@ -1216,55 +1020,52 @@ class NQueens19:
       # 生成されたサブコンステレーションにスタート情報を追加
       for a in range(counter[0]):
         constellations[current_size-a-1]["startijkl"]|=self.to_ijkl(i,j,k,l)
-  # ヘルパー関数
+  """
+  回転対称性をチェックする関数
+  Args:
+      ijkl_list (set): 回転対称性を保持する集合
+      i,j,k,l (int): 配置のインデックス
+      N (int): ボードのサイズ
+  Returns:
+      bool: 回転対称性が見つかった場合はTrue、見つからない場合はFalse
+  """
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    """
-    回転対称性をチェックする関数
-    Args:
-        ijkl_list (set): 回転対称性を保持する集合
-        i,j,k,l (int): 配置のインデックス
-        N (int): ボードのサイズ
-    Returns:
-        bool: 回転対称性が見つかった場合はTrue、見つからない場合はFalse
-    """
-    # 90度回転
     rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
-    # 180度回転
     rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
-    # 270度回転
     rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
     # 回転対称性をチェック
-    if rot90 in ijkl_list:
-      return True
-    if rot180 in ijkl_list:
-      return True
-    if rot270 in ijkl_list:
-      return True
-    return False
+    # if rot90 in ijkl_list:
+    #   return True
+    # if rot180 in ijkl_list:
+    #   return True
+    # if rot270 in ijkl_list:
+    #   return True
+    # return False
+    return any(rot in ijkl_list for rot in (rot90, rot180, rot270))
   #
+  """
+  i,j,k,l のインデックスを1つの整数に変換する関数
+  Args:
+      i,j,k,l (int): 各インデックス
+  Returns:
+      int: i,j,k,l を基にした1つの整数
+  """
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
-    """
-    i,j,k,l のインデックスを1つの整数に変換する関数
-    Args:
-        i,j,k,l (int): 各インデックス
-    Returns:
-        int: i,j,k,l を基にした1つの整数
-    """
     return (i<<15)+(j<<10)+(k<<5)+l
   #
+  """2つの値のうち最小値を返す"""
   def ffmin(self,a:int,b:int)->int:
-    """2つの値のうち最小値を返す"""
     return min(a,b)
   #
+  """
+  クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する。
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: 標準形の配置をエンコードした整数
+  """
   def jasmin(self,ijkl:int,N:int)->int:
-    """
-    クイーンの配置を回転・ミラーリングさせて最も左上に近い標準形に変換する。
-    Args:
-        ijkl (int): 配置のエンコードされた整数
-        N (int): ボードサイズ
-    Returns:
-        int: 標準形の配置をエンコードした整数
-    """
     # 最初の最小値と引数を設定
     min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
     arg=0
@@ -1288,61 +1089,60 @@ class NQueens19:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
   #
+  """iを抽出"""
   def geti(self,ijkl:int)->int:
-    """iを抽出"""
     return (ijkl>>15)&0x1F
   #
+  """jを抽出"""
   def getj(self,ijkl:int)->int:
-    """jを抽出"""
     return (ijkl>>10)&0x1F
   #
+  """kを抽出"""
   def getk(self,ijkl:int)->int:
-    """kを抽出"""
     return (ijkl>>5)&0x1F
   #
+  """lを抽出"""
   def getl(self,ijkl:int)->int:
-    """lを抽出"""
     return ijkl&0x1F
   #
+  """
+  垂直方向のミラーリングを行う。
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: ミラーリング後の配置をエンコードした整数
+  """
   def mirvert(self,ijkl:int,N:int)->int:
-    """
-    垂直方向のミラーリングを行う。
-    Args:
-        ijkl (int): 配置のエンコードされた整数
-        N (int): ボードサイズ
-    Returns:
-        int: ミラーリング後の配置をエンコードした整数
-    """
     return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
   #
+  """
+  時計回りに90度回転する。
+  Args:
+      ijkl (int): 配置のエンコードされた整数
+      N (int): ボードサイズ
+  Returns:
+      int: 90度回転後の配置をエンコードした整数
+  """
   def rot90(self,ijkl:int,N:int)->int:
-    """
-    時計回りに90度回転する。
-    Args:
-        ijkl (int): 配置のエンコードされた整数
-        N (int): ボードサイズ
-    Returns:
-        int: 90度回転後の配置をエンコードした整数
-    """
     return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
   #
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,
-                       counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
-    """
-    ld: 左対角線の占領状態
-    rd: 右対角線の占領状態
-    col: 列の占領状態
-    k: 特定の行
-    l: 特定の行
-    row: 現在の行
-    queens: 配置済みのクイーンの数
-    LD: 左端の特殊な占領状態
-    RD: 右端の特殊な占領状態
-    counter: コンステレーションのカウント
-    constellations: コンステレーションリスト
-    N: ボードサイズ
-    preset_queens: 必要なクイーンの数
-    """
+  """
+  ld: 左対角線の占領状態
+  rd: 右対角線の占領状態
+  col: 列の占領状態
+  k: 特定の行
+  l: 特定の行
+  row: 現在の行
+  queens: 配置済みのクイーンの数
+  LD: 左端の特殊な占領状態
+  RD: 右端の特殊な占領状態
+  counter: コンステレーションのカウント
+  constellations: コンステレーションリスト
+  N: ボードサイズ
+  preset_queens: 必要なクイーンの数
+  """
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # k行とl行はスキップ
     if row==k or row==l:
@@ -1351,7 +1151,8 @@ class NQueens19:
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     if queens==preset_queens:
       constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
-      constellations.append(constellation)  # 新しいコンステレーションをリストに追加
+      # 新しいコンステレーションをリストに追加
+      constellations.append(constellation)
       counter[0]+=1
       return
     # 現在の行にクイーンを配置できる位置を計算
@@ -1360,22 +1161,7 @@ class NQueens19:
       bit=free&-free  # 最も下位の1ビットを取得
       free-=bit  # 使用済みビットを削除
       # クイーンを配置し、次の行に進む
-      self.set_pre_queens(
-        (ld|bit)<<1, # 左対角線を更新
-        (rd|bit)>>1, # 右対角線を更新
-        col|bit, # 列を更新
-        k,
-        l,
-        row+1, # 次の行へ
-        queens+1, # 配置済みクイーン数を更新
-        LD,
-        RD,
-        counter,
-        constellations,
-        N,
-        preset_queens
-      )
-
+      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
 #
 class NQueens19_constellations():
   #
@@ -1398,7 +1184,7 @@ class NQueens19_constellations():
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
-      text=str(time_elapsed)[:-3]  
+      text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 """ メイン実行部分 """
 if __name__=="__main__":
