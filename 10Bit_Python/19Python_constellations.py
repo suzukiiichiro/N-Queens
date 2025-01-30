@@ -64,7 +64,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 """
 
 from operator import or_
-from functools import reduce
+# from functools import reduce
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -765,9 +765,10 @@ class NQueens19:
       arg=1
       min_val=self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))
     # 90度回転を arg 回繰り返す
-    # for _ in range(arg):
-    #   ijkl=self.rot90(ijkl,N)
-    ijkl=reduce(lambda acc,_:self.rot90(acc,N),range(arg),ijkl)
+    for _ in range(arg):
+      ijkl=self.rot90(ijkl,N)
+    # ijkl=reduce(lambda acc,_:self.rot90(acc,N),range(arg),ijkl) # codon で動かない
+
     # 必要に応じて垂直方向のミラーリングを実行
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
