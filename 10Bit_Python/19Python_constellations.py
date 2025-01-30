@@ -1165,3 +1165,4 @@ class NQueens19_constellations():
 """ メイン実行部分 """
 if __name__=="__main__":
   NQueens19_constellations().main()
+
