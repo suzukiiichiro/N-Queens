@@ -984,61 +984,49 @@ class NQueens19:
       free=~(ld|rd|col)
       # 各ケースに応じた処理
       if j<(N-3):
-        jmark=j+1
-        endmark=N-2
+        jmark,endmark=j+1,N-2
         if j>2 * N-34-start:
           if k<l:
             mark1,mark2=k-1,l-1
             if start<l:
               if start<k:
-                if l != k+1:
+                if l!=k+1:
                   self.SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else:
-                  self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:
-                self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                else: self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
-                if k != l+1:
+                if k!=l+1:
                   self.SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else:
-                  self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:
-                self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                else: self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
         else:
           if k<l:
             mark1,mark2=k-1,l-1
-            if l != k+1:
+            if l!=k+1:
               self.SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
           else:
             mark1,mark2=l-1,k-1
             if k != l+1:
               self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       elif j==(N-3):
         endmark=N-2
         if k<l:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l != k+1:
-                self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:
-                self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              if l != k+1: self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:
               mark2=l-1
               self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:
-            self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
         else:
           mark1,mark2=l-1,k-1
           endmark=N-2
@@ -1046,13 +1034,11 @@ class NQueens19:
             if start<l:
               if k != l+1:
                 self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:
-                self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:
               mark2=k-1
               self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:
-            self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       elif j==N-2: # クイーンjがコーナーからちょうど1列離れている場合
         if k<l:  # kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれない
           endmark=N-2
@@ -1062,49 +1048,44 @@ class NQueens19:
               if l != k+1:  # kとlが隣り合っている場合
                 mark2=l-1
                 self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:
-                self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:  # lがまだ来ていないなら
               mark2=l-1
               self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:  # すでにkとlが来ている場合
-            self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          # すでにkとlが来ている場合
+          else: self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
         else:  # l<k
           if start<k:  # 少なくともkがまだ来ていない場合
             if start<l:  # lがまだ来ていない場合
               if k<N-2:  # kが末尾にない場合
-                mark1=l-1
-                endmark=N-2
+                mark1,endmark=l-1,N-2
                 if k != l+1:  # lとkの間に空行がある場合
                   mark2=k-1
                   self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else:  # lとkの間に空行がない場合
-                  self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                # lとkの間に空行がない場合
+                else: self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
               else:  # kが末尾の場合
                 if l != (N-3):  # lがkの直前でない場合
-                  mark2=l-1
-                  endmark=N-3
+                  mark2,endmark=l-1,N-3
                   self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
                 else:  # lがkの直前にある場合
                   endmark=N-4
                   self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
             else:  # もしkがまだ来ていないなら
               if k != N-2:  # kが末尾にない場合
-                mark2=k-1
-                endmark=N-2
+                mark2,endmark=k-1,N-2
                 self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
               else:  # kが末尾の場合
                 endmark=N-3
                 self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:  # kとlはスタートの前
+          else: # kとlはスタートの前
             endmark=N-2
             self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       else:  # クイーンjがコーナーに置かれている場合
         endmark=N-2
         if start>k:
           self.SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-        else:
-        # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
+        else: # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
           mark1=k-1
           self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       # 各コンステレーションのソリューション数を更新
