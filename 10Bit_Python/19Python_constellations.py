@@ -63,6 +63,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 15:      2279184            0         0:00:44.993
 """
 
+from operator import or_
 from functools import reduce
 from typing import List,Set,Dict
 from datetime import datetime
@@ -985,12 +986,19 @@ class NQueens19:
     # for j in range(1,N-2):
     #   for l in range(j+1,N-1):
     #     ijkl_list.add(self.to_ijkl(0,j,0,l))
-    [ijkl_list.add(self.to_ijkl(0,j,0,l)) for j in range(1,N-2) for l in range(j+1,N-1)]
+    # [ijkl_list.add(self.to_ijkl(0,j,0,l)) for j in range(1,N-2) for l in range(j+1,N-1)]
+    ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
+
+
     # Jasmin変換
     ijkl_list_jasmin=set()
     # for start_constellation in ijkl_list:
     #   ijkl_list_jasmin.add(self.jasmin(start_constellation,N))
-    [ijkl_list_jasmin.add(self.jasmin(start_constellation,N)) for start_constellation in ijkl_list]
+    # [ijkl_list_jasmin.add(self.jasmin(start_constellation,N)) for start_constellation in ijkl_list]
+    ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
+    # ijkl_list_jasmin.update(map(lambda sc: self.jasmin(sc, N), ijkl_list))
+
+
     ijkl_list=ijkl_list_jasmin
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
@@ -1010,11 +1018,15 @@ class NQueens19:
       self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens)
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
-      for a in range(counter[0]):
-        constellations[current_size-a-1]["startijkl"]|=self.to_ijkl(i,j,k,l)
+      # for a in range(counter[0]):
+      #   constellations[current_size-a-1]["startijkl"]|=self.to_ijkl(i,j,k,l)
+      list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
+
 #
 class NQueens19_constellations():
   def main(self)->None:
+    # nmin:int=8
+    # nmax:int=9
     nmin:int=5
     nmax:int=16
     preset_queens:int=4  # 必要に応じて変更
