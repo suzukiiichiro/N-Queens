@@ -758,8 +758,8 @@ class NQueens19:
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
-      if next_free:
-        self.SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      # if next_free:
+      self.SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
       return
     while free:
       bit:int=free&-free
@@ -773,8 +773,8 @@ class NQueens19:
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
-      if next_free:
-        self.SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      # if next_free:
+      self.SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
       return
     while free:
       bit:int=free&-free
@@ -789,8 +789,8 @@ class NQueens19:
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
-      if next_free:
-        self.SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      # if next_free:
+      self.SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
       return
     while free:
       bit:int=free&-free
@@ -805,8 +805,8 @@ class NQueens19:
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
-      if next_free:
-        self.SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      # if next_free:
+      self.SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
       return
     while free:
       bit:int=free&-free
@@ -1198,7 +1198,7 @@ class NQueens19_constellations():
     # nmin:int=8
     # nmax:int=9
     nmin:int=5
-    nmax:int=16
+    nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
