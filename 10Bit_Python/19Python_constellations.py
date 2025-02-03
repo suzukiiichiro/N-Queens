@@ -1198,3 +1198,6 @@ class NQueens19_constellations():
 if __name__=="__main__":
   NQueens19_constellations().main()
 
+
+
+
