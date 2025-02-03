@@ -768,6 +768,7 @@ class NQueens19:
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
         self.SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+  #
   def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     N1:int=N-1
     if row==N1-jmark:
@@ -1203,7 +1204,7 @@ class NQueens19_constellations():
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      ijkl_list:Set[int]=set() 
+      ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
       NQ=NQueens19()
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
