@@ -1,5 +1,33 @@
 
 """
+#
+# Codonのインストール
+#
+/bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
+echo 'export PATH="$HOME/.codon/bin:$PATH"' >> ~/.bashrc
+# 共有ライブラリを環境変数に設定します
+echo 'export CODON_PYTHON=$PYENV_ROOT/versions/3.10.10/lib/libpython3.10.so' >> ~/.bashrc
+source ~/.bashrc
+"""
+
+"""
+bash-5.1$ codon build -release 21Python_constellations_codon.py
+bash-5.1$ ./21Python_constellations_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           18            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.000
+12:        14200            0         0:00:00.003
+13:        73712            0         0:00:00.008
+14:       365596            0         0:00:00.042
+15:      2279184            0         0:00:00.233
+16:     14772512            0         0:00:01.468
+17:     95815104            0         0:00:10.253
+
 CentOS-5.1$ pypy 19Python_constellations.py
  N:        Total       Unique        hh:mm:ss.ms
  6:            4            0         0:00:00.000
@@ -69,8 +97,8 @@ from operator import or_
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます
 #
 # from threading import Thread
