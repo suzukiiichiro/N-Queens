@@ -64,7 +64,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 """
 
 from operator import or_
-# from functools import reduce
+## from functools import reduce
 from typing import List,Set,Dict
 from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
