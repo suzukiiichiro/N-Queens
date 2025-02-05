@@ -62,6 +62,7 @@ bash-5.1$ ./21Python_constellations_codon
 15:      2279184            0         0:00:00.233
 16:     14772512            0         0:00:01.468
 17:     95815104            0         0:00:10.253
+18:    666090624            0         0:01:14.858
 
 CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
