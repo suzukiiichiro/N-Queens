@@ -1,18 +1,20 @@
 """
 CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.019
- 5:           10            2         0:00:00.021
- 6:            4            1         0:00:00.024
- 7:           40            6         0:00:00.026
- 8:           92           12         0:00:00.029
- 9:          352           46         0:00:00.034
-10:          724           92         0:00:00.056
-11:         2680          341         0:00:00.090
-12:        14200         1787         0:00:00.119
-13:        73712         9233         0:00:00.204
-14:       365596        45752         0:00:00.505
-15:      2279184       285053         0:00:02.111
+ 4:            2            1         0:00:00.018
+ 5:           10            2         0:00:00.019
+ 6:            4            1         0:00:00.016
+ 7:           40            6         0:00:00.028
+ 8:           92           12         0:00:00.034
+ 9:          352           46         0:00:00.084
+10:          724           92         0:00:00.150
+11:         2680          341         0:00:00.250
+12:        14200         1787         0:00:00.295
+13:        73712         9233         0:00:00.634
+14:       365596        45752         0:00:02.656
+15:      2279184       285053         0:00:03.704
+16:     14772512      1846955         0:00:17.872
+17:     95815104     11977939         0:01:43.887
 
 CentOS-5.1$ pypy 08Python_bit_symmetry.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -70,6 +72,7 @@ echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~
 """
 
 # -*- coding: utf-8 -*-
+import subprocess
 from datetime import datetime
 #
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -359,9 +362,13 @@ class NQueens09():
     return [total,unique]
 
 class NQueens09_threadPool:
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self):
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
@@ -370,6 +377,7 @@ class NQueens09_threadPool:
       time_elapsed=datetime.now()-start_time
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
+      self.finalize()
 #
 # $ python <filename>
 # $ pypy <fileName>

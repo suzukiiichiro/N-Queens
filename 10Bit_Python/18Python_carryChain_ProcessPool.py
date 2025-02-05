@@ -1,25 +1,43 @@
 """
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.061
- 6:            4            0         0:00:00.061
- 7:           40            0         0:00:00.067
- 8:           92            0         0:00:00.100
- 9:          352            0         0:00:00.148
-10:          724            0         0:00:00.206
-11:         2680            0         0:00:00.289
-12:        14200            0         0:00:00.345
-13:        73712            0         0:00:00.607
-14:       365596            0         0:00:01.316
-15:      2279184            0         0:00:04.610
+ 5:           10            0         0:00:00.063
+ 6:            4            0         0:00:00.643
+ 7:           40            0         0:00:00.343
+ 8:           92            0         0:00:00.982
+ 9:          352            0         0:00:00.167
+10:          724            0         0:00:00.780
+11:         2680            0         0:00:01.252
+12:        14200            0         0:00:00.498
+13:        73712            0         0:00:02.423
+14:       365596            0         0:00:03.587
+15:      2279184            0         0:00:09.661
+16:     14772512            0         0:00:32.796
+17:     95815104            0         0:02:57.029
+
+CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:04.049
+16:     14772512            0         0:00:19.350
+17:     95815104            0         0:02:10.302
+
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.623
+16:     14772512            0         0:00:37.059
+17:     95815104            0         0:02:47.022
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
 
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.243
-
-# copy.deepcopy 
-CentOS-5.1$ pypy 17Python_carryChain.py
-15:      2279184            0         0:00:48.769
+15:      2279184            0         0:00:12.722
+16:     14772512            0         0:01:00.409
+17:     95815104            0         0:06:10.889
 
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
@@ -201,19 +219,19 @@ class NQueens18:
 """ """
 class NQueens18_carryChain():
   def finalize(self)->None:
-    cmd="killall pypy"  # python or pypy 
-    p = subprocess.Popen("exec " + cmd, shell=True) 
-    p.kill()    
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     nmin:int=5
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       NQ=NQueens18()
-      total:int=NQ.carryChain(size)  
+      total:int=NQ.carryChain(size)
       time_elapsed=datetime.now()-start_time
-      text=str(time_elapsed)[:-3]  
+      text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
       self.finalize()
 """ メイン実行部分 """

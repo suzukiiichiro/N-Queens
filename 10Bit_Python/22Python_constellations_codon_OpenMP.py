@@ -48,68 +48,35 @@ bash-5.1$ ./21Python_constellations_codon
 16:     14772512            0         0:00:01.468
 17:     95815104            0         0:00:10.253
 
-CentOS-5.1$ pypy 19Python_constellations.py
+CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.002
- 9:          352            0         0:00:00.006
-10:          724            0         0:00:00.018
-11:         2680            0         0:00:00.070
-12:        14200            0         0:00:00.203
-13:        73712            0         0:00:00.253
-14:       365596            0         0:00:00.424
-15:      2279184            0         0:00:02.198
+15:      2279184            0         0:00:05.111
+16:     14772512            0         0:00:15.706
+17:     95815104            0         0:01:45.345
 
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.610
+15:      2279184            0         0:00:09.661
+16:     14772512            0         0:00:32.796
+17:     95815104            0         0:02:57.029
 
-CentOS-5.1$ pypy 17Python_carryChain.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.243
-# copy.deepcopy
-CentOS-5.1$ pypy 17Python_carryChain.py
-15:      2279184            0         0:00:48.769
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.911
-CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.425
-CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.345
+15:      2279184            0         0:00:04.049
+16:     14772512            0         0:00:19.350
+17:     95815104            0         0:02:10.302
+
 CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.926
-CentOS-5.1$ pypy 11Python_NodeLayer.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.160
+15:      2279184            0         0:00:06.623
+16:     14772512            0         0:00:37.059
+17:     95815104            0         0:02:47.022
+
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:01.998
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:02.111
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.026
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
 """
 
 from operator import or_

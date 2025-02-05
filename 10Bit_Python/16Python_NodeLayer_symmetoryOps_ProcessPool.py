@@ -1,18 +1,32 @@
 """
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.022
- 5:           10            0         0:00:00.024
- 6:            4            0         0:00:00.034
- 7:           40            0         0:00:00.078
- 8:           92            0         0:00:00.091
- 9:          352            0         0:00:00.119
-10:          724            0         0:00:00.121
-11:         2680            0         0:00:00.156
-12:        14200            0         0:00:00.225
-13:        73712            0         0:00:00.337
-14:       365596            0         0:00:00.731
-15:      2279184            0         0:00:02.927
+ 4:            0            0         0:00:00.015
+ 5:           10            0         0:00:00.031
+ 6:            4            0         0:00:00.043
+ 7:           40            0         0:00:00.085
+ 8:           92            0         0:00:00.108
+ 9:          352            0         0:00:00.150
+10:          724            0         0:00:00.151
+11:         2680            0         0:00:00.195
+12:        14200            0         0:00:00.261
+13:        73712            0         0:00:00.404
+14:       365596            0         0:00:00.840
+15:      2279184            0         0:00:04.049
+16:     14772512            0         0:00:19.350
+17:     95815104            0         0:02:10.302
+
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:06.623
+16:     14772512            0         0:00:37.059
+17:     95815104            0         0:02:47.022
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
 
 CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
  N:        Total        Unique        hh:mm:ss.ms
@@ -66,6 +80,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
+import subprocess
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -328,9 +343,13 @@ class NQueens21:
     return sum(list(pool.map(self.symmetry_solve,params)))
 """ """
 class NQueens21_NodeLayer:
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
@@ -339,6 +358,7 @@ class NQueens21_NodeLayer:
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3] 
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      self.finalize()
 # メイン実行部分
 if __name__=="__main__":
   NQueens21_NodeLayer().main()

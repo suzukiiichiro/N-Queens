@@ -1,18 +1,25 @@
 """
-CentOS-5.1$ codon build -release 17Python_carryChain.py
-CentOS-5.1$ ./17Python_carryChain
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.369
-
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.243
+ 5:           10            0         0:00:00.001
+ 6:            4            0         0:00:00.006
+ 7:           40            0         0:00:00.020
+ 8:           92            0         0:00:00.066
+ 9:          352            0         0:00:00.085
+10:          724            0         0:00:00.173
+11:         2680            0         0:00:00.488
+12:        14200            0         0:00:01.305
+13:        73712            0         0:00:01.962
+14:       365596            0         0:00:03.803
+15:      2279184            0         0:00:12.722
+16:     14772512            0         0:01:00.409
+17:     95815104            0         0:06:10.889
 
 CentOS-5.1$ codon run 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:11.844
 
-# copy.deepcopy 
+# copy.deepcopy
 CentOS-5.1$ pypy 17Python_carryChain.py
 15:      2279184            0         0:00:48.769
 
@@ -213,14 +220,14 @@ class NQueens17:
 class NQueens17_carryChain():
   def main(self)->None:
     nmin:int=5
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       NQ=NQueens17()
-      total:int=NQ.carryChain(size)  
+      total:int=NQ.carryChain(size)
       time_elapsed=datetime.now()-start_time
-      text=str(time_elapsed)[:-3]  
+      text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 """ メイン実行部分 """
 if __name__=="__main__":

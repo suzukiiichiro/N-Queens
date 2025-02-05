@@ -1,17 +1,26 @@
 """
 CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.021
- 6:            4            0         0:00:00.045
- 7:           40            0         0:00:00.049
- 8:           92            0         0:00:00.077
- 9:          352            0         0:00:00.076
-10:          724            0         0:00:00.094
+ 4:            2            0         0:00:00.013
+ 5:           10            0         0:00:00.020
+ 6:            4            0         0:00:00.049
+ 7:           40            0         0:00:00.052
+ 8:           92            0         0:00:00.123
+ 9:          352            0         0:00:00.102
+10:          724            0         0:00:00.105
 11:         2680            0         0:00:00.113
-12:        14200            0         0:00:00.135
-13:        73712            0         0:00:00.221
-14:       365596            0         0:00:00.609
-15:      2279184            0         0:00:02.926
+12:        14200            0         0:00:00.307
+13:        73712            0         0:00:00.222
+14:       365596            0         0:00:00.665
+15:      2279184            0         0:00:06.623
+16:     14772512            0         0:00:37.059
+17:     95815104            0         0:02:47.022
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
 
 CentOS-5.1$ pypy 12Python_NodeLayer_mirror.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -53,6 +62,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
+import subprocess
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -165,17 +175,22 @@ class NQueens21:
       return total*2
 
 class NQueens21_NodeLayer:
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       NQ=NQueens21()
       total:int=NQ.mirror_build_nodeLayer(size)
       time_elapsed=datetime.now()-start_time
-      text=str(time_elapsed)[:-3]  
+      text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      self.finalize()
 
 # メイン実行部分
 if __name__=="__main__":
