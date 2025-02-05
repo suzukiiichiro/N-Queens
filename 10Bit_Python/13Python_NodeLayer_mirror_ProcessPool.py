@@ -1,26 +1,50 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+ノードレイヤー ミラー マルチプロセス版 Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
 """
 CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            0         0:00:00.013
- 5:           10            0         0:00:00.020
- 6:            4            0         0:00:00.049
+ 4:            2            0         0:00:00.015
+ 5:           10            0         0:00:00.022
+ 6:            4            0         0:00:00.046
  7:           40            0         0:00:00.052
- 8:           92            0         0:00:00.123
- 9:          352            0         0:00:00.102
+ 8:           92            0         0:00:00.100
+ 9:          352            0         0:00:00.088
 10:          724            0         0:00:00.105
-11:         2680            0         0:00:00.113
-12:        14200            0         0:00:00.307
-13:        73712            0         0:00:00.222
-14:       365596            0         0:00:00.665
-15:      2279184            0         0:00:06.623
-16:     14772512            0         0:00:37.059
-17:     95815104            0         0:02:47.022
+11:         2680            0         0:00:00.151
+12:        14200            0         0:00:00.141
+13:        73712            0         0:00:00.225
+14:       365596            0         0:00:00.633
+15:      2279184            0         0:00:03.135
+16:     14772512            0         0:00:20.478
+17:     95815104            0         0:02:31.781
+18:    666090624            0         0:18:07.638
 
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184       285053         0:00:03.215
 16:     14772512      1846955         0:00:16.017
 17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
+"""
+
+
+"""
+CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:03.135
 
 CentOS-5.1$ pypy 12Python_NodeLayer_mirror.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -181,7 +205,7 @@ class NQueens21_NodeLayer:
     p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()

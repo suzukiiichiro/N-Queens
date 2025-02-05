@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+コンステレーション codon 並列処理版Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
 
 """
 #
@@ -50,33 +65,32 @@ bash-5.1$ ./21Python_constellations_codon
 
 CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.111
-16:     14772512            0         0:00:15.706
-17:     95815104            0         0:01:45.345
+15:      2279184            0         0:00:04.351
+16:     14772512            0         0:00:17.743
+17:     95815104            0         0:01:36.792
+18:    666090624            0         0:11:06.028
 
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:09.661
-16:     14772512            0         0:00:32.796
-17:     95815104            0         0:02:57.029
+15:      2279184            0         0:00:05.272
+16:     14772512            0         0:00:26.704
+17:     95815104            0         0:02:49.897
+18:    666090624            0         0:20:12.647
 
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.049
-16:     14772512            0         0:00:19.350
-17:     95815104            0         0:02:10.302
-
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.623
-16:     14772512            0         0:00:37.059
-17:     95815104            0         0:02:47.022
+15:      2279184            0         0:00:03.064
+16:     14772512            0         0:00:17.305
+17:     95815104            0         0:01:59.358
+18:    666090624            0         0:14:48.210
 
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184       285053         0:00:03.215
 16:     14772512      1846955         0:00:16.017
 17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
+
 """
 
 from operator import or_

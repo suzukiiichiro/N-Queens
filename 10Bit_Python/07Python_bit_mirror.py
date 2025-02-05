@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+bit ミラー 版 Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
 """
 CentOS-5.1$ pypy 07Python_bit_mirror.py
  N:        Total       Unique        hh:mm:ss.ms

@@ -1,102 +1,57 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+コンステレーション マルチプロセス版Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
 
 """
 CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.035
- 6:            4            0         0:00:00.088
- 7:           40            0         0:00:00.145
- 8:           92            0         0:00:00.278
- 9:          352            0         0:00:00.252
-10:          724            0         0:00:00.253
-11:         2680            0         0:00:00.365
-12:        14200            0         0:00:01.021
-13:        73712            0         0:00:01.370
-14:       365596            0         0:00:03.297
-15:      2279184            0         0:00:05.111
-16:     14772512            0         0:00:15.706
-17:     95815104            0         0:01:45.345
+ 5:           18            0         0:00:00.048
+ 6:            4            0         0:00:00.059
+ 7:           40            0         0:00:00.100
+ 8:           92            0         0:00:00.196
+ 9:          352            0         0:00:00.193
+10:          724            0         0:00:00.326
+11:         2680            0         0:00:00.254
+12:        14200            0         0:00:00.375
+13:        73712            0         0:00:00.922
+14:       365596            0         0:00:04.169
+15:      2279184            0         0:00:04.351
+16:     14772512            0         0:00:17.743
+17:     95815104            0         0:01:36.792
+18:    666090624            0         0:11:06.028
 
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:09.661
-16:     14772512            0         0:00:32.796
-17:     95815104            0         0:02:57.029
+15:      2279184            0         0:00:05.272
+16:     14772512            0         0:00:26.704
+17:     95815104            0         0:02:49.897
+18:    666090624            0         0:20:12.647
 
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.049
-16:     14772512            0         0:00:19.350
-17:     95815104            0         0:02:10.302
-
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.623
-16:     14772512            0         0:00:37.059
-17:     95815104            0         0:02:47.022
+15:      2279184            0         0:00:03.064
+16:     14772512            0         0:00:17.305
+17:     95815104            0         0:01:59.358
+18:    666090624            0         0:14:48.210
 
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184       285053         0:00:03.215
 16:     14772512      1846955         0:00:16.017
 17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
 
-CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.111
-
- CentOS-5.1$ pypy 19Python_constellations.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.198
-
-CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.610
-
-CentOS-5.1$ pypy 17Python_carryChain.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.243
-# copy.deepcopy
-CentOS-5.1$ pypy 17Python_carryChain.py
-15:      2279184            0         0:00:48.769
-CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.911
-CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.425
-CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.345
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.926
-CentOS-5.1$ pypy 11Python_NodeLayer.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.160
-CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:01.998
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:02.111
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.026
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
 """
 
 # のこったプロセスをkillallするために必要
@@ -1245,7 +1200,7 @@ class NQueens20_constellations_ProcessPool():
     # nmin:int=8
     # nmax:int=9
     nmin:int=5
-    nmax:int=18
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):

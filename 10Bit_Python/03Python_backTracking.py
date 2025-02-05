@@ -11,7 +11,9 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
 
+"""
 CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
  4:            2            0         0:00:00.000
@@ -26,8 +28,6 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 13:        73712            0         0:00:01.129
 14:       365596            0         0:00:06.816
 15:      2279184            0         0:00:44.993
-CentOS-5.1$
-
 """
 
 from datetime import datetime

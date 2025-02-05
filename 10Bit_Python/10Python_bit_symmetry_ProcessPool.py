@@ -1,26 +1,40 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+bit スレッドプール版 Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
 """
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.026
- 5:           10            2         0:00:00.063
- 6:            4            1         0:00:00.067
- 7:           40            6         0:00:00.098
- 8:           92           12         0:00:00.080
- 9:          352           46         0:00:00.118
-10:          724           92         0:00:00.100
-11:         2680          341         0:00:00.076
-12:        14200         1787         0:00:00.115
-13:        73712         9233         0:00:00.223
-14:       365596        45752         0:00:02.061
-15:      2279184       285053         0:00:03.215
-16:     14772512      1846955         0:00:16.017
-17:     95815104     11977939         0:01:39.372
+ 4:            2            1         0:00:00.017
+ 5:           10            2         0:00:00.026
+ 6:            4            1         0:00:00.020
+ 7:           40            6         0:00:00.027
+ 8:           92           12         0:00:00.031
+ 9:          352           46         0:00:00.032
+10:          724           92         0:00:00.070
+11:         2680          341         0:00:00.071
+12:        14200         1787         0:00:00.111
+13:        73712         9233         0:00:00.241
+14:       365596        45752         0:00:00.536
+15:      2279184       285053         0:00:02.278
+16:     14772512      1846955         0:00:13.381
+17:     95815104     11977939         0:01:38.022
+18:    666090624     83263591         0:11:29.141
 
 CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184       285053         0:00:03.704
-16:     14772512      1846955         0:00:17.872
-17:     95815104     11977939         0:01:43.887
 
 CentOS-5.1$ pypy 08Python_bit_symmetry.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -376,14 +390,14 @@ class NQueens10_processPool:
     p.kill()
   def main(self):
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
       NQ=NQueens10()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
       self.finalize()
 #

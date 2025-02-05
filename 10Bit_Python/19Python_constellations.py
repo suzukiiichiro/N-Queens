@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+コンステレーション版Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
 
 """
 CentOS-5.1$ pypy 19Python_constellations.py
@@ -19,14 +33,10 @@ CentOS-5.1$ pypy 19Python_constellations.py
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:09.661
-16:     14772512            0         0:00:32.796
-17:     95815104            0         0:02:57.029
 
 CentOS-5.1$ pypy 17Python_carryChain.py
  N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:12.722
-16:     14772512            0         0:01:00.409
-17:     95815104            0         0:06:10.889
 
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms

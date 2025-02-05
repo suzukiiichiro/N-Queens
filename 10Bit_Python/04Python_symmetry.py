@@ -11,7 +11,9 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
 
+"""
 CentOS-5.1$ pypy 04Python_symmetry.py
  N:        Total       Unique         hh:mm:ss.ms
  4:            2            1         0:00:00.000
