@@ -1018,6 +1018,7 @@ class NQueens19:
     jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     small_mask=(1<<(N-2))-1
     temp_counter=[0]*len(constellations) 
+    #@par (schedule='dynamic', chunk_size=100, num_threads=16)
     @par
     for i, constellation in enumerate(constellations):
       # mark1=mark1
