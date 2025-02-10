@@ -26,18 +26,27 @@ source ~/.bashrc
 """
 
 """
-CentOS-5.1$ ./21Python_constellations_codon
+CentOS-5.1$ codon build -release 22Python_constellations_codon_OpenMP.py
+CentOS-5.1$ ./22Python_constellations_codon_OpenMP
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.000
+ 5:           18            0         0:00:00.001
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
  9:          352            0         0:00:00.000
 10:          724            0         0:00:00.000
 11:         2680            0         0:00:00.001
-12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.008
-14:       365596            0         0:00:00.043
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.004
+14:       365596            0         0:00:00.020
+15:      2279184            0         0:00:00.093
+16:     14772512            0         0:00:00.517
+17:     95815104            0         0:00:03.247
+18:    666090624            0         0:00:25.256
+
+CentOS-5.1$ codon build -release 21Python_constellations_codon.py
+CentOS-5.1$ ./21Python_constellations_codon
+ N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:00.249
 16:     14772512            0         0:00:01.468
 17:     95815104            0         0:00:10.120
