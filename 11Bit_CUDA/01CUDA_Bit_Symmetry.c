@@ -1,3 +1,23 @@
+/**
+bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2           1      00:00:00:00.00
+ 5:           10           2      00:00:00:00.00
+ 6:            4           1      00:00:00:00.00
+ 7:           40           6      00:00:00:00.00
+ 8:           92          12      00:00:00:00.00
+ 9:          352          46      00:00:00:00.00
+10:          724          92      00:00:00:00.00
+11:         2680         341      00:00:00:00.00
+12:        14200        1787      00:00:00:00.00
+13:        73712        9233      00:00:00:00.00
+14:       365596       45752      00:00:00:00.05
+15:      2279184      285053      00:00:00:00.33
+16:     14772512     1846955      00:00:00:02.16
+17:     95815104    11977939      00:00:00:14.89
+18:    666090624    83263591      00:00:01:45.44
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -157,7 +177,7 @@ void nqueens(uint size,struct local* l)
 int main(int argc,char** argv)
 {
   uint min=4;
-  uint targetN=17;
+  uint targetN=18;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
