@@ -101,136 +101,6 @@ void symmetryOps(uint size,struct local* l)
   l->COUNT8++;
 }
 /**
-  非再帰 角にQがないときのバックトラック
-*/
-void symmetry_backTrack_NR(uint size,uint row,uint _left,uint _down,uint _right,struct local *l)
-{
-  uint mask=(1<<size)-1;
-  uint down[size];
-  uint left[size];
-  uint right[size];
-  uint bitmap[size];
-  left[row]=_left;
-  down[row]=_down;
-  right[row]=_right;
-  bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-  while(row>0){
-    if(bitmap[row]>0){
-      if(row<l->BOUND1){ //上部サイド枝刈り
-        bitmap[row]|=l->SIDEMASK;
-        bitmap[row]^=l->SIDEMASK;
-      }else if(row==l->BOUND2){ //下部サイド枝刈り
-        if((down[row]&l->SIDEMASK)==0){
-          row--; 
-        }
-        if((down[row]&l->SIDEMASK)!=l->SIDEMASK){
-          bitmap[row]&=l->SIDEMASK;
-        }
-      }
-      uint save_bitmap=bitmap[row];
-      uint bit=-bitmap[row]&bitmap[row];
-      bitmap[row]^=bit;
-      l->board[row]=bit; //Qを配置
-      if((bit&mask)!=0){
-        if(row==(size-1)){
-          if( (save_bitmap&l->LASTMASK)==0){
-            symmetryOps(size,l);  //対称解除法
-          }
-          row--;
-        }else{
-          uint n=row++;
-          left[row]=(left[n]|bit)<<1;
-          down[row]=(down[n]|bit);
-          right[row]=(right[n]|bit)>>1;
-          bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-        }
-      }else{
-        row--;
-      }
-    }else{
-      row--;
-    }
-  }
-}
-/**
-  非再帰 角にQがあるときのバックトラック
-*/
-void symmetry_backTrack_corner_NR(uint size,uint row,uint _left,uint _down,uint _right,struct local *l)
-{
-  uint mask=(1<<size)-1;
-  uint bit=0;
-  uint down[size];
-  uint left[size];
-  uint right[size];
-  uint bitmap[size];
-  left[row]=_left;
-  down[row]=_down;
-  right[row]=_right;
-  bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-  while(row>=2){
-    if(row<l->BOUND1){
-      bitmap[row]&=~2;
-    }
-    if(bitmap[row]>0){
-      bit=-bitmap[row]&bitmap[row];
-      bitmap[row]^=bit;
-      if(row==(size-1)){
-        l->COUNT8++;
-        row--;
-      }else{
-        uint n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=(down[n]|bit);
-        right[row]=(right[n]|bit)>>1;
-        l->board[row]=bit; //Qを配置
-        bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-      }
-    }else{
-      row--;
-    }
-  }
-}
-/**
-  非再帰 対称解除法
-*/
-void symmetry_NR(uint size,struct local* l)
-{
-  l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
-  uint bit=0;
-  l->TOPBIT=1<<(size-1);
-  l->ENDBIT=l->SIDEMASK=l->LASTMASK=0;
-  l->BOUND1=2;
-  l->BOUND2=0;
-  l->board[0]=1;
-  while(l->BOUND1>1&&l->BOUND1<size-1){
-    if(l->BOUND1<size-1){
-      bit=1<<l->BOUND1;
-      l->board[1]=bit;   //２行目にQを配置
-      symmetry_backTrack_corner_NR(size,2,(2|bit)<<1,1|bit,(2|bit)>>1,l);
-    }
-    l->BOUND1++;
-  }
-  l->TOPBIT=1<<(size-1);
-  l->ENDBIT=l->TOPBIT>>1;
-  l->SIDEMASK=l->TOPBIT|1;
-  l->LASTMASK=l->TOPBIT|1;
-  l->BOUND1=1;
-  l->BOUND2=size-2;
-  while(l->BOUND1>0 && l->BOUND2<size-1 && l->BOUND1<l->BOUND2){
-    if(l->BOUND1<l->BOUND2){
-      bit=1<<l->BOUND1;
-      l->board[0]=bit;   //Qを配置
-      symmetry_backTrack_NR(size,1,bit<<1,bit,bit>>1,l);
-    }
-    l->BOUND1++;
-    l->BOUND2--;
-    l->ENDBIT=l->ENDBIT>>1;
-    l->LASTMASK=l->LASTMASK<<1|l->LASTMASK|l->LASTMASK>>1;
-  }
-  UNIQUE=l->COUNT2+l->COUNT4+l->COUNT8;
-  TOTAL=l->COUNT2*2+l->COUNT4*4+l->COUNT8*8;
-}
-/**
   再帰 角にQがないときのバックトラック
 */
 void symmetry_backTrack(uint size,uint row,uint left,uint down,uint right,struct local* l)
@@ -351,14 +221,8 @@ int main(int argc,char** argv)
   if(argc<argstart){
     printf("Usage: %s [-c|-g|-r|-s] n STEPS\n",argv[0]);
     printf("  -r: CPU 再帰\n");
-    printf("  -c: CPU 非再帰\n");
-    printf("  -g: GPU 再帰\n");
-    printf("  -n: GPU ビットボード\n");
   }
   if(cpur){ printf("\n\n対称解除法 再帰 \n"); }
-  else if(cpu){ printf("\n\n対称解除法 非再帰 \n"); }
-  else if(gpu){ printf("\n\n対称解除法 GPU\n"); }
-  else if(gpuBitBoard){ printf("\n\n対称解除法 GPUビットボード \n"); }
   if(cpu||cpur)
   {
     uint min=4; 
@@ -371,9 +235,6 @@ int main(int argc,char** argv)
       gettimeofday(&t0,NULL);//計測開始
       if(cpur){ //再帰
         symmetry_R(size,&l);
-      }
-      if(cpu){ //非再帰
-        symmetry_NR(size,&l);
       }
       //
       gettimeofday(&t1,NULL);//計測終了
