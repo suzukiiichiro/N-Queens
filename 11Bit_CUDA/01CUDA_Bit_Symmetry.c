@@ -57,7 +57,7 @@
   そのため、BOUND1,BOUND2,TOPBIT,ENDBIT,LASTMASK,SIDEMASKはGPU内では同じ値になる
 
   STEPS数がGPU 1回でできる最大数なので、STEPSまでノード（GPUに渡す、LEFT,DOWN,RIGHT,board)が溜まったら、）が溜まったら息継ぎできに1回GPUを実行する
-  
+ 
 
 */
 // #include <iostream>
@@ -72,22 +72,24 @@
 // #include <cuda.h>
 // #include <cuda_runtime.h>
 // #include <device_launch_parameters.h>
+typedef unsigned int uint;
+typedef unsigned long ulong;
 #define MAX 27
 #define THREAD_NUM 96
 // システムによって以下のマクロが必要であればコメントを外してください。
 //#define UINT64_C(c) c ## ULL
 //
 // グローバル変数
-unsigned long TOTAL=0;
-unsigned long UNIQUE=0;
+ulong TOTAL=0;
+ulong UNIQUE=0;
 //GPU で使うローカル構造体
 typedef struct local
 {
-  unsigned int BOUND1,BOUND2;
-  unsigned int TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
-  unsigned long board[MAX];
-  unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
-  unsigned int STEPS;
+  uint BOUND1,BOUND2;
+  uint TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  ulong board[MAX];
+  ulong COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
+  uint STEPS;
 }local;
 //
 //
@@ -97,17 +99,17 @@ typedef struct local
 // __device__
 struct dlocal
 {
-  unsigned int BOUND1,BOUND2;
-  unsigned int TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
-  unsigned long board[MAX];
-  unsigned long COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
+  uint BOUND1,BOUND2;
+  uint TOPBIT,ENDBIT,SIDEMASK,LASTMASK;
+  ulong board[MAX];
+  ulong COUNT2,COUNT4,COUNT8,TOTAL,UNIQUE;
 }dlocal;
 // __device__ struct dlocal gdl[9999];
 struct dlocal gdl[9999];
 // GPU 対称解除法
 /**
 __host__ __device__
-long GPU_symmetryOps(unsigned int size,struct dlocal* l)
+long GPU_symmetryOps(uint size,struct dlocal* l)
 {
   // ２．クイーンが右上角以外にある場合、
   // (1) 90度回転させてオリジナルと同型になる場合、さらに90度回転(オリジナルか
@@ -116,11 +118,11 @@ long GPU_symmetryOps(unsigned int size,struct dlocal* l)
   // こちらに該当するユニーク解が属するグループの要素数は、左右反転させたパター
   // ンを加えて２個しかありません。
   if(l->board[l->BOUND2]==1){
-    unsigned int ptn;
-    unsigned int own;
+    uint ptn;
+    uint own;
     for(ptn=2,own=1;own<size;++own,ptn<<=1){
-      unsigned int bit;
-      unsigned int you;
+      uint bit;
+      uint you;
       for(bit=1,you=size-1;(l->board[you]!=ptn)&& l->board[own]>=bit;--you){
         bit<<=1;
       }
@@ -144,11 +146,11 @@ long GPU_symmetryOps(unsigned int size,struct dlocal* l)
   //   型になる場合は４個(左右反転×縦横回転)
   //１８０度回転
   if(l->board[size-1]==l->ENDBIT){
-    unsigned int you;
-    unsigned int own;
+    uint you;
+    uint own;
     for(you=size-1-1,own=1;own<=size-1;++own,--you){
-      unsigned int bit;
-      unsigned int ptn;
+      uint bit;
+      uint ptn;
       for(bit=1,ptn=l->TOPBIT;(ptn!=l->board[you])&&(l->board[own]>=bit);ptn>>=1){
         bit<<=1;
       }
@@ -169,10 +171,10 @@ long GPU_symmetryOps(unsigned int size,struct dlocal* l)
   //   (3)180度回転させてもオリジナルと異なる場合は、８個(左右反転×縦横回転×上下反転)
   //２７０度回転
   if(l->board[l->BOUND1]==l->TOPBIT){
-    unsigned int ptn;
-    unsigned int own;
-    unsigned int you;
-    unsigned int bit;
+    uint ptn;
+    uint own;
+    uint you;
+    uint bit;
     for(ptn=l->TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
       for(bit=1,you=0;(l->board[you]!=ptn)&&(l->board[own]>=bit);++you){
         bit<<=1;
@@ -192,11 +194,11 @@ long GPU_symmetryOps(unsigned int size,struct dlocal* l)
 // GPU 角にQがないときのバックトラック
 /**
 __host__ __device__
-long GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct dlocal* l)
+long GPU_symmetry_backTrack(uint size,uint row,uint left,uint down,uint right,struct dlocal* l)
 {
-  unsigned long counter=0;
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap=mask&~(left|down|right);
+  ulong counter=0;
+  uint mask=(1<<size)-1;
+  uint bitmap=mask&~(left|down|right);
   if(row==(size-1)){
     if(bitmap){
       if( (bitmap& l->LASTMASK)==0){
@@ -219,7 +221,7 @@ long GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left
       }
     }
     while(bitmap){
-      unsigned int bit=-bitmap&bitmap;
+      uint bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
       l->board[row]=bit;
       counter+=GPU_symmetry_backTrack(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
@@ -231,12 +233,12 @@ long GPU_symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left
 // GPU 角にQがあるときのバックトラック
 /**
 __host__ __device__
-long GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct dlocal* l)
+long GPU_symmetry_backTrack_corner(uint size,uint row,uint left,uint down,uint right,struct dlocal* l)
 {
-  unsigned long counter=0;
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap=mask&~(left|down|right);
-  unsigned int bit=0;
+  ulong counter=0;
+  uint mask=(1<<size)-1;
+  uint bitmap=mask&~(left|down|right);
+  uint bit=0;
   if(row==(size-1)){
     if(bitmap){
       l->board[row]=bitmap;
@@ -261,12 +263,12 @@ long GPU_symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned i
 // GPU 対称解除法 -g の実行時のみ呼び出されます
 /**
 __host__ __device__
-void GPU_symmetry_R(unsigned int size,struct local* hostLocal)
+void GPU_symmetry_R(uint size,struct local* hostLocal)
 {
   // GPU内部で使うための dlocal構造体
   struct dlocal l;
   l.TOTAL=l.UNIQUE=l.COUNT2=l.COUNT4=l.COUNT8=0;
-  unsigned int bit=0;
+  uint bit=0;
   l.TOPBIT=1<<(size-1);
   l.ENDBIT=l.LASTMASK=l.SIDEMASK=0;
   l.BOUND1=2;
@@ -309,10 +311,10 @@ void GPU_symmetry_R(unsigned int size,struct local* hostLocal)
   */
 // GPU -n 対称解除法
 /**
-__device__ 
-int BitBoard_symmetryOps(unsigned int size,unsigned int* board,unsigned int BOUND1,unsigned int BOUND2,unsigned int TOPBIT,unsigned int ENDBIT)
+__device__
+int BitBoard_symmetryOps(uint size,uint* board,uint BOUND1,uint BOUND2,uint TOPBIT,uint ENDBIT)
 {
-  unsigned int own,ptn,you,bit;
+  uint own,ptn,you,bit;
   //90度回転
   if(board[BOUND2]==1){ own=1; ptn=2;
     while(own<=size-1){ bit=1; you=size-1;
@@ -347,22 +349,22 @@ int BitBoard_symmetryOps(unsigned int size,unsigned int* board,unsigned int BOUN
 // GPU -n Ｑが角にある場合のバックトラック内の再帰処理をカーネルで行う
 /**
 __global__
-void BitBoard_cuda_kernel_b1(const unsigned int size,unsigned int mark,unsigned int* _down,unsigned int* _left,unsigned int* _right,unsigned int* _total,unsigned int* _unique,unsigned long _cond,unsigned int _row,unsigned int BOUND1)
+void BitBoard_cuda_kernel_b1(const uint size,uint mark,uint* _down,uint* _left,uint* _right,uint* _total,uint* _unique,ulong _cond,uint _row,uint BOUND1)
 {
-  const unsigned int mask=(1<<size)-1;
-  unsigned long total=0;
-  unsigned int unique=0;
+  const uint mask=(1<<size)-1;
+  ulong total=0;
+  uint unique=0;
   int row=0;
-  unsigned int bit;
+  uint bit;
   //
   //スレッド
   //
   //ブロック内のスレッドID
-  const unsigned int tid=threadIdx.x;
+  const uint tid=threadIdx.x;
   //グリッド内のブロックID
-  const unsigned int bid=blockIdx.x;
+  const uint bid=blockIdx.x;
   //全体通してのID
-  const unsigned int idx=bid*blockDim.x+tid;
+  const uint idx=bid*blockDim.x+tid;
   //
   //シェアードメモリ
   //
@@ -370,29 +372,29 @@ void BitBoard_cuda_kernel_b1(const unsigned int size,unsigned int mark,unsigned 
   //10固定なのは現在のmask設定で
   //GPUで実行するのは最大10だから
   //THREAD_NUMはブロックあたりのスレッド数
-  __shared__ unsigned int down[THREAD_NUM][10];
+  __shared__ uint down[THREAD_NUM][10];
   down[tid][row]=_down[idx];
-  __shared__ unsigned int left[THREAD_NUM][10];
+  __shared__ uint left[THREAD_NUM][10];
   left[tid][row]=_left[idx];
-  __shared__ unsigned int right[THREAD_NUM][10];
+  __shared__ uint right[THREAD_NUM][10];
   right[tid][row]=_right[idx];
-  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ uint bitmap[THREAD_NUM][10];
   bitmap[tid][row] =mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
-  __shared__ unsigned int sum[THREAD_NUM];
-  __shared__ unsigned int usum[THREAD_NUM];
-  //余分なスレッドは動かさない 
+  __shared__ uint sum[THREAD_NUM];
+  __shared__ uint usum[THREAD_NUM];
+  //余分なスレッドは動かさない
   //GPUはSTEPS数起動するが_cond以上は空回しする
   if(idx<_cond){
     //_down,_left,_rightの情報を
-    //down,left,rightに詰め直す 
+    //down,left,rightに詰め直す
     //CPU で詰め込んだ t_はSTEPS個あるが
     //ブロック内ではブロックあたりのスレッド数に限定
     //されるので idxでよい
     //
-    unsigned int bitmap_tid_row;
-    unsigned int down_tid_row;
-    unsigned int left_tid_row;
-    unsigned int right_tid_row;
+    uint bitmap_tid_row;
+    uint down_tid_row;
+    uint left_tid_row;
+    uint right_tid_row;
     while(row>=0){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
@@ -489,13 +491,13 @@ void BitBoard_cuda_kernel_b1(const unsigned int size,unsigned int mark,unsigned 
 // GPU -n Ｑが角にない場合のバックトラック内の再帰処理をカーネルで行う
 /**
 __global__
-void BitBoard_cuda_kernel_b2(unsigned int size,unsigned int mark,unsigned int* _down,unsigned int* _left,unsigned int* _right,unsigned int* _total,unsigned int* _unique,unsigned long _cond,unsigned int* board,unsigned int _row,unsigned int BOUND1,unsigned int BOUND2,unsigned int SIDEMASK,unsigned int LASTMASK,unsigned int TOPBIT,unsigned int ENDBIT)
+void BitBoard_cuda_kernel_b2(uint size,uint mark,uint* _down,uint* _left,uint* _right,uint* _total,uint* _unique,ulong _cond,uint* board,uint _row,uint BOUND1,uint BOUND2,uint SIDEMASK,uint LASTMASK,uint TOPBIT,uint ENDBIT)
 {
-  const unsigned int mask=(1<<size)-1;
-  unsigned long total=0;
-  unsigned int unique=0;
+  const uint mask=(1<<size)-1;
+  ulong total=0;
+  uint unique=0;
   int row=0;
-  unsigned int bit;
+  uint bit;
   //
   //スレッド
   //
@@ -512,18 +514,18 @@ void BitBoard_cuda_kernel_b2(unsigned int size,unsigned int mark,unsigned int* _
   //10固定なのは現在のmask設定で
   //GPUで実行するのは最大10だから
   //THREAD_NUMはブロックあたりのスレッド数
-  __shared__ unsigned int down[THREAD_NUM][10];
+  __shared__ uint down[THREAD_NUM][10];
   down[tid][row]=_down[idx];
-  __shared__ unsigned int left[THREAD_NUM][10];
+  __shared__ uint left[THREAD_NUM][10];
   left[tid][row]=_left[idx];
-  __shared__ unsigned int right[THREAD_NUM][10];
+  __shared__ uint right[THREAD_NUM][10];
   right[tid][row]=_right[idx];
-  __shared__ unsigned int bitmap[THREAD_NUM][10];
+  __shared__ uint bitmap[THREAD_NUM][10];
   //down,left,rightからbitmapを出す
   bitmap[tid][row]=mask&~(down[tid][row]|left[tid][row]|right[tid][row]);
-  __shared__ unsigned int sum[THREAD_NUM];
-  unsigned int c_aBoard[MAX];
-  __shared__ unsigned int usum[THREAD_NUM];
+  __shared__ uint sum[THREAD_NUM];
+  uint c_aBoard[MAX];
+  __shared__ uint usum[THREAD_NUM];
   //余分なスレッドは動かさない
   //GPUはSTEPS数起動するが_cond以上は空回しする
   if(idx<_cond){
@@ -536,10 +538,10 @@ void BitBoard_cuda_kernel_b2(unsigned int size,unsigned int mark,unsigned int* _
     for(int i=0;i<_row;i++){
       c_aBoard[i]=board[idx*_row+i]; //２次元配列だが1次元的に利用
     }
-    unsigned int bitmap_tid_row;
-    unsigned int down_tid_row;
-    unsigned int left_tid_row;
-    unsigned int right_tid_row;
+    uint bitmap_tid_row;
+    uint down_tid_row;
+    uint left_tid_row;
+    uint right_tid_row;
     while(row>=0){
       bitmap_tid_row=bitmap[tid][row];
       down_tid_row=down[tid][row];
@@ -651,51 +653,51 @@ void BitBoard_cuda_kernel_b2(unsigned int size,unsigned int mark,unsigned int* _
 */
 // GPU -n Ｑが角にない
 /**
-void BitBoard_backTrack2G(const unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,struct local* l)
+void BitBoard_backTrack2G(const uint size,uint row,uint _left,uint _down,uint _right,struct local* l)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   // 11 size<8の時はmarkが2
-  unsigned int mark=size>12?size-10:3;
-  //unsigned int mark=size>11?size-9:3;
+  uint mark=size>12?size-10:3;
+  //uint mark=size>11?size-9:3;
   if(size<8){ mark=2; }
-  const unsigned int h_mark=row;
-  unsigned long totalCond=0;
-  unsigned int mask=(1<<size)-1;
+  const uint h_mark=row;
+  ulong totalCond=0;
+  uint mask=(1<<size)-1;
   bool matched=false;
   //host
-  unsigned int down[32];  down[row]=_down;
-  unsigned int right[32]; right[row]=_right;
-  unsigned int left[32];  left[row]=_left;
+  uint down[32];  down[row]=_down;
+  uint right[32]; right[row]=_right;
+  uint left[32];  left[row]=_left;
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
-  unsigned int bitmap[32];
+  uint bitmap[32];
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-  unsigned int bit;
+  uint bit;
 
-  unsigned int* hostDown;
+  uint* hostDown;
   cudaMallocHost((void**) &hostDown,sizeof(int)*l->STEPS);
-  unsigned int* hostLeft;
+  uint* hostLeft;
   cudaMallocHost((void**) &hostLeft,sizeof(int)*l->STEPS);
-  unsigned int* hostRight;
+  uint* hostRight;
   cudaMallocHost((void**) &hostRight,sizeof(int)*l->STEPS);
-  unsigned int* deviceDown;
+  uint* deviceDown;
   cudaMalloc((void**) &deviceDown,sizeof(int)*l->STEPS);
-  unsigned int* deviceLeft;
+  uint* deviceLeft;
   cudaMalloc((void**) &deviceLeft,sizeof(int)*l->STEPS);
-  unsigned int* deviceRight;
+  uint* deviceRight;
   cudaMalloc((void**) &deviceRight,sizeof(int)*l->STEPS);
-  unsigned int* hostTotal;
+  uint* hostTotal;
   cudaMallocHost((void**) &hostTotal,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* hostUnique;
+  uint* hostUnique;
   cudaMallocHost((void**) &hostUnique,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* deviceTotal;
+  uint* deviceTotal;
   cudaMalloc((void**) &deviceTotal,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* deviceUnique;
+  uint* deviceUnique;
   cudaMalloc((void**) &deviceUnique,sizeof(int)*l->STEPS/THREAD_NUM);
 
-  unsigned int* hostBoard;
+  uint* hostBoard;
   cudaMallocHost((void**) &hostBoard,sizeof(int)*l->STEPS*mark);
-  unsigned int* deviceBoard;
+  uint* deviceBoard;
   cudaMalloc((void**) &deviceBoard,sizeof(int)*l->STEPS*mark);
 
   //12行目までは3行目までCPU->row==mark以下で 3行目までの
@@ -706,9 +708,9 @@ void BitBoard_backTrack2G(const unsigned int size,unsigned int row,unsigned int 
   //例えばn15だとrow=5までCPUで実行し、
   //それ以降はGPU(現在の設定だとGPUでは最大10行実行する
   //ようになっている)
-  unsigned int rowP=0;
-  unsigned long total=0;
-  unsigned long unique=0;
+  uint rowP=0;
+  ulong total=0;
+  ulong unique=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
     //どこにも置けないので1行上に戻る
@@ -844,46 +846,46 @@ void BitBoard_backTrack2G(const unsigned int size,unsigned int row,unsigned int 
 */
 // GPU -n Ｑが角にある
 /**
-void BitBoard_backTrack1G(const unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,struct local* l)
+void BitBoard_backTrack1G(const uint size,uint row,uint _left,uint _down,uint _right,struct local* l)
 {
   //何行目からGPUで行くか。ここの設定は変更可能、設定値を多くするほどGPUで並行して動く
   // 08 クイーンを２行目まで固定で置くためmarkが3以上必要
-  const unsigned int mark=size>12?size-10:3;
+  const uint mark=size>12?size-10:3;
   //mark 行までCPU mark行以降はGPU
-  const unsigned int h_mark=row;
-  const unsigned int mask=(1<<size)-1;
-  unsigned long totalCond=0;
+  const uint h_mark=row;
+  const uint mask=(1<<size)-1;
+  ulong totalCond=0;
   bool matched=false;
   //host
-  unsigned int down[32];  down[row]=_down;
-  unsigned int right[32]; right[row]=_right;
-  unsigned int left[32];  left[row]=_left;
+  uint down[32];  down[row]=_down;
+  uint right[32]; right[row]=_right;
+  uint left[32];  left[row]=_left;
   //bitmapを配列で持つことにより
   //stackを使わないで1行前に戻れる
-  unsigned int bitmap[32];
+  uint bitmap[32];
   bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-  unsigned int bit;
+  uint bit;
 
-  unsigned int* hostDown;
+  uint* hostDown;
   cudaMallocHost((void**) &hostDown,sizeof(int)*l->STEPS);
-  unsigned int* hostLeft;
+  uint* hostLeft;
   cudaMallocHost((void**) &hostLeft,sizeof(int)*l->STEPS);
-  unsigned int* hostRight;
+  uint* hostRight;
   cudaMallocHost((void**) &hostRight,sizeof(int)*l->STEPS);
-  unsigned int* deviceDown;
+  uint* deviceDown;
   cudaMalloc((void**) &deviceDown,sizeof(int)*l->STEPS);
-  unsigned int* deviceLeft;
+  uint* deviceLeft;
   cudaMalloc((void**) &deviceLeft,sizeof(int)*l->STEPS);
-  unsigned int* deviceRight;
+  uint* deviceRight;
   cudaMalloc((void**) &deviceRight,sizeof(int)*l->STEPS);
 
-  unsigned int* hostTotal;
+  uint* hostTotal;
   cudaMallocHost((void**) &hostTotal,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* hostUnique;
+  uint* hostUnique;
   cudaMallocHost((void**) &hostUnique,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* deviceTotal;
+  uint* deviceTotal;
   cudaMalloc((void**) &deviceTotal,sizeof(int)*l->STEPS/THREAD_NUM);
-  unsigned int* deviceUnique;
+  uint* deviceUnique;
   cudaMalloc((void**) &deviceUnique,sizeof(int)*l->STEPS/THREAD_NUM);
 
   //12行目までは3行目までCPU->row==mark以下で 3行目までの
@@ -896,8 +898,8 @@ void BitBoard_backTrack1G(const unsigned int size,unsigned int row,unsigned int 
   //ようになっている)
   //while(row>=0) {
   int rowP=0;
-  unsigned long total=0;
-  unsigned long unique=0;
+  ulong total=0;
+  ulong unique=0;
   while(row>=h_mark) {
     //bitmap[row]=00000000 クイーンを
     //どこにも置けないので1行上に戻る
@@ -1019,16 +1021,16 @@ void BitBoard_backTrack1G(const unsigned int size,unsigned int row,unsigned int 
 */
 // GPU -n ビットボードの実行 角にＱがある・ないの分岐を行う
 /**
-void BitBoard_build(const unsigned int size,int STEPS)
+void BitBoard_build(const uint size,int STEPS)
 {
   if(size<=0||size>32){return;}
     // int型は unsigned とする
     // total: グローバル変数TOTALへのアクセスを極小化する
   struct local l; //GPU で扱う構造体
   l.STEPS=STEPS;
-  unsigned int bit=1;
+  uint bit=1;
   l.board[0]=1;
-  unsigned int left=bit<<1,down=bit,right=bit>>1;
+  uint left=bit<<1,down=bit,right=bit>>1;
     // 2行目は右から3列目から左端から2列目まで
   for(l.BOUND1=2;l.BOUND1<size-1;l.BOUND1++){
     l.board[1]=bit=(1<<l.BOUND1);
@@ -1060,7 +1062,7 @@ bool InitCUDA()
   int count;
   cudaGetDeviceCount(&count);
   if(count==0){fprintf(stderr,"There is no device.\n");return false;}
-  unsigned int i;
+  uint i;
   for(i=0;i<count;++i){
     struct cudaDeviceProp prop;
     if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
@@ -1072,7 +1074,7 @@ bool InitCUDA()
 */
 //
 // CPU 再帰/非再帰共通 対称解除法
-void symmetryOps(unsigned int size,struct local* l)
+void symmetryOps(uint size,struct local* l)
 {
   /**
   ２．クイーンが右上角以外にある場合、
@@ -1083,11 +1085,11 @@ void symmetryOps(unsigned int size,struct local* l)
   ンを加えて２個しかありません。
   */
   if(l->board[l->BOUND2]==1){
-    unsigned int ptn;
-    unsigned int own;
+    uint ptn;
+    uint own;
     for(ptn=2,own=1;own<size;++own,ptn<<=1){
-      unsigned int bit;
-      unsigned int you;
+      uint bit;
+      uint you;
       for(bit=1,you=size-1;(l->board[you]!=ptn)&&l->board[own]>=bit;--you){
         bit<<=1;
       }
@@ -1113,11 +1115,11 @@ void symmetryOps(unsigned int size,struct local* l)
    */
   //１８０度回転
   if(l->board[size-1]==l->ENDBIT){
-    unsigned int you;
-    unsigned int own;
+    uint you;
+    uint own;
     for(you=size-1-1,own=1;own<=size-1;++own,--you){
-      unsigned int bit;
-      unsigned int ptn;
+      uint bit;
+      uint ptn;
       for(bit=1,ptn=l->TOPBIT;(ptn!=l->board[you])&&(l->board[own]>=bit);ptn>>=1){
         bit<<=1;
       }
@@ -1140,10 +1142,10 @@ void symmetryOps(unsigned int size,struct local* l)
   */
   //２７０度回転
   if(l->board[l->BOUND1]==l->TOPBIT){
-    unsigned int ptn;
-    unsigned int own;
-    unsigned int you;
-    unsigned int bit;
+    uint ptn;
+    uint own;
+    uint you;
+    uint bit;
     for(ptn=l->TOPBIT>>1,own=1;own<=size-1;++own,ptn>>=1){
       for(bit=1,you=0;(l->board[you]!=ptn)&&(l->board[own]>=bit);++you){
         bit<<=1;
@@ -1162,13 +1164,13 @@ void symmetryOps(unsigned int size,struct local* l)
   CPU -c
   */
 // 非再帰 角にQがないときのバックトラック
-void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,struct local *l)
+void symmetry_backTrack_NR(uint size,uint row,uint _left,uint _down,uint _right,struct local *l)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int down[size];
-  unsigned int left[size];
-  unsigned int right[size];
-  unsigned int bitmap[size];
+  uint mask=(1<<size)-1;
+  uint down[size];
+  uint left[size];
+  uint right[size];
+  uint bitmap[size];
   left[row]=_left;
   down[row]=_down;
   right[row]=_right;
@@ -1186,8 +1188,8 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
           bitmap[row]&=l->SIDEMASK;
         }
       }
-      unsigned int save_bitmap=bitmap[row];
-      unsigned int bit=-bitmap[row]&bitmap[row];
+      uint save_bitmap=bitmap[row];
+      uint bit=-bitmap[row]&bitmap[row];
       bitmap[row]^=bit;
       l->board[row]=bit; //Qを配置
       if((bit&mask)!=0){
@@ -1197,7 +1199,7 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
           }
           row--;
         }else{
-          unsigned int n=row++;
+          uint n=row++;
           left[row]=(left[n]|bit)<<1;
           down[row]=(down[n]|bit);
           right[row]=(right[n]|bit)>>1;
@@ -1212,14 +1214,14 @@ void symmetry_backTrack_NR(unsigned int size,unsigned int row,unsigned int _left
   }//end while
 }
 // 非再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned int _left,unsigned int _down,unsigned int _right,struct local *l)
+void symmetry_backTrack_corner_NR(uint size,uint row,uint _left,uint _down,uint _right,struct local *l)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bit=0;
-  unsigned int down[size];
-  unsigned int left[size];
-  unsigned int right[size];
-  unsigned int bitmap[size];
+  uint mask=(1<<size)-1;
+  uint bit=0;
+  uint down[size];
+  uint left[size];
+  uint right[size];
+  uint bitmap[size];
   left[row]=_left;
   down[row]=_down;
   right[row]=_right;
@@ -1237,7 +1239,7 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
         l->COUNT8++;
         row--;
       }else{
-        unsigned int n=row++;
+        uint n=row++;
         left[row]=(left[n]|bit)<<1;
         down[row]=(down[n]|bit);
         right[row]=(right[n]|bit)>>1;
@@ -1251,10 +1253,10 @@ void symmetry_backTrack_corner_NR(unsigned int size,unsigned int row,unsigned in
   }//end while
 }
 // 非再帰 対称解除法
-void symmetry_NR(unsigned int size,struct local* l)
+void symmetry_NR(uint size,struct local* l)
 {
   l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
-  unsigned int bit=0;
+  uint bit=0;
   l->TOPBIT=1<<(size-1);
   l->ENDBIT=l->SIDEMASK=l->LASTMASK=0;
   l->BOUND1=2;
@@ -1294,10 +1296,10 @@ void symmetry_NR(unsigned int size,struct local* l)
   CPU -r
   */
 // 再帰 角にQがないときのバックトラック
-void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
+void symmetry_backTrack(uint size,uint row,uint left,uint down,uint right,struct local* l)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap=mask&~(left|down|right);
+  uint mask=(1<<size)-1;
+  uint bitmap=mask&~(left|down|right);
   if(row==(size-1)){
     if(bitmap){
       if( (bitmap&l->LASTMASK)==0){
@@ -1320,7 +1322,7 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
       }
     }
     while(bitmap){
-      unsigned int bit=-bitmap&bitmap;
+      uint bit=-bitmap&bitmap;
       bitmap=bitmap^bit;
       l->board[row]=bit;
       symmetry_backTrack(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1,l);
@@ -1328,11 +1330,11 @@ void symmetry_backTrack(unsigned int size,unsigned int row,unsigned int left,uns
   }
 }
 // 再帰 角にQがあるときのバックトラック
-void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int left,unsigned int down,unsigned int right,struct local* l)
+void symmetry_backTrack_corner(uint size,uint row,uint left,uint down,uint right,struct local* l)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap=mask&~(left|down|right);
-  unsigned int bit=0;
+  uint mask=(1<<size)-1;
+  uint bitmap=mask&~(left|down|right);
+  uint bit=0;
   if(row==(size-1)){
     if(bitmap){
       l->board[row]=bitmap;
@@ -1352,10 +1354,10 @@ void symmetry_backTrack_corner(unsigned int size,unsigned int row,unsigned int l
   }
 }
 // 再帰 対称解除法
-void symmetry_R(unsigned int size,struct local* l)
+void symmetry_R(uint size,struct local* l)
 {
   l->TOTAL=l->UNIQUE=l->COUNT2=l->COUNT4=l->COUNT8=0;
-  unsigned int bit=0;
+  uint bit=0;
   l->TOPBIT=1<<(size-1);
   l->ENDBIT=l->LASTMASK=l->SIDEMASK=0;
   l->BOUND1=2;
@@ -1395,7 +1397,7 @@ void symmetry_R(unsigned int size,struct local* l)
 int main(int argc,char** argv)
 {
   bool cpu=false,cpur=false,gpu=false,gpuBitBoard=false;
-  unsigned int argstart=2;
+  uint argstart=2;
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
@@ -1418,12 +1420,12 @@ int main(int argc,char** argv)
   else if(gpuBitBoard){ printf("\n\n対称解除法 GPUビットボード \n"); }
   if(cpu||cpur)
   {
-    unsigned int min=4; 
-    unsigned int targetN=17;
+    uint min=4; 
+    uint targetN=17;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-    for(unsigned int size=min;size<=targetN;size++){
+    for(uint size=min;size<=targetN;size++){
       local l;
       gettimeofday(&t0,NULL);//計測開始
       if(cpur){ //再帰
@@ -1434,9 +1436,9 @@ int main(int argc,char** argv)
       }
       //
       gettimeofday(&t1,NULL);//計測終了
-      unsigned int ss;
-      unsigned int ms;
-      unsigned int dd;
+      uint ss;
+      uint ms;
+      uint dd;
       if(t1.tv_usec<t0.tv_usec) {
         dd=(t1.tv_sec-t0.tv_sec-1)/86400;
         ss=(t1.tv_sec-t0.tv_sec-1)%86400;
@@ -1446,8 +1448,8 @@ int main(int argc,char** argv)
         ss=(t1.tv_sec-t0.tv_sec)%86400;
         ms=(t1.tv_usec-t0.tv_usec+500)/10000;
       }//end if
-      unsigned int hh=ss/3600;
-      unsigned int mm=(ss-hh*3600)/60;
+      uint hh=ss/3600;
+      uint mm=(ss-hh*3600)/60;
       ss%=60;
       printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     } //end for
@@ -1457,12 +1459,12 @@ int main(int argc,char** argv)
   {
     int STEPS=24576;
     if(!InitCUDA()){return 0;}
-    unsigned int min=4;
-    unsigned int targetN=25;
+    uint min=4;
+    uint targetN=25;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
-    for(unsigned int size=min;size<=targetN;size++){
+    for(uint size=min;size<=targetN;size++){
       gettimeofday(&t0,NULL);
       if(gpu){
         TOTAL=UNIQUE=0;
@@ -1475,9 +1477,9 @@ int main(int argc,char** argv)
         BitBoard_build(size,STEPS);
       }
       gettimeofday(&t1,NULL);
-      unsigned int ss;
-      unsigned int ms;
-      unsigned int dd;
+      uint ss;
+      uint ms;
+      uint dd;
       if (t1.tv_usec<t0.tv_usec) {
         dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
         ss=(t1.tv_sec-t0.tv_sec-1)%86400;
@@ -1487,8 +1489,8 @@ int main(int argc,char** argv)
         ss=(t1.tv_sec-t0.tv_sec)%86400;
         ms=(t1.tv_usec-t0.tv_usec+500)/10000;
       }//end if
-      unsigned int hh=ss/3600;
-      unsigned int mm=(ss-hh*3600)/60;
+      uint hh=ss/3600;
+      uint mm=(ss-hh*3600)/60;
       ss%=60;
       printf("%2d:%17ld%16ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }
