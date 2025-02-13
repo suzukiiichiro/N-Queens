@@ -1487,7 +1487,7 @@ int main(int argc,char** argv)
   int dd;
   int hh;
   int mm;
-  printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+  printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
   for(int size=min;size<=targetN;++size){
     ijklList=create_int_hashset();
     constellations=create_constellation_arraylist();
