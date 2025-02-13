@@ -11,12 +11,12 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 10:          724          92      00:00:00:00.00
 11:         2680         341      00:00:00:00.00
 12:        14200        1788      00:00:00:00.01
-13:        73712        9237      00:00:00:00.04
-14:       365596       45771      00:00:00:00.17
-15:      2279184      285095      00:00:00:00.90
-16:     16314044     2040171      00:00:00:05.39
-17:    167611052    20954665      00:00:00:38.43
-18:   2368560040   296093363      00:00:05:27.09
+13:        73712        9237      00:00:00:00.05
+14:       365596       45771      00:00:00:00.19
+15:      2279184      285095      00:00:00:00.93
+16:     14772512     1847425      00:00:00:05.46
+17:     95815104    11979381      00:00:00:36.85
+18:    657378384    82181924      00:00:04:21.49
 
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 ノードレイヤー
@@ -38,33 +38,33 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/time.h>
 #define MAX 27
 //
-//typedef unsigned long long uint;
-typedef uint uint;
+typedef unsigned long long uint64_t;
 typedef struct{
-  uint bv;
-  uint down;
-  uint left;
-  uint right;
-  int x[MAX];
+  uint64_t bv;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  uint64_t x[MAX];
 }Board ;
 Board B;
-uint COUNT8=2;
-uint COUNT4=1;
-uint COUNT2=0;
-long cnt[3];
-long pre[3];
-long TOTAL=0;
-long UNIQUE=0;
+uint64_t COUNT8=2;
+uint64_t COUNT4=1;
+uint64_t COUNT2=0;
+uint64_t cnt[3];
+uint64_t pre[3];
+uint64_t TOTAL=0;
+uint64_t UNIQUE=0;
 /**
  * solve
  */
-long solve(uint bv,uint left,uint down,uint right)
+uint64_t solve(uint64_t bv,uint64_t left,uint64_t down,uint64_t right)
 {
-  uint s=0;
-  uint bit;
+  uint64_t s=0;
+  uint64_t bit;
   if(down+1==0){ return  1;}
   while((bv&1)!=0) {
     bv>>=1;
@@ -72,7 +72,7 @@ long solve(uint bv,uint left,uint down,uint right)
     right>>=1;
   }
   bv>>=1;
-  for(uint bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=bitmap&-bitmap;
     s+=solve(bv,(left|bit)<<1,down|bit,(right|bit)>>1);
   }
@@ -93,10 +93,10 @@ bool placement(int size,int x,int y)
 {
   if(B.x[x]==y){ return true;  }
   B.x[x]=y;
-  uint bv=1<<x;
-  uint down=1<<y;
-  uint left=1<<(size-1-x+y);
-  uint right=1<<(x+y);
+  uint64_t bv=1<<x;
+  uint64_t down=1<<y;
+  uint64_t left=1<<(size-1-x+y);
+  uint64_t right=1<<(x+y);
   if((B.bv&bv)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }
   B.bv |=bv;
   B.down |=down;
@@ -135,20 +135,29 @@ void nqueens(int size)
     //プログレス
     placement(size,0,pres_a[w]);
     placement(size,1,pres_b[w]);
-    Board nB=B;
+    // Board nB=B;
+    Board nB;
+    memcpy(&nB,&B,sizeof(Board));
     int lsize=(size-2)*(size-1)-w;
     for(int n=w;n<lsize;n++){
-      B=nB;
+      // B=nB;
+      memcpy(&B,&nB,sizeof(Board));
       if(placement(size,pres_a[n],size-1)==false){ continue; }
       if(placement(size,pres_b[n],size-2)==false){ continue; }
-      Board eB=B;
+      // Board eB=B;
+      Board eB;
+      memcpy(&eB,&B,sizeof(Board));
       for(int e=w;e<lsize;e++){
-        B=eB;
+        // B=eB;
+        memcpy(&B,&eB,sizeof(Board));
         if(placement(size,size-1,size-1-pres_a[e])==false){ continue; }
         if(placement(size,size-2,size-1-pres_b[e])==false){ continue; }
-        Board sB=B;
+        // Board sB=B;
+        Board sB;
+        memcpy(&sB,&B,sizeof(Board));
         for(int s=w;s<lsize;s++){
-          B=sB;
+          // B=sB;
+          memcpy(&B,&sB,sizeof(Board));
           if(placement(size,size-1-pres_a[s],0)==false){ continue; }
           if(placement(size,size-1-pres_b[s],1)==false){ continue; }
           int ww=(size-2)*(size-1)-1-w;
@@ -166,26 +175,24 @@ void nqueens(int size)
   UNIQUE=cnt[COUNT2]+cnt[COUNT4]+cnt[COUNT8];
   TOTAL=cnt[COUNT2]*2+cnt[COUNT4]*4+cnt[COUNT8]*8;
 }
-//メインメソッド
+/**
+ * メイン
+*/
 int main(int argc,char** argv)
 {
   printf("%s\n","キャリーチェーン");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-  // clock_t st;
-  // char t[20];
   int min=4;
   int targetN=18;
-  // int mask;
   struct timeval t0;
   struct timeval t1;
-  uint ss,ms,dd,hh,mm;
+  uint64_t ss,ms,dd,hh,mm;
   for(int size=min;size<=targetN;size++){
     TOTAL=0; UNIQUE=0;
     for(int j=0;j<=2;j++){
       pre[j]=0;
       cnt[j]=0;
     }
-    // mask=(1<<size)-1;
     gettimeofday(&t0,NULL);
     nqueens(size);
     gettimeofday(&t1,NULL);
@@ -201,7 +208,7 @@ int main(int argc,char** argv)
     hh=ss/3600;
     mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    printf("%2d:%13lld%12lld%8.2lld:%02lld:%02lld:%02lld.%02lld\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
   return 0;
 }
