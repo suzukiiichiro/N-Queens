@@ -1,7 +1,7 @@
 /**
 bash-5.1$ gcc -W -Wall -O3 004GCC_constellation.c && ./a.out
 Constellations
- N:        Total      Unique      dd:hh:mm:ss.ms
+ N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.00
  5:               18               0     000:00:00:00.00
  6:                4               0     000:00:00:00.00
