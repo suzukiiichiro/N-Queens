@@ -1,5 +1,6 @@
 /**
 bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
+ビット
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2           1      00:00:00:00.00
  5:           10           2      00:00:00:00.00
@@ -182,6 +183,7 @@ int main(int argc,char** argv)
   struct timeval t1;
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   uint ss,ms,dd,hh,mm;
+	printf("%s\n","ビット");
   for(uint size=min;size<=targetN;size++){
     local l;
     gettimeofday(&t0,NULL);

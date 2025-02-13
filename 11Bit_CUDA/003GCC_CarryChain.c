@@ -1,31 +1,44 @@
 /**
-bash-5.1$ gcc -W -Wall -O3 00GCC_CarryChain.c && ./a.out
-
+bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 キャリーチェーン
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2               1            0.00
- 5:           10               2            0.00
- 6:            4               1            0.00
- 7:           40               6            0.00
- 8:           92              12            0.00
- 9:          352              46            0.00
-10:          724              92            0.00
-11:         2680             341            0.00
-12:        14200            1788            0.01
-13:        73712            9237            0.05
-14:       365596           45771            0.21
-15:      2279184          285095            0.97
-16:     16314044         2040171            5.52
-17:    167611052        20954665           38.22
-18:   2368560040       296093363         5:30.60
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:            2           1      00:00:00:00.00
+ 5:           10           2      00:00:00:00.00
+ 6:            4           1      00:00:00:00.00
+ 7:           40           6      00:00:00:00.00
+ 8:           92          12      00:00:00:00.00
+ 9:          352          46      00:00:00:00.00
+10:          724          92      00:00:00:00.00
+11:         2680         341      00:00:00:00.00
+12:        14200        1788      00:00:00:00.01
+13:        73712        9237      00:00:00:00.04
+14:       365596       45771      00:00:00:00.17
+15:      2279184      285095      00:00:00:00.90
+16:     16314044     2040171      00:00:00:05.39
+17:    167611052    20954665      00:00:00:38.43
+18:   2368560040   296093363      00:00:05:27.09
+
+bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
+ノードレイヤー
+ N:        Total      Unique      dd:hh:mm:ss.ms
+15:      2279184           0      00:00:00:00.70
+16:     14772512           0      00:00:00:04.69
+17:     95815104           0      00:00:00:32.70
+18:    666090624           0      00:00:03:59.95
+
+bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
+ビット
+ N:        Total      Unique      dd:hh:mm:ss.ms
+15:      2279184      285053      00:00:00:00.33
+16:     14772512     1846955      00:00:00:02.16
+17:     95815104    11977939      00:00:00:14.89
+18:    666090624    83263591      00:00:01:45.44
  *
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
 #include <sys/time.h>
-#define THREAD_NUM		96
 #define MAX 27
 //
 //typedef unsigned long long uint;
@@ -46,25 +59,6 @@ long pre[3];
 long TOTAL=0;
 long UNIQUE=0;
 /**
- * TimeFormat
- */
-void TimeFormat(clock_t utime,char *form)
-{
-  int dd,hh,mm;
-  float ftime,ss;
-  ftime=(float)utime/CLOCKS_PER_SEC;
-  mm=(int)ftime/60;
-  ss=ftime-(int)(mm*60);
-  dd=mm/(24*60);
-  mm=mm%(24*60);
-  hh=mm/60;
-  mm=mm%60;
-  if(dd){ sprintf(form,"%4d %02d:%02d:%05.2f",dd,hh,mm,ss); }
-  else if(hh){ sprintf(form,"     %2d:%02d:%05.2f",hh,mm,ss); }
-  else if(mm){ sprintf(form,"        %2d:%05.2f",mm,ss); }
-  else{ sprintf(form,"           %5.2f",ss); }
-}
-/**
  * solve
  */
 long solve(uint bv,uint left,uint down,uint right)
@@ -72,7 +66,7 @@ long solve(uint bv,uint left,uint down,uint right)
   uint s=0;
   uint bit;
   if(down+1==0){ return  1;}
-  while((bv&1)!=0) { 
+  while((bv&1)!=0) {
     bv>>=1;
     left<<=1;
     right>>=1;
@@ -175,7 +169,7 @@ void nqueens(int size)
 //メインメソッド
 int main(int argc,char** argv)
 {
-  printf("\n\nキャリーチェーン\n");
+  printf("%s\n","キャリーチェーン");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   // clock_t st;
   // char t[20];

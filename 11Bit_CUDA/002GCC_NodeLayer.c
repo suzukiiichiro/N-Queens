@@ -1,6 +1,5 @@
 /**
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
-
 ノードレイヤー
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2           0      00:00:00:00.00
@@ -14,17 +13,20 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 12:        14200           0      00:00:00:00.00
 13:        73712           0      00:00:00:00.02
 14:       365596           0      00:00:00:00.11
-15:      2279184           0      00:00:00:00.69
-16:     14772512           0      00:00:00:04.61
-17:     95815104           0      00:00:00:32.40
-18:    666090624           0      00:00:04:02.23
+15:      2279184           0      00:00:00:00.70
+16:     14772512           0      00:00:00:04.69
+17:     95815104           0      00:00:00:32.70
+18:    666090624           0      00:00:03:59.95
+
+bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
+ N:        Total      Unique      dd:hh:mm:ss.ms
+15:      2279184      285053      00:00:00:00.33
+16:     14772512     1846955      00:00:00:02.16
+17:     95815104    11977939      00:00:00:14.89
+18:    666090624    83263591      00:00:01:45.44
 */
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <math.h>
-#include <string.h>
-#include <time.h>
 #include <sys/time.h>
 #define MAX 27
 #define THREAD_NUM 96
@@ -136,7 +138,7 @@ int main(int argc,char** argv)
   uint targetN=18;
   struct timeval t0;
   struct timeval t1;
-	printf("ノードレイヤー\n");
+	printf("%s\n","ノードレイヤー");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   uint ss,ms,dd,hh,mm;
   for(uint size=min;size<=targetN;size++){
@@ -156,7 +158,7 @@ int main(int argc,char** argv)
     hh=ss/3600;
     mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,0,dd,hh,mm,ss,ms);
+    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
   return 0;
 }
