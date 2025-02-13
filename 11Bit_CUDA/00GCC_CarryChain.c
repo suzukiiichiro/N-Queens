@@ -127,7 +127,7 @@ void nqueens(int size)
     }
   }
   //プログレス
-  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+  // printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
   Board wB=B;
   for(int w=0;w<=(size/2)*(size-3);w++){
@@ -135,9 +135,9 @@ void nqueens(int size)
     B.bv=B.down=B.left=B.right=0;
     for(int i=0;i<size;i++){ B.x[i]=-1; }
     //プログレス
-    printf("\r(%d/%d)",w,((size/2)*(size-3)));
-    printf("\r");
-    fflush(stdout);
+    // printf("\r(%d/%d)",w,((size/2)*(size-3)));
+    // printf("\r");
+    // fflush(stdout);
     //プログレス
     placement(size,0,pres_a[w]);
     placement(size,1,pres_b[w]);
@@ -176,23 +176,38 @@ void nqueens(int size)
 int main(int argc,char** argv)
 {
   printf("\n\nキャリーチェーン\n");
-  printf("%s\n"," N:        Total       Unique        hh:mm:ss.ms");
-  clock_t st;
-  char t[20];
+  printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+  // clock_t st;
+  // char t[20];
   int min=4;
   int targetN=18;
-  int mask;
+  // int mask;
+  struct timeval t0;
+  struct timeval t1;
+  uint ss,ms,dd,hh,mm;
   for(int size=min;size<=targetN;size++){
     TOTAL=0; UNIQUE=0;
     for(int j=0;j<=2;j++){
       pre[j]=0;
       cnt[j]=0;
     }
-    mask=(1<<size)-1;
-    st=clock();
+    // mask=(1<<size)-1;
+    gettimeofday(&t0,NULL);
     nqueens(size);
-    TimeFormat(clock()-st,t);
-    printf("%2d:%13ld%16ld%s\n",size,TOTAL,UNIQUE,t);
+    gettimeofday(&t1,NULL);
+    if(t1.tv_usec<t0.tv_usec) {
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    }else {
+      dd=(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }
+    hh=ss/3600;
+    mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
   return 0;
 }
