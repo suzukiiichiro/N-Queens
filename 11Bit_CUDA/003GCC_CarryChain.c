@@ -42,7 +42,7 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 #include <sys/time.h>
 #define MAX 27
 //
-typedef unsigned long long uint64_t;
+typedef long long uint64_t;
 typedef struct{
   uint64_t bv;
   uint64_t down;
@@ -109,9 +109,9 @@ bool placement(int size,int x,int y)
  */
 void nqueens(int size)
 {
-  int pres_a[930];
-  int pres_b[930];
-  int idx=0;
+  uint64_t pres_a[930];
+  uint64_t pres_b[930];
+  uint64_t idx=0;
   for(int a=0;a<size;a++){
     for(int b=0;b<size;b++){
       if((a>=b&&(a-b)<=1)||(b>a&&(b-a)<=1)){ continue; }

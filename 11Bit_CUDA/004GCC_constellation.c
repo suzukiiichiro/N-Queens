@@ -20,6 +20,11 @@ Constellations
 
 bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 キャリーチェーン
+ N:        Total      Unique      dd:hh:mm:ss.ms
+15:      2279184      285095      00:00:00:00.93
+16:     14772512     1847425      00:00:00:05.45
+17:     95815104    11979381      00:00:00:37.02
+18:    657378384    82181924      00:00:04:18.68
 
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 ノードレイヤー
