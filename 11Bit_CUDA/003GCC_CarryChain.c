@@ -35,6 +35,8 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 18:    666090624    83263591      00:00:01:45.44
  *
  */
+// システムによって以下のマクロが必要であればコメントを外してください。
+#define UINT64_C(c) c ## ULL
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -42,30 +44,28 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 #include <sys/time.h>
 #define MAX 27
 //
-typedef unsigned long ulong;
+typedef unsigned long long uint64_t;
 typedef unsigned int uint;
 typedef struct{
-  ulong row;
-  ulong down;
-  ulong left;
-  ulong right;
-  ulong x[MAX];
+  uint64_t row;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  uint64_t x[MAX];
 }Board ;
+Board B;
 uint COUNT8=2;
 uint COUNT4=1;
 uint COUNT2=0;
-ulong cnt[3];
-ulong pre[3];
-ulong TOTAL=0;
-ulong UNIQUE=0;
+uint64_t cnt[3];
+uint64_t pre[3];
+long TOTAL=0;
+long UNIQUE=0;
 /**
  * solve
  */
-ulong solve(ulong row,ulong left,ulong down,ulong right)
+uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
-  ulong s=0;
-  ulong bit;
-  ulong bitmap=0;
   if(down+1==0){ return  1;}
   while((row&1)!=0){
     row>>=1;
@@ -73,7 +73,9 @@ ulong solve(ulong row,ulong left,ulong down,ulong right)
     right>>=1;
   }
   row>>=1;
-  for(bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
+  uint64_t s=0;
+  uint64_t bit;
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=bitmap&-bitmap;
     s+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
   }
@@ -82,28 +84,54 @@ ulong solve(ulong row,ulong left,ulong down,ulong right)
 /**
  * process
  */
-void process(uint size,Board* B,int sym)
+void process(uint size,Board B,int sym)
 {
   pre[sym]++;
-  cnt[sym]+=solve(B->row>>2,B->left>>4,((((B->down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B->right>>4)<<(size-5));
+  cnt[sym]+=solve(B.row>>2,B.left>>4,((((B.down>>2)|(~0<<(size-4)))+1)<<(size-5))-1,(B.right>>4)<<(size-5));
 }
 /**
  * placement
  */
-bool placement(uint size,ulong x,ulong y,Board* B)
+bool placement(uint size,uint64_t x,uint64_t y)
 {
-  if(B->x[x]==y){ return true;  }
-  B->x[x]=y;
-  ulong row=1<<x;
-  ulong down=1<<y;
-  ulong left=1<<(size-1-x+y);
-  ulong right=1<<(x+y);
-  if((B->row&row)||(B->down&down)||(B->left&left)||(B->right&right)){ return false; }
-  B->row |=row;
-  B->down |=down;
-  B->left |=left;
-  B->right |=right;
+  if(B.x[x]==y){ return true;  }
+  B.x[x]=y;
+  uint64_t row=1<<x;
+  uint64_t down=1<<y;
+  uint64_t left=1<<(size-1-x+y);
+  uint64_t right=1<<(x+y);
+  if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }
+  B.row |=row;
+  B.down |=down;
+  B.left |=left;
+  B.right |=right;
   return true;
+  /**
+  if(B.x[x]==y){ return true;  }
+  if (B.x[0]==0){
+    if (B.x[1]!=(uint64_t)-1){
+      if((B.x[1]>=x)&&(y==1)){ return false; }
+    }
+  }else{
+    if( (B.x[0]!=(uint64_t)-1) ){
+      if(( (x<B.x[0]||x>=size-B.x[0])
+        && (y==0 || y==size-1)
+      )){ return 0; } 
+      if ((  (x==size-1)&&((y<=B.x[0])||
+          y>=size-B.x[0]))){
+        return 0;
+      } 
+    }
+  }
+  B.x[x]=y;                    //xは行 yは列
+  uint64_t row=UINT64_C(1)<<x;
+  uint64_t down=UINT64_C(1)<<y;
+  uint64_t left=UINT64_C(1)<<(size-1-x+y); //右上から左下
+  uint64_t right=UINT64_C(1)<<(x+y);       // 左上から右下
+  if((B.row&row)||(B.down&down)||(B.left&left)||(B.right&right)){ return false; }
+  B.row|=row; B.down|=down; B.left|=left; B.right|=right;
+  return true;
+  */
 }
 /**
  * nqueens
@@ -125,11 +153,9 @@ void nqueens(uint size)
   // printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
   //プログレス
   // Board wB=B;
-  Board wB,B;
-  memcpy(&wB,&B,sizeof(Board));
+  Board wB=B;
   for(uint w=0;w<=(size/2)*(size-3);w++){
-    // B=wB;
-    memcpy(&B,&wB,sizeof(Board));
+    B=wB;
     B.row=B.down=B.left=B.right=0;
     for(uint i=0;i<size;i++){ B.x[i]=-1; }
     //プログレス
@@ -137,45 +163,36 @@ void nqueens(uint size)
     // printf("\r");
     // fflush(stdout);
     //プログレス
-    placement(size,0,pres_a[w],&B);
-    placement(size,1,pres_b[w],&B);
-    // Board nB=B;
-    Board nB;
-    memcpy(&nB,&B,sizeof(Board));
+    if(!placement(size,0,pres_a[w])){return;};
+    if(!placement(size,1,pres_b[w])){return;};
+    Board nB=B;
     uint lsize=(size-2)*(size-1)-w;
     for(uint n=w;n<lsize;n++){
-      // B=nB;
-      memcpy(&B,&nB,sizeof(Board));
-      if(placement(size,pres_a[n],size-1,&B)==false){ continue; }
-      if(placement(size,pres_b[n],size-2,&B)==false){ continue; }
-      // Board eB=B;
-      Board eB;
-      memcpy(&eB,&B,sizeof(Board));
+      B=nB;
+      if(!placement(size,pres_a[n],size-1)){ continue; }
+      if(!placement(size,pres_b[n],size-2)){ continue; }
+      Board eB=B;
       for(uint e=w;e<lsize;e++){
-        // B=eB;
-        memcpy(&B,&eB,sizeof(Board));
-        if(placement(size,size-1,size-1-pres_a[e],&B)==false){ continue; }
-        if(placement(size,size-2,size-1-pres_b[e],&B)==false){ continue; }
-        // Board sB=B;
-        Board sB;
-        memcpy(&sB,&B,sizeof(Board));
+        B=eB;
+        if(!placement(size,size-1,size-1-pres_a[e])){ continue; }
+        if(!placement(size,size-2,size-1-pres_b[e])){ continue; }
+        Board sB=B;
         for(uint s=w;s<lsize;s++){
-          // B=sB;
-          memcpy(&B,&sB,sizeof(Board));
-          if(placement(size,size-1-pres_a[s],0,&B)==false){ continue; }
-          if(placement(size,size-1-pres_b[s],1,&B)==false){ continue; }
+          B=sB;
+          if(!placement(size,size-1-pres_a[s],0)){ continue; }
+          if(!placement(size,size-1-pres_b[s],1)){ continue; }
           uint ww=(size-2)*(size-1)-1-w;
           uint w2=(size-2)*(size-1)-1;
           if((s==ww)&&(n<(w2-e))){ continue; }
           if((e==ww)&&(n>(w2-n))){ continue;}
           if((n==ww)&&(e>(w2-s))){ continue; }
           if(s==w){ if((n!=w)||(e!=w)){ continue; }
-            process(size,&B,COUNT2);continue;
+            process(size,B,COUNT2);continue;
           }
           if((e==w)&&(n>=s)){ if(n>s){ continue; }
-            process(size,&B,COUNT4);continue;
+            process(size,B,COUNT4);continue;
           }
-          process(size,&B,COUNT8);continue;
+          process(size,B,COUNT8);continue;
         }
       }
     }
