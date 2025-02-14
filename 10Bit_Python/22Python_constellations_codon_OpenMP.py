@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+コンステレーション codon版Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
 
 """
 #
@@ -8,108 +23,63 @@ echo 'export PATH="$HOME/.codon/bin:$PATH"' >> ~/.bashrc
 # 共有ライブラリを環境変数に設定します
 echo 'export CODON_PYTHON=$PYENV_ROOT/versions/3.10.10/lib/libpython3.10.so' >> ~/.bashrc
 source ~/.bashrc
-
-#
-# OpenMP のインストール 
-#
-$ sudo yum install gcc-gfortran libgfortran
-$ sudo yum install gcc-c++
-$ wget http://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-4.0.5.tar.gz
-$ tar xzvf openmpi-4.0.5.tar.gz
-$ cd openmpi-4.0.5
-$ ./configure CC=gcc CXX=g++ F77=gfortran FC=gfortran --enable-mpi-thread-multiple --prefix=/usr/local/bin
-$ make
-$ sudo make install
-
-bash-5.1$ which mpicc
-bash-5.1$ /usr/local/bin/mpicc
-bash-5.1$ sudo ln -s /usr/local/bin/mpicc /usr/bin/mpicc
-
-bash-5.1$ which mpic++
-bash-5.1$ /usr/local/bin/mpic++
-bash-5.1$ sudo ln -s /usr/local/bin/mpic++ /usr/bin/mpic++
 """
 
 """
-bash-5.1$ codon build -release 21Python_constellations_codon.py
-bash-5.1$ ./21Python_constellations_codon
+CentOS-5.1$ codon build -release 22Python_constellations_codon_OpenMP.py
+CentOS-5.1$ ./22Python_constellations_codon_OpenMP
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.000
+ 5:           18            0         0:00:00.001
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
  9:          352            0         0:00:00.000
 10:          724            0         0:00:00.000
-11:         2680            0         0:00:00.000
-12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.008
-14:       365596            0         0:00:00.042
-15:      2279184            0         0:00:00.233
-16:     14772512            0         0:00:01.468
-17:     95815104            0         0:00:10.253
+11:         2680            0         0:00:00.001
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.004
+14:       365596            0         0:00:00.020
+15:      2279184            0         0:00:00.093
+16:     14772512            0         0:00:00.517
+17:     95815104            0         0:00:03.247
+18:    666090624            0         0:00:25.256
 
-CentOS-5.1$ pypy 19Python_constellations.py
+CentOS-5.1$ codon build -release 21Python_constellations_codon.py
+CentOS-5.1$ ./21Python_constellations_codon
  N:        Total       Unique        hh:mm:ss.ms
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.002
- 9:          352            0         0:00:00.006
-10:          724            0         0:00:00.018
-11:         2680            0         0:00:00.070
-12:        14200            0         0:00:00.203
-13:        73712            0         0:00:00.253
-14:       365596            0         0:00:00.424
-15:      2279184            0         0:00:02.198
+15:      2279184            0         0:00:00.249
+16:     14772512            0         0:00:01.468
+17:     95815104            0         0:00:10.120
+18:    666090624            0         0:01:14.858
+
+CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:04.351
+16:     14772512            0         0:00:17.743
+17:     95815104            0         0:01:36.792
+18:    666090624            0         0:11:06.028
 
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:04.610
+15:      2279184            0         0:00:05.272
+16:     14772512            0         0:00:26.704
+17:     95815104            0         0:02:49.897
+18:    666090624            0         0:20:12.647
 
-CentOS-5.1$ pypy 17Python_carryChain.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:11.243
-# copy.deepcopy
-CentOS-5.1$ pypy 17Python_carryChain.py
-15:      2279184            0         0:00:48.769
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.911
-CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.425
-CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.345
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.926
-CentOS-5.1$ pypy 11Python_NodeLayer.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.160
+15:      2279184            0         0:00:03.064
+16:     14772512            0         0:00:17.305
+17:     95815104            0         0:01:59.358
+18:    666090624            0         0:14:48.210
+
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:01.998
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:02.111
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.026
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
+
 """
 
 from operator import or_
@@ -130,9 +100,9 @@ from datetime import datetime
 class NQueens19:
   def __init__(self):
     pass
-  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     if row==endmark:
-      tempcounter[0]+=1
+      tempcounter[i]+=1
       return
     while free:
       bit:int=free&-free  # 最下位ビットを取得
@@ -147,13 +117,13 @@ class NQueens19:
       # if next_free:
       #   if row<endmark-1:
       #     if ~((next_ld<<1)|(next_rd>>1)|next_col)>0:
-      #       self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #       self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       #   else:
-      #     self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #     self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # if row==mark1:
     #   while free:
@@ -162,7 +132,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3)) #<<注意
     #     if next_free:
-    #       self.SQd0B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd0B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -170,16 +140,16 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3)) #<<注意
       if next_free:
-        self.SQd0B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd0B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N4:int=N-4
     # if row==mark1:
     #   while free:
@@ -188,7 +158,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|(1<<N4))
     #     if next_free:
-    #       self.SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -196,18 +166,18 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|(1<<N4))
       if next_free:
-        self.SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     if row==endmark:
-      tempcounter[0]+=1
+      tempcounter[i]+=1
       return
     while free:
       bit:int=free&-free
@@ -221,13 +191,13 @@ class NQueens19:
       # if next_free:
       #   if row+1<endmark:
       #     if ~((next_ld<<1)|(next_rd>>1)|next_col)>0:
-      #       self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #       self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       #   else:
-      #     self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #     self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # When row reaches mark1
     # if row==mark1:
@@ -238,7 +208,7 @@ class NQueens19:
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if next_free:
     #       # Recursive call with updated values
-    #       self.SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # Extract the rightmost 1-bit
@@ -247,7 +217,7 @@ class NQueens19:
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if next_free:
         # Recursive call with updated values
-        self.SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # General case when row != mark1
     while free:
       bit:int=free&-free  # Extract the rightmost 1-bit
@@ -256,9 +226,9 @@ class NQueens19:
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
         # Recursive call with updated values
-        self.SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # When row reaches mark2
     # if row==mark2:
     #   while free:
@@ -276,11 +246,11 @@ class NQueens19:
     #     # if next_free:
     #     #   if row+2<endmark:
     #     #     if ~((next_ld<<1)|(next_rd>>1)|next_col)>0:
-    #     #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #     #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #     #   else:
-    #     #     self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #     #     self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #     if next_free and (row+2>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-    #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark2 and free:
       # Extract the rightmost available position
@@ -297,11 +267,11 @@ class NQueens19:
       # if next_free:
       #   if row+2<endmark:
       #     if ~((next_ld<<1)|(next_rd>>1)|next_col)>0:
-      #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #       self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       #   else:
-      #     self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #     self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       if next_free and (row+2>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # General case when row != mark2
     while free:
       # Extract the rightmost available position
@@ -312,9 +282,9 @@ class NQueens19:
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       # Recursive call if there are available positions
       if next_free:
-        self.SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3  # Precomputed value for performance
     # Special case when row==mark1
     # if row==mark1:
@@ -324,7 +294,7 @@ class NQueens19:
     #     free&=free-1
     #     nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|(1<<N3))
     #     if nextfree:
-    #       self.SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -332,7 +302,7 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|(1<<N3))
       if nextfree:
-        self.SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # General case
     while free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -340,9 +310,9 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # Special case when row==mark1
     # if row==mark1:
     #   while free:
@@ -351,7 +321,7 @@ class NQueens19:
     #     free&=free-1
     #     nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
     #     if nextfree:
-    #       self.SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -359,7 +329,7 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
       if nextfree:
-        self.SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # General case
     while free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -367,9 +337,9 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # Special case: when row equals mark2
     # if row==mark2:
@@ -380,7 +350,7 @@ class NQueens19:
     #     # Calculate the next free positions
     #     nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if nextfree:
-    #       self.SQd1B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd1B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark2 and free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -389,7 +359,7 @@ class NQueens19:
       # Calculate the next free positions
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if nextfree:
-        self.SQd1B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1B((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # General case
     while free:
       bit:int=free&-free  # Extract the rightmost available position
@@ -398,9 +368,9 @@ class NQueens19:
       # Calculate the next free positions
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # 行が mark1 に達した場合の特別処理
     # if row==mark1:
@@ -412,7 +382,7 @@ class NQueens19:
     #     nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N3)|2)
     #     # 再帰的に SQd2B を呼び出す
     #     if nextfree:
-    #       self.SQd2B((ld|bit)<<3|2,(rd|bit)>>3|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2B((ld|bit)<<3|2,(rd|bit)>>3|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # 最下位ビットを取得
@@ -422,7 +392,7 @@ class NQueens19:
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N3)|2)
       # 再帰的に SQd2B を呼び出す
       if nextfree:
-        self.SQd2B((ld|bit)<<3|2,(rd|bit)>>3|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2B((ld|bit)<<3|2,(rd|bit)>>3|(1<<N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # 一般的な再帰処理
     while free:
       bit:int=free&-free  # 最下位ビットを取得
@@ -432,9 +402,9 @@ class NQueens19:
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       # 再帰的に SQd2BlkB を呼び出す
       if nextfree:
-        self.SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N4:int=N-4
     # row==mark1 の場合の処理
     # if row==mark1:
@@ -444,7 +414,7 @@ class NQueens19:
     #     free&=free-1  # 使用済みのビットを削除
     #     next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N4)|1)
     #     if next_free:
-    #       self.SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return  # この分岐の処理が終わったらリターン
     while row==mark1 and free:
       bit:int=free&-free  # 最下位のビットを取得
@@ -452,7 +422,7 @@ class NQueens19:
       free&=free-1  # 使用済みのビットを削除
       next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N4)|1)
       if next_free:
-        self.SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # 通常の処理
     while free:
       bit:int=free&-free  # 最下位のビットを取得
@@ -460,9 +430,9 @@ class NQueens19:
       free&=free-1  # 使用済みのビットを削除
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # `row==mark2` の場合の処理
     # if row==mark2:
@@ -472,7 +442,7 @@ class NQueens19:
     #     free&=free-1  # 使用済みビットを削除
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if next_free:
-    #       self.SQd2B(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2B(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return  # `if row==mark2` の処理終了後に関数を終了
     while row==mark2 and free:
       bit:int=free&-free  # 最下位ビットを取得
@@ -480,7 +450,7 @@ class NQueens19:
       free&=free-1  # 使用済みビットを削除
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if next_free:
-        self.SQd2B(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2B(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # 通常の処理
     while free:
       bit:int=free&-free  # 最下位ビットを取得
@@ -488,9 +458,9 @@ class NQueens19:
       free&=free-1  # 使用済みビットを削除
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # if row==mark1:
     #   while free:
     #     bit:int=free&-free  # Get the lowest bit
@@ -498,7 +468,7 @@ class NQueens19:
     #     free&=free-1  # Remove the lowest bit
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
     #     if next_free:
-    #       self.SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # Get the lowest bit
@@ -506,16 +476,16 @@ class NQueens19:
       free&=free-1  # Remove the lowest bit
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
       if next_free:
-        self.SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free  # Get the lowest bit
       # bit:int=-free&free  # Get the lowest bit
       free&=free-1  # Remove the lowest bit
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # if row==mark2:
     #   while free:
     #     bit:int=free&-free  # Get the lowest bit
@@ -523,7 +493,7 @@ class NQueens19:
     #     free&=free-1  # Remove the lowest bit
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
     #     if next_free:
-    #       self.SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark2 and free:
       bit:int=free&-free  # Get the lowest bit
@@ -531,16 +501,16 @@ class NQueens19:
       free&=free-1  # Remove the lowest bit
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
       if next_free:
-        self.SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free  # Get the lowest bit
       # bit:int=-free&free  # Get the lowest bit
       free&=free-1  # Remove the lowest bit
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # row==mark1 の場合を先に処理
     # if row==mark1:
@@ -550,7 +520,7 @@ class NQueens19:
     #     free&=free-1
     #     nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if nextfree:
-    #       self.SQd2BlB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQd2BlB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -558,7 +528,7 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if nextfree:
-        self.SQd2BlB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BlB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     # 通常の処理
     while free:
       bit:int=free&-free
@@ -566,13 +536,13 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # rowがendmarkの場合の処理
     if row==endmark:
       if (free&(~1))>0:
-        tempcounter[0]+=1
+        tempcounter[i]+=1
       return
     # 通常の処理
     while free:
@@ -589,13 +559,13 @@ class NQueens19:
       # if nextfree:
       #   if row<endmark-1:
       #     if ~((next_ld<<1)|(next_rd>>1)|(next_col))>0:
-      #       self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+      #       self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
       #   else:
-      #     self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+      #     self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
       if nextfree and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
-        self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # if row==mark2:
     #   while free:
     #     bit:int=free&-free
@@ -603,7 +573,7 @@ class NQueens19:
     #     free&=free-1
     #     nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
     #     if nextfree:
-    #       self.SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark2 and free:
       bit:int=free&-free
@@ -611,16 +581,16 @@ class NQueens19:
       free&=free-1
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
       if nextfree:
-        self.SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # if row==mark1:
     #   while free:
@@ -629,7 +599,7 @@ class NQueens19:
     #     free&=free-1  # Remove the isolated bit from free.
     #     nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if nextfree:
-    #       self.SQBlBjrB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBlBjrB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free  # Isolate the rightmost 1 bit.
@@ -637,16 +607,16 @@ class NQueens19:
       free&=free-1  # Remove the isolated bit from free.
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if nextfree:
-        self.SQBlBjrB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBlBjrB((ld|bit)<<2,((rd|bit)>>2)|(1<<N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free  # Isolate the rightmost 1 bit.
       # bit:int=-free&free  # Isolate the rightmost 1 bit.
       free&=free-1  # Remove the isolated bit from free.
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if nextfree:
-        self.SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     if row==jmark:
       free&=~1  # Clear the least significant bit (mark position 0 unavailable).
       ld|=1  # Mark left diagonal as occupied for position 0.
@@ -661,7 +631,7 @@ class NQueens19:
         next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
         next_free:int=~((next_ld|next_rd|next_col))
         if next_free:
-          self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+          self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       return
     while free:
       bit:int=free&-free  # Get the lowest bit (first free position).
@@ -674,11 +644,11 @@ class NQueens19:
       next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
       next_free:int=~((next_ld|next_rd|next_col))
       if next_free:
-        self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     if row==endmark:
-      tempcounter[0]+=1
+      tempcounter[i]+=1
       return
     while free:
       bit:int=free&-free
@@ -692,13 +662,13 @@ class NQueens19:
       # if next_free:
       #   if row<endmark-1:
       #     if ~((next_ld<<1)|(next_rd>>1)|next_col)>0:
-      #         self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #         self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       #   else:
-      #     self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+      #     self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     # if row==mark1:
     #   while free:
     #     bit:int=free&-free
@@ -706,7 +676,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
     #     if next_free:
-    #       self.SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -714,16 +684,16 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
       if next_free:
-        self.SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # if row==mark2:
     #   while free:
@@ -732,7 +702,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
     #     if next_free:
-    #       self.SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark2 and free:
       bit:int=free&-free
@@ -740,16 +710,16 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<N3))
       if next_free:
-        self.SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N4:int=N-4
     # if row==mark1:
     #   while free:
@@ -758,7 +728,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N4)|1)
     #     if next_free:
-    #       self.SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -766,16 +736,16 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N4)|1)
       if next_free:
-        self.SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|(1<<N4),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N3:int=N-3
     # if row==mark1:
     #   while free:
@@ -784,7 +754,7 @@ class NQueens19:
     #     free&=free-1
     #     next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N3)|2)
     #     if next_free:
-    #       self.SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+    #       self.SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     #   return
     while row==mark1 and free:
       bit:int=free&-free
@@ -792,22 +762,22 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|(1<<N3)|2)
       if next_free:
-        self.SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|(1<<N3),col|bit,row+3,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
     while free:
       bit:int=free&-free
       # bit:int=-free&free
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N1:int=N-1
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
       # if next_free:
-      self.SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      self.SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       return
     while free:
       bit:int=free&-free
@@ -815,15 +785,15 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N1:int=N-1
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
       # if next_free:
-      self.SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      self.SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       return
     while free:
       bit:int=free&-free
@@ -831,15 +801,15 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N1:int=N-1
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
       # if next_free:
-      self.SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      self.SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       return
     while free:
       bit:int=free&-free
@@ -847,15 +817,15 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-          self.SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+          self.SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
-  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
+  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],i:int,N:int)->None:
     N1:int=N-1
     if row==N1-jmark:
       rd|=1<<N1
       free&=~(1<<N1)
       # if next_free:
-      self.SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N)
+      self.SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,i,N)
       return
     while free:
       bit:int=free&-free
@@ -863,7 +833,7 @@ class NQueens19:
       free&=free-1
       next_free:int=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
       if next_free:
-        self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
+        self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,i,N)
   #
   """
   回転対称性をチェックする関数
@@ -1047,8 +1017,10 @@ class NQueens19:
     # mark2=0
     jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     small_mask=(1<<(N-2))-1
-    temp_counter=[0]
-    for constellation in constellations:
+    temp_counter=[0]*len(constellations) 
+    #@par (schedule='dynamic', chunk_size=100, num_threads=16)
+    @par
+    for i, constellation in enumerate(constellations):
       # mark1=mark1
       # mark2=mark2
       mark1,mark2=mark1,mark2
@@ -1083,54 +1055,54 @@ class NQueens19:
             if start<l:
               if start<k:
                 if l!=k+1:
-                  self.SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else: self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                  self.SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+                else: self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+              else: self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
                 if k!=l+1:
-                  self.SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else: self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                  self.SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+                else: self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+              else: self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
         else:
           if k<l:
             mark1,mark2=k-1,l-1
             if l!=k+1:
-              self.SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              self.SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+            else: self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
           else:
             mark1,mark2=l-1,k-1
             if k != l+1:
-              self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+            else: self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
       elif j==(N-3):
         endmark=N-2
         if k<l:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l != k+1: self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              if l != k+1: self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+              else: self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
             else:
               mark2=l-1
-              self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
         else:
           mark1,mark2=l-1,k-1
           endmark=N-2
           if start<k:
             if start<l:
               if k != l+1:
-                self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+              else: self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
             else:
               mark2=k-1
-              self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
       elif j==N-2: # クイーンjがコーナーからちょうど1列離れている場合
         if k<l:  # kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれない
           endmark=N-2
@@ -1139,13 +1111,13 @@ class NQueens19:
               mark1=k-1
               if l != k+1:  # kとlが隣り合っている場合
                 mark2=l-1
-                self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
+              else: self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
             else:  # lがまだ来ていないなら
               mark2=l-1
-              self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
           # すでにkとlが来ている場合
-          else: self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
         else:  # l<k
           if start<k:  # 少なくともkがまだ来ていない場合
             if start<l:  # lがまだ来ていない場合
@@ -1153,36 +1125,36 @@ class NQueens19:
                 mark1,endmark=l-1,N-2
                 if k != l+1:  # lとkの間に空行がある場合
                   mark2=k-1
-                  self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                  self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
                 # lとkの間に空行がない場合
-                else: self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                else: self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
               else:  # kが末尾の場合
                 if l != (N-3):  # lがkの直前でない場合
                   mark2,endmark=l-1,N-3
-                  self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                  self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
                 else:  # lがkの直前にある場合
                   endmark=N-4
-                  self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                  self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
             else:  # もしkがまだ来ていないなら
               if k != N-2:  # kが末尾にない場合
                 mark2,endmark=k-1,N-2
-                self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
               else:  # kが末尾の場合
                 endmark=N-3
-                self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
           else: # kとlはスタートの前
             endmark=N-2
-            self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
       else:  # クイーンjがコーナーに置かれている場合
         endmark=N-2
         if start>k:
-          self.SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          self.SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
         else: # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
           mark1=k-1
-          self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,i,N)
       # 各コンステレーションのソリューション数を更新
-      constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
-      temp_counter[0]=0
+      constellation["solutions"]=temp_counter[i] * self.symmetry(ijkl,N)
+      temp_counter[i]=0
   #
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
@@ -1247,7 +1219,7 @@ class NQueens19_constellations():
     # nmin:int=8
     # nmax:int=9
     nmin:int=5
-    nmax:int=18
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):

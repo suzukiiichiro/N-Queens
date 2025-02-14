@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-コンステレーション版Ｎクイーン
+コンステレーション マルチプロセス版Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -14,70 +14,48 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 """
-CentOS-5.1$ pypy 19Python_constellations.py
+CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.001
- 8:           92            0         0:00:00.003
- 9:          352            0         0:00:00.008
-10:          724            0         0:00:00.031
-11:         2680            0         0:00:00.092
-12:        14200            0         0:00:00.267
-13:        73712            0         0:00:00.309
-14:       365596            0         0:00:00.494
-15:      2279184            0         0:00:02.304
-16:     14772512            0         0:00:14.783
-17:     95815104            0         0:01:39.169
+ 5:           18            0         0:00:00.048
+ 6:            4            0         0:00:00.059
+ 7:           40            0         0:00:00.100
+ 8:           92            0         0:00:00.196
+ 9:          352            0         0:00:00.193
+10:          724            0         0:00:00.326
+11:         2680            0         0:00:00.254
+12:        14200            0         0:00:00.375
+13:        73712            0         0:00:00.922
+14:       365596            0         0:00:04.169
+15:      2279184            0         0:00:04.351
+16:     14772512            0         0:00:17.743
+17:     95815104            0         0:01:36.792
+18:    666090624            0         0:11:06.028
 
 CentOS-5.1$ pypy 18Python_carryChain_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:09.661
-
-CentOS-5.1$ pypy 17Python_carryChain.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.722
+15:      2279184            0         0:00:05.272
+16:     14772512            0         0:00:26.704
+17:     95815104            0         0:02:49.897
+18:    666090624            0         0:20:12.647
 
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.911
-CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.425
-CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.345
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.926
-CentOS-5.1$ pypy 11Python_NodeLayer.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.160
+15:      2279184            0         0:00:03.064
+16:     14772512            0         0:00:17.305
+17:     95815104            0         0:01:59.358
+18:    666090624            0         0:14:48.210
+
 CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:01.998
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:02.111
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.026
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
+
 """
+
+# のこったプロセスをkillallするために必要
+import subprocess
 
 from operator import or_
 # from functools import reduce
@@ -88,13 +66,13 @@ import pypyjit
 pypyjit.set_param('max_unroll_recursion=-1')
 # pypy では ThreadPool/ProcessPoolが動きます
 #
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 #
-class NQueens19:
+class NQueens20:
   def __init__(self):
     pass
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
@@ -996,7 +974,9 @@ class NQueens19:
       # クイーンを配置し、次の行に進む
       self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
   #
-  def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
+  def exec_solutions(self,value:list)->int:
+    N,constellation=value  
+  #def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     # jmark=0  # ここで初期化
     # j=0
     # k=0
@@ -1015,141 +995,143 @@ class NQueens19:
     jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     small_mask=(1<<(N-2))-1
     temp_counter=[0]
-    for constellation in constellations:
-      # mark1=mark1
-      # mark2=mark2
-      mark1,mark2=mark1,mark2
-      # mark2=mark2
-      start_ijkl=constellation["startijkl"]
-      start=start_ijkl>>20
-      ijkl=start_ijkl&((1<<20)-1)
-      # j=self.getj(ijkl)
-      # k=self.getk(ijkl)
-      # l=self.getl(ijkl)
-      j,k,l=self.getj(ijkl),self.getk(ijkl),self.getl(ijkl)
-      # 左右対角線と列の占有状況を設定
-      # ld=constellation["ld"]>>1
-      # rd=constellation["rd"]>>1
-      # col=(constellation["col"]>>1)|(~small_mask)
-      ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
-      LD=(1<<(N-1-j))|(1<<(N-1-l))
-      ld|=LD>>(N-start)
-      # rd=constellation["rd"]>>1
-      if start>k:
-        rd|=(1<<(N-1-(start-k+1)))
-      if j >= 2 * N-33-start:
-        rd|=(1<<(N-1-j))<<(N-2-start)
-      # col=(constellation["col"]>>1)|(~small_mask)
-      free=~(ld|rd|col)
-      # 各ケースに応じた処理
-      if j<(N-3):
-        jmark,endmark=j+1,N-2
-        if j>2 * N-34-start:
-          if k<l:
-            mark1,mark2=k-1,l-1
-            if start<l:
-              if start<k:
-                if l!=k+1:
-                  self.SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else: self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:
-            mark1,mark2=l-1,k-1
-            if start<k:
-              if start<l:
-                if k!=l+1:
-                  self.SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else: self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-        else:
-          if k<l:
-            mark1,mark2=k-1,l-1
-            if l!=k+1:
-              self.SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else:
-            mark1,mark2=l-1,k-1
-            if k != l+1:
-              self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else: self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-      elif j==(N-3):
-        endmark=N-2
+    #for constellation in constellations:
+    # mark1=mark1
+    # mark2=mark2
+    mark1,mark2=mark1,mark2
+    # mark2=mark2
+    start_ijkl=constellation["startijkl"]
+    start=start_ijkl>>20
+    ijkl=start_ijkl&((1<<20)-1)
+    # j=self.getj(ijkl)
+    # k=self.getk(ijkl)
+    # l=self.getl(ijkl)
+    j,k,l=self.getj(ijkl),self.getk(ijkl),self.getl(ijkl)
+    # 左右対角線と列の占有状況を設定
+    # ld=constellation["ld"]>>1
+    # rd=constellation["rd"]>>1
+    # col=(constellation["col"]>>1)|(~small_mask)
+    ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
+    LD=(1<<(N-1-j))|(1<<(N-1-l))
+    ld|=LD>>(N-start)
+    # rd=constellation["rd"]>>1
+    if start>k:
+      rd|=(1<<(N-1-(start-k+1)))
+    if j >= 2 * N-33-start:
+      rd|=(1<<(N-1-j))<<(N-2-start)
+    # col=(constellation["col"]>>1)|(~small_mask)
+    free=~(ld|rd|col)
+    # 各ケースに応じた処理
+    if j<(N-3):
+      jmark,endmark=j+1,N-2
+      if j>2 * N-34-start:
         if k<l:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l != k+1: self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              mark2=l-1
-              self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              if l!=k+1:
+                self.SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
         else:
           mark1,mark2=l-1,k-1
-          endmark=N-2
           if start<k:
             if start<l:
-              if k != l+1:
-                self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:
-              mark2=k-1
-              self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-      elif j==N-2: # クイーンjがコーナーからちょうど1列離れている場合
-        if k<l:  # kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれない
-          endmark=N-2
-          if start<l:  # 少なくともlがまだ来ていない場合
-            if start<k:  # もしkもまだ来ていないなら
-              mark1=k-1
-              if l != k+1:  # kとlが隣り合っている場合
-                mark2=l-1
-                self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else: self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:  # lがまだ来ていないなら
-              mark2=l-1
-              self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          # すでにkとlが来ている場合
-          else: self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-        else:  # l<k
-          if start<k:  # 少なくともkがまだ来ていない場合
-            if start<l:  # lがまだ来ていない場合
-              if k<N-2:  # kが末尾にない場合
-                mark1,endmark=l-1,N-2
-                if k != l+1:  # lとkの間に空行がある場合
-                  mark2=k-1
-                  self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                # lとkの間に空行がない場合
-                else: self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:  # kが末尾の場合
-                if l != (N-3):  # lがkの直前でない場合
-                  mark2,endmark=l-1,N-3
-                  self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-                else:  # lがkの直前にある場合
-                  endmark=N-4
-                  self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-            else:  # もしkがまだ来ていないなら
-              if k != N-2:  # kが末尾にない場合
-                mark2,endmark=k-1,N-2
-                self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-              else:  # kが末尾の場合
-                endmark=N-3
-                self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-          else: # kとlはスタートの前
-            endmark=N-2
-            self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-      else:  # クイーンjがコーナーに置かれている場合
+              if k!=l+1:
+                self.SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else: self.SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+      else:
+        if k<l:
+          mark1,mark2=k-1,l-1
+          if l!=k+1:
+            self.SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+        else:
+          mark1,mark2=l-1,k-1
+          if k != l+1:
+            self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else: self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+    elif j==(N-3):
+      endmark=N-2
+      if k<l:
+        mark1,mark2=k-1,l-1
+        if start<l:
+          if start<k:
+            if l != k+1: self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else:
+            mark2=l-1
+            self.SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+        else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+      else:
+        mark1,mark2=l-1,k-1
         endmark=N-2
-        if start>k:
-          self.SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
-        else: # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
-          mark1=k-1
-          self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+        if start<k:
+          if start<l:
+            if k != l+1:
+              self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else:
+            mark2=k-1
+            self.SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+        else: self.SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+    elif j==N-2: # クイーンjがコーナーからちょうど1列離れている場合
+      if k<l:  # kが最初になることはない、lはクイーンの配置の関係で最後尾にはなれない
+        endmark=N-2
+        if start<l:  # 少なくともlがまだ来ていない場合
+          if start<k:  # もしkもまだ来ていないなら
+            mark1=k-1
+            if l != k+1:  # kとlが隣り合っている場合
+              mark2=l-1
+              self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else: self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else:  # lがまだ来ていないなら
+            mark2=l-1
+            self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          # すでにkとlが来ている場合
+        else: self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+      else:  # l<k
+        if start<k:  # 少なくともkがまだ来ていない場合
+          if start<l:  # lがまだ来ていない場合
+            if k<N-2:  # kが末尾にない場合
+              mark1,endmark=l-1,N-2
+              if k != l+1:  # lとkの間に空行がある場合
+                mark2=k-1
+                self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+                # lとkの間に空行がない場合
+              else: self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else:  # kが末尾の場合
+              if l != (N-3):  # lがkの直前でない場合
+                mark2,endmark=l-1,N-3
+                self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+              else:  # lがkの直前にある場合
+                endmark=N-4
+                self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+          else:  # もしkがまだ来ていないなら
+            if k != N-2:  # kが末尾にない場合
+              mark2,endmark=k-1,N-2
+              self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+            else:  # kが末尾の場合
+              endmark=N-3
+              self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+        else: # kとlはスタートの前
+          endmark=N-2
+          self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+    else:  # クイーンjがコーナーに置かれている場合
+      endmark=N-2
+      if start>k:
+        self.SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
+      else: # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
+        mark1=k-1
+        self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,temp_counter,N)
       # 各コンステレーションのソリューション数を更新
-      constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
-      temp_counter[0]=0
+    #constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
+    return temp_counter[0] * self.symmetry(ijkl,N)
+    print(constellation)
+    temp_counter[0]=0
   #
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
@@ -1209,25 +1191,32 @@ class NQueens19:
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
 
 #
-class NQueens19_constellations():
+class NQueens20_constellations_ProcessPool():
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     # nmin:int=8
     # nmax:int=9
     nmin:int=5
-    nmax:int=18
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
-      NQ=NQueens19()
+      NQ=NQueens20()
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      NQ.exec_solutions(constellations,size)
-      total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+      pool=ThreadPool(size)
+      params=[(size,constellations[i])for i in range(len(constellations))]
+      pool.map(NQ.exec_solutions,params)
+      total:int=sum(list(pool.map(NQ.exec_solutions,params)))
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      self.finalize()
 #
 if __name__=="__main__":
-  NQueens19_constellations().main()
+  NQueens20_constellations_ProcessPool().main()

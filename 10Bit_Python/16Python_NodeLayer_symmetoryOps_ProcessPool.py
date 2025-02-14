@@ -1,18 +1,49 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+"""
+ノードレイヤー 対象解除 マルチプロセス版Ｎクイーン
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
 """
 CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.022
- 5:           10            0         0:00:00.024
- 6:            4            0         0:00:00.034
- 7:           40            0         0:00:00.078
- 8:           92            0         0:00:00.091
- 9:          352            0         0:00:00.119
-10:          724            0         0:00:00.121
-11:         2680            0         0:00:00.156
-12:        14200            0         0:00:00.225
-13:        73712            0         0:00:00.337
-14:       365596            0         0:00:00.731
-15:      2279184            0         0:00:02.927
+ 4:            0            0         0:00:00.015
+ 5:           10            0         0:00:00.025
+ 6:            4            0         0:00:00.036
+ 7:           40            0         0:00:00.067
+ 8:           92            0         0:00:00.096
+ 9:          352            0         0:00:00.115
+10:          724            0         0:00:00.123
+11:         2680            0         0:00:00.224
+12:        14200            0         0:00:00.250
+13:        73712            0         0:00:00.344
+14:       365596            0         0:00:00.780
+15:      2279184            0         0:00:03.064
+16:     14772512            0         0:00:17.305
+17:     95815104            0         0:01:59.358
+18:    666090624            0         0:14:48.210
+
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+15:      2279184       285053         0:00:03.215
+16:     14772512      1846955         0:00:16.017
+17:     95815104     11977939         0:01:39.372
+18:    666090624     83263591         0:11:29.141
+"""
+
+"""
+CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+ N:        Total        Unique        hh:mm:ss.ms
+15:      2279184            0         0:00:03.064
 
 CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
  N:        Total        Unique        hh:mm:ss.ms
@@ -66,6 +97,7 @@ CentOS-5.1$ pypy 03Python_backTracking.py
  N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
+import subprocess
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -328,9 +360,13 @@ class NQueens21:
     return sum(list(pool.map(self.symmetry_solve,params)))
 """ """
 class NQueens21_NodeLayer:
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=16
+    nmax:int=19
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
@@ -339,6 +375,7 @@ class NQueens21_NodeLayer:
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3] 
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      self.finalize()
 # メイン実行部分
 if __name__=="__main__":
   NQueens21_NodeLayer().main()
