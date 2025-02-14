@@ -46,27 +46,31 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 typedef struct {
   long total;
 } NQueens17;
-
+/*
+ *
+ */
 long solve(int row,int left,int down,int right) {
   long total=0;
-  if ((down+1)==0) {
+  if((down+1)==0){
     return 1;
   }
-  while (row&1) {
+  while(row&1){
     row>>=1;
     left<<=1;
     right>>=1;
   }
   row>>=1;
-  int bitmap=~(left | down | right);
-  while (bitmap != 0) {
+  int bitmap=~(left|down|right);
+  while (bitmap!=0) {
     int bit=-bitmap&bitmap;
-    total += solve(row,(left | bit)<<1,down | bit,(right | bit) >> 1);
-    bitmap ^= bit;
+    total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
+    bitmap^=bit;
   }
   return total;
 }
-
+/**
+ *
+ */
 long process(int size,int sym,int B[]) {
   return sym*solve(B[0] >> 2,B[1] >> 4,(((B[2] >> 2 | ~0<<(size-4))+1)<<(size-5))-1,B[3] >> 4<<(size-5));
 }
@@ -185,12 +189,11 @@ void initChain(int size,int pres_a[],int pres_b[]) {
 /*
  *
  */
-int carryChain(int size) {
+long carryChain(int size) {
   int pres_a[930]={0};
   int pres_b[930]={0};
   initChain(size,pres_a,pres_b);
   return buildChain(size,pres_a,pres_b);
-  // return 0;// buildChain 関数が未実装
 }
 /**
  *
