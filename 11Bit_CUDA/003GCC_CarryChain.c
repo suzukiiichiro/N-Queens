@@ -35,12 +35,9 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 18:    666090624    83263591      00:00:01:45.44
  *
  */
-// システムによって以下のマクロが必要であればコメントを外してください。
-#define UINT64_C(c) c ## ULL
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <sys/time.h>
 #include <string.h>
 #define MAX 18
@@ -226,7 +223,9 @@ void mainNQueens17() {
     printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
 }
-
+/**
+ *
+ */
 int main() {
   mainNQueens17();
   return 0;
