@@ -1,6 +1,6 @@
 /**
 bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
-キャリーチェーン
+$B%-%c%j!<%A%'!<%s(B
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2           1      00:00:00:00.00
  5:           10           2      00:00:00:00.00
@@ -19,7 +19,7 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 18:    657378384    82181924      00:00:04:18.49
 
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
-ノードレイヤー
+$B%N!<%I%l%$%d!<(B
  N:        Total      Unique      dd:hh:mm:ss.ms
 15:      2279184           0      00:00:00:00.70
 16:     14772512           0      00:00:00:04.69
@@ -27,7 +27,7 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 18:    666090624           0      00:00:03:59.95
 
 bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
-ビット
+$B%S%C%H(B
  N:        Total      Unique      dd:hh:mm:ss.ms
 15:      2279184      285053      00:00:00:00.33
 16:     14772512     1846955      00:00:00:02.16
@@ -42,7 +42,7 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 #include <string.h>
 #define MAX 18
 
-// NQueens17 構造体
+// NQueens17 $B9=B$BN(B
 typedef struct{
   long total;
 } NQueens17;
@@ -78,45 +78,47 @@ long process(int size,int sym,int B[]){
  *
  */
 long Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
-  // 前計算
+  // $BA07W;;(B
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
-  // 対角線上の反転が小さいかどうか確認する
-  if(s==ww && n<(w2-e)) return 0;
-  // 垂直方向の中心に対する反転が小さいかを確認
-  if(e==ww && n>(w2-n)) return 0;
-  // 斜め下方向への反転が小さいかをチェックする
-  if(n==ww && e>(w2-s)) return 0;
-  // 【枝刈り】1行目が角の場合
-  if(!B4[0]) return process(size,8,B); // COUNT8
-  // n,e,s==w の場合は最小値を確認
-  if(s==w){
-    if(n!=w||e!=w) return 0;
+  // $BBP3Q@~>e$NH?E>$,>.$5$$$+$I$&$+3NG'$9$k(B
+  if (s==ww && n<(w2-e)) return 0;
+  // $B?bD>J}8~$NCf?4$KBP$9$kH?E>$,>.$5$$$+$r3NG'(B
+  if (e==ww && n>(w2-n)) return 0;
+  // $B<P$a2<J}8~$X$NH?E>$,>.$5$$$+$r%A%'%C%/$9$k(B
+  if (n==ww && e>(w2-s)) return 0;
+  // $B!Z;^4"$j![(B1$B9TL\$,3Q$N>l9g(B
+  if (!B4[0]) return process(size,8,B); // COUNT8
+  // n,e,s==w $B$N>l9g$O:G>.CM$r3NG'(B
+  if (s==w){
+    if (n!=w||e!=w) return 0;
     return process(size,2,B); // COUNT2
   }
-  // e==w は180度回転して同じ
-  if(e==w&&n>=s){
-    if(n>s) return 0;
+  // e==w $B$O(B180$BEY2sE>$7$FF1$8(B
+  if (e==w && n >= s){
+    if (n>s) return 0;
     return process(size,4,B); // COUNT4
   }
-  // その他の場合
+  // $B$=$NB>$N>l9g(B
   return process(size,8,B); // COUNT8
 }
 /*
  *
  */
 int placement(int size,int dimx,int dimy,int B[],int B4[]){
-  if(B4[dimx]==dimy) return 1;
-  if(B4[0]){
-    if((B4[0]!=-1 && ((dimx<B4[0]||dimx >= size-B4[0]) && 
-       (dimy==0||dimy==size-1)))||
-       ((dimx==size-1)&&
-       (dimy<=B4[0]||dimy>=size-B4[0]))){ return 0; }
-  } else if((B4[1]!=-1)&&(B4[1]>=dimx&&dimy==1)){ return 0; }
-  if((B[0]&(1<<dimx))||
-     (B[1]&(1<<(size-1-dimx+dimy)))||
-     (B[2]&(1<<dimy))||
-     (B[3]&(1<<(dimx+dimy)))){ return 0; }
+  if (B4[dimx]==dimy) return 1;
+  if (B4[0]){
+    if ((B4[0]!=-1 && ((dimx<B4[0]||dimx >= size-B4[0]) && (dimy==0||dimy==size-1))) ||
+        ((dimx==size-1) && (dimy<=B4[0]||dimy >= size-B4[0]))){
+      return 0;
+    }
+  } else if ((B4[1]!=-1) && (B4[1] >= dimx && dimy==1)){
+    return 0;
+  }
+  if ((B[0]&(1<<dimx))||(B[1]&(1<<(size-1-dimx+dimy)))||
+      (B[2]&(1<<dimy))||(B[3]&(1<<(dimx+dimy)))){
+    return 0;
+  }
   B[0]|=1<<dimx;
   B[1]|=1<<(size-1-dimx+dimy);
   B[2]|=1<<dimy;
@@ -147,23 +149,23 @@ int buildChain(int size,int pres_a[],int pres_b[]){
     int wB[4],wB4[MAX];
     deepcopy(B,wB,4);
     deepcopy(B4,wB4,size);
-    if(!placement(size,0,pres_a[w],wB,wB4)||!placement(size,1,pres_b[w],wB,wB4)) continue;
+    if (!placement(size,0,pres_a[w],wB,wB4)||!placement(size,1,pres_b[w],wB,wB4)) continue;
     for (int n=w;n<(sizeEE)*(sizeE)-w;n++){
       int nB[4],nB4[MAX];
       deepcopy(wB,nB,4);
       deepcopy(wB4,nB4,size);
-      if(!placement(size,pres_a[n],sizeE,nB,nB4)||!placement(size,pres_b[n],sizeEE,nB,nB4)) continue;
+      if (!placement(size,pres_a[n],sizeE,nB,nB4)||!placement(size,pres_b[n],sizeEE,nB,nB4)) continue;
       for (int e=w;e<(sizeEE)*(sizeE)-w;e++){
         int eB[4],eB4[MAX];
         deepcopy(nB,eB,4);
         deepcopy(nB4,eB4,size);
-        if(!placement(size,sizeE,sizeE-pres_a[e],eB,eB4)||!placement(size,sizeEE,sizeE-pres_b[e],eB,eB4)) continue;
+        if (!placement(size,sizeE,sizeE-pres_a[e],eB,eB4)||!placement(size,sizeEE,sizeE-pres_b[e],eB,eB4)) continue;
         for (int s=w;s<(sizeEE)*(sizeE)-w;s++){
           int sB[4],sB4[MAX];
           deepcopy(eB,sB,4);
           deepcopy(eB4,sB4,size);
-          if(!placement(size,sizeE-pres_a[s],0,sB,sB4)||!placement(size,sizeE-pres_b[s],1,sB,sB4)) continue;
-          total+=Symmetry(size,n,w,s,e,sB,sB4);
+          if (!placement(size,sizeE-pres_a[s],0,sB,sB4)||!placement(size,sizeE-pres_b[s],1,sB,sB4)) continue;
+          total += Symmetry(size,n,w,s,e,sB,sB4);
         }
       }
     }
@@ -177,7 +179,7 @@ void initChain(int size,int pres_a[],int pres_b[]){
   int idx=0;
   for (int a=0;a<size;a++){
     for (int b=0;b<size;b++){
-      if(abs(a-b)<=1) continue;
+      if (abs(a-b)<=1) continue;
       pres_a[idx]=a;
       pres_b[idx]=b;
       idx++;
@@ -202,7 +204,7 @@ void mainNQueens17(){
   struct timeval t0;
   struct timeval t1;
   int ss,ms,dd,hh,mm;
-  printf("%s\n","キャリーチェーン");
+  printf("%s\n","$B%-%c%j!<%A%'!<%s(B");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   for (int size=nmin;size<=nmax;size++){
     gettimeofday(&t0,NULL);
