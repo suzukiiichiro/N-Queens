@@ -34,18 +34,18 @@ xlong solve(uint row,uint left,uint down,uint right){
 /**
  *
  */
-xlong process(int size,int sym,uint B[]){
+xlong process(int size,int sym,int B[]){
   return sym*solve(
     B[0]>>2,
     B[1]>>4,
-    (((((unsigned)B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,
+    ((((B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,
     (unsigned)(B[3]>>4)<<(size-5)
   );
 }
 /**
  *
  */
-ulong Symmetry(int size,int n,int w,int s,int e,uint B[],int B4[]){
+ulong Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
   if(s==ww&&n<(w2-e)) return 0;
@@ -65,7 +65,7 @@ ulong Symmetry(int size,int n,int w,int s,int e,uint B[],int B4[]){
 /**
  *
  */
-int placement(int size,int dimx,int dimy,uint B[],int B4[]){
+int placement(int size,int dimx,int dimy,int B[],int B4[]){
   if(B4[dimx]==dimy) return 1;
   if(B4[0]){
     if((B4[0]!=-1&&((dimx<B4[0]||dimx>=size-B4[0]) &&
@@ -97,35 +97,35 @@ void deepcopy(uint *src,uint *dest,int size){
  */
 xlong buildChain(int size,int pres_a[],int pres_b[]){
   xlong total=0;
-  uint B[4]={0,0,0,0};//row/left/down/right
-  uint B4[size];
+  int B[4]={0,0,0,0};//row/left/down/right
+  int B4[size];
   for(int i=0;i<size;i++) B4[i]=-1;
   int sizeE=size-1;
   int sizeEE=size-2;
   int range_size=(size/2)*(size-3)+1;
+  int wB[4];
+  int wB4[size];
   for(int w=0;w<range_size;w++){
-    uint wB[4];
-    uint wB4[size];
-    deepcopy(B,wB,4);
-    memcpy(wB4,B4,sizeof(B4));
+    memcpy(wB,B,4*sizeof(int));
+    memcpy(wB4,B4,size*sizeof(int));
     if(!placement(size,0,pres_a[w],wB,wB4)||!placement(size,1,pres_b[w],wB,wB4)) continue;
+    int nB[4];
+    int nB4[size];
     for(int n=w;n<(sizeEE)*(sizeE)-w;n++){
-      uint nB[4];
-      uint nB4[size];
-      deepcopy(wB,nB,4);
-      memcpy(nB4,wB4,sizeof(B4));
+      memcpy(nB,wB,4*sizeof(int));
+      memcpy(nB4,wB4,size*sizeof(int));
       if(!placement(size,pres_a[n],sizeE,nB,nB4)||!placement(size,pres_b[n],sizeEE,nB,nB4)) continue;
+      int eB[4];
+      int eB4[size];
       for(int e=w;e<(sizeEE)*(sizeE)-w;e++){
-        uint eB[4];
-        uint eB4[size];
-        deepcopy(nB,eB,4);
-        memcpy(eB4,nB4,sizeof(B4));
+        memcpy(eB,nB,4*sizeof(int));
+        memcpy(eB4,nB4,size*sizeof(int));
         if(!placement(size,sizeE,sizeE-pres_a[e],eB,eB4)||!placement(size,sizeEE,sizeE-pres_b[e],eB,eB4)) continue;
+        int sB[4];
+        int sB4[size];
         for(int s=w;s<(sizeEE)*(sizeE)-w;s++){
-          uint sB[4];
-          uint sB4[size];
-          deepcopy(eB,sB,4);
-          memcpy(sB4,eB4,sizeof(B4));
+          memcpy(sB,eB,4*sizeof(int));
+          memcpy(sB4,eB4,size*sizeof(int));
           if(!placement(size,sizeE-pres_a[s],0,sB,sB4)||!placement(size,sizeE-pres_b[s],1,sB,sB4)) continue;
           total+=Symmetry(size,n,w,s,e,sB,sB4);
         }
