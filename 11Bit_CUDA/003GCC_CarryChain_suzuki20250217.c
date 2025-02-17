@@ -1,20 +1,17 @@
 //日本語
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/time.h>
 #include <string.h>
-#define MAX 24
 #define UINT64_C(c) c ## ULL
 typedef unsigned int uint;
 typedef unsigned long ulong;
 typedef unsigned long long xlong;
-typedef struct{
-  ulong total;
-} NQueens17;
 /**
  *
  */
-xlong solve(uint row,uint left,uint down,uint right){
+uint solve(uint row,uint left,uint down,uint right){
   xlong total=0;
   if((down+1)==0) return 1;
   while(row&1){
@@ -23,9 +20,10 @@ xlong solve(uint row,uint left,uint down,uint right){
     right>>=1;
   }
   row >>= 1;
-  xlong bitmap=~(left|down|right);
+  uint bitmap=~(left|down|right);
+  uint bit=0;
   while(bitmap!=0){
-    xlong bit=bitmap & -bitmap;
+    bit=-bitmap&bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
     bitmap ^= bit;
   }
@@ -34,7 +32,7 @@ xlong solve(uint row,uint left,uint down,uint right){
 /**
  *
  */
-xlong process(int size,int sym,int B[]){
+uint process(int size,int sym,int B[]){
   return sym*solve(
     B[0]>>2,
     B[1]>>4,
@@ -45,7 +43,7 @@ xlong process(int size,int sym,int B[]){
 /**
  *
  */
-ulong Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
+uint Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
   if(s==ww&&n<(w2-e)) return 0;
@@ -65,37 +63,34 @@ ulong Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
 /**
  *
  */
-int placement(int size,int dimx,int dimy,int B[],int B4[]){
-  if(B4[dimx]==dimy) return 1;
+bool placement(int size,int dimx,int dimy,int B[],int B4[]){
+  if(B4[dimx]==dimy) return true;
   if(B4[0]){
     if((B4[0]!=-1&&((dimx<B4[0]||dimx>=size-B4[0]) &&
       (dimy==0||dimy==size-1)))||
       ((dimx==size-1)&&
-      (dimy<=B4[0]||dimy>=size-B4[0]))){ return 0;}
-  } else if((B4[1]!=-1)&&(B4[1]>=dimx&&dimy==1)){ return 0;}
+      (dimy<=B4[0]||dimy>=size-B4[0]))){ return false;}
+  } else if((B4[1]!=-1)&&(B4[1]>=dimx&&dimy==1)){ return false;}
   if((B[0]&(1<<dimx))||
     (B[1]&(1<<(size-1-dimx+dimy)))||
     (B[2]&(1<<dimy))||
-    (B[3]&(1<<(dimx+dimy)))){ return 0;}
+    (B[3]&(1<<(dimx+dimy)))){ return false;}
   uint row=UINT64_C(1)<<dimx;
   uint left=UINT64_C(1)<<(size-1-dimx+dimy);
   uint down=UINT64_C(1)<<dimy;
   uint right=UINT64_C(1)<<(dimx+dimy);
   B4[dimx]=dimy;
-  if((B[0]&row)||(B[2]&down)||(B[1]&left)||(B[3]&right)){ return 0; }
-  B[0]|=row; B[2]|=down; B[1]|=left; B[3]|=right;
-  return 1;
-}
-/**
- *
- */
-void deepcopy(uint *src,uint *dest,int size){
-  memcpy(dest,src,size*sizeof(uint));
+  if((B[0]&row)||(B[1]&left)||(B[2]&down)||(B[3]&right)){ return false; }
+  B[0]|=row; B[1]|=left; B[2]|=down; B[3]|=right;
+  return true;
 }
 /**
  *
  */
 xlong buildChain(int size,int pres_a[],int pres_b[]){
+  //プログレス
+  printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
+
   xlong total=0;
   int B[4]={0,0,0,0};//row/left/down/right
   int B4[size];
@@ -106,6 +101,10 @@ xlong buildChain(int size,int pres_a[],int pres_b[]){
   int wB[4];
   int wB4[size];
   for(int w=0;w<range_size;w++){
+    //プログレス
+    printf("\r(%d/%d)",w,((size/2)*(size-3)));// << std::flush;
+    printf("\r");
+    fflush(stdout);
     memcpy(wB,B,4*sizeof(int));
     memcpy(wB4,B4,size*sizeof(int));
     if(!placement(size,0,pres_a[w],wB,wB4)||!placement(size,1,pres_b[w],wB,wB4)) continue;
@@ -152,8 +151,8 @@ void initChain(int size,int pres_a[],int pres_b[]){
  *
  */
 xlong carryChain(int size){
-  int pres_a[930]={0};
-  int pres_b[930]={0};
+  int pres_a[930];
+  int pres_b[930];
   initChain(size,pres_a,pres_b);
   return buildChain(size,pres_a,pres_b);
 }
