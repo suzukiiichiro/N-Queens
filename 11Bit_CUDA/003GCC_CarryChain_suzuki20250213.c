@@ -1,6 +1,6 @@
 /**
 bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
-$B%-%c%j!<%A%'!<%s(B
+キャリーチェーン
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2           1      00:00:00:00.00
  5:           10           2      00:00:00:00.00
@@ -19,7 +19,7 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 18:    657378384    82181924      00:00:04:18.49
 
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
-$B%N!<%I%l%$%d!<(B
+ノードレイヤー
  N:        Total      Unique      dd:hh:mm:ss.ms
 15:      2279184           0      00:00:00:00.70
 16:     14772512           0      00:00:00:04.69
@@ -27,7 +27,7 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 18:    666090624           0      00:00:03:59.95
 
 bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
-$B%S%C%H(B
+ビット
  N:        Total      Unique      dd:hh:mm:ss.ms
 15:      2279184      285053      00:00:00:00.33
 16:     14772512     1846955      00:00:00:02.16
@@ -41,8 +41,8 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 #include <sys/time.h>
 #include <string.h>
 #define MAX 18
-
-// NQueens17 $B9=B$BN(B
+typedef unsigned long int;
+// NQueens17 構造体
 typedef struct{
   long total;
 } NQueens17;
@@ -78,28 +78,28 @@ long process(int size,int sym,int B[]){
  *
  */
 long Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
-  // $BA07W;;(B
+  // 前計算
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
-  // $BBP3Q@~>e$NH?E>$,>.$5$$$+$I$&$+3NG'$9$k(B
+  // 対角線上の反転が小さいかどうか確認する
   if (s==ww && n<(w2-e)) return 0;
-  // $B?bD>J}8~$NCf?4$KBP$9$kH?E>$,>.$5$$$+$r3NG'(B
+  // 垂直方向の中心に対する反転が小さいかを確認
   if (e==ww && n>(w2-n)) return 0;
-  // $B<P$a2<J}8~$X$NH?E>$,>.$5$$$+$r%A%'%C%/$9$k(B
+  // 斜め下方向への反転が小さいかをチェックする
   if (n==ww && e>(w2-s)) return 0;
-  // $B!Z;^4"$j![(B1$B9TL\$,3Q$N>l9g(B
+  // 【枝刈り】1行目が角の場合
   if (!B4[0]) return process(size,8,B); // COUNT8
-  // n,e,s==w $B$N>l9g$O:G>.CM$r3NG'(B
+  // n,e,s==w の場合は最小値を確認
   if (s==w){
     if (n!=w||e!=w) return 0;
     return process(size,2,B); // COUNT2
   }
-  // e==w $B$O(B180$BEY2sE>$7$FF1$8(B
+  // e==w は180度回転して同じ
   if (e==w && n >= s){
     if (n>s) return 0;
     return process(size,4,B); // COUNT4
   }
-  // $B$=$NB>$N>l9g(B
+  // その他の場合
   return process(size,8,B); // COUNT8
 }
 /*
@@ -204,7 +204,7 @@ void mainNQueens17(){
   struct timeval t0;
   struct timeval t1;
   int ss,ms,dd,hh,mm;
-  printf("%s\n","$B%-%c%j!<%A%'!<%s(B");
+  printf("%s\n","キャリーチェーン");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   for (int size=nmin;size<=nmax;size++){
     gettimeofday(&t0,NULL);

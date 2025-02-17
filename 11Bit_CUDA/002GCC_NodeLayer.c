@@ -138,7 +138,7 @@ int main(int argc,char** argv)
   uint targetN=18;
   struct timeval t0;
   struct timeval t1;
-	printf("%s\n","ノードレイヤー");
+  printf("%s\n","ノードレイヤー");
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   uint ss,ms,dd,hh,mm;
   for(uint size=min;size<=targetN;size++){
