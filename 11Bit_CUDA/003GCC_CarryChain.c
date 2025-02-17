@@ -72,7 +72,9 @@ long solve(int row,int left,int down,int right){
  *
  */
 long process(int size,int sym,int B[]){
-  return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<(size-4))+1)<<(size-5))-1,B[3]>>4<<(size-5));
+  // return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<(size-4))+1)<<(size-5))-1,B[3]>>4<<(size-5));
+  return sym*solve(B[0]>>2,B[1]>>4,(((((unsigned)B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,(B[3]>>4)<<(size-5));
+
 }
 /*
  *
