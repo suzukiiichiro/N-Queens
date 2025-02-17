@@ -1,5 +1,5 @@
 /**
-bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
+bash-5.1$ gcc -W -Wall -O3 00GCC_CarryChain.c && ./a.out
 キャリーチェーン
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:            2           1      00:00:00:00.00
@@ -10,14 +10,13 @@ bash-5.1$ g++ -W -Wall -O3 00GCC_CarryChain.c && ./a.out
  9:          352          46      00:00:00:00.00
 10:          724          92      00:00:00:00.00
 11:         2680         341      00:00:00:00.00
-12:        14200        1788      00:00:00:00.01
-13:        73712        9237      00:00:00:00.05
-14:       365596       45771      00:00:00:00.19
-15:      2279184      285095      00:00:00:00.93
-16:     14772512     1847425      00:00:00:05.46
-17:     95815104    11979381      00:00:00:36.85
-18:    657378384    82181924      00:00:04:18.49
-
+12:        14200        1788      00:00:00:00.02
+13:        73712        9237      00:00:00:00.06
+14:       365596       45771      00:00:00:00.21
+15:      2279184      285095      00:00:00:00.99
+16:     14772512     1847425      00:00:00:05.68
+17:     95815104    11979381      00:00:00:38.60
+18:    666090624    83274576      00:00:04:34.42
 bash-5.1$ g++ -W -Wall -O3 00GCC_NodeLayer.c && ./a.out
 ノードレイヤー
  N:        Total      Unique      dd:hh:mm:ss.ms
@@ -35,181 +34,208 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 18:    666090624    83263591      00:00:01:45.44
  *
  */
-
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <time.h>
 #include <sys/time.h>
-#include <string.h>
-#define MAX 18
-
-// NQueens17 構造体
+#define MAX 27
+#define UINT64_C(c) c ## ULL
+typedef unsigned long long uint64_t;
+uint64_t TOTAL=0;
+uint64_t UNIQUE=0;
 typedef struct{
-  long total;
-} NQueens17;
-/*
- *
+  unsigned int size;
+  unsigned int pres_a[930];
+  unsigned int pres_b[930];
+}Global; Global g;
+typedef struct{
+  uint64_t row;
+  uint64_t down;
+  uint64_t left;
+  uint64_t right;
+  uint64_t x[MAX];
+}Board ;
+typedef struct{
+  Board B;
+  Board nB;
+  Board eB;
+  Board sB;
+  Board wB;
+  unsigned n;
+  unsigned e;
+  unsigned s;
+  unsigned w;
+  uint64_t dimx;
+  uint64_t dimy;
+  uint64_t COUNTER[3];
+  unsigned int COUNT2;
+  unsigned int COUNT4;
+  unsigned int COUNT8;
+}Local;
+/**
+ * ボード外側２列を除く内側のクイーン配置処理
  */
-long solve(int row,int left,int down,int right){
-  long total=0;
-  if((down+1)==0){
-    return 1;
-  }
-  while(row&1){
-    row>>=1;
-    left<<=1;
-    right>>=1;
-  }
+uint64_t solve(uint64_t row,uint64_t left,uint64_t down,uint64_t right)
+{
+  if(down+1==0){ return 1; }
+  while((row&1)!=0) { row>>=1; left<<=1; right>>=1; }
   row>>=1;
-  int bitmap=~(left|down|right);
-  while (bitmap!=0){
-    int bit=-bitmap&bitmap;
+  uint64_t total=0;
+  for(uint64_t bitmap=~(left|down|right);bitmap!=0;){
+    uint64_t const bit=bitmap&-bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
     bitmap^=bit;
   }
   return total;
 }
 /**
- *
+ * クイーンの効きをチェック
  */
-long process(int size,int sym,int B[]){
-  // return sym*solve(B[0]>>2,B[1]>>4,(((B[2]>>2|~0<<(size-4))+1)<<(size-5))-1,B[3]>>4<<(size-5));
-  return sym*solve(B[0]>>2,B[1]>>4,(((((unsigned)B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,(B[3]>>4)<<(size-5));
-
+bool placement(void* args)
+{
+  Local *l=(Local *)args;
+  if(l->B.x[l->dimx]==l->dimy){ return true;  }
+  if (l->B.x[0]==0){
+    if (l->B.x[1]!=(uint64_t)-1){ if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; } }
+  }else{
+    if( (l->B.x[0]!=(uint64_t)-1) ){
+      if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0]) && (l->dimy==0 || l->dimy==g.size-1))){ return 0; }
+      if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||l->dimy>=g.size-l->B.x[0]))){ return 0; }
+    }
+  }
+  l->B.x[l->dimx]=l->dimy;
+  uint64_t row=UINT64_C(1)<<l->dimx;
+  uint64_t down=UINT64_C(1)<<l->dimy;
+  uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy);
+  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);
+  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }
+  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
+  return true;
 }
-/*
- *
+/**
+ * 対称解除法
  */
-long Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
-  // 前計算
-  int ww=(size-2)*(size-1)-1-w;
-  int w2=(size-2)*(size-1)-1;
+void carryChain_symmetry(void* args)
+{
+  Local *l=(Local *)args;
+  unsigned const int ww=(g.size-2)*(g.size-1)-1-l->w;
+  unsigned const int w2=(g.size-2)*(g.size-1)-1;
   // 対角線上の反転が小さいかどうか確認する
-  if(s==ww && n<(w2-e)) return 0;
+  if((l->s==ww)&&(l->n<(w2-l->e))){ return ; }
   // 垂直方向の中心に対する反転が小さいかを確認
-  if(e==ww && n>(w2-n)) return 0;
+  if((l->e==ww)&&(l->n>(w2-l->n))){ return; }
   // 斜め下方向への反転が小さいかをチェックする
-  if(n==ww && e>(w2-s)) return 0;
-  // 【枝刈り】1行目が角の場合
-  if(!B4[0]) return process(size,8,B); // COUNT8
-  // n,e,s==w の場合は最小値を確認
-  if(s==w){
-    if(n!=w||e!=w) return 0;
-    return process(size,2,B); // COUNT2
+  if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
+  // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
+  if(l->B.x[0]==0){
+    l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return ;
   }
-  // e==w は180度回転して同じ
-  if(e==w&&n>=s){
-    if(n>s) return 0;
-    return process(size,4,B); // COUNT4
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
+  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; }
+    l->COUNTER[l->COUNT2]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return;
   }
-  // その他の場合
-  return process(size,8,B); // COUNT8
-}
-/*
- *
- */
-int placement(int size,int dimx,int dimy,int B[],int B4[]){
-  if(B4[dimx]==dimy) return 1;
-  if(B4[0]){
-    if((B4[0]!=-1 && ((dimx<B4[0]||dimx >= size-B4[0]) && 
-       (dimy==0||dimy==size-1)))||
-       ((dimx==size-1)&&
-       (dimy<=B4[0]||dimy>=size-B4[0]))){ return 0; }
-  } else if((B4[1]!=-1)&&(B4[1]>=dimx&&dimy==1)){ return 0; }
-  if((B[0]&(1<<dimx))||
-     (B[1]&(1<<(size-1-dimx+dimy)))||
-     (B[2]&(1<<dimy))||
-     (B[3]&(1<<(dimx+dimy)))){ return 0; }
-  B[0]|=1<<dimx;
-  B[1]|=1<<(size-1-dimx+dimy);
-  B[2]|=1<<dimy;
-  B[3]|=1<<(dimx+dimy);
-  B4[dimx]=dimy;
-  return 1;
-}
-/*
- *
- */
-void deepcopy(int *src,int *dest,int size){
-  memcpy(dest,src,size*sizeof(int));
-}
-/*
- *
- */
-int buildChain(int size,int pres_a[],int pres_b[]){
-  long total=0;
-  int B[4]={0,0,0,0};
-  int B4[MAX];
-  for (int i=0;i<size;i++){
-    B4[i]=-1;
+  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
+  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; }
+    l->COUNTER[l->COUNT4]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+    return;
   }
-  int sizeE=size-1;
-  int sizeEE=size-2;
-  int range_size=(size/2)*(size-3)+1;
-  for (int w=0;w<range_size;w++){
-    int wB[4],wB4[MAX];
-    deepcopy(B,wB,4);
-    deepcopy(B4,wB4,size);
-    if(!placement(size,0,pres_a[w],wB,wB4)||!placement(size,1,pres_b[w],wB,wB4)) continue;
-    for (int n=w;n<(sizeEE)*(sizeE)-w;n++){
-      int nB[4],nB4[MAX];
-      deepcopy(wB,nB,4);
-      deepcopy(wB4,nB4,size);
-      if(!placement(size,pres_a[n],sizeE,nB,nB4)||!placement(size,pres_b[n],sizeEE,nB,nB4)) continue;
-      for (int e=w;e<(sizeEE)*(sizeE)-w;e++){
-        int eB[4],eB4[MAX];
-        deepcopy(nB,eB,4);
-        deepcopy(nB4,eB4,size);
-        if(!placement(size,sizeE,sizeE-pres_a[e],eB,eB4)||!placement(size,sizeEE,sizeE-pres_b[e],eB,eB4)) continue;
-        for (int s=w;s<(sizeEE)*(sizeE)-w;s++){
-          int sB[4],sB4[MAX];
-          deepcopy(eB,sB,4);
-          deepcopy(eB4,sB4,size);
-          if(!placement(size,sizeE-pres_a[s],0,sB,sB4)||!placement(size,sizeE-pres_b[s],1,sB,sB4)) continue;
-          total+=Symmetry(size,n,w,s,e,sB,sB4);
-        }
+  l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+  return;
+}
+/**
+ * pthreadにも対応できるように
+ */
+void thread_run(void* args)
+{
+  Local *l=(Local *)args;
+  l->B=l->wB;
+  l->dimx=0; l->dimy=g.pres_a[l->w];
+  if(!placement(l)){ return; }
+  l->dimx=1; l->dimy=g.pres_b[l->w];
+  if(!placement(l)){ return; }
+  l->nB=l->B; //２ 左２行に置く
+  for(l->n=l->w;l->n<(g.size-2)*(g.size-1)-l->w;++l->n){
+    l->B=l->nB;
+    l->dimx=g.pres_a[l->n]; l->dimy=g.size-1;
+    if(!placement(l)){ continue; }
+    l->dimx=g.pres_b[l->n]; l->dimy=g.size-2;
+    if(!placement(l)){ continue; }
+    l->eB=l->B; // ３ 下２行に置く
+    for(l->e=l->w;l->e<(g.size-2)*(g.size-1)-l->w;++l->e){
+      l->B=l->eB;
+      l->dimx=g.size-1; l->dimy=g.size-1-g.pres_a[l->e];
+      if(!placement(l)){ continue; }
+      l->dimx=g.size-2; l->dimy=g.size-1-g.pres_b[l->e];
+      if(!placement(l)){ continue; }
+      l->sB=l->B; // ４ 右２列に置く
+      for(l->s=l->w;l->s<(g.size-2)*(g.size-1)-l->w;++l->s){
+        l->B=l->sB;
+        l->dimx=g.size-1-g.pres_a[l->s]; l->dimy=0;
+        if(!placement(l)){ continue; }
+        l->dimx=g.size-1-g.pres_b[l->s]; l->dimy=1;
+        if(!placement(l)){ continue; }
+        carryChain_symmetry(l);// 対称解除法
       }
     }
   }
-  return total;
+}
+// チェーンのビルド
+void buildChain()
+{
+  Local l[(g.size/2)*(g.size-3)];
+  l->COUNT2=0; l->COUNT4=1; l->COUNT8=2;
+  l->COUNTER[l->COUNT2]=l->COUNTER[l->COUNT4]=l->COUNTER[l->COUNT8]=0;
+  l->B.row=l->B.down=l->B.left=l->B.right=0;
+  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  l->wB=l->B; //１ 上２行に置く
+  for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){ thread_run(&l); }
+  UNIQUE= l->COUNTER[l->COUNT2]+ l->COUNTER[l->COUNT4]+ l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+ l->COUNTER[l->COUNT4]*4+ l->COUNTER[l->COUNT8]*8;
 }
 /**
- *
+ * チェーンのリストを作成
  */
-void initChain(int size,int pres_a[],int pres_b[]){
-  int idx=0;
-  for (int a=0;a<size;a++){
-    for (int b=0;b<size;b++){
-      if(abs(a-b)<=1) continue;
-      pres_a[idx]=a;
-      pres_b[idx]=b;
-      idx++;
+void listChain()
+{
+  unsigned int idx=0;
+  for(unsigned int a=0;a<(unsigned)g.size;++a){
+    for(unsigned int b=0;b<(unsigned)g.size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
     }
   }
 }
-/*
- *
+/**
+ * キャリーチェーン
  */
-long carryChain(int size){
-  int pres_a[930]={0};
-  int pres_b[930]={0};
-  initChain(size,pres_a,pres_b);
-  return buildChain(size,pres_a,pres_b);
+void carryChain()
+{
+  listChain();  //チェーンのリストを作成
+  buildChain(); // チェーンのビルド
 }
 /**
- *
+ * メイン
  */
-void mainNQueens17(){
-  int nmin=4;
-  int nmax=18;
+int main()
+{
+  printf("キャリーチェーン\n");
+  printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+  unsigned int min=4;
+  unsigned int targetN=18;
   struct timeval t0;
   struct timeval t1;
   int ss,ms,dd,hh,mm;
-  printf("%s\n","キャリーチェーン");
-  printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-  for (int size=nmin;size<=nmax;size++){
+  for(unsigned int size=min;size<=targetN;++size){
+    TOTAL=UNIQUE=0;
     gettimeofday(&t0,NULL);
-    long TOTAL=carryChain(size);
-    long UNIQUE=0;
+    g.size=size;
+    carryChain();
     gettimeofday(&t1,NULL);
     if(t1.tv_usec<t0.tv_usec){
       dd=(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -223,14 +249,8 @@ void mainNQueens17(){
     hh=ss/3600;
     mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    printf("%2d:%13llu%12llu%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
-}
-/**
- *
- */
-int main(){
-  mainNQueens17();
   return 0;
 }
 
