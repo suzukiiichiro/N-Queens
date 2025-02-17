@@ -11,53 +11,36 @@ typedef unsigned long long xlong;
 /**
  *
  */
-uint solve(uint row,uint left,uint down,uint right){
-  xlong total=0;
-  if((down+1)==0) return 1;
-  while(row&1){
-    row>>=1;
-    left<<=1;
-    right>>=1;
-  }
-  row >>= 1;
-  uint bitmap=~(left|down|right);
-  uint bit=0;
-  while(bitmap!=0){
+ulong solve(uint row,uint left,uint down,uint right){
+  if(down+1==0) return 1;
+  while((row&1)!=0){ row>>=1; left<<=1; right>>=1; }
+  row>>=1;
+  ulong total=0;
+  ulong bit;
+  for(ulong bitmap=~(left|down|right);bitmap!=0;bitmap^=bit){
     bit=-bitmap&bitmap;
     total+=solve(row,(left|bit)<<1,down|bit,(right|bit)>>1);
-    bitmap ^= bit;
   }
   return total;
 }
 /**
  *
  */
-uint process(int size,int sym,int B[]){
-  return sym*solve(
-    B[0]>>2,
-    B[1]>>4,
-    ((((B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,
-    (unsigned)(B[3]>>4)<<(size-5)
-  );
+ulong process(int size,int sym,int B[]){
+  return sym*solve(B[0]>>2,B[1]>>4,((((B[2]>>2)|~(0U)<<(size-4))+1)<<(size-5))-1,(unsigned)(B[3]>>4)<<(size-5));
 }
 /**
  *
  */
-uint Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
+ulong Symmetry(int size,int n,int w,int s,int e,int B[],int B4[]){
   int ww=(size-2)*(size-1)-1-w;
   int w2=(size-2)*(size-1)-1;
   if(s==ww&&n<(w2-e)) return 0;
   if(e==ww&&n>(w2-n)) return 0;
   if(n==ww&&e>(w2-s)) return 0;
   if(!B4[0]) return process(size,8,B);
-  if(s==w){
-    if(n!=w||e!=w) return 0;
-    return process(size,2,B);
-  }
-  if(e==w&&n>=s){
-    if(n>s) return 0;
-    return process(size,4,B);
-  }
+  if(s==w){ if(n!=w||e!=w) return 0; return process(size,2,B); }
+  if(e==w&&n>=s){ if(n>s) return 0; return process(size,4,B); }
   return process(size,8,B);
 }
 /**
@@ -75,10 +58,10 @@ bool placement(int size,int dimx,int dimy,int B[],int B4[]){
     (B[1]&(1<<(size-1-dimx+dimy)))||
     (B[2]&(1<<dimy))||
     (B[3]&(1<<(dimx+dimy)))){ return false;}
-  uint row=UINT64_C(1)<<dimx;
-  uint left=UINT64_C(1)<<(size-1-dimx+dimy);
-  uint down=UINT64_C(1)<<dimy;
-  uint right=UINT64_C(1)<<(dimx+dimy);
+  xlong row=UINT64_C(1)<<dimx;
+  xlong left=UINT64_C(1)<<(size-1-dimx+dimy);
+  xlong down=UINT64_C(1)<<dimy;
+  xlong right=UINT64_C(1)<<(dimx+dimy);
   B4[dimx]=dimy;
   if((B[0]&row)||(B[1]&left)||(B[2]&down)||(B[3]&right)){ return false; }
   B[0]|=row; B[1]|=left; B[2]|=down; B[3]|=right;
@@ -87,11 +70,11 @@ bool placement(int size,int dimx,int dimy,int B[],int B4[]){
 /**
  *
  */
-xlong buildChain(int size,int pres_a[],int pres_b[]){
+ulong buildChain(int size,int pres_a[],int pres_b[]){
   //プログレス
   printf("\t\t  First side bound: (%d,%d)/(%d,%d)",(unsigned)pres_a[(size/2)*(size-3)  ],(unsigned)pres_b[(size/2)*(size-3)  ],(unsigned)pres_a[(size/2)*(size-3)+1],(unsigned)pres_b[(size/2)*(size-3)+1]);
 
-  xlong total=0;
+  ulong total=0;
   int B[4]={0,0,0,0};//row/left/down/right
   int B4[size];
   for(int i=0;i<size;i++) B4[i]=-1;
@@ -150,7 +133,7 @@ void initChain(int size,int pres_a[],int pres_b[]){
 /*
  *
  */
-xlong carryChain(int size){
+ulong carryChain(int size){
   int pres_a[930];
   int pres_b[930];
   initChain(size,pres_a,pres_b);
@@ -169,8 +152,8 @@ void mainNQueens17(){
   printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
   for(int size=nmin;size<=nmax;size++){
     gettimeofday(&t0,NULL);
-    xlong TOTAL=carryChain(size);
-    xlong UNIQUE=0;
+    ulong TOTAL=carryChain(size);
+    ulong UNIQUE=0;
     gettimeofday(&t1,NULL);
     if(t1.tv_usec<t0.tv_usec){
       dd=(t1.tv_sec-t0.tv_sec-1)/86400;
@@ -184,7 +167,7 @@ void mainNQueens17(){
     hh=ss/3600;
     mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%13llu%12llu%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    printf("%2d:%13lu%12lu%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
 }
 /**
