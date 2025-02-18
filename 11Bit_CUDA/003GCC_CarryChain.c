@@ -34,11 +34,8 @@ bash-5.1$ gcc -W -Wall -O3 01CUDA_Bit_Symmetry.c && ./a.out
 18:    666090624    83263591      00:00:01:45.44
  *
  */
-#include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
-#include <time.h>
 #include <sys/time.h>
 #define MAX 27
 #define UINT64_C(c) c ## ULL
@@ -49,7 +46,8 @@ typedef struct{
   unsigned int size;
   unsigned int pres_a[930];
   unsigned int pres_b[930];
-}Global; Global g;
+}Global;
+Global g;
 typedef struct{
   uint64_t row;
   uint64_t down;
@@ -115,6 +113,14 @@ bool placement(void* args)
   return true;
 }
 /**
+ *
+ */
+void process(void* args,int sym)
+{
+  Local *l=(Local *)args;
+  l->COUNTER[sym]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
+}
+/**
  * 対称解除法
  */
 void carryChain_symmetry(void* args)
@@ -129,22 +135,12 @@ void carryChain_symmetry(void* args)
   // 斜め下方向への反転が小さいかをチェックする
   if((l->n==ww)&&(l->e>(w2-l->s))){ return; }
   // 枝刈り １行目が角の場合回転対称チェックせずCOUNT8にする
-  if(l->B.x[0]==0){
-    l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
-    return ;
-  }
-  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性
-  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; }
-    l->COUNTER[l->COUNT2]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
-    return;
-  }
-  // e==wは180度回転して同じ 180度回転して同じ時n>=sの時はsmaller?
-  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; }
-    l->COUNTER[l->COUNT4]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
-    return;
-  }
-  l->COUNTER[l->COUNT8]+=solve(l->B.row>>2,l->B.left>>4,((((l->B.down>>2)|~0<<(g.size-4))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
-  return;
+  if(l->B.x[0]==0){ process(l,2); return ; } //COUNT8
+  // n,e,s==w の場合は最小値を確認する。右回転で同じ場合は、w=n=e=sでなければ値が小さいのでskip  w=n=e=sであれば90度回転で同じ可能性 COUNT2
+  if(l->s==l->w){ if((l->n!=l->w)||(l->e!=l->w)){ return; } process(l,0); return; } //COUNT2
+  // e==wは180度回転して同じn>=sの時はsmaller? COUNT4
+  if((l->e==l->w)&&(l->n>=l->s)){ if(l->n>l->s){ return; } process(l,1); return; } //COUNT4
+  process(l,2); return;//COUNT8
 }
 /**
  * pthreadにも対応できるように
@@ -193,8 +189,12 @@ void buildChain()
   for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
   l->wB=l->B; //１ 上２行に置く
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){ thread_run(&l); }
-  UNIQUE= l->COUNTER[l->COUNT2]+ l->COUNTER[l->COUNT4]+ l->COUNTER[l->COUNT8];
-  TOTAL=  l->COUNTER[l->COUNT2]*2+ l->COUNTER[l->COUNT4]*4+ l->COUNTER[l->COUNT8]*8;
+  UNIQUE= l->COUNTER[l->COUNT2]+
+          l->COUNTER[l->COUNT4]+
+          l->COUNTER[l->COUNT8];
+  TOTAL=  l->COUNTER[l->COUNT2]*2+
+          l->COUNTER[l->COUNT4]*4+
+          l->COUNTER[l->COUNT8]*8;
 }
 /**
  * チェーンのリストを作成
@@ -253,4 +253,5 @@ int main()
   }
   return 0;
 }
+
 
