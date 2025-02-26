@@ -520,7 +520,7 @@ int main(int argc,char** argv)
     clock_t st;           //速度計測用
     char t[20];           //hh:mm:ss.msを格納
     //int min=5; int targetN=17;
-    int min=4;int targetN=17;
+    int min=4;int targetN=18;
     int mask;
     for(int i=min;i<=targetN;i++){
       /***07 symmetryOps CPU,GPU同一化*********************/
@@ -578,7 +578,7 @@ int main(int argc,char** argv)
       } else {
         dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
         ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+        // ms=(t1.tv_usec-t0.tv_usec+500)/10000;
       }
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
