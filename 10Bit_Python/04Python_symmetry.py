@@ -40,11 +40,10 @@ from datetime import datetime
 
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens04:
-  max:int
   total:int
   unique:int
   aboard:list[int]
@@ -53,25 +52,24 @@ class NQueens04:
   fc:list[int]
   trial:list[int]
   scratch:list[int]
-  def __init__(self):
-    self.max=16
+  def __init__(self)->None:
+    pass
+  def init(self,size:int)->None:
     self.total=0
     self.unique=0
-    self.aboard=[0 for i in range(self.max)]
-    self.fa=[0 for i in range(2*self.max-1)]
-    self.fb=[0 for i in range(2*self.max-1)]
-    self.fc=[0 for i in range(2*self.max-1)]
-    self.trial=[0 for i in range(self.max)]
-    self.scratch=[0 for i in range(self.max)]
-  def rotate(self,chk:list[int],scr:list[int],_n:int,neg:int):
-    incr=0
+    self.aboard=[0 for i in range(size)]
+    self.fa=[0 for i in range(2*size-1)]
+    self.fb=[0 for i in range(2*size-1)]
+    self.fc=[0 for i in range(2*size-1)]
+    self.trial=[0 for i in range(size)]
+    self.scratch=[0 for i in range(size)]
+  def rotate(self,chk:list[int],scr:list[int],_n:int,neg:int)->None:
+    incr:int=0
     k:int=0
-    # k=0 if neg else _n-1
     if neg:
       k=0
     else:
       k=_n-1
-    # incr=1 if neg else -1
     if neg:
       incr=1
     else:
@@ -83,7 +81,7 @@ class NQueens04:
     for i in range(_n):
       chk[scr[i]]=k
       k-=incr
-  def vmirror(self,chk:list[int],neg:int):
+  def vmirror(self,chk:list[int],neg:int)->None:
     for i in range(neg):
       chk[i]=(neg-1)-chk[i]
   def intncmp(self,_lt:list[int],_rt:list[int],neg:int)->int:
@@ -144,7 +142,7 @@ class NQueens04:
         if k>0:
           return 0
     return nequiv*2
-  def nqueens_rec(self,row:int,size:int):
+  def nqueens_rec(self,row:int,size:int)->None:
     stotal:int
     if row==size:
       stotal=self.symmetryops(size)
@@ -158,21 +156,16 @@ class NQueens04:
           self.fa[i]=self.fb[row-i+(size-1)]=self.fc[row+i]=1
           self.nqueens_rec(row+1,size)
           self.fa[i]=self.fb[row-i+(size-1)]=self.fc[row+i]=0
-  def main(self):
-    nmin:int=4
+  def main(self)->None:
+    min:int=4
+    max:int=18
     size:int
     print(" N:        Total       Unique         hh:mm:ss.ms")
-    for size in range(nmin,self.max):
-      self.total=0
-      self.unique=0
-      for j in range(size):
-        self.aboard[j]=j
+    for size in range(min,max):
+      self.init(size)
       start_time=datetime.now()
       self.nqueens_rec(0,size)
       time_elapsed=datetime.now()-start_time
-      # _text='{}'.format(time_elapsed)
-      # text=_text[:-3]
-      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique,text)); 
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
