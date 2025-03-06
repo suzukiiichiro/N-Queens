@@ -34,11 +34,10 @@ from datetime import datetime
 
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens03:
-  max:int
   total:int
   unique:int
   aboard:list[int]
@@ -46,13 +45,14 @@ class NQueens03:
   fb:list[int]
   fc:list[int]
   def __init__(self):
-    self.max=16;
+    pass
+  def init(self,size:int):
     self.total=0;
     self.unique=0;
-    self.aboard=[0 for i in range(self.max)];
-    self.fa=[0 for i in range(2*self.max-1)];
-    self.fb=[0 for i in range(2*self.max-1)];
-    self.fc=[0 for i in range(2*self.max-1)];
+    self.aboard=[0 for i in range(size)];
+    self.fa=[0 for i in range(2*size-1)];
+    self.fb=[0 for i in range(2*size-1)];
+    self.fc=[0 for i in range(2*size-1)];
   def nqueens(self,row:int,size:int):
     if row==size:
       self.total+=1;
@@ -65,26 +65,20 @@ class NQueens03:
           self.fa[i]=self.fb[row-i+(size-1)]=self.fc[row+i]=0;
   def main(self):
     min:int=4;
+    max:int=18
     print(" N:        Total       Unique         hh:mm:ss.ms")
-    for size in range(min,self.max):
-      self.total=0;
-      self.unique=0;
-      for j in range(size):
-        self.aboard[j]=j;
+    for size in range(min,max):
+      self.init(size)
       start_time=datetime.now();
       self.nqueens(0,size);
       time_elapsed=datetime.now()-start_time;
-      # _text='{}'.format(time_elapsed);
-      # text=_text[:-3]
-      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique,text)); 
-      # `.format` の代わりに文字列として直接処理
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
 # 3.バックトラック
 # $ python <filename>
 # $ pypy <fileName>
-# $ codon build -release <filename>
+# $ codon build -release <filename>.py && ./<filename>
 # 15:      2279184            0         0:00:16:449
 if __name__ == '__main__':
   NQueens03().main();
