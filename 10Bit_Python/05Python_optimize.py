@@ -168,7 +168,7 @@ class NQueens05:
       self.aboard[size-1]=tmp
   def main(self)->None:
     min:int=4
-    max:int=16
+    max:int=18
     print(" N:        Total       Unique         hh:mm:ss.ms")
     for size in range(min,max):
       self.init(size)

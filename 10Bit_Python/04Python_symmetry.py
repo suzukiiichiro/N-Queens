@@ -142,7 +142,7 @@ class NQueens04:
         if k>0:
           return 0
     return nequiv*2
-  def nqueens_rec(self,row:int,size:int)->None:
+  def nqueens(self,row:int,size:int)->None:
     stotal:int
     if row==size:
       stotal=self.symmetryops(size)
@@ -164,9 +164,9 @@ class NQueens04:
     for size in range(min,max):
       self.init(size)
       start_time=datetime.now()
-      self.nqueens_rec(0,size)
+      self.nqueens(0,size)
       time_elapsed=datetime.now()-start_time
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
 # 4.対象解除法
@@ -175,5 +175,5 @@ class NQueens04:
 # $ codon build -release <filename>
 # 15:      2279184       285053         0:00:49.855
 if __name__ == '__main__':
-  NQueens04().main();
+  NQueens04().main()
 
