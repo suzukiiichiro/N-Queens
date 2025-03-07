@@ -15,8 +15,8 @@ https://github.com/suzukiiichiro/N-Queens
 """
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens01:
   size:int

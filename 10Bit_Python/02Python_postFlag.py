@@ -16,8 +16,8 @@ Bash版ですが内容は同じです。
 """
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens02:
   size:int
