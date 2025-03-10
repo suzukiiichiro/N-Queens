@@ -45,8 +45,8 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 from datetime import datetime 
 # pypyを使う場合はコメントを解除
 # pypyで再帰が高速化できる
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens06():
   total:int
@@ -69,7 +69,7 @@ class NQueens06():
         self.NQueens(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
   def main(self):
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       self.init()
