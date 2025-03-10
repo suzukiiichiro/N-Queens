@@ -52,6 +52,8 @@ class NQueens06():
   total:int
   unique:int
   def __init__(self):
+    pass
+  def init(self):
     self.total=0
     self.unique=0
   def NQueens(self,size:int,row:int,left:int,down:int,right:int):
@@ -70,17 +72,12 @@ class NQueens06():
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
-      self.total=0
-      self.unique=0
+      self.init()
       start_time = datetime.now()
       self.NQueens(size,0,0,0,0)
       time_elapsed = datetime.now()-start_time
-      # _text = '{}'.format(time_elapsed)
-      # text = _text[:-3]
-      # print("%2d:%13d%13d%20s" % (i,self.total,self.unique, text))  
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
-
 # 6.バックトラックとビットマップ
 # $ python <filename>
 # $ pypy <fileName>
@@ -88,4 +85,3 @@ class NQueens06():
 # 15:      2279184            0         0:00:01.422
 if __name__=='__main__':
   NQueens06().main();
-
