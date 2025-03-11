@@ -70,13 +70,8 @@ from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
-# from threading import Thread
-# from multiprocessing import Pool as ThreadPool
-# import concurrent
-# from concurrent.futures import ThreadPoolExecutor
-# from concurrent.futures import ProcessPoolExecutor
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 step=0
 class NQueens21:
     def __init__(self):
@@ -158,7 +153,7 @@ class NQueens21:
 class NQueens21_NodeLayer:
   def main(self)->None:
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
