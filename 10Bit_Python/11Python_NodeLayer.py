@@ -64,8 +64,8 @@ CentOS-5.1$ pypy 03Python_backTracking.py
 from datetime import datetime
 
 # pypyを使う場合はコメントを解除
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 
 class NQueens11:
@@ -141,20 +141,19 @@ class NQueens11:
         total:int=0
         for i in range(num_solutions):
           total+=self.bitmap_solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2])
-        total *= 2 # 倍にする
+        # total *= 2 # 倍にする
         return total
 class NQueens11_NodeLayer:
   def main(self):
     nmin:int=4
-    nmax:int=16
+    nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
       NQ=NQueens11()
       total=NQ.bitmap_build_nodeLayer(size)
       time_elapsed=datetime.now()-start_time
-      # `.format` の代わりに文字列として直接処理
-      text=str(time_elapsed)[:-3]  
+      text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:20s}")
 
 # $ python <filename>
