@@ -76,7 +76,7 @@ __host__ __device__ int symmetry90(int ijkl,int N)
 }
 */
 /** この開始コンステレーションで、見つかった解がカウントされる頻度 */
- #define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
+#define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
 /**
 __host__ __device__ int symmetry(int ijkl,int N)
 {
@@ -104,10 +104,6 @@ int mirvert(int ijkl,int N)
   return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
 }
 */
-
-
-
-
 /**
   Constellation構造体の定義
 */
@@ -788,7 +784,7 @@ long calcSolutions(ConstellationArrayList* constellations,long solutions)
   い標準形に変換します。
   最小値を持つクイーンの位置を最下行に移動させる
   i は最初の行（上端） 90度回転2回
-  j は最後の行（下端） 90度回転0回　
+  j は最後の行（下端） 90度回転0回
   k は最初の列（左端） 90度回転3回
   l は最後の列（右端） 90度回転1回
   優先順位が l>k>i>j の理由は？
@@ -880,7 +876,7 @@ void int_hashset_add(IntHashSet* set,int value)
 }
 /**
   * ビット操作関数プロトタイプ
-    いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
+  * いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
  */
 int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N)
 {
