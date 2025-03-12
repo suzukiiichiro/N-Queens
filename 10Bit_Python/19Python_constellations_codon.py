@@ -26,7 +26,7 @@ source ~/.bashrc
 """
 
 """
-CentOS-5.1$ ./21Python_constellations_codon
+CentOS-5.1$ codon build -release 21Python_constellations_codon.py && ./21Python_constellations_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.000
  6:            4            0         0:00:00.000
@@ -42,6 +42,26 @@ CentOS-5.1$ ./21Python_constellations_codon
 16:     14772512            0         0:00:01.468
 17:     95815104            0         0:00:10.120
 18:    666090624            0         0:01:14.858
+
+CentOS$ codon build -release 08Python_bit_symmetry.py && ./08Python_bit_symmetry
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.000
+ 6:            4            1         0:00:00.000
+ 7:           40            6         0:00:00.000
+ 8:           92           12         0:00:00.000
+ 9:          352           46         0:00:00.000
+10:          724           92         0:00:00.000
+11:         2680          341         0:00:00.000
+12:        14200         1787         0:00:00.003
+13:        73712         9233         0:00:00.017
+14:       365596        45752         0:00:00.094
+15:      2279184       285053         0:00:00.517
+16:     14772512      1846955         0:00:03.386
+17:     95815104     11977939         0:00:23.195
+18:    666090624     83263591         0:02:48.429
+
+
 
 CentOS-5.1$ pypy 20Python_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
