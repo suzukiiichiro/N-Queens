@@ -196,11 +196,11 @@ int main(int argc,char** argv);
 /**
   * このソースで追加された関数
   */
-ConstellationArrayList* create_constellation_arraylist();
-ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize);
 int compareConstellations(const void* a, const void* b);
 void sortConstellations(ConstellationArrayList* constellations);
 void addTrashConstellation(ConstellationArrayList* list, int ijkl) ;
+ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize);
+ConstellationArrayList* create_constellation_arraylist();
 
 
 // コンステレーションの比較関数
