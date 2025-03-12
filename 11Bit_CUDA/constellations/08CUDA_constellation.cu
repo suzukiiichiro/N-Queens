@@ -2,8 +2,7 @@
 クイーンを上下左右に４個置いてからバックトラックを実行する
 バックトラックする前に回転対称比較して最小値のものだけバックトラックする
 
-[suzuki@ip-172-31-13-29 11Bit_CUDA]$ bash MAIN.SH 05CUDA_CarryChain.c gcc
-1./a.out
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 08CUDA_constellation.cu &&  ./a.out -g
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.00
  5:               18               0     000:00:00:00.00
@@ -36,6 +35,78 @@
 #define INITIAL_CAPACITY 1000
 #define presetQueens 4
 #define THREAD_NUM 96
+/** * 大小を比較して小さい最値を返却 */
+#define ffmin(a,b) (((a)<(b)) ? (a) : (b))
+/**
+#include <math.h>
+int ffmin(int a,int b)
+{
+  if(a<b){
+    return a;
+  }
+  return b;
+}
+*/
+#define toijkl(i,j,k,l)  ( (i<<15)+(j<<10)+(k<<5)+l )
+// int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l; }
+#define geti(ijkl) ( ijkl>>15 )
+// __host__ __device__ int geti(int ijkl){ return ijkl>>15; }
+#define getj(ijkl) ( (ijkl>>10) & 31 )
+// __host__ __device__ int getj(int ijkl){ return (ijkl>>10) & 31; }
+#define getk(ijkl) ( (ijkl>>5) & 31 )
+// __host__ __device__ int getk(int ijkl){ return (ijkl>>5) & 31; }
+#define getl(ijkl) ( ijkl & 31 )
+// __host__ __device__ int getl(int ijkl){ return ijkl & 31; }
+/**
+  時計回りに90度回転
+  rot90 メソッドは、90度の右回転（時計回り）を行います
+  元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
+*/
+#define rot90(ijkl,N) ( ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl) )
+// int rot90(int ijkl,int N){ return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl); }
+/**
+  対称性のための計算と、ijklを扱うためのヘルパー関数。
+  開始コンステレーションが回転90に対して対称である場合
+*/
+#define symmetry90(ijkl,N) ( ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)) )
+/**
+__host__ __device__ int symmetry90(int ijkl,int N)
+{
+  return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl));
+}
+*/
+/** この開始コンステレーションで、見つかった解がカウントされる頻度 */
+ #define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
+/**
+__host__ __device__ int symmetry(int ijkl,int N)
+{
+  // コンステレーションをrot180で対称に開始するか？
+  if(geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)){
+    if(symmetry90(ijkl,N)){
+      return 2;
+    }else{
+      return 4;
+    }
+  }else{
+    return 8;
+  }
+}
+*/
+/**
+  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
+  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
+  行インデックスはそのままにします。
+*/
+#define mirvert(ijkl,N) ( toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)) )
+/**
+int mirvert(int ijkl,int N)
+{
+  return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
+}
+*/
+
+
+
 
 /**
   Constellation構造体の定義
@@ -99,86 +170,6 @@ __host__ __device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,in
 __host__ __device__ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
 __host__ __device__ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
 
-/** * 大小を比較して小さい最値を返却 */
-int ffmin(int a,int b);
-int geti(int sc);
-int getj(int sc);
-int getk(int sc);
-int getl(int sc);
-int toijkl(int i,int j,int k,int l);
-int rot90(int ijkl,int N);
-int symmetry90(int ijkl,int N);
-int symmetry(int ijkl,int N);
-int mirvert(int ijkl,int N);
-
-/**
- * 大小を比較して小さい最値を返却
- */
-// #define fmin(a,b) (((a)<(b)) ? (a) : (b))
-//#include <math.h>
-int ffmin(int a,int b)
-{
-  if(a<b){
-    return a;
-  }
-  return b;
-}
-// #define toijkl(i,j,k,l)  ( (i<<15)+(j<<10)+(k<<5)+l )
-int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l; }
-// #define geti(ijkl) ( ijkl>>15 )
-__host__ __device__ int geti(int ijkl){ return ijkl>>15; }
-// #define getj(ijkl) ( (ijkl>>10) & 31 )
-__host__ __device__ int getj(int ijkl){ return (ijkl>>10) & 31; }
-// #define getk(ijkl) ( (ijkl>>5) & 31 )
-__host__ __device__ int getk(int ijkl){ return (ijkl>>5) & 31; }
-// #define getl(ijkl) ( ijkl & 31 )
-__host__ __device__ int getl(int ijkl){ return ijkl & 31; }
-/**
-  時計回りに90度回転
-  rot90 メソッドは、90度の右回転（時計回り）を行います
-  元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
-*/
-//#define rot90(ijkl,N) ( ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl) )
-int rot90(int ijkl,int N){ return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl); }
-/**
-  対称性のための計算と、ijklを扱うためのヘルパー関数。
-  開始コンステレーションが回転90に対して対称である場合
-*/
-// #define symmetry90(ijkl,N) ( ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)) )
-__host__ __device__ int symmetry90(int ijkl,int N)
-{
-  return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl));
-}
-/**
-  この開始コンステレーションで、見つかった解がカウントされる頻度
-*/
-// #define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
-__host__ __device__ int symmetry(int ijkl,int N)
-{
-  // コンステレーションをrot180で対称に開始するか？
-  if(geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)){
-    if(symmetry90(ijkl,N)){
-      return 2;
-    }else{
-      return 4;
-    }
-  }else{
-    return 8;
-  }
-}
-/**
-  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
-  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
-  行インデックスはそのままにします。
-*/
-//#define mirvert(ijkl,N) ( toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)) )
-int mirvert(int ijkl,int N)
-{
-  return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)); 
-}
-
-
-
 /** * IntHashSetの関数プロトタイプ */
 IntHashSet* create_int_hashset();
 void free_int_hashset(IntHashSet* set);
@@ -187,13 +178,13 @@ void int_hashset_add(IntHashSet* set,int value);
 /** * ビット操作関数プロトタイプ */
 int checkRotations(IntHashSet* set,int i,int j,int k,int l,int N);
 /** * ConstellationArrayList の関数実装 */
-ConstellationArrayList* create_constellation_arraylist()
-void free_constellation_arraylist(ConstellationArrayList* list)
-void constellation_arraylist_add(ConstellationArrayList* list,Constellation value)
-Constellation* create_constellation()
-Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions)
+ConstellationArrayList* create_constellation_arraylist();
+void free_constellation_arraylist(ConstellationArrayList* list);
+void constellation_arraylist_add(ConstellationArrayList* list,Constellation value);
+Constellation* create_constellation();
+Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions);
 /** * */
-__global__ void execSolutionsKernel(Constellation* constellations,int N, int totalSize)
+__global__ void execSolutionsKernel(Constellation* constellations,int N, int totalSize);
 void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
 void execSolutions(ConstellationArrayList* constellations,int N);
 long calcSolutions(ConstellationArrayList* constellations,long solutions);
@@ -1113,8 +1104,8 @@ int main(int argc,char** argv)
   else if(gpu){ printf("\n\nGPU Constellations\n");
    if(!InitCUDA()){return 0;}
   }
-    int min=7; 
-    int targetN=17;
+    int min=4; 
+    int targetN=18;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
