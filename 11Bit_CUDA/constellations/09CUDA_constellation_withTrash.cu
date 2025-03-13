@@ -1,6 +1,7 @@
 /**
 09CUDA_CarryChain_constellation_withTrash.cをcudaに変換したもの
-
+08とロジックは同じ、GPU で効率よく並列処理できるように、リストのサイズを workgroupSize の倍数に整える。
+数が足りないもにについてはダミーデータをいれてそろえている
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 09CUDA_constellation_withTrash.cu &&  ./a.out -g
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.31
