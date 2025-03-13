@@ -33,7 +33,7 @@ SQBメソッドが何パターンも分かれていて枝かりしていると�
 最後にsymmetryでCOUNT2 COUNT4 COUNT8の判定をする
 
 
-GPU Constellations
+$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 08CUDA_constellation.cu &&  ./a.out -g
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.13
  5:               18               0     000:00:00:00.00
