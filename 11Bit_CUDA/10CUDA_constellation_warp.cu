@@ -1,7 +1,6 @@
 /**
 10CUDA_CarryChain_constellation_withTrash.cuに
 warpの処理を追加
-=======
 08とロジックは同じ
 gpu内の処理でwarp（ __syncthreads　__syncwarp）の処理を追加
 
