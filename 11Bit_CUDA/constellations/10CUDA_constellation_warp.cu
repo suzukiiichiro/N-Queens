@@ -1,6 +1,7 @@
 /**
 10CUDA_CarryChain_constellation_withTrash.cuに
-warpの処理を追加
+08とロジックは同じ
+gpu内の処理でwarp（ __syncthreads　__syncwarp）の処理を追加
 
 $ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 10CUDA_constellation_withTrash.cu &&  ./a.out -g
  N:        Total      Unique      dd:hh:mm:ss.ms
