@@ -1,8 +1,10 @@
 /**
 09CUDA_CarryChain_constellation_withTrash.cをcudaに変換したもの
-
- N:            Total          Unique      dd:hh:mm:ss.ms
- 4:                0               0     000:00:00:00.31
+08とロジックは同じ、GPU で効率よく並列処理できるように、リストのサイズを workgroupSize の倍数に整える。
+数が足りないもにについてはダミーデータをいれてそろえている
+$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 09CUDA_constellation_withTrash.cu &&  ./a.out -g
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:                0               0     000:00:00:00.16
  5:               18               0     000:00:00:00.00
  6:                4               0     000:00:00:00.00
  7:               40               0     000:00:00:00.00
@@ -12,10 +14,11 @@
 11:             2680               0     000:00:00:00.00
 12:            14200               0     000:00:00:00.00
 13:            73712               0     000:00:00:00.00
-14:           365596               0     000:00:00:00.01
-15:          2279184               0     000:00:00:00.09
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
+14:           365596               0     000:00:00:00.03
+15:          2279184               0     000:00:00:00.14
+16:         14772512               0     000:00:00:00.69
+17:         95815104               0     000:00:00:03.76
+18:        666090624               0     000:00:00:22.30
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,32 +32,13 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-
 #define INITIAL_CAPACITY 1000
 #define presetQueens 4
-
-// CUDA 初期化
-bool InitCUDA()
-{
-  int count;
-  cudaGetDeviceCount(&count);
-  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
-  int i;
-  for(i=0;i<count;i++){
-    struct cudaDeviceProp prop;
-    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
-  }
-  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
-  cudaSetDevice(i);
-  return true;
-}
-
-
+// #define THREAD_NUM 96
+/** * 大小を比較して小さい最値を返却 */
+#define ffmin(a,b) (((a)<(b)) ? (a) : (b))
 /**
- * 大小を比較して小さい最値を返却
- */
-// #define fmin(a,b) (((a)<(b)) ? (a) : (b))
-//#include <math.h>
+#include <math.h>
 int ffmin(int a,int b)
 {
   if(a<b){
@@ -62,43 +46,40 @@ int ffmin(int a,int b)
   }
   return b;
 }
-// #define toijkl(i,j,k,l)  ( (i<<15)+(j<<10)+(k<<5)+l )
-int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l; }
-// #define geti(ijkl) ( ijkl>>15 )
-__host__ __device__ int geti(int ijkl){ return ijkl>>15; }
-// #define getj(ijkl) ( (ijkl>>10) & 31 )
-__host__ __device__ int getj(int ijkl){ return (ijkl>>10) & 31; }
-// #define getk(ijkl) ( (ijkl>>5) & 31 )
-__host__ __device__ int getk(int ijkl){ return (ijkl>>5) & 31; }
-// #define getl(ijkl) ( ijkl & 31 )
-__host__ __device__ int getl(int ijkl){ return ijkl & 31; }
-/**
-  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
-  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
-  行インデックスはそのままにします。
 */
-//#define mirvert(ijkl,N) ( toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)) )
-int mirvert(int ijkl,int N){ return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)); }
+#define toijkl(i,j,k,l)  ( (i<<15)+(j<<10)+(k<<5)+l )
+// int toijkl(int i,int j,int k,int l){ return (i<<15)+(j<<10)+(k<<5)+l; }
+#define geti(ijkl) ( ijkl>>15 )
+// __host__ __device__ int geti(int ijkl){ return ijkl>>15; }
+#define getj(ijkl) ( (ijkl>>10) & 31 )
+// __host__ __device__ int getj(int ijkl){ return (ijkl>>10) & 31; }
+#define getk(ijkl) ( (ijkl>>5) & 31 )
+// __host__ __device__ int getk(int ijkl){ return (ijkl>>5) & 31; }
+#define getl(ijkl) ( ijkl & 31 )
+// __host__ __device__ int getl(int ijkl){ return ijkl & 31; }
 /**
   時計回りに90度回転
   rot90 メソッドは、90度の右回転（時計回り）を行います
   元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
 */
-//#define rot90(ijkl,N) ( ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl) )
-int rot90(int ijkl,int N){ return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl); }
+#define rot90(ijkl,N) ( ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl) )
+// int rot90(int ijkl,int N){ return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl); }
 /**
   対称性のための計算と、ijklを扱うためのヘルパー関数。
   開始コンステレーションが回転90に対して対称である場合
 */
-// #define symmetry90(ijkl,N) ( ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)) )
-__host__ __device__ int symmetry90(int ijkl,int N){
+#define symmetry90(ijkl,N) ( ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)) )
+/**
+__host__ __device__ int symmetry90(int ijkl,int N)
+{
   return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl)) == (((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl));
 }
-/**
-  この開始コンステレーションで、見つかった解がカウントされる頻度
 */
-// #define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
-__host__ __device__ int symmetry(int ijkl,int N){
+/** この開始コンステレーションで、見つかった解がカウントされる頻度 */
+#define symmetry(ijkl,N) ( (geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)) ? (symmetry90(ijkl,N) ? 2 : 4 ) : 8 )
+/**
+__host__ __device__ int symmetry(int ijkl,int N)
+{
   // コンステレーションをrot180で対称に開始するか？
   if(geti(ijkl)==N-1-getj(ijkl) && getk(ijkl)==N-1-getl(ijkl)){
     if(symmetry90(ijkl,N)){
@@ -110,10 +91,24 @@ __host__ __device__ int symmetry(int ijkl,int N){
     return 8;
   }
 }
+*/
+/**
+  左右のミラー 与えられたクイーンの配置を左右ミラーリングします。
+  各クイーンの位置を取得し、列インデックスを N-1 から引いた位置に変更します（左右反転）。
+  行インデックスはそのままにします。
+*/
+#define mirvert(ijkl,N) ( toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl)) )
+/**
+int mirvert(int ijkl,int N)
+{
+  return toijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl));
+}
+*/
 /**
   Constellation構造体の定義
 */
-typedef struct{
+typedef struct
+{
   int id;
   int ld;
   int rd;
@@ -124,7 +119,8 @@ typedef struct{
 /**
   IntHashSet構造体の定義
 */
-typedef struct{
+typedef struct
+{
   int* data;
   int size;
   int capacity;
@@ -132,190 +128,159 @@ typedef struct{
 /**
   ConstellationArrayList構造体の定義
 */
-typedef struct{
+typedef struct
+{
   Constellation* data;
   int size;
   int capacity;
 }ConstellationArrayList;
-
 /**
-// IntHashSetの関数プロトタイプ
-//IntHashSet* create_int_hashset();
+  * 関数プロトタイプ
+  */
+__host__ __device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+
+/** * IntHashSetの関数プロトタイプ */
+IntHashSet* create_int_hashset();
 void free_int_hashset(IntHashSet* set);
 int int_hashset_contains(IntHashSet* set,int value);
 void int_hashset_add(IntHashSet* set,int value);
-// ビット操作関数プロトタイプ
+/** * ビット操作関数プロトタイプ */
 int checkRotations(IntHashSet* set,int i,int j,int k,int l,int N);
-int toijkl(int i,int j,int k,int l);
-__device__ int geti(int sc);
-__device__ int getj(int sc);
-__device__ int getk(int sc);
-__device__ int getl(int sc);
-int rot90(int ijkl,int N);
-int symmetry90(int ijkl,int N);
-__device__ int symmetry(int ijkl,int N);
-int mirvert(int ijkl,int N);
-*/
-/**
-// ID
-int get_id(Constellation* constellation){ return constellation->id; }
-void set_id(Constellation* constellation,int id){ constellation->id=id; }
-// LD
-int get_ld(Constellation* constellation){ return constellation->ld; }
-void set_ld(Constellation* constellation,int ld){ constellation->ld=ld; }
-// RD
-int get_rd(Constellation* constellation){ return constellation->rd; }
-void set_rd(Constellation* constellation,int rd){ constellation->rd=rd; }
-// COL
-int get_col(Constellation* constellation){ return constellation->col; }
-void set_col(Constellation* constellation,int col){ constellation->col=col; }
-// startIJKL
-int get_startijkl(Constellation* constellation){ return constellation->startijkl; }
-void set_startijkl(Constellation* constellation,int startijkl){ constellation->startijkl=startijkl; }
-// solutions
-long get_solutions(Constellation* constellation){ return constellation->solutions; }
-void set_solutions(Constellation* constellation,long solutions){ constellation->solutions=solutions; }
-// IJKL
-int get_ijkl(Constellation* constellation){
-  return constellation->startijkl & 0xFFFFF;// Equivalent to 0b11111111111111111111
-}
-**/
+/** * ConstellationArrayList の関数実装 */
+ConstellationArrayList* create_constellation_arraylist();
+void free_constellation_arraylist(ConstellationArrayList* list);
+void constellation_arraylist_add(ConstellationArrayList* list,Constellation value);
+Constellation* create_constellation();
+Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions);
+/** * */
+__global__ void execSolutionsKernel(Constellation* constellations,int N, int totalSize);
 void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
 void execSolutions(ConstellationArrayList* constellations,int N);
-void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
 long calcSolutions(ConstellationArrayList* constellations,long solutions);
 int jasmin(int ijkl,int N);
 void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
-/**
- * 関数プロトタイプ
- */
-__device__ void SQBkBlBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBklBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBlBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBlBkBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBlkBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBkBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBjlBkBlBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBjlBklBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBjlBlBkBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQBjlBlkBjrB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BkBlB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BklB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BlB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2B(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BlBkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BlkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BkBlB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BklB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BlB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1B(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BlBkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BlkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd0B(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd0BkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd2BkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
-__device__ void SQd1BkB(
-    int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    );
+/** * constellationsの構築 */
+void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
+/** * CUDA 初期化 */
+bool InitCUDA();
+/** * 未使用変数対応 */
+void f(int unuse,char* argv[]);
+/** * メインメソッド */
+int main(int argc,char** argv);
 
 /**
- * IntHashSet の関数実装
- */
-IntHashSet* create_int_hashset(){
-  IntHashSet* set=(IntHashSet*)malloc(sizeof(IntHashSet));
-  set->data=(int*)malloc(INITIAL_CAPACITY * sizeof(int));
-  set->size=0;
-  set->capacity=INITIAL_CAPACITY;
-  return set;
-}
-/**
- *
- */
-void free_int_hashset(IntHashSet* set){
-  free(set->data);
-  free(set);
-}
-/**
- *
- */
-int int_hashset_contains(IntHashSet* set,int value){
-  for(int i=0;i<set->size;i++){
-    if(set->data[i]==value){ return 1; }
+  * このソースで追加された関数
+  */
+int compareConstellations(const void* a, const void* b);
+void sortConstellations(ConstellationArrayList* constellations);
+void addTrashConstellation(ConstellationArrayList* list, int ijkl) ;
+ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize);
+ConstellationArrayList* create_constellation_arraylist();
+
+
+// コンステレーションの比較関数
+int compareConstellations(const void* a, const void* b)
+{
+  Constellation* const1 = (Constellation*)a;
+  Constellation* const2 = (Constellation*)b;
+  // startijkl の最初の 15 ビットを取得
+  int jkl1 = const1->startijkl & ((1 << 15) - 1);
+  int jkl2 = const2->startijkl & ((1 << 15) - 1);
+  // jkl に基づいてソート
+  if(jkl1<jkl2){
+    return -1;
+  }else if (jkl1>jkl2){
+    return 1;
+  }else{
+    return 0;
   }
-  return 0;
 }
 /**
- *
- */
-void int_hashset_add(IntHashSet* set,int value){
-  if(!int_hashset_contains(set,value)){
-    if(set->size==set->capacity){
-      set->capacity *= 2;
-      set->data=(int*)realloc(set->data,set->capacity * sizeof(int));
+  * コンステレーションリストをソートする関数
+  */
+void sortConstellations(ConstellationArrayList* constellations)
+{
+  // qsort を使ってソート
+  qsort(constellations->data, constellations->size, sizeof(Constellation), compareConstellations);
+}
+/**
+  * トラッシュコンステレーションを追加
+  */
+void addTrashConstellation(ConstellationArrayList* list, int ijkl) 
+{
+  // トラッシュ用のダミーコンステレーションを作成
+  int ld = -1;
+  int rd = -1;
+  int col = -1;
+  int startijkl = (69 << 20) | ijkl;
+  // トラッシュコンステレーションをリストに追加
+  add_constellation(ld, rd, col, startijkl, list);
+}
+/**
+  * fillWithTrash 関数
+  */
+ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize)
+{
+  // コンステレーションのリストをソート
+  sortConstellations(constellations);
+  // 新しいリストを作成
+  ConstellationArrayList* newConstellations = create_constellation_arraylist();
+  // 最初のコンステレーションの currentJkl を取得
+  int currentJkl = constellations->data[0].startijkl & ((1 << 15) - 1);
+  // 各コンステレーションに対してループ
+  for (int i = 0; i < constellations->size; i++) {
+    Constellation c = constellations->data[i];
+    // 既にソリューションがあるものは無視
+    if (c.solutions >= 0) continue;
+    // 新しい ijkl グループの開始を確認
+    if ((c.startijkl & ((1 << 15) - 1)) != currentJkl) {
+      // workgroupSize の倍数になるまでトラッシュを追加
+      while (newConstellations->size % workgroupSize != 0) {
+        addTrashConstellation(newConstellations, currentJkl);
+      }
+      currentJkl = c.startijkl & ((1 << 15) - 1);
     }
-    set->data[set->size++]=value;
+    // コンステレーションを追加
+    add_constellation(c.ld, c.rd, c.col, c.startijkl, newConstellations);
   }
+  // 最後に残った分を埋める
+  while (newConstellations->size % workgroupSize != 0) {
+    addTrashConstellation(newConstellations, currentJkl);
+  }
+  return newConstellations;
 }
 /**
  * ConstellationArrayList の関数実装
  */
-ConstellationArrayList* create_constellation_arraylist(){
+ConstellationArrayList* create_constellation_arraylist()
+{
   ConstellationArrayList* list=(ConstellationArrayList*)malloc(sizeof(ConstellationArrayList));
   list->data=(Constellation*)malloc(INITIAL_CAPACITY * sizeof(Constellation));
   list->size=0;
@@ -325,14 +290,16 @@ ConstellationArrayList* create_constellation_arraylist(){
 /**
  *
  */
-void free_constellation_arraylist(ConstellationArrayList* list){
+void free_constellation_arraylist(ConstellationArrayList* list)
+{
   free(list->data);
   free(list);
 }
 /**
  *
  */
-void constellation_arraylist_add(ConstellationArrayList* list,Constellation value){
+void constellation_arraylist_add(ConstellationArrayList* list,Constellation value)
+{
   if(list->size==list->capacity){
     list->capacity *= 2;
     list->data=(Constellation*)realloc(list->data,list->capacity * sizeof(Constellation));
@@ -342,7 +309,8 @@ void constellation_arraylist_add(ConstellationArrayList* list,Constellation valu
 /**
  *
  */
-Constellation* create_constellation(){
+Constellation* create_constellation()
+{
   Constellation* new_constellation=(Constellation*)malloc(sizeof(Constellation));
   if(new_constellation){
     new_constellation->id=0;
@@ -357,7 +325,8 @@ Constellation* create_constellation(){
 /**
  *
  */
-Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions){
+Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions)
+{
   Constellation* new_constellation=(Constellation*)malloc(sizeof(Constellation));
   if(new_constellation){
     new_constellation->id=id;
@@ -370,209 +339,10 @@ Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int
   return new_constellation;
 }
 /**
- *
- */
-void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations){
-  Constellation new_constellation={0,ld,rd,col,startijkl,-1};
-  constellation_arraylist_add(constellations,new_constellation);
-}
-// コンステレーションの比較関数
-int compareConstellations(const void* a, const void* b) {
-    Constellation* const1 = (Constellation*)a;
-    Constellation* const2 = (Constellation*)b;
-
-    // startijkl の最初の 15 ビットを取得
-    int jkl1 = const1->startijkl & ((1 << 15) - 1);
-    int jkl2 = const2->startijkl & ((1 << 15) - 1);
-
-    // jkl に基づいてソート
-    if (jkl1 < jkl2) {
-        return -1;
-    } else if (jkl1 > jkl2) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-
-
-// コンステレーションリストをソートする関数
-void sortConstellations(ConstellationArrayList* constellations) {
-    // qsort を使ってソート
-    qsort(constellations->data, constellations->size, sizeof(Constellation), compareConstellations);
-}
-
-
-// トラッシュコンステレーションを追加
-void addTrashConstellation(ConstellationArrayList* list, int ijkl) {
-    // トラッシュ用のダミーコンステレーションを作成
-    int ld = -1;
-    int rd = -1;
-    int col = -1;
-    int startijkl = (69 << 20) | ijkl;
-    // トラッシュコンステレーションをリストに追加
-    add_constellation(ld, rd, col, startijkl, list);
-}
-
-// fillWithTrash 関数
-ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize) {
-    // コンステレーションのリストをソート
-    sortConstellations(constellations);
-
-    // 新しいリストを作成
-    ConstellationArrayList* newConstellations = create_constellation_arraylist();
-
-    // 最初のコンステレーションの currentJkl を取得
-    int currentJkl = constellations->data[0].startijkl & ((1 << 15) - 1);
-
-    // 各コンステレーションに対してループ
-    for (int i = 0; i < constellations->size; i++) {
-        Constellation c = constellations->data[i];
-        // 既にソリューションがあるものは無視
-        if (c.solutions >= 0) continue;
-
-        // 新しい ijkl グループの開始を確認
-        if ((c.startijkl & ((1 << 15) - 1)) != currentJkl) {
-            // workgroupSize の倍数になるまでトラッシュを追加
-            while (newConstellations->size % workgroupSize != 0) {
-                addTrashConstellation(newConstellations, currentJkl);
-            }
-            currentJkl = c.startijkl & ((1 << 15) - 1);
-        }
-
-        // コンステレーションを追加
-        add_constellation(c.ld, c.rd, c.col, c.startijkl, newConstellations);
-    }
-
-    // 最後に残った分を埋める
-    while (newConstellations->size % workgroupSize != 0) {
-        addTrashConstellation(newConstellations, currentJkl);
-    }
-
-    return newConstellations;
-}
-
-
-
-/**
-  3つまたは4つのクイーンを使って開始コンステレーションごとにサブコンステレー
-  ションを生成する。この関数 setPreQueens は、与えられた配置に基づいて、指定
-  された数のクイーン (presetQueens) を配置するためのサブコンステレーション
-  （部分配置）を生成します。この関数は再帰的に呼び出され、ボード上のクイーン
-  の配置を計算します。ボード上に3つまたは4つのクイーンを使って、開始コンステ
-  レーションからサブコンステレーションを生成します。
-  ld: 左対角線のビットマスク。
-  rd: 右対角線のビットマスク。
-  col: 列のビットマスク。
-  k: クイーンを配置する行の1つ目のインデックス。
-  l: クイーンを配置する行の2つ目のインデックス。
-  row: 現在の行のインデックス。
-  queens: 現在配置されているクイーンの数。
-*/
-void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N){
-  int mask=(1<<N)-1;//setPreQueensで使用
-  // k行とl行はさらに進む
-  if(row==k || row==l){
-    setPreQueens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N);
-    return;
-  }
-  /**
-    preQueensのクイーンが揃うまでクイーンを追加する。
-    現在のクイーンの数が presetQueens に達した場合、
-    現在の状態を新しいコンステレーションとして追加し、カウンターを増加させる。
+  *
   */
-  if(queens==presetQueens){
-    // リストに４個クイーンを置いたセットを追加する
-    add_constellation(ld,rd,col,row<<20,constellations);
-    (*counter)++;
-    return;
-  }
-  // k列かl列が終わっていなければ、クイーンを置いてボードを占領し、さらに先に進む。
-  else{
-    // 現在の行にクイーンを配置できる位置（自由な位置）を計算
-    int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
-    int bit;
-    while(free){
-      bit=free & (-free);
-      free -= bit;
-      // クイーンをおける場所があれば、その位置にクイーンを配置し、再帰的に次の行に進む
-      setPreQueens((ld | bit)<<1,(rd | bit)>>1,col | bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N);
-    }
-  }
-}
-/**
-  いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
- */
-int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N){
-  int rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i;
-  int rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k);
-  int rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j);
-  if(int_hashset_contains(ijklList,rot90)){ return 1; }
-  if(int_hashset_contains(ijklList,rot180)){ return 1; }
-  if(int_hashset_contains(ijklList,rot270)){ return 1; }
-  return 0;
-}
-/**
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
-  各クイーンの位置を取得し、最も左上に近い位置を見つけます
-  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近
-  い標準形に変換します。
-  最小値を持つクイーンの位置を最下行に移動させる
-  i は最初の行（上端） 90度回転2回
-  j は最後の行（下端） 90度回転0回
-  k は最初の列（左端） 90度回転3回
-  l は最後の列（右端） 90度回転1回
-  優先順位が l>k>i>j の理由は？
-  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標
-  準形に近づけることができます。
-  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に
-  優先されます。
-  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする
-  方が配置の標準化に効果的です。
-  j は下端の行に位置するため、優先順位が最も低くなります。
-*/
-int jasmin(int ijkl,int N){
-  //j は最後の行（下端） 90度回転0回
-  int min=ffmin(getj(ijkl),N-1-getj(ijkl));
-  int arg=0;
-  //i は最初の行（上端） 90度回転2回
-  if(ffmin(geti(ijkl),N-1-geti(ijkl))<min){
-    arg=2;
-    min=ffmin(geti(ijkl),N-1-geti(ijkl));
-  }
-  //k は最初の列（左端） 90度回転3回
-  if(ffmin(getk(ijkl),N-1-getk(ijkl))<min){
-    arg=3;
-    min=ffmin(getk(ijkl),N-1-getk(ijkl));
-  }
-  //l は最後の列（右端） 90度回転1回
-  if(ffmin(getl(ijkl),N-1-getl(ijkl))<min){
-    arg=1;
-    min=ffmin(getl(ijkl),N-1-getl(ijkl));
-  }
-  for(int i=0;i<arg;i++){
-    ijkl=rot90(ijkl,N);
-  }
-  if(getj(ijkl)<N-1-getj(ijkl)){
-    ijkl=mirvert(ijkl,N);
-  }
-  return ijkl;
-}
-/**
- *
- */
-long calcSolutions(ConstellationArrayList* constellations,long solutions){
-  Constellation* c;
-  for(int i=0;i<constellations->size;i++){
-    c=&constellations->data[i];
-    if(c->solutions > 0){
-      solutions += c->solutions;
-    }
-  }
-  return solutions;
-}
-__global__ void execSolutionsKernel(Constellation* constellations,int N, int totalSize){
+__global__ void execSolutionsKernel(Constellation* constellations,int N, int totalSize)
+{
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     // 範囲外アクセスのチェック
@@ -792,13 +562,182 @@ __global__ void execSolutionsKernel(Constellation* constellations,int N, int tot
 
 }
 /**
- *
- */
-
+  3つまたは4つのクイーンを使って開始コンステレーションごとにサブコンステレー
+  ションを生成する。この関数 setPreQueens は、与えられた配置に基づいて、指定
+  された数のクイーン (presetQueens) を配置するためのサブコンステレーション
+  （部分配置）を生成します。この関数は再帰的に呼び出され、ボード上のクイーン
+  の配置を計算します。ボード上に3つまたは4つのクイーンを使って、開始コンステ
+  レーションからサブコンステレーションを生成します。
+  ld: 左対角線のビットマスク。
+  rd: 右対角線のビットマスク。
+  col: 列のビットマスク。
+  k: クイーンを配置する行の1つ目のインデックス。
+  l: クイーンを配置する行の2つ目のインデックス。
+  row: 現在の行のインデックス。
+  queens: 現在配置されているクイーンの数。
+*/
+void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N)
+{
+  int mask=(1<<N)-1;//setPreQueensで使用
+  // k行とl行はさらに進む
+  if(row==k || row==l){
+    setPreQueens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N);
+    return;
+  }
+  /**
+    preQueensのクイーンが揃うまでクイーンを追加する。
+    現在のクイーンの数が presetQueens に達した場合、
+    現在の状態を新しいコンステレーションとして追加し、カウンターを増加させる。
+  */
+  if(queens==presetQueens){
+    // リストに４個クイーンを置いたセットを追加する
+    add_constellation(ld,rd,col,row<<20,constellations);
+    (*counter)++;
+    return;
+  }
+  // k列かl列が終わっていなければ、クイーンを置いてボードを占領し、さらに先に進む。
+  else{
+    // 現在の行にクイーンを配置できる位置（自由な位置）を計算
+    int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
+    int bit;
+    while(free){
+      bit=free & (-free);
+      free -= bit;
+      // クイーンをおける場所があれば、その位置にクイーンを配置し、再帰的に次の行に進む
+      setPreQueens((ld | bit)<<1,(rd | bit)>>1,col | bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N);
+    }
+  }
+}
 /**
  *
  */
-void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N){
+long calcSolutions(ConstellationArrayList* constellations,long solutions)
+{
+  Constellation* c;
+  for(int i=0;i<constellations->size;i++){
+    c=&constellations->data[i];
+    if(c->solutions > 0){
+      solutions += c->solutions;
+    }
+  }
+  return solutions;
+}
+/**
+  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
+  各クイーンの位置を取得し、最も左上に近い位置を見つけます
+  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近
+  い標準形に変換します。
+  最小値を持つクイーンの位置を最下行に移動させる
+  i は最初の行（上端） 90度回転2回
+  j は最後の行（下端） 90度回転0回
+  k は最初の列（左端） 90度回転3回
+  l は最後の列（右端） 90度回転1回
+  優先順位が l>k>i>j の理由は？
+  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標
+  準形に近づけることができます。
+  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に
+  優先されます。
+  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする
+  方が配置の標準化に効果的です。
+  j は下端の行に位置するため、優先順位が最も低くなります。
+*/
+int jasmin(int ijkl,int N)
+{
+  //j は最後の行（下端） 90度回転0回
+  int min=ffmin(getj(ijkl),N-1-getj(ijkl));
+  int arg=0;
+  //i は最初の行（上端） 90度回転2回
+  if(ffmin(geti(ijkl),N-1-geti(ijkl))<min){
+    arg=2;
+    min=ffmin(geti(ijkl),N-1-geti(ijkl));
+  }
+  //k は最初の列（左端） 90度回転3回
+  if(ffmin(getk(ijkl),N-1-getk(ijkl))<min){
+    arg=3;
+    min=ffmin(getk(ijkl),N-1-getk(ijkl));
+  }
+  //l は最後の列（右端） 90度回転1回
+  if(ffmin(getl(ijkl),N-1-getl(ijkl))<min){
+    arg=1;
+    min=ffmin(getl(ijkl),N-1-getl(ijkl));
+  }
+  for(int i=0;i<arg;i++){
+    ijkl=rot90(ijkl,N);
+  }
+  if(getj(ijkl)<N-1-getj(ijkl)){
+    ijkl=mirvert(ijkl,N);
+  }
+  return ijkl;
+}
+/**
+ *
+ */
+void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations)
+{
+  Constellation new_constellation={0,ld,rd,col,startijkl,-1};
+  constellation_arraylist_add(constellations,new_constellation);
+}
+/**
+ * IntHashSet の関数実装
+ */
+IntHashSet* create_int_hashset()
+{
+  IntHashSet* set=(IntHashSet*)malloc(sizeof(IntHashSet));
+  set->data=(int*)malloc(INITIAL_CAPACITY * sizeof(int));
+  set->size=0;
+  set->capacity=INITIAL_CAPACITY;
+  return set;
+}
+/**
+ *
+ */
+void free_int_hashset(IntHashSet* set)
+{
+  free(set->data);
+  free(set);
+}
+/**
+ *
+ */
+int int_hashset_contains(IntHashSet* set,int value)
+{
+  for(int i=0;i<set->size;i++){
+    if(set->data[i]==value){ return 1; }
+  }
+  return 0;
+}
+/**
+ *
+ */
+void int_hashset_add(IntHashSet* set,int value)
+{
+  if(!int_hashset_contains(set,value)){
+    if(set->size==set->capacity){
+      set->capacity *= 2;
+      set->data=(int*)realloc(set->data,set->capacity * sizeof(int));
+    }
+    set->data[set->size++]=value;
+  }
+}
+/**
+  * ビット操作関数プロトタイプ
+  * いずれかの角度で回転させた座標がすでに見つかっている場合、trueを返す。
+ */
+int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N)
+{
+  int rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i;
+  int rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k);
+  int rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j);
+  if(int_hashset_contains(ijklList,rot90)){ return 1; }
+  if(int_hashset_contains(ijklList,rot180)){ return 1; }
+  if(int_hashset_contains(ijklList,rot270)){ return 1; }
+  return 0;
+}
+/**
+ * constellationsの構築
+ */
+void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N)
+{
   int halfN=(N+1) / 2;// N の半分を切り上げる
   int L=1<<(N-1);//Lは左端に1を立てる
   /**
@@ -961,19 +900,38 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   }
 }
 /**
+ * CUDA 初期化
+ */
+bool InitCUDA()
+{
+  int count;
+  cudaGetDeviceCount(&count);
+  if(count==0){fprintf(stderr,"There is no device.\n");return false;}
+  int i;
+  for(i=0;i<count;i++){
+    struct cudaDeviceProp prop;
+    if(cudaGetDeviceProperties(&prop,i)==cudaSuccess){if(prop.major>=1){break;} }
+  }
+  if(i==count){fprintf(stderr,"There is no device supporting CUDA 1.x.\n");return false;}
+  cudaSetDevice(i);
+  return true;
+}
+/**
  * 未使用変数対応
  */
-void f(int unuse,char* argv[]){
+void f(int unuse,char* argv[])
+{
   printf("%d%s\n",unuse,argv[0]);
 }
 /**
  * メインメソッド
  */
-int main(int argc,char** argv){
+int main(int argc,char** argv)
+{
   if(!InitCUDA()){return 0;}
   f(argc,argv);
   int min=4;
-  int targetN=17;
+  int targetN=18;
   int workgroupSize=64;
   struct timeval t0;
   struct timeval t1;
@@ -1042,9 +1000,7 @@ int main(int argc,char** argv){
 /**
  * 関数プロトタイプ
  */
-__device__ void SQd0B(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   if(row==endmark){
     (*tempcounter)++;
@@ -1071,9 +1027,7 @@ __device__ void SQd0B(
     }
   }
 }
-__device__ void SQd0BkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1096,9 +1050,7 @@ __device__ void SQd0BkB(
     }
   }
 }
-__device__ void SQd1BklB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N4=N-4;
   int bit;
@@ -1121,9 +1073,7 @@ __device__ void SQd1BklB(
     }
   }
 }
-__device__ void SQd1B(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   if(row==endmark){
     (*tempcounter)++;
@@ -1150,9 +1100,7 @@ __device__ void SQd1B(
     }
   }
 }
-__device__ void SQd1BkBlB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1175,9 +1123,7 @@ __device__ void SQd1BkBlB(
     }
   }
 }
-__device__ void SQd1BlB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1210,9 +1156,7 @@ __device__ void SQd1BlB(
     }
   }
 }
-__device__ void SQd1BlkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1235,9 +1179,7 @@ __device__ void SQd1BlkB(
     }
   }
 }
-__device__ void SQd1BlBkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1259,9 +1201,7 @@ __device__ void SQd1BlBkB(
     }
   }
 }
-__device__ void SQd1BkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1284,9 +1224,7 @@ __device__ void SQd1BkB(
     }
   }
 }
-__device__ void SQd2BlkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1309,9 +1247,7 @@ __device__ void SQd2BlkB(
     }
   }
 }
-__device__ void SQd2BklB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N4=N-4;
   int bit;
@@ -1334,9 +1270,7 @@ __device__ void SQd2BklB(
     }
   }
 }
-__device__ void SQd2BkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1359,9 +1293,7 @@ __device__ void SQd2BkB(
     }
   }
 }
-__device__ void SQd2BlBkB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1383,9 +1315,7 @@ __device__ void SQd2BlBkB(
     }
   }
 }
-__device__ void SQd2BlB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1407,9 +1337,7 @@ __device__ void SQd2BlB(
     }
   }
 }
-__device__ void SQd2BkBlB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1432,9 +1360,7 @@ __device__ void SQd2BkBlB(
     }
   }
 }
-__device__ void SQd2B(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   if(row==endmark){
     if((free&(~1))>0){
@@ -1463,9 +1389,7 @@ __device__ void SQd2B(
     }
   }
 }
-__device__ void SQBlBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1487,9 +1411,7 @@ __device__ void SQBlBjrB(
     }
   }
 }
-__device__ void SQBkBlBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1512,9 +1434,7 @@ __device__ void SQBkBlBjrB(
     }
   }
 }
-__device__ void SQBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1538,9 +1458,7 @@ __device__ void SQBjrB(
     }
   }
 }
-__device__ void SQB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   if(row==endmark){
     (*tempcounter)++;
@@ -1568,9 +1486,7 @@ __device__ void SQB(
     }
   }
 }
-__device__ void SQBlBkBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1592,9 +1508,7 @@ __device__ void SQBlBkBjrB(
     }
   }
 }
-__device__ void SQBkBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int bit;
   int nextfree;
@@ -1617,9 +1531,7 @@ __device__ void SQBkBjrB(
     }
   }
 }
-__device__ void SQBklBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N4=N-4;
   int bit;
@@ -1642,9 +1554,7 @@ __device__ void SQBklBjrB(
     }
   }
 }
-__device__ void SQBlkBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N3=N-3;
   int bit;
@@ -1666,9 +1576,7 @@ __device__ void SQBlkBjrB(
     }
   }
 }
-__device__ void SQBjlBkBlBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N1=N-1;
   int bit;
@@ -1687,9 +1595,7 @@ __device__ void SQBjlBkBlBjrB(
     }
   }
 }
-__device__ void SQBjlBlBkBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N1=N-1;
   int bit;
@@ -1708,9 +1614,7 @@ __device__ void SQBjlBlBkBjrB(
     }
   }
 }
-__device__ void SQBjlBklBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N1=N-1;
   int bit;
@@ -1729,9 +1633,7 @@ __device__ void SQBjlBklBjrB(
     }
   }
 }
-__device__ void SQBjlBlkBjrB(
-    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
-    )
+__device__ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
   int N1=N-1;
   int bit;
