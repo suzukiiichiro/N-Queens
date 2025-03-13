@@ -2,8 +2,38 @@
 クイーンを上下左右に４個置いてからバックトラックを実行する
 バックトラックする前に回転対称比較して最小値のものだけバックトラックする
 
+genConstellationsで左右上下の順で１個ずつクイーンを設置する
+ijklListを作成する
+ijklListは、左端列、右端列、上端行、下端行のそれぞれ何番目にクイーンを置くか設定するもの
+コーナー（左列の１番上）にクイーンがない場合の処理。左、右、上、下の順にクイーンをおいていき最後にcheckRotationsでユニークチェックをする（ここではCOUNT2 COUNT4 COUNT8の判定はできない）
+何行目何列にクイーンを置いたかではなく
+左端列は何番目にクイーンがおくか
+右端列は何番目にクイーンがおくか
+上端行は何番目にクイーンがおくか
+下端行は何番目にクイーンをおくかを設定していく
+
+コーナーに（左列の１番上）にクイーンがある場合の処理。
+左端列、上端行は0番目固定
+右端列、下端行については、チェックなしでfor文で組み合わせを作れる
+
+ijklListをもとにconstellationsを作成する
+
+setPreQueensする前処理については不明な点が多いので調査する
+
+setPreQueensでクイーンを置きながら ld rd col startijkl を設定してconstellationsに追加する
+ld はleftに該当する
+rdはrightに該当する
+colはdownに該当する
+startijklはそれぞれクイーンを置いた場所を特定できるもの
+だと思われる
+
+constellationsをつかって、execSolutionsでbacktorackでクイーンを置いていく
+SQBメソッドが何パターンも分かれていて枝かりしていると思われるので詳細を調査する
+
+最後にsymmetryでCOUNT2 COUNT4 COUNT8の判定をする
+
+
 $ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 08CUDA_constellation.cu &&  ./a.out -g
-GPU Constellations
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.13
  5:               18               0     000:00:00:00.00
@@ -1122,6 +1152,7 @@ int main(int argc,char** argv)
       TOTAL=0;
       UNIQUE=0;
       gettimeofday(&t0,NULL);
+      //上下左右に１個ずつクイーンを置きます
       genConstellations(ijklList,constellations,size);
       if(cpu){
         execSolutions(constellations,size);
