@@ -1,6 +1,8 @@
 /**
 クイーンを上下左右に４個置いてからバックトラックを実行する
 バックトラックする前に回転対称比較して最小値のものだけバックトラックする
+
+$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 08CUDA_constellation.cu &&  ./a.out -g
 GPU Constellations
  N:        Total      Unique      dd:hh:mm:ss.ms
  4:                0               0     000:00:00:00.13

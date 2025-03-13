@@ -1,9 +1,9 @@
 /**
 09CUDA_CarryChain_constellation_withTrash.cをcudaに変換したもの
 
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 09CUDA_constellation_withTrash.cu &&  ./a.out -g
- N:            Total          Unique      dd:hh:mm:ss.ms
- 4:                0               0     000:00:00:00.31
+$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 09CUDA_constellation_withTrash.cu &&  ./a.out -g
+ N:        Total      Unique      dd:hh:mm:ss.ms
+ 4:                0               0     000:00:00:00.16
  5:               18               0     000:00:00:00.00
  6:                4               0     000:00:00:00.00
  7:               40               0     000:00:00:00.00
@@ -13,10 +13,11 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 09CUDA_constellation_withTrash.
 11:             2680               0     000:00:00:00.00
 12:            14200               0     000:00:00:00.00
 13:            73712               0     000:00:00:00.00
-14:           365596               0     000:00:00:00.01
-15:          2279184               0     000:00:00:00.09
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
+14:           365596               0     000:00:00:00.03
+15:          2279184               0     000:00:00:00.14
+16:         14772512               0     000:00:00:00.69
+17:         95815104               0     000:00:00:03.76
+18:        666090624               0     000:00:00:22.30
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -621,7 +622,7 @@ long calcSolutions(ConstellationArrayList* constellations,long solutions)
   return solutions;
 }
 /**
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数 
+  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
   各クイーンの位置を取得し、最も左上に近い位置を見つけます
   最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近
   い標準形に変換します。
