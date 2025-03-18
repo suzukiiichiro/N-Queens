@@ -5,23 +5,9 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
-アーキテクチャの指定（なくても問題なし、あれば高速）
--arch=sm_13 or -arch=sm_61
-
-CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -r
-
-CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -c
-
-GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -g
-
-GPUのマルチスレッド
-ビットマップ GPUノードレイヤー
-$ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -n
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 02CUDA_Nodelayer_bitmap.cu && POCL_DEBUG=all ./a.out
  N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.15
+ 4:            2               0  00:00:00:00.13
  5:           10               0  00:00:00:00.00
  6:            4               0  00:00:00:00.00
  7:           40               0  00:00:00:00.00
@@ -31,11 +17,19 @@ $ nvcc -O3 -arch=sm_61 01CUDA_Bitmap.cu && ./a.out -n
 11:         2680               0  00:00:00:00.00
 12:        14200               0  00:00:00:00.00
 13:        73712               0  00:00:00:00.00
-14:       365596               0  00:00:00:00.04
-15:      2279184               0  00:00:00:00.21
-16:     14772512               0  00:00:00:02.05
-17:     95815104               0  00:00:00:19.56
-18:    666090624               0  00:00:03:15.21
+14:       365596               0  00:00:00:00.03
+15:      2279184               0  00:00:00:00.14
+16:     14772512               0  00:00:00:00.91
+17:     95815104               0  00:00:00:08.38
+18:    666090624               0  00:00:01:25.32
+
+
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 01CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out ;
+ N:        Total      Unique      dd:hh:mm:ss.ms
+16:         14772512          1846955     000:00:00:00.07
+17:         95815104         11977939     000:00:00:00.26
+18:        666090624         83263591     000:00:00:01.65
+
 
 コメント追加
 ・kLayer_nodeLayer 
@@ -49,7 +43,7 @@ nodes配列は3個で１セットleft,dwon,rightの情報を同じ配列に格�
 [0]left[1]down[2]right
 
 ・bitmap_build_nodeLayer
-  int numSolutions = nodes.size() / 6; 
+  int numSolutions=nodes.size() / 6; 
   3個で1セットなので/3 さらにnodesの2分の1だけ実行すればミラーになるので/6
 
   
@@ -70,9 +64,6 @@ maskは、size分1が立っているもの
 n8だと11111111
 
 downはクイーンが配置されるたびに配置された列に1が立って行くので最終行までクイーンを置くと全列に1が立った状態になりmaskと同じ内容になる
-
-
-
 */
 #include <iostream>
 #include <vector>
@@ -88,165 +79,114 @@ downはクイーンが配置されるたびに配置された列に1が立って
 #include <device_launch_parameters.h>
 #define THREAD_NUM		96
 #define MAX 27
-// システムによって以下のマクロが必要であればコメントを外してください。
+/**
+  * システムによって以下のマクロが必要であればコメントを外してください。
+  */
 //#define UINT64_C(c) c ## ULL
-//
-// グローバル変数
-unsigned long TOTAL=0; 
-unsigned long UNIQUE=0;
-// ビットマップ 非再帰版
-void bitmap_NR(unsigned int size,int row)
+typedef unsigned int uint;
+typedef unsigned long ulong;
+/**
+  * グローバル変数
+  */
+ulong TOTAL=0; 
+ulong UNIQUE=0;
+/**
+  * クイーンの効きを判定して解を返す
+  */
+__device__ uint solve_nodeLayer(const uint size,uint left,uint down,uint right)
 {
-  unsigned int mask=(1<<size)-1;
-  unsigned int bitmap[size];
-  unsigned int bit=0;
-  unsigned int left[size];
-  unsigned int down[size];
-  unsigned int right[size];
-  left[0]=0;
-  down[0]=0;
-  right[0]=0;
-  bitmap[row]=mask;
-  while(row>-1){
-    if(bitmap[row]>0){
-      bit=-bitmap[row]&bitmap[row];//一番右のビットを取り出す
-      bitmap[row]=bitmap[row]^bit;//配置可能なパターンが一つずつ取り出される
-      if(row==(size-1)){
-        TOTAL++;
-        row--;
-      }else{
-        unsigned int n=row++;
-        left[row]=(left[n]|bit)<<1;
-        down[row]=down[n]|bit;
-        right[row]=(right[n]|bit)>>1;
-        //クイーンが配置可能な位置を表す
-        bitmap[row]=mask&~(left[row]|down[row]|right[row]);
-      }
-    }else{
-      row--;
-    }
-  }//end while
-}
-// ビットマップ 再帰版
-void bitmap_R(unsigned int size,unsigned int row,unsigned int left,unsigned int down, unsigned int right)
-{
-  unsigned int mask=(1<<size)-1;
-  unsigned int bit=0;
-  if(row==size){
-    TOTAL++;
-  }else{
-    // クイーンが配置可能な位置を表す
-    for(unsigned int bitmap=mask&~(left|down|right);bitmap;bitmap=bitmap&~bit){
-      bit=-bitmap&bitmap;
-      bitmap_R(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1);
-    }
-  }
-}
-// クイーンの効きを判定して解を返す
-__host__ __device__ 
-long bitmap_solve_nodeLayer(int size,long left,long down,long right)
-{
-  long mask=(1<<size)-1;
-  long counter = 0;
-  if (down==mask) { // downがすべて専有され解が見つかる
-    return 1;
-  }
-  long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
+  uint mask=(1<<size)-1;
+  uint count=0;
+  // downがすべて専有され解が見つかる
+  if (down==mask) { return 1; }
+  uint bit=0;
+  for(uint bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
-    counter += bitmap_solve_nodeLayer(size,(left|bit)>>1,(down|bit),(right|bit)<< 1); 
+    count+=solve_nodeLayer(size,(left|bit)>>1,down|bit,(right|bit)<<1); 
   }
-  return counter;
+  return count;
 }
-// i 番目のメンバを i 番目の部分木の解で埋める
-__global__ 
-void dim_nodeLayer(int size,long* nodes, long* solutions, int numElements)
+/**
+  * i 番目のメンバを i 番目の部分木の解で埋める
+  */
+__global__ void dim_nodeLayer(const uint size,ulong* nodes,ulong* solutions,uint numElements)
 {
-  int i=blockDim.x * blockIdx.x + threadIdx.x;
-  if(i<numElements){
-    solutions[i]=bitmap_solve_nodeLayer(size,nodes[3 * i],nodes[3 * i + 1],nodes[3 * i + 2]);
+  uint i=blockDim.x * blockIdx.x + threadIdx.x;
+  if(i<numElements){ solutions[i]=solve_nodeLayer(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2]); }
+}
+/** 
+  * 0以外のbitをカウント
+  */
+uint countBits_nodeLayer(uint n)
+{
+  uint count=0;
+  while(n){
+    n&=(n-1); // 右端のゼロ以外の数字を削除
+    count++;
   }
+  return count;
 }
-// 0以外のbitをカウント
-int countBits_nodeLayer(long n)
+/**
+  * ノードをk番目のレイヤーのノードで埋める
+  */
+void kLayer_nodeLayer(const uint size,std::vector<ulong> &nodes,uint k,uint left,uint down,uint right)
 {
-  int counter = 0;
-  while (n){
-    n &= (n - 1); // 右端のゼロ以外の数字を削除
-    counter++;
-  }
-  return counter;
-}
-// ノードをk番目のレイヤーのノードで埋める
-long kLayer_nodeLayer(int size,std::vector<long>& nodes, int k, long left, long down, long right)
-{
-  long counter=0;
-  long mask=(1<<size)-1;
+  uint mask=(1<<size)-1;
   // すべてのdownが埋まったら、解決策を見つけたことになる。
-  if (countBits_nodeLayer(down) == k) {
+  if (countBits_nodeLayer(down)==k){
     nodes.push_back(left);
     nodes.push_back(down);
     nodes.push_back(right);
-    return 1;
+    return ;
   }
-  long bit=0;
-  for(long bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
+  uint bit=0;
+  for(uint bitmap=mask&~(left|down|right);bitmap;bitmap^=bit){
     bit=-bitmap&bitmap;
     // 解を加えて対角線をずらす
-    counter+=kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,(down|bit),(right|bit)<<1); 
+    kLayer_nodeLayer(size,nodes,k,(left|bit)>>1,down|bit,(right|bit)<<1); 
   }
-  return counter;
 }
-// k 番目のレイヤのすべてのノードを含むベクトルを返す。
-std::vector<long> kLayer_nodeLayer(int size,int k)
-{
-  std::vector<long> nodes{};
-  kLayer_nodeLayer(size,nodes, k, 0, 0, 0);
-  return nodes;
-}
-// 【GPU ビットマップ】ノードレイヤーの作成
-void bitmap_build_nodeLayer(int size)
+/**
+  * ノードレイヤーの作成
+  */
+ulong bitmap_build_nodeLayer(const uint size)
 {
   // ツリーの3番目のレイヤーにあるノード
   //（それぞれ連続する3つの数字でエンコードされる）のベクトル。
   // レイヤー2以降はノードの数が均等なので、対称性を利用できる。
   // レイヤ4には十分なノードがある（N16の場合、9844）。
-  std::vector<long> nodes = kLayer_nodeLayer(size,4); 
-
+  int layer=4;
+  std::vector<ulong> nodes;
+  kLayer_nodeLayer(size,nodes,layer,0,0,0); 
   // デバイスにはクラスがないので、
   // 最初の要素を指定してからデバイスにコピーする。
-  size_t nodeSize = nodes.size() * sizeof(long);
-  long* hostNodes = (long*)malloc(nodeSize);
-  hostNodes = &nodes[0];
-  long* deviceNodes = NULL;
+  size_t nodeSize=nodes.size() * sizeof(ulong);
+  ulong* hostNodes=(ulong*)malloc(nodeSize);
+  hostNodes=&nodes[0];
+  ulong* deviceNodes=NULL;
   cudaMalloc((void**)&deviceNodes, nodeSize);
   cudaMemcpy(deviceNodes, hostNodes, nodeSize, cudaMemcpyHostToDevice);
-
   // デバイス出力の割り当て
-  long* deviceSolutions = NULL;
+  ulong* deviceSolutions=NULL;
   // 必要なのはノードの半分だけで、各ノードは3つの整数で符号化される。
-  int numSolutions = nodes.size() / 6; 
-  size_t solutionSize = numSolutions * sizeof(long);
+  uint numSolutions=nodes.size() / 6; 
+  size_t solutionSize=numSolutions * sizeof(ulong);
   cudaMalloc((void**)&deviceSolutions, solutionSize);
-
   // CUDAカーネルを起動する。
-  int threadsPerBlock = 256;
-  int blocksPerGrid = (numSolutions + threadsPerBlock - 1) / threadsPerBlock;
+  uint threadsPerBlock=256;
+  uint blocksPerGrid=(numSolutions + threadsPerBlock - 1) / threadsPerBlock;
   dim_nodeLayer <<<blocksPerGrid, threadsPerBlock >>> (size,deviceNodes, deviceSolutions, numSolutions);
-
   // 結果をホストにコピー
-  long* hostSolutions = (long*)malloc(solutionSize);
+  ulong* hostSolutions=(ulong*)malloc(solutionSize);
   cudaMemcpy(hostSolutions, deviceSolutions, solutionSize, cudaMemcpyDeviceToHost);
-
   // 部分解を加算し、結果を表示する。
-  long solutions = 0;
-  for (long i = 0; i < numSolutions; i++) {
-      solutions += 2*hostSolutions[i]; // Symmetry
-  }
-  // 出力
-  TOTAL=solutions;
+  ulong solutions=0;
+  for (uint i=0;i<numSolutions;i++) { solutions+=2*hostSolutions[i]; }
+  return solutions;
 }
-// CUDA 初期化
+/** 
+  * CUDA 初期化
+  */
 bool InitCUDA()
 {
   int count;
@@ -261,101 +201,38 @@ bool InitCUDA()
   cudaSetDevice(i);
   return true;
 }
-//メイン
+/**
+  * メイン
+  */
 int main(int argc,char** argv)
 {
-  bool cpu=false,cpur=false,gpu=false,gpuNodeLayer=false;
-  int argstart=2;
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
-    else if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else if(argv[1][1]=='n'||argv[1][1]=='N'){gpuNodeLayer=true;}
-    else{ gpuNodeLayer=true; } //デフォルトをgpuとする
-    argstart=2;
-  }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g|-r|-s] n steps\n",argv[0]);
-    printf("  -r: CPU 再帰\n");
-    printf("  -c: CPU 非再帰\n");
-    printf("  -g: GPU 再帰\n");
-    printf("  -n: GPU ノードレイヤー\n");
-  }
-  if(cpur){ printf("\n\nビットマップ 再帰 \n"); }
-  else if(cpu){ printf("\n\nビットマップ 非再帰 \n"); }
-  else if(gpu){ printf("\n\nビットマップ GPU\n"); }
-  else if(gpuNodeLayer){ printf("\n\nビットマップ GPUノードレイヤー \n"); }
-  if(cpu||cpur)
-  {
-    int min=4; 
-    int targetN=17;
-    struct timeval t0;
-    struct timeval t1;
-    printf("%s\n"," N:           Total           Unique          dd:hh:mm:ss.ms");
-    for(int size=min;size<=targetN;size++){
-      TOTAL=UNIQUE=0;
-      gettimeofday(&t0, NULL);//計測開始
-      if(cpur){ //再帰
-        bitmap_R(size,0,0,0,0);
-      }
-      if(cpu){ //非再帰
-        bitmap_NR(size,0);
-      }
-      //
-      gettimeofday(&t1, NULL);//計測終了
-      int ss;int ms;int dd;
-      if(t1.tv_usec<t0.tv_usec) {
-        dd=(t1.tv_sec-t0.tv_sec-1)/86400;
-        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-      }else {
-        dd=(t1.tv_sec-t0.tv_sec)/86400;
-        ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-      }//end if
-      int hh=ss/3600;
-      int mm=(ss-hh*3600)/60;
-      ss%=60;
-      printf("%2d:%16ld%17ld%12.2d:%02d:%02d:%02d.%02d\n",
-          size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-    } //end for
-  }//end if
-  if(gpu||gpuNodeLayer)
-  {
-    if(!InitCUDA()){return 0;}
-    /* int steps=24576; */
-    int min=4;
-    int targetN=21;
-    struct timeval t0;
-    struct timeval t1;
-    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-    for(int size=min;size<=targetN;size++){
-      gettimeofday(&t0,NULL);   // 計測開始
-      if(gpu){
-        TOTAL=UNIQUE=0;
-        TOTAL=bitmap_solve_nodeLayer(size,0,0,0); //ビットマップ
-      }else if(gpuNodeLayer){
-        TOTAL=UNIQUE=0;
-        bitmap_build_nodeLayer(size); // ビットマップ
-      }
-      gettimeofday(&t1,NULL);   // 計測終了
-      int ss;int ms;int dd;
-      if (t1.tv_usec<t0.tv_usec) {
-        dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
-        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-      } else {
-        dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
-        ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-      }//end if
-      int hh=ss/3600;
-      int mm=(ss-hh*3600)/60;
-      ss%=60;
-      printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n",
-          size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-    }//end for
-  }//end if
+  if(!InitCUDA()){return 0;}
+  /* int steps=24576; */
+  int min=4;
+  int targetN=18;
+  struct timeval t0;
+  struct timeval t1;
+  printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+  for(uint size=min;size<=targetN;size++){
+    gettimeofday(&t0,NULL);   // 計測開始
+    TOTAL=UNIQUE=0;
+    TOTAL=bitmap_build_nodeLayer(size); // ビットマップ
+    gettimeofday(&t1,NULL);   // 計測終了
+    int ss;int ms;int dd;
+    if (t1.tv_usec<t0.tv_usec) {
+      dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    } else {
+      dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }//end if
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13ld%16ld%4.2d:%02d:%02d:%02d.%02d\n",
+        size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+  }//end for
   return 0;
 }
