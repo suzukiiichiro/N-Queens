@@ -5,27 +5,7 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 
- 非再帰でのコンパイルと実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -c
-
- 再帰でのコンパイルと実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -r
-
- GPU で並列処理せずに実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -g
-
- GPU で並列処理で実行（ビットボード）
- $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
-
- CUDAのリアルタイム監視
- $ watch nvidia-smi
-
- # 実行
  $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 01CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out ;
-
-
- # 実行結果
-
 対称解除法 GPUビットボード
  N:            Total           Unique      dd:hh:mm:ss.ms
  4:                2                1     000:00:00:00.00

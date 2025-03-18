@@ -593,7 +593,7 @@ int main(int argc,char** argv)
     targetN=14;
     struct timeval t0;
     struct timeval t1;
-    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
+    printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
     for(int size=min;size<=targetN;size++){
       gettimeofday(&t0,NULL);   // 計測開始
       if(gpu){
@@ -620,7 +620,7 @@ int main(int argc,char** argv)
       int hh=ss/3600;
       int mm=(ss-hh*3600)/60;
       ss%=60;
-      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+      printf("%2d:%17ld%16ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     }//end for
   }//end if
   return 0;

@@ -989,7 +989,7 @@ int main(int argc,char** argv)
     hh=ss/3600;
     mm=(ss-hh*3600)/60;
     ss%=60;
-    printf("%2d:%17ld%16ld%8.3d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
     // 後処理
     free_int_hashset(ijklList);
     free_constellation_arraylist(constellations);
