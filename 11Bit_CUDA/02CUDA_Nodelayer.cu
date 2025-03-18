@@ -5,33 +5,37 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 02CUDA_Nodelayer_bitmap.cu && POCL_DEBUG=all ./a.out
- N:        Total      Unique      dd:hh:mm:ss.ms
- 4:            2               0  00:00:00:00.13
- 5:           10               0  00:00:00:00.00
- 6:            4               0  00:00:00:00.00
- 7:           40               0  00:00:00:00.00
- 8:           92               0  00:00:00:00.00
- 9:          352               0  00:00:00:00.00
-10:          724               0  00:00:00:00.00
-11:         2680               0  00:00:00:00.00
-12:        14200               0  00:00:00:00.00
-13:        73712               0  00:00:00:00.00
-14:       365596               0  00:00:00:00.03
-15:      2279184               0  00:00:00:00.14
-16:     14772512               0  00:00:00:00.91
-17:     95815104               0  00:00:00:08.38
-18:    666090624               0  00:00:01:25.32
+NQueens_suzuki$ nvcc -O3 -arch=sm_61  02CUDA_Nodelayer_bitmap.cu && POCL_DEBUG=all ./a.out
+ N:            Total          Unique      dd:hh:mm:ss.ms
+ 4:                2               0     000:00:00:00.13
+ 5:               10               0     000:00:00:00.00
+ 6:                4               0     000:00:00:00.00
+ 7:               40               0     000:00:00:00.00
+ 8:               92               0     000:00:00:00.00
+ 9:              352               0     000:00:00:00.00
+10:              724               0     000:00:00:00.00
+11:             2680               0     000:00:00:00.00
+12:            14200               0     000:00:00:00.00
+13:            73712               0     000:00:00:00.00
+14:           365596               0     000:00:00:00.03
+15:          2279184               0     000:00:00:00.14
+16:         14772512               0     000:00:00:00.91
+17:         95815104               0     000:00:00:08.36
+18:        666090624               0     000:00:01:25.29
+19:       4968057848               0     000:00:15:31.61
 
 
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 01CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out ;
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 01CUDA_Symmetry.cu && POCL_DEBUG=all ./a.out ;
  N:        Total      Unique      dd:hh:mm:ss.ms
 16:         14772512          1846955     000:00:00:00.07
 17:         95815104         11977939     000:00:00:00.26
 18:        666090624         83263591     000:00:00:01.65
 
 
-コメント追加
+
+nodeLayerはNが増えるとどんどん遅くなる。
+結論として01CUDA_bitmap.cu のほうがメモリ効率が高く高速
+
 ・kLayer_nodeLayer 
 GPUで並列実行するためのleft,right,downを作成する
 kLayer_nodeLayer(size,4)
@@ -209,7 +213,7 @@ int main(int argc,char** argv)
   if(!InitCUDA()){return 0;}
   /* int steps=24576; */
   int min=4;
-  int targetN=18;
+  int targetN=19;
   struct timeval t0;
   struct timeval t1;
   printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
