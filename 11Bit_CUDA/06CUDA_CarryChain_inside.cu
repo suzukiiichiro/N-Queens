@@ -6,59 +6,28 @@
  詳しい説明はこちらをどうぞ
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
  *
+・carryChain GPU inside backTrack部分でGPUを起動 stepsに達するまで貯めた
 
-・carryChain  CPU デフォルト
+NQueens_suzuki$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  06CUDA_CarryChain_inside.cu && ./a.out -n
+ N:            Total          Unique      dd:hh:mm:ss.ms
+ 4:            2           0      00:00:00:00.13
+ 5:           10           0      00:00:00:00.00
+ 6:            4           0      00:00:00:00.00
  7:           40           0      00:00:00:00.00
  8:           92           0      00:00:00:00.00
  9:          352           0      00:00:00:00.00
 10:          724           0      00:00:00:00.00
-11:         2680           0      00:00:00:00.02
-12:        14200           0      00:00:00:00.07
-13:        73712           0      00:00:00:00.24
-14:       365596           0      00:00:00:00.78
-
-・carryChain GPU outside
-一番外側の forでGPUを起動
- 7:           40           0      00:00:00:00.41
- 8:           92           0      00:00:00:00.96
- 9:          352           0      00:00:00:04.15
-10:          724           0      00:00:00:14.54
-11:         2680           0      00:00:00:41.31
-12:        14200           0      00:00:01:46.98
-13:        73712           0      00:00:04:35.11
-14:       365596           0      00:00:13:57.61
-
-・carryChain GPU inside
-backTrack部分でGPUを起動
-stepsに達するまで貯めた
-
-GPU
-        Total      Unique      dd:hh:mm:ss.ms
- 7:           40           0      00:00:00:00.40
- 8:           92           0      00:00:00:00.00
- 9:          352           0      00:00:00:00.00
-10:          724           0      00:00:00:00.01
-11:         2680           0      00:00:00:00.03
-12:        14200           0      00:00:00:00.11
-13:        73712           0      00:00:00:01.59
-14:       365596           0      00:00:00:12.11
-
- 
-アーキテクチャの指定（なくても問題なし、あれば高速）
--arch=sm_13 or -arch=sm_61
-
-CPUの再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -r
-
-CPUの非再帰での実行
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -c
-
-GPUのシングルスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -g
-
-GPUのマルチスレッド
-$ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
+11:         2680           0      00:00:00:00.00
+12:        14200           0      00:00:00:00.01
+13:        73712           0      00:00:00:00.04
+14:       365596           0      00:00:00:00.12
+15:      2279184           0      00:00:00:00.43
+16:     14772512           0      00:00:00:02.10
+17:     95815104           0      00:00:00:13.29
+18:    666090624           0      00:00:01:36.21
+19:   4968057848           0      00:00:12:16.30
 */
+
 #include <iostream>
 #include <vector>
 #include <stdio.h>
@@ -74,27 +43,25 @@ $ nvcc -O3 -arch=sm_61 05CUDA_CarryChain.cu && ./a.out -n
 #define THREAD_NUM		96
 #define MAX 27
 #define steps 24576
-// システムによって以下のマクロが必要であればコメントを外してください。
+/**
+  * システムによって以下のマクロが必要であればコメントを外してください。
+  */
 //#define UINT64_C(c) c ## ULL
-//
-// グローバル変数
-unsigned long TOTAL=0; 
-unsigned long UNIQUE=0;
-unsigned long totalCond=0;
+
+typedef unsigned int uint;
+typedef unsigned long ulong;
+
+ulong TOTAL=0; 
+ulong UNIQUE=0;
+ulong totalCond=0;
 // キャリーチェーン 非再帰版
 // 構造体
 typedef struct
 {
-  unsigned int size;
-  unsigned int pres_a[930]; 
-  unsigned int pres_b[930];
-  // uint64_t COUNTER[3];      
-  // //カウンター配列
-  // unsigned int COUNT2;
-  // unsigned int COUNT4;
-  // unsigned int COUNT8;
+  uint size;
+  uint pres_a[930]; 
+  uint pres_b[930];
 }Global; Global g;
-// 構造体
 typedef struct
 {
   uint64_t row;
@@ -117,12 +84,10 @@ typedef struct
   uint64_t dimx;
   uint64_t dimy;
   uint64_t COUNTER[3];      
-  //カウンター配列
-  unsigned int COUNT2;
-  unsigned int COUNT4;
-  unsigned int COUNT8;
-  unsigned int type;
-
+  uint COUNT2;
+  uint COUNT4;
+  uint COUNT8;
+  uint type;
 }Local;
 
 
@@ -141,57 +106,11 @@ long* resultsCuda;
 int* typeCuda;
 
 /**
-  CPU/CPUR 再帰・非再帰共通
+  *
   */
-// チェーンのリストを作成
-void listChain()
-{
-  unsigned int idx=0;
-  for(unsigned int a=0;a<(unsigned)g.size;++a){
-    for(unsigned int b=0;b<(unsigned)g.size;++b){
-      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
-      g.pres_a[idx]=a;
-      g.pres_b[idx]=b;
-      ++idx;
-    }
-  }
-}
-/**
-  CPU 非再帰
-*/
-// クイーンの効きをチェック
-bool placement(void* args)
-{
-  Local *l=(Local *)args;
-  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
-  if (l->B.x[0]==0){
-    if (l->B.x[1]!=(uint64_t)-1){
-      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
-    }
-  }else{
-    if( (l->B.x[0]!=(uint64_t)-1) ){
-      if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
-        && (l->dimy==0 || l->dimy==g.size-1)
-      )){ return 0; } 
-      if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
-          l->dimy>=g.size-l->B.x[0]))){
-        return 0;
-      } 
-    }
-  }
-  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
-  uint64_t row=UINT64_C(1)<<l->dimx;
-  uint64_t down=UINT64_C(1)<<l->dimy;
-  uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
-  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
-  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
-  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
-  return true;
-}
-//非再帰
 __global__ void solve(int size,int current,int* totalType,uint64_t* totalRow,uint64_t* totalDown,uint64_t* totalLeft,uint64_t* totalRight,
-  long* results,int totalCond){
-
+  long* results,int totalCond)
+{
   const int tid=threadIdx.x;
   const int bid=blockIdx.x;
   const int idx=bid*blockDim.x+tid;
@@ -201,7 +120,6 @@ __global__ void solve(int size,int current,int* totalType,uint64_t* totalRow,uin
   uint64_t  right_a[MAX];
   uint64_t  bitmap_a[MAX];
   __shared__ int  sum[THREAD_NUM];
-  
   uint64_t row=row_a[current]=totalRow[idx];
   uint64_t left=left_a[current]=totalLeft[idx];
   uint64_t down=down_a[current]=totalDown[idx];
@@ -270,9 +188,12 @@ __global__ void solve(int size,int current,int* totalType,uint64_t* totalRow,uin
   __syncthreads();if(tid<1){sum[tid]+=sum[tid+1];} 
   __syncthreads();if(tid==0){results[bid]=sum[0];}
 }
-void append(void* args){
+/**
+  *
+  */
+void append(void* args)
+{
   Local *l=(Local *)args;
-  
   totalRow[totalCond]=l->B.row>>2;
   totalDown[totalCond]=((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1;
   totalLeft[totalCond]=l->B.left>>4;
@@ -281,38 +202,25 @@ void append(void* args){
   totalCond++;
   if(totalCond==steps){
     if(matched){
-      cudaMemcpy(results,resultsCuda,
-      sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+      cudaMemcpy(results,resultsCuda,sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
       for(int col=0;col<steps/THREAD_NUM;col++){TOTAL+=results[col];}
         matched=false;
       }
-      cudaMemcpy(rowCuda,totalRow,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-      cudaMemcpy(downCuda,totalDown,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-      cudaMemcpy(leftCuda,totalLeft,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-      cudaMemcpy(rightCuda,totalRight,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-      
-      cudaMemcpy(typeCuda,totalType,
-      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-
-      /** backTrack+bitmap*/
-      //cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
-      //>>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-      solve<<<steps/THREAD_NUM,THREAD_NUM
-      >>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-      
+      cudaMemcpy(rowCuda,totalRow,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+      cudaMemcpy(downCuda,totalDown,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+      cudaMemcpy(leftCuda,totalLeft,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+      cudaMemcpy(rightCuda,totalRight,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+      cudaMemcpy(typeCuda,totalType,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+      solve<<<steps/THREAD_NUM,THREAD_NUM>>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
       cudaMemcpy(results,resultsCuda,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
-
       matched=true;
       totalCond=0;
   }
-
 }
-//非再帰 対称解除法
+/**
+  * 非再帰 対称解除法
+  */
 void carryChain_symmetry(void* args)
 {
   Local *l=(Local *)args;
@@ -352,12 +260,44 @@ void carryChain_symmetry(void* args)
   }
   l->type=8;
   append(l);
-  
   //l->COUNTER[l->COUNT8]+=solve(g.size,0,l->B.row>>2,
   //l->B.left>>4,((((l->B.down>>2)|(~0<<(g.size-4)))+1)<<(g.size-5))-1,(l->B.right>>4)<<(g.size-5));
   return;
 }
-//非再帰  pthread run()
+/**
+  * クイーンの効きをチェック
+  */
+bool placement(void* args)
+{
+  Local *l=(Local *)args;
+  if(l->B.x[l->dimx]==l->dimy){ return true;  }  
+  if (l->B.x[0]==0){
+    if (l->B.x[1]!=(uint64_t)-1){
+      if((l->B.x[1]>=l->dimx)&&(l->dimy==1)){ return false; }
+    }
+  }else{
+    if( (l->B.x[0]!=(uint64_t)-1) ){
+      if(( (l->dimx<l->B.x[0]||l->dimx>=g.size-l->B.x[0])
+        && (l->dimy==0 || l->dimy==g.size-1)
+      )){ return 0; } 
+      if ((  (l->dimx==g.size-1)&&((l->dimy<=l->B.x[0])||
+          l->dimy>=g.size-l->B.x[0]))){
+        return 0;
+      } 
+    }
+  }
+  l->B.x[l->dimx]=l->dimy;                    //xは行 yは列
+  uint64_t row=UINT64_C(1)<<l->dimx;
+  uint64_t down=UINT64_C(1)<<l->dimy;
+  uint64_t left=UINT64_C(1)<<(g.size-1-l->dimx+l->dimy); //右上から左下
+  uint64_t right=UINT64_C(1)<<(l->dimx+l->dimy);       // 左上から右下
+  if((l->B.row&row)||(l->B.down&down)||(l->B.left&left)||(l->B.right&right)){ return false; }     
+  l->B.row|=row; l->B.down|=down; l->B.left|=left; l->B.right|=right;
+  return true;
+}
+/**
+  * 
+  */
 void thread_run(void* args)
 {
   Local *l=(Local *)args;
@@ -405,11 +345,10 @@ void thread_run(void* args)
       } //w
     } //e
   } //n
-
-
-
 }
-//非再帰  チェーンのビルド
+/**
+  * 非再帰  チェーンのビルド
+  */
 void buildChain()
 {
   Local l[(g.size/2)*(g.size-3)];
@@ -425,73 +364,53 @@ void buildChain()
   // Board の初期化 nB,eB,sB,wB;
   l->B.row=l->B.down=l->B.left=l->B.right=0;
   // Board x[]の初期化
-  for(unsigned int i=0;i<g.size;++i){ l->B.x[i]=-1; }
+  for(uint i=0;i<g.size;++i){ l->B.x[i]=-1; }
   //１ 上２行に置く
   // memcpy(&l->wB,&l->B,sizeof(Board));         // wB=B;
   l->wB=l->B;
   for(l->w=0;l->w<=(unsigned)(g.size/2)*(g.size-3);++l->w){
     thread_run(&l);
-
-  } //w
-  
+  }
   if(matched){
-    cudaMemcpy(results,resultsCuda,
-        sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+    cudaMemcpy(results,resultsCuda,sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
     for(int col=0;col<steps/THREAD_NUM;col++){TOTAL+=results[col];}
     matched=false;
   }
-  cudaMemcpy(rowCuda,totalRow,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(downCuda,totalDown,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(leftCuda,totalLeft,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(rightCuda,totalRight,
-      sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
-  cudaMemcpy(typeCuda,totalType,
-      sizeof(int)*totalCond,cudaMemcpyHostToDevice);
-  /** backTrack+bitmap*/
-  solve<<<steps/THREAD_NUM,THREAD_NUM
-      >>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-  cudaMemcpy(results,resultsCuda,
-      sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
+  cudaMemcpy(rowCuda,totalRow,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(downCuda,totalDown,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(leftCuda,totalLeft,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(rightCuda,totalRight,sizeof(uint64_t)*totalCond,cudaMemcpyHostToDevice);
+  cudaMemcpy(typeCuda,totalType,sizeof(int)*totalCond,cudaMemcpyHostToDevice);
+  solve<<<steps/THREAD_NUM,THREAD_NUM>>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+  cudaMemcpy(results,resultsCuda,sizeof(long)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
   for(int col=0;col<steps/THREAD_NUM;col++){TOTAL+=results[col];}	
-  
-  /**
-   * 集計
-   */
-  /*
-  UNIQUE= l->COUNTER[l->COUNT2]+
-          l->COUNTER[l->COUNT4]+
-          l->COUNTER[l->COUNT8];
-  TOTAL=  l->COUNTER[l->COUNT2]*2+
-          l->COUNTER[l->COUNT4]*4+
-          l->COUNTER[l->COUNT8]*8;
-  */        
 }
-//非再帰  キャリーチェーン
+/**
+  * チェーンのリストを作成
+  */
+void listChain()
+{
+  uint idx=0;
+  for(uint a=0;a<(unsigned)g.size;++a){
+    for(uint b=0;b<(unsigned)g.size;++b){
+      if(((a>=b)&&(a-b)<=1)||((b>a)&&(b-a)<=1)){ continue; }
+      g.pres_a[idx]=a;
+      g.pres_b[idx]=b;
+      ++idx;
+    }
+  }
+}
+/**
+  * キャリーチェーン
+  */
 void carryChain()
 {
   listChain();  //チェーンのリストを作成
   buildChain(); // チェーンのビルド
-  // calcChain(&l);  // 集計
 }
-
-  /**
-   * 集計
-   */
-  /*
-  UNIQUE= l->COUNTER[l->COUNT2]+
-          l->COUNTER[l->COUNT4]+
-          l->COUNTER[l->COUNT8];
-  TOTAL=  l->COUNTER[l->COUNT2]*2+
-          l->COUNTER[l->COUNT4]*4+
-          l->COUNTER[l->COUNT8]*8;
-  */        
 /**
-  GPU 
- */
-// CUDA 初期化
+  * CUDA 初期化
+  */
 bool InitCUDA()
 {
   int count;
@@ -506,72 +425,41 @@ bool InitCUDA()
   cudaSetDevice(i);
   return true;
 }
-//メイン
+/**
+  * メイン
+  */
 int main(int argc,char** argv)
 {
-  bool cpu=false,cpur=false,gpu=false,gpuNodeLayer=false;
-  int argstart=2;
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='r'||argv[1][1]=='R'){cpur=true;}
-    else if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else if(argv[1][1]=='n'||argv[1][1]=='N'){gpuNodeLayer=true;}
-    else{ gpuNodeLayer=true; } //デフォルトをgpuとする
-    argstart=2;
+  if(!InitCUDA()){return 0;}
+  /* int steps=24576; */
+  int min=4;
+  int targetN=19;
+  struct timeval t0;
+  struct timeval t1;
+  printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
+  for(int size=min;size<=targetN;size++){
+    gettimeofday(&t0,NULL);   // 計測開始
+    totalCond=0;
+    TOTAL=UNIQUE=0;
+    g.size=size;
+    carryChain();
+    gettimeofday(&t1,NULL);   // 計測終了
+    int ss;int ms;int dd;
+    if (t1.tv_usec<t0.tv_usec) {
+      dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    } else {
+      dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }//end if
+    int hh=ss/3600;
+    int mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
   }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g|-r|-s] n steps\n",argv[0]);
-    printf("  -r: CPU 再帰\n");
-    printf("  -c: CPU 非再帰\n");
-    printf("  -g: GPU 再帰\n");
-    printf("  -n: GPU キャリーチェーン\n");
-  }
-  if(cpur){ printf("\n\nCPU キャリーチェーン 再帰 \n"); }
-  else if(cpu){ printf("\n\nCPU キャリーチェーン 非再帰 \n"); }
-  else if(gpu){ printf("\n\nGPU キャリーチェーン シングルスレッド\n"); }
-  else if(gpuNodeLayer){ printf("\n\nGPU キャリーチェーン マルチスレッド\n"); }
-  if(cpu||cpur)
-  {
-    int min=7; 
-    int targetN=14;
-    struct timeval t0;
-    struct timeval t1;
-    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
-    for(int size=min;size<=targetN;size++){
-      TOTAL=UNIQUE=0;
-      //for(int i=0;i<steps;i++){
-      //  results[i]=0;
-      //}  
-      totalCond=0;
-      gettimeofday(&t0, NULL);//計測開始
-      if(cpur){ //再帰
-        g.size=size;
-        carryChain();
-        //carryChainR();
-      }
-      if(cpu){ //非再帰
-        g.size=size;
-        carryChain();
-      }
-      //
-      gettimeofday(&t1, NULL);//計測終了
-      int ss;int ms;int dd;
-      if(t1.tv_usec<t0.tv_usec) {
-        dd=(t1.tv_sec-t0.tv_sec-1)/86400;
-        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-      }else {
-        dd=(t1.tv_sec-t0.tv_sec)/86400;
-        ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-      }//end if
-      int hh=ss/3600;
-      int mm=(ss-hh*3600)/60;
-      ss%=60;
-      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-    } //end for
-    cudaFree(rowCuda);
+  cudaFree(rowCuda);
   cudaFree(downCuda);
   cudaFree(leftCuda);
   cudaFree(rightCuda);
@@ -583,58 +471,5 @@ int main(int argc,char** argv)
   delete[] totalRight;
   delete[] totalType;
   delete[] results;
-  }//end if
-  if(gpu||gpuNodeLayer)
-  {
-    if(!InitCUDA()){return 0;}
-    /* int steps=24576; */
-    int min=4;
-    int targetN=21;
-    struct timeval t0;
-    struct timeval t1;
-    printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
-    for(int size=min;size<=targetN;size++){
-      gettimeofday(&t0,NULL);   // 計測開始
-      totalCond=0;
-      if(gpu){
-        TOTAL=UNIQUE=0;
-        g.size=size;
-        carryChain();
-        //TOTAL=carryChain_solve_nodeLayer(size,0,0,0); //キャリーチェーン
-      }else if(gpuNodeLayer){
-        TOTAL=UNIQUE=0;
-        g.size=size;
-        carryChain();
-        //carryChain_build_nodeLayer(size); // キャリーチェーン
-      }
-      gettimeofday(&t1,NULL);   // 計測終了
-      int ss;int ms;int dd;
-      if (t1.tv_usec<t0.tv_usec) {
-        dd=(int)(t1.tv_sec-t0.tv_sec-1)/86400;
-        ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-        ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-      } else {
-        dd=(int)(t1.tv_sec-t0.tv_sec)/86400;
-        ss=(t1.tv_sec-t0.tv_sec)%86400;
-        ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-      }//end if
-      int hh=ss/3600;
-      int mm=(ss-hh*3600)/60;
-      ss%=60;
-      printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-    }
-      cudaFree(rowCuda);
-      cudaFree(downCuda);
-      cudaFree(leftCuda);
-      cudaFree(rightCuda);
-      cudaFree(typeCuda);
-      cudaFree(resultsCuda);
-      delete[] totalRow;
-      delete[] totalDown;
-      delete[] totalLeft;
-      delete[] totalRight;
-      delete[] totalType;
-      delete[] results;
-  }//end if
   return 0;
 }

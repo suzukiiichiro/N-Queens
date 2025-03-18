@@ -171,7 +171,7 @@ __device__ __host__
 uint64_t solve(int size,int current,uint64_t row,uint64_t left,uint64_t down,uint64_t right)
 {
   //printf("solve\n");
-  printf("current:%d\n",current);//今はここをprintfしないと数が合わない
+  //printf("current:%d\n",current);//今はここをprintfしないと数が合わない
   uint64_t row_a[MAX];
   uint64_t right_a[MAX];
   uint64_t left_a[MAX];

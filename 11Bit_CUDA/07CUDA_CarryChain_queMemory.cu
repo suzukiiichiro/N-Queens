@@ -313,8 +313,7 @@ void append(void* args){
 
       //cuda_kernel<<<steps/THREAD_NUM,THREAD_NUM
       //>>>(size,size-mark,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
-      solve<<<steps/THREAD_NUM,THREAD_NUM
-      >>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
+      solve<<<steps/THREAD_NUM,THREAD_NUM>>>(g.size,0,typeCuda,rowCuda,downCuda,leftCuda,rightCuda,resultsCuda,totalCond);
       
       cudaMemcpy(results,resultsCuda,
       sizeof(int)*steps/THREAD_NUM,cudaMemcpyDeviceToHost);
@@ -440,7 +439,7 @@ void execgpu(){
   cudaMalloc((void**) &rowCuda,sizeof(uint64_t)*steps);
   cudaMalloc((void**) &downCuda,sizeof(uint64_t)*steps);
   cudaMalloc((void**) &leftCuda,sizeof(uint64_t)*steps);
-  cudaMalloc((void**) &rightCuda,sizeof(uint64_t)*steps);
+  /* cudaMalloc((void**) &rightCuda,sizeof(uint64_t)*steps); */
   cudaMalloc((void**) &typeCuda,sizeof(int)*steps);
   cudaMalloc((void**) &resultsCuda,sizeof(long)*steps/THREAD_NUM);
   for(int i=0;i<totalcnt;i++){
