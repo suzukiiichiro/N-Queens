@@ -222,7 +222,7 @@ class NQueens08():
     self.total=self.count2*2+self.count4*4+self.count8*8
   def main(self):
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       self.init(size)
