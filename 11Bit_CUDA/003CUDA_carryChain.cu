@@ -8,7 +8,7 @@
  *
 ・carryChain GPU inside backTrack部分でGPUを起動 stepsに達するまで貯めた
 
-NQueens_suzuki$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  06CUDA_CarryChain_inside.cu && ./a.out -n
+NQueens_suzuki$ nvcc -O3 -arch=sm_61  -Xcompiler -mcmodel=medium  003CUDA_CarryChain.cu && ./a.out -n
  N:            Total          Unique      dd:hh:mm:ss.ms
  4:            2           0      00:00:00:00.13
  5:           10           0      00:00:00:00.00
