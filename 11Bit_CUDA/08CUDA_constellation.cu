@@ -810,7 +810,7 @@ long calcSolutions(ConstellationArrayList* constellations,long solutions)
   return solutions;
 }
 /**
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数 
+  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
   各クイーンの位置を取得し、最も左上に近い位置を見つけます
   最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近
   い標準形に変換します。
@@ -1115,86 +1115,64 @@ void f(int unuse,char* argv[])
  */
 int main(int argc,char** argv)
 {
-  bool cpu=false,gpu=false;
-  int argstart=2;
-  if(argc>=2&&argv[1][0]=='-'){
-    if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
-    else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
-    else{ gpu=true; } //デフォルトをgpuとする
-    argstart=2;
-  }
-  if(argc<argstart){
-    printf("Usage: %s [-c|-g] n steps\n",argv[0]);
-    printf("  -c: CPU\n");
-    printf("  -g: GPU\n");
-  }
-  if(cpu){ printf("\n\nCPU Constellations\n"); }
-  else if(gpu){ printf("\n\nGPU Constellations\n");
-   if(!InitCUDA()){return 0;}
-  }
-    int min=4; 
-    int targetN=18;
-    struct timeval t0;
-    struct timeval t1;
-    printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
-    IntHashSet* ijklList;
-    ConstellationArrayList* constellations;
-    long TOTAL;
-    long UNIQUE;
-    int ss;
-    int ms;
-    int dd;
-    int hh;
-    int mm;
-    for(int size=min;size<=targetN;++size){
-      ijklList=create_int_hashset();
-      constellations=create_constellation_arraylist();
-      TOTAL=0;
-      UNIQUE=0;
-      gettimeofday(&t0,NULL);
-      //上下左右に１個ずつクイーンを置きます
-      genConstellations(ijklList,constellations,size);
-      if(cpu){
-        execSolutions(constellations,size);
-        TOTAL=calcSolutions(constellations,TOTAL);
+  if(!InitCUDA()){return 0;}
+  int min=4; 
+  int targetN=18;
+  struct timeval t0;
+  struct timeval t1;
+  printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
+  IntHashSet* ijklList;
+  ConstellationArrayList* constellations;
+  long TOTAL;
+  long UNIQUE;
+  int ss;
+  int ms;
+  int dd;
+  int hh;
+  int mm;
+  for(int size=min;size<=targetN;++size){
+    ijklList=create_int_hashset();
+    constellations=create_constellation_arraylist();
+    TOTAL=0;
+    UNIQUE=0;
+    gettimeofday(&t0,NULL);
+    //上下左右に１個ずつクイーンを置きます
+    genConstellations(ijklList,constellations,size);
+    int steps=24576;
+    int totalSize = constellations->size;
+    for (int offset = 0; offset < totalSize; offset += steps) {
+      int currentSize = fmin(steps, totalSize - offset);
+      int gridSize = (currentSize + THREAD_NUM - 1) / THREAD_NUM;  // グリッドサイズ
+      Constellation* deviceMemory;
+      cudaMalloc((void**)&deviceMemory, currentSize * sizeof(Constellation));
+      // デバイスにコピー
+      cudaMemcpy(deviceMemory, &constellations->data[offset], currentSize * sizeof(Constellation), cudaMemcpyHostToDevice);
+      // カーネルを実行
+      execSolutionsKernel<<<gridSize,THREAD_NUM>>>(deviceMemory, size, currentSize);
+      // カーネル実行後にデバイスメモリからホストにコピー
+      cudaMemcpy(&constellations->data[offset], deviceMemory, currentSize * sizeof(Constellation), cudaMemcpyDeviceToHost);
+      // 取得したsolutionsをホスト側で集計
+      for (int i = 0; i < currentSize; i++) {
+        TOTAL += constellations->data[offset + i].solutions;
       }
-      if(gpu){
-        int steps=24576;
-	      int totalSize = constellations->size;
-        for (int offset = 0; offset < totalSize; offset += steps) {
-      	  int currentSize = fmin(steps, totalSize - offset);
-          int gridSize = (currentSize + THREAD_NUM - 1) / THREAD_NUM;  // グリッドサイズ
-          Constellation* deviceMemory;
-          cudaMalloc((void**)&deviceMemory, currentSize * sizeof(Constellation));
-          // デバイスにコピー
-          cudaMemcpy(deviceMemory, &constellations->data[offset], currentSize * sizeof(Constellation), cudaMemcpyHostToDevice);
-          // カーネルを実行
-          execSolutionsKernel<<<gridSize,THREAD_NUM>>>(deviceMemory, size, currentSize);
-          // カーネル実行後にデバイスメモリからホストにコピー
-          cudaMemcpy(&constellations->data[offset], deviceMemory, currentSize * sizeof(Constellation), cudaMemcpyDeviceToHost);
-          // 取得したsolutionsをホスト側で集計
-          for (int i = 0; i < currentSize; i++) {
-            TOTAL += constellations->data[offset + i].solutions;
-          }
-        }
-     }
-     gettimeofday(&t1,NULL);
-     if(t1.tv_usec<t0.tv_usec){
-       dd=(t1.tv_sec-t0.tv_sec-1)/86400;
-       ss=(t1.tv_sec-t0.tv_sec-1)%86400;
-       ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
-     }else{
-       dd=(t1.tv_sec-t0.tv_sec)/86400;
-       ss=(t1.tv_sec-t0.tv_sec)%86400;
-       ms=(t1.tv_usec-t0.tv_usec+500)/10000;
-     }
-     hh=ss/3600;
-     mm=(ss-hh*3600)/60;
-     ss%=60;
-     printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
-     // 後処理
-     free_int_hashset(ijklList);
-     free_constellation_arraylist(constellations);
+    }
+    gettimeofday(&t1,NULL);
+    if(t1.tv_usec<t0.tv_usec){
+      dd=(t1.tv_sec-t0.tv_sec-1)/86400;
+      ss=(t1.tv_sec-t0.tv_sec-1)%86400;
+      ms=(1000000+t1.tv_usec-t0.tv_usec+500)/10000;
+    }else{
+      dd=(t1.tv_sec-t0.tv_sec)/86400;
+      ss=(t1.tv_sec-t0.tv_sec)%86400;
+      ms=(t1.tv_usec-t0.tv_usec+500)/10000;
+    }
+    hh=ss/3600;
+    mm=(ss-hh*3600)/60;
+    ss%=60;
+    printf("%2d:%13ld%12ld%8.2d:%02d:%02d:%02d.%02d\n",size,TOTAL,UNIQUE,dd,hh,mm,ss,ms);
+    // 後処理
+    free_int_hashset(ijklList);
+    free_constellation_arraylist(constellations);
   }
   return 0;
 }

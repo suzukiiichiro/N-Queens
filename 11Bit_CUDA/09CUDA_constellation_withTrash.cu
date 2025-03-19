@@ -611,6 +611,241 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
 /**
  *
  */
+void execSolutions(ConstellationArrayList* constellations,int N)
+{
+  int j=0;
+  int k=0;
+  int l=0;
+  int ijkl=0;
+  int ld=0;
+  int rd=0;
+  int col=0;
+  int startIjkl=0;
+  int start=0;
+  int free=0;
+  int LD=0;
+  int jmark=0;
+  int endmark=0;
+  int mark1=0;
+  int mark2=0;
+  int smallmask=(1<<(N-2))-1;
+  long tempcounter=0;
+  for(int i=0;i<constellations->size;i++){
+    Constellation* constellation=&constellations->data[i];
+    startIjkl=constellation->startijkl;
+    start=startIjkl>>20;
+    ijkl=startIjkl & ((1<<20)-1);
+    j=getj(ijkl);
+    k=getk(ijkl);
+    l=getl(ijkl);
+    /**
+      重要な注意：ldとrdを1つずつ右にずらすが、これは右列は重要ではないから
+      （常に女王lが占有している）。
+    */
+    // 最下段から上に、jとlのクイーンによるldの占有を追加する。
+    // LDとrdを1つずつ右にずらすが、これは右列は重要ではないから（常に女王lが占有している）。
+    LD=(1<<(N-1)>>j) | (1<<(N-1)>>l);
+    ld=constellation->ld>>1;
+    ld |= LD>>(N-start);
+    rd=constellation->rd>>1;// クイーンjとkのrdの占有率を下段から上に加算する。
+    if(start>k){
+      rd |= (1<<(N-1)>>(start-k+1));
+    }
+    if(j >= 2 * N-33-start){// クイーンjからのrdがない場合のみ追加する
+      rd |= (1<<(N-1)>>j)<<(N-2-start);// 符号ビットを占有する！
+    }
+    // また、colを占有し、次にフリーを計算する
+    col=(constellation->col>>1) | (~smallmask);
+    free=~(ld | rd | col);
+    /**
+      どのソリングアルゴリズムを使うかを決めるための大きなケースの区別
+      クイーンjがコーナーから2列以上離れている場合
+    */
+    if(j<(N-3)){
+      jmark=j+1;
+      endmark=N-2;
+      /**
+        クイーンjがコーナーから2列以上離れているが、jクイーンからのrdが開始時
+        に正しく設定できる場合。
+      */
+      if(j>2 * N-34-start){
+        if(k<l){
+          mark1=k-1;
+          mark2=l-1;
+          if(start<l){// 少なくともlがまだ来ていない場合
+            if(start<k){// もしkがまだ来ていないなら
+              if(l != k+1){ // kとlの間に空行がある場合
+                SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }else{// kとlの間に空行がない場合
+                SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }
+            }else{// もしkがすでに開始前に来ていて、lだけが残っている場合
+              SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }else{// kとlの両方が開始前にすでに来ていた場合
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }else{// l<k 
+          mark1=l-1;
+          mark2=k-1;
+          if(start<k){// 少なくともkがまだ来ていない場合
+            if(start<l){// lがまだ来ていない場合
+              if(k != l+1){// lとkの間に少なくとも1つの自由行がある場合
+                SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }else{// lとkの間に自由行がない場合
+                SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }
+            }else{ // lがすでに来ていて、kだけがまだ来ていない場合
+              SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }else{// lとkの両方が開始前にすでに来ていた場合
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }
+      }else{
+        /**
+          クイーンjのrdをセットできる行N-1-jmarkに到達するために、
+          最初にいくつかのクイーンをセットしなければならない場合。
+        */
+        if(k<l){
+          mark1=k-1;
+          mark2=l-1;
+
+          if(l != k+1){// k行とl行の間に少なくとも1つの空行がある。
+            SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }else{// lがkの直後に来る場合
+            SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }else{  // l<k
+          mark1=l-1;
+          mark2=k-1;
+          if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
+            SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }else{// kがlの直後に来る場合 
+            SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }
+      }
+    }else if(j==(N-3)){// クイーンjがコーナーからちょうど2列離れている場合。
+     // これは、最終行が常にN-2行になることを意味する。
+      endmark=N-2;
+      if(k<l){
+        mark1=k-1;
+        mark2=l-1;
+        if(start<l){// 少なくともlがまだ来ていない場合
+          if(start<k){// もしkもまだ来ていないなら
+            if(l != k+1){// kとlの間に空行がある場合
+              SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }else{
+              SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }else{// k が開始前に設定されていた場合
+            mark2=l-1;
+            SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }else{ // もしkとlが開始前にすでに来ていた場合
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+        }
+      }else{// l<k
+        mark1=l-1;
+        mark2=k-1;
+        endmark=N-2;
+        if(start<k){// 少なくともkがまだ来ていない場合
+          if(start<l){// lがまだ来ていない場合
+            if(k != l+1){// lとkの間に空行がある場合
+              SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }else{// lとkの間に空行がない場合
+              SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }else{ // l が開始前に来た場合
+            mark2=k-1;
+            SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }else{ // lとkの両方が開始前にすでに来ていた場合
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+        }
+      }
+    }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
+      if(k<l){// kが最初になることはない、lはクイーンの配置の関係で
+                  // 最後尾にはなれないので、常にN-2行目で終わる。
+        endmark=N-2;
+
+        if(start<l){// 少なくともlがまだ来ていない場合
+          if(start<k){// もしkもまだ来ていないなら
+            mark1=k-1;
+
+            if(l != k+1){// kとlが隣り合っている場合
+              mark2=l-1;
+              SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }else{
+              SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }else{// lがまだ来ていないなら
+            mark2=l-1;
+            SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+          }
+        }else{// すでにkとlが来ている場合
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+        }
+      }else{ // l<k
+        if(start<k){// 少なくともkがまだ来ていない場合
+          if(start<l){ // lがまだ来ていない場合
+            if(k<N-2){// kが末尾にない場合
+              mark1=l-1;
+              endmark=N-2;
+
+              if(k != l+1){// lとkの間に空行がある場合
+                mark2=k-1;
+                SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }else{// lとkの間に空行がない場合
+                SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }
+            }else{// kが末尾の場合
+              if(l != (N-3)){// lがkの直前でない場合
+                mark2=l-1;
+                endmark=(N-3);
+                SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }else{// lがkの直前にある場合
+                endmark=(N-4);
+                SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+              }
+            }
+          }else{ // もしkがまだ来ていないなら
+            if(k != N-2){// kが末尾にない場合
+              mark2=k-1;
+              endmark=N-2;
+              SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }else{// kが末尾の場合
+              endmark=(N-3);
+              SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+            }
+          }
+        }else{// kとlはスタートの前
+          endmark=N-2;
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+        }
+      }
+    }else{// クイーンjがコーナーに置かれている場合
+      endmark=N-2;
+      if(start>k){
+        SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+      }else{
+        /**
+          クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用
+          する方法によって、Kは最後列に入ることはできない。
+        */
+        mark1=k-1;
+        SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
+      }
+    }
+    // 完成した開始コンステレーションを削除する。
+    constellation->solutions=tempcounter * symmetry(ijkl,N);
+    tempcounter=0;
+  }
+}
+/**
+ *
+ */
 long calcSolutions(ConstellationArrayList* constellations,long solutions)
 {
   Constellation* c;
