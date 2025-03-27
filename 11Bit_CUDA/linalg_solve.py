@@ -1,17 +1,29 @@
 """
+ライブラリのインストール
+$ sudo yum install python2-pip
+$ sudo yum install python3-pip
+$ echo "alias python='python3'" >> ~/.bash_profile
+$ python -m pip install numpy
+$ python -m pip install cupy-cuda11x
+$ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
+
+環境変数
 $ export MKL_NUM_THREADS=12
 $ export NUMEXPR_NUM_THREADS=12
 $ export OMP_NUM_THREADS=12
-$ numactl --cpunodebind=0 --localalloc python linalg_solve.py
+$ python linalg_solve.py
+
+実行 CPU
 Computation with CPU
-[ 0.03040997  0.01440329  0.06772684 ...  0.00026573 -0.0293215
-  0.01875962]
-computation time: 0.94 sec.
-$ python linalg_solve.py --gpu
+[-0.01070097  0.03764457  0.01875006 ... -0.02791825  0.01571928 -0.0341835 ]
+computation time: 4.11 sec.
+
+実行GPU
+$ python linalg_solve.py -g
 Computation with CUDA GPU
-[ 0.0675002   0.03450186 -0.03794135 ...  0.01511969 -0.01006322
- -0.0252226 ]
-computation time: 0.01 sec.
+[-0.00837371  0.01567632  0.01950274 ...  0.00291613  0.01032924 -0.01412289]
+computation time: 1.53 sec.
+
 """
 
 import argparse
@@ -24,15 +36,15 @@ def main(use_gpu: bool) -> None:
         print("Computation with CPU")
         import numpy as np
     n = 8000
-    A = np.random.uniform(size=(n, n)).astype(np.float64)  # $BA4MWAG(B [0, 1) $B$N(Bn$B<!@5J}9TNs(B
-    b = np.ones(n, dtype=np.float64)                       # $BA4MWAG(B 1 $B$N4{CN%Y%/%H%k(B
+    A = np.random.uniform(size=(n, n)).astype(np.float64)  # 全要素 [0, 1) のn次正方行列
+    b = np.ones(n, dtype=np.float64)                       # 全要素 1 の既知ベクトル
     """
-    warmup: $B=i4|2=$J$I$N%*!<%P!<%X%C%I$r7WB,$+$i=|30(B
-    CuPy$B$O:G=i$N%+!<%M%k<B9T$G(BCUDA$B%3!<%I$N:GE,2=$H$$$C$?@-G=$K4X$9$k=i4|@_Dj$,Av$k$h$&$G$9(B
+    warmup: 初期化などのオーバーヘッドを計測から除外
+    CuPyは最初のカーネル実行でCUDAコードの最適化といった性能に関する初期設定が走るようです
     """
     x = np.linalg.solve(A, b)  # https://numpy.org/doc/stable/reference/generated/numpy.linalg.solve.html
     tbeg = time.clock_gettime(time.CLOCK_MONOTONIC)
-    x = np.linalg.solve(A, b)  # Ax = b $B$r2r$/!"7W;;$K$O(BLAPACK$B$N(B?gesv$B$,;H$o$l$k(B
+    x = np.linalg.solve(A, b)  # Ax = b を解く、計算にはLAPACKの?gesvが使われる
     tend = time.clock_gettime(time.CLOCK_MONOTONIC)
     print(x)
     print(f"computation time: {tend - tbeg:.2f} sec.")
