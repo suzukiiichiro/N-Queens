@@ -217,7 +217,14 @@ class NQueens08():
       self.lastmask=self.lastmask<<1|self.lastmask|self.lastmask>>1
     self.unique=self.count2+self.count4+self.count8
     self.total=self.count2*2+self.count4*4+self.count8*8
-  def main(self):
+  # def main(self):
+  def main(self,use_gpu:bool)->None:
+    if use_gpu:
+      print("Computation with CUDA GPU")
+      import cupy as np
+    else:
+      print("Computation with CPU")
+      import numpy as np
     nmin:int=4
     nmax:int=16
     print(" N:        Total       Unique        hh:mm:ss.ms")
@@ -237,18 +244,13 @@ class NQueens08():
       start_time = datetime.now()
       self.NQueens(size)
       time_elapsed = datetime.now()-start_time
-      # _text = '{}'.format(time_elapsed)
-      # text = _text[:-3]
-      # print("%2d:%13d%13d%20s" % (size,self.total,self.unique, text))  
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
-# $ python <filename>
-# $ pypy <fileName>
-# $ codon build -release <filename>
-# 7.対象解除法とビットマップ
-# 15:      2279184       285053         0:00:00.377
-if __name__=='__main__':
-  NQueens08().main();
-
+if __name__ == "__main__":
+  import argparse
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-g", "--gpu", action="store_true", default=False, dest="use_gpu")
+  args = parser.parse_args()
+  NQueens08().main(use_gpu=args.use_gpu)
 
