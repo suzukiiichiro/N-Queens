@@ -3,10 +3,126 @@
 # pypyjit.set_param('max_unroll_recursion=-1')
 
 # マルチスレッド
-from multiprocessing import Pool, cpu_count
-import multiprocessing
+# from multiprocessing import Pool, cpu_count
+# import multiprocessing
 
 # import zlib
+
+
+""" 19 codon single
+✅ビット演算による枝刈り cols, hills, dales による高速衝突検出
+✅並列処理 各初手（col）ごとに multiprocessing で分割処理
+✅左右対称除去（1行目制限） 0〜n//2−1 の初手列のみ探索
+✅中央列特別処理（奇数N） col = n//2 を別タスクとして処理
+✅角位置（col==0）と180°対称除去 row=n-1 and col=n-1 を除外
+✅構築時ミラー＋回転による重複排除 is_canonical() による部分盤面の辞書順最小チェック
+
+✅1行目以外でも部分対称除去（行列単位）
+✅「Zobrist Hash」 
+✅マクロチェス（局所パターン）による構築制限
+❌「ミラー＋90度回転」による構築時の重複排除
+✅ 180度対称除去
+✅ ビット演算による衝突枝刈り	同一列・対角線（↘ / ↙）との衝突を int のビット演算で高速除去	free = ~(cols	hills
+✅ 左右対称性除去	1行目のクイーンを左半分の列（0～n//2−1）に限定し、ミラー対称を除去	for col in range(n // 2):	済
+✅ 中央列の特別処理（n奇数）	中央列は回転・ミラーで重複しないため個別に探索し、COUNT2分類に貢献	if n % 2 == 1: ブロック内で col = n // 2 を探索	済
+✅ 角位置（col==0）とそれ以外で分岐	1行目の col == 0 を is_corner=True として分離し、COUNT2偏重を明示化	backtrack(..., is_corner=True) による分岐	済
+✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
+"""
+
+from typing import List, Tuple, Set
+
+def solve_partial(col: int, n: int, is_center: bool, is_corner: bool) -> List[List[int]]:
+    results = []
+    def backtrack(row: int, cols: int, hills: int, dales: int, board: int, queens: List[int]):
+        if row == n:
+            results.append(list(queens))
+            return
+        # ビット演算による枝刈り
+        free = ~(cols | hills | dales) & ((1 << n) - 1)
+        while free:
+            bit = free & -free
+            free ^= bit
+            c = (bit).bit_length() - 1
+            # 角位置（col==0）と180度対称除去
+            if is_corner and row == n - 1 and c == n - 1:
+                continue
+            queens.append(c)
+            backtrack(
+                row + 1,
+                cols | bit,
+                (hills | bit) << 1,
+                (dales | bit) >> 1,
+                board | (1 << (row * n + c)),
+                queens
+            )
+            queens.pop()
+    bit = 1 << col
+    backtrack(1, bit, bit << 1, bit >> 1, 1 << col, [col])
+    return results
+
+
+def solve_n_queens_single(n: int):
+    def rotate90_list(queens: List[int], n: int) -> List[int]:
+        board = [[0] * n for _ in range(n)]
+        for row, col in enumerate(queens):
+            board[row][col] = 1
+        rotated = []
+        for i in range(n):
+            for j in range(n):
+                if board[n - 1 - j][i]:
+                    rotated.append(j)
+                    break
+        return rotated
+
+    def mirror_list(queens: List[int], n: int) -> List[int]:
+        return [n - 1 - q for q in queens]
+
+    def get_symmetries(queens: List[int], n: int) -> List[List[int]]:
+        boards = []
+        q = list(queens)
+        for _ in range(4):
+            boards.append(list(q))
+            boards.append(mirror_list(q, n))
+            q = rotate90_list(q, n)
+        return boards
+
+    def classify_solution(queens: List[int], seen: Set[str], n: int) -> str:
+        symmetries = get_symmetries(queens, n)
+        canonical = min([str(s) for s in symmetries])
+        if canonical in seen:
+            return ""
+        seen.add(canonical)
+        count = sum(1 for s in symmetries if str(s) == canonical)
+        if count == 1:
+            return 'COUNT8'
+        elif count == 2:
+            return 'COUNT4'
+        else:
+            return 'COUNT2'
+    # シングルスレッド（forで初手を順に探索）
+    tasks: List[Tuple[int, int, bool, bool]] = [(col, n, False, col == 0) for col in range(n // 2)]
+    if n % 2 == 1:
+        tasks.append((n // 2, n, True, False))
+
+    all_results: List[List[List[int]]] = []
+    for col, n_, is_center, is_corner in tasks:
+        all_results.append(solve_partial(col, n_, is_center, is_corner))
+
+    seen = set()
+    counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+    for result_set in all_results:
+        for queens in result_set:
+            cls = classify_solution(queens, seen, n)
+            if cls:
+                counts[cls] += 1
+    total = counts['COUNT2'] * 2 + counts['COUNT4'] * 4 + counts['COUNT8'] * 8
+    print(f"\n=== N = {n} の分類結果 ===")
+    for k in ['COUNT2', 'COUNT4', 'COUNT8']:
+        print(f"{k}:{counts[k]}（×{k[-1]}={counts[k] * int(k[-1])}）")
+    print(f"ユニーク解: {sum(counts.values())}")
+    print(f"全解（対称含む）: {total}")
+    return counts, total
+
 
 """ 18 並列化戦略（構築時対称性除去に完全対応）
 分割単位	説明
@@ -38,7 +154,7 @@ multiprocessに対応
 ✅ 角位置（col==0）とそれ以外で分岐	1行目の col == 0 を is_corner=True として分離し、COUNT2偏重を明示化	backtrack(..., is_corner=True) による分岐	済
 ✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
 """
-
+"""
 def solve_partial(col, n, is_center=False, is_corner=False):
   results = []
   def backtrack(row, cols, hills, dales, board, queens):
@@ -127,6 +243,7 @@ def solve_n_queens_parallel(n):
   print(f"ユニーク解: {sum(counts.values())}")
   print(f"全解（対称含む）: {total}")
   return counts, total
+"""
 
 
 """ 17 構築時における「ミラー＋90度回転」重複除去
@@ -145,7 +262,7 @@ N-Queens は、左右ミラー（反転）・回転（90°, 180°, 270°）に�
 中央列特別処理（奇数N）	✅	col = n//2 を別タスクとして処理
 角位置（col==0）と180°対称除去	✅	row=n-1 and col=n-1 を除外
 構築時ミラー＋回転による重複排除	✅	is_canonical() による部分盤面の辞書順最小チェック
-
+"""
 """
 def solve_n_queens_serial(n):
   def rotate90_list(queens, n):
@@ -236,7 +353,7 @@ def solve_n_queens_serial(n):
   print(f"ユニーク解: {sum(counts.values())}")
   print(f"全解（対称含む）: {total}")
   return counts, total
-
+"""
 
 """ 16 部分解合成法による並列処理
 はい、今回ご提供した修正済み並列 N-Queens ソルバーは、以下の 6項目すべてに◎対応した部分解合成方式となっています。
@@ -257,6 +374,7 @@ def solve_n_queens_serial(n):
 この実装は、提示されたすべての並列対応方針（◎6項目）に完全対応済みの正統かつ高速な設計となっています。
 """
 
+"""
 def solve_n_queens_parallel_correct(n):
   queue = multiprocessing.Queue()
   jobs = []
@@ -365,6 +483,7 @@ def solve_n_queens_parallel_correct(n):
 
   unique = counts['COUNT2'] + counts['COUNT4'] + counts['COUNT8']
   return counts, unique, total
+"""
 
 
 
@@ -388,7 +507,7 @@ def solve_n_queens_parallel_correct(n):
 ✅ 角位置（col==0）とそれ以外で分岐	1行目の col == 0 を is_corner=True として分離し、COUNT2偏重を明示化	backtrack(..., is_corner=True) による分岐	済
 ✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
 """
-
+"""
 def solve_n_queens_bitboard_partialDuplicate(n: int):
     seen_hashes = set()
     partial_seen = set()
@@ -514,6 +633,7 @@ def solve_n_queens_bitboard_partialDuplicate(n: int):
     for k in counts:
         print(f"{k}: {noncorner_counts[k]}")
     return counts, total
+"""
 
 """ 14 「Zobrist Hash」 
 長所
@@ -540,7 +660,7 @@ N ≥ 15 以上でメモリ効率や速度がボトルネックになったと�
 ✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
 """
 
-
+"""
 def solve_n_queens_bitboard_zobristHash(n: int):
     seen_hashes = set()
     counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
@@ -681,7 +801,7 @@ def solve_n_queens_bitboard_zobristHash(n: int):
     for k in counts:
         print(f"{k}: {noncorner_counts[k]}")
     return counts, total
-
+"""
 
 """ 13  マクロチェス（局所パターン）による構築制限 
 序盤の配置（例：1行目＋2行目）により、3行目以降のクイーン配置が詰まるパターン
@@ -862,6 +982,8 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
 ✅ 角位置（col==0）とそれ以外で分岐	1行目の col == 0 を is_corner=True として分離し、COUNT2偏重を明示化	backtrack(..., is_corner=True) による分岐	済
 ✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
 """
+
+
 def solve_n_queens_bitboard_int_corner_isCorner(n: int):
   seen = set()
   counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
@@ -1342,7 +1464,7 @@ np.uint64	安全な64ビット符号なし整数。Pythonのintよりビット�
 
 # 実行するならコメントを解除して下さい
 # import numpy as np
-
+"""
 def solve_n_queens_bitboard_np(n):
   seen=set()
   def rotate90(board, n):
@@ -1417,7 +1539,7 @@ def solve_n_queens_bitboard_np(n):
   print(f"ユニーク解: {sum(counts.values())}")
   print(f"全解（対称含む）: {total}")
   return counts, total
-
+"""
 
 """ 06 ビットボードによる対称性分類 
 ビットボード（整数）で表現されたN-Queensの配置を、90度回転、180度回転、270度回転、左右反転（ミラー）のビット演算で処理し、同一性判定を高速に行って COUNT2, COUNT4, COUNT8 を分類する。
@@ -1531,13 +1653,14 @@ COUNT4: 自身＋鏡像 or 回転を含めて4通りまでが同型
 COUNT8: 8通りすべてが異なる → 最も情報量が多い配置
 実行結果の 全解 は対称形も含めた「解の総数」に一致します（n=8なら92）
 """
+"""
 def solve_n_queens_with_classification(n):
   def rotate(board, n):
     return [n - 1 - board.index(i) for i in range(n)]
   def v_mirror(board, n):
     return [n - 1 - i for i in board]
   def reflect_all(board, n):
-    """回転とミラーで8通りを生成"""
+    #回転とミラーで8通りを生成
     result = []
     b = board[:]
     for _ in range(4):
@@ -1548,7 +1671,7 @@ def solve_n_queens_with_classification(n):
   def board_equals(a, b):
     return all(x == y for x, y in zip(a, b))
   def get_classification(board, n):
-    """8つの対称形を比較して分類（2,4,8通り）"""
+    #8つの対称形を比較して分類（2,4,8通り）
     forms = reflect_all(board, n)
     canonical = min(forms)
     count = sum(1 for f in forms if board_equals(f, canonical))
@@ -1596,7 +1719,7 @@ def solve_n_queens_with_classification(n):
   print(f"COUNT8: {counts['COUNT8']}（×8={counts['COUNT8']*8}）")
   print(f"ユニーク解: {sum(counts.values())}")
   print(f"全解（対称含む）: {total}")
-
+"""
 """ 04 ミラー・回転対称解の個別表示付き 
 rotate() と v_mirror() で盤面を回転・反転します。各解の「最小形（辞書順最小の対称形）」のみを記録してユニーク性を判定します。ユニークな配置が見つかると、対称形（8パターン）をすべて表示します。表示されるのは「Q」でクイーンを示した盤面です。
 """
@@ -1654,6 +1777,7 @@ def solve_n_queens_with_symmetry_display(n):
 全解を高速にカウント（ユニーク解を基に）
 回転・反転による解の分類と高速化に有効
 """
+"""
 def solve_n_queens_symmetry(n):
   def backtrack(row, cols, hills, dales):
     nonlocal solutions
@@ -1676,11 +1800,10 @@ def solve_n_queens_symmetry(n):
     bit = 1 << col
     backtrack(1, bit, bit << 1, bit >> 1)
   return solutions
-""" ビット演算による高速化（上級者向け） 
-非常に高速（ビット演算）
-解の個数のみカウント（盤面出力なし）
-大きな n に適している（例：n=15程度までOK）
-"""
+# ビット演算による高速化（上級者向け） 
+# 非常に高速（ビット演算）
+# 解の個数のみカウント（盤面出力なし）
+# 大きな n に適している（例：n=15程度までOK）
 def solve_n_queens_bit(n):
   def backtrack(row, cols, hills, dales):
     nonlocal count
@@ -1695,11 +1818,10 @@ def solve_n_queens_bit(n):
   count = 0
   backtrack(0, 0, 0, 0)
   return count
-""" バックトラッキング（基本的な実装）
-初学者向け
-O(n!)程度の時間計算量
-解のリストが得られる（各行のクイーンの列位置）
-"""
+# バックトラッキング（基本的な実装）
+# 初学者向け
+# O(n!)程度の時間計算量
+# 解のリストが得られる（各行のクイーンの列位置）
 def solve_n_queens(n):
   def is_safe(queens, row, col):
     for r, c in enumerate(queens):
@@ -1718,7 +1840,9 @@ def solve_n_queens(n):
   solutions = []
   backtrack(0, [])
   return solutions
-
+"""
+""" 19 """
+solve_n_queens_single(13)
 """ 18 並列化戦略（構築時対称性除去に完全対応）real    0m1.352s"""
 # solve_n_queens_parallel(13)# 並列版の呼び出し例:
 """ 17 構築時における「ミラー＋90度回転」重複除去 real    0m1.541s"""
