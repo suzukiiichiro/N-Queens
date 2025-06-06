@@ -11,7 +11,7 @@
 #import pypyjit
 #pypyjit.set_param('max_unroll_recursion=-1')
 
-import time
+from datetime import datetime
 
 def solve_n_queens_symmetry_knuth(n: int) -> tuple[int, int]:
   unique_set: set[str] = set()  # 🔥 タプルじゃなくて str を使う
@@ -75,11 +75,15 @@ def solve_n_queens_symmetry_knuth(n: int) -> tuple[int, int]:
   return total, unique
 
 if __name__ == '__main__':
-  _min: int = 4
-  _max: int = 18
-  print(" N:        Total       Unique         seconds")
-  for size in range(_min, _max):
-    start_time: float = time.perf_counter()
-    total, unique = solve_n_queens_symmetry_knuth(size)
-    time_elapsed: float = time.perf_counter() - start_time
-    print(f"{size:2d}:{total:13d}{unique:13d}{time_elapsed:15.3f}")
+  _min:int=4; # min()を使っているためリネーム
+  max:int=18
+  print(" N:        Total       Unique         hh:mm:ss.ms")
+  for size in range(_min,max):
+    start_time=datetime.now();
+    #
+    total,unique=solve_n_queens_symmetry_knuth(size)
+    #
+    time_elapsed=datetime.now()-start_time;
+    text = str(time_elapsed)[:-3]
+    print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
+
