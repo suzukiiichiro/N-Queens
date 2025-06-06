@@ -15,7 +15,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 def rotate(board: List[int], n: int) -> List[int]:
     return [n - 1 - board.index(i) for i in range(n)]
@@ -33,11 +33,14 @@ def reflect_all(board: List[int], n: int) -> List[List[int]]:
     return result
 
 def board_equals(a: List[int], b: List[int]) -> bool:
-    return all(x == y for x, y in zip(a, b))
+    for x, y in zip(a, b):
+        if x != y:
+            return False
+    return True
 
 def get_classification(board: List[int], n: int) -> str:
-    forms: List[List[int]] = reflect_all(board, n)
-    canonical= min(forms)
+    forms = reflect_all(board, n)
+    canonical = min(forms)
     count = 0
     for f in forms:
         if board_equals(f, canonical):
@@ -55,26 +58,19 @@ def is_safe(queens: List[int], row: int, col: int) -> bool:
             return False
     return True
 
-def solve_n_queens_symmetry_knuth(n: int) -> Tuple[int, int]:
+def solve_and_print(n: int) -> None:
     unique_set = set()
-    # solutions: List[Tuple[str, List[int]]] = []
-    # solutions:List[str]=[]
     counts: Dict[str, int] = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
 
     def backtrack(row: int, queens: List[int]) -> None:
         if row == n:
-            forms: List[List[int]] = reflect_all(queens, n)
-            # canonical: List[int] = min(forms)
-            canonical= min(forms)
-            # key = tuple(canonical)
-            tmp = list(canonical)  # ← 明示的に list に変換
-            key = tuple(tmp)       # ← ここで tuple に
+            forms = reflect_all(queens, n)
+            canonical = min(forms)
+            key = str(canonical)  # Codonが安定する型
             if key not in unique_set:
                 unique_set.add(key)
-                cls: str = get_classification(queens, n)
-                prev = counts[cls]
-                counts[cls] = prev + 1
-                # solutions.append((cls, queens[:]))
+                cls = get_classification(queens, n)
+                counts[cls] = counts[cls] + 1
             return
         for col in range(n):
             if is_safe(queens, row, col):
@@ -85,14 +81,10 @@ def solve_n_queens_symmetry_knuth(n: int) -> Tuple[int, int]:
     backtrack(0, [])
     total = counts['COUNT2'] * 2 + counts['COUNT4'] * 4 + counts['COUNT8'] * 8
     unique = counts['COUNT2'] + counts['COUNT4'] + counts['COUNT8']
-    return total, unique
+    print(f"{n:2d}:{total:13d}{unique:13d}")
 
 if __name__ == '__main__':
-    _min: int = 4
-    max: int = 18
     print(" N:        Total       Unique")
-    for size in range(_min, max):
-        result: Tuple[int, int] = solve_n_queens_symmetry_knuth(size)
-        total, unique = result
-        print(f"{size:2d}:{total:13d}{unique:13d}")
+    for size in range(4, 18):
+        solve_and_print(size)
 
