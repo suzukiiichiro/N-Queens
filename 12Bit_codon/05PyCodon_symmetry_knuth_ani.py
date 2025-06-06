@@ -7,7 +7,7 @@
 # COUNT8: 8通りすべてが異なる → 最も情報量が多い配置
 # 実行結果の 全解 は対称形も含めた「解の総数」に一致します（n=8なら92）
 
-# pypyを使う場合はコメントを解除
+#pypyを使う場合はコメントを解除
 #import pypyjit
 #pypyjit.set_param('max_unroll_recursion=-1')
 
