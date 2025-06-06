@@ -19,13 +19,13 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
   unique_set= set()
   solutions= []
   counts= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
-  def rotate(board:List[int],n:int)->list[int]:
+  def rotate(board:List[int],n:int)->List[int]:
     return [n - 1 - board.index(i) for i in range(n)]
 
-  def v_mirror(board:List[int],n:int)->list[int]:
+  def v_mirror(board:List[int],n:int)->List[int]:
     return [n - 1 - i for i in board]
 
-  def reflect_all(board:List[int],n:int)->list[list[int]]:
+  def reflect_all(board:List[int],n:int)->List[list[int]]:
     #回転とミラーで8通りを生成
     result = []
     b = board[:]
