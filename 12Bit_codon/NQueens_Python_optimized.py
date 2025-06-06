@@ -1723,7 +1723,7 @@ def solve_n_queens_with_classification(n):
 """ 04 ミラー・回転対称解の個別表示付き 
 rotate() と v_mirror() で盤面を回転・反転します。各解の「最小形（辞書順最小の対称形）」のみを記録してユニーク性を判定します。ユニークな配置が見つかると、対称形（8パターン）をすべて表示します。表示されるのは「Q」でクイーンを示した盤面です。
 """
-def solve_n_queens_with_symmetry_display(n):
+def solve_n_queens_with_symmetry_unique(n):
   def rotate(board):
     """正しい90度回転：board[row] = col → new_board[col] = N - 1 - row"""
     n = len(board)
@@ -1871,9 +1871,9 @@ solve_n_queens_single(13)
 # solve_n_queens_bitwise_classification(13)
 """ 05 対称性分類付き N-Queens Solver（COUNT2, COUNT4, COUNT8）real    0m7.453s"""
 # solve_n_queens_with_classification(13)
-""" 04 ミラー・回転対称解の個別表示付き real    0m4.723s"""
-# solve_n_queens_with_symmetry_display(13)
-""" 03対称性除去（全解とユニーク解の分類）real    0m0.251s"""
+""" 04 対象解除法（最小の判定） real    0m4.723s"""
+# solve_n_queens_with_symmetry_unique(13)
+""" 03 対称解除法（全解とユニーク解の分類）real    0m0.251s"""
 # print("symmetryBreaking:Total", solve_n_queens_symmetry(13), "solutions")
 """ 02ビット演算による高速化（上級者向け） real    0m0.414s"""
 # print("bitWise:Total:", solve_n_queens_bit(13), "solutions")
