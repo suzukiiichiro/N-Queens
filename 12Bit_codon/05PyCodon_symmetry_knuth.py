@@ -12,14 +12,14 @@
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 
-from typing import Tuple,List
+from typing import Tuple,List,Dict
 from datetime import datetime
 
 def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
   unique_set= set()
   solutions: List[Tuple[str, List[int]]] = []
   # solutions= []
-  counts= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+  counts:Dict[str,int]= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
   def rotate(board:List[int],n:int)->List[int]:
     return [n - 1 - board.index(i) for i in range(n)]
 
@@ -41,8 +41,11 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
 
   def get_classification(board:List[int],n:int)->str:
     #8つの対称形を比較して分類（2,4,8通り）
-    forms = reflect_all(board, n)
-    canonical = min(forms)
+    # forms = reflect_all(board, n)
+    # canonical = min(forms)
+    # forms: List[List[int]] = reflect_all(queens, n)
+    forms: List[List[int]] = reflect_all(board, n) 
+    canonical: List[int] = min(forms)
     count = sum(1 for f in forms if board_equals(f, canonical))
     if count == 1:
       return 'COUNT8'
@@ -56,7 +59,6 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
       if c == col or abs(c - col) == abs(r - row):
         return False
     return True
-  
   def backtrack(row:int,queens:List[int])->None:
     if row == n:
       # canonical:List[int] = min(reflect_all(queens, n))
@@ -66,7 +68,10 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
       if key not in unique_set:
         unique_set.add(key)
         cls:str = get_classification(queens, n)
-        counts[cls] += 1
+        # 修正後（Codonが推論しやすくなる）
+        # counts[cls] += 1
+        prev = counts[cls]
+        counts[cls] = prev + 1
         solutions.append((cls, queens[:]))
       return
     for col in range(n):
@@ -87,8 +92,10 @@ if __name__ == '__main__':
   for size in range(_min,max):
     start_time=datetime.now();
     #
-    total,unique=solve_n_queens_symmetry_knuth(size)
+    # total,unique=solve_n_queens_symmetry_knuth(size)
+    result=solve_n_queens_symmetry_knuth(size)
+    total, unique = result 
     #
-    time_elapsed=datetime.now()-start_time;
-    text = str(time_elapsed)[:-3]
-    print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
+    # time_elapsed=datetime.now()-start_time;
+    # text = str(time_elapsed)[:-3]
+    # print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
