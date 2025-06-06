@@ -17,7 +17,8 @@ from datetime import datetime
 
 def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
   unique_set= set()
-  solutions= []
+  solutions: List[Tuple[str, List[int]]] = []
+  # solutions= []
   counts= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
   def rotate(board:List[int],n:int)->List[int]:
     return [n - 1 - board.index(i) for i in range(n)]
@@ -58,7 +59,9 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
   
   def backtrack(row:int,queens:List[int])->None:
     if row == n:
-      canonical:List[int] = min(reflect_all(queens, n))
+      # canonical:List[int] = min(reflect_all(queens, n))
+      forms: List[List[int]] = reflect_all(queens, n)
+      canonical: List[int] = min(forms)
       key= tuple(canonical)
       if key not in unique_set:
         unique_set.add(key)
