@@ -13,20 +13,19 @@
 # pypyjit.set_param('max_unroll_recursion=-1')
 
 from datetime import datetime
-from typing import Tuple
 
-def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
-  unique_set:set = set()
-  solutions:list[int] = []
-  counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+def solve_n_queens_symmetry_knuth(n:int)->tuple[int,int]:
+  unique_set= set()
+  solutions= []
+  counts= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
 
-  def rotate(board:list[int],n:int)->list[int]:
+  def rotate(board:list[int],n:int)->List[int]:
     return [n - 1 - board.index(i) for i in range(n)]
 
-  def v_mirror(board:list[int],n:int):
+  def v_mirror(board:list[int],n:int)->List[int]:
     return [n - 1 - i for i in board]
 
-  def reflect_all(board:list[int],n:int)->list[int]:
+  def reflect_all(board:list[int],n:int)->List[List[int]]:
     #回転とミラーで8通りを生成
     result = []
     b = board[:]
@@ -36,10 +35,10 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
       b = rotate(b, n)
     return result
 
-  def board_equals(a:int,b:int)->bool:
+  def board_equals(a:List[int],b:List[int])->bool:
     return all(x == y for x, y in zip(a, b))
 
-  def get_classification(board:list[int],n:int)->int:
+  def get_classification(board:List[int],n:int)->str:
     #8つの対称形を比較して分類（2,4,8通り）
     forms = reflect_all(board, n)
     canonical = min(forms)
@@ -51,19 +50,19 @@ def solve_n_queens_symmetry_knuth(n:int)->Tuple[int,int]:
     else:
       return 'COUNT2'
 
-  def is_safe(queens:list[int],row:int,col:int)->bool:
+  def is_safe(queens:List[int],row:int,col:int)->bool:
     for r, c in enumerate(queens):
       if c == col or abs(c - col) == abs(r - row):
         return False
     return True
   
-  def backtrack(row:int,queens:list[int])->None:
+  def backtrack(row:int,queens:List[int])->None:
     if row == n:
-      canonical:list[int] = min(reflect_all(queens, n))
-      key:tuple[int] = tuple(canonical)
+      canonical:List[int] = min(reflect_all(queens, n))
+      key= tuple(canonical)
       if key not in unique_set:
         unique_set.add(key)
-        cls:int = get_classification(queens, n)
+        cls:str = get_classification(queens, n)
         counts[cls] += 1
         solutions.append((cls, queens[:]))
       return
