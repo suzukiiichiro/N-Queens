@@ -37,7 +37,7 @@ def board_equals(a: List[int], b: List[int]) -> bool:
 
 def get_classification(board: List[int], n: int) -> str:
     forms: List[List[int]] = reflect_all(board, n)
-    canonical: List[int] = min(forms)
+    canonical= min(forms)
     count = 0
     for f in forms:
         if board_equals(f, canonical):
@@ -64,8 +64,11 @@ def solve_n_queens_symmetry_knuth(n: int) -> Tuple[int, int]:
     def backtrack(row: int, queens: List[int]) -> None:
         if row == n:
             forms: List[List[int]] = reflect_all(queens, n)
-            canonical: List[int] = min(forms)
-            key = tuple(canonical)
+            # canonical: List[int] = min(forms)
+            canonical= min(forms)
+            # key = tuple(canonical)
+            tmp = list(canonical)  # ← 明示的に list に変換
+            key = tuple(tmp)       # ← ここで tuple に
             if key not in unique_set:
                 unique_set.add(key)
                 cls: str = get_classification(queens, n)
