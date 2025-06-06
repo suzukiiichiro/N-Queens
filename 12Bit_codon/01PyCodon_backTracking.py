@@ -7,47 +7,49 @@
 # O(n!)程度の時間計算量
 # 解のリストが得られる（各行のクイーンの列位置）
 #
-# python
-# 13:        73712            0         0:01:02.597 
-# pypy
-# 13:        73712            0         0:00:04.306
+# codon
+# 15:      2279184            0         0:00:28.033
 #
 # pypyを使う場合はコメントを解除
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+#import pypyjit
+#pypyjit.set_param('max_unroll_recursion=-1')
 
-from datetime import datetime
+import time
 
-def solve_n_queens(n:int) -> list[list[int]]:
-  def is_safe(queens:list[int], row:int, col:int)->bool:
-    for r, c in enumerate(queens):
-      if c == col or abs(c - col) == abs(r - row):
+def solve_n_queens(n:int)->list[list[int]]:
+  def is_safe(queens:list[int],row:int,col:int)->bool:
+    for r,c in enumerate(queens):
+      if c==col or abs(c-col)==abs(r-row):
         return False
     return True
-  def backtrack(row:int, queens:list[int]):
-    if row == n:
+  def backtrack(row:int,queens:list[int],solutions:list[list[int]]):
+    if row==n:
       solutions.append(queens[:])
       return
     for col in range(n):
-      if is_safe(queens, row, col):
+      if is_safe(queens,row,col):
         queens.append(col)
-        backtrack(row + 1, queens)
+        backtrack(row+1,queens,solutions)
         queens.pop()
-  solutions = []
-  backtrack(0, [])
+  solutions=[]
+  backtrack(0,[],solutions)
   return solutions
 
-if __name__ == '__main__':
-  min:int=4;
-  max:int=18
+def main():
+  min_n:int=4
+  max_n:int=18
   print(" N:        Total       Unique         hh:mm:ss.ms")
-  for size in range(min,max):
-    start_time=datetime.now();
-    #
+  for size in range(min_n,max_n):
+    start_time=time.time()
     total=len(solve_n_queens(size))
     unique=0
-    #
-    time_elapsed=datetime.now()-start_time;
-    text = str(time_elapsed)[:-3]
+    time_elapsed=time.time()-start_time
+    msec=int((time_elapsed-int(time_elapsed))*1000)
+    sec=int(time_elapsed)%60
+    minutes=(int(time_elapsed)//60)%60
+    hours=int(time_elapsed)//3600
+    text=f"{hours}:{minutes:02d}:{sec:02d}.{msec:03d}"
     print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
 
+if __name__=="__main__":
+  main()
