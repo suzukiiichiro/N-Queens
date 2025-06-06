@@ -7,9 +7,6 @@
 # O(n!)程度の時間計算量
 # 解のリストが得られる（各行のクイーンの列位置）
 #
-# codon
-# 15:      2279184            0         0:00:28.033
-#
 # pypyを使う場合はコメントを解除
 #import pypyjit
 #pypyjit.set_param('max_unroll_recursion=-1')

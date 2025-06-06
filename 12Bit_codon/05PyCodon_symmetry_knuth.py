@@ -19,13 +19,13 @@ def solve_n_queens_symmetry_knuth(n:int)->tuple[int,int]:
   solutions= []
   counts= {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
 
-  def rotate(board:list[int],n:int)->List[int]:
+  def rotate(board:list[int],n:int)->list[int]:
     return [n - 1 - board.index(i) for i in range(n)]
 
-  def v_mirror(board:list[int],n:int)->List[int]:
+  def v_mirror(board:list[int],n:int)->list[int]:
     return [n - 1 - i for i in board]
 
-  def reflect_all(board:list[int],n:int)->List[List[int]]:
+  def reflect_all(board:list[int],n:int)->list[list[int]]:
     #回転とミラーで8通りを生成
     result = []
     b = board[:]
@@ -35,10 +35,10 @@ def solve_n_queens_symmetry_knuth(n:int)->tuple[int,int]:
       b = rotate(b, n)
     return result
 
-  def board_equals(a:List[int],b:List[int])->bool:
+  def board_equals(a:list[int],b:list[int])->bool:
     return all(x == y for x, y in zip(a, b))
 
-  def get_classification(board:List[int],n:int)->str:
+  def get_classification(board:list[int],n:int)->str:
     #8つの対称形を比較して分類（2,4,8通り）
     forms = reflect_all(board, n)
     canonical = min(forms)
@@ -50,15 +50,15 @@ def solve_n_queens_symmetry_knuth(n:int)->tuple[int,int]:
     else:
       return 'COUNT2'
 
-  def is_safe(queens:List[int],row:int,col:int)->bool:
+  def is_safe(queens:list[int],row:int,col:int)->bool:
     for r, c in enumerate(queens):
       if c == col or abs(c - col) == abs(r - row):
         return False
     return True
   
-  def backtrack(row:int,queens:List[int])->None:
+  def backtrack(row:int,queens:list[int])->None:
     if row == n:
-      canonical:List[int] = min(reflect_all(queens, n))
+      canonical:list[int] = min(reflect_all(queens, n))
       key= tuple(canonical)
       if key not in unique_set:
         unique_set.add(key)

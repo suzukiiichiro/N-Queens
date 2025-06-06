@@ -7,12 +7,6 @@
 # 解の個数のみカウント（盤面出力なし）
 # 大きな n に適している（例：n=15程度までOK）
 #
-# codon
-# 02
-# 17:     95815104            0         0:01:08.155
-# 01
-# abort
-#
 # pypyを使う場合はコメントを解除
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
