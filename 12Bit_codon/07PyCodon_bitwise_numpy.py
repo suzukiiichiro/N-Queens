@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# 2. NumPyのままやる場合は「64ビット越え演算を避ける」
+# n=8までしか使えませんし、Python標準intのほうが速いことも多いです
+
 # 07 numPy対応 ビットボード版 N-Queens 分類カウント 
 # np.uint64 により最大64ビットの高速ビット操作が可能
 # Python標準 int の代わりに NumPy の uint64 を利用
@@ -12,8 +15,8 @@
 # 盤面エンコード	n×n 盤面を1つの64ビット整数に収める（最大 n=8）
 
 #pypyを使う場合はコメントを解除
-#import pypyjit
-#pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 from datetime import datetime
 import numpy as np
@@ -21,6 +24,7 @@ import numpy as np
 def solve_n_queens_bitboard_np(n):
   seen=set()
   counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+
   def rotate90(board, n):
     res = np.uint64(0)
     for i in range(n):
@@ -29,6 +33,7 @@ def solve_n_queens_bitboard_np(n):
         if row & (1 << j):
           res |= np.uint64(1) << np.uint64((n - 1 - j) * n + i)
     return res
+
   def mirror_vertical(board, n):
     res = np.uint64(0)
     for i in range(n):
@@ -39,6 +44,7 @@ def solve_n_queens_bitboard_np(n):
           mirrored_row |= np.uint64(1) << np.uint64(n - 1 - j)
       res |= mirrored_row << np.uint64(i * n)
     return res
+
   def get_symmetries(board, n):
     results = []
     r = board
@@ -47,6 +53,7 @@ def solve_n_queens_bitboard_np(n):
       results.append(mirror_vertical(r, n))
       r = rotate90(r, n)
     return results
+
   def classify_symmetry(board, n):
     syms = set(get_symmetries(board, n))
     sym_len = len(syms)
@@ -56,8 +63,7 @@ def solve_n_queens_bitboard_np(n):
       return 'COUNT4'
     elif sym_len == 2:
       return 'COUNT2'
-    # else:
-    #   raise ValueError(f"Unexpected symmetry count: {sym_len}")
+
   def backtrack(row=0, cols=0, hills=0, dales=0, board=np.uint64(0)):
     if row == n:
       syms = get_symmetries(board, n)   # 8通りの対称形を取得
@@ -85,17 +91,11 @@ def solve_n_queens_bitboard_np(n):
   backtrack()
 
   total = counts['COUNT2'] * 2 + counts['COUNT4'] * 4 + counts['COUNT8'] * 8
-  print(f"\n=== N = {n} の分類結果 ===")
-  print(f"COUNT2: {counts['COUNT2']}（×2={counts['COUNT2']*2}）")
-  print(f"COUNT4: {counts['COUNT4']}（×4={counts['COUNT4']*4}）")
-  print(f"COUNT8: {counts['COUNT8']}（×8={counts['COUNT8']*8}）")
-  print(f"ユニーク解: {sum(counts.values())}")
-  print(f"全解（対称含む）: {total}")
   return total,sum(counts.values())
 
 if __name__ == '__main__':
   _min:int=4; # min()を使っているためリネーム
-  max:int=18
+  max:int=9
   print(" N:        Total       Unique         hh:mm:ss.ms")
   for size in range(_min,max):
     start_time=datetime.now();

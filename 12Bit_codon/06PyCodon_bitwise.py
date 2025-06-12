@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-
 # -*- coding: utf-8 -*-
-# 05 対称性分類付き N-Queens Solver（COUNT2, COUNT4, COUNT8）
-# COUNT2: 自身と180度回転だけが同型（計2通り）
-# COUNT4: 自身＋鏡像 or 回転を含めて4通りまでが同型
-# COUNT8: 8通りすべてが異なる → 最も情報量が多い配置
-# 実行結果の 全解 は対称形も含めた「解の総数」に一致します（n=8なら92）
 
-#・クイーンを置けるかどうかの判定をis_safe()でやっているがこれが遅い
-#・is_safeはqueens配列にいままで置いたクイーンの位置を設定する、
-#クイーンを置くたびに,queens配列をforで回し、攻撃範囲に抵触しないかチェックしてる
-#・クイーンを全部置き終わった段階で、symmetryOpsして、
-#回転させて最小値チェックしてるが、枝刈りしてないので意味ない
-#・symmetryOpsのやり方も、unique_set配列に最小値の形を保存しているが、
-#nが多くなってくると大変なことになる
+# 06 ビットボードによる対称性分類
+# ビットボード（整数）で表現されたN-Queensの配置を、90度回転、180度回転、270度回転、左右反転（ミラー）のビット演算で処理し、同一性判定を高速に行って COUNT2, COUNT4, COUNT8 を分類する。
+#
+# 例） 4x4 の配置 [1, 3, 0, 2]
+# 盤面：
+# . Q . .
+# . . . Q
+# Q . . .
+# . . Q .
+#
+# → 各行で Q のある位置にビット立てる
+# → 0100（1<<2）, 0001（1<<0）, ... を結合して整数配列に
+#
+# ※ ただし行ではなく、列の配置を使えば1つの `n` ビット整数で列位置が表現できる
+#
+# board = [1, 3, 0, 2] などを sum(1 << (n * row + col)) にして1整数表現**全体が「1整数による圧縮ビットボード設計」**になっています。
+
 
 #pypyを使う場合はコメントを解除
 #import pypyjit
@@ -21,66 +25,91 @@
 
 from datetime import datetime
 
-def solve_n_queens_symmetry_knuth(n: int) -> tuple[int, int]:
-  unique_set: set[str] = set()  # 🔥 タプルじゃなくて str を使う
-  count: list[int] = [0, 0, 0]  # [COUNT2, COUNT4, COUNT8]
+def solve_n_queens_bitwise_classification(n):
+  seen = set()
+  counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
 
-  def rotate(board: list[int], n: int) -> list[int]:
-    return [n - 1 - board.index(i) for i in range(n)]
-
-  def v_mirror(board: list[int], n: int) -> list[int]:
-    return [n - 1 - i for i in board]
-
-  def reflect_all(board: list[int], n: int) -> list[list[int]]:
-    #回転とミラーで8通りを生成
-    result = []
-    b = board[:]
-    for _ in range(4):
-      result.append(b[:])
-      result.append(v_mirror(b, n))
-      b = rotate(b, n)
+  def rotate90(board, n):
+    result = 0
+    for i in range(n):
+      for j in range(n):
+        if board & (1 << (i * n + j)):
+          result |= 1 << ((n - 1 - j) * n + i)
     return result
 
-  def board_equals(a: list[int], b: list[int]) -> bool:
-    return all(x == y for x, y in zip(a, b))
+  def rotate180(board, n):
+    return rotate90(rotate90(board, n), n)
 
-  def get_classification(board: list[int], n: int) -> int:
-    #8つの対称形を比較して分類（2,4,8通り）
-    forms = reflect_all(board, n)
-    canonical = min(forms)
-    count = sum(1 for f in forms if board_equals(f, canonical))
-    if count == 1:
-      return 2  # COUNT8
-    elif count == 2:
-      return 1  # COUNT4
-    else:
-      return 0  # COUNT2
+  def rotate270(board, n):
+    return rotate90(rotate180(board, n), n)
 
-  def is_safe(queens: list[int], row: int, col: int) -> bool:
-    for r, c in enumerate(queens):
-      if c == col or abs(c - col) == abs(r - row):
-        return False
-    return True
+  def mirror_vertical(board, n):
+    result = 0
+    for i in range(n):
+      row = (board >> (i * n)) & ((1 << n) - 1)
+      mirrored = 0
+      for j in range(n):
+        if row & (1 << j):
+          mirrored |= 1 << (n - 1 - j)
+      result |= mirrored << (i * n)
+    return result
 
-  def backtrack(row: int, queens: list[int]):
+  def get_symmetries(board, n):
+    """lambda を使わずに 8通りの対称形を生成"""
+    syms = set()
+    b0 = board
+    b1 = rotate90(b0, n)
+    b2 = rotate180(b0, n)
+    b3 = rotate270(b0, n)
+    syms.add(b0)
+    syms.add(mirror_vertical(b0, n))
+    syms.add(b1)
+    syms.add(mirror_vertical(b1, n))
+    syms.add(b2)
+    syms.add(mirror_vertical(b2, n))
+    syms.add(b3)
+    syms.add(mirror_vertical(b3, n))
+    return syms
+
+  def backtrack(row=0, cols=0, hills=0, dales=0, board=0):
     if row == n:
-      canonical = min(reflect_all(queens, n))
-      key = str(canonical)  # 🔥 文字列化して保存
-      if key not in unique_set:
-        unique_set.add(key)
-        cls = get_classification(queens, n)
-        count[cls] += 1
+      symmetries = get_symmetries(board, n)
+      canonical = min(symmetries)
+      if canonical not in seen:
+        seen.add(canonical)
+        count = sum(1 for s in symmetries if s == canonical)
+        if len(symmetries) == 8:
+          counts['COUNT8'] += 1
+        elif len(symmetries) == 4:
+          counts['COUNT4'] += 1
+        else:
+          counts['COUNT2'] += 1
       return
-    for col in range(n):
-      if is_safe(queens, row, col):
-        queens.append(col)
-        backtrack(row + 1, queens)
-        queens.pop()
+    bits = ~(cols | hills | dales) & ((1 << n) - 1)
+    while bits:
+      bit = bits & -bits
+      bits ^= bit
+      pos = row * n + (bit.bit_length() - 1)
+      """
+      ここで pos = row * n + (bit.bit_length() - 1) なので、board は常に「1つの整数として、n×n盤面上のクイーン位置をビットで立てていく」方式です。つまり、board は以下の構造です：
+      row0: 000...1...000  (← nビット)
+      row1: 000...1...000
+       ...
+      rown: 000...1...000
+      これらをまとめて、「row-major（行優先）で 1 つの整数に圧縮したビットボード」として保持しています。
+      """
+      backtrack(
+        row + 1,
+        cols | bit,
+        (hills | bit) << 1,
+        (dales | bit) >> 1,
+        board | (1 << pos)
+      )
 
-  backtrack(0, [])
-  total: int = count[0]*2 + count[1]*4 + count[2]*8
-  unique: int = count[0] + count[1] + count[2]
-  return total, unique
+  backtrack()
+
+  total = counts['COUNT2'] * 2 + counts['COUNT4'] * 4 + counts['COUNT8'] * 8
+  return total,sum(counts.values())
 
 if __name__ == '__main__':
   _min:int=4; # min()を使っているためリネーム
@@ -89,7 +118,7 @@ if __name__ == '__main__':
   for size in range(_min,max):
     start_time=datetime.now();
     #
-    total,unique=solve_n_queens_symmetry_knuth(size)
+    total,unique=solve_n_queens_bitwise_classification(size)
     #
     time_elapsed=datetime.now()-start_time;
     text = str(time_elapsed)[:-3]
