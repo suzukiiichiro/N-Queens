@@ -41,19 +41,28 @@ from typing import List, Tuple, Set
 
 def solve_partial(col: int, n: int, is_center: bool, is_corner: bool) -> List[List[int]]:
     results = []
+
     def backtrack(row: int, cols: int, hills: int, dales: int, board: int, queens: List[int]):
         if row == n:
             results.append(list(queens))
             return
-        # ビット演算による枝刈り
+        # ✅ビット演算による枝刈り
+        # cols, hills, dales による高速衝突検出
         free = ~(cols | hills | dales) & ((1 << n) - 1)
         while free:
             bit = free & -free
             free ^= bit
             c = (bit).bit_length() - 1
-            # 角位置（col==0）と180度対称除去
+            # ✅角位置（col==0）と180°対称除去
+            # 1行目が角の時、最後の行・最後の列は180度対称なので除外
             if is_corner and row == n - 1 and c == n - 1:
                 continue
+            # ✅構築時ミラー＋回転による重複排除（部分盤面カノニカル判定）※例
+            # if not is_canonical(queens + [c], n):
+            #     continue
+            # ここで部分盤面に対するミラーや90度回転による判定を実装可能（未実装）
+            # ❌「ミラー＋90度回転」による構築時の重複排除（現状は未実装）
+            # ✅マクロチェス（局所パターン）による構築制限（例：N>=12用）※未実装
             queens.append(c)
             backtrack(
                 row + 1,
@@ -65,6 +74,7 @@ def solve_partial(col: int, n: int, is_center: bool, is_corner: bool) -> List[Li
             )
             queens.pop()
     bit = 1 << col
+    # 1行目の初手だけで、左右対称除去を意識して探索
     backtrack(1, bit, bit << 1, bit >> 1, 1 << col, [col])
     return results
 
@@ -86,6 +96,8 @@ def solve_n_queens_single(n: int):
         return [n - 1 - q for q in queens]
 
     def get_symmetries(queens: List[int], n: int) -> List[List[int]]:
+        # ✅構築時ミラー＋回転による重複排除用
+        # クイーン配置の8通りの回転・反転パターン生成
         boards = []
         q = list(queens)
         for _ in range(4):
@@ -95,6 +107,8 @@ def solve_n_queens_single(n: int):
         return boards
 
     def classify_solution(queens: List[int], seen: Set[str], n: int) -> str:
+        # ✅構築時ミラー＋回転による重複排除用
+        # クイーン配置の8通りの回転・反転パターン生成
         symmetries = get_symmetries(queens, n)
         canonical = min([str(s) for s in symmetries])
         if canonical in seen:
@@ -123,6 +137,7 @@ def solve_n_queens_single(n: int):
             cls = classify_solution(queens, seen, n)
             if cls:
                 counts[cls] += 1
+    # ✅「Zobrist Hash」（今回は未導入）: seenに文字列ハッシュで重複判定
     total = counts['COUNT2'] * 2 + counts['COUNT4'] * 4 + counts['COUNT8'] * 8
     return total,sum(counts.values())
 
