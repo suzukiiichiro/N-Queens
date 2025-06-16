@@ -76,7 +76,6 @@ import multiprocessing
 
 def solve_partial(col, n, is_center=False, is_corner=False):
   results = []
-
   def backtrack(row, cols, hills, dales, board, queens):
     if row == n:
       results.append(tuple(queens))
@@ -100,12 +99,12 @@ def solve_partial(col, n, is_center=False, is_corner=False):
       # ✅マクロチェス（局所パターン）による構築制限（例：N>=12用）※未実装
       queens.append(c)
       backtrack(
-          row + 1,
-          cols | bit,
-          (hills | bit) << 1,
-          (dales | bit) >> 1,
-          board | (1 << (row * n + c)),
-          queens
+        row + 1,
+        cols | bit,
+        (hills | bit) << 1,
+        (dales | bit) >> 1,
+        board | (1 << (row * n + c)),
+        queens
       )
       queens.pop()
   bit = 1 << col
@@ -114,17 +113,16 @@ def solve_partial(col, n, is_center=False, is_corner=False):
   return results
 
 def solve_n_queens_parallel(n):
-
   def rotate90_list(queens, n):
     board = [[0]*n for _ in range(n)]
     for row, col in enumerate(queens):
-        board[row][col] = 1
+      board[row][col] = 1
     rotated = []
     for i in range(n):
-        for j in range(n):
-            if board[n - 1 - j][i]:
-                rotated.append(j)
-                break
+      for j in range(n):
+        if board[n - 1 - j][i]:
+          rotated.append(j)
+          break
     return rotated
 
   def mirror_list(queens, n):
@@ -156,15 +154,15 @@ def solve_n_queens_parallel(n):
     symmetries = get_symmetries(queens, n)
     canonical = min(symmetries)
     if canonical in seen:
-        return ""
+      return ""
     seen.add(canonical)
     count = sum(1 for s in symmetries if s == canonical)
     if count == 1:
-        return 'COUNT8'
+      return 'COUNT8'
     elif count == 2:
-        return 'COUNT4'
+      return 'COUNT4'
     else:
-        return 'COUNT2'
+      return 'COUNT2'
   # ✅左右対称除去（1行目制限）
   # 1行目のクイーンは左半分だけ探索
   tasks = [(col, n, False, col == 0) for col in range(n // 2)]
