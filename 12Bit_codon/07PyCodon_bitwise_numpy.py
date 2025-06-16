@@ -17,6 +17,23 @@
 #pypyを使う場合はコメントを解除
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
+"""
+CentOS$ python 07PyCodon_bitwise_numpy.py
+ N:        Total       Unique         hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.003
+ 6:            4            1         0:00:00.002
+ 7:           40            6         0:00:00.009
+ 8:           92           12         0:00:00.027
+
+07  8:           92           12         0:00:00.027
+06 14:       365596        45752         0:02:11.464
+05 14:       365596        45752         0:06:50.602
+04 14:       365596        45752         0:07:06.993
+03 14:       365596            0         0:00:09.962
+02 14:       365596            0         0:00:19.668
+01 14:       365596            0         0:07:01.731
+"""
 
 from datetime import datetime
 import numpy as np

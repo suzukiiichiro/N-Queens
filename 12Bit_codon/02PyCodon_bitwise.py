@@ -6,7 +6,24 @@
 # 非常に高速（ビット演算）
 # 解の個数のみカウント（盤面出力なし）
 # 大きな n に適している（例：n=15程度までOK）
-#
+"""
+CentOS$ python 02PyCodon_bitwise.py
+ N:        Total       Unique         hh:mm:ss.ms
+ 4:            2            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.001
+ 9:          352            0         0:00:00.006
+10:          724            0         0:00:00.025
+11:         2680            0         0:00:00.121
+12:        14200            0         0:00:00.614
+13:        73712            0         0:00:03.338
+14:       365596            0         0:00:19.668
+
+02 14:       365596            0         0:00:19.668
+01 14:       365596            0         0:07:01.731
+"""
 # pypyを使う場合はコメントを解除
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
@@ -15,6 +32,7 @@ from datetime import datetime
 
 def solve_n_queens(n:int)->int:
   count:int = 0
+
   def backtrack(row:int, cols:int, hills:int, dales:int):
     nonlocal count
     if row == n:

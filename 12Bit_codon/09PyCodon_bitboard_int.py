@@ -23,6 +23,30 @@ COUNT2,4,8の判定distinct = len(set(sym))はcount = sum(1 for s in sym if s ==
 
 seen.add(canonical)で最小値の形を保存しているが、nが多くなってくると大変なことになる
 symmetryOps内で90度回転を4回やっているが、90,180,270を1回ずつやったほうがよりよい
+
+CentOS$ python 09PyCodon_bitboard_int.py
+ N:        Total       Unique         hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.000
+ 6:            4            1         0:00:00.000
+ 7:           40            6         0:00:00.002
+ 8:           92           12         0:00:00.005
+ 9:          352           46         0:00:00.028
+10:          724           92         0:00:00.061
+11:         2680          341         0:00:00.304
+12:        14200         1787         0:00:01.583
+13:        73712         9233         0:00:10.010
+14:       365596        45752         0:00:51.615
+
+09 14:       365596        45752         0:00:51.615
+08 14:       365596        45752         0:03:36.281
+07  8:           92           12         0:00:00.027
+06 14:       365596        45752         0:02:11.464
+05 14:       365596        45752         0:06:50.602
+04 14:       365596        45752         0:07:06.993
+03 14:       365596            0         0:00:09.962
+02 14:       365596            0         0:00:19.668
+01 14:       365596            0         0:07:01.731
 """
 
 #pypyを使う場合はコメントを解除
@@ -34,6 +58,7 @@ from datetime import datetime
 def solve_n_queens_bitboard_int(n: int):
   seen = set()
   counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+
   def rotate90(board: int, n: int) -> int:
     res = 0
     for i in range(n):
@@ -42,6 +67,7 @@ def solve_n_queens_bitboard_int(n: int):
         if row & (1 << j):
           res |= 1 << ((n - 1 - j) * n + i)
     return res
+
   def mirror_vertical(board: int, n: int) -> int:
     res = 0
     for i in range(n):
@@ -52,6 +78,7 @@ def solve_n_queens_bitboard_int(n: int):
           mirrored_row |= 1 << (n - 1 - j)
       res |= mirrored_row << (i * n)
     return res
+
   def get_symmetries(board: int, n: int) -> list[int]:
     results = []
     r = board
@@ -60,6 +87,7 @@ def solve_n_queens_bitboard_int(n: int):
       results.append(mirror_vertical(r, n))
       r = rotate90(r, n)
     return results
+
   def classify_symmetry(board: int, n: int, seen: set[int]) -> str:
     sym = get_symmetries(board, n)
     canonical = min(sym)
@@ -73,6 +101,7 @@ def solve_n_queens_bitboard_int(n: int):
       return 'COUNT4'
     else:
       return 'COUNT2'
+
   def backtrack(row=0, cols=0, hills=0, dales=0, board=0):
     if row == n:
       cls = classify_symmetry(board, n, seen)
