@@ -21,6 +21,7 @@
 from datetime import datetime
 
 def solve_n_queens_symmetry_unique(n:int)->list[int,int]:
+
   def rotate(board:list[int])->list[int]:
     """正しい90度回転：board[row] = col → new_board[col] = N - 1 - row"""
     n = len(board)
@@ -28,9 +29,11 @@ def solve_n_queens_symmetry_unique(n:int)->list[int,int]:
     for r in range(n):
       new_board[board[r]] = n - 1 - r
     return new_board
+
   def v_mirror(board:list[int])->list[int]:
     """左右反転"""
     return [len(board) - 1 - x for x in board]
+
   def generate_symmetries(board:list[int])->list[int]:
     """8つの対称形を返す"""
     boards = []
@@ -42,14 +45,17 @@ def solve_n_queens_symmetry_unique(n:int)->list[int,int]:
     return set(boards)
   unique_solutions:list[int] = set()
   total_solutions:int = [0]  # リストでmutableに
+
   def is_safe(queens:list[int],row:int,col:int)->bool:
     for r, c in enumerate(queens):
       if c == col or abs(r - row) == abs(c - col):
         return False
     return True
+
   def count_equiv(board:list[int])->int:
     symmetries = generate_symmetries(board)
     return 8 // len(symmetries)
+
   def backtrack(row:int,queens:list[int])->None:
     if row == n:
       symmetries = generate_symmetries(queens)
@@ -64,6 +70,7 @@ def solve_n_queens_symmetry_unique(n:int)->list[int,int]:
         queens.append(col)
         backtrack(row + 1, queens)
         queens.pop()
+
   backtrack(0, [])
   return total_solutions[0],len(unique_solutions)
 

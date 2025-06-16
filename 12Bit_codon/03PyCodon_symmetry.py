@@ -15,6 +15,7 @@ from datetime import datetime
 
 def solve_n_queens_symmetry(n:int):
   solutions:int = 0
+
   def backtrack(row:int,cols:int,hills:int,dales:int):
     nonlocal solutions
     if row == n:
@@ -25,6 +26,7 @@ def solve_n_queens_symmetry(n:int):
       bit = free & -free
       free ^= bit
       backtrack(row+1,cols|bit,(hills|bit)<<1,(dales|bit)>>1)
+
   for col in range(n // 2):
     bit = 1 << col
     backtrack(1, bit, bit << 1, bit >> 1)
@@ -33,6 +35,7 @@ def solve_n_queens_symmetry(n:int):
     col = n // 2
     bit = 1 << col
     backtrack(1, bit, bit << 1, bit >> 1)
+
   return solutions
 
 if __name__ == '__main__':

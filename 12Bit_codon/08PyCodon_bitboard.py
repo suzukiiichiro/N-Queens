@@ -30,7 +30,7 @@ o_bytes(...))	bitarrayを64ビットのバイナリ整数として扱う拡張�
 のように、整数から読み取ったビットを並べたもの。人が見やすく、盤面出力やデバッグに便利。これは盤面を行優先（row-major）に並べた可視的ビット列
 """
 
-""" 08 pypy対応 int型ビットボード real    0m3.972s"""
+""" 08 pypy対応 int型ビットボード real    0m3.972s
 solve_n_queens_bitboard_int(13)
 長所
 boardを１個のビット列にしている。symmetryOpsの回転、反転もバラさないままできている

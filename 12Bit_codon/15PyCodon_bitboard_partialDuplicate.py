@@ -122,20 +122,15 @@ def solve_n_queens_bitboard_partialDuplicate(n: int):
                 counts[cls] += 1
                 (corner_counts if is_corner else noncorner_counts)[cls] += 1
             return
-
         # コメントアウト
         # if row == 2:
         #     if is_partial_duplicate(board, row):
         #         return
-
         free = ~(cols | hills | dales) & ((1 << n) - 1)
-
         if row >= 2 and free == 0:
             return
-
         if row == n - 1 and is_corner:
             free &= ~(1 << (n - 1))
-
         while free:
             bit = free & -free
             free ^= bit

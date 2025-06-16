@@ -53,6 +53,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
   counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
   corner_counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
   noncorner_counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
+
   def rotate90(board: int, n: int) -> int:
     res = 0
     for i in range(n):
@@ -61,6 +62,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
         if row & (1 << j):
           res |= 1 << ((n - 1 - j) * n + i)
     return res
+
   def mirror_vertical(board: int, n: int) -> int:
     res = 0
     for i in range(n):
@@ -71,6 +73,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
           mirrored_row |= 1 << (n - 1 - j)
       res |= mirrored_row << (i * n)
     return res
+
   def get_symmetries(board: int, n: int) -> list[int]:
     results = []
     r = board
@@ -79,6 +82,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
       results.append(mirror_vertical(r, n))
       r = rotate90(r, n)
     return results
+
   def classify_symmetry(board: int, n: int, seen: set[int]) -> str:
     sym = get_symmetries(board, n)
     canonical = min(sym)
@@ -92,6 +96,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
       return 'COUNT4'
     else:
       return 'COUNT2'
+
   def backtrack(row=0, cols=0, hills=0, dales=0, board=0, is_corner=False):
     if row == n:
       cls = classify_symmetry(board, n, seen)
@@ -123,6 +128,7 @@ def solve_n_queens_bitboard_int_corner_isCosrner_earlyPruning(n: int):
           board | (1 << pos),
           is_corner=is_corner
       )
+
   def start():
     # col == 0（角）スタート
     col = 0

@@ -14,11 +14,13 @@
 import time
 
 def solve_n_queens(n:int)->list[list[int]]:
+
   def is_safe(queens:list[int],row:int,col:int)->bool:
     for r,c in enumerate(queens):
       if c==col or abs(c-col)==abs(r-row):
         return False
     return True
+
   def backtrack(row:int,queens:list[int],solutions:list[list[int]]):
     if row==n:
       solutions.append(queens[:])
@@ -28,6 +30,7 @@ def solve_n_queens(n:int)->list[list[int]]:
         queens.append(col)
         backtrack(row+1,queens,solutions)
         queens.pop()
+
   solutions=[]
   backtrack(0,[],solutions)
   return solutions

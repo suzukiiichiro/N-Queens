@@ -59,6 +59,7 @@ import multiprocessing
 
 def solve_partial(col, n, is_center=False, is_corner=False):
   results = []
+
   def backtrack(row, cols, hills, dales, board, queens):
     if row == n:
       results.append(tuple(queens))
@@ -83,7 +84,9 @@ def solve_partial(col, n, is_center=False, is_corner=False):
   bit = 1 << col
   backtrack(1, bit, bit << 1, bit >> 1, 1 << col, [col])
   return results
+
 def solve_n_queens_parallel(n):
+
   def rotate90_list(queens, n):
     board = [[0]*n for _ in range(n)]
     for row, col in enumerate(queens):
@@ -95,8 +98,10 @@ def solve_n_queens_parallel(n):
                 rotated.append(j)
                 break
     return rotated
+
   def mirror_list(queens, n):
     return [n - 1 - q for q in queens]
+
   def is_canonical(queens, n):
     forms = []
     q = queens[:]
@@ -105,6 +110,7 @@ def solve_n_queens_parallel(n):
       forms.append(mirror_list(q, n))
       q = rotate90_list(q, n)
     return queens == min(forms)
+
   def get_symmetries(queens, n):
     boards = []
     q = list(queens)
@@ -113,6 +119,7 @@ def solve_n_queens_parallel(n):
       boards.append(tuple(mirror_list(q, n)))
       q = rotate90_list(q, n)
     return boards
+
   def classify_solution(queens, seen, n):
     symmetries = get_symmetries(queens, n)
     canonical = min(symmetries)
