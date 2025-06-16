@@ -20,12 +20,19 @@
 ✅ 角位置（col==0）とそれ以外で分岐	1行目の col == 0 を is_corner=True として分離し、COUNT2偏重を明示化	backtrack(..., is_corner=True) による分岐	済
 ✅ 対称性分類（COUNT2 / 4 / 8）	回転・反転の8通りから最小値を canonical にし、重複除去＆分類判定	len(set(symmetries)) による分類	済
 
-Python
+CentOS$ python 19PyCodon_single.py
+ N:        Total       Unique         hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.000
+ 6:            4            1         0:00:00.000
+ 7:           40            6         0:00:00.001
+ 8:           92           12         0:00:00.003
+ 9:          352           46         0:00:00.016
 10:          724           92         0:00:00.039
-11:         2680          341         0:00:00.128
-12:        14200         1787         0:00:00.628
-13:        73712         9233         0:00:03.578
-14:       365596        45752         0:00:18.866
+11:         2680          341         0:00:00.195
+12:        14200         1787         0:00:00.915
+13:        73712         9233         0:00:05.590
+14:       365596        45752         0:00:28.942
 """
 
 #pypyを使う場合はコメントを解除
@@ -107,8 +114,8 @@ def solve_n_queens_single(n: int):
         return boards
 
     def classify_solution(queens: List[int], seen: Set[str], n: int) -> str:
-        # ✅構築時ミラー＋回転による重複排除用
-        # クイーン配置の8通りの回転・反転パターン生成
+        # ✅対称性分類（COUNT2 / 4 / 8）
+        # 8通りの中で辞書順最小のもののみ採用
         symmetries = get_symmetries(queens, n)
         canonical = min([str(s) for s in symmetries])
         if canonical in seen:
@@ -121,15 +128,18 @@ def solve_n_queens_single(n: int):
             return 'COUNT4'
         else:
             return 'COUNT2'
-    # シングルスレッド（forで初手を順に探索）
+  # ✅左右対称除去（1行目制限）
+  # 1行目のクイーンは左半分だけ探索
     tasks: List[Tuple[int, int, bool, bool]] = [(col, n, False, col == 0) for col in range(n // 2)]
+    # ✅中央列特別処理（奇数N）
+    # Nが奇数の時、中央列は1つだけ追加
     if n % 2 == 1:
         tasks.append((n // 2, n, True, False))
 
     all_results: List[List[List[int]]] = []
     for col, n_, is_center, is_corner in tasks:
         all_results.append(solve_partial(col, n_, is_center, is_corner))
-
+    # 集約
     seen = set()
     counts = {'COUNT2': 0, 'COUNT4': 0, 'COUNT8': 0}
     for result_set in all_results:
