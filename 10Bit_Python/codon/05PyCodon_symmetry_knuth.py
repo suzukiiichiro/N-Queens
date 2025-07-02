@@ -37,8 +37,8 @@ CentOS$ python 05PyCodon_symmetry_knuth.py
 """
 
 #pypyを使う場合はコメントを解除
-#import pypyjit
-#pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 from datetime import datetime
 
