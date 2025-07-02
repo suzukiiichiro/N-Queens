@@ -22,17 +22,20 @@ class NQueens01:
   size:int
   aboard:list[int]
   count:int
-  def __init__(self):
-    self.size=8
+
+  def __init__(self,size:int)->None:
+    self.size=size;
     self.aboard=[0 for i in range(self.size)]
     self.count=0 
-  def printout(self):
+
+  def printout(self)->None:
     self.count+=1;
     print(self.count, end=": ");
     for i in range(self.size):
       print(self.aboard[i], end="");
     print("");
-  def nqueens(self,row:int):
+
+  def nqueens(self,row:int)->None:
     if row is self.size:
       self.printout();
     else:
@@ -45,6 +48,5 @@ class NQueens01:
 # $ pypy <fileName>
 # $ codon build -release <filename>
 if __name__ == '__main__':
-  NQueens01().nqueens(0)
-
+  NQueens01(5).nqueens(0)
 

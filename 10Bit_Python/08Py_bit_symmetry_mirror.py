@@ -11,43 +11,34 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
-"""
 
-"""
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
+CentOS$ codon build -release 08Python_bit_symmetry_mirror.py
+CentOS$ ./08Python_bit_symmetry_mirror
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
  6:            4            1         0:00:00.000
- 7:           40            6         0:00:00.001
+ 7:           40            6         0:00:00.000
  8:           92           12         0:00:00.000
- 9:          352           46         0:00:00.007
-10:          724           92         0:00:00.011
-11:         2680          341         0:00:00.011
-12:        14200         1787         0:00:00.026
-13:        73712         9233         0:00:00.098
-14:       365596        45752         0:00:00.508
-15:      2279184       285053         0:00:03.026
+ 9:          352           46         0:00:00.000
+10:          724           92         0:00:00.000
+11:         2680          341         0:00:00.002
+12:        14200         1787         0:00:00.006
+13:        73712         9233         0:00:00.020
+14:       365596        45752         0:00:00.100
+15:      2279184       285053         0:00:00.371
+16:     14772512      1846955         0:00:02.726
 
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
+07Python_bit_symmetry.py
+16:     14772512      1846955         0:00:02.379
+06Python_bit_mirror.py
+16:     14772512            0         0:00:04.622
+05Python_bit_backTraking.py
+16:     14772512            0         0:00:09.082
+04Python_symmetry.py
+16:     14772512      1846955         0:00:36.163
+03Python_backTracking.py
+16:     14772512            0         0:01:50.603
 """
 
 from datetime import datetime 

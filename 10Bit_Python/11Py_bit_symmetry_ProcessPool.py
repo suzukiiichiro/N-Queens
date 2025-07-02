@@ -14,45 +14,33 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 """
+CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            1         0:00:00.017
+ 5:           10            2         0:00:00.026
+ 6:            4            1         0:00:00.020
+ 7:           40            6         0:00:00.027
+ 8:           92           12         0:00:00.031
+ 9:          352           46         0:00:00.032
+10:          724           92         0:00:00.070
+11:         2680          341         0:00:00.071
+12:        14200         1787         0:00:00.111
+13:        73712         9233         0:00:00.241
+14:       365596        45752         0:00:00.536
+15:      2279184       285053         0:00:02.278
 CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.018
- 5:           10            2         0:00:00.019
- 6:            4            1         0:00:00.016
- 7:           40            6         0:00:00.028
- 8:           92           12         0:00:00.034
- 9:          352           46         0:00:00.084
-10:          724           92         0:00:00.150
-11:         2680          341         0:00:00.250
-12:        14200         1787         0:00:00.295
-13:        73712         9233         0:00:00.634
-14:       365596        45752         0:00:02.656
 15:      2279184       285053         0:00:03.704
-16:     14772512      1846955         0:00:17.872
-17:     95815104     11977939         0:01:43.887
-
 CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
 15:      2279184       285053         0:00:03.026
-
 CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:06.274
-
 CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
 15:      2279184            0         0:00:12.610
-
 CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
 15:      2279184       285053         0:00:14.413
-
 CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
 15:      2279184       285053         0:00:46.629
-
 CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
 15:      2279184            0         0:00:44.993
 """
 
@@ -113,7 +101,8 @@ from concurrent.futures import ProcessPoolExecutor
 # from python import ThreadPoolExecutor
 # from python import ProcessPoolExecutor
 
-class NQueens09():
+
+class NQueens10():
   def __init__(self):
     pass
 
@@ -295,7 +284,7 @@ class NQueens09():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8
+    return [count2,count4,count8]
 
   def nqueen_threadPool(self,value:list)->list:
     thr_index,size=value
@@ -346,6 +335,7 @@ class NQueens09():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
+
   def solve(self,size:int)->list:
     with concurrent.futures.ThreadPoolExecutor() as executor:
       params=[(thr_index,size) for thr_index in range(size) ]
@@ -363,11 +353,11 @@ class NQueens09():
     params=[(thr_index,size) for thr_index in range(size) ]
     # マルチスレッド版
     # 15:      2279184       285053         0:00:03.553
-    results:list[int]=list(pool.map(self.nqueen_threadPool,params))
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,params))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
-    # results:list[int]=list(pool.map(self.nqueen_processPool,params))
+    results:list[int]=list(pool.map(self.nqueen_processPool,params))
     #
     #
     # スレッドごとの結果を集計
@@ -376,30 +366,30 @@ class NQueens09():
     unique:int=self.getunique(total_counts)
     return [total,unique]
 
-class NQueens09_threadPool:
+class NQueens10_processPool:
   def finalize(self)->None:
     cmd="killall pypy"  # python or pypy
     p = subprocess.Popen("exec " + cmd, shell=True)
     p.kill()
   def main(self):
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
-      NQ=NQueens09()
+      NQ=NQueens10()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
       self.finalize()
 #
 # $ python <filename>
 # $ pypy <fileName>
 # $ codon build -release <filename>
-# codon ではスレッドプールが動かなかった
-# スレッドプール
-# 15:      2279184       285053         0:00:04.684
+# codonではプロセスプールが動かなかった
+# プロセスプール
+# 15:      2279184       285053         0:00:01.528
 if __name__ == '__main__':
-  NQueens09_threadPool().main()
+  NQueens10_processPool().main()
 
