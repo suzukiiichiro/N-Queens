@@ -160,7 +160,8 @@ def backTrack1(size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:i
     count4+=c4
     count8+=c8
   return [count2,count4,count8]
-def nqueen_processPool(thr_index:int,size:int)->list:
+def nqueen_processPool(value:list)->list:
+  thr_index,size=value
   sizeE=size-1
   aboard:list[int]=[0 for i in range(size)]
   # aboard:list[int]
@@ -204,7 +205,8 @@ def nqueen_processPool(thr_index:int,size:int)->list:
     count4+=c4
     count8+=c8
   return count2,count4,count8
-def nqueen_threadPool(thr_index:int,size:int)->list:
+def nqueen_threadPool(value:list)->list:
+  thr_index,size=value
   sizeE:int=size-1
   aboard:list[int]=[0 for i in range(size)]
   bit:int
@@ -254,20 +256,17 @@ def nqueen_threadPool(thr_index:int,size:int)->list:
 #   unique:int=getunique(total_counts)
 #   return [total,unique]
 def solve(size: int) -> list[int]:
-  results: list[list[int]] = [[0]*6 for _ in range(size)]
-
+  params=[(thr_index,size) for thr_index in range(size) ]
+  # results:list[int]=list(pool.map(nqueen_threadPool,params))
+  results=[0]*size
   @parallel
   for i in range(size):
-    results[i] = nqueen_threadPool(i, size)
-
-  # zip(*results) の代替
-  total_counts = [0] * 6
-  for j in range(6):
-    for i in range(size):
-      total_counts[j] += results[i][j]
-  total = gettotal(total_counts)
-  unique = getunique(total_counts)
-  return [total, unique]
+    results[i] = nqueen_threadPool(params[i])
+  # スレッドごとの結果を集計
+  total_counts:int=[sum(x) for x in zip(*results)]
+  total:int=gettotal(total_counts)
+  unique:int=getunique(total_counts)
+  return [total,unique]
 def main():
   nmin:int=4
   nmax:int=18
