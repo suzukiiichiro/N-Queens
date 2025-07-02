@@ -14,63 +14,34 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 """
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
+CentOS$ pypy 09Py_bit_symmetry_ThreadPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.018
- 5:           10            2         0:00:00.019
- 6:            4            1         0:00:00.016
- 7:           40            6         0:00:00.028
- 8:           92           12         0:00:00.034
- 9:          352           46         0:00:00.084
-10:          724           92         0:00:00.150
-11:         2680          341         0:00:00.250
-12:        14200         1787         0:00:00.295
-13:        73712         9233         0:00:00.634
-14:       365596        45752         0:00:02.656
-15:      2279184       285053         0:00:03.704
+ 4:            2            1         0:00:00.052
+ 5:           10            2         0:00:00.016
+ 6:            4            1         0:00:00.019
+ 7:           40            6         0:00:00.042
+ 8:           92           12         0:00:00.038
+ 9:          352           46         0:00:00.038
+10:          724           92         0:00:00.097
+11:         2680          341         0:00:00.093
+12:        14200         1787         0:00:00.174
+13:        73712         9233         0:00:00.213
+14:       365596        45752         0:00:00.561
+15:      2279184       285053         0:00:02.333
+16:     14772512      1846955         0:00:13.043
 
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
-15:      2279184       285053         0:00:03.026
-CentOS-5.1$ pypy 07Python_bit_mirror.py
-15:      2279184            0         0:00:06.274
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
-15:      2279184            0         0:00:12.610
-CentOS-5.1$ pypy 05Python_optimize.py
-15:      2279184       285053         0:00:14.413
-CentOS-5.1$ pypy 04Python_symmetry.py
-15:      2279184       285053         0:00:46.629
-CentOS-5.1$ pypy 03Python_backTracking.py
-15:      2279184            0         0:00:44.993
-"""
-
-"""
-pyenvでpypyをインストール
-$ curl https://pyenv.run | bash
-
-codonのインストール
-/bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
-echo 'export PATH="$HOME/.codon/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-
-codon の実行
-JIT
-$ codon run -release file.py
-
-BUILD exe
-$ codon build -release file.py
-
-外部ライブラリの使い方
-
-libpython*.so を探します
-$ find / -name "libpython*.so"
-
-だいたい以下にあります
-$ locate libpython3
-/home/suzuki/.pyenv/versions/3.13.0/lib/libpython3.so
-
-CODON_PYTHONの環境変数を~/.bash_profileに追加します
-echo "export CODON_PYTHON=$PYENV_ROOT/versions/3.13.0/lib/libpython3.13.so" >> ~/.bash_profile
-
+codon 08Py_bit_symmetry_mirror
+16:     14772512      1846955         0:00:02.726
+codon 07Py_bit_symmetry.py
+16:     14772512      1846955         0:00:02.379
+codon 06Py_bit_mirror.py
+16:     14772512            0         0:00:04.622
+codon 05Py_bit_backTraking.py
+16:     14772512            0         0:00:09.082
+codon 04Py_symmetry.py
+16:     14772512      1846955         0:00:36.163
+codon 03Py_backTracking.py
+16:     14772512            0         0:01:50.603
 """
 
 # -*- coding: utf-8 -*-
@@ -89,17 +60,6 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 #
 #
-# codonを使うときは以下を活かして上記をコメントアウト
-# ThreadPool/ProcessPoolはcodonでは動きません
-#
-# from python import Pool as ThreadPool
-# from python import Thread 
-# from python import threading 
-# from python import multiprocessing
-# from python import concurrent
-# from python import ThreadPoolExecutor
-# from python import ProcessPoolExecutor
-
 class NQueens09():
   def __init__(self):
     pass

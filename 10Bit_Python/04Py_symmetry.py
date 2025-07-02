@@ -12,8 +12,8 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-CentOS$ codon build -release 04Python_symmetry.py
-CentOS$ ./04Python_symmetry
+CentOS$ codon build -release 04Py_symmetry.py
+CentOS$ ./04Py_symmetry
  N:        Total       Unique         hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
@@ -29,7 +29,7 @@ CentOS$ ./04Python_symmetry
 15:      2279184       285053         0:00:05.857
 16:     14772512      1846955         0:00:36.163
 
-03Python_backTracking.py
+03Py_backTracking.py
 16:     14772512            0         0:01:50.603
 """
 
