@@ -12,21 +12,22 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 13Py_NodeLayer_symmetry.py
+fedora$ codon build -release 13Py_NodeLayer_symmetry_codon.py
+fedora$ ./13Py_NodeLayer_symmetry_codon
  N:        Total        Unique        hh:mm:ss.ms
  4:            0            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.002
-10:          724            0         0:00:00.009
-11:         2680            0         0:00:00.048
-12:        14200            0         0:00:00.242
-13:        73712            0         0:00:01.362
-14:       365596            0         0:00:08.417
-15:      2279184            0         0:00:53.576
-16:     14772512            0         0:06:08.755
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.000
+12:        14200            0         0:00:00.005
+13:        73712            0         0:00:00.025
+14:       365596            0         0:00:00.093
+15:      2279184            0         0:00:00.395
+16:     14772512            0         0:00:02.559
 """
 from datetime import datetime
 

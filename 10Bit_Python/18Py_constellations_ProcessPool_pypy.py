@@ -12,20 +12,21 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 18Py_constellations_ProcessPool.py
+fedora$ python 18Py_constellations_ProcessPool.py ^C
+fedora$ pypy 18Py_constellations_ProcessPool_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.035
- 6:            4            0         0:00:00.030
- 7:           40            0         0:00:00.034
- 8:           92            0         0:00:00.037
- 9:          352            0         0:00:00.043
-10:          724            0         0:00:00.063
-11:         2680            0         0:00:00.068
-12:        14200            0         0:00:00.113
-13:        73712            0         0:00:00.325
-14:       365596            0         0:00:01.404
-15:      2279184            0         0:00:08.651
-16:     14772512            0         0:01:04.815
+ 5:           18            0         0:00:00.034
+ 6:            4            0         0:00:00.070
+ 7:           40            0         0:00:00.122
+ 8:           92            0         0:00:00.169
+ 9:          352            0         0:00:00.156
+10:          724            0         0:00:00.178
+11:         2680            0         0:00:00.200
+12:        14200            0         0:00:00.389
+13:        73712            0         0:00:00.825
+14:       365596            0         0:00:01.801
+15:      2279184            0         0:00:03.841
+16:     14772512            0         0:00:13.367
 """
 
 # のこったプロセスをkillallするために必要
@@ -36,8 +37,8 @@ from typing import List,Set,Dict
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 #
 # pypy では ThreadPool/ProcessPoolが動きます
 from threading import Thread

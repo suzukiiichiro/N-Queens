@@ -12,27 +12,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 11Py_NodeLayer.py
+fedora$ pypy 11Py_NodeLayer_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.001
- 9:          352            0         0:00:00.004
-10:          724            0         0:00:00.017
-11:         2680            0         0:00:00.082
-12:        14200            0         0:00:00.401
-13:        73712            0         0:00:02.108
-14:       365596            0         0:00:12.317
-15:      2279184            0         0:01:16.692
-16:     14772512            0         0:08:29.672
+ 7:           40            0         0:00:00.017
+ 8:           92            0         0:00:00.009
+ 9:          352            0         0:00:00.013
+10:          724            0         0:00:00.005
+11:         2680            0         0:00:00.013
+12:        14200            0         0:00:00.068
+13:        73712            0         0:00:00.366
+14:       365596            0         0:00:02.194
+15:      2279184            0         0:00:13.163
+16:     14772512            0         0:01:26.393
 """
 from datetime import datetime
 
 # pypyを使う場合はコメントを解除
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens11:
   def __init__(self)->None:

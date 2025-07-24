@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ノードレイヤー 対象解除版 クラス Ｎクイーン
+ノードレイヤー 対象解除 マルチプロセス版Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,29 +12,39 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 13Py_NodeLayer_symmetry.py
+fedora$ pypy 14Py_NodeLayer_symmetry_ProcessPool_pypy.py
  N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.000
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.002
-10:          724            0         0:00:00.009
-11:         2680            0         0:00:00.048
-12:        14200            0         0:00:00.242
-13:        73712            0         0:00:01.362
-14:       365596            0         0:00:08.417
-15:      2279184            0         0:00:53.576
-16:     14772512            0         0:06:08.755
+ 4:            0            0         0:00:00.023
+ 5:           10            0         0:00:00.023
+ 6:            4            0         0:00:00.047
+ 7:           40            0         0:00:00.085
+ 8:           92            0         0:00:00.121
+ 9:          352            0         0:00:00.137
+10:          724            0         0:00:00.161
+11:         2680            0         0:00:00.218
+12:        14200            0         0:00:00.267
+13:        73712            0         0:00:00.371
+14:       365596            0         0:00:00.761
+15:      2279184            0         0:00:03.040
+16:     14772512            0         0:00:16.340
 """
+import subprocess
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
+from threading import Thread
+from multiprocessing import Pool as ThreadPool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+
+#codonの修正点は2点です
+#・board:list[int]　にする
+#・TOTAL,UNIQUEをなくす
 class Local:
   TOPBIT:int
   ENDBIT:int
@@ -45,7 +55,7 @@ class Local:
   board:list[int]
   def __init__(self,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:list[int])->None:
     self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.board=TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board
-class NQueens13:
+class NQueens14:
   def __init__(self)->None:
     pass
   def count_bits_nodeLayer(self,n:int)->int:
@@ -117,6 +127,7 @@ class NQueens13:
         own+= 1
     # すべての回転が異なる
     return 8
+
   def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local)->int:
     """ 角にQがある場合のバックトラック """
     counter:int=0
@@ -163,7 +174,8 @@ class NQueens13:
       local.board[row]=bit
       counter+=self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return counter
-  def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
+  def symmetry_solve(self,value:list)->int:
+    size,left,down,right,local=value
     if local.board[0]==1:
       return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local)
     else:
@@ -242,26 +254,39 @@ class NQueens13:
       local.ENDBIT=local.ENDBIT>>1
       local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
   def symmetry_build_nodeLayer(self,size:int)->int:
-    """ ツリーの4番目のレイヤーにあるノードを生成 """
+    """ ツリーの3番目のレイヤーにあるノードを生成 """
     nodes:list[int]=[]
     local_list:list[Local]=[] # Localの配列を用意
-    k:int=4 # 4番目のレイヤーを対象
+    k:int=4 # 3番目のレイヤーを対象
     self.kLayer_nodeLayer(size,nodes,k,local_list)
     # 必要なのはノードの半分だけで、各ノードは3つの整数で符号化
     # ミラーでは/6 を /3に変更する
     num_solutions=len(nodes)//3
-    return sum( self.symmetry_solve(size,nodes[3*i],nodes[3*i+1],nodes[3*i+2],local_list[i]) for i in range(num_solutions) )
-class NQueens13_NodeLayer:
+    pool=ThreadPool(size)
+    params=[(
+      size,
+      nodes[3*i],
+      nodes[3*i+1],
+      nodes[3*i+2],
+      local_list[i]
+    ) for i in range(num_solutions)]
+    return sum(list(pool.map(self.symmetry_solve,params)))
+class NQueens14_NodeLayer:
+  def finalize(self)->None:
+    cmd="killall pypy"  # python or pypy
+    p = subprocess.Popen("exec " + cmd, shell=True)
+    p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      NQ=NQueens13()
+      NQ=NQueens14()
       total:int=NQ.symmetry_build_nodeLayer(size)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3] 
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      self.finalize()
 if __name__=="__main__":
-  NQueens13_NodeLayer().main()
+  NQueens14_NodeLayer().main()

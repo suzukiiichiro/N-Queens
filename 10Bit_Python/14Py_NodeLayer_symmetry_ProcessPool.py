@@ -11,99 +11,30 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
-"""
 
-"""
-CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
+fedora$ python 14Py_NodeLayer_symmetry_ProcessPool.py
  N:        Total        Unique        hh:mm:ss.ms
- 4:            0            0         0:00:00.015
- 5:           10            0         0:00:00.025
- 6:            4            0         0:00:00.036
- 7:           40            0         0:00:00.067
- 8:           92            0         0:00:00.096
- 9:          352            0         0:00:00.115
-10:          724            0         0:00:00.123
-11:         2680            0         0:00:00.224
-12:        14200            0         0:00:00.250
-13:        73712            0         0:00:00.344
-14:       365596            0         0:00:00.780
-15:      2279184            0         0:00:03.064
-16:     14772512            0         0:00:17.305
-17:     95815104            0         0:01:59.358
-18:    666090624            0         0:14:48.210
-
-CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.215
-16:     14772512      1846955         0:00:16.017
-17:     95815104     11977939         0:01:39.372
-18:    666090624     83263591         0:11:29.141
-"""
-
-"""
-CentOS-5.1$ pypy 16Python_NodeLayer_symmetoryOps_ProcessPool.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:03.064
-
-CentOS-5.1$ pypy 15Python_NodeLayer_symmetoryOps_class.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:05.425
-
-CentOS-5.1$ pypy 14Python_NodeLayer_symmetoryOps_param.py
- N:        Total        Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.345
-
-CentOS-5.1$ pypy 13Python_NodeLayer_mirror_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:02.926
-
-CentOS-5.1$ pypy 12Python_NodeLayer_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.241
-
-CentOS-5.1$ pypy 11Python_NodeLayer.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.160
-
-CentOS-5.1$ pypy 10Python_bit_symmetry_ProcessPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:01.998
-
-CentOS-5.1$ pypy 09Python_bit_symmetry_ThreadPool.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:02.111
-
-CentOS-5.1$ pypy 08Python_bit_symmetry.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184       285053         0:00:03.026
-
-CentOS-5.1$ pypy 07Python_bit_mirror.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:06.274
-
-CentOS-5.1$ pypy 06Python_bit_backTrack.py
- N:        Total       Unique        hh:mm:ss.ms
-15:      2279184            0         0:00:12.610
-
-CentOS-5.1$ pypy 05Python_optimize.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:14.413
-
-CentOS-5.1$ pypy 04Python_symmetry.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184       285053         0:00:46.629
-
-CentOS-5.1$ pypy 03Python_backTracking.py
- N:        Total       Unique         hh:mm:ss.ms
-15:      2279184            0         0:00:44.993
+ 4:            0            0         0:00:00.018
+ 5:           10            0         0:00:00.018
+ 6:            4            0         0:00:00.021
+ 7:           40            0         0:00:00.023
+ 8:           92            0         0:00:00.027
+ 9:          352            0         0:00:00.032
+10:          724            0         0:00:00.037
+11:         2680            0         0:00:00.071
+12:        14200            0         0:00:00.124
+13:        73712            0         0:00:00.429
+14:       365596            0         0:00:02.272
+15:      2279184            0         0:00:16.681
+16:     14772512            0         0:02:07.623
 """
 import subprocess
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 
 from threading import Thread
 from multiprocessing import Pool as ThreadPool
@@ -122,20 +53,20 @@ class Local:
   BOUND1:int
   BOUND2:int
   board:list[int]
-  def __init__(self,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:list[int]):
+  def __init__(self,TOPBIT:int,ENDBIT:int,LASTMASK:int,SIDEMASK:int,BOUND1:int,BOUND2:int,board:list[int])->None:
     self.TOPBIT,self.ENDBIT,self.LASTMASK,self.SIDEMASK,self.BOUND1,self.BOUND2,self.board=TOPBIT,ENDBIT,LASTMASK,SIDEMASK,BOUND1,BOUND2,board
-class NQueens21:
-  def __init__(self):
+class NQueens14:
+  def __init__(self)->None:
     pass
-  """ビットが1である数をカウント"""
   def count_bits_nodeLayer(self,n:int)->int:
+    """ビットが1である数をカウント"""
     counter:int=0
     while n:
       n&=n-1
       counter+=1
     return counter
-  """対称解除操作"""
   def symmetryOps(self,size:int,local:Local)->int:
+    """対称解除操作"""
     ptn:int=0
     own:int=0
     bit:int=0
@@ -197,8 +128,8 @@ class NQueens21:
     # すべての回転が異なる
     return 8
 
-  """ 角にQがある場合のバックトラック """
   def symmetry_solve_nodeLayer_corner(self,size:int,left:int,down:int,right:int,local:Local)->int:
+    """ 角にQがある場合のバックトラック """
     counter:int=0
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
@@ -216,10 +147,8 @@ class NQueens21:
       bitmap^=bit
       counter+=self.symmetry_solve_nodeLayer_corner(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return counter
-
-
-  """ 角にQがない場合のバックトラック """
   def symmetry_solve_nodeLayer(self,size:int,left:int,down:int,right:int,local:Local)->int:
+    """ 角にQがない場合のバックトラック """
     counter:int=0
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
@@ -245,18 +174,14 @@ class NQueens21:
       local.board[row]=bit
       counter+=self.symmetry_solve_nodeLayer(size,(left|bit)<<1,down|bit,(right|bit)>>1,local)
     return counter
-
-  """ """
-  # def symmetry_solve(self,size:int,left:int,down:int,right:int,local:Local)->int:
   def symmetry_solve(self,value:list)->int:
     size,left,down,right,local=value
     if local.board[0]==1:
       return self.symmetry_solve_nodeLayer_corner(size,left,down,right,local)
     else:
       return self.symmetry_solve_nodeLayer(size,left,down,right,local)
-
-  """ 角にQがある場合のバックトラック """
-  def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,local_list:list):
+  def kLayer_nodeLayer_backtrack_corner(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,local_list:list)->None:
+    """ 角にQがある場合のバックトラック """
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     bit:int=0
@@ -274,9 +199,8 @@ class NQueens21:
         bit=-bitmap&bitmap
         bitmap^=bit
         self.kLayer_nodeLayer_backtrack_corner(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,local_list)
-
-  """ 角にQがない場合のバックトラック """
   def kLayer_nodeLayer_backtrack(self,size:int,nodes:list,k:int,left:int,down:int,right:int,local:Local,local_list:list)->None:
+    """ 角にQがない場合のバックトラック """
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     row:int= self.count_bits_nodeLayer(down)
@@ -301,18 +225,9 @@ class NQueens21:
       bitmap^=bit
       local.board[row]=bit
       self.kLayer_nodeLayer_backtrack(size,nodes,k,(left|bit)<<1,down|bit,(right|bit)>>1,local,local_list)
-
-
-
-  """ kレイヤーのすべてのノードを含むベクトルを返す """
-  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:list):
+  def kLayer_nodeLayer(self,size:int,nodes:list,k:int,local_list:list)->None:
+    """ kレイヤーのすべてのノードを含むベクトルを返す """
     local=Local(TOPBIT=1<<(size-1),ENDBIT=0,LASTMASK=0,SIDEMASK=0,BOUND1=2,BOUND2=0,board=[0]*size)
-
-
-
-
-
-
     local.board[0]=1
     bit:int=0
     # 角にQがある場合のバックトラック
@@ -338,10 +253,8 @@ class NQueens21:
       local.BOUND2-=1
       local.ENDBIT=local.ENDBIT>>1
       local.LASTMASK=(local.LASTMASK<<1)|local.LASTMASK|(local.LASTMASK>>1)
-
-  """ """
   def symmetry_build_nodeLayer(self,size:int)->int:
-    # ツリーの3番目のレイヤーにあるノードを生成
+    """ ツリーの3番目のレイヤーにあるノードを生成 """
     nodes:list[int]=[]
     local_list:list[Local]=[] # Localの配列を用意
     k:int=4 # 3番目のレイヤーを対象
@@ -358,8 +271,7 @@ class NQueens21:
       local_list[i]
     ) for i in range(num_solutions)]
     return sum(list(pool.map(self.symmetry_solve,params)))
-""" """
-class NQueens21_NodeLayer:
+class NQueens14_NodeLayer:
   def finalize(self)->None:
     cmd="killall pypy"  # python or pypy
     p = subprocess.Popen("exec " + cmd, shell=True)
@@ -370,12 +282,11 @@ class NQueens21_NodeLayer:
     print(" N:        Total        Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      NQ=NQueens21()
+      NQ=NQueens14()
       total:int=NQ.symmetry_build_nodeLayer(size)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3] 
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
       self.finalize()
-# メイン実行部分
 if __name__=="__main__":
-  NQueens21_NodeLayer().main()
+  NQueens14_NodeLayer().main()

@@ -12,28 +12,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 13Py_NodeLayer_symmetry.py
+fedora$ pypy 13Py_NodeLayer_symmetry_pypy.py
  N:        Total        Unique        hh:mm:ss.ms
  4:            0            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.002
-10:          724            0         0:00:00.009
-11:         2680            0         0:00:00.048
-12:        14200            0         0:00:00.242
-13:        73712            0         0:00:01.362
-14:       365596            0         0:00:08.417
-15:      2279184            0         0:00:53.576
-16:     14772512            0         0:06:08.755
+ 7:           40            0         0:00:00.001
+ 8:           92            0         0:00:00.004
+ 9:          352            0         0:00:00.010
+10:          724            0         0:00:00.014
+11:         2680            0         0:00:00.028
+12:        14200            0         0:00:00.046
+13:        73712            0         0:00:00.187
+14:       365596            0         0:00:00.972
+15:      2279184            0         0:00:05.844
+16:     14772512            0         0:00:38.561
 """
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-# pypy では ThreadPool/ProcessPoolが動きます 
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class Local:
   TOPBIT:int

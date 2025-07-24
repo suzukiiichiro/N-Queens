@@ -12,20 +12,34 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 08Py_bit_symmetry_mirror.py
+fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py
+fedora$ ./08Py_bit_symmetry_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
  6:            4            1         0:00:00.000
  7:           40            6         0:00:00.000
  8:           92           12         0:00:00.000
- 9:          352           46         0:00:00.001
-10:          724           92         0:00:00.004
-11:         2680          341         0:00:00.023
-12:        14200         1787         0:00:00.115
-13:        73712         9233         0:00:00.569
-14:       365596        45752         0:00:03.425
-15:      2279184       285053         0:00:20.286
+ 9:          352           46         0:00:00.000
+10:          724           92         0:00:00.000
+11:         2680          341         0:00:00.000
+12:        14200         1787         0:00:00.003
+13:        73712         9233         0:00:00.011
+14:       365596        45752         0:00:00.075
+15:      2279184       285053         0:00:00.395
+16:     14772512      1846955         0:00:02.705
+17:     95815104     11977939         0:00:18.081
+
+fedora$ ./08Py_bit_symmetry_mirror_codon
+17:     95815104     11977939         0:00:18.081
+fedora$ ./07Py_bit_symmetry_codon
+17:     95815104     11977939         0:00:17.791
+fedora$ ./06Py_bit_mirror_codon
+17:     95815104            0         0:00:37.604
+fedora$ ./05Py_bit_backTracking_codon
+17:     95815104            0         0:01:12.873
+fedora$ ./04Py_symmetry_codon
+17:     95815104     11977939         0:04:48.923
 """
 from datetime import datetime 
 

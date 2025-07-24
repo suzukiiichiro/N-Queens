@@ -12,26 +12,47 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 09Py_bit_symmetry_ThreadPool.py
+fedora$ pypy 10Py_bit_symmetry_ProcessPool_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.020
- 5:           10            2         0:00:00.018
- 6:            4            1         0:00:00.020
- 7:           40            6         0:00:00.023
- 8:           92           12         0:00:00.025
- 9:          352           46         0:00:00.028
-10:          724           92         0:00:00.033
-11:         2680          341         0:00:00.043
-12:        14200         1787         0:00:00.089
-13:        73712         9233         0:00:00.298
-14:       365596        45752         0:00:01.391
-15:      2279184       285053         0:00:08.254
+ 4:            2            1         0:00:00.033
+ 5:           10            2         0:00:00.023
+ 6:            4            1         0:00:00.029
+ 7:           40            6         0:00:00.033
+ 8:           92           12         0:00:00.039
+ 9:          352           46         0:00:00.055
+10:          724           92         0:00:00.078
+11:         2680          341         0:00:00.093
+12:        14200         1787         0:00:00.147
+13:        73712         9233         0:00:00.205
+14:       365596        45752         0:00:00.551
+15:      2279184       285053         0:00:02.102
+16:     14772512      1846955         0:00:12.423
+
+fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py
+fedora$ ./08Py_bit_symmetry_mirror_codon
+16:     14772512      1846955         0:00:02.705
+
+pypy 09Py_bit_symmetry_ThreadPool_pypy.py
+16:     14772512      1846955         0:00:12.788
+pypy 08Py_bit_symmetry_mirror_pypy.py
+16:     14772512      1846955         0:00:22.829
+pypy 07Py_bit_symmetry_pypy.py
+16:     14772512      1846955         0:00:21.331
+pypy 06Py_bit_mirror_pypy.py
+16:     14772512            0         0:00:46.194
+pypy 05Py_bit_backTraking_pypy.py
+16:     14772512            0         0:01:31.985
+pypy 04Py_symmetry_pypy.py
+16:     14772512      1846955         0:01:40.660
+pypy 03Py_backTracking_pypy.py
+16:     14772512            0         0:05:34.707
 """
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
-
+import pypyjit
+# pypyで再帰が高速化できる
+pypyjit.set_param('max_unroll_recursion=-1')
+#
 import subprocess
 from datetime import datetime
 from threading import Thread
@@ -40,8 +61,7 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 #
-#
-class NQueens09():
+class NQueens10():
   def __init__(self)->None:
     pass
   def getunique(self,counts:list)->int:
@@ -183,6 +203,11 @@ class NQueens09():
     thr_index,size=value
     sizeE=size-1
     aboard:list[int]=[0 for i in range(size)]
+    # aboard:list[int]
+    # for i in range(size):
+    #   aboard[i]=0
+    # aboard=[[0]*size*2]*size
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
     bit:int
     topbit:int
     endbit:int
@@ -218,12 +243,21 @@ class NQueens09():
       count2+=c2
       count4+=c4
       count8+=c8
-    return count2,count4,count8
+    return [count2,count4,count8]
   def nqueen_threadPool(self,value:list)->list:
     """ スレッドプール用 """
     thr_index,size=value
     sizeE:int=size-1
     aboard:list[int]=[0 for i in range(size)]
+    # aboard:list[int]
+    # aboard=[[0]*size*2]*size
+    # aboard:list[int]=[[0]*size*2]*size
+    # for i in range(size):
+    #   aboard[i]=0
+    # aboard=[[i for i in range(2*size-1)]for j in range(size)]
+    # aboard:list[int]
+    # for i in range(size):
+    #   aboard.insert(i,0)
     bit:int
     topbit:int
     endbit:int
@@ -278,11 +312,11 @@ class NQueens09():
     params=[(thr_index,size) for thr_index in range(size) ]
     # マルチスレッド版
     # 15:      2279184       285053         0:00:03.553
-    results:list[int]=list(pool.map(self.nqueen_threadPool,params))
+    # results:list[int]=list(pool.map(self.nqueen_threadPool,params))
     #
     # マルチプロセス版
     # 15:      2279184       285053         0:00:02.378
-    # results:list[int]=list(pool.map(self.nqueen_processPool,params))
+    results:list[int]=list(pool.map(self.nqueen_processPool,params))
     #
     #
     # スレッドごとの結果を集計
@@ -290,7 +324,7 @@ class NQueens09():
     total:int=self.gettotal(total_counts)
     unique:int=self.getunique(total_counts)
     return [total,unique]
-class NQueens09_threadPool:
+class NQueens10_processPool:
   def finalize(self)->None:
     """ 終了時にすべてのpythonプロセスをkillする """
     cmd="killall pypy"  # python or pypy
@@ -298,16 +332,16 @@ class NQueens09_threadPool:
     p.kill()
   def main(self)->None:
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       start_time=datetime.now()
-      NQ=NQueens09()
+      NQ=NQueens10()
       total,unique=NQ.solve(size)
       time_elapsed=datetime.now()-start_time
-      text = str(time_elapsed)[:-3]  
+      text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
       self.finalize()
 if __name__ == '__main__':
-  NQueens09_threadPool().main()
+  NQueens10_processPool().main()
 

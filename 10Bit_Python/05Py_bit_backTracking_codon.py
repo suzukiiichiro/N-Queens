@@ -12,20 +12,21 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 05Py_bit_backTracking.py
+fedora$ codon build -release 05Py_bit_backTracking_codon.py
+fedora$ ./05Py_bit_backTracking_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.003
-10:          724            0         0:00:00.015
-11:         2680            0         0:00:00.082
-12:        14200            0         0:00:00.382
-13:        73712            0         0:00:02.130
-14:       365596            0         0:00:12.538
-15:      2279184            0         0:01:18.974
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.002
+12:        14200            0         0:00:00.008
+13:        73712            0         0:00:00.044
+14:       365596            0         0:00:00.251
+15:      2279184            0         0:00:01.557
 """
 from datetime import datetime 
 

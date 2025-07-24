@@ -12,29 +12,29 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ pypy 12Py_NodeLayer_mirror.py
+fedora$ pypy 12Py_NodeLayer_mirror_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.005
- 9:          352            0         0:00:00.016
-10:          724            0         0:00:00.038
-11:         2680            0         0:00:00.056
-12:        14200            0         0:00:00.103
-13:        73712            0         0:00:00.217
-14:       365596            0         0:00:01.058
-15:      2279184            0         0:00:06.171
-16:     14772512            0         0:00:40.652
+ 8:           92            0         0:00:00.004
+ 9:          352            0         0:00:00.006
+10:          724            0         0:00:00.007
+11:         2680            0         0:00:00.007
+12:        14200            0         0:00:00.035
+13:        73712            0         0:00:00.179
+14:       365596            0         0:00:01.068
+15:      2279184            0         0:00:06.593
+16:     14772512            0         0:00:43.937
 """
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
 #
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+pypyjit.set_param('max_unroll_recursion=-1')
 #
 step=0
 class NQueens12:

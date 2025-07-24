@@ -12,27 +12,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 06Py_bit_mirror.py
+fedora$ pypy 06Py_bit_mirror_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.002
-10:          724            0         0:00:00.008
-11:         2680            0         0:00:00.047
-12:        14200            0         0:00:00.210
-13:        73712            0         0:00:01.252
-14:       365596            0         0:00:06.819
-15:      2279184            0         0:00:45.747
+ 8:           92            0         0:00:00.003
+ 9:          352            0         0:00:00.022
+10:          724            0         0:00:00.035
+11:         2680            0         0:00:00.042
+12:        14200            0         0:00:00.079
+13:        73712            0         0:00:00.213
+14:       365596            0         0:00:01.087
+15:      2279184            0         0:00:06.813
 """
 from datetime import datetime 
 
 # pypyを使う場合はコメントを解除
-# import pypyjit
+import pypyjit
 # pypyで再帰が高速化できる
-# pypyjit.set_param('max_unroll_recursion=-1')
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens06():
   total:int=0

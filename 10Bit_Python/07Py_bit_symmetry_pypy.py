@@ -12,29 +12,29 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 08Py_bit_symmetry_mirror.py
+fedora$ pypy 07Py_bit_symmetry_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
  6:            4            1         0:00:00.000
  7:           40            6         0:00:00.000
  8:           92           12         0:00:00.000
- 9:          352           46         0:00:00.001
-10:          724           92         0:00:00.004
-11:         2680          341         0:00:00.023
-12:        14200         1787         0:00:00.115
-13:        73712         9233         0:00:00.569
-14:       365596        45752         0:00:03.425
-15:      2279184       285053         0:00:20.286
+ 9:          352           46         0:00:00.009
+10:          724           92         0:00:00.013
+11:         2680          341         0:00:00.011
+12:        14200         1787         0:00:00.028
+13:        73712         9233         0:00:00.106
+14:       365596        45752         0:00:00.543
+15:      2279184       285053         0:00:03.313
 """
 from datetime import datetime 
 
 # pypyを使う場合はコメントを解除
-# import pypyjit
+import pypyjit
 # pypyで再帰が高速化できる
-# pypyjit.set_param('max_unroll_recursion=-1')
+pypyjit.set_param('max_unroll_recursion=-1')
 
-class NQueens08():
+class NQueens07():
   total:int
   unique:int
   board:list[int]
@@ -185,30 +185,22 @@ class NQueens08():
     self.topbit=1<<(size-1)
     self.endbit=self.topbit>>1
     self.sidemask=self.lastmask=self.topbit|1
-    self.bound1 = 1
-    self.bound2 = size - 2
-    # 修正した部分
-    limit = (size // 2) - 1 if size % 2 == 0 else size // 2
-    while self.bound1 <= limit:
-        bit = 1 << self.bound1
-        self.board[0] = bit
-        self.backTrack2(size, 1, bit << 1, bit, bit >> 1)
-        self.bound1 += 1
-        self.bound2 -= 1
-        self.endbit >>= 1
-        self.lastmask = (self.lastmask << 1) | self.lastmask | (self.lastmask >> 1)
-    # 偶数Nなら中央列の処理を追加
-    if size % 2 == 0:
-        bit = 1 << (size // 2)
-        self.board[0] = bit
-        self.backTrack2(size, 1, bit << 1, bit, bit >> 1)
-    self.unique = self.count2 + self.count4 + self.count8
-    self.total = self.count2 * 2 + self.count4 * 4 + self.count8 * 8
+    self.bound1=1
+    self.bound2=size-2
+    while self.bound1>0 and self.bound2<size-1 and self.bound1<self.bound2:
+      if self.bound1<self.bound2:
+        bit=1<<self.bound1
+        self.board[0]=bit
+        self.backTrack2(size,1,bit<<1,bit,bit>>1)
+      self.bound1+=1
+      self.bound2-=1
+      self.endbit=self.endbit>>1
+      self.lastmask=self.lastmask<<1|self.lastmask|self.lastmask>>1
     self.unique=self.count2+self.count4+self.count8
     self.total=self.count2*2+self.count4*4+self.count8*8
   def main(self)->None:
     nmin:int=4
-    nmax:int=18
+    nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin, nmax):
       self.init(size)
@@ -218,5 +210,6 @@ class NQueens08():
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 if __name__=='__main__':
-  NQueens08().main();
+  NQueens07().main();
+
 

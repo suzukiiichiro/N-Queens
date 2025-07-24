@@ -12,20 +12,21 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 04Py_symmetry.py
+fedora$ codon build -release 04Py_symmetry_codon.py
+fedora$ ./04Py_symmetry_codon
  N:        Total       Unique         hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
  6:            4            1         0:00:00.000
  7:           40            6         0:00:00.000
- 8:           92           12         0:00:00.001
- 9:          352           46         0:00:00.005
-10:          724           92         0:00:00.019
-11:         2680          341         0:00:00.102
-12:        14200         1787         0:00:00.482
-13:        73712         9233         0:00:02.875
-14:       365596        45752         0:00:15.843
-15:      2279184       285053         0:01:46.939
+ 8:           92           12         0:00:00.000
+ 9:          352           46         0:00:00.000
+10:          724           92         0:00:00.001
+11:         2680          341         0:00:00.006
+12:        14200         1787         0:00:00.031
+13:        73712         9233         0:00:00.166
+14:       365596        45752         0:00:00.904
+15:      2279184       285053         0:00:06.097
 """
 from datetime import datetime 
 
@@ -158,7 +159,7 @@ class NQueens04:
       self.aboard[size-1]=tmp
   def main(self)->None:
     min:int=4
-    max:int=16
+    max:int=18
     print(" N:        Total       Unique         hh:mm:ss.ms")
     for size in range(min,max):
       self.init(size)

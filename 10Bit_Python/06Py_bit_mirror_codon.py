@@ -12,20 +12,21 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 06Py_bit_mirror.py
+fedora$ codon build -release 06Py_bit_mirror_codon.py
+fedora$ ./06Py_bit_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.002
-10:          724            0         0:00:00.008
-11:         2680            0         0:00:00.047
-12:        14200            0         0:00:00.210
-13:        73712            0         0:00:01.252
-14:       365596            0         0:00:06.819
-15:      2279184            0         0:00:45.747
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.000
+12:        14200            0         0:00:00.005
+13:        73712            0         0:00:00.026
+14:       365596            0         0:00:00.125
+15:      2279184            0         0:00:00.810
 """
 from datetime import datetime 
 

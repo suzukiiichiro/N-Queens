@@ -11,47 +11,26 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
-"""
 
-"""
-CentOS$ pypy 10Py_bit_symmetry_ProcessPool.py
+fedora$ python 10Py_bit_symmetry_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.020
- 5:           10            2         0:00:00.013
+ 4:            2            1         0:00:00.016
+ 5:           10            2         0:00:00.019
  6:            4            1         0:00:00.020
- 7:           40            6         0:00:00.034
- 8:           92           12         0:00:00.024
- 9:          352           46         0:00:00.033
-10:          724           92         0:00:00.091
-11:         2680          341         0:00:00.104
-12:        14200         1787         0:00:00.155
-13:        73712         9233         0:00:00.208
-14:       365596        45752         0:00:00.764
-15:      2279184       285053         0:00:02.310
-16:     14772512      1846955         0:00:12.534
-
-pypy 09Py_bit_symmetry_ThreadPool.py
-16:     14772512      1846955         0:00:13.043
-codon 08Py_bit_symmetry_mirror
-16:     14772512      1846955         0:00:02.726
-codon 07Py_bit_symmetry.py
-16:     14772512      1846955         0:00:02.379
-codon 06Py_bit_mirror.py
-16:     14772512            0         0:00:04.622
-codon 05Py_bit_backTraking.py
-16:     14772512            0         0:00:09.082
-codon 04Py_symmetry.py
-16:     14772512      1846955         0:00:36.163
-codon 03Py_backTracking.py
-16:     14772512            0         0:01:50.603
+ 7:           40            6         0:00:00.022
+ 8:           92           12         0:00:00.026
+ 9:          352           46         0:00:00.029
+10:          724           92         0:00:00.031
+11:         2680          341         0:00:00.049
+12:        14200         1787         0:00:00.087
+13:        73712         9233         0:00:00.289
+14:       365596        45752         0:00:01.434
+15:      2279184       285053         0:00:08.400
 """
-
-# -*- coding: utf-8 -*-
-#
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-import pypyjit
-pypyjit.set_param('max_unroll_recursion=-1')
+# import pypyjit
+# pypyjit.set_param('max_unroll_recursion=-1')
 #
 import subprocess
 from datetime import datetime
@@ -61,38 +40,25 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 #
-#
-# codonを使うときは以下を活かして上記をコメントアウト
-# ThreadPool/ProcessPoolはcodonでは動きません
-#
-# from python import Pool as ThreadPool
-# from python import Thread 
-# from python import threading 
-# from python import multiprocessing
-# from python import concurrent
-# from python import ThreadPoolExecutor
-# from python import ProcessPoolExecutor
-
-
 class NQueens10():
-  def __init__(self):
+  def __init__(self)->None:
     pass
-
   def getunique(self,counts:list)->int:
+    """ ユニーク値を取得 """
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2+count4+count8
-
   def gettotal(self,counts:list)->int:
+    """ 合計解を取得 """
     count2:int
     count4:int
     count8:int
     count2,count4,count8=counts
     return count2*2+count4*4+count8*8
-
   def symmetryops(self,size:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
+    """ 対象解除法 """
     count2:int
     count4:int
     count8:int
@@ -147,8 +113,8 @@ class NQueens10():
         ptn>>=1
     count8+=1
     return [count2,count4,count8]
-
   def backTrack2(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
+    """ 角にQがない場合のバックトラック """
     count2:int
     count4:int
     count8:int
@@ -184,8 +150,8 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
-
   def backTrack1(self,size:int,row:int,left:int,down:int,right:int,aboard:list,topbit:int,endbit:int,sidemask:int,lastmask:int,bound1:int,bound2:int)->list:
+    """ 角にQがある場合のバックトラック """
     count2:int=0
     count4:int=0
     count8:int=0
@@ -211,8 +177,8 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
-
   def nqueen_processPool(self,value:list)->list:
+    """ プロセスプール用 """
     thr_index,size=value
     sizeE=size-1
     aboard:list[int]=[0 for i in range(size)]
@@ -257,8 +223,8 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
-
   def nqueen_threadPool(self,value:list)->list:
+    """ スレッドプール用 """
     thr_index,size=value
     sizeE:int=size-1
     aboard:list[int]=[0 for i in range(size)]
@@ -307,8 +273,8 @@ class NQueens10():
       count4+=c4
       count8+=c8
     return [count2,count4,count8]
-
   def solve(self,size:int)->list:
+    """ 集計 """
     with concurrent.futures.ThreadPoolExecutor() as executor:
       params=[(thr_index,size) for thr_index in range(size) ]
     #
@@ -337,13 +303,13 @@ class NQueens10():
     total:int=self.gettotal(total_counts)
     unique:int=self.getunique(total_counts)
     return [total,unique]
-
 class NQueens10_processPool:
   def finalize(self)->None:
+    """ 終了時にすべてのpythonプロセスをkillする """
     cmd="killall pypy"  # python or pypy
     p = subprocess.Popen("exec " + cmd, shell=True)
     p.kill()
-  def main(self):
+  def main(self)->None:
     nmin:int=4
     nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
@@ -355,13 +321,6 @@ class NQueens10_processPool:
       text = str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
       self.finalize()
-#
-# $ python <filename>
-# $ pypy <fileName>
-# $ codon build -release <filename>
-# codonではプロセスプールが動かなかった
-# プロセスプール
-# 15:      2279184       285053         0:00:01.528
 if __name__ == '__main__':
   NQueens10_processPool().main()
 

@@ -13,13 +13,10 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
 
-fedora$ python 01Py_bluteForce.py
+fedora$ codon build -release 01Py_bluteForce_codon.py
+fedora$ ./01Py_bluteForce_codon
 :
 :
-3111: 44420
-3112: 44421
-3113: 44422
-3114: 44423
 3115: 44424
 3116: 44430
 3117: 44431
@@ -32,8 +29,6 @@ fedora$ python 01Py_bluteForce.py
 3124: 44443
 3125: 44444
 fedora$
-
-
 """
 # pypyを使う場合はコメントを解除
 # import pypyjit

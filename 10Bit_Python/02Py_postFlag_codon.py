@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ブルートフォース版 Ｎクイーン
+ポストフラグ版 Ｎクイーン
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -11,56 +11,58 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+Bash版ですが内容は同じです。
 
-
-fedora$ python 01Py_bluteForce.py
+fedora$ codon build -release 02Py_postFlag_codon.py
+fedora$ time ./02Py_postFlag_codon
 :
 :
-3111: 44420
-3112: 44421
-3113: 44422
-3114: 44423
-3115: 44424
-3116: 44430
-3117: 44431
-3118: 44432
-3119: 44433
-3120: 44434
-3121: 44440
-3122: 44441
-3123: 44442
-3124: 44443
-3125: 44444
+40312: 76542130
+40313: 76542300
+40314: 76542310
+40315: 76543010
+40316: 76543020
+40317: 76543100
+40318: 76543120
+40319: 76543200
+40320: 76543210
+
+real	0m0.916s
+user	0m0.437s
+sys	0m0.444s
 fedora$
-
-
 """
 # pypyを使う場合はコメントを解除
-# import pypyjit
 # pypyで再帰が高速化できる
+# import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 
-class NQueens01:
+class NQueens02:
   size:int
-  aboard:list[int]
   count:int
+  aboard:list[int]
+  fa:list[int]
   def __init__(self,size:int)->None:
     self.size=size;
-    self.aboard=[0 for i in range(self.size)]
-    self.count=0 
+    self.count=0;
+    self.aboard=[0 for i in range(self.size)];
+    self.fa=[0 for i in range(self.size)];
   def printout(self)->None:
     self.count+=1;
-    print(self.count, end=": ");
+    print(self.count,end=": ");
     for i in range(self.size):
-      print(self.aboard[i], end="");
+      print(self.aboard[i],end="");
     print("");
   def nqueens(self,row:int)->None:
-    if row is self.size:
+    if row==self.size-1:
       self.printout();
     else:
       for i in range(self.size):
         self.aboard[row]=i;
-        self.nqueens(row+1);
+        if self.fa[i]==0:
+          self.fa[i]=1;
+          self.nqueens(row+1);
+          self.fa[i]=0;
 if __name__ == '__main__':
-  NQueens01(5).nqueens(0)
+  NQueens02(8).nqueens(0);
 

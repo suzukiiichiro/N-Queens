@@ -12,38 +12,26 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-CentOS$ codon build -release 07Py_bit_symmetry.py
-CentOS$ ./07Py_bit_symmetry
+fedora$ python 07Py_bit_symmetry.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
  6:            4            1         0:00:00.000
  7:           40            6         0:00:00.000
  8:           92           12         0:00:00.000
- 9:          352           46         0:00:00.000
-10:          724           92         0:00:00.000
-11:         2680          341         0:00:00.000
-12:        14200         1787         0:00:00.002
-13:        73712         9233         0:00:00.011
-14:       365596        45752         0:00:00.067
-15:      2279184       285053         0:00:00.367
-16:     14772512      1846955         0:00:02.379
-
-06Py_bit_mirror.py
-16:     14772512            0         0:00:04.622
-05Py_bit_backTraking.py
-16:     14772512            0         0:00:09.082
-04Py_symmetry.py
-16:     14772512      1846955         0:00:36.163
-03Py_backTracking.py
-16:     14772512            0         0:01:50.603
-
+ 9:          352           46         0:00:00.001
+10:          724           92         0:00:00.004
+11:         2680          341         0:00:00.021
+12:        14200         1787         0:00:00.111
+13:        73712         9233         0:00:00.574
+14:       365596        45752         0:00:03.371
+15:      2279184       285053         0:00:20.538
 """
-
-
 from datetime import datetime 
+
 # pypyを使う場合はコメントを解除
 # import pypyjit
+# pypyで再帰が高速化できる
 # pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens07():
@@ -59,11 +47,9 @@ class NQueens07():
   count2:int
   count4:int
   count8:int
-
-  def __init__(self):
+  def __init__(self)->None:
     pass
-
-  def init(self,size:int):
+  def init(self,size:int)->None:
     self.total=0
     self.unique=0
     self.board=[0 for i in range(size)]
@@ -76,8 +62,7 @@ class NQueens07():
     self.count2=0
     self.count4=0
     self.count8=0
-
-  def symmetryops(self,size:int):
+  def symmetryops(self,size:int)->None:
     """ 対象解除 """
     # 90度回転
     if self.board[self.bound2]==1:
@@ -138,8 +123,7 @@ class NQueens07():
         own+=1
         ptn>>=1
     self.count8+=1
-
-  def backTrack2(self,size:int,row:int,left:int,down:int,right:int):
+  def backTrack2(self,size:int,row:int,left:int,down:int,right:int)->None:
     """ 角にQがない場合のバックトラック """
     bit:int=0
     mask:int=(1<<size)-1
@@ -165,8 +149,7 @@ class NQueens07():
         bitmap^=bit
         self.board[row]=bit
         self.backTrack2(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
-
-  def backTrack1(self,size:int,row:int,left:int,down:int,right:int):
+  def backTrack1(self,size:int,row:int,left:int,down:int,right:int)->None:
     """ 角にQがある場合のバックトラック """
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
@@ -185,9 +168,7 @@ class NQueens07():
         bitmap^=bit
         self.board[row]=bit
         self.backTrack1(size,row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
-  """ """
-
-  def NQueens(self,size:int):
+  def NQueens(self,size:int)->None:
     bit:int=0
     self.total=self.unique=self.count2=self.count4=self.count8=0
     self.topbit=1<<(size-1)
@@ -217,8 +198,7 @@ class NQueens07():
       self.lastmask=self.lastmask<<1|self.lastmask|self.lastmask>>1
     self.unique=self.count2+self.count4+self.count8
     self.total=self.count2*2+self.count4*4+self.count8*8
-
-  def main(self):
+  def main(self)->None:
     nmin:int=4
     nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")
@@ -229,12 +209,6 @@ class NQueens07():
       time_elapsed = datetime.now()-start_time
       text = str(time_elapsed)[:-3]  
       print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
-
-# $ python <filename>
-# $ pypy <fileName>
-# $ codon build -release <filename>
-# 7.対象解除法とビットマップ
-# 15:      2279184       285053         0:00:00.377
 if __name__=='__main__':
   NQueens07().main();
 

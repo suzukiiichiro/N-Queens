@@ -12,27 +12,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 05Py_bit_backTracking.py
+fedora$ pypy 05Py_bit_backTracking_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.003
-10:          724            0         0:00:00.015
-11:         2680            0         0:00:00.082
-12:        14200            0         0:00:00.382
-13:        73712            0         0:00:02.130
-14:       365596            0         0:00:12.538
-15:      2279184            0         0:01:18.974
+ 8:           92            0         0:00:00.007
+ 9:          352            0         0:00:00.002
+10:          724            0         0:00:00.003
+11:         2680            0         0:00:00.014
+12:        14200            0         0:00:00.071
+13:        73712            0         0:00:00.393
+14:       365596            0         0:00:02.298
+15:      2279184            0         0:00:13.972
 """
 from datetime import datetime 
 
 # pypyを使う場合はコメントを解除
-# import pypyjit
+import pypyjit
 # pypyで再帰が高速化できる
-# pypyjit.set_param('max_unroll_recursion=-1')
+pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens05():
   total:int

@@ -12,25 +12,26 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 09Py_bit_symmetry_ThreadPool.py
+fedora$ pypy 09Py_bit_symmetry_ThreadPool_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.020
- 5:           10            2         0:00:00.018
- 6:            4            1         0:00:00.020
- 7:           40            6         0:00:00.023
- 8:           92           12         0:00:00.025
- 9:          352           46         0:00:00.028
-10:          724           92         0:00:00.033
-11:         2680          341         0:00:00.043
-12:        14200         1787         0:00:00.089
-13:        73712         9233         0:00:00.298
-14:       365596        45752         0:00:01.391
-15:      2279184       285053         0:00:08.254
+ 4:            2            1         0:00:00.035
+ 5:           10            2         0:00:00.024
+ 6:            4            1         0:00:00.027
+ 7:           40            6         0:00:00.038
+ 8:           92           12         0:00:00.034
+ 9:          352           46         0:00:00.054
+10:          724           92         0:00:00.080
+11:         2680          341         0:00:00.087
+12:        14200         1787         0:00:00.141
+13:        73712         9233         0:00:00.246
+14:       365596        45752         0:00:00.477
+15:      2279184       285053         0:00:01.984
 """
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # pypy では ThreadPool/ProcessPoolが動きます 
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
+import pypyjit
+# pypyで再帰が高速化できる
+pypyjit.set_param('max_unroll_recursion=-1')
 
 import subprocess
 from datetime import datetime
