@@ -742,8 +742,6 @@ class NQueens17:
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
 class NQueens17_constellations():
   def main(self)->None:
-    # nmin:int=8
-    # nmax:int=9
     nmin:int=5
     nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
