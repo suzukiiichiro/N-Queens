@@ -972,7 +972,7 @@ class NQueens18:
     #for constellation in constellations:
     # mark1=mark1
     # mark2=mark2
-    mark1,mark2=mark1,mark2
+    # mark1,mark2=mark1,mark2
     # mark2=mark2
     start_ijkl=constellation["startijkl"]
     start=start_ijkl>>20

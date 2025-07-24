@@ -536,7 +536,7 @@ class NQueens17:
     small_mask=(1<<(N-2))-1
     temp_counter=[0]
     for constellation in constellations:
-      mark1,mark2=mark1,mark2
+      # mark1,mark2=mark1,mark2
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
       ijkl=start_ijkl&((1<<20)-1)
