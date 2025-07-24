@@ -28,52 +28,6 @@ fedora$ ./17Py_constellations_codon
 14:       365596            0         0:00:00.048
 15:      2279184            0         0:00:00.247
 16:     14772512            0         0:00:01.493
-
-最速は
-17Py_constellations_codon 15:0:00:00.240
-
-03Py_backTracking.py     15:0:03:40.625
-03Py_backTracking_pypy.py  15:0:00:47.718
-03Py_backTracking_codon       15:0:00:16.624
-04Py_symmetry.py         15:0:01:46.939
-04Py_symmetry_pypy.py      15:0:00:15.734
-04Py_symmetry_codon           15:0:00:06.097
-05Py_bit_backTracking.py 15:0:01:18.974
-05Py_bit_backTracking_pypy.py 15:0:00:13.972
-05Py_bit_backTracking_codon   15:0:00:01.557
-06Py_bit_mirror.py       15:0:00:45.747
-06Py_bit_mirror_pypy.py    15:0:00:06.813
-06Py_bit_mirror_codon         15:0:00:00.810
-07Py_bit_symmetry.py     15:0:00:20.538
-07Py_bit_symmetry_pypy.py  15:0:00:03.313
-07Py_bit_symmetry_codon       15:0:00:00.398
-08Py_bit_symmetry_mirror.py    15:0:00:20.286
-08Py_bit_symmetry_mirror_pypy.py 15:0:00:03.346
-08Py_bit_symmetry_mirror_codon 15:0:00:00.395
-09Py_bit_symmetry_ThreadPool.py 15:0:00:08.254
-09Py_bit_symmetry_ThreadPool_pypy.py 15:0:00:01.984
-10Py_bit_symmetry_ProcessPool.py 15:0:00:08.400
-10Py_bit_symmetry_ProcessPool_pypy.py 15:0:00:02.102
-11Py_NodeLayer.py 15:0:01:16.692
-11Py_NodeLayer_pypy.py 15:0:00:13.163
-11Py_NodeLayer_codon 15:0:00:01.428
-12Py_NodeLayer_mirror.py 15:0:00:06.171
-12Py_NodeLayer_mirror_pypy.py 15:0:00:06.593
-12Py_NodeLayer_mirror_codon 15:0:00:00.739
-13Py_NodeLayer_symmetry.py 15:0:00:53.576
-13Py_NodeLayer_symmetry_pypy.py 15:0:00:05.844
-13Py_NodeLayer_symmetry_codon 15:0:00:00.395
-14Py_NodeLayer_symmetry_ProcessPool.py 15:0:00:16.681
-14Py_NodeLayer_symmetry_ProcessPool_pypy.py 15:0:00:03.040
-15Py_carryChain.py 15:0:01:30.816
-15Py_carryChain_pypy.py 15:0:00:16.087
-15Py_carryChain_codon 15:0:00:04.596
-16Py_carryChain_ProcessPool.py 15:0:00:21.373
-17Py_constellations.py 15:0:00:14.780
-17Py_constellations_pypy.py 15:0:00:02.508
-17Py_constellations_codon 15:0:00:00.240
-18Py_constellations_ProcessPool.py 15:0:00:08.651
-18Py_constellations_ProcessPool_pypy.py 15:0:00:03.841
 """
 
 from operator import or_
