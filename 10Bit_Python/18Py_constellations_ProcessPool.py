@@ -14,18 +14,18 @@ https://github.com/suzukiiichiro/N-Queens
 
 fedora$ python 18Py_constellations_ProcessPool.py
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.035
- 6:            4            0         0:00:00.030
- 7:           40            0         0:00:00.034
- 8:           92            0         0:00:00.037
- 9:          352            0         0:00:00.043
-10:          724            0         0:00:00.063
-11:         2680            0         0:00:00.068
-12:        14200            0         0:00:00.113
-13:        73712            0         0:00:00.325
-14:       365596            0         0:00:01.404
-15:      2279184            0         0:00:08.651
-16:     14772512            0         0:01:04.815
+ 5:           18            0         0:00:00.028
+ 6:            4            0         0:00:00.032
+ 7:           40            0         0:00:00.033
+ 8:           92            0         0:00:00.126
+ 9:          352            0         0:00:00.092
+10:          724            0         0:00:00.171
+11:         2680            0         0:00:00.087
+12:        14200            0         0:00:00.189
+13:        73712            0         0:00:00.355
+14:       365596            0         0:00:01.423
+15:      2279184            0         0:00:09.006
+16:     14772512            0         0:01:07.235
 """
 
 # のこったプロセスをkillallするために必要
@@ -1133,12 +1133,14 @@ class NQueens18:
 
 
     # Jasmin変換
-    ijkl_list_jasmin=set()
+    # ijkl_list_jasmin=set()
     # for start_constellation in ijkl_list:
     #   ijkl_list_jasmin.add(self.jasmin(start_constellation,N))
     # [ijkl_list_jasmin.add(self.jasmin(start_constellation,N)) for start_constellation in ijkl_list]
-    ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
+    # ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
     # ijkl_list_jasmin.update(map(lambda sc: self.jasmin(sc, N), ijkl_list))
+    ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
+
 
 
     ijkl_list=ijkl_list_jasmin

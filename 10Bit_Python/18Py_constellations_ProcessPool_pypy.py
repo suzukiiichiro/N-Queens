@@ -12,7 +12,7 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ python 18Py_constellations_ProcessPool.py ^C
+fedora$ python 18Py_constellations_ProcessPool.py
 fedora$ pypy 18Py_constellations_ProcessPool_pypy.py
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.034
@@ -1134,12 +1134,14 @@ class NQueens18:
 
 
     # Jasmin変換
-    ijkl_list_jasmin=set()
+    # ijkl_list_jasmin=set()
     # for start_constellation in ijkl_list:
     #   ijkl_list_jasmin.add(self.jasmin(start_constellation,N))
     # [ijkl_list_jasmin.add(self.jasmin(start_constellation,N)) for start_constellation in ijkl_list]
-    ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
+    # ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
     # ijkl_list_jasmin.update(map(lambda sc: self.jasmin(sc, N), ijkl_list))
+    ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
+
 
 
     ijkl_list=ijkl_list_jasmin
