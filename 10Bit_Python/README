@@ -1,5 +1,5 @@
 最速は
-17Py_constellations_codon 15:0:00:00.240
+17Py_constellations_codon 15:0:00:00.247
 
 03Py_backTracking.py     15:0:03:40.625
 03Py_backTracking_pypy.py  15:0:00:47.718
@@ -38,8 +38,8 @@
 15Py_carryChain_pypy.py 15:0:00:16.087
 15Py_carryChain_codon 15:0:00:04.596
 16Py_carryChain_ProcessPool.py 15:0:00:21.373
-17Py_constellations.py 15:0:00:14.780
-17Py_constellations_pypy.py 15:0:00:02.508
-17Py_constellations_codon 15:0:00:00.240
-18Py_constellations_ProcessPool.py 15:0:00:08.651
+17Py_constellations.py 15:0:00:14.735
+17Py_constellations_pypy.py 15:0:00:02.475
+17Py_constellations_codon 15:0:00:00.247
+18Py_constellations_ProcessPool.py 15:0:00:09.006
 18Py_constellations_ProcessPool_pypy.py 15:0:00:03.841

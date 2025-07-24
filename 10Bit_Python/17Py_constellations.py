@@ -21,12 +21,12 @@ fedora$ python 17Py_constellations.py
  8:           92            0         0:00:00.001
  9:          352            0         0:00:00.002
 10:          724            0         0:00:00.006
-11:         2680            0         0:00:00.024
-12:        14200            0         0:00:00.089
-13:        73712            0         0:00:00.434
-14:       365596            0         0:00:02.466
-15:      2279184            0         0:00:14.780
-16:     14772512            0         0:01:38.609
+11:         2680            0         0:00:00.021
+12:        14200            0         0:00:00.088
+13:        73712            0         0:00:00.426
+14:       365596            0         0:00:02.430
+15:      2279184            0         0:00:14.735
+16:     14772512            0         0:01:37.618
 """
 
 from operator import or_
@@ -679,8 +679,9 @@ class NQueens17:
     # コーナーにクイーンがある場合の開始コンステレーションを計算する
     ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
     # Jasmin変換
-    ijkl_list_jasmin=set()
-    ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
+    # ijkl_list_jasmin=set()
+    # ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
+    ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
     ijkl_list=ijkl_list_jasmin
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
