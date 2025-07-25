@@ -13,8 +13,8 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ codon build -release 17Py_constellations_codon.py
-fedora$ ./17Py_constellations_codon
+fedora$ codon build -release 19Py_constellations_optimized_codon.py
+fedora$ ./19Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.000
  6:            4            0         0:00:00.000
@@ -24,12 +24,107 @@ fedora$ ./17Py_constellations_codon
 10:          724            0         0:00:00.000
 11:         2680            0         0:00:00.001
 12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.012
-14:       365596            0         0:00:00.048
-15:      2279184            0         0:00:00.247
-16:     14772512            0         0:00:01.493
+13:        73712            0         0:00:00.010
+14:       365596            0         0:00:00.047
+15:      2279184            0         0:00:00.242
+16:     14772512            0         0:00:01.524
+
+19Py_constellations_optimized_codon.py は、非常に高度に最適化されており、コンステレーション法 + bit演算 + 対称性判定 + 回転ミラー除去（jasmin）+ Codon対応 という強力な設計です。
+
+実装済（確認済み）の最適化手法
+
+✅ bit演算による cols/hills/dales 衝突除去
+✅ 左右対称・中央列特別処理（gen_constellations）
+✅ jasmin() による「ミラー＋90度回転」済み（完成盤の正規化）
+✅ symmetry() によるCOUNT2/4/8分類
+
+タグ    対応課題    コード中のおおよその位置
+[Opt-01]    ビット演算枝刈り（cols/hills/dales）    backtrack() の `free = mask & ~(cols
+[Opt-02]    左右対称性除去（1 行目左半分）    solve_nqueens() の first_cols = range(n // 2)
+[Opt-03]    中央列特別処理（奇数 N）    center_col = n // 2 if (n % 2 == 1)
+[Opt-04]    180°対称除去    classify() / symmetries()（最終分類時 or 途中の簡易チェック）
+[Opt-05]    角位置（col==0）分岐 & 対称分類（COUNT2/4/8）    solve_nqueens() で is_corner=True を渡す / classify()
+[Opt-06]    並列処理（初手ごと）    Pool.imap_unordered(_worker, args)
+X[Opt-07]    1 行目以外でも部分対称除去    is_partial_canonical()（stub）を backtrack() 冒頭で呼ぶ
+X[Opt-08]    軽量 is_canonical の実装 & キャッシュ    is_partial_canonical() の中身を最適化 / @lru_cache / zobrist
+[Opt-09]    Zobrist Hash    init_zobrist() と is_partial_canonical() 内のメモ化
+X[Opt-10]    マクロチェス（局所パターン）    violate_macro_patterns() を backtrack() で呼ぶ
+[Opt-11]    構築時「ミラー＋90°回転」重複排除    （現状未実装・推奨しない。入れるなら is_partial_canonical() で）
+
+
+🔶【ステップ1】[Opt-07] 部分盤面の辞書順最小チェックによる構築時の対称性除去
+
+目的：
+set_pre_queens() 内や SQ～() 系の再帰中で、途中の盤面が「対称性のある冗長な構築パターン」なら枝刈りします。
+
+対応方法（提案）：
+row 以下の部分盤面において、反転・回転を適用して、辞書順最小になるかチェック
+
+例：盤面 [1, 3, 0] と [6, 4, 7] をミラー・回転して最小の表現に正規化し、最初に現れた順と一致しなければ枝刈り
 """
 
+# # [Opt-07] 部分盤面 canonical 判定
+# def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
+#     """現在の board[0:row] が他のミラー・回転盤面より辞書順で小さいか"""
+#     current = tuple(board[:row])
+#     symmetries = []
+# 
+#     # ミラー（左右反転）
+#     mirrored = [N-1 - b for b in current]
+#     symmetries.append(tuple(mirrored))
+# 
+#     # 90度回転：盤面を (col → row) に再構築する必要がある（簡略化版）
+#     # 完全な回転は行列転置＋ミラーが必要（時間コストあり）
+# 
+#     return all(current <= s for s in symmetries)
+
+"""
+🔶【ステップ2】[Opt-08] is_partial_canonical() に Zobrist hash を導入し、高速メモ化
+目的：
+部分盤面の symmetric 判定結果を Zobrist Hash によってキャッシュし、何度も判定しない。
+→ is_partial_canonical() の中で zobrist_cache[hash] = True/False として使う
+
+実装要素：
+"""
+# # [Opt-09] Zobrist Hash テーブル生成（初期化）
+# def init_zobrist(N: int) -> List[List[int]]:
+#     import random
+#     return [[random.getrandbits(64) for _ in range(N)] for _ in range(N)]
+# 
+# # ハッシュ計算
+# def compute_hash(board: List[int], row: int, zobrist: List[List[int]]) -> int:
+#     h = 0
+#     for r in range(row):
+#         h ^= zobrist[r][board[r]]
+#     return h
+"""
+
+🔶【ステップ3】[Opt-10] 局所パターン制限（マクロチェス）
+目的：
+「どうせ破綻する配置」を初期から除外。
+例：上段に [0,1] のように密集すると中段で破綻しやすい、などのルール。
+
+実装形式：
+"""
+# # [Opt-10] ユーザー定義のマクロチェスルール
+# def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
+#     # 例：上2行に中央列配置が連続する場合、除外
+#     if row >= 2 and abs(board[row-1] - board[row-2]) <= 1:
+#         return True
+#     return False
+
+"""
+【A案】Zobrist（または簡易ハッシュ）による「訪問済み状態」の枝刈り
+🎯 効果
+「全く同じビットボード状態」を再訪した場合に探索を省略し、重複計算を排除できます。
+盤面状態（ld, rd, col, rowなど）の組をハッシュ化し、訪問済みをvisitedセットで管理します。
+"""
+# def state_hash(ld: int, rd: int, col: int, row: int) -> int:
+#     """単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）"""
+#     return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+
+
+import random
 from operator import or_
 # from functools import reduce
 from typing import List,Set,Dict
@@ -42,6 +137,60 @@ from datetime import datetime
 class NQueens17:
   def __init__(self)->None:
     pass
+  # ---------------------------
+  # [Opt-08] Zobrist Hash の初期化
+  # [Opt-07/08] 部分盤面の辞書順最小性チェック（canonical）による枝刈り
+  # if not is_partial_canonical(self.BOARD, row, N, self.zobrist, self.zcache):
+  #     return
+  # # [Opt-10] 局所パターン（マクロチェス）による枝刈り
+  # if violate_macro_patterns(self.BOARD, row, N):
+  #     return
+  # while free: の手前に上記を追記　（BOARD変数がある場合）
+  # ---------------------------
+  def init_zobrist(self,N: int) -> List[List[int]]:
+      return [[random.getrandbits(64) for _ in range(N)] for _ in range(N)]
+  # ---------------------------
+  # [Opt-08] Zobrist Hash による部分盤面ハッシュ化
+  # ---------------------------
+  def compute_zobrist_hash(self,board: List[int], row: int, zobrist: List[List[int]]) -> int:
+      h = 0
+      for r in range(row):
+          h ^= zobrist[r][board[r]]
+      return h
+  # ---------------------------
+  # [Opt-07+08] 部分盤面の正準性チェック + Zobristキャッシュ
+  # ---------------------------
+  def is_partial_canonical(self,board: List[int], row: int, N: int, zobrist: List[List[int]], zcache: dict) -> bool:
+      key = compute_zobrist_hash(board, row, zobrist)
+      if key in zcache:
+          return zcache[key]
+      current = tuple(board[:row])
+      # ミラー反転のみチェック（左右対称のみ）
+      mirrored = tuple(N - 1 - board[r] for r in range(row))
+      # 必要であれば回転90/180/270 も加える（今はミラーのみ）
+      minimal = min(current, mirrored)
+      result = (current == minimal)
+      zcache[key] = result
+      return result
+  # ---------------------------
+  # [Opt-10] マクロチェス：局所パターンによる枝刈り
+  # ---------------------------
+  def violate_macro_patterns(self,board: List[int], row: int, N: int) -> bool:
+      # 例：最初の3行で中央寄りが密集していたら破綻しやすいため除外
+      if row >= 3:
+          c0 = board[row - 1]
+          c1 = board[row - 2]
+          c2 = board[row - 3]
+          if abs(c0 - c1) <= 1 and abs(c1 - c2) <= 1:
+              return True
+      return False
+  # ---------------------------
+  def state_hash(self,ld: int, rd: int, col: int, row: int) -> int:
+      """単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）"""
+      if None in (ld, rd, col, row):
+          return -1
+      return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+  # ---------------------------
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
     if row==endmark:
       tempcounter[0]+=1
@@ -512,11 +661,11 @@ class NQueens17:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited)->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # k行とl行はスキップ
     if row==k or row==l:
-      self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
+      self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
       return
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     if queens==preset_queens:
@@ -525,13 +674,17 @@ class NQueens17:
       constellations.append(constellation)
       counter[0]+=1
       return
+    h = self.state_hash(ld, rd, col, row)
+    if h in visited:
+        return
+    visited.add(h)
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
       bit:int=free&-free  # 最も下位の1ビットを取得
       free&=free-1  # 使用済みビットを削除
       # クイーンを配置し、次の行に進む
-      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
+      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     small_mask=(1<<(N-2))-1
@@ -662,6 +815,7 @@ class NQueens17:
       temp_counter[0]=0
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
+    visited:set[int]=set()
     # コーナーにクイーンがいない場合の開始コンステレーションを計算する
     """
     for k in range(1,halfN):
@@ -691,7 +845,7 @@ class NQueens17:
       ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j) 
       LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
       counter=[0] # サブコンステレーションを生成
-      self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens)
+      self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
