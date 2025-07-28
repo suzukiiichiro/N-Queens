@@ -4,7 +4,11 @@
 
 """
 コンステレーション版 最適化　Ｎクイーン
-こちらのソースは以下の最適化を施す前のベースとなるものです。
+🟢 ビット演算のインライン化：実践例
+1. 最小限の変数展開・一時変数削減
+例えば「次の状態」計算や「ビットマスクの生成」をワンライナー化
+
+結論：最適化の必要なし
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -37,6 +41,46 @@ https://github.com/suzukiiichiro/N-Queens
 [Opt-10]✅  マクロチェス（局所パターン）    violate_macro_patterns() を backtrack() で呼ぶ
 [Opt-11]    構築時「ミラー＋90°回転」重複排除    （現状未実装・推奨しない。入れるなら is_partial_canonical() で）
 [Opt-12]✅  ビット演算のインライン化
+
+🟢 ビット演算のインライン化：実践例
+1. 最小限の変数展開・一時変数削減
+例えば「次の状態」計算や「ビットマスクの生成」をワンライナー化
+
+
+従来例：
+
+while free:
+    bit = free & -free
+    free ^= bit
+    next_ld = (ld | bit) << 1
+    next_rd = (rd | bit) >> 1
+    next_col = col | bit
+    SQd0B(next_ld, next_rd, next_col, ...)
+
+インライン化例： → 「next_xxx」変数を使わず直接渡す
+while free:
+    bit = free & -free
+    free ^= bit
+    SQd0B((ld | bit) << 1, (rd | bit) >> 1, col | bit, ...)
+
+
+🔎 ご提示のコードはすでに最適パターン！
+while free:
+    bit = free & -free
+    free &= free - 1
+    next_ld, next_rd, next_col = (ld|bit)<<1, (rd|bit)>>1, col|bit
+    next_free = ~(next_ld|next_rd|next_col)
+    if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+        self.SQd0B(next_ld, next_rd, next_col, row+1, next_free, ...)
+
+すべて最適なバランスです！
+ここから「無理にワンライナー」にしても速くはなりません（むしろ遅くなりやすい）
+
+✅ 結論
+bit演算の中間結果は代入して再利用した方が（ほぼ常に）速い
+一時変数の代入はコスト無視できるので、可読性・安全性も重視できる
+あなたのコード（上記例）は実際に“最適パターン”です！
+
 
 fedora$ codon build -release 19Py_constellations_optimized_codon_base.py
 fedora$ ./19Py_constellations_optimized_codon_base
