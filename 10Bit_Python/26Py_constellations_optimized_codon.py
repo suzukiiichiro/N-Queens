@@ -109,31 +109,150 @@ backtrackや星座生成の途中で挟む（激重化に注意）
 普段は現状の枝刈り・重複排除で十分
 
 
-【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
-https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+キャッシュ構造設計
+部分盤面や星座をhash/tuple化し、dictでキャッシュ
+1度計算したhash値（zobristやtuple）をもとに重複判定
+同じ状態は“必ず再利用”
+階層構造（部分再帰木ごとにキャッシュ分離）も有効
 
-エイト・クイーンのプログラムアーカイブ
-Bash、Lua、C、Java、Python、CUDAまで！
-https://github.com/suzukiiichiro/N-Queens
+🚩 「同じ状態は必ず再利用」＝探索の「指数的重複」を爆速カット
+とくにN-Queensのような「部分盤面でパターン重複が激しい問題」は
+キャッシュ再利用で速度が何桁も違う
 
-fedora$ codon build -release 25Py_constellations_optimized_codon.py
-fedora$ ./25Py_constellations_optimized_codon
+Zobrist hashやtuple keyによる「整数インデックス付きdict」は
+最強のメモリ効率＆スピード両立手法
+
+🧑まとめ：gen_constellationsにキャッシュやhashを活かすには？
+星座リスト・盤面生成ごとに「Zobrist hash」や「tuple化キー」を用意し、一度計算した結果をdictで使い回す
+jasmin変換など高コスト処理もdictキャッシュで「1度だけ」計算・以降再利用
+部分再帰やサブコンステレーション分岐も「盤面シグネチャ」をkeyにキャッシュ設計
+
+# ------------------------------------------------
+🟡1. Jasmin変換キャッシュ（クラス属性またはグローバル変数で）
+jasmin_cache = {}
+
+def get_jasmin(self, c: int, N: int) -> int:
+    key = (c, N)
+    if key in jasmin_cache:
+        return jasmin_cache[key]
+    result = self.jasmin(c, N)
+    jasmin_cache[key] = result
+    return result
+
+# 使用例: 
+ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+
+# ------------------------------------------------
+🟡2. サブコンステレーション生成にtuple keyキャッシュ
+subconst_cache = {}
+
+def set_pre_queens_cached(
+    self, ld: int, rd: int, col: int, k: int, l: int,
+    row: int, queens: int, LD: int, RD: int,
+    counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int
+) -> None:
+    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    # キャッシュの本体をdictかsetでグローバル/クラス変数に
+    if not hasattr(self, "subconst_cache"):
+        self.subconst_cache = {}
+    subconst_cache = self.subconst_cache
+
+    if key in subconst_cache:
+        # 以前に同じ状態で生成済み → 何もしない（または再利用）
+        return
+    # 新規実行（従来通りset_pre_queensの本体処理へ）
+    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens)
+    subconst_cache[key] = True  # マークだけでOK
+
+# 呼び出し側
+# self.set_pre_queens_cached(...) とする
+
+# ------------------------------------------------
+🟡3. 星座のsignature重複防止
+
+# if queens==preset_queens:
+#   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
+#   # 新しいコンステレーションをリストに追加
+#   constellations.append(constellation)
+#   counter[0]+=1
+#   return
+if queens == preset_queens:
+    # signatureの生成
+    signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+    # signaturesセットをクラス変数やグローバルで管理
+    if not hasattr(self, "constellation_signatures"):
+        self.constellation_signatures = set()
+    signatures = self.constellation_signatures
+    if signature not in signatures:
+        constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+        constellations.append(constellation)
+        signatures.add(signature)
+        counter[0] += 1
+    return
+
+# ------------------------------------------------
+🟡4. pickleファイルで星座リストそのものをキャッシュ
+Codon標準ではpickleがサポートされていない場合もありますが、
+Python互換ライブラリ（import pickle）が使えれば、ほぼ同じ形で使えます。
+
+こちらは大失敗であきらめました。codonでは動かないみたい
+
+import pickle, os
+
+def load_constellations(self, N: int, preset_queens: int) -> list:
+  fname = f"constellations_N{N}_{preset_queens}.pkl"
+  if os.path.exists(fname):
+    with open(fname, "rb") as f:
+        return pickle.load(f)
+  else:
+    constellations = []
+    self.gen_constellations(set(), constellations, N, preset_queens)
+    with open(fname, "wb") as f:
+        pickle.dump(constellations, f)
+    return constellations
+
+# 実行時
+def main()で
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      constellations = NQ.load_constellations(size,preset_queens)
+      NQ.exec_solutions(constellations,size)
+
+# ------------------------------------------------
+fedora$ codon build -release 26Py_constellations_optimized_codon.py
+fedora$ ./26Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+IOError: pickle error: gzwrite returned 0
+
+Raised from: std.pickle._write_raw.0:0
+/home/suzuki/.codon/lib/codon/stdlib/pickle.codon:25:13
+中止 (コアダンプ)
+fedora$
+
+以下はmain()で４を実行しないようにした結果
+fedora$ codon build -release 26Py_constellations_optimized_codon.py
+fedora$ ./26Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.000
  6:            4            0         0:00:00.000
  7:           40            0         0:00:00.000
  8:           92            0         0:00:00.000
  9:          352            0         0:00:00.000
-10:          724            0         0:00:00.002
-11:         2680            0         0:00:00.001
+10:          724            0         0:00:00.001
+11:         2680            0         0:00:00.002
 12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.012
+13:        73712            0         0:00:00.011
 14:       365596            0         0:00:00.048
-15:      2279184            0         0:00:00.261
-16:     14772512            0         0:00:01.517
+15:      2279184            0         0:00:00.241
+16:     14772512            0         0:00:01.503
+17:     95815104            0         0:00:10.317
+
+GPU/CUDA 11CUDA_constellation_symmetry.cu
+16:         14772512               0     000:00:00:00.64
+17:         95815104               0     000:00:00:03.41
 """
 
 import random
+import pickle, os
 from operator import or_
 # from functools import reduce
 from typing import List,Set,Dict
@@ -565,6 +684,19 @@ class NQueens17:
     return (ijkl>>5)&0x1F
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
+  #--------------------------------------------
+  jasmin_cache = {}
+  def get_jasmin(self, c: int, N: int) -> int:
+    key = (c, N)
+    if key in self.jasmin_cache:
+        return self.jasmin_cache[key]
+    result = self.jasmin(c, N)
+    self.jasmin_cache[key] = result
+    return result
+  #--------------------------------------------
+  # 使用例: 
+  # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+  #--------------------------------------------
   def jasmin(self,ijkl:int,N:int)->int:
     # 最初の最小値と引数を設定
     arg=0
@@ -588,26 +720,96 @@ class NQueens17:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
+  #---------------------------------
+  # codon では動かない
+  #
+  def file_exists(self,fname: str) -> bool:
+    try:
+      with open(fname, "rb"):
+        return True
+    except:
+      return False
+  def load_constellations(self, N: int, preset_queens: int) -> list:
+    fname = f"constellations_N{N}_{preset_queens}.pkl"
+    if self.file_exists(fname):
+        with open(fname, "rb") as f:
+            return pickle.load(f)
+    else:
+        constellations = []
+        self.gen_constellations(set(), constellations, N, preset_queens)
+        with open(fname, "wb") as f:
+            pickle.dump(constellations, f)
+        return constellations
+  # 実行時
+  # main() 
+  #--------------------------
+  # codon では動かないので以下を切り替える
+  # pickleの最適化は使わない（あきらめる）
+  # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+  # codonでpickleを使う（うごかない）
+  # constellations = NQ.load_constellations(size,preset_queens)
+  #---------------------------------
+  subconst_cache = {}
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int) -> None:
+      key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+      # キャッシュの本体をdictかsetでグローバル/クラス変数に
+      if not hasattr(self, "subconst_cache"):
+          self.subconst_cache = {}
+      subconst_cache = self.subconst_cache
+      if key in subconst_cache:
+          # 以前に同じ状態で生成済み → 何もしない（または再利用）
+          return
+      # 新規実行（従来通りset_pre_queensの本体処理へ）
+      self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens)
+      subconst_cache[key] = True  # マークだけでOK
+  # 呼び出し側
+  # self.set_pre_queens_cached(...) とする
+  constellation_signatures = set()
+  #---------------------------------
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # k行とl行はスキップ
     if row==k or row==l:
-      self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
+      # self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
+      self.set_pre_queens_cached(
+        ld<<1,rd>>1,col,k,l,row+1,queens,
+        LD,RD,counter,constellations,N,preset_queens)
       return
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
-    if queens==preset_queens:
-      constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
-      # 新しいコンステレーションをリストに追加
-      constellations.append(constellation)
-      counter[0]+=1
-      return
+    # ------------------------------------------------
+    # 3. 星座のsignature重複防止
+    #
+    # if queens==preset_queens:
+    #   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
+    #   # 新しいコンステレーションをリストに追加
+    #   constellations.append(constellation)
+    #   counter[0]+=1
+    #   return
+    if queens == preset_queens:
+        # signatureの生成
+        signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+        # signaturesセットをクラス変数やグローバルで管理
+        if not hasattr(self, "constellation_signatures"):
+            self.constellation_signatures = set()
+        signatures = self.constellation_signatures
+        if signature not in signatures:
+            constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+            constellations.append(constellation)
+            signatures.add(signature)
+            counter[0] += 1
+        return
+    # ------------------------------------------------
+
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
       bit:int=free&-free  # 最も下位の1ビットを取得
       free&=free-1  # 使用済みビットを削除
       # クイーンを配置し、次の行に進む
-      self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
+      # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
+      self.set_pre_queens_cached(
+        (ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,
+        LD,RD,counter,constellations,N,preset_queens)
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     # jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     small_mask=(1<<(N-2))-1
@@ -758,11 +960,10 @@ class NQueens17:
     # コーナーにクイーンがある場合の開始コンステレーションを計算する
     ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
     # Jasmin変換
-    # ijkl_list_jasmin=set()
-    # ijkl_list_jasmin.update(self.jasmin(start_constellation, N) for start_constellation in ijkl_list)
-    ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
-
-    ijkl_list=ijkl_list_jasmin
+    # ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
+    # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+    # ijkl_list=ijkl_list_jasmin
+    ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
       i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
@@ -784,7 +985,13 @@ class NQueens17_constellations():
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
       NQ=NQueens17()
+      #--------------------------
+      # codon では動かないので以下を切り替える
+      # pickleの最適化は使わない（あきらめる）
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      # codonでpickleを使う（うごかない）
+      # constellations = NQ.load_constellations(size,preset_queens)
+      #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
