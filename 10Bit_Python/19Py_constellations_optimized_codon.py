@@ -5,6 +5,41 @@
 """
 コンステレーション版 最適化　Ｎクイーン
 
+タグ    方針    対応状況    補足
+✅[Opt-01]    ビット演算枝刈り    達成    全探索・部分盤面生成のすべてでbit演算徹底
+✅[Opt-02]    左右対称性除去（左半分探索）    達成    初手左半分/コーナー分岐で重複生成排除
+✅[Opt-03]    中央列特別処理（奇数N）    達成    奇数N中央列を専用内包表記で排除
+✅[Opt-04]    180°対称除去    達成    rot180_in_set で内包時点で重複除去
+✅[Opt-05]    角位置分岐・COUNT分類    達成    コーナー分岐/symmetryでCOUNT2/4/8分類
+[Opt-06]    並列処理（初手分割）    未達成（現状は未実装）    これは現状は未実装 27Py_で実装
+✅[Opt-07]    1行目以外の部分対称除去    達成    jasmin/is_partial_canonicalで排除
+✅[Opt-08]    軽量is_canonical・キャッシュ    達成    Zobrist/jasmin/hash系でメモ化
+✅[Opt-09]    Zobrist Hash    達成    Zobrist導入済
+✅[Opt-10]    マクロチェス（局所パターン）    達成    violate_macro_patterns関数（導入済ならOK）
+✔[Opt-11]    ミラー+90°回転重複排除    原則不要「あえてやらない」設計。必要ならis_canonicalで激重に
+✅[Opt-12]     キャッシュ構造設計
+
+fedora$ codon build -release 26Py_constellations_optimized_codon.py
+fedora$ ./26Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           18            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.001
+11:         2680            0         0:00:00.002
+12:        14200            0         0:00:00.003
+13:        73712            0         0:00:00.011
+14:       365596            0         0:00:00.048
+15:      2279184            0         0:00:00.241
+16:     14772512            0         0:00:01.503
+17:     95815104            0         0:00:10.317
+
+GPU/CUDA 11CUDA_constellation_symmetry.cu
+16:         14772512               0     000:00:00:00.64
+17:         95815104               0     000:00:00:03.41
+
 検討課題を「実装難易度の低い順」に並べ替え
 ✅済[Opt-01]  ビット演算による衝突枝刈り（cols/hills/dales）
 → set_pre_queensや他の再帰でld|rd|colのビット演算を用いた枝刈りを徹底している
@@ -393,44 +428,6 @@ IOError: pickle error: gzwrite returned 0
 Raised from: std.pickle._write_raw.0:0
 /home/suzuki/.codon/lib/codon/stdlib/pickle.codon:25:13
 中止 (コアダンプ)
-fedora$
-
-
-
-タグ    方針    対応状況    補足
-✅[Opt-01]    ビット演算枝刈り    達成    全探索・部分盤面生成のすべてでbit演算徹底
-✅[Opt-02]    左右対称性除去（左半分探索）    達成    初手左半分/コーナー分岐で重複生成排除
-✅[Opt-03]    中央列特別処理（奇数N）    達成    奇数N中央列を専用内包表記で排除
-✅[Opt-04]    180°対称除去    達成    rot180_in_set で内包時点で重複除去
-✅[Opt-05]    角位置分岐・COUNT分類    達成    コーナー分岐/symmetryでCOUNT2/4/8分類
-[Opt-06]    並列処理（初手分割）    未達成（現状は未実装）    これは現状は未実装 27Py_で実装
-✅[Opt-07]    1行目以外の部分対称除去    達成    jasmin/is_partial_canonicalで排除
-✅[Opt-08]    軽量is_canonical・キャッシュ    達成    Zobrist/jasmin/hash系でメモ化
-✅[Opt-09]    Zobrist Hash    達成    Zobrist導入済
-✅[Opt-10]    マクロチェス（局所パターン）    達成    violate_macro_patterns関数（導入済ならOK）
-✔[Opt-11]    ミラー+90°回転重複排除    原則不要    「あえてやらない」設計。必要ならis_canonicalで激重に
-✅[Opt-12]     キャッシュ構造設計
-
-fedora$ codon build -release 26Py_constellations_optimized_codon.py
-fedora$ ./26Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.000
-10:          724            0         0:00:00.001
-11:         2680            0         0:00:00.002
-12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.011
-14:       365596            0         0:00:00.048
-15:      2279184            0         0:00:00.241
-16:     14772512            0         0:00:01.503
-17:     95815104            0         0:00:10.317
-
-GPU/CUDA 11CUDA_constellation_symmetry.cu
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
 """
 
 import random
