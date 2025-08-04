@@ -78,7 +78,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 14:       365596            0         0:00:00.038
 15:      2279184            0         0:00:00.092
 16:     14772512            0         0:00:00.440
-17:     95815104            0         0:00:02.980
+17:     95815104            0         0:00:02.900
 
 fedora$ codon build -release 26Py_constellations_optimized_codon.py
 fedora$ ./26Py_constellations_optimized_codon
