@@ -1116,12 +1116,12 @@ int main(int argc,char** argv){
 /**
  * 関数プロトタイプ
  */
-__device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd0B(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   if(row==endmark){
-    // CUDAデバイス関数内で複数スレッドから同時にアクセスすると**競合（race condition）**が起きます。
-    // (*tempcounter)++;
-    atomicAdd(tempcounter, 1);
+    (*tempcounter)++;
     return;
   }
   int bit;
@@ -1130,7 +1130,7 @@ __device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endma
   int next_rd;
   int next_col;
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);;
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
@@ -1145,14 +1145,16 @@ __device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endma
     }
   }
 }
-__device__ void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd0BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);;
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
       if(nextfree){
         SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1161,21 +1163,23 @@ __device__ void SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int end
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);;
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BklB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N4=N-4;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);;
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N4));
       if(nextfree){
         SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1184,19 +1188,19 @@ __device__ void SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);;
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1B(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   if(row==endmark){
-    // CUDAデバイス関数内で複数スレッドから同時にアクセスすると**競合（race condition）**が起きます。
-    // (*tempcounter)++;
-    atomicAdd(tempcounter, 1);
+    (*tempcounter)++;
     return;
   }
   int bit;
@@ -1205,7 +1209,7 @@ __device__ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endma
   int next_rd;
   int next_col;
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);;
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
@@ -1220,14 +1224,16 @@ __device__ void SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endma
     }
   }
 }
-__device__ void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BkBlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);;
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
       if(nextfree){
         SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1236,14 +1242,16 @@ __device__ void SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
@@ -1252,7 +1260,7 @@ __device__ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int end
   int next_col;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       next_ld=((ld|bit)<<2)|1;
       next_rd=((rd|bit)>>2);
       next_col=(col|bit);
@@ -1269,21 +1277,23 @@ __device__ void SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int end
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BlkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);;
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N3));
       if(nextfree){
         SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1292,20 +1302,22 @@ __device__ void SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BlBkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
       if(nextfree){
         SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1314,21 +1326,23 @@ __device__ void SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd1BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
       if(nextfree){
         SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1337,21 +1351,23 @@ __device__ void SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int end
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BlkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
       if(nextfree){
         SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1360,21 +1376,23 @@ __device__ void SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BklB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N4=N-4;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
       if(nextfree){
         SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1383,21 +1401,23 @@ __device__ void SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
       if(nextfree){
         SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1406,20 +1426,22 @@ __device__ void SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int end
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BlBkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
       if(nextfree){
         SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1428,20 +1450,22 @@ __device__ void SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
       if(nextfree){
         SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1450,21 +1474,23 @@ __device__ void SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int end
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2BkBlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
       if(nextfree){
         SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1473,20 +1499,20 @@ __device__ void SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQd2B(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   if(row==endmark){
     if((free&(~1))>0){
-      // CUDAデバイス関数内で複数スレッドから同時にアクセスすると**競合（race condition）**が起きます。
-      // (*tempcounter)++;
-      atomicAdd(tempcounter, 1);
+      (*tempcounter)++;
     }
     return;
   }
@@ -1496,7 +1522,7 @@ __device__ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endma
   int next_rd;
   int next_col;
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
@@ -1511,13 +1537,15 @@ __device__ void SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endma
     }
   }
 }
-__device__ void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
       if(nextfree){
         SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1526,21 +1554,23 @@ __device__ void SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBkBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
       if(nextfree){
         SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1549,14 +1579,16 @@ __device__ void SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int 
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
@@ -1564,7 +1596,7 @@ __device__ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endm
     free&=(~1);
     ld|=1;
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
       if(nextfree){
         SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1573,19 +1605,19 @@ __device__ void SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endm
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   if(row==endmark){
-    // CUDAデバイス関数内で複数スレッドから同時にアクセスすると**競合（race condition）**が起きます。
-    // (*tempcounter)++;
-    atomicAdd(tempcounter, 1);
+    (*tempcounter)++;
     return;
   }
   int bit;
@@ -1594,7 +1626,7 @@ __device__ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark
   int next_rd;
   int next_col;
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     next_ld=((ld|bit)<<1);
     next_rd=((rd|bit)>>1);
     next_col=(col|bit);
@@ -1610,13 +1642,15 @@ __device__ void SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark
     }
   }
 }
-__device__ void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBlBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
       if(nextfree){
         SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1625,21 +1659,23 @@ __device__ void SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int 
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int bit;
   int nextfree;
   int N3=N-3;
   if(row==mark2){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
       if(nextfree){
         SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1648,21 +1684,23 @@ __device__ void SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int en
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBklBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N4=N-4;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
       if(nextfree){
         SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1671,21 +1709,23 @@ __device__ void SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBlkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N3=N-3;
   int bit;
   int nextfree;
   if(row==mark1){
     while(free){
-      free-=bit=free&-free;
+      free-=bit=free&(-free);
       nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
       if(nextfree)
         SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
@@ -1693,14 +1733,16 @@ __device__ void SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int e
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBjlBkBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N1=N-1;
   int bit;
@@ -1712,14 +1754,16 @@ __device__ void SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,i
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBjlBlBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N1=N-1;
   int bit;
@@ -1731,14 +1775,16 @@ __device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,i
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBjlBklBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N1=N-1;
   int bit;
@@ -1750,17 +1796,19 @@ __device__ void SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,in
     return;
   }
   while(free){
-    free-=bit=free&-free;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
 }
-__device__ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+__device__ void SQBjlBlkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
   int N1=N-1;
-  // int bit;
+  int bit;
   int nextfree;
   if(row==N1-jmark){
     rd|=1<<(N1);
@@ -1769,8 +1817,7 @@ __device__ void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,in
     return;
   }
   while(free){
-    int bit=free&-free;
-    free&=free-1;
+    free-=bit=free&(-free);
     nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
     if(nextfree){
       SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree ,jmark,endmark,mark1,mark2,tempcounter,N);
