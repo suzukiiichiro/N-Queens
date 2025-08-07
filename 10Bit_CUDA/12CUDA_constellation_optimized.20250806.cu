@@ -2,136 +2,6 @@
   10CUDA_constellation_warp.cu複写
   21Py_constellations_optimized_codon.pyを移植
 
-これまで実装した最適化
-✅[Opt-01]    ビット演算枝刈り        全探索・部分盤面生成のすべてでbit演算徹底
-✅[Opt-02]    左右対称性除去（左半分探索）        初手左半分/コーナー分岐で重複生成排除
-✅[Opt-03]    中央列特別処理（奇数N）        奇数N中央列を専用内包表記で排除
-✅[Opt-04]    180°対称除去        rot180_in_set で内包時点で重複除去
-✅[Opt-05]    角位置分岐・COUNT分類        コーナー分岐/symmetryでCOUNT2/4/8分類
-✅[Opt-06]    並列処理（初手分割）    未（現状は未実装）    これは現状は未実装 27Py_で実装
-
-board変数にrowの情報を格納していないので対応不可
-[Opt-07]    1行目以外の部分対称除去        jasmin/is_partial_canonicalで排除
-[Opt-08]    軽量is_canonical・キャッシュ        Zobrist/jasmin/hash系でメモ化
-[Opt-09]    Zobrist Hash        Zobrist導入済
-[Opt-10]    マクロチェス（局所パターン）        violate_macro_patterns関数（導入済ならOK）
-
-✅[Opt-11]    ミラー+90°回転重複排除 原則不要「あえてやらない」設計。必要ならis_canonicalで激重に
-✅[Opt-12]ビット演算のインライン化
-[Opt-13]    キャッシュ構造設計
-  1. Jasmin変換キャッシュ
-  2. 星座生成（サブコンステレーション）キャッシュ
-  3. 星座（盤面）一意性管理
-✅[Opt-14]    バックトラック関数の修正
-
-=========================================
-[Opt-13]  キャッシュ構造設計
-=========================================
-1. Jasmin変換キャッシュ
-効果： 盤面の標準形（jasmin変換後）を使う場面で「同じ盤面を何度も正規化しない」ので、計算量を1/数倍〜10倍に削減。
-現場ポイント：
-正規化変換は枝刈り・重複除去の基盤なので、ここでのキャッシュは盤面生成・探索全体の高速化に直結。
-辞書キャッシュはヒット率が高く、Nが大きくなるほど効果増大。
-
-2. 星座生成（サブコンステレーション）キャッシュ
-効果： 部分盤面（プリセットクイーン配置）など、同じ状態に再帰的到達した時に再生成・再計算を防げるので計算量を劇的に圧縮できる。
-現場ポイント：
-tuple key管理により「全く同じ状態は1度しか分岐しない」＝枝刈り×メモ化の強力ハイブリッド。
-再帰呼び出し数が指数的に減るケースもあり、特に大Nや部分盤面生成で効果絶大。
-
-3. 星座（盤面）一意性管理
-効果： 星座（コンステレーション）の重複追加・多重登録を完全に防ぎ、リスト管理が爆発的に大きくなるのを防げる。
-現場ポイント：
-盤面「signature（ハッシュ）」でセット管理し、リスト追加前に存在チェック。
-コンステレーション単位でのキャッシュ・集合管理は「メモリ節約・ダブり計算ゼロ・uniqueな探索」に直結。
-応用： CUDA化/並列化のときも「unique集合化」は別スレッド間で衝突なしで設計できる
-
-
-=========================================
-[Opt-14]  バックトラック関数の修正
-=========================================
-◆ CUDA N-Queens さらなる高速化テクニック集
-1. バックトラック関数の「ループと再帰」徹底最適化
-不要な変数の排除
-bit, next_ld, next_rd, next_col, next_free などをローカル変数で1行ずつ直書き。
-不要な一時変数、複数回使わない変数は都度インラインで。
-whileループの中で「free -= bit = free & -free」ワンライナー化。
-再帰呼び出しの「return値」や「int型の加算」も極力インライン
-合計カウントはintの加算のみでシンプルに
-
-2. 変数に「register」修飾子を付ける
-CUDA（特に古い環境やsm_アーキテクチャ）では、計算中に頻繁にアクセスされる変数はregisterを明示するとレジスタ利用が最適化されやすい
-register register int bit;
-register int free;
-注意：現代のCUDAではregister指定が自動最適化されることも多いですが、明示でヒントを与えるのは有効な場合もある（最適化でレジスタ溢れしない場合）
-
-3. __forceinline__指定でインライン展開を強制
-再帰関数や小さな関数は__forceinline__指定
-
-c
-コピーする
-編集する
-__device__ __forceinline__ int SQd1B(...) { ... }
-これで関数呼び出しオーバーヘッドをカットできる
-特に深い再帰・頻繁な小関数コールの箇所は効果大。
-
-4. if分岐を“条件式”でまとめる（条件分岐の予測ミス削減）
-if(...) return ...; より res += (条件) * (値); で「分岐無し」の合成型にする
-
-ただし、複雑になりすぎると可読性は低下するのでバランスをみて。
-
-5. 定数やマスク値は事前計算・共有メモリ（shared）活用
-たとえばmaskや、頻繁に使う(1 << N) - 1は__shared__変数でスレッド間共有
-
-start, end, symmetryの決定ルールも先に配列にまとめる
-
-6. カーネル内ループのアンローリング（loop unrolling）
-再帰をループ化 or 明示的にアンローリング
-
-c
-コピーする
-編集する
-#pragma unroll 4
-for (...) { ... }
-whileループが短い（回数が小さい）場合は有効
-
-7. bit演算を“無駄なく”徹底する
-(free & -free) のような「最下位ビット取得」は超速い
-
-再計算の重複を無くす
-
-たとえば(ld|bit)<<1をnext_ldにだけ使い、他では再利用
-
-8. 「分岐の無駄」カット
-「再帰先がゼロ（next_free==0）」の判定はif(!next_free) continue;ではなく
-while(avail) {...}の中でif(next_free){...}で1段だけ分岐する
-
-9. shared memoryでwarpごとsumを高速集計
-既にやっているが、reduceパターンの同期をできるだけ「warp内同期」に
-
-CUDA11以降なら__syncwarp()なども使える
-
-sum[tid]のreduceは最短経路でまとめる
-
-10. CUDA Occupancy最大化（スレッド/ブロック数チューニング）
-THREAD_NUM（blockDim.x）の調整
-
-sm_xx世代で「最適なwarp数（32, 64, 128）」やblock数でGPU利用率最大化を
-
-cudaOccupancyMaxPotentialBlockSize()で計測も
-
-11. その他マイクロ最適化
-LD, RD, COLの左シフト・右シフトの組み合わせをできるだけまとめて計算
-
-symmetry分類（COUNT2/4/8）や、rot90/rot180計算も#defineマクロでインライン化
-
-cudaMemcpyの回数最小化、カーネル実行単位でできるだけ大きなbatchで投げる
-
-◆ 最後の一歩
-ベンチマークを取って、1つ1つを順に導入 → 差分計測 → 効果を測るのが王道です！
-「明らかに効果が見えない箇所」「registerを付けても効果が0な場合」は潔く消すのが現代の作法です。
-
-
 NQueens_suzuki$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 12CUDA_constellation_optimized.cu && POCL_DEBUG=all && ./a.out -g
 ptxas warning : Stack size for entry function '_Z19execSolutionsKernelP13ConstellationPjii' cannot be statically determined
 GPU Constellations
@@ -150,6 +20,222 @@ GPU Constellations
 15:          2279184               0     000:00:00:00.09
 16:         14772512               0     000:00:00:00.44
 17:         95815104               0     000:00:00:03.93
+
+
+進行方針（ご確認ください）
+1. Codon/Python最適化のポイント一覧化
+21Py_constellations_optimized_codon.py で採用された 全最適化手法を箇条書きで整理します。
+
+2. CUDA側の現状ロジックと差分抽出
+CUDA側でまだ実装されていない、追加/置換すべきポイントをリストアップ。
+
+3. CUDA用に書き換える際の注意点や方針
+変数の型やビット操作、構造体の使い方、メモリ管理、並列化（atomicAdd等）、パフォーマンス重視のCUDA流書き方に適合させる案。
+
+4. ソース単位のマージ・移植案提示
+最も差分が大きい部分は「constellation生成・事前配置の最適化」「symmetry判定・重複排除」「盤面遷移のビット演算最適化」等。
+
+Python+codon側の関数を、CUDAのC++/CUDA C流に具体的に落とし込みます。
+CUDAカーネル・データ構造への適用例を示し、部分的にソース移植も行います。
+
+「Codon/Python最適化テクニック一覧」を下記にまとめます。
+Python+Codon最適化テクニック（抜粋）
+【作業量が少ない順（実装しやすい順）】
+1. 盤面状態のビットマスク化（各種マスクを事前計算、毎回再計算しない）
+　→ CUDA実装でもローカル変数で完結する＆事前計算済みを渡すだけで即実装可
+
+11. ループのビット演算高速化（while avail: bit=avail&-avail ...）
+　→ CUDAでも全く同じ構文で使える。
+　→for/whileループをbitmask展開に置き換えるだけ。実装コスト最小
+
+9. next_freeを正確に伝搬（freeの使い回し防止）
+　→ CUDAのスレッド・再帰変数としてしっかり管理するだけ。変数設計の問題で即着手可
+
+10. 使い捨て一時変数を徹底排除（再計算抑制）
+　→ CUDA再帰・ループ本体でローカル変数を適切に使うだけ。Pythonと同じ設計思想
+
+8. symmetry/回転・ミラー重複排除による探索空間縮小
+　→ symmetry()などの関数をマクロ化すればそのまま移植可
+　→ 実装量は少ないが、最初に効果が出やすい
+
+5. 多段分岐・特別ケースの個別最適化（中央列特別処理/コーナー処理など）
+　→ Pythonと同じ分岐・if設計をCUDAカーネルでも展開するだけ
+　→ コード量は増えるが、各関数/カーネル分岐で管理しやすい
+
+6. 関数分割・テンプレート化による分岐削減
+　→ CUDAはテンプレートもサポート、または関数分割で分岐パターンを個別化しやすい
+
+2. constellation（星座）の候補事前生成とキャッシュ化
+　→ 盤面候補の全列挙＆事前キャッシュ配列化はCUDA向けにも基本設計で実装済み
+　→ 実装量も中くらいで済む（for/array/listの生成ロジックをCで再現）
+
+7. atomic操作や並列化による高速カウント
+　→ CUDA独自のatomicAddの使い方・warp/block単位集約の設計が必要
+　→ Python側でのmultiprocessingよりはGPU側固有知識が必要
+
+4. ジャスミン変換（回転・ミラーによる盤面正規化）
+　→ CUDAでrot90/mirvert/jasmin関数等を高速化＆一時配列の扱い最適化
+　→ 移植しやすいが、バグると出力が合わないので要テスト
+
+12. state_hashの高速衝突回避設計
+　→ CUDAで高速hashテーブルを設計するのは重い（Zobristハッシュや共有メモリ活用が必要）
+　→ 並列hashテーブル設計は難易度高め（効くケースは超高速化）
+
+3. Zobrist/状態ハッシュによる重複排除・枝刈り
+　→ CUDAで衝突管理やハッシュ値管理・枝刈りの実装は最も移植コスト高（shared memory、atomic操作、lock管理などが必要）
+　→ ただし大Nで効果絶大なので最終段階の目玉
+
+
+21Py_constellations_optimized_codon.pyから要点をまとめ
+A. コンステレーション（部分盤面事前配置）戦略
+・N-Queens全体を一気に探索せず、盤面の一部（例：四隅/中央）にクイーンを事前配置し、その部分盤面（constellation）を使って以降のバックトラック探索を大幅削減。
+・事前生成されたconstellationリストをforループで分割・並列探索（Codonでは@par/CUDAではブロックorスレッド分割）。
+
+B. 対称性除去・重複排除の徹底
+・盤面の90度・180度・270度回転／左右ミラーを全パターン生成、「最小表現」だけ探索。
+・jasmin関数：盤面情報を回転・ミラーで“正規化”し、代表値だけ使う。
+・状態ハッシュ＋signatureセットでconstellation重複排除（set/ハッシュテーブル）。
+
+C. ビット演算による状態管理・遷移の最適化
+・盤面の状態はすべてbitmask（int, uint32_t/uint64_t）で持ち、ビット演算で遷移。
+・free & -freeで最下位の候補だけ取得→配置→消去のイテレータ化。
+・mask/precalc：盤面サイズによるマスクや一時変数は関数外で1回だけ計算し、再利用。
+
+D. next_free伝搬＆関数分割による無駄排除
+・next_free（次の盤面で空いているbit群）を正確に伝搬、recalc禁止。
+・各種「SQ*B」関数分割で、「コーナー配置」「中央列」「特定行」「連続配置」等に分岐した盤面探索の特殊最適化**。
+
+E. 並列化・atomicカウント
+・Codonでは@par＋atomicで分散。
+・CUDAではconstellation単位でスレッド/ブロック割り当て→atomicAddで解数集約。
+
+F. キャッシュ利用（部分盤面/状態ハッシュ/結果再利用）
+・subconst_cacheなどの辞書/セットで「すでに探索した状態」を記録、同じ部分盤面は再帰を繰り返さない。
+・constellation signature, state_hashなど高速衝突回避設計。
+
+G. ループ・分岐削減/最小化
+・一時変数と分岐を減らし分岐予測ミス低減/キャッシュ効率最大化。
+
+
+CUDA現状の「抜け」
+基本的なconstellationロジックのみ。
+対称性除去やjasmin正規化、部分盤面キャッシュ・signature判定が未実装、もしくは簡易実装。
+各種分岐最適化（中央列特別処理、コーナー配置の分岐、SQ***B関数分割）は未反映か単一ロジック。
+状態管理はuint/int型だが、マスクやblocked計算が毎回再計算or複雑化していることが多い。
+GPU並列化は各constellationごとにスレッド化・atomicAddで集約しているが、constellationリスト自体が非最適（重複や冗長パターンが多い）。
+
+3. CUDAへの移植設計・マージ戦略
+以下は移植設計の方針サマリです。
+実際にはこのあと「実装例」として該当ソースを生成します（段階的に出力可能）。
+
+(1) constellationリスト生成部の強化
+Python側の gen_constellations()・jasmin正規化ロジックをCUDA側のホストコード（C++部）で事前生成。
+必要に応じてCPUで事前生成→GPU転送方式 or GPU上で生成も可能。
+
+(2) 重複排除・対称性除去
+signature hashやjasmin変換をCUDA流（関数化 or precompute）で実装。
+回転・ミラーを定数式／bit演算関数に最適化。
+
+(3) 状態・ビットマスク管理
+各種マスク・blocked/next_freeをconst int/constexprで保持。
+配置遷移は必ず bit = avail & -avail／avail &= avail - 1で展開。
+
+(4) 分岐最適化・SQ*B分割**
+特別ケースや盤面分割ごとにCUDA関数分割（__device__関数）として整理。
+スレッドごとにコンステレーションを担当→細かい分岐後は関数ポインタ／switchなどでもOK。
+
+(5) キャッシュ＆atomic操作
+subconst_cache相当は難しいが、「状態済みパターンの共有」は（必要なら）__shared__やグローバルメモリhashset。
+atomicAddでcount集約。
+
+
+ 主な流れ・構成
+constellation生成：N-Queens盤面の一部を事前にクイーン配置し、その部分配置（constellation）ごとに残りを探索する方式
+・Python+codonの「gen_constellations」と同趣旨
+
+constellationごとにGPUスレッド（またはwarp）割り当て
+・各スレッドが部分盤面から探索を開始し、解数を計算
+・atomicAdd等で解数を集約
+
+対称性除去（symmetry）：90度/180度回転やミラーを部分的に実装（ただしPython最終形ほど徹底的ではない印象）
+・各constellationごとに回転・ミラーを判定、ユニークなものだけ集計
+
+ビットマスクによる状態管理
+・ld, rd, colなどビット演算で盤面状態を保持
+・free & -freeで次の配置候補を決定
+・探索関数は基本的に再帰型 or 明示ループ型（C++/CUDA流）
+・atomic操作やスレッド分散で並列集約
+・状態キャッシュや部分盤面重複排除はやや限定的 or 未実装
+
+主要関数・構造体
+・struct Constellation：部分盤面の状態を持つ構造体
+・generate_constellations()：事前に部分盤面を全生成し、constellations配列に格納
+・symmetry判定関数：回転やミラーによる盤面の同型判定（90/180/270度、左右ミラー等）
+・search_kernel（または同様の関数）：constellationごとに残りを探索
+・main()：全体のフロー管理（盤面サイズ、constellation生成、デバイスメモリ確保、カーネル起動、結果集約）
+
+ 現状の「限界点」・未実装最適化
+・jasmin正規化（盤面の最小表現化）が未実装or弱い
+・signatureによる重複排除（state_hash, constellation signature等）が未実装
+・細かい特殊ケース分岐（中央列特別処理、連続配置ケース最適化など）が未分離
+・キャッシュ/メモリ効率の徹底化（部分盤面の再帰キャッシュ、探索済み状態の高速参照）が未反映
+・constellation生成自体も単純全探索 or ミラー重複許容の場合がある
+・next_free伝搬や再計算抑制が一部弱い場合あり
+
+【追加・移植すべき主な最適化】
+jasmin変換による盤面正規化
+constellation生成時に全てをjasmin正規化し、同型盤面を一意化
+signature（盤面シグネチャ）による重複排除
+事前生成や探索途中でのstate_hash/signature記録による枝刈り
+中央列特別処理・コーナー処理の個別分岐（細かい関数分割・最適化）
+SQd0B/SQd1B/…各特殊ケースをCUDAの__device__関数として分割
+next_freeの厳密伝搬と一時変数最適化
+各探索関数でビット演算伝搬、一時計算・マスク等を極力抑制
+部分盤面再帰・探索済みキャッシュ（subconst_cache相当）
+CUDA流には制限があるが、warp内/ブロック内で共有メモリ利用も検討
+探索関数の細分化・パターン分岐最適化
+Pythonで大量に分割したSQ***B系関数群を必要に応じCUDA流関数に分割
+state_hashによる高速判定
+探索枝の高速ユニーク判定
+atomic操作の最適配置
+並列化部分をatomicAdd等で安全集約
+メモリ転送・constellation管理の最適化
+事前計算→GPU配列転送、盤面サイズで柔軟化
+
+
+ CUDA版での「constellation生成＋jasmin正規化」設計
+// 1. 盤面情報からij-klコードを生成（Python:to_ijkl相当）
+__host__ __device__ uint32_t to_ijkl(int i, int j, int k, int l) {
+    return (i << 15) | (j << 10) | (k << 5) | l;
+}
+
+// 2. jasmin正規化（回転・ミラーで最小値盤面を生成）関数
+__host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) {
+    // Python側のロジックをC++/CUDAに変換
+    // getj/geti/getk/getl, rot90, mirvert等を順次関数化
+    // for _ in range(arg): ijkl = rot90(ijkl, N);
+    // if getj(ijkl) < N-1-getj(ijkl): ijkl = mirvert(ijkl, N);
+    // 詳細はご要望あれば全部書き下します
+    // （このまま関数群のC++/CUDA翻訳できます）
+}
+
+// 3. signature用hash生成（state_hash相当）
+__host__ __device__ uint64_t state_hash(uint32_t ld, uint32_t rd, uint32_t col, int row) {
+    // Pythonのハッシュ式をC++に
+    return (uint64_t(ld) * 0x9e3779b9ULL) ^ (uint64_t(rd) * 0x7f4a7c13ULL) ^ (uint64_t(col) * 0x6a5d39e9ULL) ^ row;
+}
+
+// 4. constellation生成ループで正規化・重複排除
+std::unordered_set<uint32_t> signatures;
+for (...) {
+    uint32_t ijkl = to_ijkl(i, j, k, l);
+    uint32_t jasmin_ijkl = jasmin(ijkl, N);
+    if (signatures.count(jasmin_ijkl)) continue;
+    signatures.insert(jasmin_ijkl);
+    // 以降、CUDA配列への格納
+}
+
+
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -197,57 +283,40 @@ typedef struct{
 /**
  * 関数プロトタイプ
  */
-__host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) ;
-IntHashSet* create_int_hashset();
-int int_hashset_contains(IntHashSet* set,int value);
-void int_hashset_add(IntHashSet* set,int value);
-ConstellationArrayList* create_constellation_arraylist();
-void free_constellation_arraylist(ConstellationArrayList* list);
-void constellation_arraylist_add(ConstellationArrayList* list,Constellation value);
-Constellation* create_constellation();
-Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions);
-void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
-int compareConstellations(const void* a, const void* b);
-void sortConstellations(ConstellationArrayList* constellations) ;
-void addTrashConstellation(ConstellationArrayList* list, int ijkl) ;
-ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize) ;
 void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
-int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N);
-long calcSolutions(ConstellationArrayList* constellations,long solutions);
-__global__ void execSolutionsKernel(Constellation* constellations,unsigned int* _total,int N, int totalSize);
 void execSolutions(ConstellationArrayList* constellations,int N);
-void free_int_hashset(IntHashSet* set);
 void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
-bool InitCUDA();
-
-__host__ __device__ int SQBkBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBklBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBlBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N); 
-__host__ __device__ int SQBlkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBjlBkBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBjlBklBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBjlBlBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQBjlBlkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BkBlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BklB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BlBkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BlkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BkBlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BklB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BlBkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BlkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd0B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd0BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd2BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
-__host__ __device__ int SQd1BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+long calcSolutions(ConstellationArrayList* constellations,long solutions);
+__host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) ;
+void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
+__host__ __device__ void SQBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N); 
+__host__ __device__ void SQBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQBjlBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd0B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd0BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd2BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
+__host__ __device__ void SQd1BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N);
 /**
  * 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
  *
@@ -311,20 +380,20 @@ __host__ __device__ int SQd1BkB(int ld,int rd,int col,int start,register int fre
 */
 __host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) 
 {
-  int arg=0;
-  int min_val=ffmin(getj(ijkl), N-1-getj(ijkl));
-  if (ffmin(geti(ijkl), N-1-geti(ijkl)) < min_val) {
-    arg=2; min_val=ffmin(geti(ijkl), N-1-geti(ijkl));
-  }
-  if (ffmin(getk(ijkl), N-1-getk(ijkl)) < min_val) {
-    arg=3; min_val=ffmin(getk(ijkl), N-1-getk(ijkl));
-  }
-  if (ffmin(getl(ijkl), N-1-getl(ijkl)) < min_val) {
-    arg=1; min_val=ffmin(getl(ijkl), N-1-getl(ijkl));
-  }
-  for (int i=0; i < arg; ++i) ijkl=rot90(ijkl, N);
-  if (getj(ijkl) < N-1-getj(ijkl)) ijkl=mirvert(ijkl, N);
-  return ijkl;
+    int arg = 0;
+    int min_val = ffmin(getj(ijkl), N - 1 - getj(ijkl));
+    if (ffmin(geti(ijkl), N - 1 - geti(ijkl)) < min_val) {
+        arg = 2; min_val = ffmin(geti(ijkl), N - 1 - geti(ijkl));
+    }
+    if (ffmin(getk(ijkl), N - 1 - getk(ijkl)) < min_val) {
+        arg = 3; min_val = ffmin(getk(ijkl), N - 1 - getk(ijkl));
+    }
+    if (ffmin(getl(ijkl), N - 1 - getl(ijkl)) < min_val) {
+        arg = 1; min_val = ffmin(getl(ijkl), N - 1 - getl(ijkl));
+    }
+    for (int i = 0; i < arg; ++i) ijkl = rot90(ijkl, N);
+    if (getj(ijkl) < N - 1 - getj(ijkl)) ijkl = mirvert(ijkl, N);
+    return ijkl;
 }
 /**
   CUDA 初期化
@@ -623,7 +692,7 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   else{
     // 現在の行にクイーンを配置できる位置（自由な位置）を計算
     int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
-    register int bit;
+    int bit;
     while(free){
       bit=free & (-free);
       free -= bit;
@@ -720,7 +789,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     int ld = constellation->ld >> 1;
     int rd = constellation->rd >> 1;
     int col = (constellation->col >> 1) | (~((1 << (N - 2)) - 1));
-    //long tempcounter = 0;
+    long tempcounter = 0;
     int LD = (1 << (N - 1) >> j) | (1 << (N - 1) >> l);
     ld |= LD>>(N-start);
     if(start>k){
@@ -729,18 +798,10 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     if(j >= 2 * N-33-start){// クイーンjからのrdがない場合のみ追加する
       rd |= (1<<(N-1)>>j)<<(N-2-start);// 符号ビットを占有する！
     }
+    int free=~(ld | rd | col);
     int jmark = j + 1;
     int endmark = N - 2;
     int mark1, mark2;
-    int cnt=0;
-    int free=~(ld | rd | col);
-    int mask=(1<<N)-1;
-    // __shared__ int mask;
-    // if (threadIdx.x == 0) {
-    //     mask=(1<<N)-1;  // 最初のスレッドだけが計算
-    // }
-    // __syncthreads(); // 全スレッドで同期。board_maskの値が全員に伝わる
-    // int free=mask&~(ld|rd|col);
     /**
       どのソリングアルゴリズムを使うかを決めるための大きなケースの区別
       クイーンjがコーナーから2列以上離れている場合
@@ -759,15 +820,15 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           if(start<l){// 少なくともlがまだ来ていない場合
             if(start<k){// もしkがまだ来ていないなら
               if(l != k+1){ // kとlの間に空行がある場合
-                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// kとlの間に空行がない場合
-                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{// もしkがすでに開始前に来ていて、lだけが残っている場合
-              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// kとlの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{// l<k
           mark1=l-1;
@@ -775,15 +836,15 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           if(start<k){// 少なくともkがまだ来ていない場合
             if(start<l){// lがまだ来ていない場合
               if(k != l+1){// lとkの間に少なくとも1つの自由行がある場合
-                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lとkの間に自由行がない場合
-                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{ // lがすでに来ていて、kだけがまだ来ていない場合
-              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// lとkの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }
       }else{
@@ -796,17 +857,17 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           mark2=l-1;
 
           if(l != k+1){// k行とl行の間に少なくとも1つの空行がある。
-            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }else{// lがkの直後に来る場合
-            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{  // l<k
           mark1=l-1;
           mark2=k-1;
           if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
-            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }else{// kがlの直後に来る場合
-            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }
       }
@@ -819,16 +880,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
         if(start<l){// 少なくともlがまだ来ていない場合
           if(start<k){// もしkもまだ来ていないなら
             if(l != k+1){// kとlの間に空行がある場合
-              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{
-              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// k が開始前に設定されていた場合
             mark2=l-1;
-            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{ // もしkとlが開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }else{// l<k
         mark1=l-1;
@@ -837,16 +898,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
         if(start<k){// 少なくともkがまだ来ていない場合
           if(start<l){// lがまだ来ていない場合
             if(k != l+1){// lとkの間に空行がある場合
-              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{// lとkの間に空行がない場合
-              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{ // l が開始前に来た場合
             mark2=k-1;
-            cnt=SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{ // lとkの両方が開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }
     }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
@@ -860,16 +921,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
 
             if(l != k+1){// kとlが隣り合っている場合
               mark2=l-1;
-              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{
-              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// lがまだ来ていないなら
             mark2=l-1;
-            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{// すでにkとlが来ている場合
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }else{ // l<k
         if(start<k){// 少なくともkがまだ来ていない場合
@@ -880,51 +941,50 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
 
               if(k != l+1){// lとkの間に空行がある場合
                 mark2=k-1;
-                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lとkの間に空行がない場合
-                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{// kが末尾の場合
               if(l != (N-3)){// lがkの直前でない場合
                 mark2=l-1;
                 endmark=(N-3);
-                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lがkの直前にある場合
                 endmark=(N-4);
-                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }
           }else{ // もしkがまだ来ていないなら
             if(k != N-2){// kが末尾にない場合
               mark2=k-1;
               endmark=N-2;
-              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{// kが末尾の場合
               endmark=(N-3);
-              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }
         }else{// kとlはスタートの前
           endmark=N-2;
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }
     }else{// クイーンjがコーナーに置かれている場合
       endmark=N-2;
       if(start>k){
-        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+        SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
       }else{
         /**
           クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用
           する方法によって、Kは最後列に入ることはできない。
         */
         mark1=k-1;
-        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+        SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
       }
     }
     // 完成した開始コンステレーションを削除する。
-    //sum[tid]=tempcounter * symmetry(ijkl,N);
-    sum[tid]=cnt * symmetry(ijkl,N);
+    sum[tid]=tempcounter * symmetry(ijkl,N);
     __syncthreads();if(tid<64&&tid+64<THREAD_NUM){
       sum[tid]+=sum[tid+64];
     }
@@ -949,6 +1009,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     __syncwarp();if(tid==0){
       _total[bid]=sum[0];
     }
+
 }
 /**
  * ConstellationArrayListの各Constellation（部分盤面）ごとに
@@ -987,10 +1048,8 @@ void execSolutions(ConstellationArrayList* constellations,int N)
   int endmark=0;
   int mark1=0;
   int mark2=0;
-  //long tempcounter=0;
+  long tempcounter=0;
   int smallmask=(1<<(N-2))-1;
-  int cnt=0;
-  int mask=(1<<N-1)-1;
   for(int i=0;i<constellations->size;i++){
     Constellation* constellation=&constellations->data[i];
     startIjkl=constellation->startijkl;
@@ -1036,15 +1095,15 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           if(start<l){// 少なくともlがまだ来ていない場合
             if(start<k){// もしkがまだ来ていないなら
               if(l != k+1){ // kとlの間に空行がある場合
-                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// kとlの間に空行がない場合
-                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{// もしkがすでに開始前に来ていて、lだけが残っている場合
-              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// kとlの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{// l<k 
           mark1=l-1;
@@ -1052,15 +1111,15 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           if(start<k){// 少なくともkがまだ来ていない場合
             if(start<l){// lがまだ来ていない場合
               if(k != l+1){// lとkの間に少なくとも1つの自由行がある場合
-                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lとkの間に自由行がない場合
-                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{ // lがすでに来ていて、kだけがまだ来ていない場合
-              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// lとkの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }
       }else{
@@ -1073,17 +1132,17 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           mark2=l-1;
 
           if(l != k+1){// k行とl行の間に少なくとも1つの空行がある。
-            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }else{// lがkの直後に来る場合
-            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{  // l<k
           mark1=l-1;
           mark2=k-1;
           if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
-            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }else{// kがlの直後に来る場合 
-            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }
       }
@@ -1096,16 +1155,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
         if(start<l){// 少なくともlがまだ来ていない場合
           if(start<k){// もしkもまだ来ていないなら
             if(l != k+1){// kとlの間に空行がある場合
-              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{
-              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// k が開始前に設定されていた場合
             mark2=l-1;
-            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{ // もしkとlが開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }else{// l<k
         mark1=l-1;
@@ -1114,16 +1173,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
         if(start<k){// 少なくともkがまだ来ていない場合
           if(start<l){// lがまだ来ていない場合
             if(k != l+1){// lとkの間に空行がある場合
-              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{// lとkの間に空行がない場合
-              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{ // l が開始前に来た場合
             mark2=k-1;
-            cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{ // lとkの両方が開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }
     }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
@@ -1137,16 +1196,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
 
             if(l != k+1){// kとlが隣り合っている場合
               mark2=l-1;
-              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{
-              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }else{// lがまだ来ていないなら
             mark2=l-1;
-            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+            SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
           }
         }else{// すでにkとlが来ている場合
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }else{ // l<k
         if(start<k){// 少なくともkがまだ来ていない場合
@@ -1157,52 +1216,51 @@ void execSolutions(ConstellationArrayList* constellations,int N)
 
               if(k != l+1){// lとkの間に空行がある場合
                 mark2=k-1;
-                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lとkの間に空行がない場合
-                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }else{// kが末尾の場合
               if(l != (N-3)){// lがkの直前でない場合
                 mark2=l-1;
                 endmark=(N-3);
-                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }else{// lがkの直前にある場合
                 endmark=(N-4);
-                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
               }
             }
           }else{ // もしkがまだ来ていないなら
             if(k != N-2){// kが末尾にない場合
               mark2=k-1;
               endmark=N-2;
-              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }else{// kが末尾の場合
               endmark=(N-3);
-              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+              SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
             }
           }
         }else{// kとlはスタートの前
           endmark=N-2;
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+          SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
         }
       }
     }else{// クイーンjがコーナーに置かれている場合
       endmark=N-2;
       if(start>k){
-        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+        SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
       }else{
         /**
           クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用
           する方法によって、Kは最後列に入ることはできない。
         */
         mark1=k-1;
-        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+        SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,&tempcounter,N);
       }
     }
     // 完成した開始コンステレーションを削除する。
-    //constellation->solutions=tempcounter * symmetry(ijkl,N);
-    constellation->solutions=cnt * symmetry(ijkl,N);
-    //tempcounter=0;
+    constellation->solutions=tempcounter * symmetry(ijkl,N);
+    tempcounter=0;
   }
 }
 /**
@@ -1233,8 +1291,6 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     k: 最初の列（左端）に配置されるクイーンの行のインデックス。
   */
   for(int k=1;k<halfN;k++){
-    // 奇数Nのとき中央列kをスキップ
-    if ((N % 2 == 1) && (k == N / 2)) continue;
     /**
       l: 最後の列（右端）に配置されるクイーンの行のインデックス。
       l を k より後の行に配置する理由は、回転対称性を考慮して配置の重複を避け
@@ -1403,540 +1459,758 @@ void f(int unuse,char* argv[]){
   printf("%d%s\n",unuse,argv[0]);
 }
 /** */
-__host__ __device__ int SQd0B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
 {
-  if(row==endmark){ return 1; }
-  int total=0;
-  register int bit;
-  int next_free;
+  if(row==endmark){
+    (*tempcounter)++;
+    return;
+  }
+  int bit;
+  int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ if(row<endmark-1 || ~next_free){ total+=SQd0B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); } }
-  }
-  return total;
-}
-__host__ __device__ int SQd0BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQd0B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BklB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1|1<<N-4);
-      if(next_free){ total+=SQd1B((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N);
-      }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  if(row==endmark){ return 1; }
-  int total=0;
-  register int bit;
-  int next_free;
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){
-      if(row+1>=endmark||~next_free){ total+=SQd1B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BkBlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQd1BlB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark2){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|1|(rd|bit)>>2|col|bit);
-      if(next_free){ if(row+2>=endmark || ~next_free){ total+=SQd1B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); } }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BlkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|2|1<<N-3);
-      if(next_free){ total+=SQd1B((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BlBkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
-      if(next_free){ total+=SQd1BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd1BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark2){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQd1B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BlkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-3|2);
-      if(next_free){ total+=SQd2B((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BklB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-4|1);
-      if(next_free){ total+=SQd2B((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark2){
-    while(free){
-      free^=bit=free&-free;
-      next_free=~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQd2B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BlBkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
-      if(next_free){ total+=SQd2BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark2){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
-      if(next_free){ total+=SQd2B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2BkBlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark1){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQd2BlB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQd2B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  if(row==endmark){ if( (free&(~1))>0){ return 1; } }
-  int total=0;
-  register int bit;
-  int next_free;
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){
-      if(row>=endmark-1||~((ld|bit)<<1|(rd|bit)>>1|col|bit)>0){
-          total+=SQd2B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N);
+    free-=bit=free&(-free);;
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
+    nextfree=~(next_ld|next_rd|next_col);
+    if(nextfree){
+      if(row<endmark-1){
+        if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+          SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }else{
+        SQd0B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
       }
     }
   }
-  return total;
 }
-__host__ __device__ int SQBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQd0BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==mark2){
-    while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
-      if(next_free){ total+=SQBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQBkBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
+  int N3=N-3;
+  int bit;
+  int nextfree;
   if(row==mark1){
     while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
-      if(next_free){ total+=SQBlBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd0B((ld|bit)<<2,((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);;
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQd1BklB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
+  int N4=N-4;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N4));
+      if(nextfree){
+        SQd1B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);;
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd1B(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  if(row==endmark){
+    (*tempcounter)++;
+    return;
+  }
+  int bit;
+  int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
+  while(free){
+    free-=bit=free&(-free);;
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
+    nextfree=~(next_ld|next_rd|next_col);
+    if(nextfree){
+      if(row+1<endmark){
+        if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+          SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }else{
+        SQd1B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+  }
+}
+__host__ __device__ void SQd1BkBlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd1BlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
+  if(row==mark2){
+    while(free){
+      free-=bit=free&(-free);
+      next_ld=((ld|bit)<<2)|1;
+      next_rd=((rd|bit)>>2);
+      next_col=(col|bit);
+      nextfree=~(next_ld|next_rd|next_col);
+      if(nextfree){
+        if(row+2<endmark){
+          if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+            SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        }else{
+          SQd1B(next_ld,next_rd,next_col,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        }
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd1BlkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);;
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N3));
+      if(nextfree){
+        SQd1B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd1BlBkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+      if(nextfree){
+        SQd1BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd1BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark2){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd1B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BlkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
+      if(nextfree){
+        SQd2B(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BklB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N4=N-4;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
+      if(nextfree){
+        SQd2B(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark2){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQd2B(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BlBkB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+      if(nextfree){
+        SQd2BkB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
+  if(row==mark2){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+      if(nextfree){
+        SQd2B(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2BkBlB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+      if(nextfree){
+        SQd2BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQd2B(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  if(row==endmark){
+    if((free&(~1))>0){
+      (*tempcounter)++;
+    }
+    return;
+  }
+  int bit;
+  int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
+  while(free){
+    free-=bit=free&(-free);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
+    nextfree=~(next_ld|next_rd|next_col);
+    if(nextfree){
+      if(row<endmark-1){
+        if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0)
+          SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }else{
+        SQd2B(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+  }
+}
+__host__ __device__ void SQBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
+  if(row==mark2){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+      if(nextfree){
+        SQBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQBkBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N3=N-3;
+  int bit;
+  int nextfree;
+  if(row==mark1){
+    while(free){
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
+      if(nextfree){
+        SQBlBjrB(((ld|bit)<<2),((rd|bit)>>2)|(1<<(N3)),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int bit;
+  int nextfree;
   if(row==jmark){
-    free&=~1;
+    free&=(~1);
     ld|=1;
     while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-      if(next_free){ total+=SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+      if(nextfree){
+        SQB(((ld|bit)<<1),(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  if(row==endmark){ return 1; }
-  int total=0;
-  register int bit;
-  int next_free;
+  if(row==endmark){
+    (*tempcounter)++;
+    return;
+  }
+  int bit;
+  int nextfree;
+  int next_ld;
+  int next_rd;
+  int next_col;
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ if(row>=endmark-1||~((ld|bit)<<1|(rd|bit)>>1|col|bit)>0){ total+=SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); } }
+    free-=bit=free&(-free);
+    next_ld=((ld|bit)<<1);
+    next_rd=((rd|bit)>>1);
+    next_col=(col|bit);
+    nextfree=~(next_ld|next_rd|next_col);
+    if(nextfree){
+      if(row<endmark-1){
+        if(~((next_ld<<1)|(next_rd>>1)|(next_col))>0){
+          SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+        }
+      }else{
+        SQB(next_ld,next_rd,next_col,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBlBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQBlBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
+  int bit;
+  int nextfree;
   if(row==mark1){
     while(free){
-      free^=bit=free&-free;
-      next_free=~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
-      if(next_free){ total+=SQBkBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
+      if(nextfree){
+        SQBkBjrB(((ld|bit)<<2)|1,(rd|bit)>>2,col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){ total+=SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
+  int bit;
+  int nextfree;
+  int N3=N-3;
   if(row==mark2){
     while(free){
-      free^=bit=free&-free;
-      next_free=mask&~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
-      if(next_free){ total+=SQBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
+      if(nextfree){
+        SQBjrB(((ld|bit)<<2),((rd|bit)>>2)|1<<(N3),col|bit,row+2,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBklBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQBklBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
+  int N4=N-4;
+  int bit;
+  int nextfree;
   if(row==mark1){
     while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-4|1);
-      if(next_free){ total+=SQBjrB((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
+      if(nextfree){
+        SQBjrB(((ld|bit)<<3)|1,((rd|bit)>>3)|1<<(N4),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+      }
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBlkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQBlkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
+  int N3=N-3;
+  int bit;
+  int nextfree;
   if(row==mark1){
     while(free){
-      free^=bit=free&-free;
-      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-3|2);
-      if(next_free){ total+=SQBjrB((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
+      free-=bit=free&(-free);
+      nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
+      if(nextfree)
+        SQBjrB(((ld|bit)<<3)|2,((rd|bit)>>3)|1<<(N3),col|bit,row+3,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
     }
-    return total;
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){ total+=SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
   }
-  return total;
 }
-__host__ __device__ int SQBjlBkBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+__host__ __device__ void SQBjlBkBlBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
 {
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==N-1-jmark){
-    rd|=1<<N-1;
-    next_free=mask&~(ld<<1|rd>>1|col);
-    if(next_free){ total+=SQBkBlBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    return total;
+  int N1=N-1;
+  int bit;
+  int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
+    SQBkBlBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
+    return;
   }
   while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQBjlBlBkBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N1=N-1;
+  int bit;
+  int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
+    SQBlBkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+__host__ __device__ void SQBjlBklBjrB(
+    int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N
+    )
+{
+  int N1=N-1;
+  int bit;
+  int nextfree;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
+    SQBklBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
+    return;
+  }
+  while(free){
+    free-=bit=free&(-free);
+    nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(nextfree){
+      SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree,jmark,endmark,mark1,mark2,tempcounter,N);
+    }
+  }
+}
+/**
+  【バックトラック関数の修正】
+1. freeをavailに
+ループ用にint avail = free;
+
+2. next_ld, next_rd, next_colの新設
+それぞれld << 1, rd >> 1, colを入れて毎回再計算しない
+
+3. blockedをnext_ld|next_rd|next_colで算出
+クイーンが利く場所をまとめて一発計算
+
+4. next_freeの計算式を簡潔に
+next_free = board_mask & ~blocked;
+
+5. 再帰の際はif(next_free){...}で分岐
+そのまま次のバックトラック関数を呼び出す
+
+6.「free」は「この行での“配置可能な位置”」を示す変数です。
+再帰呼び出し時には「次の行での配置可能位置」＝next_freeを渡します。
+
+7. tempcounter除去・int return化
+各バックトラック関数は合計値をintでreturn
+execSolutions()側で呼び出しごとにcnt等に加算
+
+8. board_maskをexecSolutions()で事前計算・全バックトラック関数に引数で渡す
+int board_mask = (1 << N) - 1;
+バックトラック関数の全引数にboard_mask追加
+
+
+  */
+__host__ __device__ 
+void SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,long* tempcounter,int N)
+{
+  int N1=N-1;
+  int board_mask=(1<<(N1))-1;
+  int bit;
+  //int nextfree;
+  int avail=free;
+  if(row==N1-jmark){
+    rd|=1<<(N1);
+    free&=~1<<(N1);
+    int next_ld=ld<<1;
+    int next_rd=rd>>1;
+    int next_col=col;
+    int blocked=next_ld|next_rd|next_col;
+    int next_free=board_mask&~blocked;
+    // SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
+    SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,tempcounter,N);
+    return;
+  }
+  // while(free){
+  while(avail){
+    bit=avail&-avail;
+    avail&=avail-1;
+    int next_ld=(ld|bit)<<1;
+    int next_rd=(rd|bit)>>1;
+    int next_col=col|bit;
+    int blocked=next_ld|next_rd|next_col;
+    int next_free=board_mask&=blocked;
+    //free-=bit=free&(-free);
+    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    //if(nextfree){
     if(next_free){
-      total+=SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N);
+      //SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree ,jmark,endmark,mark1,mark2,tempcounter,N);
+      SQBjlBlkBjrB( next_ld,next_rd,next_col,row+1,next_free ,jmark,endmark,mark1,mark2,tempcounter,N);
     }
   }
-  return total;
-}
-__host__ __device__ int SQBjlBlBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==N-1-jmark){
-    rd|=1<<N-1;
-    next_free=mask&~ld<<1|rd>>1|col;
-    if(next_free){ total+=SQBlBkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQBjlBklBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==N-1-jmark){
-    rd|=1<<N-1;
-    next_free=mask&~(ld<<1|rd>>1|col);
-    if(next_free){ total+=SQBklBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
-    if(next_free){ total+=SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
-}
-__host__ __device__ int SQBjlBlkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
-{
-  int total=0;
-  register int bit;
-  int next_free;
-  if(row==N-1-jmark){
-    rd|=1<<N-1;
-    next_free=mask&~(ld<<1|rd>>1|col);
-    total+=SQBlkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N);
-    return total;
-  }
-  while(free){
-    free^=bit=free&-free;
-    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){ total+=SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
-  }
-  return total;
 }
 /**
  * メインエントリポイント
@@ -1981,7 +2255,7 @@ int main(int argc,char** argv)
     int targetN=17;
     struct timeval t0;
     struct timeval t1;
-    printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
+    printf("%s\n"," N:        Total      Unique      dd:hh:mm:ss.ms");
     IntHashSet* ijklList;
     ConstellationArrayList* constellations;
     long TOTAL;
