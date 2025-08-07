@@ -2,6 +2,7 @@
   10CUDA_constellation_warp.cu複写
   21Py_constellations_optimized_codon.pyを移植
 
+これまで実装した最適化
 ✅[Opt-01]    ビット演算枝刈り        全探索・部分盤面生成のすべてでbit演算徹底
 ✅[Opt-02]    左右対称性除去（左半分探索）        初手左半分/コーナー分岐で重複生成排除
 ✅[Opt-03]    中央列特別処理（奇数N）        奇数N中央列を専用内包表記で排除
@@ -15,9 +16,12 @@ board変数にrowの情報を格納していないので対応不可
 [Opt-09]    Zobrist Hash        Zobrist導入済
 [Opt-10]    マクロチェス（局所パターン）        violate_macro_patterns関数（導入済ならOK）
 
-✅[Opt-11]    ミラー+90°回転重複排除    原則不要「あえてやらない」設計。必要ならis_canonicalで激重に
+✅[Opt-11]    ミラー+90°回転重複排除 原則不要「あえてやらない」設計。必要ならis_canonicalで激重に
 ✅[Opt-12]ビット演算のインライン化
 [Opt-13]    キャッシュ構造設計
+  1. Jasmin変換キャッシュ
+  2. 星座生成（サブコンステレーション）キャッシュ
+  3. 星座（盤面）一意性管理
 ✅[Opt-14]    バックトラック関数の修正
 
 =========================================
@@ -42,34 +46,91 @@ tuple key管理により「全く同じ状態は1度しか分岐しない」＝�
 コンステレーション単位でのキャッシュ・集合管理は「メモリ節約・ダブり計算ゼロ・uniqueな探索」に直結。
 応用： CUDA化/並列化のときも「unique集合化」は別スレッド間で衝突なしで設計できる
 
+
 =========================================
 [Opt-14]  バックトラック関数の修正
 =========================================
-1. freeをavailに
-ループ用にint avail = free;
+◆ CUDA N-Queens さらなる高速化テクニック集
+1. バックトラック関数の「ループと再帰」徹底最適化
+不要な変数の排除
+bit, next_ld, next_rd, next_col, next_free などをローカル変数で1行ずつ直書き。
+不要な一時変数、複数回使わない変数は都度インラインで。
+whileループの中で「free -= bit = free & -free」ワンライナー化。
+再帰呼び出しの「return値」や「int型の加算」も極力インライン
+合計カウントはintの加算のみでシンプルに
 
-2. next_ld, next_rd, next_colの新設
-それぞれld << 1, rd >> 1, colを入れて毎回再計算しない
+2. 変数に「register」修飾子を付ける
+CUDA（特に古い環境やsm_アーキテクチャ）では、計算中に頻繁にアクセスされる変数はregisterを明示するとレジスタ利用が最適化されやすい
+register register int bit;
+register int free;
+注意：現代のCUDAではregister指定が自動最適化されることも多いですが、明示でヒントを与えるのは有効な場合もある（最適化でレジスタ溢れしない場合）
 
-3. blockedをnext_ld|next_rd|next_colで算出
-クイーンが利く場所をまとめて一発計算
+3. __forceinline__指定でインライン展開を強制
+再帰関数や小さな関数は__forceinline__指定
 
-4. next_freeの計算式を簡潔に
-next_free = board_mask & ~blocked;
+c
+コピーする
+編集する
+__device__ __forceinline__ int SQd1B(...) { ... }
+これで関数呼び出しオーバーヘッドをカットできる
+特に深い再帰・頻繁な小関数コールの箇所は効果大。
 
-5. 再帰の際はif(next_free){...}で分岐
-そのまま次のバックトラック関数を呼び出す
+4. if分岐を“条件式”でまとめる（条件分岐の予測ミス削減）
+if(...) return ...; より res += (条件) * (値); で「分岐無し」の合成型にする
 
-6.「free」は「この行での“配置可能な位置”」を示す変数です。
-再帰呼び出し時には「次の行での配置可能位置」＝next_freeを渡します。
+ただし、複雑になりすぎると可読性は低下するのでバランスをみて。
 
-7. tempcounter除去・int return化
-各バックトラック関数は合計値をintでreturn
-execSolutions()側で呼び出しごとにcnt等に加算
+5. 定数やマスク値は事前計算・共有メモリ（shared）活用
+たとえばmaskや、頻繁に使う(1 << N) - 1は__shared__変数でスレッド間共有
 
-8. board_maskをexecSolutions()で事前計算・全バックトラック関数に引数で渡す
-int board_mask = (1 << N) - 1;
-バックトラック関数の全引数にboard_mask追加
+start, end, symmetryの決定ルールも先に配列にまとめる
+
+6. カーネル内ループのアンローリング（loop unrolling）
+再帰をループ化 or 明示的にアンローリング
+
+c
+コピーする
+編集する
+#pragma unroll 4
+for (...) { ... }
+whileループが短い（回数が小さい）場合は有効
+
+7. bit演算を“無駄なく”徹底する
+(free & -free) のような「最下位ビット取得」は超速い
+
+再計算の重複を無くす
+
+たとえば(ld|bit)<<1をnext_ldにだけ使い、他では再利用
+
+8. 「分岐の無駄」カット
+「再帰先がゼロ（next_free==0）」の判定はif(!next_free) continue;ではなく
+while(avail) {...}の中でif(next_free){...}で1段だけ分岐する
+
+9. shared memoryでwarpごとsumを高速集計
+既にやっているが、reduceパターンの同期をできるだけ「warp内同期」に
+
+CUDA11以降なら__syncwarp()なども使える
+
+sum[tid]のreduceは最短経路でまとめる
+
+10. CUDA Occupancy最大化（スレッド/ブロック数チューニング）
+THREAD_NUM（blockDim.x）の調整
+
+sm_xx世代で「最適なwarp数（32, 64, 128）」やblock数でGPU利用率最大化を
+
+cudaOccupancyMaxPotentialBlockSize()で計測も
+
+11. その他マイクロ最適化
+LD, RD, COLの左シフト・右シフトの組み合わせをできるだけまとめて計算
+
+symmetry分類（COUNT2/4/8）や、rot90/rot180計算も#defineマクロでインライン化
+
+cudaMemcpyの回数最小化、カーネル実行単位でできるだけ大きなbatchで投げる
+
+◆ 最後の一歩
+ベンチマークを取って、1つ1つを順に導入 → 差分計測 → 効果を測るのが王道です！
+「明らかに効果が見えない箇所」「registerを付けても効果が0な場合」は潔く消すのが現代の作法です。
+
 
 NQueens_suzuki$ nvcc -O3 -arch=sm_61 -m64 -prec-div=false 12CUDA_constellation_optimized.cu && POCL_DEBUG=all && ./a.out -g
 ptxas warning : Stack size for entry function '_Z19execSolutionsKernelP13ConstellationPjii' cannot be statically determined
@@ -136,40 +197,57 @@ typedef struct{
 /**
  * 関数プロトタイプ
  */
-void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
-void execSolutions(ConstellationArrayList* constellations,int N);
-void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
-long calcSolutions(ConstellationArrayList* constellations,long solutions);
 __host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) ;
+IntHashSet* create_int_hashset();
+int int_hashset_contains(IntHashSet* set,int value);
+void int_hashset_add(IntHashSet* set,int value);
+ConstellationArrayList* create_constellation_arraylist();
+void free_constellation_arraylist(ConstellationArrayList* list);
+void constellation_arraylist_add(ConstellationArrayList* list,Constellation value);
+Constellation* create_constellation();
+Constellation* create_constellation_with_values(int id,int ld,int rd,int col,int startijkl,long solutions);
 void add_constellation(int ld,int rd,int col,int startijkl,ConstellationArrayList* constellations);
-__host__ __device__ int SQBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N); 
-__host__ __device__ int SQBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBjlBkBlBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBjlBklBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBjlBlBkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQBjlBlkBjrB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BkBlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BklB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BlB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BlBkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BlkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd0B(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd0BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd2BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
-__host__ __device__ int SQd1BkB(int ld,int rd,int col,int start,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N);
+int compareConstellations(const void* a, const void* b);
+void sortConstellations(ConstellationArrayList* constellations) ;
+void addTrashConstellation(ConstellationArrayList* list, int ijkl) ;
+ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations, int workgroupSize) ;
+void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,int RD,int *counter,ConstellationArrayList* constellations,int N);
+int checkRotations(IntHashSet* ijklList,int i,int j,int k,int l,int N);
+long calcSolutions(ConstellationArrayList* constellations,long solutions);
+__global__ void execSolutionsKernel(Constellation* constellations,unsigned int* _total,int N, int totalSize);
+void execSolutions(ConstellationArrayList* constellations,int N);
+void free_int_hashset(IntHashSet* set);
+void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N);
+bool InitCUDA();
+
+__host__ __device__ int SQBkBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBklBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBlBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N); 
+__host__ __device__ int SQBlkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBjlBkBlBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBjlBklBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBjlBlBkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQBjlBlkBjrB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BkBlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BklB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BlBkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BlkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BkBlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BklB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BlB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BlBkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BlkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd0B(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd0BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd2BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
+__host__ __device__ int SQd1BkB(int ld,int rd,int col,int start,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N);
 /**
  * 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
  *
@@ -233,20 +311,20 @@ __host__ __device__ int SQd1BkB(int ld,int rd,int col,int start,int free,int jma
 */
 __host__ __device__ uint32_t jasmin(uint32_t ijkl, int N) 
 {
-    int arg = 0;
-    int min_val = ffmin(getj(ijkl), N - 1 - getj(ijkl));
-    if (ffmin(geti(ijkl), N - 1 - geti(ijkl)) < min_val) {
-        arg = 2; min_val = ffmin(geti(ijkl), N - 1 - geti(ijkl));
-    }
-    if (ffmin(getk(ijkl), N - 1 - getk(ijkl)) < min_val) {
-        arg = 3; min_val = ffmin(getk(ijkl), N - 1 - getk(ijkl));
-    }
-    if (ffmin(getl(ijkl), N - 1 - getl(ijkl)) < min_val) {
-        arg = 1; min_val = ffmin(getl(ijkl), N - 1 - getl(ijkl));
-    }
-    for (int i = 0; i < arg; ++i) ijkl = rot90(ijkl, N);
-    if (getj(ijkl) < N - 1 - getj(ijkl)) ijkl = mirvert(ijkl, N);
-    return ijkl;
+  int arg=0;
+  int min_val=ffmin(getj(ijkl), N-1-getj(ijkl));
+  if (ffmin(geti(ijkl), N-1-geti(ijkl)) < min_val) {
+    arg=2; min_val=ffmin(geti(ijkl), N-1-geti(ijkl));
+  }
+  if (ffmin(getk(ijkl), N-1-getk(ijkl)) < min_val) {
+    arg=3; min_val=ffmin(getk(ijkl), N-1-getk(ijkl));
+  }
+  if (ffmin(getl(ijkl), N-1-getl(ijkl)) < min_val) {
+    arg=1; min_val=ffmin(getl(ijkl), N-1-getl(ijkl));
+  }
+  for (int i=0; i < arg; ++i) ijkl=rot90(ijkl, N);
+  if (getj(ijkl) < N-1-getj(ijkl)) ijkl=mirvert(ijkl, N);
+  return ijkl;
 }
 /**
   CUDA 初期化
@@ -545,7 +623,7 @@ void setPreQueens(int ld,int rd,int col,int k,int l,int row,int queens,int LD,in
   else{
     // 現在の行にクイーンを配置できる位置（自由な位置）を計算
     int free=~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask;
-    int bit;
+    register int bit;
     while(free){
       bit=free & (-free);
       free -= bit;
@@ -651,12 +729,18 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
     if(j >= 2 * N-33-start){// クイーンjからのrdがない場合のみ追加する
       rd |= (1<<(N-1)>>j)<<(N-2-start);// 符号ビットを占有する！
     }
-    int free=~(ld | rd | col);
     int jmark = j + 1;
     int endmark = N - 2;
     int mark1, mark2;
     int cnt=0;
-    int board_mask=(1<<N-1)-1;
+    int free=~(ld | rd | col);
+    int mask=(1<<N)-1;
+    // __shared__ int mask;
+    // if (threadIdx.x == 0) {
+    //     mask=(1<<N)-1;  // 最初のスレッドだけが計算
+    // }
+    // __syncthreads(); // 全スレッドで同期。board_maskの値が全員に伝わる
+    // int free=mask&~(ld|rd|col);
     /**
       どのソリングアルゴリズムを使うかを決めるための大きなケースの区別
       クイーンjがコーナーから2列以上離れている場合
@@ -675,15 +759,15 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           if(start<l){// 少なくともlがまだ来ていない場合
             if(start<k){// もしkがまだ来ていないなら
               if(l != k+1){ // kとlの間に空行がある場合
-                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// kとlの間に空行がない場合
-                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{// もしkがすでに開始前に来ていて、lだけが残っている場合
-              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// kとlの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{// l<k
           mark1=l-1;
@@ -691,15 +775,15 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           if(start<k){// 少なくともkがまだ来ていない場合
             if(start<l){// lがまだ来ていない場合
               if(k != l+1){// lとkの間に少なくとも1つの自由行がある場合
-                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lとkの間に自由行がない場合
-                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{ // lがすでに来ていて、kだけがまだ来ていない場合
-              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// lとkの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }
       }else{
@@ -712,17 +796,17 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
           mark2=l-1;
 
           if(l != k+1){// k行とl行の間に少なくとも1つの空行がある。
-            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }else{// lがkの直後に来る場合
-            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{  // l<k
           mark1=l-1;
           mark2=k-1;
           if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
-            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }else{// kがlの直後に来る場合
-            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }
       }
@@ -735,16 +819,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
         if(start<l){// 少なくともlがまだ来ていない場合
           if(start<k){// もしkもまだ来ていないなら
             if(l != k+1){// kとlの間に空行がある場合
-              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{
-              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// k が開始前に設定されていた場合
             mark2=l-1;
-            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{ // もしkとlが開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }else{// l<k
         mark1=l-1;
@@ -753,16 +837,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
         if(start<k){// 少なくともkがまだ来ていない場合
           if(start<l){// lがまだ来ていない場合
             if(k != l+1){// lとkの間に空行がある場合
-              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{// lとkの間に空行がない場合
-              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{ // l が開始前に来た場合
             mark2=k-1;
-            cnt=SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd2BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{ // lとkの両方が開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }
     }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
@@ -776,16 +860,16 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
 
             if(l != k+1){// kとlが隣り合っている場合
               mark2=l-1;
-              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{
-              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// lがまだ来ていないなら
             mark2=l-1;
-            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{// すでにkとlが来ている場合
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }else{ // l<k
         if(start<k){// 少なくともkがまだ来ていない場合
@@ -796,46 +880,46 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
 
               if(k != l+1){// lとkの間に空行がある場合
                 mark2=k-1;
-                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lとkの間に空行がない場合
-                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{// kが末尾の場合
               if(l != (N-3)){// lがkの直前でない場合
                 mark2=l-1;
                 endmark=(N-3);
-                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lがkの直前にある場合
                 endmark=(N-4);
-                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }
           }else{ // もしkがまだ来ていないなら
             if(k != N-2){// kが末尾にない場合
               mark2=k-1;
               endmark=N-2;
-              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{// kが末尾の場合
               endmark=(N-3);
-              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }
         }else{// kとlはスタートの前
           endmark=N-2;
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }
     }else{// クイーンjがコーナーに置かれている場合
       endmark=N-2;
       if(start>k){
-        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
       }else{
         /**
           クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用
           する方法によって、Kは最後列に入ることはできない。
         */
         mark1=k-1;
-        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
       }
     }
     // 完成した開始コンステレーションを削除する。
@@ -906,7 +990,7 @@ void execSolutions(ConstellationArrayList* constellations,int N)
   //long tempcounter=0;
   int smallmask=(1<<(N-2))-1;
   int cnt=0;
-  int board_mask=(1<<N-1)-1;
+  int mask=(1<<N-1)-1;
   for(int i=0;i<constellations->size;i++){
     Constellation* constellation=&constellations->data[i];
     startIjkl=constellation->startijkl;
@@ -952,15 +1036,15 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           if(start<l){// 少なくともlがまだ来ていない場合
             if(start<k){// もしkがまだ来ていないなら
               if(l != k+1){ // kとlの間に空行がある場合
-                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// kとlの間に空行がない場合
-                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{// もしkがすでに開始前に来ていて、lだけが残っている場合
-              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// kとlの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{// l<k 
           mark1=l-1;
@@ -968,15 +1052,15 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           if(start<k){// 少なくともkがまだ来ていない場合
             if(start<l){// lがまだ来ていない場合
               if(k != l+1){// lとkの間に少なくとも1つの自由行がある場合
-                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lとkの間に自由行がない場合
-                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{ // lがすでに来ていて、kだけがまだ来ていない場合
-              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// lとkの両方が開始前にすでに来ていた場合
-            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }
       }else{
@@ -989,17 +1073,17 @@ void execSolutions(ConstellationArrayList* constellations,int N)
           mark2=l-1;
 
           if(l != k+1){// k行とl行の間に少なくとも1つの空行がある。
-            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBkBlBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }else{// lがkの直後に来る場合
-            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{  // l<k
           mark1=l-1;
           mark2=k-1;
           if(k != l+1){// l行とk行の間には、少なくともefree行が存在する。
-            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }else{// kがlの直後に来る場合 
-            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }
       }
@@ -1012,16 +1096,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
         if(start<l){// 少なくともlがまだ来ていない場合
           if(start<k){// もしkもまだ来ていないなら
             if(l != k+1){// kとlの間に空行がある場合
-              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{
-              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// k が開始前に設定されていた場合
             mark2=l-1;
-            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd2BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{ // もしkとlが開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }else{// l<k
         mark1=l-1;
@@ -1030,16 +1114,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
         if(start<k){// 少なくともkがまだ来ていない場合
           if(start<l){// lがまだ来ていない場合
             if(k != l+1){// lとkの間に空行がある場合
-              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{// lとkの間に空行がない場合
-              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{ // l が開始前に来た場合
             mark2=k-1;
-            cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{ // lとkの両方が開始前にすでに来ていた場合
-          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd2B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }
     }else if(j==N-2){ // クイーンjがコーナーからちょうど1列離れている場合
@@ -1053,16 +1137,16 @@ void execSolutions(ConstellationArrayList* constellations,int N)
 
             if(l != k+1){// kとlが隣り合っている場合
               mark2=l-1;
-              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{
-              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }else{// lがまだ来ていないなら
             mark2=l-1;
-            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+            cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }else{// すでにkとlが来ている場合
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }else{ // l<k
         if(start<k){// 少なくともkがまだ来ていない場合
@@ -1073,46 +1157,46 @@ void execSolutions(ConstellationArrayList* constellations,int N)
 
               if(k != l+1){// lとkの間に空行がある場合
                 mark2=k-1;
-                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lとkの間に空行がない場合
-                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{// kが末尾の場合
               if(l != (N-3)){// lがkの直前でない場合
                 mark2=l-1;
                 endmark=(N-3);
-                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lがkの直前にある場合
                 endmark=(N-4);
-                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+                cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }
           }else{ // もしkがまだ来ていないなら
             if(k != N-2){// kが末尾にない場合
               mark2=k-1;
               endmark=N-2;
-              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }else{// kが末尾の場合
               endmark=(N-3);
-              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+              cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
             }
           }
         }else{// kとlはスタートの前
           endmark=N-2;
-          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+          cnt=SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
         }
       }
     }else{// クイーンjがコーナーに置かれている場合
       endmark=N-2;
       if(start>k){
-        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+        cnt=SQd0B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
       }else{
         /**
           クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用
           する方法によって、Kは最後列に入ることはできない。
         */
         mark1=k-1;
-        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N);
+        cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
       }
     }
     // 完成した開始コンステレーションを削除する。
@@ -1319,1257 +1403,538 @@ void f(int unuse,char* argv[]){
   printf("%d%s\n",unuse,argv[0]);
 }
 /** */
-__host__ __device__ 
-int SQd0B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd0B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
-  if(row==endmark){
-    /* (*tempcounter)++; */
-    return 1;
-  }
+  if(row==endmark){ return 1; }
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(next_ld|next_rd|next_col);
-    if(next_free){
-      if(row<endmark-1 || ~blocked ){
-          total+=SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ if(row<endmark-1 || ~next_free){ total+=SQd0B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); } }
   }
   return total;
 }
-__host__ __device__ 
-int SQd0BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd0BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);;
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
-      if(next_free){
-        total+=SQd0B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQd0B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    }
+    return total;
+  }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+  }
+  return total;
+}
+__host__ __device__ int SQd1BklB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+{
+  int total=0;
+  register int bit;
+  int next_free;
+  if(row==mark1){
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1|1<<N-4);
+      if(next_free){ total+=SQd1B((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N);
       }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+  }
+  return total;
+}
+__host__ __device__ int SQd1B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+{
+  if(row==endmark){ return 1; }
+  int total=0;
+  register int bit;
+  int next_free;
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
     if(next_free){
-      total+=SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
+      if(row+1>=endmark||~next_free){ total+=SQd1B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
   }
   return total;
 }
-__host__ __device__ 
-int SQd1BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd1BkBlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N4=N-4;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);;
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1|1<<N4;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1|1<<(N4));
-      if(next_free){
-        total+=SQd1B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQd1BlB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd1B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd1BlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  if(row==endmark){
-    /* (*tempcounter)++; */
-    return 1;
-  }
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  int next_free;
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(next_ld|next_rd|next_col);
-    if(next_free){
-      if(row+1>=endmark || ~blocked){
-          total+=SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
-    }
-  }
-  return total;
-}
-__host__ __device__ 
-int SQd1BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
-{
-  int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  int next_free;
-  if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);;
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
-      if(next_free){
-        total+=SQd1BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
-    }
-    return total;
-  }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
-  }
-  return total;
-}
-__host__ __device__ 
-int SQd1BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
-{
-  int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2|1;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col;
-      next_free=board_mask&~blocked;
-      //nextfree=~(next_ld|next_rd|next_col);
-      if(next_free){
-        if(row+2>=endmark || ~blocked){
-            total+=SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-        }
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|1|(rd|bit)>>2|col|bit);
+      if(next_free){ if(row+2>=endmark || ~next_free){ total+=SQd1B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); } }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd1BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd1BlkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);;
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|2|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|2|1<<(N3));
-      if(next_free){
-        total+=SQd1B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|2|1<<N-3);
+      if(next_free){ total+=SQd1B((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd1BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd1BlBkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(next_free){
-        total+=SQd1BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
+      if(next_free){ total+=SQd1BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd1BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd1BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
-      next_free=board_mask&~blocked;
-      if(next_free){
-        total+=SQd1B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQd1B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BlkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BlkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3|2;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
-      if(next_free){
-        total+=SQd2B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-3|2);
+      if(next_free){ total+=SQd2B((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BklB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BklB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N4=N-4;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  int avail=free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N4|1;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
-      if(next_free){
-        total+=SQd2B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-4|1);
+      if(next_free){ total+=SQd2B((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
-      if(next_free){
-        total+=SQd2B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQd2B((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BlBkB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BlBkB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(next_free){
-        total+=SQd2BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
+      if(next_free){ total+=SQd2BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(next_free){
-        total+=SQd2B(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
+      if(next_free){ total+=SQd2B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2BkBlB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2BkBlB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
-      if(next_free){
-        total+=SQd2BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQd2BlB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQd2B(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQd2B(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
+  if(row==endmark){ if( (free&(~1))>0){ return 1; } }
   int total=0;
-  int avail=free;
-  if(row==endmark){
-    if( (avail&(~1))>0){
-    //if((free&(~1))>0){
-      /* (*tempcounter)++; */
-    //}
-      return 1;
-    }
-  }
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(next_ld|next_rd|next_col);
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
     if(next_free){
-      if(row>=endmark-1 || ~(next_ld<<1|next_rd>>1|next_col)>0){
-          total+=SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
+      if(row>=endmark-1||~((ld|bit)<<1|(rd|bit)>>1|col|bit)>0){
+          total+=SQd2B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N);
       }
     }
   }
   return total;
 }
-__host__ __device__ 
-int SQBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  int avail=free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1;
-      next_free=board_mask&~blocked;
-      //next_free=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(next_free){
-        total+=SQBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
+      if(next_free){ total+=SQBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBkBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  int avail=free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|(1<<(N3)));
-      if(next_free){
-        total+=SQBlBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N-3);
+      if(next_free){ total+=SQBlBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==jmark){
-    //free&=(~1);
-    avail&=~1;
+    free&=~1;
     ld|=1;
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<1;
-      next_rd=(rd|bit)>>1;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-      if(next_free){
-        total+=SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+      if(next_free){ total+=SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    // nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
+  if(row==endmark){ return 1; }
   int total=0;
-  if(row==endmark){
-    /* (*tempcounter)++; */
-    return 1;
-  }
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(next_ld|next_rd|next_col);
-    if(next_free){
-      if(row>=endmark-1 || ~(next_ld<<1|next_rd>>1|next_col)>0){
-          total+=SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ if(row>=endmark-1||~((ld|bit)<<1|(rd|bit)>>1|col|bit)>0){ total+=SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); } }
   }
   return total;
 }
-__host__ __device__ 
-int SQBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBlBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1;
-      next_free=board_mask&~blocked;
-      //next_free=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1);
-      if(next_free){
-        total+=SQBkBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=~((ld|bit)<<2|(rd|bit)>>2|col|bit|1);
+      if(next_free){ total+=SQBkBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(next_free){ total+=SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
+  register int bit;
   int next_free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
   if(row==mark2){
-    while(avail){
-      bit=avail&-avail;
-      avail&=avail-1;
-      //free-=bit=free&(-free);
-      next_ld=(ld|bit)<<2;
-      next_rd=(rd|bit)>>2;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N3));
-      if(next_free){
-        total+=SQBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1<<(N-3));
+      if(next_free){ total+=SQBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N-3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    //free-=bit=free&(-free);
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ int 
-SQBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBklBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  //int N1=N-1;
-  int N4=N-4;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  if(row==mark1){
-    while(avail){
-      //free-=bit=free&(-free);
-      bit=avail&-avail;
-      avail&=avail-1;
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N4|1;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N4)|1);
-      if(next_free){
-        total+=SQBjrB(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
-    }
-    return total;
-  }
-  while(avail){
-    //free-=bit=free&(-free);
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
-  }
-  return total;
-}
-__host__ __device__ 
-int SQBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
-{
-  int total=0;
-  //int N1=N-1;
-  int N3=N-3;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
+  register int bit;
   int next_free;
   if(row==mark1){
-    while(avail){
-      //free-=bit=free&(-free);
-      bit=avail&-avail;
-      avail&=avail-1;
-      next_ld=(ld|bit)<<3;
-      next_rd=(rd|bit)>>3;
-      next_col=col|bit;
-      blocked=next_ld|next_rd|next_col|1<<N3|2;
-      next_free=board_mask&~blocked;
-      //nextfree=~(((ld|bit)<<3)|((rd|bit)>>3)|(col|bit)|1<<(N3)|2);
-      if(next_free){
-        total+=SQBjrB(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-      }
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-4|1);
+      if(next_free){ total+=SQBjrB((ld|bit)<<3|1,(rd|bit)>>3|1<<N-4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
     }
     return total;
   }
-  while(avail){
-    //free-=bit=free&(-free);
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+  }
+  return total;
+}
+__host__ __device__ int SQBlkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+{
+  int total=0;
+  register int bit;
+  int next_free;
+  if(row==mark1){
+    while(free){
+      free^=bit=free&-free;
+      next_free=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N-3|2);
+      if(next_free){ total+=SQBjrB((ld|bit)<<3|2,(rd|bit)>>3|1<<N-3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    }
+    return total;
+  }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(next_free){ total+=SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
+  }
+  return total;
+}
+__host__ __device__ int SQBjlBkBlBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
+{
+  int total=0;
+  register int bit;
+  int next_free;
+  if(row==N-1-jmark){
+    rd|=1<<N-1;
+    next_free=mask&~(ld<<1|rd>>1|col);
+    if(next_free){ total+=SQBkBlBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
+    return total;
+  }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
     if(next_free){
-      total+=SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
+      total+=SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N);
     }
   }
   return total;
 }
-__host__ __device__ 
-int SQBjlBkBlBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBjlBlBkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int avail=free;
-  int bit;
+  register int bit;
   int next_free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  if(row==N1-jmark){
-    rd|=1<<(N1);
-    next_ld=ld<<1;
-    next_rd=rd>>1;
-    next_col=col;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //free&=~1<<(N1);
-    if(next_free){
-      total+=SQBkBlBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  if(row==N-1-jmark){
+    rd|=1<<N-1;
+    next_free=mask&~ld<<1|rd>>1|col;
+    if(next_free){ total+=SQBlBkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
     return total;
   }
-  while(avail){
-    //free-=bit=free&(-free);
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=(col|bit);
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQBjlBlBkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBjlBklBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  int avail=free;
+  register int bit;
   int next_free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  if(row==N1-jmark){
-    rd|=1<<(N1);
-    //free&=~1<<(N1);
-    next_ld=ld<<1;
-    next_rd=rd>>1;
-    next_col=col;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    if(next_free){
-      total+=SQBlBkBjrB(ld,rd,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  if(row==N-1-jmark){
+    rd|=1<<N-1;
+    next_free=mask&~(ld<<1|rd>>1|col);
+    if(next_free){ total+=SQBklBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N); }
     return total;
   }
-  while(avail){
-    //free-=bit=free&(-free);
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit);
+    if(next_free){ total+=SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
-__host__ __device__ 
-int SQBjlBklBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
+__host__ __device__ int SQBjlBlkBjrB(int ld,int rd,int col,int row,register int free,int jmark,int endmark,int mark1,int mark2,int mask,int N)
 {
   int total=0;
-  int N1=N-1;
-  //int board_mask=(1<<N)-1;
-  int bit;
-  //int nextfree;
-  int avail=free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked; 
+  register int bit;
   int next_free;
-  if(row==N1-jmark){
-    rd|=1<<(N1);
-    //free&=~1<<(N1);
-    next_ld=ld<<1;
-    next_rd=rd>>1;
-    next_col=col;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    if(next_free){
-      total+=SQBklBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  if(row==N-1-jmark){
+    rd|=1<<N-1;
+    next_free=mask&~(ld<<1|rd>>1|col);
+    total+=SQBlkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N);
     return total;
   }
-  while(avail){
-    //free-=bit=free&(-free);
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    if(next_free){
-      total+=SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    }
-  }
-  return total;
-}
-__host__ __device__ 
-int SQBjlBlkBjrB(int ld,int rd,int col,int row,int free,int jmark,int endmark,int mark1,int mark2,int board_mask,int N)
-{
-  int total=0;
-  int N1=N-1;
-  // int board_mask=(1<<N1)-1;
-  int bit;
-  //int nextfree;
-  int avail=free;
-  int next_ld;
-  int next_rd;
-  int next_col;
-  int blocked;
-  int next_free;
-  if(row==N1-jmark){
-    rd|=1<<(N1);
-    //free&=~1<<(N1);
-    next_ld=ld<<1;
-    next_rd=rd>>1;
-    next_col=col;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&~blocked;
-    // SQBlkBjrB(ld,rd,col,row,free,jmark,endmark,mark1,mark2,tempcounter,N);
-    total+=SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N);
-    return total;
-  }
-  // while(free){
-  while(avail){
-    bit=avail&-avail;
-    avail&=avail-1;
-    next_ld=(ld|bit)<<1;
-    next_rd=(rd|bit)>>1;
-    next_col=col|bit;
-    blocked=next_ld|next_rd|next_col;
-    next_free=board_mask&=blocked;
-    //free-=bit=free&(-free);
-    //nextfree=~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
-    //if(nextfree){
-    if(next_free){
-      //SQBjlBlkBjrB( (ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,nextfree ,jmark,endmark,mark1,mark2,tempcounter,N);
-      total+=SQBjlBlkBjrB( next_ld,next_rd,next_col,row+1,next_free ,jmark,endmark,mark1,mark2,board_mask,N);
-    }
+  while(free){
+    free^=bit=free&-free;
+    next_free=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit));
+    if(next_free){ total+=SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N); }
   }
   return total;
 }
