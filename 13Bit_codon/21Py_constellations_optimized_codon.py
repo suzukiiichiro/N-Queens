@@ -74,7 +74,6 @@ def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, end
 # board_mask = (1 << N) - 1 を使い、コーナー列は col 側で事前に埋める（あなたの exec_solutions で既に col |= ~small_mask している方式）に統一してください。いずれにせよ next_free = board_mask&~(...) の形を守るのが肝です。
 
 # 2.すべての SQ* の関数内で定義されている board_mask:int=(1<<(N-2))-1 を exec_solutions() で一度だけ定義してすべての SQ* にパラメータで渡す
-
 # 3.重要：free ではなく next_free を渡す
 # 行 1083 で次の関数へ渡しているのが free になっていますが、直前で rd を更新し、next_free を計算しています。
 # ここは free ではなく next_free を渡すべきです。でないと、更新後の占有状態が反映されません。
@@ -133,7 +132,7 @@ class NQueens19:
   # [i, j, k, l] 各クイーンの位置情報を5ビットずつ
   # 整数値（ijkl）にパック／アンパックするためのマクロ。
   # 15ビット～0ビットまでに [i|j|k|l] を格納する設計で、
-  # constellationのsignatureや回転・ミラー等の盤面操作を高速化する
+  # constellationのsignatureや回転・ミラー等の盤面操作を高速化する。
   # 例：
   #   - geti(ijkl): 上位5ビット（15-19）からiインデックスを取り出す
   #   - toijkl(i, j, k, l): 各値を5ビット単位で連結し
@@ -197,7 +196,7 @@ class NQueens19:
     self.jasmin_cache[key] = result
     return result
   #--------------------------------------------
-  # 使用例:
+  # 使用例: 
   # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
   #--------------------------------------------
   """
@@ -559,6 +558,8 @@ class NQueens19:
     # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
     # ijkl_list=ijkl_list_jasmin
     ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
+
+
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
       i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
