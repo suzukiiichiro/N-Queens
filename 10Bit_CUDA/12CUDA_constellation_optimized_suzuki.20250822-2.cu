@@ -102,7 +102,7 @@ c
 コピーする
 編集する
 #pragma unroll 4
-for (...) { ... }
+for(...) { ... }
 whileループが短い（回数が小さい）場合は有効
 
 7. bit演算を“無駄なく”徹底する
@@ -161,6 +161,8 @@ GPU Constellations
 16:         14772512               0     000:00:00:00.44
 17:         95815104               0     000:00:00:03.93
 */
+#include <vector>
+#include <cstdio>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -187,6 +189,8 @@ typedef struct{
   int col;
   int startijkl;
   long solutions;
+  long unique;
+  long total;
 }Constellation;
 /**
   IntHashSet構造体の定義
@@ -310,7 +314,7 @@ __host__ __device__ uint32_t jasmin(uint32_t ijkl, int N)
   if (ffmin(getl(ijkl), N-1-getl(ijkl)) < min_val) {
     arg=1; min_val=ffmin(getl(ijkl), N-1-getl(ijkl));
   }
-  for (int i=0; i < arg; ++i) ijkl=rot90(ijkl, N);
+  for(unsigned int i=0; i < arg; ++i) ijkl=rot90(ijkl, N);
   if (getj(ijkl) < N-1-getj(ijkl)) ijkl=mirvert(ijkl, N);
   return ijkl;
 }
@@ -363,7 +367,7 @@ void free_int_hashset(IntHashSet* set)
  */
 int int_hashset_contains(IntHashSet* set,unsigned int value)
 {
-  for(int i=0;i<set->size;i++){
+  for(unsigned int i=0;i<set->size;i++){
     if(set->data[i]==value){ return 1; }
   }
   return 0;
@@ -553,7 +557,7 @@ ConstellationArrayList* fillWithTrash(ConstellationArrayList* constellations,uns
   sortConstellations(constellations); // コンステレーションのリストをソート
   ConstellationArrayList* newConstellations = create_constellation_arraylist();// 新しいリストを作成
   unsigned int currentJkl = constellations->data[0].startijkl & ((1 << 15) - 1); // 最初のコンステレーションの currentJkl を取得
-  for (int i = 0; i < constellations->size; i++) { // 各コンステレーションに対してループ
+  for(unsigned int i = 0; i < constellations->size; i++) { // 各コンステレーションに対してループ
     Constellation c = constellations->data[i];
     if (c.solutions >= 0) continue;// 既にソリューションがあるものは無視
     if ((c.startijkl & ((1 << 15) - 1)) != currentJkl) { // 新しい ijkl グループの開始を確認
@@ -655,13 +659,24 @@ unsigned int checkRotations(IntHashSet* ijklList,unsigned int i,unsigned int j,u
  *   - N-Queens探索で全グループ/分割探索の解数を集約する用途
  *   - 戻り値は累積加算値なので、通常は0で初期化して使う
  */
-long calcSolutions(ConstellationArrayList* constellations,long solutions)
+long calcSolutions_total(ConstellationArrayList* constellations,long solutions)
 {
   Constellation* c;
-  for(int i=0;i<constellations->size;i++){
+  for(unsigned int i=0;i<constellations->size;i++){
     c=&constellations->data[i];
-    if(c->solutions > 0){
-      solutions += c->solutions;
+    if(c->total > 0){
+      solutions += c->total;
+    }
+  }
+  return solutions;
+}
+long calcSolutions_unique(ConstellationArrayList* constellations,long solutions)
+{
+  Constellation* c;
+  for(unsigned int i=0;i<constellations->size;i++){
+    c=&constellations->data[i];
+    if(c->unique > 0){
+      solutions += c->unique;
     }
   }
   return solutions;
@@ -683,27 +698,39 @@ long calcSolutions(ConstellationArrayList* constellations,long solutions)
  *   - スレッド間同期（__syncthreads, __syncwarp）により正確な集約処理を実装
  *   - 大規模並列GPU探索時でも「高速・正確・スケーラブル」なN-Queens全解数計算を実現
  */
-__global__ void execSolutionsKernel(Constellation* constellations,unsigned int* _total,int N, int totalSize)
+//__global__ void execSolutionsKernel(Constellation* constellations,unsigned int* _total,int N, unsigned int totalSize)
+__global__ void execSolutionsKernel(Constellation* constellations,unsigned int* __restrict__ _unique,unsigned int* __restrict__ _total,int N, unsigned int totalSize)
 {
     const unsigned int tid=threadIdx.x;
     const unsigned int bid=blockIdx.x;
     const unsigned int idx = bid*blockDim.x+tid;
     // 範囲外アクセスのチェック
-    __shared__ unsigned int sum[THREAD_NUM];
+    //__shared__ unsigned int sum[THREAD_NUM];
+    __shared__ unsigned int sumU[THREAD_NUM];
+    __shared__ unsigned int sumT[THREAD_NUM];
+    unsigned int unique=0;
+    unsigned int total=0;
+
     unsigned int cnt=0;
-    sum[tid]=0;
+    sumU[tid]=0;
+    sumT[tid]=0;
     /**
     if (idx >= totalSize){
        sum[tid]=0;
        return;
     }
     */
-    if(idx<totalSize){
+    if(idx<totalSize)
+    {
       Constellation* constellation = &constellations[idx];
       int start = constellation->startijkl >> 20;
       //dummy dataはスキップする
       if(start==69){
-        sum[tid]=0;
+        cnt=0;
+        unique=0;
+        total=0;
+        sumU[tid]=0;
+        sumT[tid]=0;
         return ;
       }else{
         //1 << … は 1u << … にします（1 << 31 付近で符号拡張回避）。
@@ -942,23 +969,72 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
             cnt=SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
           }
         }
-        cnt*=symmetry(ijkl,N);
+        unique=cnt;
+        total=cnt*symmetry(ijkl,N);
+        //cnt*=symmetry(ijkl,N);
       }
     }
     // 完成した開始コンステレーションを削除する。
     /* sum[tid]=cnt * symmetry(ijkl,N); */
-    sum[tid]=cnt;
+    //sum[tid]=cnt;
+    sumU[tid]=unique;
+    sumT[tid]=total;
     __syncthreads();
-
-    if(tid<64&&tid+64<THREAD_NUM){ sum[tid]+=sum[tid+64]; }
-
-    __syncwarp();if(tid<32){ sum[tid]+=sum[tid+32]; } 
-    __syncwarp();if(tid<16){ sum[tid]+=sum[tid+16]; } 
-    __syncwarp();if(tid<8){ sum[tid]+=sum[tid+8]; } 
-    __syncwarp();if(tid<4){ sum[tid]+=sum[tid+4]; } 
-    __syncwarp();if(tid<2){ sum[tid]+=sum[tid+2]; } 
-    __syncwarp();if(tid<1){ sum[tid]+=sum[tid+1]; } 
-    if(tid==0){ _total[bid]=sum[0]; }
+/**
+    int n = blockDim.x;
+    for (int offset = n >> 1; offset > 0; offset >>= 1) {
+        if (tid < (unsigned)offset) {
+            sumU[tid] += sumU[tid + offset];
+            sumT[tid] += sumT[tid + offset];
+        }
+        __syncthreads();
+    }
+    if (tid == 0) {
+        _unique[bid] = sumU[0];
+        _total [bid] = sumT[0];
+    }
+*/
+    if(tid<64&&tid+64<THREAD_NUM){ 
+      //sum[tid]+=sum[tid+64]; 
+      sumU[tid]+=sumU[tid+64]; 
+      sumT[tid]+=sumT[tid+64]; 
+    }
+    __syncwarp();if(tid<32){ 
+      //sum[tid]+=sum[tid+32]; 
+      sumU[tid]+=sumU[tid+32]; 
+      sumT[tid]+=sumT[tid+32]; 
+    } 
+    __syncwarp();if(tid<16){ 
+      //sum[tid]+=sum[tid+16]; 
+      sumU[tid]+=sumU[tid+16]; 
+      sumT[tid]+=sumT[tid+16]; 
+    } 
+    __syncwarp();if(tid<8){ 
+      //sum[tid]+=sum[tid+8]; 
+      sumU[tid]+=sumU[tid+8]; 
+      sumT[tid]+=sumT[tid+8]; 
+    } 
+    __syncwarp();if(tid<4){ 
+      //sum[tid]+=sum[tid+4]; 
+      sumU[tid]+=sumU[tid+4]; 
+      sumT[tid]+=sumT[tid+4]; 
+    } 
+    __syncwarp();if(tid<2){ 
+      //sum[tid]+=sum[tid+2]; 
+      sumU[tid]+=sumU[tid+2]; 
+      sumT[tid]+=sumT[tid+2]; 
+    } 
+    __syncwarp();if(tid<1){ 
+      //sum[tid]+=sum[tid+1]; 
+      sumU[tid]+=sumU[tid+1]; 
+      sumT[tid]+=sumT[tid+1]; 
+    } 
+    //if(tid==0){ _total[bid]=sum[0]; }
+    if(tid==0){ 
+      //d_blockTotal[bid]=sum[0]; 
+      _unique[bid]=sumU[0]; 
+      _total[bid]=sumT[0]; 
+    }
 }
 /**
  * ConstellationArrayListの各Constellation（部分盤面）ごとに
@@ -982,17 +1058,17 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
  */
 void execSolutions(ConstellationArrayList* constellations,int N)
 {
-  unsigned  int j=0;
-  unsigned  int k=0;
-  unsigned  int l=0;
-  unsigned  int ijkl=0;
-  unsigned  int ld=0;
-  unsigned  int rd=0;
-  unsigned  int col=0;
-  unsigned  int startIjkl=0;
-  unsigned  int start=0;
+  int j=0;
+  int k=0;
+  int l=0;
+  unsigned int ijkl=0;
+  int ld=0;
+  int rd=0;
+  int col=0;
+  unsigned int startIjkl=0;
+   int start=0;
   unsigned  int free=0;
-  unsigned  int LD=0;
+   int LD=0;
   unsigned  int jmark=0;
   unsigned  int endmark=0;
   unsigned  int mark1=0;
@@ -1000,7 +1076,7 @@ void execSolutions(ConstellationArrayList* constellations,int N)
   unsigned  int smallmask=(1<<(N-2))-1;
   unsigned  int cnt=0;
   unsigned  int mask=(1<<N-1)-1;
-  for(int i=0;i<constellations->size;i++){
+  for(unsigned int i=0;i<constellations->size;i++){
     Constellation* constellation=&constellations->data[i];
     startIjkl=constellation->startijkl;
     start=startIjkl>>20;
@@ -1209,7 +1285,9 @@ void execSolutions(ConstellationArrayList* constellations,int N)
       }
     }
     // 完成した開始コンステレーションを削除する。
-    constellation->solutions=cnt * symmetry(ijkl,N);
+    //constellation->solutions=cnt * symmetry(ijkl,N);
+    constellation->unique=cnt;
+    constellation->total=cnt * symmetry(ijkl,N);
   }
 }
 /**
@@ -1230,17 +1308,15 @@ void execSolutions(ConstellationArrayList* constellations,int N)
  *   - 「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
  *   - このループ構造・排除ロジックがN-Queensソルバの根幹。
  */
-unsigned int rot180_in_set(IntHashSet* ijklList,unsigned int i,unsigned int j,unsigned int k,unsigned int l,unsigned int N){
+unsigned int rot180_in_set(IntHashSet* ijklList,unsigned int i,unsigned int j,unsigned int k,unsigned int l,unsigned int N)
+{
   // toijkl: ((i<<15)|(j<<10)|(k<<5)|l)
   // 180°回転: (i,j,k,l) -> (N-1-j, N-1-i, N-1-l, N-1-k)
   unsigned int val = ((N-1-j)<<15) | ((N-1-i)<<10) | ((N-1-l)<<5) | (N-1-k);
   return int_hashset_contains(ijklList, val);
 }
 /**
-
-
-
-  */
+ */
 void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellations,int N)
 {
   unsigned int halfN=(N+1)/2; // N の半分を切り上げる
@@ -1248,10 +1324,10 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   // --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
   if (N % 2 == 1) {
     int center = N / 2;
-    for (int l = center + 1; l < N - 1; ++l) {
-      for (int i = center + 1; i < N - 1; ++i) {
+    for(unsigned int l = center + 1; l < N - 1; ++l) {
+      for(unsigned int i = center + 1; i < N - 1; ++i) {
         if (i == (N - 1) - l) continue;
-        for (int j = N - center - 2; j > 0; --j) {
+        for(unsigned int j = N - center - 2; j > 0; --j) {
           if (j == i || j == l) continue;
           if (!checkRotations(ijklList, i, j, center, l, N)
               && !rot180_in_set(ijklList, i, j, center, l, N)) {
@@ -1268,27 +1344,27 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
     最初のcolを通過する
     k: 最初の列（左端）に配置されるクイーンの行のインデックス。
   */
-  for (int k = 1; k < halfN; ++k) {
+  for(unsigned int k = 1; k < halfN; ++k) {
     // 奇数Nのとき中央列kをスキップ（上で個別処理済み）
     if ((N % 2 == 1) && (k == N / 2)) continue;
     /**
       l: 最後の列（右端）に配置されるクイーンの行のインデックス。
       l を k より後の行に配置する理由は、回転対称性を考慮して配置の重複を避けるためです。
     */
-    for (int l = k + 1; l < N - 1; ++l) {
+    for(unsigned int l = k + 1; l < N - 1; ++l) {
       /**
         i: 最初の行（上端）に配置されるクイーンの列のインデックス。
         最初の行を通過する
         k よりも下の行に配置することで、ボード上の対称性や回転対称性を考慮して、重複した解を避けるための配慮がされています。
       */
-      for (int i = k + 1; i < (N - 1); ++i) {
+      for(unsigned int i = k + 1; i < (N - 1); ++i) {
         // i==N-1-l は、行iが列lの「対角線上」にあるかどうかをチェックしています。
         if (i == (N - 1) - l) continue;
         /**
           j: 最後の行（下端）に配置されるクイーンの列のインデックス。
           最後の行を通過する
         */
-        for (int j = N - k - 2; j > 0; --j) {
+        for(unsigned int j = N - k - 2; j > 0; --j) {
           /**
             同じ列や行にクイーンが配置されている場合は、その配置が有効でないためスキップ
           */
@@ -1308,15 +1384,15 @@ void genConstellations(IntHashSet* ijklList,ConstellationArrayList* constellatio
   /**
     角の位置（コーナー）にクイーンがある場合の開始コンステレーションを計算する
   */
-  for (int j = 1; j < N - 2; ++j) {
-    for (int l = j + 1; l < N - 1; ++l) {
+  for(unsigned int j = 1; j < N - 2; ++j) {
+    for(unsigned int l = j + 1; l < N - 1; ++l) {
       int_hashset_add(ijklList, toijkl(0, j, 0, l));
     }
   }
 
 IntHashSet* ijklListJasmin=create_int_hashset();
   unsigned int startConstellation;
-  for(int i=0;i<ijklList->size;i++){
+  for(unsigned int i=0;i<ijklList->size;i++){
     startConstellation=ijklList->data[i];
     int_hashset_add(ijklListJasmin,jasmin(startConstellation,N));
   }
@@ -1345,7 +1421,7 @@ IntHashSet* ijklListJasmin=create_int_hashset();
   int RD=0;
   int counter=0;
   int currentSize=0;
-  for(int s=0;s<ijklList->size;s++){
+  for(unsigned int s=0;s<ijklList->size;s++){
     sc=ijklList->data[s];
     i=geti(sc);
     j=getj(sc);
@@ -1407,7 +1483,7 @@ IntHashSet* ijklListJasmin=create_int_hashset();
     setPreQueens(ld,rd,col,k,l,1,j==N-1 ? 3 : 4,LD,RD,&counter,constellations,N);
     currentSize=constellations->size;
      // jklとsymとstartはすべてのサブコンステレーションで同じである
-    for(int a=0;a<counter;a++){
+    for(unsigned int a=0;a<counter;a++){
       constellations->data[currentSize-a-1].startijkl |= toijkl(i,j,k,l);
     }
   }
@@ -2015,7 +2091,7 @@ int main(int argc,char** argv)
     int dd;
     int hh;
     int mm;
-    for(int size=min;size<=targetN;++size){
+    for(unsigned int size=min;size<=targetN;++size){
       ijklList=create_int_hashset();
       constellations=create_constellation_arraylist();
       TOTAL=0;
@@ -2026,13 +2102,14 @@ int main(int argc,char** argv)
       ConstellationArrayList* fillconstellations = fillWithTrash(constellations, THREAD_NUM);	
       if(cpu){    
     	execSolutions(fillconstellations,size);
-    	TOTAL=calcSolutions(fillconstellations,TOTAL);
+    	TOTAL=calcSolutions_total(fillconstellations,TOTAL);
+    	UNIQUE=calcSolutions_unique(fillconstellations,UNIQUE);
       }
       if(gpu){
         int steps=24576;
 	      int totalSize = fillconstellations->size;
-        for (int offset = 0; offset < totalSize; offset += steps) {
-      	  int currentSize = fmin(steps, totalSize - offset);
+        for(unsigned int offset = 0; offset < totalSize; offset += steps) {
+      	  unsigned int currentSize = fmin(steps, totalSize - offset);
           int gridSize = (currentSize + THREAD_NUM - 1) / THREAD_NUM;  // グリッドサイズ
           unsigned int* hostTotal;
           cudaMallocHost((void**) &hostTotal,sizeof(int)*gridSize);
@@ -2046,18 +2123,48 @@ int main(int argc,char** argv)
           // カーネルを実行
           size_t bytes=1<<20;
           cudaDeviceSetLimit(cudaLimitStackSize,bytes); // 1MB 目安。足りなければ増やす
-          execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,deviceTotal, size, currentSize);
+          // 出力（block 和の一時領域）
+          unsigned int *d_blockUnique = nullptr;
+          unsigned int *d_blockTotal = nullptr;
+          const int block = THREAD_NUM;                      // 例: 96
+          const int grid  = (totalSize + block - 1) / block; // 切り上げ
+          cudaMalloc(&d_blockUnique, grid * sizeof(unsigned int));
+          cudaMalloc(&d_blockTotal,  grid * sizeof(unsigned int));
+          if (grid == 0) {
+            // constellation が 0 のときは GPU 起動をスキップ
+            UNIQUE=0; 
+            TOTAL=0;
+          }
+          //execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,deviceTotal, size, currentSize);
+          execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,d_blockUnique,d_blockTotal, size, currentSize);
+          /**
+          cudaError_t e = cudaGetLastError();
+          if (e != cudaSuccess) {
+              fprintf(stderr, "Kernel launch error: %s\n", cudaGetErrorString(e));
+              exit(1);
+          }
+          cudaDeviceSynchronize();
+          */
           // カーネル実行後にデバイスメモリからホストにコピー
-          cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*gridSize,cudaMemcpyDeviceToHost);
+          //cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*gridSize,cudaMemcpyDeviceToHost);
+          std::vector<unsigned int> h_blockUnique(grid), h_blockTotal(grid);
+          cudaMemcpy(h_blockUnique.data(), d_blockUnique, grid*sizeof(unsigned int), cudaMemcpyDeviceToHost);
+          cudaMemcpy(h_blockTotal.data(),  d_blockTotal,  grid*sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
           // 取得したsolutionsをホスト側で集計
           // 取得したsolutionsをホスト側で集計
-          for (int i = 0; i < gridSize; i++) {
+          /**
+          for(unsigned int i = 0; i < gridSize; i++) {
             TOTAL += hostTotal[i];
           }
+          */
+          for (int b = 0; b < grid; ++b) { UNIQUE += h_blockUnique[b]; TOTAL+= h_blockTotal[b]; }
           //cudaFreeを追加
           cudaFree(deviceMemory);
           cudaFree(deviceTotal);
-          cudaFreeHost(hostTotal);
+          //cudaFreeHost(hostTotal);
+          cudaFree(d_blockUnique);
+          cudaFree(d_blockTotal);
         }
      }
      gettimeofday(&t1,NULL);
