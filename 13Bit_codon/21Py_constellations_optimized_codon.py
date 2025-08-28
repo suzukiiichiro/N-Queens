@@ -33,7 +33,8 @@ def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, end
                 row + 1, next_free, jmark, endmark, mark1, mark2, N
             )
     return total
-
+"""
+"""
 補足（重要）
 avail &= ~(1 << N1) は実質 no-op
 avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
@@ -62,33 +63,28 @@ blocked:int=next_ld|next_rd|next_col
 next_free = board_mask & ~blocked
 if next_free and (row + 1 >= endmark or (board_mask &~blocked)):
       total += self.SQd1B(next_ld,next_rd,next_col, row + 1, next_free, ...)
+"""
 
-
+"""
 fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.005
+ 5:           18            0         0:00:00.096
  6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.002
- 8:           92            0         0:00:00.002
- 9:          352            0         0:00:00.001
-10:          724            0         0:00:00.001
-11:         2680            0         0:00:00.003
-12:        14200            0         0:00:00.006
-13:        73712            0         0:00:00.009
-14:       365596            0         0:00:00.038
-15:      2279184            0         0:00:00.092
-16:     14772512            0         0:00:00.440
-17:     95815104            0         0:00:02.900
-
-fedora$ codon build -release 26Py_constellations_optimized_codon.py
-fedora$ ./26Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
-16:     14772512            0         0:00:01.503
-17:     95815104            0         0:00:10.317
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.007
+12:        14200            0         0:00:00.001
+13:        73712            0         0:00:00.003
+14:       365596            0         0:00:00.010
+15:      2279184            0         0:00:00.032
+16:     14772512            0         0:00:00.160
+17:     95815104            0         0:00:00.566
+18:    666090624            0         0:00:01.960
 
 GPU/CUDA 11CUDA_constellation_symmetry.cu
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
+17:     95815104            0    000:00:00:03.41
 
 """
 
@@ -894,7 +890,7 @@ class NQueens19:
 class NQueens19_constellations():
   def main(self)->None:
     nmin:int=5
-    nmax:int=18
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
