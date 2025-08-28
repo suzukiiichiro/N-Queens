@@ -5,31 +5,7 @@
 """
 コンステレーション版 最適化　Ｎクイーン
 
-# 実行結果
-fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.096
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.000
-10:          724            0         0:00:00.000
-11:         2680            0         0:00:00.007
-12:        14200            0         0:00:00.001
-13:        73712            0         0:00:00.003
-14:       365596            0         0:00:00.010
-15:      2279184            0         0:00:00.032
-16:     14772512            0         0:00:00.160
-17:     95815104            0         0:00:00.566
-18:    666090624            0         0:00:01.960
-
-GPU/CUDA 11CUDA_constellation_symmetry.cu
-17:     95815104            0    000:00:00:03.41
-
-"""
-
-"""
-# 1. 関数内の最適化
+1. 関数内の最適化
 def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, endmark:int, mark1:int, mark2:int, N:int) -> int:
     N1:int = N - 1
     # ★ 追加：内側N-2列のマスク（コーナー除去前提）
@@ -57,32 +33,26 @@ def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, end
                 row + 1, next_free, jmark, endmark, mark1, mark2, N
             )
     return total
-"""
-"""
+
 補足（重要）
 avail &= ~(1 << N1) は実質 no-op
 avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
 ここで列を潰したい意図なら、内側インデックス系でビット位置を計算してください（例：左端を 0、右端を N-3 とするなど）。
 ただし、board_mask を使っている限り、範囲外ビットは自然に落ちるため、通常はこの行は不要です。
 
-# 補足（重要）
-# avail &= ~(1 << N1) は実質 no-op
-# avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
-# ここで列を潰したい意図なら、内側インデックス系でビット位置を計算してください（例：左端を 0、右端を N-3 とするなど）。
-# ただし、board_mask を使っている限り、範囲外ビットは自然に落ちるため、通常はこの行は不要です。
-# 
-# もし「全 N 列」を使う設計なら
-# board_mask = (1 << N) - 1 を使い、コーナー列は col 側で事前に埋める（あなたの exec_solutions で既に col |= ~small_mask している方式）に統一してください。いずれにせよ next_free = board_mask&~(...) の形を守るのが肝です。
+もし「全 N 列」を使う設計なら
+board_mask = (1 << N) - 1 を使い、コーナー列は col 側で事前に埋める（あなたの exec_solutions で既に col |= ~small_mask している方式）に統一してください。いずれにせよ next_free = board_mask&~(...) の形を守るのが肝です。
 
-# 2.すべての SQ* の関数内で定義されている board_mask:int=(1<<(N-2))-1 を exec_solutions() で一度だけ定義してすべての SQ* にパラメータで渡す
-# 3.重要：free ではなく next_free を渡す
-# 行 1083 で次の関数へ渡しているのが free になっていますが、直前で rd を更新し、next_free を計算しています。
-# ここは free ではなく next_free を渡すべきです。でないと、更新後の占有状態が反映されません。
 
-"""
+2.すべての SQ* の関数内で定義されている board_mask:int=(1<<(N-2))-1 を exec_solutions() で一度だけ定義してすべての SQ* にパラメータで渡す
+3.重要：free ではなく next_free を渡す
+行 1083 で次の関数へ渡しているのが free になっていますが、直前で rd を更新し、next_free を計算しています。
+ここは free ではなく next_free を渡すべきです。でないと、更新後の占有状態が反映されません。
 
-"""
-# 4.一時変数を使って再計算を行わない
+- total+=self.SQBlkBjrB(ld,rd,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
++ total+=self.SQBlkBjrB(ld,rd,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+
+4.一時変数を使って再計算を行わない
 next_ld,next_rd,next_col = (ld|bit)<<1,(rd|bit)>>1,col|bit
 next_free = board_mask & ~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit)) [& ((1<<N)-1)]
 if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
@@ -92,8 +62,35 @@ blocked:int=next_ld|next_rd|next_col
 next_free = board_mask & ~blocked
 if next_free and (row + 1 >= endmark or (board_mask &~blocked)):
       total += self.SQd1B(next_ld,next_rd,next_col, row + 1, next_free, ...)
-"""
 
+
+fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           18            0         0:00:00.005
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.002
+ 8:           92            0         0:00:00.002
+ 9:          352            0         0:00:00.001
+10:          724            0         0:00:00.001
+11:         2680            0         0:00:00.003
+12:        14200            0         0:00:00.006
+13:        73712            0         0:00:00.009
+14:       365596            0         0:00:00.038
+15:      2279184            0         0:00:00.092
+16:     14772512            0         0:00:00.440
+17:     95815104            0         0:00:02.900
+
+fedora$ codon build -release 26Py_constellations_optimized_codon.py
+fedora$ ./26Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+16:     14772512            0         0:00:01.503
+17:     95815104            0         0:00:10.317
+
+GPU/CUDA 11CUDA_constellation_symmetry.cu
+16:         14772512               0     000:00:00:00.64
+17:         95815104               0     000:00:00:03.41
+
+"""
 
 import random
 import pickle, os
@@ -105,7 +102,7 @@ from datetime import datetime
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
-
+#
 class NQueens19:
   def __init__(self)->None:
     pass
@@ -556,8 +553,6 @@ class NQueens19:
     # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
     # ijkl_list=ijkl_list_jasmin
     ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
-
-
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
       i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
@@ -1437,7 +1432,7 @@ class NQueens19:
 class NQueens19_constellations():
   def main(self)->None:
     nmin:int=5
-    nmax:int=19
+    nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
