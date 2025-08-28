@@ -6,7 +6,7 @@
 コンステレーション版 最適化　Ｎクイーン
 
 # 実行結果
-fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
+workspace#suzuki$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.096
  6:            4            0         0:00:00.000
@@ -29,19 +29,251 @@ GPU/CUDA 11CUDA_constellation_symmetry.cu
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 17:         95815104         11977939     000:00:00:00.26
 18:        666090624         83263591     000:00:00:01.65
+
+fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+16:     14772512            0         0:00:00.429
+17:     95815104            0         0:00:02.954
 """
 
+# レベルA（すぐ入れられる／既に「済」でも検証コストが低い）
 
-import random
-import pickle, os
-from operator import or_
-# from functools import reduce
+#済  1. [Opt-01] ビット演算による衝突枝刈り（cols/hills/dales）
+#済  2. [Opt-02] 左右対称性除去（1 行目の列を 0～n//2−1 に制限）
+#済  3. [Opt-03] 中央列の特別処理（N 奇数時）
+#済  4. [Opt-04] 180度対象除去
+#済  5. [Opt-05] 角位置（col==0）での分岐（COUNT2 偏重の明示化）
+#済  6. [Opt-06] 並列処理（初手 col ごとに multiprocessing で分割）
+#済  7. [Opt-07] 1 行目以外でも部分対称除去（行列単位）
+#       * 途中段階（深さ r の盤面）を都度「辞書順最小」の canonical かどうかチェックして、そうでなければ枝刈り。
+#不要  8. [Opt-08] is_canonical() による“部分盤面”の辞書順最小チェックを高速化（キャッシュ/軽量版）（
+#       * 「完成盤」だけでなく“部分盤面”用に軽量な変換（行の回転・反転は途中情報だけで可）を実装。
+#不要  9. [Opt-09] Zobrist Hash による transposition / visited 状態の高速検出
+#       * N-Queens では完全一致局面の再訪は少ないですが、「部分対称 canonical チェックの結果」をハッシュ化してメモ化する用途で効果（計算の再実行を削減）。
+#不要 10. [Opt-10] マクロチェス（局所パターン）による構築制限
+#       * 現実装との整合や有効なパターン定義次第で効果差が大。ルール設計が難しい。 
+#不要 11. [Opt-11] 「ミラー＋90°回転」による“構築時”の重複複除
+#       * 完成後の対称判定より、構築途中で 8 対称性を逐次判定するのはコスト高＆実装が煩雑。部分盤面を8通り生成するコストが高く、B系の“軽量 canonical 部分盤面判定”＋Zobrist の方がバランスが良いことが多いです。 
+#済 12. [Opt-12] ビット演算のインライン化
+
+# メモリ管理・最適化
+# 1. Jasmin変換キャッシュを導入する
+# 2. サブコンステレーション生成にtuple keyでキャッシュ
+# 3. 星座のsignature重複防止
+# 4. pickleファイルで星座リストそのものをキャッシュ
+
+#!/usr/bin/env python3
+
 from typing import List,Set,Dict
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
+
+# ------------------------------------------------------------
+#「[Opt-03] 中央列特別処理（奇数N）」
+# ------------------------------------------------------------
+"""
+    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+    if N % 2 == 1:
+      center = N // 2
+      ijkl_list.update(
+        self.to_ijkl(i, j, center, l)
+        for l in range(center + 1, N - 1)
+        for i in range(center + 1, N - 1)
+        if i != (N - 1) - l
+        for j in range(N - center - 2, 0, -1)
+        if j != i and j != l
+        # 180°回転盤面がセットに含まれていない
+        # if not self.check_rotations(ijkl_list, i, j, center, l, N)
+        if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
+      )
+    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+"""
+# ------------------------------------------------------------
+# 結果カウンタ（COUNT2/4/8 分類用）  # [Opt-05] / 対称性分類まとめ
+# ------------------------------------------------------------
+@dataclass
+class Counts:
+    c2: int = 0  # 左右対称のみ
+    c4: int = 0  # 180°回転まで同一
+    c8: int = 0  # 8 対称すべて異なる
+
+    @property
+    def total(self) -> int:
+        return self.c2 * 2 + self.c4 * 4 + self.c8 * 8
+# ------------------------------------------------------------
+# [Opt-08] Zobrist Hash テーブル生成（初期化）
+# Zobrist 用の乱数テーブル（部分盤面 canonical 判定のメモ化などで使用） # [Opt-09]
+# ※ N は solve() で決め打ちなので、初期化は solve 側で行う前提の例
+# ------------------------------------------------------------
+def init_zobrist(N: int) -> List[List[int]]:
+    import random
+    return [[random.getrandbits(64) for _ in range(N)] for _ in range(N)]
+# ---------------------------
+# [Opt-08] Zobrist Hash による部分盤面ハッシュ化
+# ---------------------------
+def compute_zobrist_hash(board: List[int], row: int, zobrist: List[List[int]]) -> int:
+    h = 0
+    for r in range(row):
+        h ^= zobrist[r][board[r]]
+    return h
+# ---------------------------
+# [Opt-07+08] 部分盤面の正準性チェック + Zobristキャッシュ
+# ---------------------------
+def is_partial_canonical(board: List[int], row: int, N: int,zobrist: List[List[int]], zcache: dict) -> bool:
+  key = compute_zobrist_hash(board, row, zobrist)
+  if key in zcache:
+    return zcache[key]
+  current = tuple(board[:row])
+  # ミラー反転のみチェック（左右対称のみ）
+  mirrored = tuple(N - 1 - board[r] for r in range(row))
+  # 必要であれば回転90/180/270 も加える（今はミラーのみ）
+  minimal = min(current, mirrored)
+  result = (current == minimal)
+  zcache[key] = result
+  return result
+# ------------------------------------------------------------
+# マクロチェス（ローカルパターン）ルールの例スタブ  # [Opt-10]
+# ------------------------------------------------------------
+def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
+  # 例：最初の3行で中央寄りが密集していたら破綻しやすいため除外
+  if row >= 3:
+    c0 = board[row - 1]
+    c1 = board[row - 2]
+    c2 = board[row - 3]
+    if abs(c0 - c1) <= 1 and abs(c1 - c2) <= 1:
+      return True
+  return False
+
+# ---------------------------
+# 使い方（任意の再帰関数 backtrack(row, ...) の中で）
+# ---------------------------
+# if not is_partial_canonical(board, row, N, zobrist, zcache):
+#   return
+# if violate_macro_patterns(board, row, N):
+#   return
+
+# ※ `zobrist` は solve() 内で init_zobrist(N) により生成
+# `zcache` は {} で初期化し、各 backtrack に渡す
+# これらを main の backtrack 系ルーチン（例：SQdB/SQaB）に組み込みます。
+# ご希望があれば、具体的な関数ごとに挿入済みコードも差し上げます。
+
+# ------------------------------------------------------------
+# 8 対称生成（完成盤面用） # [Opt-05] / [Opt-04]
+# 完成盤面の重複判定・分類に使用
+# ------------------------------------------------------------
+def symmetries(board):
+    # board: row -> col の配置（例: board[r] = c）
+    n = len(board)
+    def rot90(b):   # 回転 90°: (r, c) -> (c, n-1-r)
+        return [b.index(i) for i in range(n-1, -1, -1)]
+    def rot180(b):  # 回転 180°
+        return [n - 1 - b[n - 1 - r] for r in range(n)]
+    def rot270(b):  # 回転 270°
+        return [b.index(n - 1 - i) for i in range(n)]
+    def reflect(b): # ミラー（左右反転）: (r, c) -> (r, n-1-c)
+        return [n - 1 - c for c in b]
+    r0 = board
+    r1 = rot90(r0)
+    r2 = rot180(r0)
+    r3 = rot270(r0)
+    f0 = reflect(r0)
+    f1 = reflect(r1)
+    f2 = reflect(r2)
+    f3 = reflect(r3)
+    return [tuple(r0), tuple(r1), tuple(r2), tuple(r3),
+            tuple(f0), tuple(f1), tuple(f2), tuple(f3)]
+# ------------------------------------------------------------
+# 完成盤面の対称性分類 # [Opt-05] / [Opt-04]
+# ------------------------------------------------------------
+def classify(board):
+    syms = symmetries(board)
+    mn = min(syms)
+    uniq = len(set(syms))
+    if uniq == 1:
+        return 'c2'  # 実際は c2=1, c4=0, c8=0 のように扱うなら調整可
+    elif uniq == 2 or uniq == 4:
+        return 'c4'
+    else:
+        return 'c8'
+# ------------------------------------------------------------
+# ビット演算バックトラッキング # [Opt-01]
+#   - cols, hills, dales を bit で持ち、free = ~(cols | hills | dales) で高速衝突除去
+#   - 1 行目（row==0）は [Opt-02/03/05/06] によって枝分かれ済み
+#   - 途中で [Opt-07/08/09/10] を挟み込む
+# ------------------------------------------------------------
+def backtrack(n, row, cols, hills, dales, board, counts, is_corner=False, zobrist=None, zcache=None):
+    if row == n:
+        # 完成。対称分類  # [Opt-05]/[Opt-04]
+        typ = classify(board)
+        if typ == 'c2':
+            counts.c2 += 1
+        elif typ == 'c4':
+            counts.c4 += 1
+        else:
+            counts.c8 += 1
+        return
+    # ---------------------------
+    # [Opt-07]/[Opt-08] 部分盤面 canonical チェック
+    if not is_partial_canonical(board, row, n, zobrist, zcache):
+        return
+    # ---------------------------
+    # [Opt-10] マクロチェス局所パターンで除去
+    if violate_macro_patterns(board, row, n):
+        return
+    # ---------------------------
+    # 衝突していない位置（free）をビットで求める  # [Opt-01]
+    mask = (1 << n) - 1
+    free = mask & ~(cols | hills | dales)
+    while free:
+        bit = -free & free
+        col = (bit.bit_length() - 1)
+        free ^= bit
+        board[row] = col  # 盤面にセット
+        # 180°対称や角位置分岐での特別扱いを、必要ならここに入れる # [Opt-04]/[Opt-05]
+        # 例：is_corner == True の時は row>0 で (n-1-col) などの除去条件を適用 …など
+        backtrack(
+            n, row + 1,
+            cols | bit,
+            (hills | bit) << 1,
+            (dales | bit) >> 1,
+            board,
+            counts,
+            is_corner=is_corner,
+            zobrist=zobrist,
+            zcache=zcache
+        )
+        board[row] = -1  # 戻す（明示的にしなくても良いが読みやすさのため）
+# ------------------------------------------------------------
+# 1 行目を左右対称で半分に制限し（[Opt-02]）、中央列を別処理（[Opt-03]）、
+# 初手ごとに並列化（[Opt-06]）する solve_nqueens()
+# ------------------------------------------------------------
+def solve_nqueens(n, workers=None):
+    if workers is None:
+        workers = max(1, cpu_count() - 1)
+    # Zobrist 用意（[Opt-09] を本当に使うなら）
+    zobrist = init_zobrist(n)
+    manager_counts = Counts()
+    # 1 行目の左半分のみ探索（左右ミラー分を除去） # [Opt-02]
+    first_cols = list(range(n // 2))
+    # 奇数 N の中央列は別枠 # [Opt-03]
+    center_col = n // 2 if (n % 2 == 1) else None
+    args = []
+    for col in first_cols:
+        args.append((n, col, True))  # col==0 のケースは is_corner=True として扱うなど # [Opt-05]
+    if center_col is not None:
+        args.append((n, center_col, False))  # 中央列は is_corner=False で別分類
+    # 並列処理 # [Opt-06]
+    with Pool(processes=workers) as pool:
+        for c in pool.imap_unordered(_worker, args):
+            # c は Counts
+            manager_counts.c2 += c.c2
+            manager_counts.c4 += c.c4
+            manager_counts.c8 += c.c8
+    return manager_counts
+# ------------------------------------------------------------
 
 class NQueens19:
   def __init__(self)->None:
@@ -122,6 +354,9 @@ class NQueens19:
     # rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
     # return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
   #--------------------------------------------
+  # 1. Jasmin変換キャッシュを導入する
+  # [Opt-08] キャッシュ付き jasmin() のラッパー
+  #--------------------------------------------
   jasmin_cache = {}
   def get_jasmin(self, c: int, N: int) -> int:
     key = (c, N)
@@ -173,58 +408,76 @@ class NQueens19:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
   #---------------------------------
-  # codon では動かない
-  #
-  def file_exists(self,fname:str)->bool:
-    # try:
-    #     os.stat(fname)
-    #     return True
-    # except OSError:
-    #     return False
-    try:
-      with open(fname, "rb"): 
-        pass
-        return True
-    except:
-      return False
-  def load_constellations(self,N:int,preset_queens:int)->list:
-    fname = f"constellations_N{N}_{preset_queens}.pkl"
-    if self.file_exists(fname):
-        with open(fname, "rb") as f:
-            return pickle.load(f)
-    else:
-        constellations = []
-        self.gen_constellations(set(),constellations,N,preset_queens)
-        with open(fname, "wb") as f:
-            pickle.dump(constellations, f)
-        return constellations
-  # 実行時
-  # main() 
-  #--------------------------
-  # codon では動かないので以下を切り替える
-  # pickleの最適化は使わない（あきらめる）
-  # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-  # codonでpickleを使う（うごかない）
-  # constellations = NQ.load_constellations(size,preset_queens)
+  # 4. pickleファイルで星座リストそのものをキャッシュ
+  #---------------------------------
+  def file_exists(self, fname: str) -> bool:
+      try:
+          with open(fname, "rb"):
+              return True
+      except:
+          return False
+
+  # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
+  def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
+      with open(path, "w") as f:
+          for c in constellations:
+              ld = c["ld"]
+              rd = c["rd"]
+              col = c["col"]
+              startijkl = c["startijkl"]
+              solutions = c.get("solutions", 0)
+              f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+
+  # --- テキスト形式でロード ---
+  def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
+      out: List[Dict[str, int]] = []
+      with open(path, "r") as f:
+          for line in f:
+              parts = line.strip().split()
+              if len(parts) != 5:
+                  continue
+              ld = int(parts[0]); rd = int(parts[1]); col = int(parts[2])
+              startijkl = int(parts[3]); solutions = int(parts[4])
+              out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
+      return out
+
+  # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
+  def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
+      fname = f"constellations_N{N}_{preset_queens}.txt"
+      if self.file_exists(fname):
+          return self.load_constellations_txt(fname)
+      constellations: List[Dict[str, int]] = []
+      self.gen_constellations(ijkl_list, constellations, N, preset_queens)
+      self.save_constellations_txt(fname, constellations)
+      return constellations
+
+  #-------------------------
+  # 2. サブコンステレーション生成にtuple keyでキャッシュ
+  # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
   #---------------------------------
   subconst_cache = {}
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
-      key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-      # キャッシュの本体をdictかsetでグローバル/クラス変数に
-      if not hasattr(self, "subconst_cache"):
-          self.subconst_cache = {}
-      subconst_cache = self.subconst_cache
-      if key in subconst_cache:
-          # 以前に同じ状態で生成済み → 何もしない（または再利用）
-          return
-      # 新規実行（従来通りset_pre_queensの本体処理へ）
-      self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
-      subconst_cache[key] = True  # マークだけでOK
-  # 呼び出し側
-  # self.set_pre_queens_cached(...) とする
+    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    # キャッシュの本体をdictかsetでグローバル/クラス変数に
+    if not hasattr(self, "subconst_cache"):
+      self.subconst_cache = {}
+    subconst_cache = self.subconst_cache
+    if key in subconst_cache:
+      # 以前に同じ状態で生成済み → 何もしない（または再利用）
+      return
+    # 新規実行（従来通りset_pre_queensの本体処理へ）
+    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+    subconst_cache[key] = True  # マークだけでOK
+
   constellation_signatures = set()
   #---------------------------------
+  # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+  # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
+  #---------------------------------
   def state_hash(self,ld: int, rd: int, col: int, row: int) -> int:
+      if None in (ld, rd, col, row):
+         return -1
+      # 64ビット整数に収まるようにビット操作で圧縮
       # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
       return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
   #---------------------------------
@@ -255,7 +508,7 @@ class NQueens19:
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
-    # 状態ハッシュによる探索枝の枝刈り
+    # [Opt-09] 状態ハッシュによる探索枝の枝刈り
     # バックトラック系の冒頭に追加　やりすぎると解が合わない
     h: int = self.state_hash(ld, rd, col, row)
     if h in visited:
@@ -270,7 +523,7 @@ class NQueens19:
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     # ------------------------------------------------
     # 3. 星座のsignature重複防止
-    #
+    # ------------------------------------------------
     # if queens==preset_queens:
     #   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
     #   # 新しいコンステレーションをリストに追加
@@ -278,18 +531,18 @@ class NQueens19:
     #   counter[0]+=1
     #   return
     if queens == preset_queens:
-        # signatureの生成
-        signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
-        # signaturesセットをクラス変数やグローバルで管理
-        if not hasattr(self, "constellation_signatures"):
-            self.constellation_signatures = set()
-        signatures = self.constellation_signatures
-        if signature not in signatures:
-            constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
-            constellations.append(constellation) #星座データ追加
-            signatures.add(signature)
-            counter[0] += 1
-        return
+      # signatureの生成
+      signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+      # signaturesセットをクラス変数やグローバルで管理
+      if not hasattr(self, "constellation_signatures"):
+        self.constellation_signatures = set()
+      signatures = self.constellation_signatures
+      if signature not in signatures:
+        constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+        constellations.append(constellation) #星座データ追加
+        signatures.add(signature)
+        counter[0] += 1
+      return
     # ------------------------------------------------
 
     # 現在の行にクイーンを配置できる位置を計算
@@ -447,10 +700,19 @@ class NQueens19:
         else: # クイーンをコーナーに置いて星座を組み立てる方法と、ジャスミンを適用する方法
           mark1=k-1
           cnt=self.SQd0BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+      #
+      # uniqueを出そうとしたけどboardを使っていないからかな、難しいみたい
+      #
       # 各コンステレーションのソリューション数を更新
-      # constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
+      # count2,count4,count8=0,0,0
+      # s:int=self.symmetry(ijkl,N)
+      # u:int=cnt
+      # if s == 2: count2 += u
+      # elif s == 4: count4 += u
+      # else: count8 += u
+      # constellation["solutions"]=count2*2+count4*4+count8*8
+      # constellation["unique"]   =count2+count4+count8
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
-      # temp_counter[0]=0
   """
   開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
   @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
@@ -491,18 +753,25 @@ class NQueens19:
     # Jasmin変換
     # ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
     # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
-    # ijkl_list=ijkl_list_jasmin
-    ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
+    ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
+    ijkl_list=ijkl_list_jasmin
 
 
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
       i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
-      ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
+      # すべての「右辺のシフト値」が負にならないよう max(x, 0) でガード
+      # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
+      ld,rd,col=(L>>max(i-1,0))|(1<<max(N-k,0)),(L>>max(i+1,0))|(1<<max(l-1,0)),1|L|(L>>i)|(L>>j)
       LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
       counter=[0] # サブコンステレーションを生成
       #-------------------------
+      # [Opt-09] 状態ハッシュによる探索枝の枝刈り
       visited:set[int]=set()
+      #-------------------------
+      #
+      #-------------------------
+      # 2. サブコンステレーション生成にtuple keyでキャッシュ
       #-------------------------
       # self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
@@ -512,7 +781,7 @@ class NQueens19:
   """
   # 関数プロトタイプ
   """
-  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     if row==endmark:
       # tempcounter[0]+=1
@@ -529,11 +798,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free and (row>=endmark-1 or ~blocked):
-        total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -548,9 +817,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3 #<<注意
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd0B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd0B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -561,11 +830,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
     avail:int=free
@@ -580,9 +849,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1|1<<N4
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -593,11 +862,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     if row==endmark:
       # tempcounter[0]+=1
@@ -615,12 +884,12 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      # next_free:int=board_mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
-      next_free:int=board_mask&~blocked
+      # next_free:int=mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
+      next_free:int=mask&~blocked
       if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -635,10 +904,10 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
         # total+=self.SQd1BlB(((ld|bit)<<2),((rd|bit)>>2)|(1<<N3),col|bit,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-        total+=self.SQd1BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     while avail:
       # bit:int=free&-free
       # free&=free-1
@@ -648,11 +917,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -667,10 +936,10 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # next_free:int=board_mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
+      next_free:int=mask&~blocked
+      # next_free:int=mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
       if next_free and (row+2>=endmark or ~blocked):
-        total+=self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free: # General case when row != mark2
     while avail: # General case when row != mark2
       # bit:int=free&-free # Extract the rightmost available position
@@ -681,12 +950,12 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      # next_free:int=board_mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit)) # Update diagonal and column occupancies
-      next_free:int=board_mask&~blocked
+      # next_free:int=mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit)) # Update diagonal and column occupancies
+      next_free:int=mask&~blocked
       if next_free: # Recursive call if there are available positions
-        total+=self.SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3  # Precomputed value for performance
     avail:int=free
@@ -701,9 +970,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|2|1<<N3
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Extract the rightmost available position
@@ -715,11 +984,11 @@ class NQueens19:
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
       # next_free=board_mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -734,9 +1003,9 @@ class NQueens19:
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1
       # next_free=board_mask&~(((ld|bit)<<2)|((rd|bit)>>2)|(col|bit)|1)
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Extract the rightmost available position
@@ -747,11 +1016,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -766,9 +1035,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3# Calculate the next free positions
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Extract the rightmost available position
@@ -780,11 +1049,11 @@ class NQueens19:
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
       # next_free=board_mask&~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit))# Calculate the next free positions
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -799,9 +1068,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|(1<<N3)|2
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2B(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # 最下位ビットを取得
@@ -812,11 +1081,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
     avail:int=free
@@ -831,9 +1100,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|(1<<N4)|1
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2B(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # 最下位のビットを取得
@@ -844,11 +1113,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -863,9 +1132,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2B(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # 最下位ビットを取得
@@ -876,11 +1145,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -894,9 +1163,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Get the lowest bit
@@ -907,11 +1176,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -925,9 +1194,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2B(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2B(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Get the lowest bit
@@ -938,11 +1207,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -957,9 +1226,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BlB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -970,11 +1239,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -994,11 +1263,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
-        total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -1012,9 +1281,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -1025,11 +1294,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -1044,9 +1313,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free  # Isolate the rightmost 1 bit.
@@ -1057,11 +1326,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -1079,9 +1348,9 @@ class NQueens19:
         next_rd:int=(rd|bit)>>1
         next_col:int=col|bit
         blocked:int=next_ld|next_rd|next_col
-        next_free:int=board_mask&~blocked
+        next_free:int=mask&~blocked
         if next_free:
-          total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
       # return
       return total
     # while free:
@@ -1094,11 +1363,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -1116,11 +1385,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-        total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
     total:int=0
@@ -1134,9 +1403,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBkBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBkBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -1147,11 +1416,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -1166,9 +1435,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>2
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjrB(next_ld,next_rd|1<<N3,next_col,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -1179,11 +1448,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
     avail:int=free
@@ -1198,9 +1467,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N4|1
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjrB(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjrB(next_ld|1,next_rd|1<<N4,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -1211,11 +1480,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -1230,9 +1499,9 @@ class NQueens19:
       next_rd:int=(rd|bit)>>3
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col|1<<N3|2
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjrB(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjrB(next_ld|2,next_rd|1<<N3,next_col,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
     # while free:
     while avail:
       # bit:int=free&-free
@@ -1243,11 +1512,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
     avail:int=free
@@ -1259,9 +1528,9 @@ class NQueens19:
       next_rd:int=rd>>1
       next_col:int=col
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
       # return
       return total
     # while free:
@@ -1274,11 +1543,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
     avail:int=free
@@ -1290,9 +1559,9 @@ class NQueens19:
       next_rd:int=rd>>1
       next_col:int=col
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
       # return
       return total
     # while free:
@@ -1305,11 +1574,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
     avail:int=free
@@ -1321,9 +1590,9 @@ class NQueens19:
       next_rd:int=rd>>1
       next_col:int=col
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
       # return
       return total
     # while free:
@@ -1336,11 +1605,11 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
-  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
     avail:int=free
@@ -1352,9 +1621,9 @@ class NQueens19:
       next_rd:int=rd>>1
       next_col:int=col
       blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
       # return
       return total
     # while free:
@@ -1367,33 +1636,38 @@ class NQueens19:
       next_rd:int=(rd|bit)>>1
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
+      next_free:int=mask&~blocked
       if next_free:
-        total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
 class NQueens19_constellations():
   def main(self)->None:
     nmin:int=5
     nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
+    total:int=0
+    unique:int=0
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
+      total=0
+      unique=0
       NQ=NQueens19()
-      #--------------------------
-      # codon では動かないので以下を切り替える
-      # pickleの最適化は使わない（あきらめる）
-      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      #
-      # codonでpickleを使う（うごかない）
-      # constellations = NQ.load_constellations(size,preset_queens)
+      #---------------------------------
+      # 4. pickleファイルで星座リストそのものをキャッシュ
+      #---------------------------------
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
-      total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+      # total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+      total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+      # unique = sum(c["unique"] for c in constellations if c["unique"] > 0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
+      # print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 if __name__=="__main__":
   NQueens19_constellations().main()
