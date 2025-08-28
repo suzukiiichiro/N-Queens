@@ -26,9 +26,72 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 GPU/CUDA 11CUDA_constellation_symmetry.cu
 17:     95815104            0    000:00:00:03.41
 
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
-17:         95815104         11977939     000:00:00:00.26
-18:        666090624         83263591     000:00:00:01.65
+"""
+
+"""
+# 1. 関数内の最適化
+def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, endmark:int, mark1:int, mark2:int, N:int) -> int:
+    N1:int = N - 1
+    # ★ 追加：内側N-2列のマスク（コーナー除去前提）
+    board_mask:int = (1 << (N - 2)) - 1
+    avail = free
+    total = 0
+    if row == N1 - jmark:
+        rd |= 1 << N1
+        # avail の列は内側N-2列しか持たないので、1<<N1 は範囲外 → 下の AND で自然に落ちます
+        # avail &= ~(1 << N1)  # ← 実質 no-op なので不要
+        # ここも ~ の後に board_mask を適用
+        next_free = board_mask&~((ld << 1) | (rd >> 1) | col)
+        if next_free:
+            total += self.SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, N)
+        return total
+    while avail:
+        bit:int = avail & -avail
+        avail &= avail - 1
+        # ここも ~ の後に board_mask を適用
+        next_free:int = board_mask&~(
+            ((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
+        if next_free:
+            total += self.SQBjlBklBjrB(
+                (ld | bit) << 1, (rd | bit) >> 1, col | bit,
+                row + 1, next_free, jmark, endmark, mark1, mark2, N
+            )
+    return total
+"""
+"""
+補足（重要）
+avail &= ~(1 << N1) は実質 no-op
+avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
+ここで列を潰したい意図なら、内側インデックス系でビット位置を計算してください（例：左端を 0、右端を N-3 とするなど）。
+ただし、board_mask を使っている限り、範囲外ビットは自然に落ちるため、通常はこの行は不要です。
+
+# 補足（重要）
+# avail &= ~(1 << N1) は実質 no-op
+# avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
+# ここで列を潰したい意図なら、内側インデックス系でビット位置を計算してください（例：左端を 0、右端を N-3 とするなど）。
+# ただし、board_mask を使っている限り、範囲外ビットは自然に落ちるため、通常はこの行は不要です。
+# 
+# もし「全 N 列」を使う設計なら
+# board_mask = (1 << N) - 1 を使い、コーナー列は col 側で事前に埋める（あなたの exec_solutions で既に col |= ~small_mask している方式）に統一してください。いずれにせよ next_free = board_mask&~(...) の形を守るのが肝です。
+
+# 2.すべての SQ* の関数内で定義されている board_mask:int=(1<<(N-2))-1 を exec_solutions() で一度だけ定義してすべての SQ* にパラメータで渡す
+# 3.重要：free ではなく next_free を渡す
+# 行 1083 で次の関数へ渡しているのが free になっていますが、直前で rd を更新し、next_free を計算しています。
+# ここは free ではなく next_free を渡すべきです。でないと、更新後の占有状態が反映されません。
+
+"""
+
+"""
+# 4.一時変数を使って再計算を行わない
+next_ld,next_rd,next_col = (ld|bit)<<1,(rd|bit)>>1,col|bit
+next_free = board_mask & ~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit)) [& ((1<<N)-1)]
+if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      total += self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,...)
+↓
+blocked:int=next_ld|next_rd|next_col
+next_free = board_mask & ~blocked
+if next_free and (row + 1 >= endmark or (board_mask &~blocked)):
+      total += self.SQd1B(next_ld,next_rd,next_col, row + 1, next_free, ...)
 """
 
 
