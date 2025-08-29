@@ -33,7 +33,7 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
 16:     14772512            0         0:00:00.429
-17:     95815104            0         0:00:02.954
+17:     95815104            0         0:00:02.880
 """
 
 # レベルA（すぐ入れられる／既に「済」でも検証コストが低い）
@@ -57,15 +57,22 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #済 12. [Opt-12] ビット演算のインライン化
 
 # メモリ管理・最適化
-#済 1. Jasmin変換キャッシュを導入する
-#  Jasmin変換（正準化）はコストが高いので、一度変換したものは dictでキャッシュ
-#済 2. サブコンステレーション生成にtuple keyでキャッシュ
-#  星座自体をtuple/hashで一意管理して重複を防ぐ
-#済 3. 星座のsignature重複防止
-# （=同じ星座配置が2回以上生成されないようにする）
-#済 4. pickleファイルで星座リストそのものをキャッシュ
-# 巨大Nのときは事前生成した星座リストをpickleでファイル化し、
-# プログラム起動時に一度だけロード→以降はメモリで使い回す
+# 1. 盤面・星座の“一意シグネチャ”をZobrist hashやtupleで管理
+# 今はijkl_listがSet[int]（16bit packedの盤面ID）ですが、
+# 「星座の状態→Zobrist hash or tuple」も併用可能
+# （星座構造が大きくなったり部分一致チェックが多いとき特に有効）
+# 2. 盤面や星座の辞書キャッシュ（dict）による一意管理
+# 星座リストや部分盤面ごとに、「一度作ったものはdictでキャッシュ」
+# 3. Jasmin変換のキャッシュ化（生成済み盤面の再利用）【済】
+# ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
+# も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
+# 4. 星座ごとに「hash/tuple key」を使ったキャッシュ辞書の導入
+# set_pre_queensやサブコンステレーション生成時も「(ld, rd, col, ...)のtuple」や「部分盤面hash」をkeyに
+# 一度作った星座はdictから即座に再利用できる構造
+# 5. 星座生成全体をpickleなどで「Nごとにファイル化」して超巨大N対応
+# すでに解説済ですが、gen_constellationsの全出力をconstellations_N17.pklのようなファイルでキャッシュ
+# 実行時にRAM展開し、毎回再生成を回避
+# ファイルI/O最小化も同時に達成
 
 #!/usr/bin/env python3
 
