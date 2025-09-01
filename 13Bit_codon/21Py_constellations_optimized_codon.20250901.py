@@ -296,31 +296,26 @@ def solve_nqueens(n, workers=None):
             manager_counts.c8 += c.c8
     return manager_counts
 # ------------------------------------------------------------
+
 class NQueens19:
-  def __init__():
-    self._rot_cache = {}
-  # 1. check_rotations() を早めにフィルタする
-  # 現在はジェネレータ内の末尾で check_rotations(...) を実行してい
-  # ますが、もしこれが重い処理なら、事前フィルタリングかメモ化が有
-  # 効です：
-  #
-  # check_rotations_cached: check_rotations をキャッシュして高速化
-  def check_rotations_cached(self, i: int, j: int, k: int, l: int, N: int) -> bool:
-    key = (i, j, k, l, N)
-    if key not in self._rot_cache:
-      self._rot_cache[key] = self.check_rotations(set(), i, j, k, l, N)
-    return self._rot_cache[key]
+  def __init__(self)->None:
+    pass
+  """
   # 時計回りに90度回転
   # rot90 メソッドは、90度の右回転（時計回り）を行います
   # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
+  """
   def rot90(self,ijkl:int,N:int)->int:
-    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+      return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+  """
   # 対称性のための計算と、ijklを扱うためのヘルパー関数。
   # 開始コンステレーションが回転90に対して対称である場合
+  """
   def rot180(self,ijkl:int,N:int)->int:
-    return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+      return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
   def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+      return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+  """
   # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
   # Python実装のgeti/getj/getk/getl/toijklに対応。
   # [i, j, k, l] 各クイーンの位置情報を5ビットずつ
@@ -332,6 +327,7 @@ class NQueens19:
   #  -toijkl(i, j, k, l): 各値を5ビット単位で連結し
   # 一意な整数値（signature）に変換
   # [注意] N≦32 まで対応可能
+  """
   def geti(self,ijkl:int)->int:
     return (ijkl>>15)&0x1F
   def getj(self,ijkl:int)->int:
@@ -342,8 +338,10 @@ class NQueens19:
     return ijkl&0x1F
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
     return (i<<15)+(j<<10)+(k<<5)+l
+  """
   # symmetry: 回転・ミラー対称性ごとの重複補正
   # (90度:2, 180度:4, その他:8)
+  """
   def symmetry(self,ijkl:int,N:int)->int:
     return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
   def symmetry90(self,ijkl:int,N:int)->bool:
@@ -356,6 +354,7 @@ class NQueens19:
   # 大小を比較して小さい最値を返却
   def ffmin(self,a:int,b:int)->int:
     return min(a,b)
+  """
   # 指定した盤面 (i, j, k, l) を90度・180度・270度回転したいずれか
   # の盤面がすでにIntHashSetに存在しているかをチェックする関数
   # @param ijklList 既出盤面signature（ijkl値）の集合（HashSet）
@@ -369,6 +368,7 @@ class NQueens19:
   # 返す（重複扱い）。
   #  -真の“unique配置”のみ探索・カウントしたい場合の前処理とし
   # て必須。
+  """
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
     # rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
@@ -391,19 +391,21 @@ class NQueens19:
   # 使用例: 
   # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
   #--------------------------------------------
-  # i,j,k,lをijklに変換し、特定のエントリーを取得する関数
-  # 各クイーンの位置を取得し、最も左上に近い位置を見つけます
-  # 最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
-  # 最小値を持つクイーンの位置を最下行に移動させる
-  # i は最初の行（上端） 90度回転2回
-  # j は最後の行（下端） 90度回転0回
-  # k は最初の列（左端） 90度回転3回
-  # l は最後の列（右端） 90度回転1回
-  # 優先順位が l>k>i>j の理由は？
-  # l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
-  # k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
-  # i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
-  # j は下端の行に位置するため、優先順位が最も低くなります。
+  """
+  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
+  各クイーンの位置を取得し、最も左上に近い位置を見つけます
+  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
+  最小値を持つクイーンの位置を最下行に移動させる
+  i は最初の行（上端） 90度回転2回
+  j は最後の行（下端） 90度回転0回
+  k は最初の列（左端） 90度回転3回
+  l は最後の列（右端） 90度回転1回
+  優先順位が l>k>i>j の理由は？
+  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
+  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
+  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
+  j は下端の行に位置するため、優先順位が最も低くなります。
+  """
   def jasmin(self,ijkl:int,N:int)->int:
     # 最初の最小値と引数を設定
     arg=0
@@ -433,8 +435,6 @@ class NQueens19:
   def file_exists(self, fname: str) -> bool:
       try:
           with open(fname, "rb"):
-          # f=open(fname,"rb")
-          # f.close()
               return True
       except:
           return False
@@ -463,104 +463,11 @@ class NQueens19:
               out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
       return out
 
-  # load_or_build_constellations_txt() は、N-Queens 問題において特定
-  # の盤面サイズ N と事前配置数 preset_queens に対する星座構成（部分
-  # 解集合）をテキストファイルとしてキャッシュ保存し、再利用するため
-  # の関数です。
-  #
-  # 背景：なぜキャッシュが必要？
-  # 星座（コンステレーション）とは、特定のクイーンの配置から始まる
-  # 枝を意味し、それぞれの星座から先を探索していくのがこのアルゴリ
-  # ズムの基盤です。
-  # しかしこの「星座の列挙」は、
-  # 膨大な探索空間からの絞り込み
-  # 対称性チェック・Jasmin判定など高コスト処理を含む
-  # という特性があるため、一度生成した星座リストは保存して使い回し
-  # たほうが圧倒的に効率的です。
   # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
-  def validate_constellation_list(self, constellations: List[Dict[str, int]]) -> bool:
-    if not constellations:
-      return False
-    required_keys:Set[str] = {"ld", "rd", "col", "startijkl", "solutions"}
-    for item in constellations:
-      if not isinstance(item, dict):
-        return False
-      if not required_keys.issubset(set(item.keys())):
-        return False
-      if not all(isinstance(item[key], int) for key in required_keys):
-        return False
-    return True
-  # 修正：Codon互換の from_bytes() 相当処理
-  # def read_uint32_le(self, b: bytes) -> int:
-  # def read_uint32_le(self, b: List[int]) -> int:
-  #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
-  def read_uint32_le(self, b: str) -> int:
-      return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
-  # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
-  def int_to_le_bytes(self,x: int) -> List[int]:
-      return [(x >> (8 * i)) & 0xFF for i in range(4)]
-  # 書き込み関数（.bin保存）
-  def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
-      with open(fname, "wb") as f:
-          for d in constellations:
-            for key in ["ld", "rd", "col", "startijkl"]:
-                b = self.int_to_le_bytes(d[key])
-                f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
-  # 読み込み関数（.binロード）
-  def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
-      constellations: List[Dict[str, int]] = []
-      with open(fname, "rb") as f:
-          while True:
-              raw=f.read(16)
-              if len(raw)<16:
-                break
-              ld         = self.read_uint32_le(raw[0:4])
-              rd         = self.read_uint32_le(raw[4:8])
-              col        = self.read_uint32_le(raw[8:12])
-              startijkl  = self.read_uint32_le(raw[12:16])
-              constellations.append({
-                  "ld": ld, "rd": rd, "col": col,
-                  "startijkl": startijkl, "solutions": 0
-              })
-      return constellations
-  # キャッシュ付きラッパー関数（.bin）
-  def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
-      fname = f"constellations_N{N}_{preset_queens}.bin"
-      if self.file_exists(fname):
-          # return self.load_constellations_bin(fname)
-        try:
-          constellations = self.load_constellations_bin(fname)
-          if self.validate_constellation_list(constellations):
-            return constellations
-          else:
-            print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-        except Exception as e:
-          print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-      constellations: List[Dict[str, int]] = []
-      self.gen_constellations(ijkl_list, constellations, N, preset_queens)
-      self.save_constellations_bin(fname, constellations)
-      return constellations
-  # キャッシュ付きラッパー関数（.txt）
   def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
-      # N と preset_queens に基づいて一意のファイル名を構成
       fname = f"constellations_N{N}_{preset_queens}.txt"
-      # ファイルが存在すれば即読み込み
-      # if self.file_exists(fname):
-      #     return self.load_constellations_txt(fname)
-      # ファイルが存在すれば読み込むが、破損チェックも行う
       if self.file_exists(fname):
-        try:
-          constellations = self.load_constellations_txt(fname)
-          if self.validate_constellation_list(constellations):
-            return constellations
-          else:
-            print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-        except Exception as e:
-          print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-      # ファイルがなければ生成・保存
-      # gen_constellations() により星座を生成
-      # save_constellations_txt() でファイルに保存
-      # 返り値として constellations リストを返す
+          return self.load_constellations_txt(fname)
       constellations: List[Dict[str, int]] = []
       self.gen_constellations(ijkl_list, constellations, N, preset_queens)
       self.save_constellations_txt(fname, constellations)
@@ -590,32 +497,36 @@ class NQueens19:
   # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
   #---------------------------------
   def state_hash(self,ld: int, rd: int, col: int, row: int) -> int:
-    if None in (ld, rd, col, row):
-       return -1
-    # 64ビット整数に収まるようにビット操作で圧縮
-    # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
-    return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+      if None in (ld, rd, col, row):
+         return -1
+      # 64ビット整数に収まるようにビット操作で圧縮
+      # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
+      return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
   #---------------------------------
-  # 開始コンステレーション（部分盤面）の生成関数
-  # N-Queens探索の初期状態を最適化するため、3つまたは4つのクイーン（presetQueens）を
-  # あらかじめ盤面に配置した全ての部分盤面（サブコンステレーション）を列挙・生成する。
-  # 再帰的に呼び出され、各行ごとに可能な配置をすべて検証。
-  # @param ld   左対角線のビットマスク（既にクイーンがある位置は1）
-  # @param rd   右対角線のビットマスク
-  # @param col  縦方向（列）のビットマスク
-  # @param k    事前にクイーンを必ず置く行のインデックス1
-  # @param l    事前にクイーンを必ず置く行のインデックス2
-  # @param row  現在の再帰探索行
-  # @param queens 現在までに盤面に配置済みのクイーン数
-  # @param LD/RD 探索初期状態用のマスク（使用例次第で追記）
-  # @param counter 生成されたコンステレーション数を書き込むカウンタ
-  # @param constellations 生成したコンステレーション（部分盤面配置）のリスト
-  # @param N     盤面サイズ
-  # @details
-  #  -row==k/lの場合は必ずクイーンを配置し次の行へ進む
-  #  -queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
-  #  -その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
-  #  -生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
+  """
+  開始コンステレーション（部分盤面）の生成関数
+ 
+  N-Queens探索の初期状態を最適化するため、3つまたは4つのクイーン（presetQueens）を
+  あらかじめ盤面に配置した全ての部分盤面（サブコンステレーション）を列挙・生成する。
+  再帰的に呼び出され、各行ごとに可能な配置をすべて検証。
+ 
+  @param ld   左対角線のビットマスク（既にクイーンがある位置は1）
+  @param rd   右対角線のビットマスク
+  @param col  縦方向（列）のビットマスク
+  @param k    事前にクイーンを必ず置く行のインデックス1
+  @param l    事前にクイーンを必ず置く行のインデックス2
+  @param row  現在の再帰探索行
+  @param queens 現在までに盤面に配置済みのクイーン数
+  @param LD/RD 探索初期状態用のマスク（使用例次第で追記）
+  @param counter 生成されたコンステレーション数を書き込むカウンタ
+  @param constellations 生成したコンステレーション（部分盤面配置）のリスト
+  @param N     盤面サイズ
+  @details
+   -row==k/lの場合は必ずクイーンを配置し次の行へ進む
+   -queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
+   -その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
+   -生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
+  """
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
@@ -641,60 +552,46 @@ class NQueens19:
     #   constellations.append(constellation)
     #   counter[0]+=1
     #   return
-    # if queens==preset_queens:
-    #   # signatureの生成
-    #   signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
-    #   # signaturesセットをクラス変数やグローバルで管理
-    #   if not hasattr(self, "constellation_signatures"):
-    #     self.constellation_signatures = set()
-    #   signatures = self.constellation_signatures
-    #   if signature not in signatures:
-    #     constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
-    #     constellations.append(constellation) #星座データ追加
-    #     signatures.add(signature)
-    #     counter[0] += 1
-    #   return
-    if queens == preset_queens:
-        # constellation_signatures セットの初期化（Codon対応）
-        if not hasattr(self, "constellation_signatures"):
-            self.constellation_signatures = set()
-        # signature の生成
-        signature = (ld, rd, col, k, l, row)
-        # 初回の signature のみ追加
-        if signature not in self.constellation_signatures:
-            constellations.append({
-                "ld": ld, "rd": rd, "col": col,
-                "startijkl": row << 20,
-                "solutions": 0
-            })
-            self.constellation_signatures.add(signature)
-            counter[0] += 1
-        return
+    if queens==preset_queens:
+      # signatureの生成
+      signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+      # signaturesセットをクラス変数やグローバルで管理
+      if not hasattr(self, "constellation_signatures"):
+        self.constellation_signatures = set()
+      signatures = self.constellation_signatures
+      if signature not in signatures:
+        constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+        constellations.append(constellation) #星座データ追加
+        signatures.add(signature)
+        counter[0] += 1
+      return
     # ------------------------------------------------
 
     # 現在の行にクイーンを配置できる位置を計算
-    free=mask&~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))
+    free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
       bit:int=free&-free  # 最も下位の1ビットを取得
       free&=free-1  # 使用済みビットを削除
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
-  # ConstellationArrayListの各Constellation（部分盤面）ごとに
-  # N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
-  # @param constellations 解探索対象のConstellationArrayListポインタ
-  # @param N              盤面サイズ
-  # @details
-  #  -各Constellation（部分盤面）ごとにj, k, l, 各マスク値を展開し、
-  #     複雑な分岐で最適な再帰ソルバー（SQ...関数群）を呼び出して解数を計算
-  #  -分岐ロジックは、部分盤面・クイーンの位置・コーナーからの距離などで高速化
-  #  -解数はtemp_counterに集約し、各Constellationのsolutionsフィールドに記録
-  #  -symmetry(ijkl, N)で回転・ミラー重複解を補正
-  #  -GPUバージョン(execSolutionsKernel)のCPU移植版（デバッグ・逐次確認にも活用）
-  # @note
-  #  -N-Queens最適化アルゴリズムの核心部
-  #  -temp_counterは再帰呼び出しで合計を受け渡し
-  #  -実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
+  """
+  ConstellationArrayListの各Constellation（部分盤面）ごとに
+  N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
+  @param constellations 解探索対象のConstellationArrayListポインタ
+  @param N              盤面サイズ
+  @details
+   -各Constellation（部分盤面）ごとにj, k, l, 各マスク値を展開し、
+      複雑な分岐で最適な再帰ソルバー（SQ...関数群）を呼び出して解数を計算
+   -分岐ロジックは、部分盤面・クイーンの位置・コーナーからの距離などで高速化
+   -解数はtemp_counterに集約し、各Constellationのsolutionsフィールドに記録
+   -symmetry(ijkl, N)で回転・ミラー重複解を補正
+   -GPUバージョン(execSolutionsKernel)のCPU移植版（デバッグ・逐次確認にも活用）
+  @note
+   -N-Queens最適化アルゴリズムの核心部
+   -temp_counterは再帰呼び出しで合計を受け渡し
+   -実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
+  """
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     # jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     N2:int=N-2
@@ -838,19 +735,21 @@ class NQueens19:
       # constellation["solutions"]=count2*2+count4*4+count8*8
       # constellation["unique"]   =count2+count4+count8
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
-  # 開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
-  # @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
-  # @param constellations  Constellation本体リスト（実際の盤面は後続で生成）
-  # @param N               盤面サイズ
-  # @details
-  #  -コーナー・エッジ・対角・回転対称性を考慮し、「代表解」となるuniqueな開始盤面のみ抽出する。
-  #  -forループの入れ子により、N-Queens盤面の「最小単位部分盤面」を厳密な順序で列挙。
-  #  -k, l, i, j 各インデックスの取り方・範囲・重複排除のための判定ロジックが最適化されている。
-  #  -checkRotations()で既出盤面（回転対称）を排除、必要なものだけをijklListに追加。
-  #  -このunique setをもとに、後段でConstellation構造体の生成・分割探索を展開可能。
-  # @note
-  #  -「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
-  #  -このループ構造・排除ロジックがN-Queensソルバの根幹。
+  """
+  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
+  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
+  @param constellations  Constellation本体リスト（実際の盤面は後続で生成）
+  @param N               盤面サイズ
+  @details
+   -コーナー・エッジ・対角・回転対称性を考慮し、「代表解」となるuniqueな開始盤面のみ抽出する。
+   -forループの入れ子により、N-Queens盤面の「最小単位部分盤面」を厳密な順序で列挙。
+   -k, l, i, j 各インデックスの取り方・範囲・重複排除のための判定ロジックが最適化されている。
+   -checkRotations()で既出盤面（回転対称）を排除、必要なものだけをijklListに追加。
+   -このunique setをもとに、後段でConstellation構造体の生成・分割探索を展開可能。
+  @note
+   -「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
+   -このループ構造・排除ロジックがN-Queensソルバの根幹。
+  """
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
@@ -869,39 +768,17 @@ class NQueens19:
       )
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
 
-    # コーナーにクイーンがいない場合の開始コンステレーション
-    # ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i != (N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
-    # コーナーにクイーンがいない場合の開始コンステレーション
-    ijkl_list.update(
-        self.to_ijkl(i, j, k, l)
-        for k in range(1, halfN)
-        for l in range(k + 1, N - 1)
-        for i in range(k + 1, N - 1)
-        if i != (N - 1) - l
-        for j in range(N - k - 2, 0, -1)
-        if j != i and j != l
-        if not self.check_rotations(ijkl_list, i, j, k, l, N)
-    )
-    #
-    # コーナーにクイーンがある場合の開始コンステレーション
-    # ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
-    # は {...} で一時 set を作っていますが、以下のように generator にすればメモリ節約・速度向上します：
-    ijkl_list.update(
-        self.to_ijkl(0, j, 0, l)
-        for j in range(1, N - 2)
-        for l in range(j + 1, N - 1)
-    )
-    #
+    # コーナーにクイーンがいない場合の開始コンステレーションを計算する
+    ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i != (N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
+    # コーナーにクイーンがある場合の開始コンステレーションを計算する
+    ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
     # Jasmin変換
     # ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
     # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
-    # ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
-    # ijkl_list=ijkl_list_jasmin
-    ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
-    #
-    #
-    #
-    #
+    ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
+    ijkl_list=ijkl_list_jasmin
+
+
     L=1<<(N-1)  # Lは左端に1を立てる
     for sc in ijkl_list:
       i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
@@ -923,9 +800,9 @@ class NQueens19:
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
-  #
+  """
   # 関数プロトタイプ
-  #
+  """
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
     if row==endmark:
       return 1
@@ -937,26 +814,7 @@ class NQueens19:
       free&=free-1  # 使用済みビットを削除
       next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
       next_free:int=mask&~(next_ld|next_rd|next_col)
-      # 明らかにより細かい pruning を行っている高度な最適化条件です
-      # しかし後から見返したとき、「なぜこれだけ複雑にしているのか？
-      # 」という疑問が出る可能性があります。
       # if next_free and (row>=endmark-1 or mask&~(next_ld|next_rd|next_col)):
-      # これは「次の行（rowstep+1）にクイーンを置けるマスが1つもな
-      # ければ prune する」という強い pruning 条件であり、簡易条件
-      # との重複はなく、むしろ発展系です。 
-      # if next_free and not (
-      #     rowstep < endmark and
-      #     (
-      #         mask & ~(
-      #             (next_ld << 1) | (next_rd >> 1) | next_col
-      #         )
-      #         & ~((rowstep == mark1) << (N1 - mark1))
-      #         & ~((rowstep == mark2) << (N1 - mark2))
-      #     ) == 0
-      # ):
-      #
-      # 上記を包括表記で記述したもの
-      #
       if next_free and not (rowstep<endmark and (mask&~(((next_ld<<1)|(next_rd>>1)|next_col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0): 
         total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
@@ -1510,17 +1368,13 @@ class NQueens19:
       #       blocked_next&=~(1<<(N1-mark2))
       #     if (mask&~blocked_next)==0:
       #       continue
-
-
-
-
       if next_free and not (rowstep<endmark and (mask&~(((next_ld<<1)|(next_rd>>1)|next_col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0): 
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
 class NQueens19_constellations():
   def main(self)->None:
     nmin:int=5
-    nmax:int=20
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     total:int=0
     unique:int=0
@@ -1535,13 +1389,8 @@ class NQueens19_constellations():
       #---------------------------------
       # 4. pickleファイルで星座リストそのものをキャッシュ
       #---------------------------------
-      # キャッシュを使わない
       # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      # キャッシュを使う、キャッシュの整合性もチェック
-      # -- txt
-      # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
-      # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       # total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
