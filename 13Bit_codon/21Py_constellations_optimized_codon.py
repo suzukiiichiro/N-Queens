@@ -32,8 +32,8 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 
 fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
-16:     14772512            0         0:00:00.429
-17:     95815104            0         0:00:02.880
+16:     14772512            0         0:00:00.485
+17:     95815104            0         0:00:03.137
 """
 
 # レベルA（すぐ入れられる／既に「済」でも検証コストが低い）
@@ -86,6 +86,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 
 #!/usr/bin/env python3
 
+import os
 from typing import List,Set,Dict
 from datetime import datetime
 
@@ -478,18 +479,9 @@ class NQueens19:
   # という特性があるため、一度生成した星座リストは保存して使い回し
   # たほうが圧倒的に効率的です。
   # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
+  # バリデーション関数の強化（既に実装済みの場合はスキップOK）
   def validate_constellation_list(self, constellations: List[Dict[str, int]]) -> bool:
-    if not constellations:
-      return False
-    required_keys:Set[str] = {"ld", "rd", "col", "startijkl", "solutions"}
-    for item in constellations:
-      if not isinstance(item, dict):
-        return False
-      if not required_keys.issubset(set(item.keys())):
-        return False
-      if not all(isinstance(item[key], int) for key in required_keys):
-        return False
-    return True
+      return all(all(k in c for k in ("ld", "rd", "col", "startijkl")) for c in constellations)
   # 修正：Codon互換の from_bytes() 相当処理
   # def read_uint32_le(self, b: bytes) -> int:
   # def read_uint32_le(self, b: List[int]) -> int:
@@ -523,6 +515,15 @@ class NQueens19:
                   "startijkl": startijkl, "solutions": 0
               })
       return constellations
+  # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
+  def validate_bin_file(self,fname: str) -> bool:
+     try:
+         with open(fname, "rb") as f:
+             f.seek(0, 2)  # ファイル末尾に移動
+             size = f.tell()
+         return size % 16 == 0
+     except:
+         return False
   # キャッシュ付きラッパー関数（.bin）
   def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
       fname = f"constellations_N{N}_{preset_queens}.bin"
@@ -530,7 +531,7 @@ class NQueens19:
           # return self.load_constellations_bin(fname)
         try:
           constellations = self.load_constellations_bin(fname)
-          if self.validate_constellation_list(constellations):
+          if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
             return constellations
           else:
             print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
@@ -1510,10 +1511,6 @@ class NQueens19:
       #       blocked_next&=~(1<<(N1-mark2))
       #     if (mask&~blocked_next)==0:
       #       continue
-
-
-
-
       if next_free and not (rowstep<endmark and (mask&~(((next_ld<<1)|(next_rd>>1)|next_col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0): 
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
     return total
