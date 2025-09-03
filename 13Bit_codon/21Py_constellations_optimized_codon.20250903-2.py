@@ -298,6 +298,492 @@ from datetime import datetime
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 
+#
+# 先頭付近に 対称操作＋分類 のヘルパーを追加
+#
+# 回転の直接計算で軽量化（再帰/二重計算を排除）
+# 90度 (r,c) -> (c, n-1-r)
+def _rotate90(q, n):
+    res = [0] * n
+    for r in range(n):
+        c = q[r]
+        res[c] = n - 1 - r
+    return res
+# 180度 (r,c) -> (n-1-r, n-1-c)
+def _rotate180(q, n):
+    res = [0] * n
+    for r in range(n):
+        res[n - 1 - r] = n - 1 - q[r]
+    return res
+# 270度 (r,c) -> (n-1-c, r)
+def _rotate270(q, n):
+    res = [0] * n
+    for r in range(n):
+        c = q[r]
+        res[n - 1 - c] = r
+    return res
+# 左右反転 (r,c) -> (r, n-1-c)
+def _mirror_vert(q, n):
+    res = [0] * n
+    for r in range(n):
+        res[r] = n - 1 - q[r]
+    return res
+def _lex_lt(a, b, n):
+    # a < b ? （レキシコ比較）
+    for i in range(n):
+        ai = a[i]; bi = b[i]
+        if ai < bi: return True
+        if ai > bi: return False
+    return False
+def _eq_vec(a, b, n):
+    for i in range(n):
+        if a[i] != b[i]:
+            return False
+    return True
+def _lsb_index(x):
+    # x は 2 の冪（LSB = x）
+    i = 0
+    while x > 1:
+        x >>= 1
+        i += 1
+    return i
+def _classify_symmetry(queens, n):
+    """
+    8対称群の最小正規形チェック＋軌道サイズ（2/4/8）の手書き重複判定版
+    戻り値: (count2, count4, count8)
+    """
+    q    = queens
+    r90  = _rotate90(q, n)
+    r180 = _rotate180(q, n)
+    r270 = _rotate270(q, n)
+    m    = _mirror_vert(q, n)
+    m90  = _rotate90(m, n)
+    m180 = _rotate180(m, n)
+    m270 = _rotate270(m, n)
+
+    forms = [q, r90, r180, r270, m, m90, m180, m270]
+
+    # 最小正規形を手で求める
+    minf = forms[0]
+    for i in range(1, 8):
+        if _lex_lt(forms[i], minf, n):
+            minf = forms[i]
+
+    # 自分(q)が最小でなければ代表ではない
+    if not _eq_vec(q, minf, n):
+        return (0, 0, 0)
+
+    # 軌道サイズ（重複判定も手で）
+    uniq = []  # 代表列の配列たち
+    for f in forms:
+        found = False
+        for u in uniq:
+            if _eq_vec(f, u, n):
+                found = True
+                break
+        if not found:
+            uniq.append(f)
+
+    orbit = len(uniq)
+    if orbit >= 8:
+        return (0, 0, 1)
+    elif orbit == 4:
+        return (0, 1, 0)
+    elif orbit == 2:
+        return (1, 0, 0)
+    else:
+        # 稀な退化ケースは8扱い
+        return (0, 0, 1)
+
+# 収集モードのバックトラックを追加（行ステップ=1の標準形用）
+# ※ まずは「素の1行ずつ進む（step=1のみ）」のときにユニーク解を数える設計です。
+# step2_rows を使う特殊探索や事前配置（コンステレーション）に対しては後で拡張可能。
+# --- Collector for unique counting (plan は step=1 前提) ---
+class _Counts:
+    def __init__(self):
+        self.total = 0
+        self.c2 = 0
+        self.c4 = 0
+        self.c8 = 0
+
+def _bt_collect(ld, rd, col, row, plan, queens, counts, N):
+    mask, endrow, row_step, row_mask, rd_or = plan
+
+    if row >= endrow:
+        counts.total += 1
+        c2, c4, c8 = _classify_symmetry(queens, N)
+        counts.c2 += c2; counts.c4 += c4; counts.c8 += c8
+        return
+
+    avail = mask & ~(ld | rd | col)
+    avail &= row_mask[row]
+
+    step = row_step[row]
+    extra = rd_or[row]
+
+    if step != 1:
+        while avail:
+            bit = avail & -avail
+            avail -= bit
+            _bt_collect((ld | bit) << step,
+                        ((rd | bit) >> step) | extra,
+                        (col | bit),
+                        row + step, plan, queens, counts, N)
+        return
+
+    # ★ ここを append/pop ではなく “row 位置に代入”
+    while avail:
+        bit = avail & -avail
+        avail -= bit
+        # col_idx = bit.bit_length() - 1
+        col_idx = _lsb_index(bit)
+        queens[row] = col_idx                 # set
+        _bt_collect((ld | bit) << 1,
+                    ((rd | bit) >> 1) | extra,
+                    (col | bit),
+                    row + 1, plan, queens, counts, N)
+        queens[row] = -1                      # unset（復元）
+def run_total_and_unique(N):
+    plan = make_plan(N, 0, 0, N, _empty_int_dict(), _empty_int_dict(), _empty_int_list(), _empty_int_dict())
+    counts = _Counts()
+    queens = [-1] * N
+    _bt_collect(0, 0, 0, 0, plan, queens, counts, N)
+    unique = counts.c2 + counts.c4 + counts.c8
+    total_by_orbit = counts.c2 * 2 + counts.c4 * 4 + counts.c8 * 8
+    total = counts.total if counts.total == total_by_orbit else total_by_orbit
+    return total, unique, counts.c2, counts.c4, counts.c8
+
+
+#
+# テンプレート対応
+#
+class BTPlan:
+    __slots__ = ("mask", "endrow", "row_step", "row_mask", "rd_or")
+    def __init__(self, mask, endrow, row_step, row_mask, rd_or):
+        self.mask = mask
+        self.endrow = endrow
+        self.row_step = row_step
+        self.row_mask = row_mask
+        self.rd_or = rd_or
+def _empty_int_list():
+    lst = [0]
+    del lst[0]
+    return lst  # List[int] 空
+
+def _empty_int_dict():
+    d = {0: 0}
+    del d[0]
+    return d    # Dict[int,int] 空
+
+# 置換後: 型ヒントは最小限に（Codon安定のため）
+def make_plan(
+    N, start, jmark, endmark,
+    forced_cols=None,
+    banned_mask=None,
+    step2_rows=None,
+    rd_or_rows=None
+):
+    # ---- 正規化（引数は上書きせずローカルに）----
+    s2 = step2_rows if step2_rows is not None else []
+    fc = forced_cols if forced_cols is not None else {}
+    bm = banned_mask if banned_mask is not None else {}
+    ro = rd_or_rows if rd_or_rows is not None else {}
+
+    mask = (1 << N) - 1
+    R = int(endmark)  # None 対策（念のため）
+
+    # ---- step2_rows（整数のみ採用）----
+    row_step = [1] * R
+    for r in s2:
+        if isinstance(r, int) and 0 <= r < R:
+            row_step[r] = 2
+
+    # ---- 行ごとの許可マスク（None/非intは無視 or 0扱い）----
+    row_mask = [mask] * R
+
+    # banned: row -> bitmask（None/非intは 0 に落とす）
+    for r in range(R):
+        if r in bm:
+            ban = bm[r]
+            try:
+                ban = int(ban) if ban is not None else 0
+            except Exception:
+                ban = 0
+            row_mask[r] &= (~ban) & mask
+
+    # forced: row -> col（None/非int/範囲外は無視）
+    for r in range(R):
+        if r in fc:
+            c = fc[r]
+            try:
+                c = int(c) if c is not None else -1
+            except Exception:
+                c = -1
+            if 0 <= c < N:
+                row_mask[r] = (1 << c)
+
+    # ---- rd 追加OR（None/非intは 0 に落とす）----
+    rd_or = [0] * R
+    limit = (1 << (N + 8)) - 1
+    for r in range(R):
+        if r in ro:
+            extra = ro[r]
+            try:
+                extra = int(extra) if extra is not None else 0
+            except Exception:
+                extra = 0
+            rd_or[r] = extra & limit
+
+    return (mask, R, row_step, row_mask, rd_or)
+
+def backtrack_unified(ld: int, rd: int, col: int, row: int, plan: BTPlan) -> int:
+    # 終了
+    if row >= plan.endrow:
+        return 1
+
+    # 行ごとの許可列マスクを適用
+    avail = plan.mask & ~(ld | rd | col)
+    avail &= plan.row_mask[row]
+
+    total = 0
+    step = plan.row_step[row]
+    extra_rd = plan.rd_or[row]
+
+    while avail:
+        bit = avail & -avail
+        avail -= bit
+        total += backtrack_unified(
+            (ld | bit) << step,
+            ((rd | bit) >> step) | extra_rd,
+            (col | bit),
+            row + step,
+            plan
+        )
+    return total
+
+# 既存の（多分岐）関数群の“共通版”
+def SQ_core_unified(
+    ld, rd, col,
+    start, free,
+    jmark, endmark,
+    mark1, mark2,
+    board_mask, N,
+    forced_cols=None,
+    banned_mask=None,
+    step2_rows=None,
+    rd_or_rows=None
+):
+    fc = forced_cols if forced_cols is not None else _empty_int_dict()
+    bm = banned_mask if banned_mask is not None else _empty_int_dict()
+    s2 = step2_rows if step2_rows is not None else _empty_int_list()
+    ro = rd_or_rows if rd_or_rows is not None else _empty_int_dict()
+    plan = make_plan(N, start, jmark, endmark, fc, bm, s2, ro)
+    return backtrack_unified(ld, rd, col, jmark, plan)
+
+# ------------------------------------------------------------
+#「[Opt-03] 中央列特別処理（奇数N）」
+# ------------------------------------------------------------
+"""
+    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+    if N % 2==1:
+      center = N // 2
+      ijkl_list.update(
+        self.to_ijkl(i, j, center, l)
+        for l in range(center + 1, N-1)
+        for i in range(center + 1, N-1)
+        if i != (N-1)-l
+        for j in range(N-center-2, 0, -1)
+        if j != i and j != l
+        # 180°回転盤面がセットに含まれていない
+        # if not self.check_rotations(ijkl_list, i, j, center, l, N)
+        if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
+      )
+    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+"""
+# ------------------------------------------------------------
+# 結果カウンタ（COUNT2/4/8 分類用）  # [Opt-05] / 対称性分類まとめ
+# ------------------------------------------------------------
+@dataclass
+class Counts:
+    c2: int = 0  # 左右対称のみ
+    c4: int = 0  # 180°回転まで同一
+    c8: int = 0  # 8 対称すべて異なる
+
+    @property
+    def total(self) -> int:
+        return self.c2 * 2 + self.c4 * 4 + self.c8 * 8
+# ------------------------------------------------------------
+# [Opt-08] Zobrist Hash テーブル生成（初期化）
+# Zobrist 用の乱数テーブル（部分盤面 canonical 判定のメモ化などで使用） # [Opt-09]
+# ※ N は solve() で決め打ちなので、初期化は solve 側で行う前提の例
+# ------------------------------------------------------------
+def init_zobrist(N: int) -> List[List[int]]:
+    import random
+    return [[random.getrandbits(64) for _ in range(N)] for _ in range(N)]
+# ---------------------------
+# [Opt-08] Zobrist Hash による部分盤面ハッシュ化
+# ---------------------------
+def compute_zobrist_hash(board: List[int], row: int, zobrist: List[List[int]]) -> int:
+    h = 0
+    for r in range(row):
+        h ^= zobrist[r][board[r]]
+    return h
+# ---------------------------
+# [Opt-07+08] 部分盤面の正準性チェック + Zobristキャッシュ
+# ---------------------------
+def is_partial_canonical(board: List[int], row: int, N: int,zobrist: List[List[int]], zcache: dict) -> bool:
+  key = compute_zobrist_hash(board, row, zobrist)
+  if key in zcache:
+    return zcache[key]
+  current = tuple(board[:row])
+  # ミラー反転のみチェック（左右対称のみ）
+  mirrored = tuple(N-1-board[r] for r in range(row))
+  # 必要であれば回転90/180/270 も加える（今はミラーのみ）
+  minimal = min(current, mirrored)
+  result = (current==minimal)
+  zcache[key] = result
+  return result
+# ------------------------------------------------------------
+# マクロチェス（ローカルパターン）ルールの例スタブ  # [Opt-10]
+# ------------------------------------------------------------
+def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
+  # 例：最初の3行で中央寄りが密集していたら破綻しやすいため除外
+  if row >= 3:
+    c0 = board[row-1]
+    c1 = board[row-2]
+    c2 = board[row-3]
+    if abs(c0-c1) <= 1 and abs(c1-c2) <= 1:
+      return True
+  return False
+
+# ---------------------------
+# 使い方（任意の再帰関数 backtrack(row, ...) の中で）
+# ---------------------------
+# if not is_partial_canonical(board, row, N, zobrist, zcache):
+#   return
+# if violate_macro_patterns(board, row, N):
+#   return
+
+# ※ `zobrist` は solve() 内で init_zobrist(N) により生成
+# `zcache` は {} で初期化し、各 backtrack に渡す
+# これらを main の backtrack 系ルーチン（例：SQdB/SQaB）に組み込みます。
+# ご希望があれば、具体的な関数ごとに挿入済みコードも差し上げます。
+
+# ------------------------------------------------------------
+# 8 対称生成（完成盤面用） # [Opt-05] / [Opt-04]
+# 完成盤面の重複判定・分類に使用
+# ------------------------------------------------------------
+def symmetries(board):
+    # board: row -> col の配置（例: board[r] = c）
+    n = len(board)
+    def rot90(b):   # 回転 90°: (r, c) -> (c, n-1-r)
+        return [b.index(i) for i in range(n-1, -1, -1)]
+    def rot180(b):  # 回転 180°
+        return [n-1-b[n-1-r] for r in range(n)]
+    def rot270(b):  # 回転 270°
+        return [b.index(n-1-i) for i in range(n)]
+    def reflect(b): # ミラー（左右反転）: (r, c) -> (r, n-1-c)
+        return [n-1-c for c in b]
+    r0 = board
+    r1 = rot90(r0)
+    r2 = rot180(r0)
+    r3 = rot270(r0)
+    f0 = reflect(r0)
+    f1 = reflect(r1)
+    f2 = reflect(r2)
+    f3 = reflect(r3)
+    return [tuple(r0), tuple(r1), tuple(r2), tuple(r3),
+            tuple(f0), tuple(f1), tuple(f2), tuple(f3)]
+# ------------------------------------------------------------
+# 完成盤面の対称性分類 # [Opt-05] / [Opt-04]
+# ------------------------------------------------------------
+def classify(board):
+    syms = symmetries(board)
+    mn = min(syms)
+    uniq = len(set(syms))
+    if uniq==1:
+        return 'c2'  # 実際は c2=1, c4=0, c8=0 のように扱うなら調整可
+    elif uniq==2 or uniq==4:
+        return 'c4'
+    else:
+        return 'c8'
+# ------------------------------------------------------------
+# ビット演算バックトラッキング # [Opt-01]
+#  -cols, hills, dales を bit で持ち、free = ~(cols|hills|dales) で高速衝突除去
+#  -1 行目（row==0）は [Opt-02/03/05/06] によって枝分かれ済み
+#  -途中で [Opt-07/08/09/10] を挟み込む
+# ------------------------------------------------------------
+def backtrack(n, row, cols, hills, dales, board, counts, is_corner=False, zobrist=None, zcache=None):
+    if row==n:
+        # 完成。対称分類  # [Opt-05]/[Opt-04]
+        typ = classify(board)
+        if typ=='c2':
+            counts.c2 += 1
+        elif typ=='c4':
+            counts.c4 += 1
+        else:
+            counts.c8 += 1
+        return
+    # ---------------------------
+    # [Opt-07]/[Opt-08] 部分盤面 canonical チェック
+    if not is_partial_canonical(board, row, n, zobrist, zcache):
+        return
+    # ---------------------------
+    # [Opt-10] マクロチェス局所パターンで除去
+    if violate_macro_patterns(board, row, n):
+        return
+    # ---------------------------
+    # 衝突していない位置（free）をビットで求める  # [Opt-01]
+    mask = (1<<n)-1
+    free = mask&~(cols|hills|dales)
+    while free:
+        bit = -free & free
+        # col = (bit.bit_length()-1)
+        col = _lsb_index(bit)
+        free ^= bit
+        board[row] = col  # 盤面にセット
+        # 180°対称や角位置分岐での特別扱いを、必要ならここに入れる # [Opt-04]/[Opt-05]
+        # 例：is_corner==True の時は row>0 で (n-1-col) などの除去条件を適用 …など
+        backtrack(
+            n, row + 1,
+            cols|bit,
+            (hills|bit)<<1,
+            (dales|bit)>>1,
+            board,
+            counts,
+            is_corner=is_corner,
+            zobrist=zobrist,
+            zcache=zcache
+        )
+        board[row] = -1  # 戻す（明示的にしなくても良いが読みやすさのため）
+# ------------------------------------------------------------
+# 1 行目を左右対称で半分に制限し（[Opt-02]）、中央列を別処理（[Opt-03]）、
+# 初手ごとに並列化（[Opt-06]）する solve_nqueens()
+# ------------------------------------------------------------
+def solve_nqueens(n, workers=None):
+    if workers is None:
+        workers = max(1, cpu_count()-1)
+    # Zobrist 用意（[Opt-09] を本当に使うなら）
+    zobrist = init_zobrist(n)
+    manager_counts = Counts()
+    # 1 行目の左半分のみ探索（左右ミラー分を除去） # [Opt-02]
+    first_cols = list(range(n // 2))
+    # 奇数 N の中央列は別枠 # [Opt-03]
+    center_col = n // 2 if (n % 2==1) else None
+    args = []
+    for col in first_cols:
+        args.append((n, col, True))  # col==0 のケースは is_corner=True として扱うなど # [Opt-05]
+    if center_col is not None:
+        args.append((n, center_col, False))  # 中央列は is_corner=False で別分類
+    # 並列処理 # [Opt-06]
+    with Pool(processes=workers) as pool:
+        for c in pool.imap_unordered(_worker, args):
+            # c は Counts
+            manager_counts.c2 += c.c2
+            manager_counts.c4 += c.c4
+            manager_counts.c8 += c.c8
+    return manager_counts
+# ------------------------------------------------------------
 class NQueens21:
   def __init__():
     self._rot_cache = {}
@@ -1518,7 +2004,11 @@ class NQueens21_constellations():
       # 例：nごとのループ内
       # ENABLE_UNIQUE=0 # 0:No 1:Yes
       ENABLE_UNIQUE=0 # 0:No 1:Yes
-      total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+      if ENABLE_UNIQUE:
+        total, unique, c2, c4, c8 = run_total_and_unique(size)
+      else:
+        total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+        unique=0
       # 既存の PRINT に UNIQUE を差し込む
       # PRINT(F"{n:2D}: {TOTAL:10D} {UNIQUE:12D}   ...")
 
