@@ -708,7 +708,9 @@ def backtrack_unified(ld: int, rd: int, col: int, row: int, plan) -> int:
     return total
 #
 # <-_bt_collect()
-USE_CONSTELLATION_UNIQUE = False  # ★ Falseのままにする
+# USE_CONSTELLATION_UNIQUE = False  # ★ Falseのままにする
+USE_CONSTELLATION_UNIQUE = True  # ★ Falseのままにする
+#
 def _classify_via_constellation_or_fallback(queens, N):
     if not USE_CONSTELLATION_UNIQUE: # ★ デフォルトは安全な従来ロジックに戻す
         return _classify_symmetry(queens, N)
