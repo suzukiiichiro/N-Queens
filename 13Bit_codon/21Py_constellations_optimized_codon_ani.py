@@ -867,8 +867,8 @@ class NQueens21:
   
 class NQueens21_constellations():
   def main(self)->None:
-    nmin:int=7
-    nmax:int=17
+    nmin:int=5
+    nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     total:int=0
     unique:int=0

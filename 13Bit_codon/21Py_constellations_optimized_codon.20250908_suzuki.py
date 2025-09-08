@@ -688,25 +688,53 @@ class NQueens21:
   #  -temp_counterは再帰呼び出しで合計を受け渡し
   #  -実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
   def dfs(self,N:int,ld:int, rd:int, col:int, row:int, need:int, k:int, l:int, LD:int, RD:int, idx:int)->int:
-      MASK:int=(1<<N)-1
+      mask:int=(1<<N)-1
       if need == 0:
           return 1
+      # k/l の行は“すでに置いてある行”なのでスキップ
+      # if row == k or row == l:
+      #     return self.dfs(N,(ld << 1) & mask, rd >> 1, col, row + 1, need, k, l, LD, RD, idx)
+      # k/l 行は“すでに置いてある”のでループで一気にスキップ
+      while row < N and (row == k or row == l):
+          ld = (ld << 1) & mask
+          rd >>= 1
+          row += 1
+      # 力尽きた
       if row >= N:
           return 0
-      # k/l の行は“すでに置いてある行”なのでスキップ
-      if row == k or row == l:
-          return self.dfs(N,(ld << 1) & MASK, rd >> 1, col, row + 1, need, k, l, LD, RD, idx)
-
+      # 上限枝刈り：残りの可処理行が need に満たなければ打ち切り
+      # （k/l がこの先に残っていれば、その分は実質スキップ行）
+      remain = N - row
+      if row <= k: remain -= 1
+      if row <= l: remain -= 1
+      if need > remain:
+          return 0
       # この行で禁止される列（LD/RD は行ごとに動的）
-      forbid:int = (ld | rd | col | (LD >> (N - 1 - row)) | ((RD << (N - 1 - row)) & MASK)) & MASK
-      avail:int = (~forbid) & MASK
-
+      forbid:int = (ld | rd | col | (LD >> (N - 1 - row)) | ((RD << (N - 1 - row)) & mask)) & mask
+      avail:int = mask&~forbid
+      if not avail:
+          return 0
       total:int = 0
+      # 典型の LSB 展開：bit = avail & -avail; avail &= avail-1
       while avail:
           bit = avail & -avail
-          avail ^= bit
-          total += self.dfs(N,((ld | bit) << 1) & MASK, (rd | bit) >> 1, (col | bit) & MASK,
-                       row + 1, need - 1, k, l, LD, RD, idx)
+          avail &= (avail - 1)
+          total += self.dfs(
+              N,
+              (ld | bit) << 1 & mask,
+              (rd | bit) >> 1,
+              col | bit,              # 下位 N ビットのみなので &mask は不要
+              row + 1,
+              need - 1,
+              k,l,LD,RD,
+              forbid
+              # idx
+          )
+      #     total += self.dfs(N,((ld | bit) << 1) & mask, (rd | bit) >> 1, (col | bit) & mask, row + 1, need - 1, k, l, LD, RD, idx)
+      # while avail:
+      #     bit:int = -avail&avail
+      #     avail ^= bit
+      #     total += self.dfs(N,((ld | bit) << 1) & mask, (rd | bit) >> 1, (col | bit) & mask, row + 1, need - 1, k, l, LD, RD, idx)
       return total
 
   def exec_solutions(self, constellations:List[Dict[str,int]], N:int):
@@ -718,8 +746,8 @@ class NQueens21:
       - row==k or row==l をスキップ（最初に置いたクイーンの行）
       - need = N - popcount(col)
     """
-    dbg = 0         # 1でON
-    dbg_limit:int = 1
+    # dbg = 0         # 1でON
+    # dbg_limit:int = 1
 
     # def popcount(x):
     #     x = int(x)
@@ -729,7 +757,7 @@ class NQueens21:
     #         cnt += 1
     #     return cnt
 
-    MASK:int = (1 << N) - 1
+    mask:int = (1 << N) - 1
     L:int = 1 << (N - 1)
 
     @par
@@ -740,25 +768,23 @@ class NQueens21:
         j:int = self.getj(ijkl)
         k:int = self.getk(ijkl)
         l:int = self.getl(ijkl)
-
-        ld:int  = int(c.get("ld", 0))  & MASK
-        rd:int  = int(c.get("rd", 0))  & MASK
-        col:int = int(c.get("col", 0)) & MASK
-
-        placed:int = (lambda x: (x & -x) != 0 or 0)(0)  # ダミー抑止
-        placed = 0
-        tmp:int = col
-        while tmp:
-            tmp &= tmp - 1
-            placed += 1
-        need:int = N - placed
-
+        ld:int  = int(c.get("ld", 0))  & mask
+        rd:int  = int(c.get("rd", 0))  & mask
+        col:int = int(c.get("col", 0)) & mask
+        # placed:int = (lambda x: (x & -x) != 0 or 0)(0)  # ダミー抑止
+        # placed = 0
+        # tmp:int = col
+        # while tmp:
+        #     tmp &= tmp - 1
+        #     placed += 1
+        # placed:int = sum(1 for i in range(N) if ((col & mask) >> i) & 1)
+        need:int = N-sum(1 for i in range(N) if ((col & mask) >> i) & 1)
+        # need:int = N - placed
+        # need:int = N - placed
         # gen_constellations と同じ LD/RD を復元
         LD:int = (L >> j) | (L >> l)
         RD:int = (L >> j) | (1 << k)
-
         unique_cnt:int = self.dfs(N,ld, rd, col, start, need, k, l, LD, RD, idx)
-
         # try:
         #     sym = int(self.symmetry(ijkl, N))
         # except Exception:
@@ -766,19 +792,18 @@ class NQueens21:
         # total_cnt = unique_cnt * sym
         # sym:int=1
         # try:
-        sym = int(self.symmetry(ijkl, N))
         # except Exception:
             # sym = 1
-        total_cnt = unique_cnt * sym
-
+        # total_cnt = unique_cnt * sym
+        # sym:int = int(self.symmetry(ijkl, N))
         c["unique"] = unique_cnt
-        #c["Unique"] = unique_cnt   # 集計側ゆらぎ対策
-        c["solutions"] = total_cnt
-
-        if dbg and idx < dbg_limit:
-            print("[constellation #", idx, "] start=", start, " j=", j, " k=", k, " l=", l,
-                  " placed=", placed, " need=", need, " unique=", unique_cnt, " sym=", sym,
-                  " total=", total_cnt, sep="")
+        c["solutions"] = unique_cnt * int(self.symmetry(ijkl,N))
+        # c["solutions"] = unique_cnt * sym
+        # c["solutions"] = total_cnt
+        # if dbg and idx < dbg_limit:
+        #     print("[constellation #", idx, "] start=", start, " j=", j, " k=", k, " l=", l,
+        #           " placed=", placed, " need=", need, " unique=", unique_cnt, " sym=", sym,
+        #           " total=", total_cnt, sep="")
 
   # 開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
   # @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
@@ -865,10 +890,10 @@ class NQueens21:
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
-  
+
 class NQueens21_constellations():
   def main(self)->None:
-    nmin:int=7
+    nmin:int=5
     nmax:int=19
     preset_queens:int=4  # 必要に応じて変更
     total:int=0
