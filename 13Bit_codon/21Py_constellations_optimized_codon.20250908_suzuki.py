@@ -718,7 +718,7 @@ class NQueens21:
       - row==k or row==l をスキップ（最初に置いたクイーンの行）
       - need = N - popcount(col)
     """
-    dbg:int = 0         # 1でON
+    dbg = 0         # 1でON
     dbg_limit:int = 1
 
     # def popcount(x):
@@ -764,12 +764,12 @@ class NQueens21:
         # except Exception:
         #     sym = 1
         # total_cnt = unique_cnt * sym
-        sym:int=1
+        # sym:int=1
         # try:
         sym = int(self.symmetry(ijkl, N))
         # except Exception:
             # sym = 1
-        total_cnt:int = unique_cnt * sym
+        total_cnt = unique_cnt * sym
 
         c["unique"] = unique_cnt
         #c["Unique"] = unique_cnt   # 集計側ゆらぎ対策
@@ -899,6 +899,7 @@ class NQueens21_constellations():
       # ENABLE_UNIQUE=0 # 0:No 1:Yes
       ENABLE_UNIQUE=0 # 0:No 1:Yes
       total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+      unique = sum(c["unique"] for c in constellations if c["unique"] > 0)
       # 既存の PRINT に UNIQUE を差し込む
       # PRINT(F"{n:2D}: {TOTAL:10D} {UNIQUE:12D}   ...")
 
