@@ -6,7 +6,7 @@
 コンステレーション版 最適化　Ｎクイーン
 
 # 実行結果
-workspace#suzuki$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
+workspace#suzuki$ codon build -release 21Py_constellations_optimized_codon.py&&./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.096
  6:            4            0         0:00:00.000
@@ -26,11 +26,11 @@ workspace#suzuki$ codon build -release 21Py_constellations_optimized_codon.py &&
 GPU/CUDA 11CUDA_constellation_symmetry.cu
 17:     95815104            0    000:00:00:03.41
 
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu&&POCL_DEBUG=all ./a.out -n ;
 17:         95815104         11977939     000:00:00:00.26
 18:        666090624         83263591     000:00:00:01.65
 
-fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_constellations_optimized_codon
+fedora$ codon build -release 21Py_constellations_optimized_codon.py&&./21Py_constellations_optimized_codon
  N:        Total       Unique        hh:mm:ss.ms
 16:     14772512            0         0:00:00.485
 17:     95815104            0         0:00:03.137
@@ -41,7 +41,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #✅[Opt-00] 対称性分類（COUNT2/4/8)　get_symmetries() → len(set(...)) による分類処理
 #✅[Opt-00] 事前配置（Constellation）：クイーンの一部を固定して部分問題に分割
 #✅[Opt-00] 探索関数の多様化：多数の SQ* 関数で構築時制約を細かく制御
-#✅[Opt-00] 最下位ビット抽出 (x & -x) による next-free 探索
+#✅[Opt-00] 最下位ビット抽出 (x&-x) による next-free 探索
 #✅[Opt-00] ルールベース分岐とマーク制御 によるブランチ削減
 #  [Opt-00] 探索ループの統一（コードサイズとJIT効率の最適化）
 #  現在は分岐の数が非常に多く、SQd1BlB, SQd1BkBlB, ... など細かな関数に分かれています。
@@ -55,7 +55,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #  [Opt-00] Codon対応
 #  Codonは型制約が厳しいため、以下の対応が必要：
 #  List[Dict[str,int]] → @codon.struct に明示的に変換
-#  Set[int] の代わりに list + in に変更（Codonは現状 set() をサポートしない）
+#  Set[int] の代わりに list+in に変更（Codonは現状 set() をサポートしない）
 #  [Opt-00] 64bit unsigned int ビットボード化（bitarray不要）
 #  現状 int を使っていますが、np.uint64 や ctypes.c_ulonglong を使うことで、
 #  メモリ占有減
@@ -69,18 +69,18 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #  1行目にクイーンを N // 2 より右に置かない。 
 #  1行目が中央にある場合は、2行目の一部の位置のみ探索。 これにより、左右・上下対称な冗長解の大半をスキップできます。
 #✅[Opt-02-1] 左右対称性除去（1 行目の列を 0～n//2−1 に制限）ミラー：1行目のクイーンを左半分に制限（ミラー対称を排除） 
-#✅[Opt-02-2] 中央列の特別処理（N 奇数時） if n % 2 == 1: ブロックで中央列だけ個別に処理
+#✅[Opt-02-2] 中央列の特別処理（N 奇数時） if n % 2==1: ブロックで中央列だけ個別に処理
 #    中央列対応：奇数サイズで中央列に特別対応（COUNT2分類を正確に）
 """
     # 1行目は左半分に限定
-    if row == 0:
-        limit = n // 2
+    if row==0:
+        limit=n // 2
         for col in range(limit):
     :
     :
     # 奇数サイズで中央列を個別処理
-    if n % 2 == 1:
-        col = n // 2
+    if n % 2==1:
+        col=n // 2
         ...
 """
 #  [Opt-03] 10.Knuth法の初手以降の枝刈り強化 
@@ -99,14 +99,14 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #  「探索途中で解が不可能と判断した場合の早期リターン」。 こうした枝刈りは実装が複雑になるが、特に大きいNほど効果絶大。
 
 
-#  [Opt-04] 180度対象除去 if row == n - 1 and is_corner: により (n-1, n-1) を禁止
+#  [Opt-04] 180度対象除去 if row==n - 1 and is_corner: により (n-1, n-1) を禁止
 #   5. 斜め対称（回転180度）除去
 #   角に置く場合でも、回転180度対称解が自明に重複するケースを除去できます。row=0, col=0 に置いたとき、row=n-1, col=n-1 への配置を許すと、180度回転で重複。よって、回転対称な構造を事前に構築しないように限定的に探索を行う。
 """
     mask=(1<<N)-1
-    free = mask&~(cols|hills|dales)
+    free=mask&~(cols|hills|dales)
     # 角スタート時の180度回転対称を除去：末行の右下 (n-1,n-1) を禁止
-    if row == n - 1 and is_corner:
+    if row==n - 1 and is_corner:
       free&=~(1<<(N-1))
 """
 #  [Opt-05] 角位置（col==0）での分岐（COUNT2 偏重の明示化） is_corner=True による分離集計で COUNT2 対応
@@ -118,30 +118,30 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #  9. 1行目以外でも部分対称除去（行列単位）
 # 構築途中（例：2〜n-1行）でも、回転・ミラーで過去の構成と一致する盤面が出てくる場合は prune 可能
 """
-    if row == 0:
+    if row==0:
         # まず列0に置くケース（角）だけを別途処理
-        col = 0
-        bit = 1 << col
-        pos = row * n + col
+        col=0
+        bit=1 << col
+        pos=row * n+col
         :
         :
         # 次に、1〜n//2-1の左半分（角以外）を処理（通常通り）
         for col in range(1, n // 2):
-            bit = 1 << col
-            pos = row * n + col
+            bit=1 << col
+            pos=row * n+col
         :
         :
         # 奇数Nで中央列を追加処理（is_corner=Falseで良い）
-        if n % 2 == 1:
-            col = n // 2
-            bit = 1 << col
+        if n % 2==1:
+            col=n // 2
+            bit=1 << col
     else:
-        free = ~(cols | hills | dales) & ((1 << n) - 1)
+        free=~(cols | hills | dales)&((1 << n) - 1)
         while free:
-            bit = free & -free
-            free ^= bit
+            bit=free&-free
+            free ^=bit
 """
-#  [Opt-07] 1 行目以外でも部分対称除去（行列単位） if row == 1 and c > queens[0]: continue 等で制御
+#  [Opt-07] 1 行目以外でも部分対称除去（行列単位） if row==1 and c > queens[0]: continue 等で制御
 #    途中段階（深さ r の盤面）を都度「辞書順最小」の canonical かどうかチェックして、そうでなければ枝刈り。
 #    試験的に実装済み→正解数が減る問題あり
 #  [Opt-11] 「ミラー＋90°回転」による“構築時”の重複複除 （構築時にこの対称性を安全に検出するのは難しく、導入していない）
@@ -161,11 +161,11 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 """
     def is_partial_duplicate(board: int, row: int) -> bool:
         # 部分盤面（row行まで）での対称性重複チェック
-        partial_bits = row * n
-        partial_board = board & ((1 << partial_bits) - 1)
-        sym = get_partial_symmetries(partial_board, row)
-        hashes = [hash_board(s, partial_bits) for s in sym]
-        canonical = min(hashes)
+        partial_bits=row * n
+        partial_board=board&((1 << partial_bits) - 1)
+        sym=get_partial_symmetries(partial_board, row)
+        hashes=[hash_board(s, partial_bits) for s in sym]
+        canonical=min(hashes)
         if canonical in partial_seen:
             return True
         partial_seen.add(canonical)
@@ -182,24 +182,24 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 # その中で 最小のハッシュ値を canonical として seen_hashes セットで判定します
 """
     def hash_board(board: int) -> int:
-        byte_len = (n * n + 7) // 8
+        byte_len=(n * n+7) // 8
         return zlib.crc32(board.to_bytes(byte_len, byteorder='big'))
     def classify_symmetry(board: int, n: int, seen_hashes: set[int]) -> str:
-        sym = get_symmetries(board, n)
-        hashes = [hash_board(s) for s in sym]
-        canonical_hash = min(hashes)
+        sym=get_symmetries(board, n)
+        hashes=[hash_board(s) for s in sym]
+        canonical_hash=min(hashes)
         if canonical_hash in seen_hashes:
             return ""
         seen_hashes.add(canonical_hash)
-        distinct = len(set(hashes))
-        if distinct == 8:
+        distinct=len(set(hashes))
+        if distinct==8:
             return 'COUNT8'
-        elif distinct == 4:
+        elif distinct==4:
             return 'COUNT4'
         else:
             return 'COUNT2'
 """
-#  [Opt-10] マクロチェス（局所パターン）による構築制限 free == 0 で安全に pruning（bin(cols) 判定は回避）
+#  [Opt-10] マクロチェス（局所パターン）による構築制限 free==0 で安全に pruning（bin(cols) 判定は回避）
 #  * 現実装との整合や有効なパターン定義次第で効果差が大。ルール設計が難しい。 
 #    序盤の配置（例：1行目＋2行目）により、3行目以降のクイーン配置が詰まるパターン
 #    特に cols | hills | dales が過半数を占めていると、有効配置がないことが多い
@@ -210,18 +210,18 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
     # バックトラックに以下を追加
     def backtrack(row=0, cols=0, hills=0, dales=0, board=0, is_corner=False):
       # 次の行に置ける場所がまったくないなら打ち切る（安全な pruning）
-      # if row >= 2:
+      # if row >=2:
       #   if bin(cols).count("1") > n // 2:
       #     return
       # または
       # 安全な pruning（次の行にクイーンを置ける場所がない）
-      free = ~(cols | hills | dales) & ((1 << n) - 1)
-      if row >= 2 and free == 0:
+      free=~(cols | hills | dales)&((1 << n) - 1)
+      if row >=2 and free==0:
         return
       #
       # 回転180度対称の重複除去（角スタート時のみ）
-      if row == n - 1 and is_corner:
-        free &= ~(1 << (n - 1))
+      if row==n - 1 and is_corner:
+        free&=~(1 << (n - 1))
 
       while free:
         ...
@@ -230,7 +230,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #  ビット演算で生成される「配置可能な列マスク」から、候補位置を列挙する際に、
 #  __builtin_ctz, __builtin_popcount（GCC/Clang）や _BitScanForward（MSVC）などの命令で 
 #  次に置く列の最下位ビットを高速抽出 すると、ループ不要で高速化が図れます。
-#  Pythonでも bin(mask).count('1') や (mask & -mask).bit_length()-1 を活用できますが、C/C++ ほどの速度は得られません。
+#  Pythonでも bin(mask).count('1') や (mask&-mask).bit_length()-1 を活用できますが、C/C++ほどの速度は得られません。
 
 
 #✅[Opt-12] ビット演算のインライン化
@@ -264,7 +264,7 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py && ./21Py_co
 #✅[Opt-22] 盤面や星座の辞書キャッシュ（dict）による一意管理
 #   星座リストや部分盤面ごとに、「一度作ったものはdictでキャッシュ」
 #✅[Opt-23] Jasmin変換のキャッシュ化（生成済み盤面の再利用）【済】
-#   ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
+#   ijkl_list_jasmin={self.jasmin(c, N) for c in ijkl_list}
 #   も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
 #✅[Opt-24] 星座ごとに「hash/tuple key」を使ったキャッシュ辞書の導入
 #   set_pre_queensやサブコンステレーション生成時も「(ld, rd, col, ...)のtuple」や「部分盤面hash」をkeyに
@@ -304,92 +304,92 @@ from datetime import datetime
 # 回転の直接計算で軽量化（再帰/二重計算を排除）
 # 90度 (r,c) -> (c, n-1-r)
 def _rotate90(q, n):
-    res = [0] * n
+    res=[0] * n
     for r in range(n):
-        c = q[r]
-        res[c] = n - 1 - r
+        c=q[r]
+        res[c]=n - 1 - r
     return res
 # 180度 (r,c) -> (n-1-r, n-1-c)
 def _rotate180(q, n):
-    res = [0] * n
+    res=[0] * n
     for r in range(n):
-        res[n - 1 - r] = n - 1 - q[r]
+        res[n - 1 - r]=n - 1 - q[r]
     return res
 # 270度 (r,c) -> (n-1-c, r)
 def _rotate270(q, n):
-    res = [0] * n
+    res=[0] * n
     for r in range(n):
-        c = q[r]
-        res[n - 1 - c] = r
+        c=q[r]
+        res[n - 1 - c]=r
     return res
 # 左右反転 (r,c) -> (r, n-1-c)
 def _mirror_vert(q, n):
-    res = [0] * n
+    res=[0] * n
     for r in range(n):
-        res[r] = n - 1 - q[r]
+        res[r]=n - 1 - q[r]
     return res
 def _lex_lt(a, b, n):
     # a < b ? （レキシコ比較）
     for i in range(n):
-        ai = a[i]; bi = b[i]
+        ai=a[i]; bi=b[i]
         if ai < bi: return True
         if ai > bi: return False
     return False
 def _eq_vec(a, b, n):
     for i in range(n):
-        if a[i] != b[i]:
+        if a[i] !=b[i]:
             return False
     return True
 def _lsb_index(x):
-    # x は 2 の冪（LSB = x）
-    i = 0
+    # x は 2 の冪（LSB=x）
+    i=0
     while x > 1:
-        x >>= 1
-        i += 1
+        x >>=1
+        i+=1
     return i
 def _classify_symmetry(queens, n):
     """
     8対称群の最小正規形チェック＋軌道サイズ（2/4/8）の手書き重複判定版
     戻り値: (count2, count4, count8)
     """
-    q    = queens
-    r90  = _rotate90(q, n)
-    r180 = _rotate180(q, n)
-    r270 = _rotate270(q, n)
-    m    = _mirror_vert(q, n)
-    m90  = _rotate90(m, n)
-    m180 = _rotate180(m, n)
-    m270 = _rotate270(m, n)
+    q=queens
+    r90=_rotate90(q, n)
+    r180=_rotate180(q, n)
+    r270=_rotate270(q, n)
+    m=_mirror_vert(q, n)
+    m90=_rotate90(m, n)
+    m180=_rotate180(m, n)
+    m270=_rotate270(m, n)
 
-    forms = [q, r90, r180, r270, m, m90, m180, m270]
+    forms=[q, r90, r180, r270, m, m90, m180, m270]
 
     # 最小正規形を手で求める
-    minf = forms[0]
+    minf=forms[0]
     for i in range(1, 8):
         if _lex_lt(forms[i], minf, n):
-            minf = forms[i]
+            minf=forms[i]
 
     # 自分(q)が最小でなければ代表ではない
     if not _eq_vec(q, minf, n):
         return (0, 0, 0)
 
     # 軌道サイズ（重複判定も手で）
-    uniq = []  # 代表列の配列たち
+    uniq=[]  # 代表列の配列たち
     for f in forms:
-        found = False
+        found=False
         for u in uniq:
             if _eq_vec(f, u, n):
-                found = True
+                found=True
                 break
         if not found:
             uniq.append(f)
 
-    orbit = len(uniq)
-    if orbit >= 8:
+    orbit=len(uniq)
+    if orbit >=8:
         return (0, 0, 1)
-    elif orbit == 4:
+    elif orbit==4:
         return (0, 1, 0)
-    elif orbit == 2:
+    elif orbit==2:
         return (1, 0, 0)
     else:
         # 稀な退化ケースは8扱い
@@ -401,56 +401,56 @@ def _classify_symmetry(queens, n):
 # --- Collector for unique counting (plan は step=1 前提) ---
 class _Counts:
     def __init__(self):
-        self.total = 0
-        self.c2 = 0
-        self.c4 = 0
-        self.c8 = 0
+        self.total=0
+        self.c2=0
+        self.c4=0
+        self.c8=0
 
 def _bt_collect(ld, rd, col, row, plan, queens, counts, N):
-    mask, endrow, row_step, row_mask, rd_or = plan
+    mask, endrow, row_step, row_mask, rd_or=plan
 
-    if row >= endrow:
-        counts.total += 1
-        c2, c4, c8 = _classify_symmetry(queens, N)
-        counts.c2 += c2; counts.c4 += c4; counts.c8 += c8
+    if row >=endrow:
+        counts.total+=1
+        c2, c4, c8=_classify_symmetry(queens, N)
+        counts.c2+=c2; counts.c4+=c4; counts.c8+=c8
         return
 
-    avail = mask & ~(ld | rd | col)
-    avail &= row_mask[row]
+    avail=mask&~(ld | rd | col)
+    avail&=row_mask[row]
 
-    step = row_step[row]
-    extra = rd_or[row]
+    step=row_step[row]
+    extra=rd_or[row]
 
-    if step != 1:
+    if step !=1:
         while avail:
-            bit = avail & -avail
-            avail -= bit
+            bit=avail&-avail
+            avail -=bit
             _bt_collect((ld | bit) << step,
                         ((rd | bit) >> step) | extra,
                         (col | bit),
-                        row + step, plan, queens, counts, N)
+                        row+step, plan, queens, counts, N)
         return
 
     # ★ ここを append/pop ではなく “row 位置に代入”
     while avail:
-        bit = avail & -avail
-        avail -= bit
-        # col_idx = bit.bit_length() - 1
-        col_idx = _lsb_index(bit)
-        queens[row] = col_idx                 # set
+        bit=avail&-avail
+        avail -=bit
+        # col_idx=bit.bit_length() - 1
+        col_idx=_lsb_index(bit)
+        queens[row]=col_idx                 # set
         _bt_collect((ld | bit) << 1,
                     ((rd | bit) >> 1) | extra,
                     (col | bit),
-                    row + 1, plan, queens, counts, N)
-        queens[row] = -1                      # unset（復元）
+                    row+1, plan, queens, counts, N)
+        queens[row]=-1                      # unset（復元）
 def run_total_and_unique(N):
-    plan = make_plan(N, 0, 0, N, _empty_int_dict(), _empty_int_dict(), _empty_int_list(), _empty_int_dict())
-    counts = _Counts()
-    queens = [-1] * N
+    plan=make_plan(N, 0, 0, N, _empty_int_dict(), _empty_int_dict(), _empty_int_list(), _empty_int_dict())
+    counts=_Counts()
+    queens=[-1] * N
     _bt_collect(0, 0, 0, 0, plan, queens, counts, N)
-    unique = counts.c2 + counts.c4 + counts.c8
-    total_by_orbit = counts.c2 * 2 + counts.c4 * 4 + counts.c8 * 8
-    total = counts.total if counts.total == total_by_orbit else total_by_orbit
+    unique=counts.c2+counts.c4+counts.c8
+    total_by_orbit=counts.c2 * 2+counts.c4 * 4+counts.c8 * 8
+    total=counts.total if counts.total==total_by_orbit else total_by_orbit
     return total, unique, counts.c2, counts.c4, counts.c8
 
 
@@ -458,20 +458,20 @@ def run_total_and_unique(N):
 # テンプレート対応
 #
 class BTPlan:
-    __slots__ = ("mask", "endrow", "row_step", "row_mask", "rd_or")
+    __slots__=("mask", "endrow", "row_step", "row_mask", "rd_or")
     def __init__(self, mask, endrow, row_step, row_mask, rd_or):
-        self.mask = mask
-        self.endrow = endrow
-        self.row_step = row_step
-        self.row_mask = row_mask
-        self.rd_or = rd_or
+        self.mask=mask
+        self.endrow=endrow
+        self.row_step=row_step
+        self.row_mask=row_mask
+        self.rd_or=rd_or
 def _empty_int_list():
-    lst = [0]
+    lst=[0]
     del lst[0]
     return lst  # List[int] 空
 
 def _empty_int_dict():
-    d = {0: 0}
+    d={0: 0}
     del d[0]
     return d    # Dict[int,int] 空
 
@@ -484,79 +484,79 @@ def make_plan(
     rd_or_rows=None
 ):
     # ---- 正規化（引数は上書きせずローカルに）----
-    s2 = step2_rows if step2_rows is not None else []
-    fc = forced_cols if forced_cols is not None else {}
-    bm = banned_mask if banned_mask is not None else {}
-    ro = rd_or_rows if rd_or_rows is not None else {}
+    s2=step2_rows if step2_rows is not None else []
+    fc=forced_cols if forced_cols is not None else {}
+    bm=banned_mask if banned_mask is not None else {}
+    ro=rd_or_rows if rd_or_rows is not None else {}
 
-    mask = (1 << N) - 1
-    R = int(endmark)  # None 対策（念のため）
+    mask=(1 << N) - 1
+    R=int(endmark)  # None 対策（念のため）
 
     # ---- step2_rows（整数のみ採用）----
-    row_step = [1] * R
+    row_step=[1] * R
     for r in s2:
-        if isinstance(r, int) and 0 <= r < R:
-            row_step[r] = 2
+        if isinstance(r, int) and 0 <=r < R:
+            row_step[r]=2
 
     # ---- 行ごとの許可マスク（None/非intは無視 or 0扱い）----
-    row_mask = [mask] * R
+    row_mask=[mask] * R
 
     # banned: row -> bitmask（None/非intは 0 に落とす）
     for r in range(R):
         if r in bm:
-            ban = bm[r]
+            ban=bm[r]
             try:
-                ban = int(ban) if ban is not None else 0
+                ban=int(ban) if ban is not None else 0
             except Exception:
-                ban = 0
-            row_mask[r] &= (~ban) & mask
+                ban=0
+            row_mask[r]&=(~ban)&mask
 
     # forced: row -> col（None/非int/範囲外は無視）
     for r in range(R):
         if r in fc:
-            c = fc[r]
+            c=fc[r]
             try:
-                c = int(c) if c is not None else -1
+                c=int(c) if c is not None else -1
             except Exception:
-                c = -1
-            if 0 <= c < N:
-                row_mask[r] = (1 << c)
+                c=-1
+            if 0 <=c < N:
+                row_mask[r]=(1 << c)
 
     # ---- rd 追加OR（None/非intは 0 に落とす）----
-    rd_or = [0] * R
-    limit = (1 << (N + 8)) - 1
+    rd_or=[0] * R
+    limit=(1 << (N+8)) - 1
     for r in range(R):
         if r in ro:
-            extra = ro[r]
+            extra=ro[r]
             try:
-                extra = int(extra) if extra is not None else 0
+                extra=int(extra) if extra is not None else 0
             except Exception:
-                extra = 0
-            rd_or[r] = extra & limit
+                extra=0
+            rd_or[r]=extra&limit
 
     return (mask, R, row_step, row_mask, rd_or)
 
 def backtrack_unified(ld: int, rd: int, col: int, row: int, plan: BTPlan) -> int:
     # 終了
-    if row >= plan.endrow:
+    if row >=plan.endrow:
         return 1
 
     # 行ごとの許可列マスクを適用
-    avail = plan.mask & ~(ld | rd | col)
-    avail &= plan.row_mask[row]
+    avail=plan.mask&~(ld | rd | col)
+    avail&=plan.row_mask[row]
 
-    total = 0
-    step = plan.row_step[row]
-    extra_rd = plan.rd_or[row]
+    total=0
+    step=plan.row_step[row]
+    extra_rd=plan.rd_or[row]
 
     while avail:
-        bit = avail & -avail
-        avail -= bit
-        total += backtrack_unified(
+        bit=avail&-avail
+        avail -=bit
+        total+=backtrack_unified(
             (ld | bit) << step,
             ((rd | bit) >> step) | extra_rd,
             (col | bit),
-            row + step,
+            row+step,
             plan
         )
     return total
@@ -573,11 +573,11 @@ def SQ_core_unified(
     step2_rows=None,
     rd_or_rows=None
 ):
-    fc = forced_cols if forced_cols is not None else _empty_int_dict()
-    bm = banned_mask if banned_mask is not None else _empty_int_dict()
-    s2 = step2_rows if step2_rows is not None else _empty_int_list()
-    ro = rd_or_rows if rd_or_rows is not None else _empty_int_dict()
-    plan = make_plan(N, start, jmark, endmark, fc, bm, s2, ro)
+    fc=forced_cols if forced_cols is not None else _empty_int_dict()
+    bm=banned_mask if banned_mask is not None else _empty_int_dict()
+    s2=step2_rows if step2_rows is not None else _empty_int_list()
+    ro=rd_or_rows if rd_or_rows is not None else _empty_int_dict()
+    plan=make_plan(N, start, jmark, endmark, fc, bm, s2, ro)
     return backtrack_unified(ld, rd, col, jmark, plan)
 
 # ------------------------------------------------------------
@@ -586,14 +586,14 @@ def SQ_core_unified(
 """
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     if N % 2==1:
-      center = N // 2
+      center=N // 2
       ijkl_list.update(
         self.to_ijkl(i, j, center, l)
-        for l in range(center + 1, N-1)
-        for i in range(center + 1, N-1)
-        if i != (N-1)-l
+        for l in range(center+1, N-1)
+        for i in range(center+1, N-1)
+        if i !=(N-1)-l
         for j in range(N-center-2, 0, -1)
-        if j != i and j != l
+        if j !=i and j !=l
         # 180°回転盤面がセットに含まれていない
         # if not self.check_rotations(ijkl_list, i, j, center, l, N)
         if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
@@ -605,13 +605,13 @@ def SQ_core_unified(
 # ------------------------------------------------------------
 @dataclass
 class Counts:
-    c2: int = 0  # 左右対称のみ
-    c4: int = 0  # 180°回転まで同一
-    c8: int = 0  # 8 対称すべて異なる
+    c2: int=0  # 左右対称のみ
+    c4: int=0  # 180°回転まで同一
+    c8: int=0  # 8 対称すべて異なる
 
     @property
     def total(self) -> int:
-        return self.c2 * 2 + self.c4 * 4 + self.c8 * 8
+        return self.c2 * 2+self.c4 * 4+self.c8 * 8
 # ------------------------------------------------------------
 # [Opt-08] Zobrist Hash テーブル生成（初期化）
 # Zobrist 用の乱数テーブル（部分盤面 canonical 判定のメモ化などで使用） # [Opt-09]
@@ -624,35 +624,35 @@ def init_zobrist(N: int) -> List[List[int]]:
 # [Opt-08] Zobrist Hash による部分盤面ハッシュ化
 # ---------------------------
 def compute_zobrist_hash(board: List[int], row: int, zobrist: List[List[int]]) -> int:
-    h = 0
+    h=0
     for r in range(row):
-        h ^= zobrist[r][board[r]]
+        h ^=zobrist[r][board[r]]
     return h
 # ---------------------------
-# [Opt-07+08] 部分盤面の正準性チェック + Zobristキャッシュ
+# [Opt-07+08] 部分盤面の正準性チェック+Zobristキャッシュ
 # ---------------------------
 def is_partial_canonical(board: List[int], row: int, N: int,zobrist: List[List[int]], zcache: dict) -> bool:
-  key = compute_zobrist_hash(board, row, zobrist)
+  key=compute_zobrist_hash(board, row, zobrist)
   if key in zcache:
     return zcache[key]
-  current = tuple(board[:row])
+  current=tuple(board[:row])
   # ミラー反転のみチェック（左右対称のみ）
-  mirrored = tuple(N-1-board[r] for r in range(row))
+  mirrored=tuple(N-1-board[r] for r in range(row))
   # 必要であれば回転90/180/270 も加える（今はミラーのみ）
-  minimal = min(current, mirrored)
-  result = (current==minimal)
-  zcache[key] = result
+  minimal=min(current, mirrored)
+  result=(current==minimal)
+  zcache[key]=result
   return result
 # ------------------------------------------------------------
 # マクロチェス（ローカルパターン）ルールの例スタブ  # [Opt-10]
 # ------------------------------------------------------------
 def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
   # 例：最初の3行で中央寄りが密集していたら破綻しやすいため除外
-  if row >= 3:
-    c0 = board[row-1]
-    c1 = board[row-2]
-    c2 = board[row-3]
-    if abs(c0-c1) <= 1 and abs(c1-c2) <= 1:
+  if row >=3:
+    c0=board[row-1]
+    c1=board[row-2]
+    c2=board[row-3]
+    if abs(c0-c1) <=1 and abs(c1-c2) <=1:
       return True
   return False
 
@@ -674,8 +674,8 @@ def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
 # 完成盤面の重複判定・分類に使用
 # ------------------------------------------------------------
 def symmetries(board):
-    # board: row -> col の配置（例: board[r] = c）
-    n = len(board)
+    # board: row -> col の配置（例: board[r]=c）
+    n=len(board)
     def rot90(b):   # 回転 90°: (r, c) -> (c, n-1-r)
         return [b.index(i) for i in range(n-1, -1, -1)]
     def rot180(b):  # 回転 180°
@@ -684,23 +684,23 @@ def symmetries(board):
         return [b.index(n-1-i) for i in range(n)]
     def reflect(b): # ミラー（左右反転）: (r, c) -> (r, n-1-c)
         return [n-1-c for c in b]
-    r0 = board
-    r1 = rot90(r0)
-    r2 = rot180(r0)
-    r3 = rot270(r0)
-    f0 = reflect(r0)
-    f1 = reflect(r1)
-    f2 = reflect(r2)
-    f3 = reflect(r3)
+    r0=board
+    r1=rot90(r0)
+    r2=rot180(r0)
+    r3=rot270(r0)
+    f0=reflect(r0)
+    f1=reflect(r1)
+    f2=reflect(r2)
+    f3=reflect(r3)
     return [tuple(r0), tuple(r1), tuple(r2), tuple(r3),
             tuple(f0), tuple(f1), tuple(f2), tuple(f3)]
 # ------------------------------------------------------------
 # 完成盤面の対称性分類 # [Opt-05] / [Opt-04]
 # ------------------------------------------------------------
 def classify(board):
-    syms = symmetries(board)
-    mn = min(syms)
-    uniq = len(set(syms))
+    syms=symmetries(board)
+    mn=min(syms)
+    uniq=len(set(syms))
     if uniq==1:
         return 'c2'  # 実際は c2=1, c4=0, c8=0 のように扱うなら調整可
     elif uniq==2 or uniq==4:
@@ -709,20 +709,20 @@ def classify(board):
         return 'c8'
 # ------------------------------------------------------------
 # ビット演算バックトラッキング # [Opt-01]
-#  -cols, hills, dales を bit で持ち、free = ~(cols|hills|dales) で高速衝突除去
+#  -cols, hills, dales を bit で持ち、free=~(cols|hills|dales) で高速衝突除去
 #  -1 行目（row==0）は [Opt-02/03/05/06] によって枝分かれ済み
 #  -途中で [Opt-07/08/09/10] を挟み込む
 # ------------------------------------------------------------
 def backtrack(n, row, cols, hills, dales, board, counts, is_corner=False, zobrist=None, zcache=None):
     if row==n:
         # 完成。対称分類  # [Opt-05]/[Opt-04]
-        typ = classify(board)
+        typ=classify(board)
         if typ=='c2':
-            counts.c2 += 1
+            counts.c2+=1
         elif typ=='c4':
-            counts.c4 += 1
+            counts.c4+=1
         else:
-            counts.c8 += 1
+            counts.c8+=1
         return
     # ---------------------------
     # [Opt-07]/[Opt-08] 部分盤面 canonical チェック
@@ -734,18 +734,18 @@ def backtrack(n, row, cols, hills, dales, board, counts, is_corner=False, zobris
         return
     # ---------------------------
     # 衝突していない位置（free）をビットで求める  # [Opt-01]
-    mask = (1<<n)-1
-    free = mask&~(cols|hills|dales)
+    mask=(1<<n)-1
+    free=mask&~(cols|hills|dales)
     while free:
-        bit = -free & free
-        # col = (bit.bit_length()-1)
-        col = _lsb_index(bit)
-        free ^= bit
-        board[row] = col  # 盤面にセット
+        bit=-free&free
+        # col=(bit.bit_length()-1)
+        col=_lsb_index(bit)
+        free ^=bit
+        board[row]=col  # 盤面にセット
         # 180°対称や角位置分岐での特別扱いを、必要ならここに入れる # [Opt-04]/[Opt-05]
         # 例：is_corner==True の時は row>0 で (n-1-col) などの除去条件を適用 …など
         backtrack(
-            n, row + 1,
+            n, row+1,
             cols|bit,
             (hills|bit)<<1,
             (dales|bit)>>1,
@@ -755,22 +755,22 @@ def backtrack(n, row, cols, hills, dales, board, counts, is_corner=False, zobris
             zobrist=zobrist,
             zcache=zcache
         )
-        board[row] = -1  # 戻す（明示的にしなくても良いが読みやすさのため）
+        board[row]=-1  # 戻す（明示的にしなくても良いが読みやすさのため）
 # ------------------------------------------------------------
 # 1 行目を左右対称で半分に制限し（[Opt-02]）、中央列を別処理（[Opt-03]）、
 # 初手ごとに並列化（[Opt-06]）する solve_nqueens()
 # ------------------------------------------------------------
 def solve_nqueens(n, workers=None):
     if workers is None:
-        workers = max(1, cpu_count()-1)
+        workers=max(1, cpu_count()-1)
     # Zobrist 用意（[Opt-09] を本当に使うなら）
-    zobrist = init_zobrist(n)
-    manager_counts = Counts()
+    zobrist=init_zobrist(n)
+    manager_counts=Counts()
     # 1 行目の左半分のみ探索（左右ミラー分を除去） # [Opt-02]
-    first_cols = list(range(n // 2))
+    first_cols=list(range(n // 2))
     # 奇数 N の中央列は別枠 # [Opt-03]
-    center_col = n // 2 if (n % 2==1) else None
-    args = []
+    center_col=n // 2 if (n % 2==1) else None
+    args=[]
     for col in first_cols:
         args.append((n, col, True))  # col==0 のケースは is_corner=True として扱うなど # [Opt-05]
     if center_col is not None:
@@ -779,14 +779,14 @@ def solve_nqueens(n, workers=None):
     with Pool(processes=workers) as pool:
         for c in pool.imap_unordered(_worker, args):
             # c は Counts
-            manager_counts.c2 += c.c2
-            manager_counts.c4 += c.c4
-            manager_counts.c8 += c.c8
+            manager_counts.c2+=c.c2
+            manager_counts.c4+=c.c4
+            manager_counts.c8+=c.c8
     return manager_counts
 # ------------------------------------------------------------
 class NQueens21:
   def __init__():
-    self._rot_cache = {}
+    self._rot_cache={}
   # 1. check_rotations() を早めにフィルタする
   # 現在はジェネレータ内の末尾で check_rotations(...) を実行してい
   # ますが、もしこれが重い処理なら、事前フィルタリングかメモ化が有
@@ -794,9 +794,9 @@ class NQueens21:
   #
   # check_rotations_cached: check_rotations をキャッシュして高速化
   def check_rotations_cached(self, i: int, j: int, k: int, l: int, N: int) -> bool:
-    key = (i, j, k, l, N)
+    key=(i, j, k, l, N)
     if key not in self._rot_cache:
-      self._rot_cache[key] = self.check_rotations(set(), i, j, k, l, N)
+      self._rot_cache[key]=self.check_rotations(set(), i, j, k, l, N)
     return self._rot_cache[key]
   # 時計回りに90度回転
   # rot90 メソッドは、90度の右回転（時計回り）を行います
@@ -867,17 +867,17 @@ class NQueens21:
   # 1. Jasmin変換キャッシュを導入する
   # [Opt-08] キャッシュ付き jasmin() のラッパー
   #--------------------------------------------
-  jasmin_cache = {}
+  jasmin_cache={}
   def get_jasmin(self, c: int, N: int) -> int:
-    key = (c, N)
+    key=(c, N)
     if key in self.jasmin_cache:
         return self.jasmin_cache[key]
-    result = self.jasmin(c, N)
-    self.jasmin_cache[key] = result
+    result=self.jasmin(c, N)
+    self.jasmin_cache[key]=result
     return result
   #--------------------------------------------
   # 使用例: 
-  # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+  # ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
   #--------------------------------------------
   # i,j,k,lをijklに変換し、特定のエントリーを取得する関数
   # 各クイーンの位置を取得し、最も左上に近い位置を見つけます
@@ -928,22 +928,22 @@ class NQueens21:
   def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
     with open(path, "w") as f:
       for c in constellations:
-        ld = c["ld"]
-        rd = c["rd"]
-        col = c["col"]
-        startijkl = c["startijkl"]
-        solutions = c.get("solutions", 0)
+        ld=c["ld"]
+        rd=c["rd"]
+        col=c["col"]
+        startijkl=c["startijkl"]
+        solutions=c.get("solutions", 0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
   # --- テキスト形式でロード ---
   def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
-    out: List[Dict[str, int]] = []
+    out: List[Dict[str, int]]=[]
     with open(path, "r") as f:
       for line in f:
-        parts = line.strip().split()
-        if len(parts) != 5:
+        parts=line.strip().split()
+        if len(parts) !=5:
           continue
-        ld = int(parts[0]); rd = int(parts[1]); col = int(parts[2])
-        startijkl = int(parts[3]); solutions = int(parts[4])
+        ld=int(parts[0]); rd=int(parts[1]); col=int(parts[2])
+        startijkl=int(parts[3]); solutions=int(parts[4])
         out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
     return out
   # load_or_build_constellations_txt() は、N-Queens 問題において特定
@@ -969,70 +969,70 @@ class NQueens21:
   # def read_uint32_le(self, b: List[int]) -> int:
   #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
   def read_uint32_le(self, b: str) -> int:
-    return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
+    return (ord(b[0])&0xFF) | ((ord(b[1])&0xFF) << 8) | ((ord(b[2])&0xFF) << 16) | ((ord(b[3])&0xFF) << 24)
   # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
   def int_to_le_bytes(self,x: int) -> List[int]:
-    return [(x >> (8 * i)) & 0xFF for i in range(4)]
+    return [(x >> (8 * i))&0xFF for i in range(4)]
   # 書き込み関数（.bin保存）
   def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
     with open(fname, "wb") as f:
       for d in constellations:
         for key in ["ld", "rd", "col", "startijkl"]:
-          b = self.int_to_le_bytes(d[key])
+          b=self.int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
   # 読み込み関数（.binロード）
   def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
-    constellations: List[Dict[str, int]] = []
+    constellations: List[Dict[str, int]]=[]
     with open(fname, "rb") as f:
       while True:
         raw=f.read(16)
         if len(raw)<16:
           break
-        ld         = self.read_uint32_le(raw[0:4])
-        rd         = self.read_uint32_le(raw[4:8])
-        col        = self.read_uint32_le(raw[8:12])
-        startijkl  = self.read_uint32_le(raw[12:16])
+        ld=self.read_uint32_le(raw[0:4])
+        rd=self.read_uint32_le(raw[4:8])
+        col=self.read_uint32_le(raw[8:12])
+        startijkl=self.read_uint32_le(raw[12:16])
         constellations.append({
           "ld": ld, "rd": rd, "col": col,
           "startijkl": startijkl, "solutions": 0
         })
     return constellations
-  # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
+  # .bin ファイルサイズチェック（1件=16バイト→行数=ilesize // 16）
   def validate_bin_file(self,fname: str) -> bool:
    try:
      with open(fname, "rb") as f:
        f.seek(0, 2)  # ファイル末尾に移動
-       size = f.tell()
-     return size % 16 == 0
+       size=f.tell()
+     return size % 16==0
    except:
      return False
   # キャッシュ付きラッパー関数（.bin）
   def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
-    fname = f"constellations_N{N}_{preset_queens}.bin"
+    fname=f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
       try:
-        constellations = self.load_constellations_bin(fname)
+        constellations=self.load_constellations_bin(fname)
         if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
           return constellations
         else:
           print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
       except Exception as e:
         print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    constellations: List[Dict[str, int]] = []
+    constellations: List[Dict[str, int]]=[]
     self.gen_constellations(ijkl_list, constellations, N, preset_queens)
     self.save_constellations_bin(fname, constellations)
     return constellations
   # キャッシュ付きラッパー関数（.txt）
   def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
     # N と preset_queens に基づいて一意のファイル名を構成
-    fname = f"constellations_N{N}_{preset_queens}.txt"
+    fname=f"constellations_N{N}_{preset_queens}.txt"
     # ファイルが存在すれば即読み込み
     # if self.file_exists(fname):
     #     return self.load_constellations_txt(fname)
     # ファイルが存在すれば読み込むが、破損チェックも行う
     if self.file_exists(fname):
       try:
-        constellations = self.load_constellations_txt(fname)
+        constellations=self.load_constellations_txt(fname)
         if self.validate_constellation_list(constellations):
           return constellations
         else:
@@ -1043,7 +1043,7 @@ class NQueens21:
     # gen_constellations() により星座を生成
     # save_constellations_txt() でファイルに保存
     # 返り値として constellations リストを返す
-    constellations: List[Dict[str, int]] = []
+    constellations: List[Dict[str, int]]=[]
     self.gen_constellations(ijkl_list, constellations, N, preset_queens)
     self.save_constellations_txt(fname, constellations)
     return constellations
@@ -1051,19 +1051,19 @@ class NQueens21:
   # 2. サブコンステレーション生成にtuple keyでキャッシュ
   # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
   #---------------------------------
-  subconst_cache = {}
+  subconst_cache={}
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
-    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    key=(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
     # キャッシュの本体をdictかsetでグローバル/クラス変数に
     if not hasattr(self, "subconst_cache"):
-      self.subconst_cache = {}
-    subconst_cache = self.subconst_cache
+      self.subconst_cache={}
+    subconst_cache=self.subconst_cache
     if key in subconst_cache:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
       return
     # 新規実行（従来通りset_pre_queensの本体処理へ）
     self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
-    subconst_cache[key] = True  # マークだけでOK
+    subconst_cache[key]=True  # マークだけでOK
   #---------------------------------
   # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
   # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
@@ -1095,13 +1095,13 @@ class NQueens21:
   #  -queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
   #  -その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
   #  -生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
-  constellation_signatures = set()
+  constellation_signatures=set()
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
     # [Opt-09] 状態ハッシュによる探索枝の枝刈り
     # バックトラック系の冒頭に追加　やりすぎると解が合わない
-    h: int = self.state_hash(ld, rd, col, row)
+    h: int=self.state_hash(ld, rd, col, row)
     if h in visited:
       return
     visited.add(h)
@@ -1116,30 +1116,30 @@ class NQueens21:
     # 3. 星座のsignature重複防止
     # ------------------------------------------------
     # if queens==preset_queens:
-    #   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
+    #   constellation={"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
     #   # 新しいコンステレーションをリストに追加
     #   constellations.append(constellation)
     #   counter[0]+=1
     #   return
     # if queens==preset_queens:
     #   # signatureの生成
-    #   signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+    #   signature=(ld, rd, col, k, l, row)  # 必要な変数でOK
     #   # signaturesセットをクラス変数やグローバルで管理
     #   if not hasattr(self, "constellation_signatures"):
-    #     self.constellation_signatures = set()
-    #   signatures = self.constellation_signatures
+    #     self.constellation_signatures=set()
+    #   signatures=self.constellation_signatures
     #   if signature not in signatures:
-    #     constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+    #     constellation={"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
     #     constellations.append(constellation) #星座データ追加
     #     signatures.add(signature)
-    #     counter[0] += 1
+    #     counter[0]+=1
     #   return
-    if queens == preset_queens:
+    if queens==preset_queens:
       # constellation_signatures セットの初期化（Codon対応）
       if not hasattr(self, "constellation_signatures"):
-        self.constellation_signatures = set()
+        self.constellation_signatures=set()
       # signature の生成
-      signature = (ld, rd, col, k, l, row)
+      signature=(ld, rd, col, k, l, row)
       # 初回の signature のみ追加
       if signature not in self.constellation_signatures:
         constellations.append({
@@ -1148,7 +1148,7 @@ class NQueens21:
           "solutions": 0
         })
         self.constellation_signatures.add(signature)
-        counter[0] += 1
+        counter[0]+=1
       return
     # ------------------------------------------------
     # 現在の行にクイーンを配置できる位置を計算
@@ -1195,7 +1195,7 @@ class NQueens21:
       ld|=LD>>(N-start)
       if start>k:
         rd|=(1<<(N-1-(start-k+1)))
-      if j >= 2 * N-33-start:
+      if j >=2 * N-33-start:
         rd|=(1<<(N-1-j))<<(N2-start)
       free=~(ld|rd|col)
       # 各ケースに応じた処理
@@ -1228,7 +1228,7 @@ class NQueens21:
             else: cnt=self.SQBjlBklBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
             mark1,mark2=l-1,k-1
-            if k != l+1:
+            if k !=l+1:
               cnt=self.SQBjlBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else: cnt=self.SQBjlBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
       elif j==(N-3):
@@ -1237,7 +1237,7 @@ class NQueens21:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l != k+1: cnt=self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              if l !=k+1: cnt=self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else: cnt=self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
               mark2=l-1
@@ -1248,7 +1248,7 @@ class NQueens21:
           endmark=N2
           if start<k:
             if start<l:
-              if k != l+1:
+              if k !=l+1:
                 cnt=self.SQd2BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else: cnt=self.SQd2BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
@@ -1261,7 +1261,7 @@ class NQueens21:
           if start<l:  # 少なくともlがまだ来ていない場合
             if start<k:  # もしkもまだ来ていないなら
               mark1=k-1
-              if l != k+1:  # kとlが隣り合っている場合
+              if l !=k+1:  # kとlが隣り合っている場合
                 mark2=l-1
                 cnt=self.SQd1BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else: cnt=self.SQd1BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
@@ -1275,20 +1275,20 @@ class NQueens21:
             if start<l:  # lがまだ来ていない場合
               if k<N2:  # kが末尾にない場合
                 mark1,endmark=l-1,N2
-                if k != l+1:  # lとkの間に空行がある場合
+                if k !=l+1:  # lとkの間に空行がある場合
                   mark2=k-1
                   cnt=self.SQd1BlBkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 # lとkの間に空行がない場合
                 else: cnt=self.SQd1BlkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:  # kが末尾の場合
-                if l != (N-3):  # lがkの直前でない場合
+                if l !=(N-3):  # lがkの直前でない場合
                   mark2,endmark=l-1,N-3
                   cnt=self.SQd1BlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 else:  # lがkの直前にある場合
                   endmark=N-4
                   cnt=self.SQd1B(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:  # もしkがまだ来ていないなら
-              if k != N2:  # kが末尾にない場合
+              if k !=N2:  # kが末尾にない場合
                 mark2,endmark=k-1,N2
                 cnt=self.SQd1BkB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:  # kが末尾の場合
@@ -1311,11 +1311,11 @@ class NQueens21:
       # count2,count4,count8=0,0,0
       # s:int=self.symmetry(ijkl,N)
       # u:int=cnt
-      # if s==2: count2 += u
-      # elif s==4: count4 += u
-      # else: count8 += u
+      # if s==2: count2+=u
+      # elif s==4: count4+=u
+      # else: count8+=u
       # constellation["solutions"]=count2*2+count4*4+count8*8
-      # constellation["unique"]   =count2+count4+count8
+      # constellation["unique"]=count2+count4+count8
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
   # 開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
   # @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
@@ -1334,14 +1334,14 @@ class NQueens21:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     if N % 2==1:
-      center = N // 2
+      center=N // 2
       ijkl_list.update(
         self.to_ijkl(i, j, center, l)
-        for l in range(center + 1, N-1)
-        for i in range(center + 1, N-1)
-        if i != (N-1)-l
+        for l in range(center+1, N-1)
+        for i in range(center+1, N-1)
+        if i !=(N-1)-l
         for j in range(N-center-2, 0, -1)
-        if j != i and j != l
+        if j !=i and j !=l
         if not self.check_rotations(ijkl_list, i, j, center, l, N)
         # 180°回転盤面がセットに含まれていない
         if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
@@ -1349,16 +1349,16 @@ class NQueens21:
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
 
     # コーナーにクイーンがいない場合の開始コンステレーション
-    # ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i != (N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
+    # ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i !=(N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
     # コーナーにクイーンがいない場合の開始コンステレーション
     ijkl_list.update(
       self.to_ijkl(i, j, k, l)
       for k in range(1, halfN)
-      for l in range(k + 1, N - 1)
-      for i in range(k + 1, N - 1)
-      if i != (N - 1) - l
+      for l in range(k+1, N - 1)
+      for i in range(k+1, N - 1)
+      if i !=(N - 1) - l
       for j in range(N - k - 2, 0, -1)
-      if j != i and j != l
+      if j !=i and j !=l
       if not self.check_rotations(ijkl_list, i, j, k, l, N)
     )
     #
@@ -1368,12 +1368,12 @@ class NQueens21:
     ijkl_list.update(
       self.to_ijkl(0, j, 0, l)
       for j in range(1, N - 2)
-      for l in range(j + 1, N - 1)
+      for l in range(j+1, N - 1)
     )
     #
     # Jasmin変換
-    # ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
-    # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+    # ijkl_list_jasmin={self.jasmin(c, N) for c in ijkl_list}
+    # ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
     # ijkl_list_jasmin={self.get_jasmin(c, N) for c in ijkl_list}
     # ijkl_list=ijkl_list_jasmin
     ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
@@ -1991,12 +1991,12 @@ class NQueens21_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
-      # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
+      # constellations=NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      # constellations=NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #
       #---------------------------------
       NQ.exec_solutions(constellations,size)
@@ -2005,14 +2005,14 @@ class NQueens21_constellations():
       # ENABLE_UNIQUE=0 # 0:No 1:Yes
       ENABLE_UNIQUE=0 # 0:No 1:Yes
       if ENABLE_UNIQUE:
-        total, unique, c2, c4, c8 = run_total_and_unique(size)
+        total, unique, c2, c4, c8=run_total_and_unique(size)
       else:
-        total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+        total=sum(c["solutions"] for c in constellations if c["solutions"] > 0)
         unique=0
       # 既存の PRINT に UNIQUE を差し込む
       # PRINT(F"{n:2D}: {TOTAL:10D} {UNIQUE:12D}   ...")
 
-      # unique = sum(c["unique"] for c in constellations if c["unique"] > 0)
+      # unique=sum(c["unique"] for c in constellations if c["unique"] > 0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")

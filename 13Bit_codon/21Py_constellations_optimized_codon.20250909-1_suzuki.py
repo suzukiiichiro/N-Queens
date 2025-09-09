@@ -35,6 +35,10 @@ fedora$ codon build -release 21Py_constellations_optimized_codon.py&&./21Py_cons
 16:     14772512            0         0:00:00.485
 17:     95815104            0         0:00:03.137
 18:    666090624            0         0:00:24.510
+
+# 兄統合版
+fedora$ codon build -release 21Py_constellations_optimized_codon.20250909-1_suzuki.py&&./21Py_constellations_optimized_codon.20250909-1_suzuki
+17:     95815104     12041945         0:00:04.748
 """
 
 # 枝刈り 探索木の中で、明らかに解にならない経路（無駄な配置）を早期に打ち切る手法。 
@@ -566,7 +570,8 @@ class NQueens21:
   # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
   #---------------------------------
   subconst_cache={}
-  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
+  # def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
     key=(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
     # キャッシュの本体をdictかsetでグローバル/クラス変数に
     if not hasattr(self, "subconst_cache"):
@@ -576,7 +581,8 @@ class NQueens21:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
       return
     # 新規実行（従来通りset_pre_queensの本体処理へ）
-    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+    # self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, constellations, N, preset_queens,visited)
     subconst_cache[key]=True  # マークだけでOK
   #---------------------------------
   # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
@@ -610,7 +616,8 @@ class NQueens21:
   #  -その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
   #  -生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
   constellation_signatures=set()
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
+  # def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
     # [Opt-09] 状態ハッシュによる探索枝の枝刈り
@@ -623,7 +630,8 @@ class NQueens21:
     # k行とl行はスキップ
     if row==k or row==l:
       # self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
-      self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
+      # self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
+      self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,constellations,N,preset_queens,visited)
       return
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     # ------------------------------------------------
@@ -667,7 +675,7 @@ class NQueens21:
         self.constellation_signatures.add(signature)
         ####
         ####
-        counter[0]+=1
+        # counter[0]+=1
         ####
         ####
       return
@@ -679,7 +687,8 @@ class NQueens21:
       free&=free-1  
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
-      self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
+      # self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
+      self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,constellations,N,preset_queens,visited)
   # ConstellationArrayListの各Constellation（部分盤面）ごとに
   # N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
   # @param constellations 解探索対象のConstellationArrayListポインタ
@@ -889,12 +898,6 @@ class NQueens21:
       # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
       ld,rd,col=(L>>max(i-1,0))|(1<<max(N-k,0)),(L>>max(i+1,0))|(1<<max(l-1,0)),1|L|(L>>i)|(L>>j)
       LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
-
-
-
-
-
-      counter=[0] # サブコンステレーションを生成
       #-------------------------
       # [Opt-09] 状態ハッシュによる探索枝の枝刈り
       visited:set[int]=set()
@@ -903,12 +906,22 @@ class NQueens21:
       #-------------------------
       # 2. サブコンステレーション生成にtuple keyでキャッシュ
       #-------------------------
+      # counter=[0] # サブコンステレーションを生成
       # self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
-      self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
-      current_size=len(constellations)
+      # self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
+      before=len(constellations)
+      self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,constellations,N,preset_queens,visited)
+      # 今回新たに追加された件数
+      created=len(constellations) - before
+      # created=len(self.constellation_signatures)
+      # 追加分に startijkl を付与（最後に追加された created 個）
+      start=self.to_ijkl(i,j,k,l)
       # 生成されたサブコンステレーションにスタート情報を追加
-      list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
-
+      # list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
+      # 追加分に startijkl を付与（最後に追加された created 個）
+      for idx in range(created):
+          constellations[before+idx]["startijkl"] |=start
+#
 class NQueens21_constellations():
   def main(self)->None:
     nmin:int=5
