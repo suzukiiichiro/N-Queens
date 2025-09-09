@@ -649,19 +649,27 @@ class NQueens21:
     #     counter[0]+=1
     #   return
     if queens==preset_queens:
+      # constellation_signatures セットの初期化（Codon対応）
       if not hasattr(self, "constellation_signatures"):
         self.constellation_signatures=set()
+      # signature の生成
       signature=(ld, rd, col, k, l, row)
+      # 初回の signature のみ追加
       if signature not in self.constellation_signatures:
         constellations.append({
-            "ld": ld, "rd": rd, "col": col,
-            # 既存の startijkl は互換のため残す（row を 20bit 左に入れている）
-            "startijkl": row << 20,
-            # ここから新規に保存（行依存制約を再現するために必要）
-            "row": row, "k": k, "l": l, "LD": LD, "RD": RD,
-            "solutions": 0
+          "ld": ld, "rd": rd, "col": col,
+          # 既存の startijkl は互換のため残す（row を 20bit 左に入れている）
+          "startijkl": row << 20,
+          # ここから新規に保存（行依存制約を再現するために必要）
+          "row": row, "k": k, "l": l, "LD": LD, "RD": RD,
+          "solutions": 0
         })
         self.constellation_signatures.add(signature)
+        ####
+        ####
+        counter[0]+=1
+        ####
+        ####
       return
     # ------------------------------------------------
     # 現在の行にクイーンを配置できる位置を計算
@@ -881,6 +889,11 @@ class NQueens21:
       # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
       ld,rd,col=(L>>max(i-1,0))|(1<<max(N-k,0)),(L>>max(i+1,0))|(1<<max(l-1,0)),1|L|(L>>i)|(L>>j)
       LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
+
+
+
+
+
       counter=[0] # サブコンステレーションを生成
       #-------------------------
       # [Opt-09] 状態ハッシュによる探索枝の枝刈り
