@@ -884,12 +884,12 @@ class NQueens21_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #
       #---------------------------------
       NQ.exec_solutions(constellations,size)
