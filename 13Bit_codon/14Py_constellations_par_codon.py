@@ -495,9 +495,9 @@ GPU/CUDA 11CUDA_constellation_symmetry.cu
 
 """
 
-import random
+# import random
 import pickle, os
-from operator import or_
+# from operator import or_
 # from functools import reduce
 from typing import List,Set,Dict
 from datetime import datetime
@@ -506,9 +506,12 @@ from datetime import datetime
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 #
-class NQueens19:
+class NQueens14:
   def __init__(self)->None:
-    pass
+    # インスタンス専用に上書き（共有を避ける）
+    self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
+    self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
+    self.jasmin_cache: Dict[Tuple[int, int], int] = {}
   def rot90(self,ijkl:int,N:int)->int:
       return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
   def rot180(self,ijkl:int,N:int)->int:
@@ -540,7 +543,7 @@ class NQueens19:
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
   #--------------------------------------------
-  jasmin_cache = {}
+  # jasmin_cache = {}
   def get_jasmin(self, c: int, N: int) -> int:
     key = (c, N)
     if key in self.jasmin_cache:
@@ -610,33 +613,46 @@ class NQueens19:
   # codonでpickleを使う（うごかない）
   # constellations = NQ.load_constellations(size,preset_queens)
   #---------------------------------
-  subconst_cache = {}
+  # subconst_cache = {}
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
+  #    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+  #    # キャッシュの本体をdictかsetでグローバル/クラス変数に
+  #    if not hasattr(self, "subconst_cache"):
+  #        self.subconst_cache = {}
+  #    subconst_cache = self.subconst_cache
+  #    if key in subconst_cache:
+  #        # 以前に同じ状態で生成済み → 何もしない（または再利用）
+  #        return
+  #    # 新規実行（従来通りset_pre_queensの本体処理へ）
+  #    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+  #    subconst_cache[key] = True  # マークだけでOK
       key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-      # キャッシュの本体をdictかsetでグローバル/クラス変数に
-      if not hasattr(self, "subconst_cache"):
-          self.subconst_cache = {}
-      subconst_cache = self.subconst_cache
-      if key in subconst_cache:
-          # 以前に同じ状態で生成済み → 何もしない（または再利用）
+      if key in self.subconst_cache:
           return
-      # 新規実行（従来通りset_pre_queensの本体処理へ）
-      self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
-      subconst_cache[key] = True  # マークだけでOK
+      self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD,
+                          counter, constellations, N, preset_queens, visited)
+      self.subconst_cache[key] = True
   # 呼び出し側
   # self.set_pre_queens_cached(...) とする
-  constellation_signatures = set()
+  # constellation_signatures = set()
   #---------------------------------
-  def state_hash(self,ld: int, rd: int, col: int, row: int) -> int:
+  #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
+  @staticmethod
+  def _has_future_space(next_ld: int, next_rd: int, next_col: int, board_mask: int) -> bool:
+      # 次の行に進んだときに置ける可能性が1ビットでも残るか
+      return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
+  #---------------------------------
+  def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
       # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
-      return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+      # return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+      return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
   #---------------------------------
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
     # 状態ハッシュによる探索枝の枝刈り
     # バックトラック系の冒頭に追加　やりすぎると解が合わない
-    h: int = self.state_hash(ld, rd, col, row)
+    h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
     if h in visited:
         return
     visited.add(h)
@@ -685,7 +701,9 @@ class NQueens19:
     small_mask=(1<<(N2))-1
     temp_counter=[0]
     cnt=0
-    board_mask:int=(1<<(N-1))-1
+    # board_mask の値が 1 ビット足りない
+    # board_mask:int=(1<<(N-1))-1
+    board_mask:int=(1<<N)-1
     @par
     for constellation in constellations:
       # mark1,mark2=mark1,mark2
@@ -875,7 +893,14 @@ class NQueens19:
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
       next_free:int=board_mask&~blocked
-      if next_free and (row>=endmark-1 or ~blocked):
+      # NG
+      # if next_free and (row>=endmark-1 or ~blocked):
+      # OK（空きが1つでもあるか）
+      # 1 行先を見るケース： 
+      # 右辺が非ゼロなら next_free が False でも通過してしまいます。 
+      # if next_free and (row >= endmark - 1) or ((~blocked) & board_mask):
+      # 1 行先を見るケース： 
+      if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
@@ -962,7 +987,13 @@ class NQueens19:
       blocked:int=next_ld|next_rd|next_col
       # next_free:int=board_mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
       next_free:int=board_mask&~blocked
-      if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      #if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      # NG
+      # if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
+      # OK（空きが1つでもあるか）
+      #if next_free and (row >= endmark - 1) or ((~blocked) & board_mask):
+      # 1 行先を見るケース： 
+      if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
@@ -1014,7 +1045,17 @@ class NQueens19:
       blocked:int=next_ld|next_rd|next_col
       next_free:int=board_mask&~blocked
       # next_free:int=board_mask&~(next_ld|next_rd|next_col)&((1<<N)-1)
-      if next_free and (row+2>=endmark or ~blocked):
+      # if next_free and (row+2>=endmark or ~blocked):
+      #if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      # NG
+      # if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
+      # OK（空きが1つでもあるか）
+      #if next_free and (row >= endmark - 1) or ((~blocked) & board_mask):
+      # 1 行先を見るケース： 
+      # if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+      # if next_free and (row+2>=endmark or ~blocked):
+      # 2 行スキップ系（row+2 で終端チェックしているブロック）：
+      if next_free and ((row + 2 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     # while free: # General case when row != mark2
     while avail: # General case when row != mark2
@@ -1340,7 +1381,12 @@ class NQueens19:
       next_col:int=col|bit
       blocked:int=next_ld|next_rd|next_col
       next_free=board_mask&~blocked
-      if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
+      # NG
+      # if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
+      # OK（空きが1つでもあるか）
+      # if next_free and (row >= endmark - 1) or ((~blocked) & board_mask):
+      # 1 行先を見るケース： 
+      if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
@@ -1462,7 +1508,13 @@ class NQueens19:
       next_col:int=col|bit
       blocked=next_ld|next_rd|next_col
       next_free:int=board_mask&~blocked
-      if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      #if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
+      # NG
+      # if next_free and (row>=endmark-1 or ~((next_ld<<1)|(next_rd>>1)|(next_col))>0):
+      # OK（空きが1つでもあるか）
+      # if next_free and (row >= endmark - 1) or ((~blocked) & board_mask):
+      # 1 行先を見るケース： 
+      if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
@@ -1716,7 +1768,23 @@ class NQueens19:
       if next_free:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-class NQueens19_constellations():
+class NQueens14_constellations():
+  def _bit_total(self, size: int) -> int:
+    # 小さなNは正攻法で数える（対称重みなし・全列挙）
+    mask = (1 << size) - 1
+    total = 0
+    def bt(row: int, left: int, down: int, right: int):
+        nonlocal total
+        if row == size:
+            total += 1
+            return
+        bitmap = mask & ~(left | down | right)
+        while bitmap:
+            bit = -bitmap & bitmap
+            bitmap ^= bit
+            bt(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
+    bt(0, 0, 0, 0)
+    return total
   def main(self)->None:
     nmin:int=5
     nmax:int=18
@@ -1724,9 +1792,16 @@ class NQueens19_constellations():
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
+      if size <= 5:
+        # ← フォールバック：N=5はここで正しい10を得る
+        total = self._bit_total(size)
+        dt = datetime.now() - start_time
+        text = str(dt)[:-3]
+        print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+        continue           
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
-      NQ=NQueens19()
+      NQ=NQueens14()
       #--------------------------
       # codon では動かないので以下を切り替える
       # pickleの最適化は使わない（あきらめる）
@@ -1741,4 +1816,4 @@ class NQueens19_constellations():
       text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 if __name__=="__main__":
-  NQueens19_constellations().main()
+  NQueens14_constellations().main()
