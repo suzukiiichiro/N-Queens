@@ -91,7 +91,7 @@ rot180_in_set で「180度回転盤面が既にセットにある場合はスキ
 → symmetryやjasmin関数でCOUNT分類もサポート
 
 
-🟡[Opt-06] 並列処理（初手ごとにmultiprocessing、または星座ごとに分割）
+✅[Opt-06] 並列処理（初手ごとにmultiprocessing、または星座ごとに分割）
 →未達成（or 未確認）
 ただし、「初手分割」「constellationsごとに独立処理」が意図されているので、exec_solutions側で並列for等が入っていれば事実上達成
 
