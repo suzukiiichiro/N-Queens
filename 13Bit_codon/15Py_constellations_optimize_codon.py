@@ -361,7 +361,7 @@ def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
 
 
 """"
-fedora$ codon build -release 14Py_constellations_par_codon.py && ./14Py_constellations_par_codon
+fedora$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
  N:        Total       Unique        hh:mm:ss.ms
  5:           18            0         0:00:00.005
  6:            4            0         0:00:00.000
@@ -399,6 +399,7 @@ from datetime import datetime
 # 64bit マスク（Zobrist用途）
 MASK64: int = (1 << 64) - 1
 # StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
+StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
 # StateKey = Tuple[int, int, int, int, int, int, int, int, int]
 
 
@@ -410,7 +411,8 @@ class NQueens15:
   def __init__(self)->None:
     # StateKey
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
-    self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int], bool ] = {}
+    # self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
+    self.subconst_cache: Set[StateKey] = set()
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
     self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
@@ -463,6 +465,7 @@ class NQueens15:
     # rot90 メソッドは、90度の右回転（時計回り）を行います
     # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
     return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+
   def rot180(self,ijkl:int,N:int)->int:
     # 対称性のための計算と、ijklを扱うためのヘルパー関数。
     # 開始コンステレーションが回転90に対して対称である場合
@@ -708,17 +711,19 @@ class NQueens15:
     self.gen_constellations(ijkl_list, constellations, N, preset_queens)
     self.save_constellations_txt(fname, constellations)
     return constellations
-  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter:List[int], constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
     # サブコンステレーション生成にtuple keyでキャッシュ
     # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
-    key = (ld, rd, col, k, l, row, queens, LD, RD)
-    # key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD)
+    # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
     if key in self.subconst_cache:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
       return
     # 新規実行（従来通りset_pre_queensの本体処理へ）
     self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
-    self.subconst_cache[key] = True  # マークだけでOK
+    # self.subconst_cache[key] = True  # マークだけでOK
+    self.subconst_cache.add(key)
+
 
   def zobrist_hash(self, ld: int, rd: int, col: int, row: int, queens: int, k: int, l: int, LD: int, RD: int, N: int) -> int:
       self._init_zobrist(N)
@@ -852,8 +857,8 @@ class NQueens15:
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
-      bit:int=free&-free  # 最も下位の1ビットを取得
-      free&=free-1  # 使用済みビットを削除
+      bit:int=free&-free
+      free&=free-1
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
@@ -1052,11 +1057,26 @@ class NQueens15:
     # ijkl_list=ijkl_list_jasmin
     ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
     L=1<<(N-1)  # Lは左端に1を立てる
+    # ローカルアクセスに変更
+    geti, getj, getk, getl = self.geti, self.getj, self.getk, self.getl
+    to_ijkl = self.to_ijkl
     for sc in ijkl_list:
-      i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
-      ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
-      LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
-      counter=[0] # サブコンステレーションを生成
+      # ここで毎回クリア（＝この sc だけの重複抑止に限定）
+      # self.constellation_signatures.clear()
+      self.constellation_signatures=set()
+      # i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
+      i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
+      # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
+      # LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
+      Lj = L >> j; Li = L >> i; Ll = L >> l
+      # ld = (L >> (i-1)) | (1 << (N-k))
+      ld = ((L >> (i-1)) if i > 0 else 0) | (1 << (N-k))
+      rd = (L >> (i+1)) | (1 << (l-1))
+      col = 1 | L | Li | Lj
+      LD = Lj | Ll
+      RD = Lj | (1 << k)
+
+      counter:List[int]=[0] # サブコンステレーションを生成
       #-------------------------
       # visited:Set[StateKey]=set()
       visited:Set[int]=set()
@@ -1065,528 +1085,696 @@ class NQueens15:
       self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
-      list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
-  #
+      # list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
+      #
+      # こちらのほうが少しだけ軽いらしい
+      # for a in range(counter[0]):
+      #   constellations[-1 - a]["startijkl"] |= self.to_ijkl(i, j, k, l)
+      #
+      # to_ijkl(i,j,k,l) はループ外で一回だけ
+      # 今は毎回呼んでいるので、定数化すると少しだけ軽くなります。
+      # base = self.to_ijkl(i, j, k, l)
+      base = to_ijkl(i, j, k, l)
+      for a in range(counter[0]):
+          constellations[-1 - a]["startijkl"] |= base
+  #-----------------
   # 関数プロトタイプ
-  #
-  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  #-----------------
+  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     if row==endmark:
       return 1
     total:int=0
-    N1:int=N-1
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      # 明らかにより細かい pruning を行っている高度な最適化条件です
-      # しかし後から見返したとき、「なぜこれだけ複雑にしているのか？
-      # 」という疑問が出る可能性があります。
-      # if next_free and (row>=endmark-1 or mask&~(next_ld|next_rd|next_col)):
-      # これは「次の行（rowstep+1）にクイーンを置けるマスが1つもな
-      # ければ prune する」という強い pruning 条件であり、簡易条件
-      # との重複はなく、むしろ発展系です。
-      # if next_free and not (
-      #     rowstep < endmark and
-      #     (
-      #         mask & ~(
-      #             (next_ld << 1) | (next_rd >> 1) | next_col
-      #         )
-      #         & ~((rowstep == mark1) << (N1 - mark1))
-      #         & ~((rowstep == mark2) << (N1 - mark2))
-      #     ) == 0
-      # ):
-      #
-      # 上記を包括表記で記述したもの
-      #
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd0B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    avail:int=free
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+        total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    N1,N3=N-1,N-3
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd0B((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd0BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd0B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N4=N-1,N-4
+  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N4:int=N-4
+    blockK:int=1<<N4
+    avail:int=free
     total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1|1<<N4)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|((rd|bit)>>3)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1B((ld|bit)<<3|1,(rd|bit)>>3|1<<N4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1|blockK
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1B(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     if row==endmark:
       return 1
+    avail:int=free
     total:int=0
-    N1:int=N-1
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+        total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BlB((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BlB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    N1:int=N-1
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|1|(rd|bit)>>2|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2|1)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2|1
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free and ((row + 2 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+        total+=self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|2|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|((rd|bit)>>3)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1B((ld|bit)<<3|2,(rd|bit)>>3|1<<N3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|2|blockK
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1B(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1B((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd1BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N3|2)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|((rd|bit)>>3)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2B((ld|bit)<<3|2,(rd|bit)>>3|1<<N3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BlkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK|2
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2B(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N4=N-1,N-4
+  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N4:int=N-4
+    blockK:int=1<<N4
+    avail:int=free
     total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|(1<<N4)|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|((rd|bit)>>3)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2B((ld|bit)<<3|1,(rd|bit)>>3|1<<N4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BklB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK|1
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2B(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2B((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BkB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BlBkB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2B((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2B(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BlB((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2BkBlB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BlB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
     if row==endmark:
-      if (free&(~1))>0:
+      if (avail&(~1))>0:
         return 1
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQd2B((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+        total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
+  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
-      next_free:int=mask&~(next_ld|next_rd|next_col)
-      if next_free and not (rowstep<endmark and (mask&~(((next_ld<<1)|(next_rd>>1)|next_col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlBjrB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
-    rowstep:int=1+row
     if row==jmark:
-      free&=~1
+      avail&=~1
       ld|=1
-      while free:
-        bit:int=free&-free
-        free&=free-1
-        next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-        if next_free and not (rowstep<endmark and (mask&~(((ld|bit)<<1<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-          total+=self.SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+      while avail:
+        bit:int=avail&-avail
+        avail&=avail-1
+        next_ld:int=(ld|bit)<<1
+        next_rd:int=(rd|bit)>>1
+        next_col:int=col|bit
+        blocked:int=next_ld|next_rd|next_col
+        next_free:int=board_mask&~blocked
+        if next_free:
+          total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       return total
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
+  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
     total:int=0
     if row==endmark:
       return 1
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+        total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
+    total:int=0
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|1
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBkBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    return total
+  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
+    total:int=0
+    while row==mark2 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<2
+      next_rd:int=(rd|bit)>>2
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjrB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    return total
+  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N4:int=N-4
+    blockK:int=1<<N4
+    avail:int=free
+    total:int=0
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK|1
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjrB(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    return total
+  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    N3:int=N-3
+    blockK:int=1<<N3
+    avail:int=free
+    total:int=0
+    while row==mark1 and avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<3
+      next_rd:int=(rd|bit)>>3
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK|2
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjrB(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+    return total
+  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     N1:int=N-1
+    avail:int=free
     total:int=0
-    rowstep:int=2+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBkBjrB((ld|bit)<<2|1,(rd|bit)>>2,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
-    return total
-  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
-    total:int=0
-    rowstep:int=2+row
-    while row==mark2 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<2|(rd|bit)>>2|col|bit|1<<N3)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<2)<<1|((rd|bit)>>2)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjrB((ld|bit)<<2,(rd|bit)>>2|1<<N3,col|bit,row+2,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
-    return total
-  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N4=N-1,N-4
-    total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N4|1)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|((rd|bit)>>3)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjrB((ld|bit)<<3|1,(rd|bit)>>3|1<<N4,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
-    return total
-  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1,N3=N-1,N-3
-    total:int=0
-    rowstep:int=3+row
-    while row==mark1 and free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<3|(rd|bit)>>3|col|bit|1<<N3|2)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<3)<<1|(rd|bit)>>3>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjrB((ld|bit)<<3|2,(rd|bit)>>3|1<<N3,col|bit,row+3,next_free,jmark,endmark,mark1,mark2,mask,N)
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
-    return total
-  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
-    N1:int=N-1
-    total:int=0
-    rowstep:int=0+row
     if row==N1-jmark:
-      next_free:int=mask&~(ld<<1|rd>>1|col)
-      if next_free and not (rowstep<endmark and (mask&~(((ld<<1)<<1|(rd<<1)>>1|col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBkBlBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
+      rd|=1<<N1
+      next_ld:int=ld<<1
+      next_rd:int=rd>>1
+      next_col:int=col
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       return total
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjlBkBlBjrB((ld|bit)<<1,(rd|bit)>>1,col,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     N1:int=N-1
+    avail:int=free
     total:int=0
-    rowstep:int=0+row
     if row==N1-jmark:
-      next_free:int=mask&~(ld<<1|rd>>1|col)
-      if next_free and not (rowstep<endmark and (mask&~(((ld<<1)<<1|(rd>>1)>>1|col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlBkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
+      rd|=1<<N1
+      next_ld:int=ld<<1
+      next_rd:int=rd>>1
+      next_col:int=col
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       return total
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjlBlBkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     N1:int=N-1
+    avail:int=free
     total:int=0
-    rowstep:int=0+row
     if row==N1-jmark:
-      next_free:int=mask&~(ld<<1|rd>>1|col)
-      if next_free and not (rowstep<endmark and (mask&~(((ld<<1)<<1|(rd>>1)>>1|col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBklBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
+      rd|=1<<N1
+      next_ld:int=ld<<1
+      next_rd:int=rd>>1
+      next_col:int=col
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       return total
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjlBklBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,mask:int,N:int)->int:
+  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     N1:int=N-1
+    avail:int=free
     total:int=0
-    rowstep:int=0+row
     if row==N1-jmark:
-      next_free:int=mask&~(ld<<1|rd>>1|col)
-      if next_free and not (rowstep<endmark and (mask&~(((ld<<1)<<1|(rd>>1)>>1|col)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBlkBjrB(ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,mask,N)
+      rd|=1<<N1
+      next_ld:int=ld<<1
+      next_rd:int=rd>>1
+      next_col:int=col
+      blocked:int=next_ld|next_rd|next_col
+      next_free=board_mask&~blocked
+      if next_free:
+        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       return total
-    rowstep:int=1+row
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      next_free:int=mask&~((ld|bit)<<1|(rd|bit)>>1|col|bit)
-      # if next_free:
-      #   if rowstep<endmark:
-      #     blocked_next=(next_ld<<1)|(next_rd>>1)|next_col
-      #     if rowstep==mark1:
-      #       blocked_next&=~(1<<(N1-mark1))
-      #     if rowstep==mark2:
-      #       blocked_next&=~(1<<(N1-mark2))
-      #     if (mask&~blocked_next)==0:
-      #       continue
-      if next_free and not (rowstep<endmark and (mask&~((((ld|bit)<<1)<<1|((rd|bit)>>1)>>1|col|bit)&~(int(rowstep==mark1)<<(N1-mark1))&~(int(rowstep==mark2)<<(N1-mark2))))==0):
-        total+=self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,mask,N)
+    while avail:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      if next_free:
+        total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-
 class NQueens15_constellations():
   def _bit_total(self, size: int) -> int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
@@ -1626,6 +1814,7 @@ class NQueens15_constellations():
       #---------------------------------
       # キャッシュを使わない
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
