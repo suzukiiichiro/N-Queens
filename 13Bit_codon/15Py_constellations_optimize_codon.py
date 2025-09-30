@@ -3,375 +3,199 @@
 # -*- coding: utf-8 -*-
 
 """
-コンステレーション版 最適化+最速化（@par) 　Ｎクイーン
+コンステレーション版 キャッシュ最適化２ Ｎクイーン
 
-✅[Opt-01]    ビット演算枝刈り
-  全探索・部分盤面生成のすべてでbit演算徹底 ビット演算による衝突枝刈り（cols/hills/dales）
-  → set_pre_queensや他の再帰でld|rd|colのビット演算を用いた枝刈りを徹底している
-
-1) 部分盤面生成（プレ配置探索）
-  set_pre_queens(...)
-  空きビット計算
-    mask = (1<<N) - 1
-    free = ~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask
-  1bit抽出 & 使用済み消去
-    bit = free & -free
-    free &= free - 1
-  衝突更新（対角・縦）
-    next_ld = (ld | bit) << 1
-    next_rd = (rd | bit) >> 1
-    next_col = col | bit
-  再帰呼び出し
-    self.set_pre_queens_cached(next_ld, next_rd, next_col, ..., row+1, ...)
-2) 解カウント（各サブ問題の全探索）
-  exec_solutions(...)（各サブ探索の初期ビット状態を構築）
-    盤面マスク
-      board_mask = (1<<N) - 1
-    既存配置の合成（列・左右対角をビットで合成）
-      ld, rd, col = (constellation["ld"]>>1), (constellation["rd"]>>1), (constellation["col"]>>1) | (~small_mask)
-      free = ~(ld | rd | col)
-  全ての SQ 系再帰（SQB, SQd0B, SQd1B, SQd2B とその派生）*
-    毎手の基本パターンが統一されていて、どこもビット演算で枝刈りになっています：
-      1bit抽出 & 使用済み消去
-        bit = avail & -avail
-        avail &= avail - 1
-      衝突合成
-        next_ld = (ld | bit) << 1
-        next_rd = (rd | bit) >> 1
-        next_col = col | bit
-        blocked = next_ld | next_rd | next_col
-        next_free = board_mask & ~blocked
-      先読み（空きが残るか）を判定して再帰
-        if next_free and (... もしくは _has_future_space(...)):
-            total += self.SQ...(next_ld, next_rd, next_col, row+1(or+2/3), next_free, ...)
-    代表例：
-    SQB, SQd0B, SQd1B, SQd2B 本体
-    および SQBkBjrB, SQBlBjrB, SQd1BkB, SQd1BlB, SQd2BkB, SQd2BlB などすべての派生分岐
-3) サブ探索の先読み関数
-  _has_future_space(...)
-  次行のビット空きの有無をビット演算で確認
-    return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-4) 盤面の初期化・共通ユーティリティ
-  _bit_total(...)（小 N の全列挙）
-    典型的なビット探索：bitmap & -bitmap, bitmap ^= bit, 対角の <<1, >>1
-  gen_constellations(...)
-    初期占有の生成にもビット合成（L = 1<<(N-1)、ld/rd/col/LD/RD の生成）
-  check_rotations, rot90/180, to_ijkl, get*
-    位置表現をビットパック／シフトで扱っていて、衝突チェック前提の軽量化に寄与
-
-まとめ（Opt-01の評価）
-「列・左右対角の衝突判定」「空きマスクの更新」「1bit 抽出・消去」など、全探索パスのすべてでビット演算が徹底されています。
-set_pre_queens の部分盤面生成から exec_solutions 配下のあらゆる SQ* 系まで、同じビットパターンで統一されており、Opt-01 は十分に適用済みと言えます。
-さらに _has_future_space による先行一段の空き確認もビット演算で行われ、無駄な再帰を強力に抑制できています。
-"""
-
-"""
-✅[Opt-02-1]    左右対称性除去（初手左半分/コーナー分岐で重複生成排除）
-1 行目の列を 0～n//2−1 に制限
-→ gen_constellationsのfor k in range(1, halfN)や、角コーナー分岐で左右対称盤面の重複生成を抑制
-→ コーナーあり/なし両方をしっかり区分
-
-1) 1 行目を「左半分」に制限（左右対称の半分だけ生成）
-関数: gen_constellations(...)
-
-halfN = (N+1)//2
-# コーナーにクイーンがいない開始コンステレーション
-ijkl_list.update(
-  self.to_ijkl(i, j, k, l)
-  for k in range(1, halfN)                  # ← 左半分だけ
-  for l in range(k+1, N-1)
-  for i in range(k+1, N-1)
-  if i != (N-1) - l
-  for j in range(N-k-2, 0, -1)
-  if j != i and j != l
-  if not self.check_rotations(ijkl_list, i, j, k, l, N)
-)
-
-k in range(1, halfN) が「最上段の列を左半分に制限」に相当（鏡像を作らない）。
-これにより左右対称の重複生成をそもそも発生させない設計です。
-
-"""
-
-"""
-✅[Opt-02-2]    中央列特別処理（奇数N）    達成    奇数N中央列を専用内包表記で排除
-2) 奇数盤での中央列（対称軸）を特別処理
-
-if N % 2 == 1:
-  center = N // 2
-  ijkl_list.update(
-    self.to_ijkl(i, j, center, l)
-    for l in range(center + 1, N - 1)
-    for i in range(center + 1, N - 1)
-    if i != (N - 1) - l
-    for j in range(N - center - 2, 0, -1)
-    if j != i and j != l
-    if not self.check_rotations(ijkl_list, i, j, center, l, N)
-    if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
-  )
-
-奇数 N の“中央列”は左右対称の軸になるため、専用の生成ルールで重複を抑止。
-rot180_in_set により 180°回転の重複まで排除。
-"""
-
-"""
-✅[Opt-02-3]) コーナーあり／なしを明確に分岐
-
-# コーナーにクイーンがある開始コンステレーション
-ijkl_list.update({ self.to_ijkl(0, j, 0, l) for j in range(1, N-2) for l in range(j+1, N-1) })
-
-「コーナーあり」を別の集合内包で明確に分けて生成。
-「コーナーなし」との混在による重複を避けつつ、ケース分岐を保ったまま探索を開始できます。
-"""
-
-"""
-✅[Opt-02-4]) 生成後に“正準化”で回転・鏡像を一本化（最終ダメ押し）
-
-ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }  # ← Jasmin で正準形へ
-
-jasmin（90°回転＋垂直ミラー含む）で代表形をとり、左右対称・回転対称の重複を根こそぎ圧縮。
-さらに check_rotations / rot180_in_set も前段で併用しており、多重に重複防止が効く構成。
-"""
-
-"""
-✅[Opt-02-5])カウント側は対称性の重み付けで整合
-関数: exec_solutions(...)
-
-constellation["solutions"] = cnt * self.symmetry(ijkl, N)
-
-生成側で左右（および回転）を抑えたうえで、対称群の位数に応じた重み付け（2/4/8）で最終トータルを復元。
-生成制約とカウント重みの整合が取れているので、ダブりも欠落もなし。
-
-結論
-「最上段は左半分だけ」「奇数盤の中央列は特別処理」「コーナーあり／なしの分岐」「Jasmin 正準化」の四段構えで、Opt-02 は十分に適用済みです。
-そのうえで symmetry() による重み付けで総数が正しく積み上がっています。
-次の最適化項目、どうぞ！同じ調子で該当コードを指差し＆必要なら改善ポイントまで洗い出します。
-"""
-
-"""
-✅[Opt-03]    角位置分岐・COUNT分類 コーナー分岐/symmetryでCOUNT2/4/8分類
-
-A) 角（コーナー）あり／なしの分岐（生成段階）
-関数: gen_constellations(...)
-
-# コーナーにクイーンがいない場合の開始コンステレーション
-ijkl_list.update(
-  self.to_ijkl(i,j,k,l)
-  for k in range(1, halfN) ...
-  if not self.check_rotations(ijkl_list, i, j, k, l, N)
-)
-
-# コーナーにクイーンがある場合の開始コンステレーション
-ijkl_list.update({ self.to_ijkl(0, j, 0, l) for j in range(1, N-2) for l in range(j+1, N-1) })
-
-ここで**「コーナーなし群」と「コーナーあり群」**を分岐して初期星座を構成しています。
-COUNT分類（2/4/8）は、後述の symmetry(...) で与える倍率に反映される前提で、分岐自体は重複生成の回避と探索空間の整理を担っています。
-
-B) COUNT 2/4/8 の分類ロジック（対称クラス）
-関数: symmetry(ijkl: int, N: int) -> int / symmetry90(...)
-
-def symmetry(self, ijkl: int, N: int) -> int:
-    return 2 if self.symmetry90(ijkl, N) else \
-           4 if self.geti(ijkl) == N-1-self.getj(ijkl) and self.getk(ijkl) == N-1-self.getl(ijkl) else 8
-
-def symmetry90(self, ijkl: int, N: int) -> bool:
-    return ((self.geti(ijkl)<<15) + (self.getj(ijkl)<<10) + (self.getk(ijkl)<<5) + self.getl(ijkl)) \
-           == (((N-1-self.getk(ijkl))<<15) + ((N-1-self.getl(ijkl))<<10) + (self.getj(ijkl)<<5) + self.geti(ijkl))
-
-symmetry(...) が盤面の対称性に応じて 2/4/8 を返し、これが COUNT分類の核。
-symmetry90(...) は 90°回転不変（4回転対称）の特別ケースを検出。
-次に「主対角/副対角のミラーと整合する配置」（i == N-1-j かつ k == N-1-l）を COUNT=4、それ以外を COUNT=8 に分類。
-
-C) 分類倍率の適用（集計段階）
-関数: exec_solutions(...)
-
-cnt = ...  # 各サブルーチンで得た代表解のカウント
-constellation["solutions"] = cnt * self.symmetry(ijkl, N)  # ← ここで 2/4/8 の倍率を適用
-
-生成時に正準化（Jasmin）等で代表形だけを数え、最後に対称クラスの大きさ（2/4/8）で増幅して総数に反映しています。
-これにより、左右対称・回転対称などを重複生成せず、かつ過不足なく合算できています。
-
-メモ（任意の改善ポイント）
-symmetry(...) の判定は実装としてコンパクトで高速ですが、条件の意味づけコメント（「ここは 90°回転不変 → COUNT=2」「ここは主/副対角ミラー整合 → COUNT=4」など）を数行入れておくと、将来の保守で安心です。
-角分岐の生成セット（to_ijkl(0, j, 0, l)）はコーナーの代表置きに限定され、後段の symmetry() 倍率で全体を補完しているので整合しています。
-"""
-
-"""
-✅[Opt-04]    180°対称除去
-rot180_in_set で内包時点で重複除去
-rot180_in_set で「180度回転盤面が既にセットにある場合はスキップ」できている。クイーン配置を180度回転したものの重複カウントはすべて生成段階で排除できている
-
-A) 一般ケース（コーナーなしの生成）
-関数: gen_constellations(...)
-
-ijkl_list.update(
-  self.to_ijkl(i, j, k, l)
-  ...
-  if not self.check_rotations(ijkl_list, i, j, k, l, N)   # ← ここで 90/180/270 まとめて重複排除
-)
-
-check_rotations(...) 内で rot90 / rot180 / rot270 をすべて生成済み集合と照合しています。
-→ 180°回転（rot180）も ここで除去 されています。
-
-B) 奇数盤の中央列・特別処理
-
-if N % 2 == 1:
-  ...
-  ijkl_list.update(
-    self.to_ijkl(i, j, center, l)
-    ...
-    if not self.check_rotations(ijkl_list, i, j, center, l, N)  # ← 90/180/270
-    if not self.rot180_in_set(ijkl_list, i, j, center, l, N)    # ← 180°を明示的に追加チェック
-  )
-
-ここでは check_rotations に加えて rot180_in_set を重ねがけ。
-→ 180°対称の重複は 二重のガード で確実に弾かれます（やや冗長ではありますが安全）。
-
-C) 仕上げの正準化（万一の取りこぼし防止）
-ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }  # 正準形へ
-
-Jasmin（回転＋ミラーの正準化）で生成後の代表形に畳み込み。
-→ 生成段階での取りこぼしが仮にあっても、ここで同一形が統合されます。
-
-ひと言アドバイス（任意）
-中央列ブロックの if not self.check_rotations(...) と if not self.rot180_in_set(...) は、機能としては重複です（check_rotations がすでに rot180 を含むため）。
-パフォーマンス重視で条件判定を軽くしたいなら、どちらか片方に寄せるのがスッキリです。
-一方で「中央列だけは180°対称だけ即時除去したい」という意図的な最適化なら、このままでもOKです。
-"""
-
-"""
-✅[Opt-05]    並列処理（初手分割）    @par
-A) 代表盤面ごとの独立タスクに分割
-関数: exec_solutions(...)
-該当（抜粋）:
-
-@par
-for constellation in constellations:
-    ...
-    cnt = ...  # 各サブルーチンで代表解を数える
-    constellation["solutions"] = cnt * self.symmetry(ijkl, N)
-
-constellations の各要素（= 初手構成ごとの代表盤面）をループ粒度で並列化しています。
-各反復が独立（共有状態を持たない）になるよう、使用する変数をループ内ローカルにしており、constellation["solutions"] も各要素専有のスロットに書き戻すだけなのでレースになりにくい構造です。
-
-B) 集計は並列後に一括
-関数: NQueens14_constellations.main(...)
-
-NQ.exec_solutions(constellations, size)
-total = sum(c['solutions'] for c in constellations if c['solutions'] > 0)
-
-並列区間外で合計を一括で取り、削減（reduction）はシンプルに保っています。
-
-ちょい改善の余地（任意）
-exec_solutions 内で辞書へ直接書き戻す代わりに、ローカル変数 sol = ... を計算→最後に代入にしておくと、可読性と安全性が少し上がります（実質的な性能差はほぼゼロ）。
-もし将来、並列ループ内で共有キャッシュ（例：jasmin_cache 等）を触れる変更を入れるなら、生成前段でキャッシュ完了→exec_solutions では読み取りのみにする方針を維持すると安心です。
-
-"""
-
-"""
-✅済[Opt-06] 角位置（col==0）分岐＆対称分類（COUNT2/4/8）
-「1行目col==0」や「角位置」だけを個別分岐しているか
-対称性カウント（COUNT2/4/8分類）で「同型解数」の判定ができているか
-→ コーナー（i=0やk=0）専用の初期コンステレーション生成あり。
-→ symmetryやjasmin関数でCOUNT分類もサポート
-
-角位置（col==0）分岐
-  初期コンステレーション生成（コーナー専用）
-  関数: gen_constellations(...)
-
-# コーナーにクイーンがある場合の開始コンステレーションを計算する
-ijkl_list.update({self.to_ijkl(0, j, 0, l) for j in range(1, N-2) for l in range(j+1, N-1)})
-
-ここで「i=0 かつ k=0」のケースを別分岐で投入しています（= 角位置起点の盤面を明示生成）。
-なお、直後の初期ビットマスク構築で col に 1 をOR しており、col==0列が常に占有される状態を担保しています。
-
-L = 1 << (N-1)
-...
-col = 1 | L | (L >> i) | (L >> j)  # ← 1 が列0ビット
-
-
-非コーナー分岐（左右対称の左半分に制限）
-  同じ関数内で、
-
-ijkl_list.update(
-    self.to_ijkl(i, j, k, l)
-    for k in range(1, halfN)        # ← 左半分
-    for l in range(k+1, N-1)
-    for i in range(k+1, N-1)
-    if i != (N-1) - l
-    for j in range(N-k-2, 0, -1)
-    if j != i and j != l
-    if not self.check_rotations(ijkl_list, i, j, k, l, N)
-)
-
-で初手を左右半分に制限（対称除去）しつつ、コーナー無しの系を別に扱っています。
-
-COUNT2/4/8 の対称分類
-  分類ロジック
-  関数: symmetry(ijkl, N) / symmetry90(ijkl, N)
-
-def symmetry(self, ijkl: int, N: int) -> int:
-    return 2 if self.symmetry90(ijkl, N) else \
-           4 if self.geti(ijkl) == N-1-self.getj(ijkl) and self.getk(ijkl) == N-1-self.getl(ijkl) else 8
-
-  90°不変 → COUNT2
-  主対角/副対角の位置関係が対応 → COUNT4
-  それ以外 → COUNT8
-
-分類の利用（同型解数の反映）
-  関数: exec_solutions(...)
-
-cnt = ...  # 代表盤面での数え上げ
-constellation["solutions"] = cnt * self.symmetry(ijkl, N)
-
-  代表解に対称重み（2/4/8）を乗算して最終解数に反映しています。
-
-  #（補足）Jasmin 正規化
-    関数: jasmin(...) / get_jasmin(...)
-    ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list } の形で回転・鏡映の正準化を行い、生成段階で重複を抑えています（分類そのものではないですが、COUNT分類との相性が良い実装です）。
-"""
-
-"""
 ✅[Opt-07] Zobrist Hash による transposition / visited 状態の高速検出
 ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
 例えば「既に同じビットマスク状態を訪問したか」判定、もしくは部分盤面パタ>ーンのメモ化など。
 
-#------------------------------
-def state_hash(ld: int, rd: int, col: int, row: int) -> int:
-    # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
-    return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
-#------------------------------
-# 1.state_hash関数（Codon/Python両対応）
-def state_hash(ld: int, rd: int, col: int, row: int) -> int:
-    # codon は 64bit int 算術も高速
-    return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
+Opt-07（状態キャッシュ）の反映箇所まとめ
+先頭付近（import 近く）
+from typing import List, Set, Dict, Tuple
+StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
 
-# 2.solve などの関数でset()を使う
-visited: set[int] = set()
-self.set_pre_queens(ld, rd, col, k, l, 1, 3 if j==N-1 else 4, LD, RD, counter, constellations, N, preset_queens, visited)
+__init__（インスタンス属性に）
+self.subconst_cache: Dict[StateKey, bool] = {}
+set_pre_queens(...) の引数
+visited: Set[StateKey] に変更
 
-# 3.visited セット（型注釈つき）を solveやmainで用意し渡す
-visited: set[int] = set()
-self.set_pre_queens(ld, rd, col, k, l, 1, 3 if j==N-1 else 4, LD, RD, counter, constellations, N, preset_queens, visited)
+冒頭で
+key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
+if key in visited: return / visited.add(key)
 
-# 4.set_pre_queens の再帰先頭に挿入
-def set_pre_queens(self, ld: int, rd: int, col: int, k: int, l: int, row: int, queens: int, LD: int, RD: int, counter: list, constellations: list, N: int, preset_queens: int, visited: set[int]) -> None:
-    mask: int = (1 << N) - 1
-    # 状態ハッシュによる探索枝の枝刈り
-    h: int = state_hash(ld, rd, col, row)
+set_pre_queens_cached(...) の引数
+visited: Set[StateKey] に変更
+subconst_cache も Dict[StateKey, bool] キーで同じタプルを使用
+
+gen_constellations(...) の呼び出し側
+visited: Set[StateKey] = set() で初期化
+この構成で、Codon の型検査に対しても一貫性が取れていて、実行結果もOKです。
+
+「探索済み状態の検出（transposition/visited）による枝刈り」は 実装済み です。
+set_pre_queens / set_pre_queens_cached で、
+key = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を visited / subconst_cache に用いて再訪を防いでいます。
+
+ ただし厳密な意味での 「Zobrist Hash」自体は使っていません。
+現状は「タプル状態キー→visited判定」という方式です（十分に効果的で、Codon でも安定）。
+
+いまのタプル方式でも正答・速度ともに良好なので、Opt-07（visited枝刈り）としては完了扱いでOKです。
+"""
+
+"""
+✅[Opt-08]部分盤面サブ問題キャッシュ
+場所: set_pre_queens_cached(...)
+キー: key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+値: subconst_cache[key] = True
+役割: 同じ部分状態でのサブ問題展開を一度だけにする（必ず再利用の方針に合致）。
+"""
+
+"""
+✅[Opt-09]訪問済み（transposition / visited）
+場所: set_pre_queens(...)
+データ構造: visited（Set：実装版ではタプル or 64bit相当の圧縮キー）
+役割: 再帰木を横断して同じ状態への再訪を防止。
+"""
+
+"""
+✅[Opt-10]Jasmin 正規化キャッシュ
+場所: get_jasmin(c, N) / jasmin_cache: Dict[Tuple[int,int], int]
+役割: 盤面正規化（回転・鏡映）結果をメモ化し、同一候補の重複計算を回避。
+"""
+
+"""
+✅[Opt-11]星座（コンステレーション）重複排除
+場所: constellation_signatures: Set[Tuple[int,int,int,int,int,int]]
+役割: 生成済み部分盤面（星座）を一意に保つための署名セット。
+"""
+
+"""
+✅[Opt-12]永続キャッシュ（現状は無効化中）
+場所: load_constellations(...) / pickle
+インスタンス内キャッシュ（辞書／集合）
+  __init__
+    self.subconst_cache: Dict[StateKey, bool] = {} … サブコンステ生成の再入防止
+    self.constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set() … 星座の重複署名
+    self.jasmin_cache: Dict[Tuple[int,int], int] = {} … get_jasmin()の結果メモ化
+    self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {} … Zobristテーブル（Nごと）
+
+✅[Opt-13]部分盤面のキャッシュ（tuple化→dict）
+  set_pre_queens_cached(...)
+    キー：(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    既出キーなら再帰呼び出しスキップ → 指数的重複カット
+
+✅[Opt-14]星座（コンステレーション）の重複排除
+  set_pre_queens(...) 内 if queens == preset_queens: ブロック
+    署名：(ld, rd, col, k, l, row) を self.constellation_signatures で判定し重複追加を抑制
+
+✅[Opt-15]Jasmin 正規化のメモ化
+  get_jasmin(c, N) → self.jasmin_cache[(c,N)]
+  何度も登場する起点パターンの再計算を回避
+
+✅[Opt-16]訪問済み状態（transposition/visited）の仕込み
+  gen_constellations(...) で visited: Set[StateKey] = set() を生成し
+  set_pre_queens(...) 冒頭で key: StateKey = (...) を visited に登録・参照
+  ※Zobrist版 zobrist_hash(...) も実装済（今はコメントアウトでトグル可）
+
+    # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
+    #
+    # zobrist_hash
+    # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
+    # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
+    # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
+    # h: int = self.zobrist_hash(ld, rd, col, row, queens, k, l, LD, RD, N)
+    #
+    # state_hash
+    # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+    # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
+    # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
+    h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
     if h in visited:
         return
     visited.add(h)
-    # ...（この後従来の処理を続ける）
-#------------------------------
+    #
+    # StateKey（タプル）
+    # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
+    # set の比較・保持も重く、メモリも一番食います。
+    # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
+    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
+    # if key in visited:
+    #     return
+    # visited.add(key)
+
+✅[Opt-17]星座リストの外部キャッシュ（ファイル）
+  テキスト：save_constellations_txt(...) / load_constellations_txt(...)
+  バイナリ：save_constellations_bin(...) / load_constellations_bin(...)
+  ラッパ：load_or_build_constellations_txt(...) / load_or_build_constellations_bin(...)
+    load_or_build_constellations_bin(...)
+    破損チェック validate_constellation_list(...) / validate_bin_file(...) あり
+"""
+
+"""
+✅[Opt-18] 星座生成（サブコンステレーション）にtuple keyでキャッシュ
+set_pre_queens やサブ星座生成は、状態変数を tuple でまとめて key にできます。これで全く同じ状態での星座生成は1度だけ実行されます。
+
+__init__ で self.subconst_cache: Dict[StateKey, bool] = {} を用意
+set_pre_queens_cached(...) が tupleキー
+  (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+  を使って self.subconst_cache を参照・更新
+生成側は gen_constellations(...) から 最初の呼び出しを set_pre_queens_cached に変更済み
+再帰内でも次の分岐呼び出しを set_pre_queens_cached(...) に置換しており、同一状態の再実行を回避
+"""
+
+"""
+✅[Opt-19] 星座自体をtuple/hashで一意管理して重複を防ぐ
+constellationsリストに追加する際、既に存在する星座を再追加しない
+→ 星座自体を「tuple/int/hash」にして集合管理
+これにより、異なる経路から同じ星座に到達しても重複追加を防げます。
+
+__init__ で self.constellation_signatures: Set[Tuple[int, int, int, int, int, int]] = set() を用意。
+set_pre_queens(...) 内の if queens == preset_queens: ブロックで
+signature = (ld, rd, col, k, l, row) をキーに重複チェックし、未出だけ constellations.append(...) ＆ counter[0] += 1。
+"""
+
+"""
+✅[Opt-20] Jasmin変換キャッシュ（クラス属性またはグローバル変数で）
+（生成済み盤面の再利用）
+ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list} も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
+#グローバル変数で
+
+def get_jasmin(self, c: int, N: int) -> int:
+    key = (c, N)
+    if key in jasmin_cache:
+        return jasmin_cache[key]
+    result = self.jasmin(c, N)
+    jasmin_cache[key] = result
+    return result
+
+# 使用例:gen_constellations()内に
+ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+
+__init__ に self.jasmin_cache: Dict[Tuple[int, int], int] = {}
+
+get_jasmin(self, c: int, N: int) で (c, N) をキーに memo 化
+
+gen_constellations() 内で
+
+ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
+としてキャッシュ経由で Jasmin 変換しています
 """
 
 
+
 """
-❎[Opt-07]    1行目以外の部分対称除去
+❎ 未対応 1行目以外の部分対称除去
 jasmin/is_partial_canonicalで排除
 途中段階（深さ r の盤面）を都度「辞書順最小」の canonical かどうかチェックして、そうでなければ枝刈り
 → 各 SQ〜() の再帰関数の while free: の直前にこの判定を入れ、False なら continue。
-結論：board変数にrowのは位置情報を格納していないので対応不可
+  結論：board変数にrowの配置情報を格納していないので対応不可
+  結論：今の実装（constellation → SQ＊の深い再帰、盤面は bitmask だけで保持）では “途中段階の部分対称除去” は基本的に入れないほうが安全 です。入れるなら設計を少し変える必要があります。
+  なぜそのままは危険／効果が薄いか
+  対称代表（orbit representative）の一貫性
+  すでに gen_constellations 側で 初手左右半分＋コーナー分岐＋Jasmin で代表選択をしています。この方針と、途中深さでの is_partial_canonical() の代表規則がズレると、合法枝を誤って落とす／重複排除が二重に効いて過剰枝刈りが起きます（以前の Zobrist で総数が減った現象と同系の事故になりやすい）。
+  partial 変換の定義が難しい
+  D4（回転・鏡映）の作用は行と列を同時に入れ替えます。bitmask だけを持つ現在の SQ 再帰状態（ld/rd/col と row、さらに j/k/l の特殊制約）に、“部分盤面を回した後も同じ制約系になるか” を正しく合成するのがかなり大変です。
+  カウント重み（COUNT2/4/8）との整合
+  最終的な重み付けが「代表だけ探索して最後に 2/4/8 を掛ける」設計なので、途中で代表以外を落とす規則はこの重み付けと厳密に一致していなければなりません。
 
 # -----------------------------------
 # [Opt-07] 部分盤面 canonical 判定
@@ -386,284 +210,48 @@ def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
   # 完全な回転は行列転置＋ミラーが必要（時間コストあり）
   return all(current <= s for s in symmetries)
 # -----------------------------------
+"""
 
-
-❎[Opt-08,09] 軽量 is_canonical() による“部分盤面”の辞書順最小チェックを高速化（キャッシュ/軽量版）
+"""
+❎ 未対応 軽量 is_canonical() による“部分盤面”の辞書順最小チェックを高速化（キャッシュ/軽量版）
 「完成盤」だけでなく“部分盤面”用に軽量な変換（行の回転・反転は途中情報だけで可）を実装。
-→ is_partial_canonical() の中で zobrist_cache[hash] = True/False として使う
+ is_partial_canonical() の中で zobrist_cache[hash] = True/False として使う
 
-❎[Opt-11]    ミラー+90°回転重複排除    原則不要「あえてやらない」設計。必要ならis_canonicalで激重に
+  「部分盤面の辞書順最小（canonical）チェック」は、基本的に
+  board[row] = col_bit（＝各行に置いた列位置が順に分かる配列/スタック）
+  もしくは cols_by_row = [c0, c1, ..., c(r-1)] のように「置いた列の履歴」
+  を常に持っている設計で効果を発揮します。
+  現在の “constellation 方式”（ld/rd/col のビットマスク＋row、k,l など）では、
+  行ごとの「どの列に置いたか」の履歴が再構成できない
+  回転・反転の変換を ld/rd/col に対して途中段階で正しく適用するのが難しい（ld/rd は「行進」に依存した相対ビット）
+  ため、そのままでは実装が難しいです。
 
-❎[Opt-10]    マクロチェス（局所パターン）    達成    violate_macro_patterns関数（導入済ならOK）
+  いまの設計のまま：既存の対称性除去を強化する
+  →あなたのコードは既に
+  初手生成での左右対称除去・コーナー分岐
+  Jasmin 変換（代表系化）
+  180°重複チェック
+  さらに set_pre_queens_cached の状態キャッシュ
+  が入っているので、部分盤面 canonical は無理に足さなくても充分に強いです。
+"""
+
+"""
+❎ 未対応 マクロチェス（局所パターン）    達成    violate_macro_patterns関数（導入済ならOK）
 → violate_macro_patternsのようなローカルな局所配置判定関数を挟む設計で達成
 結論：board変数にrowのは位置情報を格納していないので対応不可
 
-# ---------------------------
-# [Opt-09] Zobrist Hash テーブル生成（初期化）
-def init_zobrist(N: int) -> List[List[int]]:
-    import random
-    return [[random.getrandbits(64) for _ in range(N)] for _ in range(N)]
+  violate_macro_patterns のような「局所（2～3行内）の並びで即座に弾く」系は、
+  典型的には board[row] = col（行→列の履歴）を常に持っていてこそ強い枝刈りになります。
+  いまの constellations 方式（ld/rd/col の集合状態＋row,k,l）だと、**「直前・直前々行でどの列に置いたか」**が直接分からないため、
+  一般的な「近傍パターン」判定を素直に書くのは難しいです。
+  もっとも、あなたの実装はすでに
+  初手生成の厳しい対称性制約
+  Jasmin 代表系化
+  各種 SQ* 系の分岐（実質“マクロ手筋”をパターンとして埋め込んでいる）
+  が効いているので、汎用の violate_macro_patterns を後付けする必要性は低めです。
+"""
 
-# ハッシュ計算
-def compute_hash(board: List[int], row: int, zobrist: List[List[int]]) -> int:
-    h = 0
-    for r in range(row):
-        h ^= zobrist[r][board[r]]
-    return h
-# ---------------------------
-# [Opt-09] 部分盤面の正準性チェック + Zobristキャッシュ
-# ---------------------------
-def is_partial_canonical(board: List[int], row: int, N: int,zobrist: List[List[int]], zcache: dict) -> bool:
-    key = compute_zobrist_hash(board, row, zobrist)
-    if key in zcache:
-        return zcache[key]
-
-    current = tuple(board[:row])
-    # ミラー反転のみチェック（左右対称のみ）
-    mirrored = tuple(N - 1 - board[r] for r in range(row))
-
-    # 必要であれば回転90/180/270 も加える（今はミラーのみ）
-    minimal = min(current, mirrored)
-    result = (current == minimal)
-    zcache[key] = result
-    return result
-# -----------------------------------
-# [Opt-10] ユーザー定義のマクロチェスルール
-def violate_macro_patterns(board: List[int], row: int, N: int) -> bool:
-    # 例：上2行に中央列配置が連続する場合、除外
-    if row >= 2 and abs(board[row-1] - board[row-2]) <= 1:
-        return True
-    return False
-# -----------------------------------
-
-# -----------------------------------
-# [Opt-7,8,9,10]の実装
-# 各 backtrack 系の関数の while free: ループ手前に以下を挿入
-# [Opt-07/08] 部分盤面の辞書順最小性チェック（canonical）による枝刈り
-if not is_partial_canonical(self.BOARD, row, N, self.zobrist, self.zcache):
-    return
-# [Opt-10] 局所配置のパターン（マクロチェス）による枝刈り
-if violate_macro_patterns(self.BOARD, row, N):
-    return
-# -----------------------------------
-
-
-# -----------------------------------
-# （例）
-116   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:list[int],N:int)->None:
-117     if row==endmark:
-118       tempcounter[0]+=1
-119       return
-120     # [Opt-07/08] 部分盤面の辞書順最小性チェック（canonical）による枝刈り
-        if not is_partial_canonical(self.BOARD, row, N, self.zobrist, self.zcache):
-            return
-121     # [Opt-10] 局所配置のパターン（マクロチェス）による枝刈り
-        if violate_macro_patterns(self.BOARD, row, N):
-            return
-122     while free:
-123       bit:int=free&-free
-124       ...
-# -----------------------------------
-
-
-✅[Opt-12]    キャッシュ構造設計
-
-ちょい改善の余地（任意）
-exec_solutions 内で辞書へ直接書き戻す代わりに、ローカル変数 sol = ... を計算→最後に代入にしておくと、可読性と安全性が少し上がります（実質的な性能差はほぼゼロ）。
-もし将来、並列ループ内で共有キャッシュ（例：jasmin_cache 等）を触れる変更を入れるなら、生成前段でキャッシュ完了→exec_solutions では読み取りのみにする方針を維持すると安心です。
-
-
-
-
-
-
-
-
-
-
-
-
-✅ビット演算のインライン化
-
-# -----------------------------------
-while free:
-    bit = free & -free
-    free ^= bit
-    next_ld = (ld | bit) << 1
-    next_rd = (rd | bit) >> 1
-    next_col = col | bit
-    SQd0B(next_ld, next_rd, next_col, ...)
-# -----------------------------------
-↓
-# -----------------------------------
-while free:
-    bit = free & -free
-    free ^= bit
-    SQd0B((ld | bit) << 1, (rd | bit) >> 1, col | bit, ...)
-# -----------------------------------
-
-
-# -----------------------------------
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
-    rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
-    rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
-    return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
-# -----------------------------------
-↓
-# -----------------------------------
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-# -----------------------------------
-
-# -----------------------------------
-def symmetry90(self,ijkl:int,N:int)->bool:
-    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
-# -----------------------------------
-def symmetry(self, ijkl: int, N: int) -> int:
-  i, j, k, l = self.geti(ijkl), self.getj(ijkl), self.getk(ijkl), self.getl(ijkl)
-  if self.symmetry90(ijkl, N):
-      return 2
-  elif i == N - 1 - j and k == N - 1 - l:
-      return 4
-  else:
-      return 8
-# -----------------------------------
-↓
-# -----------------------------------
-def symmetry(self,ijkl:int,N:int)->int:
-  return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
-# -----------------------------------
-
-
-🟡[Opt-11] 構築時「ミラー＋90°回転」重複排除
-これはほとんどの実用系N-Queens実装で“わざとやらない”ことが多い
-**「途中盤面を毎回ミラー＋90°回転して辞書順最小か判定」するもので、ビットボード高速化設計と両立させるのは実装もコストも非常に高い**です。理論的には“究極の重複排除”ですが、実用的には「やり過ぎ」になるため、**ほぼ全ての高速N-Queens実装で“わざと導入しない”**ことが標準です。
-
-✅[Opt-12]キャッシュ構造設計
-部分盤面や星座をhash/tuple化し、dictでキャッシュ
-1度計算したhash値（zobristやtuple）をもとに重複判定
-同じ状態は“必ず再利用”
-階層構造（部分再帰木ごとにキャッシュ分離）も有効
-
-「同じ状態は必ず再利用」＝探索の「指数的重複」を爆速カット
-とくにN-Queensのような「部分盤面でパターン重複が激しい問題」は
-キャッシュ再利用で速度が何桁も違う
-
-Zobrist hashやtuple keyによる「整数インデックス付きdict」は
-最強のメモリ効率＆スピード両立手法
-
-🧑gen_constellationsにキャッシュやhashを活かすには？
-星座リスト・盤面生成ごとに「Zobrist hash」や「tuple化キー」を用意し、一度計算した結果をdictで使い回す
-jasmin変換など高コスト処理もdictキャッシュで「1度だけ」計算・以降再利用。部分再帰やサブコンステレーション分岐も「盤面シグネチャ」をkeyにキャッシュ設計
-
-
-# ------------------------------------------------
-🟡1. Jasmin変換キャッシュ（クラス属性またはグローバル変数で）
-（生成済み盤面の再利用）
-ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list} も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
-
-#グローバル変数で
-jasmin_cache = {}
-
-def get_jasmin(self, c: int, N: int) -> int:
-    key = (c, N)
-    if key in jasmin_cache:
-        return jasmin_cache[key]
-    result = self.jasmin(c, N)
-    jasmin_cache[key] = result
-    return result
-
-# 使用例:gen_constellations()内に
-ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
-# ------------------------------------------------
-
-# ------------------------------------------------
-🟡2. 星座生成（サブコンステレーション）にtuple keyでキャッシュ
-set_pre_queens やサブ星座生成は、状態変数を tuple でまとめて key にできます。これで全く同じ状態での星座生成は1度だけ実行されます。
-
-#グローバル変数で
-subconst_cache = {}
-
-def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
-    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-    # キャッシュの本体をdictかsetでグローバル/クラス変数に
-    if not hasattr(self, "subconst_cache"):
-        self.subconst_cache = {}
-    subconst_cache = self.subconst_cache
-
-    if key in subconst_cache:
-        # 以前に同じ状態で生成済み → 何もしない（または再利用）
-        return
-    # 新規実行（従来通りset_pre_queensの本体処理へ）
-    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens)
-    subconst_cache[key] = True  # マークだけでOK
-
-# 呼び出し側
-# self.set_pre_queens_cached(...) とする
-
-# ------------------------------------------------
-🟡3. 星座自体をtuple/hashで一意管理して重複を防ぐ
-constellationsリストに追加する際、既に存在する星座を再追加しない
-→ 星座自体を「tuple/int/hash」にして集合管理
-これにより、異なる経路から同じ星座に到達しても重複追加を防げます。
-
-# if queens==preset_queens:
-#   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
-#   # 新しいコンステレーションをリストに追加
-#   constellations.append(constellation)
-#   counter[0]+=1
-#   return
-if queens == preset_queens:
-    # signatureの生成
-    signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
-    # signaturesセットをクラス変数やグローバルで管理
-    if not hasattr(self, "constellation_signatures"):
-        self.constellation_signatures = set()
-    signatures = self.constellation_signatures
-    if signature not in signatures:
-        constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
-        constellations.append(constellation)
-        signatures.add(signature)
-        counter[0] += 1
-    return
-
-# ------------------------------------------------
-🟡4. pickleファイルで星座リストそのものをキャッシュ
-巨大Nのときは事前生成した星座リストをpickleでファイル化し、プログラム起動時に一度だけロード→以降はメモリで使い回す。Codon標準ではpickleがサポートされていない場合もありますが、Python互換ライブラリ（import pickle）が使えれば、ほぼ同じ形で使えます。
-
-こちらは大失敗であきらめました。codonでは動かないみたい
-
-import pickle, os
-
-def load_constellations(self, N: int, preset_queens: int) -> list:
-  fname = f"constellations_N{N}_{preset_queens}.pkl"
-  if os.path.exists(fname):
-    with open(fname, "rb") as f:
-        return pickle.load(f)
-  else:
-    constellations = []
-    self.gen_constellations(set(), constellations, N, preset_queens)
-    with open(fname, "wb") as f:
-        pickle.dump(constellations, f)
-    return constellations
-
-# 実行時
-def main()で
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      constellations = NQ.load_constellations(size,preset_queens)
-      NQ.exec_solutions(constellations,size)
-
-# ------------------------------------------------
-fedora$ codon build -release 26Py_constellations_optimized_codon.py
-fedora$ ./26Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
-IOError: pickle error: gzwrite returned 0
-
-Raised from: std.pickle._write_raw.0:0
-/home/suzuki/.codon/lib/codon/stdlib/pickle.codon:25:13
-中止 (コアダンプ)
-
+"""
 1. 関数内の最適化
 def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, endmark:int, mark1:int, mark2:int, N:int) -> int:
     N1:int = N - 1
@@ -744,9 +332,6 @@ if next_free and ((row >= endmark-1) or _has_future_space(...)):
 from typing import List, Set, Dict, Tuple
 （すでにビルドが通っているならOKですが、保守のために念のため。）
 
-6. 使っていない（or Codon 非対応の）コード
-pickle 系ユーティリティはコメントで「Codon では動かない」と明記済み。将来の混乱防止のため、if TYPE_CHECKING: か try/except ImportError で囲うか、CODON 判定で読み飛ばすガードにしておくとベター。実行パスからは既に外してあるので実害はありません。
-
 すでにビット演算のインライン化・board_mask の上位での共有・**1ビット抽出 bit = x & -x**など、要所は押さえられています。cnt を星座ごとにローカルで完結→solutions に掛け算（symmetry()）という流れもキャッシュに優しい設計。
 これ以上を狙うなら、「星座ごと分割の並列度を広げる」か「gen_constellations の ijkl_list.update(...) での回転重複除去を最小限に（=set操作の負荷を減らす）」の二択ですが、現状の速度を見る限り十分実用的です。
 
@@ -786,31 +371,109 @@ GPU/CUDA 11CUDA_constellation_symmetry.cu
 import pickle, os
 # from operator import or_
 # from functools import reduce
-from typing import List,Set,Dict
+from typing import List,Set,Dict,Tuple
 from datetime import datetime
+
+# 64bit マスク（Zobrist用途）
+MASK64: int = (1 << 64) - 1
+StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
+
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 #
-class NQueens14:
+class NQueens15:
   def __init__(self)->None:
-    # インスタンス専用に上書き（共有を避ける）
+    # StateKey
+    # self.subconst_cache: Dict[ StateKey, bool ] = {}
     self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
+    # 追加：Zobrist テーブルキャッシュ（N ごと）
+    self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
+    self.gen_cache: Dict[Tuple[int,int,int,int,int,int,int,int], List[Dict[str,int]] ] = {}
+
+  # === NQueens15 クラス内に追加 ===
+  def _init_zobrist(self, N: int) -> None:
+      # ここで hasattr チェックは不要
+      if N in self.zobrist_tables:
+          return
+      base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
+      tbl: Dict[str, List[int]] = {
+          'ld'    : self._gen_list(N, base_seed ^ 0x01),
+          'rd'    : self._gen_list(N, base_seed ^ 0x02),
+          'col'   : self._gen_list(N, base_seed ^ 0x03),
+          'LD'    : self._gen_list(N, base_seed ^ 0x04),
+          'RD'    : self._gen_list(N, base_seed ^ 0x05),
+          'row'   : self._gen_list(N, base_seed ^ 0x06),
+          'queens': self._gen_list(N, base_seed ^ 0x07),
+          'k'     : self._gen_list(N, base_seed ^ 0x08),
+          'l'     : self._gen_list(N, base_seed ^ 0x09),
+      }
+      self.zobrist_tables[N] = tbl
+
+  def _mix64(self, x: int) -> int:
+      # splitmix64 の最終段だけ使ったミキサ
+      x &= MASK64
+      x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9 & MASK64
+      x = (x ^ (x >> 27)) * 0x94D049BB133111EB & MASK64
+      x ^= (x >> 31)
+      return x & MASK64
+
+  def _gen_list(self, cnt: int, seed: int) -> List[int]:
+      """
+      Zobristテーブル用の64bit値を cnt 個つくる。
+      Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
+      """
+      out: List[int] = []
+      s: int = seed & MASK64
+      for _ in range(cnt):
+          s = (s + 0x9E3779B97F4A7C15) & MASK64   # splitmix64 のインクリメント
+          out.append(self._mix64(s))
+      return out
+
+  def _init_zobrist(self, N: int) -> None:
+      """
+      例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
+      N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
+      """
+      # if not hasattr(self, "zobrist_tables"):
+      #     self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
+
+      if N in self.zobrist_tables:
+          return
+
+      base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
+      tbl: Dict[str, List[int]] = {
+          'ld'    : self._gen_list(N, base_seed ^ 0x01),
+          'rd'    : self._gen_list(N, base_seed ^ 0x02),
+          'col'   : self._gen_list(N, base_seed ^ 0x03),
+          'LD'    : self._gen_list(N, base_seed ^ 0x04),
+          'RD'    : self._gen_list(N, base_seed ^ 0x05),
+          'row'   : self._gen_list(N, base_seed ^ 0x06),
+          'queens': self._gen_list(N, base_seed ^ 0x07),
+          'k'     : self._gen_list(N, base_seed ^ 0x08),
+          'l'     : self._gen_list(N, base_seed ^ 0x09),
+      }
+      self.zobrist_tables[N] = tbl
+
   def rot90(self,ijkl:int,N:int)->int:
       return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+
   def rot180(self,ijkl:int,N:int)->int:
       return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+
   def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
     # rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
     # rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
     # rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
     # return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
+
   def symmetry(self,ijkl:int,N:int)->int:
     return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
   def symmetry90(self,ijkl:int,N:int)->bool:
@@ -830,7 +493,6 @@ class NQueens14:
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
   #--------------------------------------------
-  # jasmin_cache = {}
   def get_jasmin(self, c: int, N: int) -> int:
     key = (c, N)
     if key in self.jasmin_cache:
@@ -900,8 +562,8 @@ class NQueens14:
   # codonでpickleを使う（うごかない）
   # constellations = NQ.load_constellations(size,preset_queens)
   #---------------------------------
-  # subconst_cache = {}
-  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
+  # def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[StateKey]) -> None:
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
   #    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
   #    # キャッシュの本体をdictかsetでグローバル/クラス変数に
   #    if not hasattr(self, "subconst_cache"):
@@ -921,28 +583,99 @@ class NQueens14:
       self.subconst_cache[key] = True
   # 呼び出し側
   # self.set_pre_queens_cached(...) とする
-  # constellation_signatures = set()
   #---------------------------------
   #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
   @staticmethod
   def _has_future_space(next_ld: int, next_rd: int, next_col: int, board_mask: int) -> bool:
       # 次の行に進んだときに置ける可能性が1ビットでも残るか
       return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-  #---------------------------------
+
+  def zobrist_hash(self, ld: int, rd: int, col: int,
+                  row: int, queens: int, k: int, l: int,
+                  LD: int, RD: int, N: int) -> int:
+      self._init_zobrist(N)
+      tbl = self.zobrist_tables[N]
+      h = 0
+
+      mask = (1 << N) - 1
+      # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
+      ld &= mask
+      rd &= mask
+      col &= mask
+      LD &= mask
+      RD &= mask
+
+      # 以下はそのまま
+      m = ld; i = 0
+      while i < N:
+          if (m & 1) != 0:
+              h ^= tbl['ld'][i]
+          m >>= 1; i += 1
+
+      m = rd; i = 0
+      while i < N:
+          if (m & 1) != 0:
+              h ^= tbl['rd'][i]
+          m >>= 1; i += 1
+
+      m = col; i = 0
+      while i < N:
+          if (m & 1) != 0:
+              h ^= tbl['col'][i]
+          m >>= 1; i += 1
+
+      m = LD; i = 0
+      while i < N:
+          if (m & 1) != 0:
+              h ^= tbl['LD'][i]
+          m >>= 1; i += 1
+
+      m = RD; i = 0
+      while i < N:
+          if (m & 1) != 0:
+              h ^= tbl['RD'][i]
+          m >>= 1; i += 1
+
+      if 0 <= row < N:     h ^= tbl['row'][row]
+      if 0 <= queens < N:  h ^= tbl['queens'][queens]
+      if 0 <= k < N:       h ^= tbl['k'][k]
+      if 0 <= l < N:       h ^= tbl['l'][l]
+
+      return h & MASK64
+
   def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
-      # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
-      # return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
       return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
-  #---------------------------------
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
+
+  # def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[StateKey])->None:
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
-    # ----------------------------
-    # 状態ハッシュによる探索枝の枝刈り
-    # バックトラック系の冒頭に追加　やりすぎると解が合わない
+
+    # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
+    #
+    # zobrist_hash
+    # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
+    # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
+    # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
+    # h: int = self.zobrist_hash(ld, rd, col, row, queens, k, l, LD, RD, N)
+    #
+    # state_hash
+    # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+    # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
+    # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
     h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
     if h in visited:
         return
     visited.add(h)
+    #
+    # StateKey（タプル）
+    # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
+    # set の比較・保持も重く、メモリも一番食います。
+    # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
+    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
+    # if key in visited:
+    #     return
+    # visited.add(key)
+
     # ----------------------------
     # k行とl行はスキップ
     if row==k or row==l:
@@ -1118,6 +851,157 @@ class NQueens14:
       # constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
       # temp_counter[0]=0
+  #---------------------------------
+  # 星座リストそのものをキャッシュ
+  #---------------------------------
+  def file_exists(self, fname: str) -> bool:
+    try:
+      with open(fname, "rb"):
+        return True
+    except:
+      return False
+  # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
+  def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
+    with open(path, "w") as f:
+      for c in constellations:
+        ld = c["ld"]
+        rd = c["rd"]
+        col = c["col"]
+        startijkl = c["startijkl"]
+        solutions = c.get("solutions", 0)
+        f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+  # --- テキスト形式でロード ---
+  def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
+    out: List[Dict[str, int]] = []
+    with open(path, "r") as f:
+      for line in f:
+        parts = line.strip().split()
+        if len(parts) != 5:
+          continue
+        ld = int(parts[0]); rd = int(parts[1]); col = int(parts[2])
+        startijkl = int(parts[3]); solutions = int(parts[4])
+        out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
+    return out
+  # load_or_build_constellations_txt() は、N-Queens 問題において特定
+  # の盤面サイズ N と事前配置数 preset_queens に対する星座構成（部分
+  # 解集合）をテキストファイルとしてキャッシュ保存し、再利用するため
+  # の関数です。
+  #
+  # 背景：なぜキャッシュが必要？
+  # 星座（コンステレーション）とは、特定のクイーンの配置から始まる
+  # 枝を意味し、それぞれの星座から先を探索していくのがこのアルゴリ
+  # ズムの基盤です。
+  # しかしこの「星座の列挙」は、
+  # 膨大な探索空間からの絞り込み
+  # 対称性チェック・Jasmin判定など高コスト処理を含む
+  # という特性があるため、一度生成した星座リストは保存して使い回し
+  # たほうが圧倒的に効率的です。
+  # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
+  # バリデーション関数の強化（既に実装済みの場合はスキップOK）
+  def validate_constellation_list(self, constellations: List[Dict[str, int]]) -> bool:
+    return all(all(k in c for k in ("ld", "rd", "col", "startijkl")) for c in constellations)
+  # 修正：Codon互換の from_bytes() 相当処理
+  # def read_uint32_le(self, b: bytes) -> int:
+  # def read_uint32_le(self, b: List[int]) -> int:
+  #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
+  def read_uint32_le(self, b: str) -> int:
+    return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
+  # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
+  def int_to_le_bytes(self,x: int) -> List[int]:
+    return [(x >> (8 * i)) & 0xFF for i in range(4)]
+  # 書き込み関数（.bin保存）
+  def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
+    with open(fname, "wb") as f:
+      for d in constellations:
+        for key in ["ld", "rd", "col", "startijkl"]:
+          b = self.int_to_le_bytes(d[key])
+          f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
+  # 読み込み関数（.binロード）
+  def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
+    constellations: List[Dict[str, int]] = []
+    with open(fname, "rb") as f:
+      while True:
+        raw=f.read(16)
+        if len(raw)<16:
+          break
+        ld         = self.read_uint32_le(raw[0:4])
+        rd         = self.read_uint32_le(raw[4:8])
+        col        = self.read_uint32_le(raw[8:12])
+        startijkl  = self.read_uint32_le(raw[12:16])
+        constellations.append({
+          "ld": ld, "rd": rd, "col": col,
+          "startijkl": startijkl, "solutions": 0
+        })
+    return constellations
+  # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
+  def validate_bin_file(self,fname: str) -> bool:
+   try:
+     with open(fname, "rb") as f:
+       f.seek(0, 2)  # ファイル末尾に移動
+       size = f.tell()
+     return size % 16 == 0
+   except:
+     return False
+  # キャッシュ付きラッパー関数（.bin）
+  def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
+    fname = f"constellations_N{N}_{preset_queens}.bin"
+    if self.file_exists(fname):
+      try:
+        constellations = self.load_constellations_bin(fname)
+        if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
+          return constellations
+        else:
+          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      except Exception as e:
+        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    constellations: List[Dict[str, int]] = []
+    self.gen_constellations(ijkl_list, constellations, N, preset_queens)
+    self.save_constellations_bin(fname, constellations)
+    return constellations
+  # キャッシュ付きラッパー関数（.txt）
+  def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
+    # N と preset_queens に基づいて一意のファイル名を構成
+    fname = f"constellations_N{N}_{preset_queens}.txt"
+    # ファイルが存在すれば即読み込み
+    # if self.file_exists(fname):
+    #     return self.load_constellations_txt(fname)
+    # ファイルが存在すれば読み込むが、破損チェックも行う
+    if self.file_exists(fname):
+      try:
+        constellations = self.load_constellations_txt(fname)
+        if self.validate_constellation_list(constellations):
+          return constellations
+        else:
+          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      except Exception as e:
+        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    # ファイルがなければ生成・保存
+    # gen_constellations() により星座を生成
+    # save_constellations_txt() でファイルに保存
+    # 返り値として constellations リストを返す
+    constellations: List[Dict[str, int]] = []
+    self.gen_constellations(ijkl_list, constellations, N, preset_queens)
+    self.save_constellations_txt(fname, constellations)
+    return constellations
+  #-------------------------
+  # 2. サブコンステレーション生成にtuple keyでキャッシュ
+  # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
+  #---------------------------------
+  # def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[StateKey]) -> None:
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
+    # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    # キャッシュの本体をdictかsetでグローバル/クラス変数に
+    # if not hasattr(self, "subconst_cache"):
+    #   self.subconst_cache = {}
+    # subconst_cache = self.subconst_cache
+    if key in self.subconst_cache:
+      # 以前に同じ状態で生成済み → 何もしない（または再利用）
+      return
+    # 新規実行（従来通りset_pre_queensの本体処理へ）
+    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+    self.subconst_cache[key] = True  # マークだけでOK
+
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
@@ -1152,13 +1036,15 @@ class NQueens14:
       LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
       counter=[0] # サブコンステレーションを生成
       #-------------------------
-      visited:set[int]=set()
+      # visited:Set[StateKey]=set()
+      visited:Set[int]=set()
       #-------------------------
       # self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
       list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
+
   #-----------------
   # 関数プロトタイプ
   #-----------------
@@ -2055,7 +1941,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-class NQueens14_constellations():
+class NQueens15_constellations():
   def _bit_total(self, size: int) -> int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask = (1 << size) - 1
@@ -2088,14 +1974,17 @@ class NQueens14_constellations():
         continue
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
-      NQ=NQueens14()
-      #--------------------------
-      # codon では動かないので以下を切り替える
-      # pickleの最適化は使わない（あきらめる）
+      NQ=NQueens15()
+      #---------------------------------
+      # 星座リストそのものをキャッシュ
+      #---------------------------------
+      # キャッシュを使わない
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      #
-      # codonでpickleを使う（うごかない）
-      # constellations = NQ.load_constellations(size,preset_queens)
+      # キャッシュを使う、キャッシュの整合性もチェック
+      # -- txt
+      # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
+      # -- bin
+      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
@@ -2103,4 +1992,4 @@ class NQueens14_constellations():
       text=str(time_elapsed)[:-3]
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
 if __name__=="__main__":
-  NQueens14_constellations().main()
+  NQueens15_constellations().main()
