@@ -180,7 +180,114 @@ ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
 としてキャッシュ経由で Jasmin 変換しています
 """
 
+"""
+✅[Opt-21] 180°重複チェックの二重化
+check_rotations() は 90/180/270°すべて見ていますが、奇数 N の中央列ブロックで check_rotations(...) と
+rot180_in_set(...) を両方呼んでいますね。ここは rot180 が 重複なので、check_rotations(...)
+のみでOK（微小ですが内包表記が軽くなります）。
 
+# 修正前（中央列ブロック）
+ijkl_list.update(
+    self.to_ijkl(i, j, center, l)
+    for l in range(center + 1, N - 1)
+    for i in range(center + 1, N - 1)
+    if i != (N - 1) - l
+    for j in range(N - center - 2, 0, -1)
+    if j != i and j != l
+    if not self.check_rotations(ijkl_list, i, j, center, l, N)
+    if not self.rot180_in_set(ijkl_list, i, j, center, l, N)  # ←これを削除
+)
+
+# 修正後（中央列ブロック）
+ijkl_list.update(
+    self.to_ijkl(i, j, center, l)
+    for l in range(center + 1, N - 1)
+    for i in range(center + 1, N - 1)
+    if i != (N - 1) - l
+    for j in range(N - center - 2, 0, -1)
+    if j != i and j != l
+    if not self.check_rotations(ijkl_list, i, j, center, l, N)
+)
+"""
+
+"""
+✅[Opt-22] visited の粒度
+visited を星座ごとに新規 set() にしているので、メモリ爆発を回避できています。ハッシュに ld, rd, col, row, queens, k,
+l, LD, RD, N まで混ぜているのも衝突耐性◯。
+  gen_constellations() の各スタート（星座）ごとに
+  visited: Set[StateKey] = set() を新規作成
+  StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を追加・照合
+  という構成なので、
+  visited のスコープが星座単位 → メモリ増大を回避できている
+  衝突耐性は ld/rd/col/LD/RD の**ビット集合＋行インデックスやカウンタ（row/queens）＋分岐（k/l）**まで含むので十分に高い
+
+  gen_constellations() の各スタート（星座）ごとに
+  visited: Set[StateKey] = set() を新規作成
+  StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を追加・照合
+  という構成なので、visited のスコープが星座単位 → メモリ増大を回避できている
+  衝突耐性は ld/rd/col/LD/RD の**ビット集合＋行インデックスやカウンタ（row/queens）＋分岐（k/l）**まで含むので十分に高いでOKです。
+
+  細かい改善ポイント（任意）：
+  N と preset_queens は探索中は一定なので、キーから外しても挙動は変わりません（キーが少し短くなります）。もちろん入れたままでも正しいです。
+  もし将来 state_hash() に切り替えるときも、visited を星座ごとに new にする方針はそのまま維持してください（グローバルにしない）。
+"""
+
+"""
+✅[Opt-23] ビット演算のインライン化・board_mask の上位での共有・**1ビット抽出 bit = x &
+-x**など、要所は押さえられています。
+cnt を星座ごとにローカルで完結→solutions に掛け算（symmetry()）という流れもキャッシュに優しい設計。
+これ以上を狙うなら、「星座ごと分割の並列度を広げる」か「gen_constellations の ijkl_list.update(...)
+での回転重複除去を最小限に（=set操作の負荷を減らす）」の二択ですが、現状の速度を見る限り十分実用的です。
+
+  いまの実装は
+  ビット演算の徹底（bit = x & -x／board_maskの共有／blocked→next_freeの短絡判定）
+  cnt を星座ローカルで完結→最後に symmetry() を掛けるフロー
+  visited を星座ごとに分離
+  など、ボトルネックをしっかり押さえられていて実用速度も十分です。
+  さらに“やるなら”の小粒アイデア（任意）だけ置いておきます：
+  symmetry(ijkl, N) の結果を小さな dict でメモ化（星座件数分の呼び出しを削減）。
+  gen_constellations での set 操作を減らしたい場合は、候補を一旦 list に溜めて最後に
+  （i）jasmin 変換 →
+  （ii）set に流し込み（重複除去）
+  という“1回だけの set 化”に寄せる（ただし回転除去の粒度は保つ）。
+  並列度をもう少しだけ広げるなら、exec_solutions の @par は維持しつつ、constellations を大きめのチャンクに分割してワーカーに渡す（1件ずつよりスレッド起動回数が減るのでスケジューリング負荷が下がることがあります）。
+  無理にいじるより、現状のバランス（読みやすさ×速度）を維持で十分だと思います。
+"""
+
+"""
+✅[Opt-24]“先読み空き” の条件
+先読み関数 _has_future_space() を使った
+if next_free and ((row >= endmark-1) or _has_future_space(...)):
+の形は、**「ゴール直前は先読み不要」**という意図に合っていて良い感じ。境界で row+1 >= endmark か row >= endmark-1
+を使い分けている箇所も一貫しています。
+
+  各再帰で
+  next_free = board_mask & ~blocked
+  if next_free and ((row >= endmark-1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+  （1行進む再帰は row+1 >= endmark／2行進む再帰は row+2 >= endmark などに合わせて判定）
+  という形になっており、
+  ゴール直前は先読み不要（短絡評価で _has_future_space を呼ばない）
+  それ以外は**“1行先に置ける可能性が1ビットでもあるか”**の軽量チェックでムダ分岐を削減
+  がきれいに機能しています。
+
+  軽い補足（任意）：
+  「+1 進む」「+2 進む」系で row+Δ >= endmark の Δ を必ず合わせる（すでに合わせてありますが、この一貫性が重要）。
+  ループ先頭で if not next_free: continue の早期スキップを入れるのも読みやすさ的に○（実測差は小さいことが多いです）。
+  _has_future_space 内の式は現在の実装（board_mask & ~(((next_ld<<1)|(next_rd>>1)|next_col)) != 0）で十分速いです。
+  総じて、境界条件と短絡評価の使い方が意図に合っており、問題ありません。
+"""
+##------------------------------------------------------------------------
+# 以下は対応不要、または対応できない一般的なキャッシュ対応
+##------------------------------------------------------------------------
+"""
+❎ 未対応 並列とキャッシュの整合
+@par は exec_solutions の星座単位で独立になっているので、インスタンス属性のキャッシュは
+生成段階（gen_constellations）で完結しており競合しません。jasmin_cache・subconst_cache を
+インスタンス属性にしたのは正解。
+
+  結論：今の実装（constellation → SQ＊の深い再帰、盤面は bitmask だけで保持）では “途中段階の部分対称除去”
+  は基本的に入れないほうが安全 です。入れるなら設計を少し変える必要があります。
+"""
 
 """
 ❎ 未対応 1行目以外の部分対称除去
@@ -251,91 +358,6 @@ def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
   が効いているので、汎用の violate_macro_patterns を後付けする必要性は低めです。
 """
 
-"""
-1. 関数内の最適化
-def SQBjlBklBjrB(self, ld:int, rd:int, col:int, row:int, free:int,jmark:int, endmark:int, mark1:int, mark2:int, N:int) -> int:
-    N1:int = N - 1
-    # ★ 追加：内側N-2列のマスク（コーナー除去前提）
-    board_mask:int = (1 << (N - 2)) - 1
-    avail = free
-    total = 0
-    if row == N1 - jmark:
-        rd |= 1 << N1
-        # avail の列は内側N-2列しか持たないので、1<<N1 は範囲外 → 下の AND で自然に落ちます
-        # avail &= ~(1 << N1)  # ← 実質 no-op なので不要
-        # ここも ~ の後に board_mask を適用
-        next_free = board_mask&~((ld << 1) | (rd >> 1) | col)
-        if next_free:
-            total += self.SQBklBjrB(ld, rd, col, row, free, jmark, endmark, mark1, mark2, N)
-        return total
-    while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
-        # ここも ~ の後に board_mask を適用
-        next_free:int = board_mask&~(
-            ((ld | bit) << 1) | ((rd | bit) >> 1) | (col | bit))
-        if next_free:
-            total += self.SQBjlBklBjrB(
-                (ld | bit) << 1, (rd | bit) >> 1, col | bit,
-                row + 1, next_free, jmark, endmark, mark1, mark2, N
-            )
-    return total
-
-補足（重要）
-avail &= ~(1 << N1) は実質 no-op
-avail は「内側 N-2 列」のビット集合、1 << (N-1) はその範囲外です。
-ここで列を潰したい意図なら、内側インデックス系でビット位置を計算してください（例：左端を 0、右端を N-3 とするなど）。
-ただし、board_mask を使っている限り、範囲外ビットは自然に落ちるため、通常はこの行は不要です。
-
-もし「全 N 列」を使う設計なら
-board_mask = (1 << N) - 1 を使い、コーナー列は col 側で事前に埋める（あなたの exec_solutions で既に col |= ~small_mask している方式）に統一してください。いずれにせよ next_free = board_mask&~(...) の形を守るのが肝です。
-
-
-2.すべての SQ* の関数内で定義されている board_mask:int=(1<<(N-2))-1 を exec_solutions() で一度だけ定義してすべての SQ* にパラメータで渡す
-3.重要：free ではなく next_free を渡す
-行 1083 で次の関数へ渡しているのが free になっていますが、直前で rd を更新し、next_free を計算しています。
-ここは free ではなく next_free を渡すべきです。でないと、更新後の占有状態が反映されません。
-
-- total+=self.SQBlkBjrB(ld,rd,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-+ total+=self.SQBlkBjrB(ld,rd,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-
-4.一時変数を使って再計算を行わない
-next_ld,next_rd,next_col = (ld|bit)<<1,(rd|bit)>>1,col|bit
-next_free = board_mask & ~(((ld|bit)<<1)|((rd|bit)>>1)|(col|bit)) [& ((1<<N)-1)]
-if next_free and (row+1>=endmark or ~((next_ld<<1)|(next_rd>>1)|next_col)>0):
-      total += self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,...)
-↓
-blocked:int=next_ld|next_rd|next_col
-next_free = board_mask & ~blocked
-if next_free and (row + 1 >= endmark or (board_mask &~blocked)):
-      total += self.SQd1B(next_ld,next_rd,next_col, row + 1, next_free, ...)
-
-"""
-
-"""
-1. 並列とキャッシュの整合
-@par は exec_solutions の星座単位で独立になっているので、インスタンス属性のキャッシュは 生成段階（gen_constellations）で完結しており競合しません。jasmin_cache・subconst_cache を インスタンス属性にしたのは正解。
-
-2. 180°重複チェックの二重化
-check_rotations() は 90/180/270°すべて見ていますが、奇数 N の中央列ブロックで check_rotations(...) と rot180_in_set(...) を両方呼んでいますね。ここは rot180 が 重複なので、check_rotations(...) のみでOK（微小ですが内包表記が軽くなります）。
-
-3. visited の粒度
-visited を星座ごとに新規 set() にしているので、メモリ爆発を回避できています。ハッシュに ld, rd, col, row, queens, k, l, LD, RD, N まで混ぜているのも衝突耐性◯。
-
-4. “先読み空き” の条件
-先読み関数 _has_future_space() を使った
-if next_free and ((row >= endmark-1) or _has_future_space(...)):
-の形は、**「ゴール直前は先読み不要」**という意図に合っていて良い感じ。境界で row+1 >= endmark か row >= endmark-1 を使い分けている箇所も一貫しています。
-
-5. Tuple の import 確認
-ファイル先頭で from typing import List, Set, Dict になっていました。__init__ の型注釈で Tuple[...] を使っているので、Tuple も import しておくと Codon の型検査で安全です：
-from typing import List, Set, Dict, Tuple
-（すでにビルドが通っているならOKですが、保守のために念のため。）
-
-すでにビット演算のインライン化・board_mask の上位での共有・**1ビット抽出 bit = x & -x**など、要所は押さえられています。cnt を星座ごとにローカルで完結→solutions に掛け算（symmetry()）という流れもキャッシュに優しい設計。
-これ以上を狙うなら、「星座ごと分割の並列度を広げる」か「gen_constellations の ijkl_list.update(...) での回転重複除去を最小限に（=set操作の負荷を減らす）」の二択ですが、現状の速度を見る限り十分実用的です。
-
-"""
 
 
 """"
@@ -376,7 +398,8 @@ from datetime import datetime
 
 # 64bit マスク（Zobrist用途）
 MASK64: int = (1 << 64) - 1
-StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
+# StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
+# StateKey = Tuple[int, int, int, int, int, int, int, int, int]
 
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -387,7 +410,7 @@ class NQueens15:
   def __init__(self)->None:
     # StateKey
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
-    self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
+    self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int], bool ] = {}
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
     # 追加：Zobrist テーブルキャッシュ（N ごと）
@@ -464,8 +487,8 @@ class NQueens15:
   def rot180(self,ijkl:int,N:int)->int:
       return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
 
-  def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+  # def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
+  #     return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
 
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
@@ -671,7 +694,7 @@ class NQueens15:
     # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
     # set の比較・保持も重く、メモリも一番食います。
     # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
-    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
+    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD)
     # if key in visited:
     #     return
     # visited.add(key)
@@ -988,9 +1011,10 @@ class NQueens15:
   # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
   #---------------------------------
   # def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[StateKey]) -> None:
-  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
-    # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-    key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
+    # N,preset_queensは不要
+    key = (ld, rd, col, k, l, row, queens, LD, RD)
+    # key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD)
     # キャッシュの本体をdictかsetでグローバル/クラス変数に
     # if not hasattr(self, "subconst_cache"):
     #   self.subconst_cache = {}
@@ -1016,7 +1040,7 @@ class NQueens15:
         if j != i and j != l
         if not self.check_rotations(ijkl_list, i, j, center, l, N)
         # 180°回転盤面がセットに含まれていない
-        if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
+        # if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
       )
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
 
@@ -1979,12 +2003,12 @@ class NQueens15_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
