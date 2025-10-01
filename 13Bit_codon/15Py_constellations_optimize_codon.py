@@ -3,7 +3,35 @@
 # -*- coding: utf-8 -*-
 
 """
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
 コンステレーション版 キャッシュ最適化２ Ｎクイーン
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.079
+ 7:           40            0         0:00:00.001
+ 8:           92            0         0:00:00.001
+ 9:          352            0         0:00:00.001
+10:          724            0         0:00:00.002
+11:         2680            0         0:00:00.102
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.005
+14:       365596            0         0:00:00.011
+15:      2279184            0         0:00:00.035
+16:     14772512            0         0:00:00.078
+17:     95815104            0         0:00:00.436
+18:    666090624            0         0:00:02.961
+19:   4968057848            0         0:00:22.049
+20:  39029188884            0         0:02:52.430
+21: 314666222712            0         0:24:25.554
+
+top - 18:49:55 up 34 min,  4 users,  load average: 63.11, 55.89, 50.72
+Tasks: 564 total,   2 running, 562 sleeping,   0 stopped,   0 zombie
+%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem : 257899.4 total, 256358.2 free,   1106.7 used,    434.5 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255456.4 avail Mem
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   5634 suzuki    20   0   13.3g  49464   7384 R  6399   0.0   1898:11 15Py_constellat
 
 ✅[Opt-07] Zobrist Hash による transposition / visited 状態の高速検出
 ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
