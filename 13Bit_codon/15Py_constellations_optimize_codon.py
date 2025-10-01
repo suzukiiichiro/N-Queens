@@ -2189,7 +2189,7 @@ class NQueens15_constellations():
     return total
   def main(self)->None:
     nmin:int=5
-    nmax:int=18
+    nmax:int=28
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
