@@ -3,6 +3,17 @@
 # -*- coding: utf-8 -*-
 
 """
+   ,     #_
+   ~\_  ####_        Amazon Linux 2023
+  ~~  \_#####\
+  ~~     \###|
+  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
 amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
 コンステレーション版 キャッシュ最適化２ Ｎクイーン
@@ -24,14 +35,20 @@ $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constella
 19:   4968057848            0         0:00:22.049
 20:  39029188884            0         0:02:52.430
 21: 314666222712            0         0:24:25.554
+22:2691008701644            0         3:29:33.971
 
-top - 18:49:55 up 34 min,  4 users,  load average: 63.11, 55.89, 50.72
-Tasks: 564 total,   2 running, 562 sleeping,   0 stopped,   0 zombie
+top - 11:02:30 up 16:46,  4 users,  load average: 64.17, 64.13, 64.10
+Tasks: 566 total,   2 running, 564 sleeping,   0 stopped,   0 zombie
 %Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-MiB Mem : 257899.4 total, 256358.2 free,   1106.7 used,    434.5 buff/cache
-MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255456.4 avail Mem
+MiB Mem : 257899.4 total, 256292.0 free,   1156.5 used,    451.0 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255398.4 avail Mem
+
     PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-   5634 suzuki    20   0   13.3g  49464   7384 R  6399   0.0   1898:11 15Py_constellat
+   5634 suzuki    20   0   13.3g  58440   7384 R  6399   0.0  63650:42 15Py_constellat
+  42987 suzuki    20   0  224032   4176   2956 R   0.7   0.0   0:00.09 top
+     16 root      20   0       0      0      0 I   0.3   0.0   0:11.65 rcu_preempt
+      1 root      20   0  171244  16904  10532 S   0.0   0.0   0:06.11 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:00.06 kthreadd
 
 GPU/CUDA
 10Bit_CUDA/01CUDA_Bit_Symmetry.cu
