@@ -919,11 +919,19 @@ class NQueens15:
 
 
   def dfs(self,funcname:str,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:  
+   N1:int=N-1
+   N2:int=N-2
+   N3:int=N-3
+   N4:int=N-4
+   avail:int=free
+   total:int=0
+   _extra_block_for_row=self._extra_block_for_row
+   _should_go_plus1=self._should_go_plus1
    if funcname=="SQBkBlBjrB":
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -957,8 +965,8 @@ class NQueens15:
       #     total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQBlBjrB": 
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -992,10 +1000,10 @@ class NQueens15:
       #     total+=self.SQBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQBjrB":
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==jmark:
       avail&=~1
       ld|=1
@@ -1048,10 +1056,10 @@ class NQueens15:
         total+=self.dfs("SQBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQB": 
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==endmark:
       return 1
     while avail:
@@ -1080,10 +1088,10 @@ class NQueens15:
         total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQBklBjrB": 
-    N4:int=N-4
+    # N4:int=N-4
     blockK:int=1<<N4
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1117,8 +1125,8 @@ class NQueens15:
       #     total+=self.SQBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQBlBkBjrB": 
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1152,10 +1160,10 @@ class NQueens15:
       #     total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQBkBjrB": 
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1189,10 +1197,10 @@ class NQueens15:
       #     total+=self.SQBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total   
    elif funcname=="SQBlkBjrB": 
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1226,11 +1234,11 @@ class NQueens15:
       #     total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQBjlBkBlBjrB": 
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # N1:int=N-1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==N1-jmark:
       rd|=1<<N1
       next_ld:int=ld<<1
@@ -1266,11 +1274,11 @@ class NQueens15:
         total+=self.dfs("SQBjlBkBlBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQBjlBklBjrB":   
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # N1:int=N-1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==N1-jmark:
       rd|=1<<N1
       next_ld:int=ld<<1
@@ -1306,11 +1314,11 @@ class NQueens15:
         total+=self.dfs("SQBjlBklBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQBjlBlBkBjrB":   
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # N1:int=N-1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==N1-jmark:
       rd|=1<<N1
       next_ld:int=ld<<1
@@ -1346,11 +1354,11 @@ class NQueens15:
         total+=self.dfs("SQBjlBlBkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQBjlBlkBjrB":  
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # N1:int=N-1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     if row==N1-jmark:
       rd|=1<<N1
       next_ld:int=ld<<1
@@ -1386,10 +1394,10 @@ class NQueens15:
         total+=self.dfs("SQBjlBlkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQd2BkBlB":  
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1423,8 +1431,8 @@ class NQueens15:
       #     total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQd2BlB":     
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1458,13 +1466,13 @@ class NQueens15:
       #     total+=self.SQd2BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQd2B":  
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     if row==endmark:
       if (avail&(~1))>0:
         return 1
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1491,10 +1499,10 @@ class NQueens15:
         total+=self.dfs("SQd2B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQd2BklB": 
-    N4:int=N-4
+    # N4:int=N-4
     blockK:int=1<<N4
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1528,8 +1536,8 @@ class NQueens15:
       #     total+=self.SQd2BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total    
    elif funcname=="SQd2BlBkB": 
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1563,10 +1571,10 @@ class NQueens15:
       #     total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQd2BkB":  
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1600,10 +1608,10 @@ class NQueens15:
       #     total+=self.SQd2BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQd2BlkB":    
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1637,10 +1645,10 @@ class NQueens15:
       #     total+=self.SQd2BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total    
    elif funcname=="SQd1BkBlB":
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     # _extra_block_for_row=self._extra_block_for_row
     # _should_go_plus1=self._should_go_plus1
     while row==mark1 and avail:
@@ -1679,8 +1687,8 @@ class NQueens15:
       #     total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQd1BlB":  
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1717,10 +1725,10 @@ class NQueens15:
    elif funcname=="SQd1B":    
     if row==endmark:
       return 1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # avail:int=free
+    # total:int=0
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1747,10 +1755,10 @@ class NQueens15:
         total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQd1BklB": 
-    N4:int=N-4
+    # N4:int=N-4
     blockK:int=1<<N4
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1784,8 +1792,8 @@ class NQueens15:
       #     total+=self.SQd1BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
    elif funcname=="SQd1BlBkB": 
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1819,10 +1827,10 @@ class NQueens15:
       #     total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total  
    elif funcname=="SQd1BlkB":   
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1856,10 +1864,10 @@ class NQueens15:
       #     total+=self.SQd1BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total 
    elif funcname=="SQd1BkB":  
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark2 and avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1895,10 +1903,10 @@ class NQueens15:
    elif funcname=="SQd0B":     
     if row==endmark:
       return 1
-    total:int=0
-    avail:int=free
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
+    # total:int=0
+    # avail:int=free
+    # _extra_block_for_row=self._extra_block_for_row
+    # _should_go_plus1=self._should_go_plus1
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -1925,10 +1933,10 @@ class NQueens15:
         total+=self.dfs("SQd0B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total     
    elif funcname=="SQd0BkB":  
-    N3:int=N-3
+    # N3:int=N-3
     blockK:int=1<<N3
-    avail:int=free
-    total:int=0
+    # avail:int=free
+    # total:int=0
     while row==mark1 and avail:
       bit:int=avail&-avail
       avail&=avail-1
