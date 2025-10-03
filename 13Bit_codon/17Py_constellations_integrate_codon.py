@@ -3380,6 +3380,9 @@ class NQueens15_constellations():
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      # print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      expected: List[int] = [0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
+      status: str = "ok" if expected[size]==total else f"ng({total}!={expected[size]})"
+      print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
 if __name__=="__main__":
   NQueens15_constellations().main()
