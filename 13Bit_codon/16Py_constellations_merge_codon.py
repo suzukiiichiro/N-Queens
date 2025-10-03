@@ -3,6 +3,10 @@
 # -*- coding: utf-8 -*-
 
 """
+15Pyをマージした。
+SQB..のバックトラック用関数をdfs関数に１本化した。
+exec_solutionsの関数の呼び出しをdfsに変更した。
+
    ,     #_
    ~\_  ####_        Amazon Linux 2023
   ~~  \_#####\
@@ -15,7 +19,7 @@
        _/m/'
 
 amazon AWS m4.16xlarge x 1
-$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+$ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
 コンステレーション版 キャッシュ最適化２ Ｎクイーン
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
@@ -462,7 +466,7 @@ StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
 # import pypyjit
 # pypyjit.set_param('max_unroll_recursion=-1')
 #
-class NQueens15:
+class NQueens16:
   def __init__(self)->None:
     # StateKey
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
@@ -3319,7 +3323,7 @@ class NQueens15:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 """    
-class NQueens15_constellations():
+class NQueens16_constellations():
   def _bit_total(self, size: int) -> int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask = (1 << size) - 1
@@ -3338,7 +3342,7 @@ class NQueens15_constellations():
     return total
   def main(self)->None:
     nmin:int=5
-    nmax:int=28
+    nmax:int=17
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -3352,7 +3356,7 @@ class NQueens15_constellations():
         continue
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
-      NQ=NQueens15()
+      NQ=NQueens16()
       #---------------------------------
       # 星座リストそのものをキャッシュ
       #---------------------------------
@@ -3368,6 +3372,9 @@ class NQueens15_constellations():
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      # print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+      expected: List[int] = [0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
+      status: str = "ok" if expected[size]==total else f"ng({total}!={expected[size]})"
+      print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
 if __name__=="__main__":
-  NQueens15_constellations().main()
+  NQueens16_constellations().main()
