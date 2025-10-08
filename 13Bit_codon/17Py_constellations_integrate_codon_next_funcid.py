@@ -1105,6 +1105,8 @@ class NQueens17:
      _extra_block_for_row = self._extra_block_for_row
      _should_go_plus1 = self._should_go_plus1
      ptn = self.funcptn[functionid]
+     avail_flag = self.availptn[functionid]
+     nxt = self.next_funcid[functionid]
  
      # ======================
      # P1/P2/P3 を統合
@@ -1133,7 +1135,7 @@ class NQueens17:
             next_free: int = board_mask & ~blocked
             if next_free:
                 total += self.dfs(
-                    self.next_funcid[functionid],
+                    nxt,
                     next_ld | blockl, next_rd | blockK, next_col, row + step,
                     next_free, jmark, endmark, mark1, mark2, board_mask, N
                 )
@@ -1156,7 +1158,7 @@ class NQueens17:
                  extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
                  if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd,
                                      next_col, board_mask, extra):
-                     total += self.dfs(self.next_funcid[functionid],
+                     total += self.dfs(nxt,
                                        next_ld , next_rd , next_col, row_next,
                                        next_free, jmark, endmark, mark1, mark2, board_mask, N)
              return total  # ここで確定終了
@@ -1173,7 +1175,7 @@ class NQueens17:
              blocked: int = next_ld | next_rd | next_col 
              next_free = board_mask & ~blocked
              if next_free:
-                 total += self.dfs(self.next_funcid[functionid],
+                 total += self.dfs(nxt,
                                    next_ld , next_rd , next_col, row,
                                    next_free, jmark, endmark, mark1, mark2, board_mask, N)
              return total  # ここで確定終了
@@ -1201,7 +1203,7 @@ class NQueens17:
          next_free: int = board_mask & ~blocked
          row_next: int = row + 1
  
-         if self.availptn[functionid] == 0:
+         if avail_flag == 0:
              if next_free:
                  total += self.dfs(functionid, next_ld, next_rd, next_col, row_next,
                                    next_free, jmark, endmark, mark1, mark2, board_mask, N)
