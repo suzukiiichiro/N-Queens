@@ -1097,11 +1097,11 @@ class NQueens17:
      # 事前計算テーブル
      _extra_block_for_row = self._extra_block_for_row
      _should_go_plus1 = self._should_go_plus1
-     _dfs=self.dfs
-     ptn = self.funcptn[functionid]
-     avail_flag = self.availptn[functionid]
-     nxt = self.next_funcid[functionid]
-     #print("ptn:"+str(ptn))
+     _dfs = self.dfs
+     ptn: int = self.funcptn[functionid]
+     avail_flag: int = self.availptn[functionid]
+     nxt: int = self.next_funcid[functionid]
+     # print("ptn:"+str(ptn))
      # ======================
      # P6: endmark 基底
      # ======================
@@ -1121,8 +1121,8 @@ class NQueens17:
              while avail:
                  bit: int = avail & -avail
                  avail &= avail - 1
-                 if _should_go_plus1(board_mask & ~((ld | bit) << 1 | (rd|bit)>>1 | col|bit), row+1, endmark, (ld | bit) << 1, (rd|bit)>>1, col|bit, board_mask, _extra_block_for_row(row+1, mark1, mark2, jmark, N)):
-                     total += _dfs(nxt, (ld | bit) << 1, (rd|bit)>>1 , col|bit, row+1, board_mask & ~((ld | bit) << 1 | (rd|bit)>>1 | col|bit), jmark, endmark, mark1, mark2, board_mask, N)
+                 if _should_go_plus1(board_mask & ~((ld | bit) << 1 | (rd | bit) >> 1 | col | bit), row+1,endmark, (ld | bit) << 1, (rd | bit) >> 1, col | bit, board_mask, _extra_block_for_row(row+1, mark1, mark2, jmark, N)):
+                     total += _dfs(nxt, (ld | bit) << 1, (rd | bit) >> 1, col | bit, row+1, board_mask & ~( (ld | bit) << 1 | (rd | bit) >> 1 | col | bit), jmark, endmark, mark1, mark2, board_mask, N)
              return total  # ここで確定終了
      # ======================
      # P1/P2/P3 を統合
@@ -1131,21 +1131,21 @@ class NQueens17:
      #  P3: ptn==2, row==mark1, step=3, add1=0
      # ======================
      elif ptn in (0, 1, 2):
-       blockK = self.blockK_by_funcid[functionid]
-       blockl = self.blockl_by_funcid[functionid]
+       blockK: int = self.blockK_by_funcid[functionid]
+       blockl: int = self.blockl_by_funcid[functionid]
        # 進む行数
-       step = 2 if ptn in (0, 1) else 3
+       step: int = 2 if ptn in (0, 1) else 3
        # 追加 OR（P2 かつ FID_SQd1BlB のときだけ 1、それ以外は 0）
-       add1 = 1 if (ptn == 1 and functionid == FID_SQd1BlB) else 0
+       add1: int = 1 if (ptn == 1 and functionid == FID_SQd1BlB) else 0
        # どちらの mark で回すか
-       at_mark = (row == mark1) if ptn in (0, 2) else (row == mark2)
+       at_mark: bool = (row == mark1) if ptn in (0, 2) else (row == mark2)
        if at_mark and avail:
          while avail:
             bit: int = avail & -avail
             avail &= avail - 1
-            next_free: int = board_mask & ~(((ld | bit) << step) | add1 | (rd | bit) >> step | col|bit | blockK | blockl)
+            next_free: int = board_mask & ~(((ld | bit) << step) | add1 | ( rd | bit) >> step | col | bit | blockK | blockl)
             if next_free:
-                total += _dfs( nxt, (((ld | bit) << step)| add1) | blockl, (rd | bit) >> step | blockK,col|bit, row + step, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+                total += _dfs(nxt, (((ld | bit) << step) | add1) | blockl, (rd | bit) >> step | blockK,col | bit, row + step, next_free, jmark, endmark, mark1, mark2, board_mask, N)
      # ======================
      # P5: N1 - jmark 入口（行は据え置き）
      # ======================
@@ -1153,9 +1153,9 @@ class NQueens17:
          N1: int = N - 1
          if row == N1 - jmark:
              rd |= 1 << N1
-             next_free = board_mask & ~(ld<<1|rd>>1|col)
+             next_free: int = board_mask & ~(ld << 1 | rd >> 1 | col)
              if next_free:
-                 total += _dfs(nxt, ld<<1, rd>>1 , col, row, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+                 total += _dfs(nxt, ld << 1, rd >> 1, col, row, next_free, jmark, endmark, mark1, mark2, board_mask, N)
              return total  # ここで確定終了
      # ---------------------------------
      # 共通の「+1 前進」処理（末尾）
@@ -1163,13 +1163,14 @@ class NQueens17:
      while avail:
          bit: int = avail & -avail
          avail &= avail - 1
-         next_free: int = board_mask & ~((ld|bit)<<1 | (rd|bit)>>1 | col|bit)
+         next_free: int = board_mask & ~(
+             (ld | bit) << 1 | (rd | bit) >> 1 | col | bit)
          if avail_flag == 0:
              if next_free:
-                 total += _dfs(functionid, (ld|bit)<<1, (rd|bit)>>1, col|bit, row+1, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+                 total += _dfs(functionid, (ld | bit) << 1, (rd | bit) >> 1, col | bit, row+1, next_free, jmark, endmark, mark1, mark2, board_mask, N)
          else:
-             if _should_go_plus1(next_free, row+1, endmark, (ld|bit)<<1, (rd|bit)>>1, col|bit, board_mask, _extra_block_for_row(row+1, mark1, mark2, jmark, N)):
-                 total += _dfs(functionid, (ld|bit)<<1, (rd|bit)>>1, col|bit, row+1, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+             if _should_go_plus1(next_free, row+1, endmark, (ld | bit) << 1, (rd | bit) >> 1, col | bit, board_mask, _extra_block_for_row(row+1, mark1, mark2, jmark, N)):
+                 total += _dfs(functionid, (ld | bit) << 1, (rd | bit) >> 1, col | bit, row+1, next_free, jmark, endmark, mark1, mark2, board_mask, N)
      return total
 
 
