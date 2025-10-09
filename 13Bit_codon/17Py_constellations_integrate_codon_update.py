@@ -1169,20 +1169,20 @@ class NQueens17:
      # ======================
      # P5: N1 - jmark 入口（行は据え置き）
      # ======================
-     #elif ptn == 4:  # P5
-     #    N1: int = N - 1
-     #    if row == N1 - jmark:
-     #        rd |= 1 << N1
-     #        next_ld: int = ld << 1
-     #        next_rd: int = rd >> 1
-     #        next_col: int = col
-     #        blocked: int = next_ld | next_rd | next_col 
-     #        next_free = board_mask & ~blocked
-     #        if next_free:
-     #            total += self.dfs(nxt,
-     #                              next_ld , next_rd , next_col, row,
-     #                              next_free, jmark, endmark, mark1, mark2, board_mask, N)
-     #        return total  # ここで確定終了
+     elif ptn == 4:  # P5
+         N1: int = N - 1
+         if row == N1 - jmark:
+             rd |= 1 << N1
+             next_ld: int = ld << 1
+             next_rd: int = rd >> 1
+             next_col: int = col
+             blocked: int = next_ld | next_rd | next_col 
+             next_free = board_mask & ~blocked
+             if next_free:
+                 total += self.dfs(nxt,
+                                   next_ld , next_rd , next_col, row,
+                                   next_free, jmark, endmark, mark1, mark2, board_mask, N)
+             return total  # ここで確定終了
  
      # ---------------------------------
      # 共通の「+1 前進」処理（末尾）
