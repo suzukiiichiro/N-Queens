@@ -12,7 +12,7 @@ if [ $# -lt 1 ]; then
 fi
 
 targetFile=$1
-echo "targetFile: $targetFile"
+# echo "targetFile: $targetFile"
 
 # パスの最後の要素だけ取り出し（例: src/foo.bar.py -> foo.bar.py）
 base=${targetFile##*/}
@@ -25,7 +25,7 @@ else
   execFile=${base%.*}
 fi
 
-echo "execFile: $execFile"
+# echo "execFile: $execFile"
 
 # ソースのあるディレクトリでビルド＆実行（出力名の混乱を避ける）
 srcdir=${targetFile%/*}
