@@ -9,5 +9,5 @@ a = [i for i in range(16)]
 b = [2*i for i in range(16)]
 c = [0 for _ in range(16)]
 
-hello(a, b, c, grid=1, block=16)
+hello(a, b, c, grid=1, block=1)
 print(c)
