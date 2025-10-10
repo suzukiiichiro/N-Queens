@@ -1114,76 +1114,79 @@ class NQueens17:
      
   def dfs(self, functionid: int, ld: int, rd: int, col: int, row: int, free: int,
          jmark: int, endmark: int, mark1: int, mark2: int, board_mask: int, N: int) -> int:
-     avail: int = free
-     total: int = 0
-     # 事前計算テーブル
-     _extra_block_for_row = self._extra_block_for_row
-     _should_go_plus1 = self._should_go_plus1
-     _dfs = self.dfs
-     _dfs_ptn_5=self.dfs_ptn_5
-     _set_queens=self.set_queens
-     ptn: int = self.funcptn[functionid]
-     avail_flag: int = self.availptn[functionid]
-     nxt: int = self.next_funcid[functionid]
-     # print("ptn:"+str(ptn))
-     # ======================
-     # P6: endmark 基底
-     # ======================
-     if ptn == 5:  # P6
-       if row == endmark:
-         return _dfs_ptn_5(functionid,avail)
-     # ======================
-     # P4: jmark 特殊（1列目禁止 & ld|=1）→ +1 進む
-     # ======================
-     elif ptn == 3:  # P4
-         if row == jmark:
-             avail &= ~1    # 列0禁止
-             ld |= 1        # 左斜線の最下位を立てる
-             blockK=0
-             blockl=0
-             step=1
-             add1=0
-             avail_flag=1
-             total=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,step,add1,blockK,blockl,nxt)
-             return total  # ここで確定終了
-     # ======================
-     # P1/P2/P3 を統合
-     #  P1: ptn==0, row==mark1, step=2, add1=0
-     #  P2: ptn==1, row==mark2, step=2, add1=(FID_SQd1BlB のとき1)
-     #  P3: ptn==2, row==mark1, step=3, add1=0
-     # ======================
-     elif ptn in (0, 1, 2):
-       blockK: int = self.blockK_by_funcid[functionid]
-       blockl: int = self.blockl_by_funcid[functionid]
-       # 進む行数
-       step: int = 2 if ptn in (0, 1) else 3
-       # 追加 OR（P2 かつ FID_SQd1BlB のときだけ 1、それ以外は 0）
-       add1: int = 1 if (ptn == 1 and functionid == FID_SQd1BlB) else 0
-       # どちらの mark で回すか
-       at_mark: bool = (row == mark1) if ptn in (0, 2) else (row == mark2)
-       avail_flag=0
-       if at_mark and avail:
-         total=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,step,add1,blockK,blockl,nxt)
-     # ======================
-     # P5: N1 - jmark 入口（行は据え置き）
-     # ======================
-     elif ptn == 4:  # P5
-         N1: int = N - 1
-         if row == N1 - jmark:
-             rd |= 1 << N1
-             next_free: int = board_mask & ~(ld << 1 | rd >> 1 | col)
-             if next_free:
-                 total += _dfs(nxt, ld << 1, rd >> 1, col, row, next_free, jmark, endmark, mark1, mark2, board_mask, N)
-             return total  # ここで確定終了
-     # ---------------------------------
-     # 共通の「+1 前進」処理（末尾）
-     # ---------------------------------
-     blockK=0
-     blockl=0
-     step=1
-     add1=0
-     total+=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,step,add1,blockK,blockl,functionid)
-     return total
+    avail: int = free
+    total: int = 0
+    # 事前計算テーブル
+    _extra_block_for_row = self._extra_block_for_row
+    _should_go_plus1 = self._should_go_plus1
+    _dfs = self.dfs
+    _dfs_ptn_5=self.dfs_ptn_5
+    _set_queens=self.set_queens
+    ptn: int = self.funcptn[functionid]
+    avail_flag: int = self.availptn[functionid]
+    nxt: int = self.next_funcid[functionid]
+    # print("ptn:"+str(ptn))
+    # ======================
+    # P6: endmark 基底
+    # ======================
+    if ptn == 5:  # P6
+      if row == endmark:
+        # return _dfs_ptn_5(functionid,avail)
+        total= _dfs_ptn_5(functionid,avail)
+    elif ptn in (0, 1, 2):
+      #blockK: int = self.blockK_by_funcid[functionid]
+      #blockl: int = self.blockl_by_funcid[functionid]
+      #avail_flag=0
+      # 進む行数
+      step: int = 2 if ptn in (0, 1) else 3
+      # 追加 OR（P2 かつ FID_SQd1BlB のときだけ 1、それ以外は 0）
+      add1: int = 1 if (ptn == 1 and functionid == FID_SQd1BlB) else 0
+      # どちらの mark で回すか
+      at_mark: bool = (row == mark1) if ptn in (0, 2) else (row == mark2)
+      if at_mark and avail:
+        total=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,0,step,add1,self.blockK_by_funcid[functionid],self.blockl_by_funcid[functionid],nxt)
+    # ======================
+    # P4: jmark 特殊（1列目禁止 & ld|=1）→ +1 進む
+    # ======================
+    elif ptn == 3:  # P4
+      if row == jmark:
+        avail &= ~1    # 列0禁止
+        ld |= 1        # 左斜線の最下位を立てる
+        #blockK=0
+        #blockl=0
+        #step=1
+        #add1=0
+        #avail_flag=1
+        total=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,1,1,0,0,0,nxt)
+        # return total  # ここで確定終了
+    # ======================
+    # P1/P2/P3 を統合
+    #  P1: ptn==0, row==mark1, step=2, add1=0
+    #  P2: ptn==1, row==mark2, step=2, add1=(FID_SQd1BlB のとき1)
+    #  P3: ptn==2, row==mark1, step=3, add1=0
+    # ======================
+    # ======================
+    # P5: N1 - jmark 入口（行は据え置き）
+    # ======================
+    elif ptn == 4:  # P5
+        print("ptn4")
+        N1: int = N - 1
+        if row == N1 - jmark:
+            rd |= 1 << N1
+            next_free: int = board_mask & ~(ld << 1 | rd >> 1 | col)
+            if next_free:
+                total = _dfs(nxt, ld << 1, rd >> 1, col, row, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+            # return total  # ここで確定終了
+            
+    # ---------------------------------
+    # 共通の「+1 前進」処理（末尾）
+    # ---------------------------------
+    #blockK=0
+    #blockl=0
+    #step=1
+    #add1=0
+    total+=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,1,0,0,0,functionid)
+    return total
 
 
 
