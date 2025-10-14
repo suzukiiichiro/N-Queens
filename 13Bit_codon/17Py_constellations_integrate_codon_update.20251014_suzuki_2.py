@@ -1027,22 +1027,18 @@ class NQueens17:
 
   @staticmethod
   def _extra_block_for_row(row_next:int,mark1:int,mark2:int,jmark:int,N:int)->int:
-      extra=0
-      blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-      if row_next==mark1:
-          extra|=blockK
-      if row_next==mark2:
-          extra|=blockK
-      if row_next==(N-1-jmark):# jmark 系ありの関数だけ使う
-          extra|=(1<<(N-1))
-      return extra
+    extra=0
+    blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
+    if row_next==mark1: extra|=blockK
+    if row_next==mark2: extra|=blockK
+    # jmark 系ありの関数だけ使う
+    if row_next==(N-1-jmark): extra|=(1<<(N-1))
+    return extra
 
   def _should_go_plus1(self,next_free:int,row_next:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
-      if not next_free:
-          return False
-      if row_next>=endmark:
-          return True
-      return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
+    if not next_free: return False
+    if row_next>=endmark: return True
+    return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
 
   def set_queens_ptn_3(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,step:int,add1:int,nxt:int)->int:
     _extra_block_for_row=self._extra_block_for_row
@@ -1052,9 +1048,13 @@ class NQueens17:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
-      next_free: int = board_mask&~(((ld|bit)<<step)|add1|(rd|bit)>>step|col|bit)
-      if _should_go_plus1(next_free,row+1,endmark,(ld|bit)<<1,(rd|bit)>>1,col|bit,board_mask,_extra_block_for_row(row+1,mark1,mark2,jmark,N)):
-        total+=_dfs(nxt,(ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+      next_ld:int=(ld|bit)<<step|add1
+      next_rd:int=(rd|bit)>>step
+      next_col:int=col|bit
+      extra:int=_extra_block_for_row(row+1,mark1,mark2,jmark,N)
+      next_free: int = board_mask&~(next_ld|next_rd|next_col)
+      if _should_go_plus1(next_free,row+1,endmark,next_ld,next_rd,next_col,board_mask,extra):
+        total+=_dfs(nxt,next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 
   def set_queens_ptn_2(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,step:int,add1:int,blockK:int,blockl:int,nxt:int)->int:
@@ -1063,13 +1063,13 @@ class NQueens17:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
-      next_ld: int = ((ld | bit) << step) | add1
-      next_rd: int = (rd | bit) >> step
-      next_col: int = col | bit
-      blocked: int = next_ld | next_rd | next_col | blockK | blockl
-      next_free: int = board_mask & ~blocked
+      next_ld:int=((ld|bit)<<step)|add1
+      next_rd:int=(rd|bit)>>step
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col|blockK|blockl
+      next_free:int=board_mask&~blocked
       if next_free:
-        total+=_dfs(nxt,next_ld | blockl, next_rd | blockK, next_col, row + step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        total+=_dfs(nxt,next_ld|blockl,next_rd|blockK,next_col,row+step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 
   def set_queens_post(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,avail_flag:int,step:int,add1:int,nxt:int)->int:
@@ -1080,19 +1080,19 @@ class NQueens17:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
-      next_ld: int = (ld | bit) << 1
-      next_rd: int = (rd | bit) >> 1
-      next_col: int = col | bit
-      blocked: int = next_ld | next_rd | next_col
-      next_free: int = board_mask&~blocked
-      row_next: int = row + 1
+      next_ld:int=(ld|bit)<<1
+      next_rd:int=(rd|bit)>>1
+      next_col:int=col|bit
+      blocked:int=next_ld|next_rd|next_col
+      next_free:int=board_mask&~blocked
+      row_next:int=row+1
       if avail_flag==0:
         if next_free:
-           total+=_dfs(nxt,next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(nxt,next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       else:
         extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
         if _should_go_plus1(next_free,row+1,endmark,next_ld,next_rd,next_col,board_mask,extra):
-            total+=_dfs(nxt,next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(nxt,next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 
   def set_queens(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,avail_flag:int,step:int,add1:int,blockK:int,blockl:int,nxt:int)->int:
@@ -1103,13 +1103,17 @@ class NQueens17:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
-      next_free: int = board_mask&~(((ld|bit)<<step)|add1|(rd|bit)>>step|col|bit|blockK|blockl)
+      next_ld:int=((ld|bit)<<step)|add1
+      next_rd:int=(rd|bit)>>step
+      next_col:int=col|bit
+      next_free: int = board_mask&~(next_ld|next_rd|next_col|blockK|blockl)
+      extra:int=_extra_block_for_row(row+1,mark1,mark2,jmark,N)
       if avail_flag==0:
         if next_free:
-           total+=_dfs(nxt,(((ld|bit)<<step)|add1)|blockl,(rd|bit)>>step|blockK,col|bit,row+step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(nxt,next_ld|blockl,next_rd|blockK,next_col,row+step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       else:
-        if _should_go_plus1(next_free,row+1,endmark,(ld|bit)<<1,(rd|bit)>>1,col|bit,board_mask,_extra_block_for_row(row+1,mark1,mark2,jmark,N)):
-            total+=_dfs(nxt,(ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        if _should_go_plus1(next_free,row+1,endmark,next_ld,next_rd,next_col,board_mask,extra):
+          total+=_dfs(nxt,next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 
   # FID_SQd2B だけの特例
