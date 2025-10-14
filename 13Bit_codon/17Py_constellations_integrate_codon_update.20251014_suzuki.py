@@ -453,7 +453,7 @@ StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
 class NQueens17:
   def __init__(self,N:int)->None:
     # 64bit マスク（Zobrist用途）
-    MASK64: int = (1 << 64) - 1
+    MASK64:int=(1<<64)-1
     # StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
     # StateKey = Tuple[int, int, int, int, int, int, int, int, int]
 
@@ -464,29 +464,29 @@ class NQueens17:
     # StateKey
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
     # self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
-    FUNC_CATEGORY = {
+    FUNC_CATEGORY={
         # N-3
-        "SQBkBlBjrB": 3, "SQBlkBjrB": 3, "SQBkBjrB": 3,
-        "SQd2BkBlB": 3, "SQd2BkB": 3, "SQd2BlkB": 3,
-        "SQd1BkBlB": 3, "SQd1BlkB": 3, "SQd1BkB": 3, "SQd0BkB": 3,
+        "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB": 3,
+        "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB": 3,
+        "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB": 3,"SQd0BkB": 3,
         # N-4
-        "SQBklBjrB": 4, "SQd2BklB": 4, "SQd1BklB": 4,
+        "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB": 4,
         # 0（上記以外）
-        "SQBlBjrB": 0, "SQBjrB": 0, "SQB": 0, "SQBlBkBjrB": 0,
-        "SQBjlBkBlBjrB": 0, "SQBjlBklBjrB": 0, "SQBjlBlBkBjrB": 0, "SQBjlBlkBjrB": 0,
-        "SQd2BlB": 0, "SQd2B": 0, "SQd2BlBkB": 0,
-        "SQd1BlB": 0, "SQd1B": 0, "SQd1BlBkB": 0, "SQd0B": 0
+        "SQBlBjrB":0,"SQBjrB":0,"SQB": 0,"SQBlBkBjrB": 0,
+        "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB": 0,"SQBjlBlkBjrB": 0,
+        "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB": 0,
+        "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB": 0,"SQd0B": 0
     }
 
-    FID = {
-    "SQBkBlBjrB":0, "SQBlBjrB":1, "SQBjrB":2, "SQB":3,
-    "SQBklBjrB":4, "SQBlBkBjrB":5, "SQBkBjrB":6, "SQBlkBjrB":7,
-    "SQBjlBkBlBjrB":8, "SQBjlBklBjrB":9, "SQBjlBlBkBjrB":10, "SQBjlBlkBjrB":11,
-    "SQd2BkBlB":12, "SQd2BlB":13, "SQd2B":14, "SQd2BklB":15, "SQd2BlBkB":16,
-    "SQd2BkB":17, "SQd2BlkB":18, "SQd1BkBlB":19, "SQd1BlB":20, "SQd1B":21,
-    "SQd1BklB":22, "SQd1BlBkB":23, "SQd1BlkB":24, "SQd1BkB":25, "SQd0B":26, "SQd0BkB":27
+    FID={
+    "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
+    "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
+    "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
+    "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
+    "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
+    "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
     }
-    self.subconst_cache: Set[StateKey] = set()
+    self.subconst_cache:Set[StateKey]=set()
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
     self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
@@ -624,40 +624,40 @@ class NQueens17:
 
   def _mix64(self, x: int) -> int:
       # splitmix64 の最終段だけ使ったミキサ
-      x &= self.MASK64
-      x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9 & self.MASK64
-      x = (x ^ (x >> 27)) * 0x94D049BB133111EB & self.MASK64
-      x ^= (x >> 31)
-      return x & self.MASK64
+      x&=self.MASK64
+      x=(x^(x>>30))*0xBF58476D1CE4E5B9&self.MASK64
+      x=(x^(x>>27))*0x94D049BB133111EB&self.MASK64
+      x^=(x>>31)
+      return x&self.MASK64
 
-  def _gen_list(self, cnt: int, seed: int) -> List[int]:
+  def _gen_list(self,cnt:int,seed:int)->List[int]:
       # Zobristテーブル用の64bit値を cnt 個つくる。
       # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
-      out: List[int] = []
-      s: int = seed & self.MASK64
+      out:List[int]=[]
+      s:int=seed&self.MASK64
       for _ in range(cnt):
-          s = (s + 0x9E3779B97F4A7C15) & self.MASK64   # splitmix64 のインクリメント
+          s=(s+0x9E3779B97F4A7C15)&self.MASK64   # splitmix64 のインクリメント
           out.append(self._mix64(s))
       return out
 
-  def _init_zobrist(self, N: int) -> None:
+  def _init_zobrist(self,N:int)->None:
       # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
       # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
       if N in self.zobrist_tables:
           return
-      base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & self.MASK64
-      tbl: Dict[str, List[int]] = {
-          'ld'    : self._gen_list(N, base_seed ^ 0x01),
-          'rd'    : self._gen_list(N, base_seed ^ 0x02),
-          'col'   : self._gen_list(N, base_seed ^ 0x03),
-          'LD'    : self._gen_list(N, base_seed ^ 0x04),
-          'RD'    : self._gen_list(N, base_seed ^ 0x05),
-          'row'   : self._gen_list(N, base_seed ^ 0x06),
-          'queens': self._gen_list(N, base_seed ^ 0x07),
-          'k'     : self._gen_list(N, base_seed ^ 0x08),
-          'l'     : self._gen_list(N, base_seed ^ 0x09),
+      base_seed:int=(0xC0D0_0000_0000_0000^(N<<32))&self.MASK64
+      tbl:Dict[str,List[int]]={
+          'ld':self._gen_list(N,base_seed^0x01),
+          'rd':self._gen_list(N,base_seed^0x02),
+          'col':self._gen_list(N,base_seed^0x03),
+          'LD':self._gen_list(N,base_seed^0x04),
+          'RD':self._gen_list(N,base_seed^0x05),
+          'row':self._gen_list(N,base_seed^0x06),
+          'queens':self._gen_list(N,base_seed^0x07),
+          'k':self._gen_list(N,base_seed^0x08),
+          'l':self._gen_list(N,base_seed^0x09),
       }
-      self.zobrist_tables[N] = tbl
+      self.zobrist_tables[N]=tbl
   def rot90(self,ijkl:int,N:int)->int:
     # 時計回りに90度回転
     # rot90 メソッドは、90度の右回転（時計回り）を行います
@@ -684,7 +684,7 @@ class NQueens17:
   # て必須。
   """
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+      return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
   """
   # symmetry: 回転・ミラー対称性ごとの重複補正
   # (90度:2, 180度:4, その他:8)
@@ -728,14 +728,14 @@ class NQueens17:
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
 
-  def get_jasmin(self, c: int, N: int) -> int:
+  def get_jasmin(self,c:int,N:int)->int:
     # 1. Jasmin変換キャッシュを導入する
     # [Opt-08] キャッシュ付き jasmin() のラッパー
-    key = (c, N)
+    key=(c,N)
     if key in self.jasmin_cache:
         return self.jasmin_cache[key]
-    result = self.jasmin(c, N)
-    self.jasmin_cache[key] = result
+    result=self.jasmin(c,N)
+    self.jasmin_cache[key]=result
     return result
   """
   i,j,k,lをijklに変換し、特定のエントリーを取得する関数
@@ -780,9 +780,9 @@ class NQueens17:
   #---------------------------------
   # 星座リストそのものをキャッシュ
   #---------------------------------
-  def file_exists(self, fname: str) -> bool:
+  def file_exists(self,fname:str)->bool:
     try:
-      with open(fname, "rb"):
+      with open(fname,"rb"):
         return True
     except:
       return False
@@ -802,99 +802,99 @@ class NQueens17:
   # たほうが圧倒的に効率的です。
   # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
   # バリデーション関数の強化（既に実装済みの場合はスキップOK）
-  def validate_constellation_list(self, constellations: List[Dict[str, int]]) -> bool:
-    return all(all(k in c for k in ("ld", "rd", "col", "startijkl")) for c in constellations)
+  def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool:
+    return all(all(k in c for k in ("ld","rd","col", "startijkl")) for c in constellations)
   # 修正：Codon互換の from_bytes() 相当処理
   # def read_uint32_le(self, b: bytes) -> int:
   # def read_uint32_le(self, b: List[int]) -> int:
   #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
-  def read_uint32_le(self, b: str) -> int:
-    return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
-  def int_to_le_bytes(self,x: int) -> List[int]:
+  def read_uint32_le(self,b:str)->int:
+    return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
+  def int_to_le_bytes(self,x:int)->List[int]:
     # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
-    return [(x >> (8 * i)) & 0xFF for i in range(4)]
-  def validate_bin_file(self,fname: str) -> bool:
+    return [(x>>(8*i))&0xFF for i in range(4)]
+  def validate_bin_file(self,fname:str)->bool:
     # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
     try:
-      with open(fname, "rb") as f:
-        f.seek(0, 2)  # ファイル末尾に移動
-        size = f.tell()
-      return size % 16 == 0
+      with open(fname,"rb") as f:
+        f.seek(0,2)  # ファイル末尾に移動
+        size=f.tell()
+      return size%16==0
     except:
       return False
-  def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
+  def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     # キャッシュ付きラッパー関数（.bin）
-    fname = f"constellations_N{N}_{preset_queens}.bin"
+    fname=f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
       try:
-        constellations = self.load_constellations_bin(fname)
+        constellations=self.load_constellations_bin(fname)
         if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
           return constellations
         else:
           print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
       except Exception as e:
         print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    constellations: List[Dict[str, int]] = []
-    self.gen_constellations(ijkl_list, constellations, N, preset_queens)
-    self.save_constellations_bin(fname, constellations)
+    constellations:List[Dict[str,int]]=[]
+    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
+    self.save_constellations_bin(fname,constellations)
     return constellations
-  def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
+  def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
     # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
-    with open(path, "w") as f:
+    with open(path,"w") as f:
       for c in constellations:
-        ld = c["ld"]
-        rd = c["rd"]
-        col = c["col"]
-        startijkl = c["startijkl"]
-        solutions = c.get("solutions", 0)
+        ld=c["ld"]
+        rd=c["rd"]
+        col=c["col"]
+        startijkl=c["startijkl"]
+        solutions=c.get("solutions", 0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
-  def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
+  def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
     # --- テキスト形式でロード ---
-    out: List[Dict[str, int]] = []
-    with open(path, "r") as f:
+    out:List[Dict[str,int]]=[]
+    with open(path,"r") as f:
       for line in f:
-        parts = line.strip().split()
-        if len(parts) != 5:
+        parts=line.strip().split()
+        if len(parts)!=5:
           continue
-        ld = int(parts[0]); rd = int(parts[1]); col = int(parts[2])
-        startijkl = int(parts[3]); solutions = int(parts[4])
-        out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
+        ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
+        startijkl=int(parts[3]);solutions=int(parts[4])
+        out.append({"ld":ld,"rd":rd,"col": col,"startijkl": startijkl,"solutions": solutions})
     return out
-  def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
+  def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
     # --- bin形式で保存 ---
-    with open(fname, "wb") as f:
+    with open(fname,"wb") as f:
       for d in constellations:
-        for key in ["ld", "rd", "col", "startijkl"]:
-          b = self.int_to_le_bytes(d[key])
+        for key in ["ld","rd","col", "startijkl"]:
+          b=self.int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
-  def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
+  def load_constellations_bin(self,fname:str)->List[Dict[str,int]]:
     # --- bin形式でロード ---
-    constellations: List[Dict[str, int]] = []
-    with open(fname, "rb") as f:
+    constellations:List[Dict[str,int]]=[]
+    with open(fname,"rb") as f:
       while True:
         raw=f.read(16)
         if len(raw)<16:
           break
-        ld         = self.read_uint32_le(raw[0:4])
-        rd         = self.read_uint32_le(raw[4:8])
-        col        = self.read_uint32_le(raw[8:12])
-        startijkl  = self.read_uint32_le(raw[12:16])
+        ld=self.read_uint32_le(raw[0:4])
+        rd=self.read_uint32_le(raw[4:8])
+        col=self.read_uint32_le(raw[8:12])
+        startijkl=self.read_uint32_le(raw[12:16])
         constellations.append({
-          "ld": ld, "rd": rd, "col": col,
-          "startijkl": startijkl, "solutions": 0
+          "ld":ld,"rd":rd,"col": col,
+          "startijkl":startijkl,"solutions":0
         })
     return constellations
-  def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
+  def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     # キャッシュ付きラッパー関数（.txt）
     # N と preset_queens に基づいて一意のファイル名を構成
-    fname = f"constellations_N{N}_{preset_queens}.txt"
+    fname=f"constellations_N{N}_{preset_queens}.txt"
     # ファイルが存在すれば即読み込み
     # if self.file_exists(fname):
     #     return self.load_constellations_txt(fname)
     # ファイルが存在すれば読み込むが、破損チェックも行う
     if self.file_exists(fname):
       try:
-        constellations = self.load_constellations_txt(fname)
+        constellations=self.load_constellations_txt(fname)
         if self.validate_constellation_list(constellations):
           return constellations
         else:
@@ -905,71 +905,70 @@ class NQueens17:
     # gen_constellations() により星座を生成
     # save_constellations_txt() でファイルに保存
     # 返り値として constellations リストを返す
-    constellations: List[Dict[str, int]] = []
-    self.gen_constellations(ijkl_list, constellations, N, preset_queens)
-    self.save_constellations_txt(fname, constellations)
+    constellations:List[Dict[str,int]]=[]
+    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
+    self.save_constellations_txt(fname,constellations)
     return constellations
-  def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter:List[int], constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
+  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
     # サブコンステレーション生成にtuple keyでキャッシュ
     # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
     # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-    key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
     if key in self.subconst_cache:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
       return
     # 新規実行（従来通りset_pre_queensの本体処理へ）
-    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
+    self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited)
     # self.subconst_cache[key] = True  # マークだけでOK
     self.subconst_cache.add(key)
 
-
-  def zobrist_hash(self, ld: int, rd: int, col: int, row: int, queens: int, k: int, l: int, LD: int, RD: int, N: int) -> int:
+  def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
       self._init_zobrist(N)
-      tbl = self.zobrist_tables[N]
-      h = 0
-      mask = (1 << N) - 1
+      tbl=self.zobrist_tables[N]
+      h=0
+      mask=(1<<N)-1
       # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
-      ld &= mask
-      rd &= mask
-      col &= mask
-      LD &= mask
-      RD &= mask
+      ld&=mask
+      rd&=mask
+      col&=mask
+      LD&=mask
+      RD&=mask
       # 以下はそのまま
-      m = ld; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['ld'][i]
-          m >>= 1; i += 1
-      m = rd; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['rd'][i]
-          m >>= 1; i += 1
-      m = col; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['col'][i]
-          m >>= 1; i += 1
-      m = LD; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['LD'][i]
-          m >>= 1; i += 1
-      m = RD; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['RD'][i]
-          m >>= 1; i += 1
-      if 0 <= row < N:     h ^= tbl['row'][row]
-      if 0 <= queens < N:  h ^= tbl['queens'][queens]
-      if 0 <= k < N:       h ^= tbl['k'][k]
-      if 0 <= l < N:       h ^= tbl['l'][l]
-      return h & self.MASK64
+      m=ld;i=0
+      while i<N:
+          if (m&1)!=0:
+              h^=tbl['ld'][i]
+          m>>=1;i+=1
+      m=rd;i=0
+      while i<N:
+          if (m&1)!=0:
+              h^=tbl['rd'][i]
+          m>>=1;i+=1
+      m=col;i=0
+      while i<N:
+          if (m&1)!=0:
+              h^=tbl['col'][i]
+          m>>=1;i+=1
+      m=LD;i=0
+      while i<N:
+          if (m&1)!=0:
+              h^=tbl['LD'][i]
+          m>>=1;i+=1
+      m=RD;i=0
+      while i<N:
+          if (m&1)!=0:
+              h^=tbl['RD'][i]
+          m>>=1;i+=1
+      if 0<=row<N:h^=tbl['row'][row]
+      if 0<=queens<N:h^=tbl['queens'][queens]
+      if 0<=k<N:h^=tbl['k'][k]
+      if 0<=l<N:h^=tbl['l'][l]
+      return h&self.MASK64
 
-  def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
+  def state_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
       # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
       # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-      return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
+      return (ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
 
   """
   開始コンステレーション（部分盤面）の生成関数
@@ -1009,7 +1008,7 @@ class NQueens17:
     # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
     # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
     # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
-    h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
+    h:int=self.state_hash(ld,rd,col,row,queens,k,l,LD,RD,N)
     if h in visited:
         return
     visited.add(h)
@@ -1039,18 +1038,18 @@ class NQueens17:
     #   constellations.append(constellation)
     #   counter[0]+=1
     #   return
-    if queens == preset_queens:
+    if queens==preset_queens:
         # signatureの生成
-        signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+        signature=(ld,rd,col,k,l,row)  # 必要な変数でOK
         # signaturesセットをクラス変数やグローバルで管理
-        if not hasattr(self, "constellation_signatures"):
-            self.constellation_signatures = set()
-        signatures = self.constellation_signatures
+        if not hasattr(self,"constellation_signatures"):
+            self.constellation_signatures=set()
+        signatures=self.constellation_signatures
         if signature not in signatures:
-            constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+            constellation={"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions": 0}
             constellations.append(constellation) #星座データ追加
             signatures.add(signature)
-            counter[0] += 1
+            counter[0]+=1
         return
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
@@ -1061,72 +1060,70 @@ class NQueens17:
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
-  def set_queens(self, functionid: int, ld: int, rd: int, col: int, row: int, free: int,
-          jmark: int, endmark: int, mark1: int, mark2: int, board_mask: int, N: int,avail: int,avail_flag: int,step: int,add1: int,blockK: int,blockl: int,nxt :int) -> int:
-    _extra_block_for_row = self._extra_block_for_row
-    _should_go_plus1 = self._should_go_plus1
-    _dfs = self.dfs
-    total: int = 0
+  def set_queens(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,avail_flag:int,step:int,add1:int,blockK:int,blockl:int,nxt:int)->int:
+    _extra_block_for_row=self._extra_block_for_row
+    _should_go_plus1=self._should_go_plus1
+    _dfs=self.dfs
+    total:int=0
     while avail:
-      bit: int = avail & -avail
-      avail &= avail - 1
-      next_free: int = board_mask & ~(((ld | bit) << step) | add1 | ( rd | bit) >> step | col | bit | blockK | blockl)
-      if avail_flag == 0:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_free: int = board_mask&~(((ld|bit)<<step)|add1|(rd|bit)>>step|col|bit|blockK|blockl)
+      if avail_flag==0:
         if next_free:
-           total += _dfs(nxt, (((ld | bit) << step) | add1) | blockl, (rd | bit) >> step | blockK,col | bit, row + step, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+           total+=_dfs(nxt,(((ld|bit)<<step)|add1)|blockl,(rd|bit)>>step|blockK,col|bit,row+step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       else:
-        if _should_go_plus1(next_free, row+1, endmark, (ld | bit) << 1, (rd | bit) >> 1, col | bit, board_mask, _extra_block_for_row(row+1, mark1, mark2, jmark, N)):
-            total += _dfs(nxt, (ld | bit) << 1, (rd | bit) >> 1, col | bit, row+1, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+        if _should_go_plus1(next_free,row+1,endmark,(ld|bit)<<1,(rd|bit)>>1,col|bit,board_mask,_extra_block_for_row(row+1,mark1,mark2,jmark,N)):
+            total+=_dfs(nxt,(ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  def dfs_ptn_5(self, functionid: int, avail: int) -> int:
+  def dfs_ptn_5(self,functionid:int,avail:int)->int:
     # FID_SQd2B だけの特例
     #  if functionid == FID_SQd2B:
-    if functionid == 14: # FID_SQd2B
-      return 1 if (avail & (~1)) > 0 else 0
+    if functionid==14:# FID_SQd2B
+      return 1 if (avail&(~1))>0 else 0
     return 1
 
-
-  def dfs(self, functionid: int, ld: int, rd: int, col: int, row: int, free: int,
-         jmark: int, endmark: int, mark1: int, mark2: int, board_mask: int, N: int) -> int:
-    avail: int = free
-    total: int = 0
+  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,
+         jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    avail:int=free
+    total:int=0
     # 事前計算テーブル
-    _extra_block_for_row = self._extra_block_for_row
-    _should_go_plus1 = self._should_go_plus1
-    _dfs = self.dfs
+    _extra_block_for_row=self._extra_block_for_row
+    _should_go_plus1=self._should_go_plus1
+    _dfs=self.dfs
     _dfs_ptn_5=self.dfs_ptn_5
     _set_queens=self.set_queens
-    ptn: int = self.funcptn[functionid]
-    avail_flag: int = self.availptn[functionid]
-    nxt: int = self.next_funcid[functionid]
+    ptn:int=self.funcptn[functionid]
+    avail_flag:int=self.availptn[functionid]
+    nxt:int=self.next_funcid[functionid]
     # print("ptn:"+str(ptn))
     # ======================
     # P6: endmark 基底
     # ======================
-    if ptn == 5:  # P6
-      if row == endmark:
+    if ptn==5:# P6
+      if row==endmark:
         # return _dfs_ptn_5(functionid,avail)
-        total= _dfs_ptn_5(functionid,avail)
-    elif ptn in (0, 1, 2):
+        total=_dfs_ptn_5(functionid,avail)
+    elif ptn in (0,1,2):
       #blockK: int = self.blockK_by_funcid[functionid]
       #blockl: int = self.blockl_by_funcid[functionid]
       #avail_flag=0
       # 進む行数
-      step: int = 2 if ptn in (0, 1) else 3
+      step:int=2 if ptn in (0,1) else 3
       # 追加 OR（P2 かつ FID_SQd1BlB のときだけ 1、それ以外は 0）
       # add1: int = 1 if (ptn == 1 and functionid == FID_SQd1BlB) else 0
-      add1: int = 1 if (ptn == 1 and functionid == 20) else 0 # FID_SQd1BlB
+      add1:int=1 if (ptn==1 and functionid==20) else 0 # FID_SQd1BlB
       # どちらの mark で回すか
-      at_mark: bool = (row == mark1) if ptn in (0, 2) else (row == mark2)
+      at_mark:bool=(row==mark1) if ptn in (0,2) else (row==mark2)
       if at_mark and avail:
         total=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,0,step,add1,self.blockK_by_funcid[functionid],self.blockl_by_funcid[functionid],nxt)
     # ======================
     # P4: jmark 特殊（1列目禁止 & ld|=1）→ +1 進む
     # ======================
-    elif ptn == 3:  # P4
-      if row == jmark:
-        avail &= ~1    # 列0禁止
-        ld |= 1        # 左斜線の最下位を立てる
+    elif ptn==3:# P4
+      if row==jmark:
+        avail&=~1    # 列0禁止
+        ld|=1        # 左斜線の最下位を立てる
         #blockK=0
         #blockl=0
         #step=1
@@ -1143,14 +1140,14 @@ class NQueens17:
     # ======================
     # P5: N1 - jmark 入口（行は据え置き）
     # ======================
-    elif ptn == 4:  # P5
+    elif ptn==4:# P5
         print("ptn4")
-        N1: int = N - 1
-        if row == N1 - jmark:
-            rd |= 1 << N1
-            next_free: int = board_mask & ~(ld << 1 | rd >> 1 | col)
+        N1:int=N-1
+        if row==N1-jmark:
+            rd|=1<<N1
+            next_free:int=board_mask&~(ld<<1|rd>>1|col)
             if next_free:
-                total = _dfs(nxt, ld << 1, rd >> 1, col, row, next_free, jmark, endmark, mark1, mark2, board_mask, N)
+                total=_dfs(nxt,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
             # return total  # ここで確定終了
 
     # ---------------------------------
@@ -1190,194 +1187,194 @@ class NQueens17:
     - temp_counterは再帰呼び出しで合計を受け渡し
     - 実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
   """
-  def exec_solutions(self, constellations: List[Dict[str, int]], N: int) -> None:
-    N2: int = N - 2
-    small_mask: int = (1 << N2) - 1
-    board_mask: int = (1 << N) - 1
+  def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
+    N2:int=N-2
+    small_mask:int=(1<<N2)-1
+    board_mask:int=(1<<N)-1
 
     # ルックアップをローカルへ（属性参照の回数を削減）
-    dfs = self.dfs
-    symmetry = self.symmetry
-    getj, getk, getl = self.getj, self.getk, self.getl
+    dfs=self.dfs
+    symmetry=self.symmetry
+    getj,getk,getl=self.getj,self.getk,self.getl
 
-    FID_SQBkBlBjrB   = 0
-    FID_SQBlBjrB     = 1
-    FID_SQBjrB       = 2
-    FID_SQB          = 3
-    FID_SQBklBjrB    = 4
-    FID_SQBlBkBjrB   = 5
-    FID_SQBkBjrB     = 6
-    FID_SQBlkBjrB    = 7
-    FID_SQBjlBkBlBjrB = 8
-    FID_SQBjlBklBjrB = 9
-    FID_SQBjlBlBkBjrB = 10
-    FID_SQBjlBlkBjrB = 11
-    FID_SQd2BkBlB    = 12
-    FID_SQd2BlB      = 13
-    FID_SQd2B        = 14
-    FID_SQd2BklB     = 15
-    FID_SQd2BlBkB    = 16
-    FID_SQd2BkB      = 17
-    FID_SQd2BlkB     = 18
-    FID_SQd1BkBlB    = 19
-    FID_SQd1BlB      = 20
-    FID_SQd1B        = 21
-    FID_SQd1BklB     = 22
-    FID_SQd1BlBkB    = 23
-    FID_SQd1BlkB     = 24
-    FID_SQd1BkB      = 25
-    FID_SQd0B        = 26
-    FID_SQd0BkB      = 27
+    FID_SQBkBlBjrB=0
+    FID_SQBlBjrB=1
+    FID_SQBjrB=2
+    FID_SQB=3
+    FID_SQBklBjrB=4
+    FID_SQBlBkBjrB=5
+    FID_SQBkBjrB=6
+    FID_SQBlkBjrB=7
+    FID_SQBjlBkBlBjrB=8
+    FID_SQBjlBklBjrB=9
+    FID_SQBjlBlBkBjrB=10
+    FID_SQBjlBlkBjrB=11
+    FID_SQd2BkBlB=12
+    FID_SQd2BlB=13
+    FID_SQd2B=14
+    FID_SQd2BklB=15
+    FID_SQd2BlBkB=16
+    FID_SQd2BkB=17
+    FID_SQd2BlkB=18
+    FID_SQd1BkBlB=19
+    FID_SQd1BlB=20
+    FID_SQd1B=21
+    FID_SQd1BklB=22
+    FID_SQd1BlBkB=23
+    FID_SQd1BlkB=24
+    FID_SQd1BkB=25
+    FID_SQd0B=26
+    FID_SQd0BkB=27
 
 
     @par
     for constellation in constellations:
       #print("con_start")
-      jmark = mark1 = mark2 = 0
-      start_ijkl = constellation["startijkl"]
-      start = start_ijkl >> 20
-      ijkl = start_ijkl & ((1 << 20) - 1)
+      jmark=mark1=mark2=0
+      start_ijkl=constellation["startijkl"]
+      start=start_ijkl>>20
+      ijkl=start_ijkl&((1<<20)-1)
 
-      j, k, l = getj(ijkl), getk(ijkl), getl(ijkl)
+      j,k,l=getj(ijkl),getk(ijkl),getl(ijkl)
 
       # 占有状況
-      ld = constellation["ld"] >> 1
-      rd = constellation["rd"] >> 1
-      col = (constellation["col"] >> 1) | (~small_mask)
+      ld=constellation["ld"]>>1
+      rd=constellation["rd"]>>1
+      col=(constellation["col"]>>1)|(~small_mask)
 
-      LD = (1 << (N - 1 - j)) | (1 << (N - 1 - l))
-      ld |= LD >> (N - start)
-      if start > k:
-        rd |= (1 << (N - 1 - (start - k + 1)))
-      if j >= 2 * N - 33 - start:
-        rd |= (1 << (N - 1 - j)) << (N2 - start)
+      LD=(1<<(N-1-j))|(1<<(N-1-l))
+      ld|=LD>>(N-start)
+      if start>k:
+        rd|=(1<<(N-1-(start-k+1)))
+      if j>=2*N-33-start:
+        rd|=(1<<(N-1-j))<<(N2-start)
 
-      free = ~(ld | rd | col)
+      free=~(ld|rd|col)
 
       # ケース分岐
-      if j < (N - 3):
-        jmark, endmark = j + 1, N2
-        if j > 2 * N - 34 - start:
-          if k < l:
-            mark1, mark2 = k - 1, l - 1
-            if start < l:
-              if start < k:
-                if l != k + 1:
-                  cnt = dfs(FID_SQBkBlBjrB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+      if j<(N-3):
+        jmark,endmark=j+1,N2
+        if j>2*N-34-start:
+          if k<l:
+            mark1,mark2=k-1,l-1
+            if start<l:
+              if start<k:
+                if l!=k+1:
+                  cnt=dfs(FID_SQBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 else:
-                  cnt = dfs(FID_SQBklBjrB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                  cnt=dfs(FID_SQBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                cnt = dfs(FID_SQBlBjrB,    ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                cnt=dfs(FID_SQBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              cnt = dfs(FID_SQBjrB,       ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            mark1, mark2 = l - 1, k - 1
-            if start < k:
-              if start < l:
-                if k != l + 1:
-                  cnt = dfs(FID_SQBlBkBjrB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            mark1,mark2=l-1,k-1
+            if start<k:
+              if start<l:
+                if k!=l+1:
+                  cnt=dfs(FID_SQBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 else:
-                  cnt = dfs(FID_SQBlkBjrB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                  cnt=dfs(FID_SQBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                cnt = dfs(FID_SQBkBjrB,    ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                cnt=dfs(FID_SQBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              cnt = dfs(FID_SQBjrB,       ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
         else:
-          if k < l:
-            mark1, mark2 = k - 1, l - 1
-            if l != k + 1:
-              cnt = dfs(FID_SQBjlBkBlBjrB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+          if k<l:
+            mark1,mark2=k-1,l-1
+            if l!=k+1:
+              cnt=dfs(FID_SQBjlBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              cnt = dfs(FID_SQBjlBklBjrB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              cnt=dfs(FID_SQBjlBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            mark1, mark2 = l - 1, k - 1
-            if k != l + 1:
-              cnt = dfs(FID_SQBjlBlBkBjrB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            mark1,mark2=l-1,k-1
+            if k!=l+1:
+              cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              cnt = dfs(FID_SQBjlBlkBjrB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
 
-      elif j == (N - 3):
-        endmark = N2
-        if k < l:
-          mark1, mark2 = k - 1, l - 1
-          if start < l:
-            if start < k:
-              if l != k + 1:
-                cnt = dfs(FID_SQd2BkBlB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+      elif j==(N-3):
+        endmark=N2
+        if k<l:
+          mark1,mark2=k-1,l-1
+          if start<l:
+            if start<k:
+              if l!=k+1:
+                cnt=dfs(FID_SQd2BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                cnt = dfs(FID_SQd2BklB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                cnt=dfs(FID_SQd2BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              mark2 = l - 1
-              cnt = dfs(FID_SQd2BlB,     ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              mark2=l-1
+              cnt=dfs(FID_SQd2BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            cnt = dfs(FID_SQd2B,         ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
         else:
-          mark1, mark2 = l - 1, k - 1
-          if start < k:
-            if start < l:
-              if k != l + 1:
-                cnt = dfs(FID_SQd2BlBkB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+          mark1,mark2=l-1,k-1
+          if start<k:
+            if start<l:
+              if k!=l+1:
+                cnt=dfs(FID_SQd2BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                cnt = dfs(FID_SQd2BlkB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                cnt=dfs(FID_SQd2BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              mark2 = k - 1
-              cnt = dfs(FID_SQd2BkB,     ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              mark2=k-1
+              cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            cnt = dfs(FID_SQd2B,         ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
 
-      elif j == N2:  # jがコーナーから1列内側
-        if k < l:
-          endmark = N2
-          if start < l:
-            if start < k:
-              mark1 = k - 1
-              if l != k + 1:
-                mark2 = l - 1
-                cnt = dfs(FID_SQd1BkBlB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+      elif j==N2:# jがコーナーから1列内側
+        if k<l:
+          endmark=N2
+          if start<l:
+            if start<k:
+              mark1=k-1
+              if l!=k+1:
+                mark2=l-1
+                cnt=dfs(FID_SQd1BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                cnt = dfs(FID_SQd1BklB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                cnt=dfs(FID_SQd1BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              mark2 = l - 1
-              cnt = dfs(FID_SQd1BlB,     ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              mark2=l-1
+              cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            cnt = dfs(FID_SQd1B,         ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
-        else:  # l < k
-          if start < k:
-            if start < l:
-              if k < N2:
-                mark1, endmark = l - 1, N2
-                if k != l + 1:
-                  mark2 = k - 1
-                  cnt = dfs(FID_SQd1BlBkB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+        else:# l < k
+          if start<k:
+            if start<l:
+              if k<N2:
+                mark1,endmark=l-1,N2
+                if k!=l+1:
+                  mark2=k-1
+                  cnt=dfs(FID_SQd1BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 else:
-                  cnt = dfs(FID_SQd1BlkB,  ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                  cnt=dfs(FID_SQd1BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                if l != (N - 3):
-                  mark2, endmark = l - 1, N - 3
-                  cnt = dfs(FID_SQd1BlB,   ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                if l!=(N-3):
+                  mark2,endmark=l-1,N-3
+                  cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
                 else:
-                  endmark = N - 4
-                  cnt = dfs(FID_SQd1B,     ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                  endmark=N-4
+                  cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
-              if k != N2:
-                mark2, endmark = k - 1, N2
-                cnt = dfs(FID_SQd1BkB,     ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+              if k!=N2:
+                mark2,endmark=k-1,N2
+                cnt=dfs(FID_SQd1BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               else:
-                endmark = N - 3
-                cnt = dfs(FID_SQd1B,       ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+                endmark=N-3
+                cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
-            endmark = N2
-            cnt = dfs(FID_SQd1B,         ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+            endmark=N2
+            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
 
-      else:  # j がコーナー
-        endmark = N2
-        if start > k:
-          cnt = dfs(FID_SQd0B,   ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+      else:# j がコーナー
+        endmark=N2
+        if start>k:
+          cnt=dfs(FID_SQd0B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
         else:
-          mark1 = k - 1
-          cnt = dfs(FID_SQd0BkB, ld, rd, col, start, free, jmark, endmark, mark1, mark2, board_mask, N)
+          mark1=k-1
+          cnt=dfs(FID_SQd0BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
 
-      constellation["solutions"] = cnt * symmetry(ijkl, N)
+      constellation["solutions"]=cnt*symmetry(ijkl,N)
 
   """
   開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
@@ -1397,33 +1394,33 @@ class NQueens17:
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
-    if N % 2 == 1:
-      center = N // 2
+    if N%2==1:
+      center=N//2
       ijkl_list.update(
-        self.to_ijkl(i, j, center, l)
-        for l in range(center + 1, N - 1)
-        for i in range(center + 1, N - 1)
-        if i != (N - 1) - l
-        for j in range(N - center - 2, 0, -1)
-        if j != i and j != l
-        if not self.check_rotations(ijkl_list, i, j, center, l, N)
+        self.to_ijkl(i,j,center,l)
+        for l in range(center+1,N-1)
+        for i in range(center+1,N-1)
+        if i!=(N-1)-l
+        for j in range(N-center-2,0,-1)
+        if j!=i and j!=l
+        if not self.check_rotations(ijkl_list,i,j,center,l,N)
         # 180°回転盤面がセットに含まれていない
         # if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
       )
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     # コーナーにクイーンがいない場合の開始コンステレーションを計算する
-    ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i != (N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
+    ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N-1) for i in range(k+1,N-1) if i!=(N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
     # コーナーにクイーンがある場合の開始コンステレーションを計算する
     ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N-1)})
     # Jasmin変換
     # ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list}
     # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
     # ijkl_list=ijkl_list_jasmin
-    ijkl_list={self.get_jasmin(c, N) for c in ijkl_list}
+    ijkl_list={self.get_jasmin(c,N) for c in ijkl_list}
     L=1<<(N-1)  # Lは左端に1を立てる
     # ローカルアクセスに変更
-    geti, getj, getk, getl = self.geti, self.getj, self.getk, self.getl
-    to_ijkl = self.to_ijkl
+    geti,getj,getk,getl=self.geti,self.getj,self.getk,self.getl
+    to_ijkl=self.to_ijkl
     for sc in ijkl_list:
       # ここで毎回クリア（＝この sc だけの重複抑止に限定）
       # self.constellation_signatures.clear()
@@ -1432,13 +1429,13 @@ class NQueens17:
       i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
       # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
       # LD,RD=(L>>j)|(L>>l),(L>>j)|(1<<k)
-      Lj = L >> j; Li = L >> i; Ll = L >> l
+      Lj=L>>j;Li=L>>i;Ll=L>>l
       # ld = (L >> (i-1)) | (1 << (N-k))
-      ld = ((L >> (i-1)) if i > 0 else 0) | (1 << (N-k))
-      rd = (L >> (i+1)) | (1 << (l-1))
-      col = 1 | L | Li | Lj
-      LD = Lj | Ll
-      RD = Lj | (1 << k)
+      ld=((L>>(i-1)) if i>0 else 0)|(1<<(N-k))
+      rd=(L>>(i+1))|(1<<(l-1))
+      col=1|L|Li|Lj
+      LD=Lj|Ll
+      RD=Lj|(1<<k)
 
       counter:List[int]=[0] # サブコンステレーションを生成
       #-------------------------
@@ -1458,45 +1455,42 @@ class NQueens17:
       # to_ijkl(i,j,k,l) はループ外で一回だけ
       # 今は毎回呼んでいるので、定数化すると少しだけ軽くなります。
       # base = self.to_ijkl(i, j, k, l)
-      base = to_ijkl(i, j, k, l)
+      base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
-          constellations[-1 - a]["startijkl"] |= base
+          constellations[-1-a]["startijkl"]|=base
   #-----------------
   # 関数プロトタイプ
   #-----------------
   @staticmethod
-  def _has_future_space_step(next_ld: int, next_rd: int, next_col: int,
-                        row_next:int,endmark:int,
-                        board_mask: int,
-                        extra_block_next:int # 次の行で実際にORされる追加ブロック（なければ0）
-                        ) -> bool:
+  def _has_future_space_step(next_ld:int,next_rd:int,next_col:int,row_next:int,endmark:int, board_mask:int,extra_block_next:int) -> bool:
+    # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
     # ゴール直前は先読み不要（短絡）
     if row_next >= endmark:
         return True
-    blocked_next = (next_ld << 1) | (next_rd >> 1) | next_col | extra_block_next
-    return (board_mask & ~blocked_next) != 0
+    blocked_next=(next_ld<<1)|(next_rd>>1)|next_col|extra_block_next
+    return (board_mask&~blocked_next)!=0
     #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
     # 次の行に進んだときに置ける可能性が1ビットでも残るか
     # return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
 
   @staticmethod
-  def _extra_block_for_row(row_next: int, mark1: int, mark2: int, jmark: int, N: int) -> int:
-      extra = 0
-      blockK = 1 << (N - 3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-      if row_next == mark1:
-          extra |= blockK
-      if row_next == mark2:
-          extra |= blockK
-      if row_next == (N - 1 - jmark):  # jmark 系ありの関数だけ使う
-          extra |= (1 << (N - 1))
+  def _extra_block_for_row(row_next:int,mark1:int,mark2:int,jmark:int,N:int)->int:
+      extra=0
+      blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
+      if row_next==mark1:
+          extra|=blockK
+      if row_next==mark2:
+          extra|=blockK
+      if row_next==(N-1-jmark):# jmark 系ありの関数だけ使う
+          extra|=(1<<(N-1))
       return extra
 
-  def _should_go_plus1( self, next_free: int, row_next: int, endmark: int, next_ld: int, next_rd: int, next_col: int, board_mask: int, extra: int,) -> bool:
+  def _should_go_plus1(self,next_free:int,row_next:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
       if not next_free:
           return False
-      if row_next >= endmark:
+      if row_next>=endmark:
           return True
-      return self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra)
+      return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
 """
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     if row==endmark:
@@ -2543,21 +2537,21 @@ class NQueens17:
     return total
 """
 class NQueens17_constellations():
-  def _bit_total(self, size: int) -> int:
+  def _bit_total(self,size:int)->int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
-    mask = (1 << size) - 1
-    total = 0
-    def bt(row: int, left: int, down: int, right: int):
+    mask=(1<<size)-1
+    total=0
+    def bt(row:int,left:int,down:int,right:int):
         nonlocal total
-        if row == size:
-            total += 1
+        if row==size:
+            total+=1
             return
-        bitmap = mask & ~(left | down | right)
+        bitmap=mask&~(left|down|right)
         while bitmap:
-            bit = -bitmap & bitmap
-            bitmap ^= bit
-            bt(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
-    bt(0, 0, 0, 0)
+            bit=-bitmap&bitmap
+            bitmap^=bit
+            bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+    bt(0,0,0,0)
     return total
   def main(self)->None:
     nmin:int=5
@@ -2566,11 +2560,11 @@ class NQueens17_constellations():
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
-      if size <= 5:
+      if size<=5:
         # ← フォールバック：N=5はここで正しい10を得る
-        total = self._bit_total(size)
-        dt = datetime.now() - start_time
-        text = str(dt)[:-3]
+        total=self._bit_total(size)
+        dt=datetime.now()-start_time
+        text=str(dt)[:-3]
         print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
         continue
       ijkl_list:Set[int]=set()
@@ -2592,8 +2586,8 @@ class NQueens17_constellations():
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       # print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
-      expected: List[int] = [0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
-      status: str = "ok" if expected[size]==total else f"ng({total}!={expected[size]})"
+      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
+      status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
 if __name__=="__main__":
   NQueens17_constellations().main()
