@@ -1014,6 +1014,30 @@ class NQueens17:
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
   @staticmethod
+  def _extra_block_for_row(next_row:int,mark1:int,mark2:int,jmark:int,N:int)->int:
+    extra=0
+    blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
+    if next_row==mark1: extra|=blockK
+    if next_row==mark2: extra|=blockK
+    # jmark 系ありの関数だけ使う
+    if next_row==(N-1-jmark): extra|=(1<<(N-1))
+    return extra
+
+  #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
+  @staticmethod
+  def _should_go_plus1(next_free:int,next_row:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
+    if not next_free: return False
+    if next_row>=endmark: return True
+    # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
+    # ゴール直前は先読み不要（短絡）
+    if next_row >= endmark:
+        return True
+    blocked_next=(next_ld<<1)|(next_rd>>1)|next_col|extra
+    return (board_mask&~blocked_next)!=0
+    # return self._has_future_space_step(next_ld,next_rd,next_col,next_row,endmark,board_mask,extra)
+
+  """
+  @staticmethod
   def _has_future_space_step(next_ld:int,next_rd:int,next_col:int,next_row:int,endmark:int, board_mask:int,extra_block_next:int) -> bool:
     # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
     # ゴール直前は先読み不要（短絡）
@@ -1024,21 +1048,7 @@ class NQueens17:
     #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
     # 次の行に進んだときに置ける可能性が1ビットでも残るか
     # return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-
-  @staticmethod
-  def _extra_block_for_row(next_row:int,mark1:int,mark2:int,jmark:int,N:int)->int:
-    extra=0
-    blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-    if next_row==mark1: extra|=blockK
-    if next_row==mark2: extra|=blockK
-    # jmark 系ありの関数だけ使う
-    if next_row==(N-1-jmark): extra|=(1<<(N-1))
-    return extra
-
-  def _should_go_plus1(self,next_free:int,next_row:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
-    if not next_free: return False
-    if next_row>=endmark: return True
-    return self._has_future_space_step(next_ld,next_rd,next_col,next_row,endmark,board_mask,extra)
+  """
 
   """
   def set_queens_ptn_3(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,step:int,add1:int,nxt:int)->int:
@@ -1109,6 +1119,7 @@ class NQueens17:
       return 1 if (avail&(~1))>0 else 0
     return 1
   """
+
   """
   def set_queens(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,avail_flag:int,step:int,add1:int,blockK:int,blockl:int,nxt:int)->int:
     _extra_block_for_row=self._extra_block_for_row
@@ -1131,7 +1142,6 @@ class NQueens17:
           total+=_dfs(nxt,next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   """
-
 
   def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     avail:int=free
