@@ -465,17 +465,17 @@ class NQueens17:
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
     # self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
     FUNC_CATEGORY={
-        # N-3
-        "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB": 3,
-        "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB": 3,
-        "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB": 3,"SQd0BkB": 3,
-        # N-4
-        "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB": 4,
-        # 0（上記以外）
-        "SQBlBjrB":0,"SQBjrB":0,"SQB": 0,"SQBlBkBjrB": 0,
-        "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB": 0,"SQBjlBlkBjrB": 0,
-        "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB": 0,
-        "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB": 0,"SQd0B": 0
+      # N-3
+      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB": 3,
+      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB": 3,
+      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB": 3,"SQd0BkB": 3,
+      # N-4
+      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB": 4,
+      # 0（上記以外）
+      "SQBlBjrB":0,"SQBjrB":0,"SQB": 0,"SQBlBkBjrB": 0,
+      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB": 0,"SQBjlBlkBjrB": 0,
+      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB": 0,
+      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB": 0,"SQd0B": 0
     }
 
     FID={
@@ -495,169 +495,139 @@ class NQueens17:
     self.N = N
     n3 = 1 << max(0, N-3)   # 念のため負シフト防止
     n4 = 1 << max(0, N-4)
-
-
     size = max(FID.values()) + 1
     self.blockK_by_funcid = [0] * size
     self.blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
     self.availptn= [
-    0, # 0  SQBkBlBjrB   -> if next_free: 自分に再帰
-    0, # 1  SQBlBjrB     -> 〃
-    1, # 2  SQBjrB       -> _should_go_plus1 を使う
-    1, # 3  SQB          -> 〃
-    0, # 4  SQBklBjrB    -> 素朴
-    0, # 5  SQBlBkBjrB   -> 素朴
-    0, # 6  SQBkBjrB     -> 素朴
-    0, # 7  SQBlkBjrB    -> 素朴
-    1, # 8  SQBjlBkBlBjrB -> _should_go_plus1
-    1, # 9  SQBjlBklBjrB  -> 〃
-    1, # 10 SQBjlBlBkBjrB -> 〃
-    1, # 11 SQBjlBlkBjrB  -> 〃
-    0, # 12 SQd2BkBlB    -> 素朴
-    0, # 13 SQd2BlB      -> 素朴
-    1, # 14 SQd2B        -> _should_go_plus1
-    0, # 15 SQd2BklB     -> 素朴
-    0, # 16 SQd2BlBkB    -> 素朴
-    0, # 17 SQd2BkB      -> 素朴
-    0, # 18 SQd2BlkB     -> 素朴
-    0, # 19 SQd1BkBlB    -> 素朴
-    0, # 20 SQd1BlB      -> 素朴（末尾が切れていましたが同型）
-    1, # 21 SQd1B        -> _should_go_plus1
-    0, # 22 SQd1BklB     -> 素朴
-    0, # 23 SQd1BlBkB    -> 素朴
-    0, # 24 SQd1BlkB     -> 素朴
-    0, # 25 SQd1BkB      -> 素朴
-    1, # 26 SQd0B        -> _should_go_plus1
-    0, # 27 SQd0BkB      -> 素朴
+      0, # 0  SQBkBlBjrB   -> if next_free: 自分に再帰
+      0, # 1  SQBlBjrB     -> 〃
+      1, # 2  SQBjrB       -> _should_go_plus1 を使う
+      1, # 3  SQB          -> 〃
+      0, # 4  SQBklBjrB    -> 素朴
+      0, # 5  SQBlBkBjrB   -> 素朴
+      0, # 6  SQBkBjrB     -> 素朴
+      0, # 7  SQBlkBjrB    -> 素朴
+      1, # 8  SQBjlBkBlBjrB -> _should_go_plus1
+      1, # 9  SQBjlBklBjrB  -> 〃
+      1, # 10 SQBjlBlBkBjrB -> 〃
+      1, # 11 SQBjlBlkBjrB  -> 〃
+      0, # 12 SQd2BkBlB    -> 素朴
+      0, # 13 SQd2BlB      -> 素朴
+      1, # 14 SQd2B        -> _should_go_plus1
+      0, # 15 SQd2BklB     -> 素朴
+      0, # 16 SQd2BlBkB    -> 素朴
+      0, # 17 SQd2BkB      -> 素朴
+      0, # 18 SQd2BlkB     -> 素朴
+      0, # 19 SQd1BkBlB    -> 素朴
+      0, # 20 SQd1BlB      -> 素朴（末尾が切れていましたが同型）
+      1, # 21 SQd1B        -> _should_go_plus1
+      0, # 22 SQd1BklB     -> 素朴
+      0, # 23 SQd1BlBkB    -> 素朴
+      0, # 24 SQd1BlkB     -> 素朴
+      0, # 25 SQd1BkB      -> 素朴
+      1, # 26 SQd0B        -> _should_go_plus1
+      0, # 27 SQd0BkB      -> 素朴
     ]
     self.next_funcid = [
-    #  0: SQBkBlBjrB  → SQBlBjrB
-    1,
-    #  1: SQBlBjrB    → SQBjrB
-    2,
-    #  2: SQBjrB      → SQB
-    3,
-    #  3: SQB         → （基底）自分
-    3,
-    #  4: SQBklBjrB   → SQBjrB
-    2,
-    #  5: SQBlBkBjrB  → SQBkBjrB
-    6,
-    #  6: SQBkBjrB    → SQBjrB
-    2,
-    #  7: SQBlkBjrB   → SQBjrB
-    2,
-    #  8: SQBjlBkBlBjrB → SQBkBlBjrB
-    0,
-    #  9: SQBjlBklBjrB  → SQBklBjrB
-    4,
-    # 10: SQBjlBlBkBjrB → SQBlBkBjrB
-    5,
-    # 11: SQBjlBlkBjrB  → SQBlkBjrB
-    7,
-    # 12: SQd2BkBlB   → SQd2BlB
-    13,
-    # 13: SQd2BlB     → SQd2B
-    14,
-    # 14: SQd2B       → （基底）自分
-    14,
-    # 15: SQd2BklB    → SQd2B
-    14,
-    # 16: SQd2BlBkB   → SQd2BkB
-    17,
-    # 17: SQd2BkB     → SQd2B
-    14,
-    # 18: SQd2BlkB    → SQd2B
-    14,
-    # 19: SQd1BkBlB   → SQd1BlB
-    20,
-    # 20: SQd1BlB     → SQd1B
-    21,
-    # 21: SQd1B       → （基底）自分
-    21,
-    # 22: SQd1BklB    → SQd1B
-    21,
-    # 23: SQd1BlBkB   → SQd1BkB
-    25,
-    # 24: SQd1BlkB    → SQd1B
-    21,
-    # 25: SQd1BkB     → SQd1B
-    21,
-    # 26: SQd0B       → （基底）自分
-    26,
-    # 27: SQd0BkB     → SQd0B
-    26,
+      1,#  0: SQBkBlBjrB  → SQBlBjrB
+      2,#  1: SQBlBjrB    → SQBjrB
+      3,#  2: SQBjrB      → SQB
+      3,#  3: SQB         → （基底）自分
+      2,#  4: SQBklBjrB   → SQBjrB
+      6,#  5: SQBlBkBjrB  → SQBkBjrB
+      2,#  6: SQBkBjrB    → SQBjrB
+      2,#  7: SQBlkBjrB   → SQBjrB
+      0,#  8: SQBjlBkBlBjrB → SQBkBlBjrB
+      4,#  9: SQBjlBklBjrB  → SQBklBjrB
+      5,# 10: SQBjlBlBkBjrB → SQBlBkBjrB
+      7,# 11: SQBjlBlkBjrB  → SQBlkBjrB
+      13,# 12: SQd2BkBlB   → SQd2BlB
+      14,# 13: SQd2BlB     → SQd2B
+      14,# 14: SQd2B       → （基底）自分
+      14,# 15: SQd2BklB    → SQd2B
+      17,# 16: SQd2BlBkB   → SQd2BkB
+      14,# 17: SQd2BkB     → SQd2B
+      14,# 18: SQd2BlkB    → SQd2B
+      20,# 19: SQd1BkBlB   → SQd1BlB
+      21,# 20: SQd1BlB     → SQd1B
+      21,# 21: SQd1B       → （基底）自分
+      21,# 22: SQd1BklB    → SQd1B
+      25,# 23: SQd1BlBkB   → SQd1BkB
+      21,# 24: SQd1BlkB    → SQd1B
+      21,# 25: SQd1BkB     → SQd1B
+      26,# 26: SQd0B       → （基底）自分
+      26,# 27: SQd0BkB     → SQd0B
     ]
     self.funcptn = [
-     0,  #  0: SQBkBlBjrB   -> P1 (mark1, +2)
-     1,  #  1: SQBlBjrB     -> P2 (mark2, +2)
-     3,  #  2: SQBjrB       -> P4 (jmark 特殊)
-     5,  #  3: SQB          -> P6 (endmark 基底)
-     2,  #  4: SQBklBjrB    -> P3 (mark1, +3)
-     0,  #  5: SQBlBkBjrB   -> P1 (mark1, +2)
-     1,  #  6: SQBkBjrB     -> P2 (mark2, +2)
-     2,  #  7: SQBlkBjrB    -> P3 (mark1, +3)
-     4,  #  8: SQBjlBkBlBjrB-> P5 (N1-jmark 入口)
-     4,  #  9: SQBjlBklBjrB -> P5
-     4,  # 10: SQBjlBlBkBjrB-> P5
-     4,  # 11: SQBjlBlkBjrB -> P5
-     0,  # 12: SQd2BkBlB    -> P1 (mark1, +2)
-     1,  # 13: SQd2BlB      -> P2 (mark2, +2)
-     5,  # 14: SQd2B        -> P6（endmark 基底；avail 特例あり）
-     2,  # 15: SQd2BklB     -> P3 (mark1, +3)
-     0,  # 16: SQd2BlBkB    -> P1 (mark1, +2)
-     1,  # 17: SQd2BkB      -> P2 (mark2, +2)
-     2,  # 18: SQd2BlkB     -> P3 (mark1, +3)
-     0,  # 19: SQd1BkBlB    -> P1 (mark1, +2)
-     1,  # 20: SQd1BlB      -> P2 (mark2, +2) ※next_ld に |1 追加だが型はP2
-     5,  # 21: SQd1B        -> P6 (endmark 基底)
-     2,  # 22: SQd1BklB     -> P3 (mark1, +3)
-     0,  # 23: SQd1BlBkB    -> P1 (mark1, +2)
-     2,  # 24: SQd1BlkB     -> P3 (mark1, +3)
-     1,  # 25: SQd1BkB      -> P2 (mark2, +2)
-     5,  # 26: SQd0B        -> P6 (endmark 基底)
-     0,  # 27: SQd0BkB      -> P1 (mark1, +2)
+      0,  #  0: SQBkBlBjrB   -> P1 (mark1, +2)
+      1,  #  1: SQBlBjrB     -> P2 (mark2, +2)
+      3,  #  2: SQBjrB       -> P4 (jmark 特殊)
+      5,  #  3: SQB          -> P6 (endmark 基底)
+      2,  #  4: SQBklBjrB    -> P3 (mark1, +3)
+      0,  #  5: SQBlBkBjrB   -> P1 (mark1, +2)
+      1,  #  6: SQBkBjrB     -> P2 (mark2, +2)
+      2,  #  7: SQBlkBjrB    -> P3 (mark1, +3)
+      4,  #  8: SQBjlBkBlBjrB-> P5 (N1-jmark 入口)
+      4,  #  9: SQBjlBklBjrB -> P5
+      4,  # 10: SQBjlBlBkBjrB-> P5
+      4,  # 11: SQBjlBlkBjrB -> P5
+      0,  # 12: SQd2BkBlB    -> P1 (mark1, +2)
+      1,  # 13: SQd2BlB      -> P2 (mark2, +2)
+      5,  # 14: SQd2B        -> P6（endmark 基底；avail 特例あり）
+      2,  # 15: SQd2BklB     -> P3 (mark1, +3)
+      0,  # 16: SQd2BlBkB    -> P1 (mark1, +2)
+      1,  # 17: SQd2BkB      -> P2 (mark2, +2)
+      2,  # 18: SQd2BlkB     -> P3 (mark1, +3)
+      0,  # 19: SQd1BkBlB    -> P1 (mark1, +2)
+      1,  # 20: SQd1BlB      -> P2 (mark2, +2) ※next_ld に |1 追加だが型はP2
+      5,  # 21: SQd1B        -> P6 (endmark 基底)
+      2,  # 22: SQd1BklB     -> P3 (mark1, +3)
+      0,  # 23: SQd1BlBkB    -> P1 (mark1, +2)
+      2,  # 24: SQd1BlkB     -> P3 (mark1, +3)
+      1,  # 25: SQd1BkB      -> P2 (mark2, +2)
+      5,  # 26: SQd0B        -> P6 (endmark 基底)
+      0,  # 27: SQd0BkB      -> P1 (mark1, +2)
     ]
     for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
-        fid = FID[fn]
-        self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+      fid = FID[fn]
+      self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
 
   def _mix64(self, x: int) -> int:
-      # splitmix64 の最終段だけ使ったミキサ
-      x&=self.MASK64
-      x=(x^(x>>30))*0xBF58476D1CE4E5B9&self.MASK64
-      x=(x^(x>>27))*0x94D049BB133111EB&self.MASK64
-      x^=(x>>31)
-      return x&self.MASK64
+    # splitmix64 の最終段だけ使ったミキサ
+    x&=self.MASK64
+    x=(x^(x>>30))*0xBF58476D1CE4E5B9&self.MASK64
+    x=(x^(x>>27))*0x94D049BB133111EB&self.MASK64
+    x^=(x>>31)
+    return x&self.MASK64
 
   def _gen_list(self,cnt:int,seed:int)->List[int]:
-      # Zobristテーブル用の64bit値を cnt 個つくる。
-      # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
-      out:List[int]=[]
-      s:int=seed&self.MASK64
-      for _ in range(cnt):
-          s=(s+0x9E3779B97F4A7C15)&self.MASK64   # splitmix64 のインクリメント
-          out.append(self._mix64(s))
-      return out
+    # Zobristテーブル用の64bit値を cnt 個つくる。
+    # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
+    out:List[int]=[]
+    s:int=seed&self.MASK64
+    for _ in range(cnt):
+      s=(s+0x9E3779B97F4A7C15)&self.MASK64   # splitmix64 のインクリメント
+      out.append(self._mix64(s))
+    return out
 
   def _init_zobrist(self,N:int)->None:
-      # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
-      # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
-      if N in self.zobrist_tables:
-          return
-      base_seed:int=(0xC0D0_0000_0000_0000^(N<<32))&self.MASK64
-      tbl:Dict[str,List[int]]={
-          'ld':self._gen_list(N,base_seed^0x01),
-          'rd':self._gen_list(N,base_seed^0x02),
-          'col':self._gen_list(N,base_seed^0x03),
-          'LD':self._gen_list(N,base_seed^0x04),
-          'RD':self._gen_list(N,base_seed^0x05),
-          'row':self._gen_list(N,base_seed^0x06),
-          'queens':self._gen_list(N,base_seed^0x07),
-          'k':self._gen_list(N,base_seed^0x08),
-          'l':self._gen_list(N,base_seed^0x09),
-      }
-      self.zobrist_tables[N]=tbl
+    # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
+    # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
+    if N in self.zobrist_tables:
+      return
+    base_seed:int=(0xC0D0_0000_0000_0000^(N<<32))&self.MASK64
+    tbl:Dict[str,List[int]]={
+      'ld':self._gen_list(N,base_seed^0x01),
+      'rd':self._gen_list(N,base_seed^0x02),
+      'col':self._gen_list(N,base_seed^0x03),
+      'LD':self._gen_list(N,base_seed^0x04),
+      'RD':self._gen_list(N,base_seed^0x05),
+      'row':self._gen_list(N,base_seed^0x06),
+      'queens':self._gen_list(N,base_seed^0x07),
+      'k':self._gen_list(N,base_seed^0x08),
+      'l':self._gen_list(N,base_seed^0x09),
+    }
+    self.zobrist_tables[N]=tbl
   def rot90(self,ijkl:int,N:int)->int:
     # 時計回りに90度回転
     # rot90 メソッドは、90度の右回転（時計回り）を行います
@@ -668,7 +638,7 @@ class NQueens17:
     # 対称性のための計算と、ijklを扱うためのヘルパー関数。
     # 開始コンステレーションが回転90に対して対称である場合
     return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
-  """
+
   # 指定した盤面 (i, j, k, l) を90度・180度・270度回転したいずれか
   # の盤面がすでにIntHashSetに存在しているかをチェックする関数
   # @param ijklList 既出盤面signature（ijkl値）の集合（HashSet）
@@ -682,19 +652,17 @@ class NQueens17:
   # 返す（重複扱い）。
   #   - 真の“unique配置”のみ探索・カウントしたい場合の前処理とし
   # て必須。
-  """
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-  """
+    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+
   # symmetry: 回転・ミラー対称性ごとの重複補正
   # (90度:2, 180度:4, その他:8)
-  """
   def symmetry(self,ijkl:int,N:int)->int:
     return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
 
   def symmetry90(self,ijkl:int,N:int)->bool:
     return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
-  """
+
   # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
   # Python実装のgeti/getj/getk/getl/toijklに対応。
   # [i, j, k, l] 各クイーンの位置情報を5ビットずつ
@@ -706,7 +674,6 @@ class NQueens17:
   #   - toijkl(i, j, k, l): 各値を5ビット単位で連結し
   # 一意な整数値（signature）に変換
   # [注意] N≦32 まで対応可能
-  """
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
     return (i<<15)+(j<<10)+(k<<5)+l
 
@@ -728,33 +695,33 @@ class NQueens17:
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
 
+  # 1. Jasmin変換キャッシュを導入する
+  # [Opt-08] キャッシュ付き jasmin() のラッパー
   def get_jasmin(self,c:int,N:int)->int:
-    # 1. Jasmin変換キャッシュを導入する
-    # [Opt-08] キャッシュ付き jasmin() のラッパー
     key=(c,N)
     if key in self.jasmin_cache:
         return self.jasmin_cache[key]
     result=self.jasmin(c,N)
     self.jasmin_cache[key]=result
     return result
-  """
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
-  各クイーンの位置を取得し、最も左上に近い位置を見つけます
-  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
-  最小値を持つクイーンの位置を最下行に移動させる
-  i は最初の行（上端） 90度回転2回
-  j は最後の行（下端） 90度回転0回
-  k は最初の列（左端） 90度回転3回
-  l は最後の列（右端） 90度回転1回
-  優先順位が l>k>i>j の理由は？
-  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
-  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
-  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
-  j は下端の行に位置するため、優先順位が最も低くなります。
-  """
+
+  #  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
+  #  各クイーンの位置を取得し、最も左上に近い位置を見つけます
+  #  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
+  #  最小値を持つクイーンの位置を最下行に移動させる
+  #  i は最初の行（上端） 90度回転2回
+  #  j は最後の行（下端） 90度回転0回
+  #  k は最初の列（左端） 90度回転3回
+  #  l は最後の列（右端） 90度回転1回
+  #  優先順位が l>k>i>j の理由は？
+  #  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
+  #  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
+  #  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
+  #  j は下端の行に位置するため、優先順位が最も低くなります。
+  #
+  # 使用例:
+  # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
   def jasmin(self,ijkl:int,N:int)->int:
-    # 使用例:
-    # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
     # 最初の最小値と引数を設定
     arg=0
     min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
@@ -777,15 +744,17 @@ class NQueens17:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-  #---------------------------------
+
+  # ---------------------------------
   # 星座リストそのものをキャッシュ
-  #---------------------------------
+  # ---------------------------------
   def file_exists(self,fname:str)->bool:
     try:
       with open(fname,"rb"):
         return True
     except:
       return False
+
   # load_or_build_constellations_txt() は、N-Queens 問題において特定
   # の盤面サイズ N と事前配置数 preset_queens に対する星座構成（部分
   # 解集合）をテキストファイルとしてキャッシュ保存し、再利用するため
@@ -804,17 +773,16 @@ class NQueens17:
   # バリデーション関数の強化（既に実装済みの場合はスキップOK）
   def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool:
     return all(all(k in c for k in ("ld","rd","col", "startijkl")) for c in constellations)
-  # 修正：Codon互換の from_bytes() 相当処理
-  # def read_uint32_le(self, b: bytes) -> int:
-  # def read_uint32_le(self, b: List[int]) -> int:
-  #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
+
   def read_uint32_le(self,b:str)->int:
     return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
+
+  # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
   def int_to_le_bytes(self,x:int)->List[int]:
-    # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
     return [(x>>(8*i))&0xFF for i in range(4)]
+
+  # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
   def validate_bin_file(self,fname:str)->bool:
-    # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
     try:
       with open(fname,"rb") as f:
         f.seek(0,2)  # ファイル末尾に移動
@@ -822,8 +790,9 @@ class NQueens17:
       return size%16==0
     except:
       return False
+
+  # キャッシュ付きラッパー関数（.bin）
   def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    # キャッシュ付きラッパー関数（.bin）
     fname=f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
       try:
@@ -838,8 +807,9 @@ class NQueens17:
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_bin(fname,constellations)
     return constellations
+
+  # テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）
   def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
-    # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
     with open(path,"w") as f:
       for c in constellations:
         ld=c["ld"]
@@ -848,8 +818,9 @@ class NQueens17:
         startijkl=c["startijkl"]
         solutions=c.get("solutions", 0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+
+  # テキスト形式でロード
   def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
-    # --- テキスト形式でロード ---
     out:List[Dict[str,int]]=[]
     with open(path,"r") as f:
       for line in f:
@@ -860,15 +831,17 @@ class NQueens17:
         startijkl=int(parts[3]);solutions=int(parts[4])
         out.append({"ld":ld,"rd":rd,"col": col,"startijkl": startijkl,"solutions": solutions})
     return out
+
+  # bin形式で保存
   def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
-    # --- bin形式で保存 ---
     with open(fname,"wb") as f:
       for d in constellations:
         for key in ["ld","rd","col", "startijkl"]:
           b=self.int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
+
+  # bin形式でロード
   def load_constellations_bin(self,fname:str)->List[Dict[str,int]]:
-    # --- bin形式でロード ---
     constellations:List[Dict[str,int]]=[]
     with open(fname,"rb") as f:
       while True:
@@ -884,13 +857,12 @@ class NQueens17:
           "startijkl":startijkl,"solutions":0
         })
     return constellations
+
+  # キャッシュ付きラッパー関数（.txt）
   def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    # キャッシュ付きラッパー関数（.txt）
     # N と preset_queens に基づいて一意のファイル名を構成
     fname=f"constellations_N{N}_{preset_queens}.txt"
     # ファイルが存在すれば即読み込み
-    # if self.file_exists(fname):
-    #     return self.load_constellations_txt(fname)
     # ファイルが存在すれば読み込むが、破損チェックも行う
     if self.file_exists(fname):
       try:
@@ -909,10 +881,10 @@ class NQueens17:
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_txt(fname,constellations)
     return constellations
+
+  # サブコンステレーション生成にtuple keyでキャッシュ
+  # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
   def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
-    # サブコンステレーション生成にtuple keyでキャッシュ
-    # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
-    # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
     if key in self.subconst_cache:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
@@ -923,97 +895,93 @@ class NQueens17:
     self.subconst_cache.add(key)
 
   def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
-      self._init_zobrist(N)
-      tbl=self.zobrist_tables[N]
-      h=0
-      mask=(1<<N)-1
-      # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
-      ld&=mask
-      rd&=mask
-      col&=mask
-      LD&=mask
-      RD&=mask
-      # 以下はそのまま
-      m=ld;i=0
-      while i<N:
-          if (m&1)!=0:
-              h^=tbl['ld'][i]
-          m>>=1;i+=1
-      m=rd;i=0
-      while i<N:
-          if (m&1)!=0:
-              h^=tbl['rd'][i]
-          m>>=1;i+=1
-      m=col;i=0
-      while i<N:
-          if (m&1)!=0:
-              h^=tbl['col'][i]
-          m>>=1;i+=1
-      m=LD;i=0
-      while i<N:
-          if (m&1)!=0:
-              h^=tbl['LD'][i]
-          m>>=1;i+=1
-      m=RD;i=0
-      while i<N:
-          if (m&1)!=0:
-              h^=tbl['RD'][i]
-          m>>=1;i+=1
-      if 0<=row<N:h^=tbl['row'][row]
-      if 0<=queens<N:h^=tbl['queens'][queens]
-      if 0<=k<N:h^=tbl['k'][k]
-      if 0<=l<N:h^=tbl['l'][l]
-      return h&self.MASK64
+    self._init_zobrist(N)
+    tbl=self.zobrist_tables[N]
+    h=0
+    mask=(1<<N)-1
+    # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
+    ld&=mask
+    rd&=mask
+    col&=mask
+    LD&=mask
+    RD&=mask
+    # 以下はそのまま
+    m=ld;i=0
+    while i<N:
+      if (m&1)!=0:
+        h^=tbl['ld'][i]
+      m>>=1;i+=1
+    m=rd;i=0
+    while i<N:
+      if (m&1)!=0:
+        h^=tbl['rd'][i]
+      m>>=1;i+=1
+    m=col;i=0
+    while i<N:
+      if (m&1)!=0:
+        h^=tbl['col'][i]
+      m>>=1;i+=1
+    m=LD;i=0
+    while i<N:
+      if (m&1)!=0:
+        h^=tbl['LD'][i]
+      m>>=1;i+=1
+    m=RD;i=0
+    while i<N:
+      if (m&1)!=0:
+        h^=tbl['RD'][i]
+      m>>=1;i+=1
+    if 0<=row<N:h^=tbl['row'][row]
+    if 0<=queens<N:h^=tbl['queens'][queens]
+    if 0<=k<N:h^=tbl['k'][k]
+    if 0<=l<N:h^=tbl['l'][l]
+    return h&self.MASK64
 
+  # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+  # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
   def state_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
-      # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
-      # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-      return (ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
+    return (ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
 
-  """
-  開始コンステレーション（部分盤面）の生成関数
-  N-Queens探索の初期状態を最適化するため、3つまたは4つのクイーン（presetQueens）を
-  あらかじめ盤面に配置した全ての部分盤面（サブコンステレーション）を列挙・生成する。
-  再帰的に呼び出され、各行ごとに可能な配置をすべて検証。
-
-  @param ld   左対角線のビットマスク（既にクイーンがある位置は1）
-  @param rd   右対角線のビットマスク
-  @param col  縦方向（列）のビットマスク
-  @param k    事前にクイーンを必ず置く行のインデックス1
-  @param l    事前にクイーンを必ず置く行のインデックス2
-  @param row  現在の再帰探索行
-  @param queens 現在までに盤面に配置済みのクイーン数
-  @param LD/RD 探索初期状態用のマスク（使用例次第で追記）
-  @param counter 生成されたコンステレーション数を書き込むカウンタ
-  @param constellations 生成したコンステレーション（部分盤面配置）のリスト
-  @param N     盤面サイズ
-  @details
-    - row==k/lの場合は必ずクイーンを配置し次の行へ進む
-    - queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
-    - その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
-    - 生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
-  """
+  #  開始コンステレーション（部分盤面）の生成関数
+  #  N-Queens探索の初期状態を最適化するため、3つまたは4つのクイーン（presetQueens）を
+  #  あらかじめ盤面に配置した全ての部分盤面（サブコンステレーション）を列挙・生成する。
+  #  再帰的に呼び出され、各行ごとに可能な配置をすべて検証。
+  #
+  #  @param ld   左対角線のビットマスク（既にクイーンがある位置は1）
+  #  @param rd   右対角線のビットマスク
+  #  @param col  縦方向（列）のビットマスク
+  #  @param k    事前にクイーンを必ず置く行のインデックス1
+  #  @param l    事前にクイーンを必ず置く行のインデックス2
+  #  @param row  現在の再帰探索行
+  #  @param queens 現在までに盤面に配置済みのクイーン数
+  #  @param LD/RD 探索初期状態用のマスク（使用例次第で追記）
+  #  @param counter 生成されたコンステレーション数を書き込むカウンタ
+  #  @param constellations 生成したコンステレーション（部分盤面配置）のリスト
+  #  @param N     盤面サイズ
+  #  @details
+  #    - row==k/lの場合は必ずクイーンを配置し次の行へ進む
+  #    - queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
+  #    - その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
+  #    - 生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
 
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
-    #
-    # zobrist_hash
+    # <>zobrist_hash
     # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
     # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
     # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
     # h: int = self.zobrist_hash(ld, rd, col, row, queens, k, l, LD, RD, N)
-    #
-    # state_hash
+    # <>state_hash
     # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
     # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
     # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
     h:int=self.state_hash(ld,rd,col,row,queens,k,l,LD,RD,N)
     if h in visited:
-        return
+      return
     visited.add(h)
     #
-    # StateKey（タプル）
+    # <>StateKey（タプル）
     # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
     # set の比較・保持も重く、メモリも一番食います。
     # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
@@ -1022,16 +990,14 @@ class NQueens17:
     #     return
     # visited.add(key)
 
-    # ----------------------------
     # k行とl行はスキップ
     if row==k or row==l:
       # self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited)
       return
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
-    # ------------------------------------------------
+
     # 3. 星座のsignature重複防止
-    #
     # if queens==preset_queens:
     #   constellation= {"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions":0}
     #   # 新しいコンステレーションをリストに追加
@@ -1039,18 +1005,18 @@ class NQueens17:
     #   counter[0]+=1
     #   return
     if queens==preset_queens:
-        # signatureの生成
-        signature=(ld,rd,col,k,l,row)  # 必要な変数でOK
-        # signaturesセットをクラス変数やグローバルで管理
-        if not hasattr(self,"constellation_signatures"):
-            self.constellation_signatures=set()
-        signatures=self.constellation_signatures
-        if signature not in signatures:
-            constellation={"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions": 0}
-            constellations.append(constellation) #星座データ追加
-            signatures.add(signature)
-            counter[0]+=1
-        return
+      # signatureの生成
+      signature=(ld,rd,col,k,l,row)  # 必要な変数でOK
+      # signaturesセットをクラス変数やグローバルで管理
+      if not hasattr(self,"constellation_signatures"):
+        self.constellation_signatures=set()
+      signatures=self.constellation_signatures
+      if signature not in signatures:
+        constellation={"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions": 0}
+        constellations.append(constellation) #星座データ追加
+        signatures.add(signature)
+        counter[0]+=1
+      return
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
@@ -1076,15 +1042,15 @@ class NQueens17:
         if _should_go_plus1(next_free,row+1,endmark,(ld|bit)<<1,(rd|bit)>>1,col|bit,board_mask,_extra_block_for_row(row+1,mark1,mark2,jmark,N)):
             total+=_dfs(nxt,(ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
+  # FID_SQd2B だけの特例
   def dfs_ptn_5(self,functionid:int,avail:int)->int:
-    # FID_SQd2B だけの特例
     #  if functionid == FID_SQd2B:
     if functionid==14:# FID_SQd2B
       return 1 if (avail&(~1))>0 else 0
     return 1
 
-  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,
-         jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     avail:int=free
     total:int=0
     # 事前計算テーブル
@@ -1141,15 +1107,14 @@ class NQueens17:
     # P5: N1 - jmark 入口（行は据え置き）
     # ======================
     elif ptn==4:# P5
-        print("ptn4")
-        N1:int=N-1
-        if row==N1-jmark:
-            rd|=1<<N1
-            next_free:int=board_mask&~(ld<<1|rd>>1|col)
-            if next_free:
-                total=_dfs(nxt,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-            # return total  # ここで確定終了
-
+      print("ptn4")
+      N1:int=N-1
+      if row==N1-jmark:
+        rd|=1<<N1
+        next_free:int=board_mask&~(ld<<1|rd>>1|col)
+        if next_free:
+          total=_dfs(nxt,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+        # return total  # ここで確定終了
     # ---------------------------------
     # 共通の「+1 前進」処理（末尾）
     # ---------------------------------
@@ -1160,33 +1125,21 @@ class NQueens17:
     total+=_set_queens(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,1,0,0,0,functionid)
     return total
 
-
-
-
-
-
-
-
-
-
-
-  """
-  ConstellationArrayListの各Constellation（部分盤面）ごとに
-  N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
-  @param constellations 解探索対象のConstellationArrayListポインタ
-  @param N              盤面サイズ
-  @details
-    - 各Constellation（部分盤面）ごとにj, k, l, 各マスク値を展開し、
-      複雑な分岐で最適な再帰ソルバー（SQ...関数群）を呼び出して解数を計算
-    - 分岐ロジックは、部分盤面・クイーンの位置・コーナーからの距離などで高速化
-    - 解数はtemp_counterに集約し、各Constellationのsolutionsフィールドに記録
-    - symmetry(ijkl, N)で回転・ミラー重複解を補正
-    - GPUバージョン(execSolutionsKernel)のCPU移植版（デバッグ・逐次確認にも活用）
-  @note
-    - N-Queens最適化アルゴリズムの核心部
-    - temp_counterは再帰呼び出しで合計を受け渡し
-    - 実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
-  """
+  #  ConstellationArrayListの各Constellation（部分盤面）ごとに
+  #  N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
+  #  @param constellations 解探索対象のConstellationArrayListポインタ
+  #  @param N              盤面サイズ
+  #  @details
+  #    - 各Constellation（部分盤面）ごとにj, k, l, 各マスク値を展開し、
+  #      複雑な分岐で最適な再帰ソルバー（SQ...関数群）を呼び出して解数を計算
+  #    - 分岐ロジックは、部分盤面・クイーンの位置・コーナーからの距離などで高速化
+  #    - 解数はtemp_counterに集約し、各Constellationのsolutionsフィールドに記録
+  #    - symmetry(ijkl, N)で回転・ミラー重複解を補正
+  #    - GPUバージョン(execSolutionsKernel)のCPU移植版（デバッグ・逐次確認にも活用）
+  #  @note
+  #    - N-Queens最適化アルゴリズムの核心部
+  #    - temp_counterは再帰呼び出しで合計を受け渡し
+  #    - 実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     N2:int=N-2
     small_mask:int=(1<<N2)-1
@@ -1225,7 +1178,6 @@ class NQueens17:
     FID_SQd1BkB=25
     FID_SQd0B=26
     FID_SQd0BkB=27
-
 
     @par
     for constellation in constellations:
@@ -1376,21 +1328,19 @@ class NQueens17:
 
       constellation["solutions"]=cnt*symmetry(ijkl,N)
 
-  """
-  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
-  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
-  @param constellations  Constellation本体リスト（実際の盤面は後続で生成）
-  @param N               盤面サイズ
-  @details
-    - コーナー・エッジ・対角・回転対称性を考慮し、「代表解」となるuniqueな開始盤面のみ抽出する。
-    - forループの入れ子により、N-Queens盤面の「最小単位部分盤面」を厳密な順序で列挙。
-    - k, l, i, j 各インデックスの取り方・範囲・重複排除のための判定ロジックが最適化されている。
-    - checkRotations()で既出盤面（回転対称）を排除、必要なものだけをijklListに追加。
-    - このunique setをもとに、後段でConstellation構造体の生成・分割探索を展開可能。
-  @note
-    - 「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
-    - このループ構造・排除ロジックがN-Queensソルバの根幹。
-  """
+  #  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
+  #  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
+  #  @param constellations  Constellation本体リスト（実際の盤面は後続で生成）
+  #  @param N               盤面サイズ
+  #  @details
+  #    - コーナー・エッジ・対角・回転対称性を考慮し、「代表解」となるuniqueな開始盤面のみ抽出する。
+  #    - forループの入れ子により、N-Queens盤面の「最小単位部分盤面」を厳密な順序で列挙。
+  #    - k, l, i, j 各インデックスの取り方・範囲・重複排除のための判定ロジックが最適化されている。
+  #    - checkRotations()で既出盤面（回転対称）を排除、必要なものだけをijklListに追加。
+  #    - このunique setをもとに、後段でConstellation構造体の生成・分割探索を展開可能。
+  #  @note
+  #    - 「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
+  #    - このループ構造・排除ロジックがN-Queensソルバの根幹。
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
@@ -1458,9 +1408,8 @@ class NQueens17:
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
           constellations[-1-a]["startijkl"]|=base
-  #-----------------
+
   # 関数プロトタイプ
-  #-----------------
   @staticmethod
   def _has_future_space_step(next_ld:int,next_rd:int,next_col:int,row_next:int,endmark:int, board_mask:int,extra_block_next:int) -> bool:
     # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
@@ -1491,6 +1440,7 @@ class NQueens17:
       if row_next>=endmark:
           return True
       return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
+
 """
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     if row==endmark:
@@ -2536,7 +2486,9 @@ class NQueens17:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 """
+
 class NQueens17_constellations():
+
   def _bit_total(self,size:int)->int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask=(1<<size)-1
@@ -2553,9 +2505,10 @@ class NQueens17_constellations():
             bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
     bt(0,0,0,0)
     return total
+
   def main(self)->None:
     nmin:int=5
-    nmax:int=28
+    nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -2589,5 +2542,6 @@ class NQueens17_constellations():
       expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
+
 if __name__=="__main__":
   NQueens17_constellations().main()
