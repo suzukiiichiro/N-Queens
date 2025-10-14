@@ -1013,6 +1013,37 @@ class NQueens17:
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
+  @staticmethod
+  def _has_future_space_step(next_ld:int,next_rd:int,next_col:int,row_next:int,endmark:int, board_mask:int,extra_block_next:int) -> bool:
+    # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
+    # ゴール直前は先読み不要（短絡）
+    if row_next >= endmark:
+        return True
+    blocked_next=(next_ld<<1)|(next_rd>>1)|next_col|extra_block_next
+    return (board_mask&~blocked_next)!=0
+    #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
+    # 次の行に進んだときに置ける可能性が1ビットでも残るか
+    # return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
+
+  @staticmethod
+  def _extra_block_for_row(row_next:int,mark1:int,mark2:int,jmark:int,N:int)->int:
+    extra=0
+    blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
+    if row_next==mark1:
+      extra|=blockK
+    if row_next==mark2:
+      extra|=blockK
+    if row_next==(N-1-jmark):# jmark 系ありの関数だけ使う
+      extra|=(1<<(N-1))
+    return extra
+
+  def _should_go_plus1(self,next_free:int,row_next:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
+    if not next_free:
+      return False
+    if row_next>=endmark:
+      return True
+    return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
+
   def set_queens(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int,avail:int,avail_flag:int,step:int,add1:int,blockK:int,blockl:int,nxt:int)->int:
     _extra_block_for_row=self._extra_block_for_row
     _should_go_plus1=self._should_go_plus1
@@ -1395,38 +1426,7 @@ class NQueens17:
           constellations[-1-a]["startijkl"]|=base
 
   # 関数プロトタイプ
-  @staticmethod
-  def _has_future_space_step(next_ld:int,next_rd:int,next_col:int,row_next:int,endmark:int, board_mask:int,extra_block_next:int) -> bool:
-    # extra_block_next:int 次の行で実際にORされる追加ブロック（なければ0）
-    # ゴール直前は先読み不要（短絡）
-    if row_next >= endmark:
-        return True
-    blocked_next=(next_ld<<1)|(next_rd>>1)|next_col|extra_block_next
-    return (board_mask&~blocked_next)!=0
-    #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
-    # 次の行に進んだときに置ける可能性が1ビットでも残るか
-    # return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-
-  @staticmethod
-  def _extra_block_for_row(row_next:int,mark1:int,mark2:int,jmark:int,N:int)->int:
-      extra=0
-      blockK=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-      if row_next==mark1:
-          extra|=blockK
-      if row_next==mark2:
-          extra|=blockK
-      if row_next==(N-1-jmark):# jmark 系ありの関数だけ使う
-          extra|=(1<<(N-1))
-      return extra
-
-  def _should_go_plus1(self,next_free:int,row_next:int,endmark:int,next_ld:int,next_rd:int,next_col:int,board_mask:int,extra:int)->bool:
-      if not next_free:
-          return False
-      if row_next>=endmark:
-          return True
-      return self._has_future_space_step(next_ld,next_rd,next_col,row_next,endmark,board_mask,extra)
-
-"""
+  """
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     if row==endmark:
       return 1
@@ -2470,7 +2470,7 @@ class NQueens17:
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-"""
+  """
 
 class NQueens17_constellations():
 
