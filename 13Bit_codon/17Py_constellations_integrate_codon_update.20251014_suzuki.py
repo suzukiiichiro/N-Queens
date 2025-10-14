@@ -454,16 +454,6 @@ class NQueens17:
   def __init__(self,N:int)->None:
     # 64bit マスク（Zobrist用途）
     MASK64:int=(1<<64)-1
-    # StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
-    # StateKey = Tuple[int, int, int, int, int, int, int, int, int]
-
-    # pypyを使うときは以下を活かしてcodon部分をコメントアウト
-    # import pypyjit
-    # pypyjit.set_param('max_unroll_recursion=-1')
-    #
-    # StateKey
-    # self.subconst_cache: Dict[ StateKey, bool ] = {}
-    # self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
     FUNC_CATEGORY={
       # N-3
       "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB": 3,
@@ -477,14 +467,13 @@ class NQueens17:
       "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB": 0,
       "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB": 0,"SQd0B": 0
     }
-
     FID={
-    "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
-    "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
-    "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
-    "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
-    "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
-    "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
+      "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
+      "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
+      "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
+      "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
+      "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
+      "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
     }
     self.subconst_cache:Set[StateKey]=set()
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
@@ -592,17 +581,17 @@ class NQueens17:
       fid = FID[fn]
       self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
 
+  # splitmix64 の最終段だけ使ったミキサ
   def _mix64(self, x: int) -> int:
-    # splitmix64 の最終段だけ使ったミキサ
     x&=self.MASK64
     x=(x^(x>>30))*0xBF58476D1CE4E5B9&self.MASK64
     x=(x^(x>>27))*0x94D049BB133111EB&self.MASK64
     x^=(x>>31)
     return x&self.MASK64
 
+  # Zobristテーブル用の64bit値を cnt 個つくる。
+  # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
   def _gen_list(self,cnt:int,seed:int)->List[int]:
-    # Zobristテーブル用の64bit値を cnt 個つくる。
-    # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
     out:List[int]=[]
     s:int=seed&self.MASK64
     for _ in range(cnt):
@@ -610,9 +599,9 @@ class NQueens17:
       out.append(self._mix64(s))
     return out
 
+  # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
+  # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
   def _init_zobrist(self,N:int)->None:
-    # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
-    # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
     if N in self.zobrist_tables:
       return
     base_seed:int=(0xC0D0_0000_0000_0000^(N<<32))&self.MASK64
@@ -628,15 +617,16 @@ class NQueens17:
       'l':self._gen_list(N,base_seed^0x09),
     }
     self.zobrist_tables[N]=tbl
+
+  # 時計回りに90度回転
+  # rot90 メソッドは、90度の右回転（時計回り）を行います
+  # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
   def rot90(self,ijkl:int,N:int)->int:
-    # 時計回りに90度回転
-    # rot90 メソッドは、90度の右回転（時計回り）を行います
-    # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
     return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
 
+  # 対称性のための計算と、ijklを扱うためのヘルパー関数。
+  # 開始コンステレーションが回転90に対して対称である場合
   def rot180(self,ijkl:int,N:int)->int:
-    # 対称性のための計算と、ijklを扱うためのヘルパー関数。
-    # 開始コンステレーションが回転90に対して対称である場合
     return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
 
   # 指定した盤面 (i, j, k, l) を90度・180度・270度回転したいずれか
@@ -745,9 +735,7 @@ class NQueens17:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
 
-  # ---------------------------------
   # 星座リストそのものをキャッシュ
-  # ---------------------------------
   def file_exists(self,fname:str)->bool:
     try:
       with open(fname,"rb"):
@@ -965,7 +953,6 @@ class NQueens17:
   #    - 生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
-
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
     # <>zobrist_hash
     # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
@@ -1244,7 +1231,6 @@ class NQueens17:
               cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
               cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
-
       elif j==(N-3):
         endmark=N2
         if k<l:
@@ -1273,7 +1259,6 @@ class NQueens17:
               cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
           else:
             cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
-
       elif j==N2:# jがコーナーから1列内側
         if k<l:
           endmark=N2
