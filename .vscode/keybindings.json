@@ -1,0 +1,8 @@
+[
+  {
+    "key": "ctrl+alt+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Rmsp (vim headless)",
+    "when": "editorTextFocus"
+  }
+]

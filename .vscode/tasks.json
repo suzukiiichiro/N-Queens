@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Rmsp (vim headless, clean)",
+      "type": "shell",
+      "command": "/usr/bin/vim",
+      "args": [
+        "-n","-Es",
+        "-u","NONE","-U","NONE","-i","NONE","--noplugin","-X",
+        "-S","~/.vim/rmsp_headless.vim",
+        "${file}",
+        "+%Rmsp",
+        "+wq"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
