@@ -612,9 +612,11 @@ class NQueens17:
     #   5,  # 26: SQd0B        -> P6 (endmark 基底)
     #   0,  # 27: SQd0BkB      -> P1 (mark1, +2)
     # ]
+    _blockK_by_funcid=self.blockK_by_funcid
     for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
       fid = FID[fn]
-      self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+      # self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+      _blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
 
   # splitmix64 の最終段だけ使ったミキサ
   def _mix64(self, x: int) -> int:
@@ -629,9 +631,11 @@ class NQueens17:
   def _gen_list(self,cnt:int,seed:int)->List[int]:
     out:List[int]=[]
     s:int=seed&self.MASK64
+    __mix64=self._mix64
     for _ in range(cnt):
       s=(s+0x9E3779B97F4A7C15)&self.MASK64   # splitmix64 のインクリメント
-      out.append(self._mix64(s))
+      # out.append(self._mix64(s))
+      out.append(__mix64(s))
     return out
 
   # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
@@ -763,8 +767,10 @@ class NQueens17:
       arg=1
       min_val=self.ffmin(self.getl(ijkl),N-1-self.getl(ijkl))
     # 90度回転を arg 回繰り返す
+    _rot90=self.rot90
     for _ in range(arg):
-      ijkl=self.rot90(ijkl,N)
+      # ijkl=self.rot90(ijkl,N)
+      ijkl=_rot90(ijkl,N)
     # 必要に応じて垂直方向のミラーリングを実行
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
@@ -857,15 +863,18 @@ class NQueens17:
 
   # bin形式で保存
   def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
+    _int_to_le_bytes=self.int_to_le_bytes
     with open(fname,"wb") as f:
       for d in constellations:
         for key in ["ld","rd","col", "startijkl"]:
-          b=self.int_to_le_bytes(d[key])
+          # b=self.int_to_le_bytes(d[key])
+          _int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
   # bin形式でロード
   def load_constellations_bin(self,fname:str)->List[Dict[str,int]]:
     constellations:List[Dict[str,int]]=[]
+    _read_uint32_le=self.read_uint32_le
     with open(fname,"rb") as f:
       while True:
         raw=f.read(16)
@@ -874,7 +883,8 @@ class NQueens17:
         ld=self.read_uint32_le(raw[0:4])
         rd=self.read_uint32_le(raw[4:8])
         col=self.read_uint32_le(raw[8:12])
-        startijkl=self.read_uint32_le(raw[12:16])
+        # startijkl=self.read_uint32_le(raw[12:16])
+        startijkl=_read_uint32_le(raw[12:16])
         constellations.append({
           "ld":ld,"rd":rd,"col": col,
           "startijkl":startijkl,"solutions":0
@@ -1041,12 +1051,14 @@ class NQueens17:
       return
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
+    _set_pre_queens_cached=self.set_pre_queens_cached
     while free:
       bit:int=free&-free
       free&=free-1
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
-      self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
+      # self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
+      _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
   @staticmethod
   def _extra_block_for_row(next_row:int,mark1:int,mark2:int,jmark:int,N:int)->int:
@@ -1590,10 +1602,12 @@ class NQueens17:
     # ローカルアクセスに変更
     geti,getj,getk,getl=self.geti,self.getj,self.getk,self.getl
     to_ijkl=self.to_ijkl
+    _constellation_signatures=self.constellation_signatures
+    _set_pre_queens_cached=self.set_pre_queens_cached
     for sc in ijkl_list:
       # ここで毎回クリア（＝この sc だけの重複抑止に限定）
       # self.constellation_signatures.clear()
-      self.constellation_signatures=set()
+      _constellation_signatures=set()
       # i,j,k,l=self.geti(sc),self.getj(sc),self.getk(sc),self.getl(sc)
       i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
       # ld,rd,col=(L>>(i-1))|(1<<(N-k)),(L>>(i+1))|(1<<(l-1)),1|L|(L>>i)|(L>>j)
@@ -1613,7 +1627,8 @@ class NQueens17:
       #-------------------------
       # self.set_pre_queens(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       # self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N-1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
-      self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
+      # self.set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
+      _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited)
       current_size=len(constellations)
       # 生成されたサブコンステレーションにスタート情報を追加
       # list(map(lambda target:target.__setitem__("startijkl",target["startijkl"]|self.to_ijkl(i,j,k,l)),(constellations[current_size-a-1] for a in range(counter[0]))))
