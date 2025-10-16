@@ -1653,6 +1653,10 @@ class NQueens17:
     mark1_arr=[0]*m;mark2_arr=[0]*m
     funcid_arr=[0]*m
     ijkl_arr=[0]*m   # symmetry 計算用
+    N1=N-1
+    NK=1<<(N-3)
+    NJ=1<<N1
+    results=[0]*m
 
     # for constellation in constellations:
     for i,constellation in enumerate(constellations):
@@ -1779,10 +1783,6 @@ class NQueens17:
 
     # ===== 並列ステージ：計算だけ =====
     # cnt=dfs(target,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
-    N1=N-1
-    NK=1<<(N-3)
-    NJ=1<<N1
-    results=[0]*m
     @par
     for i in range(m):
       cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
