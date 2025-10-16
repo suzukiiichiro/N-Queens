@@ -1791,7 +1791,7 @@ class NQueens17:
     # ===== 書き戻し（単一スレッド） =====
     # constellation["solutions"]=cnt*symmetry(ijkl,N)
     for i,constellation in enumerate(constellations):
-        constellation["solutions"]=results[i]
+      constellation["solutions"]=results[i]
 
   #  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
   #  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
