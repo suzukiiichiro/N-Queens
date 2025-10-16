@@ -900,7 +900,7 @@ class NQueens17:
     with open(fname,"wb") as f:
       for d in constellations:
         for key in ["ld","rd","col", "startijkl"]:
-          # b=self.int_to_le_bytes(d[key])
+          b=_int_to_le_bytes(d[key])
           _int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
