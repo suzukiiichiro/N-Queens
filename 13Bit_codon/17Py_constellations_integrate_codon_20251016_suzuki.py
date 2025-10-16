@@ -484,39 +484,17 @@ class NQueens17:
       (26,5, 1),  # 26 SQd0B        -> P6, 先読みあり
       (26,0, 0),  # 27 SQd0BkB      -> P1, 先読みなし
     ]
-    FUNC_CATEGORY={
-      # N-3
-      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
-      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB":3,
-      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB":3,"SQd0BkB":3,
-      # N-4
-      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB":4,
-      # 0（上記以外）
-      "SQBlBjrB":0,"SQBjrB":0,"SQB":0,"SQBlBkBjrB":0,
-      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB":0,"SQBjlBlkBjrB":0,
-      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB":0,
-      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB":0,"SQd0B":0
-    }
-    FID={
-      "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
-      "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
-      "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
-      "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
-      "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
-      "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
-    }
-
-    self.N = N
-    n3 = 1 << max(0, N-3)   # 念のため負シフト防止
-    n4 = 1 << max(0, N-4)
-    size = max(FID.values()) + 1
-    self.blockK_by_funcid = [0] * size
-    self.blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
-    _blockK_by_funcid=self.blockK_by_funcid
-    for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
-      fid = FID[fn]
-      # self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
-      _blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+    # self.N = N
+    # n3 = 1 << max(0, N-3)   # 念のため負シフト防止
+    # n4 = 1 << max(0, N-4)
+    # size = max(FID.values()) + 1
+    # self.blockK_by_funcid = [0] * size
+    # self.blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
+    # _blockK_by_funcid=self.blockK_by_funcid
+    # for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
+    #   fid = FID[fn]
+    #   # self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+    #   _blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
 
     # self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     # self.jasmin_cache: Dict[Tuple[int, int], int] = {}
@@ -1200,7 +1178,7 @@ class NQueens17:
           total+=_dfs(nxt,next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   """
-  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,blockK_by_funcid:List[int],blockl_by_funcid:List[int],N:int)->int:
     bit:int=0
     avail:int=free
     total:int=0
@@ -1208,8 +1186,8 @@ class NQueens17:
     _dfs=self.dfs
     _extra_block_for_row=self._extra_block_for_row
     # _should_go_plus1=self._should_go_plus1
-    _blockK_by_funcid=self.blockK_by_funcid
-    _blockl_by_funcid=self.blockl_by_funcid
+    # _blockK_by_funcid=self.blockK_by_funcid
+    # _blockl_by_funcid=self.blockl_by_funcid
     _func_meta=self.func_meta
     next_funcid,funcptn,avail_flag=_func_meta[functionid]
     # funcptn:int=self.funcptn[functionid]
@@ -1229,7 +1207,7 @@ class NQueens17:
         rd|=NJ # rd |= 1 << N1
         next_free:int=board_mask&~((ld<<1)|(rd>>1)|col)
         if next_free:
-          total+=_dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
         return total # 続行（通常ループへ）
     # ==============================
     # ここから 1 本化した共通配置ループ
@@ -1258,8 +1236,8 @@ class NQueens17:
         row_step=row+step
         # blockK = self.blockK_by_funcid[functionid]
         # blockl= self.blockl_by_funcid[functionid]
-        blockK:int=_blockK_by_funcid[functionid]
-        blockl:int=_blockl_by_funcid[functionid]
+        blockK:int=blockK_by_funcid[functionid]
+        blockl:int=blockl_by_funcid[functionid]
         use_blocks:bool=True
         use_future:bool=False          # ここは従来どおり next_free だけで分岐
         local_next_funcid=next_funcid
@@ -1277,7 +1255,7 @@ class NQueens17:
         blocked:int=next_ld|next_rd|next_col
         next_free:int=board_mask&~blocked
         if next_free:
-          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
     else:
       # “素の +1” だけ（先読みなし）
       if not use_future:
@@ -1290,7 +1268,7 @@ class NQueens17:
           blocked:int=next_ld|next_rd|next_col
           next_free:int=board_mask&~blocked
           if next_free:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
       # “+1 with 先読み”
       else:
         while avail:
@@ -1304,7 +1282,7 @@ class NQueens17:
           if not next_free:
             continue
           if row_step>=endmark:
-            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             continue
           # extra のインライン版（上 #1 の式）
           m1:int=1 if row_step==mark1 else 0
@@ -1313,7 +1291,7 @@ class NQueens17:
           extra:int=((m1|m2)*NK)|(mj*NJ)
           future:int=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
           if future:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
     # 別名なし版（そのまま元の変数を使う）
     # while avail:
     #   bit:int=avail&-avail
@@ -1412,6 +1390,38 @@ class NQueens17:
     FID_SQd0B=26
     FID_SQd0BkB=27
 
+    FUNC_CATEGORY={
+      # N-3
+      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
+      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB":3,
+      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB":3,"SQd0BkB":3,
+      # N-4
+      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB":4,
+      # 0（上記以外）
+      "SQBlBjrB":0,"SQBjrB":0,"SQB":0,"SQBlBkBjrB":0,
+      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB":0,"SQBjlBlkBjrB":0,
+      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB":0,
+      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB":0,"SQd0B":0
+    }
+    FID={
+      "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
+      "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
+      "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
+      "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
+      "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
+      "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
+    }
+
+    n3 = 1 << max(0, N-3)   # 念のため負シフト防止
+    n4 = 1 << max(0, N-4)
+    size = max(FID.values()) + 1
+    blockK_by_funcid = [0] * size
+    blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
+    for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
+      fid = FID[fn]
+      # self.blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+      blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+
     N1:int=N-1
     @par
     for constellation in constellations:
@@ -1449,38 +1459,38 @@ class NQueens17:
             if start<l:
               if start<k:
                 if l!=k+1:
-                  cnt=dfs(FID_SQBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
                 else:
-                  cnt=dfs(FID_SQBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
-                cnt=dfs(FID_SQBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
-              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
                 if k!=l+1:
-                  cnt=dfs(FID_SQBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
                 else:
-                  cnt=dfs(FID_SQBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
-                cnt=dfs(FID_SQBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
-              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
         else:
           if k<l:
             mark1,mark2=k-1,l-1
             if l!=k+1:
-              cnt=dfs(FID_SQBjlBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjlBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
-              cnt=dfs(FID_SQBjlBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjlBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
             mark1,mark2=l-1,k-1
             if k!=l+1:
-              cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
-              cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
       elif j==(N-3):
         endmark=N2
         if k<l:
@@ -1488,27 +1498,27 @@ class NQueens17:
           if start<l:
             if start<k:
               if l!=k+1:
-                cnt=dfs(FID_SQd2BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd2BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
-                cnt=dfs(FID_SQd2BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd2BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
               mark2=l-1
-              cnt=dfs(FID_SQd2BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQd2BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
-            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
         else:
           mark1,mark2=l-1,k-1
           if start<k:
             if start<l:
               if k!=l+1:
-                cnt=dfs(FID_SQd2BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd2BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
-                cnt=dfs(FID_SQd2BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd2BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
               mark2=k-1
-              cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
-            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
       elif j==N2:# jがコーナーから1列内側
         if k<l:
           endmark=N2
@@ -1517,14 +1527,14 @@ class NQueens17:
               mark1=k-1
               if l!=k+1:
                 mark2=l-1
-                cnt=dfs(FID_SQd1BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd1BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
-                cnt=dfs(FID_SQd1BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd1BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
               mark2=l-1
-              cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+              cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
-            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
         else:# l < k
           if start<k:
             if start<l:
@@ -1532,34 +1542,34 @@ class NQueens17:
                 mark1,endmark=l-1,N2
                 if k!=l+1:
                   mark2=k-1
-                  cnt=dfs(FID_SQd1BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQd1BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
                 else:
-                  cnt=dfs(FID_SQd1BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQd1BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
                 if l!=(N-3):
                   mark2,endmark=l-1,N-3
-                  cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
                 else:
                   endmark=N-4
-                  cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                  cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
             else:
               if k!=N2:
                 mark2,endmark=k-1,N2
-                cnt=dfs(FID_SQd1BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd1BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
               else:
                 endmark=N-3
-                cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+                cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
           else:
             endmark=N2
-            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
 
       else:# j がコーナー
         endmark=N2
         if start>k:
-          cnt=dfs(FID_SQd0B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+          cnt=dfs(FID_SQd0B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
         else:
           mark1=k-1
-          cnt=dfs(FID_SQd0BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
+          cnt=dfs(FID_SQd0BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,N)
 
       constellation["solutions"]=cnt*symmetry(ijkl,N)
 
