@@ -1641,8 +1641,6 @@ class NQueens17:
     for fn,cat in FUNC_CATEGORY.items():# FUNC_CATEGORY: {関数名: 3 or 4 or 0}
       fid=FID[fn]
       blockK_by_funcid[fid]=n3 if cat==3 else (n4 if cat==4 else 0)
-    N1:int=N-1
-    target:int=0
 
     # ===== 前処理ステージ（単一スレッド） =====
     m=len(constellations)
@@ -1657,6 +1655,8 @@ class NQueens17:
     NK=1<<(N-3)
     NJ=1<<N1
     results=[0]*m
+    # N1:int=N-1
+    target:int=0
 
     # for constellation in constellations:
     for i,constellation in enumerate(constellations):
