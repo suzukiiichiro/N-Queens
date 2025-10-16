@@ -451,23 +451,6 @@ from datetime import datetime
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
 class NQueens17:
-  # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
-  def to_ijkl(self,i:int,j:int,k:int,l:int)->int: return (i<<15)+(j<<10)+(k<<5)+l
-  def mirvert(self,ijkl:int,N:int)->int: return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
-  def ffmin(self,a:int,b:int)->int: return min(a,b)
-  def geti(self,ijkl:int)->int: return (ijkl>>15)&0x1F
-  def getj(self,ijkl:int)->int: return (ijkl>>10)&0x1F
-  def getk(self,ijkl:int)->int: return (ijkl>>5)&0x1F
-  def getl(self,ijkl:int)->int: return ijkl&0x1F
-  # rot90 メソッドは、90度の右回転（時計回り）を行います 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
-  def rot90(self,ijkl:int,N:int)->int: return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
-  # 対称性のための計算と、ijklを扱うためのヘルパー関数。開始コンステレーションが回転90に対して対称である場合
-  def rot180(self,ijkl:int,N:int)->int: return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
-  # symmetry: 回転・ミラー対称性ごとの重複補正 # (90度:2, 180度:4, その他:8)
-  def symmetry(self,ijkl:int,N:int)->int: return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
-  def symmetry90(self,ijkl:int,N:int)->bool: return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool: return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-
   # def __init__(self)->None:
     # next_funcid, funcptn, availptn の3つだけ持つ
     # self.func_meta = [
@@ -613,7 +596,7 @@ class NQueens17:
     # ]
 
   # splitmix64 の最終段だけ使ったミキサ
-  def mix64(self, x: int) -> int:
+  def mix64(self,x:int)->int:
     MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
     x&=MASK64
     x=(x^(x>>30))*0xBF58476D1CE4E5B9&MASK64
@@ -661,7 +644,7 @@ class NQueens17:
 
   def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
     MASK64:int=(1<<64)-1
-    zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
+    zobrist_tables:Dict[int,Dict[str,List[int]]]={}
     tbl=self.init_zobrist(N,zobrist_tables)
     h=0
     mask=(1<<N)-1
@@ -701,6 +684,23 @@ class NQueens17:
     if 0<=l<N:h^=tbl['l'][l]
     return h&MASK64
 
+  # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
+  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:return (i<<15)+(j<<10)+(k<<5)+l
+  def mirvert(self,ijkl:int,N:int)->int:return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+  def ffmin(self,a:int,b:int)->int:return min(a,b)
+  def geti(self,ijkl:int)->int:return (ijkl>>15)&0x1F
+  def getj(self,ijkl:int)->int:return (ijkl>>10)&0x1F
+  def getk(self,ijkl:int)->int:return (ijkl>>5)&0x1F
+  def getl(self,ijkl:int)->int:return ijkl&0x1F
+  # rot90 メソッドは、90度の右回転（時計回り）を行います 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
+  def rot90(self,ijkl:int,N:int)->int:return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+  # 対称性のための計算と、ijklを扱うためのヘルパー関数。開始コンステレーションが回転90に対して対称である場合
+  def rot180(self,ijkl:int,N:int)->int:return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+  # symmetry: 回転・ミラー対称性ごとの重複補正 # (90度:2, 180度:4, その他:8)
+  def symmetry(self,ijkl:int,N:int)->int:return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  def symmetry90(self,ijkl:int,N:int)->bool:return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+
   #  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
   #  各クイーンの位置を取得し、最も左上に近い位置を見つけます
   #  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
@@ -721,7 +721,7 @@ class NQueens17:
   # 1. Jasmin変換キャッシュを導入する
   # [Opt-08] キャッシュ付き jasmin() のラッパー
   def get_jasmin(self,c:int,N:int)->int:
-    jasmin_cache: Dict[Tuple[int, int], int] = {}
+    jasmin_cache:Dict[Tuple[int,int],int]={}
     key=(c,N)
     if key in jasmin_cache:
         return jasmin_cache[key]
@@ -772,7 +772,7 @@ class NQueens17:
   # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
   # バリデーション関数の強化（既に実装済みの場合はスキップOK）
   def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool:
-    return all(all(k in c for k in ("ld","rd","col", "startijkl")) for c in constellations)
+    return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
 
   def read_uint32_le(self,b:str)->int:
     return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
@@ -807,7 +807,7 @@ class NQueens17:
         rd=c["rd"]
         col=c["col"]
         startijkl=c["startijkl"]
-        solutions=c.get("solutions", 0)
+        solutions=c.get("solutions",0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
 
   # テキスト形式でロード
@@ -820,7 +820,7 @@ class NQueens17:
           continue
         ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
         startijkl=int(parts[3]);solutions=int(parts[4])
-        out.append({"ld":ld,"rd":rd,"col": col,"startijkl": startijkl,"solutions": solutions})
+        out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
     return out
 
   # キャッシュ付きラッパー関数（.txt）
@@ -852,7 +852,7 @@ class NQueens17:
     _int_to_le_bytes=self.int_to_le_bytes
     with open(fname,"wb") as f:
       for d in constellations:
-        for key in ["ld","rd","col", "startijkl"]:
+        for key in ["ld","rd","col","startijkl"]:
           b=_int_to_le_bytes(d[key])
           _int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
@@ -872,7 +872,7 @@ class NQueens17:
         # startijkl=self.read_uint32_le(raw[12:16])
         startijkl=_read_uint32_le(raw[12:16])
         constellations.append({
-          "ld":ld,"rd":rd,"col": col,
+          "ld":ld,"rd":rd,"col":col,
           "startijkl":startijkl,"solutions":0
         })
     return constellations
@@ -897,7 +897,7 @@ class NQueens17:
 
   # サブコンステレーション生成にtuple keyでキャッシュ
   # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
-  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int], constellation_signatures:Set[Tuple[int, int, int, int, int, int]]):
+  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]]):
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
     subconst_cache:Set[StateKey]=set()
     if key in subconst_cache:
@@ -929,7 +929,7 @@ class NQueens17:
   #    - queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
   #    - その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
   #    - 生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int, int, int, int, int, int]])->None:
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
     # <>zobrist_hash
@@ -980,7 +980,7 @@ class NQueens17:
         constellation_signatures=set()
       signatures=constellation_signatures
       if signature not in signatures:
-        constellation={"ld": ld,"rd": rd,"col": col,"startijkl": row<<20,"solutions": 0}
+        constellation={"ld":ld,"rd":rd,"col": col,"startijkl": row<<20,"solutions": 0}
         constellations.append(constellation) #星座データ追加
         signatures.add(signature)
         counter[0]+=1
@@ -1000,10 +1000,10 @@ class NQueens17:
   def _extra_block_for_row(next_row:int,mark1:int,mark2:int,jmark:int,N:int)->int:
     extra:int=0
     blockK:int=1<<(N-3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-    if next_row==mark1: extra|=blockK
-    if next_row==mark2: extra|=blockK
+    if next_row==mark1:extra|=blockK
+    if next_row==mark2:extra|=blockK
     # jmark 系ありの関数だけ使う
-    if next_row==(N-1-jmark): extra|=(1<<(N-1))
+    if next_row==(N-1-jmark):extra|=(1<<(N-1))
     return extra
 
   #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
@@ -1125,7 +1125,7 @@ class NQueens17:
           total+=_dfs(nxt,next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
   """
-  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,blockK_by_funcid:List[int],blockl_by_funcid:List[int],func_meta:List[Tuple[int,int,int]],N:int)->int:
+  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,blockK_by_funcid:List[int],blockl_by_funcid:List[int],func_meta:List[Tuple[int,int,int]],N:int,N1:int,NK:int,NJ:int)->int:
     bit:int=0
     avail:int=free
     total:int=0
@@ -1140,9 +1140,9 @@ class NQueens17:
     # funcptn:int=self.funcptn[functionid]
     # avail_flag:int=self.availptn[functionid]
     # next_funcid:int=self.next_funcid[functionid]
-    N1:int=N-1
-    NK:int=1<<(N-3)
-    NJ:int=1<<N1  # jmark系を使う関数でのみ実際に効く
+    # N1:int=N-1
+    # NK:int=1<<(N-3)
+    # NJ:int=1<<N1  # jmark系を使う関数でのみ実際に効く
     # ---- P6: endmark 基底
     if funcptn==5 and row==endmark:
       if functionid==14:# FID_SQd2B
@@ -1154,7 +1154,7 @@ class NQueens17:
         rd|=NJ # rd |= 1 << N1
         next_free:int=board_mask&~((ld<<1)|(rd>>1)|col)
         if next_free:
-          total+=_dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+          total+=_dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
         return total # 続行（通常ループへ）
     # ==============================
     # ここから 1 本化した共通配置ループ
@@ -1202,7 +1202,7 @@ class NQueens17:
         blocked:int=next_ld|next_rd|next_col
         next_free:int=board_mask&~blocked
         if next_free:
-          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
     else:
       # “素の +1” だけ（先読みなし）
       if not use_future:
@@ -1215,7 +1215,7 @@ class NQueens17:
           blocked:int=next_ld|next_rd|next_col
           next_free:int=board_mask&~blocked
           if next_free:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
       # “+1 with 先読み”
       else:
         while avail:
@@ -1229,16 +1229,27 @@ class NQueens17:
           if not next_free:
             continue
           if row_step>=endmark:
-            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
             continue
-          # extra のインライン版（上 #1 の式）
-          m1:int=1 if row_step==mark1 else 0
-          m2:int=1 if row_step==mark2 else 0
-          mj:int=1 if row_step==(N1-jmark) else 0
-          extra:int=((m1|m2)*NK)|(mj*NJ)
-          future:int=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
+          # # extra のインライン版（上 #1 の式）
+          # m1:int=1 if row_step==mark1 else 0
+          # m2:int=1 if row_step==mark2 else 0
+          # mj:int=1 if row_step==(N1-jmark) else 0
+          # extra:int=((m1|m2)*NK)|(mj*NJ)
+          # future:int=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
+          # if future:
+          #     total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+          # 先読み（+1）の中
+          m1=1 if row_step==mark1 else 0
+          m2=1 if row_step==mark2 else 0
+          use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
+          mj=1 if (use_j and row_step==(N1-jmark)) else 0
+          extra=((m1|m2)*NK)|(mj*NJ)
+          future=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
           if future:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,
+                            next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
+
     # 別名なし版（そのまま元の変数を使う）
     # while avail:
     #   bit:int=avail&-avail
@@ -1298,6 +1309,238 @@ class NQueens17:
   #    - N-Queens最適化アルゴリズムの核心部
   #    - temp_counterは再帰呼び出しで合計を受け渡し
   #    - 実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
+  """
+  def exec_solutions(self, constellations: List[Dict[str,int]], N: int) -> None:
+    N1, N2 = N-1, N-2
+    small_mask  = (1 << N2) - 1
+    board_mask  = (1 << N)  - 1
+
+    # --- ローカル束縛（関数・テーブル）
+    dfs       = self.dfs
+    symmetry  = self.symmetry
+    getj, getk, getl = self.getj, self.getk, self.getl
+
+    # FID, FUNC_CATEGORY はそのまま（省略）
+    # func_meta / blockK_by_funcid / blockl_by_funcid の組み立てもそのまま（省略）
+    FUNC_CATEGORY={
+      # N-3
+      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
+      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB":3,
+      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB":3,"SQd0BkB":3,
+      # N-4
+      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB":4,
+      # 0（上記以外）
+      "SQBlBjrB":0,"SQBjrB":0,"SQB":0,"SQBlBkBjrB":0,
+      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB":0,"SQBjlBlkBjrB":0,
+      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB":0,
+      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB":0,"SQd0B":0
+    }
+    FID={
+      "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
+      "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
+      "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
+      "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
+      "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
+      "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
+    }
+
+    # next_funcid, funcptn, availptn の3つだけ持つ
+    func_meta = [
+      (1, 0, 0),  #  0 SQBkBlBjrB   -> P1, 先読みなし
+      (2, 1, 0),  #  1 SQBlBjrB     -> P2, 先読みなし
+      (3, 3, 1),  #  2 SQBjrB       -> P4, 先読みあり
+      (3, 5, 1),  #  3 SQB          -> P6, 先読みあり
+      (2, 2, 0),  #  4 SQBklBjrB    -> P3, 先読みなし
+      (6, 0, 0),  #  5 SQBlBkBjrB   -> P1, 先読みなし
+      (2, 1, 0),  #  6 SQBkBjrB     -> P2, 先読みなし
+      (2, 2, 0),  #  7 SQBlkBjrB    -> P3, 先読みなし
+      (0, 4, 1),  #  8 SQBjlBkBlBjrB-> P5, 先読みあり
+      (4, 4, 1),  #  9 SQBjlBklBjrB -> P5, 先読みあり
+      (5, 4, 1),  # 10 SQBjlBlBkBjrB-> P5, 先読みあり
+      (7, 4, 1),  # 11 SQBjlBlkBjrB -> P5, 先読みあり
+      (13,0, 0),  # 12 SQd2BkBlB    -> P1, 先読みなし
+      (14,1, 0),  # 13 SQd2BlB      -> P2, 先読みなし
+      (14,5, 1),  # 14 SQd2B        -> P6, 先読みあり（avail 特例）
+      (14,2, 0),  # 15 SQd2BklB     -> P3, 先読みなし
+      (17,0, 0),  # 16 SQd2BlBkB    -> P1, 先読みなし
+      (14,1, 0),  # 17 SQd2BkB      -> P2, 先読みなし
+      (14,2, 0),  # 18 SQd2BlkB     -> P3, 先読みなし
+      (20,0, 0),  # 19 SQd1BkBlB    -> P1, 先読みなし
+      (21,1, 0),  # 20 SQd1BlB      -> P2, 先読みなし（add1=1 は dfs 内で特別扱い）
+      (21,5, 1),  # 21 SQd1B        -> P6, 先読みあり
+      (21,2, 0),  # 22 SQd1BklB     -> P3, 先読みなし
+      (25,0, 0),  # 23 SQd1BlBkB    -> P1, 先読みなし
+      (21,2, 0),  # 24 SQd1BlkB     -> P3, 先読みなし
+      (21,1, 0),  # 25 SQd1BkB      -> P2, 先読みなし
+      (26,5, 1),  # 26 SQd0B        -> P6, 先読みあり
+      (26,0, 0),  # 27 SQd0BkB      -> P1, 先読みなし
+    ]
+    n3 = 1 << max(0, N-3)   # 念のため負シフト防止
+    n4 = 1 << max(0, N-4)
+    size = max(FID.values()) + 1
+    blockK_by_funcid = [0] * size
+    blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
+    for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
+      fid = FID[fn]
+      blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+
+    # ===== 前処理ステージ（単一スレッド） =====
+    m = len(constellations)
+    # SoA（Structure of Arrays）に展開：並列本体が軽くなる
+    ld_arr   = [0]*m; rd_arr   = [0]*m; col_arr = [0]*m
+    row_arr  = [0]*m; free_arr = [0]*m
+    jmark_arr= [0]*m; end_arr  = [0]*m
+    mark1_arr= [0]*m; mark2_arr= [0]*m
+    funcid_arr = [0]*m
+    ijkl_arr = [0]*m   # symmetry 計算用
+
+    FID_SQBkBlBjrB=0; FID_SQBlBjrB=1; FID_SQBjrB=2; FID_SQB=3
+    FID_SQBklBjrB=4; FID_SQBlBkBjrB=5; FID_SQBkBjrB=6; FID_SQBlkBjrB=7
+    FID_SQBjlBkBlBjrB=8; FID_SQBjlBklBjrB=9; FID_SQBjlBlBkBjrB=10; FID_SQBjlBlkBjrB=11
+    FID_SQd2BkBlB=12; FID_SQd2BlB=13; FID_SQd2B=14; FID_SQd2BklB=15; FID_SQd2BlBkB=16
+    FID_SQd2BkB=17; FID_SQd2BlkB=18; FID_SQd1BkBlB=19; FID_SQd1BlB=20; FID_SQd1B=21
+    FID_SQd1BklB=22; FID_SQd1BlBkB=23; FID_SQd1BlkB=24; FID_SQd1BkB=25
+    FID_SQd0B=26; FID_SQd0BkB=27
+
+    for i, c in enumerate(constellations):
+        start_ijkl = c["startijkl"]
+        start = start_ijkl >> 20
+        ijkl  = start_ijkl & ((1<<20)-1)
+        j, k, l = getj(ijkl), getk(ijkl), getl(ijkl)
+
+        # ld = c["ld"] >> 1
+        # rd = c["rd"] >> 1
+        # col = (c["col"] >> 1) | (~((1<<(N-2))-1))
+        ld  = (c["ld"]  >> 1) & board_mask
+        rd  = (c["rd"]  >> 1) & board_mask
+        col = ((c["col"] >> 1) | (~((1<<(N-2))-1))) & board_mask  # ← ここも丸める
+
+        LD = (1<<(N1-j)) | (1<<(N1-l))
+        ld |= LD >> (N - start)
+        ld&=board_mask
+        if start > k: rd |= (1 << (N1 - (start - k + 1)))
+        if j >= 2*N - 33 - start:
+            rd |= (1 << (N1 - j)) << (N2 - start)
+        rd&=board_mask
+
+        # free = ~(ld | rd | col)
+        free = board_mask & ~(ld | rd | col)    # ✅ 常に 0..(N-1) 列の範囲に収まる
+
+
+        # 分岐決定（既存ロジックをそのまま移植）
+        jmark = mark1 = mark2 = 0
+        if j < (N-3):
+            jmark, endmark = j+1, N2
+            if j > 2*N-34-start:
+                if k < l:
+                    mark1, mark2 = k-1, l-1
+                    if start < l:
+                        if start < k:
+                            funcid = FID_SQBkBlBjrB if (l != k+1) else FID_SQBklBjrB
+                        else:
+                            funcid = FID_SQBlBjrB
+                    else:
+                        funcid = FID_SQBjrB
+                else:
+                    mark1, mark2 = l-1, k-1
+                    if start < k:
+                        if start < l:
+                            funcid = FID_SQBlBkBjrB if (k != l+1) else FID_SQBlkBjrB
+                        else:
+                            funcid = FID_SQBkBjrB
+                    else:
+                        funcid = FID_SQBjrB
+            else:
+                if k < l:
+                    mark1, mark2 = k-1, l-1
+                    funcid = FID_SQBjlBkBlBjrB if (l != k+1) else FID_SQBjlBklBjrB
+                else:
+                    mark1, mark2 = l-1, k-1
+                    funcid = FID_SQBjlBlBkBjrB if (k != l+1) else FID_SQBjlBlkBjrB
+        elif j == (N-3):
+            endmark = N2
+            if k < l:
+                mark1, mark2 = k-1, l-1
+                if start < l:
+                    if start < k:
+                        funcid = FID_SQd2BkBlB if (l != k+1) else FID_SQd2BklB
+                    else:
+                        mark2 = l-1; funcid = FID_SQd2BlB
+                else:
+                    funcid = FID_SQd2B
+            else:
+                mark1, mark2 = l-1, k-1
+                if start < k:
+                    if start < l:
+                        funcid = FID_SQd2BlBkB if (k != l+1) else FID_SQd2BlkB
+                    else:
+                        mark2 = k-1; funcid = FID_SQd2BkB
+                else:
+                    funcid = FID_SQd2B
+        elif j == (N-2):
+            if k < l:
+                endmark = N2
+                if start < l:
+                    if start < k:
+                        mark1 = k-1
+                        funcid = FID_SQd1BkBlB if (l != k+1) else FID_SQd1BklB
+                    else:
+                        mark2 = l-1; funcid = FID_SQd1BlB
+                else:
+                    funcid = FID_SQd1B
+            else:
+                if start < k:
+                    if start < l:
+                        if k < (N-2):
+                            mark1, endmark = l-1, N2
+                            funcid = FID_SQd1BlBkB if (k != l+1) else FID_SQd1BlkB
+                        else:
+                            if l != (N-3):
+                                mark2, endmark = l-1, N-3
+                                funcid = FID_SQd1BlB
+                            else:
+                                endmark = N-4; funcid = FID_SQd1B
+                    else:
+                        if k != (N-2):
+                            mark2, endmark = k-1, N2
+                            funcid = FID_SQd1BkB
+                        else:
+                            endmark = N-3; funcid = FID_SQd1B
+                else:
+                    endmark = N2; funcid = FID_SQd1B
+        else:
+            endmark = N2
+            funcid = FID_SQd0B if (start > k) else FID_SQd0BkB
+            if funcid == FID_SQd0BkB:
+                mark1 = k-1
+
+        # 配列へ格納
+        ld_arr[i], rd_arr[i], col_arr[i] = ld, rd, col
+        row_arr[i], free_arr[i] = start, free
+        jmark_arr[i], end_arr[i] = jmark, endmark
+        mark1_arr[i], mark2_arr[i] = mark1, mark2
+        funcid_arr[i] = funcid
+        ijkl_arr[i] = ijkl
+
+    # ===== 並列ステージ：計算だけ =====
+    results = [0]*m
+    @par
+    for i in range(m):
+        cnt = dfs(funcid_arr[i],
+                  ld_arr[i], rd_arr[i], col_arr[i],
+                  row_arr[i], free_arr[i],
+                  jmark_arr[i], end_arr[i],
+                  mark1_arr[i], mark2_arr[i],
+                  board_mask,
+                  blockK_by_funcid, blockl_by_funcid, func_meta,
+                  N)
+        results[i] = cnt * symmetry(ijkl_arr[i], N)
+
+    # ===== 書き戻し（単一スレッド） =====
+    for i, c in enumerate(constellations):
+        c["solutions"] = results[i]
+  """
+
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     N2:int=N-2
     small_mask:int=(1<<N2)-1
@@ -1360,48 +1603,59 @@ class NQueens17:
     }
 
     # next_funcid, funcptn, availptn の3つだけ持つ
-    func_meta = [
-      (1, 0, 0),  #  0 SQBkBlBjrB   -> P1, 先読みなし
-      (2, 1, 0),  #  1 SQBlBjrB     -> P2, 先読みなし
-      (3, 3, 1),  #  2 SQBjrB       -> P4, 先読みあり
-      (3, 5, 1),  #  3 SQB          -> P6, 先読みあり
-      (2, 2, 0),  #  4 SQBklBjrB    -> P3, 先読みなし
-      (6, 0, 0),  #  5 SQBlBkBjrB   -> P1, 先読みなし
-      (2, 1, 0),  #  6 SQBkBjrB     -> P2, 先読みなし
-      (2, 2, 0),  #  7 SQBlkBjrB    -> P3, 先読みなし
-      (0, 4, 1),  #  8 SQBjlBkBlBjrB-> P5, 先読みあり
-      (4, 4, 1),  #  9 SQBjlBklBjrB -> P5, 先読みあり
-      (5, 4, 1),  # 10 SQBjlBlBkBjrB-> P5, 先読みあり
-      (7, 4, 1),  # 11 SQBjlBlkBjrB -> P5, 先読みあり
-      (13,0, 0),  # 12 SQd2BkBlB    -> P1, 先読みなし
-      (14,1, 0),  # 13 SQd2BlB      -> P2, 先読みなし
-      (14,5, 1),  # 14 SQd2B        -> P6, 先読みあり（avail 特例）
-      (14,2, 0),  # 15 SQd2BklB     -> P3, 先読みなし
-      (17,0, 0),  # 16 SQd2BlBkB    -> P1, 先読みなし
-      (14,1, 0),  # 17 SQd2BkB      -> P2, 先読みなし
-      (14,2, 0),  # 18 SQd2BlkB     -> P3, 先読みなし
-      (20,0, 0),  # 19 SQd1BkBlB    -> P1, 先読みなし
-      (21,1, 0),  # 20 SQd1BlB      -> P2, 先読みなし（add1=1 は dfs 内で特別扱い）
-      (21,5, 1),  # 21 SQd1B        -> P6, 先読みあり
-      (21,2, 0),  # 22 SQd1BklB     -> P3, 先読みなし
-      (25,0, 0),  # 23 SQd1BlBkB    -> P1, 先読みなし
-      (21,2, 0),  # 24 SQd1BlkB     -> P3, 先読みなし
-      (21,1, 0),  # 25 SQd1BkB      -> P2, 先読みなし
-      (26,5, 1),  # 26 SQd0B        -> P6, 先読みあり
-      (26,0, 0),  # 27 SQd0BkB      -> P1, 先読みなし
+    func_meta=[
+      (1,0,0),#  0 SQBkBlBjrB   -> P1, 先読みなし
+      (2,1,0),#  1 SQBlBjrB     -> P2, 先読みなし
+      (3,3,1),#  2 SQBjrB       -> P4, 先読みあり
+      (3,5,1),#  3 SQB          -> P6, 先読みあり
+      (2,2,0),#  4 SQBklBjrB    -> P3, 先読みなし
+      (6,0,0),#  5 SQBlBkBjrB   -> P1, 先読みなし
+      (2,1,0),#  6 SQBkBjrB     -> P2, 先読みなし
+      (2,2,0),#  7 SQBlkBjrB    -> P3, 先読みなし
+      (0,4,1),#  8 SQBjlBkBlBjrB-> P5, 先読みあり
+      (4,4,1),#  9 SQBjlBklBjrB -> P5, 先読みあり
+      (5,4,1),# 10 SQBjlBlBkBjrB-> P5, 先読みあり
+      (7,4,1),# 11 SQBjlBlkBjrB -> P5, 先読みあり
+      (13,0,0),# 12 SQd2BkBlB    -> P1, 先読みなし
+      (14,1,0),# 13 SQd2BlB      -> P2, 先読みなし
+      (14,5,1),# 14 SQd2B        -> P6, 先読みあり（avail 特例）
+      (14,2,0),# 15 SQd2BklB     -> P3, 先読みなし
+      (17,0,0),# 16 SQd2BlBkB    -> P1, 先読みなし
+      (14,1,0),# 17 SQd2BkB      -> P2, 先読みなし
+      (14,2,0),# 18 SQd2BlkB     -> P3, 先読みなし
+      (20,0,0),# 19 SQd1BkBlB    -> P1, 先読みなし
+      (21,1,0),# 20 SQd1BlB      -> P2, 先読みなし（add1=1 は dfs 内で特別扱い）
+      (21,5,1),# 21 SQd1B        -> P6, 先読みあり
+      (21,2,0),# 22 SQd1BklB     -> P3, 先読みなし
+      (25,0,0),# 23 SQd1BlBkB    -> P1, 先読みなし
+      (21,2,0),# 24 SQd1BlkB     -> P3, 先読みなし
+      (21,1,0),# 25 SQd1BkB      -> P2, 先読みなし
+      (26,5,1),# 26 SQd0B        -> P6, 先読みあり
+      (26,0,0),# 27 SQd0BkB      -> P1, 先読みなし
     ]
-    n3 = 1 << max(0, N-3)   # 念のため負シフト防止
-    n4 = 1 << max(0, N-4)
-    size = max(FID.values()) + 1
-    blockK_by_funcid = [0] * size
-    blockl_by_funcid = [0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
-    for fn, cat in FUNC_CATEGORY.items():  # FUNC_CATEGORY: {関数名: 3 or 4 or 0}
-      fid = FID[fn]
-      blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
+    n3=1<<max(0,N-3)   # 念のため負シフト防止
+    n4=1<<max(0,N-4)
+    size=max(FID.values())+1
+    blockK_by_funcid=[0]*size
+    blockl_by_funcid=[0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
+    for fn,cat in FUNC_CATEGORY.items():# FUNC_CATEGORY: {関数名: 3 or 4 or 0}
+      fid=FID[fn]
+      blockK_by_funcid[fid]=n3 if cat==3 else (n4 if cat==4 else 0)
     N1:int=N-1
     target:int=0
-    @par
-    for constellation in constellations:
+
+    # ===== 前処理ステージ（単一スレッド） =====
+    m=len(constellations)
+    # SoA（Structure of Arrays）に展開：並列本体が軽くなる
+    ld_arr=[0]*m;rd_arr=[0]*m;col_arr=[0]*m
+    row_arr=[0]*m;free_arr=[0]*m
+    jmark_arr=[0]*m;end_arr=[0]*m
+    mark1_arr=[0]*m;mark2_arr=[0]*m
+    funcid_arr=[0]*m
+    ijkl_arr=[0]*m   # symmetry 計算用
+
+    # for constellation in constellations:
+    for i,constellation in enumerate(constellations):
       jmark=mark1=mark2=0
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
@@ -1424,49 +1678,49 @@ class NQueens17:
             mark1,mark2=k-1,l-1
             if start<l:
               if start<k:
-                if l!=k+1: target=FID_SQBkBlBjrB
-                else: target=FID_SQBklBjrB
-              else: target=FID_SQBlBjrB
-            else: target=FID_SQBjrB
+                if l!=k+1:target=FID_SQBkBlBjrB
+                else:target=FID_SQBklBjrB
+              else:target=FID_SQBlBjrB
+            else:target=FID_SQBjrB
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
-                if k!=l+1: target=FID_SQBlBkBjrB
-                else: target=FID_SQBlkBjrB
-              else: target=FID_SQBkBjrB
-            else: target=FID_SQBjrB
+                if k!=l+1:target=FID_SQBlBkBjrB
+                else:target=FID_SQBlkBjrB
+              else:target=FID_SQBkBjrB
+            else:target=FID_SQBjrB
         else:
           if k<l:
             mark1,mark2=k-1,l-1
-            if l!=k+1: target=FID_SQBjlBkBlBjrB
-            else: target=FID_SQBjlBklBjrB
+            if l!=k+1:target=FID_SQBjlBkBlBjrB
+            else:target=FID_SQBjlBklBjrB
           else:
             mark1,mark2=l-1,k-1
-            if k!=l+1: target=FID_SQBjlBlBkBjrB
-            else: target=FID_SQBjlBlkBjrB
+            if k!=l+1:target=FID_SQBjlBlBkBjrB
+            else:target=FID_SQBjlBlkBjrB
       elif j==(N-3):
         endmark=N2
         if k<l:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l!=k+1: target=FID_SQd2BkBlB
-              else: target=FID_SQd2BklB
+              if l!=k+1:target=FID_SQd2BkBlB
+              else:target=FID_SQd2BklB
             else:
               mark2=l-1
               target=FID_SQd2BlB
-          else: target=FID_SQd2B
+          else:target=FID_SQd2B
         else:
           mark1,mark2=l-1,k-1
           if start<k:
             if start<l:
-              if k!=l+1: target=FID_SQd2BlBkB
-              else: target=FID_SQd2BlkB
+              if k!=l+1:target=FID_SQd2BlBkB
+              else:target=FID_SQd2BlkB
             else:
               mark2=k-1
               target=FID_SQd2BkB
-          else: target=FID_SQd2B
+          else:target=FID_SQd2B
       elif j==N2:# jがコーナーから1列内側
         if k<l:
           endmark=N2
@@ -1476,11 +1730,11 @@ class NQueens17:
               if l!=k+1:
                 mark2=l-1
                 target=FID_SQd1BkBlB
-              else: target=FID_SQd1BklB
+              else:target=FID_SQd1BklB
             else:
               mark2=l-1
               target=FID_SQd1BlB
-          else: target=FID_SQd1B
+          else:target=FID_SQd1B
         else:# l < k
           if start<k:
             if start<l:
@@ -1489,7 +1743,7 @@ class NQueens17:
                 if k!=l+1:
                   mark2=k-1
                   target=FID_SQd1BlBkB
-                else: target=FID_SQd1BlkB
+                else:target=FID_SQd1BlkB
               else:
                 if l!=(N-3):
                   mark2,endmark=l-1,N-3
@@ -1515,8 +1769,29 @@ class NQueens17:
           mark1=k-1
           target=FID_SQd0BkB
 
-      cnt=dfs(target,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
-      constellation["solutions"]=cnt*symmetry(ijkl,N)
+      # 配列へ格納
+      ld_arr[i],rd_arr[i],col_arr[i]=ld,rd,col
+      row_arr[i],free_arr[i]=start,free
+      jmark_arr[i],end_arr[i]=jmark,endmark
+      mark1_arr[i],mark2_arr[i]=mark1,mark2
+      funcid_arr[i]=target
+      ijkl_arr[i]=ijkl
+
+    # ===== 並列ステージ：計算だけ =====
+    # cnt=dfs(target,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+    N1=N-1
+    NK=1<<(N-3)
+    NJ=1<<N1
+    results=[0]*m
+    @par
+    for i in range(m):
+      cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
+      results[i]=cnt*symmetry(ijkl_arr[i],N)
+
+    # ===== 書き戻し（単一スレッド） =====
+    # constellation["solutions"]=cnt*symmetry(ijkl,N)
+    for i,constellation in enumerate(constellations):
+        constellation["solutions"]=results[i]
 
   #  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
   #  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
