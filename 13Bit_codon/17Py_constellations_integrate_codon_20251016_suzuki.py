@@ -1131,7 +1131,7 @@ class NQueens17:
     total:int=0
     # ローカル束縛（属性/関数参照を減らす）
     _dfs=self.dfs
-    _extra_block_for_row=self._extra_block_for_row
+    # _extra_block_for_row=self._extra_block_for_row
     # _should_go_plus1=self._should_go_plus1
     # _blockK_by_funcid=self.blockK_by_funcid
     # _blockl_by_funcid=self.blockl_by_funcid
