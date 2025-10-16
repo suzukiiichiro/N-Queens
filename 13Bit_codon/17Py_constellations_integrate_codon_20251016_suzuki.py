@@ -451,6 +451,23 @@ from datetime import datetime
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
 class NQueens17:
+  # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
+  def to_ijkl(self,i:int,j:int,k:int,l:int)->int: return (i<<15)+(j<<10)+(k<<5)+l
+  def mirvert(self,ijkl:int,N:int)->int: return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+  def ffmin(self,a:int,b:int)->int: return min(a,b)
+  def geti(self,ijkl:int)->int: return (ijkl>>15)&0x1F
+  def getj(self,ijkl:int)->int: return (ijkl>>10)&0x1F
+  def getk(self,ijkl:int)->int: return (ijkl>>5)&0x1F
+  def getl(self,ijkl:int)->int: return ijkl&0x1F
+  # rot90 メソッドは、90度の右回転（時計回り）を行います 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
+  def rot90(self,ijkl:int,N:int)->int: return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+  # 対称性のための計算と、ijklを扱うためのヘルパー関数。開始コンステレーションが回転90に対して対称である場合
+  def rot180(self,ijkl:int,N:int)->int: return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+  # symmetry: 回転・ミラー対称性ごとの重複補正 # (90度:2, 180度:4, その他:8)
+  def symmetry(self,ijkl:int,N:int)->int: return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  def symmetry90(self,ijkl:int,N:int)->bool: return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool: return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+
   # def __init__(self)->None:
     # next_funcid, funcptn, availptn の3つだけ持つ
     # self.func_meta = [
@@ -643,20 +660,16 @@ class NQueens17:
     return tbl
 
   def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
-    MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
+    MASK64:int=(1<<64)-1
     zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
-    # self.init_zobrist(N,zobrist_tables)
     tbl=self.init_zobrist(N,zobrist_tables)
-    # tbl=self.zobrist_tables[N]
     h=0
     mask=(1<<N)-1
-    # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
     ld&=mask
     rd&=mask
     col&=mask
     LD&=mask
     RD&=mask
-    # 以下はそのまま
     m=ld;i=0
     while i<N:
       if (m&1)!=0:
@@ -688,85 +701,6 @@ class NQueens17:
     if 0<=l<N:h^=tbl['l'][l]
     return h&MASK64
 
-
-  # 時計回りに90度回転
-  # rot90 メソッドは、90度の右回転（時計回り）を行います
-  # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
-  def rot90(self,ijkl:int,N:int)->int:
-    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
-
-  # 対称性のための計算と、ijklを扱うためのヘルパー関数。
-  # 開始コンステレーションが回転90に対して対称である場合
-  def rot180(self,ijkl:int,N:int)->int:
-    return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
-
-  # 指定した盤面 (i, j, k, l) を90度・180度・270度回転したいずれか
-  # の盤面がすでにIntHashSetに存在しているかをチェックする関数
-  # @param ijklList 既出盤面signature（ijkl値）の集合（HashSet）
-  # @param i,j,k,l  チェック対象の盤面インデックス
-  # @param N        盤面サイズ
-  # @return         いずれかの回転済み盤面が登録済みなら1、なければ0
-  # @details
-  #   - N-Queens探索で、既存盤面の90/180/270度回転形と重複する配置
-  # を高速に排除する。
-  #   - 回転後のijklをそれぞれ計算し、HashSetに含まれていれば即1を
-  # 返す（重複扱い）。
-  #   - 真の“unique配置”のみ探索・カウントしたい場合の前処理とし
-  # て必須。
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-
-  # symmetry: 回転・ミラー対称性ごとの重複補正
-  # (90度:2, 180度:4, その他:8)
-  def symmetry(self,ijkl:int,N:int)->int:
-    return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
-
-  def symmetry90(self,ijkl:int,N:int)->bool:
-    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
-
-  # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
-  # Python実装のgeti/getj/getk/getl/toijklに対応。
-  # [i, j, k, l] 各クイーンの位置情報を5ビットずつ
-  # 整数値（ijkl）にパック／アンパックするためのマクロ。
-  # 15ビット～0ビットまでに [i|j|k|l] を格納する設計で、
-  # constellationのsignatureや回転・ミラー等の盤面操作を高速化する。
-  # 例：
-  #   - geti(ijkl): 上位5ビット（15-19）からiインデックスを取り出す
-  #   - toijkl(i, j, k, l): 各値を5ビット単位で連結し
-  # 一意な整数値（signature）に変換
-  # [注意] N≦32 まで対応可能
-  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
-    return (i<<15)+(j<<10)+(k<<5)+l
-
-  def mirvert(self,ijkl:int,N:int)->int:
-    return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
-
-  def ffmin(self,a:int,b:int)->int:
-    return min(a,b)
-
-  def geti(self,ijkl:int)->int:
-    return (ijkl>>15)&0x1F
-
-  def getj(self,ijkl:int)->int:
-    return (ijkl>>10)&0x1F
-
-  def getk(self,ijkl:int)->int:
-    return (ijkl>>5)&0x1F
-
-  def getl(self,ijkl:int)->int:
-    return ijkl&0x1F
-
-  # 1. Jasmin変換キャッシュを導入する
-  # [Opt-08] キャッシュ付き jasmin() のラッパー
-  def get_jasmin(self,c:int,N:int)->int:
-    jasmin_cache: Dict[Tuple[int, int], int] = {}
-    key=(c,N)
-    if key in jasmin_cache:
-        return jasmin_cache[key]
-    result=self.jasmin(c,N)
-    jasmin_cache[key]=result
-    return result
-
   #  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
   #  各クイーンの位置を取得し、最も左上に近い位置を見つけます
   #  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
@@ -783,6 +717,18 @@ class NQueens17:
   #
   # 使用例:
   # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+
+  # 1. Jasmin変換キャッシュを導入する
+  # [Opt-08] キャッシュ付き jasmin() のラッパー
+  def get_jasmin(self,c:int,N:int)->int:
+    jasmin_cache: Dict[Tuple[int, int], int] = {}
+    key=(c,N)
+    if key in jasmin_cache:
+        return jasmin_cache[key]
+    result=self.jasmin(c,N)
+    jasmin_cache[key]=result
+    return result
+
   def jasmin(self,ijkl:int,N:int)->int:
     # 最初の最小値と引数を設定
     arg=0
@@ -808,14 +754,6 @@ class NQueens17:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-
-  # 星座リストそのものをキャッシュ
-  def file_exists(self,fname:str)->bool:
-    try:
-      with open(fname,"rb"):
-        return True
-    except:
-      return False
 
   # load_or_build_constellations_txt() は、N-Queens 問題において特定
   # の盤面サイズ N と事前配置数 preset_queens に対する星座構成（部分
@@ -843,6 +781,14 @@ class NQueens17:
   def int_to_le_bytes(self,x:int)->List[int]:
     return [(x>>(8*i))&0xFF for i in range(4)]
 
+  # 星座リストそのものをキャッシュ
+  def file_exists(self,fname:str)->bool:
+    try:
+      with open(fname,"rb"):
+        return True
+    except:
+      return False
+
   # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
   def validate_bin_file(self,fname:str)->bool:
     try:
@@ -852,23 +798,6 @@ class NQueens17:
       return size%16==0
     except:
       return False
-
-  # キャッシュ付きラッパー関数（.bin）
-  def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    fname=f"constellations_N{N}_{preset_queens}.bin"
-    if self.file_exists(fname):
-      try:
-        constellations=self.load_constellations_bin(fname)
-        if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    constellations:List[Dict[str,int]]=[]
-    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
-    self.save_constellations_bin(fname,constellations)
-    return constellations
 
   # テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）
   def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
@@ -893,6 +822,30 @@ class NQueens17:
         startijkl=int(parts[3]);solutions=int(parts[4])
         out.append({"ld":ld,"rd":rd,"col": col,"startijkl": startijkl,"solutions": solutions})
     return out
+
+  # キャッシュ付きラッパー関数（.txt）
+  def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
+    # N と preset_queens に基づいて一意のファイル名を構成
+    fname=f"constellations_N{N}_{preset_queens}.txt"
+    # ファイルが存在すれば即読み込み
+    # ファイルが存在すれば読み込むが、破損チェックも行う
+    if self.file_exists(fname):
+      try:
+        constellations=self.load_constellations_txt(fname)
+        if self.validate_constellation_list(constellations):
+          return constellations
+        else:
+          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      except Exception as e:
+        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    # ファイルがなければ生成・保存
+    # gen_constellations() により星座を生成
+    # save_constellations_txt() でファイルに保存
+    # 返り値として constellations リストを返す
+    constellations:List[Dict[str,int]]=[]
+    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
+    self.save_constellations_txt(fname,constellations)
+    return constellations
 
   # bin形式で保存
   def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
@@ -924,29 +877,23 @@ class NQueens17:
         })
     return constellations
 
-  # キャッシュ付きラッパー関数（.txt）
-  def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    # N と preset_queens に基づいて一意のファイル名を構成
-    fname=f"constellations_N{N}_{preset_queens}.txt"
-    # ファイルが存在すれば即読み込み
-    # ファイルが存在すれば読み込むが、破損チェックも行う
+  # キャッシュ付きラッパー関数（.bin）
+  def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
+    fname=f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
       try:
-        constellations=self.load_constellations_txt(fname)
-        if self.validate_constellation_list(constellations):
+        constellations=self.load_constellations_bin(fname)
+        if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
           return constellations
         else:
           print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
       except Exception as e:
         print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    # ファイルがなければ生成・保存
-    # gen_constellations() により星座を生成
-    # save_constellations_txt() でファイルに保存
-    # 返り値として constellations リストを返す
     constellations:List[Dict[str,int]]=[]
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
-    self.save_constellations_txt(fname,constellations)
+    self.save_constellations_bin(fname,constellations)
     return constellations
+
 
   # サブコンステレーション生成にtuple keyでキャッシュ
   # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
