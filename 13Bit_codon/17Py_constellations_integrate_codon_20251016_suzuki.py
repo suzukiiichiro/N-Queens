@@ -1455,6 +1455,7 @@ class NQueens17:
       blockK_by_funcid[fid] = n3 if cat == 3 else (n4 if cat == 4 else 0)
 
     N1:int=N-1
+    target:int=0
     @par
     for constellation in constellations:
       #print("con_start")
@@ -1462,14 +1463,11 @@ class NQueens17:
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
       ijkl=start_ijkl&((1<<20)-1)
-
       j,k,l=getj(ijkl),getk(ijkl),getl(ijkl)
-
       # 占有状況
       ld=constellation["ld"]>>1
       rd=constellation["rd"]>>1
       col=(constellation["col"]>>1)|(~small_mask)
-
       # LD=(1<<(N-1-j))|(1<<(N-1-l))
       LD=(1<<(N1-j))|(1<<(N1-l))
       ld|=LD>>(N-start)
@@ -1479,9 +1477,7 @@ class NQueens17:
       if j>=2*N-33-start:
         # rd|=(1<<(N-1-j))<<(N2-start)
         rd|=(1<<(N1-j))<<(N2-start)
-
       free=~(ld|rd|col)
-
       # ケース分岐
       if j<(N-3):
         jmark,endmark=j+1,N2
@@ -1491,38 +1487,50 @@ class NQueens17:
             if start<l:
               if start<k:
                 if l!=k+1:
-                  cnt=dfs(FID_SQBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQBkBlBjrB
+                  # cnt=dfs(FID_SQBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
                 else:
-                  cnt=dfs(FID_SQBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQBklBjrB
+                  # cnt=dfs(FID_SQBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
-                cnt=dfs(FID_SQBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQBlBjrB
+                # cnt=dfs(FID_SQBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
-              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjrB
+              # cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
                 if k!=l+1:
-                  cnt=dfs(FID_SQBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQBlBkBjrB
+                  # cnt=dfs(FID_SQBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
                 else:
-                  cnt=dfs(FID_SQBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQBlkBjrB
+                  # cnt=dfs(FID_SQBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
-                cnt=dfs(FID_SQBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQBkBjrB
+                # cnt=dfs(FID_SQBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
-              cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjrB
+              # cnt=dfs(FID_SQBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
         else:
           if k<l:
             mark1,mark2=k-1,l-1
             if l!=k+1:
-              cnt=dfs(FID_SQBjlBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjlBkBlBjrB
+              # cnt=dfs(FID_SQBjlBkBlBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
-              cnt=dfs(FID_SQBjlBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjlBklBjrB
+              # cnt=dfs(FID_SQBjlBklBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
             mark1,mark2=l-1,k-1
             if k!=l+1:
-              cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjlBlBkBjrB
+              # cnt=dfs(FID_SQBjlBlBkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
-              cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQBjlBlkBjrB
+              # cnt=dfs(FID_SQBjlBlkBjrB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
       elif j==(N-3):
         endmark=N2
         if k<l:
@@ -1530,27 +1538,35 @@ class NQueens17:
           if start<l:
             if start<k:
               if l!=k+1:
-                cnt=dfs(FID_SQd2BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd2BkBlB
+                # cnt=dfs(FID_SQd2BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
-                cnt=dfs(FID_SQd2BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd2BklB
+                # cnt=dfs(FID_SQd2BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
               mark2=l-1
-              cnt=dfs(FID_SQd2BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQd2BlB
+              # cnt=dfs(FID_SQd2BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
-            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+            target=FID_SQd2B
+            # cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
         else:
           mark1,mark2=l-1,k-1
           if start<k:
             if start<l:
               if k!=l+1:
-                cnt=dfs(FID_SQd2BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd2BlBkB
+                # cnt=dfs(FID_SQd2BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
-                cnt=dfs(FID_SQd2BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd2BlkB
+                # cnt=dfs(FID_SQd2BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
               mark2=k-1
-              cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQd2BkB
+              # cnt=dfs(FID_SQd2BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
-            cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+            target=FID_SQd2B
+            # cnt=dfs(FID_SQd2B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
       elif j==N2:# jがコーナーから1列内側
         if k<l:
           endmark=N2
@@ -1559,14 +1575,18 @@ class NQueens17:
               mark1=k-1
               if l!=k+1:
                 mark2=l-1
-                cnt=dfs(FID_SQd1BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd1BkBlB
+                # cnt=dfs(FID_SQd1BkBlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
-                cnt=dfs(FID_SQd1BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd1BklB
+                # cnt=dfs(FID_SQd1BklB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
               mark2=l-1
-              cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+              target=FID_SQd1BlB
+              # cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
-            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+            target=FID_SQd1B
+            # cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
         else:# l < k
           if start<k:
             if start<l:
@@ -1574,35 +1594,44 @@ class NQueens17:
                 mark1,endmark=l-1,N2
                 if k!=l+1:
                   mark2=k-1
-                  cnt=dfs(FID_SQd1BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQd1BlBkB
+                  # cnt=dfs(FID_SQd1BlBkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
                 else:
-                  cnt=dfs(FID_SQd1BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQd1BlkB
+                  # cnt=dfs(FID_SQd1BlkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
                 if l!=(N-3):
                   mark2,endmark=l-1,N-3
-                  cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQd1BlB
+                  # cnt=dfs(FID_SQd1BlB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
                 else:
                   endmark=N-4
-                  cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                  target=FID_SQd1B
+                  # cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
             else:
               if k!=N2:
                 mark2,endmark=k-1,N2
-                cnt=dfs(FID_SQd1BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd1BkB
+                # cnt=dfs(FID_SQd1BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
               else:
                 endmark=N-3
-                cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+                target=FID_SQd1B
+                # cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
           else:
             endmark=N2
-            cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
-
+            target=FID_SQd1B
+            # cnt=dfs(FID_SQd1B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
       else:# j がコーナー
         endmark=N2
         if start>k:
-          cnt=dfs(FID_SQd0B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+          target=FID_SQd0B
+          # cnt=dfs(FID_SQd0B,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
         else:
           mark1=k-1
-          cnt=dfs(FID_SQd0BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
+          target=FID_SQd0BkB
+          # cnt=dfs(FID_SQd0BkB,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
 
+      cnt=dfs(target,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
       constellation["solutions"]=cnt*symmetry(ijkl,N)
 
   #  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
