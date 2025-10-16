@@ -1884,7 +1884,7 @@ class NQueens17:
       # base = self.to_ijkl(i, j, k, l)
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
-          constellations[-1-a]["startijkl"]|=base
+        constellations[-1-a]["startijkl"]|=base
 
   # 関数プロトタイプ
 """
