@@ -15,6 +15,19 @@
          _/ _/
        _/m/'
 
+workspace#suzuki$ bash MAIN.SH 15Py_constellations_optimize_codon.py
+ N:        Total       Unique        hh:mm:ss.ms
+17:     95815104            0         0:00:02.987
+18:    666090624            0         0:00:21.549
+19:   4968057848            0         0:02:43.514
+
+workspace#suzuki$ bash MAIN.SH 17Py_constellations_integrate_codon_20251017_suzuki.py
+ N:        Total       Unique        hh:mm:ss.ms
+17:     95815104            0         0:00:04.037    ok
+18:    666090624            0         0:00:29.301    ok
+19:   4968057848            0         0:03:41.853    ok
+
+
 amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
 コンステレーション版 キャッシュ最適化２ Ｎクイーン
@@ -869,7 +882,7 @@ class NQueens17_constellations():
 
   def main(self)->None:
     nmin:int=5
-    nmax:int=18
+    nmax:int=20
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -901,7 +914,7 @@ class NQueens17_constellations():
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       # print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
-      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104]
+      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848]
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
 
