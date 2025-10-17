@@ -247,7 +247,7 @@ class NQueens17:
       at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
       if at_mark and avail:
         step:int=2 if funcptn in (0,1) else 3
-        add1:int=1 if (funcptn==1 and functionid==20) else 0  # FID_SQd1BlB のときだけ1
+        add1:int=1 if (funcptn==1 and functionid==20) else 0  # SQd1BlB のときだけ1
         row_step=row+step
         blockK:int=blockK_by_funcid[functionid]
         blockl:int=blockl_by_funcid[functionid]
@@ -256,7 +256,7 @@ class NQueens17:
         local_next_funcid=next_funcid
     # ---- P6: endmark 基底
     elif funcptn==5 and row==endmark:
-      if functionid==14:# FID_SQd2B
+      if functionid==14:# SQd2B
         return 1 if (avail&(~1))>0 else 0
       return 1
     # --- P4: jmark 特殊を共通ループの前処理に畳み込む
@@ -336,38 +336,9 @@ class NQueens17:
     N2:int=N-2
     small_mask:int=(1<<N2)-1
     board_mask:int=(1<<N)-1
-    # ルックアップをローカルへ（属性参照の回数を削減）
     dfs=self.dfs
     symmetry=self.symmetry
     getj,getk,getl=self.getj,self.getk,self.getl
-    FID_SQBkBlBjrB=0
-    FID_SQBlBjrB=1
-    FID_SQBjrB=2
-    FID_SQB=3
-    FID_SQBklBjrB=4
-    FID_SQBlBkBjrB=5
-    FID_SQBkBjrB=6
-    FID_SQBlkBjrB=7
-    FID_SQBjlBkBlBjrB=8
-    FID_SQBjlBklBjrB=9
-    FID_SQBjlBlBkBjrB=10
-    FID_SQBjlBlkBjrB=11
-    FID_SQd2BkBlB=12
-    FID_SQd2BlB=13
-    FID_SQd2B=14
-    FID_SQd2BklB=15
-    FID_SQd2BlBkB=16
-    FID_SQd2BkB=17
-    FID_SQd2BlkB=18
-    FID_SQd1BkBlB=19
-    FID_SQd1BlB=20
-    FID_SQd1B=21
-    FID_SQd1BklB=22
-    FID_SQd1BlBkB=23
-    FID_SQd1BlkB=24
-    FID_SQd1BkB=25
-    FID_SQd0B=26
-    FID_SQd0BkB=27
     FUNC_CATEGORY={
       # N-3
       "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
@@ -442,16 +413,13 @@ class NQueens17:
     NJ=1<<N1
     results=[0]*m
     target:int=0
-    # for constellation in constellations:
     for i,constellation in enumerate(constellations):
       jmark=mark1=mark2=0
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
       ijkl=start_ijkl&((1<<20)-1)
       j,k,l=getj(ijkl),getk(ijkl),getl(ijkl)
-      ld=constellation["ld"]>>1
-      rd=constellation["rd"]>>1
-      col=(constellation["col"]>>1)|(~small_mask)
+      ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
       LD=(1<<(N1-j))|(1<<(N1-l))
       ld|=LD>>(N-start)
       if start>k:
@@ -466,49 +434,49 @@ class NQueens17:
             mark1,mark2=k-1,l-1
             if start<l:
               if start<k:
-                if l!=k+1:target=FID_SQBkBlBjrB
-                else:target=FID_SQBklBjrB
-              else:target=FID_SQBlBjrB
-            else:target=FID_SQBjrB
+                if l!=k+1:target=0 # SQBkBlBjrB
+                else:target=4 # SQBklBjrB
+              else:target=1 #_SQBlBjrB
+            else:target=2 # SQBjrB
           else:
             mark1,mark2=l-1,k-1
             if start<k:
               if start<l:
-                if k!=l+1:target=FID_SQBlBkBjrB
-                else:target=FID_SQBlkBjrB
-              else:target=FID_SQBkBjrB
-            else:target=FID_SQBjrB
+                if k!=l+1:target=5 # SQBlBkBjrB
+                else:target=7 # SQBlkBjrB
+              else:target=6 # SQBkBjrB
+            else:target=2 # SQBjrB
         else:
           if k<l:
             mark1,mark2=k-1,l-1
-            if l!=k+1:target=FID_SQBjlBkBlBjrB
-            else:target=FID_SQBjlBklBjrB
+            if l!=k+1:target=8 # SQBjlBkBlBjrB
+            else:target=9 # SQBjlBklBjrB
           else:
             mark1,mark2=l-1,k-1
-            if k!=l+1:target=FID_SQBjlBlBkBjrB
-            else:target=FID_SQBjlBlkBjrB
+            if k!=l+1:target=10 # SQBjlBlBkBjrB
+            else:target=11 # SQBjlBlkBjrB
       elif j==(N-3):
         endmark=N2
         if k<l:
           mark1,mark2=k-1,l-1
           if start<l:
             if start<k:
-              if l!=k+1:target=FID_SQd2BkBlB
-              else:target=FID_SQd2BklB
+              if l!=k+1:target=12 # SQd2BkBlB
+              else:target=15 # SQd2BklB
             else:
               mark2=l-1
-              target=FID_SQd2BlB
-          else:target=FID_SQd2B
+              target=13 # SQd2BlB
+          else:target=14 # SQd2B
         else:
           mark1,mark2=l-1,k-1
           if start<k:
             if start<l:
-              if k!=l+1:target=FID_SQd2BlBkB
-              else:target=FID_SQd2BlkB
+              if k!=l+1:target=16 # SQd2BlBkB
+              else:target=18 # SQd2BlkB
             else:
               mark2=k-1
-              target=FID_SQd2BkB
-          else:target=FID_SQd2B
+              target=17 # SQd2BkB
+          else:target=14 # SQd2B
       elif j==N2:# jがコーナーから1列内側
         if k<l:
           endmark=N2
@@ -517,12 +485,12 @@ class NQueens17:
               mark1=k-1
               if l!=k+1:
                 mark2=l-1
-                target=FID_SQd1BkBlB
-              else:target=FID_SQd1BklB
+                target=19 # SQd1BkBlB
+              else:target=22 # SQd1BklB
             else:
               mark2=l-1
-              target=FID_SQd1BlB
-          else:target=FID_SQd1B
+              target=20 # SQd1BlB
+          else:target=21 # SQd1B
         else:# l < k
           if start<k:
             if start<l:
@@ -530,32 +498,32 @@ class NQueens17:
                 mark1,endmark=l-1,N2
                 if k!=l+1:
                   mark2=k-1
-                  target=FID_SQd1BlBkB
-                else:target=FID_SQd1BlkB
+                  target=23 # SQd1BlBkB
+                else:target=24 # SQd1BlkB
               else:
                 if l!=(N-3):
                   mark2,endmark=l-1,N-3
-                  target=FID_SQd1BlB
+                  target=20 # SQd1BlB
                 else:
                   endmark=N-4
-                  target=FID_SQd1B
+                  target=21 # SQd1B
             else:
               if k!=N2:
                 mark2,endmark=k-1,N2
-                target=FID_SQd1BkB
+                target=25 # SQd1BkB
               else:
                 endmark=N-3
-                target=FID_SQd1B
+                target=21 # SQd1B
           else:
             endmark=N2
-            target=FID_SQd1B
+            target=21 # SQd1B
       else:# j がコーナー
         endmark=N2
         if start>k:
-          target=FID_SQd0B
+          target=26 # SQd0B
         else:
           mark1=k-1
-          target=FID_SQd0BkB
+          target=27 # SQd0BkB
       # 配列へ格納
       ld_arr[i],rd_arr[i],col_arr[i]=ld,rd,col
       row_arr[i],free_arr[i]=start,free
@@ -650,7 +618,7 @@ class NQueens17:
         constellation_signatures=set()
       signatures=constellation_signatures
       if signature not in signatures:
-        constellation={"ld":ld,"rd":rd,"col": col,"startijkl": row<<20,"solutions": 0}
+        constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20,"solutions":0}
         constellations.append(constellation) #星座データ追加
         signatures.add(signature)
         counter[0]+=1
@@ -715,7 +683,6 @@ class NQueens17:
       col=1|L|Li|Lj
       LD=Lj|Ll
       RD=Lj|(1<<k)
-
       counter:List[int]=[0] # サブコンステレーションを生成
       visited:Set[int]=set()
       _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
@@ -798,19 +765,17 @@ class NQueens17:
     fname=f"constellations_N{N}_{preset_queens}.txt"
     # ファイルが存在すれば即読み込み
     # ファイルが存在すれば読み込むが、破損チェックも行う
-    if self.file_exists(fname):
-      try:
-        constellations=self.load_constellations_txt(fname)
-        if self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    #if self.file_exists(fname):
+      # ファイルが存在すれば読み込むが、破損チェックも行う
+      # try:
+      #   constellations=self.load_constellations_txt(fname)
+      #   if self.validate_constellation_list(constellations):
+      #     return constellations
+      #   else:
+      #     print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      # except Exception as e:
+      #   print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
     # ファイルがなければ生成・保存
-    # gen_constellations() により星座を生成
-    # save_constellations_txt() でファイルに保存
-    # 返り値として constellations リストを返す
     constellations:List[Dict[str,int]]=[]
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_txt(fname,constellations)
@@ -839,24 +804,24 @@ class NQueens17:
         rd=self.read_uint32_le(raw[4:8])
         col=self.read_uint32_le(raw[8:12])
         startijkl=_read_uint32_le(raw[12:16])
-        constellations.append({
-          "ld":ld,"rd":rd,"col":col,
-          "startijkl":startijkl,"solutions":0
-        })
+        constellations.append({ "ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0 })
     return constellations
 
   # キャッシュ付きラッパー関数（.bin）
   def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     fname=f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
-      try:
         constellations=self.load_constellations_bin(fname)
-        if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+      # ファイルが存在すれば読み込むが、破損チェックも行う
+      # try:
+      #   constellations=self.load_constellations_bin(fname)
+      #   if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
+      #     return constellations
+      #   else:
+      #     print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      # except Exception as e:
+      #   print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    # ファイルがなければ生成・保存
     constellations:List[Dict[str,int]]=[]
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_bin(fname,constellations)
@@ -868,21 +833,21 @@ class NQueens17_constellations():
     mask=(1<<size)-1
     total=0
     def bt(row:int,left:int,down:int,right:int):
-        nonlocal total
-        if row==size:
-            total+=1
-            return
-        bitmap=mask&~(left|down|right)
-        while bitmap:
-            bit=-bitmap&bitmap
-            bitmap^=bit
-            bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+      nonlocal total
+      if row==size:
+        total+=1
+        return
+      bitmap=mask&~(left|down|right)
+      while bitmap:
+        bit=-bitmap&bitmap
+        bitmap^=bit
+        bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
     bt(0,0,0,0)
     return total
 
   def main(self)->None:
     nmin:int=5
-    nmax:int=20
+    nmax:int=18
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -902,12 +867,12 @@ class NQueens17_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
