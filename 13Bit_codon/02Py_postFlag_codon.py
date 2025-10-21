@@ -16,20 +16,39 @@ Bash版ですが内容は同じです。
 fedora$ codon build -release 02Py_postFlag_codon.py && ./02Py_postFlag_codon 5 raw
 :
 :
-40312: 76542130
-40313: 76542300
-40314: 76542310
-40315: 76543010
-40316: 76543020
-40317: 76543100
-40318: 76543120
-40319: 76543200
-40320: 76543210
+114: 42310
+115: 43012
+116: 43021
+117: 43102
+118: 43120
+119: 43201
+120: 43210
 
-real	0m0.916s
-user	0m0.437s
-sys	0m0.444s
-fedora$
+Mode: raw
+N: 5
+Total: 120
+Elapsed: 0.001s
+
+
+fedora$ codon build -release 02Py_postFlag_codon.py && ./02Py_postFlag_codon 5 proper
+:
+1: 02413
+2: 03142
+3: 13024
+4: 14203
+5: 20314
+6: 24130
+7: 30241
+8: 31420
+9: 41302
+10: 42031
+
+Mode: proper
+N: 5
+Total: 10
+Elapsed: 0.000s
+bash-3.2$
+
 
 02Py_postFlag_codon.py（レビュー＆注釈つき）
 
@@ -63,36 +82,36 @@ import time
 #    - 斜め判定なし（元仕様を保持）。
 # ------------------------------------------------------------
 class NQueens02_MinimalFix:
-    size: int
-    count: int
-    aboard: List[int]    # row -> col
-    used_col: List[int]  # 列使用フラグ（0/1）
+  size:int
+  count:int
+  aboard:List[int]    # row -> col
+  used_col:List[int]  # 列使用フラグ（0/1）
 
-    def __init__(self, size: int) -> None:
-        self.size = size
-        self.count = 0
-        self.aboard = [0 for _ in range(self.size)]
-        self.used_col = [0 for _ in range(self.size)]
+  def __init__(self,size:int)->None:
+    self.size=size
+    self.count=0
+    self.aboard=[0 for _ in range(self.size)]
+    self.used_col=[0 for _ in range(self.size)]
 
-    def printout(self) -> None:
-        self.count += 1
-        print(self.count, end=": ")
-        for i in range(self.size):
-            print(self.aboard[i], end="")
-        print("")
+  def printout(self)->None:
+    self.count+=1
+    print(self.count,end=": ")
+    for i in range(self.size):
+      print(self.aboard[i],end="")
+    print("")
 
-    def nqueens(self, row: int) -> None:
-        # 正しい終了条件: row==size（最後の行も既に配置済みの状態）
-        if row == self.size:
-            self.printout()
-            return
-        # 各列を試す（列ユニーク制約のみ）
-        for col in range(self.size):
-            if self.used_col[col] == 0:
-                self.aboard[row] = col
-                self.used_col[col] = 1
-                self.nqueens(row + 1)
-                self.used_col[col] = 0
+  def nqueens(self,row:int)->None:
+    # 正しい終了条件: row==size（最後の行も既に配置済みの状態）
+    if row==self.size:
+      self.printout()
+      return
+    # 各列を試す（列ユニーク制約のみ）
+    for col in range(self.size):
+      if self.used_col[col]==0:
+        self.aboard[row]=col
+        self.used_col[col]=1
+        self.nqueens(row+1)
+        self.used_col[col]=0
 
 
 # ------------------------------------------------------------
@@ -102,84 +121,86 @@ class NQueens02_MinimalFix:
 #    - rd のインデックス: (row + col) を 0..(2N-2) にそのまま利用
 # ------------------------------------------------------------
 class NQueens02_WithDiagonals:
-    size: int
-    count: int
-    aboard: List[int]
-    used_col: List[int]
-    used_ld: List[int]
-    used_rd: List[int]
-    offset: int
+  size:int
+  count:int
+  aboard:List[int]
+  used_col:List[int]
+  used_ld:List[int]
+  used_rd:List[int]
+  offset:int
 
-    def __init__(self, size: int) -> None:
-        self.size = size
-        self.count = 0
-        self.aboard = [0 for _ in range(self.size)]
-        self.used_col = [0 for _ in range(self.size)]
-        self.used_ld = [0 for _ in range(2 * self.size - 1)]
-        self.used_rd = [0 for _ in range(2 * self.size - 1)]
-        self.offset = self.size - 1  # (row-col) の負値を 0 始まりにずらす
+  def __init__(self,size:int)->None:
+    self.size=size
+    self.count=0
+    self.aboard=[0 for _ in range(self.size)]
+    self.used_col=[0 for _ in range(self.size)]
+    self.used_ld=[0 for _ in range(2*self.size-1)]
+    self.used_rd=[0 for _ in range(2*self.size-1)]
+    self.offset=self.size-1  # (row-col) の負値を 0 始まりにずらす
 
-    def printout(self) -> None:
-        self.count += 1
-        print(self.count, end=": ")
-        for i in range(self.size):
-            print(self.aboard[i], end="")
-        print("")
+  def printout(self)->None:
+    self.count+=1
+    print(self.count,end=": ")
+    for i in range(self.size):
+      print(self.aboard[i],end="")
+    print("")
 
-    def nqueens(self, row: int) -> None:
-        if row == self.size:
-            self.printout()
-            return
-        for col in range(self.size):
-            ld = row - col + self.offset  # 0..2N-2
-            rd = row + col                # 0..2N-2
-            if (self.used_col[col] | self.used_ld[ld] | self.used_rd[rd]) == 0:
-                self.aboard[row] = col
-                self.used_col[col] = 1
-                self.used_ld[ld] = 1
-                self.used_rd[rd] = 1
-                self.nqueens(row + 1)
-                self.used_col[col] = 0
-                self.used_ld[ld] = 0
-                self.used_rd[rd] = 0
-
+  def nqueens(self,row:int)->None:
+    if row==self.size:
+      self.printout()
+      return
+    for col in range(self.size):
+      ld=row-col+self.offset  # 0..2N-2
+      rd=row+col                # 0..2N-2
+      if (self.used_col[col]|self.used_ld[ld]|self.used_rd[rd])==0:
+        self.aboard[row]=col
+        self.used_col[col]=1
+        self.used_ld[ld]=1
+        self.used_rd[rd]=1
+        self.nqueens(row+1)
+        self.used_col[col]=0
+        self.used_ld[ld]=0
+        self.used_rd[rd]=0
 
 # ------------------------------------------------------------
 # 3) CLI 入口
 # ------------------------------------------------------------
 
-def main() -> None:
-    # 使い方:
-    #   python3 02Py_postFlag_codon_reviewed.py N [raw]
-    #   raw を指定すると MinimalFix（列ユニークの順列）を実行。
-    #   省略時は WithDiagonals（N-Queens 正式版）を実行。
-    n = 8
-    mode = "proper"
-    if len(sys.argv) >= 2:
-        try:
-            n = int(sys.argv[1])
-        except ValueError:
-            print("第1引数 N は整数で指定してください。例: 8")
-            return
-    if len(sys.argv) >= 3 and sys.argv[2].lower() == "raw":
-        mode = "raw"
+def main()->None:
+  # 使い方:
+  #   python3 02Py_postFlag_codon_reviewed.py N [raw]
+  #   raw を指定すると MinimalFix（列ユニークの順列）を実行。
+  #   省略時は WithDiagonals（N-Queens 正式版）を実行。
+  n=8
+  mode="proper"
+  if len(sys.argv)>=2:
+    try:
+      n=int(sys.argv[1])
+    except ValueError:
+      print("第1引数 N は整数で指定してください。例: 8")
+      return
+  if len(sys.argv)>=3 and sys.argv[2].lower()=="raw":
+    mode="raw"
 
-    t0 = time.perf_counter()
-    if mode == "raw":
-        solver = NQueens02_MinimalFix(n)
-        solver.nqueens(0)
-        total = solver.count
-    else:
-        solver = NQueens02_WithDiagonals(n)
-        solver.nqueens(0)
-        total = solver.count
-    t1 = time.perf_counter()
+  t0=time.perf_counter()
 
-    print(f"\nMode: {mode}")
-    print(f"N: {n}")
-    print(f"Total: {total}")
-    print(f"Elapsed: {t1 - t0:.3f}s")
+  # MinimalFix（列ユニークの順列）を実行。
+  if mode=="raw":
+    solver=NQueens02_MinimalFix(n)
+    solver.nqueens(0)
+    total=solver.count
+  # WithDiagonals（N-Queens 正式版）を実行。
+  else:
+    solver=NQueens02_WithDiagonals(n)
+    solver.nqueens(0)
+    total=solver.count
 
+  t1=time.perf_counter()
 
-if __name__ == "__main__":
-    main()
+  print(f"\nMode: {mode}")
+  print(f"N: {n}")
+  print(f"Total: {total}")
+  print(f"Elapsed: {t1 - t0:.3f}s")
+
+if __name__=="__main__":
+  main()

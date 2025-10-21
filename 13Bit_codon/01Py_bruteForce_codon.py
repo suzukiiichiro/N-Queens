@@ -12,9 +12,14 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
+  使い方
+  $ codon build -release 01Py_bluteForce_codon_reviewed.py -o nqueen01
+  $ ./nqueen01 5    # ProperBF を呼ぶ（デフォルト）
+  $ ./nqueen01 5 raw  # MinimalFix を呼ぶ（“生”の総当り）
+
 
 fedora$ codon build -release 01Py_bluteForce_codon.py
-fedora$ ./01Py_bluteForce_codon
+fedora$ ./01Py_bluteForce_codon 5 raw
 :
 :
 3115: 44424
@@ -28,7 +33,36 @@ fedora$ ./01Py_bluteForce_codon
 3123: 44442
 3124: 44443
 3125: 44444
+
+Mode: raw
+N: 5
+Total: 3125
+Elapsed: 0.026s
+bash-3.2$ exit
+exit
+
+fedora$ codon build -release 01Py_bluteForce_codon.py
+fedora$ ./01Py_bluteForce_codon 5
+:
+:
+1: 02413
+2: 03142
+3: 13024
+4: 14203
+5: 20314
+6: 24130
+7: 30241
+8: 31420
+9: 41302
+10: 42031
+
+Mode: proper
+N: 5
+Total: 10
+Elapsed: 0.000s
 fedora$
+
+
 """
 
 """
@@ -59,7 +93,7 @@ CLI 実行例：
   $ ./nqueen01 5    # ProperBF を呼ぶ（デフォルト）
   $ ./nqueen01 5 raw  # MinimalFix を呼ぶ（“生”の総当り）
 """
-from typing import List, Tuple
+from typing import List,Tuple
 import sys
 import time
 
@@ -68,122 +102,124 @@ import time
 #    ※ N-Queens の解にはなりません。学習用参考。
 # ------------------------------------------------------------
 class NQueens01_MinimalFix:
-    size: int
-    aboard: List[int]
-    count: int
+  size:int
+  aboard:List[int]
+  count:int
 
-    def __init__(self, size: int) -> None:
-        # 目的：サイズを保持し、各行の暫定列を保持する配列 aboard を初期化
-        self.size = size
-        self.aboard = [0 for _ in range(self.size)]
-        self.count = 0
+  def __init__(self,size:int)->None:
+    # 目的：サイズを保持し、各行の暫定列を保持する配列 aboard を初期化
+    self.size=size
+    self.aboard=[0 for _ in range(self.size)]
+    self.count=0
 
-    def printout(self) -> None:
-        # 目的：現在の aboard を 1 行の数字列で表示（ベンチマークには非推奨）
-        self.count += 1
-        # 例："3115: 44424" のように出力
-        print(self.count, end=": ")
-        for i in range(self.size):
-            print(self.aboard[i], end="")
-        print("")
+  def printout(self)->None:
+    # 目的：現在の aboard を 1 行の数字列で表示（ベンチマークには非推奨）
+    self.count+=1
+    # 例："3115: 44424" のように出力
+    print(self.count,end=": ")
+    for i in range(self.size):
+      print(self.aboard[i],end="")
+    print("")
 
-    def nqueens(self, row: int) -> None:
-        # 目的：各行に 0..size-1 を“無条件”に置いていく総当り
-        # 注意：N-Queens の安全判定なし／膨大な出力
-        # BUG FIX: `is` → `==`（値比較に修正）
-        if row == self.size:
-            self.printout()
-            return
-        for i in range(self.size):
-            self.aboard[row] = i
-            self.nqueens(row + 1)
-
+  def nqueens(self,row:int)->None:
+    # 目的：各行に 0..size-1 を“無条件”に置いていく総当り
+    # 注意：N-Queens の安全判定なし／膨大な出力
+    # BUG FIX: `is` → `==`（値比較に修正）
+    if row==self.size:
+      self.printout()
+      return
+    for i in range(self.size):
+      self.aboard[row]=i
+      self.nqueens(row+1)
 
 # ------------------------------------------------------------
 # 2) 正しい（素朴）N-Queens：列＆斜めの衝突を避けるチェックを追加
 # ------------------------------------------------------------
 class NQueens01_ProperBF:
-    size: int
-    aboard: List[int]
-    count: int
+  size:int
+  aboard:List[int]
+  count:int
 
-    def __init__(self, size: int) -> None:
-        # 目的：サイズと作業配列の初期化
-        self.size = size
-        self.aboard = [0 for _ in range(self.size)]  # row→col を格納
-        self.count = 0
+  def __init__(self,size:int)->None:
+    # 目的：サイズと作業配列の初期化
+    self.size=size
+    self.aboard=[0 for _ in range(self.size)]  # row→col を格納
+    self.count=0
 
-    def is_safe(self, row: int, col: int) -> bool:
-        """目的：既に置いた 0..row-1 のクイーンと衝突しないかを判定。
-        - 列衝突：同じ列に既にある
-        - 斜め衝突：|row - r| == |col - c|
-        """
-        for r in range(row):
-            c = self.aboard[r]
-            if c == col:
-                return False
-            if abs(row - r) == abs(col - c):
-                return False
-        return True
+  def is_safe(self,row:int,col:int)->bool:
+    """目的：既に置いた 0..row-1 のクイーンと衝突しないかを判定。
+    - 列衝突：同じ列に既にある
+    - 斜め衝突：|row - r| == |col - c|
+    """
+    for r in range(row):
+      c=self.aboard[r]
+      if c==col:
+        return False
+      if abs(row-r)==abs(col-c):
+        return False
+    return True
 
-    def printout(self) -> None:
-        # 目的：見つけた“正しい”解を表示
-        self.count += 1
-        print(self.count, end=": ")
-        for i in range(self.size):
-            print(self.aboard[i], end="")
-        print("")
+  def printout(self)->None:
+    # 目的：見つけた“正しい”解を表示
+    self.count+=1
+    print(self.count,end=": ")
+    for i in range(self.size):
+      print(self.aboard[i],end="")
+    print("")
 
-    def solve(self, row: int) -> None:
-        # 目的：行ごとのバックトラックで安全な列のみを再帰的に探索
-        if row == self.size:
-            self.printout()
-            return
-        for col in range(self.size):
-            if self.is_safe(row, col):
-                self.aboard[row] = col
-                self.solve(row + 1)
-                # 戻しは不要（次の col で上書き）だが、明示するなら 0 を入れてもよい
+  def solve(self,row:int)->None:
+    # 目的：行ごとのバックトラックで安全な列のみを再帰的に探索
+    if row==self.size:
+      self.printout()
+      return
+    for col in range(self.size):
+      if self.is_safe(row,col):
+        self.aboard[row]=col
+        self.solve(row+1)
+        # 戻しは不要（次の col で上書き）だが、明示するなら 0 を入れてもよい
 
 
 # ------------------------------------------------------------
 # 3) CLI 入口：引数で raw / proper を切り替え可能
 # ------------------------------------------------------------
 
-def main() -> None:
-    # 使い方：
-    #   python3 this.py N [raw]
-    #   raw を付けると MinimalFix（総当り）を実行。
-    #   省略時は ProperBF（本来の N-Queens）を実行。
-    n = 5
-    mode = "proper"  # default
+def main()->None:
+  # 使い方：
+  #   python3 this.py N [raw]
+  #   raw を付けると MinimalFix（総当り）を実行。
+  #   省略時は ProperBF（本来の N-Queens）を実行。
+  n=5
+  mode="proper"  # default
 
-    if len(sys.argv) >= 2:
-        try:
-            n = int(sys.argv[1])
-        except ValueError:
-            print("第1引数 N は整数で指定してください。例: 8")
-            return
-    if len(sys.argv) >= 3:
-        if sys.argv[2].lower() in ("raw", "proper"):
-            mode = sys.argv[2].lower()
+  if len(sys.argv)>=2:
+    try:
+      n=int(sys.argv[1])
+    except ValueError:
+      print("第1引数 N は整数で指定してください。例: 8")
+      return
+  if len(sys.argv)>=3:
+    if sys.argv[2].lower() in ("raw","proper"):
+      mode=sys.argv[2].lower()
 
-    t0 = time.perf_counter()
-    if mode == "raw":
-        solver = NQueens01_MinimalFix(n)
-        solver.nqueens(0)
-        total = solver.count
-    else:
-        solver = NQueens01_ProperBF(n)
-        solver.solve(0)
-        total = solver.count
-    t1 = time.perf_counter()
+  t0=time.perf_counter()
 
-    print(f"\nMode: {mode}")
-    print(f"N: {n}")
-    print(f"Total: {total}")
-    print(f"Elapsed: {t1 - t0:.3f}s")
+  #  MinimalFix（総当り）を実行。
+  if mode=="raw":
+    solver=NQueens01_MinimalFix(n)
+    solver.nqueens(0)
+    total=solver.count
+  #  ProperBF（本来の N-Queens）を実行。
+  else:
+    solver=NQueens01_ProperBF(n)
+    solver.solve(0)
+    total=solver.count
 
+  t1=time.perf_counter()
 
-if __name__ == "__main__":
-    main()
+  print(f"\nMode: {mode}")
+  print(f"N: {n}")
+  print(f"Total: {total}")
+  print(f"Elapsed: {t1 - t0:.3f}s")
+
+if __name__=="__main__":
+  main()
