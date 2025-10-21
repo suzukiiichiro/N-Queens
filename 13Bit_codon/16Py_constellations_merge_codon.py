@@ -467,6 +467,7 @@ StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
 # pypyjit.set_param('max_unroll_recursion=-1')
 #
 class NQueens16:
+
   def __init__(self)->None:
     # StateKey
     # self.subconst_cache: Dict[ StateKey, bool ] = {}
@@ -478,41 +479,41 @@ class NQueens16:
     self.gen_cache: Dict[Tuple[int,int,int,int,int,int,int,int], List[Dict[str,int]] ] = {}
 
   def _mix64(self, x: int) -> int:
-      # splitmix64 の最終段だけ使ったミキサ
-      x &= MASK64
-      x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9 & MASK64
-      x = (x ^ (x >> 27)) * 0x94D049BB133111EB & MASK64
-      x ^= (x >> 31)
-      return x & MASK64
+    # splitmix64 の最終段だけ使ったミキサ
+    x &= MASK64
+    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9 & MASK64
+    x = (x ^ (x >> 27)) * 0x94D049BB133111EB & MASK64
+    x ^= (x >> 31)
+    return x & MASK64
 
   def _gen_list(self, cnt: int, seed: int) -> List[int]:
-      # Zobristテーブル用の64bit値を cnt 個つくる。
-      # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
-      out: List[int] = []
-      s: int = seed & MASK64
-      for _ in range(cnt):
-          s = (s + 0x9E3779B97F4A7C15) & MASK64   # splitmix64 のインクリメント
-          out.append(self._mix64(s))
-      return out
+    # Zobristテーブル用の64bit値を cnt 個つくる。
+    # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
+    out: List[int] = []
+    s: int = seed & MASK64
+    for _ in range(cnt):
+        s = (s + 0x9E3779B97F4A7C15) & MASK64   # splitmix64 のインクリメント
+        out.append(self._mix64(s))
+    return out
 
   def _init_zobrist(self, N: int) -> None:
-      # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
-      # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
-      if N in self.zobrist_tables:
-          return
-      base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
-      tbl: Dict[str, List[int]] = {
-          'ld'    : self._gen_list(N, base_seed ^ 0x01),
-          'rd'    : self._gen_list(N, base_seed ^ 0x02),
-          'col'   : self._gen_list(N, base_seed ^ 0x03),
-          'LD'    : self._gen_list(N, base_seed ^ 0x04),
-          'RD'    : self._gen_list(N, base_seed ^ 0x05),
-          'row'   : self._gen_list(N, base_seed ^ 0x06),
-          'queens': self._gen_list(N, base_seed ^ 0x07),
-          'k'     : self._gen_list(N, base_seed ^ 0x08),
-          'l'     : self._gen_list(N, base_seed ^ 0x09),
-      }
-      self.zobrist_tables[N] = tbl
+    # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
+    # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
+    if N in self.zobrist_tables:
+      return
+    base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
+    tbl: Dict[str, List[int]] = {
+        'ld'    : self._gen_list(N, base_seed ^ 0x01),
+        'rd'    : self._gen_list(N, base_seed ^ 0x02),
+        'col'   : self._gen_list(N, base_seed ^ 0x03),
+        'LD'    : self._gen_list(N, base_seed ^ 0x04),
+        'RD'    : self._gen_list(N, base_seed ^ 0x05),
+        'row'   : self._gen_list(N, base_seed ^ 0x06),
+        'queens': self._gen_list(N, base_seed ^ 0x07),
+        'k'     : self._gen_list(N, base_seed ^ 0x08),
+        'l'     : self._gen_list(N, base_seed ^ 0x09),
+    }
+    self.zobrist_tables[N] = tbl
   def rot90(self,ijkl:int,N:int)->int:
     # 時計回りに90度回転
     # rot90 メソッドは、90度の右回転（時計回り）を行います
@@ -539,7 +540,7 @@ class NQueens16:
   # て必須。
   """
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
   """
   # symmetry: 回転・ミラー対称性ごとの重複補正
   # (90度:2, 180度:4, その他:8)
@@ -665,9 +666,11 @@ class NQueens16:
   #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
   def read_uint32_le(self, b: str) -> int:
     return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
+
   def int_to_le_bytes(self,x: int) -> List[int]:
     # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
     return [(x >> (8 * i)) & 0xFF for i in range(4)]
+
   def validate_bin_file(self,fname: str) -> bool:
     # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
     try:
@@ -677,6 +680,7 @@ class NQueens16:
       return size % 16 == 0
     except:
       return False
+
   def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
     # キャッシュ付きラッパー関数（.bin）
     fname = f"constellations_N{N}_{preset_queens}.bin"
@@ -693,6 +697,7 @@ class NQueens16:
     self.gen_constellations(ijkl_list, constellations, N, preset_queens)
     self.save_constellations_bin(fname, constellations)
     return constellations
+
   def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
     # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
     with open(path, "w") as f:
@@ -703,6 +708,7 @@ class NQueens16:
         startijkl = c["startijkl"]
         solutions = c.get("solutions", 0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+
   def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
     # --- テキスト形式でロード ---
     out: List[Dict[str, int]] = []
@@ -715,6 +721,7 @@ class NQueens16:
         startijkl = int(parts[3]); solutions = int(parts[4])
         out.append({"ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": solutions})
     return out
+
   def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
     # --- bin形式で保存 ---
     with open(fname, "wb") as f:
@@ -722,6 +729,7 @@ class NQueens16:
         for key in ["ld", "rd", "col", "startijkl"]:
           b = self.int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
+
   def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
     # --- bin形式でロード ---
     constellations: List[Dict[str, int]] = []
@@ -734,11 +742,9 @@ class NQueens16:
         rd         = self.read_uint32_le(raw[4:8])
         col        = self.read_uint32_le(raw[8:12])
         startijkl  = self.read_uint32_le(raw[12:16])
-        constellations.append({
-          "ld": ld, "rd": rd, "col": col,
-          "startijkl": startijkl, "solutions": 0
-        })
+        constellations.append({ "ld": ld, "rd": rd, "col": col, "startijkl": startijkl, "solutions": 0 })
     return constellations
+
   def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
     # キャッシュ付きラッパー関数（.txt）
     # N と preset_queens に基づいて一意のファイル名を構成
@@ -764,6 +770,7 @@ class NQueens16:
     self.gen_constellations(ijkl_list, constellations, N, preset_queens)
     self.save_constellations_txt(fname, constellations)
     return constellations
+
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter:List[int], constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
     # サブコンステレーション生成にtuple keyでキャッシュ
     # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
@@ -777,54 +784,53 @@ class NQueens16:
     # self.subconst_cache[key] = True  # マークだけでOK
     self.subconst_cache.add(key)
 
-
   def zobrist_hash(self, ld: int, rd: int, col: int, row: int, queens: int, k: int, l: int, LD: int, RD: int, N: int) -> int:
-      self._init_zobrist(N)
-      tbl = self.zobrist_tables[N]
-      h = 0
-      mask = (1 << N) - 1
-      # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
-      ld &= mask
-      rd &= mask
-      col &= mask
-      LD &= mask
-      RD &= mask
-      # 以下はそのまま
-      m = ld; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['ld'][i]
-          m >>= 1; i += 1
-      m = rd; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['rd'][i]
-          m >>= 1; i += 1
-      m = col; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['col'][i]
-          m >>= 1; i += 1
-      m = LD; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['LD'][i]
-          m >>= 1; i += 1
-      m = RD; i = 0
-      while i < N:
-          if (m & 1) != 0:
-              h ^= tbl['RD'][i]
-          m >>= 1; i += 1
-      if 0 <= row < N:     h ^= tbl['row'][row]
-      if 0 <= queens < N:  h ^= tbl['queens'][queens]
-      if 0 <= k < N:       h ^= tbl['k'][k]
-      if 0 <= l < N:       h ^= tbl['l'][l]
-      return h & MASK64
+    self._init_zobrist(N)
+    tbl = self.zobrist_tables[N]
+    h = 0
+    mask = (1 << N) - 1
+    # ★ ここが重要：Nビットに揃える（負数や上位ビットを落とす）
+    ld &= mask
+    rd &= mask
+    col &= mask
+    LD &= mask
+    RD &= mask
+    # 以下はそのまま
+    m = ld; i = 0
+    while i < N:
+      if (m & 1) != 0:
+        h ^= tbl['ld'][i]
+      m >>= 1; i += 1
+    m = rd; i = 0
+    while i < N:
+      if (m & 1) != 0:
+        h ^= tbl['rd'][i]
+      m >>= 1; i += 1
+    m = col; i = 0
+    while i < N:
+      if (m & 1) != 0:
+        h ^= tbl['col'][i]
+      m >>= 1; i += 1
+    m = LD; i = 0
+    while i < N:
+      if (m & 1) != 0:
+        h ^= tbl['LD'][i]
+      m >>= 1; i += 1
+    m = RD; i = 0
+    while i < N:
+      if (m & 1) != 0:
+        h ^= tbl['RD'][i]
+      m >>= 1; i += 1
+    if 0 <= row < N:     h ^= tbl['row'][row]
+    if 0 <= queens < N:  h ^= tbl['queens'][queens]
+    if 0 <= k < N:       h ^= tbl['k'][k]
+    if 0 <= l < N:       h ^= tbl['l'][l]
+    return h & MASK64
 
   def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
-      # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
-      # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-      return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
+    # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+    # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
+    return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
 
   """
   開始コンステレーション（部分盤面）の生成関数
@@ -866,7 +872,7 @@ class NQueens16:
     # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
     h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
     if h in visited:
-        return
+      return
     visited.add(h)
     #
     # StateKey（タプル）
@@ -895,18 +901,18 @@ class NQueens16:
     #   counter[0]+=1
     #   return
     if queens == preset_queens:
-        # signatureの生成
-        signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
-        # signaturesセットをクラス変数やグローバルで管理
-        if not hasattr(self, "constellation_signatures"):
-            self.constellation_signatures = set()
-        signatures = self.constellation_signatures
-        if signature not in signatures:
-            constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
-            constellations.append(constellation) #星座データ追加
-            signatures.add(signature)
-            counter[0] += 1
-        return
+      # signatureの生成
+      signature = (ld, rd, col, k, l, row)  # 必要な変数でOK
+      # signaturesセットをクラス変数やグローバルで管理
+      if not hasattr(self, "constellation_signatures"):
+        self.constellation_signatures = set()
+      signatures = self.constellation_signatures
+      if signature not in signatures:
+        constellation = {"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0}
+        constellations.append(constellation) #星座データ追加
+        signatures.add(signature)
+        counter[0] += 1
+      return
     # 現在の行にクイーンを配置できる位置を計算
     free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
     while free:
@@ -915,8 +921,6 @@ class NQueens16:
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
-
-
 
   def dfs(self,funcname:str,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:  
    if funcname=="SQBkBlBjrB":
@@ -2245,11 +2249,7 @@ class NQueens16:
   # 関数プロトタイプ
   #-----------------
   @staticmethod
-  def _has_future_space_step(next_ld: int, next_rd: int, next_col: int,
-                        row_next:int,endmark:int,
-                        board_mask: int,
-                        extra_block_next:int # 次の行で実際にORされる追加ブロック（なければ0）
-                        ) -> bool:
+  def _has_future_space_step(next_ld: int, next_rd: int, next_col: int,row_next:int,endmark:int, board_mask: int, extra_block_next:int) -> bool:
     # ゴール直前は先読み不要（短絡）
     if row_next >= endmark:
         return True
@@ -3322,24 +3322,27 @@ class NQueens16:
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-"""    
+"""
 class NQueens16_constellations():
+
   def _bit_total(self, size: int) -> int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask = (1 << size) - 1
     total = 0
+
     def bt(row: int, left: int, down: int, right: int):
-        nonlocal total
-        if row == size:
-            total += 1
-            return
-        bitmap = mask & ~(left | down | right)
-        while bitmap:
-            bit = -bitmap & bitmap
-            bitmap ^= bit
-            bt(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
+      nonlocal total
+      if row == size:
+        total += 1
+        return
+      bitmap = mask & ~(left | down | right)
+      while bitmap:
+        bit = -bitmap & bitmap
+        bitmap ^= bit
+        bt(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
     bt(0, 0, 0, 0)
     return total
+
   def main(self)->None:
     nmin:int=5
     nmax:int=18

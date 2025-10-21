@@ -794,43 +794,56 @@ from datetime import datetime
 # pypyjit.set_param('max_unroll_recursion=-1')
 #
 class NQueens14:
+
   def __init__(self)->None:
     # インスタンス専用に上書き（共有を避ける）
     self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
+
   def rot90(self,ijkl:int,N:int)->int:
       return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+
   def rot180(self,ijkl:int,N:int)->int:
       return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+
   def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
       return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
     # rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
     # rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
     # rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
     # return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
+
   def symmetry(self,ijkl:int,N:int)->int:
     return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+
   def symmetry90(self,ijkl:int,N:int)->bool:
     return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
     return (i<<15)+(j<<10)+(k<<5)+l
+
   def mirvert(self,ijkl:int,N:int)->int:
     return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+
   def ffmin(self,a:int,b:int)->int:
     return min(a,b)
+
   def geti(self,ijkl:int)->int:
     return (ijkl>>15)&0x1F
+
   def getj(self,ijkl:int)->int:
     return (ijkl>>10)&0x1F
+
   def getk(self,ijkl:int)->int:
     return (ijkl>>5)&0x1F
+
   def getl(self,ijkl:int)->int:
     return ijkl&0x1F
-  #--------------------------------------------
-  # jasmin_cache = {}
+
   def get_jasmin(self, c: int, N: int) -> int:
     key = (c, N)
     if key in self.jasmin_cache:
@@ -838,6 +851,7 @@ class NQueens14:
     result = self.jasmin(c, N)
     self.jasmin_cache[key] = result
     return result
+
   #--------------------------------------------
   # 使用例:
   # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
@@ -865,21 +879,15 @@ class NQueens14:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-  #---------------------------------
-  # codon では動かない
-  #
+
   def file_exists(self,fname:str)->bool:
-    # try:
-    #     os.stat(fname)
-    #     return True
-    # except OSError:
-    #     return False
     try:
       with open(fname, "rb"):
         pass
         return True
     except:
       return False
+
   def load_constellations(self,N:int,preset_queens:int)->list:
     fname = f"constellations_N{N}_{preset_queens}.pkl"
     if self.file_exists(fname):
@@ -928,12 +936,12 @@ class NQueens14:
   def _has_future_space(next_ld: int, next_rd: int, next_col: int, board_mask: int) -> bool:
       # 次の行に進んだときに置ける可能性が1ビットでも残るか
       return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-  #---------------------------------
+
   def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
       # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
       # return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
       return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
-  #---------------------------------
+
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
@@ -982,6 +990,7 @@ class NQueens14:
       # クイーンを配置し、次の行に進む
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
+
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     # jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     N2:int=N-2
@@ -1118,6 +1127,7 @@ class NQueens14:
       # constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
       # temp_counter[0]=0
+
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
@@ -1162,6 +1172,7 @@ class NQueens14:
   #-----------------
   # 関数プロトタイプ
   #-----------------
+
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     if row==endmark:
@@ -1190,6 +1201,7 @@ class NQueens14:
       if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1222,6 +1234,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
@@ -1254,6 +1267,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     if row==endmark:
@@ -1283,6 +1297,7 @@ class NQueens14:
       if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1315,6 +1330,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1359,6 +1375,7 @@ class NQueens14:
       if next_free: # Recursive call if there are available positions
         total+=self.SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3  # Precomputed value for performance
@@ -1392,6 +1409,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1457,6 +1475,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+  
   def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1489,6 +1508,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
@@ -1521,6 +1541,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1553,6 +1574,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1584,6 +1606,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1615,6 +1638,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1647,6 +1671,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1676,6 +1701,7 @@ class NQueens14:
       if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1707,6 +1733,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1739,6 +1766,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1776,6 +1804,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1804,6 +1833,7 @@ class NQueens14:
       if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
         total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     avail:int=free
@@ -1835,6 +1865,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1867,6 +1898,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N4:int=N-4
@@ -1899,6 +1931,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
@@ -1931,6 +1964,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
@@ -1962,6 +1996,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
@@ -1993,6 +2028,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
@@ -2024,6 +2060,7 @@ class NQueens14:
       if next_free:
         total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
+
   def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N1:int=N-1
@@ -2056,10 +2093,12 @@ class NQueens14:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
 class NQueens14_constellations():
+
   def _bit_total(self, size: int) -> int:
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask = (1 << size) - 1
     total = 0
+
     def bt(row: int, left: int, down: int, right: int):
         nonlocal total
         if row == size:
@@ -2072,6 +2111,7 @@ class NQueens14_constellations():
             bt(row + 1, (left | bit) << 1, down | bit, (right | bit) >> 1)
     bt(0, 0, 0, 0)
     return total
+
   def main(self)->None:
     nmin:int=5
     nmax:int=18

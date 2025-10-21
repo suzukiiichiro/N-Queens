@@ -155,11 +155,17 @@ class NQueens17:
 
   # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:return (i<<15)+(j<<10)+(k<<5)+l
+
   def mirvert(self,ijkl:int,N:int)->int:return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+
   def ffmin(self,a:int,b:int)->int:return min(a,b)
+
   def geti(self,ijkl:int)->int:return (ijkl>>15)&0x1F
+
   def getj(self,ijkl:int)->int:return (ijkl>>10)&0x1F
+
   def getk(self,ijkl:int)->int:return (ijkl>>5)&0x1F
+
   def getl(self,ijkl:int)->int:return ijkl&0x1F
   # rot90 メソッドは、90度の右回転（時計回り）を行います 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
   def rot90(self,ijkl:int,N:int)->int:return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
@@ -167,7 +173,9 @@ class NQueens17:
   def rot180(self,ijkl:int,N:int)->int:return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
   # symmetry: 回転・ミラー対称性ごとの重複補正 # (90度:2, 180度:4, その他:8)
   def symmetry(self,ijkl:int,N:int)->int:return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+
   def symmetry90(self,ijkl:int,N:int)->bool:return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
+
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
 
   #  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
@@ -304,9 +312,7 @@ class NQueens17:
           extra=((m1|m2)*NK)|(mj*NJ)
           future=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
           if future:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,
-                            next_free,jmark,endmark,mark1,mark2,board_mask,
-                            blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
+              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
       else:
         while avail:
           bit:int=avail&-avail
@@ -832,6 +838,7 @@ class NQueens17_constellations():
   def _bit_total(self,size:int)->int:
     mask=(1<<size)-1
     total=0
+
     def bt(row:int,left:int,down:int,right:int):
       nonlocal total
       if row==size:

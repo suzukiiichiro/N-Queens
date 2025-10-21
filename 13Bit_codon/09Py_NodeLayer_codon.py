@@ -50,97 +50,93 @@ k のデフォルトは 4（N>=4 を想定）。k を大きくするとノード
 以降のサブツリーが浅くなる。マシンや N に応じてチューニングしてください。
 """
 from datetime import datetime
-from typing import List, Tuple
+from typing import List,Tuple
 
 
+"""ノードレイヤー法で Total 解数を数える（Unique は未算出）。"""
 class NQueens_NodeLayer:
-    """ノードレイヤー法で Total 解数を数える（Unique は未算出）。"""
 
-    # ------------------------------------------------------------
-    # 完全探索（部分状態 → 葉まで）。down==mask で解 1 件。
-    # ------------------------------------------------------------
-    def _solve_from_node(self, size: int, mask: int, left: int, down: int, right: int) -> int:
-        if down == mask:
-            return 1
-        total = 0
-        bitmap: int = mask & ~(left | down | right)
-        while bitmap:
-            bit: int = -bitmap & bitmap
-            bitmap ^= bit
-            total += self._solve_from_node(size, mask, (left | bit) >> 1, down | bit, (right | bit) << 1)
-        return total
+  # ------------------------------------------------------------
+  # 完全探索（部分状態 → 葉まで）。down==mask で解 1 件。
+  # ------------------------------------------------------------
+  def _solve_from_node(self,size:int,mask:int,left:int,down:int,right:int)->int:
+    if down==mask:
+      return 1
+    total=0
+    bitmap:int=mask&~(left|down|right)
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap^=bit
+      total+=self._solve_from_node(size,mask,(left|bit)>>1,down|bit,(right|bit)<<1)
+    return total
 
-    # ------------------------------------------------------------
-    # down の set bit 数を返す（Brian Kernighan 法）。
-    # ------------------------------------------------------------
-    @staticmethod
-    def _popcount(n: int) -> int:
-        cnt = 0
-        while n:
-            n &= n - 1
-            cnt += 1
-        return cnt
+  # ------------------------------------------------------------
+  # down の set bit 数を返す（Brian Kernighan 法）。
+  # ------------------------------------------------------------
+  @staticmethod
+  def _popcount(n:int)->int:
+    cnt=0
+    while n:
+      n&=n-1
+      cnt+=1
+    return cnt
 
-    # ------------------------------------------------------------
-    # 深さ k まで探索してノード（left,down,right の 3-tuple）を蓄積。
-    # nodes には [l0,d0,r0,l1,d1,r1,...] の順で push する（元コード互換）。
-    # ------------------------------------------------------------
-    def _collect_nodes(self, size: int, mask: int, k: int, nodes: List[int],
-                        left: int, down: int, right: int) -> int:
-        # すでに k 行ぶん置けているか？（down の set bit 数で判定）
-        if self._popcount(down) == k:
-            nodes.append(left)
-            nodes.append(down)
-            nodes.append(right)
-            return 1
-        total = 0
-        bitmap: int = mask & ~(left | down | right)
-        while bitmap:
-            bit: int = -bitmap & bitmap
-            bitmap ^= bit
-            total += self._collect_nodes(size, mask, k, nodes,
-                                         (left | bit) >> 1, down | bit, (right | bit) << 1)
-        return total
+  # ------------------------------------------------------------
+  # 深さ k まで探索してノード（left,down,right の 3-tuple）を蓄積。
+  # nodes には [l0,d0,r0,l1,d1,r1,...] の順で push する（元コード互換）。
+  # ------------------------------------------------------------
+  def _collect_nodes(self,size:int,mask:int,k:int,nodes:List[int],left:int,down:int,right:int)->int:
+    # すでに k 行ぶん置けているか？（down の set bit 数で判定）
+    if self._popcount(down)==k:
+      nodes.append(left)
+      nodes.append(down)
+      nodes.append(right)
+      return 1
+    total=0
+    bitmap:int=mask&~(left|down|right)
+    while bitmap:
+      bit:int=-bitmap&bitmap
+      bitmap^=bit
+      total+=self._collect_nodes(size,mask,k,nodes,(left|bit)>>1,down|bit,(right|bit)<<1)
+    return total
 
-    # ------------------------------------------------------------
-    # ノードレイヤー探索の外側：k を固定して frontier を作り、各ノードから完全探索
-    # ------------------------------------------------------------
-    def solve_with_layer(self, size: int, k: int = 4) -> int:
-        if size < 1:
-            return 0
-        mask: int = (1 << size) - 1
-        nodes: List[int] = []
-        # 深さ k の frontier を構築
-        self._collect_nodes(size, mask, k, nodes, 0, 0, 0)
-        # 3 要素で 1 ノード
-        num_nodes: int = len(nodes) // 3
-        total = 0
-        # 各ノードを独立に探索（ここは将来的に並列化ポイント）
-        for i in range(num_nodes):
-            l = nodes[3 * i]
-            d = nodes[3 * i + 1]
-            r = nodes[3 * i + 2]
-            total += self._solve_from_node(size, mask, l, d, r)
-        return total
-
+  # ------------------------------------------------------------
+  # ノードレイヤー探索の外側：k を固定して frontier を作り、各ノードから完全探索
+  # ------------------------------------------------------------
+  def solve_with_layer(self,size:int,k:int=4)->int:
+      if size<1:
+        return 0
+      mask:int=(1<<size)-1
+      nodes:List[int]=[]
+      # 深さ k の frontier を構築
+      self._collect_nodes(size,mask,k,nodes,0,0,0)
+      # 3 要素で 1 ノード
+      num_nodes:int=len(nodes)//3
+      total=0
+      # 各ノードを独立に探索（ここは将来的に並列化ポイント）
+      for i in range(num_nodes):
+        l=nodes[3*i]
+        d=nodes[3*i+1]
+        r=nodes[3*i+2]
+        total+=self._solve_from_node(size,mask,l,d,r)
+      return total
 
 # ------------------------------------------------------------
 # CLI（元コード互換）
 # ------------------------------------------------------------
 class NQueens_NodeLayer_CLI:
-    def main(self) -> None:
-        nmin: int = 4
-        nmax: int = 18
-        print(" N:        Total       Unique        hh:mm:ss.ms")
-        for size in range(nmin, nmax):
-            start = datetime.now()
-            solver = NQueens_NodeLayer()
-            total = solver.solve_with_layer(size, k=4)
-            unique = 0
-            dt = datetime.now() - start
-            text = str(dt)[:-3]
-            print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
+  def main(self)->None:
+    nmin:int=4
+    nmax:int=18
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for size in range(nmin,nmax):
+      start=datetime.now()
+      solver=NQueens_NodeLayer()
+      total=solver.solve_with_layer(size,k=4)
+      unique=0
+      dt=datetime.now()-start
+      text=str(dt)[:-3]
+      print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")
 
-
-if __name__ == "__main__":
-    NQueens_NodeLayer_CLI().main()
+if __name__=="__main__":
+  NQueens_NodeLayer_CLI().main()
