@@ -54,67 +54,66 @@ from typing import Optional
 
 
 class NQueens05:
-    # --- 結果/設定（Codon 向けに先頭で型宣言） ---
-    total: int
-    unique: int
-    mask: int          # 下位 N ビットを 1 にした定数（例: N=8 → 0b11111111）
-    size: int          # 参照用
+  # --- 結果/設定（Codon 向けに先頭で型宣言） ---
+  total:int
+  unique:int
+  mask:int          # 下位 N ビットを 1 にした定数（例: N=8 → 0b11111111）
+  size:int          # 参照用
 
-    def __init__(self) -> None:
-        # 実体は run(size) の中で都度 init() する
-        pass
+  def __init__(self)->None:
+    # 実体は run(size) の中で都度 init() する
+    pass
 
-    # ------------------------------------------------------------
-    # 初期化（サイズに応じた定数の算出）
-    # ------------------------------------------------------------
-    def init(self, size: int) -> None:
-        self.total = 0
-        self.unique = 0  # 対称性未実装のため 0 のまま
-        self.size = size
-        self.mask = (1 << size) - 1  # 再帰ごとに作らず 1 回だけ算出
+  # ------------------------------------------------------------
+  # 初期化（サイズに応じた定数の算出）
+  # ------------------------------------------------------------
+  def init(self,size:int)->None:
+    self.total=0
+    self.unique=0  # 対称性未実装のため 0 のまま
+    self.size=size
+    self.mask=(1<<size)-1  # 再帰ごとに作らず 1 回だけ算出
 
-    # ------------------------------------------------------------
-    # ビット演算バックトラック本体
-    #   row   : 現在の行 index
-    #   left  : 1 行前の配置から伝播した ↙︎ 衝突ビット（次行で <<1）
-    #   down  : 1 行前までに使用した列の集合
-    #   right : 1 行前の配置から伝播した ↘︎ 衝突ビット（次行で >>1）
-    # ------------------------------------------------------------
-    def dfs(self, row: int, left: int, down: int, right: int) -> None:
-        if row == self.size:
-            self.total += 1
-            return
-        # 置ける位置の集合
-        bitmap: int = self.mask & ~(left | down | right)
-        while bitmap:
-            # 最下位 1bit（LSB）を取り出して配置
-            bit: int = -bitmap & bitmap
-            # 残りの候補から当該ビットを落とす
-            bitmap ^= bit  # (= bitmap & ~bit)
-            # 次行へ。left は <<1、right は >>1 にシフトして伝播させる
-            self.dfs(row + 1, (left | bit) << 1, (down | bit), (right | bit) >> 1)
+  # ------------------------------------------------------------
+  # ビット演算バックトラック本体
+  #   row   : 現在の行 index
+  #   left  : 1 行前の配置から伝播した ↙︎ 衝突ビット（次行で <<1）
+  #   down  : 1 行前までに使用した列の集合
+  #   right : 1 行前の配置から伝播した ↘︎ 衝突ビット（次行で >>1）
+  # ------------------------------------------------------------
+  def dfs(self,row:int,left:int,down:int,right:int)->None:
+    if row==self.size:
+      self.total+=1
+      return
+    # 置ける位置の集合
+    bitmap:int=self.mask&~(left|down|right)
+    while bitmap:
+      # 最下位 1bit（LSB）を取り出して配置
+      bit:int=-bitmap&bitmap
+      # 残りの候補から当該ビットを落とす
+      bitmap^=bit  # (= bitmap & ~bit)
+      # 次行へ。left は <<1、right は >>1 にシフトして伝播させる
+      self.dfs(row+1,(left|bit)<<1,(down|bit),(right|bit)>>1)
 
-    # ------------------------------------------------------------
-    # 1 サイズ分を実行
-    # ------------------------------------------------------------
-    def run(self, size: int) -> None:
-        self.init(size)
-        self.dfs(0, 0, 0, 0)
+  # ------------------------------------------------------------
+  # 1 サイズ分を実行
+  # ------------------------------------------------------------
+  def run(self,size:int)->None:
+    self.init(size)
+    self.dfs(0,0,0,0)
 
-    # ------------------------------------------------------------
-    # CLI 入口
-    # ------------------------------------------------------------
-    def main(self) -> None:
-        nmin: int = 4
-        nmax: int = 18
-        print(" N:        Total       Unique        hh:mm:ss.ms")
-        for size in range(nmin, nmax + 1):  # 18 を含む
-            start_time = datetime.now()
-            self.run(size)
-            dt = datetime.now() - start_time
-            text = str(dt)[:-3]
-            print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
+  # ------------------------------------------------------------
+  # CLI 入口
+  # ------------------------------------------------------------
+  def main(self)->None:
+    nmin:int=4
+    nmax:int=18
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for size in range(nmin,nmax+1):# 18 を含む
+      start_time=datetime.now()
+      self.run(size)
+      dt=datetime.now()-start_time
+      text=str(dt)[:-3]
+      print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
-
-if __name__ == '__main__':
+if __name__=='__main__':
     NQueens05().main()

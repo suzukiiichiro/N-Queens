@@ -53,68 +53,65 @@ from typing import Optional
 
 
 class NQueens06:
-    # --- 結果/設定（Codon 向けに先頭で宣言） ---
-    total: int
-    unique: int
-    size: int
-    mask: int
+  # --- 結果/設定（Codon 向けに先頭で宣言） ---
+  total:int
+  unique:int
+  size:int
+  mask:int
 
-    def __init__(self) -> None:
-        # 実体は solve() 呼び出し時に設定
-        pass
+  def __init__(self)->None:
+    # 実体は solve() 呼び出し時に設定
+    pass
 
-    # ------------------------------------------------------------
-    # 内部 DFS: ビット演算バックトラック本体
-    # ------------------------------------------------------------
-    def _dfs(self, row: int, left: int, down: int, right: int) -> None:
-        if row == self.size:
-            self.total += 1
-            return
-        bitmap: int = self.mask & ~(left | down | right)
-        while bitmap:
-            bit: int = -bitmap & bitmap   # LSB を抽出
-            bitmap ^= bit                 # (= bitmap & ~bit)
-            self._dfs(row + 1,
-                      (left | bit) << 1,
-                      (down | bit),
-                      (right | bit) >> 1)
+  # ------------------------------------------------------------
+  # 内部 DFS: ビット演算バックトラック本体
+  # ------------------------------------------------------------
+  def _dfs(self,row:int,left:int,down:int,right:int)->None:
+    if row==self.size:
+      self.total+=1
+      return
+    bitmap:int=self.mask&~(left|down|right)
+    while bitmap:
+      bit:int=-bitmap&bitmap   # LSB を抽出
+      bitmap^=bit                 # (= bitmap & ~bit)
+      self._dfs(row+1,
+                (left|bit)<<1,
+                (down|bit),
+                (right|bit)>>1)
 
-    # ------------------------------------------------------------
-    # 対称活用：1 行目の配置を半分に制限し、探索後に×2。奇数 N は中央列を追加探索。
-    # ------------------------------------------------------------
-    def solve(self, size: int) -> None:
-        self.size = size
-        self.mask = (1 << size) - 1
-        self.total = 0
-        self.unique = 0  # 本段では未算出
+  # ------------------------------------------------------------
+  # 対称活用：1 行目の配置を半分に制限し、探索後に×2。奇数 N は中央列を追加探索。
+  # ------------------------------------------------------------
+  def solve(self,size:int)->None:
+    self.size=size
+    self.mask=(1<<size)-1
+    self.total=0
+    self.unique=0  # 本段では未算出
+    # 左半分のみ（0..size//2-1）
+    half:int=size//2
+    for col in range(half):
+      bit=1<<col
+      self._dfs(1,bit<<1,bit,bit>>1)
+    self.total*=2
+    # 奇数 N の中央列（左右対称と同一にはならない）
+    if (size&1)==1:
+      col=half
+      bit=1<<col
+      self._dfs(1,bit<<1,bit,bit>>1)
 
-        # 左半分のみ（0..size//2-1）
-        half: int = size // 2
-        for col in range(half):
-            bit = 1 << col
-            self._dfs(1, bit << 1, bit, bit >> 1)
-        self.total *= 2
+  # ------------------------------------------------------------
+  # CLI 入口
+  # ------------------------------------------------------------
+  def main(self)->None:
+    nmin:int=4
+    nmax:int=18
+    print(" N:        Total       Unique        hh:mm:ss.ms")
+    for size in range(nmin,nmax+1):# 18 を含む
+      start=datetime.now()
+      self.solve(size)
+      dt=datetime.now()-start
+      text=str(dt)[:-3]
+      print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
 
-        # 奇数 N の中央列（左右対称と同一にはならない）
-        if (size & 1) == 1:
-            col = half
-            bit = 1 << col
-            self._dfs(1, bit << 1, bit, bit >> 1)
-
-    # ------------------------------------------------------------
-    # CLI 入口
-    # ------------------------------------------------------------
-    def main(self) -> None:
-        nmin: int = 4
-        nmax: int = 18
-        print(" N:        Total       Unique        hh:mm:ss.ms")
-        for size in range(nmin, nmax + 1):  # 18 を含む
-            start = datetime.now()
-            self.solve(size)
-            dt = datetime.now() - start
-            text = str(dt)[:-3]
-            print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")
-
-
-if __name__ == '__main__':
+if __name__=='__main__':
     NQueens06().main()
