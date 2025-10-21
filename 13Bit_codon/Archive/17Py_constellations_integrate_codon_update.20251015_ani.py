@@ -1232,7 +1232,7 @@ class NQueens17:
                               next_free, jmark, endmark, mark1, mark2, board_mask, N)
     return total
 
-  
+
 
   #  ConstellationArrayListの各Constellation（部分盤面）ごとに
   #  N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）

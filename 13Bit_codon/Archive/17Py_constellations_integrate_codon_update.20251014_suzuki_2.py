@@ -1,91 +1,91 @@
 #!/usr/bin/env python3
 
-# -*- coding: utf-8 -*-
+#-*-coding:utf-8-*-
 
 """
 16Pyをインテグレートする。
-   ,     #_
-   ~\_  ####_        Amazon Linux 2023
-  ~~  \_#####\
-  ~~     \###|
-  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
-   ~~       V~' '->
-    ~~~         /
-      ~~._.   _/
-         _/ _/
+,#_
+~\_  ####_        Amazon Linux 2023
+~~\_#####\
+~~\###|
+~~\#/___   https://aws.amazon.com/linux/amazon-linux-2023
+~~V~' '->
+~~~/
+~~._.   _/
+         _/_/
        _/m/'
 
 amazon AWS m4.16xlarge x 1
-$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+$ codon build-release 15Py_constellations_optimize_codon.py&&./15Py_constellations_optimize_codon
 コンステレーション版 キャッシュ最適化２ Ｎクイーン
- N:            Total       Unique        hh:mm:ss.ms
- 5:               10            0         0:00:00.000
- 6:                4            0         0:00:00.079
- 7:               40            0         0:00:00.001
- 8:               92            0         0:00:00.001
- 9:              352            0         0:00:00.001
-10:              724            0         0:00:00.002
-11:             2680            0         0:00:00.102
-12:            14200            0         0:00:00.002
-13:            73712            0         0:00:00.005
-14:           365596            0         0:00:00.011
-15:          2279184            0         0:00:00.035
-16:         14772512            0         0:00:00.078
-17:         95815104            0         0:00:00.436
-18:        666090624            0         0:00:02.961
-19:       4968057848            0         0:00:22.049
-20:      39029188884            0         0:02:52.430
-21:     314666222712            0         0:24:25.554
-22:    2691008701644            0         3:29:33.971
-23:   24233937684440            0  1 day, 8:12:58.977
+ N:Total       Unique        hh:mm:ss.ms
+ 5:10            0         0:00:00.000
+ 6:4            0         0:00:00.079
+ 7:40            0         0:00:00.001
+ 8:92            0         0:00:00.001
+ 9:352            0         0:00:00.001
+10:724            0         0:00:00.002
+11:2680            0         0:00:00.102
+12:14200            0         0:00:00.002
+13:73712            0         0:00:00.005
+14:365596            0         0:00:00.011
+15:2279184            0         0:00:00.035
+16:14772512            0         0:00:00.078
+17:95815104            0         0:00:00.436
+18:666090624            0         0:00:02.961
+19:4968057848            0         0:00:22.049
+20:39029188884            0         0:02:52.430
+21:314666222712            0         0:24:25.554
+22:2691008701644            0         3:29:33.971
+23:24233937684440            0  1 day,8:12:58.977
 
-top - 10:29:32 up 1 day, 16:13,  4 users,  load average: 64.39, 64.21, 64.12
-Tasks: 563 total,   2 running, 561 sleeping,   0 stopped,   0 zombie
-%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-MiB Mem : 257899.4 total, 256193.4 free,   1225.5 used,    480.5 buff/cache
-MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255314.6 avail Mem
-    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+top-10:29:32 up 1 day,16:13,4 users,load average:64.39,64.21,64.12
+Tasks:563 total,2 running,561 sleeping,0 stopped,0 zombie
+%Cpu(s):100.0 us,0.0 sy,0.0 ni,0.0 id,0.0 wa,0.0 hi,0.0 si,0.0 st
+MiB Mem:257899.4 total,256193.4 free,1225.5 used,480.5 buff/cache
+MiB Swap:0.0 total,0.0 free,0.0 used. 255314.6 avail Mem
+    PID USER      PR  NI    VIRT    RES    SHR S%CPU%MEM     TIME+COMMAND
    5634 suzuki    20   0   13.4g  70056   7384 R  6399   0.0 148411:55 15Py_constellat
 
 GPU/CUDA
 10Bit_CUDA/01CUDA_Bit_Symmetry.cu
-19:       4968057848        621012754     000:00:00:13.80
-20:      39029188884       4878666808     000:00:02:02.52
-21:     314666222712      39333324973     000:00:18:46.52
-22:    2691008701644     336376244042     000:03:00:22.54
-23:   24233937684440    3029242658210     001:06:03:49.29
-24:  227514171973736   28439272956934     012:23:38:21.02
-25: 2207893435808352  275986683743434     140:07:39:29.96
+19:4968057848        621012754     000:00:00:13.80
+20:39029188884       4878666808     000:00:02:02.52
+21:314666222712      39333324973     000:00:18:46.52
+22:2691008701644     336376244042     000:03:00:22.54
+23:24233937684440    3029242658210     001:06:03:49.29
+24:227514171973736   28439272956934     012:23:38:21.02
+25:2207893435808352  275986683743434     140:07:39:29.96
 
-✅[Opt-07] Zobrist Hash による transposition / visited 状態の高速検出
+✅[Opt-07] Zobrist Hash による transposition/visited 状態の高速検出
 ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
 例えば「既に同じビットマスク状態を訪問したか」判定、もしくは部分盤面パタ>ーンのメモ化など。
 
 Opt-07（状態キャッシュ）の反映箇所まとめ
 先頭付近（import 近く）
-from typing import List, Set, Dict, Tuple
-StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
+from typing import List,Set,Dict,Tuple
+StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
 __init__（インスタンス属性に）
-self.subconst_cache: Dict[StateKey, bool] = {}
+self.subconst_cache:Dict[StateKey,bool]={}
 set_pre_queens(...) の引数
-visited: Set[StateKey] に変更
+visited:Set[StateKey] に変更
 
 冒頭で
-key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
-if key in visited: return / visited.add(key)
+key:StateKey=(ld,rd,col,row,queens,k,l,LD,RD,N,preset_queens)
+if key in visited:return/visited.add(key)
 
 set_pre_queens_cached(...) の引数
-visited: Set[StateKey] に変更
-subconst_cache も Dict[StateKey, bool] キーで同じタプルを使用
+visited:Set[StateKey] に変更
+subconst_cache も Dict[StateKey,bool] キーで同じタプルを使用
 
 gen_constellations(...) の呼び出し側
-visited: Set[StateKey] = set() で初期化
+visited:Set[StateKey]=set() で初期化
 この構成で、Codon の型検査に対しても一貫性が取れていて、実行結果もOKです。
 
 「探索済み状態の検出（transposition/visited）による枝刈り」は 実装済み です。
-set_pre_queens / set_pre_queens_cached で、
-key = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を visited / subconst_cache に用いて再訪を防いでいます。
+set_pre_queens/set_pre_queens_cached で、
+key=(ld,rd,col,row,queens,k,l,LD,RD,N,preset_queens) を visited/subconst_cache に用いて再訪を防いでいます。
 
  ただし厳密な意味での 「Zobrist Hash」自体は使っていません。
 現状は「タプル状態キー→visited判定」という方式です（十分に効果的で、Codon でも安定）。
@@ -95,57 +95,57 @@ key = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を visited / s
 
 """
 ✅[Opt-08]部分盤面サブ問題キャッシュ
-場所: set_pre_queens_cached(...)
-キー: key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-値: subconst_cache[key] = True
-役割: 同じ部分状態でのサブ問題展開を一度だけにする（必ず再利用の方針に合致）。
+場所:set_pre_queens_cached(...)
+キー:key=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
+値:subconst_cache[key]=True
+役割:同じ部分状態でのサブ問題展開を一度だけにする（必ず再利用の方針に合致）。
 """
 
 """
-✅[Opt-09]訪問済み（transposition / visited）
-場所: set_pre_queens(...)
-データ構造: visited（Set：実装版ではタプル or 64bit相当の圧縮キー）
-役割: 再帰木を横断して同じ状態への再訪を防止。
+✅[Opt-09]訪問済み（transposition/visited）
+場所:set_pre_queens(...)
+データ構造:visited（Set：実装版ではタプル or 64bit相当の圧縮キー）
+役割:再帰木を横断して同じ状態への再訪を防止。
 """
 
 """
 ✅[Opt-10]Jasmin 正規化キャッシュ
-場所: get_jasmin(c, N) / jasmin_cache: Dict[Tuple[int,int], int]
-役割: 盤面正規化（回転・鏡映）結果をメモ化し、同一候補の重複計算を回避。
+場所:get_jasmin(c,N)/jasmin_cache:Dict[Tuple[int,int],int]
+役割:盤面正規化（回転・鏡映）結果をメモ化し、同一候補の重複計算を回避。
 """
 
 """
 ✅[Opt-11]星座（コンステレーション）重複排除
-場所: constellation_signatures: Set[Tuple[int,int,int,int,int,int]]
-役割: 生成済み部分盤面（星座）を一意に保つための署名セット。
+場所:constellation_signatures:Set[Tuple[int,int,int,int,int,int]]
+役割:生成済み部分盤面（星座）を一意に保つための署名セット。
 """
 
 """
 ✅[Opt-12]永続キャッシュ（現状は無効化中）
-場所: load_constellations(...) / pickle
+場所:load_constellations(...)/pickle
 インスタンス内キャッシュ（辞書／集合）
   __init__
-    self.subconst_cache: Dict[StateKey, bool] = {} … サブコンステ生成の再入防止
-    self.constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set() … 星座の重複署名
-    self.jasmin_cache: Dict[Tuple[int,int], int] = {} … get_jasmin()の結果メモ化
-    self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {} … Zobristテーブル（Nごと）
+    self.subconst_cache:Dict[StateKey,bool]={} … サブコンステ生成の再入防止
+    self.constellation_signatures:Set[Tuple[int,int,int,int,int,int]]=set() … 星座の重複署名
+    self.jasmin_cache:Dict[Tuple[int,int],int]={} … get_jasmin()の結果メモ化
+    self.zobrist_tables:Dict[int,Dict[str,List[int]]]={} … Zobristテーブル（Nごと）
 
 ✅[Opt-13]部分盤面のキャッシュ（tuple化→dict）
   set_pre_queens_cached(...)
-    キー：(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    キー：(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
     既出キーなら再帰呼び出しスキップ → 指数的重複カット
 
 ✅[Opt-14]星座（コンステレーション）の重複排除
-  set_pre_queens(...) 内 if queens == preset_queens: ブロック
-    署名：(ld, rd, col, k, l, row) を self.constellation_signatures で判定し重複追加を抑制
+  set_pre_queens(...) 内 if queens==preset_queens:ブロック
+    署名：(ld,rd,col,k,l,row) を self.constellation_signatures で判定し重複追加を抑制
 
 ✅[Opt-15]Jasmin 正規化のメモ化
-  get_jasmin(c, N) → self.jasmin_cache[(c,N)]
+  get_jasmin(c,N) → self.jasmin_cache[(c,N)]
   何度も登場する起点パターンの再計算を回避
 
 ✅[Opt-16]訪問済み状態（transposition/visited）の仕込み
-  gen_constellations(...) で visited: Set[StateKey] = set() を生成し
-  set_pre_queens(...) 冒頭で key: StateKey = (...) を visited に登録・参照
+  gen_constellations(...) で visited:Set[StateKey]=set() を生成し
+  set_pre_queens(...) 冒頭で key:StateKey=(...) を visited に登録・参照
   ※Zobrist版 zobrist_hash(...) も実装済（今はコメントアウトでトグル可）
 
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
@@ -153,14 +153,14 @@ key = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を visited / s
     # zobrist_hash
     # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
     # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
-    # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
-    # h: int = self.zobrist_hash(ld, rd, col, row, queens, k, l, LD, RD, N)
+    # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの&((1<<N)-1) 修正で解決）。
+    # h:int=self.zobrist_hash(ld,rd,col,row,queens,k,l,LD,RD,N)
     #
     # state_hash
-    # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+    # その場で数個の^と<<を混ぜるだけの O(1) 計算。
     # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
     # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
-    h: int = self.state_hash(ld, rd, col, row,queens,k,l,LD,RD,N)
+    h:int=self.state_hash(ld,rd,col,row,queens,k,l,LD,RD,N)
     if h in visited:
         return
     visited.add(h)
@@ -169,26 +169,26 @@ key = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens) を visited / s
     # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
     # set の比較・保持も重く、メモリも一番食います。
     # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
-    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N, preset_queens)
+    # key:StateKey=(ld,rd,col,row,queens,k,l,LD,RD,N,preset_queens)
     # if key in visited:
     #     return
     # visited.add(key)
 
 ✅[Opt-17]星座リストの外部キャッシュ（ファイル）
-  テキスト：save_constellations_txt(...) / load_constellations_txt(...)
-  バイナリ：save_constellations_bin(...) / load_constellations_bin(...)
-  ラッパ：load_or_build_constellations_txt(...) / load_or_build_constellations_bin(...)
+  テキスト：save_constellations_txt(...)/load_constellations_txt(...)
+  バイナリ：save_constellations_bin(...)/load_constellations_bin(...)
+  ラッパ：load_or_build_constellations_txt(...)/load_or_build_constellations_bin(...)
     load_or_build_constellations_bin(...)
-    破損チェック validate_constellation_list(...) / validate_bin_file(...) あり
+    破損チェック validate_constellation_list(...)/validate_bin_file(...) あり
 """
 
 """
 ✅[Opt-18] 星座生成（サブコンステレーション）にtuple keyでキャッシュ
 set_pre_queens やサブ星座生成は、状態変数を tuple でまとめて key にできます。これで全く同じ状態での星座生成は1度だけ実行されます。
 
-__init__ で self.subconst_cache: Dict[StateKey, bool] = {} を用意
+__init__ で self.subconst_cache:Dict[StateKey,bool]={} を用意
 set_pre_queens_cached(...) が tupleキー
-  (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+  (ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
   を使って self.subconst_cache を参照・更新
 生成側は gen_constellations(...) から 最初の呼び出しを set_pre_queens_cached に変更済み
 再帰内でも次の分岐呼び出しを set_pre_queens_cached(...) に置換しており、同一状態の再実行を回避
@@ -200,31 +200,31 @@ constellationsリストに追加する際、既に存在する星座を再追加
 → 星座自体を「tuple/int/hash」にして集合管理
 これにより、異なる経路から同じ星座に到達しても重複追加を防げます。
 
-__init__ で self.constellation_signatures: Set[Tuple[int, int, int, int, int, int]] = set() を用意。
-set_pre_queens(...) 内の if queens == preset_queens: ブロックで
-signature = (ld, rd, col, k, l, row) をキーに重複チェックし、未出だけ constellations.append(...) ＆ counter[0] += 1。
+__init__ で self.constellation_signatures:Set[Tuple[int,int,int,int,int,int]]=set() を用意。
+set_pre_queens(...) 内の if queens==preset_queens:ブロックで
+signature=(ld,rd,col,k,l,row) をキーに重複チェックし、未出だけ constellations.append(...) ＆ counter[0]+=1。
 """
 
 """
 ✅[Opt-20] Jasmin変換キャッシュ（クラス属性またはグローバル変数で）
 （生成済み盤面の再利用）
-ijkl_list_jasmin = {self.jasmin(c, N) for c in ijkl_list} も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
+ijkl_list_jasmin={self.jasmin(c,N) for c in ijkl_list} も、盤面→jasmin変換は「一度計算したらdictでキャッシュ」が効果大
 #グローバル変数で
 
-def get_jasmin(self, c: int, N: int) -> int:
-    key = (c, N)
+def get_jasmin(self,c:int,N:int)->int:
+    key=(c,N)
     if key in jasmin_cache:
         return jasmin_cache[key]
-    result = self.jasmin(c, N)
-    jasmin_cache[key] = result
+    result=self.jasmin(c,N)
+    jasmin_cache[key]=result
     return result
 
 # 使用例:gen_constellations()内に
-ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
+ijkl_list_jasmin={self.get_jasmin(c,N) for c in ijkl_list}
 
-__init__ に self.jasmin_cache: Dict[Tuple[int, int], int] = {}
+__init__ に self.jasmin_cache:Dict[Tuple[int,int],int]={}
 
-get_jasmin(self, c: int, N: int) で (c, N) をキーに memo 化
+get_jasmin(self,c:int,N:int) で (c,N) をキーに memo 化
 
 gen_constellations() 内で
 
@@ -442,13 +442,13 @@ GPU/CUDA 11CUDA_constellation_symmetry.cu
 """
 
 # import random
-import pickle, os
+import pickle,os
 # from operator import or_
 # from functools import reduce
 from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
-StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
+StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
 class NQueens17:
   def __init__(self,N:int)->None:
@@ -456,16 +456,16 @@ class NQueens17:
     MASK64:int=(1<<64)-1
     FUNC_CATEGORY={
       # N-3
-      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB": 3,
-      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB": 3,
-      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB": 3,"SQd0BkB": 3,
+      "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
+      "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB":3,
+      "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB":3,"SQd0BkB":3,
       # N-4
-      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB": 4,
+      "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB":4,
       # 0（上記以外）
-      "SQBlBjrB":0,"SQBjrB":0,"SQB": 0,"SQBlBkBjrB": 0,
-      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB": 0,"SQBjlBlkBjrB": 0,
-      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB": 0,
-      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB": 0,"SQd0B": 0
+      "SQBlBjrB":0,"SQBjrB":0,"SQB":0,"SQBlBkBjrB":0,
+      "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB":0,"SQBjlBlkBjrB":0,
+      "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB":0,
+      "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB":0,"SQd0B":0
     }
     FID={
       "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
@@ -1032,7 +1032,7 @@ class NQueens17:
     # ゴール直前は先読み不要（短絡）
     if next_row >= endmark:
         return True
-    blocked_next=(next_ld<<1)|(next_rd>>1)|next_col|extra
+    blocked_next=(next_ld << 1) | (next_rd>>1)|next_col|extra
     return (board_mask&~blocked_next)!=0
     # return self._has_future_space_step(next_ld,next_rd,next_col,next_row,endmark,board_mask,extra)
 
@@ -1236,7 +1236,7 @@ class NQueens17:
     # ---------------------------------
     # 共通の「+1 前進」処理（末尾）
     # ---------------------------------
-    _nxt:int=functionid # ?
+    nxt:int = functionid # ?
     step=1
     add1=0
     # total+=_set_queens_post(functionid,ld,rd,col,row,free,jmark,endmark,mark1,mark2,board_mask,N,avail,avail_flag,step,add1,functionid)
@@ -1252,11 +1252,11 @@ class NQueens17:
       next_row:int=row+1
       if avail_flag==0:
         if next_free:
-          total+=_dfs(_nxt,next_ld,next_rd,next_col,next_row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(nxt,next_ld,next_rd,next_col,next_row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
       else:
         extra = _extra_block_for_row(next_row, mark1, mark2, jmark, N)
         if _should_go_plus1(next_free,row+1,endmark,next_ld,next_rd,next_col,board_mask,extra):
-          total+=_dfs(_nxt,next_ld,next_rd,next_col,next_row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+          total+=_dfs(nxt,next_ld,next_rd,next_col,next_row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
 
     return total
 
