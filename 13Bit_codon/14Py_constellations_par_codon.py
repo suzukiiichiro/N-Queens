@@ -5,6 +5,57 @@
 """
 Python/codon Ｎクイーン コンステレーション版 最適化+最速化（@par)
 
+
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+14Py_constellations_par_codon.py（レビュー＆注釈つき）
+
 ✅[Opt-01]    ビット演算枝刈り
   全探索・部分盤面生成のすべてでbit演算徹底 ビット演算による衝突枝刈り（cols/hills/dales）
   → set_pre_queensや他の再帰でld|rd|colのビット演算を用いた枝刈りを徹底している
@@ -471,17 +522,6 @@ if violate_macro_patterns(self.BOARD, row, N):
 ちょい改善の余地（任意）
 exec_solutions 内で辞書へ直接書き戻す代わりに、ローカル変数 sol = ... を計算→最後に代入にしておくと、可読性と安全性が少し上がります（実質的な性能差はほぼゼロ）。
 もし将来、並列ループ内で共有キャッシュ（例：jasmin_cache 等）を触れる変更を入れるなら、生成前段でキャッシュ完了→exec_solutions では読み取りのみにする方針を維持すると安心です。
-
-
-
-
-
-
-
-
-
-
-
 
 ✅ビット演算のインライン化
 

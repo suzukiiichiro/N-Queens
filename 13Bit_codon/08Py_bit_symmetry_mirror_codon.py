@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン bit 対象解除/ミラー版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,6 +48,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+08Py_bit_symmetry_mirror_codon.py（レビュー＆注釈つき）
+
+ユーザー提供版をベースに、Codon 互換・正確性・可読性の観点で最小修正＋詳細コメントを付与。
+
+主な修正点:
+- クラス先頭に **全フィールドを型付き宣言**（Codonの静的化要件）。
+- `symmetryops()`/`backTrack1/2()` のロジックは 07 段と同等の判定を維持。
+- 「角なし側」の外側ループを **原典どおりの bound1/bound2 収束方式**へ戻し、
+  `limit` と“偶数中央列の特別処理”での二重カウント/取りこぼしの可能性を排除。
+- ビット演算は `(bitmap & self.lastmask) == 0` のように明示的に括弧。
+- 終了時の `unique/total` の **二重代入を一度に集約**。
+- 出力範囲を `range(nmin, nmax)`（元コード踏襲）。18 を含めたい場合は `+1` にしてください。
+
+検算の目安（Total）: N=4→2, 5→10, 6→4, 7→40, 8→92, 9→352, 10→724 …
+（Unique は N=8 で 12 など）
+
+
 
 fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py && ./08Py_bit_symmetry_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -29,21 +87,6 @@ fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py && ./08Py_bit_sym
 16:     14772512      1846955         0:00:02.671
 fedora$
 
-08Py_bit_symmetry_mirror_codon.py（レビュー＆注釈つき）
-
-ユーザー提供版をベースに、Codon 互換・正確性・可読性の観点で最小修正＋詳細コメントを付与。
-
-主な修正点:
-- クラス先頭に **全フィールドを型付き宣言**（Codonの静的化要件）。
-- `symmetryops()`/`backTrack1/2()` のロジックは 07 段と同等の判定を維持。
-- 「角なし側」の外側ループを **原典どおりの bound1/bound2 収束方式**へ戻し、
-  `limit` と“偶数中央列の特別処理”での二重カウント/取りこぼしの可能性を排除。
-- ビット演算は `(bitmap & self.lastmask) == 0` のように明示的に括弧。
-- 終了時の `unique/total` の **二重代入を一度に集約**。
-- 出力範囲を `range(nmin, nmax)`（元コード踏襲）。18 を含めたい場合は `+1` にしてください。
-
-検算の目安（Total）: N=4→2, 5→10, 6→4, 7→40, 8→92, 9→352, 10→724 …
-（Unique は N=8 で 12 など）
 """
 from datetime import datetime
 from typing import List

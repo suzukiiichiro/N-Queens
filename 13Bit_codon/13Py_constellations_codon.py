@@ -5,6 +5,43 @@
 """
 Python/codon Ｎクイーン コンステレーション版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -12,6 +49,26 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+13Py_constellations_codon.py（レビュー＆注釈つき）
+
+要旨:
+- "コンステレーション（星座）法" による N-Queens の分割探索。
+- 既知の落とし穴：Python の無限精度整数での `~`（ビット反転）。**必ず N ビットでマスク**しないと、
+  `free`/`next_free` が負数/巨大値になり、候補が常にあるように見えて桁あふれ→過少/過大計数の原因。
+
+この修正版の主眼:
+1) **すべての `~(...)` に N ビットマスク**を適用（`& ((1<<N)-1)`）。
+2) `free` の初期化/更新も同様に**常にマスク**。
+3) `(~(... ) > 0)` の判定は、`(mask&~( ... ))!=0` に置き換え、論理を明確化。
+4) いくつかの変数名（`nextfree`/`next_free`）の表記ゆれを最小限で吸収（代入後に必ずマスク）。
+5) 関数ごとに**目的コメント**を付与。
+
+期待値: N=8 → 92,N=9 → 352,N=10 → 724,N=11 → 2680,N=12 → 14200,N=13 → 73712...
+
 
 fedora$ codon build -release 13Py_constellations_codon.py && ./13Py_constellations_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -30,21 +87,6 @@ fedora$ codon build -release 13Py_constellations_codon.py && ./13Py_constellatio
 17:     95815104            0         0:00:11.649
 fedora$
 
-13Py_constellations_codon.py（レビュー＆注釈つき）
-
-要旨:
-- "コンステレーション（星座）法" による N-Queens の分割探索。
-- 既知の落とし穴：Python の無限精度整数での `~`（ビット反転）。**必ず N ビットでマスク**しないと、
-  `free`/`next_free` が負数/巨大値になり、候補が常にあるように見えて桁あふれ→過少/過大計数の原因。
-
-この修正版の主眼:
-1) **すべての `~(...)` に N ビットマスク**を適用（`& ((1<<N)-1)`）。
-2) `free` の初期化/更新も同様に**常にマスク**。
-3) `(~(... ) > 0)` の判定は、`(mask&~( ... ))!=0` に置き換え、論理を明確化。
-4) いくつかの変数名（`nextfree`/`next_free`）の表記ゆれを最小限で吸収（代入後に必ずマスク）。
-5) 関数ごとに**目的コメント**を付与。
-
-期待値: N=8 → 92,N=9 → 352,N=10 → 724,N=11 → 2680,N=12 → 14200,N=13 → 73712...
 """
 from typing import List,Set,Dict
 from datetime import datetime

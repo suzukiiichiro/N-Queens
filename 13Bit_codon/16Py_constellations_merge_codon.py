@@ -10,60 +10,56 @@ SQB..のバックトラック用関数をdfs関数に１本化した。
 exec_solutionsの関数の呼び出しをdfsに変更した。
 
    ,     #_
-   ~\_  ####_        Amazon Linux 2023
-  ~~  \_#####\
-  ~~     \###|
-  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
    ~~       V~' '->
     ~~~         /
       ~~._.   _/
          _/ _/
        _/m/'
 
-amazon AWS m4.16xlarge x 1
-$ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
- N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.079
- 7:           40            0         0:00:00.001
- 8:           92            0         0:00:00.001
- 9:          352            0         0:00:00.001
-10:          724            0         0:00:00.002
-11:         2680            0         0:00:00.102
-12:        14200            0         0:00:00.002
-13:        73712            0         0:00:00.005
-14:       365596            0         0:00:00.011
-15:      2279184            0         0:00:00.035
-16:     14772512            0         0:00:00.078
-17:     95815104            0         0:00:00.436
-18:    666090624            0         0:00:02.961
-19:   4968057848            0         0:00:22.049
-20:  39029188884            0         0:02:52.430
-21: 314666222712            0         0:24:25.554
-22:2691008701644            0         3:29:33.971
 
-top - 11:02:30 up 16:46,  4 users,  load average: 64.17, 64.13, 64.10
-Tasks: 566 total,   2 running, 564 sleeping,   0 stopped,   0 zombie
-%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-MiB Mem : 257899.4 total, 256292.0 free,   1156.5 used,    451.0 buff/cache
-MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255398.4 avail Mem
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
 
-    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-   5634 suzuki    20   0   13.3g  58440   7384 R  6399   0.0  63650:42 15Py_constellat
-  42987 suzuki    20   0  224032   4176   2956 R   0.7   0.0   0:00.09 top
-     16 root      20   0       0      0      0 I   0.3   0.0   0:11.65 rcu_preempt
-      1 root      20   0  171244  16904  10532 S   0.0   0.0   0:06.11 systemd
-      2 root      20   0       0      0      0 S   0.0   0.0   0:00.06 kthreadd
-
-GPU/CUDA
-10Bit_CUDA/01CUDA_Bit_Symmetry.cu
-19:       4968057848        621012754     000:00:00:13.80
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
 20:      39029188884       4878666808     000:00:02:02.52
 21:     314666222712      39333324973     000:00:18:46.52
 22:    2691008701644     336376244042     000:03:00:22.54
 23:   24233937684440    3029242658210     001:06:03:49.29
-24:  227514171973736   28439272956934     012:23:38:21.02
-25: 2207893435808352  275986683743434     140:07:39:29.96
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
+詳細はこちら。
+【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
+https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
+
+エイト・クイーンのプログラムアーカイブ
+Bash、Lua、C、Java、Python、CUDAまで！
+https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+
+"""
+16Py_constellations_merge_codon.py（レビュー＆注釈つき）
 
 ✅[Opt-07] Zobrist Hash による transposition / visited 状態の高速検出
 ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
@@ -421,32 +417,50 @@ def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
 
 
 """"
-fedora$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+amazon AWS m4.16xlarge x 1
+$ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
  N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.005
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.002
- 8:           92            0         0:00:00.002
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.079
+ 7:           40            0         0:00:00.001
+ 8:           92            0         0:00:00.001
  9:          352            0         0:00:00.001
-10:          724            0         0:00:00.001
-11:         2680            0         0:00:00.003
-12:        14200            0         0:00:00.006
-13:        73712            0         0:00:00.009
-14:       365596            0         0:00:00.038
-15:      2279184            0         0:00:00.092
-16:     14772512            0         0:00:00.440
-17:     95815104            0         0:00:02.900
+10:          724            0         0:00:00.002
+11:         2680            0         0:00:00.102
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.005
+14:       365596            0         0:00:00.011
+15:      2279184            0         0:00:00.035
+16:     14772512            0         0:00:00.078
+17:     95815104            0         0:00:00.436
+18:    666090624            0         0:00:02.961
+19:   4968057848            0         0:00:22.049
+20:  39029188884            0         0:02:52.430
+21: 314666222712            0         0:24:25.554
+22:2691008701644            0         3:29:33.971
 
-fedora$ codon build -release 26Py_constellations_optimized_codon.py
-fedora$ ./26Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
-16:     14772512            0         0:00:01.503
-17:     95815104            0         0:00:10.317
+top - 11:02:30 up 16:46,  4 users,  load average: 64.17, 64.13, 64.10
+Tasks: 566 total,   2 running, 564 sleeping,   0 stopped,   0 zombie
+%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem : 257899.4 total, 256292.0 free,   1156.5 used,    451.0 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255398.4 avail Mem
 
-GPU/CUDA 11CUDA_constellation_symmetry.cu
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   5634 suzuki    20   0   13.3g  58440   7384 R  6399   0.0  63650:42 15Py_constellat
+  42987 suzuki    20   0  224032   4176   2956 R   0.7   0.0   0:00.09 top
+     16 root      20   0       0      0      0 I   0.3   0.0   0:11.65 rcu_preempt
+      1 root      20   0  171244  16904  10532 S   0.0   0.0   0:06.11 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:00.06 kthreadd
 
+GPU/CUDA
+10Bit_CUDA/01CUDA_Bit_Symmetry.cu
+19:       4968057848        621012754     000:00:00:13.80
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+24:  227514171973736   28439272956934     012:23:38:21.02
+25: 2207893435808352  275986683743434     140:07:39:29.96
 """
 
 # import random

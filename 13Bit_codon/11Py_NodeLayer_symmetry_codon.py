@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン ノードレイヤー 対象解除版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,6 +48,28 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+11Py_NodeLayer_symmetry_codon.py（レビュー＆注釈つき）
+
+目的:
+- ノードレイヤー法（k行ぶんのfrontier構築） + 対称性分類（COUNT2/4/8）で Total を得る。
+- 角あり/角なしの分岐と、BOUND1/BOUND2/TOPBIT/ENDBIT/SIDEMASK/LASTMASK の制約を適用。
+
+主な修正/指摘:
+- 【バグ修正】角あり側の k層バックトラック `kLayer_nodeLayer_backtrack_corner()` にて、
+  再帰に入る前に `local.board[row] = bit` を**設定していなかった**ため、
+  収集した Local（盤面）状態が欠落 → 後段の `symmetryOps()` 判定が誤る可能性。
+  → 行を追加して修正。
+- Codon 安定性のため、クラス/ローカルのフィールドを型付きで明示。
+- コメントを整理し、各関数の目的と重要行の意図を行レベルで記載。
+
+メモ:
+- 角ありの葉（row==size-1）では回転が全て異なる前提で 8 倍（count8相当）を返す仕様を維持。
+- `bitmap` の更新は `^=`（= `&~bit`）で一貫。
+
 
 fedora$ codon build -release 11Py_NodeLayer_symmetry_codon.py && ./11Py_NodeLayer_symmetry_codon
  N:        Total        Unique        hh:mm:ss.ms
@@ -29,23 +88,6 @@ fedora$ codon build -release 11Py_NodeLayer_symmetry_codon.py && ./11Py_NodeLaye
 16:     14772512            0         0:00:02.761
 fedora$
 
-11Py_NodeLayer_symmetry_codon.py（レビュー＆注釈つき）
-
-目的:
-- ノードレイヤー法（k行ぶんのfrontier構築） + 対称性分類（COUNT2/4/8）で Total を得る。
-- 角あり/角なしの分岐と、BOUND1/BOUND2/TOPBIT/ENDBIT/SIDEMASK/LASTMASK の制約を適用。
-
-主な修正/指摘:
-- 【バグ修正】角あり側の k層バックトラック `kLayer_nodeLayer_backtrack_corner()` にて、
-  再帰に入る前に `local.board[row] = bit` を**設定していなかった**ため、
-  収集した Local（盤面）状態が欠落 → 後段の `symmetryOps()` 判定が誤る可能性。
-  → 行を追加して修正。
-- Codon 安定性のため、クラス/ローカルのフィールドを型付きで明示。
-- コメントを整理し、各関数の目的と重要行の意図を行レベルで記載。
-
-メモ:
-- 角ありの葉（row==size-1）では回転が全て異なる前提で 8 倍（count8相当）を返す仕様を維持。
-- `bitmap` の更新は `^=`（= `&~bit`）で一貫。
 """
 from datetime import datetime
 from typing import List

@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン 対象解除版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,6 +48,25 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+04Py_symmetry_codon.py（レビュー＆注釈つき）
+ユーザー提供の NQueens04 をベースに、以下を実施：
+ 1) 行レベルを含む詳細コメントの付与（関数の目的を明示）
+ 2) 不具合/紛らわしさの最小修正（Codon互換も考慮）
+    - `min`/`max` の変数名は組み込みと衝突するため `minN`/`maxN` に変更
+    - ループ範囲を `range(minN, maxN + 1)`（18 を含む）
+    - `fa` は未使用なので削除（列ユニークは順列生成で保証されている）
+    - `rotate()` のロジックを読みやすく（`incr` を明示の ±1 に）
+    - 関数引数の型注釈を補完（Codon の静的化の助け）
+
+本段は「順列生成 + 対角フラグ + 対称性（D4: 回転/反転）」で Unique/Total を計測する段階です。
+`nequiv` は 1,2,4 のいずれかで、最終的に `nequiv*2` を返し、これが multiplicity（2/4/8）になります。
+
+Codon/Python 共通で動作。
+
 
 fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -26,22 +82,6 @@ fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon
 13:        73712         9233         0:00:00.137
 14:       365596        45752         0:00:00.769
 15:      2279184       285053         0:00:04.810
-
-
-04Py_symmetry_codon.py（レビュー＆注釈つき）
-ユーザー提供の NQueens04 をベースに、以下を実施：
- 1) 行レベルを含む詳細コメントの付与（関数の目的を明示）
- 2) 不具合/紛らわしさの最小修正（Codon互換も考慮）
-    - `min`/`max` の変数名は組み込みと衝突するため `minN`/`maxN` に変更
-    - ループ範囲を `range(minN, maxN + 1)`（18 を含む）
-    - `fa` は未使用なので削除（列ユニークは順列生成で保証されている）
-    - `rotate()` のロジックを読みやすく（`incr` を明示の ±1 に）
-    - 関数引数の型注釈を補完（Codon の静的化の助け）
-
-本段は「順列生成 + 対角フラグ + 対称性（D4: 回転/反転）」で Unique/Total を計測する段階です。
-`nequiv` は 1,2,4 のいずれかで、最終的に `nequiv*2` を返し、これが multiplicity（2/4/8）になります。
-
-Codon/Python 共通で動作。
 """
 from datetime import datetime
 from typing import List

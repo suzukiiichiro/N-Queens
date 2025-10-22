@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン bit ミラー版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,24 +48,10 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
 
-fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2            0         0:00:00.000
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.000
- 8:           92            0         0:00:00.000
- 9:          352            0         0:00:00.000
-10:          724            0         0:00:00.000
-11:         2680            0         0:00:00.001
-12:        14200            0         0:00:00.003
-13:        73712            0         0:00:00.029
-14:       365596            0         0:00:00.138
-15:      2279184            0         0:00:00.848
-16:     14772512            0         0:00:05.327
-fedora$
 
+"""
 06Py_bit_mirror_codon.py（レビュー＆注釈つき）
 
 ユーザー提供の "左右対称（ミラー）活用" ビットバックトラック版を、
@@ -47,6 +70,25 @@ Codon 互換と読みやすさを意識して最小修正＆詳細コメント�
 - `mask`  : 下位 N ビットが 1（盤面幅）
 
 検算の目安（Total）: N=4→2, N=5→10, N=6→4, N=7→40, N=8→92 …
+
+
+fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            0         0:00:00.000
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.000
+ 8:           92            0         0:00:00.000
+ 9:          352            0         0:00:00.000
+10:          724            0         0:00:00.000
+11:         2680            0         0:00:00.001
+12:        14200            0         0:00:00.003
+13:        73712            0         0:00:00.029
+14:       365596            0         0:00:00.138
+15:      2279184            0         0:00:00.848
+16:     14772512            0         0:00:05.327
+fedora$
+
 """
 from datetime import datetime
 from typing import Optional

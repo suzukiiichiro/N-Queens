@@ -2,7 +2,44 @@
 # -*- coding: utf-8 -*-
 
 """
-Python/codon ブルートフォース版 Ｎクイーン
+Python/codon Ｎクイーン ブルートフォース版
+
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,7 +49,33 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-  使い方
+
+"""
+
+"""
+ブルートフォース版 Ｎクイーン（レビュー＆注釈つき）
+
+このファイルは、ユーザー提供の 01Py_bluteForce_codon.py をベースに、
+1) 問題点の指摘（行レベルコメント）
+2) 最小修正（== と is の取り違えなどのバグ修正）
+3) 本来の N-Queens（衝突チェックあり）版の併記
+を行った“学習用”コードです。
+
+ポイント要約：
+- 【重大】`if row is self.size:` は **同一性比較** であり、整数の値比較ではありません。
+  ここは `==` を使うべきです。Codon でも Python でもバグになります。
+- 元のロジックは「各行に 0..size-1 を無条件に置く」総当り（size^size 通り）の列挙で、
+  N-Queens の「利き（列／斜め）を避ける」チェックがありません。
+  そのため N=5 のとき 5^5=3,125 行が出力され、末尾が 44444 で終わります（提示ログと一致）。
+- ベンチマーク目的なら、`print()` は大きなオーバーヘッドです。計数のみで計るのが良いです。
+- 言語的な注意：セミコロン `;` は Python では不要です（読みやすさのため削除推奨）。
+- 命名：`aboard` は `queens` などにすると役割が明確です（今回は互換のため維持）。
+
+下に 2 つのクラスを用意します：
+- NQueens01_MinimalFix : オリジナルをほぼ保持しつつ「== に修正」だけ適用（学習用）
+- NQueens01_ProperBF  : 本来の N-Queens（安全判定 is_safe を導入した素朴バックトラック）
+
+CLI 実行例：
   $ codon build -release 01Py_bluteForce_codon_reviewed.py -o nqueen01
   $ ./nqueen01 5    # ProperBF を呼ぶ（デフォルト）
   $ ./nqueen01 5 raw  # MinimalFix を呼ぶ（“生”の総当り）
@@ -61,37 +124,6 @@ N: 5
 Total: 10
 Elapsed: 0.000s
 fedora$
-
-
-"""
-
-"""
-ブルートフォース版 Ｎクイーン（レビュー＆注釈つき）
-
-このファイルは、ユーザー提供の 01Py_bluteForce_codon.py をベースに、
-1) 問題点の指摘（行レベルコメント）
-2) 最小修正（== と is の取り違えなどのバグ修正）
-3) 本来の N-Queens（衝突チェックあり）版の併記
-を行った“学習用”コードです。
-
-ポイント要約：
-- 【重大】`if row is self.size:` は **同一性比較** であり、整数の値比較ではありません。
-  ここは `==` を使うべきです。Codon でも Python でもバグになります。
-- 元のロジックは「各行に 0..size-1 を無条件に置く」総当り（size^size 通り）の列挙で、
-  N-Queens の「利き（列／斜め）を避ける」チェックがありません。
-  そのため N=5 のとき 5^5=3,125 行が出力され、末尾が 44444 で終わります（提示ログと一致）。
-- ベンチマーク目的なら、`print()` は大きなオーバーヘッドです。計数のみで計るのが良いです。
-- 言語的な注意：セミコロン `;` は Python では不要です（読みやすさのため削除推奨）。
-- 命名：`aboard` は `queens` などにすると役割が明確です（今回は互換のため維持）。
-
-下に 2 つのクラスを用意します：
-- NQueens01_MinimalFix : オリジナルをほぼ保持しつつ「== に修正」だけ適用（学習用）
-- NQueens01_ProperBF  : 本来の N-Queens（安全判定 is_safe を導入した素朴バックトラック）
-
-CLI 実行例：
-  $ codon build -release 01Py_bluteForce_codon_reviewed.py -o nqueen01
-  $ ./nqueen01 5    # ProperBF を呼ぶ（デフォルト）
-  $ ./nqueen01 5 raw  # MinimalFix を呼ぶ（“生”の総当り）
 """
 from typing import List,Tuple
 import sys

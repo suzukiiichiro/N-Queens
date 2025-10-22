@@ -2,7 +2,44 @@
 
 # -*- coding: utf-8 -*-
 """
-ポストフラグ版 Ｎクイーン
+Python/codon Ｎクイーン ポストフラグ版
+
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -11,7 +48,31 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
-Bash版ですが内容は同じです。
+
+"""
+
+"""
+02Py_postFlag_codon.py（レビュー＆注釈つき）
+
+目的:
+- ユーザー提供の NQueens02 をレビューし、不具合の指摘と最小修正（MinimalFix）を実装。
+- 併せて、列フラグに加えて対角フラグも導入した「N-Queens 正式版」(WithDiagonals) を提示。
+
+要点:
+1) 元コードのバグ: 終了条件が `if row == self.size - 1:` になっているため、
+   最下行 (row=size-1) に到達した **時点で印字** してしまい、
+   その行 (row=size-1) の列選択が未確定の状態で出力される。
+   → 正しくは `if row == self.size:` で、直前の再帰で最後の配置が済んだ段階を“解”とする。
+
+2) 元コードは列フラグ（fa）だけのため、列の重複は避けるが **斜め衝突は未チェック**。
+   → これは「全ての列が一意な順列（Permutation）列挙」に相当し、N-Queens の解ではない。
+
+3) ベンチマークや大 N の場合は print が高コスト。必要に応じて抑制を推奨。
+
+本ファイルには2クラスを用意:
+- NQueens02_MinimalFix: バグ修正のみ（列ユニークの順列列挙）。
+- NQueens02_WithDiagonals: 列＋2方向対角のフラグを追加した、正しい N-Queens。
+
 
 fedora$ codon build -release 02Py_postFlag_codon.py && ./02Py_postFlag_codon 5 raw
 :
@@ -48,28 +109,6 @@ N: 5
 Total: 10
 Elapsed: 0.000s
 bash-3.2$
-
-
-02Py_postFlag_codon.py（レビュー＆注釈つき）
-
-目的:
-- ユーザー提供の NQueens02 をレビューし、不具合の指摘と最小修正（MinimalFix）を実装。
-- 併せて、列フラグに加えて対角フラグも導入した「N-Queens 正式版」(WithDiagonals) を提示。
-
-要点:
-1) 元コードのバグ: 終了条件が `if row == self.size - 1:` になっているため、
-   最下行 (row=size-1) に到達した **時点で印字** してしまい、
-   その行 (row=size-1) の列選択が未確定の状態で出力される。
-   → 正しくは `if row == self.size:` で、直前の再帰で最後の配置が済んだ段階を“解”とする。
-
-2) 元コードは列フラグ（fa）だけのため、列の重複は避けるが **斜め衝突は未チェック**。
-   → これは「全ての列が一意な順列（Permutation）列挙」に相当し、N-Queens の解ではない。
-
-3) ベンチマークや大 N の場合は print が高コスト。必要に応じて抑制を推奨。
-
-本ファイルには2クラスを用意:
-- NQueens02_MinimalFix: バグ修正のみ（列ユニークの順列列挙）。
-- NQueens02_WithDiagonals: 列＋2方向対角のフラグを追加した、正しい N-Queens。
 
 """
 from typing import List

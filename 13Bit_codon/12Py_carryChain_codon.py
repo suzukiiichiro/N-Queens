@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン キャリーチェーン版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,6 +48,25 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
+
+
+"""
+12Py_carryChain_codon.py（レビュー＆注釈つき）
+
+キャリーチェーン法の実装をレビューし、以下を最小修正しています：
+- **安全な反復とインデックス**：`wMirror` を `set(range(...))` から **`range(...)`** に変更
+  （順序が壊れると組の対応が崩れ、`pres_a/pres_b` の参照が不正になりうる）。
+- **mirror の探索域**：`wMirror = range(w, range_size)` に変更。
+  元コードの `sizeEE*sizeE - w` は `pres_*` の実際の埋め数と不整合になり、
+  **IndexError** を引き起こす可能性があるため（`initChain` が与える上限は `range_size`）。
+- 未使用の `import copy` を削除（独自 `deepcopy` を使用）。
+- コメントを追加し、関数の責務と行ごとの意図を明確化。
+
+注：`solve()` は **無限精度整数×ビット反転（~）** を利用するため、
+初期パラメータでビット幅が鋭密に管理されている前提（下位 `size`〜`size-?` ビットだけを実質利用）。
+`down+1 == 0`（≒ `down == -1`）で**全行配置済み**を検出する古典的テクを踏襲しています。
+
 
 fedora$ codon build -release 12Py_carryChain_codon.py && ./12Py_carryChain_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -27,21 +83,6 @@ fedora$ codon build -release 12Py_carryChain_codon.py && ./12Py_carryChain_codon
 15:      2279184            0         0:00:05.111
 16:     14772512            0         0:00:15.222
 fedora$
-
-12Py_carryChain_codon.py（レビュー＆注釈つき）
-
-キャリーチェーン法の実装をレビューし、以下を最小修正しています：
-- **安全な反復とインデックス**：`wMirror` を `set(range(...))` から **`range(...)`** に変更
-  （順序が壊れると組の対応が崩れ、`pres_a/pres_b` の参照が不正になりうる）。
-- **mirror の探索域**：`wMirror = range(w, range_size)` に変更。
-  元コードの `sizeEE*sizeE - w` は `pres_*` の実際の埋め数と不整合になり、
-  **IndexError** を引き起こす可能性があるため（`initChain` が与える上限は `range_size`）。
-- 未使用の `import copy` を削除（独自 `deepcopy` を使用）。
-- コメントを追加し、関数の責務と行ごとの意図を明確化。
-
-注：`solve()` は **無限精度整数×ビット反転（~）** を利用するため、
-初期パラメータでビット幅が鋭密に管理されている前提（下位 `size`〜`size-?` ビットだけを実質利用）。
-`down+1 == 0`（≒ `down == -1`）で**全行配置済み**を検出する古典的テクを踏襲しています。
 """
 from datetime import datetime
 from typing import List

@@ -4,6 +4,43 @@
 """
 Python/codon Ｎクイーン bit 対象解除版
 
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
+
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
 https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
@@ -11,25 +48,10 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 エイト・クイーンのプログラムアーカイブ
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
+"""
 
-fedora$ codon build -release 07Py_bit_symmetry_codon.py && ./07Py_bit_symmetry_codon
- N:        Total       Unique        hh:mm:ss.ms
- 4:            2            1         0:00:00.000
- 5:           10            2         0:00:00.000
- 6:            4            1         0:00:00.000
- 7:           40            6         0:00:00.000
- 8:           92           12         0:00:00.000
- 9:          352           46         0:00:00.000
-10:          724           92         0:00:00.000
-11:         2680          341         0:00:00.000
-12:        14200         1787         0:00:00.003
-13:        73712         9233         0:00:00.018
-14:       365596        45752         0:00:00.092
-15:      2279184       285053         0:00:00.411
-16:     14772512      1846955         0:00:02.702
-^C
-fedora$
 
+"""
 07Py_bit_symmetry_codon.py（レビュー＆注釈つき）
 
 ユーザー提供の「COUNT2/4/8 による対称性分類付きビット探索」を、
@@ -49,6 +71,25 @@ Codon 互換・可読性重視で最小修正＆詳細コメントを付けた�
 
 検算値（Total）: N=4→2, N=5→10, N=6→4, N=7→40, N=8→92, N=9→352, N=10→724 ...
 （Unique は 1,2,? ... N=8 は 92/12 など）
+
+fedora$ codon build -release 07Py_bit_symmetry_codon.py && ./07Py_bit_symmetry_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 4:            2            1         0:00:00.000
+ 5:           10            2         0:00:00.000
+ 6:            4            1         0:00:00.000
+ 7:           40            6         0:00:00.000
+ 8:           92           12         0:00:00.000
+ 9:          352           46         0:00:00.000
+10:          724           92         0:00:00.000
+11:         2680          341         0:00:00.000
+12:        14200         1787         0:00:00.003
+13:        73712         9233         0:00:00.018
+14:       365596        45752         0:00:00.092
+15:      2279184       285053         0:00:00.411
+16:     14772512      1846955         0:00:02.702
+^C
+fedora$
+
 """
 from datetime import datetime
 from typing import List

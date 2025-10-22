@@ -2,7 +2,44 @@
 
 # -*- coding: utf-8 -*-
 """
-バックトラッキング版 Ｎクイーン
+Python/codon Ｎクイーン バックトラッキング版
+
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+結論から言えば codon for python 17Py_ は GPU/CUDA 10Bit_CUDA/01CUDA_Bit_Symmetry.cu と同等の速度で動作します。
+
+ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+python 15py_ 以降の並列処理を除けば python でも動作します
+$ python <filename.py>
+
+codon for python ビルドしない実行方法
+$ codon run <filename.py>
+
+codon build for python ビルドすればC/C++ネイティブに変換し高速に実行します
+$ codon build -release < filename.py> && ./<filename>
+
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,7 +49,27 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ codon build -release 03Py_backTracking_codon.py && ./03Py_backTracking_codon 
+"""
+
+
+"""
+03Py_backTracking_codon.py（レビュー＆注釈つき）
+ユーザー提供の NQueens03 をベースに、以下を実施：
+ 1) 行レベルを含む詳細コメントの付与（各関数の目的を明示）
+ 2) 目に見える不具合/紛らわしさの最小修正
+    - `fa`（列フラグ）の配列長は `size` で十分（元は 2*size-1 と過剰）
+    - `min`/`max` の変数名は組み込み関数と衝突するためリネーム
+    - ループの上限は `range(minN, maxN + 1)`（元は 18 を含まず 17 で止まる）
+ 3) 将来の拡張ポイント（ユニーク解の計算）の注意書きを追加
+
+注意：
+- 本段は「列＋2方向対角フラグ」を使った**素朴バックトラック**の完成形です。
+- `unique` は本実装では未計算（0 のまま）。対称性（COUNT2/4/8）の分類を導入した段で算出します。
+
+Codon/Python 共通で動作。
+
+
+fedora$ codon build -release 03Py_backTracking_codon.py && ./03Py_backTracking_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
@@ -28,20 +85,6 @@ fedora$ codon build -release 03Py_backTracking_codon.py && ./03Py_backTracking_c
 15:      2279184            0         0:00:11.015
 
 
-03Py_backTracking_codon.py（レビュー＆注釈つき）
-ユーザー提供の NQueens03 をベースに、以下を実施：
- 1) 行レベルを含む詳細コメントの付与（各関数の目的を明示）
- 2) 目に見える不具合/紛らわしさの最小修正
-    - `fa`（列フラグ）の配列長は `size` で十分（元は 2*size-1 と過剰）
-    - `min`/`max` の変数名は組み込み関数と衝突するためリネーム
-    - ループの上限は `range(minN, maxN + 1)`（元は 18 を含まず 17 で止まる）
- 3) 将来の拡張ポイント（ユニーク解の計算）の注意書きを追加
-
-注意：
-- 本段は「列＋2方向対角フラグ」を使った**素朴バックトラック**の完成形です。
-- `unique` は本実装では未計算（0 のまま）。対称性（COUNT2/4/8）の分類を導入した段で算出します。
-
-Codon/Python 共通で動作。
 """
 from datetime import datetime
 from typing import List
