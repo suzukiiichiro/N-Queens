@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-bit 対象解除/ミラー版 Ｎクイーン
+Python/codon Ｎクイーン bit 対象解除/ミラー版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,7 +12,7 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py && ./08Py_bit_symmetry_mirror_codon 
+fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py && ./08Py_bit_symmetry_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000
@@ -27,7 +27,7 @@ fedora$ codon build -release 08Py_bit_symmetry_mirror_codon.py && ./08Py_bit_sym
 14:       365596        45752         0:00:00.080
 15:      2279184       285053         0:00:00.418
 16:     14772512      1846955         0:00:02.671
-fedora$ 
+fedora$
 
 08Py_bit_symmetry_mirror_codon.py（レビュー＆注釈つき）
 

@@ -3,6 +3,8 @@
 # -*- coding: utf-8 -*-
 
 """
+Python/codon Ｎクイーン コンステレーション版 キャッシュ最適化２
+
    ,    #_
    ~\_  ####_        Amazon Linux 2023
   ~~  \_#####\
@@ -16,7 +18,6 @@
 
 amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
-コンステレーション版 キャッシュ最適化２ Ｎクイーン
  N:            Total       Unique        hh:mm:ss.ms
  5:               10            0         0:00:00.000
  6:                4            0         0:00:00.079

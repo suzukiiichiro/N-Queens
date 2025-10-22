@@ -3,6 +3,8 @@
 # -*- coding: utf-8 -*-
 
 """
+Python/codon Ｎクイーン コンステレーション版 マージ
+
 15Pyをマージした。
 SQB..のバックトラック用関数をdfs関数に１本化した。
 exec_solutionsの関数の呼び出しをdfsに変更した。
@@ -20,7 +22,6 @@ exec_solutionsの関数の呼び出しをdfsに変更した。
 
 amazon AWS m4.16xlarge x 1
 $ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
-コンステレーション版 キャッシュ最適化２ Ｎクイーン
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
  6:            4            0         0:00:00.079
@@ -922,7 +923,7 @@ class NQueens16:
       # self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
-  def dfs(self,funcname:str,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:  
+  def dfs(self,funcname:str,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
    if funcname=="SQBkBlBjrB":
     N3:int=N-3
     blockK:int=1<<N3
@@ -960,7 +961,7 @@ class NQueens16:
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQBlBjrB": 
+   elif funcname=="SQBlBjrB":
     avail:int=free
     total:int=0
     while row==mark2 and avail:
@@ -1050,8 +1051,8 @@ class NQueens16:
       if self._should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQB": 
+    return total
+   elif funcname=="SQB":
     avail:int=free
     total:int=0
     _extra_block_for_row=self._extra_block_for_row
@@ -1083,7 +1084,7 @@ class NQueens16:
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQBklBjrB": 
+   elif funcname=="SQBklBjrB":
     N4:int=N-4
     blockK:int=1<<N4
     avail:int=free
@@ -1119,8 +1120,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQBlBkBjrB": 
+    return total
+   elif funcname=="SQBlBkBjrB":
     avail:int=free
     total:int=0
     while row==mark1 and avail:
@@ -1154,8 +1155,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQBkBjrB": 
+    return total
+   elif funcname=="SQBkBjrB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1191,8 +1192,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total   
-   elif funcname=="SQBlkBjrB": 
+    return total
+   elif funcname=="SQBlkBjrB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1229,7 +1230,7 @@ class NQueens16:
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQBjlBkBlBjrB": 
+   elif funcname=="SQBjlBkBlBjrB":
     N1:int=N-1
     avail:int=free
     total:int=0
@@ -1268,8 +1269,8 @@ class NQueens16:
       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQBjlBkBlBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQBjlBklBjrB":   
+    return total
+   elif funcname=="SQBjlBklBjrB":
     N1:int=N-1
     avail:int=free
     total:int=0
@@ -1308,8 +1309,8 @@ class NQueens16:
       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQBjlBklBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQBjlBlBkBjrB":   
+    return total
+   elif funcname=="SQBjlBlBkBjrB":
     N1:int=N-1
     avail:int=free
     total:int=0
@@ -1348,8 +1349,8 @@ class NQueens16:
       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQBjlBlBkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQBjlBlkBjrB":  
+    return total
+   elif funcname=="SQBjlBlkBjrB":
     N1:int=N-1
     avail:int=free
     total:int=0
@@ -1388,8 +1389,8 @@ class NQueens16:
       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQBjlBlkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQd2BkBlB":  
+    return total
+   elif funcname=="SQd2BkBlB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1425,8 +1426,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQd2BlB":     
+    return total
+   elif funcname=="SQd2BlB":
     avail:int=free
     total:int=0
     while row==mark2 and avail:
@@ -1460,8 +1461,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQd2B":  
+    return total
+   elif funcname=="SQd2B":
     avail:int=free
     total:int=0
     if row==endmark:
@@ -1494,7 +1495,7 @@ class NQueens16:
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQd2B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQd2BklB": 
+   elif funcname=="SQd2BklB":
     N4:int=N-4
     blockK:int=1<<N4
     avail:int=free
@@ -1530,8 +1531,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total    
-   elif funcname=="SQd2BlBkB": 
+    return total
+   elif funcname=="SQd2BlBkB":
     avail:int=free
     total:int=0
     while row==mark1 and avail:
@@ -1565,8 +1566,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQd2BkB":  
+    return total
+   elif funcname=="SQd2BkB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1602,8 +1603,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQd2BlkB":    
+    return total
+   elif funcname=="SQd2BlkB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1639,7 +1640,7 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd2BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total    
+    return total
    elif funcname=="SQd1BkBlB":
     N3:int=N-3
     blockK:int=1<<N3
@@ -1681,8 +1682,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQd1BlB":  
+    return total
+   elif funcname=="SQd1BlB":
     avail:int=free
     total:int=0
     while row==mark2 and avail:
@@ -1717,8 +1718,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total     
-   elif funcname=="SQd1B":    
+    return total
+   elif funcname=="SQd1B":
     if row==endmark:
       return 1
     avail:int=free
@@ -1750,7 +1751,7 @@ class NQueens16:
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQd1BklB": 
+   elif funcname=="SQd1BklB":
     N4:int=N-4
     blockK:int=1<<N4
     avail:int=free
@@ -1787,7 +1788,7 @@ class NQueens16:
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-   elif funcname=="SQd1BlBkB": 
+   elif funcname=="SQd1BlBkB":
     avail:int=free
     total:int=0
     while row==mark1 and avail:
@@ -1821,8 +1822,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQd1BlkB":   
+    return total
+   elif funcname=="SQd1BlkB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1858,8 +1859,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total 
-   elif funcname=="SQd1BkB":  
+    return total
+   elif funcname=="SQd1BkB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1895,8 +1896,8 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd1BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total  
-   elif funcname=="SQd0B":     
+    return total
+   elif funcname=="SQd0B":
     if row==endmark:
       return 1
     total:int=0
@@ -1927,8 +1928,8 @@ class NQueens16:
       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
         total+=self.dfs("SQd0B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total     
-   elif funcname=="SQd0BkB":  
+    return total
+   elif funcname=="SQd0BkB":
     N3:int=N-3
     blockK:int=1<<N3
     avail:int=free
@@ -1964,7 +1965,7 @@ class NQueens16:
       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
       #     total+=self.SQd0BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total    
+    return total
 
 
 
@@ -2070,10 +2071,10 @@ class NQueens16:
           if start<l:
             if start<k:
               #if l != k+1: cnt=self.SQd2BkBlB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
-              if l != k+1: 
+              if l != k+1:
                 cnt=self.dfs("SQd2BkBlB",ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
               #else: cnt=self.SQd2BklB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
-              else: 
+              else:
                 cnt=self.dfs("SQd2BklB",ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,N)
             else:
               mark2=l-1

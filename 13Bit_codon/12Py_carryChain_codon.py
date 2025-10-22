@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-キャリーチェーン版Ｎクイーン
+Python/codon Ｎクイーン キャリーチェーン版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -26,7 +26,7 @@ fedora$ codon build -release 12Py_carryChain_codon.py && ./12Py_carryChain_codon
 14:       365596            0         0:00:01.998
 15:      2279184            0         0:00:05.111
 16:     14772512            0         0:00:15.222
-fedora$ 
+fedora$
 
 12Py_carryChain_codon.py（レビュー＆注釈つき）
 

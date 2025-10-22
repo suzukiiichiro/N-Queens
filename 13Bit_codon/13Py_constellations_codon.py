@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-コンステレーション版Ｎクイーン
+Python/codon Ｎクイーン コンステレーション版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -28,7 +28,7 @@ fedora$ codon build -release 13Py_constellations_codon.py && ./13Py_constellatio
 15:      2279184            0         0:00:00.268
 16:     14772512            0         0:00:01.665
 17:     95815104            0         0:00:11.649
-fedora$ 
+fedora$
 
 13Py_constellations_codon.py（レビュー＆注釈つき）
 

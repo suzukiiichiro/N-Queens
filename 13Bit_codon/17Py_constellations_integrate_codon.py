@@ -3,7 +3,8 @@
 # -*- coding: utf-8 -*-
 
 """
-16Pyをインテグレートする。
+Python/codon Ｎクイーン コンステレーション版 インテグレート
+
    ,     #_
    ~\_  ####_        Amazon Linux 2023
   ~~  \_#####\
@@ -14,6 +15,9 @@
       ~~._.   _/
          _/ _/
        _/m/'
+
+
+
 
 workspace#suzuki$ bash MAIN.SH 15Py_constellations_optimize_codon.py
  N:        Total       Unique        hh:mm:ss.ms
@@ -30,7 +34,6 @@ workspace#suzuki$ bash MAIN.SH 17Py_constellations_integrate_codon_20251017_suzu
 
 amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
-コンステレーション版 キャッシュ最適化２ Ｎクイーン
  N:            Total       Unique        hh:mm:ss.ms
  5:               10            0         0:00:00.000
  6:                4            0         0:00:00.079

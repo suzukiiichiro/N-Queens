@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-コンステレーション版 最適化+最速化（@par) 　Ｎクイーン
+Python/codon Ｎクイーン コンステレーション版 最適化+最速化（@par)
 
 ✅[Opt-01]    ビット演算枝刈り
   全探索・部分盤面生成のすべてでbit演算徹底 ビット演算による衝突枝刈り（cols/hills/dales）
@@ -1475,7 +1475,7 @@ class NQueens14:
       if next_free:
         total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-  
+
   def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3

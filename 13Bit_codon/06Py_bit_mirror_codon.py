@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-bit バックトラッキング ミラー版 Ｎクイーン
+Python/codon Ｎクイーン bit ミラー版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,7 +12,7 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon 
+fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            0         0:00:00.000
  5:           10            0         0:00:00.000
@@ -27,7 +27,7 @@ fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon
 14:       365596            0         0:00:00.138
 15:      2279184            0         0:00:00.848
 16:     14772512            0         0:00:05.327
-fedora$ 
+fedora$
 
 06Py_bit_mirror_codon.py（レビュー＆注釈つき）
 

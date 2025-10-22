@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-バックトラッキング 対象解除版 Ｎクイーン
+Python/codon Ｎクイーン 対象解除版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -12,7 +12,7 @@ https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 
-fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon 
+fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon
  N:        Total       Unique        hh:mm:ss.ms
  4:            2            1         0:00:00.000
  5:           10            2         0:00:00.000

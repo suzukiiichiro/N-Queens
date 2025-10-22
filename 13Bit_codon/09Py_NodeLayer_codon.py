@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ノードレイヤー版 Ｎクイーン
+Python/codon Ｎクイーン ノードレイヤー版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -27,7 +27,7 @@ fedora$ codon build -release 09Py_NodeLayer_codon.py && ./09Py_NodeLayer_codon
 14:       365596            0         0:00:00.236
 15:      2279184            0         0:00:01.423
 16:     14772512            0         0:00:09.315
-fedora$ 
+fedora$
 
 
 09Py_NodeLayer_codon.py（レビュー＆注釈つき）

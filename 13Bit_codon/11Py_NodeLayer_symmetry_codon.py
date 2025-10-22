@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ノードレイヤー 対象解除版 クラス Ｎクイーン
+Python/codon Ｎクイーン ノードレイヤー 対象解除版
 
 詳細はこちら。
 【参考リンク】Ｎクイーン問題 過去記事一覧はこちらから
@@ -27,7 +27,7 @@ fedora$ codon build -release 11Py_NodeLayer_symmetry_codon.py && ./11Py_NodeLaye
 14:       365596            0         0:00:00.080
 15:      2279184            0         0:00:00.423
 16:     14772512            0         0:00:02.761
-fedora$ 
+fedora$
 
 11Py_NodeLayer_symmetry_codon.py（レビュー＆注釈つき）
 
