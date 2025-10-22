@@ -810,18 +810,16 @@ class NQueens17:
   def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     # N と preset_queens に基づいて一意のファイル名を構成
     fname=f"constellations_N{N}_{preset_queens}.txt"
-    # ファイルが存在すれば即読み込み
     # ファイルが存在すれば読み込むが、破損チェックも行う
-    #if self.file_exists(fname):
-      # ファイルが存在すれば読み込むが、破損チェックも行う
-      # try:
-      #   constellations=self.load_constellations_txt(fname)
-      #   if self.validate_constellation_list(constellations):
-      #     return constellations
-      #   else:
-      #     print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      # except Exception as e:
-      #   print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    if self.file_exists(fname):
+      try:
+        constellations=self.load_constellations_txt(fname)
+        if self.validate_constellation_list(constellations):
+          return constellations
+        else:
+          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+      except Exception as e:
+        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
     # ファイルがなければ生成・保存
     constellations:List[Dict[str,int]]=[]
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
