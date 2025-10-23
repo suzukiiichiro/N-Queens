@@ -131,7 +131,6 @@ $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constella
 23:   24233937684440            0  1 day, 8:12:58.977
 
 
-
 workspace#suzuki$ bash MAIN.SH 15Py_constellations_optimize_codon.py
  N:        Total       Unique        hh:mm:ss.ms
 17:     95815104            0         0:00:02.987
@@ -919,12 +918,12 @@ class NQueens17_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
