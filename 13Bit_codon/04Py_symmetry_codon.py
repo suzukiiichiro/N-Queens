@@ -52,21 +52,59 @@ https://github.com/suzukiiichiro/N-Queens
 
 
 """
-04Py_symmetry_codon.py（レビュー＆注釈つき）
-ユーザー提供の NQueens04 をベースに、以下を実施：
- 1) 行レベルを含む詳細コメントの付与（関数の目的を明示）
- 2) 不具合/紛らわしさの最小修正（Codon互換も考慮）
-    - `min`/`max` の変数名は組み込みと衝突するため `minN`/`maxN` に変更
-    - ループ範囲を `range(minN, maxN + 1)`（18 を含む）
-    - `fa` は未使用なので削除（列ユニークは順列生成で保証されている）
-    - `rotate()` のロジックを読みやすく（`incr` を明示の ±1 に）
-    - 関数引数の型注釈を補完（Codon の静的化の助け）
+N-Queens：順列生成 + 対角フラグ + 対称性（COUNT2/4/8）で Unique/Total 算出
+=====================================================================
+ファイル: 04Py_perm_diag_symmetry.py
+作成日: 2025-10-23
 
-本段は「順列生成 + 対角フラグ + 対称性（D4: 回転/反転）」で Unique/Total を計測する段階です。
-`nequiv` は 1,2,4 のいずれかで、最終的に `nequiv*2` を返し、これが multiplicity（2/4/8）になります。
+概要:
+  - 行→列の順列を生成（列ユニークを配列スワップで保証）
+  - 対角衝突は配列フラグ fb(ld)/fc(rd) で O(1) 判定
+  - 代表解のみを数えるため symmetryops() で回転(90/180/270)・垂直反転を比較
+    → 代表解なら倍率 2/4/8 を返し、Total = sum(倍率)、Unique = 代表解数
+
+設計のポイント（実ソース引用）:
+  - 対角添字:
+      `ld = row - aboard[row] + _off`  # 0..(2N-2), _off = N-1
+      `rd = row + aboard[row]`         # 0..(2N-2)
+  - 衝突判定:
+      `if (fb[ld] | fc[rd]) == 0:`
+  - 1行目の半分制限（左右対称除去の定石）:
+      `lim = size if row != 0 else (size + 1) // 2`
+  - 順列生成（スワップ + 末尾回しの定型）:
+      `aboard[i], aboard[row] = aboard[row], aboard[i]`
+      最後に `aboard[row]` を末尾へ回す回転処理で次ループへ
+
+検証の目安:
+  - N=8 → Unique=92, Total=92（この実装は COUNT2/4/8 で一致するはず）
+
+注意:
+  - I/O は遅いので測定時は出力を抑止するか、代表解のみの記録に留める。
+  - rotate()/vmirror() は row->col 形式（長さ N の配列）を保つこと。
+
+著者: suzuki/nqdev
+ライセンス: MIT（必要に応じて変更）
+
+
+レビューと注意点（短評）
+
+良い点
+列ユニークを「順列スワップ」で保証し、衝突判定を対角2種だけに縮退→分岐が明快。
+symmetryops() が辞書順最小性で代表解を判定し、2/4/8 の倍率に落とす正攻法。
+1行目の半分制限と COUNT2/4/8 の設計が噛み合っている。
+
+要注意
+rotate() は row->col 形式を維持するための2段処理（コピー→再配置）。ここを崩すと symmetryops() が破綻します。
+最終行（row == size-1）の直前に対角判定してから symmetryops() を呼ぶ順序は厳守。
+aboard の末尾回し（回転）で順列の総当たりを漏れなく巡回すること（現在の実装は定型どおり OK）。
+
+次の一手（必要なら別テンプレ提供できます）
+ビットボード化（cols/ld/rd を int に統合、free=mask&~(ld|rd|col), bit=free&-free）
+中心列の特別処理（奇数 N）：COUNT の整合とさらに効く枝刈り
+Codon/PyPy 最適化：整数幅とマスク明示、再帰のアンローリングパラメータなど
+
 
 Codon/Python 共通で動作。
-
 
 fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -83,6 +121,7 @@ fedora$ codon build -release 04Py_symmetry_codon.py && ./04Py_symmetry_codon
 14:       365596        45752         0:00:00.769
 15:      2279184       285053         0:00:04.810
 """
+
 from datetime import datetime
 from typing import List
 
@@ -92,6 +131,24 @@ from typing import List
 
 
 class NQueens04:
+  """
+  順列生成 + 対角フラグ（ld/rd）で探索し、symmetryops() で対称性分類して
+  Unique/Total を同時計数する実装。
+
+  構造:
+    - aboard  : row->col の順列。初期は [0,1,...,N-1]（列ユニークをスワップで維持）
+    - fb/fc   : 対角フラグ（長さ 2N-1）
+    - trial   : 対称変換時の作業配列
+    - scratch : 回転中間バッファ
+    - _off    : ld の負値補正 = N-1（ld=row-col+_off を 0..2N-2 に写像）
+
+  特徴（引用）:
+    - 1行目は左右対称を避けるため半分のみ:
+        `lim = size if row != 0 else (size + 1) // 2`
+    - 最終行で symmetryops(size) → {0,2,4,8} を受け取り、
+      0 以外なら Unique++, Total += 倍率。
+  """
+
   # 結果カウンタ
   total:int
   unique:int
@@ -105,13 +162,30 @@ class NQueens04:
   _size:int          # 参照用に保持（任意）
 
   def __init__(self)->None:
+    """
+    役割:
+      インスタンス生成のみ（実配列は init(size) で確保）。
+    注意:
+      - init(size) を呼ぶ前に nqueens() を実行しないこと。
+    """
+
     # 実体は init(size) で都度作る
     pass
 
-  # ------------------------------------------------------------
-  # 初期化：指定サイズの作業領域を確保
-  # ------------------------------------------------------------
   def init(self,size:int)->None:
+    """
+    役割:
+      盤サイズに応じて作業領域を全て初期化する。
+    実装（引用）:
+      - `aboard = [i for i in range(size)]`  # 順列ベース
+      - `fb = [0 for _ in range(2*size - 1)]`  # ld, 0..2N-2
+      - `fc = [0 for _ in range(2*size - 1)]`  # rd, 0..2N-2
+      - `trial/scratch = [0]*size`
+      - `_off = size - 1`
+    メモ:
+      列ユニークは順列操作で保証するため、列フラグは不要。
+    """
+
     self.total=0
     self.unique=0
     # 順列ベース：初期は [0,1,2,...,size-1]
@@ -126,11 +200,23 @@ class NQueens04:
     self._off=size-1
     self._size=size
 
-  # ------------------------------------------------------------
-  # 盤の 90° 回転（row->col 形式を保ったまま写像）。
-  # neg=1: 右回り、neg=0: 左回り（実装上、逆順コピーかどうかのフラグ）
-  # ------------------------------------------------------------
   def rotate(self,chk:List[int],scr:List[int],n:int,neg:int)->None:
+    """
+    役割:
+      row->col 配列 `chk` を 90° 回転した配置に書き換える。
+      neg=1: 右回り（時計回り）、neg=0: 左回り（反時計）。
+    手順（引用）:
+      # 第1段: 順/逆で `chk` → `scr`
+      `incr = 1 if neg else -1`
+      `k = 0 if neg else n-1`
+      `scr[i] = chk[k]; k += incr`
+      # 第2段: scr の「値」を添字として新しい列を復元
+      `k = n-1 if neg else 0`
+      `chk[scr[i]] = k; k -= incr`
+    注意:
+      - 入出力とも row->col 形式（長さ N の 0..N-1 値）を維持する。
+    """
+
     # 第1段：scr に chk を順方向/逆方向でコピー
     incr=1 if neg else-1
     k=0 if neg else n-1
@@ -143,30 +229,51 @@ class NQueens04:
       chk[scr[i]]=k
       k-=incr
 
-  # ------------------------------------------------------------
-  # 垂直反転：列を左右反転（row->col の col 値を反転）
-  # ------------------------------------------------------------
   def vmirror(self,chk:List[int],n:int)->None:
+    """
+    役割:
+      垂直反転（左右反転）。col 値を `col -> (n-1)-col` に変換。
+    実装（引用）:
+      `chk[i] = (n - 1) - chk[i]`
+    """
     for i in range(n):
       chk[i]=(n-1)-chk[i]
 
-  # ------------------------------------------------------------
-  # 辞書順比較：左 < 右 → 負値、左 == 右 → 0、左 > 右 → 正値
-  # ------------------------------------------------------------
   def intncmp(self,lt:List[int],rt:List[int],n:int)->int:
+    """
+    役割:
+      配列 lt と rt の辞書順比較。lt < rt: 負、==: 0、>: 正 を返す。
+    実装（引用）:
+      `d = lt[i] - rt[i]; d != 0 なら d を返す。最後まで同じなら 0。`
+    """
     for i in range(n):
       d=lt[i]-rt[i]
       if d!=0:
         return d
     return 0
 
-  # ------------------------------------------------------------
-  # 対称性評価：
-  #  - 回転（90/180/270）と垂直反転（およびその回転）を用い、
-  #    self.aboard が最小表現かを判定し、等価解の倍率を返す。
-  # 戻り値：0（最小でない＝代表ではない）/ 2 / 4 / 8
-  # ------------------------------------------------------------
   def symmetryops(self,size:int)->int:
+    """
+    役割:
+      現在の `aboard` が対称群（90/180/270 の回転 + 垂直反転とその回転）における
+      最小表現（辞書順最小）かどうかを判定し、等価解の倍率を返す。
+    戻り値:
+      0（代表でない）/ 2 / 4 / 8
+    判定手順（引用の要点）:
+      - `trial <- aboard`
+      - 90°: `rotate(trial, scratch, size, 0)` → `intncmp(aboard, trial)`
+        * k > 0 なら代表ではない → 0
+        * k == 0 なら `nequiv = 1`
+        * それ以外なら 180°, 270° を続けて比較（同値なら nequiv=2/4）
+      - 垂直反転: `trial <- aboard` → `vmirror(trial, size)` → 比較
+        * k > 0 なら 0
+        * `nequiv > 1` のとき、反転後の 90/180/270 も比較
+      - 返値: `nequiv * 2`（1→2倍, 2→4倍, 4→8倍）
+    注意:
+      - aboard 自体を書き換えずに `trial/scratch` だけを操作する。
+      - 比較は常に `aboard` を「基準」に行い、辞書順最小性を確認。
+    """
+
     nequiv=0
     # trial に原盤をコピー
     for i in range(size):
@@ -220,11 +327,29 @@ class NQueens04:
           return 0
     return nequiv*2  # 1→2倍, 2→4倍, 4→8倍
 
-  # ------------------------------------------------------------
-  # 順列生成 + 対角フラグでのバックトラック
-  #   - row==0 のときは左右対称を避けるため、列の上限を (size+1)//2 に制限
-  # ------------------------------------------------------------
   def nqueens(self,row:int,size:int)->None:
+    """
+    役割:
+      行 `row` の列を順列スワップで決め、対角フラグで枝刈りしつつ再帰。
+      最終行に到達したら symmetryops(size) で代表性を確認し、Unique/Total を更新。
+    コアロジック（引用）:
+      - 最終行:
+          `if fb[row - aboard[row] + _off] or fc[row + aboard[row]]: return`
+          `stotal = symmetryops(size)`
+          `if stotal != 0: unique += 1; total += stotal`
+      - 1行目の半分制限:
+          `lim = size if row != 0 else (size + 1) // 2`
+      - 順列生成（スワップ）と対角チェック:
+          `aboard[i], aboard[row] = aboard[row], aboard[i]`
+          `ld = row - aboard[row] + _off; rd = row + aboard[row]`
+          `if (fb[ld] | fc[rd]) == 0: fb[ld]=fc[rd]=1; nqueens(row+1); fb[ld]=fc[rd]=0`
+      - 末尾回し（次の外側ループへ）:
+          `tmp = aboard[row]; aboard[row: size-1] = aboard[row+1: size]; aboard[size-1] = tmp`
+    注意:
+      - スワップと「戻し」の対応は対角フラグ側で行い、aboard は最後に回転で整合。
+      - 1行目半分制限は左右対称分を排除するため（COUNT2/4/8 と整合）。
+    """
+
     if row==size-1:
       # 最終行の候補が現在の aboard[row]。対角衝突だけ確認（列は順列で一意）
       if self.fb[row-self.aboard[row]+self._off] or self.fc[row+self.aboard[row]]:
@@ -257,10 +382,18 @@ class NQueens04:
       self.aboard[i-1]=self.aboard[i]
     self.aboard[size-1]=tmp
 
-  # ------------------------------------------------------------
-  # CLI 入口
-  # ------------------------------------------------------------
   def main(self)->None:
+    """
+    役割:
+      N=4..18 を走査し、Total/Unique/経過時間を表形式で出力する。
+    実装（引用）:
+      `print(" N:        Total       Unique        hh:mm:ss.ms")`
+      `print(f"{size:2d}:{total:13d}{unique:13d}{text:>20s}")`
+    注意:
+      - 出力件数が多い場合は端末 I/O が支配的になる。
+      - 実験比較のときは印字を減らし、計測を安定化させる。
+    """
+
     minN:int=4
     maxN:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")

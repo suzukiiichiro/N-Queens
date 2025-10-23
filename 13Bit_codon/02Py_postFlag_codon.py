@@ -52,26 +52,70 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 """
-02Py_postFlag_codon.py（レビュー＆注釈つき）
+N-Queens（列ユニーク版 → 対角付き正式版）
+=====================================
+ファイル: 02Py_postFlag_codon_reviewed.py
+作成日: 2025-10-23
 
-目的:
-- ユーザー提供の NQueens02 をレビューし、不具合の指摘と最小修正（MinimalFix）を実装。
-- 併せて、列フラグに加えて対角フラグも導入した「N-Queens 正式版」(WithDiagonals) を提示。
+概要:
+  本ファイルは「段階的な理解」を目的に 2 つの実装を収録。
+  1) NQueens02_MinimalFix:
+     ・列ユニークの順列列挙のみ（斜め判定なし）
+     ・学習用の基礎（バックトラックの形）として有用
+     ・終了条件と列使用フラグの扱いを正しく修正
+  2) NQueens02_WithDiagonals:
+     ・列＋2 方向の対角衝突をフラグで排除する正式版
+     ・`ld = row - col + (N-1)`, `rd = row + col` をインデックス化
 
-要点:
-1) 元コードのバグ: 終了条件が `if row == self.size - 1:` になっているため、
-   最下行 (row=size-1) に到達した **時点で印字** してしまい、
-   その行 (row=size-1) の列選択が未確定の状態で出力される。
-   → 正しくは `if row == self.size:` で、直前の再帰で最後の配置が済んだ段階を“解”とする。
+設計のポイント（実ソース引用）:
+  - 列ユニーク制約:
+      `if self.used_col[col]==0:`
+      `self.used_col[col]=1; ...; self.used_col[col]=0`
+  - 対角フラグの算出:
+      `ld = row - col + self.offset    # offset = N-1 で 0..(2N-2)`
+      `rd = row + col                  # 0..(2N-2)`
+    → 使用配列の長さは `2*N-1` を確保:
+      `self.used_ld=[0 for _ in range(2*self.size-1)]`
+      `self.used_rd=[0 for _ in range(2*self.size-1)]`
+  - 停止条件（どちらも同じ）:
+      `if row==self.size: self.printout(); return`
 
-2) 元コードは列フラグ（fa）だけのため、列の重複は避けるが **斜め衝突は未チェック**。
-   → これは「全ての列が一意な順列（Permutation）列挙」に相当し、N-Queens の解ではない。
+使い方:
+  $ python3 02Py_postFlag_codon_reviewed.py N [raw]
+     - 第2引数が "raw" のとき MinimalFix（列ユニーク順列）を実行
+     - 省略時は WithDiagonals（正式版）を実行
 
-3) ベンチマークや大 N の場合は print が高コスト。必要に応じて抑制を推奨。
+計測/運用上の注意:
+  - `printout()` の I/O はボトルネック。ベンチ時は表示を切る/カウントのみ推奨。
+  - 大きな N ではフラグ配列よりもビットボード（int のビット）に移行すると高速化。
+    例: cols/ld/rd をビットで持ち、候補抽出は `bit = free & -free; free &= free - 1`
 
-本ファイルには2クラスを用意:
-- NQueens02_MinimalFix: バグ修正のみ（列ユニークの順列列挙）。
-- NQueens02_WithDiagonals: 列＋2方向対角のフラグを追加した、正しい N-Queens。
+検証/拡張のヒント:
+  - N=8 の正式版の解数は 92（比較用）。回転/鏡の対称性削減（COUNT2/4/8）や
+    奇数 N の中央列特別処理などは次段（03 以降）で導入予定。
+
+ライセンス: MIT（必要に応じて変更）
+著者: suzuki/nqdev
+
+
+
+短評（レビュー）と発展の提案
+
+良い点
+列ユニーク→対角追加の二段階構成で学習曲線が明快。
+対角のインデックス化（row-col+offset, row+col）が教科書的で分かりやすい。
+停止条件とフラグのオン/オフ対称性が明確で、バグになりにくい。
+
+改善の余地（次の段）
+・ビットボード化
+  used_col/used_ld/used_rd を整数ビットに置換し、
+  free = ~(ld|rd|col) & mask → bit = free & -free; free &= free - 1 で高速化。
+・対称性削減（COUNT2/4/8）
+・初手を左右半分に制限・回転/鏡でユニーク復元 → 枝数をさらに圧縮。
+・I/O 抑止/分離
+・ベンチ時には printout() を無効化し、count 集計のみのモードを追加。
+・入力バリデーション
+・N<1 の扱いを明示（0、1 の境界）。N==1 は Total=1 が期待値。
 
 
 fedora$ codon build -release 02Py_postFlag_codon.py && ./02Py_postFlag_codon 5 raw
@@ -111,28 +155,53 @@ Elapsed: 0.000s
 bash-3.2$
 
 """
+
 from typing import List
 import sys
 import time
 
-# ------------------------------------------------------------
-# 1) 最小修正版（列ユニークの順列列挙）
-#    - バグ修正: 終了条件 row==size → その直前に最後の配置が完了している。
-#    - 斜め判定なし（元仕様を保持）。
-# ------------------------------------------------------------
 class NQueens02_MinimalFix:
+  """
+  学習用の最小バックトラック（列ユニークの順列列挙）。
+  機能:
+    - 行ごとに未使用の列を 1 つ選んで配置し、N! 通りの順列を列挙。
+    - 斜め衝突は「判定しない」（元仕様を保持）。
+  特徴（引用）:
+    - 列使用フラグ: `self.used_col[col]==0` を満たす列のみ採用
+    - 停止条件: `if row==self.size: self.printout(); return`
+  注意:
+    - N-Queens の正しい解のみを列挙するものではない（斜め無視）。
+    - I/O が重いため、大きな N では print を抑止するのが望ましい。
+  """
   size:int
   count:int
   aboard:List[int]    # row -> col
   used_col:List[int]  # 列使用フラグ（0/1）
 
   def __init__(self,size:int)->None:
+    """
+    役割:
+      盤サイズと、行→列の配置配列 `aboard`、列使用フラグ `used_col` を初期化。
+    引数:
+      size: 盤の大きさ N
+    実装（引用）:
+      `self.aboard=[0 for _ in range(self.size)]`
+      `self.used_col=[0 for _ in range(self.size)]`
+    """
     self.size=size
     self.count=0
     self.aboard=[0 for _ in range(self.size)]
     self.used_col=[0 for _ in range(self.size)]
 
   def printout(self)->None:
+    """
+    役割:
+      現在の配置 `aboard` を 1 行の数字列で出力し、`count` をインクリメント。
+    出力例（引用）:
+      `print(self.count, end=": "); ...; print(self.aboard[i], end="")`
+    注意:
+      - ベンチ用途では表示を止めて集計のみ行うと高速。
+    """
     self.count+=1
     print(self.count,end=": ")
     for i in range(self.size):
@@ -140,6 +209,18 @@ class NQueens02_MinimalFix:
     print("")
 
   def nqueens(self,row:int)->None:
+    """
+    役割:
+      行 `row` に未使用の列 `col` を割り当て、次行に再帰（列ユニークのみ保証）。
+    流れ（引用）:
+      - 停止: `if row==self.size: self.printout(); return`
+      - 反復: `for col in range(self.size):`
+      - 採用: `if self.used_col[col]==0: ...`
+      - 更新: `self.used_col[col]=1; ...; self.used_col[col]=0`
+    計算量:
+      - Θ(N!)（順列列挙）
+    """
+
     # 正しい終了条件: row==size（最後の行も既に配置済みの状態）
     if row==self.size:
       self.printout()
@@ -152,14 +233,20 @@ class NQueens02_MinimalFix:
         self.nqueens(row+1)
         self.used_col[col]=0
 
-
-# ------------------------------------------------------------
-# 2) 正式版（列＋対角のフラグで N-Queens を解く）
-#    - 2 方向の対角フラグ: ld (左下↙︎/右上↗︎), rd (右下↘︎/左上↖︎)
-#    - ld のインデックス: (row - col) を 0..(2N-2) にオフセット
-#    - rd のインデックス: (row + col) を 0..(2N-2) にそのまま利用
-# ------------------------------------------------------------
 class NQueens02_WithDiagonals:
+  """
+  列＋2 方向の対角フラグで N-Queens を解く正式版。
+  機能:
+    - 列使用・左下/右上対角（ld）・右下/左上対角（rd）の 3 種の衝突をフラグで排除。
+  特徴（引用）:
+    - ld インデックス: `row - col + self.offset`（`offset = N-1`）
+    - rd インデックス: `row + col`
+    - 使用配列長: `2*N-1`（`0..2N-2` をカバー）
+  注意:
+    - 配列境界を越えないよう `offset` と配列長に一貫性を持たせる。
+    - I/O はベンチ時に抑止推奨。
+  """
+
   size:int
   count:int
   aboard:List[int]
@@ -169,6 +256,16 @@ class NQueens02_WithDiagonals:
   offset:int
 
   def __init__(self,size:int)->None:
+    """
+    役割:
+      列・対角フラグ配列を確保し、配置配列とカウントを初期化。
+    引数:
+      size: 盤の大きさ N
+    実装（引用）:
+      `self.used_ld=[0 for _ in range(2*self.size-1)]`
+      `self.used_rd=[0 for _ in range(2*self.size-1)]`
+      `self.offset=self.size-1`
+    """
     self.size=size
     self.count=0
     self.aboard=[0 for _ in range(self.size)]
@@ -178,6 +275,13 @@ class NQueens02_WithDiagonals:
     self.offset=self.size-1  # (row-col) の負値を 0 始まりにずらす
 
   def printout(self)->None:
+    """
+    役割:
+      正しい N-Queens 解を 1 行の数字列で出力し、`count` をインクリメント。
+    注意:
+      - 出力が多い場合は計測値に I/O が影響するため注意。
+    """
+
     self.count+=1
     print(self.count,end=": ")
     for i in range(self.size):
@@ -185,6 +289,20 @@ class NQueens02_WithDiagonals:
     print("")
 
   def nqueens(self,row:int)->None:
+    """
+    役割:
+      行 `row` において、列/対角のいずれにも衝突しない `col` のみを配置して再帰。
+    主要ロジック（引用）:
+      `ld = row - col + self.offset   # 0..2N-2`
+      `rd = row + col                 # 0..2N-2`
+      `if (self.used_col[col] | self.used_ld[ld] | self.used_rd[rd]) == 0:`
+         配置 → フラグON → 再帰 → フラグOFF
+    停止条件:
+      `if row==self.size: self.printout(); return`
+    計算量:
+      - バックトラック依存（実効は MinimalFix より大幅に小さい）
+    """
+
     if row==self.size:
       self.printout()
       return
@@ -201,11 +319,20 @@ class NQueens02_WithDiagonals:
         self.used_ld[ld]=0
         self.used_rd[rd]=0
 
-# ------------------------------------------------------------
-# 3) CLI 入口
-# ------------------------------------------------------------
-
 def main()->None:
+  """
+  役割:
+    コマンドライン引数を解釈し、列ユニーク版（raw）または正式版（既定）を実行。
+  使い方（引用）:
+    `python3 02Py_postFlag_codon_reviewed.py N [raw]`
+  振る舞い:
+    - N の検証: `int(sys.argv[1])` を試み、失敗時にメッセージを表示。
+    - 実行: mode が "raw" なら `NQueens02_MinimalFix`、それ以外は `NQueens02_WithDiagonals`。
+    - 計測: `time.perf_counter()` で経過秒を計測・表示。
+  注意:
+    - 出力件数が多い場合は端末 I/O が支配的になり、経過時間が増大。
+  """
+
   # 使い方:
   #   python3 02Py_postFlag_codon_reviewed.py N [raw]
   #   raw を指定すると MinimalFix（列ユニークの順列）を実行。

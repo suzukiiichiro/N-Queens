@@ -50,27 +50,49 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
-
+# -*- coding: utf-8 -*-
 """
-06Py_bit_mirror_codon.py（レビュー＆注釈つき）
+N-Queens：ビットボードDFS + 左右対称活用（初手半分＋中央列）
+===========================================================
+ファイル: 06Py_bitboard_sym_half.py
+作成日: 2025-10-23
 
-ユーザー提供の "左右対称（ミラー）活用" ビットバックトラック版を、
-Codon 互換と読みやすさを意識して最小修正＆詳細コメントを付与したものです。
+概要:
+  - ビット演算DFSで列・対角衝突を O(1) 判定。
+  - 対称活用: 1行目は「左半分のみ」を探索し、探索後に ×2。
+    奇数 N は中央列を別途探索（中央は左右対称に含まれないため ×2 しない）。
+  - 本段階では Unique は未算出（0のまま）。Total は正確。
 
-要点:
-- 1 行目のクイーン配置を左右対称で半分に制限し、探索後に **×2**。奇数 N は中央列を**別途1回**だけ探索。
-- `unique` は未算出（常に 0）。本コードの `total` は **対称を含む全解数**（N=8 なら 92）。
-- `mask` は毎回計算せず、サイズ確定時に 1 回だけ算出。
-- Codon のため、クラス先頭で全フィールドを型付き宣言。
+実装の要点（実ソース引用）:
+  - 可置ビット集合: `bitmap = mask & ~(left | down | right)`
+  - LSB 抽出:       `bit = -bitmap & bitmap`
+  - 次行への伝播:    `self._dfs(row+1, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+  - 初手半分:       `for col in range(size//2): ...; self.total *= 2`
+  - 中央列（奇数N）: `if (size & 1) == 1: col = size//2; ...`（×2なし）
 
-ビット意味:
-- `left`  : ↙ 衝突（次行で <<1）
-- `down`  : 縦（列）衝突
-- `right` : ↘ 衝突（次行で >>1）
-- `mask`  : 下位 N ビットが 1（盤面幅）
+注意/メモ:
+  - Python int は無限長だが、Codon 等の固定幅では `mask` による幅制約が重要。
+  - (left|down|right) は毎手 `mask` と AND を取るので、シフト外ビットは自然に落ちる。
+  - Unique（COUNT2/4/8）は未実装。次段で symmetryops / 分類導入。
 
-検算の目安（Total）: N=4→2, N=5→10, N=6→4, N=7→40, N=8→92 …
+出力:
+  N, Total, Unique(=0), 経過時間（ms相当）を表形式で N=4..18 で出力。
 
+著者: suzuki/nqdev
+ライセンス: MIT（必要に応じて変更）
+
+
+仕上げのレビュー（要点）
+良い点
+初手半分＋中央列のハンドリングが教科書どおりで、self.total *= 2 の位置も正しい。
+DFS核が最小・明快（bitmap / bit / ^= / <<1 >>1 の定石を踏襲）。
+mask を都度計算せず初期化で1回だけ作るのは◎。
+
+注意点 / 次の一手
+Unique の導入：COUNT2/4/8 を返す symmetryops()（回転・反転の辞書順最小チェック）をビットボード版にも追加予定。
+半分探索との整合を保つなら、初手半分＋中央列は継続し、末端で unique += 1; total += coeff に変更。
+Codon 固定幅：Codon で 64bit 想定なら size <= 32(～64) で使い分け、mask を型に合わせて明示。
+並列化：初手列ごとの DFS を分割して @par or multiprocessing で並列実行しやすい構造。
 
 fedora$ codon build -release 06Py_bit_mirror_codon.py && ./06Py_bit_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -95,6 +117,19 @@ from typing import Optional
 
 
 class NQueens06:
+  """
+  ビットボードDFSに初手左右対称の削減（半分探索＋奇数の中央列）を組み合わせた Total 計数器。
+  構成:
+    - size, mask: 盤サイズと下位 N ビットが 1 のマスク（例: N=8→0b11111111）
+    - total     : 全解数（対称含む）
+    - unique    : 本段では未算出（0）
+  特徴（引用）:
+    - DFS核: `bitmap = mask & ~(left | down | right)` → `bit = -bitmap & bitmap`
+    - 伝播:   `left<<1`, `down`そのまま, `right>>1`
+    - 初手半分: `for col in range(size//2): ...; self.total *= 2`
+    - 奇数中央: `if (size & 1) == 1: col = size//2; ...`（倍化しない）
+  """
+
   # --- 結果/設定（Codon 向けに先頭で宣言） ---
   total:int
   unique:int
@@ -102,13 +137,32 @@ class NQueens06:
   mask:int
 
   def __init__(self)->None:
+    """
+    役割:
+      インスタンス生成のみ。実際の初期化は solve(size) 内で行う。
+    注意:
+      - solve(size) 呼び出し前に内部DFSを直接使わないこと。
+    """
+
     # 実体は solve() 呼び出し時に設定
     pass
 
-  # ------------------------------------------------------------
-  # 内部 DFS: ビット演算バックトラック本体
-  # ------------------------------------------------------------
   def _dfs(self,row:int,left:int,down:int,right:int)->None:
+    """
+    役割:
+      ビット演算によるバックトラックの中核。行 row にクイーンを1つ置き、再帰で次行へ。
+    停止条件（引用）:
+      `if row == self.size: self.total += 1; return`
+    コア（引用）:
+      - 可置集合: `bitmap = self.mask & ~(left | down | right)`
+      - LSB抽出:  `bit = -bitmap & bitmap`
+      - 候補消費:  `bitmap ^= bit`
+      - 伝播:      `self._dfs(row+1, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+    注意:
+      - `mask` によって盤外ビットは自然に落ちる（幅管理）。
+      - Python ではオーバーフローはないが、Codon 等ではビット幅前提に一致させること。
+    """
+
     if row==self.size:
       self.total+=1
       return
@@ -121,10 +175,24 @@ class NQueens06:
                 (down|bit),
                 (right|bit)>>1)
 
-  # ------------------------------------------------------------
-  # 対称活用：1 行目の配置を半分に制限し、探索後に×2。奇数 N は中央列を追加探索。
-  # ------------------------------------------------------------
   def solve(self,size:int)->None:
+    """
+    役割:
+      盤サイズ size を設定し、初手左右対称を用いた半分探索＋中央列特別処理で Total を計数。
+    初期化（引用）:
+      `self.size = size; self.mask = (1 << size) - 1; self.total = 0; self.unique = 0`
+    手順（引用）:
+      - 左半分のみ探索（列 0..size//2-1）:
+          `for col in range(half): bit = 1 << col; self._dfs(1, bit<<1, bit, bit>>1)`
+        → 探索完了後に `self.total *= 2`
+      - 奇数 N の中央列:
+          `if (size & 1) == 1: col = half; bit = 1 << col; self._dfs(1, bit<<1, bit, bit>>1)`
+        （中央は左右対称に含まれないため倍化しない）
+    正当性メモ:
+      - 左右反転で 1手目の対称解が対応付くため、左半分のみの探索で網羅できる。
+      - 中央列（奇数N）は反転しても同一配置になるため、独立に1回だけ追加。
+    """
+
     self.size=size
     self.mask=(1<<size)-1
     self.total=0
@@ -141,10 +209,18 @@ class NQueens06:
       bit=1<<col
       self._dfs(1,bit<<1,bit,bit>>1)
 
-  # ------------------------------------------------------------
-  # CLI 入口
-  # ------------------------------------------------------------
   def main(self)->None:
+    """
+    役割:
+      N=4..18 を連続実行し、Total/Unique/経過時間を表形式で出力。
+    出力（引用）:
+      `print(" N:        Total       Unique        hh:mm:ss.ms")`
+      `print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")`
+    注意:
+      - Unique は未算出（0）。次段で COUNT2/4/8 を導入する。
+      - ベンチ用途では標準出力の行数に注意（I/Oは相対的に高コスト）。
+    """
+
     nmin:int=4
     nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")

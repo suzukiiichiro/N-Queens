@@ -50,27 +50,44 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
-
 """
-07Py_bit_symmetry_codon.py（レビュー＆注釈つき）
+N-Queens：ビットボード + 境界制約 + 対称性分類（COUNT2/4/8）
+============================================================
+ファイル: 07Py_bitboard_symmetry_classes.py
+作成日: 2025-10-23
 
-ユーザー提供の「COUNT2/4/8 による対称性分類付きビット探索」を、
-Codon 互換・可読性重視で最小修正＆詳細コメントを付けた版です。
+概要:
+  - ビットボードDFSに、上辺/下辺/両辺の境界制約（bound1/bound2, sidemask/lastmask）を併用。
+  - 回転(90/180/270) + 垂直反転の同型判定で代表解のみを数え、COUNT2/COUNT4/COUNT8 に分類。
+    → Unique = count2 + count4 + count8
+       Total  = count2*2 + count4*4 + count8*8
 
-主な修正点:
-- Codon実行を想定し、`pypyjit` 関連をコメントアウト（Codonでは未サポート）
-- クラス先頭で **全フィールドを型付き宣言**（Codonの静的化要件）
-- `mask` の毎回算出を避け、局所でだけ使う場所に限定
-- `bitmap` のビット除去を `^=` で表記（= `& ~bit`）
-- 範囲は `range(nmin, nmax)` のまま（元コード準拠）。必要なら `+1` に変更してください
+設計のキモ（実ソース引用）:
+  - 可置集合: `bitmap = ((1<<size)-1) & ~(left | down | right)`
+  - LSB抽出:  `bit = -bitmap & bitmap`; 消費: `bitmap ^= bit`
+  - 伝播:      `left<<=1`, `right>>=1`, `down|=bit`
+  - 角あり探索:  `backTrack1()`（先頭2行で 1 と (1<<bound1) を確定）
+  - 角なし探索:  `backTrack2()`（上辺/下辺で sidemask/lastmask を適用）
+  - 同型判定:   `symmetryops()`（`board[row]` は row→bit の列ベクトル）
 
-アルゴリズム要約:
-- 角にQがある/ないケースを分けてバックトラック（`backTrack1/2`）。
-- 対称評価 `symmetryops()` で、90/180/270 と垂直ミラーにより COUNT2/4/8 を分類。
-- 最後に `unique = c2 + c4 + c8`、`total = c2*2 + c4*4 + c8*8` を合成。
+検証の目安:
+  - 代表的な N（例: N=13 → Unique=9233, Total=73712）で既知表と一致すること。
 
-検算値（Total）: N=4→2, N=5→10, N=6→4, N=7→40, N=8→92, N=9→352, N=10→724 ...
-（Unique は 1,2,? ... N=8 は 92/12 など）
+注意:
+  - `lastmask` の漸進更新（`lastmask = (lastmask<<1) | lastmask | (lastmask>>1)`）は両辺拘束の伝播。
+  - Python は任意長 int だが、Codon等の固定幅では `size` とマスク幅の整合を保つこと。
+  - I/O は計測を歪めるため、ベンチ用途では印字を最小に。
+
+仕上げのレビュー & 注意点（短め）
+
+完成度
+対称性分類（symmetryops）と境界制約（sidemask/lastmask）の組み合わせが教科書的。
+角あり/なしの分離は、典型的な 2 系統アプローチで、COUNT8 への直加算設計も妥当。
+
+検算の指針
+小さめの N（例: 5, 6, 7, 8, 13）で既知表と照合。特に N=13 の
+Unique=9233, Total=73712 が通れば、分類周りの信頼性は高いです。
+
 
 fedora$ codon build -release 07Py_bit_symmetry_codon.py && ./07Py_bit_symmetry_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -99,6 +116,20 @@ from typing import List
 # pypyjit.set_param('max_unroll_recursion=-1')
 
 class NQueens07:
+  """
+  ビットボードDFSに境界制約と対称性分類（COUNT2/4/8）を組み合わせ、
+  Unique/Total を同時計数する完成版。
+
+  メンバー（要点）:
+    board    : row→bit の列配置（例: 0b00010000）
+    bound1/2 : 上辺/下辺の分岐境界（角あり/なし探索の分岐に使用）
+    topbit   : 最上位ビット (1<<(N-1))
+    endbit   : 下辺側の終端ビット（角なしの回転対称チェック用）
+    sidemask : 左右端の制約 (topbit | 1)
+    lastmask : 両辺制約の伝播マスク
+    count2/4/8 : 同型分類での代表解カウント
+  """
+
   # --- 結果/状態（Codon向けに事前宣言） ---
   total:int
   unique:int
@@ -118,10 +149,16 @@ class NQueens07:
     # 実体は init(size) で与える
     pass
 
-  # ------------------------------------------------------------
-  # 初期化
-  # ------------------------------------------------------------
   def init(self,size:int)->None:
+    """
+    役割:
+      盤サイズに応じて状態・カウンタを初期化する（マスクは都度式で算出）。
+    初期化（引用）:
+      `self.board = [0 for _ in range(size)]`
+      `self.topbit = 0; self.endbit = 0; self.sidemask = 0; self.lastmask = 0`
+      `self.count2 = self.count4 = self.count8 = 0`
+    """
+
     self.total=0
     self.unique=0
     self.board=[0 for _ in range(size)]
@@ -136,11 +173,29 @@ class NQueens07:
     self.count4=0
     self.count8=0
 
-  # ------------------------------------------------------------
-  # 対称性評価（COUNT2/4/8 の分類）
-  # board は row→bit のビットボード列
-  # ------------------------------------------------------------
   def symmetryops(self,size:int)->None:
+    """
+    役割:
+      現在の `board`（row→bit）に対して、回転(90/180/270)と垂直反転（およびその回転）
+      で辞書順最小判定を行い、COUNT2/4/8 のいずれかに分類して対応カウントを増やす。
+
+    判定手順（実装要点の引用）:
+      - 90° 判定の入口条件:
+          `if self.board[self.bound2] == 1: ...`
+        行インデックス (own/you) とパターン (ptn/bit) を進めて比較。
+        → すべて一致なら `self.count2 += 1; return`
+      - 180° 判定:
+          `if self.board[size-1] == self.endbit: ...`
+        → 一致なら `self.count4 += 1; return`
+      - 270° 判定:
+          `if self.board[self.bound1] == self.topbit: ...`
+        → ここまで一致しなければ `self.count8 += 1`
+
+    注意:
+      - 途中で「self.board[own] > bit」判定が出たら、現配置は代表でないため return。
+      - `board` は row→bit の形式で保持し、比較は常にこの形式で実施する。
+    """
+
     """対象解除: 90/180/270回転 + 垂直反転 で代表性を判定して count2/4/8 を増やす。"""
     # --- 90度回転 ---
     if self.board[self.bound2]==1:
@@ -201,10 +256,27 @@ class NQueens07:
         ptn>>=1
     self.count8+=1
 
-  # ------------------------------------------------------------
-  # 角に Q が「ない」場合の探索
-  # ------------------------------------------------------------
   def backTrack2(self,size:int,row:int,left:int,down:int,right:int)->None:
+    """
+    役割:
+      角に Q が「ない」ケースのDFS。上辺/下辺の制約を段階的に適用しつつ探索する。
+
+    コア（引用）:
+      - 可置集合: `bitmap = ((1<<size)-1) & ~(left | down | right)`
+      - 末行: `if row == size-1: if bitmap and (bitmap & self.lastmask) == 0: board[row]=bitmap; symmetryops(size)`
+      - 上辺制約（row < bound1）:
+          `bitmap = (bitmap | self.sidemask) ^ self.sidemask`  # (= bitmap & ~sidemask)
+      - 下辺制約（row == bound2）:
+          `if (down & self.sidemask) == 0: return`
+          `if (down & self.sidemask) != self.sidemask: bitmap &= self.sidemask`
+      - LSB抽出ループ:
+          `bit = -bitmap & bitmap; bitmap ^= bit; board[row] = bit; ...`
+
+    ねらい:
+      - 代表形に対応しない末行ビット（`bitmap & lastmask != 0`）は棄却。
+      - 端の列を使う/使わないの一貫性を `sidemask/lastmask` で担保。
+    """
+
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     if row==(size-1):
@@ -228,13 +300,27 @@ class NQueens07:
     while bitmap:
       bit=-bitmap&bitmap
       bitmap^=bit
+      # board[row] は常に「1 ビットだけ立つ」列ベクトル
       self.board[row]=bit
       self.backTrack2(size,row+1,(left|bit)<<1,(down|bit),(right|bit)>>1)
 
-  # ------------------------------------------------------------
-  # 角に Q が「ある」場合の探索
-  # ------------------------------------------------------------
   def backTrack1(self,size:int,row:int,left:int,down:int,right:int)->None:
+    """
+    役割:
+      角に Q が「ある」ケースのDFS。先頭2行を固定してから探索する高速分枝。
+
+    コア（引用）:
+      - 可置集合: `bitmap = ((1<<size)-1) & ~(left | down | right)`
+      - 末行: `if row == size-1: if bitmap: board[row]=bitmap; count8 += 1; return`
+      - 上辺制約（row < bound1）:
+          `bitmap = (bitmap | 2) ^ 2`   # (= bitmap & ~2)
+      - LSB抽出: `bit = -bitmap & bitmap; bitmap ^= bit; board[row] = bit; ...`
+
+    ねらい:
+      - 角固定パターンに対し、左右端の使い方が矛盾する枝を早期に排除。
+      - この分枝は 90/180/270/鏡を通じて 8倍クラスに落ちやすいため `count8` に直加算。
+    """
+
     mask:int=(1<<size)-1
     bitmap:int=mask&~(left|down|right)
     if row==(size-1):
@@ -251,10 +337,38 @@ class NQueens07:
       self.board[row]=bit
       self.backTrack1(size,row+1,(left|bit)<<1,(down|bit),(right|bit)>>1)
 
-  # ------------------------------------------------------------
-  # メイン探索のオーケストレーション
-  # ------------------------------------------------------------
   def NQueens(self,size:int)->None:
+    """
+    役割:
+      角あり/角なしの2系統を適切な境界条件で起動し、COUNT2/4/8 を合算して
+      Unique/Total を確定する。
+
+    手順（引用）:
+      1) リセット:
+         `self.count2 = self.count4 = self.count8 = 0`
+         `self.topbit = 1 << (size-1)`
+      2) 角あり探索:
+         `self.bound1 = 2; self.board[0] = 1`
+         ループ内で `bit = 1 << bound1; board[1] = bit; backTrack1(...)`
+         → `bound1 += 1`
+      3) 角なし探索:
+         `self.endbit = self.topbit >> 1`
+         `self.sidemask = self.topbit | 1`
+         `self.lastmask = self.sidemask`
+         `self.bound1 = 1; self.bound2 = size-2`
+         while ループで `bit = 1 << bound1; board[0] = bit; backTrack2(...)`
+         反復ごとに:
+           `bound1 += 1; bound2 -= 1; endbit >>= 1`
+           `lastmask = (lastmask << 1) | lastmask | (lastmask >> 1)`
+      4) 集計:
+         `self.unique = self.count2 + self.count4 + self.count8`
+         `self.total  = self.count2*2 + self.count4*4 + self.count8*8`
+
+    注意:
+      - `lastmask` の漸進更新は「端を使う配置」パターンの広がりに対応させる重要箇所。
+      - `topbit/endbit` は回転比較の境界値（対称性の入口条件）として機能。
+    """
+
     self.total=0
     self.unique=0
     self.count2=self.count4=self.count8=0
@@ -290,15 +404,27 @@ class NQueens07:
       self.bound1+=1
       self.bound2-=1
       self.endbit>>=1
+      # lastmask は両端使用パターンを伝播させるための総和マスク
       self.lastmask=(self.lastmask<<1)|self.lastmask|(self.lastmask>>1)
 
     self.unique=self.count2+self.count4+self.count8
     self.total=self.count2*2+self.count4*4+self.count8*8
 
-  # ------------------------------------------------------------
-  # CLI 入口
-  # ------------------------------------------------------------
   def main(self)->None:
+    """
+    役割:
+      N=4..18（※ここでは range(nmin, nmax) なので 18 まで）を走査し、
+      Total/Unique と経過時間を表形式で出力。
+
+    実装（引用）:
+      `print(" N:        Total       Unique        hh:mm:ss.ms")`
+      `print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")`
+
+    メモ:
+      - 実測比較では端末I/Oの影響が大きいので、必要に応じて出力を抑制する。
+      - nmax を含めたいときは `range(nmin, nmax+1)` に変更。
+    """
+
     nmin:int=4
     nmax:int=19
     print(" N:        Total       Unique        hh:mm:ss.ms")

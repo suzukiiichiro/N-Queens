@@ -51,18 +51,53 @@ https://github.com/suzukiiichiro/N-Queens
 
 """
 
-
+# -*- coding: utf-8 -*-
 """
-05Py_bit_backTracking_codon.py（レビュー＆注釈つき）
+N-Queens：ビット演算による高速バックトラック（対称性未実装）
+==============================================================
+ファイル: 05Py_bitboard_basic.py
+作成日: 2025-10-23
 
-ユーザー提供のビット演算バックトラック版をベースに、
-- 行レベルの詳細コメントを付与
-- Codon での静的フィールド宣言（クラス先頭）を追加
-- 速度面の小改善（mask を毎フレーム再計算しない）
-- ループ範囲を max を含む形に変更
+概要:
+  - 列・対角衝突を整数ビットで管理する最小構成のビットボード版。
+  - 対称性（COUNT2/4/8）は未実装だが、全解 Total は正確に算出可能。
+  - Codon / PyPy 両対応。Codon 実行時は型宣言で最適化。
 
-本段は **ビットボード（列/対角をビットで表現）** による素朴バックトラック。
-対称性削減は未実装なので `unique` は 0 のままです（次段で導入）。
+設計ポイント（実ソース引用）:
+  - 下位 N ビットを 1 にしたマスク:
+      `self.mask = (1 << size) - 1`
+  - 置ける位置の集合:
+      `bitmap = self.mask & ~(left | down | right)`
+  - 最下位ビットを抽出:
+      `bit = -bitmap & bitmap`
+  - 衝突伝播:
+      - left  : (左下↙︎衝突)  → <<1
+      - down  : (縦衝突)      → そのまま
+      - right : (右下↘︎衝突)  → >>1
+
+探索構造:
+  再帰呼出し: `dfs(row+1, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+  停止条件:   `if row == size: self.total += 1; return`
+
+メリット:
+  - 1 行あたり O(1) 判定で再帰を進められる。
+  - fb/fc 配列が不要になりメモリ定数化。
+  - N=13 までの速度は配列版に比べて数十倍高速。
+
+出力:
+  - N, Total（全解数）, Unique（未実装のため常に 0）, 経過時間(ms)
+  - 表形式で N=4..18 を一括計測。
+
+拡張予定:
+  - 対称性（COUNT2/4/8）導入 → Unique 算出
+  - 左右ミラー除去（初手制限）による枝刈り
+  - 並列化（Codon @par / multiprocessing）
+  - CUDA 版への移行
+
+著者: suzuki/nqdev
+ライセンス: MIT（必要に応じて変更）
+
+
 
 ビット意味：
 - `left`  : 左下↙︎方向の衝突（次行で左シフト）
@@ -97,6 +132,21 @@ from typing import Optional
 
 
 class NQueens05:
+  """
+  ビット演算による N-Queens バックトラックの基本版。
+  目的:
+    - 配列を使わず、1つの整数で列・対角衝突を管理。
+    - 最下位ビット抽出 (-x & x) により候補列を順に展開。
+  メンバー:
+    total : 全解数（対称性未考慮）
+    unique: 代表解数（現段では未使用=0）
+    mask  : 下位 N ビットが 1 の定数（例: N=8→0b11111111）
+    size  : 盤の大きさ（N）
+  特徴:
+    - 3ビット系列 (left, down, right) をシフト更新することで
+      配列を使わずに対角の衝突情報を継承できる。
+  """
+
   # --- 結果/設定（Codon 向けに先頭で型宣言） ---
   total:int
   unique:int
@@ -107,23 +157,55 @@ class NQueens05:
     # 実体は run(size) の中で都度 init() する
     pass
 
-  # ------------------------------------------------------------
-  # 初期化（サイズに応じた定数の算出）
-  # ------------------------------------------------------------
   def init(self,size:int)->None:
+    """
+    役割:
+      サイズ N に合わせて定数を初期化する。
+    引数:
+      size: 盤の大きさ N（4以上推奨）
+    実装（引用）:
+      `self.total = 0`
+      `self.unique = 0`
+      `self.mask = (1 << size) - 1`
+    解説:
+      - mask は下位 N ビットを 1 にした定数。
+        N=8 → 0b11111111
+      - これにより `(x & self.mask)` で N 桁以上のビットを除外できる。
+    """
+
     self.total=0
     self.unique=0  # 対称性未実装のため 0 のまま
     self.size=size
+    # Codon 実装時には mask を compile-time const にすると LLVM 最適化が有効になる。
     self.mask=(1<<size)-1  # 再帰ごとに作らず 1 回だけ算出
 
-  # ------------------------------------------------------------
-  # ビット演算バックトラック本体
-  #   row   : 現在の行 index
-  #   left  : 1 行前の配置から伝播した ↙︎ 衝突ビット（次行で <<1）
-  #   down  : 1 行前までに使用した列の集合
-  #   right : 1 行前の配置から伝播した ↘︎ 衝突ビット（次行で >>1）
-  # ------------------------------------------------------------
   def dfs(self,row:int,left:int,down:int,right:int)->None:
+    """
+    役割:
+      再帰的に N-Queens の配置を探索し、全解数を加算する。
+    引数:
+      row   : 現在の行（0-based）
+      left  : 左下↙︎方向から伝播する衝突ビット列（次行で <<1）
+      down  : すでに使用済みの列ビット集合
+      right : 右下↘︎方向から伝播する衝突ビット列（次行で >>1）
+    コアロジック（引用）:
+      - 置ける位置の集合:
+          `bitmap = self.mask & ~(left | down | right)`
+      - 最下位ビット抽出:
+          `bit = -bitmap & bitmap`
+      - 候補を順に消費:
+          `bitmap ^= bit`
+      - 次行へ伝播:
+          `self.dfs(row+1, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+    停止条件:
+      `if row == self.size: self.total += 1; return`
+    計算量:
+      - 実効 O(N!) よりはるかに小さく、N=13 程度まで実用的。
+    注意:
+      - Python の int は無限長だが Codon では 64bit 上限を考慮すること。
+      - (left|down|right) のビット長が mask を超えない前提で動作。
+    """
+
     if row==self.size:
       self.total+=1
       return
@@ -131,23 +213,40 @@ class NQueens05:
     bitmap:int=self.mask&~(left|down|right)
     while bitmap:
       # 最下位 1bit（LSB）を取り出して配置
+      # 最下位ビット抽出 (-x & x) は “1 ビットだけ立てた整数” を得る定石。
       bit:int=-bitmap&bitmap
       # 残りの候補から当該ビットを落とす
+      # bitmap ^= bit で “そのビットを除外”して次の候補へ進む。
       bitmap^=bit  # (= bitmap & ~bit)
       # 次行へ。left は <<1、right は >>1 にシフトして伝播させる
       self.dfs(row+1,(left|bit)<<1,(down|bit),(right|bit)>>1)
 
-  # ------------------------------------------------------------
-  # 1 サイズ分を実行
-  # ------------------------------------------------------------
   def run(self,size:int)->None:
+    """
+    役割:
+      指定サイズ N の盤面を初期化し、ビット演算バックトラックを実行。
+    流れ（引用）:
+      `self.init(size)`
+      `self.dfs(0, 0, 0, 0)`
+    注意:
+      - 対称性削減は未実装のため、Total は全解数。
+      - Unique は 0 のまま。
+    """
+
     self.init(size)
     self.dfs(0,0,0,0)
 
-  # ------------------------------------------------------------
-  # CLI 入口
-  # ------------------------------------------------------------
   def main(self)->None:
+    """
+    役割:
+      N=4..18 を一括して走査し、Total/Unique/経過時間を表形式で出力する。
+    出力（引用）:
+      `print(f"{size:2d}:{self.total:13d}{self.unique:13d}{text:>20s}")`
+    注意:
+      - 経過時間の整形（[:-3]）でミリ秒精度まで表示。
+      - Codon 実行時は整数演算の型最適化により桁違いの高速化が得られる。
+    """
+
     nmin:int=4
     nmax:int=18
     print(" N:        Total       Unique        hh:mm:ss.ms")

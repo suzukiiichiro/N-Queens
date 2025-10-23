@@ -50,23 +50,48 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
-
 """
-12Py_carryChain_codon.py（レビュー＆注釈つき）
+N-Queens：キャリーチェーン法（carry-chain）による高速全解計数（Unique 未算出）
+======================================================================
+ファイル: 12Py_carry_chain_total_only.py
+作成日: 2025-10-23
 
-キャリーチェーン法の実装をレビューし、以下を最小修正しています：
-- **安全な反復とインデックス**：`wMirror` を `set(range(...))` から **`range(...)`** に変更
-  （順序が壊れると組の対応が崩れ、`pres_a/pres_b` の参照が不正になりうる）。
-- **mirror の探索域**：`wMirror = range(w, range_size)` に変更。
-  元コードの `sizeEE*sizeE - w` は `pres_*` の実際の埋め数と不整合になり、
-  **IndexError** を引き起こす可能性があるため（`initChain` が与える上限は `range_size`）。
-- 未使用の `import copy` を削除（独自 `deepcopy` を使用）。
-- コメントを追加し、関数の責務と行ごとの意図を明確化。
+概要:
+  - 盤外周の 4 辺（W/N/E/S）の配置を「鎖（chain）」として組み上げ、内部はビットDFSで充填。
+  - ビットDFSは「キャリーチェーン表現」を使用：`down+1 == 0` を葉判定（= 全行が埋まった）。
+  - 周辺4点の整合性を `placement()` で逐次検証し、対称クラス係数（2/4/8）の選択は `Symmetry()` で行う。
+  - 本段では Unique は未算出（0 のまま）。Total（全解数）を返す。
 
-注：`solve()` は **無限精度整数×ビット反転（~）** を利用するため、
-初期パラメータでビット幅が鋭密に管理されている前提（下位 `size`〜`size-?` ビットだけを実質利用）。
-`down+1 == 0`（≒ `down == -1`）で**全行配置済み**を検出する古典的テクを踏襲しています。
+キーポイント（実ソース引用）:
+  - 葉判定: `if not down+1: return 1`  （`down` が -1 なら全列使用）
+  - 候補抽出: `bitmap = ~(left | down | right)`（キャリーチェーン空間）
+  - LSB抽出:  `bit = -bitmap & bitmap`
+  - 境界スキップ: 先行の空行をまとめて圧縮（`while row & 1: ...`）
+  - 外周配置: `placement()` が行/列/対角のビット占有を B[0..3] にエンコードして検証
+  - 対称倍率: `Symmetry()` が状況に応じて 2/4/8 を返す（0 は代表でない）
 
+用途:
+  - 大きめ N の Total を高速算出
+  - 外周の組合せ（pres_a/pres_b）を束ねる「鎖」で探索を分割し、並列化しやすい構造
+
+注意:
+  - Python の int は任意長だが、shift 幅は size に応じて妥当性が必要。
+  - `placement()` は盤外の不変条件（四辺や対角制約）を厳密にチェックするため、変更時は要回帰テスト。
+
+
+
+仕上げのレビュー（要点）
+
+良い点
+solve() のキャリーチェーン実装（down+1==0、空行圧縮、~(left|down|right)）が簡潔かつ高速。
+外周の組立てと内部充填の分離により、境界条件とDFSが綺麗にデカップル。
+Symmetry() で 2/4/8 を切り分け、冗長解を抑制する設計。
+
+改善の余地
+size <= 5 付近のシフト境界（size-4, size-5）はガード推奨（テーブルで分岐/早期 return）。
+deepcopy 多用は重いので、再利用バッファや「差分適用/巻き戻し」方式で高速化可。
+並列化は buildChain の 4 重ループ（w/n/e/s）または pres_* の分割が自然。
+検証セット：N=8→Total=92、N=13→Total=73712 の回帰確認を推奨。
 
 fedora$ codon build -release 12Py_carryChain_codon.py && ./12Py_carryChain_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -89,6 +114,16 @@ from typing import List
 
 
 class NQueens12:
+  """
+  キャリーチェーン法で N-Queens の Total を計数する実装（Unique 未算出）。
+  構成:
+    - 外周(W/N/E/S)の候補列を pres_a/pres_b に前計算（initChain）
+    - 外周の4点を鎖状に接続しながら配置検証（buildChain/placement）
+    - 対称クラス係数（2/4/8）は Symmetry で決定、内部は solve() でビットDFS
+  注意:
+    - 本実装は Total のみ。Unique は 0 として出力。
+  """
+
   size:int
 
   def __init__(self)->None:
@@ -99,6 +134,20 @@ class NQueens12:
   #  down+1 == 0（≒ down が -1）で葉（1 解）
   # ------------------------------------------------------------
   def solve(self,row:int,left:int,down:int,right:int)->int:
+    """
+    役割:
+      キャリーチェーン空間でのビットDFS。`down+1 == 0` を葉判定として全解数を返す。
+    コア（引用）:
+      - 葉判定: `if not down+1: return 1`  # down が -1（全列埋まった）なら 1 解
+      - 空行圧縮: `while row & 1: row >>= 1; left <<= 1; right >>= 1`
+      - 候補集合: `bitmap = ~(left | down | right)`
+      - LSB抽出:  `bit = -bitmap & bitmap`
+      - 再帰:      `self.solve(row, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+    注意:
+      - ここでの `row/left/down/right` は通常の N ビット盤ではなく、
+        「キャリーチェーン」用の圧縮・シフトを伴う内部表現。
+    """
+
     total:int=0
     if not down+1:
       return 1
@@ -115,6 +164,19 @@ class NQueens12:
     return total
 
   def process(self,size:int,sym:int,B:List[int])->int:
+    """
+    役割:
+      `B[0..3]`（列/斜線の占有ビット列）からキャリーチェーン初期状態を生成し、
+      `sym * solve(...)` を返す。
+    生成式（引用）:
+      - `start_row  = B[0] >> 2`
+      - `start_left = B[1] >> 4`
+      - `start_down = (((B[2] >> 2) | (~0 << (size-4))) + 1) << (size-5); start_down -= 1`
+      - `start_right= (B[3] >> 4) << (size-5)`
+    注意:
+      - シフト量（`size-4`, `size-5`）は size に依存。小さな N では境界に注意。
+    """
+
     start_row=B[0]>>2
     start_left=B[1]>>4
     start_down=(((B[2]>>2)|(~0<<(size-4)))+1)<<(size-5)
@@ -123,6 +185,24 @@ class NQueens12:
     return sym*self.solve(start_row,start_left,start_down,start_right)
 
   def Symmetry(self,size:int,n:int,w:int,s:int,e:int,B:List[int],B4:List[int])->int:
+    """
+    役割:
+      外周 4 点（W/N/E/S）の相対関係から代表性を判定し、対称クラス係数（2/4/8）を返す。
+      代表でない場合は 0 を返却。
+    ロジック（引用）:
+      - 早期棄却（辞書順/境界条件）:
+          `ww = (size-2)*(size-1)-1-w`
+          `if s == ww and n < (w2 - e): return 0`  など
+      - 係数決定:
+          `if not B4[0]: return process(size, 8, B)`
+          `if s == w: ... return process(size, 2, B)`
+          `if e == w and n >= s: ... return process(size, 4, B)`
+          それ以外は `process(size, 8, B)`
+    注意:
+      - B4 は「各列の配置（行インデックス）」の一時表現で、0/±1 判定を含む。
+      - 条件は carry-chain の既知則に基づくため、並び替え時はテスト必須。
+    """
+
     ww=(size-2)*(size-1)-1-w
     w2=(size-2)*(size-1)-1
     if s==ww and n<(w2-e):
@@ -144,6 +224,21 @@ class NQueens12:
     return self.process(size,8,B)
 
   def placement(self,size:int,dimx:int,dimy:int,B:List[int],B4:List[int])->int:
+    """
+    役割:
+      外周座標 (dimx, dimy) にクイーンを仮配置し、矛盾がなければ B/B4 を更新して 1 を返す。
+      矛盾があれば 0 を返す（= その鎖は不成立）。
+    判定（引用）:
+      - 列/対角の占有（ビット）と衝突チェック:
+          `(B[0] & (1<<dimx))`（列）, `B[1]`（↗︎↙︎）, `B[2]`（行）, `B[3]`（↖︎↘︎）
+      - B の更新:
+          `B[0] |= 1<<dimx; B[1] |= 1<<(size-1-dimx+dimy); ...`
+      - B4 の更新:
+          `B4[dimx] = dimy`
+    追加の境界チェック（引用）:
+      - 角付近・辺沿いの配置制限（`B4[0]` などの sentinel を参照）
+    """
+
     if B4[dimx]==dimy:
       return 1
     if B4[0]:
@@ -162,6 +257,21 @@ class NQueens12:
     return 1
 
   def buildChain(self, size: int, pres_a: List[int], pres_b: List[int], valid_count: int) -> int:
+    """
+    役割:
+      あらかじめ生成した外周候補（pres_a/pres_b）から鎖を構築し、
+      4 つの辺 W/N/E/S を順に確定しながら、代表性チェック→内部 solve を呼び出して合算。
+    流れ（引用）:
+      - B/B4 を都度 deepcopy（`board` 状態を枝ごとに独立化）
+      - W: `placement(size, 0, pres_a[w])` と `placement(size, 1, pres_b[w])`
+      - N: `placement(size, pres_a[n], size-1)` と `... size-2`
+      - E: `placement(size, size-1, size-1-pres_a[e])` と `... size-2-pres_b[e]`
+      - S: `placement(size, size-1-pres_a[s], 0)` と `... , 1`
+      - 最後に `total += Symmetry(size, n, w, s, e, sB, sB4)`
+    注意:
+      - deepcopy は安全だがコストあり。Codon 等なら構造体のコピー最適化が有効。
+    """
+
     def deepcopy(lst: List[int]) -> List[int]:
       return [deepcopy(item) if isinstance(item, list) else item for item in lst]
 
@@ -200,6 +310,18 @@ class NQueens12:
     return total
 
   def initChain(self, size: int, pres_a: List[int], pres_b: List[int]) -> int:
+    """
+    役割:
+      外周に置く候補 (a,b) のペアを列挙。隣接（|a-b|<=1）を除外して pres_* に格納。
+    実装（引用）:
+      `for a in range(size):`
+        `for b in range(size):`
+          `if abs(a-b) <= 1: continue`
+          `pres_a[idx], pres_b[idx] = a, b; idx += 1`
+    戻り値:
+      実際に埋めたエントリ数（valid_count）
+    """
+
     idx: int = 0
     for a in range(size):
       for b in range(size):
@@ -210,6 +332,17 @@ class NQueens12:
     return idx  # 実際に埋めた有効エントリ数を返す
 
   def carryChain(self, size: int) -> int:
+    """
+    役割:
+      pres_a/pres_b を用意して valid_count を受け取り、buildChain() を呼ぶ高位API。
+    実装（引用）:
+      `pres_a = [0] * 930; pres_b = [0] * 930`
+      `valid = self.initChain(size, pres_a, pres_b)`
+      `return self.buildChain(size, pres_a, pres_b, valid)`
+    注意:
+      - バッファ長 930 は上限想定。サイズ拡張時は念のため assert/境界チェック推奨。
+    """
+
     pres_a: List[int] = [0] * 930
     pres_b: List[int] = [0] * 930
     valid = self.initChain(size, pres_a, pres_b)
@@ -217,6 +350,16 @@ class NQueens12:
 
 class NQueens12_carryChain:
   def main(self) -> None:
+    """
+    役割:
+      N=5..17 を走査し、Total/Unique(=0)/経過時間を表形式で出力。
+    出力（引用）:
+      `print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")`
+    注意:
+      - range の上限は含まれない（18 を含めたい場合は nmax=19）。
+      - I/O は計測に影響大。必要に応じて出力を抑制。
+    """
+
     nmin: int = 5
     nmax: int = 18
     print(" N:        Total       Unique        hh:mm:ss.ms")

@@ -57,6 +57,117 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 
+"""
+ N-Queens Constellations Solver (NQueens16)
+
+ 本プログラムは N-Queens を「開始コンステレーション（部分盤面）」で分割し、
+ 各サブ問題をビットボードで高速探索します。Zobrist ハッシュや正規化(Jasmin)により
+ 重複抑止とキャッシュ効率を上げています。
+
+ ▶ 主要コンセプト / 実装の見どころ
+ - ビットボード:
+     左/右対角線・列をビットで管理。次行遷移で
+     `(ld|bit)<<1`, `(rd|bit)>>1`, `col|bit` を用いる（例: dfs() 内）。
+ - Zobrist ハッシュ:
+     `_init_zobrist()` で N ごとのテーブルを作り、`zobrist_hash()` で
+     各ビット集合（`ld/rd/col/LD/RD`）を **N-bit に正規化後** XOR 加算。
+     例:
+         `ld &= mask; rd &= mask; col &= mask; LD &= mask; RD &= mask`
+     衝突耐性重視の探索済み検出に利用（軽量版 `state_hash()` も併用）。
+ - コンステレーション列挙:
+     `gen_constellations()` が代表盤面を列挙し、`set_pre_queens*()` が
+     preset_queens 個の事前配置を再帰で展開。
+     空きマスクは
+         `free = ~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & ((1<<N)-1)`
+     を基本形とする。
+ - 対称性排除&正規化:
+     `check_rotations()` で 90/180/270°の回転重複を排除。
+     `jasmin()`（`get_jasmin()` キャッシュ付）で代表形に写像。
+ - 解探索分岐:
+     `exec_solutions()` が j/k/l の位置関係・端からの距離に応じて
+     分岐ラベル（"SQd0B", "SQd1BkBlB", …）を選択し、`dfs()` に委譲。
+     重複補正は `symmetry()`（90°:2, 180°:4, その他:8）で掛ける。
+ - キャッシュ:
+     サブ星座生成の再実行防止（`set_pre_queens_cached()` で `StateKey` set）、
+     さらに TXT/BIN キャッシュ（`load_or_build_constellations_*`）。
+
+ ▶ 設計上のポイント / レビュー
+ - ハッシュの N-bit 正規化:
+     `zobrist_hash()` 先頭で `& ((1<<N)-1)` を徹底。負数や上位ビット汚染を回避。
+ - 軽量 visited キー:
+     `visited.add(self.state_hash(...))` により O(1) 計算・単一 int キーで高速＆省メモリ。
+     高信頼検証時は `zobrist_hash()` に切替える A/B も容易。
+ - Jasmin 正規化の指標:
+     端からの距離 `ffmin(x, N-1-x)` を比較し、回転回数 `arg` を決定→必要ならミラー。
+ - 分岐の抽象化:
+     本来多数の再帰関数を、`dfs(funcname=...)` で集約。ロジックの核は
+     「最下位 1bit 取り出し → 次行の遮蔽を作る → 先読み `_should_go_plus1()`」。
+ - 先読みと追加遮蔽:
+     `extra = _extra_block_for_row(...)` で j/k/l の“その行に入る瞬間の追加ブロック”を付与。
+     その上で `_has_future_space_step()` により「次行が完全に詰んでいないか」を早期判定。
+ - I/O の堅牢性:
+     TXT/BIN の相互変換を用意。BIN は 1 レコード=16B を `validate_bin_file()` で検査。
+
+ ▶ 使い方
+     `NQueens16_constellations().main()` を実行。
+     N=5..17 で検算が入り、N>5 は:
+         1) gen_constellations() → 2) exec_solutions() → 3) 集計
+
+ ▶ 引用スニペット（本ファイルより）
+   - Zobrist マスク: `ld &= mask; rd &= mask; col &= mask; LD &= mask; RD &= mask`
+   - 代表形写像: `for _ in range(arg): ijkl = self.rot90(ijkl, N); if self.getj(ijkl) < N-1-self.getj(ijkl): ijkl=self.mirvert(ijkl,N)`
+   - 追加遮蔽: `_extra_block_for_row(row_next, mark1, mark2, jmark, N)`
+   - 先読み: `_should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra)`
+   - 対称補正: `constellation["solutions"] = cnt * self.symmetry(ijkl, N)`
+
+
+amazon AWS m4.16xlarge x 1
+$ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.079
+ 7:           40            0         0:00:00.001
+ 8:           92            0         0:00:00.001
+ 9:          352            0         0:00:00.001
+10:          724            0         0:00:00.002
+11:         2680            0         0:00:00.102
+12:        14200            0         0:00:00.002
+13:        73712            0         0:00:00.005
+14:       365596            0         0:00:00.011
+15:      2279184            0         0:00:00.035
+16:     14772512            0         0:00:00.078
+17:     95815104            0         0:00:00.436
+18:    666090624            0         0:00:02.961
+19:   4968057848            0         0:00:22.049
+20:  39029188884            0         0:02:52.430
+21: 314666222712            0         0:24:25.554
+22:2691008701644            0         3:29:33.971
+
+top - 11:02:30 up 16:46,  4 users,  load average: 64.17, 64.13, 64.10
+Tasks: 566 total,   2 running, 564 sleeping,   0 stopped,   0 zombie
+%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem : 257899.4 total, 256292.0 free,   1156.5 used,    451.0 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255398.4 avail Mem
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   5634 suzuki    20   0   13.3g  58440   7384 R  6399   0.0  63650:42 15Py_constellat
+  42987 suzuki    20   0  224032   4176   2956 R   0.7   0.0   0:00.09 top
+     16 root      20   0       0      0      0 I   0.3   0.0   0:11.65 rcu_preempt
+      1 root      20   0  171244  16904  10532 S   0.0   0.0   0:06.11 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:00.06 kthreadd
+
+GPU/CUDA
+10Bit_CUDA/01CUDA_Bit_Symmetry.cu
+19:       4968057848        621012754     000:00:00:13.80
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+24:  227514171973736   28439272956934     012:23:38:21.02
+25: 2207893435808352  275986683743434     140:07:39:29.96
+"""
+
+
 
 """
 16Py_constellations_merge_codon.py（レビュー＆注釈つき）
@@ -332,10 +443,12 @@ if next_free and ((row >= endmark-1) or _has_future_space(...)):
   _has_future_space 内の式は現在の実装（board_mask & ~(((next_ld<<1)|(next_rd>>1)|next_col)) != 0）で十分速いです。
   総じて、境界条件と短絡評価の使い方が意図に合っており、問題ありません。
 """
+
+"""
 ##------------------------------------------------------------------------
 # 以下は対応不要、または対応できない一般的なキャッシュ対応
 ##------------------------------------------------------------------------
-"""
+
 ❎ 未対応 並列とキャッシュの整合
 @par は exec_solutions の星座単位で独立になっているので、インスタンス属性のキャッシュは
 生成段階（gen_constellations）で完結しており競合しません。jasmin_cache・subconst_cache を
@@ -416,77 +529,27 @@ def is_partial_canonical(board: List[int], row: int, N: int) -> bool:
 
 
 
-""""
-amazon AWS m4.16xlarge x 1
-$ codon build -release 16Py_constellations_merge_codon.py && ./16Py_constellations_merge_codon
- N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.079
- 7:           40            0         0:00:00.001
- 8:           92            0         0:00:00.001
- 9:          352            0         0:00:00.001
-10:          724            0         0:00:00.002
-11:         2680            0         0:00:00.102
-12:        14200            0         0:00:00.002
-13:        73712            0         0:00:00.005
-14:       365596            0         0:00:00.011
-15:      2279184            0         0:00:00.035
-16:     14772512            0         0:00:00.078
-17:     95815104            0         0:00:00.436
-18:    666090624            0         0:00:02.961
-19:   4968057848            0         0:00:22.049
-20:  39029188884            0         0:02:52.430
-21: 314666222712            0         0:24:25.554
-22:2691008701644            0         3:29:33.971
-
-top - 11:02:30 up 16:46,  4 users,  load average: 64.17, 64.13, 64.10
-Tasks: 566 total,   2 running, 564 sleeping,   0 stopped,   0 zombie
-%Cpu(s):100.0 us,  0.0 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
-MiB Mem : 257899.4 total, 256292.0 free,   1156.5 used,    451.0 buff/cache
-MiB Swap:      0.0 total,      0.0 free,      0.0 used. 255398.4 avail Mem
-
-    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-   5634 suzuki    20   0   13.3g  58440   7384 R  6399   0.0  63650:42 15Py_constellat
-  42987 suzuki    20   0  224032   4176   2956 R   0.7   0.0   0:00.09 top
-     16 root      20   0       0      0      0 I   0.3   0.0   0:11.65 rcu_preempt
-      1 root      20   0  171244  16904  10532 S   0.0   0.0   0:06.11 systemd
-      2 root      20   0       0      0      0 S   0.0   0.0   0:00.06 kthreadd
-
-GPU/CUDA
-10Bit_CUDA/01CUDA_Bit_Symmetry.cu
-19:       4968057848        621012754     000:00:00:13.80
-20:      39029188884       4878666808     000:00:02:02.52
-21:     314666222712      39333324973     000:00:18:46.52
-22:    2691008701644     336376244042     000:03:00:22.54
-23:   24233937684440    3029242658210     001:06:03:49.29
-24:  227514171973736   28439272956934     012:23:38:21.02
-25: 2207893435808352  275986683743434     140:07:39:29.96
-"""
-
-# import random
 import pickle, os
-# from operator import or_
-# from functools import reduce
 from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
 # 64bit マスク（Zobrist用途）
 MASK64: int = (1 << 64) - 1
-# StateKey = Tuple[int, int, int, int, int, int, int, int, int, int, int]
 StateKey = Tuple[int,int,int,int,int,int,int,int,int,int,int]
-# StateKey = Tuple[int, int, int, int, int, int, int, int, int]
 
 
-# pypyを使うときは以下を活かしてcodon部分をコメントアウト
-# import pypyjit
-# pypyjit.set_param('max_unroll_recursion=-1')
-#
 class NQueens16:
+  """N-Queens 分割探索（星座列挙→解探索）を担う中核クラス。
+  - サブ星座生成キャッシュ: self.subconst_cache（StateKey の set）
+  - 代表盤判定: constellation_signatures
+  - Jasmin 正規化キャッシュ: jasmin_cache[(ijkl,N)] -> ijkl'
+  - Zobrist テーブル: zobrist_tables[N] = {'ld','rd','col','LD','RD','row','queens','k','l'}
+  """
 
   def __init__(self)->None:
-    # StateKey
-    # self.subconst_cache: Dict[ StateKey, bool ] = {}
-    # self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
+    """内部キャッシュ構造の初期化。
+    subconst_cache/constellation_signatures/jasmin_cache/zobrist_tables/gen_cache を準備する。
+    """
     self.subconst_cache: Set[StateKey] = set()
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
@@ -494,6 +557,9 @@ class NQueens16:
     self.gen_cache: Dict[Tuple[int,int,int,int,int,int,int,int], List[Dict[str,int]] ] = {}
 
   def _mix64(self, x: int) -> int:
+    """splitmix64 終段の 64bit ミキサ。Zobrist 用疑似乱数を生成。
+    - 入出力は MASK64 で正規化（`x &= MASK64`）。
+    """
     # splitmix64 の最終段だけ使ったミキサ
     x &= MASK64
     x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9 & MASK64
@@ -502,8 +568,10 @@ class NQueens16:
     return x & MASK64
 
   def _gen_list(self, cnt: int, seed: int) -> List[int]:
-    # Zobristテーブル用の64bit値を cnt 個つくる。
-    # Codonの型推論に優しいように、普通のリストで返す（ジェネレータ等は使わない）。
+    """Zobrist 用 64bit 値を cnt 個作成。
+    - 生成器を使わずリストで返し（Codon 互換性配慮）。
+    - `s += 0x9E3779B97F4A7C15; out.append(self._mix64(s))`
+    """
     out: List[int] = []
     s: int = seed & MASK64
     for _ in range(cnt):
@@ -512,8 +580,10 @@ class NQueens16:
     return out
 
   def _init_zobrist(self, N: int) -> None:
-    # 例: self.zobrist_tables: Dict[int, Dict[str, List[int]]] を持つ前提。
-    # N ごとに ['ld','rd','col','LD','RD','row','queens','k','l'] のテーブルを用意。
+    """盤サイズ N 向け Zobrist テーブルを一度だけ初期化。
+    - キー: 'ld','rd','col','LD','RD','row','queens','k','l'
+    - 再入防止: 既に作成済みなら return
+    """
     if N in self.zobrist_tables:
       return
     base_seed: int = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
@@ -529,104 +599,57 @@ class NQueens16:
         'l'     : self._gen_list(N, base_seed ^ 0x09),
     }
     self.zobrist_tables[N] = tbl
-  def rot90(self,ijkl:int,N:int)->int:
-    # 時計回りに90度回転
-    # rot90 メソッドは、90度の右回転（時計回り）を行います
-    # 元の位置 (row,col) が、回転後の位置 (col,N-1-row) になります。
-    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
 
-  def rot180(self,ijkl:int,N:int)->int:
-    # 対称性のための計算と、ijklを扱うためのヘルパー関数。
-    # 開始コンステレーションが回転90に対して対称である場合
-    return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+  """(i,j,k,l) を 90°（時計回り）回転した signature を返す。
+  - 位置写像: (r,c) -> (c, N-1-r)
+  - 実装は 5bit×4 の再パックで O(1)。
   """
-  # 指定した盤面 (i, j, k, l) を90度・180度・270度回転したいずれか
-  # の盤面がすでにIntHashSetに存在しているかをチェックする関数
-  # @param ijklList 既出盤面signature（ijkl値）の集合（HashSet）
-  # @param i,j,k,l  チェック対象の盤面インデックス
-  # @param N        盤面サイズ
-  # @return         いずれかの回転済み盤面が登録済みなら1、なければ0
-  # @details
-  #   - N-Queens探索で、既存盤面の90/180/270度回転形と重複する配置
-  # を高速に排除する。
-  #   - 回転後のijklをそれぞれ計算し、HashSetに含まれていれば即1を
-  # 返す（重複扱い）。
-  #   - 真の“unique配置”のみ探索・カウントしたい場合の前処理とし
-  # て必須。
+  def rot90(self,ijkl:int,N:int)->int: return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+
+  """(i,j,k,l) の 180° 回転 signature を返す（対称判定補助）。"""
+  def rot180(self,ijkl:int,N:int)->int: return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+
+  """(i,j,k,l) の 90/180/270° 回転形のいずれかが既出かを判定。
+  - 既出なら True（重複排除）、未出なら False。
+  - 代表集合の肥大化を初期で抑制。
   """
-  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-  """
-  # symmetry: 回転・ミラー対称性ごとの重複補正
-  # (90度:2, 180度:4, その他:8)
-  """
-  def symmetry(self,ijkl:int,N:int)->int:
-    return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool: return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
 
-  def symmetry90(self,ijkl:int,N:int)->bool:
-    return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
-  """
-  # 盤面ユーティリティ群（ビットパック式盤面インデックス変換）
-  # Python実装のgeti/getj/getk/getl/toijklに対応。
-  # [i, j, k, l] 各クイーンの位置情報を5ビットずつ
-  # 整数値（ijkl）にパック／アンパックするためのマクロ。
-  # 15ビット～0ビットまでに [i|j|k|l] を格納する設計で、
-  # constellationのsignatureや回転・ミラー等の盤面操作を高速化する。
-  # 例：
-  #   - geti(ijkl): 上位5ビット（15-19）からiインデックスを取り出す
-  #   - toijkl(i, j, k, l): 各値を5ビット単位で連結し
-  # 一意な整数値（signature）に変換
-  # [注意] N≦32 まで対応可能
-  """
-  def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
-    return (i<<15)+(j<<10)+(k<<5)+l
+  """回転・ミラー対称の重複補正係数を返す。 - 90°対称: 2、180°対称: 4、それ以外: 8 """
+  def symmetry(self,ijkl:int,N:int)->int: return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
 
-  def mirvert(self,ijkl:int,N:int)->int:
-    return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+  """盤面が 90°回転で自己一致するかを判定。"""
+  def symmetry90(self,ijkl:int,N:int)->bool: return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
 
-  def ffmin(self,a:int,b:int)->int:
-    return min(a,b)
+  """(i,j,k,l) を 5bit×4 の 20bit 整数にパックして返す（signature 用）。"""
+  def to_ijkl(self,i:int,j:int,k:int,l:int)->int: return (i<<15)+(j<<10)+(k<<5)+l
+  """上下反転（垂直ミラー）後の signature を返す。"""
+  def mirvert(self,ijkl:int,N:int)->int: return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
+  """微小最適化のための min ラッパ（端から距離計算で多用）。"""
+  def ffmin(self,a:int,b:int)->int: return min(a,b)
 
-  def geti(self,ijkl:int)->int:
-    return (ijkl>>15)&0x1F
-
-  def getj(self,ijkl:int)->int:
-    return (ijkl>>10)&0x1F
-
-  def getk(self,ijkl:int)->int:
-    return (ijkl>>5)&0x1F
-
-  def getl(self,ijkl:int)->int:
-    return ijkl&0x1F
+  def geti(self,ijkl:int)->int: return (ijkl>>15)&0x1F
+  def getj(self,ijkl:int)->int: return (ijkl>>10)&0x1F
+  def getk(self,ijkl:int)->int: return (ijkl>>5)&0x1F
+  def getl(self,ijkl:int)->int: return ijkl&0x1F
 
   def get_jasmin(self, c: int, N: int) -> int:
-    # 1. Jasmin変換キャッシュを導入する
-    # [Opt-08] キャッシュ付き jasmin() のラッパー
+    """Jasmin 正規化（代表形写像）のキャッシュ付きラッパ。
+    - key=(c,N) がヒットすれば再計算を回避。
+    """
     key = (c, N)
     if key in self.jasmin_cache:
         return self.jasmin_cache[key]
     result = self.jasmin(c, N)
     self.jasmin_cache[key] = result
     return result
-  """
-  i,j,k,lをijklに変換し、特定のエントリーを取得する関数
-  各クイーンの位置を取得し、最も左上に近い位置を見つけます
-  最小の値を持つクイーンを基準に回転とミラーリングを行い、配置を最も左上に近い標準形に変換します。
-  最小値を持つクイーンの位置を最下行に移動させる
-  i は最初の行（上端） 90度回転2回
-  j は最後の行（下端） 90度回転0回
-  k は最初の列（左端） 90度回転3回
-  l は最後の列（右端） 90度回転1回
-  優先順位が l>k>i>j の理由は？
-  l は右端の列に位置するため、その位置を基準に回転させることで、配置を最も標準形に近づけることができます。
-  k は左端の列に位置しますが、l ほど標準形に寄せる影響が大きくないため、次に優先されます。
-  i は上端の行に位置するため、行の位置を基準にするよりも列の位置を基準にする方が配置の標準化に効果的です。
-  j は下端の行に位置するため、優先順位が最も低くなります。
-  """
+
   def jasmin(self,ijkl:int,N:int)->int:
-    # 使用例:
-    # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
-    # 最初の最小値と引数を設定
+    """(i,j,k,l) を“最も左上に近い標準形”へ写像。
+    - 端から距離 `ffmin(x, N-1-x)` が最小となる軸を選び、arg 回 90°回転。
+    - その後、`if self.getj(ijkl) < N-1-self.getj(ijkl): mirvert()` で上下反転。
+    - 代表形の一貫性を担保し、重複圧縮に寄与。
+    """
     arg=0
     min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
     # i: 最初の行（上端） 90度回転2回
@@ -648,46 +671,31 @@ class NQueens16:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-  #---------------------------------
-  # 星座リストそのものをキャッシュ
-  #---------------------------------
+
   def file_exists(self, fname: str) -> bool:
+    """ファイル存在を安全に判定（例外は False）。"""
     try:
       with open(fname, "rb"):
         return True
     except:
       return False
-  # load_or_build_constellations_txt() は、N-Queens 問題において特定
-  # の盤面サイズ N と事前配置数 preset_queens に対する星座構成（部分
-  # 解集合）をテキストファイルとしてキャッシュ保存し、再利用するため
-  # の関数です。
-  #
-  # 背景：なぜキャッシュが必要？
-  # 星座（コンステレーション）とは、特定のクイーンの配置から始まる
-  # 枝を意味し、それぞれの星座から先を探索していくのがこのアルゴリ
-  # ズムの基盤です。
-  # しかしこの「星座の列挙」は、
-  # 膨大な探索空間からの絞り込み
-  # 対称性チェック・Jasmin判定など高コスト処理を含む
-  # という特性があるため、一度生成した星座リストは保存して使い回し
-  # たほうが圧倒的に効率的です。
-  # --- これが Codon 向けの「ロード or 生成」関数（pickle不使用）---
-  # バリデーション関数の強化（既に実装済みの場合はスキップOK）
+
   def validate_constellation_list(self, constellations: List[Dict[str, int]]) -> bool:
+    """TXT/BIN から復元した配列に最低限のキーが揃っているか確認。
+    - 必須: "ld","rd","col","startijkl"
+    """
     return all(all(k in c for k in ("ld", "rd", "col", "startijkl")) for c in constellations)
-  # 修正：Codon互換の from_bytes() 相当処理
-  # def read_uint32_le(self, b: bytes) -> int:
-  # def read_uint32_le(self, b: List[int]) -> int:
-  #     return b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)
+
   def read_uint32_le(self, b: str) -> int:
+    """LE 32bit を手組みで復元（Codon 互換: bytes ではなく str として扱う）。"""
     return (ord(b[0]) & 0xFF) | ((ord(b[1]) & 0xFF) << 8) | ((ord(b[2]) & 0xFF) << 16) | ((ord(b[3]) & 0xFF) << 24)
 
   def int_to_le_bytes(self,x: int) -> List[int]:
-    # int_to_le_bytes ヘルパー関数を定義 以下のような関数を使って int を4バイトのリトルエンディアン形式に変換できます：
+    """32bit int を LE 4バイト配列に変換（BIN 保存で使用）。"""
     return [(x >> (8 * i)) & 0xFF for i in range(4)]
 
   def validate_bin_file(self,fname: str) -> bool:
-    # .bin ファイルサイズチェック（1件=16バイト→行数= ilesize // 16）
+    """BIN のサイズ妥当性を検査（1レコード=16バイト → size % 16 == 0）。"""
     try:
       with open(fname, "rb") as f:
         f.seek(0, 2)  # ファイル末尾に移動
@@ -697,7 +705,9 @@ class NQueens16:
       return False
 
   def load_or_build_constellations_bin(self, ijkl_list: Set[int], constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
-    # キャッシュ付きラッパー関数（.bin）
+    """BIN キャッシュをロードし、壊れていれば生成→保存→返す。
+    - `validate_bin_file()` と `validate_constellation_list()` で自己修復。
+    """
     fname = f"constellations_N{N}_{preset_queens}.bin"
     if self.file_exists(fname):
       try:
@@ -714,7 +724,7 @@ class NQueens16:
     return constellations
 
   def save_constellations_txt(self, path: str, constellations: List[Dict[str, int]]) -> None:
-    # --- テキスト形式で保存（1行=5整数: ld rd col startijkl solutions）---
+    """コンステレーションを 1 行 5 整数（ld rd col startijkl solutions）で保存。"""
     with open(path, "w") as f:
       for c in constellations:
         ld = c["ld"]
@@ -725,7 +735,7 @@ class NQueens16:
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
 
   def load_constellations_txt(self, path: str) -> List[Dict[str, int]]:
-    # --- テキスト形式でロード ---
+    """TXT から {ld,rd,col,startijkl,solutions} の配列へ復元。"""
     out: List[Dict[str, int]] = []
     with open(path, "r") as f:
       for line in f:
@@ -738,7 +748,7 @@ class NQueens16:
     return out
 
   def save_constellations_bin(self, fname: str, constellations: List[Dict[str, int]]) -> None:
-    # --- bin形式で保存 ---
+    """BIN 形式で保存（各レコード = ld, rd, col, startijkl の LE 4B ×4）。"""
     with open(fname, "wb") as f:
       for d in constellations:
         for key in ["ld", "rd", "col", "startijkl"]:
@@ -746,7 +756,7 @@ class NQueens16:
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
   def load_constellations_bin(self, fname: str) -> List[Dict[str, int]]:
-    # --- bin形式でロード ---
+    """BIN 形式をロードし、{ld,rd,col,startijkl,solutions=0} に詰め直す。"""
     constellations: List[Dict[str, int]] = []
     with open(fname, "rb") as f:
       while True:
@@ -761,13 +771,10 @@ class NQueens16:
     return constellations
 
   def load_or_build_constellations_txt(self, ijkl_list: Set[int],constellations, N: int, preset_queens: int) -> List[Dict[str, int]]:
-    # キャッシュ付きラッパー関数（.txt）
-    # N と preset_queens に基づいて一意のファイル名を構成
+    """TXT キャッシュをロードし、壊れていれば生成→保存→返す。
+    - ロード例外やキー欠落は自動再生成で復旧。
+    """
     fname = f"constellations_N{N}_{preset_queens}.txt"
-    # ファイルが存在すれば即読み込み
-    # if self.file_exists(fname):
-    #     return self.load_constellations_txt(fname)
-    # ファイルが存在すれば読み込むが、破損チェックも行う
     if self.file_exists(fname):
       try:
         constellations = self.load_constellations_txt(fname)
@@ -787,9 +794,9 @@ class NQueens16:
     return constellations
 
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter:List[int], constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:Set[int]) -> None:
-    # サブコンステレーション生成にtuple keyでキャッシュ
-    # gen_constellations で set_pre_queens を呼ぶ箇所を set_pre_queens_cached に変えるだけ！
-    # key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    """サブ星座生成 `set_pre_queens()` の StateKey キャッシュ版。
+    - 同一状態 key による重複呼び出しを抑制（self.subconst_cache）。
+    """
     key:StateKey = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
     if key in self.subconst_cache:
       # 以前に同じ状態で生成済み → 何もしない（または再利用）
@@ -800,6 +807,10 @@ class NQueens16:
     self.subconst_cache.add(key)
 
   def zobrist_hash(self, ld: int, rd: int, col: int, row: int, queens: int, k: int, l: int, LD: int, RD: int, N: int) -> int:
+    """Zobrist ハッシュ (64bit) を計算。
+    - 先頭で **N-bit マスクを必ず適用**（`ld &= mask` など）。衝突耐性重視。
+    - 立っているビット位置に対応するテーブル値を XOR し束ねる。
+    """
     self._init_zobrist(N)
     tbl = self.zobrist_tables[N]
     h = 0
@@ -843,34 +854,21 @@ class NQueens16:
     return h & MASK64
 
   def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
+    """O(1) の軽量ハッシュ。`visited` set のキーに用いる省メモリ・高速版。
+    - `return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ ...`
+    - 厳密性 < 速度/メモリ。検証時は zobrist_hash と切替可。
+    """
     # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
     # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
     return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
 
-  """
-  開始コンステレーション（部分盤面）の生成関数
-  N-Queens探索の初期状態を最適化するため、3つまたは4つのクイーン（presetQueens）を
-  あらかじめ盤面に配置した全ての部分盤面（サブコンステレーション）を列挙・生成する。
-  再帰的に呼び出され、各行ごとに可能な配置をすべて検証。
-
-  @param ld   左対角線のビットマスク（既にクイーンがある位置は1）
-  @param rd   右対角線のビットマスク
-  @param col  縦方向（列）のビットマスク
-  @param k    事前にクイーンを必ず置く行のインデックス1
-  @param l    事前にクイーンを必ず置く行のインデックス2
-  @param row  現在の再帰探索行
-  @param queens 現在までに盤面に配置済みのクイーン数
-  @param LD/RD 探索初期状態用のマスク（使用例次第で追記）
-  @param counter 生成されたコンステレーション数を書き込むカウンタ
-  @param constellations 生成したコンステレーション（部分盤面配置）のリスト
-  @param N     盤面サイズ
-  @details
-    - row==k/lの場合は必ずクイーンを配置し次の行へ進む
-    - queens==presetQueensに到達したら、現時点の盤面状態をコンステレーションとして記録
-    - その他の行では、空いている位置すべてにクイーンを順次試し、再帰的に全列挙
-    - 生成された部分盤面は、対称性除去・探索分割等の高速化に用いる
-  """
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int])->None:
+    """preset_queens 個の事前配置（開始コンステレーション）を再帰列挙。
+    - 初手で `h = state_hash(...)` により再訪枝を排除（`if h in visited: return`）。
+    - `row==k or row==l` は必置行 → 次行へスキップ。
+    - `queens==preset_queens` 到達時は signature（`(ld,rd,col,k,l,row)`）で重複を抑えつつ push。
+    - 空き: `free = ~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row))) & ((1<<N)-1)`
+    """
     mask=(1<<N)-1  # setPreQueensで使用
 
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
@@ -938,1076 +936,1073 @@ class NQueens16:
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
   def dfs(self,funcname:str,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-   if funcname=="SQBkBlBjrB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlBjrB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBkBlBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBlBjrB":
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBjrB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBjrB":
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==jmark:
-      avail&=~1
-      ld|=1
-      while avail:
-        bit:int=avail&-avail
-        avail&=avail-1
-        next_ld:int=(ld|bit)<<1
-        next_rd:int=(rd|bit)>>1
-        next_col:int=col|bit
-        blocked:int=next_ld|next_rd|next_col
-        next_free:int=board_mask&~blocked
-        # if next_free:
-        #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-        # if next_free:
-        row_next:int=row+1
-        # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-        # if row_next==mark1:
-        #   extra |= (1<<(N-3)) #blockK
-        # if row_next == mark2:
-        #   extra |= (1<<(N-3)) #blockK or blockL
-        # jmark 系の分岐がある関数ではここでJのビットも追加する
-        # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-        extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-        if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-        # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-          total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = self._extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if self._should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQB":
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==endmark:
-      return 1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBklBjrB":
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBjrB",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBklBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBlBkBjrB":
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBkBjrB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlBkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBkBjrB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBjrB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBlkBjrB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|2
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBjrB",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBjlBkBlBjrB":
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBkBlBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQBjlBkBlBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBjlBklBjrB":
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBklBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQBjlBklBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBjlBlBkBjrB":
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlBkBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQBjlBlBkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQBjlBlkBjrB":
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQBlkBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQBjlBlkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BkBlB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BlB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BkBlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BlB":
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2B",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2B":
-    avail:int=free
-    total:int=0
-    if row==endmark:
-      if (avail&(~1))>0:
-        return 1
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQd2B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BklB":
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2B",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BklB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BlBkB":
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BkB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BlBkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BkB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd2BlkB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|2
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2B",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd2BlkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BkBlB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    # _extra_block_for_row=self._extra_block_for_row
-    # _should_go_plus1=self._should_go_plus1
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BlB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-      # row_next:int=row+1
-      # extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      # if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-        total+=self.dfs("SQd1BkBlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BlB":
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2|1
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 2 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      if next_free:
-        total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1B":
-    if row==endmark:
-      return 1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free :
-      #   total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      # row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      row_next:int=row+1
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BklB":
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1B",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BklB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BlBkB":
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BkB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BlBkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BlkB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|2|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1B",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BlkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd1BkB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd1BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd0B":
-    if row==endmark:
-      return 1
-    total:int=0
-    avail:int=free
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.dfs("SQd0B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-   elif funcname=="SQd0BkB":
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd0B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.dfs("SQd0BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd0BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
+    """行指向の再帰探索の総元締め（多数の SQ バリアントを funcname で切替）。
+    引数:
+      - ld/rd/col: 現在の遮蔽。次行で <<1 / >>1。
+      - row/free: 現行行と空きビット集合（`free` は事前計算済みのときもある）。
+      - jmark/endmark: j 特殊行 / 探索終端（到達で解1）。
+      - mark1/mark2: 固定行（k/l の影響を受ける行）。命中時は 2～3 行スキップなどの高速化を適用。
+      - board_mask/N: 盤の Nbit マスクとサイズ。
+    概要:
+      - `bit = avail & -avail` で最下位1ビットを取り、(ld,rd,col) を更新して次行へ。
+      - その直前に `extra = _extra_block_for_row(...)` で追加遮蔽（k/l/j）を付与。
+      - `_should_go_plus1(...)` で “次行で詰んでいないか” を先読みし枝刈り。
+    バリアント例（funcname）:
+      - "SQB": ベース版。endmark 到達で 1。
+      - "SQBjrB": j 行を列0マスクで即時処理。
+      - "SQBkBlBjrB" / "SQBklBjrB": k→l（あるいは隣接）命中時に 2～3 行送り。
+      - "SQd0B/d1B/d2B" 系: j がコーナー～1列内側～2列内側等の距離ケース別最適化。
+    """
+    if funcname=="SQBkBlBjrB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlBjrB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBkBlBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBlBjrB":
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBjrB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBjrB":
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==jmark:
+       avail&=~1
+       ld|=1
+       while avail:
+         bit:int=avail&-avail
+         avail&=avail-1
+         next_ld:int=(ld|bit)<<1
+         next_rd:int=(rd|bit)>>1
+         next_col:int=col|bit
+         blocked:int=next_ld|next_rd|next_col
+         next_free:int=board_mask&~blocked
+         # if next_free:
+         #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+         # if next_free:
+         row_next:int=row+1
+         # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+         # if row_next==mark1:
+         #   extra |= (1<<(N-3)) #blockK
+         # if row_next == mark2:
+         #   extra |= (1<<(N-3)) #blockK or blockL
+         # jmark 系の分岐がある関数ではここでJのビットも追加する
+         # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+         extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+         if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+         # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+           total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       return total
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free:
+       #   total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = self._extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if self._should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQB":
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==endmark:
+       return 1
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+       # if next_free:
+       #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBklBjrB":
+     N4:int=N-4
+     blockK:int=1<<N4
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK|1
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBjrB",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBklBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBlBkBjrB":
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBkBjrB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlBkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBkBjrB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBjrB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBlkBjrB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK|2
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBjrB",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlkBjrB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBjlBkBlBjrB":
+     N1:int=N-1
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==N1-jmark:
+       rd|=1<<N1
+       next_ld:int=ld<<1
+       next_rd:int=rd>>1
+       next_col:int=col
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBkBlBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       return total
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free:
+       #   total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQBjlBkBlBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBjlBklBjrB":
+     N1:int=N-1
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==N1-jmark:
+       rd|=1<<N1
+       next_ld:int=ld<<1
+       next_rd:int=rd>>1
+       next_col:int=col
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBklBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       return total
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free:
+       #   total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQBjlBklBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBjlBlBkBjrB":
+     N1:int=N-1
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==N1-jmark:
+       rd|=1<<N1
+       next_ld:int=ld<<1
+       next_rd:int=rd>>1
+       next_col:int=col
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlBkBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       return total
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free:
+       #   total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQBjlBlBkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQBjlBlkBjrB":
+     N1:int=N-1
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     if row==N1-jmark:
+       rd|=1<<N1
+       next_ld:int=ld<<1
+       next_rd:int=rd>>1
+       next_col:int=col
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQBlkBjrB",next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       return total
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free:
+       #   total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQBjlBlkBjrB",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BkBlB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BlB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BkBlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BlB":
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2B",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2B":
+     avail:int=free
+     total:int=0
+     if row==endmark:
+       if (avail&(~1))>0:
+         return 1
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+       # if next_free:
+       #   total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQd2B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BklB":
+     N4:int=N-4
+     blockK:int=1<<N4
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK|1
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2B",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BklB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BlBkB":
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BkB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BlBkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BkB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd2BlkB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK|2
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2B",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd2BlkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd2BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BkBlB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     # _extra_block_for_row=self._extra_block_for_row
+     # _should_go_plus1=self._should_go_plus1
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BlB",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+       # row_next:int=row+1
+       # extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       # if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+         total+=self.dfs("SQd1BkBlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BlB":
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2|1
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free and ((row + 2 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+       if next_free:
+         total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BlB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1B":
+     if row==endmark:
+       return 1
+     avail:int=free
+     total:int=0
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free :
+       #   total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       # row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       row_next:int=row+1
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQd1B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BklB":
+     N4:int=N-4
+     blockK:int=1<<N4
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1|blockK
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1B",next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BklB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BlBkB":
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|1
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BkB",next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BlBkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BlkB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<3
+       next_rd:int=(rd|bit)>>3
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|2|blockK
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1B",next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BlkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd1BkB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark2 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd1BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd1BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd0B":
+     if row==endmark:
+       return 1
+     total:int=0
+     avail:int=free
+     _extra_block_for_row=self._extra_block_for_row
+     _should_go_plus1=self._should_go_plus1
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+       # if next_free:
+       #   total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       row_next:int=row+1
+       # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       # if row_next==mark1:
+       #   extra |= (1<<(N-3)) #blockK
+       # if row_next == mark2:
+       #   extra |= (1<<(N-3)) #blockK or blockL
+       # jmark 系の分岐がある関数ではここでJのビットも追加する
+       # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
+       if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
+       # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+         total+=self.dfs("SQd0B",next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
+    elif funcname=="SQd0BkB":
+     N3:int=N-3
+     blockK:int=1<<N3
+     avail:int=free
+     total:int=0
+     while row==mark1 and avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<2
+       next_rd:int=(rd|bit)>>2
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col|blockK
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd0B",next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     while avail:
+       bit:int=avail&-avail
+       avail&=avail-1
+       next_ld:int=(ld|bit)<<1
+       next_rd:int=(rd|bit)>>1
+       next_col:int=col|bit
+       blocked:int=next_ld|next_rd|next_col
+       next_free:int=board_mask&~blocked
+       if next_free:
+         total+=self.dfs("SQd0BkB",next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+       # if next_free:
+       #   row_next:int=row+1
+       #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
+       #   if row_next==mark1:
+       #     extra |= (1<<(N-3)) #blockK
+       #   if row_next == mark2:
+       #     extra |= (1<<(N-3)) #blockK or blockL
+       #   # jmark 系の分岐がある関数ではここでJのビットも追加する
+       #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
+       #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
+       #     total+=self.SQd0BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
+     return total
 
-
-
-
-
-
-
-
-
-
-  """
-  ConstellationArrayListの各Constellation（部分盤面）ごとに
-  N-Queens探索を分岐し、そのユニーク解数をsolutionsフィールドに記録する関数（CPU版）
-  @param constellations 解探索対象のConstellationArrayListポインタ
-  @param N              盤面サイズ
-  @details
-    - 各Constellation（部分盤面）ごとにj, k, l, 各マスク値を展開し、
-      複雑な分岐で最適な再帰ソルバー（SQ...関数群）を呼び出して解数を計算
-    - 分岐ロジックは、部分盤面・クイーンの位置・コーナーからの距離などで高速化
-    - 解数はtemp_counterに集約し、各Constellationのsolutionsフィールドに記録
-    - symmetry(ijkl, N)で回転・ミラー重複解を補正
-    - GPUバージョン(execSolutionsKernel)のCPU移植版（デバッグ・逐次確認にも活用）
-  @note
-    - N-Queens最適化アルゴリズムの核心部
-    - temp_counterは再帰呼び出しで合計を受け渡し
-    - 実運用時は、より多くの分岐パターンを組み合わせることで最大速度を発揮
-  """
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
+    """各コンステレーションに対し最適な分岐を選んで解数を計算 → symmetry で補正。
+    - `startijkl` から `start` と `(i,j,k,l)` を復元。
+    - `ld,rd,col` を「開始時点の遮蔽」に復元し、`free = ~(ld|rd|col)` などを設定。
+    - j/k/l の関係・端からの距離で funcname を選び `dfs()` を実行。
+    - `constellation["solutions"] = cnt * self.symmetry(ijkl, N)` を格納。
+    """
     # jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
     N2:int=N-2
     small_mask=(1<<(N2))-1
@@ -2178,22 +2173,14 @@ class NQueens16:
       # constellation["solutions"]=temp_counter[0] * self.symmetry(ijkl,N)
       constellation["solutions"]=cnt * self.symmetry(ijkl,N)
       # temp_counter[0]=0
-  """
-  開始コンステレーション（部分盤面配置パターン）の列挙・重複排除を行う関数
-  @param ijklList        uniqueな部分盤面signature（ijkl値）の格納先HashSet
-  @param constellations  Constellation本体リスト（実際の盤面は後続で生成）
-  @param N               盤面サイズ
-  @details
-    - コーナー・エッジ・対角・回転対称性を考慮し、「代表解」となるuniqueな開始盤面のみ抽出する。
-    - forループの入れ子により、N-Queens盤面の「最小単位部分盤面」を厳密な順序で列挙。
-    - k, l, i, j 各インデックスの取り方・範囲・重複排除のための判定ロジックが最適化されている。
-    - checkRotations()で既出盤面（回転対称）を排除、必要なものだけをijklListに追加。
-    - このunique setをもとに、後段でConstellation構造体の生成・分割探索を展開可能。
-  @note
-    - 「部分盤面分割＋代表解のみ探索」戦略は大規模Nの高速化の要！
-    - このループ構造・排除ロジックがN-Queensソルバの根幹。
-  """
+
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+    """開始コンステレーション（代表集合）を列挙 → サブ星座を生成。
+    - 奇数 N は中央列を特別処理（Opt-03）。
+    - 回転重複を `check_rotations()` で排除 → `jasmin()` で代表形へ。
+    - 各 sc=(i,j,k,l) について `set_pre_queens_cached()` を実行。
+    - 直後に生成された要素へ `startijkl |= to_ijkl(i,j,k,l)` を付与。
+    """
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     if N % 2 == 1:
@@ -2265,6 +2252,11 @@ class NQueens16:
   #-----------------
   @staticmethod
   def _has_future_space_step(next_ld: int, next_rd: int, next_col: int,row_next:int,endmark:int, board_mask: int, extra_block_next:int) -> bool:
+    """次行 row_next で 1bit でも置ける見込みがあるかを先読み判定。
+    - `row_next >= endmark` なら短絡 True。
+    - `blocked_next = (next_ld<<1) | (next_rd>>1) | next_col | extra_block_next`
+      を見て `board_mask & ~blocked_next != 0` を返す。
+    """
     # ゴール直前は先読み不要（短絡）
     if row_next >= endmark:
         return True
@@ -2276,1072 +2268,35 @@ class NQueens16:
 
   @staticmethod
   def _extra_block_for_row(row_next: int, mark1: int, mark2: int, jmark: int, N: int) -> int:
-      extra = 0
-      blockK = 1 << (N - 3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
-      if row_next == mark1:
-          extra |= blockK
-      if row_next == mark2:
-          extra |= blockK
-      if row_next == (N - 1 - jmark):  # jmark 系ありの関数だけ使う
-          extra |= (1 << (N - 1))
-      return extra
+    """次行に入る“瞬間”に適用する追加遮蔽ビットを返す（k/l/j の固定効果）。
+    - `blockK = 1<<(N-3)`（l も同値を流用）/ `if row_next == (N-1 - jmark): extra |= 1<<(N-1)`
+    """
+    extra = 0
+    blockK = 1 << (N - 3)  # あなたのロジックに合わせて blockL 等も別にするなら拡張
+    if row_next == mark1:
+        extra |= blockK
+    if row_next == mark2:
+        extra |= blockK
+    if row_next == (N - 1 - jmark):  # jmark 系ありの関数だけ使う
+        extra |= (1 << (N - 1))
+    return extra
 
   def _should_go_plus1( self, next_free: int, row_next: int, endmark: int, next_ld: int, next_rd: int, next_col: int, board_mask: int, extra: int,) -> bool:
-      if not next_free:
-          return False
-      if row_next >= endmark:
-          return True
-      return self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra)
+    """次行へ 1 行進める価値があるかの薄いラッパ。
+    - `not next_free -> False`, `row_next >= endmark -> True`、
+      それ以外は `_has_future_space_step(...)` で判断。
+    """
+    if not next_free:
+        return False
+    if row_next >= endmark:
+        return True
+    return self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra)
 
-"""
-
-  def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    if row==endmark:
-      return 1
-    total:int=0
-    avail:int=free
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQd0B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQd0B(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd0B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd0BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd0BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1B(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    if row==endmark:
-      return 1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free :
-      #   total+=self.SQd1B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      # row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      row_next:int=row+1
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQd1B(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    # _extra_block_for_row=self._extra_block_for_row
-    # _should_go_plus1=self._should_go_plus1
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BlB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-      # row_next:int=row+1
-      # extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      # if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-        total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2|1
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 2 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      if next_free:
-        total+=self.SQd1B(next_ld,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|2|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1B(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd1BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd1BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd1BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BlkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|2
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2B(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BlkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BklB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2B(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BklB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BklB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2B(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BlBkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BkB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlBkB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2B(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2BkBlB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BlB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQd2BkBlB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQd2B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    if row==endmark:
-      if (avail&(~1))>0:
-        return 1
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQd2B(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQd2B(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlBjrB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==jmark:
-      avail&=~1
-      ld|=1
-      while avail:
-        bit:int=avail&-avail
-        avail&=avail-1
-        next_ld:int=(ld|bit)<<1
-        next_rd:int=(rd|bit)>>1
-        next_col:int=col|bit
-        blocked:int=next_ld|next_rd|next_col
-        next_free:int=board_mask&~blocked
-        # if next_free:
-        #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-        # if next_free:
-        row_next:int=row+1
-        # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-        # if row_next==mark1:
-        #   extra |= (1<<(N-3)) #blockK
-        # if row_next == mark2:
-        #   extra |= (1<<(N-3)) #blockK or blockL
-        # jmark 系の分岐がある関数ではここでJのビットも追加する
-        # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-        extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-        if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-        # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-          total+=self.SQB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = self._extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if self._should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==endmark:
-      return 1
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free and ((row + 1 >= endmark) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
-      # if next_free:
-      #   total+=self.SQB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBkBjrB(next_ld|1,next_rd,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark2 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<2
-      next_rd:int=(rd|bit)>>2
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBjrB(next_ld,next_rd|blockK,next_col,row+2,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N4:int=N-4
-    blockK:int=1<<N4
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|1
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBjrB(next_ld|1,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N3:int=N-3
-    blockK:int=1<<N3
-    avail:int=free
-    total:int=0
-    while row==mark1 and avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<3
-      next_rd:int=(rd|bit)>>3
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col|blockK|2
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBjrB(next_ld|2,next_rd|blockK,next_col,row+3,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      #   row_next:int=row+1
-      #   extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      #   if row_next==mark1:
-      #     extra |= (1<<(N-3)) #blockK
-      #   if row_next == mark2:
-      #     extra |= (1<<(N-3)) #blockK or blockL
-      #   # jmark 系の分岐がある関数ではここでJのビットも追加する
-      #   # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      #   if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-      #     total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBjlBkBlBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBkBlBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQBjlBkBlBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBjlBlBkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlBkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQBjlBlBkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBjlBklBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBklBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQBjlBklBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-  def SQBjlBlkBjrB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
-    N1:int=N-1
-    avail:int=free
-    total:int=0
-    _extra_block_for_row=self._extra_block_for_row
-    _should_go_plus1=self._should_go_plus1
-    if row==N1-jmark:
-      rd|=1<<N1
-      next_ld:int=ld<<1
-      next_rd:int=rd>>1
-      next_col:int=col
-      blocked:int=next_ld|next_rd|next_col
-      next_free=board_mask&~blocked
-      if next_free:
-        total+=self.SQBlkBjrB(next_ld,next_rd,next_col,row,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      return total
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-      next_ld:int=(ld|bit)<<1
-      next_rd:int=(rd|bit)>>1
-      next_col:int=col|bit
-      blocked:int=next_ld|next_rd|next_col
-      next_free:int=board_mask&~blocked
-      # if next_free:
-      #   total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-      # if next_free:
-      row_next:int=row+1
-      # extra=0 # 次の行が特殊行なら、その行で実際にORされる追加ブロックを足す
-      # if row_next==mark1:
-      #   extra |= (1<<(N-3)) #blockK
-      # if row_next == mark2:
-      #   extra |= (1<<(N-3)) #blockK or blockL
-      # jmark 系の分岐がある関数ではここでJのビットも追加する
-      # if row_next == (N-1 - jmark): extra |= (1 << (N-1)) 等、該当関数の実装に合わせる
-      extra = _extra_block_for_row(row_next, mark1, mark2, jmark, N)
-      if _should_go_plus1(next_free, row_next, endmark, next_ld, next_rd, next_col, board_mask, extra):
-      # if self._has_future_space_step(next_ld, next_rd, next_col, row_next, endmark, board_mask, extra):
-        total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row_next,next_free,jmark,endmark,mark1,mark2,board_mask,N)
-    return total
-"""
 class NQueens16_constellations():
-
   def _bit_total(self, size: int) -> int:
-    # 小さなNは正攻法で数える（対称重みなし・全列挙）
+    """小さな N を正攻法バックトラックで全列挙（対称重み無し）。
+    - 典型的な bit DP: `bitmap = mask & ~(left | down | right)` を反復。
+    """
     mask = (1 << size) - 1
     total = 0
 
@@ -3359,6 +2314,10 @@ class NQueens16_constellations():
     return total
 
   def main(self)->None:
+    """エントリポイント。N=5..17 で星座列挙→解探索→集計を行う。
+    - 大枠: gen_constellations → exec_solutions → sum(solutions)
+    - 期待値 `expected[size]` と比較し OK/NG を表示。
+    """
     nmin:int=5
     nmax:int=18
     preset_queens:int=4  # 必要に応じて変更

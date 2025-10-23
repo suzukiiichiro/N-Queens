@@ -52,69 +52,79 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
+"""
+N-Queens(ビットボード + 星座分割 + 対称性除去) — 実装レビュー / 使い方 / 主要ポイント
+
+■概要
+- 本実装は N-Queens の総解数を、ビット演算・対称性・部分状態(星座/constellation)分割で高速数え上げする。
+- 探索の二段構成:
+    (1) `gen_constellations()` で盤の代表配置(開始星座)を生成・正規化（Jasmin 変換＋回転鏡像除去）。
+    (2) `exec_solutions()` で各星座から下流をビットバックトラック（多数の SQ* 関数群）して解数を集計。
+
+■主な最適化と設計
+- ビットボード表現と LSB 抽出:
+    - 置ける位置: `free = board_mask & ~(ld | rd | col)`
+    - LSB: `bit = free & -free`
+    - 伝播: `next_ld = (ld | bit) << 1`, `next_rd = (rd | bit) >> 1`, `next_col = col | bit`
+- “先読み空き”(詰みの早期検出)の関数化:
+    - `_has_future_space()` → `if next_free and ((row >= endmark - 1) or self._has_future_space(...)):` の形で無駄再帰を削減。
+- 対称性の倍率(2/4/8):
+    - `symmetry()` / `symmetry90()` で 90°自己同型・対角自己同型・一般を判定し、
+      `solutions = cnt * self.symmetry(ijkl, N)` で最後に倍率を掛ける。
+- Jasmin 変換（開始星座の正規代表化）:
+    - `jasmin()` で「盤端からの近さ」を比較 → 必要回数の 90°回転 (`rot90`)＋上下鏡像 (`mirvert`) を適用。
+    - メモ化 `get_jasmin()` で再計算を回避。
+- サブ状態生成の重複抑止:
+    - `set_pre_queens_cached()` のキー: `(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)`
+    - `state_hash()` と `visited` セットで探索枝の再訪をブロック。
+    - `constellation_signatures` で星座辞書の重複 `{"ld","rd","col","startijkl"}` 追加を防止。
+- 盤幅の厳密マスク:
+    - `board_mask = (1<<N) - 1` を導入し、**補数(~)を使う箇所は必ず `board_mask & ~...` でクリップ**
+      （例: `free = board_mask & ~(ld|rd|col)`）。
+- 実装上の注意:
+    - ソース中の `@par` は通常 Python では未定義（並列化の名残）。そのままなら削除/No-Op 化が必要。
+    - codon/pypy 用のコメント切替があるため、実行環境に合わせて `pickle` 使用箇所を選択。
+
+■使い方
+    python3 NQueens14.py
+出力:
+    N:        Total       Unique        hh:mm:ss.ms
+
+■引用メモ（本ソースの核）
+- 90°回転: `rot90(): return ((N-1-self.getk(ijkl))<<15)+...+(self.getj(ijkl)<<5)+self.geti(ijkl)`
+- 自己同型倍率: `symmetry(): return 2 if self.symmetry90(...) else 4 if ... else 8`
+- 先読み空き: `_has_future_space(): return (board_mask & ~(((next_ld<<1)|(next_rd>>1)|next_col))) != 0`
+- 星座正規化: `for _ in range(arg): ijkl = self.rot90(ijkl, N); if self.getj(ijkl) < N-1-self.getj(ijkl): ijkl = self.mirvert(ijkl, N)`
+
+
+fedora$ codon build -release 14Py_constellations_par_codon.py && ./14Py_constellations_par_codon
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           18            0         0:00:00.005
+ 6:            4            0         0:00:00.000
+ 7:           40            0         0:00:00.002
+ 8:           92            0         0:00:00.002
+ 9:          352            0         0:00:00.001
+10:          724            0         0:00:00.001
+11:         2680            0         0:00:00.003
+12:        14200            0         0:00:00.006
+13:        73712            0         0:00:00.009
+14:       365596            0         0:00:00.038
+15:      2279184            0         0:00:00.092
+16:     14772512            0         0:00:00.440
+17:     95815104            0         0:00:02.900
+
+fedora$ codon build -release 26Py_constellations_optimized_codon.py
+fedora$ ./26Py_constellations_optimized_codon
+ N:        Total       Unique        hh:mm:ss.ms
+16:     14772512            0         0:00:01.503
+17:     95815104            0         0:00:10.317
+
+GPU/CUDA 11CUDA_constellation_symmetry.cu
+16:         14772512               0     000:00:00:00.64
+17:         95815104               0     000:00:00:03.41
 
 """
-14Py_constellations_par_codon.py（レビュー＆注釈つき）
 
-✅[Opt-01]    ビット演算枝刈り
-  全探索・部分盤面生成のすべてでbit演算徹底 ビット演算による衝突枝刈り（cols/hills/dales）
-  → set_pre_queensや他の再帰でld|rd|colのビット演算を用いた枝刈りを徹底している
-
-1) 部分盤面生成（プレ配置探索）
-  set_pre_queens(...)
-  空きビット計算
-    mask = (1<<N) - 1
-    free = ~(ld | rd | col | (LD>>(N-1-row)) | (RD<<(N-1-row))) & mask
-  1bit抽出 & 使用済み消去
-    bit = free & -free
-    free &= free - 1
-  衝突更新（対角・縦）
-    next_ld = (ld | bit) << 1
-    next_rd = (rd | bit) >> 1
-    next_col = col | bit
-  再帰呼び出し
-    self.set_pre_queens_cached(next_ld, next_rd, next_col, ..., row+1, ...)
-2) 解カウント（各サブ問題の全探索）
-  exec_solutions(...)（各サブ探索の初期ビット状態を構築）
-    盤面マスク
-      board_mask = (1<<N) - 1
-    既存配置の合成（列・左右対角をビットで合成）
-      ld, rd, col = (constellation["ld"]>>1), (constellation["rd"]>>1), (constellation["col"]>>1) | (~small_mask)
-      free = ~(ld | rd | col)
-  全ての SQ 系再帰（SQB, SQd0B, SQd1B, SQd2B とその派生）*
-    毎手の基本パターンが統一されていて、どこもビット演算で枝刈りになっています：
-      1bit抽出 & 使用済み消去
-        bit = avail & -avail
-        avail &= avail - 1
-      衝突合成
-        next_ld = (ld | bit) << 1
-        next_rd = (rd | bit) >> 1
-        next_col = col | bit
-        blocked = next_ld | next_rd | next_col
-        next_free = board_mask & ~blocked
-      先読み（空きが残るか）を判定して再帰
-        if next_free and (... もしくは _has_future_space(...)):
-            total += self.SQ...(next_ld, next_rd, next_col, row+1(or+2/3), next_free, ...)
-    代表例：
-    SQB, SQd0B, SQd1B, SQd2B 本体
-    および SQBkBjrB, SQBlBjrB, SQd1BkB, SQd1BlB, SQd2BkB, SQd2BlB などすべての派生分岐
-3) サブ探索の先読み関数
-  _has_future_space(...)
-  次行のビット空きの有無をビット演算で確認
-    return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
-4) 盤面の初期化・共通ユーティリティ
-  _bit_total(...)（小 N の全列挙）
-    典型的なビット探索：bitmap & -bitmap, bitmap ^= bit, 対角の <<1, >>1
-  gen_constellations(...)
-    初期占有の生成にもビット合成（L = 1<<(N-1)、ld/rd/col/LD/RD の生成）
-  check_rotations, rot90/180, to_ijkl, get*
-    位置表現をビットパック／シフトで扱っていて、衝突チェック前提の軽量化に寄与
-
-まとめ（Opt-01の評価）
-「列・左右対角の衝突判定」「空きマスクの更新」「1bit 抽出・消去」など、全探索パスのすべてでビット演算が徹底されています。
-set_pre_queens の部分盤面生成から exec_solutions 配下のあらゆる SQ* 系まで、同じビットパターンで統一されており、Opt-01 は十分に適用済みと言えます。
-さらに _has_future_space による先行一段の空き確認もビット演算で行われ、無駄な再帰を強力に抑制できています。
-"""
 
 """
 ✅[Opt-02-1]    左右対称性除去（初手左半分/コーナー分岐で重複生成排除）
@@ -793,40 +803,12 @@ pickle 系ユーティリティはコメントで「Codon では動かない」�
 """
 
 
-""""
-fedora$ codon build -release 14Py_constellations_par_codon.py && ./14Py_constellations_par_codon
- N:        Total       Unique        hh:mm:ss.ms
- 5:           18            0         0:00:00.005
- 6:            4            0         0:00:00.000
- 7:           40            0         0:00:00.002
- 8:           92            0         0:00:00.002
- 9:          352            0         0:00:00.001
-10:          724            0         0:00:00.001
-11:         2680            0         0:00:00.003
-12:        14200            0         0:00:00.006
-13:        73712            0         0:00:00.009
-14:       365596            0         0:00:00.038
-15:      2279184            0         0:00:00.092
-16:     14772512            0         0:00:00.440
-17:     95815104            0         0:00:02.900
-
-fedora$ codon build -release 26Py_constellations_optimized_codon.py
-fedora$ ./26Py_constellations_optimized_codon
- N:        Total       Unique        hh:mm:ss.ms
-16:     14772512            0         0:00:01.503
-17:     95815104            0         0:00:10.317
-
-GPU/CUDA 11CUDA_constellation_symmetry.cu
-16:         14772512               0     000:00:00:00.64
-17:         95815104               0     000:00:00:03.41
-
-"""
 
 # import random
 import pickle, os
 # from operator import or_
 # from functools import reduce
-from typing import List,Set,Dict
+from typing import List, Set, Dict, Tuple
 from datetime import datetime
 
 # pypyを使うときは以下を活かしてcodon部分をコメントアウト
@@ -836,55 +818,94 @@ from datetime import datetime
 class NQueens14:
 
   def __init__(self)->None:
+    """
+    内部キャッシュの初期化。
+
+    - `subconst_cache`: サブ星座生成(set_pre_queens)の再実行を防ぐキー集合。
+      key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    - `constellation_signatures`: 生成済み星座(辞書)の重複登録を防止。
+      signature = (ld, rd, col, k, l, row)
+    - `jasmin_cache`: Jasmin 変換のメモ化 {(packed_ijkl, N): packed_ijkl'}
+    """
+
     # インスタンス専用に上書き（共有を避ける）
     self.subconst_cache: Dict[ Tuple[int, int, int, int, int, int, int, int, int, int, int], bool ] = {}
     self.constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
     self.jasmin_cache: Dict[Tuple[int, int], int] = {}
 
   def rot90(self,ijkl:int,N:int)->int:
-      return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
+    """
+    (i,j,k,l) を 90°回転した座標に変換（5bit × 4 のパック整数表現）。
+
+        return ((N-1-self.getk(ijkl))<<15) + ((N-1-self.getl(ijkl))<<10) + (self.getj(ijkl)<<5) + self.geti(ijkl)
+
+    盤上の 0-origin 座標系で、回転後の (i',j',k',l') をパックして返す。
+    """
+    return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
 
   def rot180(self,ijkl:int,N:int)->int:
-      return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
+    """
+    (i,j,k,l) を 180°回転。`rot90()` の 2 回分に相当するが、直接計算で高速化。
+    """
+    return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
 
   def rot180_in_set(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
+    """
+    与えた (i,j,k,l) の 180°回転結果が `ijkl_list` に既に含まれるかを判定。
+    """
+    return self.rot180(self.to_ijkl(i, j, k, l), N) in ijkl_list
 
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
-      return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-    # rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
-    # rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
-    # rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
-    # return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
+    """
+    90°/180°/270°回転のいずれかが `ijkl_list` に存在するかを判定（重複星座の生成を抑制）。
+    """
+    return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k), (l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
 
   def symmetry(self,ijkl:int,N:int)->int:
+    """
+    自己同型(回転/鏡像)の種類に応じた倍率(2/4/8)を返す。
+
+    - 90°自己同型: 2
+    - 対角自己同型（i=~j, k=~l が成り立つ）: 4
+    - 一般: 8
+    """
     return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
 
   def symmetry90(self,ijkl:int,N:int)->bool:
+    """
+    90°回転で自身と一致する(自己同型)かを判定。
+    """
     return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
 
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
+    """
+    4 つの 5-bit 値 (i,j,k,l) を 20bit の整数にパックして返す。
+        return (i<<15) + (j<<10) + (k<<5) + l
+    """
     return (i<<15)+(j<<10)+(k<<5)+l
 
   def mirvert(self,ijkl:int,N:int)->int:
+    """
+    垂直方向の鏡像（上下反転）を適用した (i,j,k,l) を返す。
+        return self.to_ijkl(N-1-i, N-1-j, l, k)
+    """
     return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
 
   def ffmin(self,a:int,b:int)->int:
+    """`min(a,b)` の薄いラッパー（可読性/インライン展開目的）。"""
     return min(a,b)
 
-  def geti(self,ijkl:int)->int:
-    return (ijkl>>15)&0x1F
-
-  def getj(self,ijkl:int)->int:
-    return (ijkl>>10)&0x1F
-
-  def getk(self,ijkl:int)->int:
-    return (ijkl>>5)&0x1F
-
-  def getl(self,ijkl:int)->int:
-    return ijkl&0x1F
+  """パックされた `ijkl` から i(上位 5bit) を取り出す。 (ijkl>>15)&0x1F"""
+  def geti(self,ijkl:int)->int: return (ijkl>>15)&0x1F
+  def getj(self,ijkl:int)->int: return (ijkl>>10)&0x1F
+  def getk(self,ijkl:int)->int: return (ijkl>>5)&0x1F
+  def getl(self,ijkl:int)->int: return ijkl&0x1F
 
   def get_jasmin(self, c: int, N: int) -> int:
+    """
+    Jasmin 変換のメモ化版。キー `(c, N)` がキャッシュされていればそれを返し、
+    なければ `jasmin()` を実行して保存する。
+    """
     key = (c, N)
     if key in self.jasmin_cache:
         return self.jasmin_cache[key]
@@ -892,11 +913,20 @@ class NQueens14:
     self.jasmin_cache[key] = result
     return result
 
-  #--------------------------------------------
-  # 使用例:
-  # ijkl_list_jasmin = {self.get_jasmin(c, N) for c in ijkl_list}
-  #--------------------------------------------
   def jasmin(self,ijkl:int,N:int)->int:
+    """
+    (i,j,k,l) の“盤端からの近さ”を比較して回転回数 arg∈{0,1,2,3} を選び、
+    その後に必要なら上下鏡像を適用して開始星座の正規代表を得る。
+
+    主要断片:
+        arg = 0
+        min_val = min(j, N-1-j)
+        if min(i, N-1-i) < min_val: arg = 2; min_val = ...
+        if min(k, N-1-k) < min_val: arg = 3; ...
+        if min(l, N-1-l) < min_val: arg = 1; ...
+        for _ in range(arg): ijkl = self.rot90(ijkl, N)
+        if self.getj(ijkl) < N-1-self.getj(ijkl): ijkl = self.mirvert(ijkl, N)
+    """
     # 最初の最小値と引数を設定
     arg=0
     min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
@@ -921,6 +951,7 @@ class NQueens14:
     return ijkl
 
   def file_exists(self,fname:str)->bool:
+    """pickle ファイル存在を try/except で判定（読み取り確認）。"""
     try:
       with open(fname, "rb"):
         pass
@@ -929,6 +960,10 @@ class NQueens14:
       return False
 
   def load_constellations(self,N:int,preset_queens:int)->list:
+    """
+    事前計算した星座を pickle からロード。無ければ `gen_constellations()` で生成して保存。
+    ファイル名: f"constellations_N{N}_{preset_queens}.pkl"
+    """
     fname = f"constellations_N{N}_{preset_queens}.pkl"
     if self.file_exists(fname):
         with open(fname, "rb") as f:
@@ -939,50 +974,51 @@ class NQueens14:
         with open(fname, "wb") as f:
             pickle.dump(constellations, f)
         return constellations
-  # 実行時
-  # main()
-  #--------------------------
-  # codon では動かないので以下を切り替える
-  # pickleの最適化は使わない（あきらめる）
-  # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-  # codonでpickleを使う（うごかない）
-  # constellations = NQ.load_constellations(size,preset_queens)
-  #---------------------------------
-  # subconst_cache = {}
+
   def set_pre_queens_cached(self, ld: int, rd: int, col: int, k: int, l: int,row: int, queens: int, LD: int, RD: int,counter: list, constellations: List[Dict[str, int]], N: int, preset_queens: int,visited:set[int]) -> None:
-  #    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-  #    # キャッシュの本体をdictかsetでグローバル/クラス変数に
-  #    if not hasattr(self, "subconst_cache"):
-  #        self.subconst_cache = {}
-  #    subconst_cache = self.subconst_cache
-  #    if key in subconst_cache:
-  #        # 以前に同じ状態で生成済み → 何もしない（または再利用）
-  #        return
-  #    # 新規実行（従来通りset_pre_queensの本体処理へ）
-  #    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD, counter, constellations, N, preset_queens,visited)
-  #    subconst_cache[key] = True  # マークだけでOK
-      key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
-      if key in self.subconst_cache:
-          return
-      self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD,
-                          counter, constellations, N, preset_queens, visited)
-      self.subconst_cache[key] = True
-  # 呼び出し側
-  # self.set_pre_queens_cached(...) とする
-  # constellation_signatures = set()
-  #---------------------------------
-  #“先読み空き” を関数化します（元の式の意図に沿って、次の行での遮蔽を考慮）:
+    """
+    `set_pre_queens()` の結果を (ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens) でメモ化。
+    既に同一キーが実行済みならスキップする。
+    """
+    key = (ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+    if key in self.subconst_cache:
+        return
+    self.set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD,
+                        counter, constellations, N, preset_queens, visited)
+    self.subconst_cache[key] = True
+
   @staticmethod
   def _has_future_space(next_ld: int, next_rd: int, next_col: int, board_mask: int) -> bool:
-      # 次の行に進んだときに置ける可能性が1ビットでも残るか
-      return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
+    """
+    1 行先（ld<<1, rd>>1 を適用済み状態）で候補が 1 ビットでも残るか。
+        return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
+    """
+    # 次の行に進んだときに置ける可能性が1ビットでも残るか
+    return (board_mask & ~(((next_ld << 1) | (next_rd >> 1) | next_col))) != 0
 
   def state_hash(self,ld: int, rd: int, col: int, row: int,queens:int,k:int,l:int,LD:int,RD:int,N:int) -> int:
-      # 単純な状態ハッシュ（高速かつ衝突率低めなら何でも可）
-      # return (ld * 0x9e3779b9) ^ (rd * 0x7f4a7c13) ^ (col * 0x6a5d39e9) ^ row
-      return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
+    """
+    set_pre_queens 系の枝刈り用ハッシュ。衝突低めかつ計算軽量な XOR/SHIFT 混合。
+        return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
+    """
+    return (ld<<3) ^ (rd<<2) ^ (col<<1) ^ row ^ (queens<<7) ^ (k<<12) ^ (l<<17) ^ (LD<<22) ^ (RD<<27) ^ (N<<1)
 
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:set[int])->None:
+    """
+    事前に `preset_queens` 個の Q を安全に配置した星座（部分状態）を列挙。
+
+    流れ:
+      1) 再訪枝刈り: `h = self.state_hash(...)`; `if h in visited: return`
+      2) 行スキップ: `if row == k or row == l: ...`
+      3) 完了: `if queens == preset_queens:` → signature 重複を避けて `constellations.append(...)`
+      4) 進展:
+         `free = ~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row))) & mask`
+         `bit = free & -free`
+         再帰へ (`(ld|bit)<<1`, `(rd|bit)>>1`, `col|bit`)
+
+    注意:
+      - `free` の算出は盤幅 `mask=(1<<N)-1` でクリップ。後段は `board_mask` を使用。
+    """
     mask=(1<<N)-1  # setPreQueensで使用
     # ----------------------------
     # 状態ハッシュによる探索枝の枝刈り
@@ -1032,17 +1068,25 @@ class NQueens14:
       self.set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited)
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
-    # jmark=j=k=l=ijkl=ld=rd=col=start_ijkl=start=free=LD=endmark=mark1=mark2=0
+    """
+    生成済み星座ごとに SQ* ルーチンを分岐実行し、`solutions` を埋める。
+
+    要点:
+      - `board_mask = (1<<N) - 1` を用意し、**常に** `free = board_mask & ~(ld|rd|col)` で初期化。
+      - `j,k,l`/`start` から jmark/endmark/mark1/mark2 を決め、該当する SQ* を選択。
+      - 結果 `cnt` に対称倍率 `self.symmetry(ijkl, N)` を掛けて `constellation["solutions"]` に格納。
+
+    備考:
+      - ソースの `@par` は通常 Python では未定義。並列化しない場合は削除可。
+    """
+
     N2:int=N-2
     small_mask=(1<<(N2))-1
     temp_counter=[0]
     cnt=0
-    # board_mask の値が 1 ビット足りない
-    # board_mask:int=(1<<(N-1))-1
     board_mask:int=(1<<N)-1
     @par
     for constellation in constellations:
-      # mark1,mark2=mark1,mark2
       jmark=mark1=mark2=0
       start_ijkl=constellation["startijkl"]
       start=start_ijkl>>20
@@ -1056,7 +1100,8 @@ class NQueens14:
         rd|=(1<<(N-1-(start-k+1)))
       if j >= 2 * N-33-start:
         rd|=(1<<(N-1-j))<<(N2-start)
-      free=~(ld|rd|col)
+      # free=~(ld|rd|col)
+      free = board_mask&~(ld|rd|col)
       # 各ケースに応じた処理
       if j<(N-3):
         jmark,endmark=j+1,N2
@@ -1169,6 +1214,18 @@ class NQueens14:
       # temp_counter[0]=0
 
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+    """
+    開始星座 (i,j,k,l) の集合を作り、Jasmin 正規化→ `set_pre_queens_cached()` でサブ星座を生成。
+
+    ポイント:
+      - 奇数 N の中央列を特別扱い（Opt-03）。180°回転の重複も除去:
+            if N % 2 == 1: ... if not self.rot180_in_set(...):
+      - 既存星座との回転同型を `check_rotations()` で弾く。
+      - Jasmin 正規化はメモ化版 `get_jasmin()` を用いる:
+            ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
+      - `ld,rd,col,LD,RD` の初期値をビットで構築し、`set_pre_queens_cached()` へ。
+    """
+
     halfN=(N+1)//2  # Nの半分を切り上げ
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     if N % 2 == 1:
@@ -1243,6 +1300,43 @@ class NQueens14:
     return total
 
   def SQd0BkB(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,board_mask:int,N:int)->int:
+    """
+    SQ* 系バックトラック（部分状態から葉までの全列挙・カウント用）。
+
+    目的:
+        - 盤幅 `board_mask` 上で `free`（配置可能ビット）を順に展開し、葉に達したら 1 を返す。
+        - 分岐規則（mark1/mark2/jmark/endmark など）で特定の行/列をスキップ or 確定し、探索幅を削減。
+    主要断片:
+        avail = free
+        while avail:
+            bit = avail & -avail           # LSB 抽出
+            avail &= avail - 1             # LSB 除去
+            next_ld  = (ld  | bit) << 1
+            next_rd  = (rd  | bit) >> 1
+            next_col =  col | bit
+            blocked  = next_ld | next_rd | next_col
+            next_free = board_mask & ~blocked
+            # 先読み空き: 1 行先で候補が残らないノードを弾く
+            if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+                total += self.<再帰呼び先>(...)
+
+    終端条件:
+        - 通常: `if row == endmark: return 1`
+        - バリエーション: `if row == endmark and (avail & ~1) > 0: return 1` など（末尾制約あり）
+
+    引数:
+        ld, rd, col : 左斜線/右斜線/列の占有ビット集合（次行で <<1 / >>1 へシフト）
+        row         : 今から置く行インデックス
+        free        : 現行行の候補集合（必ず `board_mask & ~blocked` で算出済み）
+        jmark, endmark, mark1, mark2 : 分岐・スキップ・確定のための境界/マーカー
+        board_mask  : (1<<N)-1 の盤幅マスク
+        N           : 盤サイズ
+
+    注意:
+        - **next_free は必ず `board_mask & ~blocked` でクリップ**（~blocked 単体は NG）。
+        - `row == mark?` ブロックでは 2 行 or 3 行進める最適化あり（例: `row==mark1` → `row+2`/`row+3`）。
+    """
+
     #board_mask:int=(1<<(N-1))-1
     N3:int=N-3
     avail:int=free
@@ -2132,9 +2226,30 @@ class NQueens14:
       if next_free:
         total+=self.SQBjlBlkBjrB(next_ld,next_rd,next_col,row+1,next_free,jmark,endmark,mark1,mark2,board_mask,N)
     return total
-class NQueens14_constellations():
+
+class NQueens14_constellations:
+  """
+  実行エントリ＋小 N 用のフォールバック全列挙を持つ薄いランナー。
+
+  - `_bit_total(size)` : 小さな N では素のビット DFS で正しい総数を返す。
+  - `main()`           : N をループし、星座分割→探索→計測→出力までを行う。
+  """
 
   def _bit_total(self, size: int) -> int:
+    """
+    小 N 用の純粋ビットバックトラック（対称重みなし・全列挙）。
+
+    主要断片:
+        mask = (1 << size) - 1
+        def bt(row, left, down, right):
+            if row == size: total += 1; return
+            bitmap = mask & ~(left | down | right)
+            while bitmap:
+                bit = -bitmap & bitmap
+                bitmap ^= bit
+                bt(row+1, (left|bit)<<1, down|bit, (right|bit)>>1)
+    """
+
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask = (1 << size) - 1
     total = 0
@@ -2153,6 +2268,19 @@ class NQueens14_constellations():
     return total
 
   def main(self)->None:
+    """
+    ベンチ実行。`size <= 5` は `_bit_total` で、以降は星座分割探索。
+    代表ループ:
+        for size in range(nmin, nmax):
+            start = datetime.now()
+            if size <= 5: ... else:
+                NQ = NQueens14()
+                NQ.gen_constellations(...)
+                NQ.exec_solutions(...)
+                total = sum(c['solutions'] for c in constellations if c['solutions'] > 0)
+            経過時間を "hh:mm:ss.ms" で表示。
+    """
+
     nmin:int=5
     nmax:int=18
     preset_queens:int=4  # 必要に応じて変更

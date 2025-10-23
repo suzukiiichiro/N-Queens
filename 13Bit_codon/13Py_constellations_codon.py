@@ -51,24 +51,49 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
-
 """
-13Py_constellations_codon.py（レビュー＆注釈つき）
+N-Queens：星座(Constellations) 前計算＋規約化＋多分岐ビットDFS（Total/Unique基盤）
+======================================================================
+ファイル: 13Py_constellations_bitdfs.py
+作成日: 2025-10-23
 
-要旨:
-- "コンステレーション（星座）法" による N-Queens の分割探索。
-- 既知の落とし穴：Python の無限精度整数での `~`（ビット反転）。**必ず N ビットでマスク**しないと、
-  `free`/`next_free` が負数/巨大値になり、候補が常にあるように見えて桁あふれ→過少/過大計数の原因。
+概要:
+  - 外周4点 (i,j,k,l) を「星座」として列挙 → 回転/ミラー同型を除去（規約化）→ 各星座ごとに
+    事前固定マスクを作成して内部をビットDFSで畳み込む構成。
+  - 規約化は `jasmin()`（最小端の辺基準で 90° 回転→必要なら垂直ミラー）、
+    同型検査は `check_rotations()`（90/180/270）で実施。
+  - 内部探索は `SQ*` 群（例: `SQd0B`, `SQd1B`, `SQd2B`, `SQB...` など）で、
+    「free集合→LSB抽出→遷移」の定石で深掘り（引用: `bit = free & -free`, `free &= free-1`）。
+  - マスクは必ず N ビットに制限（引用: `free = self._maskN(free, N)`）。
 
-この修正版の主眼:
-1) **すべての `~(...)` に N ビットマスク**を適用（`& ((1<<N)-1)`）。
-2) `free` の初期化/更新も同様に**常にマスク**。
-3) `(~(... ) > 0)` の判定は、`(mask&~( ... ))!=0` に置き換え、論理を明確化。
-4) いくつかの変数名（`nextfree`/`next_free`）の表記ゆれを最小限で吸収（代入後に必ずマスク）。
-5) 関数ごとに**目的コメント**を付与。
+実装上の要点（引用）:
+  - 可置集合: `free = mask & ~(ld | rd | col)` あるいは分岐専用の `next_free = self._maskN(~(... ), N)`
+  - LSB抽出:  `bit = free & -free`、消費: `free &= free-1`
+  - 先読み:    `lookahead = self._maskN(~(((next_ld<<1)|(next_rd>>1)|next_col)), N)`
+  - 星座保存:  `startijkl = (row<<20) | ijkl` で「開始行＋(i,j,k,l)」を一括パック
 
-期待値: N=8 → 92,N=9 → 352,N=10 → 724,N=11 → 2680,N=12 → 14200,N=13 → 73712...
+検証の目安:
+  - 小 N（例: N=5,8,13）で既知 Total（N=8→92, N=13→73712）と一致するかをまず確認。
 
+注意:
+  - 多数の `SQ*` は枝刈り条件（`mark1/mark2/jmark/endmark`）が異なるだけで核心は共通。
+  - すべての `next_free` / `free` を `self._maskN(..., N)` で N ビットに抑制する前提。
+  - 本ファイル単体では Unique を直接カウントしない（`symmetry()` は係数 2/4/8 を返す基盤）。
+
+
+
+仕上げのレビュー（ごく短く）
+
+強み
+星座の規約化（jasmin）＋回転除去で入力を最小代表に圧縮。
+set_pre_queens で固定マスクを前段で織り込み、exec_solutions で分岐最適化済み SQ* 群へ直結。
+すべての free/next_free を self._maskN で N ビット化しており、境界不具合を防止。
+
+改善余地
+ドメイン毎のテーブル化（mark1/mark2/jmark の事前表を用意）で分岐削減。
+exec_solutions の巨大 if-else をディスパッチテーブル化。
+並列化は星座単位が自然（constellations の分割）。
+回帰テストに N=8,10,12,13 の既知 Total を含めると安心。
 
 fedora$ codon build -release 13Py_constellations_codon.py && ./13Py_constellations_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -97,42 +122,102 @@ from datetime import datetime
 
 
 class NQueens13:
+  """
+  星座(Consetellations) を正規化・去同型し、星座ごとに内部ビットDFS（SQ* 群）で
+  Total を合成するエンジン。主な構成:
+    - 低レイヤ: Nビット・ビット演算ユーティリティ（_maskN, pack/unpack, rot/mirror）
+    - 規約化/同型: check_rotations, jasmin, symmetry, symmetry90
+    - 前計算: set_pre_queens（星座ごとの固定クイーン配置を反映）
+    - 実行: exec_solutions（SQ* 群を適切に呼び分け、solutions を星座に書き戻す）
+    - 星座列挙: gen_constellations（i,j,k,l を生成→規約化→前計算エントリ化）
+  注意:
+    - SQ* 群は探索フェーズ別の枝刈り条件を分岐で表現。free/next_free は必ず _maskN で N ビット化。
+  """
+
   def __init__(self)->None:
     pass
 
-  # --- ユーティリティ ----------------------------------------------------
   @staticmethod
   def _maskN(x:int,N:int)->int:
+    """
+    役割: x の下位 N ビットだけを残すマスク（安全ガード）。
+    戻り値: x & ((1<<N) - 1)
+    用途: free/next_free/ld/rd/col の幅を N ビットに制限（オーバーシフト対策）。
+    """
     return x&((1<<N)-1)
 
-  # i,j,k,l の packed/unpacked ユーティリティ
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:
+    """
+    役割: 5ビット×4（最大31）で i,j,k,l を 20ビットにパック。
+    戻り値: (i<<15) + (j<<10) + (k<<5) + l
+    """
     return (i<<15)+(j<<10)+(k<<5)+l
 
-  def geti(self,ijkl:int)->int:
-    return (ijkl>>15)&0x1F
-
-  def getj(self,ijkl:int)->int:
-    return (ijkl>>10)&0x1F
-
-  def getk(self,ijkl:int)->int:
-    return (ijkl>>5)&0x1F
-
-  def getl(self,ijkl:int)->int:
-    return ijkl&0x1F
+  # geti/getj/getk/getl は 5ビット抽出器
+  def geti(self,ijkl:int)->int: return (ijkl>>15)&0x1F
+  def getj(self,ijkl:int)->int: return (ijkl>>10)&0x1F
+  def getk(self,ijkl:int)->int: return (ijkl>>5)&0x1F
+  def getl(self,ijkl:int)->int: return ijkl&0x1F
 
   def rot90(self,ijkl:int,N:int)->int:
+    """
+    役割: (i,j,k,l) を盤面の 90° 回転で写像（packed 20bit のまま回す）。
+    参考（引用）:
+      `((N-1-k)<<15) + ((N-1-l)<<10) + (j<<5) + i`
+    """
     return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
 
   def mirvert(self,ijkl:int,N:int)->int:
+    """
+    役割: 垂直ミラー（上下対称）で写像。
+    参考（引用）:
+      `to_ijkl(N-1-i, N-1-j, l, k)`
+    """
     return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
 
   @staticmethod
-  def ffmin(a:int,b:int)->int:
+  def ffmin(a: int, b: int) -> int:
+    """単純最小値（分岐を明示して JIT/LLVM の最適化を誘発）。"""
     return a if a < b else b
 
-  # --- 主要サブルーチン群（すべての next_free は N ビットでマスク） --------------
   def SQd0B(self,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int,tempcounter:List[int],N:int)->None:
+    """
+    役割:
+      ビットボードDFSの分岐サブルーチン。free集合から LSB を1つずつ取り、
+      (ld, rd, col) を更新して次行へ進める。枝刈りの境界（jmark/mark1/mark2/endmark）
+      に応じて「行スキップ（+1, +2, +3）」や「固定ビット加算（例: `| (1<<N3)`）」を行う。
+    入出力（共通）:
+      ld/rd/col:   衝突ビット（左斜め/右斜め/列）
+      row:         現在の行（または抽象化された段階）
+      free:        可置集合（※ 毎回 `self._maskN(free, N)` で Nビット化）
+      jmark/endmark/mark1/mark2: 境界パラメータ（星座から誘導）
+      tempcounter: 1 要素リスト。葉に到達した回数を加算（例: `tempcounter[0]+=1`）
+      N:           盤サイズ
+    コア定石（引用）:
+      - `free = self._maskN(free, N)`
+      - `while free: bit = free & -free; free &= free - 1; ...`
+      - `next_free = self._maskN(~( (ld'|bit)<<s1 | (rd'|bit)>>s2 | (col'|bit) | 固定ビット ), N)`
+      - 先読み: `lookahead = self._maskN(~(((next_ld<<1)|(next_rd>>1)|next_col)), N)`
+    葉判定:
+      - 例1: `if row == endmark: tempcounter[0]+=1; return`
+      - 例2: `if row == endmark and self._maskN(free & ~1, N): tempcounter[0]+=1`
+    備考:
+      - この関数族は役割／入口条件が異なるだけで「ビットDFS＋枝刈り」の核は共通。
+      - **必ず** free/next_free を `_maskN(..., N)` で N ビットに制限する。
+
+    SQd0B: 「基本分岐。row==endmark で葉。lookahead により最終一歩手前の無駄探索を抑制。」
+    SQd0BkB: 「row==mark1 で 2 行スキップ（<<2, >>2）。N-3 の固定ビット 1<<N3 を加える分岐を含む。」
+    SQd1B: 「row+1 >= endmark か lookahead が立つときのみ再帰（1段先読み）。」
+    SQd1BlB: 「row==mark2 の分岐で ((ld|bit)<<2)|1 を用い2行先へジャンプ。」
+    SQd1BkB: 「row==mark2 分岐で N-3 固定ビットを右斜めに付与。」
+    SQd2B: 「葉判定で free & ~1 を要求（末尾固定マス除外）。」
+    SQBlBjrB: 「row==mark2 で |1 固定、2 行スキップして SQBjrB へ接続。」
+    SQBjrB: 「row==jmark 分岐：free &= ~1; ld |= 1 で側端固定して以降 SQB へ。」
+    SQB: 「ベース分岐。row==endmark で tempcounter[0]+=1。」
+    ※他の SQ* も上記を参考に、分岐ごとの「固定ビットの付与」「シフト量」「行スキップ幅」だけ一行追記してください。
+
+    """
+
     mask=(1<<N)-1
     if row==endmark:
       tempcounter[0]+=1
@@ -592,14 +677,23 @@ class NQueens13:
       if next_free:
         self.SQBjlBlkBjrB((ld|bit)<<1,(rd|bit)>>1,col|bit,row+1,next_free,jmark,endmark,mark1,mark2,tempcounter,N)
 
-  # --- 対称性 -------------------------------------------------------------
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
+    """
+    役割: 候補 (i,j,k,l) に対し、90/180/270°回転像が既に集合にあるかをチェック。
+    実装（引用）: rot90/180/270 を計算して `any(rot in ijkl_list for rot in (...))`
+    戻り値: 重複が見つかれば True（= スキップ推奨）
+    """
     rot90=((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i
     rot180=((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k)
     rot270=(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)
     return any(rot in ijkl_list for rot in (rot90,rot180,rot270))
 
   def symmetry90(self,ijkl:int,N:int)->bool:
+    """
+    役割: 90°回転で自己一致するかを判定。
+    実装（引用）: 左辺 (i,j,k,l) と右辺 rot90(i,j,k,l) を packed のまま比較。
+    戻り値: True（90°自己同型）/ False
+    """
     return (
       (self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl)
     )==(
@@ -610,6 +704,13 @@ class NQueens13:
     )
 
   def symmetry(self,ijkl:int,N:int)->int:
+    """
+    役割: 星座の同型クラス係数を返す。90°自己同型→2、180°自己同型→4、一般→8。
+    判定（引用）:
+      - `if self.symmetry90(...): return 2`
+      - `if i==N-1-j and k==N-1-l: return 4`
+      - else 8
+    """
     if self.symmetry90(ijkl,N):
       return 2
     if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl):
@@ -617,6 +718,14 @@ class NQueens13:
     return 8
 
   def jasmin(self,ijkl:int,N:int)->int:
+    """
+    役割: 最小端に近い辺を基準に 90°回転を規約化し、必要があれば垂直ミラーする
+          「Jasmin」規約実装。星座を代表形に寄せる。
+    実装（引用）:
+      - `arg` 回だけ `rot90` を適用（min-arg 辺へ回す）
+      - `if j < N-1-j: ijkl = mirvert(ijkl, N)`
+    戻り値: 規約化後の packed 星座
+    """
     # 最小端に近い辺を基準に 90° 回転を規約化し、必要なら垂直ミラー
     arg=0
     min_val=self.ffmin(self.getj(ijkl),N-1-self.getj(ijkl))
@@ -635,8 +744,20 @@ class NQueens13:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
 
-  # --- コンステレーションの前計算 -----------------------------------------
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+    """
+    役割:
+      星座で決まる外周条件 (i,j,k,l) をビットマスク (LD/RD/col) に反映しつつ、
+      盤の上側から `preset_queens` 個の固定クイーンを前配置して「起点状態」を列挙。
+    コア（引用）:
+      - 行スキップ: `if row==k or row==l: ...`（外周で既に塞がる行を飛ばす）
+      - 可置集合: `free = self._maskN(~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row))), N)`
+      - LSB抽出:  `bit = free & -free; free &= free-1`
+      - 保存:      `constellations.append({"ld": ld, "rd": rd, "col": col, "startijkl": row<<20, "solutions": 0})`
+      - カウンタ:  `counter[0] += 1`（星座あたりの起点の個数）
+    注意:
+      - ここで保存する `startijkl` の上位 12bit は開始行（`row<<20`）として使用。
+    """
     mask=(1<<N)-1
     if row==k or row==l:
       self.set_pre_queens(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens)
@@ -652,6 +773,19 @@ class NQueens13:
       self.set_pre_queens((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens)
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
+    """
+    役割:
+      各星座エントリについて、起点行・(i,j,k,l) を復元し、境界（jmark/mark1/mark2/endmark）に
+      応じて適切な `SQ*` サブルーチンへディスパッチ。返ってきた部分解を `symmetry()` の
+      係数（2/4/8）で重み付けして `solutions` に格納。
+    コア（引用）:
+      - 復元: `start = start_ijkl >> 20; ijkl = start_ijkl & ((1<<20)-1)`
+      - 入口マスク: `ld=(ld>>1); rd=(rd>>1); col=(col>>1)|(~((1<<(N-2))-1))`
+      - 先頭 free: `free = self._maskN(~(ld|rd|col), N)`
+      - 分岐例: `if j < (N-3): ... elif j == (N-3): ... elif j == N-2: ... else: ...`
+      - 呼出例: `self.SQBjrB(...)`, `self.SQd2B(...)`, `self.SQd1BlB(...)`, など
+      - 合成: `constellation["solutions"] = temp_counter[0] * self.symmetry(ijkl, N)`
+    """
     small_mask=(1<<(N-2))-1
     temp_counter=[0]
     for constellation in constellations:
@@ -795,8 +929,21 @@ class NQueens13:
       constellation["solutions"]=temp_counter[0]*self.symmetry(ijkl,N)
       temp_counter[0]=0
 
-  # --- 初期星座（i,j,k,l）の列挙と正規化 -----------------------------------
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
+    """
+    役割:
+      星座候補 (i,j,k,l) を列挙→回転重複を `check_rotations()` で排除→
+      角あり星座を追加→`jasmin()` で規約形へ→
+      その後 `set_pre_queens()` を呼んで星座ごとの「起点状態」を蓄積する。
+    コア（引用）:
+      - 角なし星座: `for k in range(1, halfN) ... if not self.check_rotations(...): add`
+      - 角あり星座: `{to_ijkl(0, j, 0, l) ...}`
+      - 規約化:      `ijkl_list = { self.jasmin(c, N) for c in ijkl_list }`
+      - 事前反映:    `LD, RD = (L>>j)|(L>>l), (L>>j)|(1<<k)` など個別マスクを組み立てて
+                     `set_pre_queens(...)` を実行
+      - `startijkl` の後詰め: `...["startijkl"] |= to_ijkl(i,j,k,l)`
+    """
+
     halfN=(N+1) // 2
     # 角に Q がない開始星座
     ijkl_list.update(
@@ -829,8 +976,17 @@ class NQueens13:
 
 
 class NQueens13_constellations:
+  """
+  ドライバ/CLI。小 N はフォールバック（_bit_total）、
+  N>=6 は NQueens13 の星座前計算 → 実行で Total を表示（Unique は 0）。
+  """
 
   def _bit_total(self,size:int)->int:
+    """
+    役割: 小 N（例: <=5）の検算用に、素朴なビットDFSで Total を算出。
+    コア（引用）: `bitmap = mask & ~(left | down | right)`, `bit = -bitmap & bitmap`
+    """
+
     # 小さなNは正攻法で数える（対称重みなし・全列挙）
     mask=(1<<size)-1
     total=0
@@ -848,6 +1004,16 @@ class NQueens13_constellations:
     return total
 
   def main(self)->None:
+    """
+    役割: N=5..17 を走査。N<=5は `_bit_total`、それ以外は
+          `NQueens13().gen_constellations(...) → exec_solutions(...) → 合算`。
+    出力（引用）:
+      `print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")`
+    注意:
+      - range の上限は含まれない（18 を含めるなら nmax=19）。
+      - I/O は計測に影響。ベンチ時は出力抑制を検討。
+    """
+
     nmin:int=5
     nmax:int=18
     preset_queens:int=4

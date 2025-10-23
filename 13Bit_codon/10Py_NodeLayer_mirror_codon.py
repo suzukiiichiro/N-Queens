@@ -50,32 +50,42 @@ Bash、Lua、C、Java、Python、CUDAまで！
 https://github.com/suzukiiichiro/N-Queens
 """
 
+"""
+N-Queens：ノードレイヤー法 + ミラー対称削減（Totalのみ計数）
+==========================================================
+ファイル: 10Py_node_layer_mirror_total.py
+作成日: 2025-10-23
+
+概要:
+  - ビット演算DFSを frontier（深さk）で分割し、部分状態(left,down,right)をノードとして蓄積。
+  - 各ノードから完全探索（_solve_from_node）を行うことで Total（全解数）を算出。
+  - 左右対称の重複を除くため、初手を左半分に制限し、奇数Nでは中央列を別途処理。
+  - Unique（代表解数）は未算出（常に0）。
+
+設計のポイント（実ソース引用）:
+  - 可置集合: `bitmap = mask & ~(left | down | right)`
+  - LSB抽出:  `bit = -bitmap & bitmap`
+  - frontier条件: `_popcount(down) == k`
+  - 対称削減:
+      - 偶数N → 左半分の初手のみを探索し、結果×2
+      - 奇数N → 左半分×2 + 中央列（左右対称で唯一）
+
+利点:
+  - ノードレイヤー分割により、frontier以降は完全独立 → 並列化が容易。
+  - 左右対称削減により探索量をおよそ半減。
+  - Codon環境では @par 付与で大規模並列化に直結。
+
+用途:
+  - CPU/GPU 並列化テスト
+  - Codon コンパイル・ビット演算最適化実験
+  - Total 確認（Unique が不要な性能検証）
+
+著者: suzuki / nqdev
+ライセンス: MIT（必要に応じて変更）
+"""
+
 
 """
-10Py_NodeLayer_mirror_codon.py（レビュー＆注釈つき）
-
-目的:
-- ノードレイヤー法 + 左右ミラー対称を用いて探索量を半減。
-- 偶数Nは「左半分のみ列挙→×2」、奇数Nは中央列を別途1回だけ列挙（×2しない）。
-- 収集した frontier ノード（left,down,right）から完全探索して合計。
-
-主な修正/指摘:
-- **Codon 向けに全フィールドをクラス先頭で型宣言**。
-- `bitmap_solve_nodeLayer()` と `kLayer_nodeLayer_recursive()` の**シフト規約を統一**
-  （次行へ `left<<=1`, `right>>=1` の伝播）。
-- **奇数Nの中央列**はミラーと同一になるため **倍加しない**。左半分と中央を分離集計。
-- `mask` は毎回 `(1<<size)-1` を作る代わりに、呼び出しごとに渡す/初期化で保持。
-- `bitmap` 更新は `^=`（= `&~bit`）で簡潔に。
-
-用語:
-- `left`  : ↙（次行で `<<1`）
-- `down`  : 縦（列）
-- `right` : ↘（次行で `>>1`）
-- `mask`  : 下位 N ビットが 1
-
-既知の落とし穴（元コードのバグポイント）:
-- **odd N で中央列も×2してしまう**と重複カウントになります（本修正版は分離集計）。
-
 
 fedora$ codon build -release 10Py_NodeLayer_mirror_codon.py && ./10Py_NodeLayer_mirror_codon
  N:        Total       Unique        hh:mm:ss.ms
@@ -99,6 +109,18 @@ from typing import List
 
 
 class NQueens10:
+  """
+  ノードレイヤー + ミラー対称削減による Total 計数クラス。
+  構成:
+    - `_collect_nodes`: 深さkのfrontierを再帰的に収集
+    - `_collect_nodes_mirror`: 左右対称を考慮したfrontier構築
+    - `_solve_from_node`: frontierノードから葉まで完全探索
+    - `solve_with_mirror_layer`: 外部API（k指定でTotalを返す）
+  注意:
+    - Uniqueは算出しない。
+    - kを大きくするとfrontierが増える → 並列粒度が細かくなる。
+  """
+
   # Codon向け: フィールドを事前宣言
   size:int
   mask:int
@@ -107,10 +129,21 @@ class NQueens10:
     self.size=0
     self.mask=0
 
-  # ------------------------------------------------------------
-  # 部分状態からの完全探索（down==mask で 1 解）
-  # ------------------------------------------------------------
   def _solve_from_node(self,left:int,down:int,right:int)->int:
+    """
+    役割:
+      部分状態 (left, down, right) から完全探索を行い、葉まで到達した解をカウント。
+    停止条件:
+      `if down == self.mask: return 1`
+    コア（引用）:
+      - 可置集合: `bitmap = self.mask & ~(left | down | right)`
+      - LSB抽出:  `bit = -bitmap & bitmap`
+      - 伝播:      `self._solve_from_node((left|bit)<<1, (down|bit), (right|bit)>>1)`
+    備考:
+      - 各呼び出しは状態をコピーせずビット演算のみで更新するため高速。
+      - frontier単位で完全独立 → 並列化ポイントに適する。
+    """
+
     if down==self.mask:
       return 1
     total=0
@@ -121,12 +154,18 @@ class NQueens10:
       total+=self._solve_from_node((left|bit)<<1,(down|bit),(right|bit)>>1)
     return total
 
-  # ------------------------------------------------------------
-  # 深さ k まで frontier（ノード: left,down,right）を構築
-  # `countBits(down)==k` で停止し、三つ組を nodes に push
-  # ------------------------------------------------------------
   @staticmethod
   def _popcount(n:int)->int:
+    """
+    役割:
+      整数 n の set bit 数（1 の数）を返す。
+    アルゴリズム:
+      Brian Kernighan 法:
+        while n:
+          n &= n - 1
+          count += 1
+    """
+
     c=0
     while n:
       n&=n-1
@@ -134,6 +173,21 @@ class NQueens10:
     return c
 
   def _collect_nodes(self,k:int,nodes:List[int],left:int,down:int,right:int)->int:
+    """
+    役割:
+      深さ k の frontier ノードを再帰的に収集。
+    条件:
+      `if self._popcount(down) == k:` → 現在の部分状態を frontier とみなし nodes に push。
+    格納形式:
+      nodes = [l0, d0, r0, l1, d1, r1, ...]
+    コア（引用）:
+      - 可置集合: `bitmap = self.mask & ~(left | down | right)`
+      - LSB抽出:  `bit = -bitmap & bitmap`
+      - 伝播:      `self._collect_nodes(k, nodes, (left|bit)<<1, (down|bit), (right|bit)>>1)`
+    戻り値:
+      収集したノード数（int）
+    """
+
     if self._popcount(down)==k:
       nodes.extend((left,down,right))
       return 1
@@ -145,12 +199,24 @@ class NQueens10:
       total+=self._collect_nodes(k,nodes,(left|bit)<<1,(down|bit),(right|bit)>>1)
     return total
 
-  # ------------------------------------------------------------
-  # ミラー対称を使った frontier 構築：
-  #  - 偶数N: 左半分の初手のみ（列 0..N/2-1）→ 後で×2
-  #  - 奇数N: 左半分（0..N//2-1）を left_half、中央列（N//2）を center として分離集計
-  # ------------------------------------------------------------
   def _collect_nodes_mirror(self,k:int)->tuple[List[int],List[int]]:
+    """
+    役割:
+      左右対称を考慮した frontier 構築。
+    手順:
+      - 偶数N: 左半分（0..N//2-1）の初手だけ探索し、結果×2。
+      - 奇数N: 左半分に加えて中央列（N//2）を別途処理。
+    実装（引用）:
+      for col in range(half):
+          bit = 1 << col
+          self._collect_nodes(k, nodes_left, bit<<1, bit, bit>>1)
+      if N が奇数:
+          bit = 1 << (N//2)
+          self._collect_nodes(k, nodes_center, bit<<1, bit, bit>>1)
+    戻り値:
+      (nodes_left, nodes_center)
+    """
+
     nodes_left:List[int]=[]   # 左半分初手のノード
     nodes_center:List[int]=[] # 中央列初手（奇数のみ）
     half=self.size//2
@@ -165,14 +231,27 @@ class NQueens10:
       self._collect_nodes(k,nodes_center,bit<<1,bit,bit>>1)
     return nodes_left,nodes_center
 
-  # ------------------------------------------------------------
-  # 外側 API：ノードレイヤー + ミラー
-  # k は 4 を標準（環境に応じて調整）
-  # ------------------------------------------------------------
   def solve_with_mirror_layer(self,size:int,k:int=4)->int:
+    """
+    役割:
+      ノードレイヤー＋ミラー対称による Total 計数の外部API。
+    手順:
+      1. `mask = (1 << size) - 1`
+      2. `_collect_nodes_mirror(k)` で frontier を構築。
+      3. 各ノードについて `_solve_from_node()` で完全探索。
+      4. 集計:
+         - 偶数N → 左半分結果×2
+         - 奇数N → 左半分×2 + 中央列そのまま
+    出力:
+      Total（全解数）
+    チューニング:
+      - k を増やすほど並列化粒度が細かくなるが、frontier数が急増。
+      - Codon 環境では @par デコレータでこのループを並列化可能。
+    """
+
     self.size=size
     self.mask=(1<<size)-1
-    # frontier を構築
+    # frontierノード3要素(left,down,right)は完全独立のため、
     nodes_left,nodes_center=self._collect_nodes_mirror(k)
     total_left=0
     total_center=0
