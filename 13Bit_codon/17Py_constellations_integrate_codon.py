@@ -53,127 +53,54 @@ https://github.com/suzukiiichiro/N-Queens
 """
 
 """
-N-Queens 高速ソルバ (NQueens17) — レビュー & 実装ノート
-=====================================================
+ N-Queens 高速ソルバ（NQueens17）
+   - ビットボード + “星座（Constellation）”分割探索
+   - 回転・鏡像対称の正規化（Jasmin）と重複補正（symmetry）
+   - 事前配置（preset_queens）で探索を分割し、部分盤面ごとにDFS
+   - メモ化・キャッシュ（sub-constellation/state/Zobrist/星座I/O）
 
-■ 全体像
-- 本実装は「星座 (constellation)」= 事前に 3〜4 個のクイーンを置いた部分盤面を起点に、
-  それぞれを独立に深さ優先探索 (DFS) で解数を数える分割統治法。
-  - 代表列挙: `gen_constellations()` が対称性・回転対称を除去したサブ盤面を生成
-    （`check_rotations()`, `jasmin()` による正規化）。
-  - 解探索: `exec_solutions()` がサブ盤面ごとに最適化された分岐を選び、
-    汎用化された `dfs()` の 1 本化ループでカウント。
-  - 対称補正: `symmetry()` で 90°, 180°, ミラーを勘案して重複補正。
+ ■ 目的
+   大きめの N でも高速に全解数を数える。探索の“入口”を「星座」で細分化し、
+   各星座を最適な分岐（SQ* 系）で解く。
 
-■ 主要データ表現
-- 盤面ビットボード: 列 / 左右対角の占有をビットで持つ（`ld`, `rd`, `col`）。
-- 4 点の代表座標 (i, j, k, l) を 5bit × 4 = 20bit にパック: `to_ijkl()`。
-- Zobrist Hash を導入しうる設計（`mix64()`, `gen_list()`, `init_zobrist()`, `zobrist_hash()`）。
+ ■ この実装のキモ
+   - 64bit マスク定義:  MASK64 = (1<<64) - 1
+   - Zobrist の永続キャッシュ:  self.zobrist_tables[N] を使い回し
+       -> zobrist_hash() は必ず self.init_zobrist(N) を呼んでから参照
+          例: self.init_zobrist(N); tbl = self.zobrist_tables[N]
+   - N ビット正規化の徹底（上位ビット落とし/負数対策）
+          ld &= (1<<N)-1; rd &= (1<<N)-1; col &= (1<<N)-1; ...
+   - 盤面の正規化: jasmin() で (i,j,k,l) を回転/鏡像して代表形へ
+   - 対称重複補正: symmetry(ijkl,N) が 2/4/8 を返し、解数を補正
+   - 探索の枝刈り:
+       * state_hash (軽量O(1)) で visited を管理（衝突許容）
+       * Zobrist（低衝突）も使用可（N<=17 では O(1)版で十分）
+   - DFS の一本化（dfs()）:
+       SQ* の分岐を function id + メタ情報（func_meta）に集約し、分岐・先読み・ブロックを
+       同じ配置ループで処理して高速化。
 
-■ 速度の肝
-- 「分岐の前計算」を `exec_solutions()` で行い、DFS 本体は `dfs()` 1 本化。
-  - `func_meta = [(next_funcid, funcptn, availptn), ...]` により
-    「mark 行での step=2/3」「jmark 行での特殊」「ゴール判定」「+1 先読み」などを
-    汎用ループに畳み込み、関数分岐のコストを削減。
-- サブコンステレーション生成では、行固定 (k,l) を強制配置して分枝を極限まで減らす（`set_pre_queens()`）。
+ ■ パフォーマンスの要点
+   - ループ内辞書アクセスの削減（ローカル束縛）:
+       ld_tbl, rd_tbl = tbl['ld'], tbl['rd'] など
+   - “立っているビットのみ”の走査（必要なら差し替え可）
+   - SoA 配列化 → exec_solutions() の前処理で配列へ詰め、並列セクションを軽量化
 
-■ よくできている点
-- 代表列挙の中で「Jasmin 正規化（回転/ミラーの規約化）」を行うことで、探索開始点を最左上へ寄せ、
-  さらに `check_rotations()` で回転重複を抑止している。
-- DFS の「未来 1 行の先読み」(`use_future`) による早期枝刈り。
-- SoA（配列 of フィールド）化して、並列化区間のループ体を軽量化。
+ ■ 注意/設計上のポイント
+   - Zobrist 初期化は必ず init_zobrist() 経由で。zobrist_hash() 内で new dict を作らない。
+   - N ビット正規化を忘れるとハッシュ不一致・誤カウントの原因に。
+   - set_pre_queens_* の visited はキー衝突に留意（N<=17 では実害少）。
+   - I/O キャッシュ（.txt / .bin）読込時は validate_* でフォーマット検証。
 
-■ 注意/改善ポイント（重要）
-1) Zobrist 初期化とキャッシュが実質無効
-   - `init_zobrist(self, N, zobrist_tables)` は `self.zobrist_tables` を参照しますが、
-     クラスに `self.zobrist_tables` が存在しません。
-     しかも `zobrist_hash()` 側で毎回 `zobrist_tables = {}` を新規作成しており、
-     テーブルがキャッシュされません。
-     → 【修正案】
-       - コンストラクタで `self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}` を持つ。
-       - `init_zobrist()` は `self.zobrist_tables` を埋める形に（返り値でなく副作用）。
-       - `zobrist_hash()` は `self.init_zobrist(N)` だけ呼び、`tbl = self.zobrist_tables[N]` を使用。
+ ■ 代表的な引用
+   - “64bit マスク”： MASK64 = (1<<64) - 1
+   - “Zobrist テーブル使用”：
+        self.init_zobrist(N); tbl = self.zobrist_tables[N]
+   - “N ビット正規化”：
+        mask = (1<<N)-1; ld &= mask; rd &= mask; col &= mask; LD &= mask; RD &= mask
+   - “回転/鏡像の正規化（Jasmin）”： jasmin(ijkl, N)
+   - “対称重複補正”： symmetry(ijkl, N) -> {2,4,8}
+   - “一本化 DFS”： dfs(functionid, ld, rd, col, row, free, ...)
 
-2) `get_jasmin()` のキャッシュが毎回空
-   - `jasmin_cache` をローカルで `={}` 初期化しているため、呼ぶたびに空になります。
-     → 【修正案】`self.jasmin_cache: Dict[Tuple[int,int], int] = {}` を用意し、そこを使う。
-
-3) `set_pre_queens_cached()` のサブコンステキャッシュが毎回空
-   - `subconst_cache: Set[StateKey] = set()` を関数ローカルで初期化しており効果なし。
-     → 【修正案】`self.subconst_cache: Set[StateKey]` をコンストラクタで確保・再利用。
-
-4) `init_zobrist()` の返り値と `return` がちぐはぐ
-   - `init_zobrist()` は `tbl` を返していますが、`if N in self.zobrist_tables: return` と
-     `None` を返す経路があり、呼び出し側の `tbl = self.init_zobrist(...)` が破綻します。
-     → 【修正案】副作用専用にして返さない。呼び出し側は `self.zobrist_tables[N]` を参照。
-
-5) 未使用/混乱しやすい import
-   - `import pickle, os` は現状未使用。使わないなら削除推奨。
-
-6) バイナリ I/O の注意（Codon 想定コメントは残しつつ）
-   - `save_constellations_bin()` で `f.write("".join(chr(c) for c in b))` は
-     CPython では `TypeError`（`bytes` を書くべき）。用途に応じて分岐/注釈を。
-
-■ 代表的な修正パッチ（抜粋）
-- コンストラクタを追加し、キャッシュをフィールド化：
-
-    class NQueens17:
-        def __init__(self) -> None:
-            self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
-            self.jasmin_cache: Dict[Tuple[int, int], int] = {}
-            self.subconst_cache: Set[StateKey] = set()
-
-- init_zobrist を副作用化：
-
-    def init_zobrist(self, N: int) -> None:
-        MASK64 = (1 << 64) - 1
-        if N in self.zobrist_tables:
-            return
-        base_seed = (0xC0D0_0000_0000_0000 ^ (N << 32)) & MASK64
-        g = self.gen_list
-        self.zobrist_tables[N] = {
-            'ld': g(N, base_seed ^ 0x01),
-            'rd': g(N, base_seed ^ 0x02),
-            'col': g(N, base_seed ^ 0x03),
-            'LD': g(N, base_seed ^ 0x04),
-            'RD': g(N, base_seed ^ 0x05),
-            'row': g(N, base_seed ^ 0x06),
-            'queens': g(N, base_seed ^ 0x07),
-            'k': g(N, base_seed ^ 0x08),
-            'l': g(N, base_seed ^ 0x09),
-        }
-
-- zobrist_hash からローカル dict を排除：
-
-    def zobrist_hash(...):
-        self.init_zobrist(N)
-        tbl = self.zobrist_tables[N]
-        ...
-
-- get_jasmin のキャッシュをフィールドへ：
-
-    def get_jasmin(self, c: int, N: int) -> int:
-        key = (c, N)
-        if key in self.jasmin_cache:
-            return self.jasmin_cache[key]
-        v = self.jasmin(c, N)
-        self.jasmin_cache[key] = v
-        return v
-
-- set_pre_queens_cached のキャッシュをフィールドへ：
-
-    def set_pre_queens_cached(...):
-        key: StateKey = (...)
-        if key in self.subconst_cache:
-            return
-        self.set_pre_queens(...)
-        self.subconst_cache.add(key)
-
-■ テスト観点
-- 代表値: N=5..17 の既知総数に一致（`expected` 比較）。
-- キャッシュ有効化後も一致を満たすこと（衝突や誤枝刈りがないか）。
-- .bin/.txt の保存/復元の相互一致。
-- `jasmin()` 正規化の冪等性（jasmin(jasmin(x)) == jasmin(x)）。
 """
 
 
@@ -223,10 +150,17 @@ from datetime import datetime
 
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
+MASK64 = (1<<64)-1
 class NQueens17:
+  def __init__(self)->None:
+    self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
+    self.jasmin_cache: Dict[Tuple[int,int], int] = {}
+    # サブコンステレーション生成状態のメモ化（実行中の重複再帰を抑制）
+    self.subconst_cache: Set[StateKey] = set()
+
   def mix64(self,x:int)->int:
     """splitmix64 のミキサ最終段。64bit 値 x を (>>/XOR/乗算) の 3 段で拡散して返す。 Zobrist テーブルの乱数品質を担保するために使用。"""
-    MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
+    # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
     x&=MASK64
     x=(x^(x>>30))*0xBF58476D1CE4E5B9&MASK64
     x=(x^(x>>27))*0x94D049BB133111EB&MASK64
@@ -235,7 +169,7 @@ class NQueens17:
 
   def gen_list(self,cnt:int,seed:int)->List[int]:
     """Zobrist テーブル用の 64bit 乱数を cnt 個生成してリストで返す。 seed は splitmix64 のインクリメント規約 (0x9E3779B97F4A7C15) に従って更新。"""
-    MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
+    # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
     out:List[int]=[]
     s:int=seed&MASK64
     _mix64=self.mix64
@@ -245,9 +179,9 @@ class NQueens17:
       out.append(_mix64(s))
     return out
 
-  def init_zobrist(self,N:int,zobrist_tables:Dict[int,Dict[str,List[int]]])->Dict[int,Dict[str,List[int]]]:
+  def init_zobrist(self,N:int)->None:
     """Zobrist テーブルを N ごとに初期化する。キーは 'ld','rd','col','LD','RD','row','queens','k','l'。 ※ キャッシュは self.zobrist_tables[N] に格納して再利用する。"""
-    MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
+    # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
     if N in self.zobrist_tables:
       return
     base_seed:int=(0xC0D0_0000_0000_0000^(N<<32))&MASK64
@@ -263,50 +197,72 @@ class NQueens17:
       'k':gen_list(N,base_seed^0x08),
       'l':gen_list(N,base_seed^0x09),
     }
-    # self.zobrist_tables[N]=tbl
-    return tbl
+    self.zobrist_tables[N]=tbl
 
   def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
     """(ld, rd, col, LD, RD, row, queens, k, l) を Zobrist Hash によって 64bit にまとめる。 各マスクは N ビットに正規化してから XOR 混合する。衝突確率の低い探索済み判定に利用可能。"""
-    MASK64:int=(1<<64)-1
-    zobrist_tables:Dict[int,Dict[str,List[int]]]={}
-    tbl=self.init_zobrist(N,zobrist_tables)
-    h=0
+    # MASK64:int=(1<<64)-1
+
+    # 1) テーブルを（必要なら）構築
+    self.init_zobrist(N)
+    # 2) 構築済みキャッシュを参照
+    tbl = self.zobrist_tables[N]
+
+    # zobrist_tables:Dict[int,Dict[str,List[int]]]={}
+    # tbl=self.init_zobrist[N]
+
+    # 3) ループ内で tbl['ld'][i] などの辞書アクセスを都度行うと遅いので、先にローカル束縛にすると微速化します：
+    ld_tbl, rd_tbl, col_tbl = tbl['ld'], tbl['rd'], tbl['col']
+    LD_tbl, RD_tbl = tbl['LD'], tbl['RD']
+    row_tbl, q_tbl, k_tbl, l_tbl = tbl['row'], tbl['queens'], tbl['k'], tbl['l']
+
+    # 4) N ビットへ正規化（上位ビットや負数を落とす）
     mask=(1<<N)-1
     ld&=mask
     rd&=mask
     col&=mask
     LD&=mask
     RD&=mask
+
+    # 5) 各ビットを見て XOR
+    h=0
     m=ld;i=0
     while i<N:
       if (m&1)!=0:
-        h^=tbl['ld'][i]
+        # h^=tbl['ld'][i]
+        h^=ld_tbl[i]
       m>>=1;i+=1
     m=rd;i=0
     while i<N:
       if (m&1)!=0:
-        h^=tbl['rd'][i]
+        # h^=tbl['rd'][i]
+        h^=rd_tbl[i]
       m>>=1;i+=1
     m=col;i=0
     while i<N:
       if (m&1)!=0:
-        h^=tbl['col'][i]
+        # h^=tbl['col'][i]
+        h^=col_tbl[i]
       m>>=1;i+=1
     m=LD;i=0
     while i<N:
       if (m&1)!=0:
-        h^=tbl['LD'][i]
+        # h^=tbl['LD'][i]
+        h^=LD_tbl[i]
       m>>=1;i+=1
     m=RD;i=0
     while i<N:
       if (m&1)!=0:
-        h^=tbl['RD'][i]
+        # h^=tbl['RD'][i]
+        h^=RD_tbl[i]
       m>>=1;i+=1
-    if 0<=row<N:h^=tbl['row'][row]
-    if 0<=queens<N:h^=tbl['queens'][queens]
-    if 0<=k<N:h^=tbl['k'][k]
-    if 0<=l<N:h^=tbl['l'][l]
+
+    # 行数・個数・強制行などスカラー要素
+    if 0 <= row    < N: h ^= row_tbl[row]
+    if 0 <= queens < N: h ^= q_tbl[queens]
+    if 0 <= k      < N: h ^= k_tbl[k]
+    if 0 <= l      < N: h ^= l_tbl[l]
+
     return h&MASK64
 
   """(i,j,k,l) を 5bit×4=20bit にパック/アンパックするユーティリティ。 mirvert は上下ミラー（行: N-1-?）＋ (k,l) の入れ替えで左右ミラー相当を実現。"""
@@ -325,15 +281,16 @@ class NQueens17:
   """与えた (i,j,k,l) の 90/180/270° 回転形が既出集合 ijkl_list に含まれるかを判定する。"""
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
 
-  """Jasmin 正規化のキャッシュ付ラッパ。盤面パック値 c を回転/ミラーで規約化した代表値を返す。 ※ キャッシュは self.jasmin_cache[(c,N)] に保持。"""
-  """ [Opt-08] キャッシュ付き jasmin() のラッパー """
   def get_jasmin(self,c:int,N:int)->int:
-    jasmin_cache:Dict[Tuple[int,int],int]={}
+    """ Jasmin 正規化のキャッシュ付ラッパ。盤面パック値 c を回転/ミラーで規約化した代表値を返す。
+    ※ キャッシュは self.jasmin_cache[(c,N)] に保持。
+    [Opt-08] キャッシュ付き jasmin() のラッパー """
+    # jasmin_cache:Dict[Tuple[int,int],int]={}
     key=(c,N)
-    if key in jasmin_cache:
-        return jasmin_cache[key]
+    if key in self.jasmin_cache:
+        return self.jasmin_cache[key]
     result=self.jasmin(c,N)
-    jasmin_cache[key]=result
+    self.jasmin_cache[key]=result
     return result
 
   def jasmin(self,ijkl:int,N:int)->int:
@@ -676,17 +633,27 @@ class NQueens17:
     for i,constellation in enumerate(constellations):
       constellation["solutions"]=results[i]
 
-  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]]):
+  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
     """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
-    subconst_cache:Set[StateKey]=set()
-    if key in subconst_cache:
-      # 以前に同じ状態で生成済み → 何もしない（または再利用）
+
+
+    # subconst_cache:Set[StateKey]=set()
+    # インスタンス共有キャッシュを使う（ローカル初期化しない！）
+    sc = self.subconst_cache
+    if key in sc:
       return
+    # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
+    sc.add(key)
+
+    # if key in subconst_cache:
+    #   # 以前に同じ状態で生成済み → 何もしない（または再利用）
+    #   return
+
     # 新規実行（従来通りset_pre_queensの本体処理へ）
     self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
     # subconst_cache[key] = True  # マークだけでOK
-    subconst_cache.add(key)
+    # subconst_cache.add(key)
 
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
     """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
@@ -745,6 +712,10 @@ class NQueens17:
 
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
+    # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
+    # 長時間プロセスなら念のためクリアしておくのが安全）
+    self.subconst_cache.clear()
+
     halfN=(N+1)//2  # Nの半分を切り上げ
     N1:int=N-1
     constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
