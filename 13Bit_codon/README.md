@@ -337,8 +337,410 @@ N-Queens Nの計測
 > CodonはPythonコードを高速化するコンパイラで、通常のPythonと比較して10倍から100倍、C/C++に匹敵する速度を実現します。これは、実行前に型チェックを行い、コードをネイティブマシンコードにコンパイルすることで、Pythonの実行時オーバーヘッドを回避するためです。また、並列処理にも対応し、さらなる速度向上が期待できます
 
 
+### 5.3 最適化項目
+> **第5章：章内ミニ目次**
+>
+> - [Opt-02-1：左右対称性除去（初手左半分／コーナー分岐）](#opt-02-1)
+> - [Opt-02-2：中央列特別処理（奇数 N）](#opt-02-2)
+> - [Opt-02-3：コーナーあり／なし分岐](#opt-02-3)
+> - [Opt-02-4：生成後の正準化（Jasmin）](#opt-02-4)
+> - [Opt-02-5：対称性の重み付けで整合](#opt-02-5)
+> - [Opt-03：角位置分岐・COUNT分類（2/4/8）](#opt-03)
+> - [Opt-04：180°対称除去](#opt-04)
+> - [Opt-05：並列処理（初手分割）@par](#opt-05)
+> - [Opt-06：角位置（col==0）分岐＆COUNT分類](#opt-06)
+> - [Opt-07：（却下）1行目以外の部分対称除去](#opt-07)
+> - [Opt-08：部分盤面サブ問題キャッシュ](#opt-08)
+> - [Opt-09：訪問済み（transposition/visited）](#opt-09)
+> - [Opt-10：Jasmin 正規化キャッシュ](#opt-10)
+> - [Opt-11：星座（コンステレーション）重複排除](#opt-11)
+> - [Opt-12：永続キャッシュ（現状は無効化中）](#opt-12)
+> - [Opt-13：部分盤面キャッシュ（tuple→dict）](#opt-13)
+> - [Opt-14：星座の重複排除（署名）](#opt-14)
+> - [Opt-15：Jasmin 変換のメモ化](#opt-15)
+> - [Opt-16：visited の仕込み（星座ごとに new）](#opt-16)
+> - [Opt-17：星座リストの外部キャッシュ（ファイル）](#opt-17)
+> - [Opt-18：サブコンステ生成の tuple key キャッシュ](#opt-18)
+> - [Opt-19：星座を tuple/hash で一意管理](#opt-19)
+> - [Opt-20：Jasmin 変換キャッシュ（クラス／グローバル）](#opt-20)
+> - [Opt-21：180°重複チェックの二重化（整理）](#opt-21)
+> - [Opt-22：visited の粒度（星座単位）](#opt-22)
+> - [Opt-23：ビット演算のインライン化](#opt-23)
+> - [Opt-24：“先読み空き” 条件の短絡評価](#opt-24)
+
+
+以下は「**第5章：N-QueensソルバーのCodon実装**」にそのまま追記できる **Markdown 版** です。
+（見出し・コードブロック整形済み／README互換）
 
 ---
+
+### ✅ [Opt-02-1] 左右対称性除去（初手左半分／コーナー分岐で重複生成排除）<a id="opt-02-1"></a>
+
+* **1 行目の列を `0 ～ (N//2 − 1)` に制限**して、左右対称の鏡像を最初から生成しない。
+* `gen_constellations` 内の `for k in range(1, halfN)` が「左半分だけ」を担保。
+* **コーナーあり／なし**を分けて生成し、混在重複を避ける。
+
+```python
+# 関数: gen_constellations(...)
+halfN = (N + 1) // 2
+# コーナーにクイーンがいない開始コンステレーション
+ijkl_list.update(
+  self.to_ijkl(i, j, k, l)
+  for k in range(1, halfN)                  # ← 左半分だけ
+  for l in range(k + 1, N - 1)
+  for i in range(k + 1, N - 1)
+  if i != (N - 1) - l
+  for j in range(N - k - 2, 0, -1)
+  if j != i and j != l
+  if not self.check_rotations(ijkl_list, i, j, k, l, N)
+)
+```
+
+> `k in range(1, halfN)` が「最上段の列を左半分に制限」に相当。
+> 生成段階で左右対称（鏡像）を出さない設計。
+
+---
+
+### ✅ [Opt-02-2] 中央列特別処理（奇数 N）<a id="opt-02-2"></a>
+
+* **奇数 N の中央列**は左右対称の軸。専用ルールで重複を抑止。
+* `rot180_in_set` により **180°回転の重複**も除去。
+
+```python
+# 2) 奇数盤での中央列（対称軸）を特別処理
+if N % 2 == 1:
+  center = N // 2
+  ijkl_list.update(
+    self.to_ijkl(i, j, center, l)
+    for l in range(center + 1, N - 1)
+    for i in range(center + 1, N - 1)
+    if i != (N - 1) - l
+    for j in range(N - center - 2, 0, -1)
+    if j != i and j != l
+    if not self.check_rotations(ijkl_list, i, j, center, l, N)
+    if not self.rot180_in_set(ijkl_list, i, j, center, l, N)
+  )
+```
+
+---
+
+### ✅ [Opt-02-3] コーナーあり／なしを明確に分岐<a id="opt-02-3"></a>
+
+* **コーナーにクイーンがある**開始コンステレーションを独立生成し、混在重複を回避。
+
+```python
+# コーナーにクイーンがある開始コンステレーション
+ijkl_list.update({
+  self.to_ijkl(0, j, 0, l)
+  for j in range(1, N - 2)
+  for l in range(j + 1, N - 1)
+})
+```
+
+---
+
+### ✅ [Opt-02-4] 生成後の「正準化」（Jasmin）で回転・鏡像を一本化<a id="opt-02-4"></a>
+
+* 生成済みの候補を **Jasmin 正準形**に畳み込み、回転・鏡像の重複を圧縮。
+
+```python
+# Jasmin で正準形に統合
+ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
+```
+
+---
+
+### ✅ [Opt-02-5] カウント側は対称性の重み付けで整合<a id="opt-02-5"></a>
+
+* **生成側**で対称を抑え、**集計側**で群の位数（2/4/8）を掛けて総数を復元。
+
+```python
+# 関数: exec_solutions(...)
+constellation["solutions"] = cnt * self.symmetry(ijkl, N)
+```
+
+> **結論**
+> 「最上段は左半分だけ」「奇数盤の中央列は特別処理」「コーナーあり／なしの分岐」「Jasmin正準化」の四段構えで Opt-02 は適用済み。
+> さらに `symmetry()` による重み付けで総数が過不足なく一致。
+
+---
+
+### ✅ [Opt-03] 角位置分岐・COUNT分類（2/4/8）<a id="opt-03"></a>
+
+**A) 角（コーナー）あり／なしを生成段階で分岐**
+
+```python
+# コーナーなし
+ijkl_list.update(
+  self.to_ijkl(i, j, k, l)
+  for k in range(1, halfN) ...
+  if not self.check_rotations(ijkl_list, i, j, k, l, N)
+)
+
+# コーナーあり
+ijkl_list.update({
+  self.to_ijkl(0, j, 0, l)
+  for j in range(1, N - 2)
+  for l in range(j + 1, N - 1)
+})
+```
+
+**B) COUNT 2/4/8 の分類ロジック**
+
+```python
+def symmetry(self, ijkl: int, N: int) -> int:
+    return 2 if self.symmetry90(ijkl, N) else \
+           4 if self.geti(ijkl) == N-1-self.getj(ijkl) and self.getk(ijkl) == N-1-self.getl(ijkl) else 8
+
+def symmetry90(self, ijkl: int, N: int) -> bool:
+    return ((self.geti(ijkl) << 15) + (self.getj(ijkl) << 10) + (self.getk(ijkl) << 5) + self.getl(ijkl)) \
+           == (((N-1-self.getk(ijkl)) << 15) + ((N-1-self.getl(ijkl)) << 10) + (self.getj(ijkl) << 5) + self.geti(ijkl))
+```
+
+**C) 分類倍率の適用（集計段階）**
+
+```python
+cnt = ...  # 代表解のカウント
+constellation["solutions"] = cnt * self.symmetry(ijkl, N)
+```
+
+> *メモ*: `symmetry(...)` の条件には軽い説明コメントを添えておくと保守が楽。
+
+---
+
+### ✅ [Opt-04] 180°対称除去<a id="opt-04"></a>
+
+* `check_rotations(...)` で **90/180/270°** をまとめて照合し重複排除。
+* 奇数盤の中央列では `rot180_in_set(...)` を **追加ガード** として適用。
+
+```python
+# A) 一般ケース（コーナーなし）
+ijkl_list.update(
+  self.to_ijkl(i, j, k, l)
+  ...
+  if not self.check_rotations(ijkl_list, i, j, k, l, N)  # ← 90/180/270 まとめて除去
+)
+
+# B) 奇数盤の中央列
+if N % 2 == 1:
+  ijkl_list.update(
+    self.to_ijkl(i, j, center, l)
+    ...
+    if not self.check_rotations(ijkl_list, i, j, center, l, N)  # 90/180/270
+    if not self.rot180_in_set(ijkl_list, i, j, center, l, N)    # 180°明示チェック（安全策）
+  )
+```
+
+```python
+# C) 仕上げ（正準化）
+ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
+```
+
+> *ひと言*: 中央列での `rot180_in_set` は冗長（`check_rotations`に含む）だが、安全重視なら残してもOK。
+
+---
+
+### ✅ [Opt-05] 並列処理（初手分割） @par<a id="opt-05"></a>
+
+**A) 代表盤面ごとに独立タスク化**
+
+```python
+# 関数: exec_solutions(...)
+@par
+for constellation in constellations:
+    ...
+    cnt = ...  # 代表解を数える
+    constellation["solutions"] = cnt * self.symmetry(ijkl, N)
+```
+
+**B) 集計は並列後に一括**
+
+```python
+# 関数: NQueens14_constellations.main(...)
+NQ.exec_solutions(constellations, size)
+total = sum(c["solutions"] for c in constellations if c["solutions"] > 0)
+```
+
+> *改善余地*: ループ内はローカル変数で計算 → 最後に `dict` に書き戻すと読みやすい。
+
+---
+
+### ✅ [Opt-06] 角位置（`col==0`）分岐＆対称分類（COUNT 2/4/8）<a id="opt-06"></a>
+
+```python
+# コーナー専用の初期星座
+ijkl_list.update({
+  self.to_ijkl(0, j, 0, l)
+  for j in range(1, N - 2)
+  for l in range(j + 1, N - 1)
+})
+
+# 列0ビットの占有（例）
+L = 1 << (N - 1)
+col = 1 | L | (L >> i) | (L >> j)  # ← 1 が列0ビット
+```
+
+* 非コーナー系は「左半分に制限」して重複生成を抑制（前掲の Opt-02-1）。
+* 分類は `symmetry(ijkl, N)` の **2/4/8 倍率**で反映。
+
+---
+
+### ✅ [Opt-07]（却下）1行目以外の部分対称除去<a id="opt-07"></a>
+
+* `board` に行ごとの配置（`row → col`）を保持していないため **現状は不可**。
+* `is_partial_canonical` の設計メモは残しておき、将来的な拡張で検討。
+
+---
+
+### ✅ [Opt-08] 部分盤面サブ問題キャッシュ <a id="opt-08"></a>
+
+* **場所**: `set_pre_queens_cached(...)`
+* **キー**: `(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)`
+* **値**: `subconst_cache[key] = True`
+* **役割**: 同一状態のサブ展開を **一度だけ** にする。
+
+---
+
+### ✅ [Opt-09] 訪問済み（transposition / visited）<a id="opt-09"></a>
+
+* **場所**: `set_pre_queens(...)`
+* **構造**: `visited: Set[int]`（タプルや 64bit 圧縮キー）
+* **役割**: 再帰木で同一状態への再訪を防止。
+
+---
+
+### ✅ [Opt-10] Jasmin 正規化キャッシュ<a id="opt-10"></a>
+
+* **場所**: `get_jasmin(c, N)` / `jasmin_cache: Dict[Tuple[int, int], int]`
+* **役割**: 回転・鏡映の正規化結果をメモ化して再計算を回避。
+
+---
+
+### ✅ [Opt-11] 星座（コンステレーション）重複排除<a id="opt-11"></a>
+
+* **場所**: `constellation_signatures: Set[Tuple[int,int,int,int,int,int]]`
+* **役割**: 生成済み星座の **署名で一意管理**（重複追加を防止）。
+
+---
+
+### ✅ [Opt-12] 永続キャッシュ（現状は無効化中）<a id="opt-12"></a>
+
+* **場所**: `load_constellations(...)` / `pickle`（テキスト・バイナリ両方の I/O ラッパあり）
+* **`__init__` 内の主なキャッシュ**:
+
+  * `self.subconst_cache`, `self.constellation_signatures`,
+  * `self.jasmin_cache`, `self.zobrist_tables`
+
+---
+
+### ✅ [Opt-13] 部分盤面キャッシュ（tuple化→dict）<a id="opt-13"></a>
+
+* `set_pre_queens_cached(...)` の **タプルキー**で再帰の指数的重複をカット。
+
+---
+
+### ✅ [Opt-14] 星座の重複排除（署名）<a id="opt-14"></a>
+
+* `set_pre_queens(...)` の `if queens == preset_queens:` ブロック内で
+  `signature = (ld, rd, col, k, l, row)` を用いて **重複チェック**。
+
+---
+
+### ✅ [Opt-15] Jasmin 変換のメモ化<a id="opt-15"></a>
+
+* `get_jasmin(c, N) → self.jasmin_cache[(c, N)]` で頻出起点の再計算を回避。
+* `gen_constellations()` で `ijkl_list = { self.get_jasmin(c, N) ... }` を適用。
+
+---
+
+### ✅ [Opt-16] 訪問済み状態（transposition/visited）の仕込み<a id="opt-16"></a>
+
+* **スコープ**: `gen_constellations()` の **星座ごとに `visited = set()` を新規作成**。
+* **キー**: `StateKey=(ld,rd,col,row,queens,k,l,LD,RD,N,preset_queens)` など。
+* `state_hash(...)` への置換も候補（O(1) で高速・省メモリ）。
+
+---
+
+### ✅ [Opt-17] 星座リストの外部キャッシュ（ファイル）<a id="opt-17"></a>
+
+* **テキスト／バイナリ**両対応の save/load と、破損チェック（`validate_*`）を用意。
+
+---
+
+### ✅ [Opt-18] サブコンステ生成の tuple key キャッシュ<a id="opt-18"></a>
+
+* `self.subconst_cache: Dict[StateKey, bool]` を `__init__` で用意。
+* 生成・再帰とも **`set_pre_queens_cached(...)` を経由**し、同一状態の再実行を回避。
+
+---
+
+### ✅ [Opt-19] 星座自体を tuple/hash で一意管理<a id="opt-19"></a>
+
+* `self.constellation_signatures` による **集合管理**で重複追加を防止。
+* 未出のみ `constellations.append(...)` ＆ `counter[0] += 1`。
+
+---
+
+### ✅ [Opt-20] Jasmin 変換キャッシュ（クラス属性 or グローバル） <a id="opt-20"></a>
+
+```python
+def get_jasmin(self, c: int, N: int) -> int:
+    key = (c, N)
+    if key in self.jasmin_cache:
+        return self.jasmin_cache[key]
+    result = self.jasmin(c, N)
+    self.jasmin_cache[key] = result
+    return result
+
+# gen_constellations() 内
+ijkl_list = { self.get_jasmin(c, N) for c in ijkl_list }
+```
+
+---
+
+### ✅ [Opt-21] 180°重複チェックの二重化（整理）<a id="opt-21"></a>
+
+* **中央列ブロック**では `check_rotations(...)` に **rot180** が含まれるため、
+  併用の `rot180_in_set(...)` は削除しても挙動同じ（軽量化）。
+
+```diff
+- if not self.check_rotations(...):
+-   if not self.rot180_in_set(...):
++ if not self.check_rotations(...):
+```
+
+---
+
+### ✅ [Opt-22] visited の粒度<a id="opt-22"></a>
+
+* **星座ごと**に `visited: set()` を新規作成 → メモリ増大を回避。
+* キーには `ld/rd/col/LD/RD` 等の **ビット集合＋行/分岐情報** を含め **衝突耐性◯**。
+* *任意改善*: `N` と `preset_queens` は一定なのでキーから外してもOK。
+
+---
+
+### ✅ [Opt-23] ビット演算のインライン化<a id="opt-23"></a>
+* board_mask 共有
+* bit 抽出 `bit = x & -x`
+* `cnt` を星座ローカルで完結 → 最後に `symmetry()` を掛ける流れはキャッシュに優しい。
+* さらなる微調整：`symmetry(ijkl, N)` の **小メモ化**、`set` 操作の **一括化**、
+  並列は **チャンク分割**でスケジューリング負荷を低減（任意）。
+
+---
+
+### ✅ [Opt-24] “先読み空き” 条件（ゴール直前は先読み不要）<a id="opt-24"></a>
+
+```python
+next_free = board_mask & ~blocked
+if next_free and ((row >= endmark - 1) or self._has_future_space(next_ld, next_rd, next_col, board_mask)):
+    ...
+```
+
+* **ゴール直前は先読みしない**短絡評価で無駄な判定を削減。
+* `row + Δ >= endmark` の **Δ を分岐ごとに一致**させる一貫性が重要。
+
+---
+
 
 ## 🔩 第6章：Codon × LLVM × CUDA への挑戦
 
