@@ -4,10 +4,10 @@
 
 # 🧬 Codon 実践ガイド — Pythonを超えるコンパイラ型高速化の道
 
-**Author:** iichiro suzuki
-**Project:** Python / Codon 最適化による N-Queens ソルバー開発記録
-**Environment:** Fedora 42 / Amazon Linux 2023 / LLVM / PyPy / CUDA
-**Keywords:** Codon, LLVM, NVPTX, Constellations, Bitboard, Optimization
+> **Author:** iichiro suzuki
+> **Project:** Python / Codon 最適化による N-Queens ソルバー開発記録
+> **Environment:** Fedora 42 / Amazon Linux 2023 / LLVM / PyPy / CUDA
+> **Keywords:** Codon, LLVM, NVPTX, Constellations, Bitboard, Optimization
 
 ---
 
