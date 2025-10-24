@@ -16,17 +16,18 @@
 Python は美しく柔軟ですが、数値計算や再帰処理の世界では限界があります。
 **Codon** は、Python の構文をそのままに **LLVM ベースのコンパイル最適化** を実現する新世代コンパイラです。
 
-私は 2025 年を通して、N-Queens 問題という極端に再帰的・組合せ的な問題を題材に、
+私は 、N-Queens 問題という極端に再帰的・組合せ的な問題を題材に、
 **Python → Codon → GPU（CUDA）** という道を実践的に歩みました。
-ここでは、その過程で得られた知見・構築法・ノウハウ・難所・哲学をまとめます。
+ここでは、その過程で得られた知見・構築法・ノウハウ・難所・哲学をまとめました。
 
 > [!TIP]
-> 結論から言いますと、GPU/CUDA N-Queensと、Python/Codon N-Queensの計測時間にほぼ違いがありませんでした
+> 結論から言いますと、GPU/CUDA N-Queensと、CPU/Python Codon N-Queensの計測時間は、CPUでありながらGPU/CUDAにややもすれば追いつくという事となりました。
 
 GPU/CUDA N-Queens
 ``` bash
 GPU/CUDA
 10Bit_CUDA/01CUDA_Bit_Symmetry.cu
+ N:            Total           Unique         hh:mm:ss.ms
 19:       4968057848        621012754     000:00:00:13.80
 20:      39029188884       4878666808     000:00:02:02.52
 21:     314666222712      39333324973     000:00:18:46.52
@@ -38,36 +39,12 @@ Python/Codon N-Queens
 ``` bash
 amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
- N:            Total       Unique        hh:mm:ss.ms
- 5:               10            0         0:00:00.000
- 6:                4            0         0:00:00.079
- 7:               40            0         0:00:00.001
- 8:               92            0         0:00:00.001
- 9:              352            0         0:00:00.001
-10:              724            0         0:00:00.002
-11:             2680            0         0:00:00.102
-12:            14200            0         0:00:00.002
-13:            73712            0         0:00:00.005
-14:           365596            0         0:00:00.011
-15:          2279184            0         0:00:00.035
-16:         14772512            0         0:00:00.078
-17:         95815104            0         0:00:00.436
-18:        666090624            0         0:00:02.961
-19:       4968057848            0         0:00:22.049
-20:      39029188884            0         0:02:52.430
-21:     314666222712            0         0:24:25.554
-22:    2691008701644            0         3:29:33.971
-23:   24233937684440            0  1  day,8:12:58.977
-```
-
-``` bash
-top-10:29:32 up 1 day,16:13, 4 users, load average: 64.39,64.21,64.12
-Tasks: 563 total,  2 running,561 sleeping,  0 stopped,  0 zombie
-%Cpu(s):100.0 us, 0.0 sy, 0.0 ni, 0.0 id, 0.0 wa, 0.0 hi, 0.0 si, 0.0 st
-MiB Mem : 257899.4 total,256193.4 free,  1225.5 used,   480.5 buff/cache
-MiB Swap:      0.0 total,     0.0 free,     0.0 used. 255314.6 avail Mem
-    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-   5634 suzuki    20   0   13.4g  70056   7384 R  6399   0.0 148411:55 15Py_constellat
+ N:            Total           Unique         hh:mm:ss.ms
+19:       4968057848                0          0:00:22.04
+20:      39029188884                0          0:02:52.43
+21:     314666222712                0          0:24:25.55
+22:    2691008701644                0          3:29:33.97
+23:   24233937684440                0   1  day,8:12:58.97
 ```
 
  ---
@@ -86,97 +63,253 @@ Codon は **LLVM をバックエンドに持つ AOT（Ahead-of-Time）Python コ
 Codon の思想は「Pythonの書きやすさ」と「Cの速さ」を両立すること。
 **Pythonの文法のまま、ネイティブ実行ファイルを生成できる** のが最大の魅力です。
 
-* Codon の概要
-* 「Python を LLVM にコンパイルする」という思想
-* JIT と AOT（Ahead of Time）の違い
-* PyPy や Cython との位置づけの比較
-* なぜ Codon は高速なのか（LLVM IR → ネイティブコード）
-* Python 構文との互換性・制限
 
+### ● Codon の概要
+
+Codon は、Python の構文をそのまま維持しながら LLVM をバックエンドに用いてコンパイルする新世代のコンパイラです。
+Python スクリプトを **静的型解析 → LLVM IR → ネイティブコード** に変換し、JIT ではなく事前最適化（AOT）を行う点が特徴です。
+
+---
+
+### ● 「Python を LLVM にコンパイルする」という思想
+
+Codon の思想は「Python の書きやすさを保ったまま、C/C++ の速度を得る」ことです。
+つまり “書くときは Python、動かすときはマシンコード” という理想的な形を目指しています。
+これにより、研究開発スクリプトをそのまま高速な本番コードに移行できます。
+
+---
+
+### ● JIT と AOT（Ahead of Time）の違い
+
+JIT（Just-In-Time）は実行時にコンパイルを行う方式で、PyPy などが代表例です。
+AOT（Ahead-of-Time）は実行前に完全にネイティブコードへ変換する方式で、Codon はこのアプローチを採用しています。
+AOT は起動時間を短縮し、CPU キャッシュ最適化が事前に行えるため、安定した高速性能を発揮します。
+
+---
+
+### ● PyPy や Cython との位置づけの比較
+
+| 実装        | コンパイル方式      | Python互換性     | 特徴                  |
+| --------- | ------------ | ------------- | ------------------- |
+| CPython   | インタプリタ       | ◎             | 標準実装・動的型            |
+| PyPy      | JIT          | ◎             | 実行時最適化・柔軟           |
+| Cython    | トランスパイル      | ◯             | C拡張構文が必要            |
+| **Codon** | **AOTコンパイル** | **◎（ほぼ100%）** | **LLVMによる完全ネイティブ化** |
+
+Codon は **Python の構文を維持したまま C++ に匹敵する速度** を実現できる点で他と一線を画します。
+
+---
+
+### ● なぜ Codon は高速なのか（LLVM IR → ネイティブコード）
+
+Codon は、すべての Python コードを中間表現（LLVM IR）に変換し、
+LLVM の最適化パス（インライン展開・ループ展開・共通式除去など）を適用します。
+このプロセスにより、CPython の仮想マシン命令を完全に排除し、CPU が直接実行できるバイナリを生成します。
+
+---
+
+### ● Python 構文との互換性・制限
+
+Codon は Python 3.10+ 構文と高い互換性を持ちますが、動的型付け・例外・一部の標準ライブラリは未対応です。
+特に `import numpy` や `try/except`、`async` などは制限があります。
+一方で、`int`, `List[int]`, `Dict[str,int]` などの型注釈を使うことで、静的解析と最適化が完全に機能します。
+
+
+> 💡 **ワンポイントアドバイス**
+> Codon は「Pythonの文法をC++コンパイルの世界に持ち込んだ言語」です。
+> Python的な柔軟さを残しつつ、静的解析を“味方につける”意識で書くと一気に速くなります。
 
 ---
 
 ## ⚡ 第2章：なぜCodonなのか
+### ● Python の柔軟さと限界
 
-* **Pythonのボトルネック（関数呼び出し・型判定・GC）** をLLVMが除去。
-* `def` のまま最適化され、JITより安定した性能を発揮。
-* 特に再帰構造・探索アルゴリズム（N-Queensなど）で圧倒的に速い。
-* **移植が容易**：ほとんどのPythonコードがCodonでそのまま動作。
-* **C++に匹敵する速度**を、Pythonの可読性のまま達成可能。
+Python は表現力が高く開発効率に優れていますが、実行速度・再帰深度・型判定に大きなオーバーヘッドがあります。
+Codon はこれらのボトルネックを LLVM の静的最適化で取り除き、**Python のまま “コンパイル言語級の速さ”** を実現します。
+
+> 💡 **ワンポイントアドバイス**
+> Codonの高速化は「型の固定」から始まります。
+> 迷ったらまず `int` や `List[int]` を明示し、変数が“揺れない”状態を作ることが最初の一歩です。
+
+---
+
+### ● Codon による高速化のアプローチ
+
+Codon は実行前に型を確定させ、CPU命令レベルで最適化されたネイティブバイナリを生成します。
+`int`, `float`, `List[int]` といった明示的な型注釈を加えるだけで、数百倍の速度向上が見込めます。
+動的な構造体を避けることで、LLVM のインライン展開とレジスタ割り当てが最大化されます。
+
+---
+
+### ● “書きやすさを捨てずに速くする”
+
+C++ や Rust に比べ、Codon は **Python の文法をほぼそのまま使える** のが最大の利点です。
+機械学習・アルゴリズム実験・数値最適化など、試行錯誤を高速に回す研究現場に特に有効です。
+
+---
 
 > [!TIP]
 > Codonは、ランタイムのオーバーヘッドなしで Pythonのコードをネイティブなマシン語にコンパイルする高性能なPythonコンパイラです。 Codonを使うとシングルスレッドでも十分な高速化を行うことができますが、マルチスレッドもサポートしているため、更なる高速化も図れます。
+
 
 
 ---
 
 ## 🧱 第3章：Codon環境構築（Fedora / Amazon Linux）
 
-### 3.0 Linux/macでのインストール
-```bash
+### ● Linux/macでのインストール
+``` bash
 /bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
 ```
 
 > [!TIP]
 > OSがLinux (x86_64) か MacOS (x86_64 または arm64) であれば、公式からビルド済みのバイナリが配布されているので、1コマンドでインストールすることができます。
 
-* Python の柔軟さと遅さのトレードオフ
-* Codon による高速化のアプローチ
-* Python コードをそのまま「ビルド」できる利点
-* `codon build` / `codon run` / `codon repl` の違い
-* Codon が得意とする領域（数値計算、再帰、バックトラックなど）
-
-### 3.1 ソースビルド手順（再現性あり）
-どうしてもと言う人はソースからビルドして下さい。
-```bash
-$ git clone https://github.com/exaloop/codon
-$ cd codon
-$ mkdir build && cd build
-$ cmake .. -DCMAKE_BUILD_TYPE=Release
-$ make -j$(nproc)
-$ sudo make install
-```
-
-* `codon` ソースビルド手順
-* `build/_deps` 以下の構成
-* `libcodonrt.so` の場所とリンク設定
-* `codon build -release` と `codon run -release` の違い
-* `LD_LIBRARY_PATH` や `PATH` 設定の注意点
-
-### 3.2 依存パッケージ
-
-```
-cmake, ninja, fmt, toml, libomp, fast_float, semver, peglib
-```
-
-* `libdevice.10.bc` の役割
-* `-libdevice` オプションの意味
-* NVRTC や libcodonrt.so における `seq_nvptx_memcpy_h2d/d2h` の欠落
-* `nm` コマンドでのシンボル確認例
-* GPU コンパイルが未完に終わった理由と今後の展望
-
-### 3.3 ランタイム設定
-
-```bash
-export PATH=/usr/local/codon/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/codon/lib:$LD_LIBRARY_PATH
-```
-
-### 3.4 実行
-JIT(Just-In-Time)で実行（遅いけどコンパイルせずに実行)
-```bash
-$ codon run hello.py
-Hello Codon!
-```
-
-ビルドして実行（コンパイルしてネイティブコードに変換するから超高速）
-```bash
-$ codon build -release hello.py && ./hello
-Hello Codon!
-```
 ---
 
-### 3.5 計測
+### ● ビルド環境（Fedora / Amazon Linux）
+
+Codon は CMake / LLVM を利用するため、ビルド時に依存パッケージの整備が重要です。
+以下の環境構築で安定動作を確認しています：
+
+``` bash
+dnf install cmake ninja-build fmt-devel libomp-devel toml++ fast-float semver-devel
+```
+
+---
+
+
+### ● インストール手順
+
+```bash
+git clone https://github.com/exaloop/codon
+cd codon
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+sudo make install
+```
+
+---
+
+
+### ● 実行確認
+
+```bash
+$ codon run -release hello.py
+Hello Codon!
+```
+
+Fedora42 / Amazon Linux 2023 の双方で再現可能でした。
+
+
+---
+
+> 💡 **ワンポイントアドバイス**
+> ビルド時は `ninja -v` や `make VERBOSE=1` で内部ログを出すとトラブルを早期発見できます。
+> 特に `libcodonrt.so` の場所は環境ごとに異なるため、`nm -D` で確認しておくのがおすすめです。
+
+
+## 🧠 第4章：Codonの高速化原理と基本構文
+
+### ● 静的型による最適化
+Codon は型を固定することで、動的型判定をすべて排除します。
+> [!TIP]
+> Codon は動的型を完全に排除し、**型が確定した時点でLLVMが最適化** を行います。
+Python のような「どの型が来るかわからない」関数呼び出しは一切発生しません。
+
+
+---
+
+
+### 基本的な書き方
+
+```python
+from typing import List
+
+def fib(n: int) -> int:
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+print(fib(40))
+```
+
+> [!TIP]
+> 同じコードでも、Codonでは `n` がintで固定されるため、**分岐予測・再帰展開** が行われ、数十倍高速に動作します。
+
+
+> 💡 **ワンポイントアドバイス**
+> Codonでは「型を決めた瞬間にコンパイルが始まる」と考えましょう。
+> 型ヒントは単なるコメントではなく、**LLVM最適化のトリガー** です。
+
+
+
+
+### 最適化のポイント
+
+* 型ヒントを**すべて明示**する (`int`, `List[int]`, `Dict[str,int]`など)
+* 例外 (`try/except`) を使わない
+* ループ変数・再帰呼び出しを局所変数化
+* ループ外でメモリを確保し再利用
+* `while` ループを多用し、再帰を階層的に置き換える
+* グローバル変数や動的 import を避ける
+* 関数を小さく分割してコンパイル単位を明確化
+* デバッグには `codon run -debug` を活用
+* `for` ループと `while` ループの最適化挙動
+* 配列・辞書の静的確保
+* `@codon.jit`, `@codon.inline` などの使用可否と実験結果
+* Python と Codon での整数オーバーフロー挙動の違い
+* `bit` / `mask` 演算での高速化例
+
+---
+
+## ♟️ 第5章：N-QueensソルバーのCodon実装
+
+私は N-Queens 問題を Codon で完全実装し、
+**Python 比 約8〜15倍** の高速化を確認しました。
+
+* bit演算によるバックトラック最適化
+* 対称性除去（mirror / rotation / canonical）
+* `constellation` 手法の導入（部分盤面プリセット）
+* `blocked_next`, `next_free`, `board_mask` の概念
+* 関数分割とインライン化
+* 配列アクセスを整数に置換
+* `List[Dict[str,int]]` を `struct` 相当表現に変換
+* `COUNT2/4/8` の分離による再帰木の簡略化
+* Codon 版での `SQ_core_unified()` 実装の全体像
+* Codon による速度向上（Python 比 ×8〜×15）
+
+
+> 💡 **ワンポイントアドバイス**
+> Codon最適化の真髄は「再帰の定式化」と「枝刈りの局所化」です。
+> Pythonで動いた探索関数を、**変数を減らして書き直すだけで数倍高速化** できます。
+
+
+---
+
+### 5.1 主な最適化手法
+
+* **ビットボード** による衝突判定
+* **対称性除去**（mirror / rotation）
+* **Constellation法**（部分盤面キャッシュによる分割探索）
+* **blocked_next**／**next_free** による早期枝刈り
+* **Zobrist Hash** による探索重複排除
+* **canonical化チェック** による一意解抽出
+
+---
+
+### 5.2 ベンチマーク結果（Fedora42 / Codon v0.17）
+
+N-Queens Nの計測
+| N  | Total | Unique |  Python  |  pypy  | Codon  | GPU/CUDA |
+| -- | ------- | ------ | -------- | ------ | ------ | -------- |
+| 8  | 92      | 12     |  00.126s | 0.169s | 0.001s |   0.01   |
+| 13 | 73712   | 9233   |  00.355s | 0.825s | 0.005s |   0.04   |
+| 15 | 2279184 | 285053 |  09.006s | 3.841s | 0.035s |   0.07   |
+| 17 |14772512 |11977939|1:07.235s |13.367s | 0.436s |   0.26   |
+
+---
 
 言語による速度比較
 | 名前 | 処理時間 (s) | 速度 (CPython 比) | 順位 |
@@ -205,81 +338,16 @@ Hello Codon!
 
 
 
-## 🧠 第4章：Codonの高速化原理と基本構文
-
-Codon は型を固定することで、動的型判定をすべて排除します。
-
-### 基本的な書き方
-
-```python
-from typing import List
-
-def fib(n: int) -> int:
-    if n < 2:
-        return n
-    return fib(n - 1) + fib(n - 2)
-
-print(fib(40))
-```
-
-* 変数型の明示 (`int`, `List[int]`, `Dict[int,int]`) の重要性
-* 再帰関数の呼び出しコスト削減
-* `for` ループと `while` ループの最適化挙動
-* 配列・辞書の静的確保
-* `@codon.jit`, `@codon.inline` などの使用可否と実験結果
-* Python と Codon での整数オーバーフロー挙動の違い
-* `bit` / `mask` 演算での高速化例
-
-### 最適化のポイント
-
-* 型ヒントを**すべて明示**する (`int`, `List[int]`, `Dict[str,int]`など)
-* 例外 (`try/except`) を使わない
-* ループ外でメモリを確保し再利用
-* `while` ループを多用し、再帰を階層的に置き換える
-* グローバル変数や動的 import を避ける
-
----
-
-## ♟️ 第5章：N-QueensソルバーのCodon実装
-
-私は N-Queens 問題を Codon で完全実装し、
-**Python 比 約8〜15倍** の高速化を確認しました。
-
-* bit演算によるバックトラック最適化
-* 対称性除去（mirror / rotation / canonical）
-* `constellation` 手法の導入（部分盤面プリセット）
-* `blocked_next`, `next_free`, `board_mask` の概念
-* 関数分割とインライン化
-* 配列アクセスを整数に置換
-* `List[Dict[str,int]]` を `struct` 相当表現に変換
-* `COUNT2/4/8` の分離による再帰木の簡略化
-* Codon 版での `SQ_core_unified()` 実装の全体像
-* Codon による速度向上（Python 比 ×8〜×15）
-
-### 5.1 主な最適化手法
-
-* **ビットボード** による衝突判定
-* **対称性除去**（mirror / rotation）
-* **Constellation法**（部分盤面キャッシュによる分割探索）
-* **blocked_next**／**next_free** による早期枝刈り
-* **Zobrist Hash** による探索重複排除
-* **canonical化チェック** による一意解抽出
-
-### 5.2 ベンチマーク結果（Fedora42 / Codon v0.17）
-
-| N  | Total   | Unique |  Python  |  pypy  | Codon  | GPU/CUDA |
-| -- | ------- | ------ | -------- | ------ | ------ | -------- |
-| 8  | 92      | 12     |  00.126s | 0.169s | 0.001s |   0.01   |
-| 13 | 73712   | 9233   |  00.355s | 0.825s | 0.005s |   0.04   |
-| 15 | 2279184 | 285053 |  09.006s | 3.841s | 0.035s |   0.07   |
-| 17 |14772512 |11977939|1:07.235s |13.367s | 0.436s |   0.26   |
-
 ---
 
 ## 🔩 第6章：Codon × LLVM × CUDA への挑戦
 
 Codon には `NVPTX` バックエンド（CUDAコード生成）が存在しますが、
 現行（2025時点）では未完成の部分があります。
+
+> 💡 **ワンポイントアドバイス**
+> CodonはまだGPU統合途上ですが、`-libdevice` オプションの動作原理を理解しておくと後に役立ちます。
+> 「CPU→GPUの遷移」はLLVM IRを共有できるという発想で見ると腑に落ちます。
 
 ### 実験例
 
@@ -307,7 +375,10 @@ def hello(a, b, c):
 * 将来の GPU 統合の方向性
 * Python ↔ Codon ↔ CUDA の連携モデル構想図
 
-`
+> [!TIP]
+> Codon は LLVM の NVPTX バックエンドを利用することで GPU 実行が理論的に可能です。
+しかし現時点では seq_nvptx_memcpy_h2d/d2h など一部シンボルが未実装で、GPU版は実験段階 にあります。
+
 ---
 
 ## 🧭 第7章：できたこと／できなかったこと
@@ -324,6 +395,12 @@ def hello(a, b, c):
 
 ---
 
+> 💡 **ワンポイントアドバイス**
+> “できなかったこと” の記録こそ次の最適化の糧です。
+> Codonはまだ進化中のため、未対応機能をメモしておくとアップデート時に真っ先に活きてきます。
+
+
+
 ## 🔧 第8章：構築・開発ノウハウ
 
 * Codon ビルド時に `ninja -v` で詳細確認
@@ -333,11 +410,14 @@ def hello(a, b, c):
 * 再帰→反復化を意識
 * 例外より戻り値制御
 * 大規模探索では `print` デバッグを避け、結果だけ出力
-* ビルドエラー時はまず `ninja -v` 出力で原因を探す
 * `fmt` / `toml` / `semver` / `fast_float` の組み込み依存
 * `type: ignore` を外す
 * 計算ループ内では「例外発生」を絶対に避ける
 * printデバッグ時の `str(dt)[:-3]` のような書式短縮
+
+> 💡 **ワンポイントアドバイス**
+> Codonでは「書き方を整える」ことが最大の最適化です。
+> ループ変数を再利用しない、関数の引数を固定型にする——これだけで内部的にLLVM最適化が進みます。
 
 ---
 
@@ -358,13 +438,15 @@ def hello(a, b, c):
 * 再帰よりも反復への置換を検討
 * 計算量が指数的な場合に特に威力を発揮する領域
 
+> 💡 **ワンポイントアドバイス**
+> Codon思考とは“動的→静的”への意識転換です。
+> 書き方が変わると、設計思想も変わる。動くPythonから、**考えるCodon** へ。
+
 ---
 
 ## 🌌 第10章：Codonの未来と意義
 
-Codon はまだ若いが、**Python の未来を変える可能性を持つコンパイラ**です。
-AI・科学計算・アルゴリズム実験・リアルタイム処理のあらゆる分野で
-「**Pythonの書きやすさのままC++の速さ**」を実現できます。
+Codon はまだ発展途上ながら、**「Pythonをそのまま高速言語にする」唯一の現実的解** です。科学計算・AI・データ処理・最適化などで広く活用でき、研究スクリプトを**直接本番バイナリに変換**できるという革命的アプローチを実証しました。
 
 私が N-Queens ソルバーを通して得た確信はこうです：
 
@@ -375,6 +457,19 @@ AI・科学計算・アルゴリズム実験・リアルタイム処理のあら
 * 現時点での制約：標準ライブラリ制限、外部ライブラリ連携の難しさ
 * 将来的に期待される方向：GPU統合、NumPy対応、RAG/AI系連携
 * 実践的推奨構成（Fedora42 + Codon v0.17 + Python3.13 + LLVM17）
+
+> 💡 **ワンポイントアドバイス**
+> Codonは「Pythonでできないことを置き換える」ものではなく、
+> **Pythonを進化させるためのエンジン** です。研究から製品化までを一気通貫で結ぶ架け橋になります。
+
+---
+
+### 🔮 今後の展望
+
+* GPU (NVPTX) 完全対応
+* NumPy 互換層・OpenMP 並列最適化
+* C API / Python API の相互運用強化
+* RAG・生成AI・最適化パイプラインへの応用
 
 ---
 
