@@ -834,6 +834,7 @@ static void set_pre_queens(
 /* Python版はローカルsetを毎回作っていたので実質ノーキャッシュ。
    ロジックを変えず、ここでも単に本体へ委譲します。 */
 static void set_pre_queens_cached(
+  //サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。
   uint64_t ld, uint64_t rd, uint64_t col,
   int k, int l, int row, int queens,
   uint64_t LD, uint64_t RD,
@@ -854,7 +855,7 @@ static void set_pre_queens_cached(
                  visited, constellation_signatures);
 }
 
-/* 本体 */
+/* 新規実行（従来通りset_pre_queensの本体処理へ） */
 static void set_pre_queens(
   uint64_t ld, uint64_t rd, uint64_t col,
   int k, int l, int row, int queens,
@@ -867,7 +868,13 @@ static void set_pre_queens(
 ){
   const uint64_t mask = ((uint64_t)1 << N) - 1u;
 
-  /* --- state hash (軽量O(1)) による枝刈り --- */
+  /* --- state hash (軽量O(1)) による枝刈り ---
+  その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+  生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
+  ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
+  [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+  ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です
+   */
   uint64_t h64 =
       (ld<<3) ^ (rd<<2) ^ (col<<1) ^ (uint64_t)row ^
       ((uint64_t)queens<<7) ^ ((uint64_t)k<<12) ^ ((uint64_t)l<<17) ^
@@ -876,7 +883,6 @@ static void set_pre_queens(
   uint32_t h = (uint32_t)(h64 ^ (h64>>32));
   if (uintset_contains(visited, h)) return;
   uintset_add(visited, h);
-
   /* --- k 行 / l 行はスキップ --- */
   if (row == k || row == l) {
     set_pre_queens_cached(ld<<1, rd>>1, col,
@@ -886,16 +892,15 @@ static void set_pre_queens(
                           N, preset_queens, visited, constellation_signatures);
     return;
   }
-
-  /* --- 既定数のクイーンを置いたら星座を保存（signature重複排除） --- */
+  /* クイーンの数がpreset_queensに達した場合、現在の状態を保存  */
   if (queens == preset_queens) {
     if (constellation_signatures && constellation_signatures->cap == 0)
       sigset_init(constellation_signatures);
-
-    uint64_t sig = sig_key(ld, rd, col, k, l, row);
+    // signatureの生成
+    uint64_t signature = sig_key(ld, rd, col, k, l, row);
     bool fresh = true;
     if (constellation_signatures)
-      fresh = sigset_add_if_absent(constellation_signatures, sig);
+      fresh = sigset_add_if_absent(constellation_signatures, signature);
 
     if (fresh) {
       Constellation c;
