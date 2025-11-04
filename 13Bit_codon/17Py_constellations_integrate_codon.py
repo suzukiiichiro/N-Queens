@@ -351,13 +351,11 @@ class NQueens17:
     if funcptn in (0,1,2):
       at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
       if at_mark and avail:
-        step:int=2 if funcptn in (0,1) else 3
-        add1:int=1 if (funcptn==1 and functionid==20) else 0  # SQd1BlB のときだけ1
+        step=2 if funcptn in (0,1) else 3
+        add1=1 if (funcptn==1 and functionid==20) else 0  # SQd1BlB のときだけ1
         row_step=row+step
-        blockK:int=blockK_by_funcid[functionid]
-        blockl:int=blockl_by_funcid[functionid]
-        use_blocks:bool=True
-        use_future:bool=False          # ここは従来どおり next_free だけで分岐
+        blockK,blockl=blockK_by_funcid[functionid],blockl_by_funcid[functionid]
+        use_blocks,use_future=True,False
         local_next_funcid=next_funcid
     # ---- P6: endmark 基底
     elif funcptn==5 and row==endmark:
@@ -377,7 +375,6 @@ class NQueens17:
         if next_free:
           total+=_dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
         return total # 続行（通常ループへ）
-
     #use_blocks / use_future の分岐ごとにループを分ける
     # ブーリアン分岐を内側ループに残すより、「使う/使わない」でループを2本に分けると分岐予測も最短経路になります
     if use_blocks:
@@ -409,7 +406,7 @@ class NQueens17:
           extra=((m1|m2)*NK)|(mj*NJ)
           future=board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
           if future:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
+            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
       else:
         while avail:
           bit:int=avail&-avail
@@ -417,7 +414,7 @@ class NQueens17:
           next_ld,next_rd,next_col=((ld|bit)<<step)|add1,(rd|bit)>>step,col|bit
           next_free:int=board_mask&~(next_ld|next_rd|next_col)
           if next_free:
-              total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
+            total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
     return total
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
