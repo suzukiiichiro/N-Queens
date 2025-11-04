@@ -508,10 +508,8 @@ class NQueens17:
       ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
       LD=(1<<(N1-j))|(1<<(N1-l))
       ld|=LD>>(N-start)
-      if start>k:
-        rd|=(1<<(N1-(start-k+1)))
-      if j>=2*N-33-start:
-        rd|=(1<<(N1-j))<<(N2-start)
+      if start>k: rd|=(1<<(N1-(start-k+1)))
+      if j>=2*N-33-start: rd|=(1<<(N1-j))<<(N2-start)
       free=~(ld|rd|col)
       if j<(N-3):
         jmark,endmark=j+1,N2
@@ -611,14 +609,9 @@ class NQueens17:
           mark1=k-1
           target=27 # SQd0BkB
       # 配列へ格納
-      ld_arr[i],rd_arr[i],col_arr[i]=ld,rd,col
-      row_arr[i],free_arr[i]=start,free
-      jmark_arr[i],end_arr[i]=jmark,endmark
-      mark1_arr[i],mark2_arr[i]=mark1,mark2
-      funcid_arr[i]=target
-      ijkl_arr[i]=ijkl
+      ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],funcid_arr[i],ijkl_arr[i]=ld,rd,col,start,free,jmark,endmark,mark1,mark2,target,ijkl
+
     # ===== 並列ステージ：計算だけ =====
-    # cnt=dfs(target,ld,rd,col,start,free,jmark,endmark,mark1,mark2,board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N)
     @par
     for i in range(m):
       cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],board_mask,blockK_by_funcid,blockl_by_funcid,func_meta,N,N1,NK,NJ)
@@ -632,7 +625,6 @@ class NQueens17:
   def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
     """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
-
 
     # subconst_cache:Set[StateKey]=set()
     # インスタンス共有キャッシュを使う（ローカル初期化しない！）
@@ -656,30 +648,30 @@ class NQueens17:
     mask=(1<<N)-1  # setPreQueensで使用
     # ---------------------------------------------------------------------
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
+    #
     # <>zobrist_hash
     # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
     # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
     # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
     # h: int = self.zobrist_hash(ld, rd, col, row, queens, k, l, LD, RD, N)
+    #
     # <>state_hash
     # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
     # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
     # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
     # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
     # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-    state_hash:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
-    h:int=state_hash
-    if h in visited:
-      return
-    visited.add(h)
+    h:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
+    #
     # <>StateKey（タプル）
     # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
     # set の比較・保持も重く、メモリも一番食います。
     # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
-    # key: StateKey = (ld, rd, col, row, queens, k, l, LD, RD)
-    # if key in visited:
-    #     return
-    # visited.add(key)
+    # h:StateKey = (ld, rd, col, row, queens, k, l, LD, RD)
+    if h in visited:
+      return
+    visited.add(h)
+    #
     # ---------------------------------------------------------------------
     # k行とl行はスキップ
     if row==k or row==l:
