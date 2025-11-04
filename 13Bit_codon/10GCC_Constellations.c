@@ -10,19 +10,124 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
-/*==================== clock_gettime フォールバック ====================*/
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-static int clock_gettime(int, struct timespec* ts) {
-  struct timeval tv; gettimeofday(&tv, NULL);
-  ts->tv_sec = tv.tv_sec;
-  ts->tv_nsec = tv.tv_usec * 1000L;
-  return 0;
+static inline uint64_t mix64(uint64_t x){
+//splitmix64 のミキサ最終段。64bit 値 x を (>>/XOR/乗算) の 3 段で拡散して返す。 Zobrist テーブルの乱数品質を担保するために使用。  
+  x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ULL;
+  x ^= x >> 27; x *= 0x94d049bb133111ebULL;
+  x ^= x >> 31; return x;
 }
-#endif
 
-/*==================== ここから：最小コンテナ実装 ====================*/
+/* 追加の hash-combine ヘルパ（既存 mix64 を利用） */
+static inline void hcombine_u64(uint64_t* h, uint64_t v){
+  uint64_t x = *h;
+  x ^= mix64(v) + 0x9e3779b97f4a7c15ULL + (x<<6) + (x>>2);
+  *h = x;
+}
+//サブコンステレーション生成状態のメモ化（実行中の重複再帰を抑制）
+static inline uint64_t StateKey(
+  uint64_t ld, uint64_t rd, uint64_t col,
+  int k, int l, int row, int queens,
+  uint64_t LD, uint64_t RD,
+  int N, int preset_queens
+){
+  uint64_t h = 0x9e3779b97f4a7c15ULL;
+  hcombine_u64(&h, ld);
+  hcombine_u64(&h, rd);
+  hcombine_u64(&h, col);
+  hcombine_u64(&h, (uint64_t)k);
+  hcombine_u64(&h, (uint64_t)l);
+  hcombine_u64(&h, (uint64_t)row);
+  hcombine_u64(&h, (uint64_t)queens);
+  hcombine_u64(&h, LD);
+  hcombine_u64(&h, RD);
+  hcombine_u64(&h, (uint64_t)N);
+  hcombine_u64(&h, (uint64_t)preset_queens);
+  return h;
+}
+/*==================== JASMIN CACHE ====================*/
+/* N ごとにリセットする簡易キャッシュ（open addressing） */
+typedef struct {
+  uint32_t* keys;      /* 入力 ijkl (20bit) */
+  uint32_t* vals;      /* 出力 jasmin(ijkl, N) */
+  unsigned char* used; /* 空き=0/使用=1 */
+  size_t cap, sz;
+  int currN;           /* 現在の N（違ったら全リセット） */
+} jasmin_cache;
+
+static jasmin_cache g_jas = {0};
+
+static inline uint32_t mix32(uint32_t x){
+  /* 32bit の軽量ミキサ */
+  x ^= x >> 16; x *= 0x7feb352dU;
+  x ^= x >> 15; x *= 0x846ca68bU;
+  x ^= x >> 16; return x;
+}
+
+static void jas_cache_free(void){
+  free(g_jas.keys); free(g_jas.vals); free(g_jas.used);
+  memset(&g_jas, 0, sizeof(g_jas));
+}
+
+static void jas_cache_reset(int N){
+  if (g_jas.currN == N && g_jas.cap) {
+    /* N 同一なら内容だけクリア */
+    memset(g_jas.used, 0, g_jas.cap);
+    g_jas.sz = 0;
+    return;
+  }
+  /* N 変更 or 初期化 */
+  jas_cache_free();
+  g_jas.currN = N;
+  g_jas.cap = 4096; /* 初期容量：必要なら自動拡張 */
+  g_jas.keys = (uint32_t*)calloc(g_jas.cap, sizeof(uint32_t));
+  g_jas.vals = (uint32_t*)calloc(g_jas.cap, sizeof(uint32_t));
+  g_jas.used = (unsigned char*)calloc(g_jas.cap, 1);
+  g_jas.sz = 0;
+}
+
+static void jas_cache_grow(void){
+  size_t ncap = g_jas.cap ? g_jas.cap * 2 : 4096;
+  uint32_t* nkeys = (uint32_t*)calloc(ncap, sizeof(uint32_t));
+  uint32_t* nvals = (uint32_t*)calloc(ncap, sizeof(uint32_t));
+  unsigned char* nused = (unsigned char*)calloc(ncap, 1);
+  size_t mask = ncap - 1;
+
+  for (size_t i=0;i<g_jas.cap;++i){
+    if (!g_jas.used[i]) continue;
+    uint32_t k = g_jas.keys[i];
+    size_t j = (size_t)mix32(k) & mask;
+    while (nused[j]) j = (j+1) & mask;
+    nused[j] = 1; nkeys[j] = k; nvals[j] = g_jas.vals[i];
+  }
+  free(g_jas.keys); free(g_jas.vals); free(g_jas.used);
+  g_jas.keys = nkeys; g_jas.vals = nvals; g_jas.used = nused; g_jas.cap = ncap;
+}
+
+static bool jas_cache_get(uint32_t ijkl, uint32_t* out){
+  if (!g_jas.cap) return false;
+  size_t mask = g_jas.cap - 1;
+  size_t i = (size_t)mix32(ijkl) & mask;
+  while (g_jas.used[i]){
+    if (g_jas.keys[i] == ijkl){
+      *out = g_jas.vals[i]; return true;
+    }
+    i = (i+1) & mask;
+  }
+  return false;
+}
+
+static void jas_cache_put(uint32_t ijkl, uint32_t val){
+  if (!g_jas.cap) jas_cache_reset(g_jas.currN);
+  if ((g_jas.sz+1) * 10 >= g_jas.cap * 7) jas_cache_grow();
+  size_t mask = g_jas.cap - 1;
+  size_t i = (size_t)mix32(ijkl) & mask;
+  while (g_jas.used[i]) i = (i+1) & mask;
+  g_jas.used[i] = 1; g_jas.keys[i] = ijkl; g_jas.vals[i] = val; g_jas.sz++;
+}
+
+
 /* --- UIntSet: 20bit整数(ijkl)用の簡易Set（線形） --- */
 typedef struct UIntSet {
   uint32_t* a;
@@ -59,7 +164,237 @@ static bool uintset_iter_next(const UIntSet* s, UIntSetIter* it, uint32_t* out){
   *out = s->a[it->i++];
   return true;
 }
-static size_t consts_dummy_zero(void){ return 0; } // ダミーで使うだけ
+
+
+
+/*(i,j,k,l) を 5bit×4=20bit にパック/アンパックするユーティリティ。 mirvert は上下ミラー（行: N-1-?）＋ (k,l) の入れ替えで左右ミラー相当を実現。*/
+static inline uint32_t to_ijkl(int i,int j,int k,int l){
+  return ((uint32_t)i<<15)|((uint32_t)j<<10)|((uint32_t)k<<5)|(uint32_t)l;
+}
+static inline int ffmin(int a,int b){ return a<b?a:b; }
+static inline int geti(uint32_t x){ return (int)((x>>15)&0x1F); }
+static inline int getj(uint32_t x){ return (int)((x>>10)&0x1F); }
+static inline int getk(uint32_t x){ return (int)((x>> 5)&0x1F); }
+static inline int getl(uint32_t x){ return (int)( x      &0x1F); }
+static inline uint32_t mirvert(uint32_t ijkl,int N){
+  return to_ijkl(N-1-geti(ijkl), N-1-getj(ijkl), getl(ijkl), getk(ijkl));
+}
+//(i,j,k,l) パック値に対して盤面 90°/180° 回転を適用した新しいパック値を返す。 回転の定義: (r,c) -> (c, N-1-r)。対称性チェック・正規化に利用。
+static inline uint32_t rot90(uint32_t ijkl,int N){
+  return ((uint32_t)(N-1-getk(ijkl))<<15)|((uint32_t)(N-1-getl(ijkl))<<10)|((uint32_t)getj(ijkl)<<5)|(uint32_t)geti(ijkl);
+}
+static inline bool symmetry90(uint32_t ijkl, int N){
+  /* 90度回転後と一致するか */
+  uint32_t rot = rot90(ijkl, N);
+  return ijkl == rot;
+}
+
+static inline int symmetry(uint32_t ijkl, int N){
+  if (symmetry90(ijkl, N)) return 2;
+  /* 180度対称: (i,j)=(N-1-j,N-1-i) と (k,l)=(N-1-l,N-1-k) */
+  int i=geti(ijkl), j=getj(ijkl), k=getk(ijkl), l=getl(ijkl);
+  if (i == (N-1-j) && k == (N-1-l)) return 4;
+  return 8;
+}
+//与えた (i,j,k,l) の 90/180/270° 回転形が既出集合 ijkl_list に含まれるかを判定する
+static inline bool check_rotations(const UIntSet* S,int i,int j,int k,int l,int N){
+  uint32_t r90  = to_ijkl((N-1-k),(N-1-l),j,i);
+  uint32_t r180 = to_ijkl((N-1-j),(N-1-i),(N-1-l),(N-1-k));
+  uint32_t r270 = to_ijkl(l,k,(N-1-i),(N-1-j));
+  return uintset_contains(S,r90)||uintset_contains(S,r180)||uintset_contains(S,r270);
+}
+static inline uint32_t jasmin(uint32_t ijkl,int N){
+  //最初の最小値と引数を設定
+  int arg=0;  
+  int minv = ffmin(getj(ijkl), N-1-getj(ijkl));
+  //i: 最初の行（上端） 90度回転2回
+  { int v=ffmin(geti(ijkl),N-1-geti(ijkl)); if (v<minv){ arg=2; minv=v; } }
+  //k: 最初の列（左端） 90度回転3回
+  { int v=ffmin(getk(ijkl),N-1-getk(ijkl)); if (v<minv){ arg=3; minv=v; } }
+  //l: 最後の列（右端） 90度回転1回
+  { int v=ffmin(getl(ijkl),N-1-getl(ijkl)); if (v<minv){ arg=1; minv=v; } }
+  //90度回転を arg 回繰り返す
+  for(int t=0;t<arg;++t) ijkl=rot90(ijkl,N);
+  //必要に応じて垂直方向のミラーリングを実行
+  if (getj(ijkl) < N-1-getj(ijkl)) ijkl=mirvert(ijkl,N);
+  return ijkl;
+}
+
+/* キャッシュ付き Jasmin 正規化ラッパ */
+static inline uint32_t get_jasmin(uint32_t c, int N){
+  /* Jasmin 正規化のキャッシュ付ラッパ。盤面パック値 c を回転/ミラーで規約化した代表値を返す。
+    ※ キャッシュは self.jasmin_cache[(c,N)] に保持。
+    [Opt-08] キャッシュ付き jasmin() のラッパー  */
+  if (g_jas.currN != N || !g_jas.cap) jas_cache_reset(N);
+
+  uint32_t v;
+  if (jas_cache_get(c, &v)) return v;  /* ← cache hit */
+
+  v = jasmin(c, N);                     /* ← miss: 計算 */
+  jas_cache_put(c, v);                  /* ← 追加 */
+  return v;
+}
+typedef struct { int next_funcid; int funcptn; int availptn; } FuncMeta;
+
+static int dfs(
+/*汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
+  (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
+  を切り替える。引数:
+    functionid: 現在の分岐モード ID（次の ID, パターン, 先読み有無は func_meta で決定）
+    ld/rd/col:   斜線/列の占有
+    row/free:    現在行と空きビット
+    jmark/endmark/mark1/mark2: 特殊行/探索終端
+    board_mask:  盤面全域のビットマスク
+    blockK_by_funcid/blockl_by_funcid: 関数 ID に紐づく追加ブロック
+    func_meta:   (next_id, funcptn, availptn) のメタ情報配列*/  
+  int functionid,
+  uint32_t ld, uint32_t rd, uint32_t col,
+  int row, uint32_t free_mask,
+  int jmark, int endmark, int mark1, int mark2,
+  uint32_t board_mask,
+  const uint32_t* blockK_by_funcid, const uint32_t* blockl_by_funcid,
+  const FuncMeta* meta,
+  int N, int N1, uint32_t NK, uint32_t NJ
+){
+  /* メタ展開（codon 同様に最初に束縛） */
+  int next_funcid = meta[functionid].next_funcid;
+  int funcptn     = meta[functionid].funcptn;
+  int avail_flag  = meta[functionid].availptn;
+
+  uint32_t avail = free_mask;
+  int total = 0;
+  int      step   = 1;
+  uint32_t add1   = 0;
+  int      row_step = row + step;
+  bool     use_blocks = false;                /* blockK/blockl を使うか */
+  bool     use_future = (avail_flag == 1);    /* “+1 先読み”を使うか  */
+  uint32_t blockK = 0, blockl = 0;
+  int      local_next_funcid = functionid;    /* 既定は自分 */
+  /* ========= codon と同じ分岐順 =========
+    ここから 1 本化した共通配置ループ # 既定値（通常の +1 前進ループ） 
+  -------------------------------------- */
+  /* --- P1/P2/P3: mark 行で step=2/3 + 追加ブロックを設定（at_mark && avail） --- */
+  if (funcptn == 0 || funcptn == 1 || funcptn == 2){
+    bool at_mark = (funcptn == 1) ? (row == mark2) : (row == mark1);
+    if (at_mark && avail){
+      step     = (funcptn == 2) ? 3 : 2;
+      add1     = (funcptn == 1 && functionid == 20 /*SQd1BlB*/)? 1u : 0u;
+      row_step = row + step;
+      blockK   = blockK_by_funcid[functionid];
+      blockl   = blockl_by_funcid[functionid];
+      use_blocks        = true;
+      use_future        = false;              /* ここは next_free のみで分岐 */
+      local_next_funcid = next_funcid;
+    }
+  }
+  /* ---- P6: endmark 基底 ---- */
+  else if (funcptn == 5 && row == endmark){
+    if (functionid == 14 /*SQd2B*/){
+      /* avail & (~1) が立っていれば 1 */
+      return ((avail & (~(uint32_t)1u)) != 0u) ? 1 : 0;
+    }
+    return 1;
+  }
+  /* --- P4: jmark 特殊（列0禁止 + ld LSB セット）--- */
+  else if (funcptn == 3 && row == jmark){
+    avail &= ~1u;   /* 列0禁止 */
+    ld    |=  1u;   /* 左斜線 LSB を立てる */
+    local_next_funcid = next_funcid;
+  }
+  /* ---- P5: N-1-jmark 入口（行据え置きの一手前処理。命中時はその場で1手進めてreturn） */
+  else if (funcptn == 4){
+    if (row == N1 - jmark){
+      rd |= NJ; /* rd |= 1<<N1 */
+      uint32_t next_free = board_mask & ~((ld<<1) | (rd>>1) | col);
+      if (next_free){
+        total += dfs(next_funcid, ld<<1, rd>>1, col, row,
+                     next_free, jmark, endmark, mark1, mark2,
+                     board_mask,
+                     blockK_by_funcid, blockl_by_funcid, meta,
+                     N, N1, NK, NJ);
+      }
+      return total; /* codon と同様：ここで戻る（通常ループへは入らない） */
+    }
+  }
+
+/*#use_blocks / use_future の分岐ごとにループを分ける
+    # ブーリアン分岐を内側ループに残すより、「使う/使わない」でループを2本に分けると分岐予測も最短経路になります*/
+  if (use_blocks){
+    while (avail){
+      uint32_t bit = avail & -avail;
+      avail &= avail - 1;
+      uint32_t next_ld  = ((ld | bit) << step) | add1;
+      uint32_t next_rd  = (rd | bit) >> step;
+      uint32_t next_col =  col | bit;
+      next_ld |= blockl;
+      next_rd |= blockK;
+      uint32_t blocked   = next_ld | next_rd | next_col;
+      uint32_t next_free = board_mask & ~blocked;
+      if (next_free){
+        total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
+                     next_free, jmark, endmark, mark1, mark2,
+                     board_mask,
+                     blockK_by_funcid, blockl_by_funcid, meta,
+                     N, N1, NK, NJ);
+      }
+    }
+  } else {
+  //素の +1” だけ（先読みなし） # “+1 with 先読み  
+    if (use_future) {
+      /* “+1 with 先読み” */
+      while (avail){
+        uint32_t bit = avail & -avail;
+        avail &= avail - 1;
+        uint32_t next_ld  = ((ld | bit) << step) | add1;
+        uint32_t next_rd  = (rd | bit) >> step;
+        uint32_t next_col =  col | bit;
+        uint32_t blocked   = next_ld | next_rd | next_col;
+        uint32_t next_free = board_mask & ~blocked;
+        if (!next_free) continue;
+        if (row_step >= endmark){
+          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
+                       next_free, jmark, endmark, mark1, mark2,
+                       board_mask,
+                       blockK_by_funcid, blockl_by_funcid, meta,
+                       N, N1, NK, NJ);
+          continue;
+        }
+        //# 先読み（+1）の中
+        int m1 = (row_step == mark1) ? 1 : 0;
+        int m2 = (row_step == mark2) ? 1 : 0;
+        int use_j = (funcptn == 4); /* P5ファミリのみ J 行を有効化 */
+        int mj = (use_j && (row_step == (N1 - jmark))) ? 1 : 0;
+        uint32_t extra  = ((uint32_t)(m1 | m2) * NK) | ((uint32_t)mj * NJ);
+        uint32_t future = board_mask & ~(((next_ld<<1) | (next_rd>>1) | next_col) | extra);
+        if (future){
+          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
+                       next_free, jmark, endmark, mark1, mark2,
+                       board_mask,
+                       blockK_by_funcid, blockl_by_funcid, meta,
+                       N, N1, NK, NJ);
+        }
+      }
+    } else {
+      /* “素の +1” だけ（先読みなし） */
+      while (avail){
+        uint32_t bit = avail & -avail;
+        avail &= avail - 1;
+        uint32_t next_ld  = ((ld | bit) << step) | add1;
+        uint32_t next_rd  = (rd | bit) >> step;
+        uint32_t next_col =  col | bit;
+        uint32_t next_free = board_mask & ~(next_ld | next_rd | next_col);
+        if (next_free){
+          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
+                       next_free, jmark, endmark, mark1, mark2,
+                       board_mask,
+                       blockK_by_funcid, blockl_by_funcid, meta,
+                       N, N1, NK, NJ);
+        }
+      }
+    }
+  }
+  return total;
+}
 
 /* --- Constellation/Constellations: ベクタ --- */
 typedef struct {
@@ -94,57 +429,339 @@ static const Constellation* consts_at(const Constellations* v, size_t idx){
   if (!v || idx >= v->n) return NULL;
   return &v->a[idx];
 }
+ static void exec_solutions(Constellations* constellations, int N){
+  /* 各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。 */
+  const int N1 = N - 1;
+  const int N2 = N - 2;
+  const uint32_t small_mask = (N2 >= 0) ? ((1u << (uint32_t)N2) - 1u) : 0u;
+  const uint32_t board_mask = (N  >  0) ? ((1u << (uint32_t)N ) - 1u) : 0u;
 
-/* SigSet は set_pre_queens_cached に渡すだけのダミー */
+  /* ===== FUNC_CATEGORY: fid → {3:N-3, 4:N-4, 0:その他} ===== */
+  static const unsigned char FUNC_CATEGORY[28] = {
+    3,0,0,0, 4,0,3,3, 0,0,0,0, 3,0,0,4, 0,3,3,3, 0,0,4,0, 3,3,0,3
+  };
+  /* ===== FID（Codonの並び） ===== */
+  enum {
+    FID_SQBkBlBjrB=0, FID_SQBlBjrB=1, FID_SQBjrB=2, FID_SQB=3,
+    FID_SQBklBjrB=4, FID_SQBlBkBjrB=5, FID_SQBkBjrB=6, FID_SQBlkBjrB=7,
+    FID_SQBjlBkBlBjrB=8, FID_SQBjlBklBjrB=9, FID_SQBjlBlBkBjrB=10, FID_SQBjlBlkBjrB=11,
+    FID_SQd2BkBlB=12, FID_SQd2BlB=13, FID_SQd2B=14, FID_SQd2BklB=15, FID_SQd2BlBkB=16,
+    FID_SQd2BkB=17, FID_SQd2BlkB=18, FID_SQd1BkBlB=19, FID_SQd1BlB=20, FID_SQd1B=21,
+    FID_SQd1BklB=22, FID_SQd1BlBkB=23, FID_SQd1BlkB=24, FID_SQd1BkB=25, FID_SQd0B=26, FID_SQd0BkB=27
+  };
 
-/*==================== ここから：bit pack ヘルパ ====================*/
-static inline uint32_t to_ijkl(int i,int j,int k,int l){
-  return ((uint32_t)i<<15)|((uint32_t)j<<10)|((uint32_t)k<<5)|(uint32_t)l;
-}
-static inline int geti(uint32_t x){ return (int)((x>>15)&0x1F); }
-static inline int getj(uint32_t x){ return (int)((x>>10)&0x1F); }
-static inline int getk(uint32_t x){ return (int)((x>> 5)&0x1F); }
-static inline int getl(uint32_t x){ return (int)( x      &0x1F); }
-static inline int ffmin(int a,int b){ return a<b?a:b; }
-static inline uint32_t mirvert(uint32_t ijkl,int N){
-  return to_ijkl(N-1-geti(ijkl), N-1-getj(ijkl), getl(ijkl), getk(ijkl));
-}
-static inline uint32_t rot90(uint32_t ijkl,int N){
-  return ((uint32_t)(N-1-getk(ijkl))<<15)|((uint32_t)(N-1-getl(ijkl))<<10)|((uint32_t)getj(ijkl)<<5)|(uint32_t)geti(ijkl);
-}
-static inline bool check_rotations(const UIntSet* S,int i,int j,int k,int l,int N){
-  uint32_t r90  = to_ijkl((N-1-k),(N-1-l),j,i);
-  uint32_t r180 = to_ijkl((N-1-j),(N-1-i),(N-1-l),(N-1-k));
-  uint32_t r270 = to_ijkl(l,k,(N-1-i),(N-1-j));
-  return uintset_contains(S,r90)||uintset_contains(S,r180)||uintset_contains(S,r270);
-}
-static inline uint32_t jasmin(uint32_t ijkl,int N){
-  int arg=0;
-  int minv = ffmin(getj(ijkl), N-1-getj(ijkl));
-  { int v=ffmin(geti(ijkl),N-1-geti(ijkl)); if (v<minv){ arg=2; minv=v; } }
-  { int v=ffmin(getk(ijkl),N-1-getk(ijkl)); if (v<minv){ arg=3; minv=v; } }
-  { int v=ffmin(getl(ijkl),N-1-getl(ijkl)); if (v<minv){ arg=1; minv=v; } }
-  for(int t=0;t<arg;++t) ijkl=rot90(ijkl,N);
-  if (getj(ijkl) < N-1-getj(ijkl)) ijkl=mirvert(ijkl,N);
-  return ijkl;
-}
-static inline uint32_t get_jasmin(uint32_t c,int N){ return jasmin(c,N); }
+  /* next_funcid, funcptn, availptn の3つだけ持つ */
+  typedef struct { int next_funcid; int funcptn; int availptn; } FuncMeta;
+  static const FuncMeta func_meta[28] = {
+    {1,0,0},//0 SQBkBlBjrB   -> P1, 先読みなし
+    {2,1,0},//1 SQBlBjrB     -> P2, 先読みなし  
+    {3,3,1},//2 SQBjrB       -> P4, 先読みあり  
+    {3,5,1},//3 SQB          -> P6, 先読みあり
+    {2,2,0},//4 SQBklBjrB    -> P3, 先読みなし  
+    {6,0,0},//5 SQBlBkBjrB   -> P1, 先読みなし  
+    {2,1,0},//6 SQBkBjrB     -> P2, 先読みなし  
+    {2,2,0},//7 SQBlkBjrB    -> P3, 先読みなし
+    {0,4,1},//8 SQBjlBkBlBjrB-> P5, 先読みあり  
+    {4,4,1},//9 SQBjlBklBjrB -> P5, 先読みあり  
+    {5,4,1},//10 SQBjlBlBkBjrB-> P5, 先読みあり  
+    {7,4,1},//11 SQBjlBlkBjrB -> P5, 先読みあり
+    {13,0,0},//12 SQd2BkBlB    -> P1, 先読みなし 
+    {14,1,0},//13 SQd2BlB      -> P2, 先読みなし 
+    {14,5,1},//14 SQd2B        -> P6, 先読みあり（avail 特例） 
+    {14,2,0},//15 SQd2BklB     -> P3, 先読みなし
+    {17,0,0},//16 SQd2BlBkB    -> P1, 先読みなし 
+    {14,1,0},//17 SQd2BkB      -> P2, 先読みなし 
+    {14,2,0},//18 SQd2BlkB     -> P3, 先読みなし 
+    {20,0,0},//19 SQd1BkBlB    -> P1, 先読みなし
+    {21,1,0},//20 SQd1BlB      -> P2, 先読みなし（add1=1 は dfs 内で特別扱い） 
+    {21,5,1},//21 SQd1B        -> P6, 先読みあり 
+    {21,2,0},//22 SQd1BklB     -> P3, 先読みなし 
+    {25,0,0},//23 SQd1BlBkB    -> P1, 先読みなし
+    {21,2,0},//24 SQd1BlkB     -> P3, 先読みなし 
+    {21,1,0},//25 SQd1BkB      -> P2, 先読みなし 
+    {26,5,1},//26 SQd0B        -> P6, 先読みあり 
+    {26,0,0},//27 SQd0BkB      -> P1, 先読みなし
+  };
+  /* ===== block 配列 ===== */
+  const uint32_t n3 = (N >= 3) ? (1u << (uint32_t)(N-3)) : 1u;//# 念のため負シフト防止
+  const uint32_t n4 = (N >= 4) ? (1u << (uint32_t)(N-4)) : 1u;
+  uint32_t blockK_by_funcid[28] = {0};
+  uint32_t blockl_by_funcid[28] =
+    {0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0};
+  for (int fid = 0; fid < 28; ++fid) {
+    unsigned char cat = FUNC_CATEGORY[fid];
+    blockK_by_funcid[fid] = (cat == 3) ? n3 : (cat == 4 ? n4 : 0u);
+  }
+  /* ===== 前処理ステージ（単一スレッド） ===== */
+  const size_t m = consts_size(constellations);
+  //if (m == 0) return;
+  /*  SoA（Structure of Arrays）に展開：並列本体が軽くなる */
+  uint32_t *ld_arr   = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  uint32_t *rd_arr   = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  uint32_t *col_arr  = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  int      *row_arr  = (int*)     malloc(sizeof(int)*m);
+  uint32_t *free_arr = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  int *jmark_arr = (int*)malloc(sizeof(int)*m);
+  int *end_arr   = (int*)malloc(sizeof(int)*m);
+  int *mark1_arr = (int*)malloc(sizeof(int)*m);
+  int *mark2_arr = (int*)malloc(sizeof(int)*m);
+  int      *funcid_arr = (int*)     malloc(sizeof(int)*m);
+  uint32_t *ijkl_arr   = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  const uint32_t NK = (N >= 3) ? (1u << (uint32_t)(N-3)) : 0u;
+  const uint32_t NJ = (N1 >= 0) ? (1u << (uint32_t)N1) : 0u;
+  int      *results    = (int*)     malloc(sizeof(int)*m);
 
-/*==================== 探索本体のスタブ ====================*/
-/* ※ ここはあなたの実装に差し替えてください */
-/* ==================== SigSet: constellation signature set (uint64) ==================== */
-/* 6値タプル (ld,rd,col,k,l,row) を 64bit にハッシュして管理します */
+  /* メモリ確保失敗の簡易チェック（本番なら全チェック推奨） */
+  if (!ld_arr||!rd_arr||!col_arr||!row_arr||!free_arr||
+      !jmark_arr||!end_arr||!mark1_arr||!mark2_arr||!funcid_arr||!ijkl_arr||!results){
+    /* 後始末して戻る */
+    free(ld_arr); free(rd_arr); free(col_arr); free(row_arr); free(free_arr);
+    free(jmark_arr); free(end_arr); free(mark1_arr); free(mark2_arr);
+    free(funcid_arr); free(ijkl_arr); free(results);
+    return;
+  }
+
+  /* ====== (1) 前処理ステージ：配列へ格納 ======
+     Codon の if 分岐で target/jmark/endmark/mark1/mark2 を決定し、
+     ld/rd/col/row/free もここで確定させて SoA に詰める。 */
+  for (size_t i = 0; i < m; ++i){
+    const Constellation* c = consts_at(constellations, i);
+    int jmark=0, mark1=0, mark2=0, endmark=0, target=0;
+    uint32_t start_ijkl = c->startijkl;
+    int start = (int)(start_ijkl >> 20);
+    uint32_t ijkl = start_ijkl & ((1u << 20) - 1u);
+    int j = getj(ijkl), k = getk(ijkl), l = getl(ijkl);
+    uint32_t ld  = (c->ld  >> 1);
+    uint32_t rd  = (c->rd  >> 1);
+    uint32_t col = (c->col >> 1) | (~small_mask);
+    uint32_t LD = (1u << (uint32_t)(N1 - j)) | (1u << (uint32_t)(N1 - l));
+    ld |= (LD >> (uint32_t)(N - start));
+    if (start > k){
+      rd |= (1u << (uint32_t)(N1 - (start - k + 1)));
+    }
+    if (j >= 2*N - 33 - start){
+      rd |= ( (1u << (uint32_t)(N1 - j)) << (uint32_t)(N2 - start) );
+    }
+    uint32_t free = ~(ld | rd | col);
+    /* --- Codon と同じ target 選択 --- */
+    if (j < (N - 3)) {
+      jmark = j + 1;
+      endmark = N2;
+      if (j > 2 * N - 34 - start) {
+        if (k < l) {
+          mark1 = k - 1;
+          mark2 = l - 1;
+          if (start < l) {
+            if (start < k) {
+              if (l != k + 1) {
+                target = 0;  /* SQBkBlBjrB */
+              } else {
+                target = 4;  /* SQBklBjrB */
+              }
+            } else {
+              target = 1;    /* SQBlBjrB */
+            }
+          } else {
+            target = 2;      /* SQBjrB */
+          }
+        } else {
+          mark1 = l - 1;
+          mark2 = k - 1;
+          if (start < k) {
+            if (start < l) {
+              if (k != l + 1) {
+                target = 5;  /* SQBlBkBjrB */
+              } else {
+                target = 7;  /* SQBlkBjrB */
+              }
+            } else {
+              target = 6;    /* SQBkBjrB */
+            }
+          } else {
+            target = 2;      /* SQBjrB */
+          }
+        }
+      } else {
+        if (k < l) {
+          mark1 = k - 1;
+          mark2 = l - 1;
+          if (l != k + 1) {
+            target = 8;      /* SQBjlBkBlBjrB */
+          } else {
+            target = 9;      /* SQBjlBklBjrB */
+          }
+        } else {
+          mark1 = l - 1;
+          mark2 = k - 1;
+          if (k != l + 1) {
+            target = 10;     /* SQBjlBlBkBjrB */
+          } else {
+            target = 11;     /* SQBjlBlkBjrB */
+          }
+        }
+      }
+    } else if (j == (N - 3)) {
+      endmark = N2;
+      if (k < l) {
+        mark1 = k - 1;
+        mark2 = l - 1;
+        if (start < l) {
+          if (start < k) {
+            if (l != k + 1) {
+              target = 12;   /* SQd2BkBlB */
+            } else {
+              target = 15;   /* SQd2BklB */
+            }
+          } else {
+            mark2 = l - 1;
+            target = 13;     /* SQd2BlB */
+          }
+        } else {
+          target = 14;       /* SQd2B */
+        }
+      } else {
+        mark1 = l - 1;
+        mark2 = k - 1;
+        if (start < k) {
+          if (start < l) {
+            if (k != l + 1) {
+              target = 16;   /* SQd2BlBkB */
+            } else {
+              target = 18;   /* SQd2BlkB */
+            }
+          } else {
+            mark2 = k - 1;
+            target = 17;     /* SQd2BkB */
+          }
+        } else {
+          target = 14;       /* SQd2B */
+        }
+      }
+    } else if (j == N2) {
+      if (k < l) {
+        endmark = N2;
+        if (start < l) {
+          if (start < k) {
+            mark1 = k - 1;
+            if (l != k + 1) {
+              mark2 = l - 1;
+              target = 19;   /* SQd1BkBlB */
+            } else {
+              target = 22;   /* SQd1BklB */
+            }
+          } else {
+            mark2 = l - 1;
+            target = 20;     /* SQd1BlB */
+          }
+        } else {
+          target = 21;       /* SQd1B */
+        }
+      } else { /* l < k */
+        if (start < k) {
+          if (start < l) {
+            if (k < N2) {
+              mark1 = l - 1;
+              endmark = N2;
+              if (k != l + 1) {
+                mark2 = k - 1;
+                target = 23; /* SQd1BlBkB */
+              } else {
+                target = 24; /* SQd1BlkB */
+              }
+            } else {
+              if (l != (N - 3)) {
+                mark2 = l - 1;
+                endmark = N - 3;
+                target = 20; /* SQd1BlB */
+              } else {
+                endmark = N - 4;
+                target = 21; /* SQd1B */
+              }
+            }
+          } else {
+            if (k != N2) {
+              mark2 = k - 1;
+              endmark = N2;
+              target = 25;   /* SQd1BkB */
+            } else {
+              endmark = N - 3;
+              target = 21;   /* SQd1B */
+            }
+          }
+        } else {
+          endmark = N2;
+          target = 21;       /* SQd1B */
+        }
+      }
+    } else { /* j がコーナー */
+      endmark = N2;
+      if (start > k) {
+        target = 26;         /* SQd0B */
+      } else {
+        mark1 = k - 1;
+        target = 27;         /* SQd0BkB */
+      }
+    }
+    
+    /* ---- 配列へ格納（★ここがCUDA入力バッファになる） ---- */
+    ld_arr[i]   = ld;
+    rd_arr[i]   = rd;
+    col_arr[i]  = col;
+    row_arr[i]  = start;
+    free_arr[i] = free;
+    jmark_arr[i] = jmark;
+    end_arr[i]   = endmark;
+    mark1_arr[i] = mark1;
+    mark2_arr[i] = mark2;
+    funcid_arr[i] = target;
+    ijkl_arr[i]   = ijkl;   /* symmetry 計算用 */
+  }
+
+  /* ====== (2) 並列ステージ：計算だけ ======
+     ここは後で CUDA の kernel <<<grid,block>>> に置き換えやすい形。 */
+  for (size_t i = 0; i < m; ++i){
+    int cnt = dfs(
+      funcid_arr[i],
+      ld_arr[i], rd_arr[i], col_arr[i],
+      row_arr[i], free_arr[i],
+      jmark_arr[i], end_arr[i], mark1_arr[i], mark2_arr[i],
+      board_mask,
+      blockK_by_funcid, blockl_by_funcid, func_meta,
+      N, N1, NK, NJ
+    );
+    results[i] = cnt * symmetry(ijkl_arr[i], N);
+  }
+
+  /* ====== (3) 書き戻し（単一スレッド） ====== */
+  for (size_t i = 0; i < m; ++i){
+    Constellation* c = (Constellation*)consts_at(constellations, i);
+    c->solutions = (uint32_t)results[i];
+  }
+
+  /* 後始末 */
+  free(ld_arr); free(rd_arr); free(col_arr); free(row_arr); free(free_arr);
+  free(jmark_arr); free(end_arr); free(mark1_arr); free(mark2_arr);
+  free(funcid_arr); free(ijkl_arr); free(results);
+}
+
+
+/* ==================== set_pre_queens / cached (C移植) ==================== */
 typedef struct {
   uint64_t* keys;
   unsigned char* used;
   size_t cap, sz;
 } SigSet;
 
-static inline uint64_t mix64(uint64_t x){
-  x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ULL;
-  x ^= x >> 27; x *= 0x94d049bb133111ebULL;
-  x ^= x >> 31; return x;
+
+static void sigset_free(SigSet* s){
+  if (!s) return;
+  free(s->keys);
+  free(s->used);
+  s->keys = NULL;
+  s->used = NULL;
+  s->cap = s->sz = 0;
 }
+
 static inline uint64_t sig_key(uint64_t ld, uint64_t rd, uint64_t col, int k, int l, int row){
   /* boost::hash_combine 風に混ぜる */
   uint64_t h = 0x9e3779b97f4a7c15ULL;
@@ -184,18 +801,25 @@ static bool sigset_add_if_absent(SigSet* s, uint64_t v){
   return true;
 }
 
-/* ==================== set_pre_queens / cached (C移植) ==================== */
-/* 先にプロトタイプ（gen_constellations から呼ばれるため） */
-static void set_pre_queens_cached(
-  uint64_t ld, uint64_t rd, uint64_t col,
-  int k, int l, int row, int queens,
-  uint64_t LD, uint64_t RD,
-  int* counter,
-  Constellations* constellations,
-  int N, int preset_queens,
-  UIntSet* visited,
-  SigSet* constellation_signatures
-);
+static SigSet g_subconst = {0};
+static int g_subconst_N = -1;
+static int g_subconst_preset = -1;
+
+static void subconst_cache_reset(int N, int preset_queens){
+  /* N or preset が変わったら完全リセット、同じなら内容だけクリア */
+  if (g_subconst.cap == 0 || g_subconst_N != N || g_subconst_preset != preset_queens){
+    free(g_subconst.keys); free(g_subconst.used);
+    memset(&g_subconst, 0, sizeof(g_subconst));
+    g_subconst_N = N;
+    g_subconst_preset = preset_queens;
+  } else {
+    /* 既存テーブルを空に */
+    memset(g_subconst.used, 0, g_subconst.cap);
+    g_subconst.sz = 0;
+  }
+}
+
+
 static void set_pre_queens(
   uint64_t ld, uint64_t rd, uint64_t col,
   int k, int l, int row, int queens,
@@ -210,6 +834,7 @@ static void set_pre_queens(
 /* Python版はローカルsetを毎回作っていたので実質ノーキャッシュ。
    ロジックを変えず、ここでも単に本体へ委譲します。 */
 static void set_pre_queens_cached(
+  //サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。
   uint64_t ld, uint64_t rd, uint64_t col,
   int k, int l, int row, int queens,
   uint64_t LD, uint64_t RD,
@@ -219,12 +844,18 @@ static void set_pre_queens_cached(
   UIntSet* visited,
   SigSet* constellation_signatures
 ){
+  /* --- 共有キャッシュ（再入/重複抑止） --- */
+  uint64_t key = StateKey(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens);
+  /* SigSet を使って存在チェック＋追加（あれば重複なので即 return） */
+  if (!sigset_add_if_absent(&g_subconst, key)){
+    return;
+  }
   set_pre_queens(ld, rd, col, k, l, row, queens, LD, RD,
                  counter, constellations, N, preset_queens,
                  visited, constellation_signatures);
 }
 
-/* 本体 */
+/* 新規実行（従来通りset_pre_queensの本体処理へ） */
 static void set_pre_queens(
   uint64_t ld, uint64_t rd, uint64_t col,
   int k, int l, int row, int queens,
@@ -237,7 +868,13 @@ static void set_pre_queens(
 ){
   const uint64_t mask = ((uint64_t)1 << N) - 1u;
 
-  /* --- state hash (軽量O(1)) による枝刈り --- */
+  /* --- state hash (軽量O(1)) による枝刈り ---
+  その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+  生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
+  ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
+  [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+  ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です
+   */
   uint64_t h64 =
       (ld<<3) ^ (rd<<2) ^ (col<<1) ^ (uint64_t)row ^
       ((uint64_t)queens<<7) ^ ((uint64_t)k<<12) ^ ((uint64_t)l<<17) ^
@@ -246,7 +883,6 @@ static void set_pre_queens(
   uint32_t h = (uint32_t)(h64 ^ (h64>>32));
   if (uintset_contains(visited, h)) return;
   uintset_add(visited, h);
-
   /* --- k 行 / l 行はスキップ --- */
   if (row == k || row == l) {
     set_pre_queens_cached(ld<<1, rd>>1, col,
@@ -256,16 +892,15 @@ static void set_pre_queens(
                           N, preset_queens, visited, constellation_signatures);
     return;
   }
-
-  /* --- 既定数のクイーンを置いたら星座を保存（signature重複排除） --- */
+  /* クイーンの数がpreset_queensに達した場合、現在の状態を保存  */
   if (queens == preset_queens) {
     if (constellation_signatures && constellation_signatures->cap == 0)
       sigset_init(constellation_signatures);
-
-    uint64_t sig = sig_key(ld, rd, col, k, l, row);
+    // signatureの生成
+    uint64_t signature = sig_key(ld, rd, col, k, l, row);
     bool fresh = true;
     if (constellation_signatures)
-      fresh = sigset_add_if_absent(constellation_signatures, sig);
+      fresh = sigset_add_if_absent(constellation_signatures, signature);
 
     if (fresh) {
       Constellation c;
@@ -295,7 +930,6 @@ static void set_pre_queens(
   }
 }
 
-
 /*==================== gen_constellations（翻訳版） ====================*/
 static void gen_constellations(UIntSet* ijkl_list,
                                Constellations* constellations,
@@ -304,7 +938,7 @@ static void gen_constellations(UIntSet* ijkl_list,
   (void)preset_queens; /* 本体側で使用 */
   const int halfN=(N+1)/2, N1=N-1;
 
-  /* 奇数N: 中央列特別処理 */
+  //--- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
   if (N & 1){
     const int center=N/2;
     for (int l=center+1; l<N1; ++l)
@@ -318,7 +952,8 @@ static void gen_constellations(UIntSet* ijkl_list,
       }
   }
 
-  /* 一般候補 */
+  //--- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+  //コーナーにクイーンがいない場合の開始コンステレーションを計算する
   for (int k=1; k<halfN; ++k)
     for (int l=k+1; l<N1; ++l)
       for (int i=k+1; i<N-1; ++i){
@@ -330,16 +965,17 @@ static void gen_constellations(UIntSet* ijkl_list,
         }
       }
 
-  /* 端の種 */
+  //コーナーにクイーンがある場合の開始コンステレーションを計算する
   for (int j=1; j<N-2; ++j)
     for (int l=j+1; l<N1; ++l)
       uintset_add(ijkl_list, to_ijkl(0,j,0,l));
 
-  /* それぞれを jasmin 正規化 */
+  /* Jasmin変換 */
   UIntSet* jas = uintset_create();
   { UIntSetIter it={0}; uint32_t v;
     while (uintset_iter_next(ijkl_list,&it,&v)) uintset_add(jas, get_jasmin(v,N));
   }
+  //ここで毎回クリア（＝この sc だけの重複抑止に限定）
   uintset_clear(ijkl_list);
   { UIntSetIter it={0}; uint32_t v;
     while (uintset_iter_next(jas,&it,&v)) uintset_add(ijkl_list, v);
@@ -347,11 +983,13 @@ static void gen_constellations(UIntSet* ijkl_list,
   uintset_free(jas);
 
   /* 各 canonical start からサブコンステレーション生成 */
+  subconst_cache_reset(N, preset_queens);   /* ★ 追加：共有キャッシュ初期化（N/preset単位） */
+  /* 各 canonical start からサブコンステレーション生成 */
   const uint32_t L = (uint32_t)1u << N1;
 
   { UIntSetIter it={0}; uint32_t sc;
     while (uintset_iter_next(ijkl_list,&it,&sc)) {
-      SigSet sigs = {0}; /* ダミー */
+      SigSet sigs = {0}; 
 
       const int i=geti(sc), j=getj(sc), k=getk(sc), l=getl(sc);
       const uint32_t Lj=(L>>j), Li=(L>>i), Ll=(L>>l);
@@ -372,42 +1010,217 @@ static void gen_constellations(UIntSet* ijkl_list,
         Constellation* last_a = consts_back_n(constellations,(size_t)a);
         if (last_a) last_a->startijkl |= base;
       }
+      sigset_free(&sigs);
       uintset_free(visited);
     }
   }
 }
 
+
+/* startijkl の 20bit 下位は ijkl、上位は start(row) */
+static bool validate_ijkl_row(uint32_t startijkl, int N){
+  uint32_t ijkl = startijkl & ((1u<<20)-1u);
+  int i=geti(ijkl), j=getj(ijkl), k=getk(ijkl), l=getl(ijkl);
+  int start = (int)(startijkl >> 20);
+  if (N<=0) return false;
+  if (i<0||j<0||k<0||l<0||start<0) return false;
+  if (i>=N||j>=N||k>=N||l>=N||start>=N) return false;
+  return true;
+}
+
+/* 盤面幅Nに対して ld/rd/col が N ビット内に収まっているかを大まかにチェック */
+static bool validate_masks(uint32_t ld, uint32_t rd, uint32_t col, int N){
+  if (N<=0 || N>=32) return false;
+  uint32_t bm = (N==32) ? 0xFFFFFFFFu : ((1u<<(uint32_t)N) - 1u);
+  return ( (ld & ~bm)==0 && (rd & ~bm)==0 && (col & ~bm)==0 );
+}
+
+/* constellations の各要素が {ld, rd, col, startijkl} を全て持つかを検証する。 */
+static bool validate_constellation_list(const Constellations* v, int N){
+  if (!v || v->n==0) return false;
+  for (size_t i=0;i<v->n;++i){
+    const Constellation* c = &v->a[i];
+    if (!validate_masks(c->ld, c->rd, c->col, N)) return false;
+    if (!validate_ijkl_row(c->startijkl, N)) return false;
+  }
+  return true;
+}
+
+//32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。
+static uint32_t read_u32_le(const unsigned char* p){
+  return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
+}
+static void int_to_le_bytes(FILE* f, uint32_t v){
+  unsigned char b[4];
+  b[0] = (unsigned char)(v & 0xFFu);
+  b[1] = (unsigned char)((v>>8) & 0xFFu);
+  b[2] = (unsigned char)((v>>16)& 0xFFu);
+  b[3] = (unsigned char)((v>>24)& 0xFFu);
+  fwrite(b,1,4,f);
+}
+
+static bool file_exists(const char* path){
+//ファイル存在チェック（読み取り open の可否で判定）。  
+  struct stat st; return stat(path, &st) == 0;
+}
+
+static bool validate_bin_file(const char* path){
+//bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。  
+  struct stat st;
+  if (stat(path, &st) != 0) return false;
+  /* 16 バイト（ld,rd,col,startijkl）の倍数であること */
+  return (st.st_size > 0) && ((st.st_size % 16) == 0);
+}
+//テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。
+static bool save_constellations_txt(const char* path, const Constellations* v){
+  if (!path || !v) return false;
+  FILE* f = fopen(path, "w");
+  if (!f) return false;
+  for (size_t i=0;i<v->n;++i){
+    const Constellation* c = &v->a[i];
+    /* solutions は現在の構造体の値をそのまま保存 */
+    if (fprintf(f, "%u %u %u %u %u\n",
+                c->ld, c->rd, c->col, c->startijkl, c->solutions) < 0){
+      fclose(f); return false;
+    }
+  }
+  fclose(f);
+  return true;
+}
+//テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。
+static bool load_constellations_txt(const char* path, Constellations* out){
+  if (!path || !out) return false;
+  FILE* f = fopen(path, "r");
+  if (!f) return false;
+  /* 既存内容はクリアする（必要なら別APIに） */
+  out->n = 0;
+  uint32_t ld, rd, col, startijkl, solutions;
+  while (true){
+    int n = fscanf(f, "%u %u %u %u %u", &ld,&rd,&col,&startijkl,&solutions);
+    if (n == EOF || n == 0) break;
+    if (n != 5){
+      /* 行スキップ：残り捨て */
+      int ch; while ((ch=fgetc(f))!='\n' && ch!=EOF){}
+      continue;
+    }
+    Constellation c = { ld, rd, col, startijkl, solutions };
+    consts_push(out, c);
+  }
+  fclose(f);
+  return true;
+}
+
+/*テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。*/
+static bool load_or_build_constellations_txt(
+  UIntSet* ijkl_list, Constellations* constellations,
+  int N, int preset_queens)
+{
+  char fname[128];
+  snprintf(fname, sizeof(fname), "constellations_N%d_%d.txt", N, preset_queens);
+
+  if (file_exists(fname)){
+    Constellations tmp = {0};
+    tmp.cap = 128;
+    tmp.a = (Constellation*)calloc(tmp.cap, sizeof(Constellation));
+    if (!tmp.a) return false;
+
+    bool ok = load_constellations_txt(fname, &tmp)
+           && validate_constellation_list(&tmp, N);
+    if (ok){
+      /* swap into out */
+      free(constellations->a);
+      *constellations = tmp;
+      return true;
+    }
+    /* 破損：再生成へ */
+    free(tmp.a);
+  }
+
+  /* 生成 */
+  constellations->n = 0;
+  gen_constellations(ijkl_list, constellations, N, preset_queens);
+  /* 保存（失敗しても致命ではないため戻り値は見ない） */
+  save_constellations_txt(fname, constellations);
+  return true;
+}
+
+/*bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。*/
+static bool save_constellations_bin(const char* path, const Constellations* v){
+  if (!path || !v) return false;
+  FILE* f = fopen(path, "wb");
+  if (!f) return false;
+  for (size_t i=0;i<v->n;++i){
+    const Constellation* c = &v->a[i];
+    int_to_le_bytes(f, c->ld);
+    int_to_le_bytes(f, c->rd);
+    int_to_le_bytes(f, c->col);
+    int_to_le_bytes(f, c->startijkl);
+    /* solutions はバイナリには含めない（Python版踏襲） */
+  }
+  fclose(f);
+  return true;
+}
+
+//bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。
+static bool load_constellations_bin(const char* path, Constellations* out){
+  if (!path || !out) return false;
+  FILE* f = fopen(path, "rb");
+  if (!f) return false;
+  out->n = 0;
+  unsigned char buf[16];
+  while (true){
+    size_t n = fread(buf,1,16,f);
+    if (n==0) break;
+    if (n<16){ /* 端数は破損扱い */
+      fclose(f); return false;
+    }
+    uint32_t ld   = read_u32_le(buf+0);
+    uint32_t rd   = read_u32_le(buf+4);
+    uint32_t col  = read_u32_le(buf+8);
+    uint32_t stkl = read_u32_le(buf+12);
+    Constellation c = { ld, rd, col, stkl, 0u };
+    consts_push(out, c);
+  }
+  fclose(f);
+  return true;
+}
+
+/*bin キャッシュを読み込み。検証に失敗した場合は再生成して保存し、その結果を返す。*/
+static bool load_or_build_constellations_bin(
+  UIntSet* ijkl_list, Constellations* constellations,
+  int N, int preset_queens)
+{
+  char fname[128];
+  snprintf(fname, sizeof(fname), "constellations_N%d_%d.bin", N, preset_queens);
+
+  if (file_exists(fname) && validate_bin_file(fname)){
+    Constellations tmp = {0};
+    tmp.cap = 128;
+    tmp.a = (Constellation*)calloc(tmp.cap, sizeof(Constellation));
+    if (!tmp.a) return false;
+
+    bool ok = load_constellations_bin(fname, &tmp)
+           && validate_constellation_list(&tmp, N);
+    if (ok){
+      free(constellations->a);
+      *constellations = tmp;
+      return true;
+    }
+    free(tmp.a);
+  }
+
+  /* 生成 */
+  constellations->n = 0;
+  gen_constellations(ijkl_list, constellations, N, preset_queens);
+  save_constellations_bin(fname, constellations);
+  return true;
+}
+
+
+
+
 /*==================== N<=5 のフォールバック（スタブ） ====================*/
 static int bit_total(int N){ return (N==5)?10:0; }
-
-/*==================== あなたの main + dump（そのまま） ====================*/
-static void dump_constellations(const Constellations* v, int N, int limit) {
-  size_t cnt = consts_size(v);
-  int show = (limit < 0 || (size_t)limit > cnt) ? (int)cnt : limit;
-
-  printf("---- dump constellations (N=%d, total=%zu, show=%d) ----\n",
-         N, cnt, show);
-
-  for (int idx = 0; idx < show; ++idx) {
-    const Constellation* c = consts_at(v, (size_t)idx);
-    if (!c) continue;
-
-    int i = geti(c->startijkl);
-    int j = getj(c->startijkl);
-    int k = getk(c->startijkl);
-    int l = getl(c->startijkl);
-
-    printf("#%d: startijkl=0x%05" PRIX32 " (i=%d, j=%d, k=%d, l=%d)"
-           "  solutions=%" PRIu32
-           "  ld=0x%08" PRIX32 "  rd=0x%08" PRIX32 "  col=0x%08" PRIX32 "\n",
-           idx, c->startijkl, i, j, k, l,
-           c->solutions, c->ld, c->rd, c->col);
-  }
-
-  if (show < (int)cnt) {
-    printf("... (%zu more not shown)\n", cnt - (size_t)show);
-  }
-}
 
 static void format_duration(char* out, size_t outsz,
                             struct timespec t0, struct timespec t1) {
@@ -425,364 +1238,16 @@ static void format_duration(char* out, size_t outsz,
 
 /*==================== exec_solutions + dfs ====================*/
 
-typedef struct { int next_funcid; int funcptn; int availptn; } FuncMeta;
-
-static inline bool symmetry90_u32(uint32_t ijkl, int N){
-  /* 90度回転後と一致するか */
-  uint32_t rot = rot90(ijkl, N);
-  return ijkl == rot;
+/*==================== clock_gettime フォールバック ====================*/
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+static int clock_gettime(int, struct timespec* ts) {
+  struct timeval tv; gettimeofday(&tv, NULL);
+  ts->tv_sec = tv.tv_sec;
+  ts->tv_nsec = tv.tv_usec * 1000L;
+  return 0;
 }
-static inline int symmetry_u32(uint32_t ijkl, int N){
-  if (symmetry90_u32(ijkl, N)) return 2;
-  /* 180度対称: (i,j)=(N-1-j,N-1-i) と (k,l)=(N-1-l,N-1-k) */
-  int i=geti(ijkl), j=getj(ijkl), k=getk(ijkl), l=getl(ijkl);
-  if (i == (N-1-j) && k == (N-1-l)) return 4;
-  return 8;
-}
-
-/* FID 定義（Codonの並びと一致） */
-enum {
-  FID_SQBkBlBjrB=0, FID_SQBlBjrB=1, FID_SQBjrB=2, FID_SQB=3,
-  FID_SQBklBjrB=4, FID_SQBlBkBjrB=5, FID_SQBkBjrB=6, FID_SQBlkBjrB=7,
-  FID_SQBjlBkBlBjrB=8, FID_SQBjlBklBjrB=9, FID_SQBjlBlBkBjrB=10, FID_SQBjlBlkBjrB=11,
-  FID_SQd2BkBlB=12, FID_SQd2BlB=13, FID_SQd2B=14, FID_SQd2BklB=15, FID_SQd2BlBkB=16,
-  FID_SQd2BkB=17, FID_SQd2BlkB=18, FID_SQd1BkBlB=19, FID_SQd1BlB=20, FID_SQd1B=21,
-  FID_SQd1BklB=22, FID_SQd1BlBkB=23, FID_SQd1BlkB=24, FID_SQd1BkB=25, FID_SQd0B=26, FID_SQd0BkB=27
-};
-
-/* dfs 本体（Codonのロジックを忠実移植） */
-static int dfs_exec(
-  int functionid,
-  uint32_t ld, uint32_t rd, uint32_t col,
-  int row, uint32_t free_mask,
-  int jmark, int endmark, int mark1, int mark2,
-  uint32_t board_mask,
-  const uint32_t* blockK_by_funcid, const uint32_t* blockl_by_funcid,
-  const FuncMeta* meta,
-  int N, int N1, uint32_t NK, uint32_t NJ
-){
-  uint32_t avail = free_mask;
-  int total = 0;
-
-  int next_funcid = meta[functionid].next_funcid;
-  int funcptn     = meta[functionid].funcptn;
-  int avail_flag  = meta[functionid].availptn;
-
-  /* ---- P6: endmark 基底 ---- */
-  if (funcptn == 5 && row == endmark){
-    if (functionid == FID_SQd2B){
-      /* avail & (~1) が立っていれば 1 */
-      return ((avail & (~(uint32_t)1)) != 0) ? 1 : 0;
-    }
-    return 1;
-  }
-
-  /* ---- P5: N-1-jmark 入口（行据え置きの一手前処理）---- */
-  if (funcptn == 4){
-    if (row == N1 - jmark){
-      rd |= NJ; /* rd |= 1<<N1 */
-      uint32_t next_free = board_mask & ~((ld<<1) | (rd>>1) | col);
-      if (next_free){
-        total += dfs_exec(next_funcid, ld<<1, rd>>1, col, row,
-                          next_free, jmark, endmark, mark1, mark2,
-                          board_mask,
-                          blockK_by_funcid, blockl_by_funcid, meta,
-                          N, N1, NK, NJ);
-      }
-      return total;
-    }
-  }
-
-  /* 以降：共通配置ループ（既定は +1 進む） */
-  int step = 1;
-  uint32_t add1 = 0;
-  int row_step = row + step;
-  bool use_blocks = false;
-  bool use_future = (avail_flag == 1);
-  uint32_t blockK = 0, blockl = 0;
-  int local_next_funcid = functionid;
-
-  /* --- P4: jmark 特殊を前処理 --- */
-  if (funcptn == 3 && row == jmark){
-    avail &= ~1u; /* 列0禁止 */
-    ld |= 1u;     /* 左斜線 LSB を立てる */
-    local_next_funcid = next_funcid;
-  }
-  /* --- P1/P2/P3: mark 行で step=2/3 + block 適用 --- */
-  else if (funcptn == 0 || funcptn == 1 || funcptn == 2){
-    bool at_mark = (funcptn == 1) ? (row == mark2) : (row == mark1);
-    if (at_mark && avail){
-      step = (funcptn == 2) ? 3 : 2;
-      add1 = (funcptn == 1 && functionid == FID_SQd1BlB) ? 1u : 0u; /* FID 20 のみ */
-      row_step = row + step;
-
-      blockK = blockK_by_funcid[functionid];
-      blockl = blockl_by_funcid[functionid];
-
-      use_blocks = true;
-      use_future = false; /* ここは next_free のみで分岐 */
-      local_next_funcid = next_funcid;
-    }
-  }
-
-  if (use_blocks){
-    while (avail){
-      uint32_t bit = avail & -avail;
-      avail &= avail - 1;
-
-      uint32_t next_ld  = ((ld | bit) << step) | add1;
-      uint32_t next_rd  = (rd | bit) >> step;
-      uint32_t next_col =  col | bit;
-
-      next_ld |= blockl;
-      next_rd |= blockK;
-
-      uint32_t blocked   = next_ld | next_rd | next_col;
-      uint32_t next_free = board_mask & ~blocked;
-      if (next_free){
-        total += dfs_exec(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                          next_free, jmark, endmark, mark1, mark2,
-                          board_mask,
-                          blockK_by_funcid, blockl_by_funcid, meta,
-                          N, N1, NK, NJ);
-      }
-    }
-  } else {
-    if (!use_future){
-      while (avail){
-        uint32_t bit = avail & -avail;
-        avail &= avail - 1;
-
-        uint32_t next_ld  = ((ld | bit) << step) | add1;
-        uint32_t next_rd  = (rd | bit) >> step;
-        uint32_t next_col =  col | bit;
-
-        uint32_t blocked   = next_ld | next_rd | next_col;
-        uint32_t next_free = board_mask & ~blocked;
-        if (next_free){
-          total += dfs_exec(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                            next_free, jmark, endmark, mark1, mark2,
-                            board_mask,
-                            blockK_by_funcid, blockl_by_funcid, meta,
-                            N, N1, NK, NJ);
-        }
-      }
-    } else {
-      /* “+1 with 先読み” */
-      while (avail){
-        uint32_t bit = avail & -avail;
-        avail &= avail - 1;
-
-        uint32_t next_ld  = ((ld | bit) << step) | add1;
-        uint32_t next_rd  = (rd | bit) >> step;
-        uint32_t next_col =  col | bit;
-
-        uint32_t blocked   = next_ld | next_rd | next_col;
-        uint32_t next_free = board_mask & ~blocked;
-        if (!next_free) continue;
-
-        if (row_step >= endmark){
-          total += dfs_exec(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                            next_free, jmark, endmark, mark1, mark2,
-                            board_mask,
-                            blockK_by_funcid, blockl_by_funcid, meta,
-                            N, N1, NK, NJ);
-          continue;
-        }
-
-        int use_j = (funcptn == 4); /* P5 ファミリのみ J 行を有効化 */
-        int m1 = (row_step == mark1) ? 1 : 0;
-        int m2 = (row_step == mark2) ? 1 : 0;
-        int mj = (use_j && (row_step == (N1 - jmark))) ? 1 : 0;
-
-        uint32_t extra  = ((uint32_t)(m1 | m2) * NK) | ((uint32_t)mj * NJ);
-        uint32_t future = board_mask & ~(((next_ld<<1) | (next_rd>>1) | next_col) | extra);
-        if (future){
-          total += dfs_exec(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                            next_free, jmark, endmark, mark1, mark2,
-                            board_mask,
-                            blockK_by_funcid, blockl_by_funcid, meta,
-                            N, N1, NK, NJ);
-        }
-      }
-    }
-  }
-  return total;
-}
-
-static void exec_solutions(Constellations* constellations, int N){
-  const int N1 = N - 1;
-  const int N2 = N - 2;
-  const uint32_t small_mask = (N2 >= 0) ? ((1u << (uint32_t)N2) - 1u) : 0u;
-  const uint32_t board_mask = (N  >  0) ? ((1u << (uint32_t)N ) - 1u) : 0u;
-
-  /* func_meta: next_funcid, funcptn, availptn */
-  static const FuncMeta meta[28] = {
-    {1,0,0},  /*  0 SQBkBlBjrB   -> P1, 先読みなし */
-    {2,1,0},  /*  1 SQBlBjrB     -> P2, 先読みなし */
-    {3,3,1},  /*  2 SQBjrB       -> P4, 先読みあり */
-    {3,5,1},  /*  3 SQB          -> P6, 先読みあり */
-    {2,2,0},  /*  4 SQBklBjrB    -> P3, 先読みなし */
-    {6,0,0},  /*  5 SQBlBkBjrB   -> P1, 先読みなし */
-    {2,1,0},  /*  6 SQBkBjrB     -> P2, 先読みなし */
-    {2,2,0},  /*  7 SQBlkBjrB    -> P3, 先読みなし */
-    {0,4,1},  /*  8 SQBjlBkBlBjrB-> P5, 先読みあり */
-    {4,4,1},  /*  9 SQBjlBklBjrB -> P5, 先読みあり */
-    {5,4,1},  /* 10 SQBjlBlBkBjrB-> P5, 先読みあり */
-    {7,4,1},  /* 11 SQBjlBlkBjrB -> P5, 先読みあり */
-    {13,0,0}, /* 12 SQd2BkBlB    -> P1, 先読みなし */
-    {14,1,0}, /* 13 SQd2BlB      -> P2, 先読みなし */
-    {14,5,1}, /* 14 SQd2B        -> P6, 先読みあり（avail 特例） */
-    {14,2,0}, /* 15 SQd2BklB     -> P3, 先読みなし */
-    {17,0,0}, /* 16 SQd2BlBkB    -> P1, 先読みなし */
-    {14,1,0}, /* 17 SQd2BkB      -> P2, 先読みなし */
-    {14,2,0}, /* 18 SQd2BlkB     -> P3, 先読みなし */
-    {20,0,0}, /* 19 SQd1BkBlB    -> P1, 先読みなし */
-    {21,1,0}, /* 20 SQd1BlB      -> P2, 先読みなし（add1=1 は dfs 内で扱う） */
-    {21,5,1}, /* 21 SQd1B        -> P6, 先読みあり */
-    {21,2,0}, /* 22 SQd1BklB     -> P3, 先読みなし */
-    {25,0,0}, /* 23 SQd1BlBkB    -> P1, 先読みなし */
-    {21,2,0}, /* 24 SQd1BlkB     -> P3, 先読みなし */
-    {21,1,0}, /* 25 SQd1BkB      -> P2, 先読みなし */
-    {26,5,1}, /* 26 SQd0B        -> P6, 先読みあり */
-    {26,0,0}, /* 27 SQd0BkB      -> P1, 先読みなし */
-  };
-
-  /* blockl_by_funcid は固定配列（Codonどおり） */
-  uint32_t blockl_by_funcid[28] =
-    {0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0};
-
-  /* blockK_by_funcid はカテゴリで N に依存 */
-  uint32_t blockK_by_funcid[28] = {0};
-  const uint32_t n3 = (N >= 3) ? (1u << (uint32_t)(N-3)) : 1u;
-  const uint32_t n4 = (N >= 4) ? (1u << (uint32_t)(N-4)) : 1u;
-  /* cat=3 の fid 群（N-3） */
-  int cat3[] = {FID_SQBkBlBjrB, FID_SQBlkBjrB, FID_SQBkBjrB,
-                FID_SQd2BkBlB, FID_SQd2BkB, FID_SQd2BlkB,
-                FID_SQd1BkBlB, FID_SQd1BlkB, FID_SQd1BkB, FID_SQd0BkB};
-  for (size_t x=0; x<sizeof(cat3)/sizeof(cat3[0]); ++x) blockK_by_funcid[cat3[x]] = n3;
-  /* cat=4 の fid 群（N-4） */
-  int cat4[] = {FID_SQBklBjrB, FID_SQd2BklB, FID_SQd1BklB};
-  for (size_t x=0; x<sizeof(cat4)/sizeof(cat4[0]); ++x) blockK_by_funcid[cat4[x]] = n4;
-
-  const uint32_t NK = (N >= 3) ? (1u << (uint32_t)(N-3)) : 0u;
-  const uint32_t NJ = (N1 >= 0) ? (1u << (uint32_t)N1) : 0u;
-
-  size_t m = consts_size(constellations);
-  for (size_t idx=0; idx<m; ++idx){
-    Constellation* c = (Constellation*)consts_at(constellations, idx);
-    if (!c) continue;
-
-    int jmark=0, mark1=0, mark2=0, endmark=0, target=0;
-
-    uint32_t start_ijkl = c->startijkl;
-    int start = (int)(start_ijkl >> 20);
-    uint32_t ijkl = start_ijkl & ((1u << 20) - 1u);
-    int j = getj(ijkl), k = getk(ijkl), l = getl(ijkl);
-
-    uint32_t ld  = (c->ld  >> 1);
-    uint32_t rd  = (c->rd  >> 1);
-    uint32_t col = (c->col >> 1) | (~small_mask);
-
-    uint32_t LD = (1u << (uint32_t)(N1 - j)) | (1u << (uint32_t)(N1 - l));
-    ld |= (LD >> (uint32_t)(N - start));
-
-    if (start > k){
-      rd |= (1u << (uint32_t)(N1 - (start - k + 1)));
-    }
-    if (j >= 2*N - 33 - start){
-      rd |= ( (1u << (uint32_t)(N1 - j)) << (uint32_t)(N2 - start) );
-    }
-
-    uint32_t free_mask = ~(ld | rd | col);
-
-    if (j < (N - 3)){
-      jmark = j + 1; endmark = N2;
-      if (j > 2*N - 34 - start){
-        if (k < l){
-          mark1 = k-1; mark2 = l-1;
-          if (start < l){
-            if (start < k){
-              target = (l != k+1) ? FID_SQBkBlBjrB : FID_SQBklBjrB;
-            } else target = FID_SQBlBjrB;
-          } else target = FID_SQBjrB;
-        } else {
-          mark1 = l-1; mark2 = k-1;
-          if (start < k){
-            if (start < l){
-              target = (k != l+1) ? FID_SQBlBkBjrB : FID_SQBlkBjrB;
-            } else target = FID_SQBkBjrB;
-          } else target = FID_SQBjrB;
-        }
-      } else {
-        if (k < l){
-          mark1 = k-1; mark2 = l-1;
-          target = (l != k+1) ? FID_SQBjlBkBlBjrB : FID_SQBjlBklBjrB;
-        } else {
-          mark1 = l-1; mark2 = k-1;
-          target = (k != l+1) ? FID_SQBjlBlBkBjrB : FID_SQBjlBlkBjrB;
-        }
-      }
-    } else if (j == (N - 3)){
-      endmark = N2;
-      if (k < l){
-        mark1 = k-1; mark2 = l-1;
-        if (start < l){
-          if (start < k){
-            target = (l != k+1) ? FID_SQd2BkBlB : FID_SQd2BklB;
-          } else { mark2 = l-1; target = FID_SQd2BlB; }
-        } else target = FID_SQd2B;
-      } else {
-        mark1 = l-1; mark2 = k-1;
-        if (start < k){
-          if (start < l){
-            target = (k != l+1) ? FID_SQd2BlBkB : FID_SQd2BlkB;
-          } else { mark2 = k-1; target = FID_SQd2BkB; }
-        } else target = FID_SQd2B;
-      }
-    } else if (j == N2){
-      if (k < l){
-        endmark = N2;
-        if (start < l){
-          if (start < k){
-            mark1 = k-1;
-            if (l != k+1){ mark2 = l-1; target = FID_SQd1BkBlB; }
-            else target = FID_SQd1BklB;
-          } else { mark2 = l-1; target = FID_SQd1BlB; }
-        } else target = FID_SQd1B;
-      } else { /* l < k */
-        if (start < k){
-          if (start < l){
-            if (k < N2){
-              mark1 = l-1; endmark = N2;
-              if (k != l+1){ mark2 = k-1; target = FID_SQd1BlBkB; }
-              else target = FID_SQd1BlkB;
-            } else {
-              if (l != (N-3)){ mark2 = l-1; endmark = N-3; target = FID_SQd1BlB; }
-              else { endmark = N-4; target = FID_SQd1B; }
-            }
-          } else {
-            if (k != N2){ mark2 = k-1; endmark = N2; target = FID_SQd1BkB; }
-            else { endmark = N-3; target = FID_SQd1B; }
-          }
-        } else { endmark = N2; target = FID_SQd1B; }
-      }
-    } else { /* j がコーナー */
-      endmark = N2;
-      if (start > k) target = FID_SQd0B;
-      else { mark1 = k-1; target = FID_SQd0BkB; }
-    }
-
-    int cnt = dfs_exec(target, ld, rd, col, start,
-                       free_mask, jmark, endmark, mark1, mark2,
-                       board_mask,
-                       blockK_by_funcid, blockl_by_funcid, meta,
-                       N, N1, NK, NJ);
-
-    c->solutions = (uint32_t)(cnt * symmetry_u32(ijkl, N));
-  }
-}
-
+#endif
 
 
 int main(void) {
@@ -811,6 +1276,9 @@ int main(void) {
     Constellations* constellations = consts_create();
 
     gen_constellations(ijkl_list, constellations, size, preset_queens);
+    //load_or_build_constellations_bin(ijkl_list, constellations, size, preset_queens);
+    //load_or_build_constellations_txt(ijkl_list, constellations, size, preset_queens);
+
 
     exec_solutions(constellations, size);  
 
