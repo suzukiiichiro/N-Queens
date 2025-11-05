@@ -440,37 +440,44 @@ class NQueens17:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
 
+    # 3-b) 先読み本体
+    m1=1 if row_step==mark1 else 0
+    m2=1 if row_step==mark2 else 0
+    # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
+    mj=1 if (funcptn==4 and row_step==(self._N1-jmark)) else 0
+    extra=((m1|m2)*self._NK)|(mj*self._NJ)
     if step==1:
       while avail:
         bit=avail&-avail
         avail&=avail-1
         next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
-        if not next_free:
-          continue
-        m1=1 if row_step==mark1 else 0
-        m2=1 if row_step==mark2 else 0
-        use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
-        mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
-        extra=((m1|m2)*self._NK)|(mj*self._NJ)
-        future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
-        if future:
+        if not next_free: continue
+        # m1=1 if row_step==mark1 else 0
+        # m2=1 if row_step==mark2 else 0
+        # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
+        # mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
+        # extra=((m1|m2)*self._NK)|(mj*self._NJ)
+        # future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
+        # if future:
+        if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
     else:
+      # ここは通過していない！
       while avail:
         bit=avail&-avail
         avail&=avail-1
         next_ld,next_rd,next_col=(ld|bit)<<step|add1,(rd|bit)>>step,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
-        if not next_free:
-          continue
-        m1=1 if row_step==mark1 else 0
-        m2=1 if row_step==mark2 else 0
-        use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
-        mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
-        extra=((m1|m2)*self._NK)|(mj*self._NJ)
-        future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
-        if future:
+        if not next_free: continue
+        # m1=1 if row_step==mark1 else 0
+        # m2=1 if row_step==mark2 else 0
+        # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
+        # mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
+        # extra=((m1|m2)*self._NK)|(mj*self._NJ)
+        # future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
+        # if future:
+        if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
     return total
 
