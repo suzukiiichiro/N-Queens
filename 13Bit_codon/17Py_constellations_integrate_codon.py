@@ -580,50 +580,40 @@ class NQueens17:
           if k_lt_l:
             mark1, mark2 = k-1, l-1
             if start_lt_l:
-              if start_lt_k:
-                target = 0 if (not l_eq_kp1) else 4   # SQBkBlBjrB / SQBklBjrB
-              else:
-                target = 1                            # SQBlBjrB
-            else:
-              target = 2                                # SQBjrB
+              if start_lt_k: target = 0 if (not l_eq_kp1) else 4   # SQBkBlBjrB / SQBklBjrB
+              else: target = 1  # SQBlBjrB
+            else: target = 2   # SQBjrB
           else:
             mark1, mark2 = l-1, k-1
             if start_lt_k:
-              if start_lt_l:
-                target = 5 if (not k_eq_lp1) else 7   # SQBlBkBjrB / SQBlkBjrB
-              else:
-                target = 6                            # SQBkBjrB
-            else:
-              target = 2                                # SQBjrB
+              if start_lt_l: target = 5 if (not k_eq_lp1) else 7   # SQBlBkBjrB / SQBlkBjrB
+              else: target = 6  # SQBkBjrB
+            else: target = 2  # SQBjrB
         else:
           if k_lt_l:
             mark1, mark2 = k-1, l-1
-            target = 8 if (not l_eq_kp1) else 9           # SQBjlBkBlBjrB / SQBjlBklBjrB
+            target = 8 if (not l_eq_kp1) else 9   # SQBjlBkBlBjrB / SQBjlBklBjrB
           else:
             mark1, mark2 = l-1, k-1
-            target = 10 if (not k_eq_lp1) else 11         # SQBjlBlBkBjrB / SQBjlBlkBjrB
+            target = 10 if (not k_eq_lp1) else 11  # SQBjlBlBkBjrB / SQBjlBlkBjrB
       elif j_eq_N3:
         endmark = N2
         if k_lt_l:
           mark1, mark2 = k-1, l-1
           if start_lt_l:
-            if start_lt_k:
-              target = 12 if (not l_eq_kp1) else 15     # SQd2BkBlB / SQd2BklB
+            if start_lt_k: target = 12 if (not l_eq_kp1) else 15     # SQd2BkBlB / SQd2BklB
             else:
               mark2  = l-1
-              target = 13                               # SQd2BlB
-          else:
-            target = 14                                   # SQd2B
+              target = 13 # SQd2BlB
+          else: target = 14 # SQd2B
         else:
           mark1, mark2 = l-1, k-1
           if start_lt_k:
-            if start_lt_l:
-              target = 16 if (not k_eq_lp1) else 18     # SQd2BlBkB / SQd2BlkB
+            if start_lt_l: target = 16 if (not k_eq_lp1) else 18     # SQd2BlBkB / SQd2BlkB
             else:
               mark2  = k-1
-              target = 17                               # SQd2BkB
-          else:
-            target = 14                                   # SQd2B
+              target = 17  # SQd2BkB
+          else: target = 14  # SQd2B
       elif j_eq_N2:  # j がコーナーから1列内側
         if k_lt_l:
           endmark = N2
@@ -632,14 +622,12 @@ class NQueens17:
               mark1 = k-1
               if not l_eq_kp1:
                 mark2 = l-1
-                target = 19                           # SQd1BkBlB
-              else:
-                target = 22                           # SQd1BklB
+                target = 19 # SQd1BkBlB
+              else: target = 22 # SQd1BklB
             else:
               mark2 = l-1
-              target = 20                               # SQd1BlB
-          else:
-            target = 21                                   # SQd1B
+              target = 20 # SQd1BlB
+          else: target = 21 # SQd1B
         else:  # l < k
           if start_lt_k:
             if start_lt_l:
@@ -647,135 +635,32 @@ class NQueens17:
                 mark1, endmark = l-1, N2
                 if not k_eq_lp1:
                   mark2 = k-1
-                  target = 23                       # SQd1BlBkB
-                else:
-                  target = 24                       # SQd1BlkB
+                  target = 23 # SQd1BlBkB
+                else: target = 24 # SQd1BlkB
               else:
                 if l != (N-3):
                   mark2, endmark = l-1, N-3
-                  target = 20                       # SQd1BlB
+                  target = 20  # SQd1BlB
                 else:
                   endmark = N-4
-                  target  = 21                      # SQd1B
+                  target  = 21 # SQd1B
             else:
               if k != N2:
                 mark2, endmark = k-1, N2
-                target = 25                           # SQd1BkB
+                target = 25  # SQd1BkB
               else:
                 endmark = N-3
-                target  = 21                          # SQd1B
+                target  = 21 # SQd1B
           else:
             endmark = N2
-            target  = 21                                  # SQd1B
-      else:  # j がコーナー
+            target  = 21 # SQd1B
+      # j がコーナー
+      else:
         endmark = N2
-        if start > k:
-          target = 26                                       # SQd0B
+        if start > k: target = 26 # SQd0B
         else:
           mark1 = k-1
-          target = 27                                       # SQd0BkB
-
-
-
-
-
-      # if j<(N-3):
-      #   jmark,endmark=j+1,N2
-      #   if j>2*N-34-start:
-      #     if k<l:
-      #       mark1,mark2=k-1,l-1
-      #       if start<l:
-      #         if start<k:
-      #           if l!=k+1:target=0 # SQBkBlBjrB
-      #           else:target=4 # SQBklBjrB
-      #         else:target=1 #_SQBlBjrB
-      #       else:target=2 # SQBjrB
-      #     else:
-      #       mark1,mark2=l-1,k-1
-      #       if start<k:
-      #         if start<l:
-      #           if k!=l+1:target=5 # SQBlBkBjrB
-      #           else:target=7 # SQBlkBjrB
-      #         else:target=6 # SQBkBjrB
-      #       else:target=2 # SQBjrB
-      #   else:
-      #     if k<l:
-      #       mark1,mark2=k-1,l-1
-      #       if l!=k+1:target=8 # SQBjlBkBlBjrB
-      #       else:target=9 # SQBjlBklBjrB
-      #     else:
-      #       mark1,mark2=l-1,k-1
-      #       if k!=l+1:target=10 # SQBjlBlBkBjrB
-      #       else:target=11 # SQBjlBlkBjrB
-      # elif j==(N-3):
-      #   endmark=N2
-      #   if k<l:
-      #     mark1,mark2=k-1,l-1
-      #     if start<l:
-      #       if start<k:
-      #         if l!=k+1:target=12 # SQd2BkBlB
-      #         else:target=15 # SQd2BklB
-      #       else:
-      #         mark2=l-1
-      #         target=13 # SQd2BlB
-      #     else:target=14 # SQd2B
-      #   else:
-      #     mark1,mark2=l-1,k-1
-      #     if start<k:
-      #       if start<l:
-      #         if k!=l+1:target=16 # SQd2BlBkB
-      #         else:target=18 # SQd2BlkB
-      #       else:
-      #         mark2=k-1
-      #         target=17 # SQd2BkB
-      #     else:target=14 # SQd2B
-      # elif j==N2:# jがコーナーから1列内側
-      #   if k<l:
-      #     endmark=N2
-      #     if start<l:
-      #       if start<k:
-      #         mark1=k-1
-      #         if l!=k+1:
-      #           mark2=l-1
-      #           target=19 # SQd1BkBlB
-      #         else:target=22 # SQd1BklB
-      #       else:
-      #         mark2=l-1
-      #         target=20 # SQd1BlB
-      #     else:target=21 # SQd1B
-      #   else:# l < k
-      #     if start<k:
-      #       if start<l:
-      #         if k<N2:
-      #           mark1,endmark=l-1,N2
-      #           if k!=l+1:
-      #             mark2=k-1
-      #             target=23 # SQd1BlBkB
-      #           else:target=24 # SQd1BlkB
-      #         else:
-      #           if l!=(N-3):
-      #             mark2,endmark=l-1,N-3
-      #             target=20 # SQd1BlB
-      #           else:
-      #             endmark=N-4
-      #             target=21 # SQd1B
-      #       else:
-      #         if k!=N2:
-      #           mark2,endmark=k-1,N2
-      #           target=25 # SQd1BkB
-      #         else:
-      #           endmark=N-3
-      #           target=21 # SQd1B
-      #     else:
-      #       endmark=N2
-      #       target=21 # SQd1B
-      # else:# j がコーナー
-      #   endmark=N2
-      #   if start>k:
-      #     target=26 # SQd0B
-      #   else:
-      #     mark1=k-1
-      #     target=27 # SQd0BkB
+          target = 27 # SQd0BkB
       # 配列へ格納
       ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],funcid_arr[i],ijkl_arr[i]=ld,rd,col,start,free,jmark,endmark,mark1,mark2,target,ijkl
 
@@ -790,8 +675,7 @@ class NQueens17:
     self._board_mask = (1<<N)-1
     @par
     for i in range(m):
-      cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],
-              jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
+      cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
       results[i]=cnt*symmetry(ijkl_arr[i],N)
 
     # ===== 書き戻し（単一スレッド） =====
@@ -1084,12 +968,12 @@ class NQueens17_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
