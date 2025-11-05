@@ -358,7 +358,7 @@ class NQueens17:
     # P5: N1-jmark 行の入口（据え置き分岐）
     if funcptn==4 and row==(self._N1-jmark):
       rd|=self._NJ # rd |= 1 << N1
-      next_free:int=self._board_mask&~((ld<<1)|(rd>>1)|col)
+      next_free:int=self._board_mask&~(ld<<1|rd>>1|col)
       if next_free:
         return _dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2)
       return 0
@@ -376,7 +376,7 @@ class NQueens17:
 
     # P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
     if funcptn in (0,1,2):
-      at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
+      at_mark:bool=(row==mark1) if funcptn in (0,2) else row==mark2
       if at_mark and avail:
         step=2 if funcptn in (0,1) else 3
         add1=1 if (funcptn==1 and functionid==20) else 0  # SQd1BlB のときだけ1
@@ -396,7 +396,7 @@ class NQueens17:
       while avail:
         bit:int=avail&-avail
         avail&=avail-1
-        next_ld,next_rd,next_col=(((ld|bit)<<step)|add1)|blockL,((rd|bit)>>step)|blockK,col|bit
+        next_ld,next_rd,next_col=(ld|bit)<<step|add1|blockL,(rd|bit)>>step|blockK,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
         if next_free:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
