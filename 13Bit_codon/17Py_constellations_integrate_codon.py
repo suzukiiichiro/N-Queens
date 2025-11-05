@@ -395,7 +395,6 @@ class NQueens17:
         blockK,blockL=self._blockK[functionid],self._blockL[functionid]
         use_blocks,use_future=True,False
         local_next_funcid=next_funcid
-
     # ループ１：use_blocks
     if use_blocks:
       while avail:
@@ -425,7 +424,6 @@ class NQueens17:
           if next_free:
             total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
-
     # ループ３：+1 先読み
     if row_step>=endmark:
       while avail:
@@ -433,13 +431,9 @@ class NQueens17:
         avail&=avail-1
         next_ld,next_rd,next_col=((ld|bit)<<step)|add1,(rd|bit)>>step,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
-        # # if not next_free:
-        # #   continue
-        # if row_step>=endmark:
         if next_free:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
-
     # ループ３Ｂ：先読み本体
     m1=1 if row_step==mark1 else 0
     m2=1 if row_step==mark2 else 0
@@ -453,15 +447,9 @@ class NQueens17:
         next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
         if not next_free: continue
-        # m1=1 if row_step==mark1 else 0
-        # m2=1 if row_step==mark2 else 0
-        # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
-        # mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
-        # extra=((m1|m2)*self._NK)|(mj*self._NJ)
-        # future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
-        # if future:
         if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
+      return total
     else:
       # ここは通過していない！
       while avail:
@@ -470,16 +458,9 @@ class NQueens17:
         next_ld,next_rd,next_col=(ld|bit)<<step|add1,(rd|bit)>>step,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
         if not next_free: continue
-        # m1=1 if row_step==mark1 else 0
-        # m2=1 if row_step==mark2 else 0
-        # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
-        # mj=1 if (use_j and row_step==(self._N1-jmark)) else 0
-        # extra=((m1|m2)*self._NK)|(mj*self._NJ)
-        # future=self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra)
-        # if future:
         if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
-    return total
+      return total
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
