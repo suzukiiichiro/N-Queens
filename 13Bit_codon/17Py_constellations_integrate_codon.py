@@ -345,7 +345,7 @@ class NQueens17:
     _dfs=self.dfs
     next_funcid,funcptn,avail_flag=self._meta[functionid]
 
-    bit:int=0
+    # bit:int=0
     avail:int=free
     total:int=0
 
@@ -434,21 +434,22 @@ class NQueens17:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
 
-    # ループ３Ｂ：先読み本体
-    m1=1 if row_step==mark1 else 0
-    m2=1 if row_step==mark2 else 0
-    mj=1 if (funcptn==4 and row_step==(self._N1-jmark)) else 0
-    extra=((m1|m2)*self._NK)|(mj*self._NJ)
-    if step==1:
-      while avail:
-        bit=avail&-avail
-        avail&=avail-1
-        next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
-        next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
-        if not next_free: continue
-        if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
-          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
-      return total
+    # # ループ３Ｂ：先読み本体
+    # m1=1 if row_step==mark1 else 0
+    # m2=1 if row_step==mark2 else 0
+    # mj=1 if (funcptn==4 and row_step==(self._N1-jmark)) else 0
+    # extra=((m1|m2)*self._NK)|(mj*self._NJ)
+    # if step==1:
+    while avail and step==1:
+      bit:int=avail&-avail
+      avail&=avail-1
+      next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
+      next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
+      if not next_free: continue
+      # if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
+      if self._board_mask&~(next_ld<<1|next_rd>>1|next_col):
+        total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
+    return total
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
