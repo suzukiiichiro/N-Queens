@@ -331,8 +331,8 @@ class NQueens17:
 
   def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->int:
     """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
-  (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
-  を切り替える。引数:
+    (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
+    を切り替える。引数:
     functionid: 現在の分岐モード ID（次の ID, パターン, 先読み有無は func_meta で決定）
     ld/rd/col:   斜線/列の占有
     row/free:    現在行と空きビット
@@ -349,13 +349,6 @@ class NQueens17:
     avail:int=free
     total:int=0
 
-    # トップの if 階層をこの順で：
-    # P6（end 基底）
-    # P5（jrow 入口）
-    # at_mark 判定 → use_blocks セット
-    # P4（jmark 入口）
-    # 残りは +1（素朴 or 先読み）
-
     # P6: 早期終了 endmark 基底
     if funcptn==5 and row==endmark:
       if functionid==14:# SQd2B
@@ -369,21 +362,17 @@ class NQueens17:
       if next_free:
         return _dfs(next_funcid,ld<<1,rd>>1,col,row,next_free,jmark,endmark,mark1,mark2)
       return 0
-
     step:int=1
     add1:int=0
     row_step:int=row+step
     use_blocks:bool=False       # blockK/blockl を噛ませるか
     use_future:bool=(avail_flag==1)  # _should_go_plus1 を使うか
+
+    # 先読みは +1 専用（P1/P2/P3 は step=2/3 なので無効化）
+    if use_future and step != 1: use_future = False
     blockK:int=0
     blockL:int=0
     local_next_funcid:int=functionid    # 既定は自分
-
-    # P4: jmark 特殊（入口時に一度だけ）
-    if funcptn==3 and row==jmark:
-      avail&=~1   # 列0禁止
-      ld|=1       # 左斜線 LSB を立てる
-      local_next_funcid=next_funcid  # 次関数へ
 
     # P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
     if funcptn in (0,1,2):
@@ -395,6 +384,13 @@ class NQueens17:
         blockK,blockL=self._blockK[functionid],self._blockL[functionid]
         use_blocks,use_future=True,False
         local_next_funcid=next_funcid
+
+    # P4: jmark 特殊（入口時に一度だけ）
+    if funcptn==3 and row==jmark:
+      avail&=~1   # 列0禁止
+      ld|=1       # 左斜線 LSB を立てる
+      local_next_funcid=next_funcid  # 次関数へ
+
     # ループ１：use_blocks
     if use_blocks:
       while avail:
@@ -405,6 +401,7 @@ class NQueens17:
         if next_free:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
+
     # ループ２：+1 素朴
     if not use_future:
       if step==1:
@@ -415,6 +412,7 @@ class NQueens17:
           next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
           if next_free:
             total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
+        return total
       else:
         while avail:
           bit:int=avail&-avail
@@ -423,7 +421,8 @@ class NQueens17:
           next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
           if next_free:
             total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
-      return total
+        return total
+
     # ループ３：+1 先読み
     if row_step>=endmark:
       while avail:
@@ -434,10 +433,10 @@ class NQueens17:
         if next_free:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
+
     # ループ３Ｂ：先読み本体
     m1=1 if row_step==mark1 else 0
     m2=1 if row_step==mark2 else 0
-    # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
     mj=1 if (funcptn==4 and row_step==(self._N1-jmark)) else 0
     extra=((m1|m2)*self._NK)|(mj*self._NJ)
     if step==1:
@@ -445,17 +444,6 @@ class NQueens17:
         bit=avail&-avail
         avail&=avail-1
         next_ld,next_rd,next_col=(ld|bit)<<1,(rd|bit)>>1,col|bit
-        next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
-        if not next_free: continue
-        if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
-          total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
-      return total
-    else:
-      # ここは通過していない！
-      while avail:
-        bit=avail&-avail
-        avail&=avail-1
-        next_ld,next_rd,next_col=(ld|bit)<<step|add1,(rd|bit)>>step,col|bit
         next_free:int=self._board_mask&~(next_ld|next_rd|next_col)
         if not next_free: continue
         if self._board_mask&~(((next_ld<<1)|(next_rd>>1)|next_col)|extra):
@@ -968,12 +956,12 @@ class NQueens17_constellations():
       # 星座リストそのものをキャッシュ
       #---------------------------------
       # キャッシュを使わない
-      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       # キャッシュを使う、キャッシュの整合性もチェック
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size)
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
