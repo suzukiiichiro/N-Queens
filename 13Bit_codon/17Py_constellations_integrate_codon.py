@@ -406,7 +406,7 @@ class NQueens17:
         if next_free:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
-
+    # ループ２：+1 素朴
     if not use_future:
       if step==1:
         while avail:
@@ -426,7 +426,7 @@ class NQueens17:
             total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
 
-    # ループ２：+1 素朴
+    # ループ３：+1 先読み
     if row_step>=endmark:
       while avail:
         bit:int=avail&-avail
@@ -440,7 +440,7 @@ class NQueens17:
           total+=_dfs(local_next_funcid,next_ld,next_rd,next_col,row_step,next_free,jmark,endmark,mark1,mark2)
       return total
 
-    # 3-b) 先読み本体
+    # ループ３Ｂ：先読み本体
     m1=1 if row_step==mark1 else 0
     m2=1 if row_step==mark2 else 0
     # use_j=(funcptn==4)            # ★ P5ファミリのみ J 行を有効化
