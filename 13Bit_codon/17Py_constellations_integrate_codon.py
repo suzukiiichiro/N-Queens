@@ -139,7 +139,7 @@ workspace#suzuki$ bash MAIN.SH 15Py_constellations_optimize_codon.py
 
 workspace#suzuki$ bash MAIN.SH 17Py_constellations_integrate_codon.py
  N:        Total       Unique        hh:mm:ss.ms
-17:     95815104            0         0:00:03.551    ok
+17:     95815104            0         0:00:03.445    ok
 18:    666090624            0         0:00:29.301    ok
 19:   4968057848            0         0:03:41.853    ok
 """
@@ -358,20 +358,20 @@ class NQueens17:
       return 0
     total = 0
 
-    # ---- P6: 早期終了（基底）----
+    # ---- N10:47 P6: 早期終了（基底）----
     if funcptn == 5 and row == endmark:
       if functionid == 14:  # SQd2B 特例（列0以外が残っていれば1）
         return 1 if (avail >> 1) else 0
       return 1
 
     # ---- P5: N1-jmark 行の入口（据え置き分岐）----
-    if funcptn == 4 and row == (N1 - jmark):
-      rd |= NJ
-      nf = bm & ~( (ld << 1) | (rd >> 1) | col )
-      if nf:
-        return _dfs(next_funcid, ld << 1, rd >> 1, col, row, nf,
-                        jmark, endmark, mark1, mark2)
-      return 0
+    # if funcptn == 4 and row == (N1 - jmark):
+    #   rd |= NJ
+    #   nf = bm & ~( (ld << 1) | (rd >> 1) | col )
+    #   if nf:
+    #     return _dfs(next_funcid, ld << 1, rd >> 1, col, row, nf,
+    #                     jmark, endmark, mark1, mark2)
+    #   return 0
 
     # 既定（+1）
     step = 1
@@ -397,7 +397,7 @@ class NQueens17:
         use_future = False
         local_next_funcid = next_funcid
 
-    # ---- P4: jmark 特殊（入口一回だけ）----
+    # ---- N10:3 P4: jmark 特殊（入口一回だけ）----
     if funcptn == 3 and row == jmark:
       avail &= ~1     # 列0禁止
       ld |= 1         # 左斜線LSBを立てる
@@ -405,7 +405,7 @@ class NQueens17:
       if not avail:
         return 0
 
-    # ==== ループ１：block 適用（step=2/3 系のホットパス）====
+    # ==== N10:267 ループ１：block 適用（step=2/3 系のホットパス）====
     if use_blocks:
       s = step
       a1 = add1
@@ -423,36 +423,37 @@ class NQueens17:
                               jmark, endmark, mark1, mark2)
       return total
 
-    # ==== ループ２：+1 素朴（先読みなし）====
+    # ==== N10:271 ループ２：+1 素朴（先読みなし）====
     if not use_future:
-      if step == 1:
-        while avail:
-          bit = avail & -avail
-          avail &= avail - 1
-          nld = (ld | bit) << 1
-          nrd = (rd | bit) >> 1
-          ncol = col | bit
-          nf = bm & ~(nld | nrd | ncol)
-          if nf:
-            total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                                  jmark, endmark, mark1, mark2)
-        return total
-      else:
-        s = step
-        a1 = add1
-        while avail:
-          bit = avail & -avail
-          avail &= avail - 1
-          nld = ((ld | bit) << s) | a1
-          nrd = (rd | bit) >> s
-          ncol = col | bit
-          nf = bm & ~(nld | nrd | ncol)
-          if nf:
-            total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                                  jmark, endmark, mark1, mark2)
-        return total
+      # if step == 1:
+      while avail:
+        bit = avail & -avail
+        avail &= avail - 1
+        nld = (ld | bit) << 1
+        nrd = (rd | bit) >> 1
+        ncol = col | bit
+        nf = bm & ~(nld | nrd | ncol)
+        if nf:
+          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                                jmark, endmark, mark1, mark2)
+      return total
+      # else:
+      #   print("HOE")
+      #   s = step
+      #   a1 = add1
+      #   while avail:
+      #     bit = avail & -avail
+      #     avail &= avail - 1
+      #     nld = ((ld | bit) << s) | a1
+      #     nrd = (rd | bit) >> s
+      #     ncol = col | bit
+      #     nf = bm & ~(nld | nrd | ncol)
+      #     if nf:
+      #       total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+      #                             jmark, endmark, mark1, mark2)
+      #   return total
 
-    # ==== ループ３：+1 先読み（row_step >= endmark は基底で十分）====
+    # ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）====
     if row_step >= endmark:
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
       while avail:
@@ -467,7 +468,7 @@ class NQueens17:
                               jmark, endmark, mark1, mark2)
       return total
  
-    # ==== ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）====
+    # ==== N10:402 ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）====
     while avail:
       bit = avail & -avail
       avail &= avail - 1
