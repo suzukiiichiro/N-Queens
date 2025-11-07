@@ -360,12 +360,15 @@ class NQueens17:
 
     # ---- P6: 早期終了（基底）----
     if funcptn == 5 and row == endmark:
+      #print("pt5")
       if functionid == 14:  # SQd2B 特例（列0以外が残っていれば1）
         return 1 if (avail >> 1) else 0
       return 1
 
     # ---- P5: N1-jmark 行の入口（据え置き分岐）----
+    """
     if funcptn == 4 and row == (N1 - jmark):
+      print("pt4")
       rd |= NJ
       nf = bm & ~( (ld << 1) | (rd >> 1) | col )
       if nf:
@@ -373,6 +376,7 @@ class NQueens17:
                         jmark, endmark, mark1, mark2)
       return 0
 
+    """
     # 既定（+1）
     step = 1
     add1 = 0
@@ -383,9 +387,10 @@ class NQueens17:
     blockK = 0
     blockL = 0
     local_next_funcid = functionid
-
+    
     # P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
     if funcptn in (0, 1, 2):
+      #print("pt0,1,2")
       at_mark = (row == mark1) if funcptn in (0, 2) else (row == mark2)
       if at_mark and avail:
         step = 2 if funcptn in (0, 1) else 3
@@ -399,6 +404,7 @@ class NQueens17:
 
     # ---- P4: jmark 特殊（入口一回だけ）----
     if funcptn == 3 and row == jmark:
+      #print("pt3")
       avail &= ~1     # 列0禁止
       ld |= 1         # 左斜線LSBを立てる
       local_next_funcid = next_funcid
@@ -407,6 +413,7 @@ class NQueens17:
 
     # ==== ループ１：block 適用（step=2/3 系のホットパス）====
     if use_blocks:
+      #print("a_use_blocks")
       s = step
       a1 = add1
       bK = blockK
@@ -425,19 +432,22 @@ class NQueens17:
 
     # ==== ループ２：+1 素朴（先読みなし）====
     if not use_future:
-      if step == 1:
-        while avail:
-          bit = avail & -avail
-          avail &= avail - 1
-          nld = (ld | bit) << 1
-          nrd = (rd | bit) >> 1
-          ncol = col | bit
-          nf = bm & ~(nld | nrd | ncol)
-          if nf:
-            total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                                  jmark, endmark, mark1, mark2)
-        return total
-      else:
+      #print("a_not_use_future")
+      #if step == 1:
+        #print("a_not_use_future_step1")
+      while avail:
+        bit = avail & -avail
+        avail &= avail - 1
+        nld = (ld | bit) << 1
+        nrd = (rd | bit) >> 1
+        ncol = col | bit
+        nf = bm & ~(nld | nrd | ncol)
+        if nf:
+          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                                jmark, endmark, mark1, mark2)
+      return total
+      """else:
+        print("a_not_use_future_else")
         s = step
         a1 = add1
         while avail:
@@ -451,9 +461,10 @@ class NQueens17:
             total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
                                   jmark, endmark, mark1, mark2)
         return total
-
+        """
     # ==== ループ３：+1 先読み（row_step >= endmark は基底で十分）====
     if row_step >= endmark:
+      #print("a_endmark")
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
       while avail:
         bit = avail & -avail
@@ -469,6 +480,7 @@ class NQueens17:
  
     # ==== ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）====
     while avail:
+      #print("a_common")
       bit = avail & -avail
       avail &= avail - 1
       nld = (ld | bit) << 1
@@ -697,8 +709,9 @@ class NQueens17:
     self._blockL = blockl_by_funcid
     self._meta   = func_meta
     self._board_mask = (1<<N)-1
-    @par
+    #@par
     for i in range(m):
+      #print("exec_start")
       cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
       results[i]=cnt*symmetry(ijkl_arr[i],N)
 
