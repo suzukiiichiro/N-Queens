@@ -373,17 +373,6 @@ class NQueens17:
     #     return _dfs(next_funcid, ld << 1, rd >> 1, col, row, nf,
     #                     jmark, endmark, mark1, mark2)
     #   return 0
-    """
-    if funcptn == 4 and row == (N1 - jmark):
-      print("pt4")
-      rd |= NJ
-      nf = bm & ~( (ld << 1) | (rd >> 1) | col )
-      if nf:
-        return _dfs(next_funcid, ld << 1, rd >> 1, col, row, nf,
-                        jmark, endmark, mark1, mark2)
-      return 0
-
-    """
     # 既定（+1）
     step = 1
     add1 = 0
@@ -395,7 +384,7 @@ class NQueens17:
     blockL = 0
     local_next_funcid = functionid
     
-    # P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
+    # N10:538 P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
     if funcptn in (0, 1, 2):
       #print("pt0,1,2")
       at_mark = (row == mark1) if funcptn in (0, 2) else (row == mark2)
@@ -408,9 +397,8 @@ class NQueens17:
         use_blocks = True
         use_future = False
         local_next_funcid = next_funcid
-
     # ---- N10:3 P4: jmark 特殊（入口一回だけ）----
-    if funcptn == 3 and row == jmark:
+    elif funcptn == 3 and row == jmark:
       #print("pt3")
       avail &= ~1     # 列0禁止
       ld |= 1         # 左斜線LSBを立てる
@@ -451,43 +439,24 @@ class NQueens17:
         ncol = col | bit
         nf = bm & ~(nld | nrd | ncol)
         if nf:
-          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                                jmark, endmark, mark1, mark2)
+          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
       return total
-      # else:
-      #   print("HOE")
-      #   s = step
-      #   a1 = add1
-      #   while avail:
-      #     bit = avail & -avail
-      #     avail &= avail - 1
-      #     nld = ((ld | bit) << s) | a1
-      #     nrd = (rd | bit) >> s
-      #     ncol = col | bit
-      #     nf = bm & ~(nld | nrd | ncol)
-      #     if nf:
-      #       total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-      #                             jmark, endmark, mark1, mark2)
-      #   return total
+    # else:
+    #   s = step
+    #   a1 = add1
+    #   while avail:
+    #     bit = avail & -avail
+    #     avail &= avail - 1
+    #     nld = ((ld | bit) << s) | a1
+    #     nrd = (rd | bit) >> s
+    #     ncol = col | bit
+    #     nf = bm & ~(nld | nrd | ncol)
+    #     if nf:
+    #       total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+    #                             jmark, endmark, mark1, mark2)
+    #   return total
 
     # ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）====
-      """else:
-        print("a_not_use_future_else")
-        s = step
-        a1 = add1
-        while avail:
-          bit = avail & -avail
-          avail &= avail - 1
-          nld = ((ld | bit) << s) | a1
-          nrd = (rd | bit) >> s
-          ncol = col | bit
-          nf = bm & ~(nld | nrd | ncol)
-          if nf:
-            total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                                  jmark, endmark, mark1, mark2)
-        return total
-        """
-    # ==== ループ３：+1 先読み（row_step >= endmark は基底で十分）====
     if row_step >= endmark:
       #print("a_endmark")
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
@@ -734,7 +703,7 @@ class NQueens17:
     self._blockL = blockl_by_funcid
     self._meta   = func_meta
     self._board_mask = (1<<N)-1
-    #@par
+    @par
     for i in range(m):
       #print("exec_start")
       cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
