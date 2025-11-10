@@ -426,7 +426,7 @@ class NQueens17:
       return total
 
     # ==== N10:271 ループ２：+1 素朴（先読みなし）====
-    if not use_future:
+    elif not use_future:
       # if step == 1:
       #print("a_not_use_future")
       #if step == 1:
@@ -457,7 +457,7 @@ class NQueens17:
     #   return total
 
     # ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）====
-    if row_step >= endmark:
+    elif row_step >= endmark:
       #print("a_endmark")
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
       while avail:
