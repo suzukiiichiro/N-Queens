@@ -237,160 +237,158 @@ static inline uint32_t get_jasmin(uint32_t c, int N){
 typedef struct { int next_funcid; int funcptn; int availptn; } FuncMeta;
 
 static int dfs(
-/*汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
-  (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
-  を切り替える。引数:
-    functionid: 現在の分岐モード ID（次の ID, パターン, 先読み有無は func_meta で決定）
-    ld/rd/col:   斜線/列の占有
-    row/free:    現在行と空きビット
-    jmark/endmark/mark1/mark2: 特殊行/探索終端
-    board_mask:  盤面全域のビットマスク
-    blockK_by_funcid/blockl_by_funcid: 関数 ID に紐づく追加ブロック
-    func_meta:   (next_id, funcptn, availptn) のメタ情報配列*/  
+  /* 汎用 DFS カーネル（codon 実装のロジックを C へ移植）
+     (1) mark 行で step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み */
   int functionid,
   uint32_t ld, uint32_t rd, uint32_t col,
   int row, uint32_t free_mask,
   int jmark, int endmark, int mark1, int mark2,
   uint32_t board_mask,
-  const uint32_t* blockK_by_funcid, const uint32_t* blockl_by_funcid,
+  const uint32_t* blockK_by_funcid, const uint32_t* blockL_by_funcid,
   const FuncMeta* meta,
   int N, int N1, uint32_t NK, uint32_t NJ
 ){
-  /* メタ展開（codon 同様に最初に束縛） */
-  int next_funcid = meta[functionid].next_funcid;
-  int funcptn     = meta[functionid].funcptn;
-  int avail_flag  = meta[functionid].availptn;
+  (void)N; (void)NK; /* 本移植では未使用（codon 側と同様の分岐） */
+
+  /* ---- ローカル束縛（属性アクセス最小化）---- */
+  const int next_funcid = meta[functionid].next_funcid;
+  const int funcptn     = meta[functionid].funcptn;
+  const int avail_flag  = meta[functionid].availptn;
 
   uint32_t avail = free_mask;
-  int total = 0;
-  int      step   = 1;
-  uint32_t add1   = 0;
-  int      row_step = row + step;
-  bool     use_blocks = false;                /* blockK/blockl を使うか */
-  bool     use_future = (avail_flag == 1);    /* “+1 先読み”を使うか  */
-  uint32_t blockK = 0, blockl = 0;
-  int      local_next_funcid = functionid;    /* 既定は自分 */
-  /* ========= codon と同じ分岐順 =========
-    ここから 1 本化した共通配置ループ # 既定値（通常の +1 前進ループ） 
-  -------------------------------------- */
-  /* --- P1/P2/P3: mark 行で step=2/3 + 追加ブロックを設定（at_mark && avail） --- */
-  if (funcptn == 0 || funcptn == 1 || funcptn == 2){
-    bool at_mark = (funcptn == 1) ? (row == mark2) : (row == mark1);
-    if (at_mark && avail){
-      step     = (funcptn == 2) ? 3 : 2;
-      add1     = (funcptn == 1 && functionid == 20 /*SQd1BlB*/)? 1u : 0u;
-      row_step = row + step;
-      blockK   = blockK_by_funcid[functionid];
-      blockl   = blockl_by_funcid[functionid];
-      use_blocks        = true;
-      use_future        = false;              /* ここは next_free のみで分岐 */
-      local_next_funcid = next_funcid;
-    }
-  }
-  /* ---- P6: endmark 基底 ---- */
-  else if (funcptn == 5 && row == endmark){
-    if (functionid == 14 /*SQd2B*/){
-      /* avail & (~1) が立っていれば 1 */
-      return ((avail & (~(uint32_t)1u)) != 0u) ? 1 : 0;
+  if (avail == 0u) return 0;
+
+  int      total    = 0;
+  /* ----N10:47 P6: 早期終了（基底）---- */
+  if (funcptn == 5 && row == endmark){
+    if (functionid == 14){ /* SQd2B 特例（列0以外が残っていれば1） */
+      return ((avail >> 1) != 0u) ? 1 : 0;
     }
     return 1;
   }
-  /* --- P4: jmark 特殊（列0禁止 + ld LSB セット）--- */
-  else if (funcptn == 3 && row == jmark){
-    avail &= ~1u;   /* 列0禁止 */
-    ld    |=  1u;   /* 左斜線 LSB を立てる */
-    local_next_funcid = next_funcid;
-  }
-  /* ---- P5: N-1-jmark 入口（行据え置きの一手前処理。命中時はその場で1手進めてreturn） */
-  else if (funcptn == 4){
-    if (row == N1 - jmark){
-      rd |= NJ; /* rd |= 1<<N1 */
-      uint32_t next_free = board_mask & ~((ld<<1) | (rd>>1) | col);
-      if (next_free){
-        total += dfs(next_funcid, ld<<1, rd>>1, col, row,
-                     next_free, jmark, endmark, mark1, mark2,
-                     board_mask,
-                     blockK_by_funcid, blockl_by_funcid, meta,
-                     N, N1, NK, NJ);
-      }
-      return total; /* codon と同様：ここで戻る（通常ループへは入らない） */
+  int      step     = 1;
+  uint32_t add1     = 0;
+  int      row_step = row + 1;
+  bool     use_blocks = false;                 /* blockK/blockL を噛ませるか */
+  bool     use_future = (avail_flag == 1);     /* “+1 先読み”を使うか */
+
+  uint32_t blockK = 0, blockL = 0;
+  int      local_next_funcid = functionid;
+
+  /* ---- N10:538 P1/P2/P3: mark 行での step=2/3 + block 適用設定 ---- */
+  if (funcptn == 0 || funcptn == 1 || funcptn == 2){
+    const bool at_mark = (funcptn == 1) ? (row == mark2) : (row == mark1);
+    if (at_mark && avail){
+      step     = (funcptn == 2) ? 3 : 2;
+      add1     = (funcptn == 1 && functionid == 20) ? 1u : 0u; /* SQd1BlB のときだけ +1 */
+      row_step = row + step;
+      blockK   = blockK_by_funcid[functionid];
+      blockL   = blockL_by_funcid[functionid];
+      use_blocks        = true;
+      use_future        = false;
+      local_next_funcid = next_funcid;
     }
+  }
+  /* ---- N10:3 P4: jmark 特殊（入口一回だけ）---- */
+  else if (funcptn == 3 && row == jmark){
+    avail &= ~1u;     /* 列0禁止 */
+    ld    |=  1u;     /* 左斜線 LSB を立てる */
+    local_next_funcid = next_funcid;
+    if (avail == 0u) return 0;
   }
 
-/*#use_blocks / use_future の分岐ごとにループを分ける
-    # ブーリアン分岐を内側ループに残すより、「使う/使わない」でループを2本に分けると分岐予測も最短経路になります*/
+  /* ==== N10:267 ループ１：block 適用（step=2/3 系のホットパス）==== */
   if (use_blocks){
+    const int s  = step;
+    const uint32_t a1 = add1;
+    const uint32_t bK = blockK;
+    const uint32_t bL = blockL;
+
     while (avail){
-      uint32_t bit = avail & -avail;
-      avail &= avail - 1;
-      uint32_t next_ld  = ((ld | bit) << step) | add1;
-      uint32_t next_rd  = (rd | bit) >> step;
-      uint32_t next_col =  col | bit;
-      next_ld |= blockl;
-      next_rd |= blockK;
-      uint32_t blocked   = next_ld | next_rd | next_col;
-      uint32_t next_free = board_mask & ~blocked;
-      if (next_free){
-        total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                     next_free, jmark, endmark, mark1, mark2,
+      uint32_t bit = avail & (~avail + 1u);
+      avail &= (avail - 1u);
+
+      uint32_t nld  = ((ld | bit) << s) | a1 | bL;
+      uint32_t nrd  = ((rd | bit) >> s) | bK;
+      uint32_t ncol = (col | bit);
+
+      uint32_t nf = board_mask & ~(nld | nrd | ncol);
+      if (nf){
+        total += dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                     jmark, endmark, mark1, mark2,
                      board_mask,
-                     blockK_by_funcid, blockl_by_funcid, meta,
+                     blockK_by_funcid, blockL_by_funcid, meta,
                      N, N1, NK, NJ);
       }
     }
-  } else {
-  //素の +1” だけ（先読みなし） # “+1 with 先読み  
-    if (use_future) {
-      /* “+1 with 先読み” */
-      while (avail){
-        uint32_t bit = avail & -avail;
-        avail &= avail - 1;
-        uint32_t next_ld  = ((ld | bit) << step) | add1;
-        uint32_t next_rd  = (rd | bit) >> step;
-        uint32_t next_col =  col | bit;
-        uint32_t blocked   = next_ld | next_rd | next_col;
-        uint32_t next_free = board_mask & ~blocked;
-        if (!next_free) continue;
-        if (row_step >= endmark){
-          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                       next_free, jmark, endmark, mark1, mark2,
-                       board_mask,
-                       blockK_by_funcid, blockl_by_funcid, meta,
-                       N, N1, NK, NJ);
-          continue;
-        }
-        //# 先読み（+1）の中
-        int m1 = (row_step == mark1) ? 1 : 0;
-        int m2 = (row_step == mark2) ? 1 : 0;
-        int use_j = (funcptn == 4); /* P5ファミリのみ J 行を有効化 */
-        int mj = (use_j && (row_step == (N1 - jmark))) ? 1 : 0;
-        uint32_t extra  = ((uint32_t)(m1 | m2) * NK) | ((uint32_t)mj * NJ);
-        uint32_t future = board_mask & ~(((next_ld<<1) | (next_rd>>1) | next_col) | extra);
-        if (future){
-          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                       next_free, jmark, endmark, mark1, mark2,
-                       board_mask,
-                       blockK_by_funcid, blockl_by_funcid, meta,
-                       N, N1, NK, NJ);
-        }
+    return total;
+  }
+
+  /* ==== N10:271 ループ２：+1 素朴（先読みなし）==== */
+  else if (!use_future){
+    while (avail){
+      uint32_t bit = avail & (~avail + 1u);
+      avail &= (avail - 1u);
+
+      uint32_t nld  = (ld | bit) << 1;
+      uint32_t nrd  = (rd | bit) >> 1;
+      uint32_t ncol =  col | bit;
+
+      uint32_t nf = board_mask & ~(nld | nrd | ncol);
+      if (nf){
+        total += dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                     jmark, endmark, mark1, mark2,
+                     board_mask,
+                     blockK_by_funcid, blockL_by_funcid, meta,
+                     N, N1, NK, NJ);
       }
-    } else {
-      /* “素の +1” だけ（先読みなし） */
-      while (avail){
-        uint32_t bit = avail & -avail;
-        avail &= avail - 1;
-        uint32_t next_ld  = ((ld | bit) << step) | add1;
-        uint32_t next_rd  = (rd | bit) >> step;
-        uint32_t next_col =  col | bit;
-        uint32_t next_free = board_mask & ~(next_ld | next_rd | next_col);
-        if (next_free){
-          total += dfs(local_next_funcid, next_ld, next_rd, next_col, row_step,
-                       next_free, jmark, endmark, mark1, mark2,
-                       board_mask,
-                       blockK_by_funcid, blockl_by_funcid, meta,
-                       N, N1, NK, NJ);
-        }
+    }
+    return total;
+  }
+
+  /* ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）==== */
+  else if (row_step >= endmark){
+    while (avail){
+      uint32_t bit = avail & (~avail + 1u);
+      avail &= (avail - 1u);
+
+      uint32_t nld  = (ld | bit) << 1;
+      uint32_t nrd  = (rd | bit) >> 1;
+      uint32_t ncol =  col | bit;
+
+      uint32_t nf = board_mask & ~(nld | nrd | ncol);
+      if (nf){
+        total += dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                     jmark, endmark, mark1, mark2,
+                     board_mask,
+                     blockK_by_funcid, blockL_by_funcid, meta,
+                     N, N1, NK, NJ);
       }
+    }
+    return total;
+  }
+
+  /* ==== N10:402 ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）==== */
+  while (avail){
+    uint32_t bit = avail & (~avail + 1u);
+    avail &= (avail - 1u);
+
+    uint32_t nld  = (ld | bit) << 1;
+    uint32_t nrd  = (rd | bit) >> 1;
+    uint32_t ncol =  col | bit;
+
+    uint32_t nf = board_mask & ~(nld | nrd | ncol);
+    if (!nf) continue;
+
+    /* 1手先の空きをその場で素早くチェック（余計な再帰を抑止） */
+    /*   next_free_next = board_mask & ~(((nld << 1) | (nrd >> 1) | ncol)); */
+    /*   if (next_free_next == 0) continue; */
+    if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)){
+      total += dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+                   jmark, endmark, mark1, mark2,
+                   board_mask,
+                   blockK_by_funcid, blockL_by_funcid, meta,
+                   N, N1, NK, NJ);
     }
   }
   return total;
@@ -431,7 +429,6 @@ static const Constellation* consts_at(const Constellations* v, size_t idx){
 }
  static void exec_solutions(Constellations* constellations, int N){
   /* 各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。 */
-  const int N1 = N - 1;
   const int N2 = N - 2;
   const uint32_t small_mask = (N2 >= 0) ? ((1u << (uint32_t)N2) - 1u) : 0u;
   const uint32_t board_mask = (N  >  0) ? ((1u << (uint32_t)N ) - 1u) : 0u;
@@ -507,6 +504,7 @@ static const Constellation* consts_at(const Constellations* v, size_t idx){
   int *mark2_arr = (int*)malloc(sizeof(int)*m);
   int      *funcid_arr = (int*)     malloc(sizeof(int)*m);
   uint32_t *ijkl_arr   = (uint32_t*)malloc(sizeof(uint32_t)*m);
+  const int N1 = N - 1;
   const uint32_t NK = (N >= 3) ? (1u << (uint32_t)(N-3)) : 0u;
   const uint32_t NJ = (N1 >= 0) ? (1u << (uint32_t)N1) : 0u;
   int      *results    = (int*)     malloc(sizeof(int)*m);
@@ -543,165 +541,120 @@ static const Constellation* consts_at(const Constellations* v, size_t idx){
       rd |= ( (1u << (uint32_t)(N1 - j)) << (uint32_t)(N2 - start) );
     }
     uint32_t free = ~(ld | rd | col);
+
+    //よく使う比較はフラグ化（1回だけ計算）
+    const bool j_lt_N3    = (j <  (N - 3));
+    const bool j_eq_N3    = (j == (N - 3));
+    const bool j_eq_N2    = (j == N2);
+    const bool k_lt_l     = (k <  l);
+    const bool start_lt_k = (start < k);
+    const bool start_lt_l = (start < l);
+    const bool l_eq_kp1   = (l == k + 1);
+    const bool k_eq_lp1   = (k == l + 1);
+    const bool j_gate     = (j > 2 * N - 34 - start);
+
+
     /* --- Codon と同じ target 選択 --- */
-    if (j < (N - 3)) {
-      jmark = j + 1;
-      endmark = N2;
-      if (j > 2 * N - 34 - start) {
-        if (k < l) {
-          mark1 = k - 1;
-          mark2 = l - 1;
-          if (start < l) {
-            if (start < k) {
-              if (l != k + 1) {
-                target = 0;  /* SQBkBlBjrB */
-              } else {
-                target = 4;  /* SQBklBjrB */
-              }
-            } else {
-              target = 1;    /* SQBlBjrB */
-            }
-          } else {
-            target = 2;      /* SQBjrB */
-          }
-        } else {
-          mark1 = l - 1;
-          mark2 = k - 1;
-          if (start < k) {
-            if (start < l) {
-              if (k != l + 1) {
-                target = 5;  /* SQBlBkBjrB */
-              } else {
-                target = 7;  /* SQBlkBjrB */
-              }
-            } else {
-              target = 6;    /* SQBkBjrB */
-            }
-          } else {
-            target = 2;      /* SQBjrB */
-          }
-        }
+    if (j_lt_N3) {
+  jmark = j + 1;
+  endmark = N2;
+  if (j_gate) {
+    if (k_lt_l) {
+      mark1 = k - 1; mark2 = l - 1;
+      if (start_lt_l) {
+        target = start_lt_k ? (l_eq_kp1 ? 4 : 0) : 1;   /* SQBklBjrB / SQBkBlBjrB / SQBlBjrB */
       } else {
-        if (k < l) {
-          mark1 = k - 1;
-          mark2 = l - 1;
-          if (l != k + 1) {
-            target = 8;      /* SQBjlBkBlBjrB */
-          } else {
-            target = 9;      /* SQBjlBklBjrB */
-          }
-        } else {
-          mark1 = l - 1;
-          mark2 = k - 1;
-          if (k != l + 1) {
-            target = 10;     /* SQBjlBlBkBjrB */
-          } else {
-            target = 11;     /* SQBjlBlkBjrB */
-          }
-        }
+        target = 2;                                      /* SQBjrB */
       }
-    } else if (j == (N - 3)) {
-      endmark = N2;
-      if (k < l) {
-        mark1 = k - 1;
-        mark2 = l - 1;
-        if (start < l) {
-          if (start < k) {
-            if (l != k + 1) {
-              target = 12;   /* SQd2BkBlB */
-            } else {
-              target = 15;   /* SQd2BklB */
-            }
-          } else {
-            mark2 = l - 1;
-            target = 13;     /* SQd2BlB */
-          }
-        } else {
-          target = 14;       /* SQd2B */
-        }
+    } else {
+      mark1 = l - 1; mark2 = k - 1;
+      if (start_lt_k) {
+        target = start_lt_l ? (k_eq_lp1 ? 7 : 5) : 6;   /* SQBlkBjrB / SQBlBkBjrB / SQBkBjrB */
       } else {
-        mark1 = l - 1;
-        mark2 = k - 1;
-        if (start < k) {
-          if (start < l) {
-            if (k != l + 1) {
-              target = 16;   /* SQd2BlBkB */
-            } else {
-              target = 18;   /* SQd2BlkB */
-            }
-          } else {
-            mark2 = k - 1;
-            target = 17;     /* SQd2BkB */
-          }
-        } else {
-          target = 14;       /* SQd2B */
-        }
-      }
-    } else if (j == N2) {
-      if (k < l) {
-        endmark = N2;
-        if (start < l) {
-          if (start < k) {
-            mark1 = k - 1;
-            if (l != k + 1) {
-              mark2 = l - 1;
-              target = 19;   /* SQd1BkBlB */
-            } else {
-              target = 22;   /* SQd1BklB */
-            }
-          } else {
-            mark2 = l - 1;
-            target = 20;     /* SQd1BlB */
-          }
-        } else {
-          target = 21;       /* SQd1B */
-        }
-      } else { /* l < k */
-        if (start < k) {
-          if (start < l) {
-            if (k < N2) {
-              mark1 = l - 1;
-              endmark = N2;
-              if (k != l + 1) {
-                mark2 = k - 1;
-                target = 23; /* SQd1BlBkB */
-              } else {
-                target = 24; /* SQd1BlkB */
-              }
-            } else {
-              if (l != (N - 3)) {
-                mark2 = l - 1;
-                endmark = N - 3;
-                target = 20; /* SQd1BlB */
-              } else {
-                endmark = N - 4;
-                target = 21; /* SQd1B */
-              }
-            }
-          } else {
-            if (k != N2) {
-              mark2 = k - 1;
-              endmark = N2;
-              target = 25;   /* SQd1BkB */
-            } else {
-              endmark = N - 3;
-              target = 21;   /* SQd1B */
-            }
-          }
-        } else {
-          endmark = N2;
-          target = 21;       /* SQd1B */
-        }
-      }
-    } else { /* j がコーナー */
-      endmark = N2;
-      if (start > k) {
-        target = 26;         /* SQd0B */
-      } else {
-        mark1 = k - 1;
-        target = 27;         /* SQd0BkB */
+        target = 2;                                      /* SQBjrB */
       }
     }
+  } else {
+    if (k_lt_l) {
+      mark1 = k - 1; mark2 = l - 1;
+      target = l_eq_kp1 ? 9 : 8;                         /* SQBjlBklBjrB / SQBjlBkBlBjrB */
+    } else {
+      mark1 = l - 1; mark2 = k - 1;
+      target = k_eq_lp1 ? 11 : 10;                       /* SQBjlBlkBjrB / SQBjlBlBkBjrB */
+    }
+  }
+} else if (j_eq_N3) {
+  endmark = N2;
+  if (k_lt_l) {
+    mark1 = k - 1; mark2 = l - 1;
+    if (start_lt_l) {
+      if (start_lt_k) {
+        target = l_eq_kp1 ? 15 : 12;                     /* SQd2BklB / SQd2BkBlB */
+      } else {
+        mark2 = l - 1;
+        target = 13;                                     /* SQd2BlB */
+      }
+    } else {
+      target = 14;                                       /* SQd2B */
+    }
+  } else {
+    mark1 = l - 1; mark2 = k - 1;
+    if (start_lt_k) {
+      if (start_lt_l) {
+        target = k_eq_lp1 ? 18 : 16;                     /* SQd2BlkB / SQd2BlBkB */
+      } else {
+        mark2 = k - 1;
+        target = 17;                                     /* SQd2BkB */
+      }
+    } else {
+      target = 14;                                       /* SQd2B */
+    }
+  }
+} else if (j_eq_N2) { /* j がコーナーから1列内側 */
+  if (k_lt_l) {
+    endmark = N2;
+    if (start_lt_l) {
+      if (start_lt_k) {
+        mark1 = k - 1;
+        if (!l_eq_kp1) { mark2 = l - 1; target = 19; }   /* SQd1BkBlB */
+        else            {               target = 22; }   /* SQd1BklB */
+      } else {
+        mark2 = l - 1;
+        target = 20;                                     /* SQd1BlB */
+      }
+    } else {
+      target = 21;                                       /* SQd1B */
+    }
+  } else { /* l < k */
+    if (start_lt_k) {
+      if (start_lt_l) {
+        if (k < N2) {
+          mark1 = l - 1; endmark = N2;
+          if (!k_eq_lp1) { mark2 = k - 1; target = 23; } /* SQd1BlBkB */
+          else            {               target = 24; } /* SQd1BlkB */
+        } else {
+          if (l != (N - 3)) {
+            mark2 = l - 1; endmark = N - 3; target = 20; /* SQd1BlB */
+          } else {
+            endmark = N - 4; target = 21;                /* SQd1B */
+          }
+        }
+      } else {
+        if (k != N2) { mark2 = k - 1; endmark = N2; target = 25; }  /* SQd1BkB */
+        else          { endmark = N - 3; target = 21; }             /* SQd1B */
+      }
+    } else {
+      endmark = N2; target = 21;                                     /* SQd1B */
+    }
+  }
+} else { /* j がコーナー */
+  endmark = N2;
+  if (start > k) {
+    target = 26;                                                     /* SQd0B */
+  } else {
+    mark1 = k - 1; target = 27;                                      /* SQd0BkB */
+  }
+}
     
     /* ---- 配列へ格納（★ここがCUDA入力バッファになる） ---- */
     ld_arr[i]   = ld;
