@@ -1,0 +1,51 @@
+line   hits          time    %func  code
+  443   1526     0.002427s    4.3%  total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+  425   2056     0.001997s    3.6%  total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+  491   1928     0.001951s    3.5%  total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
+  347   3952     0.001414s    2.5%  _dfs = self.dfs
+  355   3952     0.001408s    2.5%  next_funcid, funcptn, avail_flag = meta[functionid]
+  411   3852     0.001233s    2.2%  if use_blocks:
+  363   3952     0.001227s    2.2%  if funcptn == 5 and row == endmark:
+  389   3855     0.001188s    2.1%  if funcptn in (0, 1, 2):
+  382   3855     0.001102s    2.0%  use_future = (avail_flag == 1)  # _should_go_plus1 を使うか
+  351   3952     0.001099s    2.0%  bm = self._board_mask
+  380   3855     0.001099s    2.0%  row_step = row + 1
+  349   3952     0.001086s    1.9%  blockK_tbl = self._blockK
+  348   3952     0.001084s    1.9%  meta = self._meta
+  350   3952     0.001075s    1.9%  blockL_tbl = self._blockL
+  353   3952     0.001043s    1.9%  NJ = self._NJ
+  352   3952     0.001029s    1.8%  N1 = self._N1
+  358   3952     0.001027s    1.8%  if not avail:
+  477   3372     0.001021s    1.8%  while avail:
+  360   3952     0.001006s    1.8%  total = 0
+  357   3952     0.000993s    1.8%  avail = free
+  386   3855     0.000984s    1.8%  local_next_funcid = functionid
+  384   3855     0.000982s    1.7%  blockK = 0
+  378   3855     0.000980s    1.7%  step = 1
+  381   3855     0.000973s    1.7%  use_blocks = False  # blockK/blockl を噛ませるか
+  379   3855     0.000970s    1.7%  add1 = 0
+  385   3855     0.000969s    1.7%  blockL = 0
+  435   3441     0.000959s    1.7%  while avail:
+  441   2201     0.000877s    1.6%  nf = bm & ~(nld | nrd | ncol)
+  430   2875     0.000834s    1.5%  elif not use_future:
+  484   2008     0.000817s    1.5%  nf = bm & ~(nld | nrd | ncol)
+  391   2217     0.000790s    1.4%  at_mark = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+  438   2201     0.000736s    1.3%  nld = (ld | bit) << 1
+  437   2201     0.000714s    1.3%  avail &= avail - 1
+  482   2008     0.000696s    1.2%  nrd = (rd | bit) >> 1
+  417   2464     0.000696s    1.2%  while avail:
+  481   2008     0.000695s    1.2%  nld = (ld | bit) << 1
+  439   2201     0.000685s    1.2%  nrd = (rd | bit) >> 1
+  436   2201     0.000683s    1.2%  bit = avail & -avail
+  480   2008     0.000669s    1.2%  avail &= avail - 1
+  479   2008     0.000658s    1.2%  bit = avail & -avail
+  490   1349     0.000655s    1.2%  if bm & ~((nld << 1) | (nrd >> 1) | ncol):
+  392   2217     0.000615s    1.1%  if at_mark and avail:
+  440   2201     0.000614s    1.1%  ncol = col | bit
+  483   2008     0.000595s    1.1%  ncol = col | bit
+  420   1487     0.000588s    1.0%  nld = ((ld | bit) << s) | a1 | bL
+  485   2008     0.000587s    1.0%  if not nf:
+  423   1487     0.000581s    1.0%  nf = bm & ~(nld | nrd | ncol)
+  442   2201     0.000570s    1.0%  if nf:
+  421   1487     0.000500s    0.9%  nrd = ((rd | bit) >> s) | bK
+  402   1638     0.000498s    0.9%  elif funcptn == 3 and row == jmark:
