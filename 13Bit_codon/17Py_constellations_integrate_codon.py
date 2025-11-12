@@ -378,7 +378,6 @@ class NQueens17:
     row_step:int = row + 1
     use_blocks:bool = False  # blockK/blockl を噛ませるか
     use_future:bool = (avail_flag == 1)  # _should_go_plus1 を使うか
-
     blockK:int = 0
     blockL:int = 0
     local_next_funcid:int = functionid
@@ -409,15 +408,20 @@ class NQueens17:
     # ==== N10:267 ループ１：block 適用（step=2/3 系のホットパス）====
     if use_blocks:
       #print("a_use_blocks")
-      s = step
-      a1 = add1
-      bK = blockK
-      bL = blockL
+      # s = step
+      # a1 = add1
+      # bK = blockK
+      # bL = blockL
       while avail:
         bit:int = avail & -avail
         avail &= avail - 1
-        nld:int = ((ld | bit) << s) | a1 | bL
-        nrd:int = ((rd | bit) >> s) | bK
+        # nld:int = ((ld | bit) << s) | a1 | bL
+        # nld:int = ((ld | bit) << s) | a1 | blockL
+        # nld:int = ((ld | bit) << s) | add1 | blockL
+        nld:int = ((ld | bit) << step) | add1 | blockL
+        # nrd:int = ((rd | bit) >> s) | bK
+        # nrd:int = ((rd | bit) >> s) | blockK
+        nrd:int = ((rd | bit) >> step) | blockK
         ncol:int = col | bit
         nf:int = bm & ~(nld | nrd | ncol)
         if nf:
