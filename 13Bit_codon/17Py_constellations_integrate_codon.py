@@ -343,19 +343,18 @@ class NQueens17:
     func_meta:   (next_id, funcptn, availptn) のメタ情報配列
     """    
     # ---- ローカル束縛（属性アクセス最小化）----
-    _dfs = self.dfs
-    meta = self._meta
-    blockK_tbl = self._blockK
-    blockL_tbl = self._blockL
-    bm = self._board_mask
-    N1 = self._N1
-    NJ = self._NJ
+    # _dfs = self.dfs
+    # meta = self._meta
+    # blockK_tbl = self._blockK
+    # blockL_tbl = self._blockL
+    bm:int = self._board_mask
+    N1:int = self._N1
+    NJ:int = self._NJ
 
-    next_funcid, funcptn, avail_flag = meta[functionid]
+    next_funcid, funcptn, avail_flag = self._meta[functionid]
 
-    avail = free
-    if not avail:
-      return 0
+    avail:int = free
+    if not avail: return 0
     total = 0
 
     # ---- N10:47 P6: 早期終了（基底）----
@@ -374,26 +373,28 @@ class NQueens17:
     #                     jmark, endmark, mark1, mark2)
     #   return 0
     # 既定（+1）
-    step = 1
-    add1 = 0
-    row_step = row + 1
-    use_blocks = False  # blockK/blockl を噛ませるか
-    use_future = (avail_flag == 1)  # _should_go_plus1 を使うか
+    step:int = 1
+    add1:int = 0
+    row_step:int = row + 1
+    use_blocks:bool = False  # blockK/blockl を噛ませるか
+    use_future:bool = (avail_flag == 1)  # _should_go_plus1 を使うか
 
-    blockK = 0
-    blockL = 0
-    local_next_funcid = functionid
+    blockK:int = 0
+    blockL:int = 0
+    local_next_funcid:int = functionid
     
     # N10:538 P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
     if funcptn in (0, 1, 2):
       #print("pt0,1,2")
-      at_mark = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+      at_mark:bool = (row == mark1) if funcptn in (0, 2) else (row == mark2)
       if at_mark and avail:
         step = 2 if funcptn in (0, 1) else 3
         add1 = 1 if (funcptn == 1 and functionid == 20) else 0  # SQd1BlB のときだけ +1
         row_step = row + step
-        blockK = blockK_tbl[functionid]
-        blockL = blockL_tbl[functionid]
+        # blockK = blockK_tbl[functionid]
+        blockK= self._blockK[functionid]
+        # blockL = blockL_tbl[functionid]
+        blockL= self._blockL[functionid]
         use_blocks = True
         use_future = False
         local_next_funcid = next_funcid
@@ -403,8 +404,7 @@ class NQueens17:
       avail &= ~1     # 列0禁止
       ld |= 1         # 左斜線LSBを立てる
       local_next_funcid = next_funcid
-      if not avail:
-        return 0
+      if not avail: return 0
 
     # ==== N10:267 ループ１：block 適用（step=2/3 系のホットパス）====
     if use_blocks:
@@ -414,15 +414,15 @@ class NQueens17:
       bK = blockK
       bL = blockL
       while avail:
-        bit = avail & -avail
+        bit:int = avail & -avail
         avail &= avail - 1
-        nld = ((ld | bit) << s) | a1 | bL
-        nrd = ((rd | bit) >> s) | bK
-        ncol = col | bit
-        nf = bm & ~(nld | nrd | ncol)
+        nld:int = ((ld | bit) << s) | a1 | bL
+        nrd:int = ((rd | bit) >> s) | bK
+        ncol:int = col | bit
+        nf:int = bm & ~(nld | nrd | ncol)
         if nf:
-          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                              jmark, endmark, mark1, mark2)
+          # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
       return total
 
     # ==== N10:271 ループ２：+1 素朴（先読みなし）====
@@ -432,14 +432,15 @@ class NQueens17:
       #if step == 1:
         #print("a_not_use_future_step1")
       while avail:
-        bit = avail & -avail
+        bit:int = avail & -avail
         avail &= avail - 1
-        nld = (ld | bit) << 1
-        nrd = (rd | bit) >> 1
-        ncol = col | bit
-        nf = bm & ~(nld | nrd | ncol)
+        nld:int = (ld | bit) << 1
+        nrd:int = (rd | bit) >> 1
+        ncol:int = col | bit
+        nf:int = bm & ~(nld | nrd | ncol)
         if nf:
-          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
       return total
     # else:
     #   s = step
@@ -461,34 +462,34 @@ class NQueens17:
       #print("a_endmark")
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
       while avail:
-        bit = avail & -avail
+        bit:int = avail & -avail
         avail &= avail - 1
-        nld = ((ld | bit) << 1)
-        nrd = ((rd | bit) >> 1)
-        ncol = col | bit
-        nf = bm & ~(nld | nrd | ncol)
+        nld:int = ((ld | bit) << 1)
+        nrd:int = ((rd | bit) >> 1)
+        ncol:int = col | bit
+        nf:int = bm & ~(nld | nrd | ncol)
         if nf:
-          total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                              jmark, endmark, mark1, mark2)
+          # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
       return total
  
     # ==== N10:402 ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）====
     while avail:
       #print("a_common")
-      bit = avail & -avail
+      bit:int = avail & -avail
       avail &= avail - 1
-      nld = (ld | bit) << 1
-      nrd = (rd | bit) >> 1
-      ncol = col | bit
-      nf = bm & ~(nld | nrd | ncol)
+      nld:int = (ld | bit) << 1
+      nrd:int = (rd | bit) >> 1
+      ncol:int = col | bit
+      nf:int = bm & ~(nld | nrd | ncol)
       if not nf:
         continue
       # 1手先の空きをその場で素早くチェック（余計な再帰を抑止）
       #   next_free_next = bm & ~(((nld << 1) | (nrd >> 1) | ncol))
       #   if next_free_next == 0: continue
       if bm & ~((nld << 1) | (nrd >> 1) | ncol):
-        total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf,
-                          jmark, endmark, mark1, mark2)
+        # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+        total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
     return total
  
 
