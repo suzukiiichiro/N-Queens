@@ -27,4 +27,4 @@ def mandelbrot(pixels):
 
 # Invoke the kernel with specified grid and block dimensions
 mandelbrot(pixels, grid=(N*N)//1024, block=1024)
-
+#
