@@ -237,8 +237,18 @@ static inline uint32_t get_jasmin(uint32_t c, int N){
 typedef struct { int next_funcid; int funcptn; int availptn; } FuncMeta;
 
 static int dfs(
-  /* 汎用 DFS カーネル（codon 実装のロジックを C へ移植）
-     (1) mark 行で step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み */
+  /*
+  汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
+  (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
+  を切り替える。引数:
+  functionid: 現在の分岐モード ID（次の ID, パターン, 先読み有無は func_meta で決定）
+  ld/rd/col:   斜線/列の占有
+  row/free:    現在行と空きビット
+  jmark/endmark/mark1/mark2: 特殊行/探索終端
+  board_mask:  盤面全域のビットマスク
+  blockK_by_funcid/blockl_by_funcid: 関数 ID に紐づく追加ブロック
+  func_meta:   (next_id, funcptn, availptn) のメタ情報配列
+  */
   int functionid,
   uint32_t ld, uint32_t rd, uint32_t col,
   int row, uint32_t free_mask,
@@ -270,12 +280,12 @@ static int dfs(
   uint32_t add1     = 0;
   int      row_step = row + 1;
   bool     use_blocks = false;                 /* blockK/blockL を噛ませるか */
-  bool     use_future = (avail_flag == 1);     /* “+1 先読み”を使うか */
+  bool     use_future = (avail_flag == 1);     /* _should_go_plus1 を使うか */
 
   uint32_t blockK = 0, blockL = 0;
   int      local_next_funcid = functionid;
 
-  /* ---- N10:538 P1/P2/P3: mark 行での step=2/3 + block 適用設定 ---- */
+  /* ---- N10:538 P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定---- */
   if (funcptn == 0 || funcptn == 1 || funcptn == 2){
     const bool at_mark = (funcptn == 1) ? (row == mark2) : (row == mark1);
     if (at_mark && avail){
@@ -348,6 +358,7 @@ static int dfs(
 
   /* ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）==== */
   else if (row_step >= endmark){
+    //もう1手置いたらゴール層に達する → 普通の分岐で十分
     while (avail){
       uint32_t bit = avail & (~avail + 1u);
       avail &= (avail - 1u);
@@ -551,10 +562,10 @@ static const Constellation* consts_at(const Constellations* v, size_t idx){
     const bool start_lt_l = (start < l);
     const bool l_eq_kp1   = (l == k + 1);
     const bool k_eq_lp1   = (k == l + 1);
-    const bool j_gate     = (j > 2 * N - 34 - start);
+    const bool j_gate     = (j > 2 * N - 34 - start);//既存の「ゲート」条件
 
 
-    /* --- Codon と同じ target 選択 --- */
+    /* --- ここから分岐（大分類 → 小分類）。同じ式の再評価をなくし、ネストを浅く。 --- */
     if (j_lt_N3) {
   jmark = j + 1;
   endmark = N2;
@@ -850,7 +861,7 @@ static void set_pre_queens(
     if (constellation_signatures && constellation_signatures->cap == 0)
       sigset_init(constellation_signatures);
     // signatureの生成
-    uint64_t signature = sig_key(ld, rd, col, k, l, row);
+    uint64_t signature = sig_key(ld, rd, col, k, l, row);//必要な変数でOK
     bool fresh = true;
     if (constellation_signatures)
       fresh = sigset_add_if_absent(constellation_signatures, signature);
@@ -862,13 +873,13 @@ static void set_pre_queens(
       c.col = (uint32_t)col;
       c.startijkl = (uint32_t)(row << 20); /* Python: row<<20 を踏襲 */
       c.solutions = 0;
-      consts_push(constellations, c);
+      consts_push(constellations, c);//星座データ追加
       if (counter) (*counter)++;
     }
     return;
   }
 
-  /* --- 次の行に置けるビット --- */
+  /* --- 現在の行にクイーンを配置できる位置を計算 --- */
   uint64_t free = ~(ld | rd | col | (LD >> (N-1-row)) | (RD << (N-1-row))) & mask;
 
   while (free) {
@@ -888,8 +899,13 @@ static void gen_constellations(UIntSet* ijkl_list,
                                Constellations* constellations,
                                int N, int preset_queens)
 {
+  /*
+  開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。
+  実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
+  長時間プロセスなら念のためクリアしておくのが安全）
+  */
   (void)preset_queens; /* 本体側で使用 */
-  const int halfN=(N+1)/2, N1=N-1;
+  const int halfN=(N+1)/2, N1=N-1;//Nの半分を切り上げ
 
   //--- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
   if (N & 1){
@@ -938,7 +954,7 @@ static void gen_constellations(UIntSet* ijkl_list,
   /* 各 canonical start からサブコンステレーション生成 */
   subconst_cache_reset(N, preset_queens);   /* ★ 追加：共有キャッシュ初期化（N/preset単位） */
   /* 各 canonical start からサブコンステレーション生成 */
-  const uint32_t L = (uint32_t)1u << N1;
+  const uint32_t L = (uint32_t)1u << N1;// Lは左端に1を立てる
 
   { UIntSetIter it={0}; uint32_t sc;
     while (uintset_iter_next(ijkl_list,&it,&sc)) {
@@ -1204,6 +1220,9 @@ static int clock_gettime(int, struct timespec* ts) {
 
 
 int main(void) {
+  /*
+  N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。
+  */
   const int nmin = 5;
   const int nmax = 18;
   const int preset_queens = 4;
@@ -1217,7 +1236,7 @@ int main(void) {
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
-    if (size <= 5) {
+    if (size <= 5) {//フォールバック：N=5はここで正しい10を得る
       int total = bit_total(size);
       clock_gettime(CLOCK_MONOTONIC, &t1);
       char buf[64]; format_duration(buf, sizeof(buf), t0, t1);
@@ -1228,7 +1247,9 @@ int main(void) {
     UIntSet* ijkl_list = uintset_create();
     Constellations* constellations = consts_create();
 
+    //キャッシュを使わない
     gen_constellations(ijkl_list, constellations, size, preset_queens);
+    //キャッシュを使う、キャッシュの整合性もチェック
     //load_or_build_constellations_bin(ijkl_list, constellations, size, preset_queens);
     //load_or_build_constellations_txt(ijkl_list, constellations, size, preset_queens);
 
