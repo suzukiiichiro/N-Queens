@@ -1,3 +1,15 @@
+# suzuki@cudacodon$ codon run 18Py_constellations_cuda_codon.py
+# 18Py_constellations_cuda_codon.py:713 (6-16):error:invalid loop decorator
+# tq 18Py_constellations_cuda_codon.py:1016 (7-45):error:during the realization
+# of exec_solutions(self:NQueens17[int,int,int,int,List[int],List[int],int,List[T
+# uple[int,int,int]],Dict[Tuple[int,int],int],Set[Tuple[int,int,int,int,int,int,in
+# t,int,int,int,int]],Dict[int,Dict[str,List[int]]]],constellations:List[Dict[st
+# r,int]],N:int)
+# mq 18Py_constellations_cuda_codon.py:1026 (3-36):error:during the realization
+# of main(self:NQueens17_constellations)
+# suzuki@cudacodon$
+
+
 #!/usr/bin/env python3
 
 # -*- coding: utf-8 -*-
@@ -223,9 +235,9 @@ class NQueens17:
     # tbl=self.init_zobrist[N]
 
     # 3) ループ内で tbl['ld'][i] などの辞書アクセスを都度行うと遅いので、先にローカル束縛にすると微速化します：
-    ld_tbl,rd_tbl,col_tbl=tbl['ld'], tbl['rd'], tbl['col']
-    LD_tbl,RD_tbl=tbl['LD'], tbl['RD']
-    row_tbl,q_tbl,k_tbl,l_tbl=tbl['row'], tbl['queens'], tbl['k'],tbl['l']
+    ld_tbl,rd_tbl,col_tbl=tbl['ld'],tbl['rd'],tbl['col']
+    LD_tbl,RD_tbl=tbl['LD'],tbl['RD']
+    row_tbl,q_tbl,k_tbl,l_tbl=tbl['row'],tbl['queens'],tbl['k'],tbl['l']
 
     # 4) N ビットへ正規化（上位ビットや負数を落とす）
     mask=(1<<N)-1
