@@ -14,7 +14,7 @@ def scale(x,a,b):
 def mandelbrot(pixels):
     # Calculate the global thread index
     idx=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
-    
+
     # Ensure index is within bounds
     if idx>=N*N:
         return

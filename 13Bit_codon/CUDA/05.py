@@ -4,12 +4,13 @@
 import math
 import gpu
 
+x=[float(i) for i in range(10)]
+
 @gpu.kernel
 def hello(x):
-    i=gpu.thread.x
-    x[i]=math.sqrt(x[i])  # uses __nv_sqrt from libdevice
+  i=gpu.thread.x
+  x[i]=math.sqrt(x[i])  # uses __nv_sqrt from libdevice
 
-x=[float(i) for i in range(10)]
 hello(x,grid=1,block=10)
 print(x)
 
