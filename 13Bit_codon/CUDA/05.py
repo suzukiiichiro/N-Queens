@@ -1,3 +1,4 @@
+# https://docs.exaloop.io/parallel/gpu/
 # suzuki@cudacodon$ codon run 05.py
 # [0, 1, 1.41421, 1.73205, 2, 2.23607, 2.44949, 2.64575, 2.82843, 3]
 

@@ -1,3 +1,4 @@
+# https://docs.exaloop.io/parallel/gpu/
 #
 # 正常実行 出力なし
 #

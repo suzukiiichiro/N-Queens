@@ -14,10 +14,10 @@ def scale(x,a,b):
 
 @gpu.kernel
 def execKernel()->None:
-# for i in range(N):
-#   for j in range(N):
+
   i=gpu.thread.x
   j=gpu.thread.y
+
   c=complex(scale(j,-2.00,0.47),scale(i,-1.12,1.12))
   z=0j
   iteration=0
@@ -29,7 +29,6 @@ def execKernel()->None:
   pixels[i,j]=int(255*iteration/MAX)
 
 execKernel(grid=1,block=4096)
-
 print(pixels)
 
 # MAX=1000  # maximum Mandelbrot iterations
@@ -51,3 +50,10 @@ print(pixels)
 #             iteration+=1
 # 
 #         pixels[i,j]=int(255*iteration/MAX)
+
+
+
+
+
+
+
