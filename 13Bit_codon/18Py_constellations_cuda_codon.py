@@ -149,25 +149,290 @@ from datetime import datetime
 import gpu
 
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
+MASK64=(1<<64)-1
+MAXS=64  # N=18なら十分余裕（必要なら 96/128 に）
+FIELDS=18
+# -----------------------------
+# 非再帰DFS（GPU/CPU共通で使える）
+# -----------------------------
+def dfs_iter(functionid:int,ld0:int,rd0:int,col0:int,row0:int,free0:int,
+             jmark0:int,endmark0:int,mark10:int,mark20:int,
+             bm:int,N1:int,NJ:int,
+             next_funcid:List[int],funcptn:List[int],avail_flag:List[int],
+             blockK_tbl:List[int],blockL_tbl:List[int])->int:
+  """
+  17Py の dfs() を “忠実に” 非再帰化したもの。
+  - 再帰呼び出しを stack push に置換
+  - 戻り値は acc の集計で親へ伝播
+  """
+  MAXS=64  # N=18なら十分余裕（必要なら 96/128 に）
+  FIELDS=18
+  # fields:
+# 0 funcid
+# 1 ld
+# 2 rd
+# 3 col
+# 4 row
+# 5 avail
+# 6 jmark
+# 7 endmark
+# 8 mark1
+# 9 mark2
+# 10 inited
+# 11 acc
+# 12 step
+# 13 add1
+# 14 row_step
+# 15 use_blocks
+# 16 use_future
+# 17 local_next
 
-MASK64 = (1<<64)-1
+# フレームのフィールド番号（固定）
+F_FID   = 0
+F_LD    = 1
+F_RD    = 2
+F_COL   = 3
+F_ROW   = 4
+F_AVAIL = 5   # ★重要：そのフレームで残っている候補ビット集合
+F_JMARK = 6
+F_END   = 7
+F_M1    = 8
+F_M2    = 9
+F_STATE = 10  # 0=未初期化, 1=ループ中
+F_ACC   = 11  # 子からの合計
+
+FIELDS  = 12
+MAXS    = 128  # とりあえず大きめ推奨
+
+@inline
+def IDX(tid:int, sp:int, f:int) -> int:
+  return (tid * MAXS + sp) * FIELDS + f
+
+
+def dfs_iter_buf(tid:int,
+                 func0:int, ld0:int, rd0:int, col0:int, row0:int, free0:int,
+                 jmark0:int, endmark0:int, mark10:int, mark20:int,
+                 bm:int,
+                 next_funcid: List[int], funcptn: List[int], avail_flag: List[int],
+                 blockK_tbl: List[int], blockL_tbl: List[int],
+                 stackbuf: List[int]) -> int:
+
+  # 反復DFS用スタックポインタ
+  sp = 0
+
+  # 初期フレーム push
+  stackbuf[IDX(tid,0,F_FID)]   = func0
+  stackbuf[IDX(tid,0,F_LD)]    = ld0
+  stackbuf[IDX(tid,0,F_RD)]    = rd0
+  stackbuf[IDX(tid,0,F_COL)]   = col0
+  stackbuf[IDX(tid,0,F_ROW)]   = row0
+  stackbuf[IDX(tid,0,F_AVAIL)] = free0
+  stackbuf[IDX(tid,0,F_JMARK)] = jmark0
+  stackbuf[IDX(tid,0,F_END)]   = endmark0
+  stackbuf[IDX(tid,0,F_M1)]    = mark10
+  stackbuf[IDX(tid,0,F_M2)]    = mark20
+  stackbuf[IDX(tid,0,F_STATE)] = 0
+  stackbuf[IDX(tid,0,F_ACC)]   = 0
+
+  # ★ここに「必ず戻る」ためのガード（syncが無いので超重要）
+  steps = 0
+  STEP_LIMIT = 2000000
+
+  # --------- 反復DFS本体 ---------
+  while sp >= 0:
+    steps += 1
+    if steps > STEP_LIMIT:
+      return -999999  # タイムアウト符号
+
+    fid   = stackbuf[IDX(tid,sp,F_FID)]
+    ld    = stackbuf[IDX(tid,sp,F_LD)]
+    rd    = stackbuf[IDX(tid,sp,F_RD)]
+    col   = stackbuf[IDX(tid,sp,F_COL)]
+    row   = stackbuf[IDX(tid,sp,F_ROW)]
+    avail = stackbuf[IDX(tid,sp,F_AVAIL)]
+    jmark = stackbuf[IDX(tid,sp,F_JMARK)]
+    endm  = stackbuf[IDX(tid,sp,F_END)]
+    m1    = stackbuf[IDX(tid,sp,F_M1)]
+    m2    = stackbuf[IDX(tid,sp,F_M2)]
+    state = stackbuf[IDX(tid,sp,F_STATE)]
+    acc   = stackbuf[IDX(tid,sp,F_ACC)]
+
+    # --- 初期化フェーズ（このフレームに入った最初の1回だけ）---
+    if state == 0:
+      # 例：funcptn を引いて、jmark特例や mark特例の前処理をするならここ
+      # ptn = funcptn[fid]
+      # nextid = next_funcid[fid]
+      # ... ここに dfs() の「入口処理」を移植 ...
+
+      # avail が空ならこのフレームは 0 で終了
+      if avail == 0:
+        sp -= 1
+        if sp >= 0:
+          stackbuf[IDX(tid,sp,F_ACC)] += 0
+        continue
+
+      # 基底条件をここで判定して即return/加算してpop
+      # 例）if ptn==5 and row==endm: base=1 ... など
+      # ここはあなたの dfs() の P6 部分を移植
+
+      stackbuf[IDX(tid,sp,F_STATE)] = 1
+      # state=1 にしたら「下のループフェーズ」へ落ちる
+
+    # --- ループフェーズ：avail から1bitずつ子に降りる ---
+    # （※あなたの dfs() の “while avail:” と同じ位置）
+    if avail == 0:
+      # このフレームはやり切ったので pop → 親のaccに加算
+      sp -= 1
+      if sp >= 0:
+        stackbuf[IDX(tid,sp,F_ACC)] += acc
+      else:
+        return acc
+      continue
+
+    # 1手分（bitを1つ選ぶ）
+    bit = avail & -avail
+    avail = avail & (avail - 1)
+    stackbuf[IDX(tid,sp,F_AVAIL)] = avail  # ★親の残りを保存（超重要）
+
+    # 子状態計算（ここをあなたの dfs() の3ループ分岐で作る）
+    # まずは “素朴 +1” の例（後で funcptn/blocks/先読みに拡張）
+    nld  = (ld | bit) << 1
+    nrd  = (rd | bit) >> 1
+    ncol = col | bit
+    nf   = bm & ~(nld | nrd | ncol)
+    if nf == 0:
+      # 子に降りない（次のbitへ）
+      continue
+
+    # 子フレーム push
+    if sp + 1 >= MAXS:
+      return -777777  # stack overflow符号（MAXS増やす）
+
+    sp += 1
+    stackbuf[IDX(tid,sp,F_FID)]   = next_funcid[fid]   # ここも dfs() の分岐に合わせて調整
+    stackbuf[IDX(tid,sp,F_LD)]    = nld
+    stackbuf[IDX(tid,sp,F_RD)]    = nrd
+    stackbuf[IDX(tid,sp,F_COL)]   = ncol
+    stackbuf[IDX(tid,sp,F_ROW)]   = row + 1
+    stackbuf[IDX(tid,sp,F_AVAIL)] = nf
+    stackbuf[IDX(tid,sp,F_JMARK)] = jmark
+    stackbuf[IDX(tid,sp,F_END)]   = endm
+    stackbuf[IDX(tid,sp,F_M1)]    = m1
+    stackbuf[IDX(tid,sp,F_M2)]    = m2
+    stackbuf[IDX(tid,sp,F_STATE)] = 0
+    stackbuf[IDX(tid,sp,F_ACC)]   = 0
+
+  return 0
+
+FIELDS = 10
+META_FIELDS = 3
+BLOCK_FIELDS = 2
+
+@gpu.kernel
+def solve_kernel(pack, 
+                 weight_arr, 
+                 out_arr,
+                 bm,
+                 meta, blocks,
+                 off:int, cur:int,
+                 stackbuf):
+
+  gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
+  if gid >= cur:
+    return
+
+  i = off + gid
+  tid = gid  # ★stackbuf は BATCH 分なので gid をそのまま使える（cur<=BATCHが条件）
+
+  base = i * FIELDS
+  ld    = pack[base + 0]
+  rd    = pack[base + 1]
+  col   = pack[base + 2]
+  row   = pack[base + 3]
+  free  = pack[base + 4]
+  jmark = pack[base + 5]
+  endm  = pack[base + 6]
+  mk1   = pack[base + 7]
+  mk2   = pack[base + 8]
+  fid   = pack[base + 9]
+
+  partial = dfs_iter_buf(
+    tid,
+    fid,
+    ld, rd, col, row, free,
+    jmark, endm, mk1, mk2,
+    bm,
+    meta, blocks,
+    stackbuf
+  )
+
+  out_arr[i] = partial * weight_arr[i]
+
+# 
+# @gpu.kernel
+# def solve_kernel(
+#                  # ld_arr, 
+#                  # rd_arr, 
+#                  # col_arr, 
+#                  # row_arr, free_arr,
+#                  # jmark_arr, end_arr, 
+#                  #mark1_arr, mark2_arr, 
+#                  funcid_arr,
+#                  weight_arr,
+#                  out_arr,
+#                  bm,
+#                  next_funcid, funcptn, avail_flag,
+#                  blockK_tbl, blockL_tbl,
+#                  off:int, cur:int,
+#                  stackbuf
+#                  ):
+# 
+#   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
+#   if gid >= cur: return
+#   tid=gid
+#   i = off + gid
+# 
+#   out_arr[i] = 777
+#   return
+# 
+#   # デバッグマーク
+#   out_arr[i]=-2
+#   if gid !=0: return
+# 
+#   partial = dfs_iter_buf(
+#       tid,
+#       funcid_arr[i],
+#       ld_arr[i], rd_arr[i], col_arr[i],
+#       row_arr[i], free_arr[i],
+#       jmark_arr[i], end_arr[i], mark1_arr[i], mark2_arr[i],
+#       bm,
+#       next_funcid, funcptn, avail_flag,
+#       blockK_tbl, blockL_tbl,
+#       stackbuf
+#   )
+# 
+#   # out_arr[i] = partial * weight_arr[i]
+#   out_arr[i] = partial
+# 
+
+
 class NQueens17:
   def __init__(self)->None:
-    self.zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
-    self.jasmin_cache: Dict[Tuple[int,int], int] = {}
+    self.zobrist_tables:Dict[int,Dict[str,List[int]]]={}
+    self.jasmin_cache:Dict[Tuple[int,int],int]={}
     # サブコンステレーション生成状態のメモ化（実行中の重複再帰を抑制）
-    self.subconst_cache: Set[StateKey] = set()
+    self.subconst_cache:Set[StateKey]=set()
     # …既存初期化…
-    self._N  = 0
-    self._N1 = 0
-    self._NK = 0
-    self._NJ = 0
-    self._board_mask = 0
+    self._N=0
+    self._N1=0
+    self._NK=0
+    self._NJ=0
+    self._board_mask=0
     # 配列系（空で作っておく）
-    self._blockK: list[int] = []
-    self._blockL: list[int] = []
+    self._blockK:list[int]=[]
+    self._blockL:list[int]=[]
     # (next_id, funcptn, avail_flag)
-    self._meta: list[Tuple[int,int,int]] = []
+    self._meta:list[Tuple[int,int,int]]=[]
 
   def mix64(self,x:int)->int:
     """splitmix64 のミキサ最終段。64bit 値 x を (>>/XOR/乗算) の 3 段で拡散して返す。 Zobrist テーブルの乱数品質を担保するために使用。"""
@@ -217,15 +482,15 @@ class NQueens17:
     # 1) テーブルを（必要なら）構築
     self.init_zobrist(N)
     # 2) 構築済みキャッシュを参照
-    tbl = self.zobrist_tables[N]
+    tbl=self.zobrist_tables[N]
 
     # zobrist_tables:Dict[int,Dict[str,List[int]]]={}
     # tbl=self.init_zobrist[N]
 
     # 3) ループ内で tbl['ld'][i] などの辞書アクセスを都度行うと遅いので、先にローカル束縛にすると微速化します：
-    ld_tbl, rd_tbl, col_tbl = tbl['ld'], tbl['rd'], tbl['col']
-    LD_tbl, RD_tbl = tbl['LD'], tbl['RD']
-    row_tbl, q_tbl, k_tbl, l_tbl = tbl['row'], tbl['queens'], tbl['k'], tbl['l']
+    ld_tbl,rd_tbl,col_tbl=tbl['ld'],tbl['rd'],tbl['col']
+    LD_tbl,RD_tbl=tbl['LD'],tbl['RD']
+    row_tbl,q_tbl,k_tbl,l_tbl=tbl['row'],tbl['queens'],tbl['k'],tbl['l']
 
     # 4) N ビットへ正規化（上位ビットや負数を落とす）
     mask=(1<<N)-1
@@ -269,10 +534,10 @@ class NQueens17:
       m>>=1;i+=1
 
     # 行数・個数・強制行などスカラー要素
-    if 0 <= row    < N: h ^= row_tbl[row]
-    if 0 <= queens < N: h ^= q_tbl[queens]
-    if 0 <= k      < N: h ^= k_tbl[k]
-    if 0 <= l      < N: h ^= l_tbl[l]
+    if 0<=row<N:h^=row_tbl[row]
+    if 0<=queens<N:h^=q_tbl[queens]
+    if 0<=k<N:h^=k_tbl[k]
+    if 0<=l<N:h^=l_tbl[l]
 
     return h&MASK64
 
@@ -330,8 +595,8 @@ class NQueens17:
       ijkl=self.mirvert(ijkl,N)
     return ijkl
 
-  def dfs(self, functionid:int, ld:int, rd:int, col:int, row:int, free:int,
-          jmark:int, endmark:int, mark1:int, mark2:int) -> int:
+  def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,
+          jmark:int,endmark:int,mark1:int,mark2:int)->int:
     """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
     (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
     を切り替える。引数:
@@ -348,21 +613,21 @@ class NQueens17:
     # meta = self._meta
     # blockK_tbl = self._blockK
     # blockL_tbl = self._blockL
-    bm:int = self._board_mask
-    N1:int = self._N1
-    NJ:int = self._NJ
+    bm:int=self._board_mask
+    N1:int=self._N1
+    NJ:int=self._NJ
 
-    next_funcid, funcptn, avail_flag = self._meta[functionid]
+    next_funcid,funcptn,avail_flag=self._meta[functionid]
 
-    avail:int = free
-    if not avail: return 0
-    total = 0
+    avail:int=free
+    if not avail:return 0
+    total=0
 
     # ---- N10:47 P6: 早期終了（基底）----
-    if funcptn == 5 and row == endmark:
+    if funcptn==5 and row==endmark:
       #print("pt5")
-      if functionid == 14:  # SQd2B 特例（列0以外が残っていれば1）
-        return 1 if (avail >> 1) else 0
+      if functionid==14:# SQd2B 特例（列0以外が残っていれば1）
+        return 1 if (avail>>1) else 0
       return 1
 
     # ---- P5: N1-jmark 行の入口（据え置き分岐）----
@@ -374,37 +639,37 @@ class NQueens17:
     #                     jmark, endmark, mark1, mark2)
     #   return 0
     # 既定（+1）
-    step:int = 1
-    add1:int = 0
-    row_step:int = row + 1
-    use_blocks:bool = False  # blockK/blockl を噛ませるか
-    use_future:bool = (avail_flag == 1)  # _should_go_plus1 を使うか
-    blockK:int = 0
-    blockL:int = 0
-    local_next_funcid:int = functionid
+    step:int=1
+    add1:int=0
+    row_step:int=row+1
+    use_blocks:bool=False  # blockK/blockl を噛ませるか
+    use_future:bool=(avail_flag==1)  # _should_go_plus1 を使うか
+    blockK:int=0
+    blockL:int=0
+    local_next_funcid:int=functionid
     
     # N10:538 P1/P2/P3: mark 行での step=2/3 ＋ block 適用を共通ループへ設定
-    if funcptn in (0, 1, 2):
+    if funcptn in (0,1,2):
       #print("pt0,1,2")
-      at_mark:bool = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+      at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
       if at_mark and avail:
-        step = 2 if funcptn in (0, 1) else 3
-        add1 = 1 if (funcptn == 1 and functionid == 20) else 0  # SQd1BlB のときだけ +1
-        row_step = row + step
+        step=2 if funcptn in (0,1) else 3
+        add1=1 if (funcptn==1 and functionid==20) else 0  # SQd1BlB のときだけ +1
+        row_step=row+step
         # blockK = blockK_tbl[functionid]
-        blockK= self._blockK[functionid]
+        blockK=self._blockK[functionid]
         # blockL = blockL_tbl[functionid]
-        blockL= self._blockL[functionid]
-        use_blocks = True
-        use_future = False
-        local_next_funcid = next_funcid
+        blockL=self._blockL[functionid]
+        use_blocks=True
+        use_future=False
+        local_next_funcid=next_funcid
     # ---- N10:3 P4: jmark 特殊（入口一回だけ）----
-    elif funcptn == 3 and row == jmark:
+    elif funcptn==3 and row==jmark:
       #print("pt3")
-      avail &= ~1     # 列0禁止
-      ld |= 1         # 左斜線LSBを立てる
-      local_next_funcid = next_funcid
-      if not avail: return 0
+      avail&=~1     # 列0禁止
+      ld|=1         # 左斜線LSBを立てる
+      local_next_funcid=next_funcid
+      if not avail:return 0
 
     # ==== N10:267 ループ１：block 適用（step=2/3 系のホットパス）====
     if use_blocks:
@@ -414,20 +679,20 @@ class NQueens17:
       # bK = blockK
       # bL = blockL
       while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
+        bit:int=avail&-avail
+        avail&=avail-1
         # nld:int = ((ld | bit) << s) | a1 | bL
         # nld:int = ((ld | bit) << s) | a1 | blockL
         # nld:int = ((ld | bit) << s) | add1 | blockL
-        nld:int = ((ld | bit) << step) | add1 | blockL
+        nld:int=((ld|bit)<<step)|add1|blockL
         # nrd:int = ((rd | bit) >> s) | bK
         # nrd:int = ((rd | bit) >> s) | blockK
-        nrd:int = ((rd | bit) >> step) | blockK
-        ncol:int = col | bit
-        nf:int = bm & ~(nld | nrd | ncol)
+        nrd:int=((rd|bit)>>step)|blockK
+        ncol:int=col|bit
+        nf:int=bm&~(nld|nrd|ncol)
         if nf:
           # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
-          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
       return total
 
     # ==== N10:271 ループ２：+1 素朴（先読みなし）====
@@ -437,15 +702,15 @@ class NQueens17:
       #if step == 1:
         #print("a_not_use_future_step1")
       while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
-        nld:int = (ld | bit) << 1
-        nrd:int = (rd | bit) >> 1
-        ncol:int = col | bit
-        nf:int = bm & ~(nld | nrd | ncol)
+        bit:int=avail&-avail
+        avail&=avail-1
+        nld:int=(ld|bit)<<1
+        nrd:int=(rd|bit)>>1
+        ncol:int=col|bit
+        nf:int=bm&~(nld|nrd|ncol)
         if nf:
           # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
-          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
       return total
     # else:
     #   s = step
@@ -463,40 +728,310 @@ class NQueens17:
     #   return total
 
     # ==== N10:92 ループ３：+1 先読み（row_step >= endmark は基底で十分）====
-    elif row_step >= endmark:
+    elif row_step>=endmark:
       #print("a_endmark")
       # もう1手置いたらゴール層に達する → 普通の分岐で十分
       while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
-        nld:int = ((ld | bit) << 1)
-        nrd:int = ((rd | bit) >> 1)
-        ncol:int = col | bit
-        nf:int = bm & ~(nld | nrd | ncol)
+        bit:int=avail&-avail
+        avail&=avail-1
+        nld:int=((ld|bit)<<1)
+        nrd:int=((rd|bit)>>1)
+        ncol:int=col|bit
+        nf:int=bm&~(nld|nrd|ncol)
         if nf:
           # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
-          total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+          total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
       return total
  
     # ==== N10:402 ループ３B：+1 先読み本体（1手先の空きがゼロなら枝刈り）====
     while avail:
       #print("a_common")
-      bit:int = avail & -avail
-      avail &= avail - 1
-      nld:int = (ld | bit) << 1
-      nrd:int = (rd | bit) >> 1
-      ncol:int = col | bit
-      nf:int = bm & ~(nld | nrd | ncol)
+      bit:int=avail&-avail
+      avail&=avail-1
+      nld:int=(ld|bit)<<1
+      nrd:int=(rd|bit)>>1
+      ncol:int=col|bit
+      nf:int=bm&~(nld|nrd|ncol)
       if not nf:
         continue
       # 1手先の空きをその場で素早くチェック（余計な再帰を抑止）
       #   next_free_next = bm & ~(((nld << 1) | (nrd >> 1) | ncol))
       #   if next_free_next == 0: continue
-      if bm & ~((nld << 1) | (nrd >> 1) | ncol):
+      if bm&~((nld<<1)|(nrd>>1)|ncol):
         # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
-        total += self.dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
+        total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
     return total
  
+
+  def exec_solutions_gpu(self,constellations:List[Dict[str,int]],N:int)->None:
+      """
+      既存 exec_solutions の「前処理(SoA)」をそのまま使い、
+      GPUで dfs_iter を回して out[i] を作り、solutionsへ書き戻す（atomic不要）。
+      """
+      N2:int=N-2
+      small_mask:int=(1<<N2)-1
+      board_mask:int=(1<<N)-1
+      symmetry=self.symmetry
+      getj,getk,getl=self.getj,self.getk,self.getl
+
+      FUNC_CATEGORY={
+        "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
+        "SQd2BkBlB":3,"SQd2BkB":3,"SQd2BlkB":3,
+        "SQd1BkBlB":3,"SQd1BlkB":3,"SQd1BkB":3,"SQd0BkB":3,
+        "SQBklBjrB":4,"SQd2BklB":4,"SQd1BklB":4,
+        "SQBlBjrB":0,"SQBjrB":0,"SQB":0,"SQBlBkBjrB":0,
+        "SQBjlBkBlBjrB":0,"SQBjlBklBjrB":0,"SQBjlBlBkBjrB":0,"SQBjlBlkBjrB":0,
+        "SQd2BlB":0,"SQd2B":0,"SQd2BlBkB":0,
+        "SQd1BlB":0,"SQd1B":0,"SQd1BlBkB":0,"SQd0B":0
+      }
+      FID={
+        "SQBkBlBjrB":0,"SQBlBjrB":1,"SQBjrB":2,"SQB":3,
+        "SQBklBjrB":4,"SQBlBkBjrB":5,"SQBkBjrB":6,"SQBlkBjrB":7,
+        "SQBjlBkBlBjrB":8,"SQBjlBklBjrB":9,"SQBjlBlBkBjrB":10,"SQBjlBlkBjrB":11,
+        "SQd2BkBlB":12,"SQd2BlB":13,"SQd2B":14,"SQd2BklB":15,"SQd2BlBkB":16,
+        "SQd2BkB":17,"SQd2BlkB":18,"SQd1BkBlB":19,"SQd1BlB":20,"SQd1B":21,
+        "SQd1BklB":22,"SQd1BlBkB":23,"SQd1BlkB":24,"SQd1BkB":25,"SQd0B":26,"SQd0BkB":27
+      }
+
+      func_meta=[
+        (1,0,0),(2,1,0),(3,3,1),(3,5,1),
+        (2,2,0),(6,0,0),(2,1,0),(2,2,0),
+        (0,4,1),(4,4,1),(5,4,1),(7,4,1),
+        (13,0,0),(14,1,0),(14,5,1),(14,2,0),
+        (17,0,0),(14,1,0),(14,2,0),
+        (20,0,0),(21,1,0),(21,5,1),(21,2,0),
+        (25,0,0),(21,2,0),(21,1,0),
+        (26,5,1),(26,0,0),
+      ]
+
+      n3=1<<max(0,N-3)
+      n4=1<<max(0,N-4)
+      size=max(FID.values())+1
+      blockK_by_funcid=[0]*size
+      blockL_by_funcid=[0,1,0,0,1,1,0,2,0,0,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,0,0]
+      for fn,cat in FUNC_CATEGORY.items():
+        fid=FID[fn]
+        blockK_by_funcid[fid]=n3 if cat==3 else (n4 if cat==4 else 0)
+
+      # meta を3本に分解（GPUに渡しやすく）
+      next_funcid=[0]*size
+      funcptn=[0]*size
+      avail_flag=[0]*size
+      for i,(nx,pt,af) in enumerate(func_meta):
+        next_funcid[i]=nx
+        funcptn[i]=pt
+        avail_flag[i]=af
+
+      # ---- SoA 前処理（あなたの exec_solutions のまま）----
+      m=len(constellations)
+      ld_arr=[0]*m;rd_arr=[0]*m;col_arr=[0]*m
+      row_arr=[0]*m;free_arr=[0]*m
+      jmark_arr=[0]*m;end_arr=[0]*m
+      mark1_arr=[0]*m;mark2_arr=[0]*m
+      funcid_arr=[0]*m
+      weight_arr=[0]*m
+      out_arr=[0]*m
+
+      N1=N-1
+      for i,constellation in enumerate(constellations):
+        jmark=mark1=mark2=0
+        start_ijkl=constellation["startijkl"]
+        start=start_ijkl>>20
+        ijkl=start_ijkl&((1<<20)-1)
+        weight_arr[i]=symmetry(ijkl,N)
+
+        j,k,l=getj(ijkl),getk(ijkl),getl(ijkl)
+        ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
+        LD=(1<<(N1-j))|(1<<(N1-l))
+        ld|=LD>>(N-start)
+        if start>k:rd|=(1<<(N1-(start-k+1)))
+        if j>=2*N-33-start:rd|=(1<<(N1-j))<<(N2-start)
+        free=~(ld|rd|col)
+
+        # ---- target 決定（あなたの元ロジックをそのまま）----
+        target:int=0
+        N1_,N2_=N-1,N-2
+        j_lt_N3=(j<N-3)
+        j_eq_N3=(j==N-3)
+        j_eq_N2=(j==N-2)
+        k_lt_l=(k<l)
+        start_lt_k=(start<k)
+        start_lt_l=(start<l)
+        l_eq_kp1=(l==k+1)
+        k_eq_lp1=(k==l+1)
+        j_gate=(j>2*N-34-start)
+
+        if j_lt_N3:
+          jmark=j+1
+          endmark=N2_
+          if j_gate:
+            if k_lt_l:
+              mark1,mark2=k-1,l-1
+              if start_lt_l:
+                if start_lt_k:target=0 if (not l_eq_kp1) else 4
+                else:target=1
+              else:target=2
+            else:
+              mark1,mark2=l-1,k-1
+              if start_lt_k:
+                if start_lt_l:target=5 if (not k_eq_lp1) else 7
+                else:target=6
+              else:target=2
+          else:
+            if k_lt_l:
+              mark1,mark2=k-1,l-1
+              target=8 if (not l_eq_kp1) else 9
+            else:
+              mark1,mark2=l-1,k-1
+              target=10 if (not k_eq_lp1) else 11
+
+        elif j_eq_N3:
+          endmark=N2_
+          if k_lt_l:
+            mark1,mark2=k-1,l-1
+            if start_lt_l:
+              if start_lt_k:target=12 if (not l_eq_kp1) else 15
+              else:
+                mark2=l-1
+                target=13
+            else:target=14
+          else:
+            mark1,mark2=l-1,k-1
+            if start_lt_k:
+              if start_lt_l:target=16 if (not k_eq_lp1) else 18
+              else:
+                mark2=k-1
+                target=17
+            else:target=14
+
+        elif j_eq_N2:
+          if k_lt_l:
+            endmark=N2_
+            if start_lt_l:
+              if start_lt_k:
+                mark1=k-1
+                if not l_eq_kp1:
+                  mark2=l-1
+                  target=19
+                else:target=22
+              else:
+                mark2=l-1
+                target=20
+            else:target=21
+          else:
+            if start_lt_k:
+              if start_lt_l:
+                if k<N2_:
+                  mark1,endmark=l-1,N2_
+                  if not k_eq_lp1:
+                    mark2=k-1
+                    target=23
+                  else:target=24
+                else:
+                  if l!=(N-3):
+                    mark2,endmark=l-1,N-3
+                    target=20
+                  else:
+                    endmark=N-4
+                    target=21
+              else:
+                if k!=N2_:
+                  mark2,endmark=k-1,N2_
+                  target=25
+                else:
+                  endmark=N-3
+                  target=21
+            else:
+              endmark=N2_
+              target=21
+        else:
+          endmark=N2_
+          if start>k:target=26
+          else:
+            mark1=k-1
+            target=27
+
+        ld_arr[i]=ld;rd_arr[i]=rd;col_arr[i]=col
+        row_arr[i]=start;free_arr[i]=free
+        jmark_arr[i]=jmark;end_arr[i]=endmark
+        mark1_arr[i]=mark1;mark2_arr[i]=mark2
+        funcid_arr[i]=target
+
+      # ---- GPU 実行（atomicなし：out_arr[i] に書く）----
+      # 事前に一度だけ作る（while の外）
+      FIELDS = 10         # ld,rd,col,row,free,jmark,end,mark1,mark2,funcid
+      META_FIELDS = 3     # next, ptn, avail
+      BLOCK_FIELDS = 2    # blockK, blockL
+
+      # --- pack を作る（m件） ---
+      pack = [0] * (m * FIELDS)
+      for i in range(m):
+        b = i * FIELDS
+        pack[b+0] = ld_arr[i]
+        pack[b+1] = rd_arr[i]
+        pack[b+2] = col_arr[i]
+        pack[b+3] = row_arr[i]
+        pack[b+4] = free_arr[i]
+        pack[b+5] = jmark_arr[i]
+        pack[b+6] = end_arr[i]
+        pack[b+7] = mark1_arr[i]
+        pack[b+8] = mark2_arr[i]
+        pack[b+9] = funcid_arr[i]
+
+      # --- meta を作る（fid_max件） ---
+      fid_max = len(next_funcid)
+      meta = [0] * (fid_max * META_FIELDS)
+      for fid in range(fid_max):
+        meta[fid*3+0] = next_funcid[fid]
+        meta[fid*3+1] = funcptn[fid]
+        meta[fid*3+2] = avail_flag[fid]
+
+      # --- blocks を作る（fid_max件） ---
+      blocks = [0] * (fid_max * BLOCK_FIELDS)
+      for fid in range(fid_max):
+        blocks[fid*2+0] = blockK_by_funcid[fid]
+        blocks[fid*2+1] = blockL_by_funcid[fid]
+
+      # --- バッチ実行 ---
+      BATCH = 1024
+      out_arr = [0] * m
+      BLOCK=32
+      # ★超重要：stackbuf は「BATCHスレッド分」なので tid は 0..BATCH-1 にする
+      stackbuf = [0] * (BATCH * MAXS * FIELDS)
+
+      off = 0
+      while off < m:
+        cur = BATCH if (m - off) > BATCH else (m - off)
+
+        # BLOCK は 32/64/128 などでOK、ただし GRID*BLOCK が cur を覆う必要あり
+        GRID = (cur + BLOCK - 1) // BLOCK
+        print(f"[dbg] launch batch: off={off} cur={cur} GRID={GRID} BLOCK={BLOCK}")
+
+        # ここは不要なら消してOK（デバッグ向け）
+        for t in range(off, off + cur):
+          out_arr[t] = 0
+
+        solve_kernel(
+          pack,
+          weight_arr,
+          out_arr,
+          board_mask,
+          meta,
+          blocks,
+          off, cur,
+          stackbuf,
+          grid=GRID, block=BLOCK
+        )
+
+        print("[dbg] out_arr head:", out_arr[off:off+cur])
+        off += cur
+      print("[dbg] gpu batches done")
+
+
+
+      # ---- 書き戻し ----
+      for i,c in enumerate(constellations):
+        c["solutions"]=out_arr[i]
 
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int)->None:
     """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
@@ -590,127 +1125,126 @@ class NQueens17:
       ld,rd,col=constellation["ld"]>>1,constellation["rd"]>>1,(constellation["col"]>>1)|(~small_mask)
       LD=(1<<(N1-j))|(1<<(N1-l))
       ld|=LD>>(N-start)
-      if start>k: rd|=(1<<(N1-(start-k+1)))
-      if j>=2*N-33-start: rd|=(1<<(N1-j))<<(N2-start)
+      if start>k:rd|=(1<<(N1-(start-k+1)))
+      if j>=2*N-33-start:rd|=(1<<(N1-j))<<(N2-start)
       free=~(ld|rd|col)
 
       # 事前に固定値
-      N1, N2 = N-1, N-2
+      N1,N2=N-1,N-2
 
       # よく使う比較はフラグ化（1回だけ計算）
-      j_lt_N3   = (j <  N-3)
-      j_eq_N3   = (j == N-3)
-      j_eq_N2   = (j == N-2)
-      k_lt_l    = (k <  l)
-      start_lt_k= (start < k)
-      start_lt_l= (start < l)
-      l_eq_kp1  = (l == k+1)
-      k_eq_lp1  = (k == l+1)
-      j_gate    = (j > 2*N - 34 - start)   # 既存の「ゲート」条件
+      j_lt_N3=(j<N-3)
+      j_eq_N3=(j==N-3)
+      j_eq_N2=(j==N-2)
+      k_lt_l=(k<l)
+      start_lt_k=(start<k)
+      start_lt_l=(start<l)
+      l_eq_kp1=(l==k+1)
+      k_eq_lp1=(k==l+1)
+      j_gate=(j>2*N-34-start)   # 既存の「ゲート」条件
 
       # ここから分岐（大分類 → 小分類）。同じ式の再評価をなくし、ネストを浅く。
       if j_lt_N3:
-        jmark  = j + 1
-        endmark= N2
+        jmark=j+1
+        endmark=N2
         if j_gate:
           if k_lt_l:
-            mark1, mark2 = k-1, l-1
+            mark1,mark2=k-1,l-1
             if start_lt_l:
-              if start_lt_k: target = 0 if (not l_eq_kp1) else 4   # SQBkBlBjrB / SQBklBjrB
-              else: target = 1  # SQBlBjrB
-            else: target = 2   # SQBjrB
+              if start_lt_k:target=0 if (not l_eq_kp1) else 4   # SQBkBlBjrB / SQBklBjrB
+              else:target=1  # SQBlBjrB
+            else:target=2   # SQBjrB
           else:
-            mark1, mark2 = l-1, k-1
+            mark1,mark2=l-1,k-1
             if start_lt_k:
-              if start_lt_l: target = 5 if (not k_eq_lp1) else 7   # SQBlBkBjrB / SQBlkBjrB
-              else: target = 6  # SQBkBjrB
-            else: target = 2  # SQBjrB
+              if start_lt_l:target=5 if (not k_eq_lp1) else 7   # SQBlBkBjrB / SQBlkBjrB
+              else:target=6  # SQBkBjrB
+            else:target=2  # SQBjrB
         else:
           if k_lt_l:
-            mark1, mark2 = k-1, l-1
-            target = 8 if (not l_eq_kp1) else 9   # SQBjlBkBlBjrB / SQBjlBklBjrB
+            mark1,mark2=k-1,l-1
+            target=8 if (not l_eq_kp1) else 9   # SQBjlBkBlBjrB / SQBjlBklBjrB
           else:
-            mark1, mark2 = l-1, k-1
-            target = 10 if (not k_eq_lp1) else 11  # SQBjlBlBkBjrB / SQBjlBlkBjrB
+            mark1,mark2=l-1,k-1
+            target=10 if (not k_eq_lp1) else 11  # SQBjlBlBkBjrB / SQBjlBlkBjrB
       elif j_eq_N3:
-        endmark = N2
+        endmark=N2
         if k_lt_l:
-          mark1, mark2 = k-1, l-1
+          mark1,mark2=k-1,l-1
           if start_lt_l:
-            if start_lt_k: target = 12 if (not l_eq_kp1) else 15     # SQd2BkBlB / SQd2BklB
+            if start_lt_k:target=12 if (not l_eq_kp1) else 15     # SQd2BkBlB / SQd2BklB
             else:
-              mark2  = l-1
-              target = 13 # SQd2BlB
-          else: target = 14 # SQd2B
+              mark2=l-1
+              target=13 # SQd2BlB
+          else:target=14 # SQd2B
         else:
-          mark1, mark2 = l-1, k-1
+          mark1,mark2=l-1,k-1
           if start_lt_k:
-            if start_lt_l: target = 16 if (not k_eq_lp1) else 18     # SQd2BlBkB / SQd2BlkB
+            if start_lt_l:target=16 if (not k_eq_lp1) else 18     # SQd2BlBkB / SQd2BlkB
             else:
-              mark2  = k-1
-              target = 17  # SQd2BkB
-          else: target = 14  # SQd2B
-      elif j_eq_N2:  # j がコーナーから1列内側
+              mark2=k-1
+              target=17  # SQd2BkB
+          else:target=14  # SQd2B
+      elif j_eq_N2:# j がコーナーから1列内側
         if k_lt_l:
-          endmark = N2
+          endmark=N2
           if start_lt_l:
             if start_lt_k:
-              mark1 = k-1
+              mark1=k-1
               if not l_eq_kp1:
-                mark2 = l-1
-                target = 19 # SQd1BkBlB
-              else: target = 22 # SQd1BklB
+                mark2=l-1
+                target=19 # SQd1BkBlB
+              else:target=22 # SQd1BklB
             else:
-              mark2 = l-1
-              target = 20 # SQd1BlB
-          else: target = 21 # SQd1B
-        else:  # l < k
+              mark2=l-1
+              target=20 # SQd1BlB
+          else:target=21 # SQd1B
+        else:# l < k
           if start_lt_k:
             if start_lt_l:
-              if k < N2:
-                mark1, endmark = l-1, N2
+              if k<N2:
+                mark1,endmark=l-1,N2
                 if not k_eq_lp1:
-                  mark2 = k-1
-                  target = 23 # SQd1BlBkB
-                else: target = 24 # SQd1BlkB
+                  mark2=k-1
+                  target=23 # SQd1BlBkB
+                else:target=24 # SQd1BlkB
               else:
-                if l != (N-3):
-                  mark2, endmark = l-1, N-3
-                  target = 20  # SQd1BlB
+                if l!=(N-3):
+                  mark2,endmark=l-1,N-3
+                  target=20  # SQd1BlB
                 else:
-                  endmark = N-4
-                  target  = 21 # SQd1B
+                  endmark=N-4
+                  target=21 # SQd1B
             else:
-              if k != N2:
-                mark2, endmark = k-1, N2
-                target = 25  # SQd1BkB
+              if k!=N2:
+                mark2,endmark=k-1,N2
+                target=25  # SQd1BkB
               else:
-                endmark = N-3
-                target  = 21 # SQd1B
+                endmark=N-3
+                target=21 # SQd1B
           else:
-            endmark = N2
-            target  = 21 # SQd1B
+            endmark=N2
+            target=21 # SQd1B
       # j がコーナー
       else:
-        endmark = N2
-        if start > k: target = 26 # SQd0B
+        endmark=N2
+        if start>k:target=26 # SQd0B
         else:
-          mark1 = k-1
-          target = 27 # SQd0BkB
+          mark1=k-1
+          target=27 # SQd0BkB
       # 配列へ格納
       ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i],funcid_arr[i],ijkl_arr[i]=ld,rd,col,start,free,jmark,endmark,mark1,mark2,target,ijkl
 
     # ===== 並列ステージ：計算だけ =====
-    self._N  = N
-    self._N1 = N-1
-    self._NK = 1 << (N-3)
-    self._NJ = 1 << (N-1)
-    self._blockK = blockK_by_funcid
-    self._blockL = blockl_by_funcid
-    self._meta   = func_meta
-    self._board_mask = (1<<N)-1
-    #@par
-    @gpu
+    self._N=N
+    self._N1=N-1
+    self._NK=1<<(N-3)
+    self._NJ=1<<(N-1)
+    self._blockK=blockK_by_funcid
+    self._blockL=blockl_by_funcid
+    self._meta=func_meta
+    self._board_mask=(1<<N)-1
+    @par
     for i in range(m):
       #print("exec_start")
       cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
@@ -727,7 +1261,7 @@ class NQueens17:
 
     # subconst_cache:Set[StateKey]=set()
     # インスタンス共有キャッシュを使う（ローカル初期化しない！）
-    sc = self.subconst_cache
+    sc=self.subconst_cache
     if key in sc:
       return
     # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
@@ -797,6 +1331,7 @@ class NQueens17:
       free&=free-1
       _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
 
+
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
     """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
     # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
@@ -853,6 +1388,7 @@ class NQueens17:
 
   """32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。"""
   def read_uint32_le(self,b:str)->int: return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
+
   def int_to_le_bytes(self,x:int)->List[int]: return [(x>>(8*i))&0xFF for i in range(4)]
 
   def file_exists(self,fname:str)->bool:
@@ -986,7 +1522,7 @@ class NQueens17_constellations():
   def main(self)->None:
     """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
     nmin:int=5
-    nmax:int=18
+    nmax:int=20
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -1011,9 +1547,19 @@ class NQueens17_constellations():
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
-      NQ.exec_solutions(constellations,size)
+      # CPU
+      # NQ.exec_solutions(constellations,size)
+      #
+      # GPU
+      NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      print(f"[dbg] size={size} gen_constellations done: ijkl={len(ijkl_list)} consts={len(constellations)}")
+      print(f"[dbg] size={size} start exec_solutions_gpu")
+
+      NQ.exec_solutions_gpu(constellations,size)
+      print(f"[dbg] size={size} exec_solutions_gpu done")
+
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
