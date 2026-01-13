@@ -152,47 +152,9 @@ StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 MASK64=(1<<64)-1
 MAXS=64  # N=18なら十分余裕（必要なら 96/128 に）
 FIELDS=18
-# -----------------------------
-# 非再帰DFS（GPU/CPU共通で使える）
-# -----------------------------
-def dfs_iter(functionid:int,ld0:int,rd0:int,col0:int,row0:int,free0:int,
-             jmark0:int,endmark0:int,mark10:int,mark20:int,
-             bm:int,N1:int,NJ:int,
-             next_funcid:List[int],funcptn:List[int],avail_flag:List[int],
-             blockK_tbl:List[int],blockL_tbl:List[int])->int:
-  """
-  17Py の dfs() を “忠実に” 非再帰化したもの。
-  - 再帰呼び出しを stack push に置換
-  - 戻り値は acc の集計で親へ伝播
-  """
-  MAXS=64  # N=18なら十分余裕（必要なら 96/128 に）
-  FIELDS=18
-  # fields:
-# 0 funcid
-# 1 ld
-# 2 rd
-# 3 col
-# 4 row
-# 5 avail
-# 6 jmark
-# 7 endmark
-# 8 mark1
-# 9 mark2
-# 10 inited
-# 11 acc
-# 12 step
-# 13 add1
-# 14 row_step
-# 15 use_blocks
-# 16 use_future
-# 17 local_next
-
+PACK_FIELDS  = 10   # pack は ld..fid の 10 要素
 FRAME_FIELDS = 20
 FRAME_MAXS   = 128  # 必要なら増やす
-PACK_FIELDS  = 10   # pack は ld..fid の 10 要素
-META_FIELDS  = 3    # (next_id, funcptn, avail_flag)
-BLOCK_FIELDS = 2    # (blockK, blockL)
-
 # ---- dfs_iter_buf 用：フレーム定義（20フィールド）----
 F_FID        = 0
 F_LD         = 1
@@ -216,12 +178,356 @@ F_USE_FUTURE = 16   # 0/1
 F_BLOCKK     = 17
 F_BLOCKL     = 18
 F_LOCAL_NEXT = 19
+# -----------------------------
+# 非再帰DFS（GPU/CPU共通で使える）
+# -----------------------------
+def dfs_iter(functionid:int,ld0:int,rd0:int,col0:int,row0:int,free0:int,
+             jmark0:int,endmark0:int,mark10:int,mark20:int,
+             bm:int,N1:int,
+             next_funcid:List[int],funcptn:List[int],avail_flag:List[int],
+             blockK_tbl:List[int],blockL_tbl:List[int])->int:
+  """
+  17Py の dfs() を “忠実に” 非再帰化したもの。
+  - 再帰呼び出しを stack push に置換
+  - 戻り値は acc の集計で親へ伝播
+  """
+  MAXS=64  # N=18なら十分余裕（必要なら 96/128 に）
+  FIELDS=18
+  # dfs_iter の冒頭あたりで（jmark0 は引数で来てる）
+  NJ = 1 << (N1 - jmark0)
+
+  # FRAME_FIELDS = 20
+  # FRAME_MAXS   = 128  # 必要なら増やす
+  # PACK_FIELDS  = 10   # pack は ld..fid の 10 要素
+  META_FIELDS  = 3    # (next_id, funcptn, avail_flag)
+  BLOCK_FIELDS = 2    # (blockK, blockL)
+
+  # ---- dfs_iter_buf 用：フレーム定義（20フィールド）----
+  F_FID        = 0
+  F_LD         = 1
+  F_RD         = 2
+  F_COL        = 3
+  F_ROW        = 4
+  F_AVAIL      = 5
+  F_JMARK      = 6
+  F_END        = 7
+  F_M1         = 8
+  F_M2         = 9
+  F_STATE      = 10   # 0=init, 1=loop
+  F_ACC        = 11
+
+  # 追加で保持する「dfs() の分岐結果」
+  F_STEP       = 12
+  F_ADD1       = 13
+  F_ROWSTEP    = 14
+  F_USE_BLOCKS = 15   # 0/1
+  F_USE_FUTURE = 16   # 0/1
+  F_BLOCKK     = 17
+  F_BLOCKL     = 18
+  F_LOCAL_NEXT = 19
+
+  # stack arrays
+  s_func  = [0]*MAXS
+  s_ld    = [0]*MAXS
+  s_rd    = [0]*MAXS
+  s_col   = [0]*MAXS
+  s_row   = [0]*MAXS
+  s_avail = [0]*MAXS
+  s_jmark = [0]*MAXS
+  s_end   = [0]*MAXS
+  s_m1    = [0]*MAXS
+  s_m2    = [0]*MAXS
+
+  # per-frame initialized state
+  s_inited = [0]*MAXS
+  s_acc    = [0]*MAXS
+
+  s_step   = [0]*MAXS
+  s_add1   = [0]*MAXS
+  s_rowst  = [0]*MAXS
+  s_useblk = [0]*MAXS
+  s_usefut = [0]*MAXS
+  s_lnext  = [0]*MAXS
+  s_bK     = [0]*MAXS
+  s_bL     = [0]*MAXS
+  s_ptn    = [0]*MAXS
+
+  sp = 0
+  s_func[0]  = functionid
+  s_ld[0]    = ld0
+  s_rd[0]    = rd0
+  s_col[0]   = col0
+  s_row[0]   = row0
+  s_avail[0] = free0
+  s_jmark[0] = jmark0
+  s_end[0]   = endmark0
+  s_m1[0]    = mark10
+  s_m2[0]    = mark20
+
+  s_inited[0] = 0
+  s_acc[0] = 0
+
+  while True:
+    fid = s_func[sp]
+    ld  = s_ld[sp]
+    rd  = s_rd[sp]
+    col = s_col[sp]
+    row = s_row[sp]
+    avail = s_avail[sp]
+    jmark = s_jmark[sp]
+    endmark = s_end[sp]
+    mark1 = s_m1[sp]
+    mark2 = s_m2[sp]
+
+    if avail == 0:
+      # このフレームは何もできない
+      res = s_acc[sp]
+      if sp == 0:
+        return res
+      sp -= 1
+      s_acc[sp] += res
+      continue
+
+    if s_inited[sp] == 0:
+      # ---- 初期化（dfs() 冒頭の処理をそのまま）----
+      nf_id = next_funcid[fid]
+      ptn   = funcptn[fid]
+      aflag = avail_flag[fid]
+      s_ptn[sp] = ptn
+
+      # base (P6)
+      if ptn == 5 and row == endmark:
+        if fid == 14:
+          # SQd2B 特例
+          res = 1 if (avail >> 1) else 0
+        else:
+          res = 1
+        if sp == 0:
+          return res
+        sp -= 1
+        s_acc[sp] += res
+        continue
+
+      step = 1
+      add1 = 0
+      row_step = row + 1
+      use_blocks = 0
+      use_future = 1 if (aflag == 1) else 0
+      blockK = 0
+      blockL = 0
+      local_next = fid
+
+      # P1/P2/P3: mark 行の step=2/3 + blocks
+      if ptn == 0 or ptn == 1 or ptn == 2:
+        at_mark = (row == mark1) if (ptn == 0 or ptn == 2) else (row == mark2)
+        if at_mark and avail:
+          step = 2 if (ptn == 0 or ptn == 1) else 3
+          add1 = 1 if (ptn == 1 and fid == 20) else 0  # SQd1BlB の特例
+          row_step = row + step
+          blockK = blockK_tbl[fid]
+          blockL = blockL_tbl[fid]
+          use_blocks = 1
+          use_future = 0
+          local_next = nf_id
+
+      # P4: jmark 特殊（入口一回）
+      elif ptn == 3 and row == jmark:
+        avail = avail & (~1)
+        ld = ld | 1
+        local_next = nf_id
+        if avail == 0:
+          res = 0
+          if sp == 0:
+            return res
+          sp -= 1
+          s_acc[sp] += res
+          continue
+
+      # 保存（初期化完了）
+      s_ld[sp]    = ld
+      s_avail[sp] = avail
+      s_step[sp]  = step
+      s_add1[sp]  = add1
+      s_rowst[sp] = row_step
+      s_useblk[sp]= use_blocks
+      s_usefut[sp]= use_future
+      s_lnext[sp] = local_next
+      s_bK[sp]    = blockK
+      s_bL[sp]    = blockL
+      s_inited[sp]= 1
+      # 以降、同フレームのループ処理へ
+
+    # ---- ループ本体（avail から 1bit ずつ）----
+    avail = s_avail[sp]
+    if avail == 0:
+      res = s_acc[sp]
+      if sp == 0:
+        return res
+      sp -= 1
+      s_acc[sp] += res
+      continue
+
+    bit = avail & -avail
+    avail = avail & (avail - 1)
+    s_avail[sp] = avail
+
+    step = s_step[sp]
+    add1 = s_add1[sp]
+    row_step = s_rowst[sp]
+    use_blocks = s_useblk[sp]
+    use_future = s_usefut[sp]
+    local_next = s_lnext[sp]
+    blockK = s_bK[sp]
+    blockL = s_bL[sp]
+    ld = s_ld[sp]
+    rd = s_rd[sp]
+    col = s_col[sp]
+
+    # 子状態を計算
+    if use_blocks == 1:
+      nld = ((ld | bit) << step) | add1 | blockL
+      nrd = ((rd | bit) >> step) | blockK
+      ncol = col | bit
+      nf = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+      # push child
+      sp += 1
+      s_func[sp]  = local_next
+      s_ld[sp]    = nld
+      s_rd[sp]    = nrd
+      s_col[sp]   = ncol
+      s_row[sp]   = row_step
+      s_avail[sp] = nf
+      s_jmark[sp] = s_jmark[sp-1]
+      s_end[sp]   = s_end[sp-1]
+      s_m1[sp]    = s_m1[sp-1]
+      s_m2[sp]    = s_m2[sp-1]
+      s_inited[sp]= 0
+      s_acc[sp]   = 0
+      continue
+
+    # not use_future（素朴 +1）
+    if use_future == 0:
+      nld = (ld | bit) << 1
+      nrd = (rd | bit) >> 1
+      ncol = col | bit
+      nf = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+      sp += 1
+      s_func[sp]  = local_next
+      s_ld[sp]    = nld
+      s_rd[sp]    = nrd
+      s_col[sp]   = ncol
+      s_row[sp]   = row_step
+      s_avail[sp] = nf
+      s_jmark[sp] = s_jmark[sp-1]
+      s_end[sp]   = s_end[sp-1]
+      s_m1[sp]    = s_m1[sp-1]
+      s_m2[sp]    = s_m2[sp-1]
+      s_inited[sp]= 0
+      s_acc[sp]   = 0
+      continue
+
+    # use_future かつ row_step >= endmark（先読み無しで十分）
+    if row_step >= s_end[sp]:
+      nld = (ld | bit) << 1
+      nrd = (rd | bit) >> 1
+      ncol = col | bit
+      nf = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+      sp += 1
+      s_func[sp]  = local_next
+      s_ld[sp]    = nld
+      s_rd[sp]    = nrd
+      s_col[sp]   = ncol
+      s_row[sp]   = row_step
+      s_avail[sp] = nf
+      s_jmark[sp] = s_jmark[sp-1]
+      s_end[sp]   = s_end[sp-1]
+      s_m1[sp]    = s_m1[sp-1]
+      s_m2[sp]    = s_m2[sp-1]
+      s_inited[sp]= 0
+      s_acc[sp]   = 0
+      continue
+
+    # use_future 本体（1手先空きがゼロなら枝刈り）
+    nld = (ld | bit) << 1
+    nrd = (rd | bit) >> 1
+    ncol = col | bit
+    nf = bm & ~(nld | nrd | ncol)
+    if nf == 0:
+      continue
+    if (bm & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
+      continue
+
+    sp += 1
+    s_func[sp]  = local_next
+    s_ld[sp]    = nld
+    s_rd[sp]    = nrd
+    s_col[sp]   = ncol
+    s_row[sp]   = row_step
+    s_avail[sp] = nf
+    s_jmark[sp] = s_jmark[sp-1]
+    s_end[sp]   = s_end[sp-1]
+    s_m1[sp]    = s_m1[sp-1]
+    s_m2[sp]    = s_m2[sp-1]
+    s_inited[sp]= 0
+    s_acc[sp]   = 0
+    continue
+# ---- dfs_iter_buf stack frame layout (GLOBAL) ----
+# 12 fields / frame
+F_FID   = 0
+F_LD    = 1
+F_RD    = 2
+F_COL   = 3
+F_ROW   = 4
+F_AVAIL = 5
+F_JMARK = 6
+F_END   = 7
+F_M1    = 8
+F_M2    = 9
+F_STATE = 10
+F_ACC   = 11
+
+# must match host allocation
+FRAME_FIELDS = 12
+# FRAME_MAXS はあなたの MAXS に合わせてどこかで定義済みのはず。
+# 無いならひとまず固定で：
+# FRAME_MAXS = 64
 
 @inline
-def IDX(tid:int, sp:int, f:int, MAXS:int, FIELDS:int) -> int:
-  return (tid * MAXS + sp) * FIELDS + f
+def IDX(tid: int, sp: int, f: int, MAXS: int, FIELDS: int) -> int:
+  # stackbuf layout: [tid][sp][field]
+  return tid * (MAXS * FIELDS) + sp * FIELDS + f
+
+@inline
+def META(meta: List[int], fid: int, k: int) -> int:
+  # meta: fid*3 + {0:next, 1:ptn, 2:avail_flag}
+  return meta[fid * 3 + k]
+
+@inline
+def BLK_K(blocks: List[int], fid: int) -> int:
+  return blocks[fid * 2 + 0]
+
+@inline
+def BLK_L(blocks: List[int], fid: int) -> int:
+  return blocks[fid * 2 + 1]
 
 
+  # partial = dfs_iter_buf(
+  #     tid,
+  #     funcid_arr,
+  #     ld_arr, rd_arr, col_arr,
+  #     row_arr, free_arr,
+  #     jmark_arr, end_arr, mark1_arr, mark2_arr,
+  #     bm,
+  #     next_funcid, funcptn, avail_flag,
+  #     blockK_tbl, blockL_tbl,
+  #     stackbuf
+  # )
 def dfs_iter_buf(
   tid:int,
   func0:int, ld0:int, rd0:int, col0:int, row0:int, free0:int,
@@ -438,25 +744,115 @@ def dfs_iter_buf(
 
   return 0
 
+# @gpu.kernel
+# def solve_kernel(pack: List[int],
+#                  weight_arr: List[int],
+#                  out_arr: List[int],
+#                  bm: int,
+#                  meta: List[int],
+#                  blocks: List[int],
+#                  off: int,
+#                  cur: int,
+#                  stackbuf: List[int]) -> None:
+
+#   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
+#   if gid >= cur:
+#     return
+
+#   i = off + gid
+#   tid = gid
+
+#   # base = i * PACK_FIELDS
+#   base = gid * PACK_FIELDS
+#   ld    = pack[base + 0]
+#   rd    = pack[base + 1]
+#   col   = pack[base + 2]
+#   row   = pack[base + 3]
+#   free  = pack[base + 4]
+#   jmark = pack[base + 5]
+#   endm  = pack[base + 6]
+#   mk1   = pack[base + 7]
+#   mk2   = pack[base + 8]
+#   fid   = pack[base + 9]
+
+#   partial = dfs_iter_buf(
+#     tid,
+#     fid,
+#     ld, rd, col, row, free,
+#     jmark, endm, mk1, mk2,
+#     bm,
+#     meta, blocks,
+#     stackbuf
+#   )
+
+#   if gid == 0:
+#     out_arr[i] = partial
+
+
+#   # out_arr[i] = partial * weight_arr[i]
+#   out_arr[i] = partial   # * weight_arr[i] を外す
+#   # out_arr[i]=free
+# @gpu.kernel
+# def solve_kernel(pack: List[int],
+#                  weight_arr: List[int],
+#                  out_arr: List[int],
+#                  bm: int,
+#                  N1: int,
+#                  NJ: int,
+#                  next_funcid: List[int],
+#                  funcptn: List[int],
+#                  avail_flag: List[int],
+#                  blockK_tbl: List[int],
+#                  blockL_tbl: List[int],
+#                  off: int,
+#                  cur: int) -> None:
+
+#   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
+#   if gid >= cur:
+#     return
+
+#   i = off + gid
+
+#   # ★バッチpack前提
+#   base = gid * PACK_FIELDS
+#   ld    = pack[base + 0]
+#   rd    = pack[base + 1]
+#   col   = pack[base + 2]
+#   row   = pack[base + 3]
+#   free  = pack[base + 4]
+#   jmark = pack[base + 5]
+#   endm  = pack[base + 6]
+#   mk1   = pack[base + 7]
+#   mk2   = pack[base + 8]
+#   fid   = pack[base + 9]
+
+#   partial = dfs_iter(
+#     fid, ld, rd, col, row, free,
+#     jmark, endm, mk1, mk2,
+#     bm, N1, NJ,
+#     next_funcid, funcptn, avail_flag,
+#     blockK_tbl, blockL_tbl
+#   )
+
+#   out_arr[i] = partial  # まず weight は外してOK
 @gpu.kernel
 def solve_kernel(pack: List[int],
                  weight_arr: List[int],
                  out_arr: List[int],
                  bm: int,
-                 meta: List[int],
-                 blocks: List[int],
+                 meta:List[int],
+                 blocks:List[int],
                  off: int,
                  cur: int,
                  stackbuf: List[int]) -> None:
 
   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
-  if gid >= cur:
-    return
-
+  if gid >= cur: return
   i = off + gid
-  tid = gid
+  tid=gid
 
-  base = i * PACK_FIELDS
+  # ★バッチ pack 前提
+  base = gid * PACK_FIELDS
   ld    = pack[base + 0]
   rd    = pack[base + 1]
   col   = pack[base + 2]
@@ -468,23 +864,39 @@ def solve_kernel(pack: List[int],
   mk2   = pack[base + 8]
   fid   = pack[base + 9]
 
+  # dfs_iter 側で NJ = 1<<(N-1-jmark) を計算する実装にしておく
+  # gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
+  # if gid >= cur: return
+  # i = off + gid
+  # tid=gid
+
+  # partial = dfs_iter(
+  #   fid, ld, rd, col, row, free,
+  #   jmark, endm, mk1, mk2,
+  #   bm, N,
+  #   next_funcid, funcptn, avail_flag,
+  #   blockK_tbl, blockL_tbl
+  # )
+
+  # out_arr[i] = partial   # まず weight を外して一致確認
+  # デバッグマーク：ここがホストで見えれば「launchされてる」
+
   partial = dfs_iter_buf(
-    tid,
-    fid,
-    ld, rd, col, row, free,
-    jmark, endm, mk1, mk2,
-    bm,
-    meta, blocks,
-    stackbuf
+      tid,
+      fid,
+      ld, rd, col,
+      row, free,
+      jmark, endm, mk1, mk2,
+      bm,
+      meta,blocks,
+      stackbuf
   )
-
-  if gid == 0:
-    out_arr[i] = partial
-
-
-  out_arr[i] = partial * weight_arr[i]
-  # out_arr[i] = partial   # * weight_arr[i] を外す
+  # out_arr[i]=fid
   # out_arr[i]=free
+  out_arr[i]=(fid<<16)|(free&0xFFFF)
+  # out_arr[i] = partial 
+  # out_arr[i] = partial * weight_arr[i]   # ← weight も i
+  return 
 
 
 
@@ -1031,6 +1443,11 @@ class NQueens17:
         mark1_arr[i]=mark1;mark2_arr[i]=mark2
         funcid_arr[i]=target
 
+      mask20 = (1 << 20) - 1
+      print("[dbg] startijkl head:", [c["startijkl"] for c in constellations[:8]])
+      print("[dbg] ijkl head:", [(c["startijkl"] & mask20) for c in constellations[:8]])
+      print("[dbg] row head:",  [(c["startijkl"] >> 20) for c in constellations[:8]])
+
       # ---- GPU 実行（atomicなし：out_arr[i] に書く）----
       # 事前に一度だけ作る（while の外）
       # FIELDS = 10         # ld,rd,col,row,free,jmark,end,mark1,mark2,funcid
@@ -1043,19 +1460,19 @@ class NQueens17:
       # FRAME_MAXS   = MAXS      # 既に引数 MAXS を使ってるならそれでOK
 
       # --- pack を作る（m件） ---
-      pack = [0] * (m * PACK_FIELDS)
-      for i in range(m):
-        b = i * PACK_FIELDS
-        pack[b+0] = ld_arr[i]
-        pack[b+1] = rd_arr[i]
-        pack[b+2] = col_arr[i]
-        pack[b+3] = row_arr[i]
-        pack[b+4] = free_arr[i]
-        pack[b+5] = jmark_arr[i]
-        pack[b+6] = end_arr[i]
-        pack[b+7] = mark1_arr[i]
-        pack[b+8] = mark2_arr[i]
-        pack[b+9] = funcid_arr[i]
+      # pack = [0] * (m * PACK_FIELDS)
+      # for i in range(m):
+      #   b = i * PACK_FIELDS
+      #   pack[b+0] = ld_arr[i]
+      #   pack[b+1] = rd_arr[i]
+      #   pack[b+2] = col_arr[i]
+      #   pack[b+3] = row_arr[i]
+      #   pack[b+4] = free_arr[i]
+      #   pack[b+5] = jmark_arr[i]
+      #   pack[b+6] = end_arr[i]
+      #   pack[b+7] = mark1_arr[i]
+      #   pack[b+8] = mark2_arr[i]
+      #   pack[b+9] = funcid_arr[i]
 
       # --- meta を作る（fid_max件） ---
       fid_max = len(next_funcid)
@@ -1071,26 +1488,78 @@ class NQueens17:
         blocks[fid*2+0] = blockK_by_funcid[fid]
         blocks[fid*2+1] = blockL_by_funcid[fid]
 
+      # # --- バッチ実行 ---
+      # BATCH = 1024
+      # out_arr = [0] * m
+      # BLOCK=32
+      # # ★超重要：stackbuf は「BATCHスレッド分」なので tid は 0..BATCH-1 にする
+      # # stackbuf = [0] * (BATCH * MAXS * FIELDS)
+      # stackbuf = [0] * (BATCH * FRAME_MAXS * FRAME_FIELDS)
+
+
+      # off = 0
+      # while off < m:
+      #   cur = BATCH if (m - off) > BATCH else (m - off)
+
+      #   # BLOCK は 32/64/128 などでOK、ただし GRID*BLOCK が cur を覆う必要あり
+      #   GRID = (cur + BLOCK - 1) // BLOCK
+      #   print(f"[dbg] launch batch: off={off} cur={cur} GRID={GRID} BLOCK={BLOCK}")
+
+      #   # ここは不要なら消してOK（デバッグ向け）
+      #   for t in range(off, off + cur):
+      #     out_arr[t] = 0
+
+      #   solve_kernel(
+      #     pack,
+      #     weight_arr,
+      #     out_arr,
+      #     board_mask,
+      #     meta,
+      #     blocks,
+      #     off, 
+      #     cur,
+      #     stackbuf,
+      #     grid=GRID, 
+      #     block=BLOCK
+      #   )
+
+      #   print("[dbg] out_arr head:", out_arr[off:off+cur])
+      #   off += cur
+      # print("[dbg] gpu batches done")
       # --- バッチ実行 ---
+      BLOCK = 32
       BATCH = 1024
       out_arr = [0] * m
-      BLOCK=32
-      # ★超重要：stackbuf は「BATCHスレッド分」なので tid は 0..BATCH-1 にする
-      # stackbuf = [0] * (BATCH * MAXS * FIELDS)
       stackbuf = [0] * (BATCH * FRAME_MAXS * FRAME_FIELDS)
-
 
       off = 0
       while off < m:
         cur = BATCH if (m - off) > BATCH else (m - off)
-
-        # BLOCK は 32/64/128 などでOK、ただし GRID*BLOCK が cur を覆う必要あり
         GRID = (cur + BLOCK - 1) // BLOCK
         print(f"[dbg] launch batch: off={off} cur={cur} GRID={GRID} BLOCK={BLOCK}")
 
-        # ここは不要なら消してOK（デバッグ向け）
+        # --- pack を cur 件だけ作る（★重要） ---
+        pack = [0] * (cur * PACK_FIELDS)
+        for j in range(cur):
+          i = off + j
+          b = j * PACK_FIELDS
+          pack[b+0] = ld_arr[i]
+          pack[b+1] = rd_arr[i]
+          pack[b+2] = col_arr[i]
+          pack[b+3] = row_arr[i]
+          pack[b+4] = free_arr[i]
+          pack[b+5] = jmark_arr[i]
+          pack[b+6] = end_arr[i]
+          pack[b+7] = mark1_arr[i]
+          pack[b+8] = mark2_arr[i]
+          pack[b+9] = funcid_arr[i]
+
+        # デバッグ：この範囲だけクリア
         for t in range(off, off + cur):
           out_arr[t] = 0
+
+        print("[dbg] pack fid head:", [pack[j*PACK_FIELDS + 9] for j in range(min(cur,8))])
+        print("[dbg] pack free head:", [pack[j*PACK_FIELDS + 4] for j in range(min(cur,8))])
 
         solve_kernel(
           pack,
@@ -1099,16 +1568,20 @@ class NQueens17:
           board_mask,
           meta,
           blocks,
-          off, 
+          off,
           cur,
           stackbuf,
-          grid=GRID, 
+          grid=GRID,
           block=BLOCK
         )
+        print("[dbg] out_arr head:", [hex(x) for x in out_arr[off:off+8]])
+        print("[dbg] free head:", free_arr[off:off+min(cur,8)])
+        print("[dbg] fid head:", funcid_arr[off:off+min(cur,8)])
+        print("[dbg] w head:", weight_arr[off:off+min(cur,8)])
 
         print("[dbg] out_arr head:", out_arr[off:off+cur])
         off += cur
-      print("[dbg] gpu batches done")
+        print("[dbg] gpu batches done")
 
       # ---- 書き戻し ----
       for i,c in enumerate(constellations):
@@ -1338,7 +1811,21 @@ class NQueens17:
     for i,constellation in enumerate(constellations):
       constellation["solutions"]=results[i]
 
-  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  # def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  def set_pre_queens_cached(
+    self,
+    ld:int, rd:int, col:int,
+    k:int, l:int,
+    row:int, queens:int,
+    LD:int, RD:int,
+    counter:List[int],
+    constellations:List[Dict[str,int]],
+    N:int, preset_queens:int,
+    visited:Set[int],
+    constellation_signatures:Set[Tuple[int,int,int,int,int,int,int]],  # ←後述：型も7要素に
+    ijkl:int                                     # ★追加
+  ) -> None:
+
     """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
 
@@ -1355,11 +1842,11 @@ class NQueens17:
     #   return
 
     # 新規実行（従来通りset_pre_queensの本体処理へ）
-    self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+    self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures,ijkl)
     # subconst_cache[key] = True  # マークだけでOK
     # subconst_cache.add(key)
 
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int,int]],ijkl:int)->None:
     """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
     mask=(1<<N)-1  # setPreQueensで使用
     # ---------------------------------------------------------------------
@@ -1391,17 +1878,17 @@ class NQueens17:
     # ---------------------------------------------------------------------
     # k行とl行はスキップ
     if row==k or row==l:
-      self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+      self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures,ijkl)
       return
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     if queens==preset_queens:
       # signatureの生成
-      signature=(ld,rd,col,k,l,row)  # 必要な変数でOK
+      signature=(ld,rd,col,k,l,row,ijkl)  # 必要な変数でOK
       if not hasattr(self,"constellation_signatures"):
         constellation_signatures=set()
       signatures=constellation_signatures
       if signature not in signatures:
-        constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20,"solutions":0}
+        constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20|ijkl,"solutions":0}
         constellations.append(constellation) #星座データ追加
         signatures.add(signature)
         counter[0]+=1
@@ -1412,7 +1899,7 @@ class NQueens17:
     while free:
       bit:int=free&-free
       free&=free-1
-      _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+      _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures,ijkl)
 
 
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
@@ -1423,7 +1910,7 @@ class NQueens17:
 
     halfN=(N+1)//2  # Nの半分を切り上げ
     N1:int=N-1
-    constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
+    constellation_signatures: Set[ Tuple[int, int, int, int, int, int,int] ] = set()
     # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
     if N%2==1:
       center=N//2
@@ -1460,7 +1947,13 @@ class NQueens17:
       RD=Lj|(1<<k)
       counter:List[int]=[0] # サブコンステレーションを生成
       visited:Set[int]=set()
-      _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+      # _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+        # target などを計算しているはず
+      _set_pre_queens_cached(
+        ld, rd, col, k, l, 1, 3 if j==N1 else 4, LD, RD,
+        counter, constellations, N, preset_queens, visited, constellation_signatures,
+        sc          # ★追加
+      )
       current_size=len(constellations)
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
