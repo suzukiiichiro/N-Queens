@@ -6,22 +6,22 @@
  https://suzukiiichiro.github.io/search/?keyword=Ｎクイーン問題
 
  非再帰でのコンパイルと実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -c
+ $ nvcc -O3 -arch=sm_86 -std=c++17 04CUDA_Symmetry_BitBoard.cu && ./a.out -c
 
  再帰でのコンパイルと実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -r
+ $ nvcc -O3 -arch=sm_86 -std=c++17 04CUDA_Symmetry_BitBoard.cu && ./a.out -r
 
  GPU で並列処理せずに実行
- $ nvcc -O3 -arch=sm_61 04CUDA_Symmetry_BitBoard.cu && ./a.out -g
+ $ nvcc -O3 -arch=sm_86 -std=c++17 04CUDA_Symmetry_BitBoard.cu && ./a.out -g
 
  GPU で並列処理で実行（ビットボード）
- $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+ $ nvcc -O3 -arch=sm_86 -std=c++17 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 
  CUDAのリアルタイム監視
  $ watch nvidia-smi
 
  # 実行
- $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+ $ nvcc -O3 -arch=sm_86 -std=c++17 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 
 
  # 実行結果
