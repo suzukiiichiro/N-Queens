@@ -187,164 +187,276 @@ def dfs_iter(functionid:int,ld0:int,rd0:int,col0:int,row0:int,free0:int,
 # 16 use_future
 # 17 local_next
 
-# フレームのフィールド番号（固定）
-F_FID   = 0
-F_LD    = 1
-F_RD    = 2
-F_COL   = 3
-F_ROW   = 4
-F_AVAIL = 5   # ★重要：そのフレームで残っている候補ビット集合
-F_JMARK = 6
-F_END   = 7
-F_M1    = 8
-F_M2    = 9
-F_STATE = 10  # 0=未初期化, 1=ループ中
-F_ACC   = 11  # 子からの合計
+FRAME_FIELDS = 20
+FRAME_MAXS   = 128  # 必要なら増やす
+PACK_FIELDS  = 10   # pack は ld..fid の 10 要素
+META_FIELDS  = 3    # (next_id, funcptn, avail_flag)
+BLOCK_FIELDS = 2    # (blockK, blockL)
 
-FIELDS  = 12
-MAXS    = 128  # とりあえず大きめ推奨
+# ---- dfs_iter_buf 用：フレーム定義（20フィールド）----
+F_FID        = 0
+F_LD         = 1
+F_RD         = 2
+F_COL        = 3
+F_ROW        = 4
+F_AVAIL      = 5
+F_JMARK      = 6
+F_END        = 7
+F_M1         = 8
+F_M2         = 9
+F_STATE      = 10   # 0=init, 1=loop
+F_ACC        = 11
+
+# 追加で保持する「dfs() の分岐結果」
+F_STEP       = 12
+F_ADD1       = 13
+F_ROWSTEP    = 14
+F_USE_BLOCKS = 15   # 0/1
+F_USE_FUTURE = 16   # 0/1
+F_BLOCKK     = 17
+F_BLOCKL     = 18
+F_LOCAL_NEXT = 19
 
 @inline
-def IDX(tid:int, sp:int, f:int) -> int:
+def IDX(tid:int, sp:int, f:int, MAXS:int, FIELDS:int) -> int:
   return (tid * MAXS + sp) * FIELDS + f
 
 
-def dfs_iter_buf(tid:int,
-                 func0:int, ld0:int, rd0:int, col0:int, row0:int, free0:int,
-                 jmark0:int, endmark0:int, mark10:int, mark20:int,
-                 bm:int,
-                 next_funcid: List[int], funcptn: List[int], avail_flag: List[int],
-                 blockK_tbl: List[int], blockL_tbl: List[int],
-                 stackbuf: List[int]) -> int:
+def dfs_iter_buf(
+  tid:int,
+  func0:int, ld0:int, rd0:int, col0:int, row0:int, free0:int,
+  jmark0:int, endmark0:int, mark10:int, mark20:int,
+  bm:int,
+  meta: List[int],        # [fid*3+0]=next, [fid*3+1]=ptn, [fid*3+2]=avail_flag
+  blocks: List[int],      # [fid*2+0]=blockK, [fid*2+1]=blockL
+  stackbuf: List[int]
+) -> int:
 
-  # 反復DFS用スタックポインタ
+  # ★必ず host 側の FRAME_MAXS / FRAME_FIELDS と一致させる
+  MAXS   = FRAME_MAXS
+  FIELDS = FRAME_FIELDS
+
   sp = 0
 
-  # 初期フレーム push
-  stackbuf[IDX(tid,0,F_FID)]   = func0
-  stackbuf[IDX(tid,0,F_LD)]    = ld0
-  stackbuf[IDX(tid,0,F_RD)]    = rd0
-  stackbuf[IDX(tid,0,F_COL)]   = col0
-  stackbuf[IDX(tid,0,F_ROW)]   = row0
-  stackbuf[IDX(tid,0,F_AVAIL)] = free0
-  stackbuf[IDX(tid,0,F_JMARK)] = jmark0
-  stackbuf[IDX(tid,0,F_END)]   = endmark0
-  stackbuf[IDX(tid,0,F_M1)]    = mark10
-  stackbuf[IDX(tid,0,F_M2)]    = mark20
-  stackbuf[IDX(tid,0,F_STATE)] = 0
-  stackbuf[IDX(tid,0,F_ACC)]   = 0
+  # 初期フレーム
+  stackbuf[IDX(tid,0,F_FID,MAXS,FIELDS)]   = func0
+  stackbuf[IDX(tid,0,F_LD,MAXS,FIELDS)]    = ld0
+  stackbuf[IDX(tid,0,F_RD,MAXS,FIELDS)]    = rd0
+  stackbuf[IDX(tid,0,F_COL,MAXS,FIELDS)]   = col0
+  stackbuf[IDX(tid,0,F_ROW,MAXS,FIELDS)]   = row0
+  stackbuf[IDX(tid,0,F_AVAIL,MAXS,FIELDS)] = free0
+  stackbuf[IDX(tid,0,F_JMARK,MAXS,FIELDS)] = jmark0
+  stackbuf[IDX(tid,0,F_END,MAXS,FIELDS)]   = endmark0
+  stackbuf[IDX(tid,0,F_M1,MAXS,FIELDS)]    = mark10
+  stackbuf[IDX(tid,0,F_M2,MAXS,FIELDS)]    = mark20
+  stackbuf[IDX(tid,0,F_STATE,MAXS,FIELDS)] = 0
+  stackbuf[IDX(tid,0,F_ACC,MAXS,FIELDS)]   = 0
 
-  # ★ここに「必ず戻る」ためのガード（syncが無いので超重要）
+  # ガード
   steps = 0
-  STEP_LIMIT = 2000000
+  STEP_LIMIT = 4000000
 
-  # --------- 反復DFS本体 ---------
   while sp >= 0:
     steps += 1
     if steps > STEP_LIMIT:
-      return -999999  # タイムアウト符号
+      return -999999  # timeout
 
-    fid   = stackbuf[IDX(tid,sp,F_FID)]
-    ld    = stackbuf[IDX(tid,sp,F_LD)]
-    rd    = stackbuf[IDX(tid,sp,F_RD)]
-    col   = stackbuf[IDX(tid,sp,F_COL)]
-    row   = stackbuf[IDX(tid,sp,F_ROW)]
-    avail = stackbuf[IDX(tid,sp,F_AVAIL)]
-    jmark = stackbuf[IDX(tid,sp,F_JMARK)]
-    endm  = stackbuf[IDX(tid,sp,F_END)]
-    m1    = stackbuf[IDX(tid,sp,F_M1)]
-    m2    = stackbuf[IDX(tid,sp,F_M2)]
-    state = stackbuf[IDX(tid,sp,F_STATE)]
-    acc   = stackbuf[IDX(tid,sp,F_ACC)]
+    fid   = stackbuf[IDX(tid,sp,F_FID,MAXS,FIELDS)]
+    ld    = stackbuf[IDX(tid,sp,F_LD,MAXS,FIELDS)]
+    rd    = stackbuf[IDX(tid,sp,F_RD,MAXS,FIELDS)]
+    col   = stackbuf[IDX(tid,sp,F_COL,MAXS,FIELDS)]
+    row   = stackbuf[IDX(tid,sp,F_ROW,MAXS,FIELDS)]
+    avail = stackbuf[IDX(tid,sp,F_AVAIL,MAXS,FIELDS)]
+    jmark = stackbuf[IDX(tid,sp,F_JMARK,MAXS,FIELDS)]
+    endm  = stackbuf[IDX(tid,sp,F_END,MAXS,FIELDS)]
+    m1    = stackbuf[IDX(tid,sp,F_M1,MAXS,FIELDS)]
+    m2    = stackbuf[IDX(tid,sp,F_M2,MAXS,FIELDS)]
+    state = stackbuf[IDX(tid,sp,F_STATE,MAXS,FIELDS)]
+    acc   = stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)]
 
-    # --- 初期化フェーズ（このフレームに入った最初の1回だけ）---
+    # --------------------
+    # init（dfs()入口処理）
+    # --------------------
     if state == 0:
-      # 例：funcptn を引いて、jmark特例や mark特例の前処理をするならここ
-      # ptn = funcptn[fid]
-      # nextid = next_funcid[fid]
-      # ... ここに dfs() の「入口処理」を移植 ...
-
-      # avail が空ならこのフレームは 0 で終了
+      avail=bm&avail
       if avail == 0:
+        # pop(0)
         sp -= 1
         if sp >= 0:
-          stackbuf[IDX(tid,sp,F_ACC)] += 0
+          stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)] += 0
         continue
 
-      # 基底条件をここで判定して即return/加算してpop
-      # 例）if ptn==5 and row==endm: base=1 ... など
-      # ここはあなたの dfs() の P6 部分を移植
+      base_m = fid * 3
+      nextid = meta[base_m + 0]
+      ptn    = meta[base_m + 1]
+      aflag  = meta[base_m + 2]
 
-      stackbuf[IDX(tid,sp,F_STATE)] = 1
-      # state=1 にしたら「下のループフェーズ」へ落ちる
+      # ---- P6: 早期終了（dfs() と同じ）----
+      if ptn == 5 and row == endm:
+        base = 1
+        if fid == 14:  # SQd2B 特例（列0以外が残っていれば1）
+          base = 1 if (avail >> 1) != 0 else 0
+        # pop(base)
+        sp -= 1
+        if sp >= 0:
+          stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)] += base
+        else:
+          return base
+        continue
 
-    # --- ループフェーズ：avail から1bitずつ子に降りる ---
-    # （※あなたの dfs() の “while avail:” と同じ位置）
+      # 既定（+1）
+      step       = 1
+      add1       = 0
+      row_step   = row + 1
+      use_blocks = 0
+      use_future = 1 if aflag == 1 else 0
+      blockK     = 0
+      blockL     = 0
+      local_next = fid
+
+      # P1/P2/P3: mark 行で step=2/3 + block
+      if ptn == 0 or ptn == 1 or ptn == 2:
+        at_mark = (row == m1) if (ptn == 0 or ptn == 2) else (row == m2)
+        if at_mark and avail != 0:
+          step = 2 if (ptn == 0 or ptn == 1) else 3
+          add1 = 1 if (ptn == 1 and fid == 20) else 0
+          row_step = row + step
+          bb = fid * 2
+          blockK = blocks[bb + 0]
+          blockL = blocks[bb + 1]
+          use_blocks = 1
+          use_future = 0
+          local_next = nextid
+
+      # P4: jmark 特殊（入口一回だけ）
+      elif ptn == 3 and row == jmark:
+        avail &= ~1    # 列0禁止
+        ld |= 1        # 左斜線LSBを立てる
+        local_next = nextid
+        if avail == 0:
+          sp -= 1
+          if sp >= 0:
+            stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)] += 0
+          continue
+
+      # フレームへ書き戻し
+      stackbuf[IDX(tid,sp,F_LD,MAXS,FIELDS)]         = ld
+      stackbuf[IDX(tid,sp,F_AVAIL,MAXS,FIELDS)]      = avail
+      stackbuf[IDX(tid,sp,F_STATE,MAXS,FIELDS)]      = 1
+      stackbuf[IDX(tid,sp,F_STEP,MAXS,FIELDS)]       = step
+      stackbuf[IDX(tid,sp,F_ADD1,MAXS,FIELDS)]       = add1
+      stackbuf[IDX(tid,sp,F_ROWSTEP,MAXS,FIELDS)]    = row_step
+      stackbuf[IDX(tid,sp,F_USE_BLOCKS,MAXS,FIELDS)] = use_blocks
+      stackbuf[IDX(tid,sp,F_USE_FUTURE,MAXS,FIELDS)] = use_future
+      stackbuf[IDX(tid,sp,F_BLOCKK,MAXS,FIELDS)]     = blockK
+      stackbuf[IDX(tid,sp,F_BLOCKL,MAXS,FIELDS)]     = blockL
+      stackbuf[IDX(tid,sp,F_LOCAL_NEXT,MAXS,FIELDS)] = local_next
+
+      continue
+
+    # --------------------
+    # loop（dfs()の while avail）
+    # --------------------
+    avail = stackbuf[IDX(tid,sp,F_AVAIL,MAXS,FIELDS)]
     if avail == 0:
-      # このフレームはやり切ったので pop → 親のaccに加算
+      # pop(acc)
       sp -= 1
       if sp >= 0:
-        stackbuf[IDX(tid,sp,F_ACC)] += acc
+        stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)] += acc
       else:
         return acc
       continue
 
-    # 1手分（bitを1つ選ぶ）
+    # 1bit 取り出し
     bit = avail & -avail
     avail = avail & (avail - 1)
-    stackbuf[IDX(tid,sp,F_AVAIL)] = avail  # ★親の残りを保存（超重要）
+    stackbuf[IDX(tid,sp,F_AVAIL,MAXS,FIELDS)] = avail
 
-    # 子状態計算（ここをあなたの dfs() の3ループ分岐で作る）
-    # まずは “素朴 +1” の例（後で funcptn/blocks/先読みに拡張）
-    nld  = (ld | bit) << 1
-    nrd  = (rd | bit) >> 1
-    ncol = col | bit
-    nf   = bm & ~(nld | nrd | ncol)
-    if nf == 0:
-      # 子に降りない（次のbitへ）
-      continue
+    step       = stackbuf[IDX(tid,sp,F_STEP,MAXS,FIELDS)]
+    add1       = stackbuf[IDX(tid,sp,F_ADD1,MAXS,FIELDS)]
+    row_step   = stackbuf[IDX(tid,sp,F_ROWSTEP,MAXS,FIELDS)]
+    use_blocks = stackbuf[IDX(tid,sp,F_USE_BLOCKS,MAXS,FIELDS)]
+    use_future = stackbuf[IDX(tid,sp,F_USE_FUTURE,MAXS,FIELDS)]
+    blockK     = stackbuf[IDX(tid,sp,F_BLOCKK,MAXS,FIELDS)]
+    blockL     = stackbuf[IDX(tid,sp,F_BLOCKL,MAXS,FIELDS)]
+    local_next = stackbuf[IDX(tid,sp,F_LOCAL_NEXT,MAXS,FIELDS)]
 
-    # 子フレーム push
+    # 子状態
+    if use_blocks != 0:
+      nld  = ((ld | bit) << step) | add1 | blockL
+      nrd  = ((rd | bit) >> step) | blockK
+      ncol = (col | bit)
+      nf   = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+
+    elif use_future == 0:
+      nld  = (ld | bit) << 1
+      nrd  = (rd | bit) >> 1
+      ncol = (col | bit)
+      nf   = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+
+    elif row_step >= endm:
+      # dfs() の “row_step>=endmark は普通分岐で十分” と同じ
+      nld  = (ld | bit) << 1
+      nrd  = (rd | bit) >> 1
+      ncol = (col | bit)
+      nf   = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+
+    else:
+      # 先読み（ループ3B）
+      nld  = (ld | bit) << 1
+      nrd  = (rd | bit) >> 1
+      ncol = (col | bit)
+      nf   = bm & ~(nld | nrd | ncol)
+      if nf == 0:
+        continue
+      if (bm & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
+        continue
+
+    # push child
     if sp + 1 >= MAXS:
-      return -777777  # stack overflow符号（MAXS増やす）
+      return -777777  # stack overflow
 
     sp += 1
-    stackbuf[IDX(tid,sp,F_FID)]   = next_funcid[fid]   # ここも dfs() の分岐に合わせて調整
-    stackbuf[IDX(tid,sp,F_LD)]    = nld
-    stackbuf[IDX(tid,sp,F_RD)]    = nrd
-    stackbuf[IDX(tid,sp,F_COL)]   = ncol
-    stackbuf[IDX(tid,sp,F_ROW)]   = row + 1
-    stackbuf[IDX(tid,sp,F_AVAIL)] = nf
-    stackbuf[IDX(tid,sp,F_JMARK)] = jmark
-    stackbuf[IDX(tid,sp,F_END)]   = endm
-    stackbuf[IDX(tid,sp,F_M1)]    = m1
-    stackbuf[IDX(tid,sp,F_M2)]    = m2
-    stackbuf[IDX(tid,sp,F_STATE)] = 0
-    stackbuf[IDX(tid,sp,F_ACC)]   = 0
+    stackbuf[IDX(tid,sp,F_FID,MAXS,FIELDS)]   = local_next
+    stackbuf[IDX(tid,sp,F_LD,MAXS,FIELDS)]    = nld
+    stackbuf[IDX(tid,sp,F_RD,MAXS,FIELDS)]    = nrd
+    stackbuf[IDX(tid,sp,F_COL,MAXS,FIELDS)]   = ncol
+    stackbuf[IDX(tid,sp,F_ROW,MAXS,FIELDS)]   = row_step
+    stackbuf[IDX(tid,sp,F_AVAIL,MAXS,FIELDS)] = nf
+    stackbuf[IDX(tid,sp,F_JMARK,MAXS,FIELDS)] = jmark
+    stackbuf[IDX(tid,sp,F_END,MAXS,FIELDS)]   = endm
+    stackbuf[IDX(tid,sp,F_M1,MAXS,FIELDS)]    = m1
+    stackbuf[IDX(tid,sp,F_M2,MAXS,FIELDS)]    = m2
+    stackbuf[IDX(tid,sp,F_STATE,MAXS,FIELDS)] = 0
+    stackbuf[IDX(tid,sp,F_ACC,MAXS,FIELDS)]   = 0
 
   return 0
 
-FIELDS = 10
-META_FIELDS = 3
-BLOCK_FIELDS = 2
-
 @gpu.kernel
-def solve_kernel(pack, 
-                 weight_arr, 
-                 out_arr,
-                 bm,
-                 meta, blocks,
-                 off:int, cur:int,
-                 stackbuf):
+def solve_kernel(pack: List[int],
+                 weight_arr: List[int],
+                 out_arr: List[int],
+                 bm: int,
+                 meta: List[int],
+                 blocks: List[int],
+                 off: int,
+                 cur: int,
+                 stackbuf: List[int]) -> None:
 
   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
   if gid >= cur:
     return
 
   i = off + gid
-  tid = gid  # ★stackbuf は BATCH 分なので gid をそのまま使える（cur<=BATCHが条件）
+  tid = gid
 
-  base = i * FIELDS
+  base = i * PACK_FIELDS
   ld    = pack[base + 0]
   rd    = pack[base + 1]
   col   = pack[base + 2]
@@ -366,54 +478,14 @@ def solve_kernel(pack,
     stackbuf
   )
 
-  out_arr[i] = partial * weight_arr[i]
+  if gid == 0:
+    out_arr[i] = partial
 
-# 
-# @gpu.kernel
-# def solve_kernel(
-#                  # ld_arr, 
-#                  # rd_arr, 
-#                  # col_arr, 
-#                  # row_arr, free_arr,
-#                  # jmark_arr, end_arr, 
-#                  #mark1_arr, mark2_arr, 
-#                  funcid_arr,
-#                  weight_arr,
-#                  out_arr,
-#                  bm,
-#                  next_funcid, funcptn, avail_flag,
-#                  blockK_tbl, blockL_tbl,
-#                  off:int, cur:int,
-#                  stackbuf
-#                  ):
-# 
-#   gid = gpu.block.x * gpu.block.dim.x + gpu.thread.x
-#   if gid >= cur: return
-#   tid=gid
-#   i = off + gid
-# 
-#   out_arr[i] = 777
-#   return
-# 
-#   # デバッグマーク
-#   out_arr[i]=-2
-#   if gid !=0: return
-# 
-#   partial = dfs_iter_buf(
-#       tid,
-#       funcid_arr[i],
-#       ld_arr[i], rd_arr[i], col_arr[i],
-#       row_arr[i], free_arr[i],
-#       jmark_arr[i], end_arr[i], mark1_arr[i], mark2_arr[i],
-#       bm,
-#       next_funcid, funcptn, avail_flag,
-#       blockK_tbl, blockL_tbl,
-#       stackbuf
-#   )
-# 
-#   # out_arr[i] = partial * weight_arr[i]
-#   out_arr[i] = partial
-# 
+
+  out_arr[i] = partial * weight_arr[i]
+  # out_arr[i] = partial   # * weight_arr[i] を外す
+  # out_arr[i]=free
+
 
 
 class NQueens17:
@@ -846,7 +918,9 @@ class NQueens17:
         ld|=LD>>(N-start)
         if start>k:rd|=(1<<(N1-(start-k+1)))
         if j>=2*N-33-start:rd|=(1<<(N1-j))<<(N2-start)
-        free=~(ld|rd|col)
+        # free=~(ld|rd|col)
+        free = board_mask & ~(ld | rd | col)
+
 
         # ---- target 決定（あなたの元ロジックをそのまま）----
         target:int=0
@@ -959,14 +1033,19 @@ class NQueens17:
 
       # ---- GPU 実行（atomicなし：out_arr[i] に書く）----
       # 事前に一度だけ作る（while の外）
-      FIELDS = 10         # ld,rd,col,row,free,jmark,end,mark1,mark2,funcid
-      META_FIELDS = 3     # next, ptn, avail
-      BLOCK_FIELDS = 2    # blockK, blockL
+      # FIELDS = 10         # ld,rd,col,row,free,jmark,end,mark1,mark2,funcid
+      # META_FIELDS = 3     # next, ptn, avail
+      # BLOCK_FIELDS = 2    # blockK, blockL
+      PACK_FIELDS  = 10        # ld,rd,col,row,free,jmark,end,mark1,mark2,funcid
+      META_FIELDS  = 3         # next, ptn, avail
+      BLOCK_FIELDS = 2         # blockK, blockL
+      # FRAME_FIELDS = 12        # dfs_iter_buf のスタックフレーム
+      # FRAME_MAXS   = MAXS      # 既に引数 MAXS を使ってるならそれでOK
 
       # --- pack を作る（m件） ---
-      pack = [0] * (m * FIELDS)
+      pack = [0] * (m * PACK_FIELDS)
       for i in range(m):
-        b = i * FIELDS
+        b = i * PACK_FIELDS
         pack[b+0] = ld_arr[i]
         pack[b+1] = rd_arr[i]
         pack[b+2] = col_arr[i]
@@ -997,7 +1076,9 @@ class NQueens17:
       out_arr = [0] * m
       BLOCK=32
       # ★超重要：stackbuf は「BATCHスレッド分」なので tid は 0..BATCH-1 にする
-      stackbuf = [0] * (BATCH * MAXS * FIELDS)
+      # stackbuf = [0] * (BATCH * MAXS * FIELDS)
+      stackbuf = [0] * (BATCH * FRAME_MAXS * FRAME_FIELDS)
+
 
       off = 0
       while off < m:
@@ -1018,16 +1099,16 @@ class NQueens17:
           board_mask,
           meta,
           blocks,
-          off, cur,
+          off, 
+          cur,
           stackbuf,
-          grid=GRID, block=BLOCK
+          grid=GRID, 
+          block=BLOCK
         )
 
         print("[dbg] out_arr head:", out_arr[off:off+cur])
         off += cur
       print("[dbg] gpu batches done")
-
-
 
       # ---- 書き戻し ----
       for i,c in enumerate(constellations):
@@ -1127,7 +1208,9 @@ class NQueens17:
       ld|=LD>>(N-start)
       if start>k:rd|=(1<<(N1-(start-k+1)))
       if j>=2*N-33-start:rd|=(1<<(N1-j))<<(N2-start)
-      free=~(ld|rd|col)
+      # free=~(ld|rd|col)
+      free = board_mask & ~(ld | rd | col)
+
 
       # 事前に固定値
       N1,N2=N-1,N-2
@@ -1522,7 +1605,7 @@ class NQueens17_constellations():
   def main(self)->None:
     """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
     nmin:int=5
-    nmax:int=20
+    nmax:int=9
     preset_queens:int=4  # 必要に応じて変更
     print(" N:        Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
@@ -1547,16 +1630,15 @@ class NQueens17_constellations():
       # -- txt
       # constellations = NQ.load_or_build_constellations_txt(ijkl_list,constellations, size, preset_queens)
       # -- bin
-      # constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
+      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       # CPU
       # NQ.exec_solutions(constellations,size)
-      #
+      
       # GPU
       NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
       print(f"[dbg] size={size} gen_constellations done: ijkl={len(ijkl_list)} consts={len(constellations)}")
       print(f"[dbg] size={size} start exec_solutions_gpu")
-
       NQ.exec_solutions_gpu(constellations,size)
       print(f"[dbg] size={size} exec_solutions_gpu done")
 
