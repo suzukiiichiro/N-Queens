@@ -16,8 +16,8 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
          _/ _/
        _/m/'
 
-$  codon run 18Py_constellations_cuda_codon_suzuki_2026019.py -g(GPU)
-$  codon run 18Py_constellations_cuda_codon_suzuki_2026019.py -c(CPU)
+$  codon run 18Py_constellations_cuda_codon_suzuki_20260119.py -g(GPU)
+$  codon run 18Py_constellations_cuda_codon_suzuki_20260119.py -c(CPU)
 
 """
 
