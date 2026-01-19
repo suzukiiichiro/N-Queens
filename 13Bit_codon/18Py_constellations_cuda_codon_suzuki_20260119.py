@@ -617,28 +617,44 @@ class NQueens17:
     self._meta=func_meta
     self._board_mask=(1<<N)-1
 
+    def dfs_from_soa(i: int) -> int:
+      # TODO: GPU版ではここを kernel 呼び出しに置換
+      # CPU版: dfs() を呼ぶ
+      # GPU版: (将来) cnt_arr[i] を kernel で生成して返す/参照する
+      return dfs(soa.funcid_arr[i],
+              soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],
+              soa.free_arr[i], soa.jmark_arr[i], soa.end_arr[i],
+              soa.mark1_arr[i], soa.mark2_arr[i])
+
+    w_arr = [0]*m
+    @par
+    for i in range(m):
+      w_arr[i] = symmetry(soa.ijkl_arr[i], N)
     if use_gpu:
       # GPU移植後の想定:
       # - w_arr: CPUで前計算（symmetry重み）
       # - cnt: GPUで計算
       # - results: cnt*w_arr（GPU側でもCPU側でも可）
       # いまは同一処理。後でここをGPU実装に差し替える
-      w_arr = [0]*m
-      @par
-      for i in range(m):
-        w_arr[i] = symmetry(soa.ijkl_arr[i], N)
+      # w_arr = [0]*m
+      # @par
+      # for i in range(m):
+      #   w_arr[i] = symmetry(soa.ijkl_arr[i], N)
       @par
       for i in range(m):
         # cnt = dfs(funcid_arr[i], ld_arr[i], rd_arr[i], col_arr[i], row_arr[i],
         #           free_arr[i], jmark_arr[i], end_arr[i], mark1_arr[i], mark2_arr[i])
-        cnt = dfs(soa.funcid_arr[i], soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],soa.free_arr[i],soa.jmark_arr[i],soa.end_arr[i], soa.mark1_arr[i], soa.mark2_arr[i])
+        # cnt = dfs(soa.funcid_arr[i], soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],soa.free_arr[i],soa.jmark_arr[i],soa.end_arr[i], soa.mark1_arr[i], soa.mark2_arr[i])
+        # results[i] = cnt * w_arr[i]
+        cnt = dfs_from_soa(i)
         results[i] = cnt * w_arr[i]
     else:
       @par
       for i in range(m):
         # cnt=dfs(funcid_arr[i],ld_arr[i],rd_arr[i],col_arr[i],row_arr[i],free_arr[i],jmark_arr[i],end_arr[i],mark1_arr[i],mark2_arr[i])
-        cnt = dfs(soa.funcid_arr[i], soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],soa.free_arr[i],soa.jmark_arr[i],soa.end_arr[i], soa.mark1_arr[i], soa.mark2_arr[i])
-        results[i]=cnt*symmetry(soa.ijkl_arr[i],N)
+        # cnt = dfs(soa.funcid_arr[i], soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],soa.free_arr[i],soa.jmark_arr[i],soa.end_arr[i], soa.mark1_arr[i], soa.mark2_arr[i])
+        cnt = dfs_from_soa(i)
+        results[i]=cnt*w_arr[i]
 
     for i,constellation in enumerate(constellations):
       constellation["solutions"]=results[i]
