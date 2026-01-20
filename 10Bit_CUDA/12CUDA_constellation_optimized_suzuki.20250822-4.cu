@@ -212,8 +212,9 @@ __host__ __device__ unsigned int SQBklBjrB(unsigned int ld,unsigned int rd,unsig
 __host__ __device__ unsigned int SQBlBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
-__host__ __device__ unsigned int SQBlBkBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N); 
+__host__ __device__ unsigned int SQBlBkBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQBlkBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
+__host__ __device__ unsigned int SQBlkBjrB_iter(unsigned int ld,unsigned int rd,unsigned int col,unsigned int row, unsigned int free,unsigned int jmark,unsigned int endmark, unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQBkBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQBjlBkBlBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
 __host__ __device__ unsigned int SQBjlBklBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int start,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
@@ -798,6 +799,7 @@ __global__ void execSolutionsKernel(Constellation* constellations,unsigned int* 
                     cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
                   }else{// lとkの間に自由行がない場合
                     cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                    // cnt=SQBlkBjrB_iter(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
                   }
                 }else{ // lがすでに来ていて、kだけがまだ来ていない場合
                   cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
@@ -1064,6 +1066,7 @@ void execSolutions(ConstellationArrayList* constellations,int N)
                 cnt=SQBlBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }else{// lとkの間に自由行がない場合
                 cnt=SQBlkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
+                // cnt=SQBlkBjrB_iter(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
               }
             }else{ // lがすでに来ていて、kだけがまだ来ていない場合
               cnt=SQBkBjrB(ld,rd,col,start,free,jmark,endmark,mark1,mark2,mask,N);
@@ -1886,6 +1889,101 @@ __host__ __device__ unsigned int SQBlkBjrB(unsigned int ld,unsigned int rd,unsig
   }
   return total;
 }
+
+// N<=32 前提（N=18ならOK）
+struct BlkFrame {
+  unsigned int ld, rd, col;
+  unsigned int row;
+  unsigned int free;
+  unsigned int jmark, endmark, mark1, mark2, mask, N;
+  bool in_mark1; // row==mark1 の分岐中かどうか
+};
+
+// 既存の SQBjrB を使う（次段でこれもiter化推奨）
+__host__ __device__
+unsigned int SQBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int row, unsigned int free,unsigned int jmark,unsigned int endmark, unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N);
+
+__host__ __device__
+unsigned int SQBlkBjrB_iter(unsigned int ld,unsigned int rd,unsigned int col,unsigned int row, unsigned int free,unsigned int jmark,unsigned int endmark, unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N)
+{
+  unsigned int total = 0;
+
+  // 深さの上限：最悪でも N 程度 + α（rowが+3もあるが深さは減る）
+  // 余裕を持って 64 くらい確保（N=18なら十分）
+  BlkFrame st[64];
+  int sp = 0;
+
+  st[0] = {ld, rd, col, row, free, jmark, endmark, mark1, mark2, mask, N, (row == mark1)};
+
+  while (sp >= 0) {
+    BlkFrame &f = st[sp];
+
+    // このフレームで試す候補が尽きたら戻る
+    if (f.free == 0) { sp--; continue; }
+
+    // free から1bit取り出す
+    unsigned int bit = f.free & (~f.free + 1u);  // free & -free のunsigned安全版
+    f.free ^= bit;
+
+    if (f.in_mark1) {
+      // row==mark1 の特殊ルール
+      unsigned int next_free = f.mask & ~(
+          ((f.ld | bit) << 3) |
+          ((f.rd | bit) >> 3) |
+          (f.col | bit) |
+          (1u << (f.N - 3)) |
+          2u
+      );
+
+      if (next_free) {
+        total += SQBjrB(((f.ld | bit) << 3) | 2u,
+                        ((f.rd | bit) >> 3) | (1u << (f.N - 3)),
+                        (f.col | bit),
+                        f.row + 3,
+                        next_free,
+                        f.jmark, f.endmark, f.mark1, f.mark2, f.mask, f.N);
+      }
+      // row==mark1 分岐は再帰しない（元もそう）
+      // 次のbitへ
+      continue;
+    } else {
+      // 通常ルール：再帰で SQBlkBjrB を呼んでいた部分
+      unsigned int next_free = f.mask & ~(
+          ((f.ld | bit) << 1) |
+          ((f.rd | bit) >> 1) |
+          (f.col | bit)
+      );
+
+      if (next_free) {
+        // 再帰呼び出しを push に置換
+        sp++;
+        // 念のため溢れチェック（デバッグ時）
+        if (sp >= 64) {
+          // ここに来るならスタックサイズ不足。まずは増やす。
+          // 本番は assert/return などお好みで
+          sp = 63;
+        }
+        st[sp] = {
+          (f.ld | bit) << 1,
+          (f.rd | bit) >> 1,
+          (f.col | bit),
+          f.row + 1,
+          next_free,
+          f.jmark, f.endmark, f.mark1, f.mark2, f.mask, f.N,
+          ((f.row + 1) == f.mark1)
+        };
+      }
+      continue;
+    }
+  }
+
+  return total;
+}
+
+
+
+
+
 __host__ __device__ unsigned int SQBjlBkBlBjrB(unsigned int ld,unsigned int rd,unsigned int col,unsigned int row,register unsigned int free,unsigned int jmark,unsigned int endmark,unsigned int mark1,unsigned int mark2,unsigned int mask,unsigned int N)
 {
   unsigned int total=0;
@@ -1984,6 +2082,17 @@ int main(int argc,char** argv)
 {
   bool cpu=false,gpu=false;
   int argstart=2;
+  {
+    size_t bytes = 1 << 20; // 1MB
+    cudaError_t e = cudaDeviceSetLimit(cudaLimitStackSize, bytes);
+    if (e != cudaSuccess) {
+      fprintf(stderr, "[warn] cudaDeviceSetLimit(StackSize,%zu) failed: %s\n",bytes, cudaGetErrorString(e));
+      // 失敗しても続行（この後のクラッシュを防ぐため）
+      cudaGetLastError();
+    }
+  }
+
+
   if(argc>=2&&argv[1][0]=='-'){
     if(argv[1][1]=='c'||argv[1][1]=='C'){cpu=true;}
     else if(argv[1][1]=='g'||argv[1][1]=='G'){gpu=true;}
@@ -2000,7 +2109,7 @@ int main(int argc,char** argv)
    if(!InitCUDA()){return 0;}
   }
     int min=4; 
-    int targetN=17;
+    int targetN=20;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");
@@ -2042,16 +2151,20 @@ int main(int argc,char** argv)
           // デバイスにコピー
           cudaMemcpy(deviceMemory, &fillconstellations->data[offset], currentSize * sizeof(Constellation), cudaMemcpyHostToDevice);
           // カーネルを実行
-          size_t bytes=1<<20;
-          cudaDeviceSetLimit(cudaLimitStackSize,bytes); // 1MB 目安。足りなければ増やす
+          // segmantation falt対応
+          // size_t bytes=1<<20;
+          // cudaDeviceSetLimit(cudaLimitStackSize,bytes); // 1MB 目安。足りなければ増やす
           execSolutionsKernel<<<gridSize, THREAD_NUM>>>(deviceMemory,deviceTotal, size, currentSize);
-          /**
           cudaError_t e = cudaGetLastError();
           if (e != cudaSuccess) {
             fprintf(stderr, "Kernel launch error: %s\n", cudaGetErrorString(e));
             exit(1);
           }
-          */
+          e = cudaDeviceSynchronize();
+          if (e != cudaSuccess) {
+            fprintf(stderr, "kernel runtime error: %s\n", cudaGetErrorString(e));
+            exit(1);
+          }
           cudaDeviceSynchronize(); // 完了待ち
           // カーネル実行後にデバイスメモリからホストにコピー
           cudaMemcpy(hostTotal, deviceTotal, sizeof(int)*gridSize,cudaMemcpyDeviceToHost);

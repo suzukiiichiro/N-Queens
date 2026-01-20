@@ -2184,7 +2184,7 @@ int main(int argc,char** argv)
    if(!InitCUDA()){return 0;}
   }
     int min=4; 
-    int targetN=17;
+    int targetN=20;
     struct timeval t0;
     struct timeval t1;
     printf("%s\n"," N:            Total          Unique      dd:hh:mm:ss.ms");

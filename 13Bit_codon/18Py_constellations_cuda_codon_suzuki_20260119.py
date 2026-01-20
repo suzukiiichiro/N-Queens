@@ -952,8 +952,10 @@ class NQueens17_constellations():
       arg = sys.argv[1]
       if arg == "-c":
         use_gpu = False
+        print("Using CPU ")
       elif arg == "-g":
         use_gpu = True
+        print("Using GPU ")
       else:
         print(f"Unknown option: {arg}")
         print("Usage: nqueens [-c | -g]")
