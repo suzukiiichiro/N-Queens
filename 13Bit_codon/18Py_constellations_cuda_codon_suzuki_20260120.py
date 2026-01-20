@@ -21,6 +21,54 @@ $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellati
 (GPU)
 $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -g
 
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -c
+CPU mode selected
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.000    ok
+ 7:           40            0         0:00:00.000    ok
+ 8:           92            0         0:00:00.000    ok
+ 9:          352            0         0:00:00.000    ok
+10:          724            0         0:00:00.001    ok
+11:         2680            0         0:00:00.002    ok
+12:        14200            0         0:00:00.005    ok
+13:        73712            0         0:00:00.006    ok
+14:       365596            0         0:00:00.024    ok
+15:      2279184            0         0:00:00.106    ok
+16:     14772512            0         0:00:00.671    ok
+17:     95815104            0         0:00:04.386    ok
+18:    666090624            0         0:00:31.771    ok
+
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -g
+GPU mode selected
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.001    ok
+ 7:           40            0         0:00:00.001    ok
+ 8:           92            0         0:00:00.001    ok
+ 9:          352            0         0:00:00.002    ok
+10:          724            0         0:00:00.003    ok
+11:         2680            0         0:00:00.005    ok
+12:        14200            0         0:00:00.008    ok
+13:        73712            0         0:00:00.015    ok
+14:       365596            0         0:00:00.044    ok
+15:      2279184            0         0:00:00.151    ok
+16:     14772512            0         0:00:00.792    ok
+17:     95815104            0         0:00:05.350    ok
+18:    666090624            0         0:00:37.079    ok
+
+
+MAXD=32です。
+
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -g
+GPU mode selected
+
+128
+18:    666090624            0         0:00:37.279    ok
+
+256
+18:    666090624            0         0:00:41.129    ok
+
 
 """
 
