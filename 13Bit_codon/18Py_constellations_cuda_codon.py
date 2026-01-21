@@ -16,12 +16,14 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
          _/ _/
        _/m/'
 
+実行方法
 (CPU)
 $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -c
 (GPU)
 $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -g
 
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -c
+実行履歴
+$ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -c
 CPU mode selected
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
@@ -39,7 +41,7 @@ CPU mode selected
 17:     95815104            0         0:00:04.386    ok
 18:    666090624            0         0:00:31.771    ok
 
-suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_opt.py && ./19Py_constellations_cuda_codon_opt -g
+$ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -g
 GPU mode selected
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
@@ -57,6 +59,30 @@ GPU mode selected
 17:     95815104            0         0:00:01.798    ok
 18:    666090624            0         0:00:15.159    ok
 19:   4968057848            0         0:02:08.872    ok
+
+Python/Codon amazon AWS m4.16xlarge x 1
+$ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
+18:        666090624                0          0:00:02.961
+19:       4968057848                0          0:00:22.049
+20:      39029188884                0          0:02:52.430
+21:     314666222712                0          0:24:25.554
+22:    2691008701644                0          3:29:33.971
+23:   24233937684440                0   1 day, 8:12:58.977
+
+
+2025/01/20 現在の最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
+C/CUDA NVIDIA(GPU)
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+18:        666090624         83263591     000:00:00:01.65
+19:       4968057848        621012754     000:00:00:13.80
+20:      39029188884       4878666808     000:00:02:02.52
+21:     314666222712      39333324973     000:00:18:46.52
+22:    2691008701644     336376244042     000:03:00:22.54
+23:   24233937684440    3029242658210     001:06:03:49.29
+24:  227514171973736   28439272956934     012:23:38:21.02
+25: 2207893435808352  275986683743434     140:07:39:29.96
+
 
 
 """
@@ -266,171 +292,171 @@ def kernel_dfs_iter_localstack(
     results[i] = total * w_arr[i]
 
 
-@gpu.kernel
-def kernel_dfs_iter(
-    ld_arr, rd_arr, col_arr, row_arr, free_arr,
-    jmark_arr, end_arr, mark1_arr, mark2_arr,
-    funcid_arr, w_arr,
-    meta_next, meta_ptn, meta_avail,
-    blockK_tbl, blockL_tbl,
-    st_fid, st_ld, st_rd, st_col, st_row, st_avail,
-    st_inited, st_step, st_add1, st_rowstep, st_bK, st_bL, st_nextfid,
-    is_base, is_jmark,is_mark, 
-    mark_sel, mark_step, mark_add1,
-    st_ub,st_fc,
-    results,
-    m: int, board_mask: int, MAXD: int
-):
-    i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
-    if i >= m:
-        return
+# @gpu.kernel
+# def kernel_dfs_iter(
+#     ld_arr, rd_arr, col_arr, row_arr, free_arr,
+#     jmark_arr, end_arr, mark1_arr, mark2_arr,
+#     funcid_arr, w_arr,
+#     meta_next, meta_ptn, meta_avail,
+#     blockK_tbl, blockL_tbl,
+#     st_fid, st_ld, st_rd, st_col, st_row, st_avail,
+#     st_inited, st_step, st_add1, st_rowstep, st_bK, st_bL, st_nextfid,
+#     is_base, is_jmark,is_mark, 
+#     mark_sel, mark_step, mark_add1,
+#     st_ub,st_fc,
+#     results,
+#     m: int, board_mask: int, MAXD: int
+# ):
+#     i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
+#     if i >= m:
+#         return
 
-    base = i * MAXD
+#     base = i * MAXD
 
-    # 初期状態をスタック0にセット
-    free0 = free_arr[i] & board_mask
-    if free0 == 0:
-        results[i] = 0
-        return
+#     # 初期状態をスタック0にセット
+#     free0 = free_arr[i] & board_mask
+#     if free0 == 0:
+#         results[i] = 0
+#         return
 
-    sp = 0
-    st_fid[base]   = funcid_arr[i]
-    st_ld[base]    = ld_arr[i]
-    st_rd[base]    = rd_arr[i]
-    st_col[base]   = col_arr[i]
-    st_row[base]   = row_arr[i]
-    st_avail[base] = free0
-    st_inited[base]= 0
+#     sp = 0
+#     st_fid[base]   = funcid_arr[i]
+#     st_ld[base]    = ld_arr[i]
+#     st_rd[base]    = rd_arr[i]
+#     st_col[base]   = col_arr[i]
+#     st_row[base]   = row_arr[i]
+#     st_avail[base] = free0
+#     st_inited[base]= 0
 
-    total = 0
+#     total = 0
 
-    jmark  = jmark_arr[i]
-    endm   = end_arr[i]
-    mark1  = mark1_arr[i]
-    mark2  = mark2_arr[i]
+#     jmark  = jmark_arr[i]
+#     endm   = end_arr[i]
+#     mark1  = mark1_arr[i]
+#     mark2  = mark2_arr[i]
 
-    while sp >= 0:
-        idx = base + sp
-        a = st_avail[idx]
-        if a == 0:
-            sp -= 1
-            continue
+#     while sp >= 0:
+#         idx = base + sp
+#         a = st_avail[idx]
+#         if a == 0:
+#             sp -= 1
+#             continue
 
-        if st_inited[idx] == 0:
-            st_inited[idx] = 1
-            f = st_fid[idx]
-            # ptn   = meta_ptn[f]
-            nfid  = meta_next[f]
-            aflag = meta_avail[f]
+#         if st_inited[idx] == 0:
+#             st_inited[idx] = 1
+#             f = st_fid[idx]
+#             # ptn   = meta_ptn[f]
+#             nfid  = meta_next[f]
+#             aflag = meta_avail[f]
 
-            # 基底
-            if is_base[f] == 1 and st_row[idx] == endm:
-              if f == 14:
-                  total += 1 if (a >> 1) else 0
-              else:
-                  total += 1
-              sp -= 1
-              continue
+#             # 基底
+#             if is_base[f] == 1 and st_row[idx] == endm:
+#               if f == 14:
+#                   total += 1 if (a >> 1) else 0
+#               else:
+#                   total += 1
+#               sp -= 1
+#               continue
 
-            # デフォルト
-            st_step[idx] = 1
-            st_add1[idx] = 0
-            st_rowstep[idx] = st_row[idx] + 1
-            st_bK[idx] = 0
-            st_bL[idx] = 0
-            st_nextfid[idx] = f
+#             # デフォルト
+#             st_step[idx] = 1
+#             st_add1[idx] = 0
+#             st_rowstep[idx] = st_row[idx] + 1
+#             st_bK[idx] = 0
+#             st_bL[idx] = 0
+#             st_nextfid[idx] = f
 
-            use_blocks = 0
-            use_future = 1 if (aflag == 1) else 0
+#             use_blocks = 0
+#             use_future = 1 if (aflag == 1) else 0
 
-            # mark
-            if is_mark[f] == 1:
-              sel = mark_sel[f]  # 1:mark1 2:mark2
-              at_mark = 0
-              if sel == 1:
-                  if st_row[idx] == mark1:
-                      at_mark = 1
-              if sel == 2:
-                  if st_row[idx] == mark2:
-                      at_mark = 1
-              if at_mark and a:
-                  use_blocks = 1
-                  use_future = 0
-                  st_step[idx] = mark_step[f]
-                  st_add1[idx] = mark_add1[f]
-                  st_rowstep[idx] = st_row[idx] + st_step[idx]
-                  st_bK[idx] = blockK_tbl[f]
-                  st_bL[idx] = blockL_tbl[f]
-                  st_nextfid[idx] = nfid
+#             # mark
+#             if is_mark[f] == 1:
+#               sel = mark_sel[f]  # 1:mark1 2:mark2
+#               at_mark = 0
+#               if sel == 1:
+#                   if st_row[idx] == mark1:
+#                       at_mark = 1
+#               if sel == 2:
+#                   if st_row[idx] == mark2:
+#                       at_mark = 1
+#               if at_mark and a:
+#                   use_blocks = 1
+#                   use_future = 0
+#                   st_step[idx] = mark_step[f]
+#                   st_add1[idx] = mark_add1[f]
+#                   st_rowstep[idx] = st_row[idx] + st_step[idx]
+#                   st_bK[idx] = blockK_tbl[f]
+#                   st_bL[idx] = blockL_tbl[f]
+#                   st_nextfid[idx] = nfid
 
 
-            # jmark
-            if is_jmark[f] == 1:
-              if st_row[idx] == jmark:
-                  a &= ~1
-                  st_avail[idx] = a
-                  if a == 0:
-                      sp -= 1
-                      continue
-                  st_ld[idx] |= 1
-                  st_nextfid[idx] = nfid
+#             # jmark
+#             if is_jmark[f] == 1:
+#               if st_row[idx] == jmark:
+#                   a &= ~1
+#                   st_avail[idx] = a
+#                   if a == 0:
+#                       sp -= 1
+#                       continue
+#                   st_ld[idx] |= 1
+#                   st_nextfid[idx] = nfid
 
-            # 最終的に 2値フラグに落とす
-            st_ub[idx] = 1 if use_blocks else 0
-            st_fc[idx] = 0
-            if use_future == 1:
-                if st_rowstep[idx] < endm:
-                    st_fc[idx] = 1
+#             # 最終的に 2値フラグに落とす
+#             st_ub[idx] = 1 if use_blocks else 0
+#             st_fc[idx] = 0
+#             if use_future == 1:
+#                 if st_rowstep[idx] < endm:
+#                     st_fc[idx] = 1
 
-        # 1bit展開
-        a = st_avail[idx]
-        bit = a & -a
-        st_avail[idx] = a ^ bit
+#         # 1bit展開
+#         a = st_avail[idx]
+#         bit = a & -a
+#         st_avail[idx] = a ^ bit
 
-        ub = st_ub[idx]
+#         ub = st_ub[idx]
 
-        # plain
-        nld1 = (st_ld[idx] | bit) << 1
-        nrd1 = (st_rd[idx] | bit) >> 1
+#         # plain
+#         nld1 = (st_ld[idx] | bit) << 1
+#         nrd1 = (st_rd[idx] | bit) >> 1
 
-        # blocks
-        nld2 = ((st_ld[idx] | bit) << st_step[idx]) | st_add1[idx] | st_bL[idx]
-        nrd2 = ((st_rd[idx] | bit) >> st_step[idx]) | st_bK[idx]
+#         # blocks
+#         nld2 = ((st_ld[idx] | bit) << st_step[idx]) | st_add1[idx] | st_bL[idx]
+#         nrd2 = ((st_rd[idx] | bit) >> st_step[idx]) | st_bK[idx]
 
-        # 2値選択（ここは 2分岐なので brx が出にくい）
-        if ub == 1:
-            nld = nld2
-            nrd = nrd2
-        else:
-            nld = nld1
-            nrd = nrd1
+#         # 2値選択（ここは 2分岐なので brx が出にくい）
+#         if ub == 1:
+#             nld = nld2
+#             nrd = nrd2
+#         else:
+#             nld = nld1
+#             nrd = nrd1
 
-        ncol = st_col[idx] | bit
-        nf = board_mask & ~(nld | nrd | ncol)
-        if nf == 0:
-            continue
+#         ncol = st_col[idx] | bit
+#         nf = board_mask & ~(nld | nrd | ncol)
+#         if nf == 0:
+#             continue
 
-        if st_fc[idx] == 1:
-            if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
-                continue
+#         if st_fc[idx] == 1:
+#             if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
+#                 continue
 
-        # push
-        sp += 1
-        if sp >= MAXD:
-            # とりあえず打ち切り（後でMAXD上げる）
-            results[i] = total * w_arr[i]
-            return
+#         # push
+#         sp += 1
+#         if sp >= MAXD:
+#             # とりあえず打ち切り（後でMAXD上げる）
+#             results[i] = total * w_arr[i]
+#             return
 
-        cidx = base + sp
-        st_inited[cidx] = 0
-        st_fid[cidx]    = st_nextfid[idx]
-        st_ld[cidx]     = nld
-        st_rd[cidx]     = nrd
-        st_col[cidx]    = ncol
-        st_row[cidx]    = st_rowstep[idx]
-        st_avail[cidx]  = nf
+#         cidx = base + sp
+#         st_inited[cidx] = 0
+#         st_fid[cidx]    = st_nextfid[idx]
+#         st_ld[cidx]     = nld
+#         st_rd[cidx]     = nrd
+#         st_col[cidx]    = ncol
+#         st_row[cidx]    = st_rowstep[idx]
+#         st_avail[cidx]  = nf
 
-    results[i] = total * w_arr[i]
+#     results[i] = total * w_arr[i]
 
 
 
@@ -1230,8 +1256,8 @@ class NQueens17:
       # st_ub = [0] * st_len
       # st_fc = [0] * st_len
 
-      BLOCK = 256
-      # BLOCK= 128
+      # BLOCK = 256
+      BLOCK= 128
       GRID  = (m + BLOCK - 1) // BLOCK
 
       # ★★★ ここで print ★★★
@@ -1592,7 +1618,7 @@ class NQueens17_constellations():
   def main(self)->None:
     """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
     nmin:int=5
-    nmax:int=20
+    nmax:int=21
     preset_queens:int=4  # 必要に応じて変更
     use_gpu=False
     argc=len(sys.argv)
