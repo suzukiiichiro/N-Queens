@@ -43,41 +43,50 @@ GPU mode selected
 19:   4968057848            0         0:02:08.692    ok
 
 
-Python/Codon amazon AWS m4.16xlarge x 1
+2026/01/21 Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
 suzuki@cudacodon$ ./18Py_constellations_cuda_codon -c
 CPU mode selected
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.036    ok
+ 6:            4            0         0:00:00.019    ok
  7:           40            0         0:00:00.000    ok
  8:           92            0         0:00:00.000    ok
- 9:          352            0         0:00:00.003    ok
-10:          724            0         0:00:00.002    ok
+ 9:          352            0         0:00:00.004    ok
+10:          724            0         0:00:00.001    ok
 11:         2680            0         0:00:00.005    ok
 12:        14200            0         0:00:00.007    ok
-13:        73712            0         0:00:00.012    ok
+13:        73712            0         0:00:00.011    ok
 14:       365596            0         0:00:00.016    ok
-15:      2279184            0         0:00:00.025    ok
-16:     14772512            0         0:00:00.059    ok
-17:     95815104            0         0:00:00.328    ok
-18:    666090624            0         0:00:02.197    ok
-19:   4968057848            0         0:00:16.147    ok
-IndexError: list index out of range
-
-Raised from: std.internal.types.array.List.0._idx_check:0
-/home/suzuki/.codon/lib/codon/stdlib/internal/types/collections/list.codon:379:13
-中止 (コアダンプ)
-suzuki@cudacodon$
-
+15:      2279184            0         0:00:00.028    ok
+16:     14772512            0         0:00:00.058    ok
+17:     95815104            0         0:00:00.323    ok
+18:    666090624            0         0:00:02.192    ok
+19:   4968057848            0         0:00:16.389    ok
+20:  39029188884            0         0:02:06.655    ok
 
 Python/Codon amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
-18:        666090624                0          0:00:02.961
-19:       4968057848                0          0:00:22.049
-20:      39029188884                0          0:02:52.430
-21:     314666222712                0          0:24:25.554
-22:    2691008701644                0          3:29:33.971
-23:   24233937684440                0   1 day, 8:12:58.977
+ N:            Total       Unique        hh:mm:ss.ms
+ 5:               10            0         0:00:00.000
+ 6:                4            0         0:00:00.079
+ 7:               40            0         0:00:00.001
+ 8:               92            0         0:00:00.001
+ 9:              352            0         0:00:00.001
+10:              724            0         0:00:00.002
+11:             2680            0         0:00:00.102
+12:            14200            0         0:00:00.002
+13:            73712            0         0:00:00.005
+14:           365596            0         0:00:00.011
+15:          2279184            0         0:00:00.035
+16:         14772512            0         0:00:00.078
+17:         95815104            0         0:00:00.436
+18:        666090624            0         0:00:02.961
+19:       4968057848            0         0:00:22.049
+20:      39029188884            0         0:02:52.430
+21:     314666222712            0         0:24:25.554
+22:    2691008701644            0         3:29:33.971
+23:   24233937684440            0  1 day, 8:12:58.977
 
 
 2025/01/20 現在の最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
@@ -1335,8 +1344,10 @@ class NQueens17_constellations():
     return use_gpu
   """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
   def main(self)->None:
+    expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
     nmin:int=5
-    nmax:int=21
+    # nmax:int=28
+    nmax:int=len(expected)
     preset_queens:int=4  # 必要に応じて変更
     use_gpu=False
     argc=len(sys.argv)
@@ -1360,14 +1371,14 @@ class NQueens17_constellations():
       print("Too many arguments")
       print("Usage: nqueens [-c | -g]")
       return
-    print(" N:        Total       Unique        hh:mm:ss.ms")
+    print(" N:             Total       Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       if size<=5:
         total=self._bit_total(size)
         dt=datetime.now()-start_time
         text=str(dt)[:-3]
-        print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
+        print(f"{size:2d}:{total:18d}{0:13d}{text:>20s}")
         continue
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
@@ -1387,9 +1398,8 @@ class NQueens17_constellations():
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
-      print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
+      print(f"{size:2d}:{total:18d}{0:13d}{text:>20s}    {status}")
 """ エントリポイント """
 if __name__=="__main__":
   NQueens17_constellations().main()
