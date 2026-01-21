@@ -39,35 +39,24 @@ CPU mode selected
 17:     95815104            0         0:00:04.386    ok
 18:    666090624            0         0:00:31.771    ok
 
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -g
+suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_opt.py && ./19Py_constellations_cuda_codon_opt -g
 GPU mode selected
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.001    ok
+ 6:            4            0         0:00:00.004    ok
  7:           40            0         0:00:00.001    ok
- 8:           92            0         0:00:00.001    ok
- 9:          352            0         0:00:00.002    ok
-10:          724            0         0:00:00.003    ok
-11:         2680            0         0:00:00.005    ok
-12:        14200            0         0:00:00.008    ok
-13:        73712            0         0:00:00.015    ok
-14:       365596            0         0:00:00.044    ok
-15:      2279184            0         0:00:00.151    ok
-16:     14772512            0         0:00:00.792    ok
-17:     95815104            0         0:00:05.350    ok
-18:    666090624            0         0:00:37.079    ok
-
-
-MAXD=32です。
-
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon_suzuki_20260120 -g
-GPU mode selected
-
-128
-18:    666090624            0         0:00:37.279    ok
-
-256
-18:    666090624            0         0:00:41.129    ok
+ 8:           92            0         0:00:00.000    ok
+ 9:          352            0         0:00:00.001    ok
+10:          724            0         0:00:00.001    ok
+11:         2680            0         0:00:00.002    ok
+12:        14200            0         0:00:00.003    ok
+13:        73712            0         0:00:00.006    ok
+14:       365596            0         0:00:00.018    ok
+15:      2279184            0         0:00:00.065    ok
+16:     14772512            0         0:00:00.327    ok
+17:     95815104            0         0:00:01.798    ok
+18:    666090624            0         0:00:15.159    ok
+19:   4968057848            0         0:02:08.872    ok
 
 
 """
@@ -78,13 +67,204 @@ from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
 # K=8 で N=26 の残り18なら 32 でまず足りる
-MAXD = 32
+MAXD:Static[int] = 32
 
 @gpu.kernel
-def kernel_dummy(w, out, m: int):
+def kernel_dfs_iter_localstack(
+    ld_arr, rd_arr, col_arr, row_arr, free_arr,
+    jmark_arr, end_arr, mark1_arr, mark2_arr,
+    funcid_arr, w_arr,
+    meta_next,meta_avail,                 # meta_ptn は現状未使用なので削除可
+    blockK_tbl, blockL_tbl,
+    is_base, is_jmark, is_mark,
+    mark_sel, mark_step, mark_add1,
+    results,
+    m: int, board_mask: int,
+    F:int
+):
+    # ★ list をやめて静的配列へ
+    fid    = __array__[int](MAXD)
+    ld     = __array__[int](MAXD)
+    rd     = __array__[int](MAXD)
+    col    = __array__[int](MAXD)
+    row    = __array__[int](MAXD)
+    avail  = __array__[int](MAXD)
+    inited = __array__[int](MAXD)
+
+    step   = __array__[int](MAXD)
+    add1   = __array__[int](MAXD)
+    rowst  = __array__[int](MAXD)
+    bK     = __array__[int](MAXD)
+    bL     = __array__[int](MAXD)
+    nextf  = __array__[int](MAXD)
+    ub     = __array__[int](MAXD)
+    fc     = __array__[int](MAXD)
+
+    # 必要なら 0 初期化（__array__ は未初期化のことがあるので安全側で）
+    for k in range(MAXD):
+        inited[k] = 0
+        ub[k] = 0
+        fc[k] = 0
+
+
     i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
-    if i < m:
-        out[i] = w[i] + 1
+    if i >= m:
+        return
+
+    free0 = free_arr[i] & board_mask
+    if free0 == 0:
+        results[i] = 0
+        return
+
+    jmark = jmark_arr[i]
+    endm  = end_arr[i]
+    mark1 = mark1_arr[i]
+    mark2 = mark2_arr[i]
+
+    # ---- ローカル固定長スタック（型は環境に合わせて固定長配列に）----
+    # fid    = [0] * MAXD
+    # ld     = [0] * MAXD
+    # rd     = [0] * MAXD
+    # col    = [0] * MAXD
+    # row    = [0] * MAXD
+    # avail  = [0] * MAXD
+    # inited = [0] * MAXD
+
+    # step   = [0] * MAXD
+    # add1   = [0] * MAXD
+    # rowst  = [0] * MAXD
+    # bK     = [0] * MAXD
+    # bL     = [0] * MAXD
+    # nextf  = [0] * MAXD
+    # ub     = [0] * MAXD
+    # fc     = [0] * MAXD
+
+    sp = 0
+    fid[0]    = funcid_arr[i]
+    ld[0]     = ld_arr[i]
+    rd[0]     = rd_arr[i]
+    col[0]    = col_arr[i]
+    row[0]    = row_arr[i]
+    avail[0]  = free0
+    inited[0] = 0
+
+    total = 0
+
+    while sp >= 0:
+        a = avail[sp]
+        if a == 0:
+            sp -= 1
+            continue
+
+
+
+        if inited[sp] == 0:
+            inited[sp] = 1
+            f = fid[sp]
+            nfid  = meta_next[f]
+            aflag = meta_avail[f]
+
+            # ---- 基底 ----
+            if is_base[f] == 1 and row[sp] == endm:
+                if f == 14:
+                    total += 1 if (a >> 1) else 0
+                else:
+                    total += 1
+                sp -= 1
+                continue
+
+            # ---- デフォルト ----
+            step[sp]  = 1
+            add1[sp]  = 0
+            rowst[sp] = row[sp] + 1
+            bK[sp]    = 0
+            bL[sp]    = 0
+            nextf[sp] = f
+
+            use_blocks = 0
+            use_future = 1 if (aflag == 1) else 0
+
+            # ---- mark ----
+            if is_mark[f] == 1:
+                sel = mark_sel[f]  # 1:mark1 2:mark2
+                at_mark = 0
+                if sel == 1:
+                    if row[sp] == mark1:
+                        at_mark = 1
+                if sel == 2:
+                    if row[sp] == mark2:
+                        at_mark = 1
+
+                if at_mark and a:
+                    use_blocks = 1
+                    use_future = 0
+                    step[sp]  = mark_step[f]
+                    add1[sp]  = mark_add1[f]
+                    rowst[sp] = row[sp] + step[sp]
+                    bK[sp]    = blockK_tbl[f]
+                    bL[sp]    = blockL_tbl[f]
+                    nextf[sp] = nfid
+
+            # ---- jmark ----
+            if is_jmark[f] == 1:
+                if row[sp] == jmark:
+                    a &= ~1
+                    avail[sp] = a
+                    if a == 0:
+                        sp -= 1
+                        continue
+                    ld[sp] |= 1
+                    nextf[sp] = nfid
+
+            ub[sp] = 1 if use_blocks else 0
+            fc[sp] = 0
+            if use_future == 1 and rowst[sp] < endm:
+                fc[sp] = 1
+
+        # ---- 1bit 展開 ----
+        a = avail[sp]
+        bit = a & -a
+        avail[sp] = a ^ bit
+
+        # ---- 次状態計算（2値選択はそのまま）----
+        if ub[sp] == 1:
+            nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | bL[sp]
+            nrd = ((rd[sp] | bit) >> step[sp]) | bK[sp]
+        else:
+            nld = (ld[sp] | bit) << 1
+            nrd = (rd[sp] | bit) >> 1
+
+        ncol = col[sp] | bit
+        nf = board_mask & ~(nld | nrd | ncol)
+        if nf == 0:
+            continue
+
+        if fc[sp] == 1:
+            if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
+                continue
+
+        f = fid[sp]
+        if f < 0 or f >= F:
+          # デバッグ用：負の値で原因を返す（落とさない）
+          results[i] = -1000000 - f
+          return
+
+        # ---- push ----
+        sp += 1
+        if sp >= MAXD:
+            results[i] = total * w_arr[i]
+            return
+
+        inited[sp] = 0
+        fid[sp]    = nextf[sp-1]
+        ld[sp]     = nld
+        rd[sp]     = nrd
+        col[sp]    = ncol
+        row[sp]    = rowst[sp-1]
+        avail[sp]  = nf
+
+    results[i] = total * w_arr[i]
+
 
 @gpu.kernel
 def kernel_dfs_iter(
@@ -252,67 +432,6 @@ def kernel_dfs_iter(
 
     results[i] = total * w_arr[i]
 
-def dfs_iter_gpu_globalstack(
-    ld0:int, rd0:int, col0:int, row0:int, free0:int,
-    board_mask:int,
-    base:int, MAXD:int,
-    ld: Ptr[int], rd: Ptr[int], col: Ptr[int], row: Ptr[int], avail: Ptr[int]
-) -> int:
-    # 必ずマスク（SoA側も直してOK、ここも保険で入れる）
-    free0 &= board_mask
-    if free0 == 0:
-        return 0
-
-    # depth = row0 から開始、スタック index は 0 を row0 とみなす
-    d = 0
-    ld[base + d] = ld0
-    rd[base + d] = rd0
-    col[base + d] = col0
-    row[base + d] = row0
-    avail[base + d] = free0
-
-    total = 0
-
-    while True:
-        a = avail[base + d]
-        if a != 0:
-            bit = a & -a
-            avail[base + d] = a ^ bit
-
-            # 次状態
-            nld  = (ld[base + d]  | bit) << 1
-            nrd  = (rd[base + d]  | bit) >> 1
-            ncol =  (col[base + d] | bit)
-            nrow =  row[base + d] + 1
-
-            nfree = board_mask & ~(nld | nrd | ncol)
-
-            # ここは「最終段判定」をあなたの定義に合わせる
-            # 例：nrow == N なら解1
-            # 今は “free==0 で終端” ではなく、行数で終端にするのが普通
-            # まずは row の終端条件をあなたの既存CPU dfs_iter と同じに揃える
-            if nfree == 0:
-                # ここは暫定（正確には row==N 判定）
-                # まずはPTXを通す検証なので置いてOK
-                pass
-            else:
-                d += 1
-                # 念のためスタック上限
-                if d >= MAXD:
-                    # ここに来るなら K が浅すぎる
-                    d -= 1
-                else:
-                    ld[base + d] = nld
-                    rd[base + d] = nrd
-                    col[base + d] = ncol
-                    row[base + d] = nrow
-                    avail[base + d] = nfree
-        else:
-            if d == 0:
-                break
-            d -= 1
-
-    return total
 
 
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
@@ -1091,46 +1210,93 @@ class NQueens17:
 
     if use_gpu:
       meta_next  = [t[0] for t in func_meta]
-      meta_ptn   = [t[1] for t in func_meta]
+      # meta_ptn   = [t[1] for t in func_meta]
       meta_avail = [t[2] for t in func_meta]
 
-      st_len = m * MAXD
-      st_fid     = [0] * st_len
-      st_ld      = [0] * st_len
-      st_rd      = [0] * st_len
-      st_col     = [0] * st_len
-      st_row     = [0] * st_len
-      st_avail   = [0] * st_len
-      st_inited  = [0] * st_len
-      st_step    = [0] * st_len
-      st_add1    = [0] * st_len
-      st_rowstep = [0] * st_len
-      st_bK      = [0] * st_len
-      st_bL      = [0] * st_len
-      st_nextfid = [0] * st_len
-      st_ub = [0] * st_len
-      st_fc = [0] * st_len
+      # st_len = m * MAXD
+      # st_fid     = [0] * st_len
+      # st_ld      = [0] * st_len
+      # st_rd      = [0] * st_len
+      # st_col     = [0] * st_len
+      # st_row     = [0] * st_len
+      # st_avail   = [0] * st_len
+      # st_inited  = [0] * st_len
+      # st_step    = [0] * st_len
+      # st_add1    = [0] * st_len
+      # st_rowstep = [0] * st_len
+      # st_bK      = [0] * st_len
+      # st_bL      = [0] * st_len
+      # st_nextfid = [0] * st_len
+      # st_ub = [0] * st_len
+      # st_fc = [0] * st_len
 
-      # BLOCK = 256
-      BLOCK= 128
+      BLOCK = 256
+      # BLOCK= 128
       GRID  = (m + BLOCK - 1) // BLOCK
+
+      # ★★★ ここで print ★★★
+      # print("len(meta_next) =", len(meta_next))
+      # print("len(meta_avail) =", len(meta_avail))
+      # print("max(funcid_arr) =", max(soa.funcid_arr))
+      # print("min(funcid_arr) =", min(soa.funcid_arr))
+
       results = [0] * m
-      kernel_dfs_iter(
+      
+      # print("m =", m)
+      # print("len(soa.ld_arr)   =", len(soa.ld_arr))
+      # print("len(soa.rd_arr)   =", len(soa.rd_arr))
+      # print("len(soa.col_arr)  =", len(soa.col_arr))
+      # print("len(soa.row_arr)  =", len(soa.row_arr))
+      # print("len(soa.free_arr) =", len(soa.free_arr))
+      # print("len(soa.jmark_arr)=", len(soa.jmark_arr))
+      # print("len(soa.end_arr)  =", len(soa.end_arr))
+      # print("len(soa.mark1_arr)=", len(soa.mark1_arr))
+      # print("len(soa.mark2_arr)=", len(soa.mark2_arr))
+      # print("len(soa.funcid_arr)=", len(soa.funcid_arr))
+      # print("len(w_arr)        =", len(w_arr))
+      # print("len(results)      =", len(results))
+
+      # print("len(is_base)   =", len(is_base))
+      # print("len(is_jmark)  =", len(is_jmark))
+      # print("len(is_mark)   =", len(is_mark))
+      # print("len(mark_sel)  =", len(mark_sel))
+      # print("len(mark_step) =", len(mark_step))
+      # print("len(mark_add1) =", len(mark_add1))
+      # print("len(blockK_by_funcid) =", len(blockK_by_funcid))
+      # print("len(blockL_by_funcid) =", len(blockL_by_funcid))
+
+
+      # kernel_dfs_iter(
+      #   gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+      #   gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+      #   gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+      #   gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+      #   gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+      #   gpu.raw(meta_next), gpu.raw(meta_ptn), gpu.raw(meta_avail),
+      #   gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
+      #   gpu.raw(st_fid), gpu.raw(st_ld), gpu.raw(st_rd), gpu.raw(st_col), gpu.raw(st_row), gpu.raw(st_avail),
+      #   gpu.raw(st_inited), gpu.raw(st_step), gpu.raw(st_add1), gpu.raw(st_rowstep),
+      #   gpu.raw(st_bK), gpu.raw(st_bL), gpu.raw(st_nextfid),
+      #   gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
+      #   gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
+      #   gpu.raw(st_ub), gpu.raw(st_fc),
+      #   gpu.raw(results),
+      #   m, self._board_mask, MAXD,
+      #   grid=GRID, block=BLOCK
+      # )
+      kernel_dfs_iter_localstack(
         gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
         gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
         gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
         gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
         gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-        gpu.raw(meta_next), gpu.raw(meta_ptn), gpu.raw(meta_avail),
+        gpu.raw(meta_next), gpu.raw(meta_avail),
         gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
-        gpu.raw(st_fid), gpu.raw(st_ld), gpu.raw(st_rd), gpu.raw(st_col), gpu.raw(st_row), gpu.raw(st_avail),
-        gpu.raw(st_inited), gpu.raw(st_step), gpu.raw(st_add1), gpu.raw(st_rowstep),
-        gpu.raw(st_bK), gpu.raw(st_bL), gpu.raw(st_nextfid),
         gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
         gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
-        gpu.raw(st_ub), gpu.raw(st_fc),
         gpu.raw(results),
-        m, self._board_mask, MAXD,
+        m, board_mask,
+        len(meta_next),
         grid=GRID, block=BLOCK
       )
  
