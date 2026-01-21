@@ -46,10 +46,24 @@ $ export CODON_CUDA=/lib64/libcuda.so.1
 $ codon build -release 18Py_constellations_cuda_codon.py 
 $ ./18Py_constellations_cuda_codon -c
 CPU mode selected
- N:             Total         Unique         hh:mm:ss.ms
-18:         666090624              0          0:00:02.199    ok
-19:        4968057848              0          0:00:16.385    ok
-20:       39029188884              0          0:02:06.629    ok
+ N:             Total         Unique        hh:mm:ss.ms
+ 5:                10              0         0:00:00.000
+ 6:                 4              0         0:00:00.084    ok
+ 7:                40              0         0:00:00.000    ok
+ 8:                92              0         0:00:00.000    ok
+ 9:               352              0         0:00:00.001    ok
+10:               724              0         0:00:00.002    ok
+11:              2680              0         0:00:00.009    ok
+12:             14200              0         0:00:00.007    ok
+13:             73712              0         0:00:00.011    ok
+14:            365596              0         0:00:00.016    ok
+15:           2279184              0         0:00:00.028    ok
+16:          14772512              0         0:00:00.059    ok
+17:          95815104              0         0:00:00.329    ok
+18:         666090624              0         0:00:02.199    ok
+19:        4968057848              0         0:00:16.385    ok
+20:       39029188884              0         0:02:06.629    ok
+21:      314666222712              0         0:17:58.500    ok
 
 2025 15Py_constellations_optimize_codon.py
 Python/Codon amazon AWS m4.16xlarge x 1
@@ -1345,14 +1359,14 @@ class NQueens17_constellations():
       print("Too many arguments")
       print("Usage: nqueens [-c | -g]")
       return
-    print(" N:             Total       Unique        hh:mm:ss.ms")
+    print(" N:             Total         Unique        hh:mm:ss.ms")
     for size in range(nmin,nmax):
       start_time=datetime.now()
       if size<=5:
         total=self._bit_total(size)
         dt=datetime.now()-start_time
         text=str(dt)[:-3]
-        print(f"{size:2d}:{total:18d}{0:13d}{text:>20s}")
+        print(f"{size:2d}:{total:18d}{0:15d}{text:>20s}")
         continue
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
@@ -1373,7 +1387,7 @@ class NQueens17_constellations():
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
-      print(f"{size:2d}:{total:18d}{0:13d}{text:>20s}    {status}")
+      print(f"{size:2d}:{total:18d}{0:15d}{text:>20s}    {status}")
 """ エントリポイント """
 if __name__=="__main__":
   NQueens17_constellations().main()
