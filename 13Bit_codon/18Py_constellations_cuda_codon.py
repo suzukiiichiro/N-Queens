@@ -23,42 +23,52 @@ $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellati
 $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -g
 
 実行履歴
-$ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -c
-CPU mode selected
- N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.000    ok
- 7:           40            0         0:00:00.000    ok
- 8:           92            0         0:00:00.000    ok
- 9:          352            0         0:00:00.000    ok
-10:          724            0         0:00:00.001    ok
-11:         2680            0         0:00:00.002    ok
-12:        14200            0         0:00:00.005    ok
-13:        73712            0         0:00:00.006    ok
-14:       365596            0         0:00:00.024    ok
-15:      2279184            0         0:00:00.106    ok
-16:     14772512            0         0:00:00.671    ok
-17:     95815104            0         0:00:04.386    ok
-18:    666090624            0         0:00:31.771    ok
-
 $ export CODON_CUDA=/lib64/libcuda.so.1 && codon build -release 18Py_constellations_cuda_codon_suzuki_20260120.py && ./18Py_constellations_cuda_codon_suzuki_20260120 -g
 GPU mode selected
  N:        Total       Unique        hh:mm:ss.ms
  5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.004    ok
+ 6:            4            0         0:00:00.019    ok
  7:           40            0         0:00:00.001    ok
  8:           92            0         0:00:00.000    ok
  9:          352            0         0:00:00.001    ok
 10:          724            0         0:00:00.001    ok
-11:         2680            0         0:00:00.002    ok
-12:        14200            0         0:00:00.003    ok
-13:        73712            0         0:00:00.006    ok
+11:         2680            0         0:00:00.025    ok
+12:        14200            0         0:00:00.008    ok
+13:        73712            0         0:00:00.009    ok
 14:       365596            0         0:00:00.018    ok
-15:      2279184            0         0:00:00.065    ok
-16:     14772512            0         0:00:00.327    ok
-17:     95815104            0         0:00:01.798    ok
-18:    666090624            0         0:00:15.159    ok
-19:   4968057848            0         0:02:08.872    ok
+15:      2279184            0         0:00:00.067    ok
+16:     14772512            0         0:00:00.324    ok
+17:     95815104            0         0:00:01.801    ok
+18:    666090624            0         0:00:14.923    ok
+19:   4968057848            0         0:02:08.692    ok
+
+
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -c
+CPU mode selected
+ N:        Total       Unique        hh:mm:ss.ms
+ 5:           10            0         0:00:00.000
+ 6:            4            0         0:00:00.036    ok
+ 7:           40            0         0:00:00.000    ok
+ 8:           92            0         0:00:00.000    ok
+ 9:          352            0         0:00:00.003    ok
+10:          724            0         0:00:00.002    ok
+11:         2680            0         0:00:00.005    ok
+12:        14200            0         0:00:00.007    ok
+13:        73712            0         0:00:00.012    ok
+14:       365596            0         0:00:00.016    ok
+15:      2279184            0         0:00:00.025    ok
+16:     14772512            0         0:00:00.059    ok
+17:     95815104            0         0:00:00.328    ok
+18:    666090624            0         0:00:02.197    ok
+19:   4968057848            0         0:00:16.147    ok
+IndexError: list index out of range
+
+Raised from: std.internal.types.array.List.0._idx_check:0
+/home/suzuki/.codon/lib/codon/stdlib/internal/types/collections/list.codon:379:13
+中止 (コアダンプ)
+suzuki@cudacodon$
+
 
 Python/Codon amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py && ./15Py_constellations_optimize_codon
@@ -82,21 +92,21 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 23:   24233937684440    3029242658210     001:06:03:49.29
 24:  227514171973736   28439272956934     012:23:38:21.02
 25: 2207893435808352  275986683743434     140:07:39:29.96
-
-
-
 """
-
+# 18Py_constellations_cuda_codon.py
 import gpu
 import sys
 from typing import List,Set,Dict,Tuple
 from datetime import datetime
-
-# K=8 で N=26 の残り18なら 32 でまず足りる
+""" サブコンステレーション生成状態の最大深さ定義 """
 MAXD:Static[int] = 32
-
+""" サブコンステレーション生成状態のキー型定義 """
+StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
+""" 64bit マスク（Zobrist用途） """
+MASK64=(1<<64)-1
+""" CUDA GPU 用 DFS カーネル関数  """
 @gpu.kernel
-def kernel_dfs_iter_localstack(
+def kernel_dfs_iter_gpu(
     ld_arr, rd_arr, col_arr, row_arr, free_arr,
     jmark_arr, end_arr, mark1_arr, mark2_arr,
     funcid_arr, w_arr,
@@ -146,24 +156,6 @@ def kernel_dfs_iter_localstack(
     endm  = end_arr[i]
     mark1 = mark1_arr[i]
     mark2 = mark2_arr[i]
-
-    # ---- ローカル固定長スタック（型は環境に合わせて固定長配列に）----
-    # fid    = [0] * MAXD
-    # ld     = [0] * MAXD
-    # rd     = [0] * MAXD
-    # col    = [0] * MAXD
-    # row    = [0] * MAXD
-    # avail  = [0] * MAXD
-    # inited = [0] * MAXD
-
-    # step   = [0] * MAXD
-    # add1   = [0] * MAXD
-    # rowst  = [0] * MAXD
-    # bK     = [0] * MAXD
-    # bL     = [0] * MAXD
-    # nextf  = [0] * MAXD
-    # ub     = [0] * MAXD
-    # fc     = [0] * MAXD
 
     sp = 0
     fid[0]    = funcid_arr[i]
@@ -269,12 +261,6 @@ def kernel_dfs_iter_localstack(
             if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
                 continue
 
-        f = fid[sp]
-        if f < 0 or f >= F:
-          # デバッグ用：負の値で原因を返す（落とさない）
-          results[i] = -1000000 - f
-          return
-
         # ---- push ----
         sp += 1
         if sp >= MAXD:
@@ -290,180 +276,9 @@ def kernel_dfs_iter_localstack(
         avail[sp]  = nf
 
     results[i] = total * w_arr[i]
-
-
-# @gpu.kernel
-# def kernel_dfs_iter(
-#     ld_arr, rd_arr, col_arr, row_arr, free_arr,
-#     jmark_arr, end_arr, mark1_arr, mark2_arr,
-#     funcid_arr, w_arr,
-#     meta_next, meta_ptn, meta_avail,
-#     blockK_tbl, blockL_tbl,
-#     st_fid, st_ld, st_rd, st_col, st_row, st_avail,
-#     st_inited, st_step, st_add1, st_rowstep, st_bK, st_bL, st_nextfid,
-#     is_base, is_jmark,is_mark, 
-#     mark_sel, mark_step, mark_add1,
-#     st_ub,st_fc,
-#     results,
-#     m: int, board_mask: int, MAXD: int
-# ):
-#     i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
-#     if i >= m:
-#         return
-
-#     base = i * MAXD
-
-#     # 初期状態をスタック0にセット
-#     free0 = free_arr[i] & board_mask
-#     if free0 == 0:
-#         results[i] = 0
-#         return
-
-#     sp = 0
-#     st_fid[base]   = funcid_arr[i]
-#     st_ld[base]    = ld_arr[i]
-#     st_rd[base]    = rd_arr[i]
-#     st_col[base]   = col_arr[i]
-#     st_row[base]   = row_arr[i]
-#     st_avail[base] = free0
-#     st_inited[base]= 0
-
-#     total = 0
-
-#     jmark  = jmark_arr[i]
-#     endm   = end_arr[i]
-#     mark1  = mark1_arr[i]
-#     mark2  = mark2_arr[i]
-
-#     while sp >= 0:
-#         idx = base + sp
-#         a = st_avail[idx]
-#         if a == 0:
-#             sp -= 1
-#             continue
-
-#         if st_inited[idx] == 0:
-#             st_inited[idx] = 1
-#             f = st_fid[idx]
-#             # ptn   = meta_ptn[f]
-#             nfid  = meta_next[f]
-#             aflag = meta_avail[f]
-
-#             # 基底
-#             if is_base[f] == 1 and st_row[idx] == endm:
-#               if f == 14:
-#                   total += 1 if (a >> 1) else 0
-#               else:
-#                   total += 1
-#               sp -= 1
-#               continue
-
-#             # デフォルト
-#             st_step[idx] = 1
-#             st_add1[idx] = 0
-#             st_rowstep[idx] = st_row[idx] + 1
-#             st_bK[idx] = 0
-#             st_bL[idx] = 0
-#             st_nextfid[idx] = f
-
-#             use_blocks = 0
-#             use_future = 1 if (aflag == 1) else 0
-
-#             # mark
-#             if is_mark[f] == 1:
-#               sel = mark_sel[f]  # 1:mark1 2:mark2
-#               at_mark = 0
-#               if sel == 1:
-#                   if st_row[idx] == mark1:
-#                       at_mark = 1
-#               if sel == 2:
-#                   if st_row[idx] == mark2:
-#                       at_mark = 1
-#               if at_mark and a:
-#                   use_blocks = 1
-#                   use_future = 0
-#                   st_step[idx] = mark_step[f]
-#                   st_add1[idx] = mark_add1[f]
-#                   st_rowstep[idx] = st_row[idx] + st_step[idx]
-#                   st_bK[idx] = blockK_tbl[f]
-#                   st_bL[idx] = blockL_tbl[f]
-#                   st_nextfid[idx] = nfid
-
-
-#             # jmark
-#             if is_jmark[f] == 1:
-#               if st_row[idx] == jmark:
-#                   a &= ~1
-#                   st_avail[idx] = a
-#                   if a == 0:
-#                       sp -= 1
-#                       continue
-#                   st_ld[idx] |= 1
-#                   st_nextfid[idx] = nfid
-
-#             # 最終的に 2値フラグに落とす
-#             st_ub[idx] = 1 if use_blocks else 0
-#             st_fc[idx] = 0
-#             if use_future == 1:
-#                 if st_rowstep[idx] < endm:
-#                     st_fc[idx] = 1
-
-#         # 1bit展開
-#         a = st_avail[idx]
-#         bit = a & -a
-#         st_avail[idx] = a ^ bit
-
-#         ub = st_ub[idx]
-
-#         # plain
-#         nld1 = (st_ld[idx] | bit) << 1
-#         nrd1 = (st_rd[idx] | bit) >> 1
-
-#         # blocks
-#         nld2 = ((st_ld[idx] | bit) << st_step[idx]) | st_add1[idx] | st_bL[idx]
-#         nrd2 = ((st_rd[idx] | bit) >> st_step[idx]) | st_bK[idx]
-
-#         # 2値選択（ここは 2分岐なので brx が出にくい）
-#         if ub == 1:
-#             nld = nld2
-#             nrd = nrd2
-#         else:
-#             nld = nld1
-#             nrd = nrd1
-
-#         ncol = st_col[idx] | bit
-#         nf = board_mask & ~(nld | nrd | ncol)
-#         if nf == 0:
-#             continue
-
-#         if st_fc[idx] == 1:
-#             if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
-#                 continue
-
-#         # push
-#         sp += 1
-#         if sp >= MAXD:
-#             # とりあえず打ち切り（後でMAXD上げる）
-#             results[i] = total * w_arr[i]
-#             return
-
-#         cidx = base + sp
-#         st_inited[cidx] = 0
-#         st_fid[cidx]    = st_nextfid[idx]
-#         st_ld[cidx]     = nld
-#         st_rd[cidx]     = nrd
-#         st_col[cidx]    = ncol
-#         st_row[cidx]    = st_rowstep[idx]
-#         st_avail[cidx]  = nf
-
-#     results[i] = total * w_arr[i]
-
-
-
-StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
-MASK64=(1<<64)-1
-
+"""  構造体配列 (SoA) タスク管理クラス """
 class TaskSoA:
+  """ コンストラクタ """
   def __init__(self, m: int):
     self.ld_arr: List[int] = [0]*m
     self.rd_arr: List[int] = [0]*m
@@ -476,7 +291,9 @@ class TaskSoA:
     self.mark2_arr: List[int] = [0]*m
     self.funcid_arr: List[int] = [0]*m
     self.ijkl_arr: List[int] = [0]*m
+""" Ｎクイーン ソルバ本体クラス（Codon/Python 共通部分） """
 class NQueens17:
+  """ コンストラクタ """
   def __init__(self)->None:
     self.zobrist_tables:Dict[int,Dict[str,List[int]]]={}
     self.jasmin_cache:Dict[Tuple[int,int],int]={}
@@ -493,7 +310,7 @@ class NQueens17:
     self._blockL:list[int]=[]
     # (next_id, funcptn, avail_flag)
     self._meta:list[Tuple[int,int,int]]=[]
-
+  """ splitmix64 ミキサ最終段 """
   def mix64(self,x:int)->int:
     """splitmix64 のミキサ最終段。64bit 値 x を (>>/XOR/乗算) の 3 段で拡散して返す。 Zobrist テーブルの乱数品質を担保するために使用。"""
     # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
@@ -502,7 +319,7 @@ class NQueens17:
     x=(x^(x>>27))*0x94D049BB133111EB&MASK64
     x^=(x>>31)
     return x&MASK64
-
+  """ Zobrist テーブル用乱数リスト生成 """
   def gen_list(self,cnt:int,seed:int)->List[int]:
     """Zobrist テーブル用の 64bit 乱数を cnt 個生成してリストで返す。 seed は splitmix64 のインクリメント規約 (0x9E3779B97F4A7C15) に従って更新。"""
     # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
@@ -514,7 +331,7 @@ class NQueens17:
       # out.append(self._mix64(s))
       out.append(_mix64(s))
     return out
-
+  """ Zobrist テーブル初期化 """
   def init_zobrist(self,N:int)->None:
     """Zobrist テーブルを N ごとに初期化する。キーは 'ld','rd','col','LD','RD','row','queens','k','l'。 ※ キャッシュは self.zobrist_tables[N] に格納して再利用する。"""
     # MASK64:int=(1<<64)-1 # 64bit マスク（Zobrist用途）
@@ -534,7 +351,7 @@ class NQueens17:
       'l':gen_list(N,base_seed^0x09),
     }
     self.zobrist_tables[N]=tbl
-
+  """ Zobrist Hash を用いた盤面の 64bit ハッシュ値生成  """
   def zobrist_hash(self,ld:int,rd:int,col:int,row:int,queens:int,k:int,l:int,LD:int,RD:int,N:int)->int:
     """(ld, rd, col, LD, RD, row, queens, k, l) を Zobrist Hash によって 64bit にまとめる。 各マスクは N ビットに正規化してから XOR 混合する。衝突確率の低い探索済み判定に利用可能。"""
     # MASK64:int=(1<<64)-1
@@ -600,7 +417,6 @@ class NQueens17:
     if 0<=l<N:h^=l_tbl[l]
 
     return h&MASK64
-
   """(i,j,k,l) を 5bit×4=20bit にパック/アンパックするユーティリティ。 mirvert は上下ミラー（行: N-1-?）＋ (k,l) の入れ替えで左右ミラー相当を実現。"""
   def to_ijkl(self,i:int,j:int,k:int,l:int)->int:return (i<<15)+(j<<10)+(k<<5)+l
   def mirvert(self,ijkl:int,N:int)->int:return self.to_ijkl(N-1-self.geti(ijkl),N-1-self.getj(ijkl),self.getl(ijkl),self.getk(ijkl))
@@ -616,7 +432,7 @@ class NQueens17:
   def symmetry90(self,ijkl:int,N:int)->bool:return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
   """与えた (i,j,k,l) の 90/180/270° 回転形が既出集合 ijkl_list に含まれるかを判定する。"""
   def check_rotations(self,ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
-
+  """ キャッシュ付き Jasmin 正規化ラッパー """
   def get_jasmin(self,c:int,N:int)->int:
     """ Jasmin 正規化のキャッシュ付ラッパ。盤面パック値 c を回転/ミラーで規約化した代表値を返す。
     ※ キャッシュは self.jasmin_cache[(c,N)] に保持。
@@ -628,7 +444,7 @@ class NQueens17:
     result=self.jasmin(c,N)
     self.jasmin_cache[key]=result
     return result
-
+  """ Jasmin 正規化。盤面パック値 ijkl を回転/ミラーで規約化した代表値を返す。"""
   def jasmin(self,ijkl:int,N:int)->int:
     # 最初の最小値と引数を設定
     arg=0
@@ -654,10 +470,9 @@ class NQueens17:
     if self.getj(ijkl)<N-1-self.getj(ijkl):
       ijkl=self.mirvert(ijkl,N)
     return ijkl
-
+  """dfs()の非再帰版"""
   def dfs_iter(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,
             jmark:int,endmark:int,mark1:int,mark2:int)->int:
-
     bm:int=self._board_mask
     total:int=0
 
@@ -764,7 +579,7 @@ class NQueens17:
           stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
 
     return total
-
+  """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って(1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み を切り替える。"""
   def dfs(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,
           jmark:int,endmark:int,mark1:int,mark2:int)->int:
     """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
@@ -931,10 +746,8 @@ class NQueens17:
         # total += _dfs(local_next_funcid, nld, nrd, ncol, row_step, nf, jmark, endmark, mark1, mark2)
         total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
     return total
- 
-
+  """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int,use_gpu:bool)->None:
-    """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
     N2:int=N-2
     small_mask:int=(1<<N2)-1
     board_mask:int=(1<<N)-1
@@ -1218,17 +1031,6 @@ class NQueens17:
       soa.ijkl_arr[i] = ijkl
 
     # ===== 並列ステージ：計算だけ =====
-
-    def dfs_from_soa(i: int) -> int:
-      # TODO: GPU版ではここを kernel 呼び出しに置換
-      # CPU版: dfs() を呼ぶ
-      # GPU版: (将来) cnt_arr[i] を kernel で生成して返す/参照する
-      # return dfs(soa_iter.funcid_arr[i],
-      return self.dfs_iter(soa.funcid_arr[i],
-              soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],
-              soa.free_arr[i], soa.jmark_arr[i], soa.end_arr[i],
-              soa.mark1_arr[i], soa.mark2_arr[i])
-
     w_arr = [0]*m
     @par
     for i in range(m):
@@ -1236,81 +1038,13 @@ class NQueens17:
 
     if use_gpu:
       meta_next  = [t[0] for t in func_meta]
-      # meta_ptn   = [t[1] for t in func_meta]
       meta_avail = [t[2] for t in func_meta]
-
-      # st_len = m * MAXD
-      # st_fid     = [0] * st_len
-      # st_ld      = [0] * st_len
-      # st_rd      = [0] * st_len
-      # st_col     = [0] * st_len
-      # st_row     = [0] * st_len
-      # st_avail   = [0] * st_len
-      # st_inited  = [0] * st_len
-      # st_step    = [0] * st_len
-      # st_add1    = [0] * st_len
-      # st_rowstep = [0] * st_len
-      # st_bK      = [0] * st_len
-      # st_bL      = [0] * st_len
-      # st_nextfid = [0] * st_len
-      # st_ub = [0] * st_len
-      # st_fc = [0] * st_len
 
       # BLOCK = 256
       BLOCK= 128
       GRID  = (m + BLOCK - 1) // BLOCK
-
-      # ★★★ ここで print ★★★
-      # print("len(meta_next) =", len(meta_next))
-      # print("len(meta_avail) =", len(meta_avail))
-      # print("max(funcid_arr) =", max(soa.funcid_arr))
-      # print("min(funcid_arr) =", min(soa.funcid_arr))
-
       results = [0] * m
-      
-      # print("m =", m)
-      # print("len(soa.ld_arr)   =", len(soa.ld_arr))
-      # print("len(soa.rd_arr)   =", len(soa.rd_arr))
-      # print("len(soa.col_arr)  =", len(soa.col_arr))
-      # print("len(soa.row_arr)  =", len(soa.row_arr))
-      # print("len(soa.free_arr) =", len(soa.free_arr))
-      # print("len(soa.jmark_arr)=", len(soa.jmark_arr))
-      # print("len(soa.end_arr)  =", len(soa.end_arr))
-      # print("len(soa.mark1_arr)=", len(soa.mark1_arr))
-      # print("len(soa.mark2_arr)=", len(soa.mark2_arr))
-      # print("len(soa.funcid_arr)=", len(soa.funcid_arr))
-      # print("len(w_arr)        =", len(w_arr))
-      # print("len(results)      =", len(results))
-
-      # print("len(is_base)   =", len(is_base))
-      # print("len(is_jmark)  =", len(is_jmark))
-      # print("len(is_mark)   =", len(is_mark))
-      # print("len(mark_sel)  =", len(mark_sel))
-      # print("len(mark_step) =", len(mark_step))
-      # print("len(mark_add1) =", len(mark_add1))
-      # print("len(blockK_by_funcid) =", len(blockK_by_funcid))
-      # print("len(blockL_by_funcid) =", len(blockL_by_funcid))
-
-
-      # kernel_dfs_iter(
-      #   gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-      #   gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-      #   gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-      #   gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-      #   gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-      #   gpu.raw(meta_next), gpu.raw(meta_ptn), gpu.raw(meta_avail),
-      #   gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
-      #   gpu.raw(st_fid), gpu.raw(st_ld), gpu.raw(st_rd), gpu.raw(st_col), gpu.raw(st_row), gpu.raw(st_avail),
-      #   gpu.raw(st_inited), gpu.raw(st_step), gpu.raw(st_add1), gpu.raw(st_rowstep),
-      #   gpu.raw(st_bK), gpu.raw(st_bL), gpu.raw(st_nextfid),
-      #   gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
-      #   gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
-      #   gpu.raw(st_ub), gpu.raw(st_fc),
-      #   gpu.raw(results),
-      #   m, self._board_mask, MAXD,
-      #   grid=GRID, block=BLOCK
-      # )
-      kernel_dfs_iter_localstack(
+      kernel_dfs_iter_gpu(
         gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
         gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
         gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
@@ -1325,18 +1059,19 @@ class NQueens17:
         len(meta_next),
         grid=GRID, block=BLOCK
       )
- 
     else:
       @par
       for i in range(m):
-        cnt = dfs_from_soa(i)
+        cnt = self.dfs_iter(soa.funcid_arr[i],
+              soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],
+              soa.free_arr[i], soa.jmark_arr[i], soa.end_arr[i],
+              soa.mark1_arr[i], soa.mark2_arr[i])
         results[i]=cnt*w_arr[i]
 
     for i,constellation in enumerate(constellations):
       constellation["solutions"]=results[i]
-
+  """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
   def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-    """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
     key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
 
     # subconst_cache:Set[StateKey]=set()
@@ -1355,9 +1090,8 @@ class NQueens17:
     self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
     # subconst_cache[key] = True  # マークだけでOK
     # subconst_cache.add(key)
-
+  """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
   def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-    """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
     mask=(1<<N)-1  # setPreQueensで使用
     # ---------------------------------------------------------------------
     # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
@@ -1410,9 +1144,8 @@ class NQueens17:
       bit:int=free&-free
       free&=free-1
       _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
-
+  """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
   def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
-    """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
     # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
     # 長時間プロセスなら念のためクリアしておくのが安全）
     self.subconst_cache.clear()
@@ -1461,24 +1194,20 @@ class NQueens17:
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
         constellations[-1-a]["startijkl"]|=base
-
   """constellations の各要素が {ld, rd, col, startijkl} を全て持つかを検証する。"""
   def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool: return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
-
   """32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。"""
   def read_uint32_le(self,b:str)->int: return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
   def int_to_le_bytes(self,x:int)->List[int]: return [(x>>(8*i))&0xFF for i in range(4)]
-
+  """ファイル存在チェック（読み取り open の可否で判定）。"""
   def file_exists(self,fname:str)->bool:
-    """ファイル存在チェック（読み取り open の可否で判定）。"""
     try:
       with open(fname,"rb"):
         return True
     except:
       return False
-
+  """bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。"""
   def validate_bin_file(self,fname:str)->bool:
-    """bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。"""
     try:
       with open(fname,"rb") as f:
         f.seek(0,2)  # ファイル末尾に移動
@@ -1486,7 +1215,6 @@ class NQueens17:
       return size%16==0
     except:
       return False
-
   """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
   def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
     with open(path,"w") as f:
@@ -1497,7 +1225,6 @@ class NQueens17:
         startijkl=c["startijkl"]
         solutions=c.get("solutions",0)
         f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
-
   """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
   def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
     out:List[Dict[str,int]]=[]
@@ -1510,7 +1237,6 @@ class NQueens17:
         startijkl=int(parts[3]);solutions=int(parts[4])
         out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
     return out
-
   """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
   def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     # N と preset_queens に基づいて一意のファイル名を構成
@@ -1530,7 +1256,6 @@ class NQueens17:
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_txt(fname,constellations)
     return constellations
-
   """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
   def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
     _int_to_le_bytes=self.int_to_le_bytes
@@ -1540,7 +1265,6 @@ class NQueens17:
           b=_int_to_le_bytes(d[key])
           _int_to_le_bytes(d[key])
           f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
-
   """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
   def load_constellations_bin(self,fname:str)->List[Dict[str,int]]:
     constellations:List[Dict[str,int]]=[]
@@ -1556,7 +1280,6 @@ class NQueens17:
         startijkl=_read_uint32_le(raw[12:16])
         constellations.append({ "ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0 })
     return constellations
-
   def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
     """bin キャッシュを読み込み。検証に失敗した場合は再生成して保存し、その結果を返す。"""
     fname=f"constellations_N{N}_{preset_queens}.bin"
@@ -1576,14 +1299,14 @@ class NQueens17:
     self.gen_constellations(ijkl_list,constellations,N,preset_queens)
     self.save_constellations_bin(fname,constellations)
     return constellations
-
+""" NQueens17_constellations クラス：小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
 class NQueens17_constellations():
-  # 小さなNは正攻法で数える（対称重みなし・全列挙）
+  """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
   def _bit_total(self,size:int)->int:
-    """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
     mask=(1<<size)-1
     total=0
 
+    """ 小さなNは正攻法で数える（対称重みなし・全列挙） """
     def bt(row:int,left:int,down:int,right:int):
       nonlocal total
       if row==size:
@@ -1596,12 +1319,8 @@ class NQueens17_constellations():
         bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
     bt(0,0,0,0)
     return total
-
+  """ 戻り値: use_gpu: bool """
   def parse_args(self,argv: list[str]) -> tuple[bool]:
-    """
-    戻り値:
-      use_gpu: bool
-    """
     use_gpu = False
     i=0
     while i < len(argv):
@@ -1614,9 +1333,8 @@ class NQueens17_constellations():
           raise ValueError(f"Unknown argument: {arg}")
       i += 1
     return use_gpu
-
+  """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
   def main(self)->None:
-    """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
     nmin:int=5
     nmax:int=21
     preset_queens:int=4  # 必要に応じて変更
@@ -1676,6 +1394,6 @@ class NQueens17_constellations():
       expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848]
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
-
+""" エントリポイント """
 if __name__=="__main__":
   NQueens17_constellations().main()
