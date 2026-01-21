@@ -1364,7 +1364,6 @@ class NQueens17_constellations():
     for size in range(nmin,nmax):
       start_time=datetime.now()
       if size<=5:
-        # ← フォールバック：N=5はここで正しい10を得る
         total=self._bit_total(size)
         dt=datetime.now()-start_time
         text=str(dt)[:-3]
@@ -1372,7 +1371,6 @@ class NQueens17_constellations():
         continue
       ijkl_list:Set[int]=set()
       constellations:List[Dict[str,int]]=[]
-      # NQ=NQueens17(size)
       NQ=NQueens17()
       #---------------------------------
       # 星座リストそのものをキャッシュ
@@ -1386,12 +1384,10 @@ class NQueens17_constellations():
       constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       #---------------------------------
       NQ.exec_solutions(constellations,size,use_gpu)
-
       total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      # print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}")
-      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848]
+      expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
       status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
       print(f"{size:2d}:{total:13d}{0:13d}{text:>20s}    {status}")
 """ エントリポイント """
