@@ -1565,11 +1565,9 @@ class NQueens17_constellations():
   def build_constellations_dynamicK(self, NQ, size: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
     # 一時的に枝刈りを無効化
     had_flag = hasattr(NQ, "use_visited_prune")
+    old = NQ.use_visited_prune if had_flag else False
     if had_flag:
-      old = NQ.use_visited_prune
-    else:
-      old = False
-    NQ.use_visited_prune = False
+      NQ.use_visited_prune = False
     try:
       # m_target = 200_000 if use_gpu else 30_000
       # GPU 時はサイズに応じて目標タスク数を変える
