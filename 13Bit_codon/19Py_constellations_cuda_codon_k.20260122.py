@@ -18,54 +18,51 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 
 実行履歴
-2026/01/21 18Py_constellations_cuda_codon.py
+2026年  1月 22日 木曜日 10:26:29 UTC
 Python/Codon amazon AWS m4.16xlarge x 1
-$ export CODON_CUDA=/lib64/libcuda.so.1 
-$ codon build -release 18Py_constellations_cuda_codon.py 
-$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:        Total       Unique        hh:mm:ss.ms
- 5:           10            0         0:00:00.000
- 6:            4            0         0:00:00.019    ok
- 7:           40            0         0:00:00.001    ok
- 8:           92            0         0:00:00.000    ok
- 9:          352            0         0:00:00.001    ok
-10:          724            0         0:00:00.001    ok
-11:         2680            0         0:00:00.025    ok
-12:        14200            0         0:00:00.008    ok
-13:        73712            0         0:00:00.009    ok
-14:       365596            0         0:00:00.018    ok
-15:      2279184            0         0:00:00.067    ok
-16:     14772512            0         0:00:00.324    ok
-17:     95815104            0         0:00:01.801    ok
-18:    666090624            0         0:00:14.923    ok
-19:   4968057848            0         0:02:08.692    ok
-
-2026/01/21 18Py_constellations_cuda_codon.py
-Python/Codon amazon AWS m4.16xlarge x 1
-2026年  1月 21日 水曜日 05:13:05 UTC
-$ export CODON_CUDA=/lib64/libcuda.so.1 
-$ codon build -release 18Py_constellations_cuda_codon.py 
-$ ./18Py_constellations_cuda_codon -c
+suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260122.py
+suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260122 -c
 CPU mode selected
  N:             Total         Unique        hh:mm:ss.ms
  5:                10              0         0:00:00.000
- 6:                 4              0         0:00:00.084    ok
- 7:                40              0         0:00:00.000    ok
- 8:                92              0         0:00:00.000    ok
- 9:               352              0         0:00:00.001    ok
+ 6:                 4              0         0:00:00.020    ok
+ 7:                40              0         0:00:00.007    ok
+ 8:                92              0         0:00:00.025    ok
+ 9:               352              0         0:00:00.005    ok
 10:               724              0         0:00:00.002    ok
-11:              2680              0         0:00:00.009    ok
-12:             14200              0         0:00:00.007    ok
+11:              2680              0         0:00:00.003    ok
+12:             14200              0         0:00:00.010    ok
 13:             73712              0         0:00:00.011    ok
-14:            365596              0         0:00:00.016    ok
-15:           2279184              0         0:00:00.028    ok
-16:          14772512              0         0:00:00.059    ok
-17:          95815104              0         0:00:00.329    ok
-18:         666090624              0         0:00:02.199    ok
-19:        4968057848              0         0:00:16.385    ok
-20:       39029188884              0         0:02:06.629    ok
-21:      314666222712              0         0:17:58.500    ok
+14:            365596              0         0:00:00.018    ok
+15:           2279184              0         0:00:00.027    ok
+16:          14772512              0         0:00:00.055    ok
+17:          95815104              0         0:00:00.326    ok
+18:         666090624              0         0:00:02.122    ok
+19:        4968057848              0         0:00:15.068    ok
+20:       39029188884              0         0:01:58.882    ok
+
+2026年  1月 22日 木曜日 10:26:29 UTC
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260122 -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+ 5:                10              0         0:00:00.000
+ 6:                 4              0         0:00:00.052    ok
+ 7:                40              0         0:00:00.001    ok
+ 8:                92              0         0:00:00.001    ok
+ 9:               352              0         0:00:00.001    ok
+10:               724              0         0:00:00.001    ok
+11:              2680              0         0:00:00.001    ok
+12:             14200              0         0:00:00.071    ok
+13:             73712              0         0:00:00.005    ok
+14:            365596              0         0:00:00.018    ok
+15:           2279184              0         0:00:00.078    ok
+16:          14772512              0         0:00:00.330    ok
+17:          95815104              0         0:00:01.885    ok
+18:         666090624              0         0:00:28.268    ok
+19:        4968057848              0         0:03:46.083    ok
+20:       39027754460              0         0:30:32.772    ng(39027754460!=3902
+9188884)
 
 2025 15Py_constellations_optimize_codon.py
 Python/Codon amazon AWS m4.16xlarge x 1
