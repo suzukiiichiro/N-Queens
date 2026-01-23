@@ -106,6 +106,8 @@ FCONST:Static[int]=28
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
 
 """ CUDA GPU 用 DFS カーネル関数  """
+# 2026年 1月 23日 
+# 17:          95815104              0         0:00:01.875    ok
 @gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr, rd_arr, col_arr, row_arr, free_arr,
@@ -158,7 +160,7 @@ def kernel_dfs_iter_gpu(
       ub[k] = u8(0)
       fc[k] = u8(0)
 
-    # # シェアーとメモリ対応
+    # # シェアードメモリ対応
     # # funcidテーブルをローカルへ（スレッドごとに1回だけglobal→localコピー）
     # m_next  = __array__[int](MAXF)
     # m_avail = __array__[int](MAXF)
@@ -205,7 +207,9 @@ def kernel_dfs_iter_gpu(
     row[0]    = row_arr[i]
     avail[0]  = free0
     # inited[0] = u8(0)
+    # 
     total = 0
+    #    
     while sp >= 0:
       a = avail[sp]
       if a == 0:
@@ -217,11 +221,11 @@ def kernel_dfs_iter_gpu(
         # デバッグ用：負の値で原因を返す（落とさない）
         # if f < 0 or f >= F:
         # for f0 in range(FCONST) を条件付きに（mが小さい時に効く）
-        use_local_tbl = 1 if m >= 2048 else 0
-        if use_local_tbl:
-          if f < 0 or f >= int(FCONST):
-            results[i] = -1000000 - f
-            return
+        # use_local_tbl = 1 if m >= 2048 else 0
+        # if use_local_tbl:
+        #   if f < 0 or f >= int(FCONST):
+        #     results[i] = -1000000 - f
+        #     return
         # 
         nfid  = meta_next[f]
         # nfid  = m_next[f]
@@ -230,22 +234,22 @@ def kernel_dfs_iter_gpu(
         # ---- 基底 ----
         if is_base[f] == 1 and row[sp] == endm:
         # if t_isb[f] == 1 and row[sp] == endm:
-          if f == 14:
+          if f == 14: # SQd2B 特例
             total += 1 if (a >> 1) else 0
           else:
             total += 1
           sp -= 1
           continue
-        # ---- デフォルト ----
+        # ---- 通常状態設定 ----
         step[sp]  = 1
         add1[sp]  = 0
         rowst[sp] = row[sp] + 1
+        use_blocks = 0
+        use_future = 1 if (aflag == 1) else 0
         bK[sp]    = 0
         bL[sp]    = 0
         nextf[sp] = f
-        use_blocks = 0
-        use_future = 1 if (aflag == 1) else 0
-        # ---- mark ----
+        # ---- mark 行: step=2/3 + block ----
         if is_mark[f] == 1:
         # if t_ism[f] == 1:
           sel = mark_sel[f]  # 1:mark1 2:mark2
@@ -593,7 +597,7 @@ class NQueens17:
           total += 1 if (avail>>1) else 0
         else:
           total += 1
-        continue
+        continueas
       # 既定（+1）
       step:int=1
       add1:int=0
