@@ -217,11 +217,13 @@ def kernel_dfs_iter_gpu(
         # デバッグ用：負の値で原因を返す（落とさない）
         # if f < 0 or f >= F:
         # for f0 in range(FCONST) を条件付きに（mが小さい時に効く）
-        use_local_tbl = 1 if m >= 2048 else 0
-        if use_local_tbl:
-          if f < 0 or f >= int(FCONST):
-            results[i] = -1000000 - f
-            return
+        # use_local_tbl = 1 if m >= 2048 else 0
+        # if use_local_tbl:
+        #   if f < 0 or f >= int(FCONST):
+        #     results[i] = -1000000 - f
+        #     return
+        # f 範囲チェックを “常に” 有効化する
+        if f < 0 or f >= FCONST: results[i] = -1000000 - f; return
         # 
         nfid  = meta_next[f]
         # nfid  = m_next[f]
@@ -578,7 +580,7 @@ class NQueens17:
   """dfs()の非再帰版"""
   def dfs_iter(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->int:
     board_mask:int=self._board_mask
-    total:int=0
+    total:u64=u64(0)
     # スタック要素: (functionid, ld, rd, col, row, free)
     stack: List[Tuple[int,int,int,int,int,int]] = [(functionid,ld,rd,col,row,free)]
     while stack:
@@ -1222,7 +1224,8 @@ class NQueens17:
       # print("len(w_arr)        =", len(w_arr))
       # print("len(results)      =", len(results))
       #
-      results = [0] * m
+      # results = [0] * m
+      results:List[u64] = [0] * m
       kernel_dfs_iter_gpu(
         gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
         gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
