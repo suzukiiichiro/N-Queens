@@ -191,7 +191,7 @@ def kernel_dfs_iter_gpu(
       return
     free0 = free_arr[i] & board_mask
     if free0 == 0:
-      results[i] = 0
+      results[i] = u64(0)
       return
     jmark = jmark_arr[i]
     endm  = end_arr[i]
@@ -205,7 +205,10 @@ def kernel_dfs_iter_gpu(
     row[0]    = row_arr[i]
     avail[0]  = free0
     # inited[0] = u8(0)
-    total = 0
+
+    # u64に変更
+    total:u64 = u64(0)
+
     while sp >= 0:
       a = avail[sp]
       if a == 0:
@@ -222,8 +225,10 @@ def kernel_dfs_iter_gpu(
         #   if f < 0 or f >= int(FCONST):
         #     results[i] = -1000000 - f
         #     return
-        # f 範囲チェックを “常に” 有効化する
-        if f < 0 or f >= FCONST: results[i] = -1000000 - f; return
+        # f 範囲チェックを “常に” 有効化すer
+        # if f < 0 or f >= FCONST:
+        #   results[i] = u64(0xFFFFFFFFFFFFFFFF)
+        #   return
         # 
         nfid  = meta_next[f]
         # nfid  = m_next[f]
@@ -233,9 +238,9 @@ def kernel_dfs_iter_gpu(
         if is_base[f] == 1 and row[sp] == endm:
         # if t_isb[f] == 1 and row[sp] == endm:
           if f == 14:
-            total += 1 if (a >> 1) else 0
+            total += u64(1) if (a >> 1) else u64(0)
           else:
-            total += 1
+            total += u64(1)
           sp -= 1
           continue
         # ---- デフォルト ----
@@ -245,8 +250,8 @@ def kernel_dfs_iter_gpu(
         bK[sp]    = 0
         bL[sp]    = 0
         nextf[sp] = f
-        use_blocks = 0
-        use_future = 1 if (aflag == 1) else 0
+        # use_blocks = 0
+        # use_future = 1 if (aflag == 1) else 0
         # ---- mark ----
         if is_mark[f] == 1:
         # if t_ism[f] == 1:
@@ -531,7 +536,8 @@ class NQueens17:
   """(i,j,k,l) パック値に対して盤面 90°/180° 回転を適用した新しいパック値を返す。 回転の定義: (r,c) -> (c, N-1-r)。対称性チェック・正規化に利用。"""
   def rot90(self,ijkl:int,N:int)->int:return ((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl)
   def rot180(self,ijkl:int,N:int)->int:return ((N-1-self.getj(ijkl))<<15)+((N-1-self.geti(ijkl))<<10)+((N-1-self.getl(ijkl))<<5)+(N-1-self.getk(ijkl))
-  def symmetry(self,ijkl:int,N:int)->int:return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  # def symmetry(self,ijkl:int,N:int)->int:return 2 if self.symmetry90(ijkl,N) else 4 if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else 8
+  def symmetry(self,ijkl:int,N:int)->u64:return u64(2) if self.symmetry90(ijkl,N) else u64(4) if self.geti(ijkl)==N-1-self.getj(ijkl) and self.getk(ijkl)==N-1-self.getl(ijkl) else u64(8)
   def symmetry90(self,ijkl:int,N:int)->bool:return ((self.geti(ijkl)<<15)+(self.getj(ijkl)<<10)+(self.getk(ijkl)<<5)+self.getl(ijkl))==(((N-1-self.getk(ijkl))<<15)+((N-1-self.getl(ijkl))<<10)+(self.getj(ijkl)<<5)+self.geti(ijkl))
 
   """与えた (i,j,k,l) の 90/180/270° 回転形が既出集合 ijkl_list に含まれるかを判定する。"""
@@ -578,7 +584,7 @@ class NQueens17:
     return ijkl
 
   """dfs()の非再帰版"""
-  def dfs_iter(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->int:
+  def dfs_iter(self,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->u64:
     board_mask:int=self._board_mask
     total:u64=u64(0)
     # スタック要素: (functionid, ld, rd, col, row, free)
@@ -592,9 +598,9 @@ class NQueens17:
       # ---- 基底 ----
       if funcptn==5 and row==endmark:
         if functionid==14:  # SQd2B 特例
-          total += 1 if (avail>>1) else 0
+          total += u64(1) if (avail>>1) else u64(0)
         else:
-          total += 1
+          total += u64(1)
         continue
       # 既定（+1）
       step:int=1
@@ -833,7 +839,7 @@ class NQueens17:
     return total
 
   """SoA タスク群を board_mask に基づいて分割する。元タスクは残りの分岐を担当し、子タスクは分割したビットだけ担当する。 max_new > 0 なら追加分の上限を設ける。"""
-  def split_tasks_by_free(soa, board_mask:int, max_new:int=0) -> None:
+  def split_tasks_by_free(self,soa, board_mask:int, w_arr: List[u64], m_ptn: List[int], max_new:int=0) -> None:
     # max_new=0 なら全て分割。上限を設けたいなら使う。
     # 追加分を一旦ローカルに溜める（appendで再確保が頻繁だと遅いので）
     add_ld: List[int] = []
@@ -846,11 +852,55 @@ class NQueens17:
     add_mark1: List[int] = []
     add_mark2: List[int] = []
     add_funcid: List[int] = []
+    add_w:List[u64]=[]
 
     new_count = 0
     m = len(soa.free_arr)
 
+    # カウンター（デバッグ用）
+    # cnt_ptn = 0
+    # cnt_jmark = 0
+    # cnt_mark = 0
+    # cnt_end = 0
+    # cnt_free0 = 0
+    # cnt_rest0 = 0
+    # cnt_ok = 0
+
     for i in range(m):
+      # # ★安全フィルタ（先に）
+      # funcid = soa.funcid_arr[i]
+      # ptn = m_ptn[funcid]
+      # if ptn != 0:
+      #     # デバッグ用
+      #     # cnt_ptn += 1
+      #     continue
+      # if soa.jmark_arr[i] != 0:
+      #     # デバッグ用
+      #     # cnt_jmark += 1
+      #     continue
+      # if soa.mark1_arr[i] != 0 or soa.mark2_arr[i] != 0:
+      #     # デバッグ用
+      #     # cnt_mark += 1
+      #     continue
+      # # endmark 直前では分割しない（余裕2手）
+      # if soa.row_arr[i] >= (soa.end_arr[i] - 2):
+      #     # デバッグ用
+      #     # cnt_end += 1
+      #     continue
+      # free = soa.free_arr[i] & board_mask
+      # if free == 0:
+      #   # デバッグ用
+      #   # cnt_free0 += 1  
+      #   continue
+      # bit = free & -free
+      # rest = free ^ bit  # free - bit と同じ（bitがLSBなのでOK）
+      # if rest == 0:
+      #   # デバッグ用
+      #   # cnt_rest0 += 1
+      #   continue  # ★分割しても増えない（元を0に潰すだけ）
+      # # デバッグ用
+      # # cnt_ok += 1 
+
       free = soa.free_arr[i] & board_mask
       if free == 0:
         continue
@@ -873,6 +923,8 @@ class NQueens17:
       add_mark2.append(soa.mark2_arr[i])
       add_funcid.append(soa.funcid_arr[i])
 
+      add_w.append(w_arr[i])
+
       new_count += 1
       if max_new > 0 and new_count >= max_new:
         break
@@ -889,6 +941,17 @@ class NQueens17:
       soa.mark1_arr.extend(add_mark1)
       soa.mark2_arr.extend(add_mark2)
       soa.funcid_arr.extend(add_funcid)
+      w_arr.extend(add_w)
+
+    # デバッグ出力
+    # print("split stats:",
+    # "ptn", cnt_ptn,
+    # "jmark", cnt_jmark,
+    # "mark", cnt_mark,
+    # "end", cnt_end,
+    # "free0", cnt_free0,
+    # "rest0", cnt_rest0,
+    # "ok", cnt_ok)
 
   """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int,use_gpu:bool)->None:
@@ -897,7 +960,7 @@ class NQueens17:
     small_mask:int=self._small_mask
 
     board_mask:int=self._board_mask
-    dfs=self.dfs
+    # dfs=self.dfs
     symmetry=self.symmetry
     getj,getk,getl=self.getj,self.getk,self.getl
     FUNC_CATEGORY={
@@ -1036,7 +1099,8 @@ class NQueens17:
 
     soa = TaskSoA(m)
 
-    results=[0]*m
+    # results=[0]*m
+    results:List[u64] = [u64(0)] * m
     target:int=0
     for i,constellation in enumerate(constellations):
       jmark=mark1=mark2=0
@@ -1173,14 +1237,16 @@ class NQueens17:
       soa.ijkl_arr[i] = ijkl
 
     # ===== 並列ステージ：計算だけ =====
-    w_arr = [0]*m
+    # w_arr = [0]*m
+    # u64 に変更
+    w_arr:List[u64] = [u64(0)]*m
+
     @par
     for i in range(m):
       w_arr[i] = symmetry(soa.ijkl_arr[i], N)
 
     m = len(constellations)
-    if m == 0:
-      return
+    if m == 0: return
     # BLOCK= 64
     # BLOCK= 96
     # BLOCK= 128
@@ -1188,8 +1254,7 @@ class NQueens17:
     # BLOCK= 192
     BLOCK = 256
     GRID = (m + BLOCK - 1) // BLOCK
-    if GRID == 0:
-      return
+    if GRID == 0: return
 
     if use_gpu:
       # meta_next  = [t[0] for t in func_meta]
@@ -1197,6 +1262,23 @@ class NQueens17:
       # meta_avail = [t[2] for t in func_meta]
       m_avail = [t[2] for t in func_meta]
 
+      # SoA 作成後
+      # board_mask = (1 << N) - 1  # 既に計算済みならそれを使う
+      # m_target = 200_000 if N >= 15 else 30_000
+
+      # before = len(soa.free_arr)
+      # if N >= 15 and before < m_target:
+      #     m_ptn = [t[1] for t in func_meta]
+      #     max_new = m_target - before
+      #     self.split_tasks_by_free(soa, board_mask, w_arr, m_ptn, max_new)
+      # after = len(soa.free_arr)
+      # m = after
+      m = len(soa.free_arr)
+      results: List[u64] = [u64(0)] * m
+      # DEBUG: GPU launch params
+      # if N >= 18 :
+      #   print("m0,m after split:",before, after,"GRID:", GRID, "BLOCK:", BLOCK, "split added:", after - before)
+      # #
       # 正常な例
       # max(funcid_arr) = 23
       # len(meta_next) = 24
@@ -1225,7 +1307,8 @@ class NQueens17:
       # print("len(results)      =", len(results))
       #
       # results = [0] * m
-      results:List[u64] = [0] * m
+      # results (u64)に変更
+      # results:List[u64] = [u64(0)] * m
       kernel_dfs_iter_gpu(
         gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
         gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
@@ -1242,17 +1325,28 @@ class NQueens17:
         # len(m_next),
         grid=GRID, block=BLOCK
       )
+      #GPUカーネルの番兵値チェック（エラー経路が踏まれたら一発で分かる）
+      # debug用に N=20 のみ有効化
+      # if N==20:
+      #   err = 0
+      #   for x in results:
+      #       if x == u64(0xFFFFFFFFFFFFFFFF):
+      #           err += 1
+      #   if err:
+      #       print("sentinel errors:", err)
+    # CPU 実行版
     else:
       @par
       for i in range(m):
-        cnt = self.dfs_iter(soa.funcid_arr[i],
+        cnt:u64 = self.dfs_iter(soa.funcid_arr[i],
               soa.ld_arr[i], soa.rd_arr[i], soa.col_arr[i], soa.row_arr[i],
               soa.free_arr[i], soa.jmark_arr[i], soa.end_arr[i],
               soa.mark1_arr[i], soa.mark2_arr[i])
         results[i]=cnt*w_arr[i]
 
     for i,constellation in enumerate(constellations):
-      constellation["solutions"]=results[i]
+      # constellation["solutions"]=results[i]
+      constellation["solutions"]=int(results[i])
 
   """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
   def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
@@ -1287,7 +1381,6 @@ class NQueens17:
     # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
     # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
     #
-    # h: int = self.zobrist_hash(ld & mask, rd & mask, col & mask, row, queens, k, l, LD & mask, RD & mask, N)
     h: int = int(self.zobrist_hash(ld & mask, rd & mask, col & mask, row, queens, k, l, LD & mask, RD & mask, N))
 
     #
@@ -1299,6 +1392,7 @@ class NQueens17:
     # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
     # 1意になるように領域を分けて詰める（衝突ゼロ）
     # 5*N ビット分で ld/rd/col/LD/RD を入れ、以降に小さい値を詰める
+    # h:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
     #
     # ldm = ld & mask
     # rdm = rd & mask
@@ -1337,7 +1431,6 @@ class NQueens17:
     if row==k or row==l:
       self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
       return
-    # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     # クイーンの数がpreset_queensに達した場合、現在の状態を保存
     if queens == preset_queens:
       if preset_queens <= 5:
@@ -1438,49 +1531,49 @@ class NQueens17:
     except:
       return False
 
-  """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
-  def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
-    with open(path,"w") as f:
-      for c in constellations:
-        ld=c["ld"]
-        rd=c["rd"]
-        col=c["col"]
-        startijkl=c["startijkl"]
-        solutions=c.get("solutions",0)
-        f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+  # """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
+  # def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
+  #   with open(path,"w") as f:
+  #     for c in constellations:
+  #       ld=c["ld"]
+  #       rd=c["rd"]
+  #       col=c["col"]
+  #       startijkl=c["startijkl"]
+  #       solutions=c.get("solutions",0)
+  #       f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
 
-  """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
-  def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
-    out:List[Dict[str,int]]=[]
-    with open(path,"r") as f:
-      for line in f:
-        parts=line.strip().split()
-        if len(parts)!=5:
-          continue
-        ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
-        startijkl=int(parts[3]);solutions=int(parts[4])
-        out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
-    return out
+  # """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
+  # def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
+  #   out:List[Dict[str,int]]=[]
+  #   with open(path,"r") as f:
+  #     for line in f:
+  #       parts=line.strip().split()
+  #       if len(parts)!=5:
+  #         continue
+  #       ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
+  #       startijkl=int(parts[3]);solutions=int(parts[4])
+  #       out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
+  #   return out
 
-  """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
-  def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    # N と preset_queens に基づいて一意のファイル名を構成
-    fname=f"constellations_N{N}_{preset_queens}.txt"
-    # ファイルが存在すれば読み込むが、破損チェックも行う
-    if self.file_exists(fname):
-      try:
-        constellations=self.load_constellations_txt(fname)
-        if self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    # ファイルがなければ生成・保存
-    constellations:List[Dict[str,int]]=[]
-    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
-    self.save_constellations_txt(fname,constellations)
-    return constellations
+  # """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
+  # def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
+  #   # N と preset_queens に基づいて一意のファイル名を構成
+  #   fname=f"constellations_N{N}_{preset_queens}.txt"
+  #   # ファイルが存在すれば読み込むが、破損チェックも行う
+  #   if self.file_exists(fname):
+  #     try:
+  #       constellations=self.load_constellations_txt(fname)
+  #       if self.validate_constellation_list(constellations):
+  #         return constellations
+  #       else:
+  #         print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+  #     except Exception as e:
+  #       print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+  #   # ファイルがなければ生成・保存
+  #   constellations:List[Dict[str,int]]=[]
+  #   self.gen_constellations(ijkl_list,constellations,N,preset_queens)
+  #   self.save_constellations_txt(fname,constellations)
+  #   return constellations
 
   """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
   def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
@@ -1527,82 +1620,108 @@ class NQueens17:
     self.save_constellations_bin(fname,constellations)
     return constellations
 
-  """プリセットクイーン数の選択。N と use_gpu に基づいて適切な値を返す。"""
-  def choose_preset_queens(self, N: int, use_gpu: bool) -> int:
-    # まずは分かりやすい段階式（後で調整しやすい）
-    if not use_gpu:
-      # CPU: これまでの値をほぼ踏襲
-      if N <= 17: return 4
-      if N <= 20: return 5
-      if N <= 23: return 6
-      return 7
-    else:
-      # GPU: タスク数不足・偏り対策で1段深め
-      if N <= 17: return 4
-      if N <= 19: return 5
-      if N <= 22: return 6
-      return 7
+  # """プリセットクイーン数の選択。N と use_gpu に基づいて適切な値を返す。"""
+  # def choose_preset_queens(self, N: int, use_gpu: bool) -> int:
+  #   return 5
+  #   # まずは分かりやすい段階式（後で調整しやすい）
+  #   if not use_gpu:
+  #     # CPU: これまでの値をほぼ踏襲
+  #     if N <= 17: return 4
+  #     if N <= 20: return 5
+  #     if N <= 23: return 6
+  #     return 7
+  #   else:
+  #     # GPU: タスク数不足・偏り対策で1段深め
+  #     if N <= 17: return 4
+  #     if N <= 19: return 5
+  #     if N <= 22: return 6
+  #     return 7
 
 """ NQueens17_constellations クラス：小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
 class NQueens17_constellations():
 
-  """プリセットクイーン数の選択。N と use_gpu に基づいて適切な値を返す。"""
-  def choose_preset_queens(self, size:int, use_gpu: bool) -> int:
-    if not use_gpu:
-      # return 5  # まず固定でOK（後で詰める）
-      # CPUはオーバーヘッドが軽いので控えめでも回る
-      if size <= 17: return 5
-      if size <= 19: return 6
-      if size <= 22: return 7
-      return 8
-    # GPU: Nが上がるほど深めに
-    if size <= 17: return 9
-    if size <= 19: return 10
-    if size <= 22: return 11
-    return 12
+  # """プリセットクイーン数の選択。N と use_gpu に基づいて適切な値を返す。"""
+  # def choose_preset_queens(self, size:int, use_gpu: bool) -> int:
+  #   if not use_gpu:
+  #     # return 5  # まず固定でOK（後で詰める）
+  #     # CPUはオーバーヘッドが軽いので控えめでも回る
+  #     if size <= 17: return 5
+  #     if size <= 19: return 6
+  #     if size <= 22: return 7
+  #     return 8
+  #   # GPU: Nが上がるほど深めに
+  #   if size <= 17: return 9
+  #   if size <= 19: return 10
+  #   if size <= 22: return 11
+  #   return 12
 
-  """プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
-  def build_constellations_dynamicK(self, NQ, size: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
-    # 一時的に枝刈りを無効化
-    had_flag = hasattr(NQ, "use_visited_prune")
-    old = NQ.use_visited_prune if had_flag else False
-    if had_flag:
-      NQ.use_visited_prune = False
-    try:
-      # m_target = 200_000 if use_gpu else 30_000
-      # GPU 時はサイズに応じて目標タスク数を変える
-      m_target = 200_000 if use_gpu and size >= 15 else 0
-      K = NQ.choose_preset_queens(size, use_gpu)
-      # 動的対応が課題：最大2回試行（合計2回）できればなおオッケー
-      # for _ in range(2):  # N18でＮＧになります
-      for _ in range(1):  
-        ijkl_list:Set[int] = set()
-        constellations:List[Dict[str,int]] = []
-        constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
-        m = len(constellations)
-        if m == 0:
-          # 解は0ではないので、ここは「Kが深すぎてタスクが潰れた」扱い
-          # → Kを下げて作り直す or CPUにフォールバック
-          print(f"m==0 (preset_queens={K}) fallback")
-          # 例：Kを1下げて作り直す
-          K -= 1
-          ijkl_list=set(); constellations=[]
-          constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations,size,K)
-          m = len(constellations)
-        # 
-        # print("K:", K, "m:", len(constellations))
-        # 
-        # 目標に届けば採用
-        if m >= m_target:
-          return K, constellations
-        # 足りなければ K を増やして作り直し
-        K += 1
-      #
-      # print(f"size={size} K={K} m={len(constellations)}")
-      #
-      return K, constellations
-    finally:
-      NQ.use_visited_prune = old
+  # """プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
+  # def build_constellations_dynamicK(self, NQ, size: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
+  #   K=5
+  #   ijkl_list:Set[int] = set()
+  #   constellations:List[Dict[str,int]] = []
+  #   constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
+  #   return K, constellations
+
+  #   # 一時的に枝刈りを無効化
+  #   had_flag = hasattr(NQ, "use_visited_prune")
+  #   old = NQ.use_visited_prune if had_flag else False
+  #   if had_flag: NQ.use_visited_prune = False
+  #   # m_target = 200_000 if use_gpu else 30_000
+  #   # GPU 時はサイズに応じて目標タスク数を変える
+  #   m_target = 200_000 if use_gpu and size >= 15 else 0
+  #   # m_target = 200_000 if (use_gpu and size >= 15) else 30_000
+  #   try:
+  #     # K = NQ.choose_preset_queens(size, use_gpu)
+  #     K = 5
+  #     for _ in range(1):  
+  #       ijkl_list:Set[int] = set()
+  #       constellations:List[Dict[str,int]] = []
+  #       constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
+  #       #
+  #       # debug: startijkl のユニーク数チェック
+  #       # if use_gpu and size == 18 and K == 6:
+  #       #   s = set()
+  #       #   dup = 0
+  #       #   for c in constellations:
+  #       #       v = c["startijkl"]
+  #       #       if v in s:
+  #       #           dup += 1
+  #       #       else:
+  #       #           s.add(v)
+  #       #   print("[DBG] startijkl unique:", len(s), "total:", len(constellations), "dup:", dup)
+  #       #
+  #       m = len(constellations)
+  #       #
+  #       # DEBUG: constellation generation
+  #       # if use_gpu and size >= 18:
+  #       #   print(f"size:{size} K:{K} m:{m} target:{m_target}")
+  #       #
+  #       # if m == 0:
+  #       #   # 解は0ではないので、ここは「Kが深すぎてタスクが潰れた」扱い
+  #       #   # → Kを下げて作り直す or CPUにフォールバック
+  #       #   #
+  #       #   # debug
+  #       #   # print(f"m==0 (preset_queens={K}) fallback")
+  #       #   #
+  #       #   # 例：Kを1下げて作り直す
+  #       #   K -= 1
+  #       #   ijkl_list=set(); constellations=[]
+  #       #   constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations,size,K)
+  #       #   m = len(constellations)
+  #       #
+  #       # debug
+  #       # if size >= 18 : print(f"size:{size} use_gpu:{use_gpu} target:{m_target} presetK:{K} m:{m}")
+  #       #
+  #       # 目標に届けば採用
+  #       if m >= m_target:
+  #         return K, constellations
+  #       # 足りなければ K を増やして作り直し
+  #       #
+  #       K += 1
+  #       #
+  #     return K, constellations
+  #   finally: NQ.use_visited_prune = old
 
   """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
   def _bit_total(self,size:int)->int:
@@ -1678,7 +1797,8 @@ class NQueens17_constellations():
       constellations:List[Dict[str,int]]=[]
       NQ=NQueens17(size)
       # 事前クイーン数の選択
-      preset_queens=NQ.choose_preset_queens(size,use_gpu)
+      # preset_queens=NQ.choose_preset_queens(size,use_gpu)
+      preset_queens=5
       #---------------------------------
       # 星座リストそのものをキャッシュ
       #---------------------------------
@@ -1690,7 +1810,8 @@ class NQueens17_constellations():
       #
       # キャッシュを使う
       # t0 = datetime.now()
-      preset_queens, constellations = self.build_constellations_dynamicK(NQ, size, use_gpu)
+      # preset_queens, constellations = self.build_constellations_dynamicK(NQ, size, use_gpu)
+      constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations, size, preset_queens)
       # t1 = datetime.now()
       NQ.exec_solutions(constellations, size, use_gpu)
       # t2 = datetime.now()
