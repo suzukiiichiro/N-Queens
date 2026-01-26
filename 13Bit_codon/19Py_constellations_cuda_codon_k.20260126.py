@@ -1199,6 +1199,9 @@ class NQueens17:
     # STEPS = 24576 if use_gpu else m_all
     m_all = len(constellations)
     results_all: List[u64] = [u64(0)] * m_all
+    ##########
+    # GPU
+    ##########
     if use_gpu:
       m_next  = [t[0] for t in func_meta]
       m_avail = [t[2] for t in func_meta]
@@ -1226,6 +1229,9 @@ class NQueens17:
         for i in range(m):
           results_all[off + i] = results[i]
         off += m
+    ##########
+    # CPU 
+    ##########
     else:
       m_all = len(constellations) # CPUは全件を1回で SoA + w_arr を作る（これがないと壊れる）
       if m_all == 0:
@@ -1239,6 +1245,9 @@ class NQueens17:
               soa.free_arr[i], soa.jmark_arr[i], soa.end_arr[i],
               soa.mark1_arr[i], soa.mark2_arr[i])
         results[i]=cnt*w_arr[i]
+    ##########
+    # 集計   
+    ##########
     if use_gpu:
       out = results_all
     else:
