@@ -18,10 +18,30 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 
 実行履歴
+2026年  1月 26日 solutions cache導入後
+Python/Codon amazon AWS g5.xlarge x 1
+suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
+suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260126 -c
+CPU mode selected
+キャッシュ前
+18:         666090624              0         0:00:00.069    ok
+19:        4968057848              0         0:04:03.880    ok
+20:       39029188884              0         0:32:34.076    ok
+キャッシュ後
+18:         666090624              0         0:00:00.057    ok
+19:        4968057848              0         0:00:00.076    ok
+20:       39029188884              0         0:00:00.117    ok
+
+GPU mode selected
+18:         666090624              0         0:00:00.066    ok
+19:        4968057848              0         0:01:46.490    ok
+20:       39029188884              0         0:14:03.775    ok
+
+
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
 suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
-suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260123 -c
+suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260126 -c
 CPU mode selected
  N:             Total         Unique        hh:mm:ss.ms
 18:         666090624              0         0:00:31.464    ok
@@ -1648,7 +1668,7 @@ class NQueens17_constellations():
       # t1 = datetime.now()
       #
       #################################################
-      # solutions()でキャッシュを使う
+      # solutions()でキャッシュを使って実行
       #################################################
       # solutions をtxtでキャッシュ（GPU/CPUどちらで作っても値は同じなのでデバッグ用途なら共通でもOK）
       # NQ.load_or_build_solutions_txt(constellations, size, preset_queens  , use_gpu, cache_tag="v1")
@@ -1659,7 +1679,7 @@ class NQueens17_constellations():
       #################################################
       # 実行
       #################################################
-      NQ.exec_solutions(constellations, size, use_gpu)
+      # NQ.exec_solutions(constellations, size, use_gpu)
       # t2 = datetime.now()
       # print(f"build={(t1-t0)} exec={(t2-t1)} m={len(constellations)} K={preset_queens}")
       #
