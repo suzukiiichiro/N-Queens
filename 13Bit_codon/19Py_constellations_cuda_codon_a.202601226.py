@@ -834,81 +834,79 @@ class NQueens17:
         total+=self.dfs(local_next_funcid,nld,nrd,ncol,row_step,nf,jmark,endmark,mark1,mark2)
     return total
 
-  """SoA タスク群を board_mask に基づいて分割する。元タスクは残りの分岐を担当し、子タスクは分割したビットだけ担当する。 max_new > 0 なら追加分の上限を設ける。"""
-  def split_tasks_by_free(self,soa, board_mask:int, w_arr: List[u64], m_ptn: List[int], max_new:int=0) -> None:
-    # max_new=0 なら全て分割。上限を設けたいなら使う。
-    # 追加分を一旦ローカルに溜める（appendで再確保が頻繁だと遅いので）
-    add_ld: List[int] = []
-    add_rd: List[int] = []
-    add_col: List[int] = []
-    add_row: List[int] = []
-    add_free: List[int] = []
-    add_jmark: List[int] = []
-    add_end: List[int] = []
-    add_mark1: List[int] = []
-    add_mark2: List[int] = []
-    add_funcid: List[int] = []
-    add_w:List[u64]=[]
+  # """SoA タスク群を board_mask に基づいて分割する。元タスクは残りの分岐を担当し、子タスクは分割したビットだけ担当する。 max_new > 0 なら追加分の上限を設ける。"""
+  # def split_tasks_by_free(self,soa, board_mask:int, w_arr: List[u64], m_ptn: List[int], max_new:int=0) -> None:
+  #   # max_new=0 なら全て分割。上限を設けたいなら使う。
+  #   # 追加分を一旦ローカルに溜める（appendで再確保が頻繁だと遅いので）
+  #   add_ld: List[int] = []
+  #   add_rd: List[int] = []
+  #   add_col: List[int] = []
+  #   add_row: List[int] = []
+  #   add_free: List[int] = []
+  #   add_jmark: List[int] = []
+  #   add_end: List[int] = []
+  #   add_mark1: List[int] = []
+  #   add_mark2: List[int] = []
+  #   add_funcid: List[int] = []
+  #   add_w:List[u64]=[]
 
-    new_count = 0
-    m = len(soa.free_arr)
+  #   new_count = 0
+  #   m = len(soa.free_arr)
 
-    for i in range(m):
-      free = soa.free_arr[i] & board_mask
-      if free == 0:
-        continue
-      bit = free & -free
-      rest = free ^ bit  # free - bit と同じ（bitがLSBなのでOK）
+  #   for i in range(m):
+  #     free = soa.free_arr[i] & board_mask
+  #     if free == 0:
+  #       continue
+  #     bit = free & -free
+  #     rest = free ^ bit  # free - bit と同じ（bitがLSBなのでOK）
 
-      # 元タスクは残りの分岐だけ担当
-      soa.free_arr[i] = rest
+  #     # 元タスクは残りの分岐だけ担当
+  #     soa.free_arr[i] = rest
 
-      # 子タスクは bit だけ担当
-      add_ld.append(soa.ld_arr[i])
-      add_rd.append(soa.rd_arr[i])
-      add_col.append(soa.col_arr[i])
-      add_row.append(soa.row_arr[i])
-      add_free.append(bit)  # ←ここがキモ
+  #     # 子タスクは bit だけ担当
+  #     add_ld.append(soa.ld_arr[i])
+  #     add_rd.append(soa.rd_arr[i])
+  #     add_col.append(soa.col_arr[i])
+  #     add_row.append(soa.row_arr[i])
+  #     add_free.append(bit)  # ←ここがキモ
 
-      add_jmark.append(soa.jmark_arr[i])
-      add_end.append(soa.end_arr[i])
-      add_mark1.append(soa.mark1_arr[i])
-      add_mark2.append(soa.mark2_arr[i])
-      add_funcid.append(soa.funcid_arr[i])
-      add_w.append(w_arr[i])
-      new_count += 1
-      if max_new > 0 and new_count >= max_new:
-        break
+  #     add_jmark.append(soa.jmark_arr[i])
+  #     add_end.append(soa.end_arr[i])
+  #     add_mark1.append(soa.mark1_arr[i])
+  #     add_mark2.append(soa.mark2_arr[i])
+  #     add_funcid.append(soa.funcid_arr[i])
+  #     add_w.append(w_arr[i])
+  #     new_count += 1
+  #     if max_new > 0 and new_count >= max_new:
+  #       break
 
-    # 追加分を末尾に連結
-    if new_count > 0:
-      soa.ld_arr.extend(add_ld)
-      soa.rd_arr.extend(add_rd)
-      soa.col_arr.extend(add_col)
-      soa.row_arr.extend(add_row)
-      soa.free_arr.extend(add_free)
-      soa.jmark_arr.extend(add_jmark)
-      soa.end_arr.extend(add_end)
-      soa.mark1_arr.extend(add_mark1)
-      soa.mark2_arr.extend(add_mark2)
-      soa.funcid_arr.extend(add_funcid)
-      w_arr.extend(add_w)
+  #   # 追加分を末尾に連結
+  #   if new_count > 0:
+  #     soa.ld_arr.extend(add_ld)
+  #     soa.rd_arr.extend(add_rd)
+  #     soa.col_arr.extend(add_col)
+  #     soa.row_arr.extend(add_row)
+  #     soa.free_arr.extend(add_free)
+  #     soa.jmark_arr.extend(add_jmark)
+  #     soa.end_arr.extend(add_end)
+  #     soa.mark1_arr.extend(add_mark1)
+  #     soa.mark2_arr.extend(add_mark2)
+  #     soa.funcid_arr.extend(add_funcid)
+  #     w_arr.extend(add_w)
 
   """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。
   結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し
   並列化区間のループ体を軽量化。
 
-  ★GPUは constellations 全量を一度に渡さず、CHUNK 件ずつに分割して kernel を複数回実行する版
+  ★GPUは constellations 全量を一度に渡さず、STEPS 件ずつに分割して kernel を複数回実行する版
   """
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int,use_gpu:bool)->None:
     N1:int = self._N1
     N2:int = self._N2
     small_mask:int=self._small_mask
-
     board_mask:int=self._board_mask
     symmetry=self.symmetry
     getj,getk,getl=self.getj,self.getk,self.getl
-
     FUNC_CATEGORY={
       # N-3
       "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
@@ -970,7 +968,6 @@ class NQueens17:
     mark_sel  = [0]*F  # 0:none 1:mark1 2:mark2
     mark_step = [1]*F  # 1 or 2 or 3
     mark_add1 = [0]*F  # 0/1
-
     for f,(nxt,ptn,aflag) in enumerate(func_meta):
         if ptn == 5:
             is_base[f] = 1
@@ -995,7 +992,6 @@ class NQueens17:
     for fn,cat in FUNC_CATEGORY.items():# FUNC_CATEGORY: {関数名: 3 or 4 or 0}
       fid=FID[fn]
       blockK_by_funcid[fid]=n3 if cat==3 else (n4 if cat==4 else 0)
-
     # ===== 前処理ステージ（単一スレッド） =====
     m_all = len(constellations)
     if m_all == 0:
@@ -1006,21 +1002,20 @@ class NQueens17:
     self._meta=func_meta
 
     # ===== GPU分割設定 =====
-    BLOCK = 256
+    BLOCK = 256 # C版の既定 24576 に寄せる/あるいは 16384, 32768 などを試す
     # ★ 1回の kernel 起動で使う最大ブロック数（=「GPU同時実行数」的な上限）
     #   ここを小さくすると 1回の投入量が減り、呼び出し回数が増えます
     MAX_BLOCKS = 32 
-    CHUNK = BLOCK * MAX_BLOCKS
+    STEPS = BLOCK * MAX_BLOCKS
 
     # GPUで使うメタ配列は毎回作らず1回だけ
     if use_gpu:
       m_next  = [t[0] for t in func_meta]
       m_avail = [t[2] for t in func_meta]
-
-    # ===== CHUNK件ずつ処理 =====
+    # ===== STEPS件ずつ処理 =====
     off = 0
     while off < m_all:
-      off2 = off + CHUNK
+      off2 = off + STEPS
       if off2 > m_all:
         off2 = m_all
       sub = constellations[off:off2]
@@ -1488,9 +1483,9 @@ class NQueens17:
     if not use_gpu:
       # CPU: これまでの値をほぼ踏襲
       if N <= 17: return 5
-      if N <= 20: return 6
-      if N <= 23: return 7
-      return 8
+      if N <= 20: return 5
+      if N <= 23: return 5
+      return 5
     else:
       # GPU: タスク数不足・偏り対策で1段深め
       if N <= 17: return 4

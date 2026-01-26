@@ -64,7 +64,6 @@ GPU mode selected
 19:        4968057848              0         0:03:46.018    ok
 20:       39029188884              0         0:31:27.325    ok
 
-
 2025 15Py_constellations_optimize_codon.py
 Python/Codon amazon AWS m4.16xlarge x 1
 $ codon build -release 15Py_constellations_optimize_codon.py 

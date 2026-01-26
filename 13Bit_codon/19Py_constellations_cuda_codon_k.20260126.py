@@ -87,11 +87,6 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 """
-
-"""
-STEPS は「GPUへ投げるタスク（ノード）を一定数で区切って、溢れ（過大投入）を防ぐための“バッチング/バランサー” になっています。やっていることは、 CPU側で hostDown/hostLeft/hostRight/(hostBoard) に タスクを詰める、タスク数 totalCond が STEPS に到達したら一旦 kernel を起動して“吐き出す”、kernel は STEPS 相当のスレッドで起動するが、実際に動くのは _cond (=totalCond) 未満だけ（それ以上は空回し）。
-ループの最後にも 余り（totalCond < STEPS）を起動して回収…という方式です（コメントにも「STEPS までノードが溜まったら 1回GPUを実行」「GPUはSTEPS数起動するが_cond以上は空回し」といった趣旨が書かれています）。
-"""
 # 18Py_constellations_cuda_codon.py
 import gpu
 import sys
@@ -190,13 +185,10 @@ def kernel_dfs_iter_gpu(
     #     t_step[f0]  = mark_step[f0]
     #     t_add1[f0]  = mark_add1[f0]
 
-    # スレッド過剰分を即 return する設計なので、C側の「空回しガード」と同じ安全弁自体はあります
-    # ただし問題は m（= constellations の総数）を一気に投げると、起動グリッドが巨大になり、N20 あたりで「GPUのキャパをタスク量が上回って失速」しやすいことです。
+
     i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
     if i >= m:
       return
-
-
     free0 = free_arr[i] & board_mask
     if free0 == 0:
       # results[i] = 0
@@ -1101,13 +1093,10 @@ class NQueens17:
     self._N2 = N - 2
     self._board_mask = (1 << N) - 1
     self._small_mask = (1 << max(0, N - 2)) - 1
-    small_mask:int=self._small_mask
-    board_mask:int=self._board_mask
     N1:int = self._N1
     N2:int = self._N2
-
- 
-    # dfs=self.dfs
+    small_mask:int=self._small_mask
+    board_mask:int=self._board_mask
     symmetry=self.symmetry
     getj,getk,getl=self.getj,self.getk,self.getl
     FUNC_CATEGORY={
@@ -1201,26 +1190,32 @@ class NQueens17:
     self._blockL=blockL_by_funcid
     self._meta=func_meta
 
+    # ===== GPU分割設定 =====
+    BLOCK = 256 # C版の既定 24576 に寄せる/あるいは 16384, 32768 などを試す
+    # ★ 1回の kernel 起動で使う最大ブロック数（=「GPU同時実行数」的な上限）
+    #   ここを小さくすると 1回の投入量が減り、呼び出し回数が増えます
+    MAX_BLOCKS = 32 
+    STEPS = BLOCK * MAX_BLOCKS
+    # STEPS = 24576 if use_gpu else m_all
+    m_all = len(constellations)
+    results_all: List[u64] = [u64(0)] * m_all
     if use_gpu:
       m_next  = [t[0] for t in func_meta]
       m_avail = [t[2] for t in func_meta]
-      m_all = len(constellations)
-      BLOCK = 256 # C版の既定 24576 に寄せる/あるいは 16384, 32768 などを試す
-      STEPS = 24576 if use_gpu else m_all
-      results_all: List[u64] = [u64(0)] * m_all
+      # ===== STEPS件ずつ処理 =====
       off = 0
+      results: List[u64] = [u64(0)] * m
       while off < m_all:
         m = min(STEPS, m_all - off)
         soa, w_arr = self.build_soa_for_range(constellations, off, m, N)
-        results: List[u64] = [u64(0)] * m
-        GRID = (m + BLOCK - 1) // BLOCK 
+        GRID = (m + BLOCK - 1) // BLOCK
         kernel_dfs_iter_gpu(
           gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
           gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
           gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
           gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
           gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-          gpu.raw(m_next), gpu.raw(m_avail),  # ★ここを2本に
+          gpu.raw(m_next), gpu.raw(m_avail),
           gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
           gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
           gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
@@ -1230,7 +1225,7 @@ class NQueens17:
         )
         for i in range(m):
           results_all[off + i] = results[i]
-        off += m 
+        off += m
     else:
       m_all = len(constellations) # CPUは全件を1回で SoA + w_arr を作る（これがないと壊れる）
       if m_all == 0:

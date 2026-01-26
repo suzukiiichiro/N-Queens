@@ -207,9 +207,7 @@ def kernel_dfs_iter_gpu(
     row[0]    = row_arr[i]
     avail[0]  = free0
     # inited[0] = u8(0)
-    # 
     total = 0
-    #    
     while sp >= 0:
       a = avail[sp]
       if a == 0:
@@ -688,7 +686,7 @@ class NQueens17:
     board_mask:  盤面全域のビットマスク
     blockK_by_funcid/blockL_by_funcid: 関数 ID に紐づく追加ブロック
     func_meta:   (next_id, funcptn, availptn) のメタ情報配列
-    """    
+    """
     # ---- ローカル束縛（属性アクセス最小化）----
     # _dfs = self.dfs
     # meta = self._meta
@@ -874,7 +872,6 @@ class NQueens17:
       add_mark1.append(soa.mark1_arr[i])
       add_mark2.append(soa.mark2_arr[i])
       add_funcid.append(soa.funcid_arr[i])
-
       new_count += 1
       if max_new > 0 and new_count >= max_new:
         break
@@ -1181,8 +1178,7 @@ class NQueens17:
       w_arr[i] = symmetry(soa.ijkl_arr[i], N)
 
     m = len(constellations)
-    if m == 0:
-      return
+    if m == 0: return
     # BLOCK= 64
     # BLOCK= 96
     # BLOCK= 128
