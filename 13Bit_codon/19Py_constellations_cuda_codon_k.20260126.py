@@ -33,10 +33,14 @@ CPU mode selected
 20:       39029188884              0         0:00:00.117    ok
 
 GPU mode selected
+キャッシュ前
 18:         666090624              0         0:00:00.066    ok
 19:        4968057848              0         0:01:46.490    ok
 20:       39029188884              0         0:14:03.775    ok
-
+キャッシュ後
+18:         666090624              0         0:00:00.057    ok
+19:        4968057848              0         0:00:00.079    ok
+20:       39029188884              0         0:00:00.121    ok
 
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
@@ -1531,6 +1535,14 @@ class NQueens17_constellations():
 
   """プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
   def build_constellations_dynamicK(self, NQ, size: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
+    K = NQ.choose_preset_queens(size, use_gpu)
+    ijkl_list:Set[int] = set()
+    constellations:List[Dict[str,int]] = []
+    constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
+    return K, constellations
+
+    # 以下は不要 presetは5で固定
+    #
     # 一時的に枝刈りを無効化
     had_flag = hasattr(NQ, "use_visited_prune")
     old = NQ.use_visited_prune if had_flag else False
