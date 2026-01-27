@@ -39,6 +39,7 @@ GPU mode selected
 18:         666090624              0         0:00:13.008    ok
 19:        4968057848              0         0:01:45.278    ok
 20:       39029188884              0         0:13:59.076    ok
+21:      314666222712              0         1:57:08.626    ok
 
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
@@ -1399,7 +1400,6 @@ class NQueens17:
     # なければ計算して保存
     self.exec_solutions(constellations, N, use_gpu)
     self.save_solutions_bin_v2(fname, constellations)
-
 
   """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
   def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
