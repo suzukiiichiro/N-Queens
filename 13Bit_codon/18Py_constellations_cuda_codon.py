@@ -17,6 +17,28 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
        _/m/'
 
 
+2026年  1月 27日 
+Python/Codon amazon AWS g5.xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+ 5:                10              0         0:00:00.000
+ 6:                 4              0         0:00:00.004    ok
+ 7:                40              0         0:00:00.001    ok
+ 8:                92              0         0:00:00.000    ok
+ 9:               352              0         0:00:00.001    ok
+10:               724              0         0:00:00.001    ok
+11:              2680              0         0:00:00.003    ok
+12:             14200              0         0:00:00.005    ok
+13:             73712              0         0:00:00.009    ok
+14:            365596              0         0:00:00.020    ok
+15:           2279184              0         0:00:00.058    ok
+16:          14772512              0         0:00:00.317    ok
+17:          95815104              0         0:00:01.934    ok
+18:         666090624              0         0:00:13.008    ok
+19:        4968057848              0         0:01:45.278    ok
+20:       39029188884              0         0:13:59.076    ok
 
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
@@ -1173,8 +1195,6 @@ class NQueens17:
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
         constellations[-1-a]["startijkl"]|=base
-
-  """" exec_solutions() のキャッシュ入出力ユーティリティ群 """
 
   """constellations の各要素が {ld, rd, col, startijkl} を全て持つかを検証する。"""
   def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool: return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
