@@ -17,25 +17,22 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
        _/m/'
 
 
+2026年  1月 28日 
+Python/Codon amazon AWS g5.xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+18:         666090624              0         0:00:11.847    ok
+19:        4968057848              0         0:01:36.914    ok
+20:       39029188884              0         0:12:41.743    ok
+
 2026年  1月 27日 
 Python/Codon amazon AWS g5.xlarge x 1
 suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
 suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
 GPU mode selected
  N:             Total         Unique        hh:mm:ss.ms
- 5:                10              0         0:00:00.000
- 6:                 4              0         0:00:00.004    ok
- 7:                40              0         0:00:00.001    ok
- 8:                92              0         0:00:00.000    ok
- 9:               352              0         0:00:00.000    ok
-10:               724              0         0:00:00.001    ok
-11:              2680              0         0:00:00.003    ok
-12:             14200              0         0:00:00.005    ok
-13:             73712              0         0:00:00.009    ok
-14:            365596              0         0:00:00.019    ok
-15:           2279184              0         0:00:00.057    ok
-16:          14772512              0         0:00:00.314    ok
-17:          95815104              0         0:00:01.891    ok
 18:         666090624              0         0:00:12.511    ok
 19:        4968057848              0         0:01:42.521    ok
 20:       39029188884              0         0:13:39.276    ok
