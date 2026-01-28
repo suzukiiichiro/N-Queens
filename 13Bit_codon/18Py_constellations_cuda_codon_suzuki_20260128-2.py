@@ -17,11 +17,33 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
        _/m/'
 
 
+2026年  1月 27日 
+Python/Codon amazon AWS g5.xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+ 5:                10              0         0:00:00.000
+ 6:                 4              0         0:00:00.004    ok
+ 7:                40              0         0:00:00.001    ok
+ 8:                92              0         0:00:00.000    ok
+ 9:               352              0         0:00:00.000    ok
+10:               724              0         0:00:00.001    ok
+11:              2680              0         0:00:00.003    ok
+12:             14200              0         0:00:00.005    ok
+13:             73712              0         0:00:00.009    ok
+14:            365596              0         0:00:00.019    ok
+15:           2279184              0         0:00:00.057    ok
+16:          14772512              0         0:00:00.314    ok
+17:          95815104              0         0:00:01.891    ok
+18:         666090624              0         0:00:12.511    ok
+19:        4968057848              0         0:01:42.521    ok
+20:       39029188884              0         0:13:39.276    ok
 
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
-suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260126 -c
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -c
 CPU mode selected
  N:             Total         Unique        hh:mm:ss.ms
 18:         666090624              0         0:00:31.464    ok
@@ -30,13 +52,13 @@ CPU mode selected
 
 2026年  1月 26日 
 Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
--2.py && ./19Py_constellations_cuda_codon_k.20260123-2 -g
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
 GPU mode selected
  N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:12.905    ok 
-19:        4968057848              0         0:01:46.620    ok
-20:       39029188884              0         0:14:06.583    ok
+18:         666090624              0         0:00:12.805    ok 
+19:        4968057848              0         0:01:45.620    ok
+20:       39029188884              0         0:13:58.962    ok
 
 2025 15Py_constellations_optimize_codon.py
 Python/Codon amazon AWS m4.16xlarge x 1
@@ -73,6 +95,15 @@ MAXF:Static[int] = 64  # 28より大きければOK（固定で）
 MAXD:Static[int] = 32
 FCONST:Static[int]=28
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
+meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
+# @gpu.kernel
+# def _shared_test(inp, out):
+#   # ここがコンパイル通るかで判定
+#   sm = gpu.shared_array   # ← ここが通るか
+#   if gpu.thread.x == 0:
+#     sm[0] = inp[0]
+#   gpu.syncthreads()                # ← ここが通るか
+#   out[gpu.thread.x] = sm[0]
 
 """ CUDA GPU 用 DFS カーネル関数  """
 @gpu.kernel
@@ -80,70 +111,134 @@ def kernel_dfs_iter_gpu(
     ld_arr, rd_arr, col_arr, row_arr, free_arr,
     jmark_arr, end_arr, mark1_arr, mark2_arr,
     funcid_arr, w_arr,
-    meta_next,meta_avail,
-    blockK_tbl, blockL_tbl,
-    is_base, is_jmark, is_mark,
-    mark_sel, mark_step, mark_add1,
+    meta_next:Ptr[u8],
+    # meta_next,meta_avail,
+    # blockK_tbl, blockL_tbl,
+    # is_base, is_jmark, is_mark,
+    # mark_sel, mark_step, mark_add1,
     results,
     m: int, board_mask: int,
+    n3:int,n4:int,
     # F:int
 ):
-    fid    = __array__[int](MAXD)
+    # シェアードメモにに入れる優先度
+    # meta_next, meta_avail
+    # is_base, is_jmark, is_mark
+    # mark_sel, mark_step, mark_add1
+    # blockK_tbl, blockL_tbl（※ funcid ではなく f で引いている方）
+
+    # 配列/タプル参照を捨てて「ビットマスク + 直書き」で定数化
+    # META_NEXT=(1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26,)
+    META_AVAIL_MASK:Static[int] = 69226252
+    IS_BASE_MASK:Static[int]    = 69222408
+    IS_JMARK_MASK:Static[int]   = 4
+    IS_MARK_MASK:Static[int]    = 199213043
+
+    SEL2_MASK:Static[int] = (1<<1) | (1<<6) | (1<<13) | (1<<17) | (1<<20) | (1<<25)
+    STP3_MASK:Static[int] = (1<<4) | (1<<7) | (1<<15) | (1<<18) | (1<<22) | (1<<24)
+    # ADD1_MASK
+    MASK_K_N3: Static[int] = 185471169
+    MASK_K_N4: Static[int] = 4227088
+    MASK_L_1: Static[int] = 12689458
+    MASK_L_2: Static[int] = 17039488
+
+    # # func_meta 由来の固定テーブル（len=28）
+    # META_NEXT = (1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26)
+    # META_AVAIL= (0,0,1,1,0,0,0,0,1,1,1,1,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0)
+    # IS_BASE  = (0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0)
+    # IS_JMARK = (0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+    # IS_MARK  = (1,1,0,0,1,1,1,1,0,0,0,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,0,1)
+    # MARK_SEL  = (1,2,0,0,1,1,2,1,0,0,0,0,1,2,0,1,1,2,1,1,2,0,1,1,1,2,0,1)
+    # MARK_STEP = (2,2,1,1,3,2,2,3,1,1,1,1,2,2,1,3,2,2,3,2,2,1,3,2,3,2,1,2)
+    # MARK_ADD1 = (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0)
+
+
+    # ============================
+    # [CHG] shared: blockK/blockL をブロックで1回だけロード
+    # ============================
+    # sK = gpu.shared_array[int](FCONST)
+    # sL = gpu.shared_array[int](FCONST)
+    # sK = gpu.shared[int](FCONST)
+    # sL = gpu.shared[int](FCONST)
+    # gpu.syncthreads()
+    # sK = gpu.shared(__array__[int](FCONST))
+    # sL = gpu.shared(__array__[int](FCONST))
+    # sK = __shared__[int](FCONST)
+    # sL = __shared__[int](FCONST)
+    # block.dim.x が 28 未満でも動くように stride ロード
+    # t = gpu.thread.x
+    # while t < FCONST:
+    #   sK[t] = blockK_tbl[t]
+    #   sL[t] = blockL_tbl[t]
+    #   t += gpu.block.dim.x
+    # gpu.syncthreads()
+
+    # # META_NEXT をマスク合成で算出（タプル/関数なし）
+    # M0  = 1 << 8                         # f={8} -> 0
+    # M1  = 1 << 0                         # f={0} -> 1
+    # M2  = (1<<1) | (1<<4) | (1<<6) | (1<<7)               # -> 2
+    # M3  = (1<<2) | (1<<3)                                  # -> 3
+    # M4  = 1 << 9                         # -> 4
+    # M5  = 1 << 10                        # -> 5
+    # M6  = 1 << 5                         # -> 6
+    # M7  = 1 << 11                        # -> 7
+    # M13 = 1 << 12                        # -> 13
+    # M14 = (1<<13)|(1<<14)|(1<<15)|(1<<17)|(1<<18)         # -> 14
+    # M17 = 1 << 16                        # -> 17
+    # M20 = 1 << 19                        # -> 20
+    # M21 = (1<<20)|(1<<21)|(1<<22)|(1<<24)|(1<<25)         # -> 21
+    # M25 = 1 << 23                        # -> 25
+    # M26 = (1<<26)|(1<<27)                # -> 26
+
+
+    # u32 ビットボード系  int x12 xMAXD
     ld     = __array__[int](MAXD)
     rd     = __array__[int](MAXD)
     col    = __array__[int](MAXD)
-    row    = __array__[int](MAXD)
     avail  = __array__[int](MAXD)
+
+    # u32
+    # bit, nld, nrd, ncol, nf, free0
+    # board_mask
+  
+    # u8
+    # 消せる候補
+    fid    = __array__[int](MAXD)
+
+    row    = __array__[int](MAXD)
     step   = __array__[int](MAXD)
     add1   = __array__[int](MAXD)
-    rowst  = __array__[int](MAXD)
-    bK     = __array__[int](MAXD)
-    bL     = __array__[int](MAXD)
+
+    # 消せる候補 消した
+    # rowst  = __array__[int](MAXD)
+
+    # 消せる候補
     nextf  = __array__[int](MAXD)
+
+    # 消せる候補 消した
+    # bK     = __array__[int](MAXD)
+    # bL     = __array__[int](MAXD)
+
+    bK=0
+    bL=0
+
+    # u8 x3 xMAXD
     inited = __array__[u8](MAXD)
     ub     = __array__[u8](MAXD)
+
+    # 消せる候補
     fc     = __array__[u8](MAXD)
-    for k in range(MAXD):
-      inited[k] = u8(0)
-      ub[k] = u8(0)
-      fc[k] = u8(0)
 
-    # # シェアードメモリ対応
-    # # funcidテーブルをローカルへ（スレッドごとに1回だけglobal→localコピー）
-    # m_next  = __array__[int](MAXF)
-    # m_avail = __array__[int](MAXF)
-    # t_bK    = __array__[int](MAXF)
-    # t_bL    = __array__[int](MAXF)
-    # t_isb   = __array__[int](MAXF)
-    # t_isj   = __array__[int](MAXF)
-    # t_ism   = __array__[int](MAXF)
-    # t_sel   = __array__[int](MAXF)
-    # t_step  = __array__[int](MAXF)
-    # t_add1  = __array__[int](MAXF)
-
-    # # F個だけ埋める
-    # # for f0 in range(F):
-    # for f0 in range(FCONST):
-    #     m_next[f0]  = meta_next[f0]
-    #     m_avail[f0] = meta_avail[f0]
-    #     t_bK[f0]    = blockK_tbl[f0]
-    #     t_bL[f0]    = blockL_tbl[f0]
-    #     t_isb[f0]   = is_base[f0]
-    #     t_isj[f0]   = is_jmark[f0]
-    #     t_ism[f0]   = is_mark[f0]
-    #     t_sel[f0]   = mark_sel[f0]
-    #     t_step[f0]  = mark_step[f0]
-    #     t_add1[f0]  = mark_add1[f0]
-
+    # 削除
+    # for k in range(MAXD):
+    #   inited[k] = u8(0)
+    #   ub[k] = u8(0)
+    #   fc[k] = u8(0)
+    inited[0] = u8(0)
 
     i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
-    if i >= m:
-      return
-    free0 = free_arr[i] & board_mask
-    if free0 == 0:
-      # results[i] = 0
-      results[i] = u64(0)
-      return
+    if i >= m: return
+
     jmark = jmark_arr[i]
     endm  = end_arr[i]
     mark1 = mark1_arr[i]
@@ -154,7 +249,14 @@ def kernel_dfs_iter_gpu(
     rd[0]     = rd_arr[i]
     col[0]    = col_arr[i]
     row[0]    = row_arr[i]
+
+    free0 = free_arr[i] & board_mask
+    if free0 == 0:
+      # results[i] = 0
+      results[i] = u64(0)
+      return
     avail[0]  = free0
+
     # inited[0] = u8(0)
     total:u64 = u64(0)
     while sp >= 0:
@@ -162,58 +264,163 @@ def kernel_dfs_iter_gpu(
       if a == 0:
         sp -= 1
         continue
+
       if inited[sp] == u8(0):
         inited[sp] = u8(1)
+
         f = fid[sp]
-        nfid  = meta_next[f]
-        # nfid  = m_next[f]
-        aflag = meta_avail[f]
-        # aflag = m_avail[f]
-        # ---- 基底 ----
-        if is_base[f] == 1 and row[sp] == endm:
-        # if t_isb[f] == 1 and row[sp] == endm:
+
+        # ============================
+        # [CHG-2] funcid 範囲ガード（念のため）
+        # ============================
+        if f < 0 or f >= FCONST:
+          results[i] = u64(0)
+          return
+        # 1
+        # nfid  = meta_next[f]
+        # aflag = meta_avail[f]
+
+        # 2
+        # nfid  = META_NEXT[f]
+        # aflag = META_AVAIL[f]
+
+        # 3
+        # 配列/タプル参照を捨てて「ビットマスク + 直書き」で定数化
+        # nfid = META_NEXT[f] if f < 28 else 26
+        nfid = meta_next[f]
+        aflag = (META_AVAIL_MASK >> f) & 1
+        isb   = (IS_BASE_MASK    >> f) & 1
+        isj   = (IS_JMARK_MASK   >> f) & 1
+        ism   = (IS_MARK_MASK    >> f) & 1
+
+
+        #######################################
+        # ---- 基底 is_base ----
+        # isb   = (IS_BASE_MASK    >> f) & 1
+        #######################################
+
+        # if is_base[f] == 1 and row[sp] == endm:
+        # if IS_BASE[f] == 1 and row[sp] == endm:
+        if isb == 1 and row[sp] == endm:
           if f == 14: # SQd2B 特例
             total += u64(1) if (a >> 1) else u64(0)
           else:
             total += u64(1)
           sp -= 1
           continue
+
+        #######################################
         # ---- 通常状態設定 ----
+        #######################################
         step[sp]  = 1
         add1[sp]  = 0
-        rowst[sp] = row[sp] + 1
+        # rowst[sp] = row[sp] + 1
+
+
+
+
+
+
+
         use_blocks = 0
         use_future = 1 if (aflag == 1) else 0
-        bK[sp]    = 0
-        bL[sp]    = 0
+        # bK[sp]    = 0
+        # bL[sp]    = 0
+        bK=0
+        bL=0
         nextf[sp] = f
-        # ---- mark 行: step=2/3 + block ----
-        if is_mark[f] == 1:
+        #
+        #######################################
+        # ---- is_mark step=2/3 + block ----
+        # ism   = (IS_MARK_MASK    >> f) & 1
+        #######################################
+        # if is_mark[f] == 1:
+        # if IS_MARK[f] == 1:
         # if t_ism[f] == 1:
-          sel = mark_sel[f]  # 1:mark1 2:mark2
-          # sel = t_sel[f]  # 1:mark1 2:mark2
+        if ism == 1:
           at_mark = 0
+          #------------------
+          # sel
+          sel = 2 if ((SEL2_MASK >> f) & 1) else 1
+          #------------------
+          # sel = mark_sel[f]  # 1:mark1 2:mark2
+          # sel = MARK_SEL[f]  # 1:mark1 2:mark2
+          # sel = t_sel[f]  # 1:mark1 2:mark2
+          # sel = 2 if (f==1 or f==6 or f==13 or f==17 or f==20 or f==25) else 1
+          # SEL2_MASK = (1<<1) | (1<<6) | (1<<13) | (1<<17) | (1<<20) | (1<<25)
+          # sel = 2 if ((SEL2_MASK >> f) & 1) else 1
+          # sel = 2 if (f==1 or f==6 or f==13 or f==17 or f==20 or f==25) else 1
           if sel == 1:
             if row[sp] == mark1:
               at_mark = 1
           if sel == 2:
             if row[sp] == mark2:
               at_mark = 1
+          #
+          ###################
+          # mark
+          ###################
           if at_mark and a:
             use_blocks = 1
             use_future = 0
-            step[sp]  = mark_step[f]
+            #
+            #------------------
+            # step
+            step[sp] = 3 if ((STP3_MASK >> f) & 1) else 2
+            #------------------
+            # step[sp]  = mark_step[f]
+            # step[sp]  = MARK_STEP[f]
             # step[sp]  = t_step[f]
-            add1[sp]  = mark_add1[f]
+            # STP3_MASK = (1<<4) | (1<<7) | (1<<15) | (1<<18) | (1<<22) | (1<<24)
+            # stp = 3 if (f==4 or f==7 or f==15 or f==18 or f==22 or f==24) else 2
+            # step[sp]  = stp
+            # add1[sp]  = mark_add1[f]
+            # add1[sp]  = MARK_ADD1[f]
             # add1[sp]  = t_add1[f]
-            rowst[sp] = row[sp] + step[sp]
-            bK[sp]    = blockK_tbl[f]
+            # add1[sp]  = add1v
+            #
+            #------------------
+            # add
+            add1[sp] = 1 if f == 20 else 0
+            #------------------
+            #
+            #------------------
+            # rowst
+            # rowst[sp] = row[sp] + step[sp]
+            #------------------
+            #
+            #------------------
+            # blockK / blockL
+            # bK[sp] = n3 * ((MASK_K_N3 >> f) & 1) + n4 * ((MASK_K_N4 >> f) & 1)
+            # bL[sp] = ((MASK_L_1 >> f) & 1) + (((MASK_L_2 >> f) & 1) << 1)
+            # _bK = n3 * ((MASK_K_N3 >> f) & 1) + n4 * ((MASK_K_N4 >> f) & 1)
+            # _bL = ((MASK_L_1 >> f) & 1) + (((MASK_L_2 >> f) & 1) << 1)
+            #------------------
+            # bK[sp]    = blockK_tbl[f]
+            # bK[sp]    = sK[f]
             # bK[sp]    = t_bK[f]
-            bL[sp]    = blockL_tbl[f]
+            # bL[sp]    = blockL_tbl[f]
+            # bL[sp]    = sL[f]
             # bL[sp]    = t_bL[f]
-            nextf[sp] = nfid
-        # ---- jmark ----
-        if is_jmark[f] == 1:
+            # bk = 0
+            # if ((MASK_K_N3 >> f) & 1) == 1:
+            #   bk = n3
+            # elif ((MASK_K_N4 >> f) & 1) == 1:
+            #   bk = n4
+            # bK[sp] = bk
+            # bL[sp] = bl
+            #------------------
+            # nextf
+            # nfid = META_NEXT[f] if f < 28 else 26
+            nextf[sp] = int(nfid)
+            #------------------
+        #######################################
+        # ---- is_jmark ----
+        # isj   = (IS_JMARK_MASK   >> f) & 1
+        #######################################
+        # if is_jmark[f] == 1:
+        # if IS_JMARK[f] == 1:
+        if isj == 1:
         # if t_isj[f] == 1:
           if row[sp] == jmark:
             a &= ~1
@@ -222,41 +429,65 @@ def kernel_dfs_iter_gpu(
               sp -= 1
               continue
             ld[sp] |= 1
-            nextf[sp] = nfid
+            nextf[sp] = int(nfid)
+        
         ub[sp] = u8(1) if use_blocks else u8(0)
         fc[sp] = u8(0)
-        if use_future == 1 and rowst[sp] < endm:
+        # if use_future == 1 and rowst[sp] < endm:
+        if use_future == 1 and (row[sp]+step[sp]) < endm:
           fc[sp] = u8(1)
+
+      #----------------
       # ---- 1bit 展開 ----
+      #----------------
       a = avail[sp]
       bit = a & -a
       avail[sp] = a ^ bit
+
+      #----------------
       # ---- 次状態計算（2値選択はそのまま）----
+      #----------------
       if ub[sp] == u8(1):
-        nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | bL[sp]
-        nrd = ((rd[sp] | bit) >> step[sp]) | bK[sp]
+        # nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | bL[sp]
+        # nrd = ((rd[sp] | bit) >> step[sp]) | bK[sp]
+        # nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | _bL
+        # nrd = ((rd[sp] | bit) >> step[sp]) | _bK
+        f = fid[sp]
+        bK = n3 * ((MASK_K_N3 >> f) & 1) + n4 * ((MASK_K_N4 >> f) & 1)
+        bL = ((MASK_L_1 >> f) & 1) | (((MASK_L_2 >> f) & 1) << 1)  # + でもOKだが | が素直
+        nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | bL
+        nrd = ((rd[sp] | bit) >> step[sp]) | bK
       else:
         nld = (ld[sp] | bit) << 1
         nrd = (rd[sp] | bit) >> 1
       ncol = col[sp] | bit
       nf = board_mask & ~(nld | nrd | ncol)
+
       if nf == 0:
         continue
       if fc[sp] == u8(1):
         if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
           continue
+      #----------------
       # ---- push ----
+      #----------------
+      parent = sp            # sp を増やす前のフレームを保持
+      next_row = row[parent] + step[parent]
+
       sp += 1
       if sp >= MAXD:
         results[i] = total * w_arr[i]
         return
+
       inited[sp] = u8(0)
       fid[sp]    = nextf[sp-1]
       ld[sp]     = nld
       rd[sp]     = nrd
       col[sp]    = ncol
-      row[sp]    = rowst[sp-1]
+      # row[sp]    = rowst[sp-1]
+      row[sp]    = next_row
       avail[sp]  = nf
+
     results[i] = total * w_arr[i]
 
 """  構造体配列 (SoA) タスク管理クラス """
@@ -866,6 +1097,14 @@ class NQueens17:
 
       return soa, w_arr
 
+  # """配列 arr の各要素と val を比較し、等しい位置に対応するビットを立てたマスクを返すユーティリティ"""
+  # def mask_eq(self,arr, val):
+  #   m = 0
+  #   for i, x in enumerate(arr):
+  #       if int(x) == int(val):
+  #           m |= (1 << i)
+  #   return m
+
   """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
   def exec_solutions(self,constellations:List[Dict[str,int]],N:int,use_gpu:bool)->None:
     self._N  = N
@@ -985,25 +1224,52 @@ class NQueens17:
     if use_gpu:
       m_next  = [t[0] for t in func_meta]
       m_avail = [t[2] for t in func_meta]
+
+      # # デバッグ用
+      # n3 = 1 << (N-3)
+      # n4 = 1 << (N-4)
+
+      # MASK_K_N3 = self.mask_eq(blockK_by_funcid, n3)
+      # MASK_K_N4 = self.mask_eq(blockK_by_funcid, n4)
+      #
+      # print(set(blockK_by_funcid.tolist()))
+      # print(set(blockL_by_funcid.tolist()))
+      #
+      # print("MASK_K_N3 =", MASK_K_N3)
+      # print("MASK_K_N4 =", MASK_K_N4)
+      # vals = sorted(set(int(x) for x in blockL_by_funcid))
+      # print("blockL unique:", len(vals))
+      # print(vals)
+      # for f in range(FCONST):
+      #   print(f, int(blockL_by_funcid[f]))
+      # # デバッグ用
+
+
       # ===== STEPS件ずつ処理 =====
       off = 0
       results: List[u64] = [u64(0)] * m
+      # u8 の 28要素デバイス配列を用意
+      # meta_next = ( [1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26])
       while off < m_all:
         m = min(STEPS, m_all - off)
         soa, w_arr = self.build_soa_for_range(constellations, off, m, N)
         GRID = (m + BLOCK - 1) // BLOCK
+        n3 = 1 << (N - 3)
+        n4 = 1 << (N - 4)
         kernel_dfs_iter_gpu(
           gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
           gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
           gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
           gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
           gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-          gpu.raw(m_next), gpu.raw(m_avail),
-          gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
-          gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
-          gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
+          gpu.raw(meta_next),
+          # gpu.raw(m_next), gpu.raw(m_avail),
+          # gpu.raw(blockK_by_funcid), gpu.raw(blockL_by_funcid),
+          # gpu.raw(is_base), gpu.raw(is_jmark), gpu.raw(is_mark),
+          # gpu.raw(mark_sel), gpu.raw(mark_step), gpu.raw(mark_add1),
           gpu.raw(results),
           m, board_mask,
+          n3, n4,
           grid=GRID, block=BLOCK
         )
         for i in range(m):
@@ -1173,8 +1439,6 @@ class NQueens17:
       base=to_ijkl(i,j,k,l)
       for a in range(counter[0]):
         constellations[-1-a]["startijkl"]|=base
-
-  """" exec_solutions() のキャッシュ入出力ユーティリティ群 """
 
   """constellations の各要素が {ld, rd, col, startijkl} を全て持つかを検証する。"""
   def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool: return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
@@ -1379,7 +1643,6 @@ class NQueens17:
     # なければ計算して保存
     self.exec_solutions(constellations, N, use_gpu)
     self.save_solutions_bin_v2(fname, constellations)
-
 
   """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
   def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
