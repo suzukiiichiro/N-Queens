@@ -1284,97 +1284,110 @@ class NQueens17:
     for i, constellation in enumerate(constellations):
       constellation["solutions"] = int(out[i])
 
-  """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
-  def set_pre_queens_cached(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-    key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
-    # インスタンス共有キャッシュを使う（ローカル初期化しない！）
-    sc=self.subconst_cache
-    if key in sc:
-      return
-    # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
-    sc.add(key)
-    # 新規実行（従来通りset_pre_queensの本体処理へ）
-    self.set_pre_queens(ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
-
-  """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
-  def set_pre_queens(self,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],N:int,preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-    mask = self._board_mask
-    # ---------------------------------------------------------------------
-    # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
-    #
-    # <>zobrist_hash
-    # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
-    # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
-    # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
-    h: int = int(self.zobrist_hash(ld & mask, rd & mask, col & mask, row, queens, k, l, LD & mask, RD & mask, N))
-    #
-    # <>state_hash
-    # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
-    # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
-    # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
-    # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
-    # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-    # 1意になるように領域を分けて詰める（衝突ゼロ）
-    # 5*N ビット分で ld/rd/col/LD/RD を入れ、以降に小さい値を詰める
-    # h:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
-    #
-    # ldm = ld & mask
-    # rdm = rd & mask
-    # colm = col & mask
-    # LDm = LD & mask
-    # RDm = RD & mask
-    # base = 5 * N
-    # h:int = (
-    #     ldm
-    #   | (rdm  << (1 * N))
-    #   | (colm << (2 * N))
-    #   | (LDm  << (3 * N))
-    #   | (RDm  << (4 * N))
-    #   | (row  << (base + 0))
-    #   | (queens << (base + 6))
-    #   | (k     << (base + 12))
-    #   | (l     << (base + 18))
-    #   | (N     << (base + 24))
-    # )
-    #
-    # <>StateKey（タプル）
-    # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
-    # set の比較・保持も重く、メモリも一番食います。
-    # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
-    # h: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N)
-    #
-    if self.use_visited_prune:
-      if h in visited:
-        return
-      visited.add(h)
-
-    #
-    # ---------------------------------------------------------------------
-    # k行とl行はスキップ
-    if row==k or row==l:
-      self.set_pre_queens_cached(ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
-      return
-    # クイーンの数がpreset_queensに達した場合、現在の状態を保存
-    if queens == preset_queens:
-      if preset_queens <= 5:
-          sig = (ld, rd, col, k, l, row)    # これが signature (tuple)
-          if sig in constellation_signatures:
-              return
-          constellation_signatures.add(sig)
-      constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20,"solutions":0}
-      constellations.append(constellation) #星座データ追加
-      counter[0]+=1
-      return
-    # 現在の行にクイーンを配置できる位置を計算
-    free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
-    _set_pre_queens_cached=self.set_pre_queens_cached
-    while free:
-      bit:int=free&-free
-      free&=free-1
-      _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
 
 def nq_get(N: int) -> NQueens17:
   return NQueens17(N)
+
+####################################################
+#
+# cache
+#
+####################################################
+
+"""サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
+def set_pre_queens_cached(N:int, ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
+  # インスタンス共有キャッシュを使う（ローカル初期化しない！）
+  sc=nq_get(N).subconst_cache
+  if key in sc:
+    return
+  # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
+  sc.add(key)
+  # 新規実行（従来通りset_pre_queensの本体処理へ）
+  set_pre_queens(N,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+
+"""事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
+def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  mask = nq_get(N)._board_mask
+  # ---------------------------------------------------------------------
+  # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
+  #
+  # <>zobrist_hash
+  # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
+  # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
+  # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
+  h: int = int(nq_get(N).zobrist_hash(ld & mask, rd & mask, col & mask, row, queens, k, l, LD & mask, RD & mask, N))
+  #
+  # <>state_hash
+  # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
+  # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
+  # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
+  # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
+  # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
+  # 1意になるように領域を分けて詰める（衝突ゼロ）
+  # 5*N ビット分で ld/rd/col/LD/RD を入れ、以降に小さい値を詰める
+  # h:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
+  #
+  # ldm = ld & mask
+  # rdm = rd & mask
+  # colm = col & mask
+  # LDm = LD & mask
+  # RDm = RD & mask
+  # base = 5 * N
+  # h:int = (
+  #     ldm
+  #   | (rdm  << (1 * N))
+  #   | (colm << (2 * N))
+  #   | (LDm  << (3 * N))
+  #   | (RDm  << (4 * N))
+  #   | (row  << (base + 0))
+  #   | (queens << (base + 6))
+  #   | (k     << (base + 12))
+  #   | (l     << (base + 18))
+  #   | (N     << (base + 24))
+  # )
+  #
+  # <>StateKey（タプル）
+  # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
+  # set の比較・保持も重く、メモリも一番食います。
+  # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
+  # h: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N)
+  #
+  if nq_get(N).use_visited_prune:
+    if h in visited:
+      return
+    visited.add(h)
+
+  #
+  # ---------------------------------------------------------------------
+  # k行とl行はスキップ
+  if row==k or row==l:
+    set_pre_queens_cached(N,ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    return
+  # クイーンの数がpreset_queensに達した場合、現在の状態を保存
+  if queens == preset_queens:
+    if preset_queens <= 5:
+        sig = (ld, rd, col, k, l, row)    # これが signature (tuple)
+        if sig in constellation_signatures:
+            return
+        constellation_signatures.add(sig)
+    constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20,"solutions":0}
+    constellations.append(constellation) #星座データ追加
+    counter[0]+=1
+    return
+  # 現在の行にクイーンを配置できる位置を計算
+  free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
+  # _set_pre_queens_cached=self.set_pre_queens_cached
+  while free:
+    bit:int=free&-free
+    free&=free-1
+    set_pre_queens_cached(N,(ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+
+####################################################
+#
+# constellation / solution cached
+#
+####################################################
 
 """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
 def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int]],preset_queens:int)->None:
@@ -1407,7 +1420,7 @@ def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int
   # ローカルアクセスに変更
   geti,getj,getk,getl=nq_get(N).geti,nq_get(N).getj,nq_get(N).getk,nq_get(N).getl
   to_ijkl=nq_get(N).to_ijkl
-  _set_pre_queens_cached=nq_get(N).set_pre_queens_cached
+  # _set_pre_queens_cached=nq_get(N).set_pre_queens_cached
   for sc in ijkl_list:
     # ここで毎回クリア（＝この sc だけの重複抑止に限定）
     constellation_signatures=set()
@@ -1420,7 +1433,7 @@ def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int
     RD=Lj|(1<<k)
     counter:List[int]=[0] # サブコンステレーションを生成
     visited:Set[int]=set()
-    _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+    set_pre_queens_cached(N,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
     current_size=len(constellations)
     base=to_ijkl(i,j,k,l)
     for a in range(counter[0]):
@@ -1456,7 +1469,7 @@ def validate_bin_file(fname:str)->bool:
     return False
 
 """バイナリ形式での解exec_solutions()のキャッシュ入出力""" 
-def u64_to_le_bytes( x: u64) -> List[int]:
+def u64_to_le_bytes(x: u64) -> List[int]:
   v:int = int(x)
   return [(v >> (8*i)) & 0xFF for i in range(8)]
 
@@ -1582,13 +1595,7 @@ def load_solutions_bin_into_v2( fname: str, constellations: List[Dict[str,int]])
   return True
 
 """テキスト形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-def load_or_build_solutions_txt(
-  N:int,
-  constellations: List[Dict[str,int]],
-  preset_queens: int,
-  use_gpu: bool,
-  cache_tag: str = ""
-) -> None:
+def load_or_build_solutions_txt( N:int, constellations: List[Dict[str,int]], preset_queens: int, use_gpu: bool, cache_tag: str = "") -> None:
 
   tag = "_" + cache_tag if cache_tag != "" else ""
   fname = "solutions_N" + str(N) + "_" + str(preset_queens) + tag + ".txt"
@@ -1605,13 +1612,7 @@ def load_or_build_solutions_txt(
   save_solutions_txt(fname, constellations)
 
 """バイナリ形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-def load_or_build_solutions_bin(
-    N:int,
-    constellations: List[Dict[str,int]],
-    preset_queens: int,
-    use_gpu: bool,
-    cache_tag: str = ""
-  ) -> None:
+def load_or_build_solutions_bin( N:int, constellations: List[Dict[str,int]], preset_queens: int, use_gpu: bool, cache_tag: str = "") -> None:
 
   tag = f"_{cache_tag}" if cache_tag != "" else ""
   fname = f"solutions_N{N}_{preset_queens}{tag}.bin"
@@ -1680,7 +1681,7 @@ def save_constellations_bin(N:int,fname:str,constellations:List[Dict[str,int]])-
     for d in constellations:
       for key in ["ld","rd","col","startijkl"]:
         b=int_to_le_bytes(d[key])
-        int_to_le_bytes(d[key])
+        # int_to_le_bytes(d[key])
         f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
 """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
