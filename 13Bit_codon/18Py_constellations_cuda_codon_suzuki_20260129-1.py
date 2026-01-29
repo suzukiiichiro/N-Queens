@@ -1373,512 +1373,487 @@ class NQueens17:
       free&=free-1
       _set_pre_queens_cached((ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
 
-  """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
-  def gen_constellations(self,ijkl_list:Set[int],constellations:List[Dict[str,int]],N:int,preset_queens:int)->None:
-    # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
-    # 長時間プロセスなら念のためクリアしておくのが安全）
-    self.subconst_cache.clear()
-    halfN=(N+1)//2  # Nの半分を切り上げ
-    N1:int=N-1
-    constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
-    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
-    if N%2==1:
-      center=N//2
-      ijkl_list.update(
-        self.to_ijkl(i,j,center,l)
-        for l in range(center+1,N1)
-        for i in range(center+1,N1)
-        if i!=(N1)-l
-        for j in range(N-center-2,0,-1)
-        if j!=i and j!=l
-        if not self.check_rotations(ijkl_list,i,j,center,l,N)
-      )
-    # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
-    # コーナーにクイーンがいない場合の開始コンステレーションを計算する
-    ijkl_list.update(self.to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N1) for i in range(k+1,N-1) if i!=(N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not self.check_rotations(ijkl_list,i,j,k,l,N))
-    # コーナーにクイーンがある場合の開始コンステレーションを計算する
-    ijkl_list.update({self.to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N1)})
-    # Jasmin変換
-    ijkl_list={self.get_jasmin(c,N) for c in ijkl_list}
-    L=1<<(N1)  # Lは左端に1を立てる
-    # ローカルアクセスに変更
-    geti,getj,getk,getl=self.geti,self.getj,self.getk,self.getl
-    to_ijkl=self.to_ijkl
-    _set_pre_queens_cached=self.set_pre_queens_cached
-    for sc in ijkl_list:
-      # ここで毎回クリア（＝この sc だけの重複抑止に限定）
-      constellation_signatures=set()
-      i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
-      Lj=L>>j;Li=L>>i;Ll=L>>l
-      ld=((L>>(i-1)) if i>0 else 0)|(1<<(N-k))
-      rd=(L>>(i+1))|(1<<(l-1))
-      col=1|L|Li|Lj
-      LD=Lj|Ll
-      RD=Lj|(1<<k)
-      counter:List[int]=[0] # サブコンステレーションを生成
-      visited:Set[int]=set()
-      _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
-      current_size=len(constellations)
-      base=to_ijkl(i,j,k,l)
-      for a in range(counter[0]):
-        constellations[-1-a]["startijkl"]|=base
+def nq_get(N: int) -> NQueens17:
+  return NQueens17(N)
 
-  """constellations の各要素が {ld, rd, col, startijkl} を全て持つかを検証する。"""
-  def validate_constellation_list(self,constellations:List[Dict[str,int]])->bool: return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
+"""開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
+def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int]],preset_queens:int)->None:
+  # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
+  # 長時間プロセスなら念のためクリアしておくのが安全）
+  nq_get(N).subconst_cache.clear()
+  halfN=(N+1)//2  # Nの半分を切り上げ
+  N1:int=N-1
+  constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
+  # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+  if N%2==1:
+    center=N//2
+    ijkl_list.update(
+      nq_get(N).to_ijkl(i,j,center,l)
+      for l in range(center+1,N1)
+      for i in range(center+1,N1)
+      if i!=(N1)-l
+      for j in range(N-center-2,0,-1)
+      if j!=i and j!=l
+      if not nq_get(N).check_rotations(ijkl_list,i,j,center,l,N)
+    )
+  # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
+  # コーナーにクイーンがいない場合の開始コンステレーションを計算する
+  ijkl_list.update(nq_get(N).to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N1) for i in range(k+1,N-1) if i!=(N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not nq_get(N).check_rotations(ijkl_list,i,j,k,l,N))
+  # コーナーにクイーンがある場合の開始コンステレーションを計算する
+  ijkl_list.update({nq_get(N).to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N1)})
+  # Jasmin変換
+  ijkl_list={nq_get(N).get_jasmin(c,N) for c in ijkl_list}
+  L=1<<(N1)  # Lは左端に1を立てる
+  # ローカルアクセスに変更
+  geti,getj,getk,getl=nq_get(N).geti,nq_get(N).getj,nq_get(N).getk,nq_get(N).getl
+  to_ijkl=nq_get(N).to_ijkl
+  _set_pre_queens_cached=nq_get(N).set_pre_queens_cached
+  for sc in ijkl_list:
+    # ここで毎回クリア（＝この sc だけの重複抑止に限定）
+    constellation_signatures=set()
+    i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
+    Lj=L>>j;Li=L>>i;Ll=L>>l
+    ld=((L>>(i-1)) if i>0 else 0)|(1<<(N-k))
+    rd=(L>>(i+1))|(1<<(l-1))
+    col=1|L|Li|Lj
+    LD=Lj|Ll
+    RD=Lj|(1<<k)
+    counter:List[int]=[0] # サブコンステレーションを生成
+    visited:Set[int]=set()
+    _set_pre_queens_cached(ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,N,preset_queens,visited,constellation_signatures)
+    current_size=len(constellations)
+    base=to_ijkl(i,j,k,l)
+    for a in range(counter[0]):
+      constellations[-1-a]["startijkl"]|=base
 
-  """32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。"""
-  def read_uint32_le(self,b:str)->int: return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
-  
-  """32bit little-endian バイト列への変換ヘルパ。"""
-  def int_to_le_bytes(self,x:int)->List[int]: return [(x>>(8*i))&0xFF for i in range(4)]
+def validate_constellation_list(constellations:List[Dict[str,int]])->bool: 
+  return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
 
-  """ファイル存在チェック（読み取り open の可否で判定）。"""
-  def file_exists(self,fname:str)->bool:
-    try:
-      with open(fname,"rb"):
-        return True
-    except:
+"""32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。"""
+def read_uint32_le(b:str)->int: 
+  return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
+
+"""32bit little-endian バイト列への変換ヘルパ。"""
+def int_to_le_bytes(x:int)->List[int]: 
+  return [(x>>(8*i))&0xFF for i in range(4)]
+
+"""ファイル存在チェック（読み取り open の可否で判定）。"""
+def file_exists(fname:str)->bool:
+  try:
+    with open(fname,"rb"):
+      return True
+  except:
+    return False
+
+"""bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。"""
+def validate_bin_file(fname:str)->bool:
+  try:
+    with open(fname,"rb") as f:
+      f.seek(0,2)  # ファイル末尾に移動
+      size=f.tell()
+    return size%16==0
+  except:
+    return False
+
+"""バイナリ形式での解exec_solutions()のキャッシュ入出力""" 
+def u64_to_le_bytes( x: u64) -> List[int]:
+  v:int = int(x)
+  return [(v >> (8*i)) & 0xFF for i in range(8)]
+
+""" バイト列を little-endian u64 に変換 """
+def read_uint64_le( raw: str) -> u64:
+  v:int = 0
+  for i in range(8):
+    v |= (ord(raw[i]) & 0xFF) << (8*i)
+  return u64(v)
+
+""" テキスト形式での解exec_solutions()のキャッシュ保存"""
+def save_solutions_txt( fname: str, constellations: List[Dict[str,int]]) -> None:
+  f = open(fname, "w")
+  f.write("startijkl,solutions\n")
+  for d in constellations:
+      f.write(str(d["startijkl"]))
+      f.write(",")
+      f.write(str(int(d["solutions"])))
+      f.write("\n")
+  f.close()
+
+"""バイナリ形式での解exec_solutions()のキャッシュ保存v2"""
+def save_solutions_bin_v2( fname: str, constellations: List[Dict[str,int]]) -> None:
+  b8 = u64_to_le_bytes
+  f = open(fname, "wb")
+  for d in constellations:
+      # u64 で揃える（40 bytes/record）
+      for x in (
+          u64(d["startijkl"]),
+          u64(d["ld"]),
+          u64(d["rd"]),
+          u64(d["col"]),
+          u64(d["solutions"]),
+      ):
+          bb = b8(x)
+          f.write("".join(chr(c) for c in bb))
+  f.close()
+
+"""テキスト形式での解exec_solutions()のキャッシュ入出力"""
+def load_solutions_txt_into( fname: str, constellations: List[Dict[str,int]]) -> bool:
+  try:
+      f = open(fname, "r")
+  except:
+      return False
+  text = f.read()
+  f.close()
+  if text is None:
       return False
 
-  """bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。"""
-  def validate_bin_file(self,fname:str)->bool:
-    try:
-      with open(fname,"rb") as f:
-        f.seek(0,2)  # ファイル末尾に移動
-        size=f.tell()
-      return size%16==0
-    except:
+  lines = text.split("\n")
+  if len(lines) < 2:
       return False
-  """バイナリ形式での解exec_solutions()のキャッシュ入出力""" 
-  def u64_to_le_bytes(self, x: u64) -> List[int]:
-    # little-endian 8 bytes
-    v:int = int(x)
-    return [(v >> (8*i)) & 0xFF for i in range(8)]
+  if lines[0].strip() != "startijkl,solutions":
+      return False
 
-  """ バイト列を little-endian u64 に変換 """
-  def read_uint64_le(self, raw: str) -> u64:
-    # raw length must be 8
-    v:int = 0
-    for i in range(8):
-      v |= (ord(raw[i]) & 0xFF) << (8*i)
-    return u64(v)
-  
-  """ テキスト形式での解exec_solutions()のキャッシュ保存"""
-  def save_solutions_txt(self, fname: str, constellations: List[Dict[str,int]]) -> None:
-    f = open(fname, "w")
-    f.write("startijkl,solutions\n")
-    for d in constellations:
-        f.write(str(d["startijkl"]))
-        f.write(",")
-        f.write(str(int(d["solutions"])))
-        f.write("\n")
-    f.close()
+  # startijkl -> solutions
+  mp: Dict[int, int] = {}
+  for idx in range(1, len(lines)):
+      line = lines[idx].strip()
+      if line == "":
+          continue
+      parts = line.split(",")
+      if len(parts) != 2:
+          return False
+      k = int(parts[0])
+      v = int(parts[1])
+      mp[k] = v
 
-  """バイナリ形式での解exec_solutions()のキャッシュ保存v2"""
-  def save_solutions_bin_v2(self, fname: str, constellations: List[Dict[str,int]]) -> None:
-    b8 = self.u64_to_le_bytes
-    f = open(fname, "wb")
-    for d in constellations:
-        # u64 で揃える（40 bytes/record）
-        for x in (
-            u64(d["startijkl"]),
-            u64(d["ld"]),
-            u64(d["rd"]),
-            u64(d["col"]),
-            u64(d["solutions"]),
-        ):
-            bb = b8(x)
-            f.write("".join(chr(c) for c in bb))
-    f.close()
+  # 全 constellations に埋める（欠けがあれば失敗）
+  for d in constellations:
+      s = d["startijkl"]
+      if s not in mp:
+          # print("[cache miss] startijkl=", int(s[0])," ld=", int(s[1]), " rd=", int(s[2]), " col=", int(s[3]))
+          return False
+      d["solutions"] = mp[s]
 
-  """テキスト形式での解exec_solutions()のキャッシュ入出力"""
-  def load_solutions_txt_into(self, fname: str, constellations: List[Dict[str,int]]) -> bool:
-    try:
-        f = open(fname, "r")
-    except:
-        return False
-    text = f.read()
-    f.close()
-    if text is None:
-        return False
+  return True
 
-    lines = text.split("\n")
-    if len(lines) < 2:
-        return False
-    if lines[0].strip() != "startijkl,solutions":
-        return False
+""" バイナリ形式での解exec_solutions()のキャッシュ読み込みv2"""
+def load_solutions_bin_into_v2( fname: str, constellations: List[Dict[str,int]]) -> bool:
+  # 1 record = u64*5 = 40 bytes: startijkl, ld, rd, col, solutions
+  try:
+      f = open(fname, "rb")
+  except:
+      return False
 
-    # startijkl -> solutions
-    mp: Dict[int, int] = {}
-    for idx in range(1, len(lines)):
-        line = lines[idx].strip()
-        if line == "":
-            continue
-        parts = line.split(",")
-        if len(parts) != 2:
-            return False
-        k = int(parts[0])
-        v = int(parts[1])
-        mp[k] = v
+  data = f.read()
+  f.close()
+  if data is None:
+      return False
 
-    # 全 constellations に埋める（欠けがあれば失敗）
-    for d in constellations:
-        s = d["startijkl"]
-        if s not in mp:
-            # print("[cache miss] startijkl=", int(s[0])," ld=", int(s[1]), " rd=", int(s[2]), " col=", int(s[3]))
-            return False
-        d["solutions"] = mp[s]
+  rec:int = 40
+  n:int = len(data)
+  if n == 0 or (n % rec) != 0:
+      return False
 
-    return True
+  nrec:int = n // rec
+  r8 = read_uint64_le
 
-  """ バイナリ形式での解exec_solutions()のキャッシュ読み込みv2"""
-  def load_solutions_bin_into_v2(self, fname: str, constellations: List[Dict[str,int]]) -> bool:
-    # 1 record = u64*5 = 40 bytes: startijkl, ld, rd, col, solutions
-    try:
-        f = open(fname, "rb")
-    except:
-        return False
+  # key: (startijkl, ld, rd, col) -> solutions
+  # mp: Dict[Tuple[int,int,int,int], int] = {}
+  mp: Dict[Tuple[u64,u64,u64,u64], u64] = {}
 
-    data = f.read()
-    f.close()
-    if data is None:
-        return False
+  p:int = 0
+  for _ in range(nrec):
+      s  = r8(data[p:p+8]);   p += 8
+      ld = r8(data[p:p+8]);   p += 8
+      rd = r8(data[p:p+8]);   p += 8
+      col= r8(data[p:p+8]);   p += 8
+      sol= r8(data[p:p+8]);   p += 8
+      mp[(s, ld, rd, col)] = sol
 
-    rec:int = 40
-    n:int = len(data)
-    if n == 0 or (n % rec) != 0:
-        return False
+  # ここまで来たか確認
+  # print("MISS:built_mp", nrec, "m=", len(constellations))
+  # Fill solutions; fail if any constellation missing
+  for d in constellations:
+      key = (u64(d["startijkl"]), u64(d["ld"]), u64(d["rd"]), u64(d["col"]))
+      if key not in mp:
+          print("[cache miss] startijkl=", int(key[0])," ld=", int(key[1]), " rd=", int(key[2]), " col=", int(key[3]))
+          return False
+      d["solutions"] = int(mp[key])
 
-    nrec:int = n // rec
-    r8 = self.read_uint64_le
+  return True
 
-    # key: (startijkl, ld, rd, col) -> solutions
-    # mp: Dict[Tuple[int,int,int,int], int] = {}
-    mp: Dict[Tuple[u64,u64,u64,u64], u64] = {}
+"""テキスト形式での解exec_solutions()のキャッシュ入出力ラッパー"""
+def load_or_build_solutions_txt(
+  N:int,
+  constellations: List[Dict[str,int]],
+  preset_queens: int,
+  use_gpu: bool,
+  cache_tag: str = ""
+) -> None:
 
-    p:int = 0
-    for _ in range(nrec):
-        s  = r8(data[p:p+8]);   p += 8
-        ld = r8(data[p:p+8]);   p += 8
-        rd = r8(data[p:p+8]);   p += 8
-        col= r8(data[p:p+8]);   p += 8
-        sol= r8(data[p:p+8]);   p += 8
-        mp[(s, ld, rd, col)] = sol
+  tag = "_" + cache_tag if cache_tag != "" else ""
+  fname = "solutions_N" + str(N) + "_" + str(preset_queens) + tag + ".txt"
 
-    # ここまで来たか確認
-    # print("MISS:built_mp", nrec, "m=", len(constellations))
-    # Fill solutions; fail if any constellation missing
-    for d in constellations:
-        key = (u64(d["startijkl"]), u64(d["ld"]), u64(d["rd"]), u64(d["col"]))
-        if key not in mp:
-            print("[cache miss] startijkl=", int(key[0])," ld=", int(key[1]), " rd=", int(key[2]), " col=", int(key[3]))
-            return False
-        d["solutions"] = int(mp[key])
+  if file_exists(fname):
+      ok = load_solutions_txt_into(fname, constellations)
+      if ok:
+          return
+      else:
+          print("[警告] solutions txt キャッシュ不一致: " + fname + " を再生成します")
 
-    return True
+  # なければ計算して保存
+  nq_get(N).exec_solutions(constellations, N, use_gpu)
+  save_solutions_txt(fname, constellations)
 
-  """テキスト形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-  def load_or_build_solutions_txt(
-    self,
+"""バイナリ形式での解exec_solutions()のキャッシュ入出力ラッパー"""
+def load_or_build_solutions_bin(
+    N:int,
     constellations: List[Dict[str,int]],
-    N: int,
     preset_queens: int,
     use_gpu: bool,
     cache_tag: str = ""
-) -> None:
+  ) -> None:
 
-    tag = "_" + cache_tag if cache_tag != "" else ""
-    fname = "solutions_N" + str(N) + "_" + str(preset_queens) + tag + ".txt"
+  tag = f"_{cache_tag}" if cache_tag != "" else ""
+  fname = f"solutions_N{N}_{preset_queens}{tag}.bin"
 
-    if self.file_exists(fname):
-        ok = self.load_solutions_txt_into(fname, constellations)
-        if ok:
-            return
-        else:
-            print("[警告] solutions txt キャッシュ不一致: " + fname + " を再生成します")
+  if file_exists(fname):
+    try:
+      if load_solutions_bin_into_v2(fname, constellations):
+        return
+      else:
+        print(f"[警告] solutions キャッシュ不一致/破損: {fname} を再生成します")
+    except Exception as e:
+      print(f"[警告] solutions キャッシュ読み込み失敗: {fname}, 理由: {e}")
 
-    # なければ計算して保存
-    self.exec_solutions(constellations, N, use_gpu)
-    self.save_solutions_txt(fname, constellations)
+  # なければ計算して保存
+  nq_get(N).exec_solutions(constellations, N, use_gpu)
+  save_solutions_bin_v2(fname, constellations)
 
-  """バイナリ形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-  def load_or_build_solutions_bin(
-      self,
-      constellations: List[Dict[str,int]],
-      N: int,
-      preset_queens: int,
-      use_gpu: bool,
-      cache_tag: str = ""
-    ) -> None:
+"""テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
+def save_constellations_txt(path:str,constellations:List[Dict[str,int]])->None:
+  with open(path,"w") as f:
+    for c in constellations:
+      ld=c["ld"]
+      rd=c["rd"]
+      col=c["col"]
+      startijkl=c["startijkl"]
+      solutions=c.get("solutions",0)
+      f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
 
-    tag = f"_{cache_tag}" if cache_tag != "" else ""
-    fname = f"solutions_N{N}_{preset_queens}{tag}.bin"
+"""テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
+def load_constellations_txt(path:str)->List[Dict[str,int]]:
+  out:List[Dict[str,int]]=[]
+  with open(path,"r") as f:
+    for line in f:
+      parts=line.strip().split()
+      if len(parts)!=5:
+        continue
+      ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
+      startijkl=int(parts[3]);solutions=int(parts[4])
+      out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
+  return out
 
-    if self.file_exists(fname):
-      try:
-        if self.load_solutions_bin_into_v2(fname, constellations):
-          return
-        else:
-          print(f"[警告] solutions キャッシュ不一致/破損: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] solutions キャッシュ読み込み失敗: {fname}, 理由: {e}")
+"""テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
+def load_or_build_constellations_txt(ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
+  # N と preset_queens に基づいて一意のファイル名を構成
+  fname=f"constellations_N{N}_{preset_queens}.txt"
+  # ファイルが存在すれば読み込むが、破損チェックも行う
+  if file_exists(fname):
+    try:
+      constellations=load_constellations_txt(fname)
+      if validate_constellation_list(constellations):
+        return constellations
+      else:
+        print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+    except Exception as e:
+      print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+  # ファイルがなければ生成・保存
+  constellations:List[Dict[str,int]]=[]
+  gen_constellations(N,ijkl_list,constellations,preset_queens)
+  save_constellations_txt(fname,constellations)
+  return constellations
 
-    # なければ計算して保存
-    self.exec_solutions(constellations, N, use_gpu)
-    self.save_solutions_bin_v2(fname, constellations)
+"""bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
+def save_constellations_bin(N:int,fname:str,constellations:List[Dict[str,int]])->None:
+  # _int_to_le_bytes=int_to_le_bytes
+  with open(fname,"wb") as f:
+    for d in constellations:
+      for key in ["ld","rd","col","startijkl"]:
+        b=int_to_le_bytes(d[key])
+        int_to_le_bytes(d[key])
+        f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
-  """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
-  def save_constellations_txt(self,path:str,constellations:List[Dict[str,int]])->None:
-    with open(path,"w") as f:
-      for c in constellations:
-        ld=c["ld"]
-        rd=c["rd"]
-        col=c["col"]
-        startijkl=c["startijkl"]
-        solutions=c.get("solutions",0)
-        f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
+"""bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
+def load_constellations_bin(N:int,fname:str)->List[Dict[str,int]]:
+  constellations:List[Dict[str,int]]=[]
+  _read_uint32_le=read_uint32_le
+  with open(fname,"rb") as f:
+    while True:
+      raw=f.read(16)
+      if len(raw)<16:
+        break
+      ld=read_uint32_le(raw[0:4])
+      rd=read_uint32_le(raw[4:8])
+      col=read_uint32_le(raw[8:12])
+      startijkl=_read_uint32_le(raw[12:16])
+      constellations.append({ "ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0 })
+  return constellations
 
-  """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
-  def load_constellations_txt(self,path:str)->List[Dict[str,int]]:
-    out:List[Dict[str,int]]=[]
-    with open(path,"r") as f:
-      for line in f:
-        parts=line.strip().split()
-        if len(parts)!=5:
-          continue
-        ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
-        startijkl=int(parts[3]);solutions=int(parts[4])
-        out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
-    return out
-
-  """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
-  def load_or_build_constellations_txt(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    # N と preset_queens に基づいて一意のファイル名を構成
-    fname=f"constellations_N{N}_{preset_queens}.txt"
+"""bin キャッシュを読み込み。検証に失敗した場合は再生成して保存し、その結果を返す。"""
+def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],constellations,preset_queens:int)->List[Dict[str,int]]:
+  fname=f"constellations_N{N}_{preset_queens}.bin"
+  if file_exists(fname):
     # ファイルが存在すれば読み込むが、破損チェックも行う
-    if self.file_exists(fname):
-      try:
-        constellations=self.load_constellations_txt(fname)
-        if self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    # ファイルがなければ生成・保存
-    constellations:List[Dict[str,int]]=[]
-    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
-    self.save_constellations_txt(fname,constellations)
-    return constellations
-
-  """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
-  def save_constellations_bin(self,fname:str,constellations:List[Dict[str,int]])->None:
-    _int_to_le_bytes=self.int_to_le_bytes
-    with open(fname,"wb") as f:
-      for d in constellations:
-        for key in ["ld","rd","col","startijkl"]:
-          b=_int_to_le_bytes(d[key])
-          _int_to_le_bytes(d[key])
-          f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
-
-  """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
-  def load_constellations_bin(self,fname:str)->List[Dict[str,int]]:
-    constellations:List[Dict[str,int]]=[]
-    _read_uint32_le=self.read_uint32_le
-    with open(fname,"rb") as f:
-      while True:
-        raw=f.read(16)
-        if len(raw)<16:
-          break
-        ld=self.read_uint32_le(raw[0:4])
-        rd=self.read_uint32_le(raw[4:8])
-        col=self.read_uint32_le(raw[8:12])
-        startijkl=_read_uint32_le(raw[12:16])
-        constellations.append({ "ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0 })
-    return constellations
-
-  """bin キャッシュを読み込み。検証に失敗した場合は再生成して保存し、その結果を返す。"""
-  def load_or_build_constellations_bin(self,ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
-    fname=f"constellations_N{N}_{preset_queens}.bin"
-    if self.file_exists(fname):
-      # ファイルが存在すれば読み込むが、破損チェックも行う
-      try:
-        constellations=self.load_constellations_bin(fname)
-        if self.validate_bin_file(fname) and self.validate_constellation_list(constellations):
-          return constellations
-        else:
-          print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
-      except Exception as e:
-        print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
-    # ファイルがなければ生成・保存
-    constellations:List[Dict[str,int]]=[]
-    self.gen_constellations(ijkl_list,constellations,N,preset_queens)
-    self.save_constellations_bin(fname,constellations)
-    return constellations
-
-  # """プリセットクイーン数の選択。N と use_gpu に基づいて適切な値を返す。"""
-  # def choose_preset_queens(self, N: int, use_gpu: bool) -> int:
-  #   # まずは分かりやすい段階式（後で調整しやすい）
-  #   if not use_gpu:
-  #     # CPU: これまでの値をほぼ踏襲
-  #     if N <= 17: return 5
-  #     if N <= 20: return 5
-  #     if N <= 23: return 5
-  #     return 5
-  #   else:
-  #     # GPU: タスク数不足・偏り対策で1段深め
-  #     if N <= 17: return 5
-  #     if N <= 19: return 5
-  #     if N <= 22: return 5 # 6にするとN20でタスク不足になる
-  #     return 5 # 7にするとN23でタスク不足になる
-
-""" NQueens17_constellations クラス：小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
-class NQueens17_constellations():
-
-  """プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
-  def build_constellations_dynamicK(self, NQ, size: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
-    # K = NQ.choose_preset_queens(size, use_gpu)
-    K = 5
-    ijkl_list:Set[int] = set()
-    constellations:List[Dict[str,int]] = []
-    constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
-    return K, constellations
-    #
-    # # 以下は不要 presetは5で固定
-    # #
-    # # 一時的に枝刈りを無効化
-    # had_flag = hasattr(NQ, "use_visited_prune")
-    # old = NQ.use_visited_prune if had_flag else False
-    # if had_flag:
-    #   NQ.use_visited_prune = False
-    # try:
-    #   # m_target = 200_000 if use_gpu else 30_000
-    #   # GPU 時はサイズに応じて目標タスク数を変える
-    #   m_target = 200_000 if use_gpu and size >= 15 else 0
-    #   K = NQ.choose_preset_queens(size, use_gpu)
-    #   # 動的対応が課題：最大2回試行（合計2回）できればなおオッケー
-    #   # for _ in range(2):  # N18でＮＧになります
-    #   for _ in range(1):  
-    #     ijkl_list:Set[int] = set()
-    #     constellations:List[Dict[str,int]] = []
-    #     constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
-    #     m = len(constellations)
-    #     if m == 0:
-    #       # 解は0ではないので、ここは「Kが深すぎてタスクが潰れた」扱い
-    #       # → Kを下げて作り直す or CPUにフォールバック
-    #       print(f"m==0 (preset_queens={K}) fallback")
-    #       # 例：Kを1下げて作り直す
-    #       K -= 1
-    #       ijkl_list=set(); constellations=[]
-    #       constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations,size,K)
-    #       m = len(constellations)
-    #     # 
-    #     # print("K:", K, "m:", len(constellations))
-    #     # 
-    #     # 目標に届けば採用
-    #     if m >= m_target:
-    #       return K, constellations
-    #     # 足りなければ K を増やして作り直し
-    #     K += 1
-    #   #
-    #   # print(f"size={size} K={K} m={len(constellations)}")
-    #   #
-    #   return K, constellations
-    # finally:
-    #   NQ.use_visited_prune = old
-
-  """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
-  def _bit_total(self,size:int)->int:
-    mask=(1<<size)-1
-    total=0
-    """ 小さなNは正攻法で数える（対称重みなし・全列挙） """
-    def bt(row:int,left:int,down:int,right:int):
-      nonlocal total
-      if row==size:
-        total+=1
-        return
-      bitmap=mask&~(left|down|right)
-      while bitmap:
-        bit=-bitmap&bitmap
-        bitmap^=bit
-        bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
-    bt(0,0,0,0)
-    return total
-
-  """ 戻り値: use_gpu: bool """
-  def parse_args(self,argv: list[str]) -> tuple[bool]:
-    use_gpu = False
-    i=0
-    while i < len(argv):
-      arg = argv[i]
-      if arg == "-g":
-          use_gpu = True
-      elif arg == "-c":
-          use_gpu = False
+    try:
+      constellations=load_constellations_bin(N,fname)
+      if validate_bin_file(fname) and validate_constellation_list(constellations):
+        return constellations
       else:
-          raise ValueError(f"Unknown argument: {arg}")
-      i += 1
-    return use_gpu
+        print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
+    except Exception as e:
+      print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
+  # ファイルがなければ生成・保存
+  constellations:List[Dict[str,int]]=[]
+  gen_constellations(N,ijkl_list,constellations,preset_queens)
+  save_constellations_bin(N,fname,constellations)
+  return constellations
 
-  """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
-  def main(self)->None:
-    expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
-    nmin:int=5
-    nmax:int=len(expected)
-    # nmax:int=18
-    use_gpu=False
-    argc=len(sys.argv)
-    if argc == 1:
+"""プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
+def build_constellations_dynamicK(N: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
+  # K = NQ.choose_preset_queens(size, use_gpu)
+  K = 5
+  ijkl_list:Set[int] = set()
+  constellations:List[Dict[str,int]] = []
+  constellations = load_or_build_constellations_bin(N,ijkl_list, constellations, K)
+  return K, constellations
+  #
+  # # 以下は不要 presetは5で固定
+  # #
+  # # 一時的に枝刈りを無効化
+  # had_flag = hasattr(NQ, "use_visited_prune")
+  # old = NQ.use_visited_prune if had_flag else False
+  # if had_flag:
+  #   NQ.use_visited_prune = False
+  # try:
+  #   # m_target = 200_000 if use_gpu else 30_000
+  #   # GPU 時はサイズに応じて目標タスク数を変える
+  #   m_target = 200_000 if use_gpu and size >= 15 else 0
+  #   K = NQ.choose_preset_queens(size, use_gpu)
+  #   # 動的対応が課題：最大2回試行（合計2回）できればなおオッケー
+  #   # for _ in range(2):  # N18でＮＧになります
+  #   for _ in range(1):  
+  #     ijkl_list:Set[int] = set()
+  #     constellations:List[Dict[str,int]] = []
+  #     constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
+  #     m = len(constellations)
+  #     if m == 0:
+  #       # 解は0ではないので、ここは「Kが深すぎてタスクが潰れた」扱い
+  #       # → Kを下げて作り直す or CPUにフォールバック
+  #       print(f"m==0 (preset_queens={K}) fallback")
+  #       # 例：Kを1下げて作り直す
+  #       K -= 1
+  #       ijkl_list=set(); constellations=[]
+  #       constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations,size,K)
+  #       m = len(constellations)
+  #     # 
+  #     # print("K:", K, "m:", len(constellations))
+  #     # 
+  #     # 目標に届けば採用
+  #     if m >= m_target:
+  #       return K, constellations
+  #     # 足りなければ K を増やして作り直し
+  #     K += 1
+  #   #
+  #   # print(f"size={size} K={K} m={len(constellations)}")
+  #   #
+  #   return K, constellations
+  # finally:
+  #   NQ.use_visited_prune = old
+
+"""小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
+def _bit_total(N:int)->int:
+  mask=(1<<N)-1
+  total=0
+  """ 小さなNは正攻法で数える（対称重みなし・全列挙） """
+  def bt(row:int,left:int,down:int,right:int):
+    nonlocal total
+    if row==N:
+      total+=1
+      return
+    bitmap=mask&~(left|down|right)
+    while bitmap:
+      bit=-bitmap&bitmap
+      bitmap^=bit
+      bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+  bt(0,0,0,0)
+  return total
+
+"""N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
+def main()->None:
+  expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
+  nmin:int=5
+  nmax:int=len(expected)
+  # nmax:int=18
+  use_gpu=False
+  argc=len(sys.argv)
+  if argc == 1:
+    print("CPU mode selected")
+    pass
+  elif argc == 2:
+    arg = sys.argv[1]
+    if arg == "-c":
+      use_gpu = False
       print("CPU mode selected")
-      pass
-    elif argc == 2:
-      arg = sys.argv[1]
-      if arg == "-c":
-        use_gpu = False
-        print("CPU mode selected")
-      elif arg == "-g":
-        use_gpu = True
-        print("GPU mode selected")
-      else:
-        print(f"Unknown option: {arg}")
-        print("Usage: nqueens [-c | -g]")
-        return
+    elif arg == "-g":
+      use_gpu = True
+      print("GPU mode selected")
     else:
-      print("Too many arguments")
+      print(f"Unknown option: {arg}")
       print("Usage: nqueens [-c | -g]")
       return
-    print(" N:             Total         Unique        hh:mm:ss.ms")
-    for size in range(nmin,nmax):
-      start_time=datetime.now()
-      if size<=5:
-        total=self._bit_total(size)
-        dt=datetime.now()-start_time
-        text=str(dt)[:-3]
-        print(f"{size:2d}:{total:18d}{0:15d}{text:>20s}")
-        continue
-      ijkl_list:Set[int]=set()
-      constellations:List[Dict[str,int]]=[]
-      NQ=NQueens17(size)
-      """ constellasions()でキャッシュを使う """
-      use_constellation_cache = True
-      if use_constellation_cache:
-        preset_queens, constellations = self.build_constellations_dynamicK(NQ, size, use_gpu)
-      else:
-        preset_queens=5
-        NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      """ solutions()でキャッシュを使って実行 """
-      # use_solution_cache = True
-      use_solution_cache = False
-      if use_solution_cache:
-          NQ.load_or_build_solutions_bin(constellations, size, preset_queens, use_gpu, cache_tag="v2")
-      else:
-          NQ.exec_solutions(constellations, size, use_gpu)
-      """ 合計 """
-      total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
-      time_elapsed=datetime.now()-start_time
-      text=str(time_elapsed)[:-3]
-      status:str="ok" if expected[size]==total else f"ng({total}!={expected[size]})"
-      print(f"{size:2d}:{total:18d}{0:15d}{text:>20s}    {status}")
+  else:
+    print("Too many arguments")
+    print("Usage: nqueens [-c | -g]")
+    return
+  print(" N:             Total         Unique        hh:mm:ss.ms")
+  for N in range(nmin,nmax):
+    start_time=datetime.now()
+    if N<=5:
+      total=_bit_total(N)
+      dt=datetime.now()-start_time
+      text=str(dt)[:-3]
+      print(f"{N:2d}:{total:18d}{0:15d}{text:>20s}")
+      continue
+    ijkl_list:Set[int]=set()
+    constellations:List[Dict[str,int]]=[]
+    NQ=NQueens17(N)
+    """ constellasions()でキャッシュを使う """
+    use_constellation_cache = True
+    if use_constellation_cache:
+      preset_queens, constellations = build_constellations_dynamicK( N, use_gpu)
+    else:
+      preset_queens=5
+      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
+      gen_constellations(N,ijkl_list,constellations,preset_queens)
+    """ solutions()でキャッシュを使って実行 """
+    # use_solution_cache = True
+    use_solution_cache = False
+    if use_solution_cache:
+        #
+        # text
+        # load_or_build_solutions_txt(N,constellations, preset_queens, use_gpu, cache_tag="v2")
+        # 
+        # bin
+        load_or_build_solutions_bin(N,constellations, preset_queens, use_gpu, cache_tag="v2")
+    else:
+        nq_get(N).exec_solutions(constellations, N, use_gpu)
+    """ 合計 """
+    total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+    time_elapsed=datetime.now()-start_time
+    text=str(time_elapsed)[:-3]
+    status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
+    print(f"{N:2d}:{total:18d}{0:15d}{text:>20s}    {status}")
+
 """ エントリポイント """
 if __name__=="__main__":
-  NQueens17_constellations().main()
+  main()
