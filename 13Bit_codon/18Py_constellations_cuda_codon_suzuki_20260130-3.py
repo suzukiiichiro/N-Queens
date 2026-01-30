@@ -1178,6 +1178,7 @@ def init_zobrist(N:int)->None:
   }
   nq_get(N).zobrist_tables[N]=tbl
 
+
 """ Zobrist Hash を用いた盤面の 64bit ハッシュ値生成  """
 def zobrist_hash(N:int, ld: int, rd: int, col: int, row: int, queens: int, k: int, l: int, LD: int, RD: int) -> u64:
   init_zobrist(N)
@@ -1253,6 +1254,7 @@ def zobrist_hash(N:int, ld: int, rd: int, col: int, row: int, queens: int, k: in
 
   return h
 
+
 """(i,j,k,l) を 5bit×4=20bit にパック/アンパックするユーティリティ。 mirvert は上下ミラー（行: N-1-?）＋ (k,l) の入れ替えで左右ミラー相当を実現。"""
 def to_ijkl(i:int,j:int,k:int,l:int)->int:return (i<<15)+(j<<10)+(k<<5)+l
 def mirvert(ijkl:int,N:int)->int:return to_ijkl(N-1-geti(ijkl),N-1-getj(ijkl),getl(ijkl),getk(ijkl))
@@ -1262,15 +1264,18 @@ def getj(ijkl:int)->int:return (ijkl>>10)&0x1F
 def getk(ijkl:int)->int:return (ijkl>>5)&0x1F
 def getl(ijkl:int)->int:return ijkl&0x1F
 
+
 """(i,j,k,l) パック値に対して盤面 90°/180° 回転を適用した新しいパック値を返す。 回転の定義: (r,c) -> (c, N-1-r)。対称性チェック・正規化に利用。"""
 def rot90(ijkl:int,N:int)->int:return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)
 def rot180(ijkl:int,N:int)->int:return ((N-1-getj(ijkl))<<15)+((N-1-geti(ijkl))<<10)+((N-1-getl(ijkl))<<5)+(N-1-getk(ijkl))
 def symmetry(ijkl:int,N:int)->u64:return u64(2) if symmetry90(ijkl,N) else u64(4) if geti(ijkl)==N-1-getj(ijkl) and getk(ijkl)==N-1-getl(ijkl) else u64(8)
 def symmetry90(ijkl:int,N:int)->bool:return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl))==(((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl))
 
+
 """与えた (i,j,k,l) の 90/180/270° 回転形が既出集合 ijkl_list に含まれるかを判定する。"""
 def check_rotations(ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
   return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
+
 
 """ キャッシュ付き Jasmin 正規化ラッパー """
 def get_jasmin(N:int,c:int)->int:
@@ -1284,6 +1289,7 @@ def get_jasmin(N:int,c:int)->int:
   result=jasmin(c,N)
   nq_get(N).jasmin_cache[key]=result
   return result
+
 
 """ Jasmin 正規化。盤面パック値 ijkl を回転/ミラーで規約化した代表値を返す。"""
 def jasmin(ijkl:int,N:int)->int:
@@ -1319,19 +1325,19 @@ def jasmin(ijkl:int,N:int)->int:
 ####################################################
 
 """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
-def set_pre_queens_cached(N:int,subconst_cache:set[StateKey], ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+def set_pre_queens_cached(N:int,ijkl_list:Set[int],subconst_cache:set[StateKey], ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->Tuple[Set[int], Set[StateKey], List[Dict[str,int]], int]:
   # インスタンス共有キャッシュを使う（ローカル初期化しない！）
   key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
   if key in subconst_cache:
-    return
+    return ijkl_list, subconst_cache, constellations, preset_queens
   # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
   subconst_cache.add(key)
   # 新規実行（従来通りset_pre_queensの本体処理へ）
-  set_pre_queens(N,subconst_cache,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
-
+  ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(N,ijkl_list,subconst_cache,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+  return ijkl_list, subconst_cache, constellations, preset_queens
 
 """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
-def set_pre_queens(N:int,subconst_cache:Set[StateKey],ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[StateKey],ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->Tuple[Set[int], Set[StateKey], List[Dict[str,int]], int]:
   # mask = nq_get(N)._board_mask
   board_mask= (1<<N)-1
   # ---------------------------------------------------------------------
@@ -1380,33 +1386,35 @@ def set_pre_queens(N:int,subconst_cache:Set[StateKey],ld:int,rd:int,col:int,k:in
   #
   if nq_get(N).use_visited_prune:
     if h in visited:
-      return
+      return ijkl_list, subconst_cache, constellations, preset_queens
     visited.add(h)
 
   #
   # ---------------------------------------------------------------------
   # k行とl行はスキップ
   if row==k or row==l:
-    set_pre_queens_cached(N,subconst_cache,ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
-    return
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens_cached(N,ijkl_list,subconst_cache,ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    return ijkl_list, subconst_cache, constellations, preset_queens
   # クイーンの数がpreset_queensに達した場合、現在の状態を保存
   if queens == preset_queens:
     if preset_queens <= 5:
-        sig = (ld, rd, col, k, l, row)    # これが signature (tuple)
-        if sig in constellation_signatures:
-            return
-        constellation_signatures.add(sig)
+      sig = (ld, rd, col, k, l, row)    # これが signature (tuple)
+      if sig in constellation_signatures:
+        return ijkl_list, subconst_cache, constellations, preset_queens
+      constellation_signatures.add(sig)
     constellation={"ld":ld,"rd":rd,"col":col,"startijkl":row<<20,"solutions":0}
     constellations.append(constellation) #星座データ追加
     counter[0]+=1
-    return
+    return ijkl_list, subconst_cache, constellations, preset_queens
   # 現在の行にクイーンを配置できる位置を計算
   free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&board_mask
   # _set_pre_queens_cached=self.set_pre_queens_cached
   while free:
     bit:int=free&-free
     free&=free-1
-    set_pre_queens_cached(N,subconst_cache,(ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens_cached(N,ijkl_list,subconst_cache,(ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+
+  return ijkl_list, subconst_cache, constellations, preset_queens
 
 ####################################################
 #
@@ -1456,9 +1464,13 @@ def gen_constellations(N:int,ijkl_list:Set[int],subconst_cache:Set[StateKey],con
     """ サブコンステレーション生成準備 """
     counter:List[int]=[0] 
     visited:Set[int]=set()
+
     """ Opt-04: preset_queens 行を事前に置く """
-    set_pre_queens_cached(N,subconst_cache,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens_cached(N,ijkl_list,subconst_cache,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+
+    """ startijkl にパック値をセット """
     base=to_ijkl(i,j,k,l)
+
     for a in range(counter[0]):
       constellations[-1-a]["startijkl"]|=base
 
@@ -1469,13 +1481,16 @@ def gen_constellations(N:int,ijkl_list:Set[int],subconst_cache:Set[StateKey],con
 def validate_constellation_list(constellations:List[Dict[str,int]])->bool: 
   return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
 
+
 """32bit little-endian の相互変換ヘルパ。Codon/CPython の差異に注意。"""
 def read_uint32_le(b:str)->int: 
   return (ord(b[0])&0xFF)|((ord(b[1])&0xFF)<<8)|((ord(b[2])&0xFF)<<16)|((ord(b[3])&0xFF)<<24)
 
+
 """32bit little-endian バイト列への変換ヘルパ。"""
 def int_to_le_bytes(x:int)->List[int]: 
   return [(x>>(8*i))&0xFF for i in range(4)]
+
 
 """ファイル存在チェック（読み取り open の可否で判定）。"""
 def file_exists(fname:str)->bool:
@@ -1484,6 +1499,7 @@ def file_exists(fname:str)->bool:
       return True
   except:
     return False
+
 
 """bin キャッシュのサイズ妥当性確認（1 レコード 16 バイトの整数倍か）。"""
 def validate_bin_file(fname:str)->bool:
@@ -1495,10 +1511,12 @@ def validate_bin_file(fname:str)->bool:
   except:
     return False
 
+
 """バイナリ形式での解exec_solutions()のキャッシュ入出力""" 
 def u64_to_le_bytes(x: u64) -> List[int]:
   v:int = int(x)
   return [(v >> (8*i)) & 0xFF for i in range(8)]
+
 
 """ バイト列を little-endian u64 に変換 """
 def read_uint64_le( raw: str) -> u64:
@@ -1507,151 +1525,138 @@ def read_uint64_le( raw: str) -> u64:
     v |= (ord(raw[i]) & 0xFF) << (8*i)
   return u64(v)
 
+
 """ テキスト形式での解exec_solutions()のキャッシュ保存"""
-def save_solutions_txt( fname: str, constellations: List[Dict[str,int]]) -> None:
+def save_solutions_txt(fname:str,constellations:List[Dict[str,int]]) -> None:
   f = open(fname, "w")
   f.write("startijkl,solutions\n")
   for d in constellations:
-      f.write(str(d["startijkl"]))
-      f.write(",")
-      f.write(str(int(d["solutions"])))
-      f.write("\n")
+    f.write(str(d["startijkl"]))
+    f.write(",")
+    f.write(str(int(d["solutions"])))
+    f.write("\n")
   f.close()
 
+
 """バイナリ形式での解exec_solutions()のキャッシュ保存v2"""
-def save_solutions_bin_v2( fname: str, constellations: List[Dict[str,int]]) -> None:
+def save_solutions_bin_v2(fname:str,constellations:List[Dict[str,int]]) -> None:
   b8 = u64_to_le_bytes
   f = open(fname, "wb")
   for d in constellations:
-      # u64 で揃える（40 bytes/record）
-      for x in (
-          u64(d["startijkl"]),
-          u64(d["ld"]),
-          u64(d["rd"]),
-          u64(d["col"]),
-          u64(d["solutions"]),
-      ):
-          bb = b8(x)
-          f.write("".join(chr(c) for c in bb))
+    # u64 で揃える（40 bytes/record）
+    for x in (
+      u64(d["startijkl"]),
+      u64(d["ld"]),
+      u64(d["rd"]),
+      u64(d["col"]),
+      u64(d["solutions"]),
+    ):
+      bb = b8(x)
+      f.write("".join(chr(c) for c in bb))
   f.close()
 
+
 """テキスト形式での解exec_solutions()のキャッシュ入出力"""
-def load_solutions_txt_into( fname: str, constellations: List[Dict[str,int]]) -> bool:
+def load_solutions_txt_into(fname:str,constellations:List[Dict[str,int]]) -> bool:
   try:
-      f = open(fname, "r")
+    f = open(fname, "r")
   except:
-      return False
+    return False
   text = f.read()
   f.close()
   if text is None:
-      return False
-
+    return False
   lines = text.split("\n")
   if len(lines) < 2:
-      return False
+    return False
   if lines[0].strip() != "startijkl,solutions":
-      return False
+    return False
 
   # startijkl -> solutions
   mp: Dict[int, int] = {}
   for idx in range(1, len(lines)):
-      line = lines[idx].strip()
-      if line == "":
-          continue
-      parts = line.split(",")
-      if len(parts) != 2:
-          return False
-      k = int(parts[0])
-      v = int(parts[1])
-      mp[k] = v
-
+    line = lines[idx].strip()
+    if line == "":
+      continue
+    parts = line.split(",")
+    if len(parts) != 2:
+      return False
+    k = int(parts[0])
+    v = int(parts[1])
+    mp[k] = v
   # 全 constellations に埋める（欠けがあれば失敗）
   for d in constellations:
-      s = d["startijkl"]
-      if s not in mp:
-          # print("[cache miss] startijkl=", int(s[0])," ld=", int(s[1]), " rd=", int(s[2]), " col=", int(s[3]))
-          return False
-      d["solutions"] = mp[s]
+    s = d["startijkl"]
+    if s not in mp:
+      # print("[cache miss] startijkl=", int(s[0])," ld=", int(s[1]), " rd=", int(s[2]), " col=", int(s[3]))
+      return False
+    d["solutions"] = mp[s]
 
   return True
 
-""" バイナリ形式での解exec_solutions()のキャッシュ読み込みv2"""
-def load_solutions_bin_into_v2( fname: str, constellations: List[Dict[str,int]]) -> bool:
-  # 1 record = u64*5 = 40 bytes: startijkl, ld, rd, col, solutions
-  try:
-      f = open(fname, "rb")
-  except:
-      return False
 
+""" バイナリ形式での解exec_solutions()のキャッシュ読み込みv2"""
+def load_solutions_bin_into_v2(fname:str,constellations:List[Dict[str,int]])->bool:
+  try:
+    f = open(fname, "rb")
+  except:
+    return False
   data = f.read()
   f.close()
   if data is None:
-      return False
-
+    return False
   rec:int = 40
   n:int = len(data)
   if n == 0 or (n % rec) != 0:
-      return False
-
+    return False
   nrec:int = n // rec
   r8 = read_uint64_le
-
-  # key: (startijkl, ld, rd, col) -> solutions
-  # mp: Dict[Tuple[int,int,int,int], int] = {}
   mp: Dict[Tuple[u64,u64,u64,u64], u64] = {}
-
   p:int = 0
   for _ in range(nrec):
-      s  = r8(data[p:p+8]);   p += 8
-      ld = r8(data[p:p+8]);   p += 8
-      rd = r8(data[p:p+8]);   p += 8
-      col= r8(data[p:p+8]);   p += 8
-      sol= r8(data[p:p+8]);   p += 8
-      mp[(s, ld, rd, col)] = sol
-
-  # ここまで来たか確認
-  # print("MISS:built_mp", nrec, "m=", len(constellations))
-  # Fill solutions; fail if any constellation missing
+    s  = r8(data[p:p+8]);   p += 8
+    ld = r8(data[p:p+8]);   p += 8
+    rd = r8(data[p:p+8]);   p += 8
+    col= r8(data[p:p+8]);   p += 8
+    sol= r8(data[p:p+8]);   p += 8
+    mp[(s, ld, rd, col)] = sol
   for d in constellations:
-      key = (u64(d["startijkl"]), u64(d["ld"]), u64(d["rd"]), u64(d["col"]))
-      if key not in mp:
-          print("[cache miss] startijkl=", int(key[0])," ld=", int(key[1]), " rd=", int(key[2]), " col=", int(key[3]))
-          return False
-      d["solutions"] = int(mp[key])
+    key = (u64(d["startijkl"]), u64(d["ld"]), u64(d["rd"]), u64(d["col"]))
+    if key not in mp:
+      print("[cache miss] startijkl=", int(key[0])," ld=", int(key[1]), " rd=", int(key[2]), " col=", int(key[3]))
+      return False
+    d["solutions"] = int(mp[key])
 
   return True
 
+
 """テキスト形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-def load_or_build_solutions_txt( N:int, constellations: List[Dict[str,int]], preset_queens: int, use_gpu: bool, cache_tag: str = "") -> None:
+def load_or_build_solutions_txt(N:int,constellations:List[Dict[str,int]],preset_queens:int,use_gpu:bool,cache_tag:str = "") -> None:
 
   tag = "_" + cache_tag if cache_tag != "" else ""
   fname = "solutions_N" + str(N) + "_" + str(preset_queens) + tag + ".txt"
 
   if file_exists(fname):
-      ok = load_solutions_txt_into(fname, constellations)
-      if ok:
-          return
-      else:
-          print("[警告] solutions txt キャッシュ不一致: " + fname + " を再生成します")
+    if load_solutions_txt_into(fname, constellations):
+      return
+    else:
+      print("[警告] solutions txt キャッシュ不一致: " + fname + " を再生成します")
 
   # なければ計算して保存
   exec_solutions(N,constellations,use_gpu)
   save_solutions_txt(fname, constellations)
 
 """バイナリ形式での解exec_solutions()のキャッシュ入出力ラッパー"""
-def load_or_build_solutions_bin( N:int, constellations: List[Dict[str,int]], preset_queens: int, use_gpu: bool, cache_tag: str = "") -> None:
+def load_or_build_solutions_bin(N:int,constellations:List[Dict[str,int]],preset_queens:int,use_gpu:bool,cache_tag:str = "") -> None:
 
   tag = f"_{cache_tag}" if cache_tag != "" else ""
   fname = f"solutions_N{N}_{preset_queens}{tag}.bin"
 
   if file_exists(fname):
-    try:
-      if load_solutions_bin_into_v2(fname, constellations):
-        return
-      else:
-        print(f"[警告] solutions キャッシュ不一致/破損: {fname} を再生成します")
-    except Exception as e:
-      print(f"[警告] solutions キャッシュ読み込み失敗: {fname}, 理由: {e}")
+    if load_solutions_bin_into_v2(fname, constellations):
+      return
+    else:
+      print(f"[警告] solutions キャッシュ不一致/破損: {fname} を再生成します")
 
   # なければ計算して保存
   exec_solutions(N,constellations, use_gpu)
@@ -1670,8 +1675,8 @@ def save_constellations_txt(path:str,constellations:List[Dict[str,int]])->None:
       f.write(f"{ld} {rd} {col} {startijkl} {solutions}\n")
 
 """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
-def load_constellations_txt(path:str)->List[Dict[str,int]]:
-  out:List[Dict[str,int]]=[]
+def load_constellations_txt(path:str,constellations:List[Dict[str,int]])->List[Dict[str,int]]:
+  # out:List[Dict[str,int]]=[]
   with open(path,"r") as f:
     for line in f:
       parts=line.strip().split()
@@ -1679,8 +1684,10 @@ def load_constellations_txt(path:str)->List[Dict[str,int]]:
         continue
       ld=int(parts[0]);rd=int(parts[1]);col=int(parts[2])
       startijkl=int(parts[3]);solutions=int(parts[4])
-      out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
-  return out
+      # out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
+      constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions": solutions})
+  # return out
+  return constellations
 
 
 """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
@@ -1691,7 +1698,7 @@ def load_or_build_constellations_txt(N:int,ijkl_list:Set[int],subconst_cache:Set
   # ファイルが存在すれば読み込むが、破損チェックも行う
   if file_exists(fname):
     try:
-      constellations=load_constellations_txt(fname)
+      constellations=load_constellations_txt(fname,constellations)
       if validate_constellation_list(constellations):
         return ijkl_list,subconst_cache,constellations,preset_queens
       else:
@@ -1699,7 +1706,7 @@ def load_or_build_constellations_txt(N:int,ijkl_list:Set[int],subconst_cache:Set
     except Exception as e:
       print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
   # ファイルがなければ生成・保存
-  constellations:List[Dict[str,int]]=[]
+  # constellations:List[Dict[str,int]]=[]
   ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
   save_constellations_txt(fname,constellations)
   return ijkl_list,subconst_cache,constellations,preset_queens
