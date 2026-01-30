@@ -1749,10 +1749,10 @@ def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set
 
 
 """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
-def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[int, Set[StateKey],List[Dict[str,int]]]:
+def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[StateKey],List[Dict[str,int]],int]:
 
   preset_queens,constellations=load_or_build_constellations_bin(N,ijkl_list,subconst_cache, constellations, preset_queens)
-  return  preset_queens,subconst_cache,constellations
+  return  ijkl_list,subconst_cache,constellations,preset_queens
 
 
 """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
@@ -1823,7 +1823,7 @@ def main()->None:
     preset_queens:int = 5 # preset_queens CPUが担当する深さ
 
     if use_constellation_cache:
-      preset_queens,subconst_cache,constellations = build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
+      ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
       gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
     

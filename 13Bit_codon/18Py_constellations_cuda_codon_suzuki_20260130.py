@@ -487,7 +487,7 @@ class NQueens17:
     self.use_visited_prune = False  
     self.zobrist_tables:Dict[int,Dict[str,List[int]]]={}
     self.jasmin_cache:Dict[Tuple[int,int],int]={}
-    self.subconst_cache:Set[StateKey]=set()
+    # self.subconst_cache:Set[StateKey]=set()
     self._N=size
     self._N1=size-1
     self._N2=size-2
@@ -501,6 +501,22 @@ class NQueens17:
 
 def nq_get(N: int) -> NQueens17:
   return NQueens17(N)
+
+""" グローバル変数群 """
+_zobrist_tables:Dict[int,Dict[str,List[int]]]
+_jasmin_cache:Dict[Tuple[int,int],int]
+# subconst_cache:Set[StateKey]
+# ijkl_list:Set[int]
+# constellations:List[Dict[str,int]]
+
+""" 初期化ルーチン"""
+def init() -> None:
+  _zobrist_tables={}
+  _jasmin_cache={}
+  # subconst_cache=set()
+  # ijkl_list= set()
+  # constellations= []
+  
 
 """dfs()の非再帰版"""
 def dfs_iter(meta,blockK,blockL,board_mask,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->u64:
@@ -1303,20 +1319,21 @@ def jasmin(ijkl:int,N:int)->int:
 ####################################################
 
 """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
-def set_pre_queens_cached(N:int, ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-  key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
+def set_pre_queens_cached(N:int,subconst_cache:set[StateKey], ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
   # インスタンス共有キャッシュを使う（ローカル初期化しない！）
-  sc=nq_get(N).subconst_cache
-  if key in sc:
+  key:StateKey=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
+  if key in subconst_cache:
     return
   # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
-  sc.add(key)
+  subconst_cache.add(key)
   # 新規実行（従来通りset_pre_queensの本体処理へ）
-  set_pre_queens(N,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+  set_pre_queens(N,subconst_cache,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+
 
 """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
-def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
-  mask = nq_get(N)._board_mask
+def set_pre_queens(N:int,subconst_cache:Set[StateKey],ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]])->None:
+  # mask = nq_get(N)._board_mask
+  board_mask= (1<<N)-1
   # ---------------------------------------------------------------------
   # 状態ハッシュによる探索枝の枝刈り バックトラック系の冒頭に追加　やりすぎると解が合わない
   #
@@ -1324,7 +1341,7 @@ def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD
   # 各ビットを見てテーブルから XOR するため O(N)（ld/rd/col/LD/RDそれぞれで最大 N 回）。
   # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
   # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
-  h: int = int(zobrist_hash(N,ld & mask, rd & mask, col & mask, row, queens, k, l, LD & mask, RD & mask))
+  h: int = int(zobrist_hash(N,ld & board_mask, rd & board_mask, col & board_mask, row, queens, k, l, LD & board_mask, RD & board_mask))
   #
   # <>state_hash
   # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
@@ -1370,7 +1387,7 @@ def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD
   # ---------------------------------------------------------------------
   # k行とl行はスキップ
   if row==k or row==l:
-    set_pre_queens_cached(N,ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    set_pre_queens_cached(N,subconst_cache,ld<<1,rd>>1,col,k,l,row+1,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
     return
   # クイーンの数がpreset_queensに達した場合、現在の状態を保存
   if queens == preset_queens:
@@ -1384,12 +1401,12 @@ def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD
     counter[0]+=1
     return
   # 現在の行にクイーンを配置できる位置を計算
-  free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&mask
+  free=~(ld|rd|col|(LD>>(N-1-row))|(RD<<(N-1-row)))&board_mask
   # _set_pre_queens_cached=self.set_pre_queens_cached
   while free:
     bit:int=free&-free
     free&=free-1
-    set_pre_queens_cached(N,(ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
+    set_pre_queens_cached(N,subconst_cache,(ld|bit)<<1,(rd|bit)>>1,col|bit,k,l,row+1,queens+1,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
 
 ####################################################
 #
@@ -1398,14 +1415,15 @@ def set_pre_queens(N:int,ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD
 ####################################################
 
 """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
-def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int]],preset_queens:int)->None:
-  # 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、
-  # 長時間プロセスなら念のためクリアしておくのが安全）
-  nq_get(N).subconst_cache.clear()
+def gen_constellations(N:int,ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations:List[Dict[str,int]],preset_queens:int)->Tuple[Set[int],Set[StateKey],List[Dict[str,int]],int]:
+
   halfN=(N+1)//2  # Nの半分を切り上げ
   N1:int=N-1
+  N2:int=N-2
+  """ 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、長時間プロセスなら念のためクリアしておくのが安全） """
+  # nq_get(N).subconst_cache.clear()
+  subconst_cache.clear()
   constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
-  # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
   if N%2==1:
     center=N//2
     ijkl_list.update(
@@ -1417,20 +1435,16 @@ def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int
       if j!=i and j!=l
       if not check_rotations(ijkl_list,i,j,center,l,N)
     )
-  # --- [Opt-03] 中央列特別処理（奇数Nの場合のみ） ---
-  # コーナーにクイーンがいない場合の開始コンステレーションを計算する
-  ijkl_list.update(to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N1) for i in range(k+1,N-1) if i!=(N-1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not check_rotations(ijkl_list,i,j,k,l,N))
-  # コーナーにクイーンがある場合の開始コンステレーションを計算する
-  ijkl_list.update({to_ijkl(0,j,0,l) for j in range(1,N-2) for l in range(j+1,N1)})
-  # Jasmin変換
+  """ コーナーにクイーンがない場合の開始コンステレーションを計算"""
+  ijkl_list.update(to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N1) for i in range(k+1,N1) if i!=(N1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not check_rotations(ijkl_list,i,j,k,l,N))
+  """ コーナーにクイーンがある場合の開始コンステレーションを計算する """
+  ijkl_list.update({to_ijkl(0,j,0,l) for j in range(1,N2) for l in range(j+1,N1)})
+  """ Jasmin変換 """
   ijkl_list={get_jasmin(N,c) for c in ijkl_list}
-  L=1<<(N1)  # Lは左端に1を立てる
-  # ローカルアクセスに変更
-  # geti,getj,getk,getl=nq_get(N).geti,nq_get(N).getj,nq_get(N).getk,nq_get(N).getl
-  # to_ijkl=nq_get(N).to_ijkl
-  # _set_pre_queens_cached=nq_get(N).set_pre_queens_cached
+  """ Lは左端に1を立てる """
+  L=1<<(N1)  
   for sc in ijkl_list:
-    # ここで毎回クリア（＝この sc だけの重複抑止に限定）
+    """ ここで毎回クリア（＝この sc だけの重複抑止に限定）"""
     constellation_signatures=set()
     i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
     Lj=L>>j;Li=L>>i;Ll=L>>l
@@ -1439,14 +1453,17 @@ def gen_constellations(N:int,ijkl_list:Set[int],constellations:List[Dict[str,int
     col=1|L|Li|Lj
     LD=Lj|Ll
     RD=Lj|(1<<k)
-    counter:List[int]=[0] # サブコンステレーションを生成
+    """ サブコンステレーション生成準備 """
+    counter:List[int]=[0] 
     visited:Set[int]=set()
-    set_pre_queens_cached(N,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
-    current_size=len(constellations)
+    """ Opt-04: preset_queens 行を事前に置く """
+    set_pre_queens_cached(N,subconst_cache,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures)
     base=to_ijkl(i,j,k,l)
     for a in range(counter[0]):
       constellations[-1-a]["startijkl"]|=base
 
+
+""" """
 def validate_constellation_list(constellations:List[Dict[str,int]])->bool: 
   return all(all(k in c for k in ("ld","rd","col","startijkl")) for c in constellations)
 
@@ -1638,6 +1655,7 @@ def load_or_build_solutions_bin( N:int, constellations: List[Dict[str,int]], pre
   exec_solutions(N,constellations, use_gpu)
   save_solutions_bin_v2(fname, constellations)
 
+
 """テキスト形式で constellations を保存/復元する（1 行 5 数値: ld rd col startijkl solutions）。"""
 def save_constellations_txt(path:str,constellations:List[Dict[str,int]])->None:
   with open(path,"w") as f:
@@ -1663,7 +1681,7 @@ def load_constellations_txt(path:str)->List[Dict[str,int]]:
   return out
 
 """テキストキャッシュを読み込み。壊れていれば `gen_constellations()` で再生成して保存する。"""
-def load_or_build_constellations_txt(ijkl_list:Set[int],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
+def load_or_build_constellations_txt(ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations,N:int,preset_queens:int)->List[Dict[str,int]]:
   # N と preset_queens に基づいて一意のファイル名を構成
   fname=f"constellations_N{N}_{preset_queens}.txt"
   # ファイルが存在すれば読み込むが、破損チェックも行う
@@ -1678,7 +1696,7 @@ def load_or_build_constellations_txt(ijkl_list:Set[int],constellations,N:int,pre
       print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
   # ファイルがなければ生成・保存
   constellations:List[Dict[str,int]]=[]
-  gen_constellations(N,ijkl_list,constellations,preset_queens)
+  ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
   save_constellations_txt(fname,constellations)
   return constellations
 
@@ -1693,8 +1711,8 @@ def save_constellations_bin(N:int,fname:str,constellations:List[Dict[str,int]])-
         f.write("".join(chr(c) for c in b))  # Codonでは str がバイト文字列扱い
 
 """bin 形式で constellations を保存/復元。Codon では str をバイト列として扱う前提のため、CPython では bytes で書き込むよう分岐/注意が必要。"""
-def load_constellations_bin(N:int,fname:str)->List[Dict[str,int]]:
-  constellations:List[Dict[str,int]]=[]
+def load_constellations_bin(N:int,fname:str,constellations:List[Dict[str,int]],)->List[Dict[str,int]]:
+  # constellations:List[Dict[str,int]]=[]
   _read_uint32_le=read_uint32_le
   with open(fname,"rb") as f:
     while True:
@@ -1709,102 +1727,60 @@ def load_constellations_bin(N:int,fname:str)->List[Dict[str,int]]:
   return constellations
 
 """bin キャッシュを読み込み。検証に失敗した場合は再生成して保存し、その結果を返す。"""
-def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],constellations,preset_queens:int)->List[Dict[str,int]]:
+def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations:List[Dict[str,int]],preset_queens:int)->Tuple[int,List[Dict[str,int]]]:
+
+  # N と preset_queens に基づいて一意のファイル名を構成
   fname=f"constellations_N{N}_{preset_queens}.bin"
   if file_exists(fname):
     # ファイルが存在すれば読み込むが、破損チェックも行う
     try:
-      constellations=load_constellations_bin(N,fname)
+      constellations=load_constellations_bin(N,fname,constellations)
       if validate_bin_file(fname) and validate_constellation_list(constellations):
-        return constellations
+        return preset_queens,constellations
       else:
         print(f"[警告] 不正なキャッシュ形式: {fname} を再生成します")
     except Exception as e:
       print(f"[警告] キャッシュ読み込み失敗: {fname}, 理由: {e}")
   # ファイルがなければ生成・保存
-  constellations:List[Dict[str,int]]=[]
-  gen_constellations(N,ijkl_list,constellations,preset_queens)
+  # constellations:List[Dict[str,int]]=[]
+  gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
   save_constellations_bin(N,fname,constellations)
-  return constellations
+  return preset_queens,constellations
 
-"""プリセットクイーン数を動的に調整しつつ星座リストを生成/読み込み。GPU 時は目標タスク数 m_target を満たすまで深くする。最大3回試行。"""
-def build_constellations_dynamicK(N: int, use_gpu: bool) -> Tuple[int, List[Dict[str,int]]]:
-  # K = NQ.choose_preset_queens(size, use_gpu)
-  K = 5
-  ijkl_list:Set[int] = set()
-  constellations:List[Dict[str,int]] = []
-  constellations = load_or_build_constellations_bin(N,ijkl_list, constellations, K)
-  return K, constellations
-  #
-  # # 以下は不要 presetは5で固定
-  # #
-  # # 一時的に枝刈りを無効化
-  # had_flag = hasattr(NQ, "use_visited_prune")
-  # old = NQ.use_visited_prune if had_flag else False
-  # if had_flag:
-  #   NQ.use_visited_prune = False
-  # try:
-  #   # m_target = 200_000 if use_gpu else 30_000
-  #   # GPU 時はサイズに応じて目標タスク数を変える
-  #   m_target = 200_000 if use_gpu and size >= 15 else 0
-  #   K = NQ.choose_preset_queens(size, use_gpu)
-  #   # 動的対応が課題：最大2回試行（合計2回）できればなおオッケー
-  #   # for _ in range(2):  # N18でＮＧになります
-  #   for _ in range(1):  
-  #     ijkl_list:Set[int] = set()
-  #     constellations:List[Dict[str,int]] = []
-  #     constellations = NQ.load_or_build_constellations_bin(ijkl_list, constellations, size, K)
-  #     m = len(constellations)
-  #     if m == 0:
-  #       # 解は0ではないので、ここは「Kが深すぎてタスクが潰れた」扱い
-  #       # → Kを下げて作り直す or CPUにフォールバック
-  #       print(f"m==0 (preset_queens={K}) fallback")
-  #       # 例：Kを1下げて作り直す
-  #       K -= 1
-  #       ijkl_list=set(); constellations=[]
-  #       constellations = NQ.load_or_build_constellations_bin(ijkl_list,constellations,size,K)
-  #       m = len(constellations)
-  #     # 
-  #     # print("K:", K, "m:", len(constellations))
-  #     # 
-  #     # 目標に届けば採用
-  #     if m >= m_target:
-  #       return K, constellations
-  #     # 足りなければ K を増やして作り直し
-  #     K += 1
-  #   #
-  #   # print(f"size={size} K={K} m={len(constellations)}")
-  #   #
-  #   return K, constellations
-  # finally:
-  #   NQ.use_visited_prune = old
+
+"""プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
+def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[StateKey],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[int, Set[StateKey],List[Dict[str,int]]]:
+
+  preset_queens,constellations=load_or_build_constellations_bin(N,ijkl_list,subconst_cache, constellations, preset_queens)
+  return  preset_queens,subconst_cache,constellations
+
 
 """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
 def _bit_total(N:int)->int:
-  mask=(1<<N)-1
-  total=0
+  mask:int=(1<<N)-1
   """ 小さなNは正攻法で数える（対称重みなし・全列挙） """
   def bt(row:int,left:int,down:int,right:int):
-    nonlocal total
     if row==N:
-      total+=1
-      return
-    bitmap=mask&~(left|down|right)
+      return 1
+    total:int=0
+    bitmap:int=mask&~(left|down|right)
     while bitmap:
-      bit=-bitmap&bitmap
+      bit:int=-bitmap&bitmap
       bitmap^=bit
-      bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
-  bt(0,0,0,0)
-  return total
+      total+=bt(row+1,(left|bit)<<1,down|bit,(right|bit)>>1)
+    return total
+  return bt(0,0,0,0)
+
 
 """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
 def main()->None:
+  
   expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
   nmin:int=5
-  nmax:int=len(expected)
-  # nmax:int=18
-  use_gpu=False
-  argc=len(sys.argv)
+  nmax:int=28
+  use_gpu:bool=False
+  argc:int=len(sys.argv)
+
   if argc == 1:
     print("CPU mode selected")
     pass
@@ -1824,28 +1800,35 @@ def main()->None:
     print("Too many arguments")
     print("Usage: nqueens [-c | -g]")
     return
+
   print(" N:             Total         Unique        hh:mm:ss.ms")
   for N in range(nmin,nmax):
     start_time=datetime.now()
     if N<=5:
+
+      """ 小さなNは正攻法で数える（対称重みなし・全列挙） """
       total=_bit_total(N)
+
       dt=datetime.now()-start_time
       text=str(dt)[:-3]
       print(f"{N:2d}:{total:18d}{0:15d}{text:>20s}")
       continue
+
     ijkl_list:Set[int]=set()
     constellations:List[Dict[str,int]]=[]
-    NQ=NQueens17(N)
+    subconst_cache:Set[StateKey]=set()
+
     """ constellasions()でキャッシュを使う """
-    use_constellation_cache = True
+    use_constellation_cache:bool = True
+    preset_queens:int = 5 # preset_queens CPUが担当する深さ
+
     if use_constellation_cache:
-      preset_queens, constellations = build_constellations_dynamicK( N, use_gpu)
+      preset_queens,subconst_cache,constellations = build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
-      preset_queens=5
-      # NQ.gen_constellations(ijkl_list,constellations,size,preset_queens)
-      gen_constellations(N,ijkl_list,constellations,preset_queens)
+      gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
+    
+    
     """ solutions()でキャッシュを使って実行 """
-    # use_solution_cache = True
     use_solution_cache = False
     if use_solution_cache:
         #
@@ -1854,8 +1837,10 @@ def main()->None:
         # 
         # bin
         load_or_build_solutions_bin(N,constellations, preset_queens, use_gpu, cache_tag="v2")
+        # 
     else:
         exec_solutions(N,constellations,use_gpu)
+    
     """ 合計 """
     total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
     time_elapsed=datetime.now()-start_time
