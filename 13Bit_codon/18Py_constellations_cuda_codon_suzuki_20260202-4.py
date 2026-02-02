@@ -16,6 +16,26 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
          _/ _/
        _/m/'
 
+       
+2026年  2月 2日 木曜日
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -c
+CPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+18:         666090624              0         0:00:02.127    ok
+19:        4968057848              0         0:00:15.227    ok
+20:       39029188884              0         0:02:00.875    ok
+
+2026年  2月 2日 木曜日
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
+suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+18:         666090624              0         0:00:12.056    ok
+19:        4968057848              0         0:01:39.231    ok
+20:       39029188884              0         0:12:54.135    ok
 
 2026年  2月 2日 
 Python/Codon amazon AWS g5.xlarge x 1
@@ -57,6 +77,26 @@ GPU mode selected
 18:         666090624              0         0:00:12.805    ok 
 19:        4968057848              0         0:01:45.620    ok
 20:       39029188884              0         0:13:58.962    ok
+
+2026年  1月 22日 木曜日 10:26:29 UTC
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260122.py
+suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260122 -c
+CPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+18:         666090624              0         0:00:02.122    ok
+19:        4968057848              0         0:00:15.068    ok
+20:       39029188884              0         0:01:58.882    ok
+
+2026年  1月 22日 木曜日 10:26:29 UTC
+Python/Codon amazon AWS m4.16xlarge x 1
+suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
+-2.py && ./19Py_constellations_cuda_codon_k.20260123-2 -g
+GPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+18:         666090624              0         0:00:28.283    ok
+19:        4968057848              0         0:03:46.018    ok
+20:       39029188884              0         0:31:27.325    ok
 
 2025 15Py_constellations_optimize_codon.py
 Python/Codon amazon AWS m4.16xlarge x 1
