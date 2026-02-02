@@ -82,7 +82,7 @@ MAXF:Static[int] = 64  # 28より大きければOK（固定で）
 MAXD:Static[int] = 32
 FCONST:Static[int]=28
 StateKey=Tuple[int,int,int,int,int,int,int,int,int,int,int]
-meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
+# meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
 
 """ CUDA GPU 用 DFS カーネル関数  """
 @gpu.kernel
@@ -1052,6 +1052,7 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool)->None:
   # GPU
   ##########
   if use_gpu:
+    meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
     # m_next  = [t[0] for t in func_meta]
     # m_avail = [t[2] for t in func_meta]
 
