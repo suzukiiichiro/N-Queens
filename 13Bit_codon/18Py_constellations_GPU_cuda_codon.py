@@ -160,6 +160,22 @@ from datetime import datetime
 
 MAXD:Static[int] = 32
 
+"""  構造体配列 (SoA) タスク管理クラス """
+class TaskSoA:
+  """ コンストラクタ """
+  def __init__(self, m: int):
+    self.ld_arr: List[int] = [0]*m
+    self.rd_arr: List[int] = [0]*m
+    self.col_arr: List[int] = [0]*m
+    self.row_arr: List[int] = [0]*m
+    self.free_arr: List[int] = [0]*m
+    self.jmark_arr: List[int] = [0]*m
+    self.end_arr: List[int] = [0]*m
+    self.mark1_arr: List[int] = [0]*m
+    self.mark2_arr: List[int] = [0]*m
+    self.funcid_arr: List[int] = [0]*m
+    self.ijkl_arr: List[int] = [0]*m
+
 """ CUDA GPU 用 DFS カーネル関数  """
 @gpu.kernel
 def kernel_dfs_iter_gpu(
@@ -379,34 +395,25 @@ def kernel_dfs_iter_gpu(
 
     results[i] = total * w_arr[i]
 
-"""  構造体配列 (SoA) タスク管理クラス """
-class TaskSoA:
-  """ コンストラクタ """
-  def __init__(self, m: int):
-    self.ld_arr: List[int] = [0]*m
-    self.rd_arr: List[int] = [0]*m
-    self.col_arr: List[int] = [0]*m
-    self.row_arr: List[int] = [0]*m
-    self.free_arr: List[int] = [0]*m
-    self.jmark_arr: List[int] = [0]*m
-    self.end_arr: List[int] = [0]*m
-    self.mark1_arr: List[int] = [0]*m
-    self.mark2_arr: List[int] = [0]*m
-    self.funcid_arr: List[int] = [0]*m
-    self.ijkl_arr: List[int] = [0]*m
-
 """dfs()の非再帰版"""
-def dfs_iter(meta,blockK,blockL,board_mask,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,endmark:int,mark1:int,mark2:int)->u64:
+def dfs_iter(
+  meta, blockK, blockL, board_mask,
+  functionid:int, ld:int, rd:int, col:int, row:int, free:int,
+  jmark:int, endmark:int, mark1:int, mark2:int
+)->u64:
   """
   機能:
     CPU 上で DFS を「非再帰（明示スタック）」で実行し、部分盤面（constellation）
-    が持つ探索領域の解数（ユニーク側）を返します。
+    が持つ探索領域の解数（ユニーク側）を返す。
 
   引数:
     meta:
       functionid -> (next_funcid, funcptn, avail_flag) のテーブル。
+      - funcptn: 段の種類（mark系 / jmark系 / base系）を表す。
+      - avail_flag: “先読み枝刈りを使うか”のフラグ（+1 の先読みで枝を落とす）。
     blockK/blockL:
       mark 行で適用する追加ブロック値（bitboard へ OR する補正）。
+      - step=2/3 で複数行をまとめて進める段で使用。
     board_mask:
       (1<<N)-1。ビットボード正規化に使用。
     functionid, ld, rd, col, row, free:
@@ -419,110 +426,170 @@ def dfs_iter(meta,blockK,blockL,board_mask,functionid:int,ld:int,rd:int,col:int,
 
   実装上のコツ（ソース引用）:
     bit = avail & -avail
-    avail &= avail-1
+    avail &= avail - 1
+
+  注意:
+    - Python 再帰を避け、push/pop を使ってホットパスのオーバーヘッドを抑える。
+    - meta/blockK/blockL は exec_solutions() 側で整合するように与えること。
   """
-  # if functionid < 0 or functionid >= len(meta) or functionid >= len(blockK) or functionid >= len(blockL):
-    # print("BAD functionid=", functionid,
-    #       "len(meta)=", len(meta),
-    #       "len(blockK)=", len(blockK),
-    #       "len(blockL)=", len(blockL))
-    # return u64(0)
-  # nq=nq_get(N)
-  # board_mask:int=nq._board_mask
-  total:u64=u64(0)
+
+  total:u64 = u64(0)
+
   # スタック要素: (functionid, ld, rd, col, row, free)
-  stack: List[Tuple[int,int,int,int,int,int]] = [(functionid,ld,rd,col,row,free)]
+  # NOTE: 再帰呼び出しを使わずに pop → 展開 → push を回す
+  stack: List[Tuple[int,int,int,int,int,int]] = [(functionid, ld, rd, col, row, free)]
+
   while stack:
-    functionid,ld,rd,col,row,free = stack.pop()
+    functionid, ld, rd, col, row, free = stack.pop()
+
+    # 候補が無いなら終了（この枝は詰み）
     if not free:
       continue
-    next_funcid,funcptn,avail_flag = meta[functionid]
-    # _blockK = blockK[functionid]
-    # _blockL = blockL[functionid]
+
+    # functionid から「この段の振る舞い」を取得
+    next_funcid, funcptn, avail_flag = meta[functionid]
     avail:int = free
-    # ---- 基底 ----
-    if funcptn==5 and row==endmark:
-      if functionid==14:  # SQd2B 特例
-        total += u64(1) if (avail>>1) else u64(0)
+
+    # ---- 基底: endmark 到達時の解カウント ----
+    # funcptn==5 が “base” の段（実装側の割り当て）
+    if funcptn == 5 and row == endmark:
+      # functionid==14 は SQd2B の特例（右シフトで条件付き）
+      if functionid == 14:
+        total += u64(1) if (avail >> 1) else u64(0)
       else:
         total += u64(1)
       continue
-    # 既定（+1）
-    step:int=1
-    add1:int=0
-    row_step:int=row+1
-    use_blocks:bool=False
-    use_future:bool=(avail_flag==1)
-    # blockK:int=0
-    # blockL:int=0
-    local_next_funcid:int=functionid
+
+    # ---- 既定設定（通常 step=1 で次の行へ）----
+    step:int = 1
+    add1:int = 0
+    row_step:int = row + 1
+
+    # mark 段で blockK/blockL を使うか
+    use_blocks:bool = False
+
+    # avail_flag==1 のとき「先読み枝刈り」を使う（+1 の先をチェック）
+    use_future:bool = (avail_flag == 1)
+
+    # 既定では functionid は維持（mark/jmark で遷移する場合のみ変更）
+    local_next_funcid:int = functionid
+
+    # ----------------------------------------------------------------------
+    # 段の種類分岐（funcptn）
+    #   - mark系: step=2/3 でまとめて進める（blockK/blockL を適用）
+    #   - jmark系: 入口で列0禁止 + ld の LSB を立てる
+    #   - base系 : 上で処理済み
+    # ----------------------------------------------------------------------
+
     # ---- mark 行: step=2/3 + block ----
-    if funcptn in (0,1,2):
-      at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
+    if funcptn in (0, 1, 2):
+      # funcptn により mark1 / mark2 を使い分ける（元実装の意図を保持）
+      at_mark:bool = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+
+      # mark 行に一致し、かつ候補があるなら mark モードへ
       if at_mark and avail:
-        step=2 if funcptn in (0,1) else 3
-        add1=1 if (funcptn==1 and functionid==20) else 0
-        row_step=row+step
-        _blockK=blockK[functionid]
-        _blockL=blockL[functionid]
-        use_blocks=True
-        use_future=False
-        local_next_funcid=next_funcid
+        # step=2: 2 行進める、step=3: 3 行進める
+        step = 2 if funcptn in (0, 1) else 3
+
+        # 一部 functionid（例: 20）で add1 を使う特例（既存ロジック踏襲）
+        add1 = 1 if (funcptn == 1 and functionid == 20) else 0
+
+        row_step = row + step
+
+        # block テーブルの取得（functionid 毎に異なる）
+        _blockK = blockK[functionid]
+        _blockL = blockL[functionid]
+
+        use_blocks = True
+
+        # mark 段では “先読み”は使わない方針（既存実装）
+        use_future = False
+
+        # mark 段では functionid を next_funcid に遷移
+        local_next_funcid = next_funcid
+
     # ---- jmark 特殊 ----
-    elif funcptn==3 and row==jmark:
+    elif funcptn == 3 and row == jmark:
+      # 列0禁止（LSB を落とす）
       avail &= ~1
+
+      # ld の LSB を立てる（実装意図: 特殊な禁止線/調整）
       ld |= 1
+
       local_next_funcid = next_funcid
+
+      # 候補が消えたら終了
       if not avail:
         continue
-    # ==== ループ１：block 適用 ====
+
+    # ======================================================================
+    # 以降は「候補を 1bit ずつ取り出して次状態を push」する本体
+    # ======================================================================
+
+    # ---- ループ１：mark 段（block 適用）----
     if use_blocks:
       while avail:
+        # 最下位 1bit を取り出す
         bit:int = avail & -avail
-        avail &= avail-1
-        nld:int = ((ld|bit)<<step) | add1 | _blockL
-        nrd:int = ((rd|bit)>>step) | _blockK
+        avail &= avail - 1
+
+        # step=2/3 を反映した次状態（block を OR）
+        nld:int  = ((ld | bit) << step) | add1 | _blockL
+        nrd:int  = ((rd | bit) >> step) | _blockK
         ncol:int = col | bit
-        nf:int = board_mask&~(nld|nrd|ncol)
+
+        # 次の空き（free）
+        nf:int = board_mask & ~(nld | nrd | ncol)
+
         if nf:
-          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
       continue
-    # ==== ループ２：+1 素朴（先読みなし）====
+
+    # ---- ループ２：通常 +1（先読みなし）----
     if not use_future:
       while avail:
         bit:int = avail & -avail
-        avail &= avail-1
-        nld:int = (ld|bit)<<1
-        nrd:int = (rd|bit)>>1
-        ncol:int = col|bit
-        nf:int = board_mask&~(nld|nrd|ncol)
+        avail &= avail - 1
+
+        nld:int  = (ld | bit) << 1
+        nrd:int  = (rd | bit) >> 1
+        ncol:int = col | bit
+        nf:int   = board_mask & ~(nld | nrd | ncol)
+
         if nf:
-          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
       continue
-    # ==== ループ３：+1 先読み（row_step >= endmark は短絡）====
-    if row_step>=endmark:
+
+    # ---- ループ３：通常 +1（先読みあり）----
+    # 終端付近は先読みしても得しないので短絡（既存実装の意図を尊重）
+    if row_step >= endmark:
       while avail:
         bit:int = avail & -avail
-        avail &= avail-1
-        nld:int = (ld|bit)<<1
-        nrd:int = (rd|bit)>>1
-        ncol:int = col|bit
-        nf:int = board_mask&~(nld|nrd|ncol)
+        avail &= avail - 1
+        nld:int  = (ld | bit) << 1
+        nrd:int  = (rd | bit) >> 1
+        ncol:int = col | bit
+        nf:int   = board_mask & ~(nld | nrd | ncol)
         if nf:
-          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
       continue
-    # ==== ループ３B：先読み本体（1手先が0なら枝刈り）====
+
+    # ---- ループ３B：先読み本体（次の次が 0 なら枝刈り）----
     while avail:
       bit:int = avail & -avail
-      avail &= avail-1
-      nld:int = (ld|bit)<<1
-      nrd:int = (rd|bit)>>1
-      ncol:int = col|bit
-      nf:int = board_mask&~(nld|nrd|ncol)
+      avail &= avail - 1
+
+      nld:int  = (ld | bit) << 1
+      nrd:int  = (rd | bit) >> 1
+      ncol:int = col | bit
+      nf:int   = board_mask & ~(nld | nrd | ncol)
       if not nf:
         continue
-      if board_mask&~((nld<<1)|(nrd>>1)|ncol):
-        stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+
+      # “次の次”の free が 0 なら、この枝は詰みなので push しない
+      if board_mask & ~((nld << 1) | (nrd >> 1) | ncol):
+        stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
+
   return total
 
 """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って(1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み を切り替える。"""
@@ -635,110 +702,215 @@ def dfs(N:int,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,en
   return total
 
 """ constellations の一部を TaskSoA 形式に変換して返すユーティリティ """
-def build_soa_for_range(N, constellations: List[Dict[str, int]], off: int, m: int,soa:TaskSoA,w_arr:List[u64]) -> Tuple[TaskSoA, List[u64]]:
+def build_soa_for_range(
+    N,
+    constellations: List[Dict[str, int]],
+    off: int,
+    m: int,
+    soa: TaskSoA,
+    w_arr: List[u64]
+) -> Tuple[TaskSoA, List[u64]]:
     """
     機能:
       constellations[off:off+m] を SoA（Structure of Arrays）へ展開し、
-      DFS に必要な初期状態（ld/rd/col/free/row/funcid/マーク行など）を
-      配列として連続配置します。合わせて対称性重み w_arr も埋めます。
+      DFS（CPU/GPU）の入力として必要な配列群を “同一 index” に揃えて埋める。
+      さらに、対称性の重み（2/4/8）を w_arr に計算して格納する。
 
-    ねらい:
-      - dict 参照（ハッシュ）を避け、CPU/GPU ともに連続メモリアクセスに寄せる。
-      - GPU では特に SoA が coalesced access に有利。
+    目的（なぜ SoA か）:
+      - dict 参照（ハッシュ）を探索ループから追い出し、前処理で配列へ変換する。
+      - CPU(@par) / GPU(kernel) どちらでも「t 番のタスク状態」を連続配列から取り出せる。
+      - GPU では AoS より SoA の方がメモリアクセス効率が良くなりやすい。
 
     引数:
-      N: 盤サイズ
-      constellations: 入力タスク（dict）のリスト
-      off,m: 対象レンジ
-      soa: 出力先（TaskSoA）
-      w_arr: 出力先（対称性重み）
+      N:
+        盤サイズ。
+      constellations:
+        タスク dict の配列。少なくとも "ld","rd","col","startijkl" を持つ。
+      off, m:
+        対象レンジ。t=0..m-1 に constellations[off+t] を詰める。
+      soa:
+        出力先の SoA（ld_arr/rd_arr/col_arr/... の配列群を保持）。
+      w_arr:
+        出力先の重み配列。w_arr[t] = symmetry(soa.ijkl_arr[t], N)。
 
     返り値:
       (soa, w_arr)
+
+    前提/不変条件:
+      - constellation["ld"], ["rd"], ["col"] はビットボード（board_mask 内が望ましい）。
+      - constellation["startijkl"] は
+          start = start_ijkl >> 20   （開始 row）
+          ijkl  = start_ijkl & ((1<<20)-1) （開始星座 pack）
+        という構造でパックされていること。
+      - exec_solutions() 側の meta / blockK / blockL と、ここで選ぶ target(functionid) は整合必須。
+
+    実装上のコツ（この関数の要点）:
+      - startijkl から start(row) と ijkl(i,j,k,l pack) を復元し、
+        そこから「探索開始時点の ld/rd/col/free」を再構築する。
+      - その状態の特徴（j,k,l,start など）から、最適な分岐 target(functionid) と
+        mark/jmark/endmark を決め、SoA へ格納する。
     """
-    board_mask:int=(1<<N)-1
-    small_mask:int = (1 << max(0, N - 2)) - 1
-    N1:int = N - 1
-    N2:int = N - 2
-    # 出力
+
+    # ----------------------------------------
+    # ビットマスク類（盤面幅の正規化に使う）
+    # ----------------------------------------
+    board_mask: int = (1 << N) - 1
+
+    # small_mask は「N-2 幅」のマスク（N が小さいときは 0 幅を許容）
+    # col を組み立てる際に ~small_mask を混ぜる設計（既存実装の意図を保持）
+    small_mask: int = (1 << max(0, N - 2)) - 1
+
+    # よく使う定数
+    N1: int = N - 1
+    N2: int = N - 2
+
+    # 出力（soa は外から渡される前提。必要なら TaskSoA(m) を呼び出し側で確保）
     # soa = TaskSoA(m)
+
+    # ----------------------------------------
+    # レンジ分のタスクを SoA に詰める
+    # ----------------------------------------
     for t in range(m):
         constellation = constellations[off + t]
+
+        # 特殊行（後段 DFS で使う）
         jmark = 0
         mark1 = 0
         mark2 = 0
+
+        # startijkl: 上位に start(row)、下位20bitに ijkl pack を持つ
         start_ijkl = constellation["startijkl"]
         start = start_ijkl >> 20
         ijkl = start_ijkl & ((1 << 20) - 1)
+
+        # ijkl から j,k,l を取り出し（i はここでは不要なので取っていない）
         j, k, l = getj(ijkl), getk(ijkl), getl(ijkl)
+
+        # ----------------------------------------
+        # 開始状態（ld/rd/col）の再構築
+        #   - constellation 側の ld/rd/col は “ある基準”で作られているので、
+        #     ここで start(row) に合わせて正規化・補正して探索入口に合わせる。
+        # ----------------------------------------
+
         # 元のコードそのまま
+        # ld/rd/col は 1bit シフトして “内部表現”を合わせている（既存設計）
         ld = constellation["ld"] >> 1
         rd = constellation["rd"] >> 1
+
+        # col: (col>>1) に ~small_mask を混ぜ、board_mask で正規化して盤面外ビットを落とす
         col = (constellation["col"] >> 1) | (~small_mask)
-        # col を盤面幅へ正規化
+
+        # col を盤面幅へ正規化（上位ゴミビット除去）
         col &= board_mask
+
+        # LD: j と l の列ビット（MSB側基準）を作る
+        # 例: (1 << (N-1-j)) は列 j に相当
         LD = (1 << (N1 - j)) | (1 << (N1 - l))
+
+        # ld は start 行に合わせて LD を右にずらして混ぜる（既存式のまま）
         ld |= LD >> (N - start)
+
+        # rd 側の補正（start と k の関係で入れるビットが変わる）
         if start > k:
             rd |= (1 << (N1 - (start - k + 1)))
+
+        # j がゲート条件を満たすとき rd へ追加補正
         if j >= 2 * N - 33 - start:
             rd |= (1 << (N1 - j)) << (N2 - start)
+
+        # ----------------------------------------
+        # free: 現在行(start)で置ける候補列
+        # ----------------------------------------
         free = board_mask & ~(ld | rd | col)
-        # ---- 分岐（現行の exec_solutions と同一）----
+
+        # ----------------------------------------
+        # 分岐（現行の exec_solutions と同一）
+        #   target(functionid) と mark/jmark/endmark を決める
+        # ----------------------------------------
         endmark = 0
         target = 0
+
+        # 条件を事前に bool 化（枝の可読性/分岐コスト低減）
         j_lt_N3 = (j < N - 3)
         j_eq_N3 = (j == N - 3)
         j_eq_N2 = (j == N - 2)
+
         k_lt_l = (k < l)
         start_lt_k = (start < k)
         start_lt_l = (start < l)
+
         l_eq_kp1 = (l == k + 1)
         k_eq_lp1 = (k == l + 1)
+
+        # j_gate: ある境界より j が大きいと “ゲートON” 扱い（既存設計）
         j_gate = (j > 2 * N - 34 - start)
+
+        # --------------------------
+        # case 1) j < N-3
+        # --------------------------
         if j_lt_N3:
+            # jmark: j+1 行で jmark 特殊を入れる設計
             jmark = j + 1
+
+            # endmark: ここでは N-2 を終端とする
             endmark = N2
+
             if j_gate:
+                # ---- ゲートON 側（より特殊な分岐）----
                 if k_lt_l:
+                    # mark 行は (k-1, l-1)（k<l のとき）
                     mark1, mark2 = k - 1, l - 1
+
                     if start_lt_l:
                         if start_lt_k:
+                            # l==k+1 の特例で target を変える
                             target = 0 if (not l_eq_kp1) else 4
                         else:
                             target = 1
                     else:
                         target = 2
                 else:
+                    # k>=l のときは mark を入れ替える
                     mark1, mark2 = l - 1, k - 1
+
                     if start_lt_k:
                         if start_lt_l:
+                            # k==l+1 の特例で target を変える
                             target = 5 if (not k_eq_lp1) else 7
                         else:
                             target = 6
                     else:
                         target = 2
             else:
+                # ---- ゲートOFF 側（比較的単純な分岐）----
                 if k_lt_l:
                     mark1, mark2 = k - 1, l - 1
                     target = 8 if (not l_eq_kp1) else 9
                 else:
                     mark1, mark2 = l - 1, k - 1
                     target = 10 if (not k_eq_lp1) else 11
+
+        # --------------------------
+        # case 2) j == N-3
+        # --------------------------
         elif j_eq_N3:
             endmark = N2
+
             if k_lt_l:
                 mark1, mark2 = k - 1, l - 1
+
                 if start_lt_l:
                     if start_lt_k:
                         target = 12 if (not l_eq_kp1) else 15
                     else:
+                        # ここでは mark2 のみを設定（意図: 特殊パターン）
                         mark2 = l - 1
                         target = 13
                 else:
                     target = 14
             else:
                 mark1, mark2 = l - 1, k - 1
+
                 if start_lt_k:
                     if start_lt_l:
                         target = 16 if (not k_eq_lp1) else 18
@@ -747,6 +919,10 @@ def build_soa_for_range(N, constellations: List[Dict[str, int]], off: int, m: in
                         target = 17
                 else:
                     target = 14
+
+        # --------------------------
+        # case 3) j == N-2
+        # --------------------------
         elif j_eq_N2:
             if k_lt_l:
                 endmark = N2
@@ -790,6 +966,10 @@ def build_soa_for_range(N, constellations: List[Dict[str, int]], off: int, m: in
                 else:
                     endmark = N2
                     target = 21
+
+        # --------------------------
+        # case 4) それ以外（j がさらに大きい等）
+        # --------------------------
         else:
             endmark = N2
             if start > k:
@@ -797,7 +977,12 @@ def build_soa_for_range(N, constellations: List[Dict[str, int]], off: int, m: in
             else:
                 mark1 = k - 1
                 target = 27
-        # ---- SoA へ格納（t番目）----
+
+        # ----------------------------------------
+        # SoA へ格納（t番目）
+        #   row_arr[t] は start（探索開始行）
+        #   ijkl_arr[t] は “開始星座 pack（下位20bit）”
+        # ----------------------------------------
         soa.ld_arr[t] = ld
         soa.rd_arr[t] = rd
         soa.col_arr[t] = col
@@ -810,11 +995,15 @@ def build_soa_for_range(N, constellations: List[Dict[str, int]], off: int, m: in
         soa.funcid_arr[t] = target
         soa.ijkl_arr[t] = ijkl
 
-    # ---- w_arr（重み）----
-    # w_arr: List[u64] = [u64(0)] * m
+    # ----------------------------------------
+    # w_arr（対称性重み 2/4/8）
+    #   - この重みは「ユニーク解数 → トータル解数」への復元係数
+    #   - 後段で results[t] *= w_arr[t] の形で使う
+    # ----------------------------------------
     @par
     for t in range(m):
         w_arr[t] = symmetry(soa.ijkl_arr[t], N)
+
     return soa, w_arr
 
 """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
@@ -1200,15 +1389,74 @@ def jasmin(ijkl:int,N:int)->int:
 ####################################################
 
 """サブコンステレーション生成のキャッシュ付ラッパ。StateKey で一意化し、 同一状態での重複再帰を回避して生成量を抑制する。"""
-def set_pre_queens_cached(N:int,ijkl_list:Set[int],subconst_cache:set[Tuple[int,int,int,int,int,int,int,int,int,int,int]], ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:List[int],constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]],zobrist_hash_tables: Dict[int, Dict[str, List[u64]]])->Tuple[Set[int], Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]], List[Dict[str,int]], int]:
-  # インスタンス共有キャッシュを使う（ローカル初期化しない！）
-  key:Tuple[int,int,int,int,int,int,int,int,int,int,int]=(ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)
+def set_pre_queens_cached(
+  N:int,
+  ijkl_list:Set[int],
+  subconst_cache:set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  ld:int, rd:int, col:int,
+  k:int, l:int,
+  row:int, queens:int,
+  LD:int, RD:int,
+  counter:List[int],
+  constellations:List[Dict[str,int]],
+  preset_queens:int,
+  visited:Set[int],
+  constellation_signatures:Set[Tuple[int,int,int,int,int,int]],
+  zobrist_hash_tables: Dict[int, Dict[str, List[u64]]]
+)->Tuple[Set[int], Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]], List[Dict[str,int]], int]:
+  """
+  機能:
+    `set_pre_queens()` の“入口”にキャッシュを付け、
+    同じ (ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens) の状態からの
+    サブコンステレーション生成を重複実行しないようにする。
+
+  引数:
+    N / preset_queens:
+      キャッシュキーに含める（同じ ld/rd/col でも N や preset が違えば別問題）。
+    ijkl_list:
+      生成過程で参照・更新される開始星座集合（必要なら追加されうる）。
+    subconst_cache:
+      “この実行内”での重複抑止集合。key が存在する場合は何もせず戻る。
+    ld,rd,col,k,l,row,queens,LD,RD:
+      set_pre_queens に渡す状態。
+    counter/constellations:
+      set_pre_queens が constellation を append するための出力先。
+    visited/constellation_signatures/zobrist_hash_tables:
+      set_pre_queens 内部の枝刈り・重複排除用。
+
+  返り値:
+    (ijkl_list, subconst_cache, constellations, preset_queens)
+    ※現行の上位呼び出し側の受けを崩さないためにこの形に揃える。
+
+  実装上のコツ:
+    - “キャッシュ登録してから本体呼び出し”にすることで、
+      並行再入（同一状態からの重複突入）も抑止できる設計。
+  """
+
+  # ---- キャッシュキー（状態を丸ごと）----
+  # NOTE: queens や row も含めるので「途中段の重複」も止められる。
+  key:Tuple[int,int,int,int,int,int,int,int,int,int,int] = (
+    ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens
+  )
+
+  # ---- 既にこの状態から展開済みなら何もしない ----
   if key in subconst_cache:
     return ijkl_list, subconst_cache, constellations, preset_queens
-  # ここで登録してから本体を呼ぶと、並行再入の重複も抑止できる
+
+  # ---- 先に登録（再入・並列時の二重実行も抑止）----
   subconst_cache.add(key)
-  # 新規実行（従来通りset_pre_queensの本体処理へ）
-  ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(N,ijkl_list,subconst_cache,ld,rd,col,k,l,row,queens,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures,zobrist_hash_tables)
+
+  # ---- 新規実行：本体へ ----
+  ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
+    N, ijkl_list, subconst_cache,
+    ld, rd, col,
+    k, l,
+    row, queens,
+    LD, RD,
+    counter, constellations, preset_queens,
+    visited, constellation_signatures,
+    zobrist_hash_tables
+  )
   return ijkl_list, subconst_cache, constellations, preset_queens
 
 """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
@@ -1301,59 +1549,170 @@ def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int
 ####################################################
 
 """開始コンステレーション（代表部分盤面）の列挙。中央列（奇数 N）特例、回転重複排除 （`check_rotations`）、Jasmin 正規化（`get_jasmin`）を経て、各 sc から `set_pre_queens_cached` でサブ構成を作る。"""
-def gen_constellations(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
+def gen_constellations(
+  N:int,
+  ijkl_list:Set[int],
+  subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  constellations:List[Dict[str,int]],
+  preset_queens:int
+)->Tuple[
+  Set[int],
+  Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  List[Dict[str,int]],
+  int
+]:
+  """
+  機能:
+    N-Queens の探索を分割するための「開始コンステレーション（部分盤面）」を列挙し、
+    各開始コンステレーションから `set_pre_queens_cached()` を使って
+    preset_queens 行までの“サブコンステレーション”を生成して `constellations` に追加する。
 
-  halfN=(N+1)//2  # Nの半分を切り上げ
-  N1:int=N-1
-  N2:int=N-2
-  """ 実行ごとにメモ化をリセット（N や preset_queens が変わるとキーも変わるが、長時間プロセスなら念のためクリアしておくのが安全） """
-  # nq_get(N).subconst_cache.clear()
+  引数:
+    N:
+      盤サイズ。
+    ijkl_list:
+      開始コンステレーション候補のパック値集合（to_ijkl の結果）。
+      - 本関数内で update / Jasmin 変換を行い更新される。
+    subconst_cache:
+      サブコンステレーション生成の重複防止キャッシュ（key は (ld,rd,col,k,l,row,queens,LD,RD,N,preset_queens)）。
+      - 実行ごとに clear() して「今回実行内」の重複排除に限定する（安全側）。
+    constellations:
+      出力のタスク配列。各要素は dict で、少なくとも "ld","rd","col","startijkl" を持つ。
+      - `set_pre_queens_cached()` が append する。
+    preset_queens:
+      事前に置く行数（“星座の深さ”のようなもの）。
+      - この値に到達した時点の状態を constellation タスクとして採用する。
+
+  返り値:
+    (ijkl_list, subconst_cache, constellations, 追加した constellation 数)
+
+  前提/不変条件:
+    - to_ijkl / geti/getj/getk/getl / get_jasmin / check_rotations が定義済み。
+    - set_pre_queens_cached() が constellation を append する実装になっている。
+
+  設計のポイント（ソース内の意図）:
+    - 開始星座（i,j,k,l）は回転重複を check_rotations() で排除。
+    - その後 Jasmin 変換で正規形へ寄せる（同型の統一）。
+    - 各開始星座 sc から (ld,rd,col,LD,RD,…) を作り、preset_queens まで展開してタスク化。
+
+  注意:
+    - 本関数は「開始星座の列挙」と「サブ星座生成の入口」を担当。
+      実際にどの状態を constellation として採用するかは set_pre_queens 系の方針に依存する。
+  """
+
+  # ---- 定数・補助値 ----
+  halfN = (N + 1) // 2        # N の半分（切り上げ）。開始星座生成の範囲を絞るために使う
+  N1:int = N - 1              # 最終列 index
+  N2:int = N - 2
+
+  # ---- 実行ごとにメモ化（重複抑止）をリセット ----
+  # N や preset_queens が変わると key も変わるが、
+  # “長寿命プロセス”で繰り返し呼ばれる可能性を考えると毎回クリアが安全。
   subconst_cache.clear()
-  constellation_signatures: Set[ Tuple[int, int, int, int, int, int] ] = set()
-  if N%2==1:
-    center=N//2
+
+  # constellation_signatures は「同一開始 sc 内」での重複排除（サブ生成の内部で使う想定）
+  constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set()
+
+  # ---- 奇数 N の中央列特例（center を固定した開始星座を追加）----
+  if N % 2 == 1:
+    center = N // 2
+    # center を k に固定した開始星座を列挙
     ijkl_list.update(
-      to_ijkl(i,j,center,l)
-      for l in range(center+1,N1)
-      for i in range(center+1,N1)
-      if i!=(N1)-l
-      for j in range(N-center-2,0,-1)
-      if j!=i and j!=l
-      if not check_rotations(ijkl_list,i,j,center,l,N)
+      to_ijkl(i, j, center, l)
+      for l in range(center + 1, N1)
+      for i in range(center + 1, N1)
+      if i != (N1) - l
+      for j in range(N - center - 2, 0, -1)
+      if j != i and j != l
+      # 回転重複の排除（既に登録済みなら skip）
+      if not check_rotations(ijkl_list, i, j, center, l, N)
     )
-  """ コーナーにクイーンがない場合の開始コンステレーションを計算"""
-  ijkl_list.update(to_ijkl(i,j,k,l) for k in range(1,halfN) for l in range(k+1,N1) for i in range(k+1,N1) if i!=(N1)-l for j in range(N-k-2,0,-1) if j!=i and j!=l if not check_rotations(ijkl_list,i,j,k,l,N))
-  """ コーナーにクイーンがある場合の開始コンステレーションを計算する """
-  ijkl_list.update({to_ijkl(0,j,0,l) for j in range(1,N2) for l in range(j+1,N1)})
-  """ Jasmin変換 """
-  ijkl_list={get_jasmin(N,c) for c in ijkl_list}
-  """ Lは左端に1を立てる """
-  L=1<<(N1)  
+
+  # ---- (A) コーナーにクイーンがない開始星座 ----
+  # ここが一番大きい候補生成。回転重複排除 check_rotations が効く前提。
+  ijkl_list.update(
+    to_ijkl(i, j, k, l)
+    for k in range(1, halfN)
+    for l in range(k + 1, N1)
+    for i in range(k + 1, N1)
+    if i != (N1) - l
+    for j in range(N - k - 2, 0, -1)
+    if j != i and j != l
+    if not check_rotations(ijkl_list, i, j, k, l, N)
+  )
+
+  # ---- (B) コーナーにクイーンがある開始星座 ----
+  # (0,j,0,l) 型を追加（“角あり”のクラス）
+  ijkl_list.update({to_ijkl(0, j, 0, l) for j in range(1, N2) for l in range(j + 1, N1)})
+
+  # ---- Jasmin 変換：開始星座を正規形に寄せる ----
+  ijkl_list = {get_jasmin(N, c) for c in ijkl_list}
+
+  # 左端列のビット（MSB 側）を 1 にするための基準
+  # ※この実装では「左端 = 1<<(N-1)」としている
+  L = 1 << (N1)
+
+  # 追加した constellation 数を返すために counter を使う（set_pre_queens 側が増やす）
+  # （List にして参照渡し＝ミュータブルにしている）
+  # ※既存実装の方針に合わせる
+  # counter[0] が “今回 sc から追加した constellation 数” になる
   for sc in ijkl_list:
-    """ ここで毎回クリア（＝この sc だけの重複抑止に限定）"""
-    constellation_signatures=set()
-    i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
-    Lj=L>>j;Li=L>>i;Ll=L>>l
-    ld=((L>>(i-1)) if i>0 else 0)|(1<<(N-k))
-    rd=(L>>(i+1))|(1<<(l-1))
-    col=1|L|Li|Lj
-    LD=Lj|Ll
-    RD=Lj|(1<<k)
-    """ サブコンステレーション生成準備 """
-    counter:List[int]=[0] 
-    visited:Set[int]=set()
+    # sc ごとに重複抑止セットを初期化（＝この sc の内部だけで重複排除）
+    constellation_signatures = set()
 
-    """ Opt-04: preset_queens 行を事前に置く """
+    # sc から (i,j,k,l) を復元
+    i, j, k, l = geti(sc), getj(sc), getk(sc), getl(sc)
+
+    # i/j/l の列ビット（L を右シフトして作る）
+    Lj = L >> j
+    Li = L >> i
+    Ll = L >> l
+
+    # ---- 開始状態（ld, rd, col, …）の構築 ----
+    # ld/rd は「斜め攻撃線」、col は「縦列占有」。
+    # ここは開始星座の“型”に依存する初期化で、探索の入口を作る。
+    ld = (((L >> (i - 1)) if i > 0 else 0) | (1 << (N - k)))
+    rd = ((L >> (i + 1)) | (1 << (l - 1)))
+    col = (1 | L | Li | Lj)
+
+    # mark 行などで使う補助ブロック（実装の意図に沿って保持）
+    LD = (Lj | Ll)
+    RD = (Lj | (1 << k))
+
+    # ---- サブコンステレーション生成準備 ----
+    counter: List[int] = [0]     # set_pre_queens 側が増やす
+    visited: Set[int] = set()    # 枝刈り用 visited（hash を入れる設計）
+
+    # Opt-04: preset_queens 行を事前に置く
+    # Zobrist テーブルは “必要になった時に初期化” する設計（既存実装に合わせる）
     zobrist_hash_tables: Dict[int, Dict[str, List[u64]]] = {}
-    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens_cached(N,ijkl_list,subconst_cache,ld,rd,col,k,l,1,3 if j==N1 else 4,LD,RD,counter,constellations,preset_queens,visited,constellation_signatures, zobrist_hash_tables)
 
-    """ startijkl にパック値をセット """
-    base=to_ijkl(i,j,k,l)
+    # ---- サブ生成（キャッシュ付き）----
+    # row=1、queens は (j==N1) かどうかで 3/4 を切り替えている（既存ロジック）
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens_cached(
+      N, ijkl_list, subconst_cache,
+      ld, rd, col,
+      k, l,
+      1,
+      3 if j == N1 else 4,
+      LD, RD,
+      counter, constellations, preset_queens,
+      visited, constellation_signatures,
+      zobrist_hash_tables
+    )
 
+    # ---- startijkl に “開始星座 base” を追記 ----
+    # set_pre_queens 側で作った constellation["startijkl"] は「途中状態の pack」なので、
+    # ここで base=(i,j,k,l) を OR して “起点” を埋める。
+    base = to_ijkl(i, j, k, l)
+
+    # 直近に追加された counter[0] 件へ OR をかける（末尾から辿る）
     for a in range(counter[0]):
-      constellations[-1-a]["startijkl"]|=base
+      constellations[-1 - a]["startijkl"] |= base
 
-  return ijkl_list,subconst_cache,constellations,counter[0]
+  # 返す 4 つ目は “最後に作った sc の counter” ではなく、
+  # 元実装どおり「最後の counter[0]」を返す（上位で使っている想定）
+  return ijkl_list, subconst_cache, constellations, counter[0]
 
 """ コンステレーションリストの妥当性確認ヘルパ。各要素に 'ld','rd','col','startijkl' キーが存在するかをチェック。"""
 def validate_constellation_list(constellations:List[Dict[str,int]])->bool: 
