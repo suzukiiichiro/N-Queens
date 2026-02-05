@@ -766,7 +766,6 @@ def build_soa_for_range(
 
     # 出力（soa は外から渡される前提。必要なら TaskSoA(m) を呼び出し側で確保）
     # soa = TaskSoA(m)
-
     # ----------------------------------------
     # レンジ分のタスクを SoA に詰める
     # ----------------------------------------
@@ -774,11 +773,15 @@ def build_soa_for_range(
         constellation = constellations[off + t]
 
         # 特殊行（後段 DFS で使う）
+        #   - jmark: funcptn==3 のときに "row==jmark" で特別処理に入る
+        #   - mark1/mark2: funcptn in (0,1,2) のときに "row==mark1/mark2" で mark段(step=2/3)に入る
         jmark = 0
         mark1 = 0
         mark2 = 0
 
         # startijkl: 上位に start(row)、下位20bitに ijkl pack を持つ
+        #   start = start_ijkl >> 20  （探索開始行）
+        #   ijkl  = start_ijkl & ((1<<20)-1) （開始星座(i,j,k,l)パック）
         start_ijkl = constellation["startijkl"]
         start = start_ijkl >> 20
         ijkl = start_ijkl & ((1 << 20) - 1)
@@ -792,8 +795,8 @@ def build_soa_for_range(
         #     ここで start(row) に合わせて正規化・補正して探索入口に合わせる。
         # ----------------------------------------
 
-        # 元のコードそのまま
         # ld/rd/col は 1bit シフトして “内部表現”を合わせている（既存設計）
+        #   ※ dfs 側は「次段生成で <<1/>>1」するので、入口の位置合わせが重要
         ld = constellation["ld"] >> 1
         rd = constellation["rd"] >> 1
 
@@ -826,6 +829,15 @@ def build_soa_for_range(
         # ----------------------------------------
         # 分岐（現行の exec_solutions と同一）
         #   target(functionid) と mark/jmark/endmark を決める
+        #
+        # target (=functionid) は FID/SQラベルと 1:1 対応
+        #   func_meta[functionid] = (next_funcid, funcptn, availptn)
+        #     - funcptn: 段パターン
+        #         0/1/2: mark系（row==mark1/mark2 で step=2/3 + block）
+        #         3    : jmark系（row==jmark で列0禁止 + ld LSB）
+        #         5    : base系（row==endmark で解カウント）
+        #         4    : “通常”扱いに落ちる（dfs の else 経路に入る）
+        #     - availptn: 1なら先読み枝刈りを有効化（dfs の use_future）
         # ----------------------------------------
         endmark = 0
         target = 0
@@ -847,6 +859,9 @@ def build_soa_for_range(
 
         # --------------------------
         # case 1) j < N-3
+        #   - “一般ケース”の大半
+        #   - jmark = j+1, endmark = N-2
+        #   - gate ON/OFF でターゲット（=functionid）を切り替える
         # --------------------------
         if j_lt_N3:
             # jmark: j+1 行で jmark 特殊を入れる設計
@@ -865,10 +880,14 @@ def build_soa_for_range(
                         if start_lt_k:
                             # l==k+1 の特例で target を変える
                             target = 0 if (not l_eq_kp1) else 4
+                            #  0: SQBkBlBjrB  meta=(1,0,0) -> P1, future=off, next=1
+                            #  4: SQBklBjrB   meta=(2,2,0) -> P3, future=off, next=2
                         else:
                             target = 1
+                            #  1: SQBlBjrB    meta=(2,1,0) -> P2, future=off, next=2
                     else:
                         target = 2
+                        #  2: SQBjrB      meta=(3,3,1) -> P4(jmark系), future=on, next=3
                 else:
                     # k>=l のときは mark を入れ替える
                     mark1, mark2 = l - 1, k - 1
@@ -877,21 +896,31 @@ def build_soa_for_range(
                         if start_lt_l:
                             # k==l+1 の特例で target を変える
                             target = 5 if (not k_eq_lp1) else 7
+                            #  5: SQBlBkBjrB  meta=(6,0,0) -> P1, future=off, next=6
+                            #  7: SQBlkBjrB   meta=(2,2,0) -> P3, future=off, next=2
                         else:
                             target = 6
+                            #  6: SQBkBjrB    meta=(2,1,0) -> P2, future=off, next=2
                     else:
                         target = 2
+                        #  2: SQBjrB      meta=(3,3,1) -> P4(jmark系), future=on, next=3
             else:
                 # ---- ゲートOFF 側（比較的単純な分岐）----
                 if k_lt_l:
                     mark1, mark2 = k - 1, l - 1
                     target = 8 if (not l_eq_kp1) else 9
+                    #  8: SQBjlBkBlBjrB meta=(0,4,1) -> P5, future=on, next=0
+                    #  9: SQBjlBklBjrB  meta=(4,4,1) -> P5, future=on, next=4
                 else:
                     mark1, mark2 = l - 1, k - 1
                     target = 10 if (not k_eq_lp1) else 11
+                    # 10: SQBjlBlBkBjrB meta=(5,4,1) -> P5, future=on, next=5
+                    # 11: SQBjlBlkBjrB  meta=(7,4,1) -> P5, future=on, next=7
 
         # --------------------------
         # case 2) j == N-3
+        #   - 境界ケース（N-3 列を含む開始星座）
+        #   - endmark = N-2
         # --------------------------
         elif j_eq_N3:
             endmark = N2
@@ -902,26 +931,36 @@ def build_soa_for_range(
                 if start_lt_l:
                     if start_lt_k:
                         target = 12 if (not l_eq_kp1) else 15
+                        # 12: SQd2BkBlB  meta=(13,0,0) -> P1, future=off, next=13
+                        # 15: SQd2BklB   meta=(14,2,0) -> P3, future=off, next=14
                     else:
                         # ここでは mark2 のみを設定（意図: 特殊パターン）
                         mark2 = l - 1
                         target = 13
+                        # 13: SQd2BlB    meta=(14,1,0) -> P2, future=off, next=14
                 else:
                     target = 14
+                    # 14: SQd2B      meta=(14,5,1) -> P6(base系), future=on, next=14
+                    #     ※dfs_iter: functionid==14 の特例（SQd2B は endmark 到達時の数え方が違う）
             else:
                 mark1, mark2 = l - 1, k - 1
 
                 if start_lt_k:
                     if start_lt_l:
                         target = 16 if (not k_eq_lp1) else 18
+                        # 16: SQd2BlBkB  meta=(17,0,0) -> P1, future=off, next=17
+                        # 18: SQd2BlkB   meta=(14,2,0) -> P3, future=off, next=14
                     else:
                         mark2 = k - 1
                         target = 17
+                        # 17: SQd2BkB    meta=(14,1,0) -> P2, future=off, next=14
                 else:
                     target = 14
+                    # 14: SQd2B      meta=(14,5,1) -> P6(base系), future=on, next=14（dfs 特例あり）
 
         # --------------------------
         # case 3) j == N-2
+        #   - さらに境界（N-2 列）
         # --------------------------
         elif j_eq_N2:
             if k_lt_l:
@@ -932,13 +971,18 @@ def build_soa_for_range(
                         if not l_eq_kp1:
                             mark2 = l - 1
                             target = 19
+                            # 19: SQd1BkBlB  meta=(20,0,0) -> P1, future=off, next=20
                         else:
                             target = 22
+                            # 22: SQd1BklB   meta=(21,2,0) -> P3, future=off, next=21
                     else:
                         mark2 = l - 1
                         target = 20
+                        # 20: SQd1BlB    meta=(21,1,0) -> P2, future=off, next=21
+                        #     ※dfs_iter: functionid==20 のとき add1=1 特例（コメントの通り）
                 else:
                     target = 21
+                    # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
             else:
                 if start_lt_k:
                     if start_lt_l:
@@ -947,36 +991,46 @@ def build_soa_for_range(
                             if not k_eq_lp1:
                                 mark2 = k - 1
                                 target = 23
+                                # 23: SQd1BlBkB  meta=(25,0,0) -> P1, future=off, next=25
                             else:
                                 target = 24
+                                # 24: SQd1BlkB   meta=(21,2,0) -> P3, future=off, next=21
                         else:
                             if l != (N - 3):
                                 mark2, endmark = l - 1, N - 3
                                 target = 20
+                                # 20: SQd1BlB    meta=(21,1,0) -> P2, future=off, next=21（add1 特例）
                             else:
                                 endmark = N - 4
                                 target = 21
+                                # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
                     else:
                         if k != N2:
                             mark2, endmark = k - 1, N2
                             target = 25
+                            # 25: SQd1BkB    meta=(21,1,0) -> P2, future=off, next=21
                         else:
                             endmark = N - 3
                             target = 21
+                            # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
                 else:
                     endmark = N2
                     target = 21
+                    # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
 
         # --------------------------
         # case 4) それ以外（j がさらに大きい等）
+        #   - SQd0 系へ落ちる
         # --------------------------
         else:
             endmark = N2
             if start > k:
                 target = 26
+                # 26: SQd0B     meta=(26,5,1) -> P6(base系), future=on, next=26
             else:
                 mark1 = k - 1
                 target = 27
+                # 27: SQd0BkB   meta=(26,0,0) -> P1, future=off, next=26
 
         # ----------------------------------------
         # SoA へ格納（t番目）
