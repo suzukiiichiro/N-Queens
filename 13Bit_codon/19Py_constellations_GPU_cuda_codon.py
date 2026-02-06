@@ -15,9 +15,44 @@
          _/ _/
        _/m/'
 
-       
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+workspace#suzuki$ date
+2026年  2月  5日 木曜日 11:22:41 JST
+workspace#suzuki$ ./18Py_constellations_GPU_cuda_codon -c
+CPU mode selected
+ N:             Total         Unique        hh:mm:ss.ms
+ 5:                10              0         0:00:00.000
+ 6:                 4              0         0:00:00.044    ok
+ 7:                40              0         0:00:00.003    ok
+ 8:                92              0         0:00:00.014    ok
+ 9:               352              0         0:00:00.025    ok
+10:               724              0         0:00:00.004    ok
+11:              2680              0         0:00:00.009    ok
+12:             14200              0         0:00:00.018    ok
+13:             73712              0         0:00:00.043    ok
+14:            365596              0         0:00:00.093    ok
+15:           2279184              0         0:00:00.165    ok
+16:          14772512              0         0:00:00.260    ok
+17:          95815104              0         0:00:00.394    ok
+18:         666090624              0         0:00:02.227    ok
+19:        4968057848              0         0:00:16.143    ok
+20:       39029188884              0         0:02:07.394    ok
+21:      314666222712              0         0:17:43.986    ok
+22:     2691008701644              0         2:36:16.107    ok
+
+2023/11/22 現在の最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
+C/CUDA NVIDIA(GPU)
+$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
+対称解除法 GPUビットボード
+18:         666090624        83263591    000:00:00:01.65
+19:        4968057848       621012754    000:00:00:13.80
+20:       39029188884      4878666808    000:00:02:02.52
+21:      314666222712     39333324973    000:00:18:46.52
+22:     2691008701644    336376244042    000:03:00:22.54
+23:    24233937684440   3029242658210    001:06:03:49.29
+24:   227514171973736  28439272956934    012:23:38:21.02
+25:  2207893435808352 275986683743434    140:07:39:29.96
 
 概要:
   コンステレーション（部分盤面の型）を事前生成し、各 constellation を独立タスクとして
@@ -46,112 +81,7 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
     (MASK >> f) & 1 で分岐判定します。
   - スタック深さ MAXD を超える場合は安全弁として早期 return します（誤動作より部分結果優先）。
 
-
-2026年  2月 2日 木曜日
-Python/Codon amazon AWS m4.16xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -c
-CPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:02.127    ok
-19:        4968057848              0         0:00:15.227    ok
-20:       39029188884              0         0:02:00.875    ok
-
-2026年  2月 2日 木曜日
-Python/Codon amazon AWS m4.16xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:12.056    ok
-19:        4968057848              0         0:01:39.231    ok
-20:       39029188884              0         0:12:54.135    ok
-
-2026年  2月 2日 
-Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:12.039    ok
-19:        4968057848              0         0:01:39.028    ok
-20:       39029188884              0         0:12:52.916    ok
-
-2026年  1月 28日 
-Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:11.847    ok
-19:        4968057848              0         0:01:36.914    ok
-20:       39029188884              0         0:12:41.743    ok
-
-2026年  1月 27日 
-Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:12.511    ok
-19:        4968057848              0         0:01:42.521    ok
-20:       39029188884              0         0:13:39.276    ok
-
-
-2026年  1月 26日 
-Python/Codon amazon AWS g5.xlarge x 1
-suzuki@cudacodon$ codon build -release 18Py_constellations_cuda_codon.py
-suzuki@cudacodon$ ./18Py_constellations_cuda_codon -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:12.805    ok 
-19:        4968057848              0         0:01:45.620    ok
-20:       39029188884              0         0:13:58.962    ok
-
-2026年  1月 22日 木曜日 10:26:29 UTC
-Python/Codon amazon AWS m4.16xlarge x 1
-suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260122.py
-suzuki@cudacodon$ ./19Py_constellations_cuda_codon_k.20260122 -c
-CPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:02.122    ok
-19:        4968057848              0         0:00:15.068    ok
-20:       39029188884              0         0:01:58.882    ok
-
-2026年  1月 22日 木曜日 10:26:29 UTC
-Python/Codon amazon AWS m4.16xlarge x 1
-suzuki@cudacodon$ codon build -release 19Py_constellations_cuda_codon_k.20260123
--2.py && ./19Py_constellations_cuda_codon_k.20260123-2 -g
-GPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
-18:         666090624              0         0:00:28.283    ok
-19:        4968057848              0         0:03:46.018    ok
-20:       39029188884              0         0:31:27.325    ok
-
-2025 15Py_constellations_optimize_codon.py
-Python/Codon amazon AWS m4.16xlarge x 1
-$ codon build -release 15Py_constellations_optimize_codon.py 
-$ ./15Py_constellations_optimize_codon 
- N:             Total         Unique         hh:mm:ss.ms
-18:         666090624              0          0:00:02.961
-19:        4968057848              0          0:00:22.049
-20:       39029188884              0          0:02:52.430
-21:      314666222712              0          0:24:25.554
-22:     2691008701644              0          3:29:33.971
-23:    24233937684440              0   1 day, 8:12:58.977
-
-2023/11/22 現在の最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
-C/CUDA NVIDIA(GPU)
-$ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
-対称解除法 GPUビットボード
-18:         666090624        83263591    000:00:00:01.65
-19:        4968057848       621012754    000:00:00:13.80
-20:       39029188884      4878666808    000:00:02:02.52
-21:      314666222712     39333324973    000:00:18:46.52
-22:     2691008701644    336376244042    000:03:00:22.54
-23:    24233937684440   3029242658210    001:06:03:49.29
-24:   227514171973736  28439272956934    012:23:38:21.02
-25:  2207893435808352 275986683743434    140:07:39:29.96"""
+"""
 
 import gpu
 import sys
