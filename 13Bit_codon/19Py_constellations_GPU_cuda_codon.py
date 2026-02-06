@@ -41,7 +41,7 @@ CPU mode selected
 21:      314666222712              0         0:17:43.986    ok
 22:     2691008701644              0         2:36:16.107    ok
 
-2023/11/22 現在の最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
+2023/11/22 これまでの最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 対称解除法 GPUビットボード
@@ -88,33 +88,33 @@ import sys
 from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
-MAXD:Static[int] = 32
+MAXD:Static[int]=32
 
 """  構造体配列 (SoA) タスク管理クラス """
 class TaskSoA:
   """ コンストラクタ """
-  def __init__(self, m: int):
-    self.ld_arr: List[int] = [0]*m
-    self.rd_arr: List[int] = [0]*m
-    self.col_arr: List[int] = [0]*m
-    self.row_arr: List[int] = [0]*m
-    self.free_arr: List[int] = [0]*m
-    self.jmark_arr: List[int] = [0]*m
-    self.end_arr: List[int] = [0]*m
-    self.mark1_arr: List[int] = [0]*m
-    self.mark2_arr: List[int] = [0]*m
-    self.funcid_arr: List[int] = [0]*m
-    self.ijkl_arr: List[int] = [0]*m
+  def __init__(self,m:int):
+    self.ld_arr:List[int]=[0]*m
+    self.rd_arr:List[int]=[0]*m
+    self.col_arr:List[int]=[0]*m
+    self.row_arr:List[int]=[0]*m
+    self.free_arr:List[int]=[0]*m
+    self.jmark_arr:List[int]=[0]*m
+    self.end_arr:List[int]=[0]*m
+    self.mark1_arr:List[int]=[0]*m
+    self.mark2_arr:List[int]=[0]*m
+    self.funcid_arr:List[int]=[0]*m
+    self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
 @gpu.kernel
 def kernel_dfs_iter_gpu(
-    ld_arr, rd_arr, col_arr, row_arr, free_arr,
-    jmark_arr, end_arr, mark1_arr, mark2_arr,
-    funcid_arr, w_arr,
+    ld_arr,rd_arr,col_arr,row_arr,free_arr,
+    jmark_arr,end_arr,mark1_arr,mark2_arr,
+    funcid_arr,w_arr,
     meta_next:Ptr[u8],
     results,
-    m: int, board_mask: int,
+    m:int,board_mask:int,
     n3:int,n4:int,
 ):
     """
@@ -148,188 +148,188 @@ def kernel_dfs_iter_gpu(
     # NOTE: GPU では list/tuple 参照が遅くなりがちなので、
     #       分岐テーブルを Static[int] のビットマスクとして焼き込み、
     #       (MASK >> f) & 1 の O(1) 判定に寄せる。
-    META_AVAIL_MASK:Static[int] = 69226252
-    IS_BASE_MASK:Static[int]    = 69222408
-    IS_JMARK_MASK:Static[int]   = 4
-    IS_MARK_MASK:Static[int]    = 199213043
-    SEL2_MASK:Static[int] = (1<<1) | (1<<6) | (1<<13) | (1<<17) | (1<<20) | (1<<25)
-    STP3_MASK:Static[int] = (1<<4) | (1<<7) | (1<<15) | (1<<18) | (1<<22) | (1<<24)
-    MASK_K_N3: Static[int] = 185471169
-    MASK_K_N4: Static[int] = 4227088
-    MASK_L_1: Static[int] = 12689458
-    MASK_L_2: Static[int] = 17039488
+    META_AVAIL_MASK:Static[int]=69226252
+    IS_BASE_MASK:Static[int]=69222408
+    IS_JMARK_MASK:Static[int]=4
+    IS_MARK_MASK:Static[int]=199213043
+    SEL2_MASK:Static[int]=(1<<1)|(1<<6)|(1<<13)|(1<<17)|(1<<20)|(1<<25)
+    STP3_MASK:Static[int]=(1<<4)|(1<<7)|(1<<15)|(1<<18)|(1<<22)|(1<<24)
+    MASK_K_N3:Static[int]=185471169
+    MASK_K_N4:Static[int]=4227088
+    MASK_L_1:Static[int]=12689458
+    MASK_L_2:Static[int]=17039488
 
     # u32 ビットボード系  int x12 xMAXD
-    ld     = __array__[int](MAXD)
-    rd     = __array__[int](MAXD)
-    col    = __array__[int](MAXD)
-    avail  = __array__[int](MAXD)
-    row    = __array__[int](MAXD)
-    step   = __array__[int](MAXD)
-    add1   = __array__[int](MAXD)
-    inited = __array__[u8](MAXD)
-    ub     = __array__[u8](MAXD)
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[int](MAXD)
+    avail=__array__[int](MAXD)
+    row=__array__[int](MAXD)
+    step=__array__[int](MAXD)
+    add1=__array__[int](MAXD)
+    inited=__array__[u8](MAXD)
+    ub=__array__[u8](MAXD)
     # 消せる候補
-    fid    = __array__[int](MAXD)
+    fid=__array__[int](MAXD)
     # 消せる候補
-    nextf  = __array__[int](MAXD)
+    nextf=__array__[int](MAXD)
     # 消せる候補
-    fc     = __array__[u8](MAXD)
+    fc=__array__[u8](MAXD)
     bK=0
     bL=0
-    inited[0] = u8(0)
+    inited[0]=u8(0)
 
-    i = (gpu.block.x * gpu.block.dim.x) + gpu.thread.x
-    if i >= m: return
+    i=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
 
-    jmark = jmark_arr[i]
-    endm  = end_arr[i]
-    mark1 = mark1_arr[i]
-    mark2 = mark2_arr[i]
-    sp = 0
-    fid[0]    = funcid_arr[i]
-    ld[0]     = ld_arr[i]
-    rd[0]     = rd_arr[i]
-    col[0]    = col_arr[i]
-    row[0]    = row_arr[i]
+    jmark=jmark_arr[i]
+    endm=end_arr[i]
+    mark1=mark1_arr[i]
+    mark2=mark2_arr[i]
+    sp=0
+    fid[0]=funcid_arr[i]
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=col_arr[i]
+    row[0]=row_arr[i]
 
-    free0 = free_arr[i] & board_mask
-    if free0 == 0:
-      results[i] = u64(0)
+    free0=free_arr[i]&board_mask
+    if free0==0:
+      results[i]=u64(0)
       return
-    avail[0]  = free0
-    total:u64 = u64(0)
-    while sp >= 0:
-      a = avail[sp]
-      if a == 0:
-        sp -= 1
+    avail[0]=free0
+    total:u64=u64(0)
+    while sp>=0:
+      a=avail[sp]
+      if a==0:
+        sp-=1
         continue
-      if inited[sp] == u8(0):
-        inited[sp] = u8(1)
-        f = fid[sp]
-        nfid = meta_next[f]
+      if inited[sp]==u8(0):
+        inited[sp]=u8(1)
+        f=fid[sp]
+        nfid=meta_next[f]
         #######################################
         # 基底 is_base
-        isb   = (IS_BASE_MASK    >> f) & 1
+        isb=(IS_BASE_MASK>>f)&1
         #######################################
-        if isb == 1 and row[sp] == endm:
-          if f == 14: # SQd2B 特例
-            total += u64(1) if (a >> 1) else u64(0)
+        if isb==1 and row[sp]==endm:
+          if f==14:# SQd2B 特例
+            total+=u64(1) if (a>>1) else u64(0)
           else:
-            total += u64(1)
-          sp -= 1
+            total+=u64(1)
+          sp-=1
           continue
         #######################################
         # 通常状態設定
-        aflag = (META_AVAIL_MASK >> f) & 1
+        aflag=(META_AVAIL_MASK>>f)&1
         #######################################
-        step[sp]  = 1
-        add1[sp]  = 0
-        use_blocks = 0
-        use_future = 1 if (aflag == 1) else 0
+        step[sp]=1
+        add1[sp]=0
+        use_blocks=0
+        use_future=1 if (aflag==1) else 0
         bK=0
         bL=0
-        nextf[sp] = f
+        nextf[sp]=f
         #######################################
         # is_mark step=2/3 + block
-        ism   = (IS_MARK_MASK    >> f) & 1
+        ism=(IS_MARK_MASK>>f)&1
         #######################################
         # if is_mark[f] == 1:
         # if IS_MARK[f] == 1:
         # if t_ism[f] == 1:
-        if ism == 1:
-          at_mark = 0
+        if ism==1:
+          at_mark=0
           ###################
           # sel
-          sel = 2 if ((SEL2_MASK >> f) & 1) else 1
+          sel=2 if ((SEL2_MASK>>f)&1) else 1
           ###################
-          if sel == 1:
-            if row[sp] == mark1:
-              at_mark = 1
-          if sel == 2:
-            if row[sp] == mark2:
-              at_mark = 1
+          if sel==1:
+            if row[sp]==mark1:
+              at_mark=1
+          if sel==2:
+            if row[sp]==mark2:
+              at_mark=1
           ###################
           # mark
           ###################
           if at_mark and a:
-            use_blocks = 1
-            use_future = 0
+            use_blocks=1
+            use_future=0
             ###################
             # step
-            step[sp] = 3 if ((STP3_MASK >> f) & 1) else 2
+            step[sp]=3 if ((STP3_MASK>>f)&1) else 2
             ###################
             # add
-            add1[sp] = 1 if f == 20 else 0
+            add1[sp]=1 if f==20 else 0
             ###################
-            nextf[sp] = int(nfid)
+            nextf[sp]=int(nfid)
         #######################################
         # is_jmark
-        isj   = (IS_JMARK_MASK   >> f) & 1
+        isj=(IS_JMARK_MASK>>f)&1
         #######################################
-        if isj == 1:
-          if row[sp] == jmark:
-            a &= ~1
-            avail[sp] = a
-            if a == 0:
-              sp -= 1
+        if isj==1:
+          if row[sp]==jmark:
+            a&=~1
+            avail[sp]=a
+            if a==0:
+              sp-=1
               continue
-            ld[sp] |= 1
-            nextf[sp] = int(nfid)
+            ld[sp]|=1
+            nextf[sp]=int(nfid)
         
-        ub[sp] = u8(1) if use_blocks else u8(0)
-        fc[sp] = u8(0)
-        if use_future == 1 and (row[sp]+step[sp]) < endm:
-          fc[sp] = u8(1)
+        ub[sp]=u8(1) if use_blocks else u8(0)
+        fc[sp]=u8(0)
+        if use_future==1 and (row[sp]+step[sp])<endm:
+          fc[sp]=u8(1)
       #----------------
       # 1bit 展開
       #----------------
-      a = avail[sp]
-      bit = a & -a
-      avail[sp] = a ^ bit
+      a=avail[sp]
+      bit=a&-a
+      avail[sp]=a^bit
       #----------------
       # 次状態計算（2値選択はそのまま）
       #----------------
-      if ub[sp] == u8(1):
-        f = fid[sp]
-        bK = n3 * ((MASK_K_N3 >> f) & 1) + n4 * ((MASK_K_N4 >> f) & 1)
-        bL = ((MASK_L_1 >> f) & 1) | (((MASK_L_2 >> f) & 1) << 1)  # + でもOKだが | が素直
-        nld = ((ld[sp] | bit) << step[sp]) | add1[sp] | bL
-        nrd = ((rd[sp] | bit) >> step[sp]) | bK
+      if ub[sp]==u8(1):
+        f=fid[sp]
+        bK=n3*((MASK_K_N3>>f)&1)+n4*((MASK_K_N4>>f)&1)
+        bL=((MASK_L_1>>f)&1)|(((MASK_L_2>>f)&1)<<1)  #+でもOKだが | が素直
+        nld=((ld[sp]|bit)<<step[sp])|add1[sp]|bL
+        nrd=((rd[sp]|bit)>>step[sp])|bK
       else:
-        nld = (ld[sp] | bit) << 1
-        nrd = (rd[sp] | bit) >> 1
-      ncol = col[sp] | bit
-      nf = board_mask & ~(nld | nrd | ncol)
-      if nf == 0:
+        nld=(ld[sp]|bit)<<1
+        nrd=(rd[sp]|bit)>>1
+      ncol=col[sp]|bit
+      nf=board_mask&~(nld|nrd|ncol)
+      if nf==0:
         continue
-      if fc[sp] == u8(1):
-        if (board_mask & ~((nld << 1) | (nrd >> 1) | ncol)) == 0:
+      if fc[sp]==u8(1):
+        if (board_mask&~((nld<<1)|(nrd>>1)|ncol))==0:
           continue
       #----------------
       # push
       #----------------
-      parent = sp            # sp を増やす前のフレームを保持
-      next_row = row[parent] + step[parent]
-      sp += 1
-      if sp >= MAXD:
-        results[i] = total * w_arr[i]
+      parent=sp            # sp を増やす前のフレームを保持
+      next_row=row[parent]+step[parent]
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
         return
-      inited[sp] = u8(0)
-      fid[sp]    = nextf[sp-1]
-      ld[sp]     = nld
-      rd[sp]     = nrd
-      col[sp]    = ncol
-      row[sp]    = next_row
-      avail[sp]  = nf
+      inited[sp]=u8(0)
+      fid[sp]=nextf[sp-1]
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      row[sp]=next_row
+      avail[sp]=nf
 
-    results[i] = total * w_arr[i]
+    results[i]=total*w_arr[i]
 
 """dfs()の非再帰版"""
 def dfs_iter(
-  meta, blockK, blockL, board_mask,
-  functionid:int, ld:int, rd:int, col:int, row:int, free:int,
-  jmark:int, endmark:int, mark1:int, mark2:int
+  meta,blockK,blockL,board_mask,
+  functionid:int,ld:int,rd:int,col:int,row:int,free:int,
+  jmark:int,endmark:int,mark1:int,mark2:int
 )->u64:
   """
   機能:
@@ -363,46 +363,46 @@ def dfs_iter(
     - meta/blockK/blockL は exec_solutions() 側で整合するように与えること。
   """
 
-  total:u64 = u64(0)
+  total:u64=u64(0)
 
   # スタック要素: (functionid, ld, rd, col, row, free)
   # NOTE: 再帰呼び出しを使わずに pop → 展開 → push を回す
-  stack: List[Tuple[int,int,int,int,int,int]] = [(functionid, ld, rd, col, row, free)]
+  stack:List[Tuple[int,int,int,int,int,int]]=[(functionid,ld,rd,col,row,free)]
 
   while stack:
-    functionid, ld, rd, col, row, free = stack.pop()
+    functionid,ld,rd,col,row,free=stack.pop()
 
     # 候補が無いなら終了（この枝は詰み）
     if not free:
       continue
 
     # functionid から「この段の振る舞い」を取得
-    next_funcid, funcptn, avail_flag = meta[functionid]
-    avail:int = free
+    next_funcid,funcptn,avail_flag=meta[functionid]
+    avail:int=free
 
     # ---- 基底: endmark 到達時の解カウント ----
     # funcptn==5 が “base” の段（実装側の割り当て）
-    if funcptn == 5 and row == endmark:
+    if funcptn==5 and row==endmark:
       # functionid==14 は SQd2B の特例（右シフトで条件付き）
-      if functionid == 14:
-        total += u64(1) if (avail >> 1) else u64(0)
+      if functionid==14:
+        total+=u64(1) if (avail>>1) else u64(0)
       else:
-        total += u64(1)
+        total+=u64(1)
       continue
 
     # ---- 既定設定（通常 step=1 で次の行へ）----
-    step:int = 1
-    add1:int = 0
-    row_step:int = row + 1
+    step:int=1
+    add1:int=0
+    row_step:int=row+1
 
     # mark 段で blockK/blockL を使うか
-    use_blocks:bool = False
+    use_blocks:bool=False
 
     # avail_flag==1 のとき「先読み枝刈り」を使う（+1 の先をチェック）
-    use_future:bool = (avail_flag == 1)
+    use_future:bool=(avail_flag==1)
 
     # 既定では functionid は維持（mark/jmark で遷移する場合のみ変更）
-    local_next_funcid:int = functionid
+    local_next_funcid:int=functionid
 
     # ----------------------------------------------------------------------
     # 段の種類分岐（funcptn）
@@ -412,41 +412,41 @@ def dfs_iter(
     # ----------------------------------------------------------------------
 
     # ---- mark 行: step=2/3 + block ----
-    if funcptn in (0, 1, 2):
+    if funcptn in (0,1,2):
       # funcptn により mark1 / mark2 を使い分ける（元実装の意図を保持）
-      at_mark:bool = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+      at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
 
       # mark 行に一致し、かつ候補があるなら mark モードへ
       if at_mark and avail:
         # step=2: 2 行進める、step=3: 3 行進める
-        step = 2 if funcptn in (0, 1) else 3
+        step=2 if funcptn in (0,1) else 3
 
         # 一部 functionid（例: 20）で add1 を使う特例（既存ロジック踏襲）
-        add1 = 1 if (funcptn == 1 and functionid == 20) else 0
+        add1=1 if (funcptn==1 and functionid==20) else 0
 
-        row_step = row + step
+        row_step=row+step
 
         # block テーブルの取得（functionid 毎に異なる）
-        _blockK = blockK[functionid]
-        _blockL = blockL[functionid]
+        _blockK=blockK[functionid]
+        _blockL=blockL[functionid]
 
-        use_blocks = True
+        use_blocks=True
 
         # mark 段では “先読み”は使わない方針（既存実装）
-        use_future = False
+        use_future=False
 
         # mark 段では functionid を next_funcid に遷移
-        local_next_funcid = next_funcid
+        local_next_funcid=next_funcid
 
     # ---- jmark 特殊 ----
-    elif funcptn == 3 and row == jmark:
+    elif funcptn==3 and row==jmark:
       # 列0禁止（LSB を落とす）
-      avail &= ~1
+      avail&=~1
 
       # ld の LSB を立てる（実装意図: 特殊な禁止線/調整）
-      ld |= 1
+      ld|=1
 
-      local_next_funcid = next_funcid
+      local_next_funcid=next_funcid
 
       # 候補が消えたら終了
       if not avail:
@@ -460,65 +460,65 @@ def dfs_iter(
     if use_blocks:
       while avail:
         # 最下位 1bit を取り出す
-        bit:int = avail & -avail
-        avail &= avail - 1
+        bit:int=avail&-avail
+        avail&=avail-1
 
         # step=2/3 を反映した次状態（block を OR）
-        nld:int  = ((ld | bit) << step) | add1 | _blockL
-        nrd:int  = ((rd | bit) >> step) | _blockK
-        ncol:int = col | bit
+        nld:int=((ld|bit)<<step)|add1|_blockL
+        nrd:int=((rd|bit)>>step)|_blockK
+        ncol:int=col|bit
 
         # 次の空き（free）
-        nf:int = board_mask & ~(nld | nrd | ncol)
+        nf:int=board_mask&~(nld|nrd|ncol)
 
         if nf:
-          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
+          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
       continue
 
     # ---- ループ２：通常 +1（先読みなし）----
     if not use_future:
       while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
+        bit:int=avail&-avail
+        avail&=avail-1
 
-        nld:int  = (ld | bit) << 1
-        nrd:int  = (rd | bit) >> 1
-        ncol:int = col | bit
-        nf:int   = board_mask & ~(nld | nrd | ncol)
+        nld:int=(ld|bit)<<1
+        nrd:int=(rd|bit)>>1
+        ncol:int=col|bit
+        nf:int=board_mask&~(nld|nrd|ncol)
 
         if nf:
-          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
+          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
       continue
 
     # ---- ループ３：通常 +1（先読みあり）----
     # 終端付近は先読みしても得しないので短絡（既存実装の意図を尊重）
-    if row_step >= endmark:
+    if row_step>=endmark:
       while avail:
-        bit:int = avail & -avail
-        avail &= avail - 1
-        nld:int  = (ld | bit) << 1
-        nrd:int  = (rd | bit) >> 1
-        ncol:int = col | bit
-        nf:int   = board_mask & ~(nld | nrd | ncol)
+        bit:int=avail&-avail
+        avail&=avail-1
+        nld:int=(ld|bit)<<1
+        nrd:int=(rd|bit)>>1
+        ncol:int=col|bit
+        nf:int=board_mask&~(nld|nrd|ncol)
         if nf:
-          stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
+          stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
       continue
 
     # ---- ループ３B：先読み本体（次の次が 0 なら枝刈り）----
     while avail:
-      bit:int = avail & -avail
-      avail &= avail - 1
+      bit:int=avail&-avail
+      avail&=avail-1
 
-      nld:int  = (ld | bit) << 1
-      nrd:int  = (rd | bit) >> 1
-      ncol:int = col | bit
-      nf:int   = board_mask & ~(nld | nrd | ncol)
+      nld:int=(ld|bit)<<1
+      nrd:int=(rd|bit)>>1
+      ncol:int=col|bit
+      nf:int=board_mask&~(nld|nrd|ncol)
       if not nf:
         continue
 
       # “次の次”の free が 0 なら、この枝は詰みなので push しない
-      if board_mask & ~((nld << 1) | (nrd >> 1) | ncol):
-        stack.append((local_next_funcid, nld, nrd, ncol, row_step, nf))
+      if board_mask&~((nld<<1)|(nrd>>1)|ncol):
+        stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
 
   return total
 
@@ -634,12 +634,12 @@ def dfs(N:int,functionid:int,ld:int,rd:int,col:int,row:int,free:int,jmark:int,en
 """ constellations の一部を TaskSoA 形式に変換して返すユーティリティ """
 def build_soa_for_range(
     N,
-    constellations: List[Dict[str, int]],
-    off: int,
-    m: int,
-    soa: TaskSoA,
-    w_arr: List[u64]
-) -> Tuple[TaskSoA, List[u64]]:
+    constellations:List[Dict[str,int]],
+    off:int,
+    m:int,
+    soa:TaskSoA,
+    w_arr:List[u64]
+)->Tuple[TaskSoA,List[u64]]:
     """
     機能:
       constellations[off:off+m] を SoA（Structure of Arrays）へ展開し、
@@ -684,15 +684,15 @@ def build_soa_for_range(
     # ----------------------------------------
     # ビットマスク類（盤面幅の正規化に使う）
     # ----------------------------------------
-    board_mask: int = (1 << N) - 1
+    board_mask:int=(1<<N)-1
 
     # small_mask は「N-2 幅」のマスク（N が小さいときは 0 幅を許容）
     # col を組み立てる際に ~small_mask を混ぜる設計（既存実装の意図を保持）
-    small_mask: int = (1 << max(0, N - 2)) - 1
+    small_mask:int=(1<<max(0,N-2))-1
 
     # よく使う定数
-    N1: int = N - 1
-    N2: int = N - 2
+    N1:int=N-1
+    N2:int=N-2
 
     # 出力（soa は外から渡される前提。必要なら TaskSoA(m) を呼び出し側で確保）
     # soa = TaskSoA(m)
@@ -700,24 +700,24 @@ def build_soa_for_range(
     # レンジ分のタスクを SoA に詰める
     # ----------------------------------------
     for t in range(m):
-        constellation = constellations[off + t]
+        constellation=constellations[off+t]
 
         # 特殊行（後段 DFS で使う）
         #   - jmark: funcptn==3 のときに "row==jmark" で特別処理に入る
         #   - mark1/mark2: funcptn in (0,1,2) のときに "row==mark1/mark2" で mark段(step=2/3)に入る
-        jmark = 0
-        mark1 = 0
-        mark2 = 0
+        jmark=0
+        mark1=0
+        mark2=0
 
         # startijkl: 上位に start(row)、下位20bitに ijkl pack を持つ
         #   start = start_ijkl >> 20  （探索開始行）
         #   ijkl  = start_ijkl & ((1<<20)-1) （開始星座(i,j,k,l)パック）
-        start_ijkl = constellation["startijkl"]
-        start = start_ijkl >> 20
-        ijkl = start_ijkl & ((1 << 20) - 1)
+        start_ijkl=constellation["startijkl"]
+        start=start_ijkl>>20
+        ijkl=start_ijkl&((1<<20)-1)
 
         # ijkl から j,k,l を取り出し（i はここでは不要なので取っていない）
-        j, k, l = getj(ijkl), getk(ijkl), getl(ijkl)
+        j,k,l=getj(ijkl),getk(ijkl),getl(ijkl)
 
         # ----------------------------------------
         # 開始状態（ld/rd/col）の再構築
@@ -727,34 +727,34 @@ def build_soa_for_range(
 
         # ld/rd/col は 1bit シフトして “内部表現”を合わせている（既存設計）
         #   ※ dfs 側は「次段生成で <<1/>>1」するので、入口の位置合わせが重要
-        ld = constellation["ld"] >> 1
-        rd = constellation["rd"] >> 1
+        ld=constellation["ld"]>>1
+        rd=constellation["rd"]>>1
 
         # col: (col>>1) に ~small_mask を混ぜ、board_mask で正規化して盤面外ビットを落とす
-        col = (constellation["col"] >> 1) | (~small_mask)
+        col=(constellation["col"]>>1)|(~small_mask)
 
         # col を盤面幅へ正規化（上位ゴミビット除去）
-        col &= board_mask
+        col&=board_mask
 
         # LD: j と l の列ビット（MSB側基準）を作る
         # 例: (1 << (N-1-j)) は列 j に相当
-        LD = (1 << (N1 - j)) | (1 << (N1 - l))
+        LD=(1<<(N1-j))|(1<<(N1-l))
 
         # ld は start 行に合わせて LD を右にずらして混ぜる（既存式のまま）
-        ld |= LD >> (N - start)
+        ld|=LD>>(N-start)
 
         # rd 側の補正（start と k の関係で入れるビットが変わる）
-        if start > k:
-            rd |= (1 << (N1 - (start - k + 1)))
+        if start>k:
+            rd|=(1<<(N1-(start-k+1)))
 
         # j がゲート条件を満たすとき rd へ追加補正
-        if j >= 2 * N - 33 - start:
-            rd |= (1 << (N1 - j)) << (N2 - start)
+        if j>=2*N-33-start:
+            rd|=(1<<(N1-j))<<(N2-start)
 
         # ----------------------------------------
         # free: 現在行(start)で置ける候補列
         # ----------------------------------------
-        free = board_mask & ~(ld | rd | col)
+        free=board_mask&~(ld|rd|col)
 
         # ----------------------------------------
         # 分岐（現行の exec_solutions と同一）
@@ -769,23 +769,23 @@ def build_soa_for_range(
         #         4    : “通常”扱いに落ちる（dfs の else 経路に入る）
         #     - availptn: 1なら先読み枝刈りを有効化（dfs の use_future）
         # ----------------------------------------
-        endmark = 0
-        target = 0
+        endmark=0
+        target=0
 
         # 条件を事前に bool 化（枝の可読性/分岐コスト低減）
-        j_lt_N3 = (j < N - 3)
-        j_eq_N3 = (j == N - 3)
-        j_eq_N2 = (j == N - 2)
+        j_lt_N3=(j<N-3)
+        j_eq_N3=(j==N-3)
+        j_eq_N2=(j==N-2)
 
-        k_lt_l = (k < l)
-        start_lt_k = (start < k)
-        start_lt_l = (start < l)
+        k_lt_l=(k<l)
+        start_lt_k=(start<k)
+        start_lt_l=(start<l)
 
-        l_eq_kp1 = (l == k + 1)
-        k_eq_lp1 = (k == l + 1)
+        l_eq_kp1=(l==k+1)
+        k_eq_lp1=(k==l+1)
 
         # j_gate: ある境界より j が大きいと “ゲートON” 扱い（既存設計）
-        j_gate = (j > 2 * N - 34 - start)
+        j_gate=(j>2*N-34-start)
 
         # --------------------------
         # case 1) j < N-3
@@ -795,55 +795,55 @@ def build_soa_for_range(
         # --------------------------
         if j_lt_N3:
             # jmark: j+1 行で jmark 特殊を入れる設計
-            jmark = j + 1
+            jmark=j+1
 
             # endmark: ここでは N-2 を終端とする
-            endmark = N2
+            endmark=N2
 
             if j_gate:
                 # ---- ゲートON 側（より特殊な分岐）----
                 if k_lt_l:
                     # mark 行は (k-1, l-1)（k<l のとき）
-                    mark1, mark2 = k - 1, l - 1
+                    mark1,mark2=k-1,l-1
 
                     if start_lt_l:
                         if start_lt_k:
                             # l==k+1 の特例で target を変える
-                            target = 0 if (not l_eq_kp1) else 4
+                            target=0 if (not l_eq_kp1) else 4
                             #  0: SQBkBlBjrB  meta=(1,0,0) -> P1, future=off, next=1
                             #  4: SQBklBjrB   meta=(2,2,0) -> P3, future=off, next=2
                         else:
-                            target = 1
+                            target=1
                             #  1: SQBlBjrB    meta=(2,1,0) -> P2, future=off, next=2
                     else:
-                        target = 2
+                        target=2
                         #  2: SQBjrB      meta=(3,3,1) -> P4(jmark系), future=on, next=3
                 else:
                     # k>=l のときは mark を入れ替える
-                    mark1, mark2 = l - 1, k - 1
+                    mark1,mark2=l-1,k-1
 
                     if start_lt_k:
                         if start_lt_l:
                             # k==l+1 の特例で target を変える
-                            target = 5 if (not k_eq_lp1) else 7
+                            target=5 if (not k_eq_lp1) else 7
                             #  5: SQBlBkBjrB  meta=(6,0,0) -> P1, future=off, next=6
                             #  7: SQBlkBjrB   meta=(2,2,0) -> P3, future=off, next=2
                         else:
-                            target = 6
+                            target=6
                             #  6: SQBkBjrB    meta=(2,1,0) -> P2, future=off, next=2
                     else:
-                        target = 2
+                        target=2
                         #  2: SQBjrB      meta=(3,3,1) -> P4(jmark系), future=on, next=3
             else:
                 # ---- ゲートOFF 側（比較的単純な分岐）----
                 if k_lt_l:
-                    mark1, mark2 = k - 1, l - 1
-                    target = 8 if (not l_eq_kp1) else 9
+                    mark1,mark2=k-1,l-1
+                    target=8 if (not l_eq_kp1) else 9
                     #  8: SQBjlBkBlBjrB meta=(0,4,1) -> P5, future=on, next=0
                     #  9: SQBjlBklBjrB  meta=(4,4,1) -> P5, future=on, next=4
                 else:
-                    mark1, mark2 = l - 1, k - 1
-                    target = 10 if (not k_eq_lp1) else 11
+                    mark1,mark2=l-1,k-1
+                    target=10 if (not k_eq_lp1) else 11
                     # 10: SQBjlBlBkBjrB meta=(5,4,1) -> P5, future=on, next=5
                     # 11: SQBjlBlkBjrB  meta=(7,4,1) -> P5, future=on, next=7
 
@@ -853,39 +853,39 @@ def build_soa_for_range(
         #   - endmark = N-2
         # --------------------------
         elif j_eq_N3:
-            endmark = N2
+            endmark=N2
 
             if k_lt_l:
-                mark1, mark2 = k - 1, l - 1
+                mark1,mark2=k-1,l-1
 
                 if start_lt_l:
                     if start_lt_k:
-                        target = 12 if (not l_eq_kp1) else 15
+                        target=12 if (not l_eq_kp1) else 15
                         # 12: SQd2BkBlB  meta=(13,0,0) -> P1, future=off, next=13
                         # 15: SQd2BklB   meta=(14,2,0) -> P3, future=off, next=14
                     else:
                         # ここでは mark2 のみを設定（意図: 特殊パターン）
-                        mark2 = l - 1
-                        target = 13
+                        mark2=l-1
+                        target=13
                         # 13: SQd2BlB    meta=(14,1,0) -> P2, future=off, next=14
                 else:
-                    target = 14
+                    target=14
                     # 14: SQd2B      meta=(14,5,1) -> P6(base系), future=on, next=14
                     #     ※dfs_iter: functionid==14 の特例（SQd2B は endmark 到達時の数え方が違う）
             else:
-                mark1, mark2 = l - 1, k - 1
+                mark1,mark2=l-1,k-1
 
                 if start_lt_k:
                     if start_lt_l:
-                        target = 16 if (not k_eq_lp1) else 18
+                        target=16 if (not k_eq_lp1) else 18
                         # 16: SQd2BlBkB  meta=(17,0,0) -> P1, future=off, next=17
                         # 18: SQd2BlkB   meta=(14,2,0) -> P3, future=off, next=14
                     else:
-                        mark2 = k - 1
-                        target = 17
+                        mark2=k-1
+                        target=17
                         # 17: SQd2BkB    meta=(14,1,0) -> P2, future=off, next=14
                 else:
-                    target = 14
+                    target=14
                     # 14: SQd2B      meta=(14,5,1) -> P6(base系), future=on, next=14（dfs 特例あり）
 
         # --------------------------
@@ -894,58 +894,58 @@ def build_soa_for_range(
         # --------------------------
         elif j_eq_N2:
             if k_lt_l:
-                endmark = N2
+                endmark=N2
                 if start_lt_l:
                     if start_lt_k:
-                        mark1 = k - 1
+                        mark1=k-1
                         if not l_eq_kp1:
-                            mark2 = l - 1
-                            target = 19
+                            mark2=l-1
+                            target=19
                             # 19: SQd1BkBlB  meta=(20,0,0) -> P1, future=off, next=20
                         else:
-                            target = 22
+                            target=22
                             # 22: SQd1BklB   meta=(21,2,0) -> P3, future=off, next=21
                     else:
-                        mark2 = l - 1
-                        target = 20
+                        mark2=l-1
+                        target=20
                         # 20: SQd1BlB    meta=(21,1,0) -> P2, future=off, next=21
                         #     ※dfs_iter: functionid==20 のとき add1=1 特例（コメントの通り）
                 else:
-                    target = 21
+                    target=21
                     # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
             else:
                 if start_lt_k:
                     if start_lt_l:
-                        if k < N2:
-                            mark1, endmark = l - 1, N2
+                        if k<N2:
+                            mark1,endmark=l-1,N2
                             if not k_eq_lp1:
-                                mark2 = k - 1
-                                target = 23
+                                mark2=k-1
+                                target=23
                                 # 23: SQd1BlBkB  meta=(25,0,0) -> P1, future=off, next=25
                             else:
-                                target = 24
+                                target=24
                                 # 24: SQd1BlkB   meta=(21,2,0) -> P3, future=off, next=21
                         else:
-                            if l != (N - 3):
-                                mark2, endmark = l - 1, N - 3
-                                target = 20
+                            if l!=(N-3):
+                                mark2,endmark=l-1,N-3
+                                target=20
                                 # 20: SQd1BlB    meta=(21,1,0) -> P2, future=off, next=21（add1 特例）
                             else:
-                                endmark = N - 4
-                                target = 21
+                                endmark=N-4
+                                target=21
                                 # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
                     else:
-                        if k != N2:
-                            mark2, endmark = k - 1, N2
-                            target = 25
+                        if k!=N2:
+                            mark2,endmark=k-1,N2
+                            target=25
                             # 25: SQd1BkB    meta=(21,1,0) -> P2, future=off, next=21
                         else:
-                            endmark = N - 3
-                            target = 21
+                            endmark=N-3
+                            target=21
                             # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
                 else:
-                    endmark = N2
-                    target = 21
+                    endmark=N2
+                    target=21
                     # 21: SQd1B      meta=(21,5,1) -> P6(base系), future=on, next=21
 
         # --------------------------
@@ -953,13 +953,13 @@ def build_soa_for_range(
         #   - SQd0 系へ落ちる
         # --------------------------
         else:
-            endmark = N2
-            if start > k:
-                target = 26
+            endmark=N2
+            if start>k:
+                target=26
                 # 26: SQd0B     meta=(26,5,1) -> P6(base系), future=on, next=26
             else:
-                mark1 = k - 1
-                target = 27
+                mark1=k-1
+                target=27
                 # 27: SQd0BkB   meta=(26,0,0) -> P1, future=off, next=26
 
         # ----------------------------------------
@@ -967,17 +967,17 @@ def build_soa_for_range(
         #   row_arr[t] は start（探索開始行）
         #   ijkl_arr[t] は “開始星座 pack（下位20bit）”
         # ----------------------------------------
-        soa.ld_arr[t] = ld
-        soa.rd_arr[t] = rd
-        soa.col_arr[t] = col
-        soa.row_arr[t] = start
-        soa.free_arr[t] = free
-        soa.jmark_arr[t] = jmark
-        soa.end_arr[t] = endmark
-        soa.mark1_arr[t] = mark1
-        soa.mark2_arr[t] = mark2
-        soa.funcid_arr[t] = target
-        soa.ijkl_arr[t] = ijkl
+        soa.ld_arr[t]=ld
+        soa.rd_arr[t]=rd
+        soa.col_arr[t]=col
+        soa.row_arr[t]=start
+        soa.free_arr[t]=free
+        soa.jmark_arr[t]=jmark
+        soa.end_arr[t]=endmark
+        soa.mark1_arr[t]=mark1
+        soa.mark2_arr[t]=mark2
+        soa.funcid_arr[t]=target
+        soa.ijkl_arr[t]=ijkl
 
     # ----------------------------------------
     # w_arr（対称性重み 2/4/8）
@@ -986,9 +986,9 @@ def build_soa_for_range(
     # ----------------------------------------
     @par
     for t in range(m):
-        w_arr[t] = symmetry(soa.ijkl_arr[t], N)
+        w_arr[t]=symmetry(soa.ijkl_arr[t],N)
 
-    return soa, w_arr
+    return soa,w_arr
 
 """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
 def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool)->None:
@@ -1011,9 +1011,9 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool)->None:
     - GPU は STEPS 件ずつ処理するため、投入回数と転送コストのトレードオフがあります。
     - CPU はホットパスを dfs_iter() に集約し、並列は @par に寄せています。
   """
-  N1:int = N - 1
-  N2:int = N - 2
-  board_mask:int = (1 << N) - 1
+  N1:int=N-1
+  N2:int=N-2
+  board_mask:int=(1<<N)-1
   FUNC_CATEGORY={
     # N-3
     "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
@@ -1067,43 +1067,43 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool)->None:
     (26,5,1),# 26 SQd0B        -> P6, 先読みあり
     (26,0,0),# 27 SQd0BkB      -> P1, 先読みなし
   ]
-  F = len(func_meta)
-  is_base  = [0]*F   # ptn==5
-  is_jmark = [0]*F   # ptn==3
-  is_mark  = [0]*F   # ptn in {0,1,2}
+  F=len(func_meta)
+  is_base=[0]*F   # ptn==5
+  is_jmark=[0]*F   # ptn==3
+  is_mark=[0]*F   # ptn in {0,1,2}
 
-  mark_sel  = [0]*F  # 0:none 1:mark1 2:mark2
-  mark_step = [1]*F  # 1 or 2 or 3
-  mark_add1 = [0]*F  # 0/1
+  mark_sel=[0]*F  # 0:none 1:mark1 2:mark2
+  mark_step=[1]*F  # 1 or 2 or 3
+  mark_add1=[0]*F  # 0/1
   for f,(nxt,ptn,aflag) in enumerate(func_meta):
-      if ptn == 5:
-          is_base[f] = 1
-      elif ptn == 3:
-          is_jmark[f] = 1
-      elif ptn == 0 or ptn == 1 or ptn == 2:
-          is_mark[f] = 1
-          if ptn == 1:
-              mark_sel[f]  = 2
-              mark_step[f] = 2
-              if f == 20:
-                  mark_add1[f] = 1
+      if ptn==5:
+          is_base[f]=1
+      elif ptn==3:
+          is_jmark[f]=1
+      elif ptn==0 or ptn==1 or ptn==2:
+          is_mark[f]=1
+          if ptn==1:
+              mark_sel[f]=2
+              mark_step[f]=2
+              if f==20:
+                  mark_add1[f]=1
           else:
-              mark_sel[f]  = 1
-              mark_step[f] = 2 if ptn == 0 else 3
+              mark_sel[f]=1
+              mark_step[f]=2 if ptn==0 else 3
 
   n3=1<<max(0,N-3)   # 念のため負シフト防止
   n4=1<<max(0,N-4)   # N3,N4とは違います
   # ===== 前処理ステージ（単一スレッド） =====
   m=len(constellations)
   # ===== GPU分割設定 =====
-  BLOCK = 256 # C版の既定 24576 に寄せる/あるいは 16384, 32768 などを試す
+  BLOCK=256 # C版の既定 24576 に寄せる/あるいは 16384, 32768 などを試す
   # ★ 1回の kernel 起動で使う最大ブロック数（=「GPU同時実行数」的な上限）
   #   ここを小さくすると 1回の投入量が減り、呼び出し回数が増えます
-  MAX_BLOCKS = 32 
-  STEPS = BLOCK * MAX_BLOCKS
+  MAX_BLOCKS=32 
+  STEPS=BLOCK*MAX_BLOCKS
   # STEPS = 24576 if use_gpu else m_all
   # STEPS=24576
-  m_all = len(constellations)
+  m_all=len(constellations)
 
   # w_pre: List[u64] = [u64(0)] * m_all
   # for i in range(m_all):
@@ -1116,11 +1116,11 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool)->None:
   # GPU
   ##########
   if use_gpu:
-    soa:TaskSoA = TaskSoA(STEPS)
-    results: List[u64] = [u64(0)] * STEPS
+    soa:TaskSoA=TaskSoA(STEPS)
+    results:List[u64]=[u64(0)]*STEPS
     # results_allはm_all
-    results_all: List[u64] = [u64(0)] * m_all
-    w_arr: List[u64] = [u64(0)] * STEPS
+    results_all:List[u64]=[u64(0)]*m_all
+    w_arr:List[u64]=[u64(0)]*STEPS
 
     meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
     # ===== STEPS件ずつ処理 =====
