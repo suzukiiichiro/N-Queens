@@ -40,6 +40,8 @@ CPU mode selected
 20:       39029188884              0         0:02:07.394    ok
 21:      314666222712              0         0:17:43.986    ok
 22:     2691008701644              0         2:36:16.107    ok
+23:    24233937684440              0        23:57:30.082    ok
+
 
 2023/11/22 これまでの最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
 C/CUDA NVIDIA(GPU)
@@ -542,116 +544,116 @@ def dfs(
   blockK_by_funcid/blockL_by_funcid: 関数 ID に紐づく追加ブロック
   func_meta:   (next_id, funcptn, availptn) のメタ情報配列
   """
-  next_funcid, funcptn, avail_flag = meta[functionid]
+  next_funcid,funcptn,avail_flag=meta[functionid]
 
-  avail: int = free
+  avail:int=free
   if not avail:
     return u64(0)
 
-  total: u64 = u64(0)
+  total:u64=u64(0)
 
   # 基底
-  if funcptn == 5 and row == endmark:
-    if functionid == 14:  # SQd2B 特例
-      return u64(1) if (avail >> 1) else u64(0)
+  if funcptn==5 and row==endmark:
+    if functionid==14:# SQd2B 特例
+      return u64(1) if (avail>>1) else u64(0)
     return u64(1)
 
-  step: int = 1
-  add1: int = 0
-  row_step: int = row + 1
+  step:int=1
+  add1:int=0
+  row_step:int=row+1
 
-  use_blocks: bool = False
-  use_future: bool = (avail_flag == 1)
+  use_blocks:bool=False
+  use_future:bool=(avail_flag==1)
 
-  local_next_funcid: int = functionid
+  local_next_funcid:int=functionid
 
   # ★ ここ重要：配列 blockK/blockL を「スカラに上書き」しない
-  bK: int = 0
-  bL: int = 0
+  bK:int=0
+  bL:int=0
 
-  if funcptn in (0, 1, 2):
-    at_mark: bool = (row == mark1) if funcptn in (0, 2) else (row == mark2)
+  if funcptn in (0,1,2):
+    at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
     if at_mark and avail:
-      step = 2 if funcptn in (0, 1) else 3
-      add1 = 1 if (funcptn == 1 and functionid == 20) else 0
-      row_step = row + step
-      bK = blockK_by_funcid[functionid]
-      bL = blockL_by_funcid[functionid]
-      use_blocks = True
-      use_future = False
-      local_next_funcid = next_funcid
+      step=2 if funcptn in (0,1) else 3
+      add1=1 if (funcptn==1 and functionid==20) else 0
+      row_step=row+step
+      bK=blockK_by_funcid[functionid]
+      bL=blockL_by_funcid[functionid]
+      use_blocks=True
+      use_future=False
+      local_next_funcid=next_funcid
 
-  elif funcptn == 3 and row == jmark:
-    avail &= ~1
-    ld |= 1
-    local_next_funcid = next_funcid
+  elif funcptn==3 and row==jmark:
+    avail&=~1
+    ld|=1
+    local_next_funcid=next_funcid
     if not avail:
       return u64(0)
 
   # ループ１：step=2/3 + block
   if use_blocks:
     while avail:
-      bit: int = avail & -avail
-      avail &= avail - 1
-      nld: int = ((ld | bit) << step) | add1 | bL
-      nrd: int = ((rd | bit) >> step) | bK
-      ncol: int = col | bit
-      nf: int = board_mask & ~(nld | nrd | ncol)
+      bit:int=avail&-avail
+      avail&=avail-1
+      nld:int=((ld|bit)<<step)|add1|bL
+      nrd:int=((rd|bit)>>step)|bK
+      ncol:int=col|bit
+      nf:int=board_mask&~(nld|nrd|ncol)
       if nf:
-        total += dfs(meta, blockK_by_funcid, blockL_by_funcid, board_mask,
+        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
         local_next_funcid,
-        nld, nrd, ncol, row_step, nf,
-        jmark, endmark, mark1, mark2)
+        nld,nrd,ncol,row_step,nf,
+        jmark,endmark,mark1,mark2)
     return total
 
   # ループ２：+1 素朴（先読みなし）
   if not use_future:
     while avail:
-      bit: int = avail & -avail
-      avail &= avail - 1
-      nld: int = (ld | bit) << 1
-      nrd: int = (rd | bit) >> 1
-      ncol: int = col | bit
-      nf: int = board_mask & ~(nld | nrd | ncol)
+      bit:int=avail&-avail
+      avail&=avail-1
+      nld:int=(ld|bit)<<1
+      nrd:int=(rd|bit)>>1
+      ncol:int=col|bit
+      nf:int=board_mask&~(nld|nrd|ncol)
       if nf:
-        total += dfs(meta, blockK_by_funcid, blockL_by_funcid, board_mask,
+        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
         local_next_funcid,
-        nld, nrd, ncol, row_step, nf,
-        jmark, endmark, mark1, mark2)
+        nld,nrd,ncol,row_step,nf,
+        jmark,endmark,mark1,mark2)
     return total
 
   # ループ３：+1 先読み（終盤は基底で十分）
-  if row_step >= endmark:
+  if row_step>=endmark:
     while avail:
-      bit: int = avail & -avail
-      avail &= avail - 1
-      nld: int = (ld | bit) << 1
-      nrd: int = (rd | bit) >> 1
-      ncol: int = col | bit
-      nf: int = board_mask & ~(nld | nrd | ncol)
+      bit:int=avail&-avail
+      avail&=avail-1
+      nld:int=(ld|bit)<<1
+      nrd:int=(rd|bit)>>1
+      ncol:int=col|bit
+      nf:int=board_mask&~(nld|nrd|ncol)
       if nf:
-        total += dfs(meta, blockK_by_funcid, blockL_by_funcid, board_mask,
+        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
         local_next_funcid,
-        nld, nrd, ncol, row_step, nf,
-        jmark, endmark, mark1, mark2)
+        nld,nrd,ncol,row_step,nf,
+        jmark,endmark,mark1,mark2)
     return total
 
   # ループ３B：先読み本体
   while avail:
-    bit: int = avail & -avail
-    avail &= avail - 1
-    nld: int = (ld | bit) << 1
-    nrd: int = (rd | bit) >> 1
-    ncol: int = col | bit
-    nf: int = board_mask & ~(nld | nrd | ncol)
+    bit:int=avail&-avail
+    avail&=avail-1
+    nld:int=(ld|bit)<<1
+    nrd:int=(rd|bit)>>1
+    ncol:int=col|bit
+    nf:int=board_mask&~(nld|nrd|ncol)
     if not nf:
       continue
     # 1手先がゼロなら枝刈り（nf を使ってチェック）
-    if board_mask & ~(((nld << 1) | (nrd >> 1) | ncol)):
-      total += dfs(meta, blockK_by_funcid, blockL_by_funcid, board_mask,
+    if board_mask&~(((nld<<1)|(nrd>>1)|ncol)):
+      total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
       local_next_funcid,
-      nld, nrd, ncol, row_step, nf,
-      jmark, endmark, mark1, mark2)
+      nld,nrd,ncol,row_step,nf,
+      jmark,endmark,mark1,mark2)
 
   return total
 
