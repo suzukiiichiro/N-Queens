@@ -2054,8 +2054,8 @@ def main()->None:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
       ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
-    
-    
+
+
     """ solutions()でキャッシュを使って実行 """
     use_solution_cache = False
     if use_solution_cache:

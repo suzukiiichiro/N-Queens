@@ -1493,6 +1493,8 @@ def set_pre_queens_cached(
   )
   return ijkl_list, subconst_cache, constellations, preset_queens
 
+""" zorbist hash を使った visited pruning を有効にするか（constellations 内の状態をハッシュして重複排除）。効果はケースバイケースで、キャッシュの方が安定して速い可能性もある。"""
+use_visited_prune = False  
 """事前に置く行 (k,l) を強制しつつ、queens==preset_queens に到達するまで再帰列挙。 `visited` には軽量な `state_hash` を入れて枝刈り。到達時は {ld,rd,col,startijkl} を constellation に追加。"""
 def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],ld:int,rd:int,col:int,k:int,l:int,row:int,queens:int,LD:int,RD:int,counter:list,constellations:List[Dict[str,int]],preset_queens:int,visited:Set[int],constellation_signatures:Set[Tuple[int,int,int,int,int,int]],zobrist_hash_tables: Dict[int, Dict[str, List[u64]]])->Tuple[Set[int], Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]], List[Dict[str,int]], int]:
   # mask = nq_get(N)._board_mask
@@ -1542,12 +1544,10 @@ def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int
   # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
   # h: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N)
   #
-  # dynamicKのときFalse
-  # use_visited_prune = False  
-  # if use_visited_prune:
-  if h in visited:
-    return ijkl_list, subconst_cache, constellations, preset_queens
-  visited.add(h)
+  if use_visited_prune:
+    if h in visited:
+      return ijkl_list, subconst_cache, constellations, preset_queens
+    visited.add(h)
 
   #
   # ---------------------------------------------------------------------
@@ -2094,15 +2094,15 @@ def main()->None:
     subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]]=set()
 
     """ constellasions()でキャッシュを使う """
-    use_constellation_cache:bool = True
+    use_constellation_cache:bool = False
     preset_queens:int = 5 # preset_queens CPUが担当する深さ
 
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
       ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
-    
-    
+
+
     """ solutions()でキャッシュを使って実行 """
     use_solution_cache = False
     if use_solution_cache:
