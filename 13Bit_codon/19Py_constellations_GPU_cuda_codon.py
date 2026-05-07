@@ -17,6 +17,35 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+amazon AWS m4.16xlarge x 1
+workspace#suzuki$ uname -a
+Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+workspace#suzuki$ date
+2026年  4月 22日 水曜日 10:27:42 JST
+workspace#suzuki$ ./19Py_constellations_GPU_cuda_codon -c
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.088    ok
+ 7:                40                0          0:00:00.000    ok
+ 8:                92                0          0:00:00.000    ok
+ 9:               352                0          0:00:00.003    ok
+10:               724                0          0:00:00.004    ok
+11:              2680                0          0:00:00.013    ok
+12:             14200                0          0:00:00.024    ok
+13:             73712                0          0:00:00.049    ok
+14:            365596                0          0:00:00.105    ok
+15:           2279184                0          0:00:00.186    ok
+16:          14772512                0          0:00:00.294    ok
+17:          95815104                0          0:00:00.455    ok
+18:         666090624                0          0:00:02.308    ok
+19:        4968057848                0          0:00:16.233    ok
+20:       39029188884                0          0:02:08.222    ok
+21:      314666222712                0          0:17:43.937    ok
+22:     2691008701644                0          2:36:00.552    ok
+23:    24233937684440                0         23:41:40.245    ok
+24:   227509258861456                0 9 days, 11:24:00.132    ng(227509258861456!=227514171973736)
+
 workspace#suzuki$ date
 2026年  2月  5日 木曜日 11:22:41 JST
 workspace#suzuki$ ./18Py_constellations_GPU_cuda_codon -c
