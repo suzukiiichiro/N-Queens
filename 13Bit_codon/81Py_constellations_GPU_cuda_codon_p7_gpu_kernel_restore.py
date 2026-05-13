@@ -2811,8 +2811,10 @@ def build_constellations_dynamicK(
     preset_queens=5
   elif N>=18 and N<=20:
     preset_queens=6
-  elif N>=21 and N<=27:
+  elif N>=21 and N<=24:
     preset_queens=7
+  elif N>=25 and N<=27:
+    preset_queens=8
 
   print("[dynamic-preset] N=",N," preset_queens=",preset_queens)
 
@@ -2999,9 +3001,14 @@ def main()->None:
       preset_queens=5
     elif N>=18 and N<=20:
       preset_queens=6
-    elif N>=21 and N<=27:
+    elif N>=21 and N<=24:
       preset_queens=7
-  
+    elif N>=25 and N<=27:
+      preset_queens=8
+ 
+    if gpu_log_level>=1:
+      print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+   
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
