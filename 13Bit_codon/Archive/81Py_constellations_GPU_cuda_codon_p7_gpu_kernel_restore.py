@@ -195,7 +195,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-# @gpu.kernel
+@gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr,rd_arr,col_arr,row_arr,free_arr,
     jmark_arr,end_arr,mark1_arr,mark2_arr,
@@ -1889,32 +1889,32 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       #   ここで sort 有無に応じて実際に GPU kernel を起動する。
       ################################
       #
-      # if use_sorted:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
-      # else:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
+      if use_sorted:
+        kernel_dfs_iter_gpu(
+          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
+      else:
+        kernel_dfs_iter_gpu(
+          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
 
       if gpu_log_level>=2:
         t2=datetime.now()
@@ -2800,24 +2800,6 @@ def build_constellations_dynamicK(
   preset_queens:int
 )->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
 
-  # dynamic preset selection
-  #
-  # N5〜N17   preset=5
-  # N18〜N20  preset=6
-  # N21〜N26  preset=7
-  #
-  # N がこの範囲外の場合は、呼び出し側で指定された preset_queens をそのまま使う。
-  if N>=5 and N<=17:
-    preset_queens=5
-  elif N>=18 and N<=20:
-    preset_queens=6
-  elif N>=21 and N<=24:
-    preset_queens=7
-  elif N>=25 and N<=27:
-    preset_queens=8
-
-  print("[dynamic-preset] N=",N," preset_queens=",preset_queens)
-
   use_bin=True
   if use_bin:
     # bin
@@ -2853,6 +2835,18 @@ def build_constellations_dynamicK(
 #     ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_txt(N,ijkl_list,subconst_cache, constellations, preset_queens)
 
 #   return  ijkl_list,subconst_cache,constellations,preset_queens
+
+"""dynamic を関数化"""
+def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
+  if N>=5 and N<=17:
+    return 5
+  elif N>=18 and N<=20:
+    return 6
+  elif N>=21 and N<=24:
+    return 7
+  elif N>=25 and N<=27:
+    return 8
+  return preset_queens
 
 """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
 def _bit_total(N:int)->int:
@@ -2996,19 +2990,11 @@ def main()->None:
     use_constellation_cache:bool = False
     
     preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+    preset_queens=select_dynamic_preset_queens(N,preset_queens)
 
-    if N>=5 and N<=17:
-      preset_queens=5
-    elif N>=18 and N<=20:
-      preset_queens=6
-    elif N>=21 and N<=24:
-      preset_queens=7
-    elif N>=25 and N<=27:
-      preset_queens=8
- 
     if gpu_log_level>=1:
       print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
-   
+
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:

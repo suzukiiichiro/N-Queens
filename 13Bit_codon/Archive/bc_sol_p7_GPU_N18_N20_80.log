@@ -1,0 +1,20 @@
+GPU mode selected
+version        : 80 P7 multiplicity FIX from 79 P6 cache scope FIX
+cross_stripe_safe: 0
+boundary_debug: mode=9 preset=7 signature_prune_disabled=0
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=18 preset_queens=7 constellations=3653940
+[gpu-config] N=18 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=0 local_sort=0 stripe=0 balanced=0 cross=0 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=18 constellations=3653940 chunks=236 executed_chunks=236 direct_total=1 stripe=0 balanced=0 cross=0 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+18:                 0                0          0:00:02.165    ng(0!=666090624)
+[constellation-config] N=19 preset_queens=7 constellations=6467354
+[gpu-config] N=19 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=0 local_sort=0 stripe=0 balanced=0 cross=0 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=19 constellations=6467354 chunks=418 executed_chunks=418 direct_total=1 stripe=0 balanced=0 cross=0 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+19:                 0                0          0:00:04.064    ng(0!=4968057848)
+[constellation-config] N=20 preset_queens=7 constellations=11029570
+[gpu-config] N=20 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=9 local_sort=0 stripe=1 balanced=0 cross=1 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=20 constellations=11029570 chunks=713 executed_chunks=713 direct_total=1 stripe=1 balanced=0 cross=1 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+20:                 0                0          0:00:09.809    ng(0!=39029188884)

@@ -1,0 +1,32 @@
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=18 preset_queens=7 constellations=3653587
+[bc-sol-summary] N=18 constellations=3653587 total=666069600
+[bc-sol-case] B(j<15) count=956998 total=277867760
+[bc-sol-fid] B(j<15) fid=0 SQBkBlBjrB count=269540 total=79948704
+[bc-sol-fid] B(j<15) fid=1 SQBlBjrB count=38507 total=9170700
+[bc-sol-fid] B(j<15) fid=2 SQBjrB count=24101 total=5063424
+[bc-sol-fid] B(j<15) fid=4 SQBklBjrB count=95098 total=31715544
+[bc-sol-fid] B(j<15) fid=5 SQBlBkBjrB count=332608 total=95757444
+[bc-sol-fid] B(j<15) fid=6 SQBkBjrB count=80696 total=18971600
+[bc-sol-fid] B(j<15) fid=7 SQBlkBjrB count=116448 total=37240344
+[bc-sol-case] SQd2(j=15) count=859140 total=158672816
+[bc-sol-fid] SQd2(j=15) fid=12 SQd2BkBlB count=214469 total=40680656
+[bc-sol-fid] SQd2(j=15) fid=13 SQd2BlB count=101427 total=18126992
+[bc-sol-fid] SQd2(j=15) fid=14 SQd2B count=52103 total=6791952
+[bc-sol-fid] SQd2(j=15) fid=15 SQd2BklB count=53877 total=12411052
+[bc-sol-fid] SQd2(j=15) fid=16 SQd2BlBkB count=243377 total=46797352
+[bc-sol-fid] SQd2(j=15) fid=17 SQd2BkB count=134258 total=20868864
+[bc-sol-fid] SQd2(j=15) fid=18 SQd2BlkB count=59629 total=12995948
+[bc-sol-case] SQd1(j=16) count=1265380 total=160708560
+[bc-sol-fid] SQd1(j=16) fid=19 SQd1BkBlB count=287761 total=39874208
+[bc-sol-fid] SQd1(j=16) fid=20 SQd1BlB count=213033 total=23668292
+[bc-sol-fid] SQd1(j=16) fid=21 SQd1B count=113971 total=8050960
+[bc-sol-fid] SQd1(j=16) fid=22 SQd1BklB count=63418 total=10099340
+[bc-sol-fid] SQd1(j=16) fid=23 SQd1BlBkB count=281839 total=45070584
+[bc-sol-fid] SQd1(j=16) fid=24 SQd1BlkB count=62880 total=10252464
+[bc-sol-fid] SQd1(j=16) fid=25 SQd1BkB count=242478 total=23692712
+[bc-sol-case] SQd0(j>16) count=572069 total=68820464
+[bc-sol-fid] SQd0(j>16) fid=26 SQd0B count=312476 total=33028168
+[bc-sol-fid] SQd0(j>16) fid=27 SQd0BkB count=259593 total=35792296
+18:         666069600                0          0:00:25.676    ng(666069600!=666090624)

@@ -1,0 +1,31 @@
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=22 preset_queens=6 constellations=2932570
+[bc-sol-summary] N=22 constellations=2932570 total=2690945954116
+[bc-sol-case] B(j<19) count=986865 total=1432155709952
+[bc-sol-fid] B(j<19) fid=0 SQBkBlBjrB count=363751 total=521831793068
+[bc-sol-fid] B(j<19) fid=2 SQBjrB count=2322 total=1161005688
+[bc-sol-fid] B(j<19) fid=4 SQBklBjrB count=78207 total=130696265212
+[bc-sol-fid] B(j<19) fid=5 SQBlBkBjrB count=432762 total=615923819824
+[bc-sol-fid] B(j<19) fid=6 SQBkBjrB count=16502 total=11792129896
+[bc-sol-fid] B(j<19) fid=7 SQBlkBjrB count=93321 total=150750696264
+[bc-sol-case] SQd2(j=19) count=652932 total=519931791976
+[bc-sol-fid] SQd2(j=19) fid=12 SQd2BkBlB count=231795 total=190537447236
+[bc-sol-fid] SQd2(j=19) fid=13 SQd2BlB count=33469 total=21046821416
+[bc-sol-fid] SQd2(j=19) fid=14 SQd2B count=10264 total=3363533440
+[bc-sol-fid] SQd2(j=19) fid=15 SQd2BklB count=35664 total=34223508484
+[bc-sol-fid] SQd2(j=19) fid=16 SQd2BlBkB count=249807 total=206513870992
+[bc-sol-fid] SQd2(j=19) fid=17 SQd2BkB count=53732 total=29425484024
+[bc-sol-fid] SQd2(j=19) fid=18 SQd2BlkB count=38201 total=34821126384
+[bc-sol-case] SQd1(j=20) count=883046 total=512421340916
+[bc-sol-fid] SQd1(j=20) fid=19 SQd1BkBlB count=283837 total=180314200636
+[bc-sol-fid] SQd1(j=20) fid=20 SQd1BlB count=99542 total=38526387392
+[bc-sol-fid] SQd1(j=20) fid=21 SQd1B count=27685 total=5421024064
+[bc-sol-fid] SQd1(j=20) fid=22 SQd1BklB count=40477 total=28450766044
+[bc-sol-fid] SQd1(j=20) fid=23 SQd1BlBkB count=283470 total=193616492544
+[bc-sol-fid] SQd1(j=20) fid=24 SQd1BlkB count=40452 total=28765206568
+[bc-sol-fid] SQd1(j=20) fid=25 SQd1BkB count=107583 total=37327263668
+[bc-sol-case] SQd0(j>20) count=409727 total=226437111272
+[bc-sol-fid] SQd0(j>20) fid=26 SQd0B count=153459 total=60347011416
+[bc-sol-fid] SQd0(j>20) fid=27 SQd0BkB count=256268 total=166090099856
+22:     2690945954116                0          5:19:12.363    ng(2690945954116!=2691008701644)

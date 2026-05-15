@@ -1,0 +1,31 @@
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=21 preset_queens=6 constellations=2025178
+[bc-sol-summary] N=21 constellations=2025178 total=314656965800
+[bc-sol-case] B(j<18) count=637907 total=159334182072
+[bc-sol-fid] B(j<18) fid=0 SQBkBlBjrB count=231046 total=57242915212
+[bc-sol-fid] B(j<18) fid=2 SQBjrB count=1843 total=174193944
+[bc-sol-fid] B(j<18) fid=4 SQBklBjrB count=51947 total=14799529576
+[bc-sol-fid] B(j<18) fid=5 SQBlBkBjrB count=278128 total=68222051364
+[bc-sol-fid] B(j<18) fid=6 SQBkBjrB count=11995 total=1668647952
+[bc-sol-fid] B(j<18) fid=7 SQBlkBjrB count=62948 total=17226844024
+[bc-sol-case] SQd2(j=18) count=459705 total=64434965768
+[bc-sol-fid] SQd2(j=18) fid=12 SQd2BkBlB count=159585 total=23202681308
+[bc-sol-fid] SQd2(j=18) fid=13 SQd2BlB count=24776 total=2816601048
+[bc-sol-fid] SQd2(j=18) fid=14 SQd2B count=8214 total=496836192
+[bc-sol-fid] SQd2(j=18) fid=15 SQd2BklB count=26102 total=4294390880
+[bc-sol-fid] SQd2(j=18) fid=16 SQd2BlBkB count=173141 total=25404541236
+[bc-sol-fid] SQd2(j=18) fid=17 SQd2BkB count=39755 total=3831151688
+[bc-sol-fid] SQd2(j=18) fid=18 SQd2BlkB count=28132 total=4388763416
+[bc-sol-case] SQd1(j=19) count=633937 total=62641118904
+[bc-sol-fid] SQd1(j=19) fid=19 SQd1BkBlB count=198214 total=21597087120
+[bc-sol-fid] SQd1(j=19) fid=20 SQd1BlB count=74784 total=5135735544
+[bc-sol-fid] SQd1(j=19) fid=21 SQd1B count=22293 total=755897632
+[bc-sol-fid] SQd1(j=19) fid=22 SQd1BklB count=29912 total=3501128968
+[bc-sol-fid] SQd1(j=19) fid=23 SQd1BlBkB count=197899 total=23150369720
+[bc-sol-fid] SQd1(j=19) fid=24 SQd1BlkB count=29889 total=3526101384
+[bc-sol-fid] SQd1(j=19) fid=25 SQd1BkB count=80946 total=4974798536
+[bc-sol-case] SQd0(j>19) count=293629 total=28246699056
+[bc-sol-fid] SQd0(j>19) fid=26 SQd0B count=115233 total=8161184040
+[bc-sol-fid] SQd0(j>19) fid=27 SQd0BkB count=178396 total=20085515016
+21:      314656965800                0          0:36:34.085    ng(314656965800!=314666222712)

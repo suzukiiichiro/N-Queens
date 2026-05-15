@@ -1,0 +1,62 @@
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=18 preset_queens=6 constellations=571705 signature_prune_disabled=0
+[bc-summary] N=18 constellations=571705 N-3=15 N-2=16 signature_prune_disabled=0
+[bc-case] B(j<15) count=140321 free0=0 w2=486 w4=2634 w8=137201 bad_fid=0 bad_end=0
+[bc-start] B(j<15) r3=135317 r4=4190 r5=814
+[bc-end]   B(j<15) e16=140321
+[bc-fid] B(j<15) fid=0 SQBkBlBjrB count=45361
+[bc-fid] B(j<15) fid=2 SQBjrB count=814
+[bc-fid] B(j<15) fid=4 SQBklBjrB count=14537
+[bc-fid] B(j<15) fid=5 SQBlBkBjrB count=57146
+[bc-fid] B(j<15) fid=6 SQBkBjrB count=4190
+[bc-fid] B(j<15) fid=7 SQBlkBjrB count=18273
+[bc-case] SQd2(j=15) count=136020 free0=0 w2=76 w4=1106 w8=134838 bad_fid=0 bad_end=0
+[bc-start] SQd2(j=15) r3=109551 r4=22713 r5=3756
+[bc-end]   SQd2(j=15) e16=136020
+[bc-fid] SQd2(j=15) fid=12 SQd2BkBlB count=42535
+[bc-fid] SQd2(j=15) fid=13 SQd2BlB count=8597
+[bc-fid] SQd2(j=15) fid=14 SQd2B count=3756
+[bc-fid] SQd2(j=15) fid=15 SQd2BklB count=9462
+[bc-fid] SQd2(j=15) fid=16 SQd2BlBkB count=47163
+[bc-fid] SQd2(j=15) fid=17 SQd2BkB count=14116
+[bc-fid] SQd2(j=15) fid=18 SQd2BlkB count=10391
+[bc-case] SQd1(j=16) count=202286 free0=0 w2=92 w4=1375 w8=200819 bad_fid=0 bad_end=0
+[bc-start] SQd1(j=16) r3=140482 r4=52438 r5=9366
+[bc-end]   SQd1(j=16) e14=911 e15=5479 e16=195896
+[bc-fid] SQd1(j=16) fid=19 SQd1BkBlB count=56051
+[bc-fid] SQd1(j=16) fid=20 SQd1BlB count=27134
+[bc-fid] SQd1(j=16) fid=21 SQd1B count=10461
+[bc-fid] SQd1(j=16) fid=22 SQd1BklB count=11187
+[bc-fid] SQd1(j=16) fid=23 SQd1BlBkB count=55868
+[bc-fid] SQd1(j=16) fid=24 SQd1BlkB count=11170
+[bc-fid] SQd1(j=16) fid=25 SQd1BkB count=30415
+[bc-case] SQd0(j>16) count=93078 free0=0 w2=0 w4=0 w8=93078 bad_fid=0 bad_end=0
+[bc-start] SQd0(j>16) r4=50503 r5=42575
+[bc-end]   SQd0(j>16) e16=93078
+[bc-fid] SQd0(j>16) fid=26 SQd0B count=42575
+[bc-fid] SQd0(j>16) fid=27 SQd0BkB count=50503
+[bc-fid-total]
+[bc-fid-total] fid=0 SQBkBlBjrB count=45361
+[bc-fid-total] fid=2 SQBjrB count=814
+[bc-fid-total] fid=4 SQBklBjrB count=14537
+[bc-fid-total] fid=5 SQBlBkBjrB count=57146
+[bc-fid-total] fid=6 SQBkBjrB count=4190
+[bc-fid-total] fid=7 SQBlkBjrB count=18273
+[bc-fid-total] fid=12 SQd2BkBlB count=42535
+[bc-fid-total] fid=13 SQd2BlB count=8597
+[bc-fid-total] fid=14 SQd2B count=3756
+[bc-fid-total] fid=15 SQd2BklB count=9462
+[bc-fid-total] fid=16 SQd2BlBkB count=47163
+[bc-fid-total] fid=17 SQd2BkB count=14116
+[bc-fid-total] fid=18 SQd2BlkB count=10391
+[bc-fid-total] fid=19 SQd1BkBlB count=56051
+[bc-fid-total] fid=20 SQd1BlB count=27134
+[bc-fid-total] fid=21 SQd1B count=10461
+[bc-fid-total] fid=22 SQd1BklB count=11187
+[bc-fid-total] fid=23 SQd1BlBkB count=55868
+[bc-fid-total] fid=24 SQd1BlkB count=11170
+[bc-fid-total] fid=25 SQd1BkB count=30415
+[bc-fid-total] fid=26 SQd0B count=42575
+[bc-fid-total] fid=27 SQd0BkB count=50503
+18:                 0                0          0:00:00.462    boundary-only

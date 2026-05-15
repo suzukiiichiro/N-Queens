@@ -169,7 +169,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="82 dynamic preset P8 experiment from 81 GPU restore"
+VERSION_TAG:str="79 P6 DYNAMIC subconst_cache scope FIX from 78 P5 FIX"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # bench_mode=10 の診断用。通常は False のまま。
@@ -195,7 +195,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-@gpu.kernel
+# @gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr,rd_arr,col_arr,row_arr,free_arr,
     jmark_arr,end_arr,mark1_arr,mark2_arr,
@@ -1881,37 +1881,32 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       if gpu_log_level>=2:
         ts1=datetime.now()
       GRID = (m + BLOCK - 1) // BLOCK
-
-      # 81 GPU RESTORE:
-      #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
-      #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
-      #   ここで sort 有無に応じて実際に GPU kernel を起動する。
-      if use_sorted:
-        kernel_dfs_iter_gpu(
-          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-          gpu.raw(meta_next),
-          gpu.raw(results),
-          m, board_mask,
-          n3, n4,
-          grid=GRID, block=BLOCK
-        )
-      else:
-        kernel_dfs_iter_gpu(
-          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-          gpu.raw(meta_next),
-          gpu.raw(results),
-          m, board_mask,
-          n3, n4,
-          grid=GRID, block=BLOCK
-        )
+      # if use_sorted:
+      #   kernel_dfs_iter_gpu(
+      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+      #     gpu.raw(meta_next),
+      #     gpu.raw(results),
+      #     m, board_mask,
+      #     n3, n4,
+      #     grid=GRID, block=BLOCK
+      #   )
+      # else:
+      #   kernel_dfs_iter_gpu(
+      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+      #     gpu.raw(meta_next),
+      #     gpu.raw(results),
+      #     m, board_mask,
+      #     n3, n4,
+      #     grid=GRID, block=BLOCK
+      #   )
       if gpu_log_level>=2:
         t2=datetime.now()
       # 60 DIRECT TOTAL:
@@ -2221,32 +2216,6 @@ def set_pre_queens_cached(
       並行再入（同一状態からの重複突入）も抑止できる設計。
   """
 
-  # ------------------------------------------------------------
-  # 80 FIX: preset>=7 multiplicity preservation
-  #
-  # subconst_cache is useful as a recursion de-duplication guard for
-  # preset<=6, but with preset=7 distinct pre-queen histories can reach
-  # the same (ld,rd,col,k,l,row,queens,LD,RD,N,preset) state.
-  # Those histories must still be counted with multiplicity.
-  #
-  # If we suppress the later hit, the emitted constellation task is lost.
-  # In N=18 / preset=7 this appears as the SQd0 residual -21,024.
-  # Therefore preset>=7 bypasses this cache and lets identical terminal
-  # tasks be appended multiple times.
-  # ------------------------------------------------------------
-  if preset_queens>=7:
-    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
-      N, ijkl_list, subconst_cache,
-      ld, rd, col,
-      k, l,
-      row, queens,
-      LD, RD,
-      counter, constellations, preset_queens,
-      visited, constellation_signatures,
-      zobrist_hash_tables
-    )
-    return ijkl_list, subconst_cache, constellations, preset_queens
-
   # ---- キャッシュキー（状態を丸ごと）----
   # NOTE: queens や row も含めるので「途中段の重複」も止められる。
   key:Tuple[int,int,int,int,int,int,int,int,int,int,int] = (
@@ -2399,11 +2368,6 @@ def gen_constellations(
   #   後続 sc 側の constellation 生成が丸ごと抑止される。
   #   preset=5 では影響が出にくいが、preset=6/7 で SQd0 側の不足が出る。
   #   よって subconst_cache は各 sc ごとに clear する。
-  #
-  # 80 FIX:
-  #   preset=7 では同一 sc 内でも同じ状態へ複数経路で合流し、
-  #   その multiplicity 自体が必要になる。set_pre_queens_cached() 側で
-  #   preset_queens>=7 のときは subconst_cache を bypass する。
 
   # constellation_signatures は「同一開始 sc 内」での重複排除（サブ生成の内部で使う想定）
   constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set()
@@ -2787,23 +2751,9 @@ def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set
   return ijkl_list,subconst_cache,constellations,preset_queens
 
 
-"""N に応じて preset_queens を動的に選択する。"""
-def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
-  if N>=5 and N<=17:
-    return 5
-  elif N>=18 and N<=20:
-    return 6
-  elif N>=21 and N<=24:
-    return 7
-  elif N>=25 and N<=27:
-    return 8
-  return preset_queens
-
-
 """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
 def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
 
-  preset_queens=select_dynamic_preset_queens(N,preset_queens)
   use_bin=True
   if use_bin:
     # bin
@@ -2941,10 +2891,6 @@ def main()->None:
     """ constellasions()でキャッシュを使う """
     use_constellation_cache:bool = False
     preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
-    preset_queens=select_dynamic_preset_queens(N,preset_queens)
-
-    if gpu_log_level>=1:
-      print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
 
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)

@@ -1,0 +1,20 @@
+GPU mode selected
+version        : 80 P7 multiplicity FIX from 79 P6 cache scope FIX
+cross_stripe_safe: 0
+boundary_debug: mode=9 preset=6 signature_prune_disabled=0
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=18 preset_queens=6 constellations=571705
+[gpu-config] N=18 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=0 local_sort=0 stripe=0 balanced=0 cross=0 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=18 constellations=571705 chunks=37 executed_chunks=37 direct_total=1 stripe=0 balanced=0 cross=0 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+18:                 0                0          0:00:00.482    ng(0!=666090624)
+[constellation-config] N=19 preset_queens=6 constellations=897071
+[gpu-config] N=19 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=0 local_sort=0 stripe=0 balanced=0 cross=0 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=19 constellations=897071 chunks=58 executed_chunks=58 direct_total=1 stripe=0 balanced=0 cross=0 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+19:                 0                0          0:00:00.686    ng(0!=4968057848)
+[constellation-config] N=20 preset_queens=6 constellations=1369061
+[gpu-config] N=20 original=1 mixed32=1 hotpath=1 trunk75=32x484 sort_mode=9 local_sort=0 stripe=1 balanced=0 cross=1 cross_safe=0 reorder_only=0 chunk_only=0 chunk_start=0 chunk_count=1 block=32 max_blocks=484 steps=15488 log_level=1
+[gpu-summary] N=20 constellations=1369061 chunks=89 executed_chunks=89 direct_total=1 stripe=1 balanced=0 cross=1 cross_safe=0 chunk_only=0
+[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].
+20:                 0                0          0:00:01.326    ng(0!=39029188884)

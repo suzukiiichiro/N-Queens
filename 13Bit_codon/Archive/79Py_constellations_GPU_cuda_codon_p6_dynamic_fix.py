@@ -169,7 +169,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="81 P7 GPU kernel RESTORE from 80 P7 multiplicity FIX"
+VERSION_TAG:str="79 P6 DYNAMIC SQd0 fid27->fid26 FIX from 78 P5 FIX"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # bench_mode=10 の診断用。通常は False のまま。
@@ -306,6 +306,20 @@ def kernel_dfs_iter_gpu(
         f:int=cv0i&31
         rowv:int=(cv0i>>5)&31
         nfid=meta_next[f]
+
+        #######################################
+        # 79 P6 dynamic SQd0 start>=k fix
+        #
+        # fid=27 SQd0BkB は mark1=k-1 で Bk block を処理して
+        # fid=26 SQd0B へ進む P1 だが、preset=6 dynamic で
+        # DFS 入口 row がすでに mark1 を越えている場合、
+        # row==mark1 は二度と成立しない。
+        # その場合は盤面/row/free を変えず fid=26 と等価化する。
+        #######################################
+        if f==27:
+          if rowv>mark1:
+            f=26
+            nfid=meta_next[f]
 
         #######################################
         # P5 same-row transition
@@ -462,6 +476,10 @@ def dfs_iter(
   78 FIX:
     funcptn==4 / P5 / fid=8..11 を追加。
 
+  79 FIX:
+    preset=6 dynamic / SQd0 start>=k 相当で、
+    fid=27 SQd0BkB の mark1 を通過済みなら fid=26 SQd0B に正規化する。
+
     fid=8..11:
       8  SQBjlBkBlBjrB  -> 0 SQBkBlBjrB
       9  SQBjlBklBjrB   -> 4 SQBklBjrB
@@ -480,6 +498,17 @@ def dfs_iter(
 
   while stack:
     functionid,ld,rd,col,row,free=stack.pop()
+
+    # ------------------------------------------------------------
+    # 79 FIX: preset=6 dynamic / SQd0 start>=k equivalence
+    #
+    # fid=27 SQd0BkB は mark1=k-1 で Bk block を処理して
+    # fid=26 SQd0B へ進む。しかし DFS 入口 row がすでに
+    # mark1 を越えている場合、row==mark1 は成立しない。
+    # そのため盤面/row/free はそのまま fid=26 に正規化する。
+    # ------------------------------------------------------------
+    if functionid==27 and row>mark1:
+      functionid=26
 
     if not free:
       continue
@@ -654,9 +683,19 @@ def dfs(
   78 FIX:
     funcptn==4 / P5 / fid=8..11 を追加。
 
+  79 FIX:
+    preset=6 dynamic / SQd0 start>=k 相当で、
+    fid=27 SQd0BkB の mark1 を通過済みなら fid=26 SQd0B に正規化する。
+
     P5 は mark1 到達時に、盤面を変えず、row も進めず、
     same-row のまま next_funcid へ遷移する。
   """
+
+  # ------------------------------------------------------------
+  # 79 FIX: preset=6 dynamic / SQd0 start>=k equivalence
+  # ------------------------------------------------------------
+  if functionid==27 and row>mark1:
+    functionid=26
 
   next_funcid,funcptn,avail_flag=meta[functionid]
 
@@ -1881,14 +1920,6 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       if gpu_log_level>=2:
         ts1=datetime.now()
       GRID = (m + BLOCK - 1) // BLOCK
-
-      ################################
-      # 81 GPU RESTORE:
-      #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
-      #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
-      #   ここで sort 有無に応じて実際に GPU kernel を起動する。
-      ################################
-      #
       # if use_sorted:
       #   kernel_dfs_iter_gpu(
       #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
@@ -1915,7 +1946,6 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       #     n3, n4,
       #     grid=GRID, block=BLOCK
       #   )
-
       if gpu_log_level>=2:
         t2=datetime.now()
       # 60 DIRECT TOTAL:
@@ -2225,32 +2255,6 @@ def set_pre_queens_cached(
       並行再入（同一状態からの重複突入）も抑止できる設計。
   """
 
-  # ------------------------------------------------------------
-  # 80 FIX: preset>=7 multiplicity preservation
-  #
-  # subconst_cache is useful as a recursion de-duplication guard for
-  # preset<=6, but with preset=7 distinct pre-queen histories can reach
-  # the same (ld,rd,col,k,l,row,queens,LD,RD,N,preset) state.
-  # Those histories must still be counted with multiplicity.
-  #
-  # If we suppress the later hit, the emitted constellation task is lost.
-  # In N=18 / preset=7 this appears as the SQd0 residual -21,024.
-  # Therefore preset>=7 bypasses this cache and lets identical terminal
-  # tasks be appended multiple times.
-  # ------------------------------------------------------------
-  if preset_queens>=7:
-    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
-      N, ijkl_list, subconst_cache,
-      ld, rd, col,
-      k, l,
-      row, queens,
-      LD, RD,
-      counter, constellations, preset_queens,
-      visited, constellation_signatures,
-      zobrist_hash_tables
-    )
-    return ijkl_list, subconst_cache, constellations, preset_queens
-
   # ---- キャッシュキー（状態を丸ごと）----
   # NOTE: queens や row も含めるので「途中段の重複」も止められる。
   key:Tuple[int,int,int,int,int,int,int,int,int,int,int] = (
@@ -2396,19 +2400,6 @@ def gen_constellations(
   # “長寿命プロセス”で繰り返し呼ばれる可能性を考えると毎回クリアが安全。
   subconst_cache.clear()
 
-  # 79 FIX:
-  #   subconst_cache は set_pre_queens_cached() の再帰内重複抑止用。
-  #   これを全 sc 共通にすると、preset_queens>=6 で別の開始星座 sc が
-  #   同じ (ld,rd,col,k,l,row,queens,LD,RD,N,preset) 状態へ合流したとき、
-  #   後続 sc 側の constellation 生成が丸ごと抑止される。
-  #   preset=5 では影響が出にくいが、preset=6/7 で SQd0 側の不足が出る。
-  #   よって subconst_cache は各 sc ごとに clear する。
-  #
-  # 80 FIX:
-  #   preset=7 では同一 sc 内でも同じ状態へ複数経路で合流し、
-  #   その multiplicity 自体が必要になる。set_pre_queens_cached() 側で
-  #   preset_queens>=7 のときは subconst_cache を bypass する。
-
   # constellation_signatures は「同一開始 sc 内」での重複排除（サブ生成の内部で使う想定）
   constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set()
 
@@ -2456,12 +2447,6 @@ def gen_constellations(
   # ※既存実装の方針に合わせる
   # counter[0] が “今回 sc から追加した constellation 数” になる
   for sc in ijkl_list:
-    # 79 FIX:
-    #   subconst_cache を sc ごとに初期化する。
-    #   全 sc 共通キャッシュにすると、後続 sc の正当な constellation が
-    #   cache hit で生成されず、preset=6/7 で不足する。
-    subconst_cache.clear()
-
     # sc ごとに重複抑止セットを初期化（＝この sc の内部だけで重複排除）
     constellation_signatures = set()
 
@@ -2790,69 +2775,20 @@ def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set
   save_constellations_bin(N,fname,constellations)
   return ijkl_list,subconst_cache,constellations,preset_queens
 
+
 """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
-def build_constellations_dynamicK(
-  N: int,
-  ijkl_list:Set[int],
-  subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
-  constellations:List[Dict[str,int]],
-  use_gpu: bool,
-  preset_queens:int
-)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
-
-  # dynamic preset selection
-  #
-  # N5〜N17   preset=5
-  # N18〜N20  preset=6
-  # N21〜N26  preset=7
-  #
-  # N がこの範囲外の場合は、呼び出し側で指定された preset_queens をそのまま使う。
-  if N>=5 and N<=17:
-    preset_queens=5
-  elif N>=18 and N<=20:
-    preset_queens=6
-  elif N>=21 and N<=24:
-    preset_queens=7
-  elif N>=25 and N<=27:
-    preset_queens=8
-
-  print("[dynamic-preset] N=",N," preset_queens=",preset_queens)
+def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
 
   use_bin=True
   if use_bin:
     # bin
-    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_bin(
-      N,
-      ijkl_list,
-      subconst_cache,
-      constellations,
-      preset_queens
-    )
+    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_bin(N,ijkl_list,subconst_cache, constellations, preset_queens)
+    #
   else:
     # txt
-    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_txt(
-      N,
-      ijkl_list,
-      subconst_cache,
-      constellations,
-      preset_queens
-    )
+    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_txt(N,ijkl_list,subconst_cache, constellations, preset_queens)
 
-  return ijkl_list,subconst_cache,constellations,preset_queens
-
-# """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
-# def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
-
-#   use_bin=True
-#   if use_bin:
-#     # bin
-#     ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_bin(N,ijkl_list,subconst_cache, constellations, preset_queens)
-#     #
-#   else:
-#     # txt
-#     ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_txt(N,ijkl_list,subconst_cache, constellations, preset_queens)
-
-#   return  ijkl_list,subconst_cache,constellations,preset_queens
+  return  ijkl_list,subconst_cache,constellations,preset_queens
 
 """小さな N 用の素朴な全列挙（対称重みなし）。ビットボードで列/斜線の占有を管理して再帰的に合計を返す。検算/フォールバック用。"""
 def _bit_total(N:int)->int:
@@ -2906,21 +2842,6 @@ def main()->None:
       print(f"Unknown option: {arg}")
       print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode] [preset_queens] [bench_mode] [cross_stripe_safe] [debug_chunk_start] [debug_chunk_count]")
       return
-
-  # mode              = CPU
-  # nmin              = 5
-  # nmax              = 28
-  # 実行範囲           = N5〜N27
-  # gpu_block         = 32
-  # gpu_max_blocks    = 484
-  # gpu_log_level     = 0
-  # gpu_sort_mode     = -1
-  # bench_mode        = 0
-  # preset_queens_arg = 5
-  # preset_queens     = 5
-  # cross_stripe_safe = False
-  # debug_chunk_start = 0
-  # debug_chunk_count = 1
 
     # nmax は指定時だけ inclusive として扱う。
     # 例: ./30... -g 18 18 256 32 1
@@ -2994,21 +2915,8 @@ def main()->None:
 
     """ constellasions()でキャッシュを使う """
     use_constellation_cache:bool = False
-    
     preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
 
-    if N>=5 and N<=17:
-      preset_queens=5
-    elif N>=18 and N<=20:
-      preset_queens=6
-    elif N>=21 and N<=24:
-      preset_queens=7
-    elif N>=25 and N<=27:
-      preset_queens=8
- 
-    if gpu_log_level>=1:
-      print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
-   
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:

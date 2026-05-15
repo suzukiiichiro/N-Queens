@@ -1,0 +1,80 @@
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+[constellation-config] N=18 preset_queens=5 constellations=71475
+[bc-sol-summary] N=18 constellations=71475 total=666090624
+[bc-sol-case] B(j<15) count=16689 total=277867760
+[bc-sol-fid] B(j<15) fid=0 SQBkBlBjrB count=5413 total=89119404
+[bc-sol-fid] B(j<15) fid=4 SQBklBjrB count=1720 total=32832200
+[bc-sol-fid] B(j<15) fid=5 SQBlBkBjrB count=7290 total=115543236
+[bc-sol-fid] B(j<15) fid=7 SQBlkBjrB count=2266 total=40372920
+[bc-sol-case] SQd2(j=15) count=16264 total=158672816
+[bc-sol-fid] SQd2(j=15) fid=12 SQd2BkBlB count=6121 total=59652392
+[bc-sol-fid] SQd2(j=15) fid=14 SQd2B count=122 total=423152
+[bc-sol-fid] SQd2(j=15) fid=15 SQd2BklB count=1229 total=14368500
+[bc-sol-fid] SQd2(j=15) fid=16 SQd2BlBkB count=6710 total=65386480
+[bc-sol-fid] SQd2(j=15) fid=17 SQd2BkB count=742 total=4078648
+[bc-sol-fid] SQd2(j=15) fid=18 SQd2BlkB count=1340 total=14763644
+[bc-sol-case] SQd1(j=16) count=26180 total=160708560
+[bc-sol-fid] SQd1(j=16) fid=19 SQd1BkBlB count=8780 total=56639944
+[bc-sol-fid] SQd1(j=16) fid=20 SQd1BlB count=2229 total=8678428
+[bc-sol-fid] SQd1(j=16) fid=21 SQd1B count=673 total=1085968
+[bc-sol-fid] SQd1(j=16) fid=22 SQd1BklB count=1596 total=11601276
+[bc-sol-fid] SQd1(j=16) fid=23 SQd1BlBkB count=8767 total=61793156
+[bc-sol-fid] SQd1(j=16) fid=24 SQd1BlkB count=1595 total=11736736
+[bc-sol-fid] SQd1(j=16) fid=25 SQd1BkB count=2540 total=9173052
+[bc-sol-case] SQd0(j>16) count=12342 total=68841488
+[bc-sol-fid] SQd0(j>16) fid=26 SQd0B count=4420 total=16999896
+[bc-sol-fid] SQd0(j>16) fid=27 SQd0BkB count=7922 total=51841592
+18:         666090624                0          0:00:08.244    ok
+[constellation-config] N=19 preset_queens=5 constellations=100706
+[bc-sol-summary] N=19 constellations=100706 total=4968057848
+[bc-sol-case] B(j<16) count=25904 total=2238976280
+[bc-sol-fid] B(j<16) fid=0 SQBkBlBjrB count=8863 total=758783756
+[bc-sol-fid] B(j<16) fid=4 SQBklBjrB count=2376 total=235084520
+[bc-sol-fid] B(j<16) fid=5 SQBlBkBjrB count=11578 total=960341436
+[bc-sol-fid] B(j<16) fid=7 SQBlkBjrB count=3087 total=284766568
+[bc-sol-case] SQd2(j=16) count=22718 total=1111594768
+[bc-sol-fid] SQd2(j=16) fid=12 SQd2BkBlB count=8784 total=434818316
+[bc-sol-fid] SQd2(j=16) fid=14 SQd2B count=145 total=2297656
+[bc-sol-fid] SQd2(j=16) fid=15 SQd2BklB count=1572 total=86956800
+[bc-sol-fid] SQd2(j=16) fid=16 SQd2BlBkB count=9575 total=470989156
+[bc-sol-fid] SQd2(j=16) fid=17 SQd2BkB count=937 total=28167232
+[bc-sol-fid] SQd2(j=16) fid=18 SQd2BlkB count=1705 total=88365608
+[bc-sol-case] SQd1(j=17) count=35338 total=1129662624
+[bc-sol-fid] SQd1(j=17) fid=19 SQd1BkBlB count=12230 total=415452380
+[bc-sol-fid] SQd1(j=17) fid=20 SQd1BlB count=2881 total=57931964
+[bc-sol-fid] SQd1(j=17) fid=21 SQd1B count=793 total=6434800
+[bc-sol-fid] SQd1(j=17) fid=22 SQd1BklB count=2005 total=73314608
+[bc-sol-fid] SQd1(j=17) fid=23 SQd1BlBkB count=12216 total=446369220
+[bc-sol-fid] SQd1(j=17) fid=24 SQd1BlkB count=2004 total=73959176
+[bc-sol-fid] SQd1(j=17) fid=25 SQd1BkB count=3209 total=56200476
+[bc-sol-case] SQd0(j>17) count=16746 total=487824176
+[bc-sol-fid] SQd0(j>17) fid=26 SQd0B count=5662 total=113622832
+[bc-sol-fid] SQd0(j>17) fid=27 SQd0BkB count=11084 total=374201344
+19:        4968057848                0          0:00:35.683    ok
+[constellation-config] N=20 preset_queens=5 constellations=139232
+[bc-sol-summary] N=20 constellations=139232 total=39029188884
+[bc-sol-case] B(j<17) count=39183 total=18708655340
+[bc-sol-fid] B(j<17) fid=0 SQBkBlBjrB count=13724 total=6480924700
+[bc-sol-fid] B(j<17) fid=4 SQBklBjrB count=3503 total=1918194168
+[bc-sol-fid] B(j<17) fid=5 SQBlBkBjrB count=17528 total=8026580244
+[bc-sol-fid] B(j<17) fid=7 SQBlkBjrB count=4428 total=2282956228
+[bc-sol-case] SQd2(j=17) count=31010 total=8325567828
+[bc-sol-fid] SQd2(j=17) fid=12 SQd2BkBlB count=12204 total=3285409044
+[bc-sol-fid] SQd2(j=17) fid=14 SQd2B count=170 total=14655168
+[bc-sol-fid] SQd2(j=17) fid=15 SQd2BklB count=2039 total=638762032
+[bc-sol-fid] SQd2(j=17) fid=16 SQd2BlBkB count=13199 total=3556667420
+[bc-sol-fid] SQd2(j=17) fid=17 SQd2BkB count=1202 total=178231432
+[bc-sol-fid] SQd2(j=17) fid=18 SQd2BlkB count=2196 total=651842732
+[bc-sol-case] SQd1(j=18) count=46796 total=8344182020
+[bc-sol-fid] SQd1(j=18) fid=19 SQd1BkBlB count=16577 total=3114876024
+[bc-sol-fid] SQd1(j=18) fid=20 SQd1BlB count=3609 total=390538268
+[bc-sol-fid] SQd1(j=18) fid=21 SQd1B count=923 total=40826928
+[bc-sol-fid] SQd1(j=18) fid=22 SQd1BklB count=2549 total=527035852
+[bc-sol-fid] SQd1(j=18) fid=23 SQd1BlBkB count=16562 total=3336500476
+[bc-sol-fid] SQd1(j=18) fid=24 SQd1BlkB count=2548 total=531996028
+[bc-sol-fid] SQd1(j=18) fid=25 SQd1BkB count=4028 total=402408444
+[bc-sol-case] SQd0(j>18) count=22243 total=3650783696
+[bc-sol-fid] SQd0(j>18) fid=26 SQd0B count=7122 total=776499272
+[bc-sol-fid] SQd0(j>18) fid=27 SQd0BkB count=15121 total=2874284424
+20:       39029188884                0          0:04:25.766    ok
