@@ -82,7 +82,7 @@ g5.xlarge  → A10G 1枚
 g5.16xlarge → A10G 1枚
 ------------------------
 
-2023/11/22 これまでの最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
+2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 対称解除法 GPUビットボード
