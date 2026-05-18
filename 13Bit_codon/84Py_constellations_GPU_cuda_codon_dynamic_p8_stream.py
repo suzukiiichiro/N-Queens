@@ -82,56 +82,6 @@ g5.xlarge  → A10G 1枚
 g5.16xlarge → A10G 1枚
 ------------------------
 
-$ codon build -release 76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py
-$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 5 20 32 484 0 -1
-GPU mode selected
- N:             Total           Unique         hh:mm:ss.ms
- 5:                10                0          0:00:00.000
- 6:                 4                0          0:00:00.004    ok
- 7:                40                0          0:00:00.003    ok
- 8:                92                0          0:00:00.002    ok
- 9:               352                0          0:00:00.002    ok
-10:               724                0          0:00:00.004    ok
-11:              2680                0          0:00:00.006    ok
-12:             14200                0          0:00:00.007    ok
-13:             73712                0          0:00:00.011    ok
-14:            365596                0          0:00:00.019    ok
-15:           2279184                0          0:00:00.042    ok
-16:          14772512                0          0:00:00.114    ok
-17:          95815104                0          0:00:00.461    ok
-18:         666090624                0          0:00:02.742    ok
-19:        4968057848                0          0:00:20.630    ok
-20:       39029188884                0          0:02:23.713    ok
-
-
-amazon AWS m4.16xlarge x 1
-workspace#suzuki$ date
-2026年  2月  5日 木曜日 11:22:41 JST
-workspace#suzuki$ ./18Py_constellations_GPU_cuda_codon -c
-CPU mode selected
- N:             Total         Unique        hh:mm:ss.ms
- 5:                10              0         0:00:00.000
- 6:                 4              0         0:00:00.044    ok
- 7:                40              0         0:00:00.003    ok
- 8:                92              0         0:00:00.014    ok
- 9:               352              0         0:00:00.025    ok
-10:               724              0         0:00:00.004    ok
-11:              2680              0         0:00:00.009    ok
-12:             14200              0         0:00:00.018    ok
-13:             73712              0         0:00:00.043    ok
-14:            365596              0         0:00:00.093    ok
-15:           2279184              0         0:00:00.165    ok
-16:          14772512              0         0:00:00.260    ok
-17:          95815104              0         0:00:00.394    ok
-18:         666090624              0         0:00:02.227    ok
-19:        4968057848              0         0:00:16.143    ok
-20:       39029188884              0         0:02:07.394    ok
-21:      314666222712              0         0:17:43.986    ok
-22:     2691008701644              0         2:36:16.107    ok
-23:    24233937684440              0        23:57:30.082    ok
-24:   227509258861456              0 9 days, 9:55:34.906    ng(227509258861456!=227514171973736)
-
-
 2023/11/22 これまでの最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
@@ -180,7 +130,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-# @gpu.kernel
+@gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr,rd_arr,col_arr,row_arr,free_arr,
     jmark_arr,end_arr,mark1_arr,mark2_arr,
@@ -1871,34 +1821,32 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
       #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
       #   ここで sort 有無に応じて実際に GPU kernel を起動する。
-      #
-      # if use_sorted:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
-      # else:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
-
+      if use_sorted:
+        kernel_dfs_iter_gpu(
+          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
+      else:
+        kernel_dfs_iter_gpu(
+          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
       if gpu_log_level>=2:
         t2=datetime.now()
       # 60 DIRECT TOTAL:
