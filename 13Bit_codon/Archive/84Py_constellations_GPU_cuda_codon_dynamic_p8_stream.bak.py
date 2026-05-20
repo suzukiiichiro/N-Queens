@@ -17,14 +17,6 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
-# N23 .bin 作成・検証
-./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
-  -c 23 23 32 484 1 0 5 11
-
-# N23 GPU実行
-./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
-  -g 23 23 32 484 1 0 5 0
-  
 workspace#suzuki$ date
 2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ uname -a
@@ -90,7 +82,7 @@ g5.xlarge  → A10G 1枚
 g5.16xlarge → A10G 1枚
 ------------------------
 
-2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
+2023/11/22 これまでの最高速実装（CUDA GPU 使用、Codon コンパイラ最適化版）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 対称解除法 GPUビットボード
