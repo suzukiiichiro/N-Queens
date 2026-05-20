@@ -16,6 +16,172 @@
        _/m/'
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
+
+
+はい、かなり参考になります。今回で判断が一段はっきりしました。
+
+## 今回の結論
+
+現時点の最良は、**coarse bucket のまま、`task_blocks=32` に戻した構成**です。
+
+```bash
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 0 32 32
+```
+
+結果は、
+
+```text
+18: 666090624  0  0:00:59.567 ok
+```
+
+で、これまでの `21 split_row=8` の `0:00:59.785` をわずかに上回っています。差は小さいので計測ブレ込みですが、少なくとも **`task_blocks=32` / coarse bucket / split_row=8 が現在の基準線**でよいです。
+
+一方で、hybrid はやはり不採用でよさそうです。`bucket_mode=2, task_blocks=32` は `0:01:00.250`、`26` の log_level=0 でも `bucket_mode=2` は `0:01:00.250` でした。つまりログ出力のせいではなく、**hybrid 分割そのものが少し重い**と見てよいです。
+
+## ここまでの順位
+
+| 条件                                         |          N=18時間 | 判定              |
+| ------------------------------------------ | --------------: | --------------- |
+| `25 split=8 mode=0 owner=32 task=32`       | **0:00:59.567** | 現状最良            |
+| `21 split=8 coarse task=8192相当`            |     0:00:59.785 | ほぼ同等            |
+| `26 split=8 mode=0 owner=32 task=32 log=0` |     0:01:00.142 | ほぼ同等、ややブレ       |
+| `25/26 split=8 mode=2 owner=32 task=32`    |     0:01:00.250 | hybridは不利       |
+| `25 split=8 mode=0 owner=32 task=1024`     |     0:01:00.691 | task batch拡大は不利 |
+| `25 split=8 mode=2 owner=32 task=1024`     |     0:01:00.993 | 不利              |
+| `24 split=8 full FID`                      |     0:01:01.021 | 不利              |
+| `24 split=10 full FID owner=8`             |     0:02:08.132 | over-split      |
+
+`split_row=10` は完走しましたが、`expanded_tasks` が大きく膨れて `0:02:08.132` まで悪化しているので、今は追わない方がよいです。
+
+## 本当のボトルネック
+
+今回の一番大事な点は、**bucket 分類ではなく CPU浅展開が支配的になっている**ことです。
+
+`split_row=8` では、
+
+```text
+base_constellations = 71475
+expanded_tasks      = 282834173
+chunks              = 9
+```
+
+まで増えています。coarse bucket の集計では、最大 bucket は `funcptn=1` の `127,935,408 tasks`、次が `funcptn=0` の `69,568,617 tasks` です。
+
+そしてこの CPU浅展開は、今の実装では基本的に **chunk 内を順番に展開して巨大な task 配列を作る**方式です。CPU本体の既存版は N=18 を約 `0:00:02.227`〜`0:00:02.308` で解けていますが、GPU用の task materialize はそれよりはるかに重いです。
+
+つまり、次に潰すべきなのは、
+
+```text
+bucketをさらに細かくすること
+task batchを大きくすること
+split_rowを深くすること
+```
+
+ではなく、
+
+```text
+CPU浅展開を並列化すること
+bucket compact用の二度読みを減らすこと
+```
+
+です。
+
+## 次版 27 を作りました
+
+この方針で、実験版を作りました。
+
+[27Py_constellations_GPU_cuda_codon_bucket_par_expand.py](sandbox:/mnt/data/27Py_constellations_GPU_cuda_codon_bucket_par_expand.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_par_expand_patch.diff)
+
+27 の変更点は、GPU kernel そのものではなく、**CPU浅展開部分**です。
+
+従来は、
+
+```text
+1. CPUで expanded task を append
+2. bucket_indices に index を append
+3. bucketごとに index をたどって compact
+4. GPU投入
+```
+
+でした。
+
+27 は、
+
+```text
+1. pass1: @par で source constellation ごとの bucket別 task数を数える
+2. prefix sum で bucketごとの連続配置位置を決める
+3. pass2: @par で expanded task を最終位置へ直接書く
+4. bucketごとに連続領域をそのまま GPU投入
+```
+
+に変えています。
+
+これで狙っている効果は2つです。
+
+```text
+CPU浅展開を @par 化する
+bucket_indices 経由の compact をなくす
+```
+
+ただし、こちらの環境では Codon/CUDA 実機コンパイルはできていないので、まずは実験版として見てください。
+
+## まず試すコマンド
+
+最初は `log_level=1` で、count / prefix / fill の時間を見たいです。
+
+```bash
+codon build -release 27Py_constellations_GPU_cuda_codon_bucket_par_expand.py
+./27Py_constellations_GPU_cuda_codon_bucket_par_expand -g 18 18 8 0 32 32 1
+```
+
+正常なら、`[gpu-config]` にこう出ます。
+
+```text
+par_expand=1
+```
+
+そして `[gpu-expand]` がこういう形式になります。
+
+```text
+[gpu-expand] ... time=... count=... prefix=... fill=...
+```
+
+見るべきところはここです。
+
+```text
+time  : CPU浅展開全体
+count : @par で task数を数える pass
+prefix: bucket配置の prefix sum
+fill  : @par で taskを書き込む pass
+```
+
+もし正しく動けば、まず期待するのは **expand 時間の大幅短縮**です。
+逆に `count + fill` が従来の expand より遅い場合は、2-pass 化のオーバーヘッドが勝っているので不採用です。
+
+速度だけ測るなら、その後に最小ログで。
+
+```bash
+./27Py_constellations_GPU_cuda_codon_bucket_par_expand -g 18 18 8 0 32 32 0
+```
+
+## 今後の基準線
+
+当面はこれを基準に固定でよいです。
+
+```text
+split_row   = 8
+bucket_mode = 0
+owner_blocks= 32
+task_blocks = 32
+```
+
+`bucket_mode=1/2`、`task_blocks=1024`、`split_row=10` はいったん停止でよいです。
+次の勝負は、27 の **par expand が 59秒の壁をどこまで削るか**です。
+
+
+
 27: CPU浅展開を2-pass並列化し、bucketごとに連続配置してcompactを削る実験版
 
 amazon AWS m4.16xlarge x 1

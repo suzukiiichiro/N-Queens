@@ -17,6 +17,88 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+はい、かなり見えました。
+
+結論から言うと、**現時点の最良はまだ `21` の `split_row=8`** です。
+今回の結果はこう読めます。
+
+* `21 split_row=-1` → `0:01:26.801`
+* `21 split_row=8` → `0:00:59.785`
+* `24 split_row=8 / bucket_mode=1 / owner_blocks=32 / task_blocks=1024` → `0:01:01.021`
+* `24 split_row=10 / bucket_mode=1 / owner_blocks=8 / task_blocks=1024` → `0:02:08.132`
+
+つまり、`24` は **`split_row=10` を完走させることには成功**しましたが、**速度は悪化**しています。
+
+特に重要なのは、`21 split=8` と `24 split=8` で **expanded_tasks がどちらも `282,834,173` で一致**している点です。
+ここはかなり大事で、**探索木そのものは同じ**です。したがって `24` の `+1.236秒` の差は、探索の強弱ではなく、**`bucket_mode=1(FID分割)` と `task_steps=262144` を含む実装側のオーバーヘッド差**として見てよいです。ログを合算すると、`21 split=8` はおおよそ **expand 20.0秒 + bucket 39.6秒**、`24 split=8` は **expand 19.8秒 + bucket 41.0秒** でした。expand はほぼ互角で、差は主に bucket 実行側です。
+
+`split_row=10` は、今回かなりはっきり **over-split** です。
+`24 split=10` では `expanded_tasks=867,255,749`、`chunks=35` で、`split=8` の `282,834,173` / `9 chunks` から大きく膨れています。owner chunk を `8192` から `2048` に落として完走させた結果、**CPU浅展開・compact・kernel起動回数・owner集約**の全部が増えています。私の合算では `split=10` は **expand 56.7秒 + bucket 71.0秒** で、深く切った利得よりも細粒度化コストの方が勝っています。
+
+もうひとつ大きいのは、**全部を FID 分割するのは筋が少し違う**と見えてきたことです。
+`21 split=8` と `24 split=8` のログを funcptn 単位で合算すると、だいたいこうなります。
+
+* `funcptn=0` は **8.35秒 → 6.96秒** で改善
+* `funcptn=2` は **4.33秒 → 3.52秒** で改善
+* `funcptn=1` は **17.99秒 → 18.54秒** で悪化
+* `funcptn=3` は **2.83秒 → 3.60秒** で悪化
+* `funcptn=5` は **6.07秒 → 8.35秒** で悪化
+
+なので次の正解は、**full FID 分割ではなく hybrid** です。
+つまり **`funcptn=0,2` だけ FID 分割し、`funcptn=1,3,5` は 21 の coarse bucket のまま残す**、がいちばん筋がいいです。
+
+この方針で、次の実験版を作りました。
+
+[25Py_constellations_GPU_cuda_codon_bucket_hybrid.py](sandbox:/mnt/data/25Py_constellations_GPU_cuda_codon_bucket_hybrid.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_hybrid_patch.diff)
+
+追加したのは `bucket_mode=2` です。
+
+* `0` = 旧 coarse bucket
+* `1` = full FID bucket
+* `2` = **hybrid**
+
+  * `funcptn=0,2` だけ FID bucket
+  * `funcptn=1,3,5` は coarse bucket
+
+まず回す順番はこの2本がよいです。
+
+```bash
+# まず task_steps=262144 の効果だけ切り分ける
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 0 32 1024
+
+# 本命: hybrid
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 2 32 1024
+```
+
+比較対象として、full FID はこれです。
+
+```bash
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 1 32 1024
+```
+
+見たいのは単純で、
+
+* `mode=0` が `59.785秒` を切るか
+  → **task batch 拡大だけで得するか**
+* `mode=2` が `mode=0` と `mode=1` の両方より速いか
+  → **hybrid 仮説が当たりか**
+
+です。
+ここでは Codon/CUDA 実機コンパイルはしていませんが、今回のログからの次の一手としては、かなり素直です。
+
+今の材料だけで言うと、方針はこれで良いです。
+
+* **`split_row=8` に固定**
+* **`split_row=10` 以上は一旦追わない**
+* **全部 FID 化しない**
+* **`0/2` だけ FID、`1/3/5` は coarse の hybrid に寄せる**
+
+この結果なら、次の勝負どころはかなり明確です。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

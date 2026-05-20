@@ -17,6 +17,143 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+はい。**29の結果で、bucket方向は明確に遅くなっていると判断できます。**
+
+今回の比較はかなりきれいです。
+
+| 実装/条件                                   |       N=18 時間 | 19/29 mode=0比 | 判定          |
+| --------------------------------------- | ------------: | ------------: | ----------- |
+| `19Py_constellations_GPU_cuda_codon -g` | `0:00:12.092` |            基準 | 元のGPU基準     |
+| `29 mode=0` bucketなし                    | `0:00:12.053` |          ほぼ同じ | **19互換で正常** |
+| `29 mode=1` funcptn/avail bucket        | `0:00:28.674` |      約2.38倍遅い | 不採用         |
+| `29 mode=2` functionid bucket           | `0:01:26.177` |      約7.15倍遅い | 完全に不採用      |
+
+つまり、**29 mode=0 は 19 と同等**なので、29ファイル自体の基準経路は壊れていません。
+一方、`mode=1` と `mode=2` は bucket 化しただけで大きく悪化しています。
+
+19のGPU経路は、元の constellation を `build_soa_for_range()` で SoA に詰め、`kernel_dfs_iter_gpu()` を呼び、結果を `results_all` に戻すだけのかなり素直な流れです。
+今回の `29 mode=0` が `12.053秒` なので、この素直な経路がやはり最速基準です。
+
+## 判断の修正
+
+ここまでの流れを整理すると、こうです。
+
+```text
+採用:
+  19 original
+  29 mode=0
+
+不採用:
+  21〜28 の全量 expand bucket
+  29 mode=1 の元constellation coarse bucket
+  29 mode=2 の functionid bucket
+```
+
+理由はシンプルで、**bucketで分岐ダイバージェンスを減らす利得より、CPU側の分類・詰め替え・複数kernel起動の損失が大きい**です。
+
+特に `mode=2` は functionid ごとに細かく分けすぎています。N=18 では元 constellation が 71,475 個しかないので、それを多数 bucket に分割すると、GPUに大きな仕事を渡す前にホスト側の分割コストと小口 kernel 起動が勝ってしまいます。
+
+以前の `split_row=8` 系では `base_constellations=71475` から `expanded_tasks=282834173` まで膨らんでおり、正しさは保てましたが、全体時間は約1分になっていました。
+今回の 29 は「expanded task を作らない bucket」でしたが、それでも遅いので、**bucket化そのものを一旦止める**のが正解です。
+
+## 次に見るべきもの
+
+次は、bucketではなく **19の構造を保ったまま投入粒度だけ調整**するのがよいです。
+
+19/29 mode=0 のまま、
+
+```text
+block size
+1回に投げる constellation 数 = block * max_blocks
+```
+
+を変えてみます。
+
+現在の基準は、
+
+```text
+block      = 256
+max_blocks = 32
+steps      = 8192
+```
+
+です。N=18 では constellation が約71,475個なので、約9回のkernel起動になります。
+ここを大きくして kernel 起動回数を減らす、または block を小さくして register/local stack 圧を下げる、という診断です。
+
+そのための 30 を作りました。
+
+[30Py_constellations_GPU_cuda_codon_original_tunable.py](sandbox:/mnt/data/30Py_constellations_GPU_cuda_codon_original_tunable.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_tunable_patch.diff)
+
+これは **19 original の構造を維持**しています。bucket化も expand もしていません。
+変えたのは、GPU投入の `block` / `max_blocks` をコマンドライン指定できるようにした点だけです。
+
+## まず試すコマンド
+
+ビルド：
+
+```bash
+codon build -release 30Py_constellations_GPU_cuda_codon_original_tunable.py
+```
+
+基準、つまり 19/29 mode=0 相当：
+
+```bash
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 256 32 0
+```
+
+次にこのあたりを比較してください。
+
+```bash
+# 同じ steps=8192 で block だけ変える
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 128 64 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 128 0
+
+# chunkを大きくして kernel起動回数を減らす
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 256 96 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 256 128 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 256 256 0
+```
+
+もし内訳が見たい場合だけ、最後の `0` を `2` にしてください。
+
+```bash
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 256 32 2
+```
+
+これで各 chunk について、
+
+```text
+[gpu-chunk] ... build=... kernel=... copy=...
+```
+
+が出ます。
+
+## 今後の基準
+
+今後はかなり厳しく見てよいです。
+
+```text
+N=18 で 12秒を切らない変更は不採用
+```
+
+今回の29で分かったことは大きいです。
+**遅い理由は「19が悪い」ではなく、「bucket/expandの前処理が19の素直なGPU経路を壊していた」**ということです。
+
+なので次の本命は、
+
+```text
+19 original のまま
+block / max_blocks を調整
+kernel 内の局所配列・分岐を軽量化
+```
+
+です。
+bucket系はここで一旦終了して、19/29 mode=0 を trunk に戻すのがよいです。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

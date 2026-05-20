@@ -17,6 +17,183 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+
+はい、**かなり参考になります**。今回のログで、次のことがはっきりしました。
+
+## 結論
+
+`21` では、現時点の最良は **`split_row=8`** です。
+
+```text
+split_row=-1 : 0:01:26.801
+split_row=8  : 0:00:59.785
+```
+
+約 **26.8秒短縮**、比率でいうと **約31%改善**です。
+しかも Total はどちらも N=18 で正しく `666090624 ok` なので、正しさを保ったまま速くなっています。
+
+---
+
+## 重要な観察
+
+面白いのは、`split_row=8` の方が **task数は増えている**のに速くなっている点です。
+
+| split_row | expanded_tasks |   展開時間 | bucket実行時間 |        合計時間 |
+| --------: | -------------: | -----: | ---------: | ----------: |
+|        -1 |    211,741,644 | 約18.3秒 |     約68.3秒 | 0:01:26.801 |
+|         8 |    282,834,173 | 約20.0秒 |     約39.6秒 | 0:00:59.785 |
+
+つまり、CPU浅展開の負担は少し増えていますが、GPU側の残りDFSがかなり軽くなっています。
+これは狙い通りで、**重い枝をより細かく割ったことで、GPU側の待ち行列・長い枝の偏り・分岐ダイバージェンスが減った**と見てよいです。
+
+特に `bucket=0` が劇的です。
+
+| bucket | split=-1 tasks/s | split=8 tasks/s |
+| -----: | ---------------: | --------------: |
+|      0 |   約2.08M tasks/s |  約8.33M tasks/s |
+|      4 |   約5.03M tasks/s |  約7.11M tasks/s |
+|      8 |   約3.80M tasks/s |  約8.41M tasks/s |
+|     22 |   約0.17M tasks/s |  約5.46M tasks/s |
+
+`split_row=8` は task 数が増えたにもかかわらず、各 bucket の処理効率が大きく上がっています。これはかなり良いサインです。
+
+---
+
+## `split_row=10/12` について
+
+これは「遅かった」のではなく、**計測前に強制終了しています**。
+
+ログ上は、
+
+```text
+[gpu-config] N=18 ... split_row=10 ...
+強制終了
+```
+
+で、`[gpu-expand]` が一行も出ていません。つまり GPU bucket 実行まで到達しておらず、**最初の CPU expand 中に task が増えすぎてメモリ圧迫で落ちた**可能性が高いです。`split_row=12` も同じです。
+
+なので、`10` や `12` が悪い split だと判断するのはまだ早いです。
+今の `21` は、1 chunk あたり最大 8192 constellation をまとめてCPU展開してから bucket 化しているため、深い split では一時的な `ExpandedTasks` が大きくなりすぎます。
+
+---
+
+## 次の実験方針
+
+まず `21` のままなら、次はこの順がよいです。
+
+```bash
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 7
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 8
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 9
+```
+
+`10` と `12` は、今のままだと再び強制終了する可能性が高いです。
+まずは `7/8/9` の比較で十分です。今回の結果からは、`8` 付近がかなり有望です。
+
+---
+
+## ただし、次は 21 より 23 を試す価値が高いです
+
+今回の `21` のログは、以前作った `23` の方向性をかなり強く支持しています。
+
+`21` の弱点はこの2つです。
+
+```text
+1. bucket が funcptn 単位なので、まだ粗い
+2. expanded task の GPU 投入単位が 8192 のままで小さい
+```
+
+`23` ではこれを、
+
+```text
+bucket_mode=1 : functionid 単位で bucket 分類
+task_steps=262144 : expanded task の投入単位を拡大
+```
+
+にしています。
+
+まずはこの2本を比較してください。
+
+```bash
+codon build -release 23Py_constellations_GPU_cuda_codon_bucket_batch_fid.py
+
+# 旧bucket方式。ただし task batch は拡大済み
+./23Py_constellations_GPU_cuda_codon_bucket_batch_fid -g 18 18 8 0
+
+# 新bucket方式。functionid/tail bucket
+./23Py_constellations_GPU_cuda_codon_bucket_batch_fid -g 18 18 8 1
+```
+
+この比較で分かることは明確です。
+
+```text
+bucket_mode=0 が速い → task batch 拡大が効いている
+bucket_mode=1 がさらに速い → functionid bucket が効いている
+bucket_mode=1 が遅い → bucket細分化による起動・compact負荷が勝っている
+```
+
+---
+
+## 追加で、深い split を試すための調整版も置きます
+
+`split_row=10/12` の強制終了は、おそらく 1 chunk の CPU展開が大きすぎるためです。
+そこで `23` を少しだけ調整して、`owner_blocks` と `task_blocks` をコマンドライン指定できる版を作りました。
+
+[24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable.py](sandbox:/mnt/data/24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_fid_tunable_patch.diff)
+
+使い方はこうです。
+
+```bash
+codon build -release 24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable.py
+```
+
+まずは `23` 相当です。
+
+```bash
+./24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable -g 18 18 8 1 32 1024
+```
+
+意味は、
+
+```text
+-g
+18 18     : N=18のみ
+8         : split_row=8
+1         : bucket_mode=1、functionid/tail bucket
+32        : owner_blocks、元constellation chunk = 256*32 = 8192
+1024      : task_blocks、expanded task batch = 256*1024 = 262144
+```
+
+`split_row=10` を試す場合は、まず owner chunk を小さくしてください。
+
+```bash
+./24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable -g 18 18 10 1 8 1024
+```
+
+それでも落ちるなら、
+
+```bash
+./24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable -g 18 18 10 1 4 1024
+```
+
+さらに安全側なら、
+
+```bash
+./24Py_constellations_GPU_cuda_codon_bucket_batch_fid_tunable -g 18 18 10 1 2 512
+```
+
+ただし、`owner_blocks` を下げると chunk 数が増えるので、全体時間は悪化する可能性があります。目的はまず **10/12 の split が有効かどうかを、強制終了せずに観測すること**です。
+
+---
+
+今回のログからの判断では、GPU化の方向は間違っていません。
+`split_row=8` で **86.8秒 → 59.8秒** まで落ちたので、少なくとも「細粒度タスク化でGPU側が改善する」ことは確認できています。次の本命は `23` または `24` の **functionid bucket + 大きめ task batch** です。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

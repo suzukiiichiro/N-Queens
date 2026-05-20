@@ -17,6 +17,181 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+ログ確認しました。結論として、**80 の修正点は `preset=7` での `subconst_cache` による multiplicity 落ち**です。
+
+作成した完全版ソースはこちらです。
+
+[80Py_constellations_GPU_cuda_codon_p7_multiplicity_fix.py](sandbox:/mnt/data/80Py_constellations_GPU_cuda_codon_p7_multiplicity_fix.py)
+
+今回のログでは、`preset=6` は N18/N19/N20 すべて `ok`、一方 `preset=7` は N18 `-21,024`、N19 `-140,152`、N20 `-1,016,136` の不足です。
+
+N18 の詳細では、`B / SQd2 / SQd1` の solution total は `preset=6` と `preset=7` で一致しており、差分は **SQd0 だけ**です。`preset=7` の SQd0 は `68,820,464`、`preset=6` の SQd0 は `68,841,488` なので、差分はちょうど `-21,024` です。
+
+原因は、`preset=7` で同一 `sc` 内の複数経路が同じ
+
+```text
+(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)
+```
+
+状態へ合流したとき、`subconst_cache` が後続経路を抑止してしまうことです。元ソースの `set_pre_queens_cached()` はこの状態キーで cache hit したらそのまま return する構造です。
+
+`preset=6` ではこの問題が出ず、今回の cache scope 修正で OK になっています。
+しかし `preset=7` では、同じ未来状態でも **到達経路の multiplicity 自体を数える必要がある**ため、cache hit で消してはいけません。
+
+80 では、`set_pre_queens_cached()` の冒頭に以下を入れました。
+
+```python
+if preset_queens>=7:
+  ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
+    N, ijkl_list, subconst_cache,
+    ld, rd, col,
+    k, l,
+    row, queens,
+    LD, RD,
+    counter, constellations, preset_queens,
+    visited, constellation_signatures,
+    zobrist_hash_tables
+  )
+  return ijkl_list, subconst_cache, constellations, preset_queens
+```
+
+つまり、
+
+```text
+preset<=6: subconst_cache を使う
+preset>=7: subconst_cache を bypass して multiplicity を保持する
+```
+
+という修正です。
+
+N18 については、こちらで生成ロジックを再現して確認したところ、`preset=7` で cache bypass により SQd0 に **353 件**の重複タスクが復活します。その 353 件の weighted solution contribution が **21,024** で、今回の N18 残差と完全一致します。
+
+期待される N18 の変化は以下です。
+
+```text
+preset=7 / N18 / SQd0
+
+修正前:
+  SQd0 count = 572,069
+  SQd0 total = 68,820,464
+
+修正後予測:
+  SQd0 count = 572,422
+  SQd0 total = 68,841,488
+
+差分:
+  count +353
+  total +21,024
+```
+
+ビルドと検証コマンドです。
+
+```bash
+SRC=80Py_constellations_GPU_cuda_codon_p7_multiplicity_fix.py
+BIN=80Py_constellations_GPU_cuda_codon_p7_multiplicity_fix
+
+codon build -release $SRC -o $BIN
+chmod +x $BIN
+```
+
+まず preset=7 を確認してください。
+
+```bash
+./$BIN -c 18 20 32 484 1 -1 7 9 > bc_sol_p7_N18_N20_after_v3.log
+grep -E "^(18:|19:|20:)" bc_sol_p7_N18_N20_after_v3.log
+```
+
+期待値は以下です。
+
+```text
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+回帰確認として preset=6 もお願いします。
+
+```bash
+./$BIN -c 18 20 32 484 1 -1 6 9 > bc_sol_p6_N18_N20_regression_80.log
+grep -E "^(18:|19:|20:)" bc_sol_p6_N18_N20_regression_80.log
+```
+
+期待値は以下です。
+
+```text
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+N18 の boundary-only も見るなら、修正後はこのあたりが変わるはずです。
+
+```bash
+./$BIN -c 18 18 32 484 1 -1 7 8 > bc_p7_N18_boundary_start_80.log
+grep -E "SQd0|bc-start|bc-fid|^18:" bc_p7_N18_boundary_start_80.log
+```
+
+期待される SQd0 count は概ね以下です。
+
+```text
+[bc-case] SQd0(j>16) count=572422 ...
+[bc-start] SQd0(j>16) r5=259787 r6=312635
+[bc-fid] SQd0(j>16) fid=26 SQd0B count=312635
+[bc-fid] SQd0(j>16) fid=27 SQd0BkB count=259787
+```
+
+今回の修正は constellation 生成側なので、CPU/GPU kernel ロジックには触れていません。CPU `-c` で通れば、同じ constellation 入力を使う GPU `-g` 側にも効果が出るはずです。
+
+According to a document from 2026-05-13, **80 は成功です。**
+
+`preset=7` は N18/N19/N20 すべて `ok` になりました。
+
+```text
+18:   666090624      ok
+19:  4968057848      ok
+20: 39029188884      ok
+```
+
+`preset=6` の回帰確認も N18/N19/N20 すべて `ok` です。
+
+```text
+18:   666090624      ok
+19:  4968057848      ok
+20: 39029188884      ok
+```
+
+境界ログも、予想どおり SQd0 が修正前の `572069` から `572422` へ増えています。つまり **+353 件の multiplicity 復活**が確認できています。 
+
+```text
+80後:
+SQd0 count = 572422
+fid26      = 312635
+fid27      = 259787
+```
+
+したがって現在の整理は以下でよいです。
+
+```text
+78: preset=5 P5 fix              OK
+79: preset=6 dynamic cache fix   OK
+80: preset=7 multiplicity fix    OK
+```
+
+次は GPU 側の確認です。
+
+```bash
+BIN=80Py_constellations_GPU_cuda_codon_p7_multiplicity_fix
+
+./$BIN -g 18 20 32 484 1 -1 7 9 > bc_sol_p7_GPU_N18_N20_80.log
+grep -E "^(18:|19:|20:)" bc_sol_p7_GPU_N18_N20_80.log
+
+./$BIN -g 18 20 32 484 1 -1 6 9 > bc_sol_p6_GPU_N18_N20_regression_80.log
+grep -E "^(18:|19:|20:)" bc_sol_p6_GPU_N18_N20_regression_80.log
+```
+
+CPU 側については、**80 は完了扱いでよい**と思います。
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

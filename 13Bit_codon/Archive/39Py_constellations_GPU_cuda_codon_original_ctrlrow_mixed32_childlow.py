@@ -17,6 +17,131 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow mixed32 tuned）
 
+はい、今回の結果で **37 が現時点の最良 trunk 候補**になりました。
+
+## 今回の判定
+
+| 版   |              N=18 |              N=19 | 判定        |
+| --- | ----------------: | ----------------: | --------- |
+| 35b |     `0:00:04.510` |     `0:00:34.605` | 旧最良       |
+| 37  | **`0:00:04.461`** | **`0:00:34.248`** | **現時点最良** |
+| 38  |     `0:00:04.513` |     `0:00:34.611` | 不採用       |
+
+37 は 35b から見ると小幅ですが、N=18/N=19 の両方で改善しています。
+
+```text
+N=18: 4.510 → 4.461  約1.1%改善
+N=19: 34.605 → 34.248 約1.0%改善
+```
+
+一方、38 の `ld u32` 化は正しさは `ok` ですが、速度は 37 より悪化しています。
+したがって、**`ld` は int のまま戻す**、**37 の hotpath decode 削減だけ採用**、でよいです。
+
+過去の CPU 基準では N=19 が `0:00:16.233` なので、37 の N=19 `0:00:34.248` はまだ CPU より遅いです。ただし GPU original の N=18 約12秒からは、37で `4.461秒` まで落ちており、kernel のローカルスタック削減は明確に効いています。
+
+## 現時点の採用・不採用
+
+採用候補：
+
+```text
+37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath.py
+block=32
+max_blocks=256
+```
+
+不採用：
+
+```text
+bucket / expand 系
+FID bucket 系
+MAXD=28 系
+ld u32 化
+38
+```
+
+## 次の狙い
+
+37では、通常 hotpath の `step/add/child_row` decode を減らしました。
+ただし、まだ 1bit 展開ごとに `ctrl` を `int` 化して、push 用に
+
+```python
+next_row = (cvi >> 14) & 31
+ctrl[sp] = (cvi & 31) | (next_row << 5)
+```
+
+を作っています。
+
+そこで次は、**child fid + child row を ctrl の低10bitに最初から置く**版を作りました。
+これにより通常 push は、
+
+```python
+ctrl[sp] = cv & 1023
+```
+
+だけになります。通常 path では `int(ctrl)` の回数をさらに減らす狙いです。
+
+## 39: childlow版
+
+[39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow.py](sandbox:/mnt/data/39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_childlow_patch.diff)
+
+まずはこちらを試してください。
+
+```bash
+codon build -release 39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow.py
+
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 256 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 256 0
+```
+
+比較基準はこれです。
+
+```text
+37 N=18: 4.461秒
+37 N=19: 34.248秒
+```
+
+39 がこれを切れば採用候補です。
+
+## 40: lazydecode版、39の保険
+
+39 は ctrl layout を少し変えています。もし Codon/CUDA 側で何か不安定なら、より保守的な版も置きました。
+
+[40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode.py](sandbox:/mnt/data/40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_lazydecode_patch.diff)
+
+40 は ctrl layout は 37 のままです。
+変更は、`use_blocks` と `future` の判定を `u32` mask で行い、`int(ctrl)` を必要になるまで遅延するだけです。
+
+```bash
+codon build -release 40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode.py
+
+./40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode -g 18 18 32 256 0
+./40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode -g 19 19 32 256 0
+```
+
+## 試す順番
+
+おすすめはこの順です。
+
+```bash
+# 本命
+codon build -release 39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow.py
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 256 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 256 0
+
+# 39がNGまたは遅い場合の保険
+codon build -release 40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode.py
+./40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode -g 18 18 32 256 0
+./40Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_lazydecode -g 19 19 32 256 0
+```
+
+39/40 のどちらも 37 を超えない場合は、**37 を trunk に固定**でよいです。
+今の段階では、GPU改善の当たり筋はかなり明確で、**探索木を分割するのではなく、1 thread DFS のローカル状態をさらに軽くする**方向です。
+
+
 =====
 39 childlow
 block      = 32

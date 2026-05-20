@@ -17,6 +17,1357 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+拝見しました。**かなり良い結果です。結論として、84 stream 版はメモリ問題の解決に成功しています。**
+Free 81% なら、以前の「N21に入るや否や空きメモリ1%」の問題は解消できています。
+
+## 結果の整理
+
+83 cache 版では、N21 は `preset_queens=6`、constellation 数 `2,025,282`、`.bin` レコード数も `2,025,282`、valid=1 で、cache-only 作成が `0:00:02.853` で完了しています。続くGPU実行も `32x128`、`steps=4096`、495 chunk で、最終的に `314666222712`、`ok` です。 
+
+84 stream 版の `32x128` も、同じ `constellations_N21_6.bin` を cache hit で読み、records=`2,025,282`、495 chunk 実行、最終 `314666222712`、`ok` です。時間は `1:14:18.421` です。 
+
+84 stream 版の `32x484` は、同じ records=`2,025,282` を `steps=15488` で処理し、chunk 数が 495 から 131 に減っています。最終結果は同じく `314666222712`、`ok`、時間は `0:26:00.553` です。 
+
+## 重要な評価
+
+これは成功です。
+
+```text
+83  32x128 : 1:14:18.665  ok
+84  32x128 : 1:14:18.421  ok
+84  32x484 : 0:26:00.553  ok
+```
+
+84の `32x128` が83とほぼ同じ時間なのは自然です。どちらも `steps=4096` で495 chunkを処理しており、kernel自体の粒度が同じだからです。
+
+一方、84の `32x484` は `steps=15488` になり、chunk数が495から131へ減りました。そのため、実行時間が約 **2.86倍高速化**しています。
+
+```text
+1:14:18.421 = 4458.421 秒
+0:26:00.553 = 1560.553 秒
+speedup ≒ 2.86x
+```
+
+## メモリ対策としての84は有効です
+
+84のログでは、stream版が `.bin` を hit して、`records=2025282` を持つ `constellations_N21_6.bin` から読み込んでいます。つまり、全件を巨大な `List[Dict]` に戻す従来方式ではなく、chunk単位で処理できています。
+
+N21 p6 の `.bin` サイズは概算で：
+
+```text
+2,025,282 records × 16 bytes = 32,404,512 bytes
+約 30.9 MiB
+```
+
+このため、Free 81% が保てているのは納得できます。以前のハング原因だった「ホストメモリ枯渇」は、少なくともN21では解消済みと見てよいです。
+
+## 次は84でN22へ進んでよいです
+
+N21の検証は十分です。次は **83ではなく84 stream版でN22** が良いです。N22は動的presetで `preset_queens=7` になりますから、従来の `List[Dict]` 方式に戻るとまた危険です。84で行くべきです。
+
+まず `.bin` だけ作るなら：
+
+```bash
+RUN=N22_p7_stream_cacheonly_$(date +%Y%m%d_%H%M%S)
+
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 22 22 32 484 1 0 5 11 \
+  2>&1 | tee -a "logs/run_${RUN}.log"
+```
+
+その後GPU実行：
+
+```bash
+RUN=N22_p7_stream_gpu_32x484_$(date +%Y%m%d_%H%M%S)
+
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 22 22 32 484 1 0 5 0 \
+  2>&1 | tee -a "logs/run_${RUN}.log"
+```
+
+本番は `log_level=1` でよいと思います。`log_level=2` はN21だけでもかなり大量に出ているので、N22以降はログ肥大化が大きくなります。進捗は `progress_N22_7_stream.tsv` を見る運用でよいです。
+
+```bash
+tail -f progress_N22_7_stream.tsv
+```
+
+## 念のための安全運用
+
+N22初回だけは、まだ `systemd-run` のメモリ上限付きが安全です。
+
+```bash
+RUN=N22_p7_stream_gpu_32x484_$(date +%Y%m%d_%H%M%S)
+
+sudo systemd-run \
+  --unit=nq-n22-stream-gpu \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  bash -lc '
+    cd '"$PWD"'
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -g 22 22 32 484 1 0 5 0 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+```
+
+確認：
+
+```bash
+journalctl -u nq-n22-stream-gpu -f
+```
+
+## ひとつだけ改善したい点
+
+84のログは、stream外側のchunkごとに内側の `exec_solutions()` が毎回 `[gpu-config]` と `[gpu-summary]` を出しています。N21では問題ありませんが、N22以降ではログが大きくなります。
+
+次の改善版では、84の内側 `exec_solutions()` へ渡す `gpu_log_level` を通常は `0` にして、外側のstreamログだけを出す形が良いです。
+
+```text
+外側:
+[stream-gpu-chunk-start]
+[stream-gpu-chunk-end]
+[stream-gpu-summary]
+
+内側:
+[gpu-config] と [gpu-summary] は抑制
+```
+
+ただ、現時点では正しさ・安定性の検証が先なので、今のままN22へ進んで問題ありません。
+
+## 判断
+
+N21については：
+
+```text
+83 cache-only: 成功
+83 GPU 32x128: 成功
+84 stream 32x128: 成功
+84 stream 32x484: 成功
+メモリ: Free 81%
+```
+
+したがって、次の方針は明確です。
+
+```text
+83はN21検証で役割完了
+84 streamを本線にする
+N22は84 stream 32x484、sort_mode=0、log_level=1で実行
+```
+
+これでN22、N23、N24へ進める見込みがかなり出てきました。
+
+はい、この順番で進めてよいです。
+ただし、貼っていただいた2本は **まだ `systemd-run` で包まれていない通常実行** なので、N22初回は以下の形に置き換えるのが安全です。
+
+N21では、83のcache-onlyが `constellations_N21_6.bin` を valid=1 で作成でき、84のstream GPU 32x484も `total=314666222712`、`0:26:00.553 ok` まで通っています。したがってN22は84 stream本線で進めてよいです。 
+
+## 実行前チェック
+
+過去ログでは root disk が 30G 中 24G 使用、空き 6.6G でした。N22はおそらく問題ないと思いますが、N23/N24に進む前提ならディスク空きも確認しておくのが安全です。
+
+```bash
+mkdir -p logs
+
+df -h .
+du -sh constellations_N*.bin 2>/dev/null || true
+ls -lh constellations_N22_7.bin constellations_N22_7.bin.done 2>/dev/null || true
+```
+
+不完全な `constellations_N22_7.bin` だけがあり、`.done` が無い場合は退避してください。
+
+```bash
+if [ -f constellations_N22_7.bin ] && [ ! -f constellations_N22_7.bin.done ]; then
+  mv constellations_N22_7.bin "constellations_N22_7.bin.partial.$(date +%Y%m%d_%H%M%S)"
+fi
+```
+
+## 1. N22 `.bin` だけ作成：12G上限付き
+
+```bash
+RUN=N22_p7_stream_cacheonly_$(date +%Y%m%d_%H%M%S)
+UNIT=nq-n22-cacheonly-$(date +%Y%m%d-%H%M%S)
+
+sudo systemd-run --wait --collect \
+  --unit="$UNIT" \
+  --property=User="$(id -un)" \
+  --property=Group="$(id -gn)" \
+  --property=WorkingDirectory="$PWD" \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  /bin/bash -lc '
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -c 22 22 32 484 1 0 5 11 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+echo "log: logs/run_${RUN}.log"
+tail -80 "logs/run_${RUN}.log"
+ls -lh constellations_N22_7.bin constellations_N22_7.bin.done
+cat constellations_N22_7.bin.done
+```
+
+`--wait` を付けているので、このコマンドが戻ってからGPU実行へ進めば大丈夫です。
+各行末の `\` の後ろには空白を入れないでください。
+
+## 2. N22 GPU実行：12G上限付き
+
+```bash
+RUN=N22_p7_stream_gpu_32x484_$(date +%Y%m%d_%H%M%S)
+UNIT=nq-n22-gpu-$(date +%Y%m%d-%H%M%S)
+
+sudo systemd-run --wait --collect \
+  --unit="$UNIT" \
+  --property=User="$(id -un)" \
+  --property=Group="$(id -gn)" \
+  --property=WorkingDirectory="$PWD" \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  /bin/bash -lc '
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -g 22 22 32 484 1 0 5 0 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+echo "log: logs/run_${RUN}.log"
+grep -E "stream-cache|stream-gpu-config|stream-gpu-summary|^22:" "logs/run_${RUN}.log"
+tail -80 "logs/run_${RUN}.log"
+```
+
+N22の期待値は `2691008701644` です。最後が以下になれば成功です。
+
+```text
+22:     2691008701644                0      ...    ok
+```
+
+## 実行中の別窓監視
+
+別SSHでこれを流しておくと安心です。
+
+```bash
+watch -n 30 '
+echo "===== memory ====="
+free -h
+echo
+echo "===== gpu ====="
+nvidia-smi
+echo
+echo "===== progress ====="
+tail -5 progress_N22_7_stream.tsv 2>/dev/null || true
+'
+```
+
+systemd側のログを見る場合：
+
+```bash
+journalctl -u "$UNIT" -f
+```
+
+## 止まった場合の確認
+
+12G上限に当たった場合、サーバー全体ではなく transient service だけが止まるはずです。
+
+```bash
+journalctl -u "$UNIT" -n 200 --no-pager
+
+sudo journalctl -k \
+  | egrep -i "oom|out of memory|killed process|nvrm|xid|segfault|soft lockup|hard lockup|hung|nvidia|cuda" \
+  | tail -200
+```
+
+## 判断
+
+この運用で問題ありません。
+
+```text
+N22 cache-only:
+  84 stream / -c / bench_mode=11 / MemoryMax=12G
+
+N22 GPU:
+  84 stream / -g / 32x484 / sort_mode=0 / log_level=1 / MemoryMax=12G
+```
+
+`83` はN21検証で役割完了です。N22以降は `84Py_constellations_GPU_cuda_codon_dynamic_p8_stream` を本線にするのが正解です。
+
+はい、これは **N22 `.bin` 準備完了** と見てよいです。
+
+特に重要なのはここです。
+
+```text
+[stream-cache-hit] N=22 preset_queens=7 records=28719035 bin=constellations_N22_7.bin
+[stream-cache-only] N=22 preset_queens=7 records=28719035 bin=constellations_N22_7.bin valid=1
+```
+
+つまり、今回の `cacheonly` 実行では新規生成ではなく、既に存在していた `constellations_N22_7.bin` を検出し、`.done` の件数と一致していることを確認しています。`runtime: 448ms` と非常に短いのも、生成ではなく検証だけだったためです。
+
+サイズも整合しています。
+
+```text
+records = 28,719,035
+1 record = 16 bytes
+28,719,035 * 16 = 459,504,560 bytes ≒ 438 MiB
+ls 表示: 439M
+```
+
+`.done` も、
+
+```text
+28719035
+```
+
+なので問題ありません。
+
+## 次はGPU実行で大丈夫です
+
+GPU実行前に、古い progress があれば退避しておくのがおすすめです。84は progress ファイルを使うので、過去ログと混ざらないようにします。
+
+```bash
+if [ -f progress_N22_7_stream.tsv ]; then
+  mv progress_N22_7_stream.tsv "progress_N22_7_stream.tsv.$(date +%Y%m%d_%H%M%S).bak"
+fi
+```
+
+その後、N22 GPUを 12G上限付きで実行してください。
+
+```bash
+RUN=N22_p7_stream_gpu_32x484_$(date +%Y%m%d_%H%M%S)
+UNIT=nq-n22-gpu-$(date +%Y%m%d-%H%M%S)
+
+sudo systemd-run --wait --collect \
+  --unit="$UNIT" \
+  --property=User="$(id -un)" \
+  --property=Group="$(id -gn)" \
+  --property=WorkingDirectory="$PWD" \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  /bin/bash -lc '
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -g 22 22 32 484 1 0 5 0 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+echo "log: logs/run_${RUN}.log"
+tail -80 "logs/run_${RUN}.log"
+```
+
+## 実行中の確認
+
+別SSHで以下を流すとよいです。
+
+```bash
+watch -n 30 '
+echo "===== memory ====="
+free -h
+echo
+echo "===== gpu ====="
+nvidia-smi
+echo
+echo "===== progress ====="
+tail -5 progress_N22_7_stream.tsv 2>/dev/null || true
+'
+```
+
+N22は、
+
+```text
+records = 28,719,035
+steps   = 32 * 484 = 15,488
+```
+
+なので、GPU stream chunk 数は概算で、
+
+```text
+ceil(28,719,035 / 15,488) = 1855 chunks
+```
+
+になります。
+
+## 成功判定
+
+最後に以下のような行が出れば成功です。
+
+```text
+22:     2691008701644                0      ...    ok
+```
+
+実行後に簡単に確認するなら：
+
+```bash
+grep -E "stream-gpu-summary|^22:" "logs/run_${RUN}.log"
+tail -20 progress_N22_7_stream.tsv
+```
+
+## もし止まった場合
+
+MemoryMaxに当たった場合は、サーバー全体ではなく systemd unit だけが止まるはずです。
+
+```bash
+journalctl -u "$UNIT" -n 200 --no-pager
+
+sudo journalctl -k \
+  | egrep -i "oom|out of memory|killed process|nvrm|xid|segfault|soft lockup|hard lockup|hung|nvidia|cuda" \
+  | tail -200
+```
+
+現状のN22 `.bin` は正常です。次はそのまま **84 stream GPU 32x484** で進めてください。
+
+はい、この `setMemmax_GPU.sh` で実行して大丈夫です。
+内容は問題ありません。`systemd-run --wait --collect` で包めているので、N22 GPU実行が終了してから `grep` と `tail` が走ります。
+
+一点だけ、**実行前に古い progress を退避**しておくのがおすすめです。84 stream版は progress ファイルを使うので、前回分と混ざるのを避けます。
+
+```bash
+if [ -f progress_N22_7_stream.tsv ]; then
+  mv progress_N22_7_stream.tsv "progress_N22_7_stream.tsv.$(date +%Y%m%d_%H%M%S).bak"
+fi
+```
+
+それから実行でよいです。
+
+```bash
+bash setMemmax_GPU.sh
+```
+
+今回の `.bin` は、
+
+```text
+constellations_N22_7.bin
+records = 28719035
+valid = 1
+```
+
+なので、GPU実行側はこの `.bin` を読んで stream 処理に入るはずです。
+
+想定される chunk 数は：
+
+```text
+records = 28,719,035
+steps   = 32 * 484 = 15,488
+chunks  = ceil(28,719,035 / 15,488) = 1855
+```
+
+実行中は別窓でこれを見ると安心です。
+
+```bash
+watch -n 30 '
+echo "===== memory ====="
+free -h
+echo
+echo "===== gpu ====="
+nvidia-smi
+echo
+echo "===== progress ====="
+tail -5 progress_N22_7_stream.tsv 2>/dev/null || true
+'
+```
+
+成功判定は最後にこの形です。
+
+```text
+22:      2691008701644                0      ...    ok
+```
+
+もし途中で止まった場合は、まずこちらです。
+
+```bash
+journalctl -u "$UNIT" -n 200 --no-pager
+```
+
+ただし、`UNIT` はスクリプト内変数なので、別シェルで見る場合は実際の unit 名を指定します。今回ならログに出る名前、例えば：
+
+```bash
+journalctl -u nq-n22-gpu-20260514-xxxxxx -n 200 --no-pager
+```
+
+で確認できます。
+
+全体として、**このスクリプトでN22 GPU初回実行に進んで問題ありません**。
+
+拝見しました。**N22 GPU stream 実行は成功です。**
+
+ログでは、N22 が `preset_queens=7` で動き、`constellations_N22_7.bin` から `28,719,035` records を読んで、`block=32`、`max_blocks=484`、`steps=15488`、`sort_mode=0` で stream GPU 実行に入っています。
+
+最終的に、最後の chunk `1854` は端数 `m=4283` を処理し、合計 `2691008701644` に到達しています。その後の summary でも `records=28719035`、`chunks=1855`、`executed_chunks=1855`、`total=2691008701644` と出ており、最終行も `ok` です。
+
+## 結果
+
+```text
+N          : 22
+preset     : 7
+records    : 28,719,035
+steps      : 15,488
+chunks     : 1,855
+executed   : 1,855
+total      : 2,691,008,701,644
+time       : 6:57:18.094
+status     : ok
+```
+
+これはかなり大きな前進です。**N22 p7 が 12G メモリ上限付きの 84 stream 版で完走した**ので、以前のホストメモリ枯渇問題は stream 化で解決できていると見てよいです。
+
+## 所要時間の目安
+
+`6:57:18.094` は約 `25,038秒` です。
+
+```text
+平均 chunk 時間 ≒ 25,038秒 / 1,855 chunks ≒ 13.5秒/chunk
+records 処理速度 ≒ 28,719,035 / 25,038秒 ≒ 1,147 records/sec
+```
+
+ログを見ると chunk ごとのばらつきはありますが、最後まで安定して進んでいます。最後の通常 chunk `1853` は `m=15488`、最後の端数 chunk `1854` は `m=4283` で、正常な終端です。
+
+## 次の判断
+
+**84 stream 版を本線にして問題ありません。**
+83はN21検証用として役割完了、N22以降は84で進めるのが正解です。
+
+次は N23 ですが、初回は同じく `.bin` 作成確認 → GPU実行の順で、`MemoryMax=12G` を付けたままが安全です。
+
+まずディスク確認：
+
+```bash
+df -h .
+du -sh constellations_N*.bin 2>/dev/null || true
+```
+
+N23 `.bin` 作成：
+
+```bash
+RUN=N23_p7_stream_cacheonly_$(date +%Y%m%d_%H%M%S)
+UNIT=nq-n23-cacheonly-$(date +%Y%m%d-%H%M%S)
+
+sudo systemd-run --wait --collect \
+  --unit="$UNIT" \
+  --property=User="$(id -un)" \
+  --property=Group="$(id -gn)" \
+  --property=WorkingDirectory="$PWD" \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  /bin/bash -lc '
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -c 23 23 32 484 1 0 5 11 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+echo "log: logs/run_${RUN}.log"
+tail -80 "logs/run_${RUN}.log"
+ls -lh constellations_N23_7.bin constellations_N23_7.bin.done
+cat constellations_N23_7.bin.done
+```
+
+N23 GPU実行：
+
+```bash
+RUN=N23_p7_stream_gpu_32x484_$(date +%Y%m%d_%H%M%S)
+UNIT=nq-n23-gpu-$(date +%Y%m%d-%H%M%S)
+
+sudo systemd-run --wait --collect \
+  --unit="$UNIT" \
+  --property=User="$(id -un)" \
+  --property=Group="$(id -gn)" \
+  --property=WorkingDirectory="$PWD" \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  /bin/bash -lc '
+    ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+      -g 23 23 32 484 1 0 5 0 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+echo "log: logs/run_${RUN}.log"
+grep -E "stream-cache|stream-gpu-config|stream-gpu-summary|^23:" "logs/run_${RUN}.log"
+tail -80 "logs/run_${RUN}.log"
+```
+
+## 注意点
+
+N23では `.bin` サイズと実行時間がさらに増えます。N22の `.bin` は `28,719,035 × 16 bytes ≒ 438 MiB` でした。N23で `.bin` が数GB級になる可能性があるため、**先に `df -h .` は必ず確認**してください。
+
+N22の結果は文句なしに成功です。次は同じ流れで N23 に進めます。
+
+はい、**84を実行する限り、`use_constellation_cache:bool = False` のままで問題ありません。**
+
+ここは少し紛らわしいのですが、意味が分かれています。
+
+```python
+use_constellation_cache:bool = False
+```
+
+これは **82系の従来ルート**、つまり
+
+```text
+gen_constellations()
+または
+build_constellations_dynamicK()
+```
+
+のどちらを使うかを切り替えるフラグです。
+
+一方、**84 stream版では、このフラグとは別に `.bin` を直接扱う streamルートを追加しています**。実際、84の実行ログでは `use_constellation_cache=False` 相当でも、
+
+```text
+[stream-cache-hit] N=21 preset_queens=6 records=2025282 bin=constellations_N21_6.bin
+[stream-gpu-config] ... bin=constellations_N21_6.bin ...
+```
+
+と出ており、`.bin` を読んでGPU stream実行に入っています。
+
+N22でも同じです。今回のログでは、
+
+```text
+[stream-cache-hit] N=22 preset_queens=7 records=28719035 bin=constellations_N22_7.bin
+```
+
+となり、84が `constellations_N22_7.bin` を直接使って完走しています。つまり **84では `.bin` 利用は `use_constellation_cache` ではなく、stream側の処理で制御されています**。
+
+整理すると、こうです。
+
+```text
+82:
+  use_constellation_cache=False
+    → .binを使わず全件List生成
+  use_constellation_cache=True
+    → .binを読むが、結局全件Listに戻す
+
+83:
+  use_constellation_cache=True
+    → N21検証用。cache-only / 従来GPU経路の比較用
+
+84:
+  use_constellation_cache=False のままでよい
+    → stream専用ルートが .bin を作成・検証・chunk読みする
+    → 全件List化しない
+```
+
+したがって、**84でN22/N23/N24へ進む場合は、`use_constellation_cache=False` のままで正解**です。
+
+逆に、84でここを `True` にすると、意図せず旧cacheルートに寄って、全件List化の問題を再び踏む可能性があります。今回の方針では **False固定でよい** です。
+
+実行方針はこのままで大丈夫です。
+
+```bash
+# .bin 作成・検証
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 23 23 32 484 1 0 5 11
+
+# GPU stream実行
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 23 23 32 484 1 0 5 0
+```
+
+結論として、**82/84ソース内の `use_constellation_cache:bool = False` は問題ありません。84では別系統の stream-cache が動いています。**
+
+はい。**84 stream版では、`.bin` が無い場合は作成されます。**
+
+つまり、次のコマンドは「`.bin` 作成・検証モード」です。
+
+```bash
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 23 23 32 484 1 0 5 11
+```
+
+動きはこうです。
+
+```text
+constellations_N23_7.bin がある
+  → .done と照合
+  → records一致なら [stream-cache-hit]
+  → そのまま valid=1 で終了
+
+constellations_N23_7.bin がない
+  → stream方式で生成
+  → constellations_N23_7.bin を作成
+  → constellations_N23_7.bin.done に件数を書き込む
+  → valid=1 で終了
+```
+
+N22ではすでに `.bin` が存在していたため、ログでは新規生成ではなく、
+
+```text
+[stream-cache-hit] N=22 preset_queens=7 records=28719035 bin=constellations_N22_7.bin
+```
+
+となっています。
+
+N21でも84は `.bin` を見つけて、
+
+```text
+[stream-cache-hit] N=21 preset_queens=6 records=2025282 bin=constellations_N21_6.bin
+```
+
+からGPU stream実行に入っています。
+
+したがって、N23で `.bin` が無ければ、まず以下を実行すれば作成される想定です。
+
+```bash
+RUN=N23_p7_stream_cacheonly_$(date +%Y%m%d_%H%M%S)
+
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 23 23 32 484 1 0 5 11 \
+  2>&1 | tee -a "logs/run_${RUN}.log"
+```
+
+完了後に確認します。
+
+```bash
+ls -lh constellations_N23_7.bin constellations_N23_7.bin.done
+cat constellations_N23_7.bin.done
+```
+
+注意点は、**84のstream生成はメモリには優しいですが、ディスク容量は使う**ことです。N23前には念のためこれを見てください。
+
+```bash
+df -h .
+du -sh constellations_N*.bin 2>/dev/null || true
+```
+
+結論として、**84の `-c ... 11` は、`.bin` があれば検証、なければstream生成して作成、という使い方で大丈夫です。**
+
+結論から言うと、**前もって `.bin` を作っておく必要はありません。**
+84 stream版は、実行時に `.bin` がなければ作成できます。
+
+ただし、**GitHubに `.bin` を push しておく運用は、N22以降ではおすすめしません。**
+
+理由は2つあります。
+
+1つ目はサイズです。N22だけで `constellations_N22_7.bin` は 439MB でした。通常のGitHubリポジトリでは、50MiBを超えるファイルは警告対象、100MiBは通常Gitでは上限に達します。GitHub公式も、大きなファイルは通常GitではなくGit LFSを使うよう案内しています。([GitHub Docs][1])
+
+2つ目は、N23以降はさらに大きくなる可能性が高いことです。Git LFSなら扱えますが、Git LFSもプランごとのファイルサイズ上限があり、Free/Proでは1ファイル2GB、Teamは4GB、Enterprise Cloudは5GBです。([GitHub Docs][2])
+
+## おすすめ運用
+
+私ならこうします。
+
+```text
+ソースコード:
+  GitHubにpushする
+
+.bin:
+  GitHubにはpushしない
+  実行サーバー上で必要になったら84が自動生成
+  生成後は同じサーバー内で再利用
+
+.done:
+  .binと同じくGitHubにはpushしない
+```
+
+つまり、`.gitignore` に入れるのがよいです。
+
+```bash
+cat >> .gitignore <<'EOF'
+constellations_N*.bin
+constellations_N*.bin.done
+progress_N*_stream.tsv
+logs/
+EOF
+```
+
+## 事前作成が有効な場合
+
+前もって作る意味があるのは、次のような場合です。
+
+```text
+1. GPU実行前に .bin 生成だけを別ジョブとして済ませたい
+2. 長時間GPU実行の前にディスク容量・件数・valid確認をしたい
+3. N23/N24で .bin 生成時間も長くなり、生成と探索を分けて管理したい
+4. 同じEC2インスタンス/EBSボリュームで何度も再実行する
+```
+
+この場合は、GitHubではなく **EBS上に残す**、または必要なら **S3に退避** がよいです。
+
+```bash
+aws s3 cp constellations_N23_7.bin s3://your-bucket/nqueens/
+aws s3 cp constellations_N23_7.bin.done s3://your-bucket/nqueens/
+```
+
+GitHubはソースコード管理、S3/EBSは大きな生成物管理、という分担がよいと思います。
+
+## 25,26,27について
+
+N25〜N27は `preset_queens=8` になります。`.bin` の件数・サイズはかなり大きくなる可能性があります。これをGitHubに置くのは避けたほうがよいです。
+
+また、**前もって全部作る必要もありません。**
+84は `.bin` がなければ生成する設計なので、まずは N23、次に N24、という順に、必要なものだけ作るのが安全です。
+
+推奨はこの流れです。
+
+```bash
+# N23 .bin 作成・検証
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 23 23 32 484 1 0 5 11
+
+# N23 GPU実行
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 23 23 32 484 1 0 5 0
+```
+
+N23が通ってからN24、N24が通ってからN25、でよいです。
+
+## 判断
+
+```text
+GitHubにpush:
+  84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
+  実行シェル
+  README
+  .gitignore
+
+GitHubにpushしない:
+  constellations_N*.bin
+  constellations_N*.bin.done
+  progress_N*_stream.tsv
+  logs/
+```
+
+したがって、**`.bin` は事前にgit pushする必要はありません。実行時に無ければ84が作るので、生成物はGitではなくEBS/S3で扱うのがよいです。**
+
+[1]: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github?utm_source=chatgpt.com "About large files on GitHub"
+[2]: https://docs.github.com/repositories/working-with-files/managing-large-files/about-git-large-file-storage?utm_source=chatgpt.com "About Git Large File Storage"
+
+はい、ここまでの結果は非常に良いと思います。
+**84 stream版は、N23まで正しく完走しています。**
+
+出力を見る限り、
+
+```text
+21:      314666222712                0          0:25:38.459    ok
+22:     2691008701644                0          3:18:42.963    ok
+23:    24233937684440                0   1 day, 6:08:25.451    ok
+```
+
+ですので、N21〜N23までの正解値一致は確認済みです。特にN23が `ok` で通ったのは大きいです。
+
+`.bin` / `.done` を Git 管理しない方針も正解です。`.gitignore` はこの形でよいと思います。
+
+```bash
+cat >> .gitignore <<'EOF'
+constellations_N*.bin
+constellations_N*.bin.done
+progress_N*_stream.tsv
+logs/
+EOF
+```
+
+現在の `./84... -g` は引数なしなので、おそらくデフォルトの N5〜N24 通し実行に入り、今はN24を処理中という理解でよいです。N23まで `ok` が出ているので、次にN24の最終行が出れば今回の主目的に到達します。
+
+実行中は、別SSHで以下だけ見ておけば十分です。
+
+```bash
+tail -f progress_N24_7_stream.tsv
+```
+
+または軽く監視するなら：
+
+```bash
+watch -n 60 '
+date
+free -h
+df -h .
+nvidia-smi --query-gpu=timestamp,utilization.gpu,utilization.memory,memory.used,memory.total,temperature.gpu,power.draw --format=csv
+tail -5 progress_N24_7_stream.tsv 2>/dev/null || true
+'
+```
+
+N24の期待値は以下です。
+
+```text
+227514171973736
+```
+
+最終的に、
+
+```text
+24:   227514171973736                0   ...    ok
+```
+
+となれば成功です。
+
+一点だけ注意するなら、N24は長期実行なので、`progress_N24_7_stream.tsv` とログ、`.bin/.done` はGitではなく、必要に応じてEBSまたはS3へ退避するのが安全です。
+
+```bash
+ls -lh constellations_N24_7.bin constellations_N24_7.bin.done progress_N24_7_stream.tsv 2>/dev/null
+```
+
+ここまでの流れを見る限り、**メモリ枯渇問題は84 stream化で解消し、N24の結果待ちの段階に入った**と考えてよいです。
+
+はい、**GPU/CUDA/C に移植した方が速度が出る可能性はあります。**
+ただし、率直に言うと、**同じ設計のまま Codon → CUDA C に置き換えるだけでは、劇的には速くならない可能性が高い**と思います。
+
+今回の歯がゆさの本質は、言語というよりも、GPU向けの仕事の割り振りにあります。
+
+## 現状の見立て
+
+いまの84 stream版は、メモリ問題は非常にうまく解決しています。N21〜N23まで `ok` で通り、N24も実行中という点では大きな前進です。
+
+ただ、速度面では、GPUらしい大きな優位がまだ出ていません。過去ログを見ると、以前のC/CUDA実装では N21 が `18:46.52`、N22 が `3:00:22.54`、N23 が `1日6:03:49.29` という記録があります。
+一方、今回の84 stream版では、N21が約25分、N22が約3時間18分、N23が約1日6時間8分ですから、**現行Codon GPUは過去のCUDA C実装と同等か、やや遅い程度**に見えます。
+
+これは逆に言えば、Codonが全く駄目というより、**現行GPUカーネルの探索構造がGPUの得意形になり切っていない**ということだと思います。
+
+## CUDA Cにすると速くなる部分
+
+CUDA Cにすれば、次の部分は改善しやすいです。
+
+```text
+1. レジスタ使用量の制御
+2. shared / constant memory の明示利用
+3. __device__ / __forceinline__ による関数展開
+4. warp単位の最適化
+5. launch bounds / occupancy 調整
+6. プロファイラ Nsight Compute による詳細解析
+7. メモリアクセス・分岐・レジスタスピルの把握
+```
+
+特に、今のカーネルは1 constellation を1 thread が深さ優先探索する形です。この構造はシンプルですが、GPUでは以下が起きやすいです。
+
+```text
+・threadごとの探索量が大きく違う
+・warp内で分岐がばらける
+・長く走るthreadが全体を引っ張る
+・探索の深さが不揃い
+・スタック配列でレジスタ/ローカルメモリを多く使う
+```
+
+このあたりは、CUDA Cのほうが観測・調整しやすいです。
+
+## ただし、単純移植だけでは限界があります
+
+現行カーネルの考え方は、
+
+```text
+1 constellation = 1 GPU thread
+各threadが自分のDFSを最後まで実行
+```
+
+です。
+
+この方式だと、CPUでは非常に自然ですが、GPUでは負荷の偏りが出ます。重い constellation を担当したthreadだけが長く残り、同じwarp内の他threadは早く終わって待つような状態になります。
+
+そのため、CUDA Cへ移植しても、同じ構造なら改善幅はおそらく、
+
+```text
+1.2倍〜2倍程度
+```
+
+に収まる可能性があります。
+もちろん、Codon生成コードでレジスタスピルや無駄な型変換が多ければ、もっと改善する余地はあります。しかし、**10倍速くなるような種類の改善は、言語変更だけでは難しい**と思います。
+
+## 本当に速くするなら「CUDA C化」より「GPU向け再設計」
+
+GPUでCPUを明確にしのぐには、CUDA Cへの移植と同時に、探索の粒度をGPU向けに変える必要があります。
+
+具体的には、次のような方向です。
+
+### 1. constellationをさらに細かく分割する
+
+現在は p6/p7/p8 の constellation をGPU threadに渡していますが、1タスクがまだ重すぎます。
+
+GPU向けには、
+
+```text
+preset_queens を深くする
+または
+GPU投入前に数段だけCPUで展開して、より細かいtaskにする
+```
+
+方がよいです。
+
+ただし、深くしすぎると `.bin` が巨大化します。なので、今回作った stream方式はかなり重要です。`.bin`巨大化を許容できる構造になったからです。
+
+### 2. 重さ別にタスクを並べ替える
+
+N21/N22のログを見ると、chunkごとの kernel 時間にかなり差があります。84 streamのN21 32x484でも、chunkごとに10秒台から14秒台程度までばらついています。
+
+これは、同じ15488件でも中身の重さが違うということです。
+
+次は、
+
+```text
+軽いtask
+中くらいtask
+重いtask
+```
+
+を推定して並べ替える、または重いものだけ別kernelにする価値があります。
+
+### 3. function id / 境界分類ごとにkernelを分ける
+
+現在のkernelは、`funcid` を見ながら内部で分岐しています。GPUでは分岐が大きなコストになります。
+
+CUDA C化するなら、
+
+```text
+SQB系
+SQd0系
+SQd1系
+SQd2系
+```
+
+のように境界分類別にkernelを分けると、分岐が減り、warp内の処理が揃いやすくなります。
+
+これはGPUらしい改善です。
+
+### 4. persistent kernel / work queue 方式
+
+本格的には、1 thread 1 constellation 固定ではなく、
+
+```text
+GPU上のworkerがキューから次のtaskを取る
+早く終わったworkerは次のtaskへ進む
+```
+
+方式が考えられます。
+
+ただし、これは実装難度がかなり上がります。atomicやqueue管理が必要になり、以前Codonでatomic周りに苦労した流れを考えると、CUDA Cの方が向いています。
+
+## CUDA C化するなら段階的が良いです
+
+いきなり全部をC/CUDAに書き直すより、次の順番が良いと思います。
+
+```text
+第1段階:
+  84 streamの .bin 形式をそのまま使う
+  GPU kernel部分だけ CUDA C で実装
+  Python/Codon側は .bin生成と検証に残す
+
+第2段階:
+  CUDA C版で .bin chunk読み → GPU実行
+  結果が84と一致するかN21/N22で検証
+
+第3段階:
+  function id別kernel、重さ別sort、境界分類別kernelを試す
+
+第4段階:
+  persistent kernel / work queue を検討
+```
+
+これが一番安全です。
+
+つまり、**84を捨てるのではなく、84をCUDA C版の入力生成器・検証器として使う**のが良いです。
+
+## 私のおすすめ判断
+
+現時点での判断はこうです。
+
+```text
+Codon 84 stream:
+  正しさ確認・N24検証・.bin生成基盤として継続
+
+CUDA C:
+  速度改善用の別ブランチとして開始
+
+いきなり全面移植:
+  おすすめしない
+
+まず kernel runner だけCUDA C化:
+  おすすめ
+```
+
+特に、今回のstream化で `.bin` 形式ができたのは大きいです。
+`constellations_N{N}_{preset}.bin` を共通入力にすれば、
+
+```text
+Codon版GPU
+CUDA C版GPU
+CPU検証版
+```
+
+を同じ入力で比較できます。
+
+## 期待できる速度感
+
+現実的には、単純なCUDA C移植なら、
+
+```text
+1.2倍〜2倍
+```
+
+本格的にGPU向け再設計まで進めれば、
+
+```text
+2倍〜5倍以上
+```
+
+は狙える可能性があります。
+
+ただし、N-QueensのDFSは分岐・偏り・探索深さの不均一が強いので、行列計算のようなGPU向け問題とは違います。GPUに載せれば自然に速くなるタイプではありません。
+
+## 結論
+
+**CUDA Cに変換した方が速度が出る可能性はあります。**
+しかし、最大のポイントは「CodonかCUDA Cか」ではなく、**1 constellation = 1 thread の不均一DFSを、GPUが処理しやすい粒度・分類・キュー構造に変えること**です。
+
+私なら次の一手は、N24の結果を待ちつつ、
+
+```text
+84 streamの .bin を読む CUDA C runner
+```
+
+を別ブランチで作ります。まずはkernelロジックを極力同じにして、N21/N22で84と完全一致させる。その後、CUDA Cならではの最適化に進むのが一番堅いです。
+
+はい、**方向性としてはかなり有望**です。
+ただし、表現を少し正確にすると、**「カーネルを複数にする」だけで不均一が解消するというより、`funcid`/境界ケースごとにタスクを分け、同種のタスクだけを同じGPU投入単位にまとめると、不均一と分岐発散をかなり減らせる可能性がある**、という見立てです。
+
+15Pyの設計はその意味で重要なヒントになります。
+
+## 15Pyの良い点
+
+15Pyでは、`exec_solutions()` が `startijkl` から `j,k,l` を復元し、境界条件に応じて `SQBkBlBjrB`、`SQBklBjrB`、`SQd2B` など多数の `SQ...` 再帰関数へ振り分けています。つまり、探索本体が「巨大な汎用DFS」ではなく、ケース別の専用DFSになっています。
+
+コードコメントでも、`exec_solutions() → SQ... 群` がコーナー、境界、特殊行 `j,k,l` に応じて最適な再帰ソルバを選ぶ構造だと説明されています。
+
+さらに、15Pyのレビューコメントでは、`SQ` 系について「次行先読みを `_extra_block_for_row()` / `_should_go_plus1()` の2段で関数化し、多数のSQバリアントにまたがる可読性と再利用性を維持」「`row==mark1` や `<<2 / >>2` の2行スキップなど固定行の強制通過最適化も良い」と整理されています。
+
+この思想はGPUにも効く可能性があります。
+
+## 現在の84 GPU kernelとの違い
+
+現在の84系GPUカーネルは、1つの `kernel_dfs_iter_gpu()` の中で `funcid` を見て、メタテーブルとビットマスクで状態遷移を行う方式です。
+
+これは実装上は非常にうまくまとまっています。
+ただしGPUでは、1つのwarp内で異なる `funcid` のthreadが混ざると、
+
+```text
+あるthreadは SQd2B 系
+あるthreadは SQBjlBkBlBjrB 系
+あるthreadは SQd0BkB 系
+```
+
+のようになり、内部分岐や探索の深さがばらけます。
+
+結果として、
+
+```text
+・warp divergence が増える
+・短いタスクのthreadが先に終わる
+・重いタスクのthreadだけが残る
+・chunk全体の終了が重いタスクに引っ張られる
+```
+
+という状態になります。
+
+15Pyのようにケース別に分けると、この混在を減らせます。
+
+## ただし「複数カーネル化」には2種類あります
+
+ここが大事です。
+
+### A. カーネルを関数別に分けるだけ
+
+例えば、
+
+```text
+kernel_SQd0B
+kernel_SQd1B
+kernel_SQd2B
+kernel_SQBjrB
+...
+```
+
+を作るだけです。
+
+これは分岐発散を減らす効果はあります。
+しかし、**同じkernel内でも重いconstellationと軽いconstellationが混ざれば、不均一DFSは残ります。**
+
+つまり効果はありますが、これだけでは不十分です。
+
+### B. `.bin` を funcid ごとに分けて、同種タスクだけ同じkernelへ流す
+
+こちらが本命です。
+
+```text
+constellations_N24_7_fid00.bin
+constellations_N24_7_fid01.bin
+...
+constellations_N24_7_fid25.bin
+```
+
+または1ファイルのままでもよいですが、stream読み込み時に `funcid` ごとのbucketへ振り分けます。
+
+そのうえで、
+
+```text
+fid=14 のタスクだけ kernel_fid14 へ
+fid=12 のタスクだけ kernel_fid12 へ
+fid=0  のタスクだけ kernel_fid0 へ
+```
+
+と流します。
+
+これなら、
+
+```text
+・warp内の分岐が揃う
+・1 kernel 内の処理パターンが近くなる
+・重いfidだけ別扱いできる
+・軽いfidを巨大chunkで流し、重いfidを小chunkで流せる
+```
+
+という改善が期待できます。
+
+## 不均一解消に効くのは「カーネル分割」より「タスク分類」
+
+実際には、次の順番がよいと思います。
+
+```text
+第1段階:
+  84 streamのまま、各constellationの funcid を集計する
+
+第2段階:
+  fid別に件数・total・chunk時間を出す
+
+第3段階:
+  fid別に .bin を分割する、またはstream時にbucket化する
+
+第4段階:
+  まずは同じ kernel_dfs_iter_gpu をfid別bucketごとに呼ぶ
+
+第5段階:
+  効果があれば、重いfidだけ専用kernel化する
+```
+
+いきなり26個の専用GPU kernelを作るより、まず **同じカーネルのままfid別投入** がよいです。
+
+なぜなら、これだけで、
+
+```text
+warp内funcid混在
+```
+
+をかなり減らせるからです。
+
+それで効果が出るなら、次に専用kernel化へ進む価値があります。
+
+## 15Py方式をGPUへ戻すなら、まずは「fid別bucket」がよい
+
+15PyはCPU/Codonでは `@par for constellation in constellations` で各星座を並列処理し、その中でケースごとの `SQ...` 関数を呼び分けています。
+
+GPU版でこれをそのまま再帰関数群として復元するのは難度が高いです。
+Codon GPU kernel内で多数の再帰関数、または擬似再帰関数を分けるより、現在の非再帰スタック型kernelを活かしながら、入力側を分類する方が安全です。
+
+つまり、まずはこうです。
+
+```text
+84 stream
+  ↓
+read bin chunk
+  ↓
+build_soa_for_range() で funcid を計算
+  ↓
+funcid別に task index をbucket化
+  ↓
+bucketごとに kernel_dfs_iter_gpu を呼ぶ
+```
+
+最初はkernel自体は1つのままで構いません。
+この時点で性能が上がるなら、「分岐混在」がかなり悪さをしていた証拠になります。
+
+## 次にやるべき具体策
+
+私は次の86番をおすすめします。
+
+```text
+86Py_constellations_GPU_cuda_codon_stream_fid_bucket.py
+```
+
+機能は以下です。
+
+```text
+1. 84 streamをベースにする
+2. .binからSTEPS件読む
+3. build_soa_for_range()でfuncidを計算
+4. funcid_arrを見て 0..25 のbucketへ分ける
+5. 各bucketを小さいTaskSoAへ詰め直す
+6. bucketごとに kernel_dfs_iter_gpu を呼ぶ
+7. fid別の件数・時間・totalをログ出力
+```
+
+この段階では、まだ専用kernelは作りません。
+
+ログはこういう形が良いです。
+
+```text
+[fid-bucket] N=22 fid=12 count=xxxx kernel=... total=...
+[fid-bucket] N=22 fid=14 count=xxxx kernel=... total=...
+[fid-bucket-summary] N=22 fid=12 count=... time=... total=...
+```
+
+これで、どの `fid` が重いかが分かります。
+
+## その次に専用kernel化する
+
+fid別bucketで効果が確認できたら、次に重い `fid` だけ専用kernelにします。
+
+例えばN24境界診断でよく問題になっていた `SQd2` 系であれば、
+
+```text
+kernel_fid12_SQd2BkBlB
+kernel_fid16_SQd2BlBkB
+kernel_fid17_SQd2BlkB
+```
+
+のように、重いものから専用化します。
+
+全funcidを一気に専用kernel化する必要はありません。
+
+まずは、
+
+```text
+重いfid上位3つ
+```
+
+だけでよいです。
+
+## 注意点
+
+カーネルを複数にしても、GPU kernel launch 回数は増えます。
+N21やN22では問題ないと思いますが、小さいNではlaunch overheadが勝つ可能性があります。
+
+したがって対象は、
+
+```text
+N22以上
+```
+
+でよいと思います。
+
+また、fid別にbucket化すると、元の順序は変わりますが、合計値だけ取るなら問題ありません。結果は加算なので順序非依存です。
+
+## 判断
+
+ご質問への答えは、**はい、15Pyのような細分化思想はGPUの不均一DFS改善に有効だと思います。**
+
+ただし、いきなり「SQ関数ごとの複数GPU kernel」にするより、まずは次がよいです。
+
+```text
+1. 84 streamを維持
+2. funcid別にbucket化
+3. 同じkernelをbucketごとに呼ぶ
+4. fid別の時間と件数を測る
+5. 重いfidだけ専用kernel化
+```
+
+この順序なら、正しさを崩しにくく、N21/N22で84との比較もできます。
+
+結論として、**15Pyの細分化は非常に良いヒントです。ただし最初の一手は「複数kernel」ではなく「fid別bucket投入」です。そこから重いfidだけ専用kernel化するのが最も堅いです。**
+
+
+
+
+
+# N23 .bin 作成・検証
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 23 23 32 484 1 0 5 11
+
+# N23 GPU実行
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 23 23 32 484 1 0 5 0
+  
 workspace#suzuki$ date
 2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ uname -a

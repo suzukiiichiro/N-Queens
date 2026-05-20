@@ -17,6 +17,87 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 54 trunk候補 32x484/auto-fullchunk 実験（ctrlrow mixed32 tuned）
 
+ログありがとうございます。これはかなり決定的です。
+
+**53 TERMINIT は不採用**です。正解値 `39029188884 ok` は保てていますが、N=20 が `0:11:14.637` / `0:11:14.623` まで悪化しています。49 の `0:02:43.886` と比べると、約 4 倍以上遅くなっています。 
+
+原因はおそらく、53 で追加した terminal init-count のネストした `while` と一時変数群により、GPU kernel 全体のレジスタ圧・ローカルメモリ退避・命令列が悪化したことです。狙いは「終端 push を減らす」でしたが、GPU ではその削減分より、kernel 全体の肥大化コストが大きく出たと見ます。
+
+52 も `0:03:05` 台で 49 より遅く、51 の split も `split_mode=1` が `0:03:29.606`、`split_mode=2` が `0:06:55.817` なので、ここまでの実験結果からは **kernel 内ロジック追加・terminal 特殊化・split は全部戻すべき**です。 
+
+次は kernel ロジックを触らず、**chunk 境界だけを変える実験版**にしました。49 をベースにして、`max_blocks <= 0` のときだけ、N=20 の全 constellation を 1 回の kernel launch にまとめます。
+
+[54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp.py](sandbox:/mnt/data/54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp.py)
+
+差分はこちらです。
+
+[54_chunkauto_exp.diff](sandbox:/mnt/data/54_chunkauto_exp.diff)
+
+54 の変更点はこれだけです。
+
+```text
+49 SAFE FIX ベース
+kernel_dfs_iter_gpu は変更なし
+preset_queens=5 固定は維持
+sort_mode=-1 auto は維持
+max_blocks <= 0 のときだけ、全 constellation を 1 chunk にまとめる
+```
+
+N=20 では constellation 数が `139232`、block が `32` なので、`max_blocks=0` を指定すると内部的にこうなります。
+
+```text
+MAX_BLOCKS = ceil(139232 / 32) = 4351
+STEPS      = 139232
+chunks     = 1
+```
+
+49 では `32 x 484` なので N=20 は 9 chunks でした。各 chunk は 15〜20 秒台で、合計 `0:02:43.886` です。54 は kernel の中身を変えずに、chunk tail と kernel launch 境界の影響だけを見ます。
+
+ビルドはこちらです。
+
+```bash
+codon build -release 54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp.py
+```
+
+まず 49 相当の確認です。
+
+```bash
+./54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp -g 20 20 32 484 2 -1
+```
+
+次に本命の **1 chunk auto** です。
+
+```bash
+./54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp -g 20 20 32 0 2 -1
+```
+
+期待されるログはこの形です。
+
+```text
+[gpu-config] ... trunk54=32x4351 ... steps=139232 ...
+[gpu-summary] N=20 constellations=139232 chunks=1
+20: 39029188884 ... ok
+```
+
+中間値も見るなら、以下も有効です。
+
+```bash
+./54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp -g 20 20 32 1024 2 -1
+./54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp -g 20 20 32 2048 2 -1
+./54Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunkauto_exp -g 20 20 32 4096 2 -1
+```
+
+見るべき点はこの 3 つです。
+
+```text
+1. 39029188884 ok になるか
+2. chunks=1 または chunks が減るか
+3. 49 の 0:02:43.886 より短くなるか
+```
+
+今回の判断としては、現時点の安定版は引き続き **49 SAFE FIX** です。54 は、kernel ロジックを増やさずに、投入粒度だけで改善できるかを見るための低リスク実験版です。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

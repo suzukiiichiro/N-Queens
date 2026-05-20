@@ -17,6 +17,87 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 66 CROSS STRIPE SAFE 32x484（cross stripe bijection guard + direct total）
 
+66、きました。**66 CROSS STRIPE SAFE は採用級**です。
+
+```txt
+66 sort_mode=9 : 0:02:27.831  ok
+66 log付き     : 0:02:27.864  ok
+66 sort_mode=7 : 0:02:29.320  ok
+```
+
+65 で崩れていた合計値も、66 では `39029188884` で正しく一致しています。ログ上も `sort_mode=9 local_sort=0 stripe=1 cross=1` で、cross stripe safe が正しく動いています。
+
+これで、64 の `sort_mode=7` よりさらに約1.4秒短縮です。
+
+## 67 CROSS STRIPE AUTO を作成しました
+
+66 をベースに、auto を以下に変更しました。
+
+```txt
+auto:
+  N=20      -> sort_mode=9
+  otherwise -> sort_mode=0
+```
+
+ファイルはこちらです。
+
+[67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484.py](sandbox:/mnt/data/67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484.py)
+
+差分はこちらです。
+
+[67_cross_stripe_auto.patch](sandbox:/mnt/data/67_cross_stripe_auto.patch)
+
+## 実行コマンド
+
+```bash
+codon build -release 67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484.py
+./67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484 -g 5 20 32 484 0 -1
+```
+
+N=20 単体です。
+
+```bash
+./67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484 -g 20 20 32 484 0 -1
+```
+
+ログ確認です。
+
+```bash
+./67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484 -g 20 20 32 484 2 -1
+```
+
+## 現時点の採用メモ
+
+```txt
+採用候補:
+  67 CROSS STRIPE AUTO
+  32x484
+  auto:
+    N=20      -> sort_mode=9
+    otherwise -> sort_mode=0
+
+比較用:
+  sort_mode=7  # 64 balanced stripe
+  sort_mode=6  # 62 striped only
+
+不採用:
+  57 BASETAIL FASTPATH
+  65 cross stripe unsafe
+  sort_mode=5
+  sort_mode=8
+  sort_mode=10
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+  max_blocks 448 / 512 / 640
+```
+
+56 の `0:02:42.602` から、66/67 の `0:02:27.831` まで来ました。
+**約14.8秒短縮**です。
+
 
 CPU
 $ suzuki@cudacodon$ codon build -release 67Py_constellations_GPU_cuda_codon_cross_stripe_auto_32x484.py

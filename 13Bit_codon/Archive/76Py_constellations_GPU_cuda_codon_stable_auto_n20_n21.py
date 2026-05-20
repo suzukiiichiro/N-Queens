@@ -17,6 +17,406 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+76 を作成しました。
+75 をベースに、**auto sort を N=20 / N=21 ともに `sort_mode=9`** に広げた安定版です。kernel ロジックは変更していません。
+
+[76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py](sandbox:/mnt/data/76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py)
+
+差分はこちらです。
+
+[76_stable_auto_n20_n21.diff](sandbox:/mnt/data/76_stable_auto_n20_n21.diff)
+
+主な変更はここです。
+
+```python
+def auto_sort_mode(N:int)->int:
+  if N==20 or N==21:
+    return 9
+  return 0
+```
+
+N=21 は 75 で `sort_mode=9` 完走 `0:22:03.099 ok` が確認できているので、76 では auto 対象に昇格してよい段階です。
+
+---
+
+## ビルド
+
+```bash
+codon build -release 76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py
+```
+
+---
+
+## まず N=20 auto 確認
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 20 20 32 484 0 -1 5 5
+```
+
+期待値：
+
+```text
+20:       39029188884                0          ...    ok
+```
+
+---
+
+## N=21 auto 確認
+
+`-1` で auto になり、N=21 は `sort_mode=9` になります。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 21 21 32 484 0 -1 5 0
+```
+
+期待値：
+
+```text
+21:      314666222712                0          ...    ok
+```
+
+---
+
+## N=21 auto のログ確認
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 21 21 32 484 2 -1 5 0 1
+```
+
+ログ内でここを確認します。
+
+```text
+sort_mode=9
+cross=1
+cross_safe=1
+chunks=13
+21:      314666222712                0          ...    ok
+```
+
+---
+
+## N=22 はまだ auto 対象外
+
+N=22 はまだ `sort_mode=0` のままです。
+まず確認するなら、完走ではなく reorder-only からです。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 6 1
+```
+
+chunk-only は例えばこちらです。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 7 1 0 1
+```
+
+N=22 の完走は最後でよいと思います。
+
+76 は合格です。
+N=20 / N=21 の auto 化は成功しています。
+
+```text
+76 STABLE AUTO N20 N21
+
+N=20 auto -1:
+  run1 0:02:27.871 ok
+  run2 0:02:25.146 ok
+
+N=21 auto -1:
+  0:22:06.055 ok
+
+N=21 auto -1 + cross_safe=1:
+  sort_mode=9
+  chunks=13
+  total=314666222712
+  0:22:03.026 ok
+```
+
+ログ上でも N=21 は `sort_mode=9 / cross=1 / cross_safe=1` で全 13 chunk を完走し、正解値に一致しています。
+
+---
+
+## N=22 について
+
+N=22 も、まず大事な入口検証は通っています。
+
+```text
+N=22 sort_mode=9 reorder-only:
+  original=250485
+  reordered=250485
+  chunks=17
+  steps=15488
+  ok
+```
+
+さらに chunk 0 の kernel もコアダンプせずに通っています。
+
+```text
+N=22 sort_mode=9 chunk 0:
+  kernel        0:12:14.655
+  partial_total 166160511492
+```
+
+ここで分かることは、
+
+```text
+1. N=22 でも cross stripe の件数欠落はない
+2. 端数計算を含む chunk 構成は正常
+3. 少なくとも chunk 0 は GPU kernel まで正常実行できる
+4. ただし 1 chunk が 12分超なので、N=22 完走デバッグはかなり重い
+```
+
+です。
+
+---
+
+## 重要な判断
+
+N=22 は、N=21 のように軽くありません。
+`chunk 0` だけで **12分14秒**です。
+
+17 chunk すべてが同程度なら、単純計算で 3時間半前後になります。もちろん端数 chunk やならされ方で変わりますが、**N=22 を頻繁に完走させるのはデバッグに向きません**。
+
+なので、次は N=22 完走ではなく、もう少し chunk-only を少数だけ確認するのが安全です。
+
+---
+
+## 次におすすめの N=22 chunk-only
+
+全 chunk は不要です。
+まずは代表点だけでよいです。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 7 1 4 1
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 7 1 8 1
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 7 1 12 1
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 22 22 32 484 2 9 5 7 1 16 1
+```
+
+特に chunk 16 は端数 chunk です。
+
+```text
+chunk 16:
+  off=247808
+  m=2677
+```
+
+なので、境界確認として重要です。
+
+---
+
+## 今日の正式な到達点
+
+```text
+72:
+  N=20 高速化の基準版
+
+73:
+  cross_stripe_safe 整理
+  N=20 合格
+
+74:
+  N=21 sort_mode=9 reorder 欠落修正
+  reorder-only 合格
+
+75:
+  chunk-only debug 追加
+  N=21 sort_mode=9 完走 ok
+  0:22:03.099
+
+76:
+  auto を N=20 / N=21 に拡張
+  N=20 auto ok
+  N=21 auto ok
+  N=22 reorder-only ok
+  N=22 chunk 0 ok
+```
+
+次の段階は、**77 N=22 chunk survey** です。N=22 を完走させる前に、chunk 4 / 8 / 12 / 16 を見て、重さと境界を確認するのがよいです。
+
+N=22 の chunk survey も通っています。
+これで **N=22 sort_mode=9 は、reorder-only・先頭 chunk・中盤 chunk・後半 chunk・端数 chunk のすべてでコアダンプなし**が確認できました。
+
+結果を整理するとこうです。
+
+```text
+N=22 / sort_mode=9 / 32x484 / chunk-only
+
+chunk 0:
+  kernel        0:12:14.655
+  partial_total 166160511492
+
+chunk 4:
+  kernel        0:12:19.509
+  partial_total 166977547816
+
+chunk 8:
+  kernel        0:12:49.152
+  partial_total 165568988202
+
+chunk 12:
+  kernel        0:12:09.303
+  partial_total 166966851202
+
+chunk 16:
+  kernel        0:08:00.138
+  partial_total 26556317100
+```
+
+かなり重要なのは、端数 chunk 16 です。
+
+```text
+chunk 16:
+  off=247808
+  m=2677
+  grid=84
+  kernel=0:08:00.138
+```
+
+`m=2677` の端数 chunk でも正常に通っているので、N=22 でも cross stripe の境界処理は大丈夫そうです。
+
+---
+
+## 見立て
+
+N=22 は **完走するとかなり重い**です。
+
+通常サイズ chunk がだいたい 12分10秒〜12分50秒台で、通常 chunk が 16個、端数 chunk が約8分です。
+
+単純見積もりでは、
+
+```text
+通常 chunk 16個 × 約12分25秒
+端数 chunk 1個 × 約8分
+合計 約3時間26分前後
+```
+
+くらいになりそうです。
+
+これは、過去ログの 2023/11/22 CUDA C 実装の N=22 が **3:00:22.54** だったことを考えると、まだ速いとは言えません。ただし、今回の Codon GPU 実装は Python/Codon 由来の構造を維持したまま、N=21 までかなり改善できているので、N=22 は別テーマとして扱うのがよいです。
+
+---
+
+## 次の判断
+
+N=22 の完走は、今日のデバッグ目的としては不要です。
+ここまでで、N=22 について確認できたのは十分です。
+
+```text
+N=22:
+  reorder-only ok
+  chunk 0 ok
+  chunk 4 ok
+  chunk 8 ok
+  chunk 12 ok
+  chunk 16 ok
+```
+
+したがって、76 はこのまま
+
+```text
+N=20 / N=21 stable auto
+N=22 preliminary debug passed
+```
+
+として固定してよいです。
+
+---
+
+## 次にやるなら 77
+
+77 は N=22 完走版ではなく、**N=22 chunk survey / 重さ推定ログ版**がよいと思います。
+
+目的は、
+
+```text
+N=22 を完走させずに、chunk の重さを推定できるようにする
+```
+
+です。
+
+たとえば 77 では、kernel 実行前に各 chunk の軽量特徴量を出します。
+
+```text
+chunk
+m
+sum_free_popcount
+avg_free_popcount
+funcid histogram
+funcptn histogram
+depth histogram
+estimated_weight
+```
+
+これにより、12分かけて chunk を1個ずつ実行しなくても、
+
+```text
+どの chunk が重そうか
+sort_mode=9 が本当に均しているか
+sort_mode=10 のような重さ推定順が必要か
+```
+
+を見られます。
+
+---
+
+## 今日の到達点メモ
+
+```text
+76 STABLE AUTO N20 N21
+
+N=20 auto:
+  0:02:25.146 ok
+
+N=21 auto:
+  0:22:06.055 ok
+  safe log 0:22:03.026 ok
+
+N=22 sort_mode=9:
+  reorder-only ok
+  chunk-only survey ok
+
+N=22 chunk survey:
+  chunk 0   0:12:14.655
+  chunk 4   0:12:19.509
+  chunk 8   0:12:49.152
+  chunk 12  0:12:09.303
+  chunk 16  0:08:00.138
+
+Conclusion:
+  76 is stable for N=20/N=21 auto.
+  N=22 sort_mode=9 is structurally safe, but full run is too heavy for routine debug.
+```
+
+ここで 76 を安定版として残し、次は **77 chunk weight estimation** に進むのがよいです。
+
+N=5〜20 を通して実行するなら、76 ではこちらです。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 5 20 32 484 0 -1 5 0
+```
+
+意味は以下です。
+
+```text
+-g        : GPU 実行
+5 20      : N=5 から N=20 まで
+32 484    : block=32, max_blocks=484
+0         : log_level=0
+-1        : auto sort
+5         : preset_queens=5
+0         : bench_mode=0 通常実行
+```
+
+N=20 は auto により `sort_mode=9`、N=5〜19 は `sort_mode=0` になります。
+
+ログを見たい場合は、少し出力が増えますがこちらです。
+
+```bash
+./76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21 -g 5 20 32 484 1 -1 5 0
+```
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

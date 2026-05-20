@@ -17,6 +17,146 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 43 trunk候補 32x512（ctrlrow mixed32 tuned）
 
+はい、これは**かなり大きな発見**です。
+結論として、**39 の `block=32, max_blocks=512` が新しい最良条件**です。
+
+## 今回の結果
+
+`39` の chunk サイズ比較はこう読めます。
+
+| 条件                 |   steps |              N=18 |              N=19 | 判定        |
+| ------------------ | ------: | ----------------: | ----------------: | --------- |
+| `32 256`           |   8,192 |     `0:00:04.401` |     `0:00:33.756` | 旧39基準     |
+| `32 512`           |  16,384 | **`0:00:02.924`** | **`0:00:22.631`** | **現時点最良** |
+| `32 1024`          |  32,768 |     `0:00:04.579` |     `0:00:35.936` | 悪化        |
+| `32 2048`          |  65,536 |     `0:00:05.973` |     `0:00:42.612` | 悪化        |
+| `32 4096`          | 131,072 |     `0:00:06.058` |     `0:00:47.874` | 悪化        |
+| `42 single launch` |      全件 |     `0:00:05.970` |     `0:00:48.263` | 不採用       |
+
+つまり、**kernel 起動回数を単純に減らせば速くなるわけではありません**。
+最良は single launch ではなく、**中くらいの chunk サイズ、つまり `steps=16384`** です。
+
+`32 512` は、旧39基準から見ると、
+
+```text
+N=18: 4.401 → 2.924
+N=19: 33.756 → 22.631
+```
+
+なので、どちらも約 **3割以上の改善**です。これはかなり大きいです。
+
+## なぜ single launch が遅いか
+
+42 のログが決定的です。
+
+```text
+[gpu-config] N=19 ... max_blocks=3148 steps=100706
+[gpu-chunk] N=19 chunk=1 ... kernel=0:00:47.587
+```
+
+build/copy はほぼゼロで、**kernel 本体だけで 47秒台**です。
+つまり、single launch の遅さはホスト側ではなく、GPU kernel 内の長い枝・重い block・warp/SM の待ちが一気に溜まっていることが原因です。
+
+一方、`32 512` では N=19 の 100,706 constellation を約7 chunkに分けます。
+
+```text
+100706 / 16384 ≒ 6.15 → 7 chunks
+```
+
+このくらいに分けると、巨大 single kernel の待ちが分散され、かつ `32 256` のように kernel 起動数が多すぎる状態も避けられています。
+
+## 現時点の trunk 候補
+
+現時点ではこれです。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 512 0
+```
+
+つまり、
+
+```text
+39 childlow
+block      = 32
+max_blocks = 512
+steps      = 16384
+```
+
+です。
+
+19系のCPU基準は N=19 が `0:00:16.233`、N=20 が `0:02:08.222` なので、GPU 39 `32 512` の N=19 `0:00:22.631` は、まだ CPU には届いていません。ただし、N=18 では元のGPU基準約12秒台から `2.924秒` まで来ているので、GPU側はかなり改善しています。
+
+## 43 を作りました
+
+39 をベースに、デフォルトを今回の最良条件へ変更した trunk 候補版です。
+探索ロジックは変えていません。変更はほぼこれだけです。
+
+```text
+default block      = 32
+default max_blocks = 512
+```
+
+ファイルはこちらです。
+
+[43Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512.py](sandbox:/mnt/data/43Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_43_32x512_patch.diff)
+
+実行はこうです。
+
+```bash
+codon build -release 43Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512.py
+
+./43Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512 -g 18 19
+```
+
+明示指定するなら、39でも同じです。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 19 32 512 0
+```
+
+## 次に詰めるべき範囲
+
+`512` が明確に良いので、次はその前後だけで十分です。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 384 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 448 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 512 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 576 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 640 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 768 0
+```
+
+あわせて、同じ `steps=16384` で block だけ変える比較も有効です。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 64 256 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 128 128 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 256 64 0
+```
+
+ここで `32 512` がまだ勝つなら、trunk条件はかなり固まります。
+
+## 次の開発方針
+
+今後は、もう bucket/expand には戻らない方がよいです。
+今回の結果から見ると、本線はこれです。
+
+```text
+39/43 original構造を維持
+block=32, steps≈16384 付近に固定
+kernel内状態をさらに削る
+または warp内の分岐を軽くする
+```
+
+次の実験候補としては、**bucket化ではなく sort-only** が良さそうです。
+つまり、複数 kernel に分けるのではなく、`functionid` や軽い推定コストで constellation の順序だけを並べ替えて、`block=32` の1 warp内に似た分岐を集める方向です。29の bucket は複数 kernel 化で遅くなりましたが、sort-onlyなら kernel数を増やさずに warp divergence だけ減らせる可能性があります。
+
+まずは `32 384〜768` と `64/128/256` の同一 steps 比較で、`32 512` が本当に安定最良か確認するのが次の一手です。
+
+
 =====
 43 childlow
 -g -c g(GPU)  c(CPU)

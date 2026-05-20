@@ -17,6 +17,100 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 49 trunk候補 32x484 auto-sort + sort_mode=3 work-bucket診断 SAFE FIX（ctrlrow mixed32 tuned）
 
+ログありがとうございます。今回の 50 診断で、次の方針がかなり見えました。
+
+49 は予定通り **安全版として OK** です。`sort_mode=2` が `0:02:43.886`、`sort_mode=3` が `0:02:43.894` なので、`sort_mode=3` は採用しなくてよいです。差はほぼノイズです。
+
+50 の `opsdiag` では、最大 `ops` が平均のだいたい 3〜4 倍程度です。極端に 1 task だけが何十倍も重い、というより、**funcptn=2 と funcptn=0 のまとまった領域が重い**という見え方です。たとえば chunk 8 は `ops_avg=6897409`、`ops_max=24583528`、hot は `funcptn=2`、chunk 4/5/7 は hot が `funcptn=0` になっています。
+
+そのため、次は「全部を preset_queens=6 にする」ではなく、**funcptn=2、または funcptn=0/2 だけを 1 段 split する実験**が良いと思います。
+
+実験版を作りました。
+
+[51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp.py](sandbox:/mnt/data/51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp.py)
+
+差分はこちらです。
+
+[51_split1_exp.diff](sandbox:/mnt/data/51_split1_exp.diff)
+
+51 は **デフォルトでは split 無効**です。つまり、従来コマンドでは 49 と同じ経路になります。
+
+```bash
+codon build -release 51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp.py
+
+./51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp -g 20 20 32 484 2 -1
+```
+
+まず試すべき本命はこれです。
+
+```bash
+./51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp -g 20 20 32 484 2 -1 5 1
+```
+
+意味は以下です。
+
+```text
+sort_mode=-1  → auto。N=20 なので sort_mode=2
+preset=5      → 49 と同じく固定
+split_mode=1  → funcptn=2 だけ 1段 split
+```
+
+次に、少し強めの実験です。
+
+```bash
+./51Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_split1_exp -g 20 20 32 484 2 -1 5 2
+```
+
+意味は以下です。
+
+```text
+split_mode=2  → funcptn=0 と funcptn=2 を 1段 split
+```
+
+51 のログには、次の項目を追加しています。
+
+```text
+run
+split
+split_tasks
+split_children
+overflow
+```
+
+例として、こういう形式になります。
+
+```text
+[gpu-chunk] ... m=15488 run=xxxxx grid=xxxx sort=2 split=1 split_tasks=... split_children=... overflow=0 ...
+```
+
+見るべき点は 3 つです。
+
+```text
+1. total が 39029188884 ok になるか
+2. overflow が必ず 0 か
+3. 実行時間が 0:02:43.886 より縮むか
+```
+
+`overflow>0` が出た場合、その chunk では作業領域上限に近づいたため、一部 split を親タスクのまま流しています。`overflow=0` なら、今回の split 実験としてはきれいに走っています。
+
+現時点の期待値としては、`split_mode=1` は試す価値があります。`split_mode=2` は split 数が増えすぎて、preset_queens=6 と同じように前処理・タスク増加側で負ける可能性があります。
+
+運用上はまだ以下が安全です。
+
+```text
+公開用 / 普段使い:
+  49 SAFE FIX
+  sort_mode=-1
+  preset_queens=5
+
+実験:
+  51 SPLIT1 EXP
+  split_mode=1 から確認
+```
+
+こちらでは Codon/CUDA 実機ビルドまでは確認できていません。51 は 49 をベースに、split 経路をデフォルト無効で追加した実験版です。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

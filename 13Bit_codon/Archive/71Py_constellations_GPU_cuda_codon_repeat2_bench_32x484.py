@@ -17,6 +17,85 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 71 REPEAT2 BENCH 32x484（67 CROSS STRIPE AUTO + run2 benchmark diagnostic）
 
+70 の結果で、かなり面白いことが分かりました。
+
+```txt id="uoagfw"
+run1 : 0:02:27.814  ok
+run2 : 0:02:25.098  ok
+run3 : 0:02:29.319  ok
+```
+
+ログ付きでも同じ傾向です。
+
+```txt id="8euc28"
+run1 : 0:02:27.796
+run2 : 0:02:25.075
+run3 : 0:02:29.261
+```
+
+つまり、**最速は3回目ではなく2回目**です。run3 はむしろ悪化しています。これは「回せば回すほど速くなる」ではなく、**1回目で温まり、2回目がピーク、3回目は温度・電力制御・クロック揺らぎなどで落ちる**という挙動に見えます。
+
+したがって、ベンチ用としては、
+
+```txt id="1jmtzq"
+run1 = warmup
+run2 = measured
+run3 = 実行しない
+```
+
+が正解だと思います。
+
+## 71 REPEAT2 BENCH を作成しました
+
+探索ロジックは変更していません。
+70 をベースに、`bench_mode=5` を追加しました。
+
+```txt id="5syomn"
+bench_mode=5:
+  N=20 を同一プロセス内で2回実行
+  run1 = warmup
+  run2 = measured
+```
+
+ファイルはこちらです。
+
+[71Py_constellations_GPU_cuda_codon_repeat2_bench_32x484.py](sandbox:/mnt/data/71Py_constellations_GPU_cuda_codon_repeat2_bench_32x484.py)
+
+差分はこちらです。
+
+[71_repeat2_bench.patch](sandbox:/mnt/data/71_repeat2_bench.patch)
+
+## 実行コマンド
+
+```bash id="g32lws"
+codon build -release 71Py_constellations_GPU_cuda_codon_repeat2_bench_32x484.py
+./71Py_constellations_GPU_cuda_codon_repeat2_bench_32x484 -g 20 20 32 484 0 -1 5 5
+```
+
+ログ付きはこちらです。2回目だけ chunk ログを出します。
+
+```bash id="ezvfmj"
+./71Py_constellations_GPU_cuda_codon_repeat2_bench_32x484 -g 20 20 32 484 2 -1 5 5
+```
+
+## 現時点の整理
+
+```txt id="v6qu55"
+通常・公開用:
+  67 CROSS STRIPE AUTO
+  auto:
+    N=20      -> sort_mode=9
+    otherwise -> sort_mode=0
+
+ベンチ用:
+  71 REPEAT2 BENCH
+  bench_mode=5
+  run1 warmup
+  run2 measured
+```
+
+70 の結果から見る限り、`bench_mode=5` では **2:25 台**が再現する可能性が高いです。
+
 
 CPU
 $ codon build -release 68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py

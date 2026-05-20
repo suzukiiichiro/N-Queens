@@ -17,6 +17,171 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 56 STABLE FINAL 32x484 auto-sort（ctrlrow mixed32 tuned）
 
+ログありがとうございます。55 の sweep で結論がかなり固まりました。
+
+`max_blocks=484` が明確に最良です。今回の sweep では、`32x484` が `0:02:43.184 ok`、通常ログ付き実行でも `0:02:43.883 ok` でした。一方で `448` は `0:02:52.233`、`512` は `0:02:53.343`、`640` は `0:03:04.262`、さらに小さい `384` 以下は大きく悪化しています。
+
+特に重要なのは、`484` が単に偶然速いというより、**N=20 の constellation 数 139232 に対して chunk 分割がきれい**な点です。`block=32, max_blocks=484` だと `steps=15488` で、9 chunks のうち最後も `15328` 件あり、ほぼ均等です。ログでも 9 chunks すべてが 15〜20 秒台に収まっています。
+
+逆に `448` は 10 chunks になり、`512` は 9 chunks ではあるものの最後の chunk が小さくなります。今回の結果から、N=20 では **32x484 が実測・分割構造の両面で最終値**と見てよいです。
+
+整理版の最終安定ソースを作りました。
+
+[56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py](sandbox:/mnt/data/56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py)
+
+差分はこちらです。
+
+[56_stable_final.diff](sandbox:/mnt/data/56_stable_final.diff)
+
+56 は高速化実験版ではなく、**49 SAFE FIX を最終運用向けに整理した安定版**です。kernel の hot path は 49 から変えていません。
+
+変更点は最小です。
+
+```text
+1. trunk 表示を trunk56 に更新
+2. ヘッダに最終運用方針を明記
+3. preset_queens=6 は引き続き無効化
+4. max_blocks<=0 を指定した場合は、安全側で 484 に丸める
+5. sort_mode=3 は互換/診断用として残すが、通常運用では使わない
+```
+
+ビルドと通常運用はこれです。
+
+```bash
+codon build -release 56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py
+
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 0 -1
+```
+
+ログ確認ありならこちらです。
+
+```bash
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 2 -1
+```
+
+N=20 単体で明示する場合はこれでよいです。
+
+```bash
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 2 2
+```
+
+現時点の最終運用方針は以下でよいと思います。
+
+```text
+公開用 / 普段使い / -g 5 20:
+  56 STABLE FINAL
+  block=32
+  max_blocks=484
+  sort_mode=-1
+
+N=20 単体:
+  56 STABLE FINAL
+  sort_mode=-1 または sort_mode=2
+
+不採用:
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+  max_blocks 448 / 512 / 640
+```
+
+こちらでは Codon/CUDA の実機ビルドまでは確認できていません。56 は 49 の実績経路を維持し、55 の結果を反映して `32x484` を最終設定として固定しやすくした版です。
+
+ログありがとうございます。**56 STABLE FINAL はこのまま最終版として確定でよい**と思います。
+
+今回の 3 回の確認結果はすべて正しいです。
+
+```text
+log_level=0 / auto:
+  0:02:43.904 ok
+
+log_level=2 / auto:
+  0:02:43.898 ok
+
+log_level=2 / sort_mode=2 明示:
+  0:02:43.875 ok
+```
+
+いずれも `39029188884 ok` で、`sort_mode=-1` の auto も N=20 では予定通り `sort_mode=2` に解決されています。ログでも `trunk56=32x484 sort_mode=2 block=32 max_blocks=484 steps=15488` になっており、設定は意図通りです。
+
+chunk 構成も理想的です。
+
+```text
+constellations = 139232
+steps          = 15488
+chunks         = 9
+
+chunk 1〜8:
+  m=15488 / grid=484
+
+chunk 9:
+  m=15328 / grid=479
+```
+
+最後の chunk も極端に小さくならず、9 chunk すべてが約 15〜20 秒台に収まっています。これは 55 の sweep で `32x484` が最速だった結果とも一致しています。55 では `max_blocks=484` が `0:02:43.184`、`448` が `0:02:52.233`、`512` が `0:02:53.343` だったので、`484` は実測上も最終値でよいです。
+
+## 最終採用版
+
+こちらを最終運用版にして問題ありません。
+
+[56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py](sandbox:/mnt/data/56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py)
+
+通常運用はこれでよいです。
+
+```bash
+codon build -release 56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py
+
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 5 20 32 484 0 -1
+```
+
+N=20 単体ベンチは以下です。
+
+```bash
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 0 -1
+```
+
+ログ確認時だけこちらです。
+
+```bash
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 2 -1
+```
+
+## 最終メモ
+
+```text
+default:
+  block      = 32
+  max_blocks = 484
+  sort_mode  = -1
+
+auto:
+  N=20      -> sort_mode=2
+  otherwise -> sort_mode=0
+
+preset_queens:
+  5 固定
+
+採用:
+  56 STABLE FINAL
+  32x484
+  auto sort
+
+不採用:
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+  max_blocks 448 / 512 / 640
+```
+
+今回のログで、49 から 56 への整理後も性能劣化がなく、設定表示・preset 表示・auto 解決も正しく動いていることが確認できました。56 を公開用・普段使い用の最終版として扱ってよいです。
+
+
 
 CPU
 $ codon build -release 56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final.py

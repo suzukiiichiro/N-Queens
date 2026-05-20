@@ -17,6 +17,681 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 45 trunk候補 32x512 + chunk内sort診断（ctrlrow mixed32 tuned）
 
+はい、**ご指摘の通りです。ここは修正します。**
+
+前回の私の「`32x640` を default にする」は少し早かったです。今回の再測定を見ると、trunk default は **`32x512` のまま**が正しいです。
+
+## 今回の判断
+
+N=18 では、かなり安定して `32x512` が勝っています。
+
+```text
+32x512 : 0:00:02.926
+32x640 : 0:00:02.998
+
+32x512 : 0:00:02.926
+32x640 : 0:00:03.003
+```
+
+差は約 `0.07〜0.08秒`、比率で約 **2.4〜2.6%** です。
+一方、N=19 では前回ログで、
+
+```text
+32x512 : 0:00:21.964
+32x640 : 0:00:21.962
+```
+
+でしたが、これは **0.002秒差**なので完全に計測ブレの範囲です。
+
+したがって、総合判断はこうです。
+
+```text
+32x512 : N=18で明確に速い / N=19でも最速級
+32x640 : N=19で僅差だが、N=18で明確に遅い
+```
+
+なので、**default は `32x512` に戻すべき**です。
+
+## 採用条件の修正
+
+現時点の trunk 候補はこれです。
+
+```text
+39/43 系 childlow
+block      = 32
+max_blocks = 512
+steps      = 16384
+sort_mode  = 0
+```
+
+つまり、前回作った 44 の `32x640 default` は採用しない方がよいです。
+
+43 の結果はかなり良いです。
+
+```text
+43 / 32x512
+N=18 : 0:00:02.923 ok
+N=19 : 0:00:21.964 ok
+```
+
+CPU基準は、19系メモでは N=18 が `2.308秒`、N=19 が `16.233秒`、N=20 が `2:08.222` です。GPUはまだ N=18/N=19 ではCPUに届いていませんが、元GPUの N=18 約12秒台からは大幅に縮んでいます。
+
+## 45 を作りました
+
+44 の sort 診断機能は残しつつ、default を `32x512` に戻した版です。
+
+[45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort.py](sandbox:/mnt/data/45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_45_32x512_sort_patch.diff)
+
+変更は最小です。
+
+```text
+44:
+  default block      = 32
+  default max_blocks = 640
+
+45:
+  default block      = 32
+  default max_blocks = 512
+```
+
+探索ロジックは変えていません。
+
+## 次に試すコマンド
+
+まず default 確認です。
+
+```bash
+codon build -release 45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort.py
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19
+```
+
+sort 診断は、`32x512` のままで見るのがよいです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 1
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 2
+```
+
+意味は、
+
+```text
+sort_mode=0 : sortなし、基準
+sort_mode=1 : chunk内 functionid sort
+sort_mode=2 : chunk内 funcptn sort
+```
+
+です。
+
+## N=20 を見るなら
+
+N=20 はまず `32x512` で見るべきです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 0
+```
+
+比較用に `32x640` を見るなら、その後で十分です。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 640 0 0
+```
+
+今回の再測定から、判断はこう修正します。
+
+```text
+採用:
+  block=32
+  max_blocks=512
+  steps=16384
+  childlow + mixed32
+
+保留:
+  max_blocks=640
+    N=19では僅差だが、N=18では遅いのでdefaultにはしない
+
+不採用:
+  44の32x640 default
+```
+
+今回のログはかなり助かりました。`640` は「N=19だけを見た一時的な僅差」で、trunk default としては `512` の方が安定しています。
+
+はい、今回の結果では **45 / `32x512` / `sort_mode=0` を trunk のまま**でよいです。
+
+ただし、`sort_mode=2` は完全不採用ではなく、**保留候補**です。
+
+## 今回の読み
+
+まず default 実行はかなり良いです。
+
+```text
+45 default
+N=18 : 0:00:02.922 ok
+N=19 : 0:00:21.961 ok
+```
+
+これはこれまでの最良級です。
+
+一方、明示指定した sort 比較はこうでした。
+
+```text
+sort_mode=0 : 0:00:22.648
+sort_mode=1 : 0:00:22.760
+sort_mode=2 : 0:00:22.442
+```
+
+この3本だけを見ると、
+
+```text
+sort_mode=2 が sort_mode=0 より約0.206秒速い
+```
+
+ので、`funcptn` 順 sort は少し効いている可能性があります。
+
+ただし、default の N=19 が `21.961秒` で、明示 `sort_mode=0` が `22.648秒` です。
+この差が約 `0.687秒` あり、`sort_mode=2` の改善幅 `0.206秒` より大きいです。
+
+つまり今回の1回だけでは、
+
+```text
+sort_mode=2 が本当に速い
+```
+
+とはまだ言い切れません。GPUのウォームアップ、直前実行、温度、クロック、chunkごとの重い枝の揺れの方が大きく見えています。
+
+## 現時点の採用判断
+
+採用：
+
+```text
+45
+block=32
+max_blocks=512
+sort_mode=0
+```
+
+保留：
+
+```text
+sort_mode=2
+```
+
+不採用：
+
+```text
+sort_mode=1
+```
+
+`sort_mode=1` は `22.760秒` で mode0 より悪いので、functionid sort は今のところ捨ててよいです。
+
+## いまの到達点
+
+元の GPU 19 系は N=18 で約 `12.092秒` でしたが、45 は N=18 `2.922秒` まで落ちています。
+これは約 **4.1倍高速化**です。
+
+CPU基準は過去ログ上では N=18 `2.308秒`、N=19 `16.233秒`、N=20 `2:08.222` なので、GPU 45 は N=18/N=19 ではまだCPUに届いていませんが、かなり近づいています。
+
+## 次の確認コマンド
+
+sort_mode=2 を採用するかは、同じ形で複数回見るのがよいです。
+まず GPU を温める目的で1回捨て実行します。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19
+```
+
+その後、N=19だけを交互に3セットほど。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 2
+
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 2
+
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 19 19 32 512 0 2
+```
+
+判定はこうでよいです。
+
+```text
+mode2 が毎回 0.2秒以上速い
+  → funcptn sort 採用候補
+
+mode2 と mode0 が入れ替わる
+  → sortなし固定
+
+mode2 が同等か微差
+  → sortなし固定
+```
+
+## N=20 は sortなしで先に見るべきです
+
+sort はまだ微差なので、N=20 はまず trunk 条件で見るのがよいです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 0
+```
+
+その後で、余力があれば mode2。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 2
+```
+
+N=20で `sort_mode=2` が明確に効くなら、その時点で採用を考えれば十分です。現時点では **45 / 32x512 / sortなし** が一番安定した trunk です。
+
+はい、**16xlarge でGPU実行してみる価値はあります**。ただし、期待値としては **45系のGPU時間は大きくは変わらない可能性が高い**です。
+
+今回のログでまず確定したことは、`sort_mode=2` はかなり安定して効いています。
+
+```text
+sort_mode=0 : 22.645 / 22.652 / 22.656
+sort_mode=2 : 22.441 / 22.445 / 22.443
+```
+
+平均すると、
+
+```text
+sort_mode=0 平均 ≒ 22.651秒
+sort_mode=2 平均 ≒ 22.443秒
+差               ≒ 0.208秒
+改善率           ≒ 0.9%
+```
+
+なので、**funcptn sort は採用候補に格上げ**でよいです。前回は保留と言いましたが、3回連続で同じ差が出ているので、これは計測ブレではなさそうです。
+
+一方で、
+
+```text
+./45... -g 18 19
+N=19 : 21.961秒
+```
+
+が明示指定の `sort_mode=0` より速い理由は、おそらく **同一プロセス内で N=18 がGPUウォームアップになっている**ためです。明示指定の N=19 単体実行は、毎回プロセス起動・GPU context 初期化・初回実行コストに近いものを含んでいる可能性があります。なので、sort の公平比較は次の形がよいです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19 32 512 0 2
+```
+
+この2本で **N=19 の行だけ**を比較すると、ウォームアップ条件が揃いやすいです。
+
+---
+
+インスタンスの件ですが、ここはかなり重要です。
+
+AWS公式の旧世代インスタンス仕様では、`m4.xlarge` は 4 vCPU / 16 GiB、`m4.16xlarge` は 64 vCPU / 256 GiB ですが、どちらも GPU 欄は “No” です。一方、GPU付きとして載っているのは `p2` や `p3` などで、NVIDIA K80 / V100 が記載されています。([AWS Documentation][1])
+
+なので、もし本当に EC2 の `m4.xlarge` / `m4.16xlarge` 上で CUDA が動いているなら、実際には次のどれかの可能性があります。
+
+```text
+1. インスタンス名の認識と実際のGPUホストが違う
+2. 別ホスト/別環境のGPUへ接続している
+3. AWS EC2 m4 ではなく、m4相当CPUの別環境名として使っている
+4. CodonのGPU実行環境が別のGPU付きマシン上にある
+```
+
+一度、実行環境でこれを確認した方がよいです。
+
+```bash
+hostname
+lscpu | egrep 'Model name|CPU\(s\)|Thread|Core|Socket'
+nvidia-smi -L
+nvidia-smi
+```
+
+特に `nvidia-smi -L` のGPU名が重要です。
+
+---
+
+今回の性能評価は、前提をこう分けると整理しやすいです。
+
+16xlarge CPU基準は、過去ログではこうでした。
+
+```text
+18:  0:00:02.308
+19:  0:00:16.233
+20:  0:02:08.222
+21:  0:17:43.937
+```
+
+これは `amazon AWS m4.16xlarge x 1` のCPU計測として記録されています。
+
+一方、現在の `m4.xlarge` CPU実行は、
+
+```text
+18: 0:00:31.653
+```
+
+とのことなので、同じ `m4.xlarge` 内で比べるなら、現在のGPU 45はかなり勝っています。
+
+```text
+m4.xlarge CPU N=18 : 31.653秒
+45 GPU N=18        :  2.922秒
+```
+
+つまり **同一小型ホスト内ではGPUが約10.8倍速い**です。
+
+ただし、16xlarge CPUと比べると、
+
+```text
+m4.16xlarge CPU N=18 : 2.308秒
+45 GPU N=18          : 2.922秒
+
+m4.16xlarge CPU N=19 : 16.233秒
+45 GPU N=19          : 21.961秒
+```
+
+なので、**16xlarge CPUにはまだ負けている**という見方になります。ここは「CPU/GPUどちらが速いか」ではなく、**比較しているCPUホストの規模が違う**という点が大きいです。
+
+---
+
+16xlargeへ上げてGPU実行する場合、私は次の順で見るのがよいと思います。
+
+```bash
+# まずGPU名とCPU確認
+nvidia-smi -L
+lscpu | egrep 'Model name|CPU\(s\)|Thread|Core|Socket'
+
+# 45 trunk 基準
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19 32 512 0 0
+
+# sort_mode=2
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 18 19 32 512 0 2
+```
+
+そのあと N=20 です。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 2
+```
+
+45系は、以前の chunkログを見る限り `build` と `copy` がほぼゼロで、時間の大半は `kernel` です。したがって **CPUを m4.xlarge から m4.16xlarge に上げても、GPU kernel時間そのものは大きく変わらない可能性が高い**です。
+
+ただし、次の条件なら変わる可能性があります。
+
+```text
+GPUも別物になる
+GPUクロック制限/電力制限が違う
+PCIe/ドライバ/実行環境が違う
+プロセス初期化やCPU側前処理が詰まっていた
+sort_mode=2 のCPU側sortがN20以上で少し効く
+```
+
+なので、16xlargeで試すなら、**GPU名が同じか違うか**を必ず一緒に記録してください。GPU名が同じであれば、45系のGPU時間はあまり変わらないはずです。GPU名が違えば、もちろん大きく変わる可能性があります。
+
+現時点の採用候補はこう更新します。
+
+```text
+trunk:
+  45
+  block=32
+  max_blocks=512
+  sort_mode=0
+
+採用候補:
+  sort_mode=2
+  ただし -g 18 19 32 512 0 2 でウォームアップ込み比較してから確定
+
+不採用:
+  sort_mode=1
+  bucket / expand 系
+  single launch
+  32x640 default
+```
+
+16xlargeでのGPU実行は、**N=20の結果を見る意味ではかなり価値があります**。N=18/N=19だけだと16xlarge CPUが強すぎますが、N=20以降でGPU側の伸び方がどうなるかが本番です。
+
+[1]: https://docs.aws.amazon.com/ec2/latest/instancetypes/pg.html?utm_source=chatgpt.com "Specifications for Amazon EC2 previous generation ..."
+
+
+はい、これでかなりはっきりしました。
+
+まず、現在の環境は **NVIDIA A10G 1枚**です。AWSでA10Gが載る代表的な系列は **G5 instance** で、AWS公式にも G5 は NVIDIA A10G Tensor Core GPU を搭載し、`g5.xlarge` から `g5.16xlarge` まで「1 GPU」の構成があると記載されています。([Amazon Web Services, Inc.][1])
+
+つまり、少なくとも CUDA 実行環境としては **m4 ではなく G5/A10G系**として見た方がよいです。
+確認するなら、これが確実です。
+
+```bash
+TOKEN=$(curl -X PUT http://169.254.169.254/latest/api/token \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+
+curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/instance-type
+```
+
+## 現在の同一環境比較
+
+今回のログでは、同じA10G環境上で CPU と GPU を比較できています。
+
+CPU:
+
+```text
+18: 0:00:02.216
+19: 0:00:15.750
+```
+
+GPU 45 / sortなし:
+
+```text
+18: 0:00:02.901
+19: 0:00:21.792
+```
+
+GPU 45 / sort_mode=2:
+
+```text
+18: 0:00:02.922
+19: 0:00:22.373
+```
+
+なので、**このA10Gホスト上では、N=18/N=19ともCPUがまだ速い**です。
+
+比率はだいたいこうです。
+
+```text
+N=18:
+CPU 2.216秒 / GPU 2.901秒
+→ CPUが約1.31倍速い
+
+N=19:
+CPU 15.750秒 / GPU 21.792秒
+→ CPUが約1.38倍速い
+```
+
+ただし、以前の「m4.xlarge CPU N=18 = 31.653秒」と比べると、現在のCPU `2.216秒` は別物です。これはおそらく **4 vCPU級ではなく、64 vCPU級のCPU**で動いています。実際、過去メモの m4.16xlarge CPU 値も N=18 `2.308秒`、N=19 `16.233秒` なので、今回の CPU `2.216秒 / 15.750秒` はその水準です。
+
+## 「16xlargeに上げてもGPUが変わらない」理由
+
+これはかなり納得できます。
+
+A10G付きG5系では、たとえば `g5.xlarge` も `g5.16xlarge` も **GPUは同じく A10G 1枚**です。違うのは主に vCPU数とメモリです。([Amazon Web Services, Inc.][2])
+
+45系のGPU実装は、以前の chunk ログで `build` と `copy` がほぼゼロ、時間の大半が `kernel` でした。つまり **GPUカーネル本体が支配的**です。
+
+そのため、
+
+```text
+g5.xlarge  → A10G 1枚
+g5.16xlarge → A10G 1枚
+```
+
+なら、CPUを増やしてもGPU時間はほとんど変わらない、という挙動は自然です。
+CPU実行だけは `@par` が効くので、vCPU増加で大きく速くなります。
+
+## sort_mode の判断修正
+
+今回のログを見ると、`sort_mode=2` は N=19単体実行では安定して `mode=0` より約0.2秒速いです。
+
+```text
+N=19単体:
+mode=0 : 22.645 / 22.652 / 22.656
+mode=2 : 22.441 / 22.445 / 22.443
+```
+
+一方、`-g 5 19` の連続実行では、
+
+```text
+mode=0 : N19 21.792
+mode=2 : N19 22.373
+```
+
+なので、連続実行では **sortなしの方が速い**です。
+
+したがって採用判断はこうです。
+
+```text
+trunk:
+  sort_mode=0
+
+保留:
+  sort_mode=2
+  N=19単体では少し速いが、5..19連続では遅い
+
+不採用:
+  sort_mode=1
+```
+
+NQのベンチ表示として `-g 5 19` や `-g 5 20` を使うなら、**sort_mode=0固定**がよいです。
+
+## いまの到達点
+
+45のGPUは、元の19 GPUよりは大きく改善しています。
+
+過去の19 GPU original:
+
+```text
+N=18: 0:00:12.092
+```
+
+現在の45 GPU:
+
+```text
+N=18: 0:00:02.901〜2.922
+```
+
+なので、GPU側は約 **4.1倍高速化**しています。
+ただし、CPU側も同じG5/16xlarge級では非常に強く、現在は CPU がまだ勝っています。
+
+## 次にやるべきこと
+
+まず N=20 を同一環境で比較するのが重要です。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -c
+```
+
+CPUはN=20まで行くと時間がかかるので、すでに過去基準では、
+
+```text
+N=20 CPU: 0:02:08.222
+```
+
+です。
+
+GPUはまずこれです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 0
+```
+
+比較用に mode2 はその後で十分です。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 2
+```
+
+N=18/N=19ではCPUが勝っていますが、N=20で差が縮むか、広がるかが本当の判断材料です。
+
+現時点の判断はこうです。
+
+```text
+採用:
+  45
+  block=32
+  max_blocks=512
+  sort_mode=0
+
+現環境:
+  NVIDIA A10G 1枚
+  おそらくG5系
+  GPU時間はCPUスペック変更では大きく変わりにくい
+
+結論:
+  16xlarge級CPUとの比較ではまだCPU優勢
+  ただし、GPU kernel自体は19 originalから約4倍改善済み
+  次の判断点はN=20
+```
+
+[1]: https://aws.amazon.com/ec2/instance-types/g5/?utm_source=chatgpt.com "Amazon EC2 G5 Instances"
+[2]: https://aws.amazon.com/blogs/aws/new-ec2-instances-g5-with-nvidia-a10g-tensor-core-gpus/?utm_source=chatgpt.com "EC2 Instances (G5) with NVIDIA A10G Tensor Core GPUs"
+
+
+もちろんです。明日はこの続きから、GPU側の速度向上に集中して詰めましょう。
+
+現時点の再開メモはこうです。
+
+```text
+NQ GPU 続き。
+
+現trunk候補:
+  45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort.py
+
+採用条件:
+  block      = 32
+  max_blocks = 512
+  sort_mode  = 0 を基準
+
+現A10G環境での実測:
+  CPU:
+    N=18  0:00:02.216
+    N=19  0:00:15.750
+  GPU 45 sort_mode=0:
+    N=18  0:00:02.901〜0:00:02.927
+    N=19  0:00:21.792〜0:00:21.967
+  GPU 45 sort_mode=2:
+    N=19単体では mode0 より約0.2秒速い
+    ただし -g 5 19 連続では mode0 の方が速い
+
+判断:
+  sort_mode=0 を trunk
+  sort_mode=2 は保留
+  bucket / expand 系は不採用
+  single launch 不採用
+  nextbits 不採用
+  ld u32 不採用
+
+次にやること:
+  1. N=20 を 45 / 32x512 / sort_mode=0 で測る
+  2. N=20 の sort_mode=2 も比較
+  3. N=20 の log_level=2 で chunk別 kernel時間を見る
+  4. 次の最適化は bucket化ではなく、39/45系 kernel の hotpath / tail / heavy constellation 対策
+```
+
+現在の比較では、同じA10G環境で CPU が N=18 `2.216秒`、N=19 `15.750秒`、GPU 45 sortなしが N=18 `2.901秒`、N=19 `21.792秒` なので、まだCPU優勢です。ただし、元のGPU実装の N=18 約12秒台からは、45系で約2.9秒まで落ちていて、GPU側はかなり改善済みです。
+
+明日の最初のコマンドはこれが良いです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 0 2
+```
+
+その後、内訳を見るならこれです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x512_sort -g 20 20 32 512 2 0
+```
+
+過去CPU基準では N=20 が `0:02:08.222`、N=21 が `0:17:43.937` なので、N=20 のGPU実測が次の大きな判断点になります。
+
+明日は、**45をtrunkとして維持しながら、N=20のchunkログを見て「重いconstellation待ち」をどう減らすか**に絞って進めるのがよいです。
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

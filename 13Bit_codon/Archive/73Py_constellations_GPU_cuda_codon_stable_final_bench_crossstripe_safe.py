@@ -17,6 +17,394 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 73 STABLE FINAL BENCH 32x484（72 STABLE FINAL + CROSS STRIPE SAFE CLEANUP）
 
+はい。今日の起点は **72 STABLE FINAL BENCH** でよいと思います。
+
+現時点の到達点を整理すると、かなり重要なのはここです。
+
+**kernel ロジックを触らずに、N=20 が 2:42 → 2:25 前後まで短縮できた**
+
+これは単なる測定誤差ではなく、
+
+```text
+constellation 投入順序
+warmup / measured の分離
+N=20 専用 sort_mode=9
+32x484 の安定設定
+```
+
+が効いていると見てよいと思います。
+
+今日の改善テーマは、いきなり kernel 改造へ戻るのではなく、以下の順番が安全です。
+
+---
+
+## 今日の方針
+
+### 1. 72 を「壊さない基準版」として固定
+
+まず 72 は、今後の比較対象として完全に固定した方がよいです。
+
+```text
+72 STABLE FINAL BENCH
+block      = 32
+max_blocks = 484
+
+auto:
+  N=20      -> sort_mode=9
+  otherwise -> sort_mode=0
+
+bench:
+  bench_mode=5
+  run1 warmup
+  run2 measured
+```
+
+今後の改造版は、必ず 72 と比較します。
+
+```text
+72              : 基準版
+73_crossstripe  : cross stripe safe 整理版
+74_n21_auto     : N=21 展開版
+75_weight_est   : chunk 重さ推定版
+```
+
+のように、番号を分けるのが安全です。
+
+---
+
+## 2. cross stripe safe は「有効化」より先に「整理」
+
+前回の流れから見ると、cross stripe safe はまだ高速化本体というより、
+
+```text
+投入順序を変えても壊れないか
+chunk 分割を変えても Total が一致するか
+並び替え後の index / range / offset が安全か
+```
+
+を保証するための安全装置に近いです。
+
+なので、今日の第一候補はこれです。
+
+```text
+cross stripe safe を高速化機能としてではなく、
+投入順序変更時の検証モードとして整理する
+```
+
+たとえばフラグはこういう位置づけがよいです。
+
+```python
+cross_stripe_safe: bool = False
+```
+
+意味は、
+
+```text
+False:
+  通常高速実行
+
+True:
+  stripe / chunk / sort 後の投入範囲を安全側で検査する
+  必要なら境界情報を出す
+  速度測定用ではなく検証用
+```
+
+つまり、常用ではなくデバッグ・検証用です。
+
+---
+
+## 3. N=21 以降への展開は、まず auto だけ広げる
+
+いきなり N=21 に sort_mode=9 を適用するのは、少し危険だと思います。
+
+N=20 で効いた理由は、おそらく constellation ごとの重さの偏りと、投入順序の相性がよかったからです。
+
+しかし N=21 以降では、
+
+```text
+constellation 数
+枝刈りの偏り
+左右対称制限の効き方
+GPU 内での warp / block 単位の待ち時間
+chunk の長尾
+```
+
+が変わる可能性があります。
+
+なので、まずは auto をこう拡張するのが安全です。
+
+```python
+def auto_sort_mode(N:int)->int:
+  if N == 20:
+    return 9
+  return 0
+```
+
+ここは当面変えない。
+
+そのうえで、N=21 だけ実験用に明示指定します。
+
+```bash
+./72... -g 21 21 32 484 5 0
+./72... -g 21 21 32 484 5 9
+```
+
+のように、auto ではなく明示指定で比較します。
+
+---
+
+## 4. N=21 以降でまず見るべき数値
+
+N=21 を本格的に見る場合、最初から完走時間だけを見るより、以下を分けて見たいです。
+
+```text
+1. constellation 生成時間
+2. GPU 投入対象数
+3. chunk 数
+4. sort_mode ごとの前処理時間
+5. run1 warmup 時間
+6. run2 measured 時間
+7. Total 一致確認
+```
+
+出力としては、たとえばこの程度で十分です。
+
+```text
+N=21
+constellations : xxxxxxxx
+block          : 32
+max_blocks     : 484
+steps          : 15488
+sort_mode      : 9
+bench_mode     : 5
+
+run1 warmup    : 0:xx:xx.xxx
+run2 measured  : 0:xx:xx.xxx
+total          : ...
+status         : ok
+```
+
+ここで重要なのは、**run1 と run2 の差**です。
+
+N=20 では初回遅延の影響が明確に見えたので、N=21 でも同じ現象が出るか確認したいです。
+
+---
+
+## 5. さらに chunk 内の重さ推定
+
+ここが次の本命です。
+
+現在の sort_mode=9 は、実測上かなり効いています。
+ただし、さらに伸ばすなら、
+
+```text
+constellation の見た目の順序
+```
+
+ではなく、
+
+```text
+各 constellation / chunk がどれくらい重いか
+```
+
+を推定して、重いものを先に出す、または均等に散らす方向になります。
+
+ただし、ここで注意が必要です。
+
+**正確な重さ推定をしようとすると、それ自体が重くなる**可能性があります。
+
+なので最初は軽い推定で十分です。
+
+候補はこのあたりです。
+
+```text
+popcount(avail at first few rows)
+row depth after preset queens
+left/right/col の埋まり具合
+残り候補数の粗い見積もり
+```
+
+たとえば、疑似的にはこうです。
+
+```python
+def estimate_weight(ld:int, rd:int, col:int, row:int, N:int)->int:
+  mask = (1 << N) - 1
+  score = 0
+
+  # 先読みは浅く。深くやると本探索になる
+  for _ in range(3):
+    bitmap = mask & ~(ld | rd | col)
+    c = popcount(bitmap)
+    score = score * 16 + c
+
+    if bitmap == 0:
+      break
+
+    # 仮に一番低い bit を置いて浅く進める
+    bit = bitmap & -bitmap
+    col |= bit
+    ld = (ld | bit) << 1
+    rd = (rd | bit) >> 1
+    row += 1
+
+  return score
+```
+
+ただし、これはまだ「正しい重さ」ではありません。
+
+まずは、
+
+```text
+estimate_weight が大きい順
+estimate_weight が小さい順
+重い・軽いを交互に混ぜる
+stripe に分散する
+```
+
+を比較するのがよいです。
+
+---
+
+## 今日の実装順としてはこれがよいです
+
+```text
+73:
+  72 をコピー
+  cross stripe safe のコメント整理
+  auto_sort_mode を明文化
+  README 用コメントをソース冒頭に追加
+
+74:
+  N=21 明示 sort_mode 比較用
+  auto はまだ N=20 のみ sort_mode=9
+
+75:
+  chunk / constellation の重さ推定ログだけ追加
+  まだ投入順には反映しない
+
+76:
+  推定重さ順 sort_mode=10 を追加
+```
+
+いきなり 76 に行かず、**75 でログだけ見る**のが安全だと思います。
+
+---
+
+## 今日の最初のおすすめ作業
+
+まずは 72 の冒頭に、次のようなメモを入れるのがよいと思います。
+
+```python
+# ============================================================
+# 72 STABLE FINAL BENCH
+# ============================================================
+# Purpose:
+#   Stable GPU benchmark version for constellation-based N-Queens.
+#
+# Stable config:
+#   block      = 32
+#   max_blocks = 484
+#
+# auto sort:
+#   N == 20 : sort_mode = 9
+#   else   : sort_mode = 0
+#
+# bench_mode = 5:
+#   run1 : warmup
+#   run2 : measured
+#
+# Current best records:
+#   56 STABLE FINAL N=20       : 0:02:42.602
+#   72 normal single N=20      : 0:02:27.854
+#   72 repeat2 bench N=20      : 0:02:25.074
+#   72 in range run N=20       : 0:02:23.713
+#
+# Notes:
+#   Major improvement came from constellation ordering and
+#   warmup/measured separation, not from kernel logic changes.
+#
+# Next candidates:
+#   - cross stripe safe cleanup
+#   - N=21+ expansion
+#   - chunk weight estimation
+# ============================================================
+```
+
+これは公開用・再開用・比較用のすべてに効きます。
+
+---
+
+## 重要な判断
+
+今日の結論としては、こうです。
+
+```text
+kernel 改造にはまだ戻らない方がよいです。
+```
+
+理由は、まだ kernel 外側でできることが残っています。
+
+特に、
+
+```text
+N=20 で sort_mode=9 が効いた理由を説明できる状態にする
+N=21 でも同じ傾向があるか確認する
+chunk の重さ推定をログで可視化する
+```
+
+ここまで進めてから kernel を触る方が、成功確率が高いです。
+
+次に進めるなら、まず **73 として cross stripe safe 整理版**を作るのが一番安全です。
+
+73 のソースを、添付いただいたファイルをベースに整理して作成しました。kernel 本体は触らず、73 用の整理だけを入れています。
+
+こちらです。
+
+[73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe.py](sandbox:/mnt/data/73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe.py)
+
+差分確認用はこちらです。
+
+[73_crossstripe_safe_cleanup.diff](sandbox:/mnt/data/73_crossstripe_safe_cleanup.diff)
+
+主な反映内容は以下です。
+
+```text
+1. ヘッダと実行例を 73 名に更新
+2. VERSION_TAG を追加
+3. CROSS_STRIPE_SAFE_DEFAULT = False を追加
+4. auto_sort_mode(N) を追加
+   N == 20 -> sort_mode=9
+   else    -> sort_mode=0
+5. cross_stripe_safe 用の検証関数を追加
+   - chunk range 検証
+   - reorder 件数検証
+   - reorder permutation 検証
+6. exec_solutions() に cross_stripe_safe 引数を追加
+7. sort_mode=9 の cross stripe コメントを 73 用に整理
+8. GPU config / summary に cross_safe 表示を追加
+9. CLI 末尾に [cross_stripe_safe] を追加
+10. bench_mode=5 の repeat2 実行にも cross_stripe_safe を通す
+```
+
+通常ベンチはこれです。
+
+```bash
+codon build -release 73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe.py
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 20 20 32 484 0 -1 5 5
+```
+
+cross stripe safe 検証つきはこれです。
+
+```bash
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 20 20 32 484 2 -1 5 5 1
+```
+
+最後の `1` が `cross_stripe_safe=True` です。これは検証用なので、速度比較の本番ベンチでは `0` または省略がよいです。
+
+この環境には Codon/CUDA 実行環境がないため、こちらではビルド実行までは確認できていません。コード上は 72 の kernel ロジックを維持し、投入順序・検証・表示まわりだけを整理した 73 になっています。
+
+
+
 Build -release
 $ codon build -release 73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe.py
 

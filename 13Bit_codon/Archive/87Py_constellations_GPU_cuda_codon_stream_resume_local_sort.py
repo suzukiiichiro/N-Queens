@@ -15,233 +15,243 @@
          _/ _/
        _/m/'
 
-Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 44 trunk候補 32x640 + chunk内sort診断（ctrlrow mixed32 tuned）
+Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
-はい、かなり良いです。今回で **chunk サイズの本命が見えました**。
+はい、**87に行きましょう。**
+ただし、85/86の延長で「fid別に複数kernelを投げる方向」はいったん止めます。87は、**84の本線を崩さず、N24長期実行の保険になる resume 機能を追加した版**にしました。
 
-## 今回の結論
+こちらです。
 
-現時点の最良条件はほぼこれです。
+[87Py_constellations_GPU_cuda_codon_stream_resume_local_sort.py](sandbox:/mnt/data/87Py_constellations_GPU_cuda_codon_stream_resume_local_sort.py)
+
+この環境では `codon build` は実行できないため、Codon実ビルド確認は未実施です。Pythonの `tokenize` による字句レベル確認は通しています。
+
+## 87の方針
+
+85/86は、fid bucket化でGPU kernel launch回数が増えすぎました。
+したがって87では、**複数kernel化はしません**。
+
+87は次の方針です。
+
+```text
+84 stream本線を維持
+既存の単一kernel local sort機構を使う
+新たに stream resume を追加
+```
+
+84にはすでに、`sort_mode=1..4` の「chunk内だけ並び替え、kernel数は増やさない」仕組みがあります。87はその方向を活かします。84のソースでも、`sort_mode > 0` は「kernelを増やさず、chunk内だけ並び替える」診断として整理されています。
+
+## 87で追加したもの
+
+新しく追加したのは **bench_mode=12 の resume mode** です。
+
+```text
+bench_mode=12:
+  progress_N{N}_{preset}_stream.tsv を読む
+  最後に完了したchunkの次から再開
+  gpu_totalもprogressの最終値から再開
+```
+
+つまり、N24実行が途中で止まった場合、先頭からやり直さずに済みます。
+
+84のN24は長期実行なので、速度改善より先に **中断耐性** を入れる価値が高いです。
+
+## いまは87を実行しないでください
+
+現在の84 N24はそのまま継続です。
+87は **N24が止まった場合の再開用**、または **N24完走後の検証用** です。
+
+```text
+現在:
+  84 N24を継続
+
+87:
+  ビルドだけなら可
+  GPU実行はN24完走後、または84が止まった後
+```
+
+## ビルド
 
 ```bash
-block=32
-max_blocks=640
-steps=20480
+codon build -release 87Py_constellations_GPU_cuda_codon_stream_resume_local_sort.py
 ```
 
-今回の結果では、
+## N24が止まった場合の再開
 
-```text
-43 default 32x512 : N18 0:00:02.923 / N19 0:00:21.964
-39 32x640         : N19 0:00:21.962
-```
-
-なので、`32x512` と `32x640` はほぼ同率ですが、追加 sweep の中では `32x640` が最良です。
-
-## 読み
-
-今回かなり重要なのは、これです。
-
-```text
-32x512  : N19 22秒前後
-32x640  : N19 21.96秒
-32x768  : N19 27.98秒
-single  : N19 48秒台
-```
-
-つまり、**kernel 起動回数を減らし切る方向は悪化**します。
-最適は single launch ではなく、`steps=16K〜20K` 付近です。
-
-これは以前の bucket 版と同じく、「長い枝を一つの巨大 kernel に抱え込むと、最後の重い thread 待ちが支配的になる」ためだと思います。逆に chunk が小さすぎると launch / tail が増える。今回の `32x640` はその中間の良い位置です。
-
-また、同じ `steps=16384` 近辺でも、
-
-```text
-32x512  / 32x640 が良い
-64x256  は少し悪い
-128x128 も悪い
-256x64  も悪い
-```
-
-なので、**block は 32 がかなり良い**です。
-これは 1 block = 1 warp に近い形になり、今の「1 thread = 1 constellation DFS」構造と相性が良いのだと思います。
-
-## 現在の位置
-
-ここまでの改善はかなり大きいです。
-
-```text
-19 original GPU N18 : 約12.09秒
-39/43系 N18         : 約 2.92秒
-```
-
-N=18 では約 **4.1倍高速化**しています。
-
-N=19 は、
-
-```text
-CPU 19系 : 16.233秒
-GPU 43   : 21.964秒
-```
-
-なので、まだ CPU には届いていませんが、差はかなり縮まりました。CPU基準の N=19/N=20 は元ソースのメモでは `16.233秒` / `2:08.222` です。
-
-## 採用候補
-
-現時点の trunk 候補はこうです。
-
-```text
-43 / 39 childlow 系
-block=32
-max_blocks=640
-sortなし
-```
-
-43 は default が `32x512` なので、今後は `32x640` を default にした方がよいです。
-
-そこで、44を作りました。
-
-[44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort.py](sandbox:/mnt/data/44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort.py)
-
-[差分パッチ](sandbox:/mnt/data/nq_gpu_44_32x640_sort_patch.diff)
-
-## 44 の内容
-
-44 は 43 ベースです。探索ロジックは変えていません。
-
-変更点は2つです。
-
-```text
-default block      = 32
-default max_blocks = 640
-```
-
-そして、診断用に `sort_mode` を追加しました。
-
-```text
-sort_mode=0 : そのまま。現在の本命
-sort_mode=1 : chunk内だけ functionid 順に並び替え
-sort_mode=2 : chunk内だけ funcptn 順に並び替え
-```
-
-重要なのは、これは **bucket のように複数 kernel 起動しません**。
-各 chunk の中で SoA を並び替えて、**同じ1回の kernel** に投げます。
-
-狙いはこうです。
-
-```text
-29のbucket化 : kernel数が増えて遅い
-44のsort-only: kernel数は増やさず、warp内の分岐だけ少し揃える
-```
-
-もし `sort_mode=1/2` が遅ければ、並び替えも捨てて `sort_mode=0` 固定でよいです。
-
-## まず試すコマンド
-
-ビルド：
+まずprogressを退避します。
 
 ```bash
-codon build -release 44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort.py
+cp progress_N24_7_stream.tsv \
+   "progress_N24_7_stream.tsv.before_87_resume_$(date +%Y%m%d_%H%M%S).bak"
 ```
 
-まず trunk 相当：
+再開コマンド：
 
 ```bash
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 18 19
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 24 24 32 484 1 0 5 12 \
+  2>&1 | tee -a "logs/run_N24_87_resume_$(date +%Y%m%d_%H%M%S).log"
 ```
 
-明示指定するなら：
+最後の `12` が resume mode です。
 
-```bash
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 640 0 0
-```
-
-sort-only 診断：
-
-```bash
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 640 0 1
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 640 0 2
-```
-
-判定は単純です。
+ログには次のような行が出ます。
 
 ```text
-sort_mode=0 が 21.96秒前後 → 44の基準OK
-sort_mode=1 が速い         → functionid順 sort 採用
-sort_mode=2 が速い         → funcptn順 sort 採用
-どちらも遅い               → sortは捨てる
+[stream-resume] N=24 preset=7 progress=progress_N24_7_stream.tsv next_chunk=... next_off=... gpu_total=...
 ```
 
-## 次に見るべき N
+これが出れば、先頭ではなく途中から再開しています。
 
-次は N=20 を見たいです。
+## N21/N22で速度検証する場合
+
+N24完走後に、まず通常の87をN21で試します。
 
 ```bash
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 20 20 32 640 0 0
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 21 21 32 484 1 0 5 0
 ```
 
-N=19ではまだ CPU に負けていますが、N=20 で差がどうなるかが重要です。
-CPU N=20 は元メモで `2:08.222` なので、GPUがここに近づくか、超えるかで N27 への見通しが変わります。
-
-## 追加で詰めるなら
-
-`640` 周辺はもう少しだけ見る価値があります。
+次に、単一kernel local sortの `sort_mode=4` を試します。
 
 ```bash
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 608 0 0
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 640 0 0
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 672 0 0
-./44Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x640_sort -g 19 19 32 704 0 0
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 21 21 32 484 1 4 5 0
 ```
 
-ただ、今のところ大きな方向性は固まっています。
+比較対象は84のN21です。
 
 ```text
-採用:
-  original構造
-  ctrlrow + mixed32 + childlow
-  block=32
-  max_blocks≈640
-
-不採用:
-  全量 expand
-  bucket 複数kernel
-  single launch
-  nextbits
-  ld u32
-  MAXD=28
+84 N21 sort_mode=0:
+  約25分台
 ```
 
-今回の `32x640` はかなり良いです。
-次の勝負は **N20実測** と **sort-only が効くかどうか**です。
+`sort_mode=4` が速ければ、次にN22で試します。
+
+```bash
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 22 22 32 484 1 4 5 0
+```
+
+## 87の位置づけ
+
+```text
+84:
+  本線。N24完走を待つ。
+
+85:
+  fid別bucket版。kernel launchが増えすぎて遅い。
+
+86:
+  superchunk fid bucket版。84同時実行中では評価不能。
+  ただし方向としてもまだ重い可能性あり。
+
+87:
+  84本線を維持。
+  複数kernel化しない。
+  resume機能を追加。
+  既存sort_mode=4を使って単一kernelのまま並び替え評価。
+```
+
+今は**84のN24を守る**のが最優先です。
+87は作成済みなので、N24が止まったときの再開、またはN24完走後のN21/N22比較に使うのが良いです。
+
+
+ビルド
+codon build -release 87Py_constellations_GPU_cuda_codon_stream_resume_local_sort.py
+N24が止まった場合の再開
+
+まずprogressを退避します。
+
+cp progress_N24_7_stream.tsv \
+   "progress_N24_7_stream.tsv.before_87_resume_$(date +%Y%m%d_%H%M%S).bak"
+
+再開コマンド：
+
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 24 24 32 484 1 0 5 12 \
+  2>&1 | tee -a "logs/run_N24_87_resume_$(date +%Y%m%d_%H%M%S).log"
+
+最後の 12 が resume mode です。
+
+ログには次のような行が出ます。
+
+[stream-resume] N=24 preset=7 progress=progress_N24_7_stream.tsv next_chunk=... next_off=... gpu_total=...
+
+これが出れば、先頭ではなく途中から再開しています。
+
+N21/N22で速度検証する場合
+
+N24完走後に、まず通常の87をN21で試します。
+
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 21 21 32 484 1 0 5 0
+
+次に、単一kernel local sortの sort_mode=4 を試します。
+
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 21 21 32 484 1 4 5 0
+
+比較対象は84のN21です。
+
+84 N21 sort_mode=0:
+  約25分台
+
+sort_mode=4 が速ければ、次にN22で試します。
+
+./87Py_constellations_GPU_cuda_codon_stream_resume_local_sort \
+  -g 22 22 32 484 1 4 5 0
+87の位置づけ
+84:
+  本線。N24完走を待つ。
+
+85:
+  fid別bucket版。kernel launchが増えすぎて遅い。
+
+86:
+  superchunk fid bucket版。84同時実行中では評価不能。
+  ただし方向としてもまだ重い可能性あり。
+
+87:
+  84本線を維持。
+  複数kernel化しない。
+  resume機能を追加。
+  既存sort_mode=4を使って単一kernelのまま並び替え評価。
+  
+
+    
+g5.16xlarge は NVIDIA A10G GPU を搭載しており、CUDA 13.0 対応のドライバが入っています。
+g5.xlarge は NVIDIA A10G GPU を搭載しており、CUDA 13.0 対応のドライバが入っています。
+
+速度が上がらない理由
+-----------------------
+g5.xlarge  → A10G 1枚
+g5.16xlarge → A10G 1枚
+------------------------
+
+$ codon build -release 76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py
+$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 5 20 32 484 0 -1
+GPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.004    ok
+ 7:                40                0          0:00:00.003    ok
+ 8:                92                0          0:00:00.002    ok
+ 9:               352                0          0:00:00.002    ok
+10:               724                0          0:00:00.004    ok
+11:              2680                0          0:00:00.006    ok
+12:             14200                0          0:00:00.007    ok
+13:             73712                0          0:00:00.011    ok
+14:            365596                0          0:00:00.019    ok
+15:           2279184                0          0:00:00.042    ok
+16:          14772512                0          0:00:00.114    ok
+17:          95815104                0          0:00:00.461    ok
+18:         666090624                0          0:00:02.742    ok
+19:        4968057848                0          0:00:20.630    ok
+20:       39029188884                0          0:02:23.713    ok
 
 
 amazon AWS m4.16xlarge x 1
-workspace#suzuki$ uname -a
-Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
-workspace#suzuki$ date
-2026年  4月 22日 水曜日 10:27:42 JST
-workspace#suzuki$ ./19Py_constellations_GPU_cuda_codon -c
-CPU mode selected
- N:             Total           Unique         hh:mm:ss.ms
- 5:                10                0          0:00:00.000
- 6:                 4                0          0:00:00.088    ok
- 7:                40                0          0:00:00.000    ok
- 8:                92                0          0:00:00.000    ok
- 9:               352                0          0:00:00.003    ok
-10:               724                0          0:00:00.004    ok
-11:              2680                0          0:00:00.013    ok
-12:             14200                0          0:00:00.024    ok
-13:             73712                0          0:00:00.049    ok
-14:            365596                0          0:00:00.105    ok
-15:           2279184                0          0:00:00.186    ok
-16:          14772512                0          0:00:00.294    ok
-17:          95815104                0          0:00:00.455    ok
-18:         666090624                0          0:00:02.308    ok
-19:        4968057848                0          0:00:16.233    ok
-20:       39029188884                0          0:02:08.222    ok
-21:      314666222712                0          0:17:43.937    ok
-
 workspace#suzuki$ date
 2026年  2月  5日 木曜日 11:22:41 JST
 workspace#suzuki$ ./18Py_constellations_GPU_cuda_codon -c
@@ -282,33 +292,6 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
-概要:
-  コンステレーション（部分盤面の型）を事前生成し、各 constellation を独立タスクとして
-  CPU（@par）または GPU（@gpu.kernel）で DFS 集計する高速 N-Queens ソルバーです。
-  盤面衝突判定はビットボード（ld/rd/col）で O(1) にし、左右ミラー/回転の対称性を
-  重み w_arr（2/4/8）として掛けて Total を復元します。
-
-設計レビュー（この実装の要点）:
-  - 「探索の分割」: constellation を生成してタスク化し、SoA（Structure of Arrays）へ展開して
-    連続メモリで処理します（GPU/CPU 共通の前処理）。
-  - 「非再帰 DFS」: 再帰を避け、固定長スタックで push/pop します。
-      GPU: __array__[int](MAXD) + sp
-      CPU: stack: List[Tuple[int,int,int,int,int,int]]
-  - 「分岐モード」: functionid と meta_next / bitmask により、mark/jmark/base の挙動を切替えます。
-  - 「ホットパスの 1bit 展開」:
-      bit = a & -a
-      avail[sp] = a ^ bit       # GPU
-      avail &= avail-1          # CPU
-  - 「次状態」:
-      nld = (ld|bit)<<1
-      nrd = (rd|bit)>>1
-      nf  = board_mask & ~(nld|nrd|ncol)
-
-注意（Codon/LLVM・GPU）:
-  - GPU カーネル内では list/tuple 参照が重いので、Static[int] のビットマスクに焼き込み、
-    (MASK >> f) & 1 で分岐判定します。
-  - スタック深さ MAXD を超える場合は安全弁として早期 return します（誤動作より部分結果優先）。
-
 """
 
 import gpu
@@ -317,6 +300,15 @@ from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
 MAXD:Static[int]=32
+
+VERSION_TAG:str="87 stream resume + single-kernel local-sort runner from 84"
+CROSS_STRIPE_SAFE_DEFAULT:bool=False
+
+# bench_mode=10 の診断用。通常は False のまま。
+# True にすると preset_queens<=5 の constellation_signatures 重複排除を無効化し、
+# N24 境界分類で signature prune が潰しすぎていないかを調べる。
+DISABLE_CONSTELLATION_SIGNATURE_PRUNE:bool=False
+
 
 """  構造体配列 (SoA) タスク管理クラス """
 class TaskSoA:
@@ -379,7 +371,8 @@ def kernel_dfs_iter_gpu(
     META_AVAIL_MASK:Static[int]=69226252
     IS_BASE_MASK:Static[int]=69222408
     IS_JMARK_MASK:Static[int]=4
-    IS_MARK_MASK:Static[int]=199213043
+    IS_MARK_MASK:Static[int]=199209203
+    IS_P5_MASK:Static[int]=(1<<8)|(1<<9)|(1<<10)|(1<<11)
     SEL2_MASK:Static[int]=(1<<1)|(1<<6)|(1<<13)|(1<<17)|(1<<20)|(1<<25)
     STP3_MASK:Static[int]=(1<<4)|(1<<7)|(1<<15)|(1<<18)|(1<<22)|(1<<24)
     MASK_K_N3:Static[int]=185471169
@@ -445,6 +438,24 @@ def kernel_dfs_iter_gpu(
         f:int=cv0i&31
         rowv:int=(cv0i>>5)&31
         nfid=meta_next[f]
+
+        #######################################
+        # P5 same-row transition
+        #
+        # fid=8..11:
+        #   8  SQBjlBkBlBjrB -> 0 SQBkBlBjrB
+        #   9  SQBjlBklBjrB  -> 4 SQBklBjrB
+        #   10 SQBjlBlBkBjrB -> 5 SQBlBkBjrB
+        #   11 SQBjlBlkBjrB  -> 7 SQBlkBjrB
+        #
+        # mark1 到達時、盤面/row/free を変えずに next fid へ遷移する。
+        # その後、同じ row で next fid 側の step=2/3 + block が発火する。
+        #######################################
+        if ((IS_P5_MASK>>f)&1)==1:
+          if rowv==mark1:
+            f=int(nfid)
+            nfid=meta_next[f]
+
         #######################################
         # 基底 is_base
         isb=(IS_BASE_MASK>>f)&1
@@ -578,150 +589,134 @@ def dfs_iter(
   jmark:int,endmark:int,mark1:int,mark2:int
 )->u64:
   """
-  機能:
-    CPU 上で DFS を「非再帰（明示スタック）」で実行し、部分盤面（constellation）
-    が持つ探索領域の解数（ユニーク側）を返す。
+  CPU 上で DFS を非再帰で実行する。
 
-  引数:
-    meta:
-      functionid -> (next_funcid, funcptn, avail_flag) のテーブル。
-      - funcptn: 段の種類（mark系 / jmark系 / base系）を表す。
-      - avail_flag: “先読み枝刈りを使うか”のフラグ（+1 の先読みで枝を落とす）。
-    blockK/blockL:
-      mark 行で適用する追加ブロック値（bitboard へ OR する補正）。
-      - step=2/3 で複数行をまとめて進める段で使用。
-    board_mask:
-      (1<<N)-1。ビットボード正規化に使用。
-    functionid, ld, rd, col, row, free:
-      現在状態（分岐モードID + ビットボード）。
-    jmark/endmark/mark1/mark2:
-      分岐トリガとなる行番号。
+  78 FIX:
+    funcptn==4 / P5 / fid=8..11 を追加。
 
-  返り値:
-    u64: この constellation の解数（※対称性の重みは呼び出し側で掛ける）
+    fid=8..11:
+      8  SQBjlBkBlBjrB  -> 0 SQBkBlBjrB
+      9  SQBjlBklBjrB   -> 4 SQBklBjrB
+      10 SQBjlBlBkBjrB  -> 5 SQBlBkBjrB
+      11 SQBjlBlkBjrB   -> 7 SQBlkBjrB
 
-  実装上のコツ（ソース引用）:
-    bit = avail & -avail
-    avail &= avail - 1
-
-  注意:
-    - Python 再帰を避け、push/pop を使ってホットパスのオーバーヘッドを抑える。
-    - meta/blockK/blockL は exec_solutions() 側で整合するように与えること。
+    P5 は mark1 到達時に queen を置かず、row も進めず、
+    same-row のまま next_funcid へ遷移する。
   """
 
   total:u64=u64(0)
 
-  # スタック要素: (functionid, ld, rd, col, row, free)
-  # NOTE: 再帰呼び出しを使わずに pop → 展開 → push を回す
+  # スタック要素:
+  #   functionid, ld, rd, col, row, free
   stack:List[Tuple[int,int,int,int,int,int]]=[(functionid,ld,rd,col,row,free)]
 
   while stack:
     functionid,ld,rd,col,row,free=stack.pop()
 
-    # 候補が無いなら終了（この枝は詰み）
     if not free:
       continue
 
-    # functionid から「この段の振る舞い」を取得
     next_funcid,funcptn,avail_flag=meta[functionid]
     avail:int=free
 
-    # ---- 基底: endmark 到達時の解カウント ----
-    # funcptn==5 が “base” の段（実装側の割り当て）
+    # ------------------------------------------------------------
+    # 基底
+    # ------------------------------------------------------------
     if funcptn==5 and row==endmark:
-      # functionid==14 は SQd2B の特例（右シフトで条件付き）
+      # fid=14 SQd2B 特例
       if functionid==14:
         total+=u64(1) if (avail>>1) else u64(0)
       else:
         total+=u64(1)
       continue
 
-    # ---- 既定設定（通常 step=1 で次の行へ）----
+    # ------------------------------------------------------------
+    # 既定値
+    # ------------------------------------------------------------
     step:int=1
     add1:int=0
     row_step:int=row+1
 
-    # mark 段で blockK/blockL を使うか
     use_blocks:bool=False
-
-    # avail_flag==1 のとき「先読み枝刈り」を使う（+1 の先をチェック）
     use_future:bool=(avail_flag==1)
 
-    # 既定では functionid は維持（mark/jmark で遷移する場合のみ変更）
     local_next_funcid:int=functionid
 
-    # ----------------------------------------------------------------------
-    # 段の種類分岐（funcptn）
-    #   - mark系: step=2/3 でまとめて進める（blockK/blockL を適用）
-    #   - jmark系: 入口で列0禁止 + ld の LSB を立てる
-    #   - base系 : 上で処理済み
-    # ----------------------------------------------------------------------
+    _blockK:int=0
+    _blockL:int=0
 
-    # ---- mark 行: step=2/3 + block ----
+    # ------------------------------------------------------------
+    # P1/P2/P3: mark 行で step=2/3 + block
+    # ------------------------------------------------------------
     if funcptn in (0,1,2):
-      # funcptn により mark1 / mark2 を使い分ける（元実装の意図を保持）
       at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
 
-      # mark 行に一致し、かつ候補があるなら mark モードへ
       if at_mark and avail:
-        # step=2: 2 行進める、step=3: 3 行進める
         step=2 if funcptn in (0,1) else 3
-
-        # 一部 functionid（例: 20）で add1 を使う特例（既存ロジック踏襲）
         add1=1 if (funcptn==1 and functionid==20) else 0
-
         row_step=row+step
 
-        # block テーブルの取得（functionid 毎に異なる）
         _blockK=blockK[functionid]
         _blockL=blockL[functionid]
 
         use_blocks=True
-
-        # mark 段では “先読み”は使わない方針（既存実装）
         use_future=False
-
-        # mark 段では functionid を next_funcid に遷移
         local_next_funcid=next_funcid
 
-    # ---- jmark 特殊 ----
+    # ------------------------------------------------------------
+    # P4: jmark 特殊
+    # ------------------------------------------------------------
     elif funcptn==3 and row==jmark:
-      # 列0禁止（LSB を落とす）
+      # 列0禁止
       avail&=~1
 
-      # ld の LSB を立てる（実装意図: 特殊な禁止線/調整）
+      # ld LSB を立てる
       ld|=1
 
       local_next_funcid=next_funcid
 
-      # 候補が消えたら終了
       if not avail:
         continue
 
-    # ======================================================================
-    # 以降は「候補を 1bit ずつ取り出して次状態を push」する本体
-    # ======================================================================
+    # ------------------------------------------------------------
+    # P5: SQBjl*jrB 系
+    #
+    # fid=8..11 は mark1 に到達するまでは future 付き通常探索。
+    # mark1 に到達したら、盤面を変えず、row も進めず、same-row で
+    # next_funcid へ遷移する。
+    #
+    # 例:
+    #   fid=11 SQBjlBlkBjrB
+    #       -> fid=7 SQBlkBjrB
+    #
+    # fid=7 側が同じ row==mark1 で step=3 + block を処理する。
+    # ------------------------------------------------------------
+    elif funcptn==4 and row==mark1:
+      stack.append((next_funcid,ld,rd,col,row,avail))
+      continue
 
-    # ---- ループ１：mark 段（block 適用）----
+    # ============================================================
+    # ループ1: step=2/3 + block
+    # ============================================================
     if use_blocks:
       while avail:
-        # 最下位 1bit を取り出す
         bit:int=avail&-avail
         avail&=avail-1
 
-        # step=2/3 を反映した次状態（block を OR）
         nld:int=((ld|bit)<<step)|add1|_blockL
         nrd:int=((rd|bit)>>step)|_blockK
         ncol:int=col|bit
 
-        # 次の空き（free）
         nf:int=board_mask&~(nld|nrd|ncol)
 
         if nf:
           stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+
       continue
 
-    # ---- ループ２：通常 +1（先読みなし）----
+    # ============================================================
+    # ループ2: 通常 +1、先読みなし
+    # ============================================================
     if not use_future:
       while avail:
         bit:int=avail&-avail
@@ -730,27 +725,36 @@ def dfs_iter(
         nld:int=(ld|bit)<<1
         nrd:int=(rd|bit)>>1
         ncol:int=col|bit
+
         nf:int=board_mask&~(nld|nrd|ncol)
 
         if nf:
           stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+
       continue
 
-    # ---- ループ３：通常 +1（先読みあり）----
-    # 終端付近は先読みしても得しないので短絡（既存実装の意図を尊重）
+    # ============================================================
+    # ループ3: 通常 +1、終端付近は先読みなし
+    # ============================================================
     if row_step>=endmark:
       while avail:
         bit:int=avail&-avail
         avail&=avail-1
+
         nld:int=(ld|bit)<<1
         nrd:int=(rd|bit)>>1
         ncol:int=col|bit
+
         nf:int=board_mask&~(nld|nrd|ncol)
+
         if nf:
           stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
+
       continue
 
-    # ---- ループ３B：先読み本体（次の次が 0 なら枝刈り）----
+    # ============================================================
+    # ループ3B: 通常 +1、先読みあり
+    # ============================================================
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
@@ -758,17 +762,19 @@ def dfs_iter(
       nld:int=(ld|bit)<<1
       nrd:int=(rd|bit)>>1
       ncol:int=col|bit
+
       nf:int=board_mask&~(nld|nrd|ncol)
+
       if not nf:
         continue
 
-      # “次の次”の free が 0 なら、この枝は詰みなので push しない
+      # 次の次が 0 なら枝刈り
       if board_mask&~((nld<<1)|(nrd>>1)|ncol):
         stack.append((local_next_funcid,nld,nrd,ncol,row_step,nf))
 
   return total
 
-"""汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って(1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み を切り替える。"""
+"""汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って切り替える。"""
 def dfs(
     meta:List[Tuple[int,int,int]],
     blockK_by_funcid:List[int],blockL_by_funcid:List[int],
@@ -776,18 +782,14 @@ def dfs(
     functionid:int,
     ld:int,rd:int,col:int,row:int,free:int,
     jmark:int,endmark:int,mark1:int,mark2:int)->u64:
-  # nq=nq_get(N)
-  """汎用 DFS カーネル。古い SQ???? 関数群を 1 本化し、func_meta の記述に従って
-  (1) mark 行での step=2/3 + 追加ブロック、(2) jmark 特殊、(3) ゴール判定、(4) +1 先読み
-  を切り替える。引数:
-  functionid: 現在の分岐モード ID（次の ID, パターン, 先読み有無は func_meta で決定）
-  ld/rd/col:   斜線/列の占有
-  row/free:    現在行と空きビット
-  jmark/endmark/mark1/mark2: 特殊行/探索終端
-  board_mask:  盤面全域のビットマスク
-  blockK_by_funcid/blockL_by_funcid: 関数 ID に紐づく追加ブロック
-  func_meta:   (next_id, funcptn, availptn) のメタ情報配列
   """
+  78 FIX:
+    funcptn==4 / P5 / fid=8..11 を追加。
+
+    P5 は mark1 到達時に、盤面を変えず、row も進めず、
+    same-row のまま next_funcid へ遷移する。
+  """
+
   next_funcid,funcptn,avail_flag=meta[functionid]
 
   avail:int=free
@@ -796,12 +798,17 @@ def dfs(
 
   total:u64=u64(0)
 
+  # ------------------------------------------------------------
   # 基底
+  # ------------------------------------------------------------
   if funcptn==5 and row==endmark:
-    if functionid==14:# SQd2B 特例
+    if functionid==14:
       return u64(1) if (avail>>1) else u64(0)
     return u64(1)
 
+  # ------------------------------------------------------------
+  # 既定値
+  # ------------------------------------------------------------
   step:int=1
   add1:int=0
   row_step:int=row+1
@@ -811,93 +818,168 @@ def dfs(
 
   local_next_funcid:int=functionid
 
-  # ★ ここ重要：配列 blockK/blockL を「スカラに上書き」しない
   bK:int=0
   bL:int=0
 
+  # ------------------------------------------------------------
+  # P1/P2/P3: mark 行で step=2/3 + block
+  # ------------------------------------------------------------
   if funcptn in (0,1,2):
     at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
+
     if at_mark and avail:
       step=2 if funcptn in (0,1) else 3
       add1=1 if (funcptn==1 and functionid==20) else 0
       row_step=row+step
+
       bK=blockK_by_funcid[functionid]
       bL=blockL_by_funcid[functionid]
+
       use_blocks=True
       use_future=False
       local_next_funcid=next_funcid
 
+  # ------------------------------------------------------------
+  # P4: jmark 特殊
+  # ------------------------------------------------------------
   elif funcptn==3 and row==jmark:
     avail&=~1
     ld|=1
     local_next_funcid=next_funcid
+
     if not avail:
       return u64(0)
 
-  # ループ１：step=2/3 + block
+  # ------------------------------------------------------------
+  # P5: SQBjl*jrB 系
+  #
+  # fid=8..11:
+  #   8  -> 0
+  #   9  -> 4
+  #   10 -> 5
+  #   11 -> 7
+  #
+  # mark1 に到達したら、queen を置かず、row も進めず、
+  # next_funcid 側へ同じ状態を渡す。
+  # ------------------------------------------------------------
+  elif funcptn==4 and row==mark1:
+    return dfs(
+      meta,
+      blockK_by_funcid,
+      blockL_by_funcid,
+      board_mask,
+      next_funcid,
+      ld,rd,col,row,avail,
+      jmark,endmark,mark1,mark2
+    )
+
+  # ============================================================
+  # ループ1: step=2/3 + block
+  # ============================================================
   if use_blocks:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
+
       nld:int=((ld|bit)<<step)|add1|bL
       nrd:int=((rd|bit)>>step)|bK
       ncol:int=col|bit
+
       nf:int=board_mask&~(nld|nrd|ncol)
+
       if nf:
-        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
-        local_next_funcid,
-        nld,nrd,ncol,row_step,nf,
-        jmark,endmark,mark1,mark2)
+        total+=dfs(
+          meta,
+          blockK_by_funcid,
+          blockL_by_funcid,
+          board_mask,
+          local_next_funcid,
+          nld,nrd,ncol,row_step,nf,
+          jmark,endmark,mark1,mark2
+        )
+
     return total
 
-  # ループ２：+1 素朴（先読みなし）
+  # ============================================================
+  # ループ2: 通常 +1、先読みなし
+  # ============================================================
   if not use_future:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
+
       nld:int=(ld|bit)<<1
       nrd:int=(rd|bit)>>1
       ncol:int=col|bit
+
       nf:int=board_mask&~(nld|nrd|ncol)
+
       if nf:
-        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
-        local_next_funcid,
-        nld,nrd,ncol,row_step,nf,
-        jmark,endmark,mark1,mark2)
+        total+=dfs(
+          meta,
+          blockK_by_funcid,
+          blockL_by_funcid,
+          board_mask,
+          local_next_funcid,
+          nld,nrd,ncol,row_step,nf,
+          jmark,endmark,mark1,mark2
+        )
+
     return total
 
-  # ループ３：+1 先読み（終盤は基底で十分）
+  # ============================================================
+  # ループ3: 通常 +1、終端付近は先読みなし
+  # ============================================================
   if row_step>=endmark:
     while avail:
       bit:int=avail&-avail
       avail&=avail-1
+
       nld:int=(ld|bit)<<1
       nrd:int=(rd|bit)>>1
       ncol:int=col|bit
+
       nf:int=board_mask&~(nld|nrd|ncol)
+
       if nf:
-        total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
-        local_next_funcid,
-        nld,nrd,ncol,row_step,nf,
-        jmark,endmark,mark1,mark2)
+        total+=dfs(
+          meta,
+          blockK_by_funcid,
+          blockL_by_funcid,
+          board_mask,
+          local_next_funcid,
+          nld,nrd,ncol,row_step,nf,
+          jmark,endmark,mark1,mark2
+        )
+
     return total
 
-  # ループ３B：先読み本体
+  # ============================================================
+  # ループ3B: 通常 +1、先読みあり
+  # ============================================================
   while avail:
     bit:int=avail&-avail
     avail&=avail-1
+
     nld:int=(ld|bit)<<1
     nrd:int=(rd|bit)>>1
     ncol:int=col|bit
+
     nf:int=board_mask&~(nld|nrd|ncol)
+
     if not nf:
       continue
-    # 1手先がゼロなら枝刈り（nf を使ってチェック）
+
     if board_mask&~(((nld<<1)|(nrd>>1)|ncol)):
-      total+=dfs(meta,blockK_by_funcid,blockL_by_funcid,board_mask,
-      local_next_funcid,
-      nld,nrd,ncol,row_step,nf,
-      jmark,endmark,mark1,mark2)
+      total+=dfs(
+        meta,
+        blockK_by_funcid,
+        blockL_by_funcid,
+        board_mask,
+        local_next_funcid,
+        nld,nrd,ncol,row_step,nf,
+        jmark,endmark,mark1,mark2
+      )
 
   return total
 
@@ -1260,8 +1342,273 @@ def build_soa_for_range(
 
     return soa,w_arr
 
+####################################################
+#
+# boundary classification diagnostics
+#
+####################################################
+
+"""N24 境界分類診断: j の境界から大分類 ID を返す。"""
+def bc_id(N:int,j:int)->int:
+  if j<N-3:
+    return 0   # B / normal
+  if j==N-3:
+    return 1   # SQd2
+  if j==N-2:
+    return 2   # SQd1
+  return 3     # SQd0
+
+"""N24 境界分類診断: 大分類名。"""
+def bc_name(cid:int,N:int)->str:
+  if cid==0:
+    return f"B(j<{N-3})"
+  if cid==1:
+    return f"SQd2(j={N-3})"
+  if cid==2:
+    return f"SQd1(j={N-2})"
+  return f"SQd0(j>{N-2})"
+
+"""functionid 名。build_soa_for_range() の target と対応。"""
+def fid_name(fid:int)->str:
+  names:List[str]=[
+    "SQBkBlBjrB","SQBlBjrB","SQBjrB","SQB",
+    "SQBklBjrB","SQBlBkBjrB","SQBkBjrB","SQBlkBjrB",
+    "SQBjlBkBlBjrB","SQBjlBklBjrB","SQBjlBlBkBjrB","SQBjlBlkBjrB",
+    "SQd2BkBlB","SQd2BlB","SQd2B","SQd2BklB","SQd2BlBkB",
+    "SQd2BkB","SQd2BlkB","SQd1BkBlB","SQd1BlB","SQd1B",
+    "SQd1BklB","SQd1BlBkB","SQd1BlkB","SQd1BkB","SQd0B","SQd0BkB"
+  ]
+  if fid>=0 and fid<28:
+    return names[fid]
+  return "UNKNOWN"
+
+"""大分類と functionid 範囲が一致しているか。"""
+def bc_expected_fid(cid:int,fid:int)->bool:
+  if cid==0:
+    return fid>=0 and fid<=11
+  if cid==1:
+    return fid>=12 and fid<=18
+  if cid==2:
+    return fid>=19 and fid<=25
+  if cid==3:
+    return fid==26 or fid==27
+  return False
+
+"""大分類と endmark が概ね一致しているか。SQd1 は N-3/N-4 の境界終端を許す。"""
+def bc_expected_endmark(N:int,cid:int,endmark:int)->bool:
+  if cid==0:
+    return endmark==N-2
+  if cid==1:
+    return endmark==N-2
+  if cid==2:
+    return endmark==N-2 or endmark==N-3 or endmark==N-4
+  if cid==3:
+    return endmark==N-2
+  return False
+
+"""DFS を走らせず、build_soa_for_range() の境界分類だけを集計する。"""
+def diagnose_boundary_classification(N:int,constellations:List[Dict[str,int]])->None:
+  m:int=len(constellations)
+  if m==0:
+    print(f"[bc-summary] N={N} constellations=0")
+    return
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+  case_cnt:List[int]=[0]*4
+  case_free0:List[int]=[0]*4
+  case_w2:List[int]=[0]*4
+  case_w4:List[int]=[0]*4
+  case_w8:List[int]=[0]*4
+  case_bad_fid:List[int]=[0]*4
+  case_bad_end:List[int]=[0]*4
+  fid_cnt:List[int]=[0]*28
+  case_fid_cnt:List[int]=[0]*(4*28)
+  case_start_cnt:List[int]=[0]*(4*(N+1))
+  case_end_cnt:List[int]=[0]*(4*(N+1))
+
+  bad_printed:int=0
+
+  for idx in range(m):
+    ijkl:int=soa.ijkl_arr[idx]
+    j:int=getj(ijkl)
+    cid:int=bc_id(N,j)
+    fid:int=soa.funcid_arr[idx]
+    endmark:int=soa.end_arr[idx]
+    start:int=soa.row_arr[idx]
+
+    case_cnt[cid]+=1
+
+    if fid>=0 and fid<28:
+      fid_cnt[fid]+=1
+      case_fid_cnt[cid*28+fid]+=1
+    else:
+      case_bad_fid[cid]+=1
+
+    if not bc_expected_fid(cid,fid):
+      case_bad_fid[cid]+=1
+      if bad_printed<20:
+        print(f"[bc-error-fid] idx={idx} case={bc_name(cid,N)} i={geti(ijkl)} j={j} k={getk(ijkl)} l={getl(ijkl)} fid={fid} {fid_name(fid)} start={start} end={endmark}")
+        bad_printed+=1
+
+    if not bc_expected_endmark(N,cid,endmark):
+      case_bad_end[cid]+=1
+      if bad_printed<20:
+        print(f"[bc-error-end] idx={idx} case={bc_name(cid,N)} i={geti(ijkl)} j={j} k={getk(ijkl)} l={getl(ijkl)} fid={fid} {fid_name(fid)} start={start} end={endmark}")
+        bad_printed+=1
+
+    if soa.free_arr[idx]==0:
+      case_free0[cid]+=1
+
+    w:int=int(w_arr[idx])
+    if w==2:
+      case_w2[cid]+=1
+    elif w==4:
+      case_w4[cid]+=1
+    elif w==8:
+      case_w8[cid]+=1
+
+    if start>=0 and start<=N:
+      case_start_cnt[cid*(N+1)+start]+=1
+    if endmark>=0 and endmark<=N:
+      case_end_cnt[cid*(N+1)+endmark]+=1
+
+  print(f"[bc-summary] N={N} constellations={m} N-3={N-3} N-2={N-2} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")
+
+  for cid in range(4):
+    print(f"[bc-case] {bc_name(cid,N)} count={case_cnt[cid]} free0={case_free0[cid]} w2={case_w2[cid]} w4={case_w4[cid]} w8={case_w8[cid]} bad_fid={case_bad_fid[cid]} bad_end={case_bad_end[cid]}")
+
+    line:str="[bc-start] " + bc_name(cid,N)
+    for r in range(N+1):
+      v:int=case_start_cnt[cid*(N+1)+r]
+      if v>0:
+        line += f" r{r}={v}"
+    print(line)
+
+    line="[bc-end]   " + bc_name(cid,N)
+    for r in range(N+1):
+      v:int=case_end_cnt[cid*(N+1)+r]
+      if v>0:
+        line += f" e{r}={v}"
+    print(line)
+
+    for fid in range(28):
+      c:int=case_fid_cnt[cid*28+fid]
+      if c>0:
+        print(f"[bc-fid] {bc_name(cid,N)} fid={fid} {fid_name(fid)} count={c}")
+
+  print("[bc-fid-total]")
+  for fid in range(28):
+    if fid_cnt[fid]>0:
+      print(f"[bc-fid-total] fid={fid} {fid_name(fid)} count={fid_cnt[fid]}")
+
+"""exec_solutions() 後に、境界分類別 / functionid 別の solutions 合計を出す。CPU向け。"""
+def diagnose_solution_by_boundary(N:int,constellations:List[Dict[str,int]])->None:
+  m:int=len(constellations)
+  if m==0:
+    print(f"[bc-sol-summary] N={N} constellations=0")
+    return
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+  case_cnt:List[int]=[0]*4
+  case_total:List[int]=[0]*4
+  case_fid_cnt:List[int]=[0]*(4*28)
+  case_fid_total:List[int]=[0]*(4*28)
+  all_total:int=0
+
+  for idx in range(m):
+    ijkl:int=soa.ijkl_arr[idx]
+    j:int=getj(ijkl)
+    cid:int=bc_id(N,j)
+    fid:int=soa.funcid_arr[idx]
+    sol:int=constellations[idx]["solutions"]
+
+    case_cnt[cid]+=1
+    case_total[cid]+=sol
+    all_total+=sol
+
+    if fid>=0 and fid<28:
+      case_fid_cnt[cid*28+fid]+=1
+      case_fid_total[cid*28+fid]+=sol
+
+  print(f"[bc-sol-summary] N={N} constellations={m} total={all_total}")
+  for cid in range(4):
+    print(f"[bc-sol-case] {bc_name(cid,N)} count={case_cnt[cid]} total={case_total[cid]}")
+    for fid in range(28):
+      c:int=case_fid_cnt[cid*28+fid]
+      t:int=case_fid_total[cid*28+fid]
+      if c>0 or t>0:
+        print(f"[bc-sol-fid] {bc_name(cid,N)} fid={fid} {fid_name(fid)} count={c} total={t}")
+
+"""76 の auto sort 方針。N=20/N=21 は sort_mode=9、それ以外は安全側で sort_mode=0。"""
+def auto_sort_mode(N:int)->int:
+  if N==20 or N==21:
+    return 9
+  return 0
+
+"""cross_stripe_safe 用の chunk/range 検証。kernel ロジックには影響させない。"""
+def validate_chunk_range(label:str,start:int,end:int,total:int)->bool:
+  ok:bool=True
+  if start<0:
+    print(f"[cross-stripe-safe][error] {label}: start < 0 start={start} total={total}")
+    ok=False
+  if end<start:
+    print(f"[cross-stripe-safe][error] {label}: end < start start={start} end={end} total={total}")
+    ok=False
+  if end>total:
+    print(f"[cross-stripe-safe][error] {label}: end > total start={start} end={end} total={total}")
+    ok=False
+  if ok and start==end:
+    print(f"[cross-stripe-safe][warn] {label}: empty range start={start} end={end} total={total}")
+  return ok
+
+"""reorder 件数の軽量検証。これは常時実行しても重くない。"""
+def validate_reordered_count(label:str,expected:int,actual:int)->bool:
+  if expected!=actual:
+    print(f"[stripe-reorder][error] {label}: reordered count mismatch expected={expected} actual={actual}")
+    return False
+  return True
+
+"""cross_stripe_safe/reorder-only 用の index permutation 検証。重複投入・欠落投入を検出する。"""
+def validate_reordered_indices(label:str,expected:int,idxs:List[int])->bool:
+  if not validate_reordered_count(label,expected,len(idxs)):
+    return False
+  seen:List[int]=[0]*expected
+  for v in idxs:
+    if v<0 or v>=expected:
+      print(f"[cross-stripe-safe][error] {label}: index out of range idx={v} expected={expected}")
+      return False
+    if seen[v]!=0:
+      print(f"[cross-stripe-safe][error] {label}: duplicated index idx={v}")
+      return False
+    seen[v]=1
+  missing:int=0
+  first_missing:int=-1
+  for i in range(expected):
+    if seen[i]==0:
+      missing+=1
+      if first_missing<0:
+        first_missing=i
+  if missing!=0:
+    print(f"[cross-stripe-safe][error] {label}: missing count={missing} first_missing={first_missing}")
+    return False
+  return True
+
+""" sort_mode=3 用の軽量 popcount。Codon / CPython 両方で動くよう int だけで実装。"""
+def popcount_int(x:int)->int:
+  c:int=0
+  while x:
+    x&=x-1
+    c+=1
+  return c
+
 """各 Constellation（部分盤面）ごとに最適分岐（functionid）を選び、`dfs()` で解数を取得。 結果は `solutions` に書き込み、最後に `symmetry()` の重みで補正する。前段で SoA 展開し 並列化区間のループ体を軽量化。"""
-def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_block:int=32,gpu_max_blocks:int=640,gpu_log_level:int=0,gpu_sort_mode:int=0)->None:
+def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_block:int=32,gpu_max_blocks:int=484,gpu_log_level:int=0,gpu_sort_mode:int=-1,cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,reorder_only:bool=False,chunk_only:bool=False,debug_chunk_start:int=0,debug_chunk_count:int=1)->None:
   """
   機能:
     すべての constellation について DFS を実行し、各 constellation["solutions"] に
@@ -1284,6 +1631,15 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
   N1:int=N-1
   N2:int=N-2
   board_mask:int=(1<<N)-1
+
+  # sort_mode auto:
+  #   76 STABLE policy:
+  #     N=20/N=21 は sort_mode=9（cross stripe only）を採用。
+  #     N>=22 は従来どおり sort_mode=0。
+  #   N=22 以降へ sort_mode=9 を自動展開せず、reorder-only/chunk-only で検証する。
+  if gpu_sort_mode < 0:
+    gpu_sort_mode = auto_sort_mode(N)
+
   FUNC_CATEGORY={
     # N-3
     "SQBkBlBjrB":3,"SQBlkBjrB":3,"SQBkBjrB":3,
@@ -1374,6 +1730,13 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
   # STEPS = block * max_blocks が 1回にGPUへ投げる constellation 数。
   BLOCK=gpu_block
   MAX_BLOCKS=gpu_max_blocks
+  # 72 STABLE FINAL BENCH:
+  #   54/55 の実測で、N=20 は 32x484 が最良。
+  #   max_blocks<=0 は 54 実験版の 1 chunk 指定で大幅に遅くなるため、公開版では安全側に丸める。
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
   STEPS=BLOCK*MAX_BLOCKS
   # STEPS = 24576 if use_gpu else m_all
   # STEPS=24576
@@ -1390,20 +1753,123 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
   # GPU
   ##########
   if use_gpu:
+    # 72 STABLE FINAL BENCH:
+    #   sort_mode=6 は元chunk 0..last を within 方向にストライプ化して大きく改善した。
+    #   ただしログでは chunk7 付近に 19秒台の山が残った。
+    #   原因候補は「元chunk間」だけでなく「within方向の重い帯」。
+    #
+    #   sort_mode=5: 旧 stripe + sort4（比較用。不採用寄り）
+    #   sort_mode=6: 旧 stripe only（62 stable 候補）
+    #   sort_mode=7: balanced stripe only。各出力chunkが within の residue をずらす。
+    #   sort_mode=8: balanced stripe + sort4（比較用）
+    #   sort_mode=9: cross stripe only。src_ch と within residue を直交させる。
+    #   sort_mode=10: cross stripe + sort4（比較用）
+    #
+    #   解数は加算なので、direct_total では元 index への scatter は不要。
+    stripe_chunks:bool=(gpu_sort_mode==5 or gpu_sort_mode==6 or gpu_sort_mode==7 or gpu_sort_mode==8 or gpu_sort_mode==9 or gpu_sort_mode==10)
+    balanced_stripe:bool=(gpu_sort_mode==7 or gpu_sort_mode==8)
+    cross_stripe:bool=(gpu_sort_mode==9 or gpu_sort_mode==10)
+    local_sort_mode:int=gpu_sort_mode
+    work_constellations:List[Dict[str,int]]=constellations
+    if reorder_only and not stripe_chunks:
+      print(f"[reorder-only] N={N} sort_mode={gpu_sort_mode} stripe=0 original={m_all} steps={STEPS} ok")
+      if m_all>0:
+        constellations[0]["solutions"]=0
+      return
+    if stripe_chunks:
+      n_chunks_est:int=(m_all + STEPS - 1)//STEPS
+      reordered:List[Dict[str,int]]=[]
+      validate_reorder:bool=(cross_stripe_safe or reorder_only)
+      reordered_idx:List[int]=[]
+      if cross_stripe:
+        # 74 SAFE CROSS STRIPE FIX:
+        #   73 の式は slot から src_ch/base を同時に作っていたため、
+        #   STEPS % n_chunks_est != 0 の場合に一部 src_ch の末尾 within が欠落した。
+        #   N=21/32x484 では STEPS=15488, n_chunks_est=13, STEPS%13=5 となり、
+        #   full chunk の末尾 5 件が複数 chunk で落ち、reordered が 35 件不足した。
+        #
+        #   この版では out_ch/base/src_ch を独立に回し、
+        #   任意の idx=(src_ch, within) が out_ch=(within%n_chunks_est-src_ch)%n_chunks_est
+        #   でちょうど一度だけ出るようにする。kernel ロジックは変更しない。
+        out_ch:int=0
+        while out_ch<n_chunks_est:
+          base:int=0
+          while base*n_chunks_est<STEPS:
+            src_ch:int=0
+            while src_ch<n_chunks_est:
+              rem:int=(src_ch + out_ch) % n_chunks_est
+              within:int=base*n_chunks_est + rem
+              if within<STEPS:
+                idx:int=src_ch*STEPS+within
+                if idx<m_all:
+                  reordered.append(constellations[idx])
+                  if validate_reorder:
+                    reordered_idx.append(idx)
+              src_ch+=1
+            base+=1
+          out_ch+=1
+      elif balanced_stripe:
+        # 出力chunkごとに、within を 0..STEPS-1 全域から拾う。
+        # 旧 stripe は出力chunkごとに within の帯が残り、chunk7 が重くなりやすかった。
+        out_ch:int=0
+        while out_ch<n_chunks_est:
+          slot:int=0
+          while slot<STEPS:
+            src_ch:int=slot % n_chunks_est
+            base:int=slot // n_chunks_est
+            within:int=(out_ch + base*n_chunks_est) % STEPS
+            idx:int=src_ch*STEPS+within
+            if idx<m_all:
+              reordered.append(constellations[idx])
+              if validate_reorder:
+                reordered_idx.append(idx)
+            slot+=1
+          out_ch+=1
+      else:
+        within:int=0
+        while within<STEPS:
+          ch:int=0
+          while ch<n_chunks_est:
+            idx:int=ch*STEPS+within
+            if idx<m_all:
+              reordered.append(constellations[idx])
+              if validate_reorder:
+                reordered_idx.append(idx)
+            ch+=1
+          within+=1
+      work_constellations=reordered
+      if not validate_reordered_count("stripe_reorder",m_all,len(work_constellations)):
+        return
+      if validate_reorder:
+        if not validate_reordered_indices("stripe_reorder",m_all,reordered_idx):
+          return
+      if reorder_only:
+        print(f"[reorder-only] N={N} sort_mode={gpu_sort_mode} original={m_all} reordered={len(work_constellations)} chunks={n_chunks_est} steps={STEPS} ok")
+        if m_all>0:
+          constellations[0]["solutions"]=0
+        return
+      if gpu_sort_mode==5 or gpu_sort_mode==8 or gpu_sort_mode==10:
+        local_sort_mode=4
+      else:
+        local_sort_mode=0
     if gpu_log_level>=1:
-      print(f"[gpu-config] N={N} original=1 mixed32=1 hotpath=1 trunk44=32x640 sort_mode={gpu_sort_mode} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} log_level={gpu_log_level}")
+      print(f"[gpu-config] N={N} original=1 mixed32=1 hotpath=1 trunk75={BLOCK}x{MAX_BLOCKS} sort_mode={gpu_sort_mode} local_sort={local_sort_mode} stripe={1 if stripe_chunks else 0} balanced={1 if balanced_stripe else 0} cross={1 if cross_stripe else 0} cross_safe={1 if cross_stripe_safe else 0} reorder_only={1 if reorder_only else 0} chunk_only={1 if chunk_only else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} log_level={gpu_log_level}")
     soa:TaskSoA=TaskSoA(STEPS)
     results:List[u64]=[u64(0)]*STEPS
-    # results_allはm_all
-    results_all:List[u64]=[u64(0)]*m_all
+    # 60 DIRECT TOTAL: GPU結果は constellation ごとに書き戻さず、chunkごとに合計する。
+    # main() の sum(c["solutions"]) 互換のため、最後に constellations[0]["solutions"] だけへ合計値を入れる。
+    gpu_total:int=0
     w_arr:List[u64]=[u64(0)]*STEPS
 
     # sort_mode > 0 は「kernelを増やさず、chunk内だけ並び替える」診断。
-    # 0: そのまま ／ 1: functionid順 ／ 2: funcptn順
+    # 0: そのまま
+    # 1: functionid順
+    # 2: funcptn順
+    # 3: funcptn + work bucket順（free popcount と depth を粗く見る）
     # 29のbucket化は複数kernel化で遅くなったため、単一chunk内の順序だけを変える。
     sort_soa:TaskSoA=TaskSoA(STEPS)
     sort_w_arr:List[u64]=[u64(0)]*STEPS
-    idx_map:List[int]=[0]*STEPS
+    # direct total では元indexへのscatterが不要。sort後の順序でも合計値は不変。
     order:List[int]=[0]*STEPS
 
     meta_next: List[u8] = [ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
@@ -1414,30 +1880,82 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
     n3 = 1 << (N - 3)
     n4 = 1 << (N - 4)
     chunks:int=0
+    executed_chunks:int=0
+    if chunk_only:
+      if debug_chunk_start<0:
+        debug_chunk_start=0
+      if debug_chunk_count<=0:
+        debug_chunk_count=1
+      if gpu_log_level>=1:
+        print(f"[chunk-only] mode=7 executes selected chunks only; start={debug_chunk_start} count={debug_chunk_count}")
     while off < m_all:
       m = min(STEPS, m_all - off)
+      chunk_index:int=chunks
       chunks+=1
+      if chunk_only:
+        run_this_chunk:bool=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+        if not run_this_chunk:
+          if gpu_log_level>=2:
+            print(f"[gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
+          off += m
+          continue
+      executed_chunks+=1
+      if cross_stripe_safe:
+        if not validate_chunk_range("gpu_chunk",off,off+m,m_all):
+          return
       if gpu_log_level>=2:
         t0=datetime.now()
       # 戻り値を使わないので破棄
-      build_soa_for_range(N,constellations, off, m,soa,w_arr)
+      build_soa_for_range(N,work_constellations, off, m,soa,w_arr)
       if gpu_log_level>=2:
         t1=datetime.now()
       # sort_mode は chunk 内だけを stable bucket sort する。
       # kernel数は増やさないので、29のような bucket 複数起動のオーバーヘッドを避ける。
-      use_sorted:bool=(gpu_sort_mode==1 or gpu_sort_mode==2)
+      use_sorted:bool=(local_sort_mode==1 or local_sort_mode==2 or local_sort_mode==3 or local_sort_mode==4)
+      if gpu_log_level>=2:
+        ts0=datetime.now()
       if use_sorted:
         nb:int=28
-        if gpu_sort_mode==2:
+        if local_sort_mode==2:
           nb=6
-        counts:List[int]=[0]*28
-        pos:List[int]=[0]*28
-        cur:List[int]=[0]*28
+        if local_sort_mode==3:
+          nb=24  # funcptn 6種 x work bucket 4種
+        if local_sort_mode==4:
+          nb=48  # funcptn 6種 x work bucket 8種
+        counts:List[int]=[0]*64
+        pos:List[int]=[0]*64
+        cur:List[int]=[0]*64
         for i in range(m):
           fid0:int=soa.funcid_arr[i]
           key:int=fid0
-          if gpu_sort_mode==2:
+          if local_sort_mode==2:
             key=funcptn_by_fid[fid0]
+          if local_sort_mode==3:
+            ptn:int=funcptn_by_fid[fid0]
+            depth:int=soa.end_arr[i]-soa.row_arr[i]
+            if depth<0:
+              depth=0
+            pc:int=popcount_int(soa.free_arr[i])
+            wb:int=0
+            if pc>=3:
+              wb+=1
+            if depth>=12:
+              wb+=2
+            key=ptn*4+wb
+          if local_sort_mode==4:
+            ptn:int=funcptn_by_fid[fid0]
+            depth:int=soa.end_arr[i]-soa.row_arr[i]
+            if depth<0:
+              depth=0
+            pc:int=popcount_int(soa.free_arr[i])
+            wb:int=0
+            if pc>=2:
+              wb+=1
+            if pc>=4:
+              wb+=2
+            if depth>=10:
+              wb+=4
+            key=ptn*8+wb
           counts[key]+=1
         run:int=0
         for b in range(nb):
@@ -1447,8 +1965,34 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
         for i in range(m):
           fid0:int=soa.funcid_arr[i]
           key:int=fid0
-          if gpu_sort_mode==2:
+          if local_sort_mode==2:
             key=funcptn_by_fid[fid0]
+          if local_sort_mode==3:
+            ptn:int=funcptn_by_fid[fid0]
+            depth:int=soa.end_arr[i]-soa.row_arr[i]
+            if depth<0:
+              depth=0
+            pc:int=popcount_int(soa.free_arr[i])
+            wb:int=0
+            if pc>=3:
+              wb+=1
+            if depth>=12:
+              wb+=2
+            key=ptn*4+wb
+          if local_sort_mode==4:
+            ptn:int=funcptn_by_fid[fid0]
+            depth:int=soa.end_arr[i]-soa.row_arr[i]
+            if depth<0:
+              depth=0
+            pc:int=popcount_int(soa.free_arr[i])
+            wb:int=0
+            if pc>=2:
+              wb+=1
+            if pc>=4:
+              wb+=2
+            if depth>=10:
+              wb+=4
+            key=ptn*8+wb
           p:int=cur[key]
           order[p]=i
           cur[key]+=1
@@ -1466,8 +2010,14 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
           sort_soa.funcid_arr[p]=soa.funcid_arr[q]
           sort_soa.ijkl_arr[p]=soa.ijkl_arr[q]
           sort_w_arr[p]=w_arr[q]
-          idx_map[p]=off+q
+      if gpu_log_level>=2:
+        ts1=datetime.now()
       GRID = (m + BLOCK - 1) // BLOCK
+
+      # 81 GPU RESTORE:
+      #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
+      #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
+      #   ここで sort 有無に応じて実際に GPU kernel を起動する。
       if use_sorted:
         kernel_dfs_iter_gpu(
           gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
@@ -1496,21 +2046,24 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
         )
       if gpu_log_level>=2:
         t2=datetime.now()
-      if use_sorted:
-        @par
-        for i in range(m):
-          results_all[idx_map[i]] = results[i]
-      else:
-        @par
-        for i in range(m):
-          results_all[off + i] = results[i]
+      # 60 DIRECT TOTAL:
+      # 56/58/59 は results_all へ scatter し、最後に全 constellation へ書き戻してから
+      # main() で sum() していた。ベンチ用途では個別 solutions は不要なので、
+      # GPU結果をここで直接合計し、scatter/copy-back/final write を省く。
+      chunk_total:int=0
+      for i in range(m):
+        chunk_total += int(results[i])
+      gpu_total += chunk_total
       if gpu_log_level>=2:
         t3=datetime.now()
-        print(f"[gpu-chunk] N={N} chunk={chunks} off={off} m={m} grid={GRID} sort={gpu_sort_mode} build={str(t1-t0)[:-3]} kernel={str(t2-t1)[:-3]} copy={str(t3-t2)[:-3]}")
+        print(f"[gpu-chunk] N={N} chunk={chunk_index} off={off} m={m} grid={GRID} sort={gpu_sort_mode}/{local_sort_mode} build={str(t1-t0)[:-3]} sort_time={str(ts1-ts0)[:-3]} kernel={str(t2-ts1)[:-3]} sum={str(t3-t2)[:-3]} partial_total={chunk_total}")
       off += m
 
+    if m_all>0:
+      constellations[0]["solutions"] = gpu_total
     if gpu_log_level>=1:
-      print(f"[gpu-summary] N={N} constellations={m_all} chunks={chunks}")
+      print(f"[gpu-summary] N={N} constellations={m_all} chunks={chunks} executed_chunks={executed_chunks} direct_total=1 stripe={1 if stripe_chunks else 0} balanced={1 if balanced_stripe else 0} cross={1 if cross_stripe else 0} cross_safe={1 if cross_stripe_safe else 0} chunk_only={1 if chunk_only else 0}")
+    return
   ##########
   # CPU 
   ##########
@@ -1563,12 +2116,9 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
             soa.mark1_arr[i], soa.mark2_arr[i])
       results[i]=cnt*w_arr[i]
   ##########
-  # 集計   
+  # 集計（CPUのみ。GPUは direct_total で上で return 済み）
   ##########
-  if use_gpu:
-    out = results_all
-  else:
-    out = results
+  out = results
   for i, constellation in enumerate(constellations):
     constellation["solutions"] = int(out[i])
 
@@ -1710,17 +2260,19 @@ def check_rotations(ijkl_list:Set[int],i:int,j:int,k:int,l:int,N:int)->bool:
   return any(rot in ijkl_list for rot in [((N-1-k)<<15)+((N-1-l)<<10)+(j<<5)+i,((N-1-j)<<15)+((N-1-i)<<10)+((N-1-l)<<5)+(N-1-k),(l<<15)+(k<<10)+((N-1-i)<<5)+(N-1-j)])
 
 """ キャッシュ付き Jasmin 正規化ラッパー """
+jasmin_cache_global:Dict[Tuple[int,int],int]={}
+
 def get_jasmin(N:int,c:int)->int:
   """ Jasmin 正規化のキャッシュ付ラッパ。盤面パック値 c を回転/ミラーで規約化した代表値を返す。
-  ※ キャッシュは self.jasmin_cache[(c,N)] に保持。
-  [Opt-08] キャッシュ付き jasmin() のラッパー """
-  jasmin_cache:Dict[Tuple[int,int],int]={}
-  # self.jasmin_cache:Dict[Tuple[int,int],int]={}
+  59 PREBUILD LIGHT:
+    旧版は関数内で jasmin_cache を毎回作っていたため、実質キャッシュになっていなかった。
+    グローバル辞書へ逃がし、同一 N / 同一 ijkl の再計算を避ける。
+  """
   key=(c,N)
-  if key in jasmin_cache:
-    return jasmin_cache[key]
+  if key in jasmin_cache_global:
+    return jasmin_cache_global[key]
   result=jasmin(c,N)
-  jasmin_cache[key]=result
+  jasmin_cache_global[key]=result
   return result
 
 """ Jasmin 正規化。盤面パック値 ijkl を回転/ミラーで規約化した代表値を返す。"""
@@ -1801,6 +2353,32 @@ def set_pre_queens_cached(
       並行再入（同一状態からの重複突入）も抑止できる設計。
   """
 
+  # ------------------------------------------------------------
+  # 80 FIX: preset>=7 multiplicity preservation
+  #
+  # subconst_cache is useful as a recursion de-duplication guard for
+  # preset<=6, but with preset=7 distinct pre-queen histories can reach
+  # the same (ld,rd,col,k,l,row,queens,LD,RD,N,preset) state.
+  # Those histories must still be counted with multiplicity.
+  #
+  # If we suppress the later hit, the emitted constellation task is lost.
+  # In N=18 / preset=7 this appears as the SQd0 residual -21,024.
+  # Therefore preset>=7 bypasses this cache and lets identical terminal
+  # tasks be appended multiple times.
+  # ------------------------------------------------------------
+  if preset_queens>=7:
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
+      N, ijkl_list, subconst_cache,
+      ld, rd, col,
+      k, l,
+      row, queens,
+      LD, RD,
+      counter, constellations, preset_queens,
+      visited, constellation_signatures,
+      zobrist_hash_tables
+    )
+    return ijkl_list, subconst_cache, constellations, preset_queens
+
   # ---- キャッシュキー（状態を丸ごと）----
   # NOTE: queens や row も含めるので「途中段の重複」も止められる。
   key:Tuple[int,int,int,int,int,int,int,int,int,int,int] = (
@@ -1841,44 +2419,12 @@ def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int
   # とはいえ N≤17 なのでコストは小さめ。衝突耐性は高い。
   # マスク漏れや負数の扱いを誤ると不一致が起きる点に注意（先ほどの & ((1<<N)-1) 修正で解決）。
   # zobrist_tables: Dict[int, Dict[str, List[int]]] = {}
-  h: int = int(zobrist_hash(N,ld & board_mask, rd & board_mask, col & board_mask, row, queens, k, l, LD & board_mask, RD & board_mask,zobrist_hash_tables))
-  #
-  # <>state_hash
-  # その場で数個の ^ と << を混ぜるだけの O(1) 計算。
-  # 生成されるキーも 単一の int なので、set/dict の操作が最速＆省メモリ。
-  # ただし理論上は衝突し得ます（実際はN≤17の範囲なら実害が出にくい設計にしていればOK）。
-  # [Opt-09] Zobrist Hash（Opt-09）の導入とその用途
-  # ビットボード設計でも、「盤面のハッシュ」→「探索済みフラグ」で枝刈りは可能です。
-  # 1意になるように領域を分けて詰める（衝突ゼロ）
-  # 5*N ビット分で ld/rd/col/LD/RD を入れ、以降に小さい値を詰める
-  # h:int=(ld<<3)^(rd<<2)^(col<<1)^row^(queens<<7)^(k<<12)^(l<<17)^(LD<<22)^(RD<<27)^(N<<1)
-  #
-  # ldm = ld & mask
-  # rdm = rd & mask
-  # colm = col & mask
-  # LDm = LD & mask
-  # RDm = RD & mask
-  # base = 5 * N
-  # h:int = (
-  #     ldm
-  #   | (rdm  << (1 * N))
-  #   | (colm << (2 * N))
-  #   | (LDm  << (3 * N))
-  #   | (RDm  << (4 * N))
-  #   | (row  << (base + 0))
-  #   | (queens << (base + 6))
-  #   | (k     << (base + 12))
-  #   | (l     << (base + 18))
-  #   | (N     << (base + 24))
-  # )
-  #
-  # <>StateKey（タプル）
-  # 11個の整数オブジェクトを束ねるため、オブジェクト生成・GC負荷・ハッシュ合成が最も重い。
-  # set の比較・保持も重く、メモリも一番食います。
-  # 衝突はほぼ心配ないものの、速度とメモリ効率は最下位。
-  # h: StateKey = (ld, rd, col, row, queens, k, l, LD, RD, N)
-  #
+  # 59 PREBUILD LIGHT:
+  # use_visited_prune=False の通常運用では Zobrist hash は使わない。
+  # 旧版は False でも毎回 O(N) の zobrist_hash() を計算していたため、
+  # constellation 生成の前処理で無駄が出ていた。
   if use_visited_prune:
+    h: int = int(zobrist_hash(N,ld & board_mask, rd & board_mask, col & board_mask, row, queens, k, l, LD & board_mask, RD & board_mask,zobrist_hash_tables))
     if h in visited:
       return ijkl_list, subconst_cache, constellations, preset_queens
     visited.add(h)
@@ -1891,7 +2437,7 @@ def set_pre_queens(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int
     return ijkl_list, subconst_cache, constellations, preset_queens
   # クイーンの数がpreset_queensに達した場合、現在の状態を保存
   if queens == preset_queens:
-    if preset_queens <= 5:
+    if (not DISABLE_CONSTELLATION_SIGNATURE_PRUNE) and preset_queens <= 5:
       sig = (ld, rd, col, k, l, row)    # これが signature (tuple)
       if sig in constellation_signatures:
         return ijkl_list, subconst_cache, constellations, preset_queens
@@ -1978,6 +2524,19 @@ def gen_constellations(
   # “長寿命プロセス”で繰り返し呼ばれる可能性を考えると毎回クリアが安全。
   subconst_cache.clear()
 
+  # 79 FIX:
+  #   subconst_cache は set_pre_queens_cached() の再帰内重複抑止用。
+  #   これを全 sc 共通にすると、preset_queens>=6 で別の開始星座 sc が
+  #   同じ (ld,rd,col,k,l,row,queens,LD,RD,N,preset) 状態へ合流したとき、
+  #   後続 sc 側の constellation 生成が丸ごと抑止される。
+  #   preset=5 では影響が出にくいが、preset=6/7 で SQd0 側の不足が出る。
+  #   よって subconst_cache は各 sc ごとに clear する。
+  #
+  # 80 FIX:
+  #   preset=7 では同一 sc 内でも同じ状態へ複数経路で合流し、
+  #   その multiplicity 自体が必要になる。set_pre_queens_cached() 側で
+  #   preset_queens>=7 のときは subconst_cache を bypass する。
+
   # constellation_signatures は「同一開始 sc 内」での重複排除（サブ生成の内部で使う想定）
   constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set()
 
@@ -2025,6 +2584,12 @@ def gen_constellations(
   # ※既存実装の方針に合わせる
   # counter[0] が “今回 sc から追加した constellation 数” になる
   for sc in ijkl_list:
+    # 79 FIX:
+    #   subconst_cache を sc ごとに初期化する。
+    #   全 sc 共通キャッシュにすると、後続 sc の正当な constellation が
+    #   cache hit で生成されず、preset=6/7 で不足する。
+    subconst_cache.clear()
+
     # sc ごとに重複抑止セットを初期化（＝この sc の内部だけで重複排除）
     constellation_signatures = set()
 
@@ -2080,7 +2645,10 @@ def gen_constellations(
 
   # 返す 4 つ目は “最後に作った sc の counter” ではなく、
   # 元実装どおり「最後の counter[0]」を返す（上位で使っている想定）
-  return ijkl_list, subconst_cache, constellations, counter[0]
+  # 49 FIX: return preset_queens itself.
+  # The previous counter[0] was the number of constellations added by the last sc,
+  # which caused misleading logs such as preset_queens=13 or preset_queens=128.
+  return ijkl_list, subconst_cache, constellations, preset_queens
 
 """ コンステレーションリストの妥当性確認ヘルパ。各要素に 'ld','rd','col','startijkl' キーが存在するかをチェック。"""
 def validate_constellation_list(constellations:List[Dict[str,int]])->bool: 
@@ -2351,9 +2919,363 @@ def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set
   return ijkl_list,subconst_cache,constellations,preset_queens
 
 
+
+####################################################
+#
+# 84 stream constellation bin generation / GPU chunk runner
+#
+####################################################
+
+"""bin キャッシュのレコード数を返す（1 record = 16 bytes）。破損時は 0。"""
+def count_constellations_bin_records(fname:str)->int:
+  try:
+    with open(fname,"rb") as f:
+      f.seek(0,2)
+      size:int=f.tell()
+    if size%16!=0:
+      return 0
+    return size//16
+  except:
+    return 0
+
+"""stream 完了マーカーを読む。存在しない/不正なら -1。"""
+def read_stream_done_count(fname:str)->int:
+  try:
+    with open(fname,"r") as f:
+      text:str=f.read().strip()
+    if text=="":
+      return -1
+    return int(text)
+  except:
+    return -1
+
+"""stream 完了マーカーを書く。"""
+def write_stream_done_count(fname:str,count:int)->None:
+  with open(fname,"w") as f:
+    f.write(str(count))
+    f.write("\n")
+
+"""stream 生成のために既存 bin を空にする。"""
+def truncate_constellations_bin(fname:str)->None:
+  with open(fname,"wb") as f:
+    pass
+  write_stream_done_count(fname+".done",0)
+
+"""constellation chunk を bin へ追記する。"""
+def append_constellations_bin(fname:str,constellations:List[Dict[str,int]])->None:
+  with open(fname,"ab") as f:
+    for d in constellations:
+      for key in ["ld","rd","col","startijkl"]:
+        b=int_to_le_bytes(d[key])
+        f.write("".join(chr(c) for c in b))
+
+"""N-Queens constellation を全件 List に持たず、sc 単位で .bin へ直接書き出す。"""
+def gen_constellations_stream_to_bin(
+  N:int,
+  ijkl_list:Set[int],
+  subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  fname:str,
+  preset_queens:int,
+  gpu_log_level:int=0
+)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],int,int]:
+
+  halfN=(N+1)//2
+  N1:int=N-1
+  N2:int=N-2
+  subconst_cache.clear()
+
+  constellation_signatures:Set[Tuple[int,int,int,int,int,int]]=set()
+
+  if N%2==1:
+    center=N//2
+    ijkl_list.update(
+      to_ijkl(i,j,center,l)
+      for l in range(center+1,N1)
+      for i in range(center+1,N1)
+      if i!=(N1)-l
+      for j in range(N-center-2,0,-1)
+      if j!=i and j!=l
+      if not check_rotations(ijkl_list,i,j,center,l,N)
+    )
+
+  ijkl_list.update(
+    to_ijkl(i,j,k,l)
+    for k in range(1,halfN)
+    for l in range(k+1,N1)
+    for i in range(k+1,N1)
+    if i!=(N1)-l
+    for j in range(N-k-2,0,-1)
+    if j!=i and j!=l
+    if not check_rotations(ijkl_list,i,j,k,l,N)
+  )
+
+  ijkl_list.update({to_ijkl(0,j,0,l) for j in range(1,N2) for l in range(j+1,N1)})
+  ijkl_list={get_jasmin(N,c) for c in ijkl_list}
+
+  L=1<<(N1)
+  total_count:int=0
+  sc_index:int=0
+  truncate_constellations_bin(fname)
+
+  for sc in ijkl_list:
+    subconst_cache.clear()
+    constellation_signatures=set()
+
+    i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
+    Lj=L>>j
+    Li=L>>i
+    Ll=L>>l
+
+    ld=(((L>>(i-1)) if i>0 else 0)|(1<<(N-k)))
+    rd=((L>>(i+1))|(1<<(l-1)))
+    col=(1|L|Li|Lj)
+    LD=(Lj|Ll)
+    RD=(Lj|(1<<k))
+
+    counter:List[int]=[0]
+    visited:Set[int]=set()
+    zobrist_hash_tables:Dict[int,Dict[str,List[u64]]]={}
+    sc_constellations:List[Dict[str,int]]=[]
+
+    ijkl_list,subconst_cache,sc_constellations,preset_queens=set_pre_queens_cached(
+      N,ijkl_list,subconst_cache,
+      ld,rd,col,
+      k,l,
+      1,
+      3 if j==N1 else 4,
+      LD,RD,
+      counter,sc_constellations,preset_queens,
+      visited,constellation_signatures,
+      zobrist_hash_tables
+    )
+
+    base=to_ijkl(i,j,k,l)
+    for a in range(counter[0]):
+      sc_constellations[-1-a]["startijkl"]|=base
+
+    if counter[0]>0:
+      append_constellations_bin(fname,sc_constellations)
+      total_count+=counter[0]
+
+    if gpu_log_level>=2:
+      print(f"[stream-build-sc] N={N} sc_index={sc_index} added={counter[0]} total={total_count}")
+
+    sc_index+=1
+
+  write_stream_done_count(fname+".done",total_count)
+  if gpu_log_level>=1:
+    print(f"[stream-build-summary] N={N} preset_queens={preset_queens} sc={sc_index} records={total_count} bin={fname}")
+
+  return ijkl_list,subconst_cache,total_count,preset_queens
+
+"""stream 版: .bin が完了済みなら使い、なければ sc 単位で生成し、レコード数を返す。"""
+def ensure_constellations_bin_stream(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],preset_queens:int,gpu_log_level:int=0)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],int,int,str]:
+  fname:str=f"constellations_N{N}_{preset_queens}.bin"
+  records:int=count_constellations_bin_records(fname)
+  done_count:int=read_stream_done_count(fname+".done")
+  if records>0 and done_count==records:
+    if gpu_log_level>=1:
+      print(f"[stream-cache-hit] N={N} preset_queens={preset_queens} records={records} bin={fname}")
+    return ijkl_list,subconst_cache,records,preset_queens,fname
+
+  if file_exists(fname):
+    print(f"[stream-cache-warning] invalid/incomplete bin cache: {fname}; records={records} done={done_count}; rebuilding")
+  else:
+    if gpu_log_level>=1:
+      print(f"[stream-cache-miss] N={N} preset_queens={preset_queens} bin={fname}; building")
+
+  ijkl_list,subconst_cache,records,preset_queens=gen_constellations_stream_to_bin(N,ijkl_list,subconst_cache,fname,preset_queens,gpu_log_level)
+  return ijkl_list,subconst_cache,records,preset_queens,fname
+
+"""stream progress を TSV に追記する。"""
+def append_stream_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,m:int,chunk_total:int,gpu_total:int)->None:
+  with open(progress_fname,"a") as f:
+    f.write(f"{N}\t{preset_queens}\t{chunk_index}\t{off}\t{m}\t{chunk_total}\t{gpu_total}\n")
+
+"""stream progress から再開位置を読む。戻り値: ok,next_chunk,next_off,gpu_total。"""
+def read_stream_resume_state(progress_fname:str,N:int,preset_queens:int,total_records:int)->Tuple[int,int,int,int]:
+  if not file_exists(progress_fname):
+    return 0,0,0,0
+  try:
+    with open(progress_fname,"r") as f:
+      text:str=f.read()
+    lines:List[str]=text.split("\n")
+    last_chunk:int=-1
+    last_off:int=0
+    last_m:int=0
+    last_total:int=0
+    for line in lines:
+      line=line.strip()
+      if line=="":
+        continue
+      if line.startswith("N\tpreset"):
+        continue
+      parts:List[str]=line.split("\t")
+      if len(parts)<7:
+        continue
+      n0:int=int(parts[0])
+      p0:int=int(parts[1])
+      if n0!=N or p0!=preset_queens:
+        continue
+      c0:int=int(parts[2])
+      off0:int=int(parts[3])
+      m0:int=int(parts[4])
+      total0:int=int(parts[6])
+      if off0<0 or m0<0:
+        continue
+      next_off0:int=off0+m0
+      if next_off0<0 or next_off0>total_records:
+        continue
+      if c0>last_chunk:
+        last_chunk=c0
+        last_off=off0
+        last_m=m0
+        last_total=total0
+    if last_chunk<0:
+      return 0,0,0,0
+    next_off:int=last_off+last_m
+    next_chunk:int=last_chunk+1
+    if next_off>total_records:
+      return 0,0,0,0
+    return 1,next_chunk,next_off,last_total
+  except Exception as e:
+    print(f"[stream-resume-warning] failed to read progress={progress_fname} reason={e}")
+    return 0,0,0,0
+
+"""bin を STEPS 件ずつ読み、各 chunk を既存 GPU kernel へ投入する低メモリ GPU 実行。"""
+def exec_solutions_gpu_bin_stream(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  chunk_only:bool=False,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1,
+  resume_stream:bool=False
+)->int:
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  total_records:int=count_constellations_bin_records(fname)
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream.tsv"
+
+  # 87 RESUME:
+  #   bench_mode=12 から呼ばれた場合、progress の最終完了行を読み、
+  #   その次の record/chunk から再開する。通常モードでは従来どおり新規開始。
+  resume_ok:int=0
+  resume_chunk:int=0
+  resume_off:int=0
+  resume_total:int=0
+  if resume_stream and not chunk_only:
+    resume_ok,resume_chunk,resume_off,resume_total=read_stream_resume_state(progress_fname,N,preset_queens,total_records)
+
+  if resume_ok==1:
+    if gpu_log_level>=1:
+      print(f"[stream-resume] N={N} preset={preset_queens} progress={progress_fname} next_chunk={resume_chunk} next_off={resume_off} gpu_total={resume_total}")
+  else:
+    if resume_stream and gpu_log_level>=1:
+      print(f"[stream-resume] N={N} preset={preset_queens} no valid progress; starting from zero progress={progress_fname}")
+    with open(progress_fname,"w") as pf:
+      pf.write("N\tpreset\tchunk\toff\tm\tchunk_total\tgpu_total\n")
+
+  if chunk_only:
+    if debug_chunk_start<0:
+      debug_chunk_start=0
+    if debug_chunk_count<=0:
+      debug_chunk_count=1
+
+  if gpu_log_level>=1:
+    print(f"[stream-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if chunk_only else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} resume={resume_ok} progress={progress_fname}")
+
+  gpu_total:int=resume_total if resume_ok==1 else 0
+  off:int=resume_off if resume_ok==1 else 0
+  chunk_index:int=resume_chunk if resume_ok==1 else 0
+  executed_chunks:int=0
+  _read_uint32_le=read_uint32_le
+
+  with open(fname,"rb") as f:
+    if off>0:
+      f.seek(off*16)
+    while True:
+      chunk_constellations:List[Dict[str,int]]=[]
+      i:int=0
+      while i<STEPS:
+        raw=f.read(16)
+        if len(raw)<16:
+          break
+        ld=_read_uint32_le(raw[0:4])
+        rd=_read_uint32_le(raw[4:8])
+        col=_read_uint32_le(raw[8:12])
+        startijkl=_read_uint32_le(raw[12:16])
+        chunk_constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+        i+=1
+
+      m:int=len(chunk_constellations)
+      if m==0:
+        break
+
+      if chunk_only:
+        run_this_chunk:bool=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+        if not run_this_chunk:
+          if gpu_log_level>=2:
+            print(f"[stream-gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
+          off+=m
+          chunk_index+=1
+          continue
+
+      t0=datetime.now()
+      if gpu_log_level>=1:
+        print(f"[stream-gpu-chunk-start] N={N} chunk={chunk_index} off={off} m={m}")
+
+      exec_solutions(N,chunk_constellations,True,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe)
+
+      chunk_total:int=0
+      if m>0:
+        chunk_total=chunk_constellations[0]["solutions"]
+      gpu_total+=chunk_total
+      executed_chunks+=1
+      t1=datetime.now()
+      append_stream_progress(progress_fname,N,preset_queens,chunk_index,off,m,chunk_total,gpu_total)
+      if gpu_log_level>=1:
+        print(f"[stream-gpu-chunk-end] N={N} chunk={chunk_index} off={off} m={m} elapsed={str(t1-t0)[:-3]} chunk_total={chunk_total} gpu_total={gpu_total}")
+
+      off+=m
+      chunk_index+=1
+
+  if gpu_log_level>=1:
+    print(f"[stream-gpu-summary] N={N} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} total={gpu_total} progress={progress_fname}")
+
+  return gpu_total
+
+"""N に応じて preset_queens を動的に選択する。"""
+def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
+  if N>=5 and N<=17:
+    return 5
+  elif N>=18 and N<=21:
+    return 6
+  elif N>=22 and N<=24:
+    return 7
+  elif N>=25 and N<=27:
+    return 8
+  return preset_queens
+
+
 """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
 def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
 
+  preset_queens=select_dynamic_preset_queens(N,preset_queens)
   use_bin=True
   if use_bin:
     # bin
@@ -2383,15 +3305,23 @@ def _bit_total(N:int)->int:
 
 """N=5..17 の合計解を計測。N<=5 は `_bit_total()` のフォールバック、それ以外は星座キャッシュ（.bin/.txt）→ `exec_solutions()` → 合計→既知解 `expected` と照合。"""
 def main()->None:
+  global DISABLE_CONSTELLATION_SIGNATURE_PRUNE
   
   expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]     
   nmin:int=5
   nmax:int=28
   use_gpu:bool=False
   gpu_block:int=32
-  gpu_max_blocks:int=640
+  gpu_max_blocks:int=484
   gpu_log_level:int=0
-  gpu_sort_mode:int=0
+  gpu_sort_mode:int=-1
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT
+  debug_chunk_start:int=0
+  debug_chunk_count:int=1
+  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 12:stream-resume
+  # 通常運用では preset_queens は 5 固定。診断用 bench_mode>=8 のときだけ引数の preset を許可する。
+  preset_queens_arg:int=5
+  requested_preset_arg:int=5
   argc:int=len(sys.argv)
 
   if argc == 1:
@@ -2407,7 +3337,7 @@ def main()->None:
       print("GPU mode selected")
     else:
       print(f"Unknown option: {arg}")
-      print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode]")
+      print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode] [preset_queens] [bench_mode] [cross_stripe_safe] [debug_chunk_start] [debug_chunk_count]")
       return
 
     # nmax は指定時だけ inclusive として扱う。
@@ -2423,16 +3353,52 @@ def main()->None:
       gpu_log_level=int(sys.argv[6])
     if argc >= 8:
       gpu_sort_mode=int(sys.argv[7])
-    if argc > 8:
+    if argc >= 9:
+      requested_preset_arg=int(sys.argv[8])
+    if argc >= 10:
+      bench_mode=int(sys.argv[9])
+      if bench_mode<0 or bench_mode>12:
+        print(f"[warning] unknown bench_mode={bench_mode}; using 0")
+        bench_mode=0
+    if bench_mode>=8:
+      preset_queens_arg=requested_preset_arg
+    else:
+      if requested_preset_arg!=5:
+        print(f"[warning] preset_queens={requested_preset_arg} is disabled in 77 normal modes; using 5")
+      preset_queens_arg=5
+    if argc >= 11:
+      cross_stripe_safe=(int(sys.argv[10])!=0)
+    if argc >= 12:
+      debug_chunk_start=int(sys.argv[11])
+    if argc >= 13:
+      debug_chunk_count=int(sys.argv[12])
+    if argc > 13:
       print("Too many arguments")
-      print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode]")
+      print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode] [preset_queens] [bench_mode] [cross_stripe_safe] [debug_chunk_start] [debug_chunk_count]")
       return
   else:
-    print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode]")
+    print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode] [preset_queens] [bench_mode] [cross_stripe_safe] [debug_chunk_start] [debug_chunk_count]")
     return
 
+  if bench_mode==10:
+    DISABLE_CONSTELLATION_SIGNATURE_PRUNE=True
+  else:
+    DISABLE_CONSTELLATION_SIGNATURE_PRUNE=False
+
+  if use_gpu:
+    print(f"version        : {VERSION_TAG}")
+    print(f"cross_stripe_safe: {1 if cross_stripe_safe else 0}")
+    if bench_mode==7:
+      print(f"chunk_only    : start={debug_chunk_start} count={debug_chunk_count}")
+    if bench_mode==8 or bench_mode==9 or bench_mode==10:
+      print(f"boundary_debug: mode={bench_mode} preset={preset_queens_arg} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")
+    if bench_mode==11:
+      print(f"stream_bin_only: mode={bench_mode} preset={preset_queens_arg}")
+    if bench_mode==12:
+      print(f"stream_resume : mode={bench_mode} preset={preset_queens_arg}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
+    override_elapsed_text:str=""
     start_time=datetime.now()
     if N<=5:
 
@@ -2450,12 +3416,54 @@ def main()->None:
 
     """ constellasions()でキャッシュを使う """
     use_constellation_cache:bool = False
-    preset_queens:int = 5 # preset_queens CPUが担当する深さ
+
+    preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+    preset_queens=select_dynamic_preset_queens(N,preset_queens)
+
+    if gpu_log_level>=1:
+      print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+
+    # 84 STREAM:
+    #   bench_mode=11 は CPU/GPU どちらでも .bin を stream 生成して終了。
+    #   GPU の N>=21 通常実行は全件 List[Dict] を作らず、.bin から STEPS 件ずつ読み込む。
+    if bench_mode==11:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[stream-cache-only] N={N} preset_queens={preset_queens} records={stream_records} bin={stream_fname} valid={1 if validate_bin_file(stream_fname) else 0}")
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    stream-cache-only")
+      continue
+
+    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10):
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      stream_chunk_only:bool=(bench_mode==7)
+      stream_resume:bool=(bench_mode==12)
+      total:int=exec_solutions_gpu_bin_stream(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,stream_chunk_only,debug_chunk_start,debug_chunk_count,stream_resume)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
+      if stream_chunk_only:
+        status="stream-chunk-only"
+      if stream_resume and status=="ok":
+        status="resume-ok"
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
+      continue
 
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)
     else:
       ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(N,ijkl_list,subconst_cache,constellations,preset_queens)
+
+    if bench_mode==8 or bench_mode==10:
+      print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")
+      diagnose_boundary_classification(N,constellations)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="boundary-only"
+      if bench_mode==10:
+        status="boundary-only-nosig"
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    {status}")
+      continue
 
 
     """ solutions()でキャッシュを使って実行 """
@@ -2469,13 +3477,126 @@ def main()->None:
         load_or_build_solutions_bin(N,constellations, preset_queens, use_gpu, cache_tag="v2")
         # 
     else:
-        exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+        # 72 STABLE FINAL BENCH:
+        #   kernel/探索ロジックは変更せず、N=20 単体が通し実行より遅い現象を切り分ける。
+        #   bench_mode=1: N=20 を同一プロセス内で 1回 warmup し、2回目を測定
+        #   bench_mode=2: N=19 を非表示 preheat してから N=20 を測定
+        #   bench_mode=3: N=18 と N=19 を非表示 preheat してから N=20 を測定
+        if bench_mode==6 and use_gpu:
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+            print(f"[reorder-only] mode=6 validates launch-order permutation only; GPU kernel is not executed")
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,True,True)
+          override_elapsed_text="reorder-only"
+        elif bench_mode==7 and use_gpu:
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+            print(f"[chunk-only] mode=7 executes selected chunks only; GPU kernel runs only for the requested range")
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,True,debug_chunk_start,debug_chunk_count)
+          override_elapsed_text="chunk-only"
+        elif bench_mode==1 and use_gpu and N==20:
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+            print(f"[bench-warmup] mode=1 first run is warmup; second run is measured")
+          warm_start=datetime.now()
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,0,gpu_sort_mode,cross_stripe_safe)
+          warm_total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+          warm_elapsed=datetime.now()-warm_start
+          warm_text=str(warm_elapsed)[:-3]
+          warm_status:str="ok" if expected[N]==warm_total else f"ng({warm_total}!={expected[N]})"
+          print(f"[warmup] N={N} total={warm_total} elapsed={warm_text} {warm_status}")
+          for c in constellations:
+            c["solutions"]=0
+          start_time=datetime.now()
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe)
+        elif bench_mode==5 and use_gpu and N==20:
+          # 72 STABLE FINAL BENCH: run1 warmup, run2 measured.
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+            print(f"[bench-repeat2] mode=5 run N=20 twice in the same process; run 2 is measured")
+          for run_no in range(1,3):
+            for c in constellations:
+              c["solutions"]=0
+            run_t0=datetime.now()
+            run_log:int=gpu_log_level if run_no==2 else 0
+            exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,run_log,gpu_sort_mode,cross_stripe_safe)
+            run_total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+            run_elapsed=datetime.now()-run_t0
+            run_text=str(run_elapsed)[:-3]
+            if run_no==2:
+              override_elapsed_text=run_text
+            run_status:str="ok" if expected[N]==run_total else f"ng({run_total}!={expected[N]})"
+            print(f"[repeat2] N={N} run={run_no} total={run_total} elapsed={run_text} {run_status}")
+            if run_no<2:
+              for c in constellations:
+                c["solutions"]=0
+        elif bench_mode==4 and use_gpu and N==20:
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+            print(f"[bench-repeat] mode=4 run N=20 three times in the same process; run 3 is measured")
+          for run_no in range(1,4):
+            for c in constellations:
+              c["solutions"]=0
+            run_t0=datetime.now()
+            run_log:int=gpu_log_level if run_no==3 else 0
+            exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,run_log,gpu_sort_mode,cross_stripe_safe)
+            run_total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
+            run_elapsed=datetime.now()-run_t0
+            run_text=str(run_elapsed)[:-3]
+            if run_no==3:
+              override_elapsed_text=run_text
+            run_status:str="ok" if expected[N]==run_total else f"ng({run_total}!={expected[N]})"
+            print(f"[repeat] N={N} run={run_no} total={run_total} elapsed={run_text} {run_status}")
+            if run_no<3:
+              for c in constellations:
+                c["solutions"]=0
+        elif (bench_mode==2 or bench_mode==3) and use_gpu and N==20:
+          if gpu_log_level>=1:
+            print(f"[bench-preheat] mode={bench_mode} preheat before measured N=20")
+          pre_start_N:int=19
+          if bench_mode==3:
+            pre_start_N=18
+          for PN in range(pre_start_N,20):
+            pre_ijkl_list:Set[int]=set()
+            pre_constellations:List[Dict[str,int]]=[]
+            pre_subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]]=set()
+            pre_preset_queens:int=5
+            pre_t0=datetime.now()
+            pre_ijkl_list,pre_subconst_cache,pre_constellations,pre_preset_queens=gen_constellations(PN,pre_ijkl_list,pre_subconst_cache,pre_constellations,pre_preset_queens)
+            exec_solutions(PN,pre_constellations,use_gpu,gpu_block,gpu_max_blocks,0,gpu_sort_mode,cross_stripe_safe)
+            pre_total:int=sum(c['solutions'] for c in pre_constellations if c['solutions']>0)
+            pre_elapsed=datetime.now()-pre_t0
+            pre_text=str(pre_elapsed)[:-3]
+            pre_status:str="ok" if expected[PN]==pre_total else f"ng({pre_total}!={expected[PN]})"
+            print(f"[preheat] N={PN} total={pre_total} elapsed={pre_text} {pre_status}")
+          start_time=datetime.now()
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe)
+        else:
+          if gpu_log_level>=1:
+            print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+          exec_solutions(N,constellations,use_gpu,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe)
+
+    if bench_mode==9:
+      if use_gpu:
+        print("[bc-sol-warning] bench_mode=9 is intended for CPU. GPU direct_total stores only constellations[0].")
+      else:
+        diagnose_solution_by_boundary(N,constellations)
     
     """ 合計 """
     total:int=sum(c['solutions'] for c in constellations if c['solutions']>0)
     time_elapsed=datetime.now()-start_time
     text=str(time_elapsed)[:-3]
+    if override_elapsed_text != "":
+      text=override_elapsed_text
     status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
+    if bench_mode==6 and use_gpu:
+      status="reorder-only"
+    if bench_mode==7 and use_gpu:
+      status="chunk-only"
     print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
 
 """ エントリポイント """

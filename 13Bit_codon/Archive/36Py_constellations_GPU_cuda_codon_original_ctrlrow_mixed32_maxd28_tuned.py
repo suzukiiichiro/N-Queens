@@ -17,6 +17,169 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow mixed32 MAXD28 tuned）
 
+はい、これは**かなり大きな当たり**です。
+今回の結果で、NQ GPU 側の本線はほぼ確定しました。
+
+```text
+bucket / expand / FID分割 ではなく、
+19 original の構造を保ったまま GPU kernel のローカルスタックを削る
+```
+
+## 今回の結果の意味
+
+N=18 の推移はこうです。
+
+| 版         | 主な変更               |         N=18 |
+| --------- | ------------------ | -----------: |
+| 19 / 30基準 | original GPU       |   約 `12.05秒` |
+| 30 tuning | block形状調整          |     `9.141秒` |
+| 31        | ctrl packing       |     `6.953秒` |
+| 32        | `fid[]` 削除         |     `6.458秒` |
+| 33        | `fid[] + row[]` 削除 | **`4.862秒`** |
+
+つまり 33 は、19/30 基準から見ると、
+
+```text
+12.05秒 → 4.862秒
+```
+
+で、約 **2.48倍高速化**しています。
+これはこれまでのGPU実験で一番きれいな進捗です。
+
+特に重要なのは、32→33 の差です。
+
+```text
+32: 6.458秒
+33: 4.862秒
+```
+
+`row[MAXD]` を消しただけで約 **25%短縮**しています。
+つまり、今の GPU kernel は探索アルゴリズムそのものより、**threadごとのローカル配列量・レジスタ/ローカルメモリ圧**がかなり支配的です。
+
+## block 条件
+
+33 では今のところ、
+
+```bash
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 18 18 32 256 0
+```
+
+が最良です。
+
+`128 64` も `5.057秒` なので悪くないですが、N=18では `32 256` が少し勝っています。
+一方で、31 の結果を見ると `16 512` は `10.708秒` と大きく悪化しているので、**block=16 は小さすぎ**です。
+
+今の候補はこの2つに絞ってよいです。
+
+```text
+block=32,  max_blocks=256
+block=128, max_blocks=64
+```
+
+## N=19について
+
+31 の N=19 は、
+
+```text
+31 / 32x256 : 54.331秒
+31 / 128x64 : 54.322秒
+```
+
+で、ほぼ同じでした。
+ただ、33 は N=18 で 31 より約30%速いので、N=19もまず 33 で測る価値があります。
+
+次はこの2本が最重要です。
+
+```bash
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 19 19 32 256 0
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 19 19 128 64 0
+```
+
+CPU基準は、以前の19系メモでは N=19 が `0:00:16.233` です。まだGPUが勝つかは分かりませんが、33のN=19実測で次の距離が見えます。
+
+## 次版を3つ置きました
+
+今回は次の3方向です。
+
+### 34: MAXD=28版、安全寄り
+
+[34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned.py](sandbox:/mnt/data/34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_maxd28_patch.diff)
+
+`MAXD=32` を `MAXD=28` に下げただけです。
+N27狙いなら深さ28で足りる見込みが高いので、まずこれが一番安全な追加削減です。
+
+```bash
+codon build -release 34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned.py
+./34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned -g 18 18 32 256 0
+./34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned -g 19 19 32 256 0
+```
+
+### 35: mixed32版、実験寄り
+
+[35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned.py](sandbox:/mnt/data/35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_patch.diff)
+
+`ld/rd` は `int` のまま残し、`col/avail/ctrl` だけ `u32` にしました。
+
+`rd` は盤面外の高位ビットが後続の `>>` で盤面内へ戻る可能性があるので、`u32` 化していません。
+一方、`col/avail/ctrl` は盤面内または制御値なので `u32` 化してローカルメモリ圧を下げています。
+
+```bash
+codon build -release 35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned.py
+./35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned -g 18 18 32 256 0
+./35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned -g 19 19 32 256 0
+```
+
+### 36: MAXD=28 + mixed32版、最攻め
+
+[36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned.py](sandbox:/mnt/data/36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_maxd28_patch.diff)
+
+34と35の合成版です。
+34と35が両方 `ok` なら、これが次の本命です。
+
+```bash
+codon build -release 36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned.py
+./36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned -g 18 18 32 256 0
+./36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned -g 19 19 32 256 0
+```
+
+## 試す順番
+
+おすすめはこの順です。
+
+```bash
+# まず33でN=19の現在地
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 19 19 32 256 0
+
+# 安全寄り
+codon build -release 34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned.py
+./34Py_constellations_GPU_cuda_codon_original_ctrlrow_maxd28_tuned -g 18 18 32 256 0
+
+# 実験寄り
+codon build -release 35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned.py
+./35Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_tuned -g 18 18 32 256 0
+
+# 両方通ったら
+codon build -release 36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned.py
+./36Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_tuned -g 18 18 32 256 0
+```
+
+判定基準は単純です。
+
+```text
+33 N=18: 4.862秒
+
+34がこれを切る → MAXD削減が効いている
+35がこれを切る → mixed32が効いている
+36が最速      → そのままtrunk候補
+```
+
+今回の33の結果はかなり強いです。
+ここから先は、GPU化の方針を変えずに **ローカルスタック削減をさらに詰める**のが正解です。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

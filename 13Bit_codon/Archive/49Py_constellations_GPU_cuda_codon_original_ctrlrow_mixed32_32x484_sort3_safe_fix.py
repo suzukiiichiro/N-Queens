@@ -17,6 +17,115 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 49 trunk候補 32x484 auto-sort + sort_mode=3 work-bucket診断 SAFE FIX（ctrlrow mixed32 tuned）
 
+ログありがとうございます。今回の結果で判断がかなり固まりました。
+
+まず、**48 の preset_queens=6 修正版は合計値が直っています**。`39029188884 ok` になっているので、46 で出ていた `39027754460 != 39029188884` の不一致は修正できています。ただし、実行時間は `0:03:04.632` で、47 の `0:02:43.872` より遅いです。つまり **preset_queens=6 は正しくはなったが、速度改善策としては不採用**です。
+
+また、47 のログに出ている
+
+```text
+[constellation-config] N=20 preset_queens=13 constellations=139232
+```
+
+や、48 の
+
+```text
+[constellation-config] N=20 preset_queens=128 constellations=1369061
+```
+
+は、実際に `preset_queens=13` や `128` で動いたという意味ではありません。`gen_constellations()` の返り値が `counter[0]` になっているため、呼び出し側の `preset_queens` 表示が上書きされているだけです。元ソースにも `return ijkl_list, subconst_cache, constellations, counter[0]` が残っており、これが表示バグの原因です。
+
+その修正版を作りました。
+
+[49Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe_fix.py](sandbox:/mnt/data/49Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe_fix.py)
+
+差分はこちらです。
+
+[49_safe_fix.diff](sandbox:/mnt/data/49_safe_fix.diff)
+
+49 で直した点は次の通りです。
+
+```text
+1. gen_constellations() の返り値を counter[0] ではなく preset_queens に修正
+2. warning の日本語文字化けを避けるため、実行時 warning を ASCII 表記に変更
+3. trunk 表示を trunk49 に更新
+```
+
+これで、次の実行では `preset_queens=5` と表示されるはずです。
+
+```bash
+codon build -release 49Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe_fix.py
+
+./49Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe_fix -g 20 20 32 484 2 -1
+```
+
+誤って末尾に `6` を付けた場合も、47 と同じく 5 に丸めます。ただし warning は文字化けしない英語表記にしました。
+
+```bash
+./49Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe_fix -g 20 20 32 484 2 3 6
+```
+
+期待される表示はこの形です。
+
+```text
+[warning] preset_queens=6 is disabled in 49 SAFE FIX; using 5
+[constellation-config] N=20 preset_queens=5 constellations=139232
+```
+
+加えて、次の本命である **heavy-only split** の準備として、診断版も作りました。
+
+[50Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_opsdiag.py](sandbox:/mnt/data/50Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_opsdiag.py)
+
+差分はこちらです。
+
+[50_opsdiag.diff](sandbox:/mnt/data/50_opsdiag.diff)
+
+50 は高速化版ではなく、**重い constellation が本当に偏っているかを見るための診断版**です。kernel 内の DFS ループ回数を `ops_arr` に記録し、chunk ごとに次を出します。
+
+```text
+ops_avg
+ops_max
+ops_max_idx
+ops_hot_ptn
+ops_hot_ptn_max
+ops_hot_ptn_cnt
+```
+
+実行コマンドはこちらです。
+
+```bash
+codon build -release 50Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_opsdiag.py
+
+./50Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_opsdiag -g 20 20 32 484 2 -1
+```
+
+50 は `ops+=1` を kernel 内に入れているため、通常版より遅くなる可能性があります。速度比較用ではなく、**どの funcptn / chunk / index が重いかを見るための版**です。
+
+現時点の運用判断はこれでよいと思います。
+
+```text
+公開用 / 普段使い:
+  49 SAFE FIX
+  sort_mode=-1
+  preset_queens=5 固定
+
+N=20 単体ベンチ:
+  49 SAFE FIX
+  sort_mode=-1 または sort_mode=2
+
+sort_mode=3:
+  今回のログでは sort_mode=2 とほぼ同等なので不採用寄り
+
+preset_queens=6:
+  48 で正解にはなったが、0:03:04台で遅いため不採用
+
+次の改善検討:
+  50 OPSDIAG で heavy tail を確認してから heavy-only split
+```
+
+こちらでは Codon/CUDA の実機ビルドまでは確認できていません。49 は表示・返り値まわりの最小修正、50 は診断用の追加計測版です。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

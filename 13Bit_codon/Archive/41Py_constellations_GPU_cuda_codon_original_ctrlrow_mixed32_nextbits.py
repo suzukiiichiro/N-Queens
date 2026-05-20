@@ -17,6 +17,136 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow mixed32 tuned）
 
+はい、**39 が現時点の最良です**。
+40 は 37 とほぼ同じなので、採用せず、**39 を trunk 候補**にするのがよいです。
+
+## 今回の結果
+
+| 版   |              N=18 |              N=19 | 判定          |
+| --- | ----------------: | ----------------: | ----------- |
+| 35b |     `0:00:04.510` |     `0:00:34.605` | mixed32 旧最良 |
+| 37  |     `0:00:04.461` |     `0:00:34.248` | hotpath 改善  |
+| 39  | **`0:00:04.401`** | **`0:00:33.756`** | **現時点最良**   |
+| 40  |     `0:00:04.461` |     `0:00:34.259` | 37相当、不採用    |
+
+39 は 37 からさらに、
+
+```text
+N=18: 4.461 → 4.401  約1.3%改善
+N=19: 34.248 → 33.756 約1.4%改善
+```
+
+です。
+
+小幅ですが、**N=18 と N=19 の両方で同じ方向に改善**しているので、これは偶然ではなく、`child fid + child row` を低10bitに置いて push を軽くした効果が出ていると見てよいです。
+
+これで GPU original 系の改善は、
+
+```text
+19 original GPU N=18 : 約12.092秒
+39 current GPU N=18 : 約 4.401秒
+```
+
+なので、N=18では約 **2.75倍高速化**まで来ています。元の19系は `1 constellation = 1 thread` のGPU kernelで、CPU基準は N=19 が `0:00:16.233`、N=20 が `0:02:08.222` でした。
+
+ただし、N=19ではまだ、
+
+```text
+CPU 19系 : 16.233秒
+GPU 39   : 33.756秒
+```
+
+なので、GPUがCPUを超えるにはまだ kernel 内状態削減を続ける必要があります。
+
+## 採用判断
+
+採用候補：
+
+```text
+39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow.py
+block=32
+max_blocks=256
+```
+
+不採用：
+
+```text
+bucket / expand 系
+FID bucket 系
+MAXD=28 系
+ld u32 化
+40 lazydecode
+```
+
+40 は「保険版」としては正しく動きましたが、37相当に戻っているだけなので、39より使う理由はありません。
+
+## 次の実験版 41
+
+39の次は、`meta_next[f]` の GPU 配列参照を消すのが自然です。
+
+39ではまだフレーム初期化時に、
+
+```python
+nfid = meta_next[f]
+```
+
+で `functionid -> next functionid` を GPU 側配列から読んでいます。
+
+41ではこれを 5bit packed の `Static[int]` に焼き込んで、kernel 引数から `meta_next` を消しました。
+
+```text
+NEXT0: f=0..11
+NEXT1: f=12..23
+NEXT2: f=24..27
+```
+
+に分割し、
+
+```python
+if f < 12:
+    nfid = (NEXT0 >> (f*5)) & 31
+elif f < 24:
+    nfid = (NEXT1 >> ((f-12)*5)) & 31
+else:
+    nfid = (NEXT2 >> ((f-24)*5)) & 31
+```
+
+で取り出します。
+
+こちらです。
+
+[41Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_nextbits.py](sandbox:/mnt/data/41Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_nextbits.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_nextbits_patch.diff)
+
+試すコマンドです。
+
+```bash
+codon build -release 41Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_nextbits.py
+
+./41Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_nextbits -g 18 18 32 256 0
+./41Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_nextbits -g 19 19 32 256 0
+```
+
+比較基準はこれです。
+
+```text
+39 N=18: 4.401秒
+39 N=19: 33.756秒
+```
+
+41 がこれを切れば採用です。
+もし41が遅ければ、`meta_next` の配列参照はボトルネックではなかったという判断で、**39をtrunk固定**でよいです。
+
+追加で、39の内訳確認も一度だけ有効です。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 256 2
+```
+
+これで `build / kernel / copy` の比率が見えます。次に削る対象が kernel 本体なのか、SoA構築なのかを切り分けられます。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

@@ -18,6 +18,143 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 26: hybrid版に log_level 引数を追加し、bucket詳細ログを抑えて実測できるようにした版
 
+
+はい、かなりはっきりしました。
+
+今回の結果では、**25 の本命 hybrid は不採用**でよいです。
+
+## 今回の比較結果
+
+現時点の順位はこうです。
+
+| 版  | 条件                                                           |         N=18 時間 | 判定         |
+| -- | ------------------------------------------------------------ | --------------: | ---------- |
+| 21 | `split_row=8` / coarse bucket / `task_steps=8192`            | **0:00:59.785** | 現状最良       |
+| 25 | `split_row=8` / `bucket_mode=0` / `task_steps=262144`        |     0:01:00.691 | わずかに悪化     |
+| 25 | `split_row=8` / `bucket_mode=2` hybrid / `task_steps=262144` |     0:01:00.993 | hybrid も悪化 |
+| 24 | `split_row=8` / full FID / `task_steps=262144`               |     0:01:01.021 | 悪化         |
+| 24 | `split_row=10` / full FID / owner 小                          |     0:02:08.132 | over-split |
+
+`21 split_row=8` は `expanded_tasks=282,834,173` で `0:00:59.785 ok`、今回の `25 mode=0` も同じ `expanded_tasks=282,834,173` ですが `0:01:00.691 ok` です。つまり探索木は同じで、**大きい task batch 化は N=18 では効いていません**。
+
+さらに `25 mode=2` は、funcptn 0/2 を FID 分割し、funcptn 1/3/5 を coarse に残す hybrid でしたが、結果は `0:01:00.993 ok` でした。したがって、**hybrid 分割による分岐ダイバージェンス低減より、bucket 数増加・compact・起動・ログのコストが勝っています**。
+
+## 判断
+
+次の仮説は外れました。
+
+```text
+task_steps を 8192 → 262144 に増やせば速くなる
+funcptn=0/2 だけ FID 分割すれば速くなる
+```
+
+むしろ今回のログからは、こう見た方がよいです。
+
+```text
+split_row=8 は正しい
+bucket は coarse のままがよい
+task_steps は大きくしすぎない方がよい可能性がある
+split_row=10 以上は現時点では over-split
+```
+
+特に `split_row=10` は `expanded_tasks` が大きく膨らみ、完走しても `0:02:08.132` まで悪化しています。これは前回の通り、細かくしすぎて CPU expand・compact・転送・集約のコストが勝った状態です。
+
+## 次に見るべきポイント
+
+今の GPU 経路は、**CPU浅展開そのものが重い**です。
+
+N=18 の CPU本体は過去ログで約 `0:00:02.227` なのに、GPU用の `split_row=8` では CPU expand だけで約20秒かかっています。つまり、GPUに渡すための task 生成が、CPU本体探索より何倍も重い状態です。
+
+なので、次の主戦場は kernel の分割ではなく、
+
+```text
+巨大な expanded task を作ってから bucket compact する方式をやめる
+```
+
+です。
+
+## まず次に試すコマンド
+
+25 のままなら、まず `task_blocks` を 21 と同じサイズへ戻して比較してください。
+
+```bash
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 0 32 32
+./25Py_constellations_GPU_cuda_codon_bucket_hybrid -g 18 18 8 2 32 32
+```
+
+意味は、
+
+```text
+split_row=8
+bucket_mode=0 or 2
+owner_blocks=32
+task_blocks=32  -> task_steps=256*32=8192
+```
+
+これで分かることは単純です。
+
+```text
+mode=0, task_blocks=32 が 21 と同程度になる
+  → 25 の遅さは task_steps=262144 起因
+
+mode=2, task_blocks=32 でも遅い
+  → hybrid 自体が不利
+
+mode=2, task_blocks=32 が速くなる
+  → hybrid は悪くないが、262144 batch と相性が悪い
+```
+
+## ログによる計測ブレを減らす版
+
+bucket詳細ログがかなり多く、`mode=2` ではそれだけでも不利になるので、ログ量を制御できる版も作りました。
+
+[26Py_constellations_GPU_cuda_codon_bucket_hybrid_logctl.py](sandbox:/mnt/data/26Py_constellations_GPU_cuda_codon_bucket_hybrid_logctl.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_hybrid_logctl_patch.diff)
+
+使い方です。
+
+```bash
+codon build -release 26Py_constellations_GPU_cuda_codon_bucket_hybrid_logctl.py
+```
+
+最小ログで mode=0。
+
+```bash
+./26Py_constellations_GPU_cuda_codon_bucket_hybrid_logctl -g 18 18 8 0 32 32 0
+```
+
+最小ログで hybrid。
+
+```bash
+./26Py_constellations_GPU_cuda_codon_bucket_hybrid_logctl -g 18 18 8 2 32 32 0
+```
+
+最後の `0` が `log_level` です。
+
+```text
+0 = config + summary のみ
+1 = expand chunk + summary
+2 = bucket 詳細も表示、25相当
+```
+
+## 現時点の開発方針
+
+今はこう固定してよいです。
+
+```text
+split_row = 8
+bucket_mode = 0 を基準に戻す
+task_blocks = 32 / 64 / 128 / 256 / 1024 を比較
+split_row=10 以上は一旦止める
+full FID / hybrid FID は一旦止める
+```
+
+次の本命改善は、**bucket分類を細かくすることではなく、expanded task の全量 materialize と compact を減らすこと**です。
+具体的には、次版では「全 task を `expanded` に貯める → bucket_indices で二度読み」ではなく、**bucket別に直接貯める、または一定量で flush する streaming bucket** に進むのがよいです。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

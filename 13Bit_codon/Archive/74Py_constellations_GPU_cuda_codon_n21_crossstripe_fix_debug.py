@@ -17,6 +17,352 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 74 N21 CROSS STRIPE FIX + REORDER DEBUG
 
+確認しました。**73 は合格**でよいです。
+
+添付ログでは、通常実行と `cross_stripe_safe=1` の両方で `Total=39029188884` が一致し、どちらも `ok` になっています。通常実行の measured は **0:02:25.122**、safe 検証つきの measured は **0:02:25.194** なので、差は **0.072秒**だけです。これは N=20 の 145秒台に対して約 **0.05%** で、実質的に測定誤差範囲です。
+
+今回の重要ポイントはこれです。
+
+```text
+73 cross_stripe_safe=False
+  run1: 0:02:27.832
+  run2: 0:02:25.122
+  total: 39029188884 ok
+
+73 cross_stripe_safe=True
+  run1: 0:02:27.826
+  run2: 0:02:25.194
+  total: 39029188884 ok
+```
+
+つまり、
+
+```text
+1. 73 は 72 の速度を維持している
+2. cross_stripe_safe を入れても Total は壊れていない
+3. cross_stripe_safe=1 でも測定値はほぼ同等
+4. 9 chunks 構成も期待通り
+5. sort_mode=9 / cross stripe は N=20 で安定
+```
+
+です。
+
+特にログの chunk 構成もきれいです。
+
+```text
+constellations = 139232
+steps          = 15488
+chunks         = 9
+
+chunk 1-8: 15488
+chunk 9  : 15328
+```
+
+`15488 * 8 + 15328 = 139232` なので、chunk 分割も過不足なしです。
+
+---
+
+## 73 の結論
+
+73 はこのまま **STABLE FINAL BENCH 系の安全整理版**として固定してよいです。
+
+```text
+72:
+  最速安定ベンチ基準版
+
+73:
+  72 を保ったまま cross stripe safe を整理した検証可能版
+```
+
+今回の結果を見る限り、73 は 72 の置き換え基準版としても使えます。
+
+---
+
+## 次は 74 に進むのがよいです
+
+次の目的は、前回メモどおり **N=21 以降への展開**です。
+
+ただし、まだ auto で N=21 に `sort_mode=9` を入れるのは早いです。
+まずは 73 を使って、**明示指定で比較**するのが安全です。
+
+おすすめの測定順はこれです。
+
+```bash
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 21 21 32 484 0 0 5 5
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 21 21 32 484 0 9 5 5
+```
+
+ログも見るなら、
+
+```bash
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 21 21 32 484 2 0 5 5
+./73Py_constellations_GPU_cuda_codon_stable_final_bench_crossstripe_safe -g 21 21 32 484 2 9 5 5 1
+```
+
+です。
+
+見るべきところは、まずこの4点です。
+
+```text
+1. N=21 Total が 314666222712 で ok になるか
+2. sort_mode=0 と sort_mode=9 の run2 measured 差
+3. chunk ごとの kernel 時間のばらつき
+4. cross_stripe_safe=1 で壊れないか
+```
+
+---
+
+## 74 の方針
+
+74 は大きな改造版ではなく、次のような **N=21 比較ログ強化版**にするのがよいです。
+
+```text
+74 STABLE N21 SORT COMPARE
+
+目的:
+  - kernel ロジックは変更しない
+  - auto はまだ N=20 のみ sort_mode=9
+  - N=21 は明示 sort_mode で比較
+  - chunk ごとの重さをログで見やすくする
+```
+
+auto はまだこのままです。
+
+```python
+def auto_sort_mode(N:int)->int:
+  if N == 20:
+    return 9
+  return 0
+```
+
+つまり 74 でも、
+
+```text
+N=20      -> auto sort_mode=9
+N=21以降 -> auto sort_mode=0
+```
+
+を維持します。
+
+N=21 の `sort_mode=9` は、コマンドラインで明示指定したときだけ使います。
+
+---
+
+## 今日の成果としてメモ化するなら
+
+```text
+73 STABLE FINAL BENCH + CROSS STRIPE SAFE CLEANUP
+
+N=20 / 32x484 / bench_mode=5 / sort_mode=-1 auto
+
+cross_stripe_safe=0:
+  run1 warmup   0:02:27.832
+  run2 measured 0:02:25.122
+  total         39029188884 ok
+
+cross_stripe_safe=1:
+  run1 warmup   0:02:27.826
+  run2 measured 0:02:25.194
+  total         39029188884 ok
+
+Conclusion:
+  73 passed.
+  cross_stripe_safe validation does not affect correctness.
+  Runtime difference is negligible.
+  73 can be used as the safe baseline for N=21 experiments.
+```
+
+次は **74 として N=21 sort_mode=0 / 9 比較版**に進むのが一番自然です。
+
+はい、これは **N=21 の探索が壊れたというより、`sort_mode=9` の cross stripe 再配置側のバグ**です。
+
+ログでは、N=21 の `sort_mode=0` は `Total=314666222712` で完走しています。一方で、その次の `sort_mode=9` 実行は CUDA kernel ではなく Codon の `List._idx_check` で `IndexError: list index out of range` になっています。つまり、GPU探索中の破壊ではなく、GPU投入前の `work_constellations` 再配置リストが短くなっている可能性が高いです。
+
+N=21 はログ上、
+
+```text
+constellations = 188147
+steps          = 15488
+chunks         = ceil(188147 / 15488) = 13
+```
+
+です。旧 `cross_stripe` 式では、`STEPS % n_chunks_est != 0` のときに一部の `within` が欠落します。N=21 では `15488 % 13 = 5` なので、複数の full chunk の末尾 5 件が落ちます。計算上、旧式では `188147` 件あるべき再配置リストが **188112 件**になり、**35 件不足**します。これが後段の `build_soa_for_range()` で `list index out of range` を起こした原因です。
+
+N=21 の通常実行だけでも 25分25秒かかっており、chunk ログでも 1 chunk あたり約 1分38秒から2分08秒かかっています。したがって、N=21 完走でこの種のバグを追うのは効率が悪いです。
+
+---
+
+## 74 を作成しました
+
+こちらです。
+
+[74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug.py](sandbox:/mnt/data/74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug.py)
+
+差分です。
+
+[74_n21_crossstripe_fix_debug.diff](sandbox:/mnt/data/74_n21_crossstripe_fix_debug.diff)
+
+こちらでは Codon/CUDA の実行環境がないため、ビルド実行確認はできていません。ただし、今回の修正は **kernel ロジックには触っていません**。変更対象は GPU 投入前の constellation 並び替えと、デバッグ用の reorder-only モードです。
+
+---
+
+## 74 の主な変更
+
+### 1. cross stripe 再配置式を修正
+
+旧式は概念的にはこうでした。
+
+```python
+slot -> src_ch, base を同時に作る
+```
+
+この形だと、`STEPS` が `n_chunks_est` で割り切れないときに、特定 `src_ch` の末尾 `within` が生成されません。
+
+74 では、次のように **out_ch / base / src_ch を独立に回す**形にしています。
+
+```python
+out_ch = 0
+while out_ch < n_chunks_est:
+  base = 0
+  while base * n_chunks_est < STEPS:
+    src_ch = 0
+    while src_ch < n_chunks_est:
+      rem = (src_ch + out_ch) % n_chunks_est
+      within = base * n_chunks_est + rem
+      if within < STEPS:
+        idx = src_ch * STEPS + within
+        if idx < m_all:
+          reordered.append(constellations[idx])
+      src_ch += 1
+    base += 1
+  out_ch += 1
+```
+
+これで、任意の `(src_ch, within)` がちょうど一度だけ出ます。
+
+---
+
+### 2. reorder-only debug mode を追加
+
+N=21 の長い kernel を走らせず、**再配置だけを検証して終了**できるようにしました。
+
+`bench_mode=6` が追加されています。
+
+```text
+bench_mode=6:
+  reorder-only debug
+  constellation 生成
+  cross stripe 再配置
+  件数検証
+  index permutation 検証
+  GPU kernel は実行しない
+```
+
+これにより、今回のような `IndexError` は N=21 完走なしで確認できます。
+
+---
+
+## 最初に実行するコマンド
+
+まず、N=21 の reorder-only だけを確認してください。
+
+```bash
+codon build -release 74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug.py
+./74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug -g 21 21 32 484 2 9 5 6 1
+```
+
+引数の意味はこの通りです。
+
+```text
+-g
+21 21      : N=21 のみ
+32 484     : 32x484
+2          : log_level=2
+9          : sort_mode=9
+5          : preset_queens=5
+6          : bench_mode=6 reorder-only
+1          : cross_stripe_safe=1
+```
+
+期待する出力はこの形です。
+
+```text
+[constellation-config] N=21 preset_queens=5 constellations=188147
+[reorder-only] mode=6 validates launch-order permutation only; GPU kernel is not executed
+[reorder-only] N=21 sort_mode=9 original=188147 reordered=188147 chunks=13 steps=15488 ok
+21:                 0                0          reorder-only    reorder-only
+```
+
+ここで重要なのは、
+
+```text
+original=188147 reordered=188147
+```
+
+になることです。
+
+---
+
+## 次に N=20 の退行確認
+
+74 は N=20 の基準を壊していないか確認します。
+
+```bash
+./74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug -g 20 20 32 484 0 -1 5 5
+```
+
+safe 検証つきならこちらです。
+
+```bash
+./74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug -g 20 20 32 484 2 -1 5 5 1
+```
+
+期待値はこれです。
+
+```text
+N=20 total = 39029188884 ok
+auto sort_mode = 9
+```
+
+---
+
+## N=21 の本実行は最後でよいです
+
+reorder-only が通った後にだけ、N=21 `sort_mode=9` の本実行をしてください。
+
+```bash
+./74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug -g 21 21 32 484 0 9 5 0
+```
+
+ログも見るなら、
+
+```bash
+./74Py_constellations_GPU_cuda_codon_n21_crossstripe_fix_debug -g 21 21 32 484 2 9 5 0 1
+```
+
+ただし、これはまた 20分以上かかる可能性が高いので、まずは `bench_mode=6` の reorder-only だけで十分です。
+
+---
+
+## 今回の結論
+
+今回の判断はこうです。
+
+```text
+73:
+  N=20 は合格。
+  N=21 sort_mode=0 も正解完走。
+  ただし N=21 sort_mode=9 は cross stripe 再配置で欠落があり、host 側 IndexError。
+
+74:
+  cross stripe 再配置を一般化。
+  N=21 のように n_chunks_est=13 でも欠落しない形に修正。
+  N=21 完走なしで確認できる reorder-only debug mode を追加。
+```
+
+したがって、次は **N=21 完走ではなく、74 の reorder-only 検証**から始めるのが安全です。
+
+
 74 purpose:
   - Fix cross stripe reorder for N=21+ when STEPS % n_chunks_est != 0.
   - Add reorder-only debug mode so N=21 can be checked without long GPU kernel execution.

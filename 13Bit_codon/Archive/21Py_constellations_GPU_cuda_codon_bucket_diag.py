@@ -17,6 +17,96 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+
+N=18 まで `ok` なので、まず**正しさは壊れていません**。ただし、今回のログはかなり重要で、結論から言うと **bucket 版が実際には走っていない可能性が高い**です。
+
+理由は、こちらで作った bucket 版には GPU 経路で必ず次のようなログが出る構造になっています。
+
+```text
+[gpu-expand] ...
+[gpu-bucket] ...
+[gpu-summary] ...
+[gpu-summary-bucket] ...
+```
+
+添付ソース上も `expand_iter_to_row()`、`ExpandedTasks`、`GPU_SPLIT_ROW`、`[gpu-expand]`、`[gpu-bucket]` が入っています。
+ですが、提示いただいた実行結果にはそれが一切出ていません。つまり、今の実行ログはほぼ **従来の「1 constellation = 1 GPU thread」経路の速度**として見た方がよいです。
+
+今回の N=18 は GPU で `0:01:26.231`、以前の CPU は N=18 で約 `0:00:02.3` なので、まだ「強い探索木を GPU 向けに再パッケージする」段階には入れていない、という判断です。
+
+そこで、次の診断版を作りました。
+主な変更は以下です。
+
+1. 実行時に必ず `[gpu-config] bucketized=1 ...` を出す
+2. `-g 18 18` のように **N を単体指定**できる
+3. `-g 18 18 10` のように **split_row をコマンドライン指定**できる
+4. これにより、毎回 N=5 から走らせず、N=18 だけで split 調整できます
+
+ファイルはこちらです。
+
+[21Py_constellations_GPU_cuda_codon_bucket_diag.py](sandbox:/mnt/data/21Py_constellations_GPU_cuda_codon_bucket_diag.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_diag_patch.diff)
+
+まずはこれを実行してください。
+
+```bash
+codon build -release 21Py_constellations_GPU_cuda_codon_bucket_diag.py
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18
+```
+
+正常に bucket 版へ入っていれば、N=18 の前後で最低でもこういう行が出ます。
+
+```text
+[gpu-config] N=18 bucketized=1 split_row=-1 block=256 max_blocks=32 steps=8192
+[gpu-expand] ...
+[gpu-bucket] ...
+[gpu-summary] ...
+[gpu-summary-bucket] ...
+```
+
+もし `[gpu-config]` が出なければ、実行しているバイナリかソースが違います。
+その場合は一度、同じディレクトリで次も確認してください。
+
+```bash
+grep -n "gpu-config\|expand_iter_to_row\|gpu-bucket" 21Py_constellations_GPU_cuda_codon_bucket_diag.py
+```
+
+次に split_row を固定して比較します。まずこのあたりです。
+
+```bash
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 -1
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 8
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 10
+./21Py_constellations_GPU_cuda_codon_bucket_diag -g 18 18 12
+```
+
+見るべきポイントは、最終時間より先にこの3つです。
+
+```text
+[gpu-expand] base=... tasks=...
+[gpu-bucket] bucket=... tasks=... time=...
+[gpu-summary] base_constellations=... expanded_tasks=...
+```
+
+特に重要なのは `base_constellations` に対して `expanded_tasks` がどれくらい増えたかです。
+もし `expanded_tasks` がほとんど増えていなければ、GPU はまだ粗い枝を背負っていて、負荷分散が効いていません。逆に `expanded_tasks` が爆発しているのに遅い場合は、CPU 展開・compact・kernel 多重起動・転送のどれかが支配的です。
+
+今回の出力だけからの判断では、次の順で詰めるのが良いです。
+
+```text
+1. bucket 版が本当に動いているか確認
+2. N=18 単体で split_row=-1/8/10/12 を比較
+3. expanded_tasks と bucket ごとの偏りを見る
+4. 偏りが強い bucket だけ kernel 分離する
+5. mark 系だけ dfs_iter_gpu_mark() に分離
+```
+
+現時点で焦って kernel を増やすより、まず **ログが出る状態を確定**するのが先です。今回の pasted log では bucket 経路に入った証拠がないため、速度評価としてはまだ「失敗」ではなく「診断ログが取れていない状態」と見ています。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

@@ -17,392 +17,932 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
-ログ拝見しました。
-今回の結果は **前回の 79 修正が効いていません**。N18/N19/N20 が、昨日メモの preset=6 NG 値と完全に同じです。 
+はい、**88は「複数kernelを投げる」方向になります。**
+ただし、ここは少し慎重に定義した方がよいです。
 
-原因は、私の前回の仮説がずれていました。
+**85/86でやったこと**は、
 
-前回は DFS 側で、
+```text
+fid別にbucket化する
+↓
+同じ kernel_dfs_iter_gpu をfidごとに何度も投げる
+```
+
+でした。これは kernel launch 回数と詰め替えコストが増え、遅くなりました。
+
+**88でやるべきこと**は、それとは違って、
+
+```text
+fidまたはfidグループ別に専用kernelを作る
+↓
+その専用kernelへ同種タスクだけを流す
+```
+
+です。
+
+つまり、88は単なる「fid別に複数回投げる」ではなく、**「fid系統別の専用kernel化」**です。
+
+## 88の基本方針
+
+84では現在、`funcid_arr` を各taskに持たせ、`kernel_dfs_iter_gpu()` の中で `funcid` と `meta_next` を見ながら1本の汎用kernelで処理しています。
+また、84の `fid_name()` は 0〜27 の28種類を持っており、`bc_expected_fid()` では大分類として `0..11`、`12..18`、`19..25`、`26..27` に分かれています。
+
+なので88では、最初から28個のkernelを作るより、まずこの4分類で始めるのが良いです。
+
+```text
+B系      : fid 0..11
+SQd2系   : fid 12..18
+SQd1系   : fid 19..25
+SQd0系   : fid 26..27
+```
+
+これなら、1 superchunk あたり最大4 kernel launchで済みます。
+85のように最大28 launchへ増えません。
+
+## 88の設計案
+
+私は88をこうしたいです。
+
+```text
+88Py_constellations_GPU_cuda_codon_stream_bc_kernel.py
+```
+
+処理の流れはこうです。
+
+```text
+1. 87/84 streamを維持
+2. .binからSTEPSまたはsuperchunk単位で読む
+3. build_soa_for_range()でfuncidを計算
+4. fidからbc groupを判定
+5. B / SQd2 / SQd1 / SQd0 の4bucketへ詰める
+6. group別の専用kernelを呼ぶ
+7. group別の時間・件数・totalを出す
+```
+
+まずは4 kernelです。
+
+```text
+kernel_dfs_B_gpu
+kernel_dfs_d2_gpu
+kernel_dfs_d1_gpu
+kernel_dfs_d0_gpu
+```
+
+各kernelの中では、対象fid範囲だけを前提にします。例えば `kernel_dfs_d2_gpu` は `fid 12..18` しか来ないので、SQd2系以外の分岐を消せます。
+
+## なぜ28 kernelではなく4 kernelから始めるか
+
+28個にすると、85と同じくlaunch overheadが勝つ可能性が高いです。
+N21/N22では特に不利です。
+
+一方、4分類なら、
+
+```text
+launch回数は増えすぎない
+warp内の分岐混在はかなり減る
+境界系ごとの処理が揃う
+```
+
+というバランスになります。
+
+その後、profileで重いfidが分かれば、重いものだけさらに専用化します。
+
+例えば、
+
+```text
+SQd2B      fid 14
+SQd1B      fid 21
+SQd0B      fid 26
+P5系       fid 8..11
+```
+
+のように、遅いところだけ切り出します。
+
+## 88は85/86の反省を踏まえる
+
+85/86の失敗は、「分類そのもの」ではなく、**同じ汎用kernelを細かく分けて投げすぎたこと**だと思います。
+
+88では次を避けます。
+
+```text
+NG:
+  fid 0..27 に細かく分ける
+  各fidごとに同じkernel_dfs_iter_gpuを呼ぶ
+  launch回数だけ増える
+
+OK:
+  4分類にまとめる
+  各分類の専用kernelを作る
+  汎用funcid分岐を削る
+```
+
+## 88の優先順位
+
+最初の88では、速度改善よりも「正しく4分類kernel化できるか」を優先します。
+
+```text
+第一段階:
+  B / SQd2 / SQd1 / SQd0 の4 kernel
+  N21, N22で84と完全一致
+
+第二段階:
+  group別 timing を出す
+  どの分類が重いか見る
+
+第三段階:
+  重いgroup内のfidをさらに専用化
+
+第四段階:
+  N23/N24で比較
+```
+
+## 現時点の結論
+
+はい、**88は複数kernel版**です。
+ただし、正確にはこうです。
+
+```text
+88 = fid別に同じkernelを何度も投げる版ではない
+88 = fid group別に専用kernelを作って投げる版
+```
+
+まずは **4 kernel構成** がよいと思います。
+
+```text
+B系      fid 0..11
+SQd2系   fid 12..18
+SQd1系   fid 19..25
+SQd0系   fid 26..27
+```
+
+この方向なら、85/86のlaunch overhead問題を避けつつ、GPUの分岐発散を減らす効果を狙えます。
+
+はい、GPU版N24を止める判断でよいと思います。CPU版N24が別で動いているなら、GPU側は88検証へ切り替えて問題ありません。
+
+88を作成しました。
+
+[88Py_constellations_GPU_cuda_codon_stream_bc_kernel.py](sandbox:/mnt/data/88Py_constellations_GPU_cuda_codon_stream_bc_kernel.py)
+
+添付いただいた最終版84をベースにしています。84はN21以上のGPU実行で `.bin` をstream読みし、全件 `List[Dict]` 化を避ける構造になっています。88もこのstream構造を維持しています。
+
+## 88の内容
+
+85/86のような「fid 0..27 ごとに細かくkernelを投げる」方式ではなく、次の4大分類です。
+
+```text
+B系      : fid 0..11
+SQd2系   : fid 12..18
+SQd1系   : fid 19..25
+SQd0系   : fid 26..27
+```
+
+追加した専用kernelは以下です。
+
+```text
+kernel_dfs_bc_B_gpu
+kernel_dfs_bc_D2_gpu
+kernel_dfs_bc_D1_gpu
+kernel_dfs_bc_D0_gpu
+```
+
+各kernelは現行の非再帰DFSロジックをベースにしていますが、BC groupごとに `IS_BASE_MASK`、`IS_MARK_MASK`、`IS_JMARK_MASK`、`IS_P5_MASK` などのStatic maskを絞っています。
+
+つまり、88は **完全なSQ関数別kernel化ではなく、まず4分類専用kernel化の第一段階** です。
+
+## GPU版84を止める場合
+
+先にprogressを退避してください。
+
+```bash
+cp progress_N24_7_stream.tsv \
+  "progress_N24_7_stream.tsv.before_stop_$(date +%Y%m%d_%H%M%S).bak" 2>/dev/null || true
+```
+
+PID確認：
+
+```bash
+pgrep -af 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream
+```
+
+停止：
+
+```bash
+kill -TERM <PID>
+```
+
+数秒後に残っていた場合のみ：
+
+```bash
+kill -KILL <PID>
+```
+
+## 88のビルド
+
+```bash
+codon build -release 88Py_constellations_GPU_cuda_codon_stream_bc_kernel.py
+```
+
+この環境にはCodonが無いため、実ビルド確認はできていません。Pythonのtokenizeによる字句レベル確認は通しています。
+
+## 88の実行
+
+bench_mode は **12** です。
+
+まずN21で検証してください。
+
+```bash
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 21 21 32 484 1 0 5 12
+```
+
+詳細ログあり：
+
+```bash
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 21 21 32 484 2 0 5 12
+```
+
+成功判定：
+
+```text
+21:      314666222712                0      ...    bc-kernel-ok
+```
+
+次にN22です。
+
+```bash
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 22 22 32 484 1 0 5 12
+```
+
+成功判定：
+
+```text
+22:     2691008701644                0      ...    bc-kernel-ok
+```
+
+## 出力ファイル
+
+88は以下を出します。
+
+```text
+progress_N{N}_{preset}_bc_kernel.tsv
+bc_profile_N{N}_{preset}_bc_kernel.tsv
+```
+
+例：
+
+```text
+progress_N21_6_bc_kernel.tsv
+bc_profile_N21_6_bc_kernel.tsv
+```
+
+profileは、4大分類ごとの件数・時間・合計を見るためのTSVです。
+
+```bash
+tail -20 bc_profile_N21_6_bc_kernel.tsv
+```
+
+集計するなら：
+
+```bash
+awk -F '\t' '
+NR>1 {
+  cnt[$5]+=$7
+  total[$5]+=$9
+}
+END {
+  for (g in cnt) print g, cnt[g], total[g]
+}
+' bc_profile_N21_6_bc_kernel.tsv | sort -n
+```
+
+## super factor
+
+88では以下の定数を入れています。
 
 ```python
-if functionid==27 and row>mark1:
-  functionid=26
+BC_KERNEL_SUPER_FACTOR_DEFAULT:int=4
 ```
 
-を入れましたが、78 本体の `build_soa_for_range()` では、SQd0 系はすでに
+つまり、通常の `STEPS = 32 * 484 = 15488` の4倍、約61,952件を1 superchunkとして読み、その中で4分類へ分けます。
+
+85のように細かく分けすぎると遅くなるので、88は最初からsuperchunk方式にしています。
+
+もしメモリに余裕があり、kernel launch回数をさらに減らしたければ、ソース内で以下を変更してください。
 
 ```python
-if start>k:
-    target=26
-else:
-    mark1=k-1
-    target=27
+BC_KERNEL_SUPER_FACTOR_DEFAULT:int=8
 ```
 
-になっています。つまり `start>k` の SQd0 は最初から `fid=26` で、`fid=27` の DFS 正規化には基本的に掛かりません。
+まずは `4` のままでN21を見た方がよいです。
 
-今回見直して、主因は **DFS 側ではなく constellation 生成側の `subconst_cache` のスコープ**だと判断しました。
-
-元コードでは `subconst_cache` が `gen_constellations()` 全体で一度だけ `clear()` され、その後 `for sc in ijkl_list:` で各開始星座を回しています。 
-一方、`set_pre_queens_cached()` のキーは `(ld, rd, col, k, l, row, queens, LD, RD, N, preset_queens)` で、開始星座 `sc/base` 自体は含まれていません。
-そのため preset=6/7 で別の `sc` が同じ中間状態へ合流すると、後続 `sc` 側の正当な constellation 生成が cache hit で抑止され、不足が出ます。
-
-修正版の完全版ソースを作成しました。
-
-[79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix.py](sandbox:/mnt/data/79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix.py)
-
-今回の修正は、`gen_constellations()` の `for sc in ijkl_list:` の直後で、
-
-```python
-subconst_cache.clear()
-```
-
-を実行するだけです。
-つまり `subconst_cache` を **全開始星座共通**ではなく、**各 sc 内の再帰重複抑止用**に戻しています。
-
-ビルドと確認は以下でお願いします。
+## 期待する評価順
 
 ```bash
-SRC=79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix.py
-BIN=79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix
+# 1. N21 正しさと時間
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 21 21 32 484 1 0 5 12
 
-codon build -release $SRC -o $BIN
+# 2. N22 正しさと時間
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 22 22 32 484 1 0 5 12
 
-./$BIN -c 18 20 32 484 1 -1 6 9 > bc_sol_p6_N18_N20_after_v2.log
-grep -E "^(18:|19:|20:)" bc_sol_p6_N18_N20_after_v2.log
+# 3. profile確認
+tail -20 bc_profile_N22_7_bc_kernel.tsv
 ```
 
-期待値は以下です。
+N21で84より明らかに遅い場合は、88の4kernel化もまだlaunch/pack overheadが勝っている可能性があります。N21で近いか速い場合は、N22/N23で効果が出る見込みがあります。
+
+
+ログ確認しました。**88は正しく動いていますが、速度面では84に負けています。**
+
+N21の結果は、
 
 ```text
-18:         666090624    ok
-19:        4968057848    ok
-20:       39029188884    ok
+21:      314666222712                0          0:34:57.160    bc-kernel-ok
 ```
 
-preset=6 が OK になったら、同じ修正で preset=7 も確認する価値があります。
+なので、解数は正解です。`B / SQd2 / SQd1 / SQd0` の4分類kernelでも合計は完全に一致しています。
+
+一方、84のGPU N21は以前のログで、
+
+```text
+21:      314666222712                0          0:25:38.459    ok
+```
+
+でした。
+
+したがって、88は84に対しておよそ、
+
+```text
+34分57秒 / 25分38秒 ≒ 1.36倍遅い
+```
+
+です。
+
+## 判断
+
+**88はN22へ進めなくてよいと思います。**
+
+正しさ確認は成功しましたが、速度改善の方向としては外れています。
+これは重要な検証結果です。
+
+つまり、
+
+```text
+funcid / BC group の混在を減らす
+↓
+分岐発散が減って速くなるはず
+```
+
+という仮説は、少なくとも今回の4分類kernel版では成立しませんでした。
+
+## なぜ遅いか
+
+88ではN21を33 superchunkに分け、各superchunk内で最大4グループを処理しています。最終summaryでは、
+
+```text
+B     count=637907  kernels=32  total=159334182072
+SQd2  count=459705  kernels=24  total=64434965768
+SQd1  count=633937  kernels=28  total=62641118904
+SQd0  count=293733  kernels=8   total=28255955968
+```
+
+となっています。
+
+84のN21 32x484は、約131 chunkです。88はgroup kernel数合計が `32+24+28+8=92` なので、**kernel launch回数だけ見ると88の方が少ない**です。
+
+それでも遅いということは、主因は単純なlaunch overheadではありません。
+
+考えられる原因はこのあたりです。
+
+```text
+1. 4分類に分けたことで、groupごとのtail effectが増えた
+2. groupへ詰め替えるpack処理が重い
+3. 汎用kernel内のfuncid分岐は、実は支配的ボトルネックではなかった
+4. BC group専用kernelが、期待ほど分岐削減・occupancy改善につながっていない
+5. 1 constellation = 1 thread の不均一DFSそのものがまだ支配的
+```
+
+特に重要なのは、**84は全部を1 kernelに混ぜて投げるため、GPUスケジューラがB/SQd2/SQd1/SQd0の重軽を自然に混ぜて処理できます。**
+88はgroupを分けたことで、各groupの中で重いthreadだけが残るtailが発生しやすくなった可能性があります。
+
+## 88から得られた収穫
+
+88は速くはありませんでしたが、検証としては価値があります。
+
+分かったことは、
+
+```text
+BC 4分類専用kernel化だけでは速くならない
+funcid混在の分岐発散は、主犯ではない可能性が高い
+```
+
+ということです。
+
+なので、次に進むなら **さらにkernelを細分化する方向ではなく、タスク粒度を変える方向** がよいです。
+
+## 次の方向：89は「heavy task split」
+
+次は、kernelを増やすのではなく、
+
+```text
+重いconstellationを、GPU投入前にさらに1〜2段展開して小さいtaskへ割る
+```
+
+方向が良いと思います。
+
+つまり、今の問題はまだ、
+
+```text
+1 constellation = 1 thread
+```
+
+で、threadごとのDFS量が大きく違うことです。
+
+これを、
+
+```text
+1 heavy constellation
+↓
+rowを1〜2段だけ事前展開
+↓
+複数の lighter subtask に分割
+↓
+GPUへ投入
+```
+
+にします。
+
+この方が、不均一DFSの根本に近いです。
+
+## 89の候補設計
+
+名前を付けるなら、
+
+```text
+89Py_constellations_GPU_cuda_codon_stream_heavy_split.py
+```
+
+です。
+
+処理方針：
+
+```text
+1. 84 streamをベースにする
+2. .binからSTEPS件読む
+3. build_soa_for_range()でTaskSoA化
+4. 各taskの重さを推定する
+   - free popcount
+   - depth = endmark - row
+   - funcid
+   - BC group
+5. 重いtaskだけ host側で1〜2段展開する
+6. 展開後のsubtaskを同じ kernel_dfs_iter_gpu に流す
+7. kernelは1本のまま、launch回数を増やさない
+```
+
+重要なのは、**kernelを増やさない**ことです。
+
+85/86/88の結果から、複数kernel化は現時点では不利です。
+次は、**同じkernelに渡すtaskの粒度を均一化する**方が筋が良いです。
+
+## profileをもう少し見るコマンド
+
+88の `bc_profile_N21_6_bc_kernel.tsv` から、group別の累計時間を出すと次の設計に役立ちます。
 
 ```bash
-./$BIN -c 18 20 32 484 1 -1 7 9 > bc_sol_p7_N18_N20_after_v2.log
-grep -E "^(18:|19:|20:)" bc_sol_p7_N18_N20_after_v2.log
+python3 - <<'PY'
+from collections import defaultdict
+
+fname = "bc_profile_N21_6_bc_kernel.tsv"
+
+def parse_time(s):
+    # 0:00:10.294
+    h, m, sec = s.split(":")
+    return int(h) * 3600 + int(m) * 60 + float(sec)
+
+cnt = defaultdict(int)
+tot = defaultdict(int)
+sec = defaultdict(float)
+kern = defaultdict(int)
+
+with open(fname) as f:
+    header = next(f, None)
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        p = line.split("\t")
+        # N preset superchunk off group group_name count elapsed group_total gpu_total
+        g = int(p[4])
+        name = p[5]
+        key = (g, name)
+        cnt[key] += int(p[6])
+        sec[key] += parse_time(p[7])
+        tot[key] += int(p[8])
+        kern[key] += 1
+
+for key in sorted(cnt):
+    g, name = key
+    print(
+        f"group={g} {name:5s} "
+        f"count={cnt[key]:9d} "
+        f"kernels={kern[key]:4d} "
+        f"sec={sec[key]:10.3f} "
+        f"tasks/sec={cnt[key]/sec[key]:10.1f} "
+        f"total={tot[key]}"
+    )
+PY
 ```
 
-今回の修正は CPU/GPU kernel ではなく **constellation 生成共有部**なので、CPU `-c` が通れば GPU `-g` 側にも同じ効果が出るはずです。Codon 実ビルドはこの環境では実行できていませんが、こちらで Python 移植の小規模検算では N8〜N14 の preset=5/6/7 がすべて期待値に戻ることを確認しました。
+この結果で、例えば `SQd0` が件数の割に極端に遅い、または `B` が総時間の大半を占める、などが見えます。
 
-
-According to a document from 2026-05-13, 添付ログを確認しました。
-
-結論として、**79 の cache fix は preset=6 には成功しています。**
-N18/N19/N20 がすべて期待値どおり `ok` になっています。
+## 今の結論
 
 ```text
-preset=6:
-N18  666090624      ok
-N19  4968057848     ok
-N20  39029188884    ok
+88:
+  正しさ OK
+  N21 = 0:34:57.160
+  84 GPU N21 = 0:25:38.459
+  → 88は約1.36倍遅い
+
+次:
+  N22へ進める必要なし
+  kernel細分化は一旦中止
+  89は heavy task split 方向がよい
 ```
 
-一方で、**preset=7 はまだ NG** です。今回の値は以下です。
+88で「BC分類kernel化は効かない」と分かったので、次はかなり明確です。
+**不均一DFSの解決は、kernel分割ではなく、重いtaskをさらに分割してGPUへ流す方向に切り替えるべきです。**
+
+
+ログを見る限り、**88は正解一致していますが、方向性としては84に負けています。**
+
+88のN21結果は、
 
 ```text
-preset=7:
-N18  666069600      ng   差分 -21,024
-N19  4967917696     ng   差分 -140,152
-N20  39028172748    ng   差分 -1,016,136
+21:      314666222712                0          0:34:57.160    bc-kernel-ok
 ```
 
-ただし、昨日メモの preset=7 はもっと大きな不足でした。昨日時点では N18 `-387,236`、N19 `-2,453,668`、N20 `-16,316,800` でした。
-
-今回の修正で、preset=7 もかなり改善しています。
+で正解です。一方、84のN21 GPUは以前のログで、
 
 ```text
-preset=7 改善量:
-
-N18:
-  旧不足  -387,236
-  新不足   -21,024
-  回復    +366,212
-
-N19:
-  旧不足  -2,453,668
-  新不足    -140,152
-  回復    +2,313,516
-
-N20:
-  旧不足  -16,316,800
-  新不足   -1,016,136
-  回復    +15,300,664
+21:      314666222712                0          0:25:38.459    ok
 ```
 
-割合で見ると、preset=7 の不足の **約94%前後は今回の cache fix で回復**しています。
+なので、88は約 **1.36倍遅い** です。 
+
+今回のgroup別集計もかなり参考になります。
 
 ```text
-N18: 約94.57% 回復
-N19: 約94.29% 回復
-N20: 約93.77% 回復
+group=0 B     count=637907 kernels=32 sec=756.249 tasks/sec=843.5
+group=1 SQd2  count=459705 kernels=24 sec=495.727 tasks/sec=927.3
+group=2 SQd1  count=633937 kernels=28 sec=542.490 tasks/sec=1168.6
+group=3 SQd0  count=293733 kernels=8  sec=301.467 tasks/sec=974.3
 ```
 
-したがって、現在の状態はこう整理できます。
+B系が件数も多く、tasks/secも一番低いです。つまり、N21では **B系が最大の時間消費源** です。
+
+## 判断
+
+**88はN22に進めなくてよいと思います。**
+
+理由は、今回の88で次のことが分かったからです。
 
 ```text
-79: preset=6 dynamic cache fix
-    CPU -c N18/N19/N20 OK
-    → preset=6 は完了扱いでよい
-
-preset=7:
-    かなり改善したが、残差あり
-    → 次ターゲットは 80
+BC 4分類kernel化は正しく動く
+しかし84より速くならない
+B / SQd2 / SQd1 / SQd0 に分けるだけでは不均一DFSは解消しない
 ```
 
-次のターゲットは以下でよいと思います。
+さらに重要なのは、88はkernel launch数だけを見ると多すぎるわけではないことです。
 
 ```text
-80: preset=7 residual dynamic fix
-    残差:
-      N18 -21,024
-      N19 -140,152
-      N20 -1,016,136
+88 group kernels:
+B     32
+SQd2  24
+SQd1  28
+SQd0   8
+合計  92
 ```
 
-昨日メモでも preset=7 は「SQd0 だけでなく全体に不足」「動的 preset 用の状態復元がまだ不完全」と整理されていました。
-今回 preset=6 が通ったので、残りは **subconst_cache の sc 間共有問題ではなく、preset=7 でさらに 1 queen 深くしたときの start/skip/復元状態の残差**を見る段階です。
+84のN21 32x484はおおむね131 chunkなので、**88のkernel launch回数はむしろ少ない**です。それでも遅い。
+つまり、遅さの原因は単純なkernel launch数ではなく、
 
-次は、preset=7 の boundary/fid 別ログを取るのがよいです。
+```text
+1. BC groupごとに分けたことでtail effectが増えた
+2. group bucketへのpack処理が重い
+3. 汎用kernel内のfuncid分岐は主犯ではなかった
+4. 1 constellation = 1 thread の探索量ばらつきが主犯
+```
+
+と見るべきです。
+
+## 次にやるべきこと
+
+次は **kernel分割ではなく、タスク粒度を揃える方向** がよいです。
+
+ただし、いきなり89でheavy splitを書く前に、84に既に入っている **単一kernel local sort** を試す価値があります。84のソースには `sort_mode=4` があり、これは「kernelを増やさず、chunk内だけ並び替える」方式です。
+
+まずこれを試してください。
 
 ```bash
-./79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix \
-  -c 18 18 32 484 1 -1 7 9 > bc_sol_p7_N18_detail_after_v2.log
-
-grep -E "^\[bc-sol-(case|fid|summary)\]|^18:" \
-  bc_sol_p7_N18_detail_after_v2.log
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 21 21 32 484 1 4 5 0
 ```
 
-続けて preset=6 の同じ詳細ログと比較します。
+比較対象：
+
+```text
+84 sort_mode=0 N21 : 0:25:38.459
+88 bc-kernel N21   : 0:34:57.160
+```
+
+`sort_mode=4` が25分台より速ければ、kernel分割なしで改善できます。
+`sort_mode=4` も遅ければ、並び替えではなく **heavy task split** に進むべきです。
+
+## 89の方向
+
+89はこうするのが良いと思います。
+
+```text
+89Py_constellations_GPU_cuda_codon_stream_heavy_split.py
+```
+
+方針は、
+
+```text
+84 streamを維持
+kernelは1本のまま
+重いtaskだけCPU側で1段または2段展開
+展開後の小さいsubtaskを同じkernelへ投入
+```
+
+です。
+
+つまり、
+
+```text
+1 heavy constellation = 1 thread
+```
+
+をやめて、
+
+```text
+1 heavy constellation
+  ↓ CPU側で1段展開
+複数の lighter subtask
+  ↓
+同じGPU kernelへ投入
+```
+
+にします。
+
+85/86/88の結果を見ると、複数kernel化よりこちらの方が本筋です。
+
+## ただしheavy splitは慎重に実装する必要があります
+
+単純に `free` のbitを1段展開するだけでは危険です。
+現在のGPU kernelには、以下の特殊遷移があります。
+
+```text
+P1/P2/P3 : mark行で step=2/3 + block
+P4       : jmark行で列0禁止 + ld補正
+P5       : same-rowでfuncid遷移
+base     : endmark到達時の特殊カウント
+```
+
+そのため、host側splitでもkernelと同じ遷移を再現しないと、解数がずれます。
+
+89ではまず安全側にして、
+
+```text
+split対象:
+  通常 +1 遷移だけのtask
+  row が mark1/mark2/jmark/endmark に当たらないtask
+  P5遷移中ではないtask
+```
+
+から始めるのがよいです。
+
+つまり最初の89は、
+
+```text
+安全にsplitできる重いB系taskだけ1段展開
+その他はそのままGPUへ流す
+```
+
+が良いです。
+
+## 現時点のおすすめ手順
+
+まず88はここで止めます。
+
+次に84のsort_mode=4を確認します。
 
 ```bash
-./79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix \
-  -c 18 18 32 484 1 -1 6 9 > bc_sol_p6_N18_detail_after_v2.log
-
-grep -E "^\[bc-sol-(case|fid|summary)\]|^18:" \
-  bc_sol_p6_N18_detail_after_v2.log
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 21 21 32 484 1 4 5 0
 ```
 
-見るべきポイントは、preset=7 の残差が、
+その結果が84 sort_mode=0より遅ければ、次は89 heavy splitです。
+
+結論として、**88は正しさ検証として成功、速度改善としては失敗です。次はkernel分割ではなく、84単一kernelを保ったまま heavy task split へ進むのがよいです。**
+
+
+添付ログを見ました。**`sort_mode=4` は使わない方がよいです。これは「遅い」のではなく、現状では計算結果が壊れています。**
+
+`84 -g 21 21 32 484 1 4 5 0` のログでは、`sort_mode=4 local_sort=4` に入っていますが、各chunkの `chunk_total` がずっと `0`、`gpu_total` も `0` のままです。しかも各chunkのelapsedが数ミリ秒で、通常のN21 GPU探索としては速すぎます。つまり、local sort経路では実質的なDFS結果が返っていません。
+
+したがって、**84の `sort_mode=1..4` 系は現時点では封印**でよいです。少なくとも `sort_mode=4` は正解検証に使えません。
+
+## 現時点の判断
+
+整理するとこうです。
 
 ```text
-B
-SQd2
-SQd1
-SQd0
+84 sort_mode=0:
+  正しい
+  N21 = 0:25:38.459
+
+84 sort_mode=4:
+  不正
+  chunk_total=0 が続く
+  比較対象にしない
+
+88 bc-kernel:
+  正しい
+  N21 = 0:34:57.160
+  ただし84より遅い
 ```
 
-のどこに集中しているかです。昨日の仮説では preset=7 は SQd0 単独ではなく全体不足でしたが、今回 cache fix 後は残差がかなり小さいため、**まず N18 の case/fid 別差分で残りの犯人を確定**するのが最短です。
+84の通常streamはN21で `314666222712` を `0:25:38.459 ok` で出しています。
+一方、88は `314666222712` を正しく出していますが、時間は `0:34:57.160 bc-kernel-ok` です。
 
-ログ確認しました。結論はかなり明確です。
+なので、**88もN22へ進めなくてよい**と思います。正しさ確認としては成功ですが、高速化としては失敗です。
 
-**preset=7 の残差は、現在は SQd0 だけです。**
+## 88から分かったこと
 
-preset=7 / N18 は、
+88の集計はかなり有益です。
 
 ```text
-total = 666069600
-expected = 666090624
-差分 = -21024
+B     count=637907  kernels=32  sec=756.249  tasks/sec=843.5
+SQd2  count=459705  kernels=24  sec=495.727  tasks/sec=927.3
+SQd1  count=633937  kernels=28  sec=542.490  tasks/sec=1168.6
+SQd0  count=293733  kernels=8   sec=301.467  tasks/sec=974.3
 ```
 
-です。ログでも `18: 666069600 ... ng(666069600!=666090624)` になっています。
+B系が件数最大で、かつtasks/secも最も低いです。N21ではB系が最大の時間消費源です。
 
-一方、preset=6 / N18 は、
+ただし、tailを見るとSQd0にも極端に重い局所chunkがあります。例えば superchunk 26 では `SQd0 count=47583 elapsed=0:00:52.180` です。
+つまり、**B系全体が重いだけでなく、group内にも重いtaskの偏りがある**ということです。
+
+## 次は89 heavy split が本線です
+
+ここまでの検証で、方向性はかなりはっきりしました。
 
 ```text
-total = 666090624
-ok
+85 fid bucket:
+  遅い
+
+86 super fid bucket:
+  84同時実行中で評価不能だが、複数kernel方向は怪しい
+
+88 BC 4分類kernel:
+  正しいが84より遅い
+
+84 sort_mode=4:
+  不正、chunk_total=0
+
+結論:
+  kernel分割・並び替えではなく、task粒度を変えるべき
 ```
 
-で通っています。
+次の89は、**heavy task split** がよいです。
 
-case 別に見ると、preset=6 と preset=7 で以下は完全一致しています。
+名前は：
 
 ```text
-B      = 277867760
-SQd2   = 158672816
-SQd1   = 160708560
+89Py_constellations_GPU_cuda_codon_stream_heavy_split.py
 ```
 
-違っているのは SQd0 だけです。
+方針はこうです。
 
 ```text
-preset=6 SQd0 = 68841488
-preset=7 SQd0 = 68820464
-差分          = -21024
+1. 84 streamをベースにする
+2. kernelは1本のまま維持する
+3. .binからSTEPS件読む
+4. build_soa_for_range()でTaskSoA化する
+5. 重いtaskだけCPU側で1段展開する
+6. 展開後のlighter subtaskを同じkernel_dfs_iter_gpuへ流す
+7. splitした件数・splitしなかった件数・totalをログに出す
 ```
 
-つまり、N18 の preset=7 残差 `-21024` は **100% SQd0 由来**です。
+重要なのは、**kernelを増やさない**ことです。85/86/88を見る限り、複数kernel化は今の構造では不利です。
 
-さらに fid 別ではこうなっています。
+## 89で最初にsplitすべき対象
+
+いきなり全taskをsplitすると危険です。GPU kernel内には `mark1/mark2/jmark/P5/base` の特殊遷移があるため、host側で同じ遷移を完全再現しないと解数が壊れます。
+
+最初の89では、**安全に1段展開できるtaskだけ**に限定するのがよいです。
+
+条件案：
 
 ```text
-preset=6:
-  fid26 SQd0B   = 24929352
-  fid27 SQd0BkB = 43912136
-  合計          = 68841488
-
-preset=7:
-  fid26 SQd0B   = 33028168
-  fid27 SQd0BkB = 35792296
-  合計          = 68820464
+split対象:
+  freeのpopcountが大きい
+  depthが十分残っている
+  row != mark1
+  row != mark2
+  row != jmark
+  row != endmark
+  funcidがP5系ではない
 ```
 
-差分にすると、
+この条件なら、host側でやるのは通常の `+1` 遷移だけです。
 
 ```text
-fid26: +8098816
-fid27: -8119840
-net  :   -21024
+bit を1つ選ぶ
+nld = (ld | bit) << 1
+nrd = (rd | bit) >> 1
+ncol = col | bit
+nf = board_mask & ~(nld | nrd | ncol)
+row += 1
 ```
 
-なので、**fid27 → fid26 への振り替えは大部分は効いていますが、完全等価になっていない**という状態です。
+これで1つの重いtaskを複数の軽いsubtaskへ分割します。
 
-したがって次ターゲットは、前回の `preset=6 dynamic cache fix` ではなく、より絞って以下です。
+## まずB系を中心にする
+
+88のprofileではB系が最大時間源なので、最初はB系中心でよいです。
+
+ただし、B系だけに固定するより、条件で安全判定したうえで、
 
 ```text
-80: preset=7 SQd0 residual fix
-    SQd0 fid27 -> fid26 crossing equivalence
-    残差:
-      N18 -21,024
-      N19 -140,152
-      N20 -1,016,136
+safe_to_split == True
+かつ
+popcount(free) >= 4
+かつ
+depth >= 10
 ```
 
-現在の `build_soa_for_range()` では SQd0 はこの分岐です。
+くらいから始めるのがよいです。
 
-```python
-if start>k:
-    target=26
-else:
-    mark1=k-1
-    target=27
-```
+## いま止めるべきもの
 
-つまり `start>k` なら `SQd0B / fid26`、それ以外なら `SQd0BkB / fid27` に分けています。
-
-今回のログを見る限り、次に確認すべきなのは **SQd0 の start 別・fid 別の solution total** です。現在の診断は case/fid total までなので、`start` ごとの不足位置がまだ見えません。
-
-まず既存ソースだけで取れる追加ログはこれです。
+`sort_mode=4` がまだ走っているなら止めてください。結果は使えません。
 
 ```bash
-./79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix \
-  -c 18 18 32 484 1 -1 7 8 > bc_p7_N18_boundary_start.log
-
-grep -E "SQd0|bc-start|bc-fid|^18:" bc_p7_N18_boundary_start.log
+pgrep -af "84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.*-g 21 21.* 4"
 ```
 
-同じく preset=6 側です。
+該当PIDが出たら：
 
 ```bash
-./79Py_constellations_GPU_cuda_codon_p6_dynamic_cache_fix \
-  -c 18 18 32 484 1 -1 6 8 > bc_p6_N18_boundary_start.log
-
-grep -E "SQd0|bc-start|bc-fid|^18:" bc_p6_N18_boundary_start.log
+kill -TERM <PID>
 ```
 
-ただし、これは **count by start** までです。
-本当に必要なのは **solution total by start/fid** なので、80 では診断関数を追加して、
+## 結論
 
-```text
-[bc-sol-start-fid] SQd0 start=... fid=26 total=...
-[bc-sol-start-fid] SQd0 start=... fid=27 total=...
-```
+**`sort_mode=4` は不正なので封印。88は正しいが遅いので打ち切り。次は89 heavy splitです。**
 
-を出す版を作るのが最短です。
-
-現時点の判断は以下です。
-
-```text
-79:
-  preset=6 は完了
-  preset=7 は大幅改善したが未完
-
-80:
-  SQd0 限定
-  fid26/fid27 の start>k 境界を start 別 solution total で追う
-```
-
-特に怪しいのは、`start>k` で `fid26` に落とした状態が、`fid27` が `row==k-1` で `step=2 + blockK` を発火した後の状態と、**全 start 深度で完全等価になっていない**点です。
+ここからは「分岐を分ける」ではなく、**重い1 thread の仕事を事前に分割して、GPUに渡すtaskの粒度を均す**方向に切り替えるのがよいです。
 
 
 
-76 purpose:
-  - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
-  - Promote sort_mode=9 auto policy to N=20 and N=21.
-  - Keep kernel logic unchanged.
 
-Build -release
-$ codon build -release 76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py
+88のビルド
+codon build -release 88Py_constellations_GPU_cuda_codon_stream_bc_kernel.py
 
-CPU
-$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -c
+この環境にはCodonが無いため、実ビルド確認はできていません。Pythonのtokenizeによる字句レベル確認は通しています。
 
-GPU
-$ codon build -release 76Py_constellations_GPU_cuda_codon_stable_auto_n20_n21.py
-$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 5 20 32 484 0 -1
+88の実行
 
-N=20 単体ベンチ
-$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 20 20 32 484 0 -1
+bench_mode は 12 です。
 
-ログ確認
-$ ./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 20 20 32 484 2 -1 5 5
+まずN21で検証してください。
 
-# ============================================================
-# 73 STABLE FINAL BENCH + CROSS STRIPE SAFE CLEANUP
-# 76 STABLE AUTO N20 N21
-# ============================================================
-# Base:
-#   72 STABLE FINAL BENCH
-#
-# Stable config:
-#   block      = 32
-#   max_blocks = 484
-#
-# auto sort:
-#   N == 20 : sort_mode = 9
-#   N == 21 : sort_mode = 9
-#   else   : sort_mode = 0
-#
-# bench_mode = 5:
-#   run1 : warmup
-#   run2 : measured
-#
-# Current best records:
-#   56 STABLE FINAL N=20       : 0:02:42.602
-#   72 normal single N=20      : 0:02:27.854
-#   72 repeat2 bench N=20      : 0:02:25.074
-#   72 in range run N=20       : 0:02:23.713
-#   75 N=21 sort_mode=0        : 0:25:25.373
-#   75 N=21 sort_mode=9        : 0:22:03.099
-#
-# 73 purpose:
-#   - Do NOT modify kernel logic.
-#   - Keep 72 performance behavior.
-#   - Clarify auto sort policy.
-#   - Organize cross stripe safe as a validation/debug feature.
-#
-# cross_stripe_safe:
-#   False:
-#     normal fast path
-#
-#   True:
-#     validation/debug path for chunk/stripe/index safety.
-#     This is not intended for benchmark timing.
-#
-# Next candidates:
-#   - N=21 explicit sort_mode comparison
-#   - chunk weight estimation log
-#   - sort_mode=10 weight-estimated ordering
-# ============================================================
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 21 21 32 484 1 0 5 12
 
+詳細ログあり：
 
-    
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 21 21 32 484 2 0 5 12
+
+成功判定：
+21:      314666222712                0      ...    bc-kernel-ok
+
+次にN22です。
+./88Py_constellations_GPU_cuda_codon_stream_bc_kernel \
+  -g 22 22 32 484 1 0 5 12
+
+成功判定：
+22:     2691008701644                0      ...    bc-kernel-ok
+
+ 
 g5.16xlarge は NVIDIA A10G GPU を搭載しており、CUDA 13.0 対応のドライバが入っています。
 g5.xlarge は NVIDIA A10G GPU を搭載しており、CUDA 13.0 対応のドライバが入っています。
 
@@ -484,8 +1024,9 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="79 P6 DYNAMIC subconst_cache scope FIX from 78 P5 FIX"
+VERSION_TAG:str="88 stream BC group dedicated kernels from 84 dynamic preset P8"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
+BC_KERNEL_SUPER_FACTOR_DEFAULT:int=4
 
 # bench_mode=10 の診断用。通常は False のまま。
 # True にすると preset_queens<=5 の constellation_signatures 重複排除を無効化し、
@@ -510,7 +1051,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-# @gpu.kernel
+@gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr,rd_arr,col_arr,row_arr,free_arr,
     jmark_arr,end_arr,mark1_arr,mark2_arr,
@@ -764,6 +1305,1046 @@ def kernel_dfs_iter_gpu(
       avail[sp]=nf
 
     results[i]=total*w_arr[i]
+
+
+# ------------------------------------------------------------
+# 88 BC dedicated kernel: B
+# ------------------------------------------------------------
+@gpu.kernel
+def kernel_dfs_bc_B_gpu(
+    ld_arr,rd_arr,col_arr,row_arr,free_arr,
+    jmark_arr,end_arr,mark1_arr,mark2_arr,
+    funcid_arr,w_arr,
+    meta_next:Ptr[u8],
+    results,
+    m:int,board_mask:int,
+    n3:int,n4:int,
+):
+    """
+    機能:
+      GPU 上で「1 constellation = 1 thread」の DFS を非再帰で実行し、
+      この constellation が担当する部分探索の解数を数えて results[i] に格納します。
+      最終的に results[i] には（解数 * 対称性重み）を保存します。
+
+    引数（抜粋）:
+      ld_arr/rd_arr/col_arr/row_arr/free_arr:
+        constellation ごとの開始状態（ビットボード）。
+      funcid_arr:
+        分岐モードID（functionid）。
+      w_arr:
+        対称性の重み（2/4/8）。results へ書く直前に掛けます。
+      meta_next:
+        functionid -> next functionid の遷移表（u8 配列）。
+      board_mask:
+        (1<<N)-1。ビットボードを常にこの範囲へ正規化します。
+      m:
+        タスク数（i >= m は処理しない）。
+
+    前提/不変条件:
+      - ld/rd/col/free は board_mask 内に収まる（念のため kernel 側でも &mask します）。
+      - スタック深さ sp は 0..MAXD-1。超えた場合は安全弁で早期 return します。
+
+    ホットパス（ソース引用）:
+      bit = a & -a
+      avail[sp] = a ^ bit
+    """
+    # NOTE: GPU では list/tuple 参照が遅くなりがちなので、
+    #       分岐テーブルを Static[int] のビットマスクとして焼き込み、
+    #       (MASK >> f) & 1 の O(1) 判定に寄せる。
+    META_AVAIL_MASK:Static[int]=3852
+    IS_BASE_MASK:Static[int]=8
+    IS_JMARK_MASK:Static[int]=4
+    IS_MARK_MASK:Static[int]=243
+    IS_P5_MASK:Static[int]=(1<<8)|(1<<9)|(1<<10)|(1<<11)
+    SEL2_MASK:Static[int]=66
+    STP3_MASK:Static[int]=144
+    MASK_K_N3:Static[int]=193
+    MASK_K_N4:Static[int]=16
+    MASK_L_1:Static[int]=50
+    MASK_L_2:Static[int]=128
+
+    # mixed32 ビットボード系。
+    # rd は盤面外の高位ビットが後続の >> で盤面内へ入る可能性があるため int のまま保持する。
+    # ld は高位ビットが再び盤面へ戻らないが、rd と揃えて int のまま。
+    # col/avail/ctrl は盤面幅内または小さい制御値なので u32 化してローカルメモリ圧を下げる。
+    # 未初期化 ctrl: bit19=0, bits0..4=current fid, bits5..9=current row
+    # 初期化済 ctrl: bit19=1
+    #   bits 0..4   : child/next fid
+    #   bits 5..9   : child row after this frame transition
+    #   bits 10..11 : step (1/2/3), block時のみデコード
+    #   bit  12     : add1, block時のみデコード
+    #   bit  13     : use_blocks
+    #   bit  14     : future check enabled
+    #   bits 15..16 : blockL encoded value
+    #   bits 17..18 : blockK type: 0=0, 1=n3, 2=n4
+
+    # child ctrl は低10bitそのものなので、通常pushでは
+    #   ctrl[child] = ctrl[parent] & 1023
+    # とでき、hotpathの int(ctrl)>>14 デコードを避ける。
+    INIT_MASK:Static[int]=524288  # 1<<19
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    ctrl=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+    bK=0
+    bL:u32=u32(0)
+
+    i=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    jmark=jmark_arr[i]
+    endm=end_arr[i]
+    mark1=mark1_arr[i]
+    mark2=mark2_arr[i]
+    sp=0
+    ctrl[0]=u32(funcid_arr[i] | (row_arr[i]<<5))
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+    while sp>=0:
+      a=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+      cv0=ctrl[sp]
+      if (cv0&u32(INIT_MASK))==u32(0):
+        cv0i:int=int(cv0)
+        f:int=cv0i&31
+        rowv:int=(cv0i>>5)&31
+        nfid=meta_next[f]
+
+        #######################################
+        # P5 same-row transition
+        #
+        # fid=8..11:
+        #   8  SQBjlBkBlBjrB -> 0 SQBkBlBjrB
+        #   9  SQBjlBklBjrB  -> 4 SQBklBjrB
+        #   10 SQBjlBlBkBjrB -> 5 SQBlBkBjrB
+        #   11 SQBjlBlkBjrB  -> 7 SQBlkBjrB
+        #
+        # mark1 到達時、盤面/row/free を変えずに next fid へ遷移する。
+        # その後、同じ row で next fid 側の step=2/3 + block が発火する。
+        #######################################
+        if ((IS_P5_MASK>>f)&1)==1:
+          if rowv==mark1:
+            f=int(nfid)
+            nfid=meta_next[f]
+
+        #######################################
+        # 基底 is_base
+        isb=(IS_BASE_MASK>>f)&1
+        #######################################
+        if isb==1 and rowv==endm:
+          if f==14:# SQd2B 特例
+            total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+          else:
+            total+=u64(1)
+          sp-=1
+          continue
+        #######################################
+        # 通常状態設定
+        aflag=(META_AVAIL_MASK>>f)&1
+        #######################################
+        stepv=1
+        addv=0
+        use_blocks=0
+        use_future=1 if (aflag==1) else 0
+        nextfv=f
+        #######################################
+        # is_mark step=2/3 + block
+        ism=(IS_MARK_MASK>>f)&1
+        #######################################
+        if ism==1:
+          at_mark=0
+          ###################
+          # sel
+          sel=2 if ((SEL2_MASK>>f)&1) else 1
+          ###################
+          if sel==1:
+            if rowv==mark1:
+              at_mark=1
+          if sel==2:
+            if rowv==mark2:
+              at_mark=1
+          ###################
+          # mark
+          ###################
+          if at_mark==1 and a!=u32(0):
+            use_blocks=1
+            use_future=0
+            ###################
+            # step
+            stepv=3 if ((STP3_MASK>>f)&1) else 2
+            ###################
+            # add
+            addv=1 if f==20 else 0
+            ###################
+            nextfv=int(nfid)
+        #######################################
+        # is_jmark
+        isj=(IS_JMARK_MASK>>f)&1
+        #######################################
+        if isj==1:
+          if rowv==jmark:
+            a&=~u32(1)
+            avail[sp]=a
+            if a==u32(0):
+              sp-=1
+              continue
+            ld[sp]|=1
+            nextfv=int(nfid)
+        
+        fcv=0
+        if use_future==1 and (rowv+stepv)<endm:
+          fcv=1
+        bLv=0
+        ktype=0
+        if use_blocks==1:
+          bLv=((MASK_L_1>>f)&1)|(((MASK_L_2>>f)&1)<<1)
+          if ((MASK_K_N3>>f)&1)==1:
+            ktype=1
+          if ((MASK_K_N4>>f)&1)==1:
+            ktype=2
+        child_row:int=rowv+stepv
+        ctrl[sp]=u32(524288 | nextfv | (child_row<<5) | (stepv<<10) | (addv<<12) | (use_blocks<<13) | (fcv<<14) | (bLv<<15) | (ktype<<17))
+      #----------------
+      # 1bit 展開
+      #----------------
+      a=avail[sp]
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      #----------------
+      # 次状態計算（2値選択はそのまま）
+      #----------------
+      cv=ctrl[sp]
+      bit_i:int=int(bit)
+      if (cv&u32(8192))!=u32(0):  # use_blocks bit13
+        cvi:int=int(cv)
+        stepv:int=(cvi>>10)&3
+        addv:int=(cvi>>12)&1
+        bLi:int=(cvi>>15)&3
+        kt:int=(cvi>>17)&3
+        bK=0
+        if kt==1:
+          bK=n3
+        elif kt==2:
+          bK=n4
+        nld=((ld[sp]|bit_i)<<stepv)|addv|bLi
+        nrd=((rd[sp]|bit_i)>>stepv)|bK
+      else:
+        nld=(ld[sp]|bit_i)<<1
+        nrd=(rd[sp]|bit_i)>>1
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+      if (cv&u32(16384))!=u32(0):  # future bit14
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+      #----------------
+      # push
+      #----------------
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      ctrl[sp]=cv&u32(1023)  # child fid + child row
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
+
+
+# ------------------------------------------------------------
+# 88 BC dedicated kernel: D2
+# ------------------------------------------------------------
+@gpu.kernel
+def kernel_dfs_bc_D2_gpu(
+    ld_arr,rd_arr,col_arr,row_arr,free_arr,
+    jmark_arr,end_arr,mark1_arr,mark2_arr,
+    funcid_arr,w_arr,
+    meta_next:Ptr[u8],
+    results,
+    m:int,board_mask:int,
+    n3:int,n4:int,
+):
+    """
+    機能:
+      GPU 上で「1 constellation = 1 thread」の DFS を非再帰で実行し、
+      この constellation が担当する部分探索の解数を数えて results[i] に格納します。
+      最終的に results[i] には（解数 * 対称性重み）を保存します。
+
+    引数（抜粋）:
+      ld_arr/rd_arr/col_arr/row_arr/free_arr:
+        constellation ごとの開始状態（ビットボード）。
+      funcid_arr:
+        分岐モードID（functionid）。
+      w_arr:
+        対称性の重み（2/4/8）。results へ書く直前に掛けます。
+      meta_next:
+        functionid -> next functionid の遷移表（u8 配列）。
+      board_mask:
+        (1<<N)-1。ビットボードを常にこの範囲へ正規化します。
+      m:
+        タスク数（i >= m は処理しない）。
+
+    前提/不変条件:
+      - ld/rd/col/free は board_mask 内に収まる（念のため kernel 側でも &mask します）。
+      - スタック深さ sp は 0..MAXD-1。超えた場合は安全弁で早期 return します。
+
+    ホットパス（ソース引用）:
+      bit = a & -a
+      avail[sp] = a ^ bit
+    """
+    # NOTE: GPU では list/tuple 参照が遅くなりがちなので、
+    #       分岐テーブルを Static[int] のビットマスクとして焼き込み、
+    #       (MASK >> f) & 1 の O(1) 判定に寄せる。
+    META_AVAIL_MASK:Static[int]=16384
+    IS_BASE_MASK:Static[int]=16384
+    IS_JMARK_MASK:Static[int]=0
+    IS_MARK_MASK:Static[int]=503808
+    IS_P5_MASK:Static[int]=0
+    SEL2_MASK:Static[int]=139264
+    STP3_MASK:Static[int]=294912
+    MASK_K_N3:Static[int]=397312
+    MASK_K_N4:Static[int]=32768
+    MASK_L_1:Static[int]=106496
+    MASK_L_2:Static[int]=262144
+
+    # mixed32 ビットボード系。
+    # rd は盤面外の高位ビットが後続の >> で盤面内へ入る可能性があるため int のまま保持する。
+    # ld は高位ビットが再び盤面へ戻らないが、rd と揃えて int のまま。
+    # col/avail/ctrl は盤面幅内または小さい制御値なので u32 化してローカルメモリ圧を下げる。
+    # 未初期化 ctrl: bit19=0, bits0..4=current fid, bits5..9=current row
+    # 初期化済 ctrl: bit19=1
+    #   bits 0..4   : child/next fid
+    #   bits 5..9   : child row after this frame transition
+    #   bits 10..11 : step (1/2/3), block時のみデコード
+    #   bit  12     : add1, block時のみデコード
+    #   bit  13     : use_blocks
+    #   bit  14     : future check enabled
+    #   bits 15..16 : blockL encoded value
+    #   bits 17..18 : blockK type: 0=0, 1=n3, 2=n4
+
+    # child ctrl は低10bitそのものなので、通常pushでは
+    #   ctrl[child] = ctrl[parent] & 1023
+    # とでき、hotpathの int(ctrl)>>14 デコードを避ける。
+    INIT_MASK:Static[int]=524288  # 1<<19
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    ctrl=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+    bK=0
+    bL:u32=u32(0)
+
+    i=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    jmark=jmark_arr[i]
+    endm=end_arr[i]
+    mark1=mark1_arr[i]
+    mark2=mark2_arr[i]
+    sp=0
+    ctrl[0]=u32(funcid_arr[i] | (row_arr[i]<<5))
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+    while sp>=0:
+      a=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+      cv0=ctrl[sp]
+      if (cv0&u32(INIT_MASK))==u32(0):
+        cv0i:int=int(cv0)
+        f:int=cv0i&31
+        rowv:int=(cv0i>>5)&31
+        nfid=meta_next[f]
+
+        #######################################
+        # P5 same-row transition
+        #
+        # fid=8..11:
+        #   8  SQBjlBkBlBjrB -> 0 SQBkBlBjrB
+        #   9  SQBjlBklBjrB  -> 4 SQBklBjrB
+        #   10 SQBjlBlBkBjrB -> 5 SQBlBkBjrB
+        #   11 SQBjlBlkBjrB  -> 7 SQBlkBjrB
+        #
+        # mark1 到達時、盤面/row/free を変えずに next fid へ遷移する。
+        # その後、同じ row で next fid 側の step=2/3 + block が発火する。
+        #######################################
+        if ((IS_P5_MASK>>f)&1)==1:
+          if rowv==mark1:
+            f=int(nfid)
+            nfid=meta_next[f]
+
+        #######################################
+        # 基底 is_base
+        isb=(IS_BASE_MASK>>f)&1
+        #######################################
+        if isb==1 and rowv==endm:
+          if f==14:# SQd2B 特例
+            total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+          else:
+            total+=u64(1)
+          sp-=1
+          continue
+        #######################################
+        # 通常状態設定
+        aflag=(META_AVAIL_MASK>>f)&1
+        #######################################
+        stepv=1
+        addv=0
+        use_blocks=0
+        use_future=1 if (aflag==1) else 0
+        nextfv=f
+        #######################################
+        # is_mark step=2/3 + block
+        ism=(IS_MARK_MASK>>f)&1
+        #######################################
+        if ism==1:
+          at_mark=0
+          ###################
+          # sel
+          sel=2 if ((SEL2_MASK>>f)&1) else 1
+          ###################
+          if sel==1:
+            if rowv==mark1:
+              at_mark=1
+          if sel==2:
+            if rowv==mark2:
+              at_mark=1
+          ###################
+          # mark
+          ###################
+          if at_mark==1 and a!=u32(0):
+            use_blocks=1
+            use_future=0
+            ###################
+            # step
+            stepv=3 if ((STP3_MASK>>f)&1) else 2
+            ###################
+            # add
+            addv=1 if f==20 else 0
+            ###################
+            nextfv=int(nfid)
+        #######################################
+        # is_jmark
+        isj=(IS_JMARK_MASK>>f)&1
+        #######################################
+        if isj==1:
+          if rowv==jmark:
+            a&=~u32(1)
+            avail[sp]=a
+            if a==u32(0):
+              sp-=1
+              continue
+            ld[sp]|=1
+            nextfv=int(nfid)
+        
+        fcv=0
+        if use_future==1 and (rowv+stepv)<endm:
+          fcv=1
+        bLv=0
+        ktype=0
+        if use_blocks==1:
+          bLv=((MASK_L_1>>f)&1)|(((MASK_L_2>>f)&1)<<1)
+          if ((MASK_K_N3>>f)&1)==1:
+            ktype=1
+          if ((MASK_K_N4>>f)&1)==1:
+            ktype=2
+        child_row:int=rowv+stepv
+        ctrl[sp]=u32(524288 | nextfv | (child_row<<5) | (stepv<<10) | (addv<<12) | (use_blocks<<13) | (fcv<<14) | (bLv<<15) | (ktype<<17))
+      #----------------
+      # 1bit 展開
+      #----------------
+      a=avail[sp]
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      #----------------
+      # 次状態計算（2値選択はそのまま）
+      #----------------
+      cv=ctrl[sp]
+      bit_i:int=int(bit)
+      if (cv&u32(8192))!=u32(0):  # use_blocks bit13
+        cvi:int=int(cv)
+        stepv:int=(cvi>>10)&3
+        addv:int=(cvi>>12)&1
+        bLi:int=(cvi>>15)&3
+        kt:int=(cvi>>17)&3
+        bK=0
+        if kt==1:
+          bK=n3
+        elif kt==2:
+          bK=n4
+        nld=((ld[sp]|bit_i)<<stepv)|addv|bLi
+        nrd=((rd[sp]|bit_i)>>stepv)|bK
+      else:
+        nld=(ld[sp]|bit_i)<<1
+        nrd=(rd[sp]|bit_i)>>1
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+      if (cv&u32(16384))!=u32(0):  # future bit14
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+      #----------------
+      # push
+      #----------------
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      ctrl[sp]=cv&u32(1023)  # child fid + child row
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
+
+
+# ------------------------------------------------------------
+# 88 BC dedicated kernel: D1
+# ------------------------------------------------------------
+@gpu.kernel
+def kernel_dfs_bc_D1_gpu(
+    ld_arr,rd_arr,col_arr,row_arr,free_arr,
+    jmark_arr,end_arr,mark1_arr,mark2_arr,
+    funcid_arr,w_arr,
+    meta_next:Ptr[u8],
+    results,
+    m:int,board_mask:int,
+    n3:int,n4:int,
+):
+    """
+    機能:
+      GPU 上で「1 constellation = 1 thread」の DFS を非再帰で実行し、
+      この constellation が担当する部分探索の解数を数えて results[i] に格納します。
+      最終的に results[i] には（解数 * 対称性重み）を保存します。
+
+    引数（抜粋）:
+      ld_arr/rd_arr/col_arr/row_arr/free_arr:
+        constellation ごとの開始状態（ビットボード）。
+      funcid_arr:
+        分岐モードID（functionid）。
+      w_arr:
+        対称性の重み（2/4/8）。results へ書く直前に掛けます。
+      meta_next:
+        functionid -> next functionid の遷移表（u8 配列）。
+      board_mask:
+        (1<<N)-1。ビットボードを常にこの範囲へ正規化します。
+      m:
+        タスク数（i >= m は処理しない）。
+
+    前提/不変条件:
+      - ld/rd/col/free は board_mask 内に収まる（念のため kernel 側でも &mask します）。
+      - スタック深さ sp は 0..MAXD-1。超えた場合は安全弁で早期 return します。
+
+    ホットパス（ソース引用）:
+      bit = a & -a
+      avail[sp] = a ^ bit
+    """
+    # NOTE: GPU では list/tuple 参照が遅くなりがちなので、
+    #       分岐テーブルを Static[int] のビットマスクとして焼き込み、
+    #       (MASK >> f) & 1 の O(1) 判定に寄せる。
+    META_AVAIL_MASK:Static[int]=2097152
+    IS_BASE_MASK:Static[int]=2097152
+    IS_JMARK_MASK:Static[int]=0
+    IS_MARK_MASK:Static[int]=64487424
+    IS_P5_MASK:Static[int]=0
+    SEL2_MASK:Static[int]=34603008
+    STP3_MASK:Static[int]=20971520
+    MASK_K_N3:Static[int]=50855936
+    MASK_K_N4:Static[int]=4194304
+    MASK_L_1:Static[int]=12582912
+    MASK_L_2:Static[int]=16777216
+
+    # mixed32 ビットボード系。
+    # rd は盤面外の高位ビットが後続の >> で盤面内へ入る可能性があるため int のまま保持する。
+    # ld は高位ビットが再び盤面へ戻らないが、rd と揃えて int のまま。
+    # col/avail/ctrl は盤面幅内または小さい制御値なので u32 化してローカルメモリ圧を下げる。
+    # 未初期化 ctrl: bit19=0, bits0..4=current fid, bits5..9=current row
+    # 初期化済 ctrl: bit19=1
+    #   bits 0..4   : child/next fid
+    #   bits 5..9   : child row after this frame transition
+    #   bits 10..11 : step (1/2/3), block時のみデコード
+    #   bit  12     : add1, block時のみデコード
+    #   bit  13     : use_blocks
+    #   bit  14     : future check enabled
+    #   bits 15..16 : blockL encoded value
+    #   bits 17..18 : blockK type: 0=0, 1=n3, 2=n4
+
+    # child ctrl は低10bitそのものなので、通常pushでは
+    #   ctrl[child] = ctrl[parent] & 1023
+    # とでき、hotpathの int(ctrl)>>14 デコードを避ける。
+    INIT_MASK:Static[int]=524288  # 1<<19
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    ctrl=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+    bK=0
+    bL:u32=u32(0)
+
+    i=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    jmark=jmark_arr[i]
+    endm=end_arr[i]
+    mark1=mark1_arr[i]
+    mark2=mark2_arr[i]
+    sp=0
+    ctrl[0]=u32(funcid_arr[i] | (row_arr[i]<<5))
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+    while sp>=0:
+      a=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+      cv0=ctrl[sp]
+      if (cv0&u32(INIT_MASK))==u32(0):
+        cv0i:int=int(cv0)
+        f:int=cv0i&31
+        rowv:int=(cv0i>>5)&31
+        nfid=meta_next[f]
+
+        #######################################
+        # P5 same-row transition
+        #
+        # fid=8..11:
+        #   8  SQBjlBkBlBjrB -> 0 SQBkBlBjrB
+        #   9  SQBjlBklBjrB  -> 4 SQBklBjrB
+        #   10 SQBjlBlBkBjrB -> 5 SQBlBkBjrB
+        #   11 SQBjlBlkBjrB  -> 7 SQBlkBjrB
+        #
+        # mark1 到達時、盤面/row/free を変えずに next fid へ遷移する。
+        # その後、同じ row で next fid 側の step=2/3 + block が発火する。
+        #######################################
+        if ((IS_P5_MASK>>f)&1)==1:
+          if rowv==mark1:
+            f=int(nfid)
+            nfid=meta_next[f]
+
+        #######################################
+        # 基底 is_base
+        isb=(IS_BASE_MASK>>f)&1
+        #######################################
+        if isb==1 and rowv==endm:
+          if f==14:# SQd2B 特例
+            total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+          else:
+            total+=u64(1)
+          sp-=1
+          continue
+        #######################################
+        # 通常状態設定
+        aflag=(META_AVAIL_MASK>>f)&1
+        #######################################
+        stepv=1
+        addv=0
+        use_blocks=0
+        use_future=1 if (aflag==1) else 0
+        nextfv=f
+        #######################################
+        # is_mark step=2/3 + block
+        ism=(IS_MARK_MASK>>f)&1
+        #######################################
+        if ism==1:
+          at_mark=0
+          ###################
+          # sel
+          sel=2 if ((SEL2_MASK>>f)&1) else 1
+          ###################
+          if sel==1:
+            if rowv==mark1:
+              at_mark=1
+          if sel==2:
+            if rowv==mark2:
+              at_mark=1
+          ###################
+          # mark
+          ###################
+          if at_mark==1 and a!=u32(0):
+            use_blocks=1
+            use_future=0
+            ###################
+            # step
+            stepv=3 if ((STP3_MASK>>f)&1) else 2
+            ###################
+            # add
+            addv=1 if f==20 else 0
+            ###################
+            nextfv=int(nfid)
+        #######################################
+        # is_jmark
+        isj=(IS_JMARK_MASK>>f)&1
+        #######################################
+        if isj==1:
+          if rowv==jmark:
+            a&=~u32(1)
+            avail[sp]=a
+            if a==u32(0):
+              sp-=1
+              continue
+            ld[sp]|=1
+            nextfv=int(nfid)
+        
+        fcv=0
+        if use_future==1 and (rowv+stepv)<endm:
+          fcv=1
+        bLv=0
+        ktype=0
+        if use_blocks==1:
+          bLv=((MASK_L_1>>f)&1)|(((MASK_L_2>>f)&1)<<1)
+          if ((MASK_K_N3>>f)&1)==1:
+            ktype=1
+          if ((MASK_K_N4>>f)&1)==1:
+            ktype=2
+        child_row:int=rowv+stepv
+        ctrl[sp]=u32(524288 | nextfv | (child_row<<5) | (stepv<<10) | (addv<<12) | (use_blocks<<13) | (fcv<<14) | (bLv<<15) | (ktype<<17))
+      #----------------
+      # 1bit 展開
+      #----------------
+      a=avail[sp]
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      #----------------
+      # 次状態計算（2値選択はそのまま）
+      #----------------
+      cv=ctrl[sp]
+      bit_i:int=int(bit)
+      if (cv&u32(8192))!=u32(0):  # use_blocks bit13
+        cvi:int=int(cv)
+        stepv:int=(cvi>>10)&3
+        addv:int=(cvi>>12)&1
+        bLi:int=(cvi>>15)&3
+        kt:int=(cvi>>17)&3
+        bK=0
+        if kt==1:
+          bK=n3
+        elif kt==2:
+          bK=n4
+        nld=((ld[sp]|bit_i)<<stepv)|addv|bLi
+        nrd=((rd[sp]|bit_i)>>stepv)|bK
+      else:
+        nld=(ld[sp]|bit_i)<<1
+        nrd=(rd[sp]|bit_i)>>1
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+      if (cv&u32(16384))!=u32(0):  # future bit14
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+      #----------------
+      # push
+      #----------------
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      ctrl[sp]=cv&u32(1023)  # child fid + child row
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
+
+
+# ------------------------------------------------------------
+# 88 BC dedicated kernel: D0
+# ------------------------------------------------------------
+@gpu.kernel
+def kernel_dfs_bc_D0_gpu(
+    ld_arr,rd_arr,col_arr,row_arr,free_arr,
+    jmark_arr,end_arr,mark1_arr,mark2_arr,
+    funcid_arr,w_arr,
+    meta_next:Ptr[u8],
+    results,
+    m:int,board_mask:int,
+    n3:int,n4:int,
+):
+    """
+    機能:
+      GPU 上で「1 constellation = 1 thread」の DFS を非再帰で実行し、
+      この constellation が担当する部分探索の解数を数えて results[i] に格納します。
+      最終的に results[i] には（解数 * 対称性重み）を保存します。
+
+    引数（抜粋）:
+      ld_arr/rd_arr/col_arr/row_arr/free_arr:
+        constellation ごとの開始状態（ビットボード）。
+      funcid_arr:
+        分岐モードID（functionid）。
+      w_arr:
+        対称性の重み（2/4/8）。results へ書く直前に掛けます。
+      meta_next:
+        functionid -> next functionid の遷移表（u8 配列）。
+      board_mask:
+        (1<<N)-1。ビットボードを常にこの範囲へ正規化します。
+      m:
+        タスク数（i >= m は処理しない）。
+
+    前提/不変条件:
+      - ld/rd/col/free は board_mask 内に収まる（念のため kernel 側でも &mask します）。
+      - スタック深さ sp は 0..MAXD-1。超えた場合は安全弁で早期 return します。
+
+    ホットパス（ソース引用）:
+      bit = a & -a
+      avail[sp] = a ^ bit
+    """
+    # NOTE: GPU では list/tuple 参照が遅くなりがちなので、
+    #       分岐テーブルを Static[int] のビットマスクとして焼き込み、
+    #       (MASK >> f) & 1 の O(1) 判定に寄せる。
+    META_AVAIL_MASK:Static[int]=67108864
+    IS_BASE_MASK:Static[int]=67108864
+    IS_JMARK_MASK:Static[int]=0
+    IS_MARK_MASK:Static[int]=134217728
+    IS_P5_MASK:Static[int]=0
+    SEL2_MASK:Static[int]=0
+    STP3_MASK:Static[int]=0
+    MASK_K_N3:Static[int]=134217728
+    MASK_K_N4:Static[int]=0
+    MASK_L_1:Static[int]=0
+    MASK_L_2:Static[int]=0
+
+    # mixed32 ビットボード系。
+    # rd は盤面外の高位ビットが後続の >> で盤面内へ入る可能性があるため int のまま保持する。
+    # ld は高位ビットが再び盤面へ戻らないが、rd と揃えて int のまま。
+    # col/avail/ctrl は盤面幅内または小さい制御値なので u32 化してローカルメモリ圧を下げる。
+    # 未初期化 ctrl: bit19=0, bits0..4=current fid, bits5..9=current row
+    # 初期化済 ctrl: bit19=1
+    #   bits 0..4   : child/next fid
+    #   bits 5..9   : child row after this frame transition
+    #   bits 10..11 : step (1/2/3), block時のみデコード
+    #   bit  12     : add1, block時のみデコード
+    #   bit  13     : use_blocks
+    #   bit  14     : future check enabled
+    #   bits 15..16 : blockL encoded value
+    #   bits 17..18 : blockK type: 0=0, 1=n3, 2=n4
+
+    # child ctrl は低10bitそのものなので、通常pushでは
+    #   ctrl[child] = ctrl[parent] & 1023
+    # とでき、hotpathの int(ctrl)>>14 デコードを避ける。
+    INIT_MASK:Static[int]=524288  # 1<<19
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    ctrl=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+    bK=0
+    bL:u32=u32(0)
+
+    i=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    jmark=jmark_arr[i]
+    endm=end_arr[i]
+    mark1=mark1_arr[i]
+    mark2=mark2_arr[i]
+    sp=0
+    ctrl[0]=u32(funcid_arr[i] | (row_arr[i]<<5))
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+    while sp>=0:
+      a=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+      cv0=ctrl[sp]
+      if (cv0&u32(INIT_MASK))==u32(0):
+        cv0i:int=int(cv0)
+        f:int=cv0i&31
+        rowv:int=(cv0i>>5)&31
+        nfid=meta_next[f]
+
+        #######################################
+        # P5 same-row transition
+        #
+        # fid=8..11:
+        #   8  SQBjlBkBlBjrB -> 0 SQBkBlBjrB
+        #   9  SQBjlBklBjrB  -> 4 SQBklBjrB
+        #   10 SQBjlBlBkBjrB -> 5 SQBlBkBjrB
+        #   11 SQBjlBlkBjrB  -> 7 SQBlkBjrB
+        #
+        # mark1 到達時、盤面/row/free を変えずに next fid へ遷移する。
+        # その後、同じ row で next fid 側の step=2/3 + block が発火する。
+        #######################################
+        if ((IS_P5_MASK>>f)&1)==1:
+          if rowv==mark1:
+            f=int(nfid)
+            nfid=meta_next[f]
+
+        #######################################
+        # 基底 is_base
+        isb=(IS_BASE_MASK>>f)&1
+        #######################################
+        if isb==1 and rowv==endm:
+          if f==14:# SQd2B 特例
+            total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+          else:
+            total+=u64(1)
+          sp-=1
+          continue
+        #######################################
+        # 通常状態設定
+        aflag=(META_AVAIL_MASK>>f)&1
+        #######################################
+        stepv=1
+        addv=0
+        use_blocks=0
+        use_future=1 if (aflag==1) else 0
+        nextfv=f
+        #######################################
+        # is_mark step=2/3 + block
+        ism=(IS_MARK_MASK>>f)&1
+        #######################################
+        if ism==1:
+          at_mark=0
+          ###################
+          # sel
+          sel=2 if ((SEL2_MASK>>f)&1) else 1
+          ###################
+          if sel==1:
+            if rowv==mark1:
+              at_mark=1
+          if sel==2:
+            if rowv==mark2:
+              at_mark=1
+          ###################
+          # mark
+          ###################
+          if at_mark==1 and a!=u32(0):
+            use_blocks=1
+            use_future=0
+            ###################
+            # step
+            stepv=3 if ((STP3_MASK>>f)&1) else 2
+            ###################
+            # add
+            addv=1 if f==20 else 0
+            ###################
+            nextfv=int(nfid)
+        #######################################
+        # is_jmark
+        isj=(IS_JMARK_MASK>>f)&1
+        #######################################
+        if isj==1:
+          if rowv==jmark:
+            a&=~u32(1)
+            avail[sp]=a
+            if a==u32(0):
+              sp-=1
+              continue
+            ld[sp]|=1
+            nextfv=int(nfid)
+        
+        fcv=0
+        if use_future==1 and (rowv+stepv)<endm:
+          fcv=1
+        bLv=0
+        ktype=0
+        if use_blocks==1:
+          bLv=((MASK_L_1>>f)&1)|(((MASK_L_2>>f)&1)<<1)
+          if ((MASK_K_N3>>f)&1)==1:
+            ktype=1
+          if ((MASK_K_N4>>f)&1)==1:
+            ktype=2
+        child_row:int=rowv+stepv
+        ctrl[sp]=u32(524288 | nextfv | (child_row<<5) | (stepv<<10) | (addv<<12) | (use_blocks<<13) | (fcv<<14) | (bLv<<15) | (ktype<<17))
+      #----------------
+      # 1bit 展開
+      #----------------
+      a=avail[sp]
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      #----------------
+      # 次状態計算（2値選択はそのまま）
+      #----------------
+      cv=ctrl[sp]
+      bit_i:int=int(bit)
+      if (cv&u32(8192))!=u32(0):  # use_blocks bit13
+        cvi:int=int(cv)
+        stepv:int=(cvi>>10)&3
+        addv:int=(cvi>>12)&1
+        bLi:int=(cvi>>15)&3
+        kt:int=(cvi>>17)&3
+        bK=0
+        if kt==1:
+          bK=n3
+        elif kt==2:
+          bK=n4
+        nld=((ld[sp]|bit_i)<<stepv)|addv|bLi
+        nrd=((rd[sp]|bit_i)>>stepv)|bK
+      else:
+        nld=(ld[sp]|bit_i)<<1
+        nrd=(rd[sp]|bit_i)>>1
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+      if (cv&u32(16384))!=u32(0):  # future bit14
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+      #----------------
+      # push
+      #----------------
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      ctrl[sp]=cv&u32(1023)  # child fid + child row
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
 
 """dfs()の非再帰版"""
 def dfs_iter(
@@ -2196,32 +3777,37 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       if gpu_log_level>=2:
         ts1=datetime.now()
       GRID = (m + BLOCK - 1) // BLOCK
-      # if use_sorted:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
-      # else:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
+
+      # 81 GPU RESTORE:
+      #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
+      #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
+      #   ここで sort 有無に応じて実際に GPU kernel を起動する。
+      if use_sorted:
+        kernel_dfs_iter_gpu(
+          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
+      else:
+        kernel_dfs_iter_gpu(
+          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
       if gpu_log_level>=2:
         t2=datetime.now()
       # 60 DIRECT TOTAL:
@@ -2531,6 +4117,32 @@ def set_pre_queens_cached(
       並行再入（同一状態からの重複突入）も抑止できる設計。
   """
 
+  # ------------------------------------------------------------
+  # 80 FIX: preset>=7 multiplicity preservation
+  #
+  # subconst_cache is useful as a recursion de-duplication guard for
+  # preset<=6, but with preset=7 distinct pre-queen histories can reach
+  # the same (ld,rd,col,k,l,row,queens,LD,RD,N,preset) state.
+  # Those histories must still be counted with multiplicity.
+  #
+  # If we suppress the later hit, the emitted constellation task is lost.
+  # In N=18 / preset=7 this appears as the SQd0 residual -21,024.
+  # Therefore preset>=7 bypasses this cache and lets identical terminal
+  # tasks be appended multiple times.
+  # ------------------------------------------------------------
+  if preset_queens>=7:
+    ijkl_list, subconst_cache, constellations, preset_queens = set_pre_queens(
+      N, ijkl_list, subconst_cache,
+      ld, rd, col,
+      k, l,
+      row, queens,
+      LD, RD,
+      counter, constellations, preset_queens,
+      visited, constellation_signatures,
+      zobrist_hash_tables
+    )
+    return ijkl_list, subconst_cache, constellations, preset_queens
+
   # ---- キャッシュキー（状態を丸ごと）----
   # NOTE: queens や row も含めるので「途中段の重複」も止められる。
   key:Tuple[int,int,int,int,int,int,int,int,int,int,int] = (
@@ -2683,6 +4295,11 @@ def gen_constellations(
   #   後続 sc 側の constellation 生成が丸ごと抑止される。
   #   preset=5 では影響が出にくいが、preset=6/7 で SQd0 側の不足が出る。
   #   よって subconst_cache は各 sc ごとに clear する。
+  #
+  # 80 FIX:
+  #   preset=7 では同一 sc 内でも同じ状態へ複数経路で合流し、
+  #   その multiplicity 自体が必要になる。set_pre_queens_cached() 側で
+  #   preset_queens>=7 のときは subconst_cache を bypass する。
 
   # constellation_signatures は「同一開始 sc 内」での重複排除（サブ生成の内部で使う想定）
   constellation_signatures: Set[Tuple[int,int,int,int,int,int]] = set()
@@ -3066,9 +4683,518 @@ def load_or_build_constellations_bin(N:int,ijkl_list:Set[int],subconst_cache:Set
   return ijkl_list,subconst_cache,constellations,preset_queens
 
 
+
+####################################################
+#
+# 84 stream constellation bin generation / GPU chunk runner
+#
+####################################################
+
+"""bin キャッシュのレコード数を返す（1 record = 16 bytes）。破損時は 0。"""
+def count_constellations_bin_records(fname:str)->int:
+  try:
+    with open(fname,"rb") as f:
+      f.seek(0,2)
+      size:int=f.tell()
+    if size%16!=0:
+      return 0
+    return size//16
+  except:
+    return 0
+
+"""stream 完了マーカーを読む。存在しない/不正なら -1。"""
+def read_stream_done_count(fname:str)->int:
+  try:
+    with open(fname,"r") as f:
+      text:str=f.read().strip()
+    if text=="":
+      return -1
+    return int(text)
+  except:
+    return -1
+
+"""stream 完了マーカーを書く。"""
+def write_stream_done_count(fname:str,count:int)->None:
+  with open(fname,"w") as f:
+    f.write(str(count))
+    f.write("\n")
+
+"""stream 生成のために既存 bin を空にする。"""
+def truncate_constellations_bin(fname:str)->None:
+  with open(fname,"wb") as f:
+    pass
+  write_stream_done_count(fname+".done",0)
+
+"""constellation chunk を bin へ追記する。"""
+def append_constellations_bin(fname:str,constellations:List[Dict[str,int]])->None:
+  with open(fname,"ab") as f:
+    for d in constellations:
+      for key in ["ld","rd","col","startijkl"]:
+        b=int_to_le_bytes(d[key])
+        f.write("".join(chr(c) for c in b))
+
+"""N-Queens constellation を全件 List に持たず、sc 単位で .bin へ直接書き出す。"""
+def gen_constellations_stream_to_bin(
+  N:int,
+  ijkl_list:Set[int],
+  subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  fname:str,
+  preset_queens:int,
+  gpu_log_level:int=0
+)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],int,int]:
+
+  halfN=(N+1)//2
+  N1:int=N-1
+  N2:int=N-2
+  subconst_cache.clear()
+
+  constellation_signatures:Set[Tuple[int,int,int,int,int,int]]=set()
+
+  if N%2==1:
+    center=N//2
+    ijkl_list.update(
+      to_ijkl(i,j,center,l)
+      for l in range(center+1,N1)
+      for i in range(center+1,N1)
+      if i!=(N1)-l
+      for j in range(N-center-2,0,-1)
+      if j!=i and j!=l
+      if not check_rotations(ijkl_list,i,j,center,l,N)
+    )
+
+  ijkl_list.update(
+    to_ijkl(i,j,k,l)
+    for k in range(1,halfN)
+    for l in range(k+1,N1)
+    for i in range(k+1,N1)
+    if i!=(N1)-l
+    for j in range(N-k-2,0,-1)
+    if j!=i and j!=l
+    if not check_rotations(ijkl_list,i,j,k,l,N)
+  )
+
+  ijkl_list.update({to_ijkl(0,j,0,l) for j in range(1,N2) for l in range(j+1,N1)})
+  ijkl_list={get_jasmin(N,c) for c in ijkl_list}
+
+  L=1<<(N1)
+  total_count:int=0
+  sc_index:int=0
+  truncate_constellations_bin(fname)
+
+  for sc in ijkl_list:
+    subconst_cache.clear()
+    constellation_signatures=set()
+
+    i,j,k,l=geti(sc),getj(sc),getk(sc),getl(sc)
+    Lj=L>>j
+    Li=L>>i
+    Ll=L>>l
+
+    ld=(((L>>(i-1)) if i>0 else 0)|(1<<(N-k)))
+    rd=((L>>(i+1))|(1<<(l-1)))
+    col=(1|L|Li|Lj)
+    LD=(Lj|Ll)
+    RD=(Lj|(1<<k))
+
+    counter:List[int]=[0]
+    visited:Set[int]=set()
+    zobrist_hash_tables:Dict[int,Dict[str,List[u64]]]={}
+    sc_constellations:List[Dict[str,int]]=[]
+
+    ijkl_list,subconst_cache,sc_constellations,preset_queens=set_pre_queens_cached(
+      N,ijkl_list,subconst_cache,
+      ld,rd,col,
+      k,l,
+      1,
+      3 if j==N1 else 4,
+      LD,RD,
+      counter,sc_constellations,preset_queens,
+      visited,constellation_signatures,
+      zobrist_hash_tables
+    )
+
+    base=to_ijkl(i,j,k,l)
+    for a in range(counter[0]):
+      sc_constellations[-1-a]["startijkl"]|=base
+
+    if counter[0]>0:
+      append_constellations_bin(fname,sc_constellations)
+      total_count+=counter[0]
+
+    if gpu_log_level>=2:
+      print(f"[stream-build-sc] N={N} sc_index={sc_index} added={counter[0]} total={total_count}")
+
+    sc_index+=1
+
+  write_stream_done_count(fname+".done",total_count)
+  if gpu_log_level>=1:
+    print(f"[stream-build-summary] N={N} preset_queens={preset_queens} sc={sc_index} records={total_count} bin={fname}")
+
+  return ijkl_list,subconst_cache,total_count,preset_queens
+
+"""stream 版: .bin が完了済みなら使い、なければ sc 単位で生成し、レコード数を返す。"""
+def ensure_constellations_bin_stream(N:int,ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],preset_queens:int,gpu_log_level:int=0)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],int,int,str]:
+  fname:str=f"constellations_N{N}_{preset_queens}.bin"
+  records:int=count_constellations_bin_records(fname)
+  done_count:int=read_stream_done_count(fname+".done")
+  if records>0 and done_count==records:
+    if gpu_log_level>=1:
+      print(f"[stream-cache-hit] N={N} preset_queens={preset_queens} records={records} bin={fname}")
+    return ijkl_list,subconst_cache,records,preset_queens,fname
+
+  if file_exists(fname):
+    print(f"[stream-cache-warning] invalid/incomplete bin cache: {fname}; records={records} done={done_count}; rebuilding")
+  else:
+    if gpu_log_level>=1:
+      print(f"[stream-cache-miss] N={N} preset_queens={preset_queens} bin={fname}; building")
+
+  ijkl_list,subconst_cache,records,preset_queens=gen_constellations_stream_to_bin(N,ijkl_list,subconst_cache,fname,preset_queens,gpu_log_level)
+  return ijkl_list,subconst_cache,records,preset_queens,fname
+
+"""stream progress を TSV に追記する。"""
+def append_stream_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,m:int,chunk_total:int,gpu_total:int)->None:
+  with open(progress_fname,"a") as f:
+    f.write(f"{N}\t{preset_queens}\t{chunk_index}\t{off}\t{m}\t{chunk_total}\t{gpu_total}\n")
+
+"""bin を STEPS 件ずつ読み、各 chunk を既存 GPU kernel へ投入する低メモリ GPU 実行。"""
+def exec_solutions_gpu_bin_stream(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  chunk_only:bool=False,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1
+)->int:
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  total_records:int=count_constellations_bin_records(fname)
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream.tsv"
+  with open(progress_fname,"w") as pf:
+    pf.write("N\tpreset\tchunk\toff\tm\tchunk_total\tgpu_total\n")
+
+  if chunk_only:
+    if debug_chunk_start<0:
+      debug_chunk_start=0
+    if debug_chunk_count<=0:
+      debug_chunk_count=1
+
+  if gpu_log_level>=1:
+    print(f"[stream-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if chunk_only else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} progress={progress_fname}")
+
+  gpu_total:int=0
+  off:int=0
+  chunk_index:int=0
+  executed_chunks:int=0
+  _read_uint32_le=read_uint32_le
+
+  with open(fname,"rb") as f:
+    while True:
+      chunk_constellations:List[Dict[str,int]]=[]
+      i:int=0
+      while i<STEPS:
+        raw=f.read(16)
+        if len(raw)<16:
+          break
+        ld=_read_uint32_le(raw[0:4])
+        rd=_read_uint32_le(raw[4:8])
+        col=_read_uint32_le(raw[8:12])
+        startijkl=_read_uint32_le(raw[12:16])
+        chunk_constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+        i+=1
+
+      m:int=len(chunk_constellations)
+      if m==0:
+        break
+
+      if chunk_only:
+        run_this_chunk:bool=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+        if not run_this_chunk:
+          if gpu_log_level>=2:
+            print(f"[stream-gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
+          off+=m
+          chunk_index+=1
+          continue
+
+      t0=datetime.now()
+      if gpu_log_level>=1:
+        print(f"[stream-gpu-chunk-start] N={N} chunk={chunk_index} off={off} m={m}")
+
+      exec_solutions(N,chunk_constellations,True,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe)
+
+      chunk_total:int=0
+      if m>0:
+        chunk_total=chunk_constellations[0]["solutions"]
+      gpu_total+=chunk_total
+      executed_chunks+=1
+      t1=datetime.now()
+      append_stream_progress(progress_fname,N,preset_queens,chunk_index,off,m,chunk_total,gpu_total)
+      if gpu_log_level>=1:
+        print(f"[stream-gpu-chunk-end] N={N} chunk={chunk_index} off={off} m={m} elapsed={str(t1-t0)[:-3]} chunk_total={chunk_total} gpu_total={gpu_total}")
+
+      off+=m
+      chunk_index+=1
+
+  if gpu_log_level>=1:
+    print(f"[stream-gpu-summary] N={N} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} total={gpu_total} progress={progress_fname}")
+
+  return gpu_total
+
+
+"""88 BC kernel: fid から大分類 ID を返す。0=B, 1=SQd2, 2=SQd1, 3=SQd0。"""
+def bc_group_from_fid(fid:int)->int:
+  if fid>=0 and fid<=11:
+    return 0
+  if fid>=12 and fid<=18:
+    return 1
+  if fid>=19 and fid<=25:
+    return 2
+  return 3
+
+"""88 BC kernel: 大分類 ID の短い名前。"""
+def bc_group_short_name(g:int)->str:
+  if g==0:
+    return "B"
+  if g==1:
+    return "SQd2"
+  if g==2:
+    return "SQd1"
+  return "SQd0"
+
+"""88 BC kernel: .bin を低メモリで読み、B/SQd2/SQd1/SQd0 の4専用 kernel へ投入する。"""
+def exec_solutions_gpu_bin_stream_bc_kernel(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  bc_super_factor:int=BC_KERNEL_SUPER_FACTOR_DEFAULT,
+  chunk_only:bool=False,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1
+)->int:
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+  if bc_super_factor<=0:
+    bc_super_factor=1
+
+  READ_STEPS:int=STEPS*bc_super_factor
+  total_records:int=count_constellations_bin_records(fname)
+  progress_fname:str=f"progress_N{N}_{preset_queens}_bc_kernel.tsv"
+  profile_fname:str=f"bc_profile_N{N}_{preset_queens}_bc_kernel.tsv"
+
+  with open(progress_fname,"w") as pf:
+    pf.write("N\tpreset\tsuperchunk\toff\tm\tsuper_total\tgpu_total\n")
+  with open(profile_fname,"w") as pf:
+    pf.write("N\tpreset\tsuperchunk\toff\tgroup\tgroup_name\tcount\telapsed\tgroup_total\tgpu_total\n")
+
+  if chunk_only:
+    if debug_chunk_start<0:
+      debug_chunk_start=0
+    if debug_chunk_count<=0:
+      debug_chunk_count=1
+
+  if gpu_log_level>=1:
+    print(f"[bc-kernel-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} super_factor={bc_super_factor} read_steps={READ_STEPS} chunk_only={1 if chunk_only else 0} start={debug_chunk_start} count={debug_chunk_count} progress={progress_fname} profile={profile_fname}")
+
+  board_mask:int=(1<<N)-1
+  n3:int=1<<(N-3)
+  n4:int=1<<(N-4)
+  meta_next:List[u8]=[ u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2), u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14), u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25), u8(21),u8(21),u8(26),u8(26) ]
+
+  # superchunk 全体用 SoA。ここで funcid を計算し、その後4 groupへ詰め直す。
+  soa:TaskSoA=TaskSoA(READ_STEPS)
+  w_arr:List[u64]=[u64(0)]*READ_STEPS
+
+  # group投入用の作業領域。4 groupで使い回すため、最大 READ_STEPS 件だけ確保する。
+  group_soa:TaskSoA=TaskSoA(READ_STEPS)
+  group_w_arr:List[u64]=[u64(0)]*READ_STEPS
+  results:List[u64]=[u64(0)]*READ_STEPS
+
+  group_count_total:List[int]=[0]*4
+  group_solution_total:List[int]=[0]*4
+  group_kernel_count:List[int]=[0]*4
+
+  gpu_total:int=0
+  off:int=0
+  super_index:int=0
+  executed_super:int=0
+  _read_uint32_le=read_uint32_le
+
+  with open(fname,"rb") as f:
+    while True:
+      chunk_constellations:List[Dict[str,int]]=[]
+      i:int=0
+      while i<READ_STEPS:
+        raw=f.read(16)
+        if len(raw)<16:
+          break
+        ld:int=_read_uint32_le(raw[0:4])
+        rd:int=_read_uint32_le(raw[4:8])
+        col:int=_read_uint32_le(raw[8:12])
+        startijkl:int=_read_uint32_le(raw[12:16])
+        chunk_constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+        i+=1
+
+      m:int=len(chunk_constellations)
+      if m==0:
+        break
+
+      if chunk_only:
+        run_this:bool=(super_index>=debug_chunk_start and super_index<debug_chunk_start+debug_chunk_count)
+        if not run_this:
+          if gpu_log_level>=2:
+            print(f"[bc-kernel-skip] N={N} superchunk={super_index} off={off} m={m}")
+          off+=m
+          super_index+=1
+          continue
+
+      t_super0=datetime.now()
+      if gpu_log_level>=1:
+        print(f"[bc-kernel-start] N={N} superchunk={super_index} off={off} m={m}")
+
+      build_soa_for_range(N,chunk_constellations,0,m,soa,w_arr)
+
+      super_total:int=0
+      # 4大分類ごとに詰め直して、専用kernelへ投入する。
+      for group in range(4):
+        pack0=datetime.now()
+        gm:int=0
+        for idx in range(m):
+          fid:int=soa.funcid_arr[idx]
+          if bc_group_from_fid(fid)==group:
+            group_soa.ld_arr[gm]=soa.ld_arr[idx]
+            group_soa.rd_arr[gm]=soa.rd_arr[idx]
+            group_soa.col_arr[gm]=soa.col_arr[idx]
+            group_soa.row_arr[gm]=soa.row_arr[idx]
+            group_soa.free_arr[gm]=soa.free_arr[idx]
+            group_soa.jmark_arr[gm]=soa.jmark_arr[idx]
+            group_soa.end_arr[gm]=soa.end_arr[idx]
+            group_soa.mark1_arr[gm]=soa.mark1_arr[idx]
+            group_soa.mark2_arr[gm]=soa.mark2_arr[idx]
+            group_soa.funcid_arr[gm]=soa.funcid_arr[idx]
+            group_soa.ijkl_arr[gm]=soa.ijkl_arr[idx]
+            group_w_arr[gm]=w_arr[idx]
+            gm+=1
+        pack1=datetime.now()
+
+        if gm==0:
+          continue
+
+        GRID:int=(gm+BLOCK-1)//BLOCK
+        kern0=datetime.now()
+        if group==0:
+          kernel_dfs_bc_B_gpu(
+            gpu.raw(group_soa.ld_arr),gpu.raw(group_soa.rd_arr),gpu.raw(group_soa.col_arr),
+            gpu.raw(group_soa.row_arr),gpu.raw(group_soa.free_arr),
+            gpu.raw(group_soa.jmark_arr),gpu.raw(group_soa.end_arr),
+            gpu.raw(group_soa.mark1_arr),gpu.raw(group_soa.mark2_arr),
+            gpu.raw(group_soa.funcid_arr),gpu.raw(group_w_arr),
+            gpu.raw(meta_next),gpu.raw(results),gm,board_mask,n3,n4,
+            grid=GRID,block=BLOCK
+          )
+        elif group==1:
+          kernel_dfs_bc_D2_gpu(
+            gpu.raw(group_soa.ld_arr),gpu.raw(group_soa.rd_arr),gpu.raw(group_soa.col_arr),
+            gpu.raw(group_soa.row_arr),gpu.raw(group_soa.free_arr),
+            gpu.raw(group_soa.jmark_arr),gpu.raw(group_soa.end_arr),
+            gpu.raw(group_soa.mark1_arr),gpu.raw(group_soa.mark2_arr),
+            gpu.raw(group_soa.funcid_arr),gpu.raw(group_w_arr),
+            gpu.raw(meta_next),gpu.raw(results),gm,board_mask,n3,n4,
+            grid=GRID,block=BLOCK
+          )
+        elif group==2:
+          kernel_dfs_bc_D1_gpu(
+            gpu.raw(group_soa.ld_arr),gpu.raw(group_soa.rd_arr),gpu.raw(group_soa.col_arr),
+            gpu.raw(group_soa.row_arr),gpu.raw(group_soa.free_arr),
+            gpu.raw(group_soa.jmark_arr),gpu.raw(group_soa.end_arr),
+            gpu.raw(group_soa.mark1_arr),gpu.raw(group_soa.mark2_arr),
+            gpu.raw(group_soa.funcid_arr),gpu.raw(group_w_arr),
+            gpu.raw(meta_next),gpu.raw(results),gm,board_mask,n3,n4,
+            grid=GRID,block=BLOCK
+          )
+        else:
+          kernel_dfs_bc_D0_gpu(
+            gpu.raw(group_soa.ld_arr),gpu.raw(group_soa.rd_arr),gpu.raw(group_soa.col_arr),
+            gpu.raw(group_soa.row_arr),gpu.raw(group_soa.free_arr),
+            gpu.raw(group_soa.jmark_arr),gpu.raw(group_soa.end_arr),
+            gpu.raw(group_soa.mark1_arr),gpu.raw(group_soa.mark2_arr),
+            gpu.raw(group_soa.funcid_arr),gpu.raw(group_w_arr),
+            gpu.raw(meta_next),gpu.raw(results),gm,board_mask,n3,n4,
+            grid=GRID,block=BLOCK
+          )
+        kern1=datetime.now()
+
+        group_total:int=0
+        for r in range(gm):
+          group_total+=int(results[r])
+
+        super_total+=group_total
+        group_count_total[group]+=gm
+        group_solution_total[group]+=group_total
+        group_kernel_count[group]+=1
+
+        if gpu_log_level>=2:
+          print(f"[bc-kernel-group] N={N} superchunk={super_index} off={off} group={group} {bc_group_short_name(group)} count={gm} grid={GRID} pack={str(pack1-pack0)[:-3]} kernel={str(kern1-kern0)[:-3]} total={group_total}")
+        with open(profile_fname,"a") as pf:
+          pf.write(f"{N}\t{preset_queens}\t{super_index}\t{off}\t{group}\t{bc_group_short_name(group)}\t{gm}\t{str(kern1-kern0)[:-3]}\t{group_total}\t{gpu_total+super_total}\n")
+
+      gpu_total+=super_total
+      executed_super+=1
+      t_super1=datetime.now()
+      append_stream_progress(progress_fname,N,preset_queens,super_index,off,m,super_total,gpu_total)
+      if gpu_log_level>=1:
+        print(f"[bc-kernel-end] N={N} superchunk={super_index} off={off} m={m} elapsed={str(t_super1-t_super0)[:-3]} super_total={super_total} gpu_total={gpu_total}")
+
+      off+=m
+      super_index+=1
+
+  if gpu_log_level>=1:
+    print(f"[bc-kernel-summary] N={N} records={total_records} superchunks={super_index} executed_superchunks={executed_super} total={gpu_total} progress={progress_fname} profile={profile_fname}")
+    for group in range(4):
+      print(f"[bc-kernel-group-summary] N={N} group={group} {bc_group_short_name(group)} count={group_count_total[group]} kernels={group_kernel_count[group]} total={group_solution_total[group]}")
+
+  return gpu_total
+
+"""N に応じて preset_queens を動的に選択する。"""
+def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
+  if N>=5 and N<=17:
+    return 5
+  elif N>=18 and N<=21:
+    return 6
+  elif N>=22 and N<=24:
+    return 7
+  elif N>=25 and N<=27:
+    return 8
+  return preset_queens
+
+
 """プリセットクイーン数を調整 preset_queensとconstellationsを返却"""
 def build_constellations_dynamicK(N: int, ijkl_list:Set[int],subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],constellations:List[Dict[str,int]],use_gpu: bool,preset_queens:int)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
 
+  preset_queens=select_dynamic_preset_queens(N,preset_queens)
   use_bin=True
   if use_bin:
     # bin
@@ -3111,7 +5237,7 @@ def main()->None:
   cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT
   debug_chunk_start:int=0
   debug_chunk_count:int=1
-  bench_mode:int=0  # 0:normal, 1:N=20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled
+  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 12:BC 4-kernel stream
   # 通常運用では preset_queens は 5 固定。診断用 bench_mode>=8 のときだけ引数の preset を許可する。
   preset_queens_arg:int=5
   requested_preset_arg:int=5
@@ -3150,7 +5276,7 @@ def main()->None:
       requested_preset_arg=int(sys.argv[8])
     if argc >= 10:
       bench_mode=int(sys.argv[9])
-      if bench_mode<0 or bench_mode>10:
+      if bench_mode<0 or bench_mode>12:
         print(f"[warning] unknown bench_mode={bench_mode}; using 0")
         bench_mode=0
     if bench_mode>=8:
@@ -3185,6 +5311,10 @@ def main()->None:
       print(f"chunk_only    : start={debug_chunk_start} count={debug_chunk_count}")
     if bench_mode==8 or bench_mode==9 or bench_mode==10:
       print(f"boundary_debug: mode={bench_mode} preset={preset_queens_arg} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")
+    if bench_mode==11:
+      print(f"stream_bin_only: mode={bench_mode} preset={preset_queens_arg}")
+    if bench_mode==12:
+      print(f"bc_kernel_stream: mode={bench_mode} preset={preset_queens_arg} super_factor={BC_KERNEL_SUPER_FACTOR_DEFAULT}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
     override_elapsed_text:str=""
@@ -3205,7 +5335,40 @@ def main()->None:
 
     """ constellasions()でキャッシュを使う """
     use_constellation_cache:bool = False
+
     preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+    preset_queens=select_dynamic_preset_queens(N,preset_queens)
+
+    if gpu_log_level>=1:
+      print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+
+    # 84 STREAM:
+    #   bench_mode=11 は CPU/GPU どちらでも .bin を stream 生成して終了。
+    #   GPU の N>=21 通常実行は全件 List[Dict] を作らず、.bin から STEPS 件ずつ読み込む。
+    if bench_mode==11:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[stream-cache-only] N={N} preset_queens={preset_queens} records={stream_records} bin={stream_fname} valid={1 if validate_bin_file(stream_fname) else 0}")
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    stream-cache-only")
+      continue
+
+    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10):
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      stream_chunk_only:bool=(bench_mode==7)
+      if bench_mode==12:
+        total:int=exec_solutions_gpu_bin_stream_bc_kernel(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,BC_KERNEL_SUPER_FACTOR_DEFAULT,False,debug_chunk_start,debug_chunk_count)
+      else:
+        total:int=exec_solutions_gpu_bin_stream(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,stream_chunk_only,debug_chunk_start,debug_chunk_count)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
+      if stream_chunk_only:
+        status="stream-chunk-only"
+      if bench_mode==12:
+        status="bc-kernel-ok" if expected[N]==total else f"bc-kernel-ng({total}!={expected[N]})"
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
+      continue
 
     if use_constellation_cache:
       ijkl_list,subconst_cache,constellations,preset_queens= build_constellations_dynamicK(N,ijkl_list,subconst_cache,constellations, use_gpu,preset_queens)

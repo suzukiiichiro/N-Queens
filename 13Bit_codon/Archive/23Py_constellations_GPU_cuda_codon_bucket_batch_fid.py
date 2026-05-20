@@ -17,6 +17,147 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+
+はい、**非常に参考になります**。今回のログで、前回の私の「bucket 経路に入っていないかも」という推測は修正できます。**bucket 経路には入っています。** ただし、速度が出ない理由もかなりはっきり見えました。
+
+一番大きい発見はこの2つです。
+
+1. **bucket がまだ粗すぎます。**
+   `bucket=0` は `funcptn=0, avail=0, tail=0` ですが、この中に複数の `functionid` が混ざっています。GPU kernel 側は実際には `functionid` ごとの bitmask 分岐、mark 行、blockK/blockL、nextf を見て処理しているので、`funcptn` だけでまとめても warp 内の実行時間差がまだ大きく残ります。元ソースも `funcid_arr` を kernel に渡し、kernel 内で functionid ごとの分岐を行う構造です。
+
+2. **expanded task を 8192 件ずつしか GPU 起動していないのが重いです。**
+   現在の `STEPS = 256 * 32 = 8192` を、元 constellation chunk と expanded task chunk の両方に使っています。
+   そのため、たとえば N=19 chunk 1 の `bucket=0 tasks=26,310,562` は、概算で
+
+   ```text
+   26,310,562 / 8,192 ≒ 3,211 回の kernel 起動
+   ```
+
+   になります。これは GPU 計算そのものより、**小口 kernel 起動・compact・CPU側集計の待ち行列**が支配的になりやすいです。
+
+N=19 の最初の2 chunk を合算すると、こうなります。
+
+| bucket | 意味                | task比率 | GPU時間比率 |                 処理速度 |
+| -----: | ----------------- | -----: | ------: | -------------------: |
+|      0 | funcptn=0 avail=0 | 約51.3% |  約66.5% |       約1.58M tasks/s |
+|      4 | funcptn=1 avail=0 | 約32.5% |  約15.1% |       約4.42M tasks/s |
+|      8 | funcptn=2 avail=0 | 約16.2% |  約17.1% |       約1.95M tasks/s |
+|     22 | base系             | 約0.03% |  約1.39% | launch overhead が大きい |
+
+つまり、`bucket=0` は件数も多いですが、それ以上に **1 task あたりが重い**です。逆に `bucket=4` はかなり軽い。
+これは「bucket 化は効いていない」のではなく、**bucket の粒度がまだ GPU 向けでは足りない**という見方が正しいです。
+
+そこで、次の診断・改善版を作りました。
+
+[23Py_constellations_GPU_cuda_codon_bucket_batch_fid.py](sandbox:/mnt/data/23Py_constellations_GPU_cuda_codon_bucket_batch_fid.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_batch_fid_patch.diff)
+
+変更点は2つです。
+
+**1. bucket を `funcptn` 単位から `functionid` 単位へ細分化**
+
+従来：
+
+```text
+bucket = (funcptn << 2) | (avail_flag << 1) | tail
+```
+
+新方式：
+
+```text
+bucket = (functionid << 1) | tail
+```
+
+これで `bucket=0` のような巨大混合 bucket を、FID ごとに分解できます。ログも次のように出ます。
+
+```text
+[gpu-bucket] N=19 bucket=00 fid=00 funcptn=0 avail=0 tail=0 tasks=... time=...
+[gpu-bucket] N=19 bucket=10 fid=05 funcptn=0 avail=0 tail=0 tasks=... time=...
+...
+```
+
+**2. expanded task の GPU 投入 batch を 8192 から 262144 へ拡大**
+
+元 constellation の chunk は従来どおり 8192 件ですが、CPU浅展開後の expanded task は別バッファにして、
+
+```python
+GPU_TASK_BLOCKS:int=1024
+GPU_TASK_STEPS:int=BLOCK*GPU_TASK_BLOCKS   # 262144
+```
+
+にしています。
+
+これにより、26M task 級の bucket でも kernel 起動回数が
+
+```text
+約3211回 → 約101回
+```
+
+まで減ります。まずはこちらの方が効く可能性が高いです。
+
+実行はまずこれでお願いします。
+
+```bash
+codon build -release 23Py_constellations_GPU_cuda_codon_bucket_batch_fid.py
+./23Py_constellations_GPU_cuda_codon_bucket_batch_fid -g 18 18 -1 1
+```
+
+次に N=19 を単体で。
+
+```bash
+./23Py_constellations_GPU_cuda_codon_bucket_batch_fid -g 19 19 -1 1
+```
+
+比較用に、旧 bucket 方式も同じファイルで走らせられます。
+
+```bash
+./23Py_constellations_GPU_cuda_codon_bucket_batch_fid -g 19 19 -1 0
+```
+
+`bucket_mode` はこうです。
+
+```text
+0 = 旧方式 funcptn / avail / tail
+1 = 新方式 functionid / tail
+```
+
+見るべきログはこのあたりです。
+
+```text
+[gpu-config] ... owner_steps=8192 task_steps=262144
+[gpu-bucket] ... fid=.. funcptn=.. tasks=.. time=..
+[gpu-summary-bucket] ... fid=..
+```
+
+もし `task_steps=262144` でメモリや Codon/CUDA 側が不安定なら、ファイル内のここを
+
+```python
+GPU_TASK_BLOCKS:int=1024
+```
+
+まず `512` に下げてください。
+
+```python
+GPU_TASK_BLOCKS:int=512
+```
+
+今回のログからの判断では、次の優先順位は明確です。
+
+```text
+1. expanded task の小口 kernel 起動を減らす
+2. bucket=0 を functionid 単位に分解する
+3. それでも重い fid だけ、split_row を個別に深くする
+4. 最後に mark 系専用 kernel を切る
+```
+
+なので、今はまだ `dfs_iter_gpu_mark()` に分離する前段階です。
+まずは **「8192件起動問題」＋「funcptn bucket が粗すぎる問題」**を潰すのが先です。今回のログはその判断材料としてかなり有効です。
+
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

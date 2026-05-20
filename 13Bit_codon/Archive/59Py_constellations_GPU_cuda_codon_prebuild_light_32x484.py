@@ -17,6 +17,78 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 59 PREBUILD LIGHT 32x484 sort4（zobrist guard + jasmin cache）
 
+58 の結果はかなり重要です。
+
+```txt
+56 STABLE FINAL : 0:02:42.602
+58 SORT4        : 0:02:42.250
+差分            : -0.352秒
+```
+
+正解維持なので **58 は採用候補**ですが、改善幅は **0.2%程度**です。
+つまり、`sort_mode` 側はほぼ掘り尽くしたと見てよさそうです。
+
+一方で、ソースを見ると `use_visited_prune = False` なのに `zobrist_hash()` を毎回計算している箇所があります。これは GPU kernel ではなく **constellation 生成前処理の無駄**です。56 STABLE FINAL でも `use_solution_cache=False`、`use_constellation_cache=False` なので、実行時間に前処理も含まれています。
+
+そこで次は **59 PREBUILD LIGHT** です。
+
+## 59 の変更点
+
+1つ目は、`use_visited_prune=False` のときは `zobrist_hash()` を計算しないようにしました。
+
+```python
+if use_visited_prune:
+    h: int = int(zobrist_hash(...))
+    if h in visited:
+        return ijkl_list, subconst_cache, constellations, preset_queens
+    visited.add(h)
+```
+
+2つ目は、`get_jasmin()` のキャッシュを関数内ローカルからグローバルへ移しました。旧版では毎回、
+
+```python
+jasmin_cache: Dict[Tuple[int,int],int] = {}
+```
+
+を作っていたため、実質キャッシュになっていませんでした。
+
+ファイルはこちらです。
+
+[59Py_constellations_GPU_cuda_codon_prebuild_light_32x484.py](sandbox:/mnt/data/59Py_constellations_GPU_cuda_codon_prebuild_light_32x484.py)
+
+差分はこちらです。
+
+[59_prebuild_light.patch](sandbox:/mnt/data/59_prebuild_light.patch)
+
+実行はまずこれでお願いします。
+
+```bash
+codon build -release 59Py_constellations_GPU_cuda_codon_prebuild_light_32x484.py
+./59Py_constellations_GPU_cuda_codon_prebuild_light_32x484 -g 5 20 32 484 0 4
+```
+
+N=20 単体は、
+
+```bash
+./59Py_constellations_GPU_cuda_codon_prebuild_light_32x484 -g 20 20 32 484 0 4
+```
+
+比較用に auto もお願いします。
+
+```bash
+./59Py_constellations_GPU_cuda_codon_prebuild_light_32x484 -g 20 20 32 484 0 -1
+```
+
+今回の期待値は kernel 速度ではなく、**N=5..20 の総時間、特に N=18〜20 の前処理込み時間**の改善です。
+
+現時点の整理はこうです。
+
+```txt
+57 BASETAIL FASTPATH : 不採用
+58 SORT4 WORKSCORE   : 微改善、採用候補
+59 PREBUILD LIGHT    : 次の本命、低リスク
+```
+
 
 CPU
 $ codon build -release 59Py_constellations_GPU_cuda_codon_prebuild_light_32x484.py

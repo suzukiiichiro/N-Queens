@@ -17,6 +17,83 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 61 STRIPED CHUNKS 32x484 sort5（chunk偏り均し + direct total）
 
+60 のログで見えたポイントは明確です。
+
+```txt
+build      ほぼ 0秒
+sort_time  ほぼ 0秒
+sum        ほぼ 0秒
+kernel     15.8〜20.0秒/chunk
+```
+
+つまり、次は **chunk 間の仕事量の偏りを均す**のが本命です。
+56/60 系の基本構造は維持し、探索ロジックは変えていません。
+
+## 61 STRIPED CHUNKS を作成しました
+
+元の chunk はそのまま順番に投げると、重い chunk と軽い chunk が分かれています。
+そこで 61 では、元 chunk を縦方向に混ぜます。
+
+イメージです。
+
+```txt
+元:
+chunk0 chunk1 chunk2 ... chunk8
+
+61:
+new chunk0 = chunk0/1/2/.../8 から少しずつ
+new chunk1 = chunk0/1/2/.../8 から少しずつ
+...
+```
+
+これで各 kernel 起動の重さを均す狙いです。
+
+ファイルはこちらです。
+
+[61Py_constellations_GPU_cuda_codon_striped_chunks_32x484.py](sandbox:/mnt/data/61Py_constellations_GPU_cuda_codon_striped_chunks_32x484.py)
+
+差分はこちらです。
+
+[61_striped_chunks.patch](sandbox:/mnt/data/61_striped_chunks.patch)
+
+## 実行コマンド
+
+まず本命の `sort_mode=5` です。
+
+```bash
+codon build -release 61Py_constellations_GPU_cuda_codon_striped_chunks_32x484.py
+./61Py_constellations_GPU_cuda_codon_striped_chunks_32x484 -g 5 20 32 484 0 5
+```
+
+N=20 単体です。
+
+```bash
+./61Py_constellations_GPU_cuda_codon_striped_chunks_32x484 -g 20 20 32 484 0 5
+```
+
+ログ確認です。
+
+```bash
+./61Py_constellations_GPU_cuda_codon_striped_chunks_32x484 -g 20 20 32 484 2 5
+```
+
+比較用に、ストライプのみも試せます。
+
+```bash
+./61Py_constellations_GPU_cuda_codon_striped_chunks_32x484 -g 20 20 32 484 0 6
+./61Py_constellations_GPU_cuda_codon_striped_chunks_32x484 -g 20 20 32 484 2 6
+```
+
+## sort_mode の意味
+
+```txt
+5 = striped chunks + sort4
+6 = striped chunks only
+```
+
+今回の期待値は、単純な前処理削減ではなく **kernel chunk 時間の平準化**です。
+ログで `15〜20秒` に割れていたものが、たとえば `17〜18秒台` に寄れば成功です。
+
 
 CPU
 $ codon build -release 61Py_constellations_GPU_cuda_codon_striped_chunks_32x484.py

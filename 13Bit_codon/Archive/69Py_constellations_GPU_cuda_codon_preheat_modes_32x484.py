@@ -17,6 +17,74 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 69 PREHEAT MODES 32x484（67 CROSS STRIPE AUTO + warmup/repeat diagnostic）
 
+はい、68 の結果でかなり切り分けできました。
+
+```txt
+通常 N=20 単体        : 0:02:28.139
+N=20 warmup 1回目     : 0:02:27.798
+N=20 2回目 測定       : 0:02:25.105
+ログ付き 2回目 測定   : 0:02:25.073
+```
+
+つまり、**同一プロセス内で一度 GPU を温めるだけで約3秒短縮**しています。これはかなり明確に、初回遅延・GPUクロック・CUDA/ドライバ側の状態差が効いています。ログ付きでも 2回目の chunk は `15〜17秒台` に均されており、通常単体の `2:27〜2:28` 台とは別状態です。
+
+ただし、通し実行の `0:02:23.755` にはまだ約1.3秒届いていません。
+ここから見ると、通し実行の速さは単なる「N=20を一度回したから」だけではなく、**N=18 / N=19 を直前に実行したことによる preheat 効果**もありそうです。
+
+そこで、次の診断版 **69 PREHEAT MODES** を作りました。
+
+[69Py_constellations_GPU_cuda_codon_preheat_modes_32x484.py](sandbox:/mnt/data/69Py_constellations_GPU_cuda_codon_preheat_modes_32x484.py)
+
+[69_preheat_modes.patch](sandbox:/mnt/data/69_preheat_modes.patch)
+
+## 追加した bench_mode
+
+```txt
+bench_mode=0 : 通常実行
+bench_mode=1 : N=20 を1回 warmup → 2回目を測定
+bench_mode=2 : N=19 を非表示 preheat → N=20 を測定
+bench_mode=3 : N=18 と N=19 を非表示 preheat → N=20 を測定
+```
+
+## 実行コマンド
+
+```bash
+codon build -release 69Py_constellations_GPU_cuda_codon_preheat_modes_32x484.py
+```
+
+まず N=19 preheat です。
+
+```bash
+./69Py_constellations_GPU_cuda_codon_preheat_modes_32x484 -g 20 20 32 484 0 -1 5 2
+```
+
+次に、通し実行に近い N=18 + N=19 preheat です。
+
+```bash
+./69Py_constellations_GPU_cuda_codon_preheat_modes_32x484 -g 20 20 32 484 0 -1 5 3
+```
+
+ログ付きで見るならこちらです。
+
+```bash
+./69Py_constellations_GPU_cuda_codon_preheat_modes_32x484 -g 20 20 32 484 2 -1 5 3
+```
+
+## 判定
+
+```txt
+bench_mode=2 が 2:23〜2:24 台
+  -> N=19 preheat だけで十分
+
+bench_mode=3 が 2:23 台、bench_mode=2 は 2:25 台
+  -> N=18+N=19 の連続実行状態が効いている
+
+bench_mode=2/3 でも 2:25 台
+  -> 通し実行の 2:23.755 は測定揺らぎ、またはCPU側メモリ配置差の可能性
+```
+
+現時点では、公開・普段使いは **67 CROSS STRIPE AUTO**、診断は **69 PREHEAT MODES** がよいです。
+
 
 CPU
 $ codon build -release 68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py

@@ -17,6 +17,53 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+79 の**完全版ソースコード**を作成しました。
+差分ファイルではなく、添付いただいた `78Py_constellations_GPU_cuda_codon_p5_fix.py` をベースにした単体でビルド対象にできる `.py` です。
+
+[79Py_constellations_GPU_cuda_codon_p6_dynamic_fix.py](sandbox:/mnt/data/79Py_constellations_GPU_cuda_codon_p6_dynamic_fix.py)
+
+今回入れた 79 修正は、昨日メモの **preset=6 はまだ NG、B/SQd2/SQd1 は OK、残り候補は SQd0 の start>k / fid26/fid27** という整理に対応するものです。
+
+元の 78 完全版には、GPU 側の P5 same-row transition と、CPU 側 `dfs_iter()` / `dfs()` の `funcptn==4 and row==mark1` 処理が入っていました。 
+
+79 では以下を追加しています。
+
+```python
+if functionid==27 and row>mark1:
+  functionid=26
+```
+
+CPU 側は `dfs_iter()` と `dfs()` の両方で、`meta[functionid]` を読む前に入れています。
+
+GPU 側は `kernel_dfs_iter_gpu()` の `f / rowv / nfid` ロード直後、P5 same-row transition より前に入れています。
+
+```python
+if f==27:
+  if rowv>mark1:
+    f=26
+    nfid=meta_next[f]
+```
+
+`mark1=k-1` なので、`row>mark1` は「SQd0BkB の Bk block を処理すべき mark 行をすでに通過している」状態です。その場合は、盤面・row・free を変えずに `fid=27 SQd0BkB` を `fid=26 SQd0B` と等価化します。
+
+こちらの環境には Codon が入っていないため、ビルド実行まではしていません。実行コマンドは前回のまま、まず CPU で以下がよいです。
+
+```bash
+codon build -release 79Py_constellations_GPU_cuda_codon_p6_dynamic_fix.py -o 79Py_constellations_GPU_cuda_codon_p6_dynamic_fix
+
+./79Py_constellations_GPU_cuda_codon_p6_dynamic_fix -c 18 20 32 484 1 -1 6 9 > bc_sol_p6_N18_N20_after.log
+grep -E "^(18:|19:|20:)" bc_sol_p6_N18_N20_after.log
+```
+
+期待値は以下です。
+
+```text
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

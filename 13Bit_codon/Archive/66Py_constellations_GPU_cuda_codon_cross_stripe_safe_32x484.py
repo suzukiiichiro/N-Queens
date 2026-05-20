@@ -17,6 +17,60 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 66 CROSS STRIPE SAFE 32x484（cross stripe bijection guard + direct total）
 
+65 の結果、かなり惜しいですが **cross stripe は不採用**です。
+
+```txt
+65 sort_mode=9  : 0:02:27.600  ng(39029250572!=39029188884)
+65 sort_mode=7  : 0:02:28.865  ok
+65 sort_mode=10 : 0:02:40.170  ng
+```
+
+`sort_mode=9` は速いものの、合計が `39029250572` になっており、期待値 `39029188884` より **61688 多い**です。ログでも `sort_mode=9 local_sort=0 stripe=1 cross=1` で実行され、各 chunk の kernel 時間はよく均されていますが、正解値が崩れているため採用できません。
+
+原因はほぼ特定できます。
+`STEPS=15488`、`chunks=9` ですが、`15488` は `9` で割り切れません。そのため cross stripe の端数部分で `within == STEPS` 以上になるスロットが発生し、次 chunk の先頭 index と衝突して、一部 constellation を二重加算していた可能性が高いです。
+
+安全化した **66 CROSS STRIPE SAFE** を作りました。
+
+[66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484.py](sandbox:/mnt/data/66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484.py)
+
+差分はこちらです。
+
+[66_cross_stripe_safe.patch](sandbox:/mnt/data/66_cross_stripe_safe.patch)
+
+変更は小さいです。
+
+```python
+if within < STEPS:
+    idx = src_ch * STEPS + within
+    if idx < m_all:
+        reordered.append(constellations[idx])
+```
+
+まずは本命だけ確認してください。
+
+```bash
+codon build -release 66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484.py
+./66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484 -g 20 20 32 484 0 9
+./66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484 -g 20 20 32 484 2 9
+```
+
+比較用に 64 相当も同じソースで確認できます。
+
+```bash
+./66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484 -g 20 20 32 484 0 7
+./66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484 -g 20 20 32 484 2 7
+```
+
+判定はこうです。
+
+```txt
+66 sort_mode=9 が ok かつ 2:28.8 より速い → 66 採用候補
+66 sort_mode=9 が ng または遅い          → 64 STABLE FINAL
+```
+
+現時点の本線は引き続き **64 BALANCED STRIPE AUTO / sort_mode=7** です。
+
 
 CPU
 $ codon build -release 66Py_constellations_GPU_cuda_codon_cross_stripe_safe_32x484.py

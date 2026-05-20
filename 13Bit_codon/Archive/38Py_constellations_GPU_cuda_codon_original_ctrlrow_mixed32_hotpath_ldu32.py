@@ -17,6 +17,174 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow mixed32 tuned）
 
+はい、今回の結果でかなり整理できました。
+
+まず、**現時点の最良は 35b** です。
+
+```text
+35b / N=18 / block=32 / max_blocks=256 : 0:00:04.510 ok
+35b / N=18 / block=128 / max_blocks=64 : 0:00:04.535 ok
+```
+
+36b は MAXD=28 との合成版でしたが、
+
+```text
+36b / 32x256 : 0:00:04.513
+36b / 128x64 : 0:00:04.541
+```
+
+なので、**35bとほぼ同等、むしろわずかに遅い**です。
+つまり、今回の範囲では **MAXD=28 はほぼ効いていません**。
+
+一方で、35b の mixed32 化は効いています。
+
+```text
+33 : 0:00:04.862
+35b: 0:00:04.510
+```
+
+約 **7.2%改善**です。
+19 original GPU の N=18 が約 `12.092秒` だったので、現在は、
+
+```text
+12.092秒 → 4.510秒
+```
+
+まで来ています。約 **2.68倍高速化**です。
+
+ただし、N=19 はまだ GPU が CPU に追いついていません。
+33/34 の N=19 はおおよそ、
+
+```text
+33 N=19 : 0:00:37.619 / 0:00:39.087
+34 N=19 : 0:00:37.500
+```
+
+で、過去の CPU 基準は N=19 が `0:00:16.233` です。
+なので、今の GPU は N=18 ではかなり改善しましたが、N=19 ではまだ CPU の約2倍強かかっています。
+
+## 判断
+
+ここまでで不採用にしてよいものは明確です。
+
+```text
+bucket / expand 系       : 不採用
+FID bucket               : 不採用
+MAXD=28 単体             : ほぼ効果なし
+MAXD=28 + mixed32        : 35bより速くない
+```
+
+採用候補はこれです。
+
+```text
+35b / mixed32 / block=32 / max_blocks=256
+```
+
+つまり、**33系の ctrlrow をベースに、col/avail/ctrl を u32 化した 35b が trunk 候補**です。
+
+## 次に見るべきこと
+
+まずは 35b の N=19 を測りたいです。
+
+```bash
+./35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix -g 19 19 32 256 0
+./35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix -g 19 19 128 64 0
+```
+
+N=18では `32x256` がわずかに良いですが、N=19では `128x64` が逆転する可能性もあります。
+
+内訳を見るなら、次も1回だけ有効です。
+
+```bash
+./35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix -g 19 19 32 256 2
+```
+
+これで、
+
+```text
+[gpu-chunk] ... build=... kernel=... copy=...
+```
+
+が出ます。次に削るべきものが kernel 本体なのか、SoA build/copy なのかが分かります。
+
+## 次版 37 / 38 を作りました
+
+35b の結果を受けて、さらに2つ試験版を作りました。
+
+### 37: hotpath decode 削減版
+
+[37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath.py](sandbox:/mnt/data/37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_hotpath_patch.diff)
+
+35b では、候補bitを1つ展開するたびに毎回、
+
+```python
+stepv = (cvi >> 5) & 3
+addv  = (cvi >> 7) & 1
+next_row = ((cvi >> 14) & 31) + stepv
+```
+
+を実行していました。
+
+37では、初期化時点で `child_row = rowv + stepv` を ctrl に入れておきます。
+さらに、通常フレームでは `stepv/addv` を読まず、mark/block フレームのときだけ読むようにしました。
+
+つまり、狙いはこれです。
+
+```text
+通常 +1 ホットパスの ctrl decode を減らす
+```
+
+試すコマンドです。
+
+```bash
+codon build -release 37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath.py
+
+./37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath -g 18 18 32 256 0
+./37Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath -g 19 19 32 256 0
+```
+
+### 38: 37 + ld u32 化版
+
+[38Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath_ldu32.py](sandbox:/mnt/data/38Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath_ldu32.py)
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_hotpath_ldu32_patch.diff)
+
+38はさらに `ld[MAXD]` も `u32` 化しています。
+
+`rd` は高位bitが右シフトで盤面内へ戻る可能性があるので int のまま残しています。
+一方、`ld` は左シフト方向にしか進まず、盤面外へ出たbitは戻らないので、N27狙いでは `u32` 化しても安全側だと見ています。
+
+試すコマンドです。
+
+```bash
+codon build -release 38Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath_ldu32.py
+
+./38Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath_ldu32 -g 18 18 32 256 0
+./38Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_hotpath_ldu32 -g 19 19 32 256 0
+```
+
+## 判定基準
+
+基準は 35b です。
+
+```text
+35b N=18: 4.510秒
+33/34 N=19: 約37.5秒
+```
+
+なので、
+
+```text
+37 が 4.510秒を切る → hotpath decode 削減が有効
+38 が 37 より速い     → ld u32 化も有効
+38 が ng になる       → ld u32 化は戻す
+```
+
+という見方でよいです。
+
+現時点では、**35b が trunk 候補、37/38 が次の探索候補**です。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

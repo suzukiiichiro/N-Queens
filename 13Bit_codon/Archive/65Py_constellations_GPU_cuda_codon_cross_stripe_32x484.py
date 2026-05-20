@@ -17,6 +17,70 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 65 CROSS STRIPE 32x484（cross stripe + direct total）
 
+64 は **STABLE FINAL 候補としてかなり強い**です。
+
+```txt
+64 通し N=20 : 0:02:23.617
+64 単体 N=20 : 0:02:28.803
+64 ログ付き : 0:02:29.268
+```
+
+すべて正解値 `39029188884` で `ok` です。ログ上も `sort_mode=7 local_sort=0 stripe=1 balanced=1` で動いており、64 の auto 分岐が正しく効いています。
+
+ただ、64 の `balanced stripe` はまだ **within % chunk数** の偏りが残る可能性があります。そこで次は、さらに一段だけ並べ方を変えた **65 CROSS STRIPE** を作りました。
+
+## 65 の狙い
+
+64 の `sort_mode=7` は採用候補として残したまま、新しく追加しています。
+
+```txt
+sort_mode=9  : cross stripe only
+sort_mode=10 : cross stripe + sort4 比較用
+```
+
+64 の `sort_mode=7` が強いので、65 の本命は `sort_mode=9` です。
+`sort_mode=10` はこれまでの傾向から遅くなる可能性が高いので、余裕があれば比較用です。
+
+ファイルはこちらです。
+
+[65Py_constellations_GPU_cuda_codon_cross_stripe_32x484.py](sandbox:/mnt/data/65Py_constellations_GPU_cuda_codon_cross_stripe_32x484.py)
+
+差分はこちらです。
+
+[65_cross_stripe.patch](sandbox:/mnt/data/65_cross_stripe.patch)
+
+## 実行コマンド
+
+まず本命です。
+
+```bash
+codon build -release 65Py_constellations_GPU_cuda_codon_cross_stripe_32x484.py
+./65Py_constellations_GPU_cuda_codon_cross_stripe_32x484 -g 20 20 32 484 0 9
+./65Py_constellations_GPU_cuda_codon_cross_stripe_32x484 -g 20 20 32 484 2 9
+```
+
+比較として、64 相当も同じソースで確認できます。
+
+```bash
+./65Py_constellations_GPU_cuda_codon_cross_stripe_32x484 -g 20 20 32 484 0 7
+./65Py_constellations_GPU_cuda_codon_cross_stripe_32x484 -g 20 20 32 484 2 7
+```
+
+必要なら sort4 併用も。
+
+```bash
+./65Py_constellations_GPU_cuda_codon_cross_stripe_32x484 -g 20 20 32 484 0 10
+```
+
+判定はこうです。
+
+```txt
+sort_mode=9 が 2:28.8 より速い → 65 採用候補
+sort_mode=9 が同等以下          → 64 STABLE FINAL
+```
+
+現時点の本命はまだ **64 BALANCED STRIPE AUTO** です。
+
 
 CPU
 $ codon build -release 65Py_constellations_GPU_cuda_codon_cross_stripe_32x484.py

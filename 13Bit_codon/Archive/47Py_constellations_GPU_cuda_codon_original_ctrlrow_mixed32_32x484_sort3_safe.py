@@ -17,6 +17,77 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 47 trunk候補 32x484 auto-sort + sort_mode=3 work-bucket診断 SAFE（ctrlrow mixed32 tuned）
 
+ログありがとうございます。結果を見る限り、判断はかなりはっきりしました。
+
+`sort_mode=2` と `sort_mode=3` はほぼ同等です。N=20 で `sort_mode=2` が `0:02:43.887`、`sort_mode=3` が `0:02:43.899` なので、今回の work bucket は有効な改善にはなっていません。`sort_time` もほぼ 0 なので、sort のコストではなく、bucket の切り方が実際の重さをうまく表せていないと見てよいです。
+
+一方で、`preset_queens=6` は **採用不可**です。`constellations=1368971`、`chunks=89` まで増え、時間も `0:03:04.478` に悪化し、さらに `39027754460 != 39029188884` で NG になっています。これは単なる速度問題ではなく、生成側のキャッシュ・重複排除・`startijkl` 復元前提のどこかが `preset_queens=5` 前提に依存している可能性が高いです。
+
+そのため、まず **公開用・普段使い用の安全版**として、`preset_queens=6` を無効化した版を作りました。
+
+[47Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe.py](sandbox:/mnt/data/47Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe.py)
+
+差分はこちらです。
+
+[47_safe_preset5.diff](sandbox:/mnt/data/47_safe_preset5.diff)
+
+この 47 SAFE では、末尾に `6` を付けても警告を出して `preset_queens=5` に丸めます。
+
+```bash
+codon build -release 47Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe.py
+
+./47Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe -g 20 20 32 484 2 -1
+```
+
+誤ってこう実行しても、5 として実行されます。
+
+```bash
+./47Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3_safe -g 20 20 32 484 2 3 6
+```
+
+出る想定の警告は以下です。
+
+```text
+[warning] preset_queens=6 は 47 SAFE では無効化し、5として実行します
+```
+
+加えて、`log_level>=1` のときに constellation 数も表示するようにしました。
+
+```text
+[constellation-config] N=20 preset_queens=5 constellations=139232
+```
+
+また、原因確認用として **実験版**も置いておきます。こちらは `preset_queens=6` の NG 原因候補である、`subconst_cache` が開始星座 `sc` をまたいで効いてしまう点と、`preset_queens>5` で signature dedup が外れていた点を修正したものです。
+
+[48Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_preset6fix_exp.py](sandbox:/mnt/data/48Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_preset6fix_exp.py)
+
+差分はこちらです。
+
+[48_preset6fix_exp.diff](sandbox:/mnt/data/48_preset6fix_exp.diff)
+
+48 はあくまで検証用です。今回のログを見る限り、仮に 48 で `preset_queens=6` の合計が直っても、全分割型の `preset_queens=6` は 89 chunks になっており、速度面では不利だと思います。次に本命で試すなら、全体を 6 にするのではなく、**重い constellation だけ 1 段展開する heavy-only split** がよいです。
+
+現時点の運用結論はこれでよいと思います。
+
+```text
+公開用 / 普段使い / -g 5 20:
+  47 SAFE
+  sort_mode=-1
+  preset_queens=5 固定
+
+N=20 単体:
+  sort_mode=2 明示、または auto
+  sort_mode=3 は今回は採用不要
+
+preset_queens=6:
+  46版では NG
+  47 SAFE では無効化
+  48は原因検証専用
+```
+
+こちらでは Codon/CUDA 実機ビルドまでは確認できていませんが、47 SAFE は 46 からの最小修正で、通常経路は `preset_queens=5` に戻すだけです。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

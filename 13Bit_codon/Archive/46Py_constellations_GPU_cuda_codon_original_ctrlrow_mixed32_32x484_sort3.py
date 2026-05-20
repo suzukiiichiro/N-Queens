@@ -17,6 +17,331 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 46 trunk候補 32x484 auto-sort + sort_mode=3 work-bucket診断（ctrlrow mixed32 tuned）
 
+こちらこそ、今日もよろしくお願いいたします。
+
+結論から言うと、**改善余地はあります**。ただし、次に狙うべきなのは「functionid ごとに単純に複数 kernel へ分ける」ではなく、**重い constellation をさらに細かい仕事へ分割して、1 thread あたりの探索量のばらつきを減らすこと**だと思います。
+
+現状の GPU kernel は、明確に **“1 constellation = 1 thread”** の構造です。つまり、ある thread が巨大な DFS 木を引いた場合、同じ warp 内の軽い thread は先に終わって待つことになります。これは kernel を一本化した副作用というより、**探索タスク粒度のばらつき**が GPU に出ている状態です。ソース上でも `kernel_dfs_iter_gpu()` は constellation ごとに DFS を回し、`results[i]` に結果を書き込む構造になっています。
+
+一方で、現在の実装はすでにかなり良いところまで来ています。GPU 側では list/tuple 参照を避けて `Static[int]` のビットマスクに焼き込み、`ctrl` も `u32` に詰め、`col/avail/ctrl` を mixed32 化しています。これは「kernel を分ける前に、一本 kernel 内の分岐コストをかなり削っている」状態です。
+
+## 複数 kernel 分解についての判断
+
+**単純な funcid / funcptn 別 kernel 分割は、効果が小さいか、むしろ遅くなる可能性が高い**です。
+
+理由は 3 つあります。
+
+まず、今の `sort_mode=2` はすでに「kernel を増やさず、chunk 内で funcptn 順に並べる」方式です。これは warp 内の分岐を揃えるための軽量な対策です。しかもソースコメントには、過去の bucket 化、つまり複数 kernel 化は遅くなったため、現在は単一 kernel + chunk 内 sort にしている、と明記されています。
+
+次に、functionid は探索途中で `meta_next` によって遷移します。つまり、初期 functionid ごとに kernel を分けても、DFS の途中で別のパターンへ移るため、結局 kernel 内に遷移ロジックを残す必要があります。完全に専用化するには、単なる入口分岐ではなく、探索段階そのものを分ける必要があります。
+
+最後に、N=20 では auto が `sort_mode=2` を選び、N<=19 では `sort_mode=0` の方が保守的に速い、という運用判断がすでに入っています。つまり、現状は「分岐を揃える効果」と「sort/再配置/launch overhead」のバランスをかなり見たうえでの設定です。
+
+## 次に一番見込みがある改善
+
+本命は、**heavy task の再分割**です。
+
+今のボトルネック候補は、おそらく次のようなものです。
+
+```text
+軽い constellation:
+  すぐ詰む
+  DFS ノード数が少ない
+  thread が早く終了
+
+重い constellation:
+  free が多い
+  endmark までの残り段数が長い
+  future 枝刈りを抜けた後も探索木が大きい
+  thread が長時間残る
+```
+
+この場合、kernel を funcptn 別に分けても、**同じ funcptn 内に軽いものと重いものが混在する**ため、偏りはあまり解消しません。
+
+より効果が見込めるのは、次の方式です。
+
+```text
+第1段:
+  constellation を 1〜2 手だけ展開する
+  重い親タスクを複数の子タスクに割る
+
+第2段:
+  生成された子タスクを今の kernel_dfs_iter_gpu() で解く
+```
+
+これは「kernel ロジック分割」というより、**探索 frontier の再分割**です。GPU 向けにはこちらの方が筋が良いです。
+
+## まず入れるべき診断
+
+次の改修に入る前に、まず **本当に heavy tail が出ているか**を測るのがよいです。
+
+現在の `log_level=2` は `build / kernel / copy` を出していますが、`sort_mode>0` の場合、`kernel` 表示の中に sort 時間も混ざっています。`t1` の後に sort してから kernel を呼んでいるためです。
+
+なので、まず `sort` と `pure kernel` を分けて測るのがよいです。
+
+```python
+if gpu_log_level>=2:
+  ts0=datetime.now()
+
+# sort_mode の並び替え処理
+
+if gpu_log_level>=2:
+  ts1=datetime.now()
+
+# kernel_dfs_iter_gpu(...) 呼び出し
+
+if gpu_log_level>=2:
+  t2=datetime.now()
+  print(
+    f"[gpu-chunk] N={N} chunk={chunks} off={off} m={m} "
+    f"grid={GRID} sort={gpu_sort_mode} "
+    f"build={str(t1-t0)[:-3]} "
+    f"sort={str(ts1-ts0)[:-3]} "
+    f"kernel={str(t2-ts1)[:-3]} "
+    f"copy={str(t3-t2)[:-3]}"
+  )
+```
+
+さらに、診断版 kernel だけでよいので、DFS の while 回数を数えると偏りが見えます。
+
+```python
+ops:u64=u64(0)
+
+while sp>=0:
+  ops += u64(1)
+  ...
+```
+
+最後に `work_arr[i]=ops` として返し、host 側で `funcid` / `funcptn` / `free popcount` / `endmark-row` ごとに集計します。本番では外した方がよいですが、次の改修方針を決めるにはかなり有効です。
+
+## 低リスク案: sort_mode=3 を追加する
+
+現在の `sort_mode=2` は `funcptn` だけで bucket 化しています。次は、`funcptn` に加えて、ざっくりした重さも bucket に入れるのが良いです。
+
+例えば、以下のようなキーです。
+
+```text
+funcptn
++ free の popcount
++ endmark - row
+```
+
+Codon 側に寄せるなら、CPU 側 sort 処理に次のような補助関数を追加します。
+
+```python
+def popcount_int(x:int)->int:
+  c:int=0
+  while x:
+    x &= x-1
+    c += 1
+  return c
+```
+
+そして `sort_mode==3` を追加します。
+
+```python
+use_sorted:bool=(gpu_sort_mode==1 or gpu_sort_mode==2 or gpu_sort_mode==3)
+
+if use_sorted:
+  nb:int=28
+  if gpu_sort_mode==2:
+    nb=6
+  if gpu_sort_mode==3:
+    nb=24  # funcptn 6種 × work bucket 4種
+```
+
+key 計算は、現在のこの部分を拡張する形です。
+
+```python
+fid0:int=soa.funcid_arr[i]
+key:int=fid0
+
+if gpu_sort_mode==2:
+  key=funcptn_by_fid[fid0]
+
+if gpu_sort_mode==3:
+  ptn:int=funcptn_by_fid[fid0]
+
+  depth:int=soa.end_arr[i]-soa.row_arr[i]
+  if depth<0:
+    depth=0
+
+  pc:int=popcount_int(soa.free_arr[i])
+
+  wb:int=0
+  if pc>=3:
+    wb += 1
+  if depth>=12:
+    wb += 2
+
+  key=ptn*4+wb
+```
+
+これで、同じ warp に「同じ funcptn で、だいたい同じ重さ」のタスクが入りやすくなります。
+期待値としては、**大きな構造変更なしで数 % 改善する可能性**があります。もし `sort_mode=2` が N=20 で効いているなら、`sort_mode=3` は試す価値があります。
+
+ベンチはこのように比較するとよいです。
+
+```bash
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_auto -g 20 20 32 484 2 0
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_auto -g 20 20 32 484 2 2
+./45Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_auto -g 20 20 32 484 2 3
+```
+
+`sort_mode=3` は追加後です。
+
+## 中リスク案: preset_queens=6 を GPU 専用で試す
+
+現在は `preset_queens:int = 5` 固定です。
+
+GPU では、CPU よりも「タスクを細かくして、各 thread の探索量を均す」方が効く場合があります。したがって、N=20 単体では `preset_queens=6` を試す価値があります。
+
+```python
+preset_queens:int = 6
+```
+
+ただし、これは constellation 生成数、SoA build、転送量、sort 量が増えます。
+なので、期待値は次のような感じです。
+
+```text
+探索偏りが強い場合:
+  preset_queens=6 で改善する可能性あり
+
+前処理・転送・sort が支配的な場合:
+  preset_queens=6 で悪化する可能性あり
+```
+
+N=20 では試す価値が高いです。N<=19 の範囲実行では、悪化する可能性もあります。
+
+## 本命案: heavy constellation だけ 1〜2 段展開する
+
+最も筋が良いのは、全部を細かくするのではなく、**重そうな constellation だけ分割する**方式です。
+
+判定は最初は粗くて構いません。
+
+```text
+heavy 条件例:
+  popcount(free) >= 4
+  かつ endmark - row >= 12
+```
+
+heavy でないものは今まで通り 1 constellation = 1 thread。
+heavy だけ CPU または GPU の前段で 1〜2 手展開して、複数の子タスクとして `kernel_dfs_iter_gpu()` に渡します。
+
+この方式の利点は、既存の DFS kernel をほぼ維持できることです。
+
+```text
+親タスク:
+  1個の重い constellation
+
+子タスク:
+  bit を 1つ選んだ後の状態
+  ld/rd/col/row/free/ctrl を更新済み
+  parent_idx を保持
+```
+
+最後は `parent_idx` で `results_all[parent] += child_result` にします。
+ここだけ集計方式が変わるため、atomic 加算を避けたいなら host 側で child 結果を戻して集計するのが安全です。
+
+この案は、単純な複数 kernel 化よりも効果が出る可能性が高いです。
+期待値としては、heavy tail が実際にあるなら **5〜20% 程度の改善余地**は見てよいと思います。ただし、実装量は `sort_mode=3` より大きいです。
+
+## 私なら次はこの順で進めます
+
+まず、`log_level=2` の時間計測を `sort` と `pure kernel` に分けます。今のままだと `sort_mode=2` の評価で、sort overhead と kernel time が混ざります。
+
+次に、診断版で `ops` を取り、`funcptn` ごとの平均・最大・p95 を見ます。ここで最大値が平均の何十倍もあるなら、heavy tail 対策が本命です。
+
+その後、低リスクに `sort_mode=3` を入れます。これは既存設計の延長で、壊しにくいです。
+
+最後に、N=20 専用で `preset_queens=6`、または heavy-only frontier split を試します。
+
+## 現時点での結論
+
+**複数 kernel 分解による改善は、やり方次第で見込めます。**
+ただし、`funcid` や `funcptn` ごとに単純分解するより、次の方が有望です。
+
+```text
+優先度1:
+  sort_mode=3
+  funcptn + 粗い work bucket
+
+優先度2:
+  preset_queens=6 の N=20 単体ベンチ
+
+優先度3:
+  heavy constellation だけ 1〜2 段展開してから GPU kernel に投入
+
+優先度4:
+  診断結果を見て、支配的な funcptn だけ専用 kernel 化
+```
+
+今の `32 x 484 + auto(sort_mode=2 for N=20)` は、すでにかなり良い落としどころです。次のブレイクスルーは、kernel の分岐をさらに削るより、**GPU に渡す仕事の粒度を均すこと**だと思います。
+
+はい。添付いただいた最終版をベースに、まず **低リスク版**として以下を入れた完全ソースを作りました。元ソースでは `sort_mode=-1` の auto が N=20 で `sort_mode=2`、それ以外で `0` になる構成でしたので、その互換性は維持しています。
+
+修正版ソースはこちらです。
+
+[46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3.py](sandbox:/mnt/data/46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3.py)
+
+差分だけ確認したい場合はこちらです。
+
+[46_sort3_workbucket.diff](sandbox:/mnt/data/46_sort3_workbucket.diff)
+
+入れた変更は主に 3 点です。
+
+1. **`sort_mode=3` を追加**
+   `funcptn` だけでなく、
+   `free` の popcount と `endmark-row` の深さを使って、粗い work bucket に分けます。
+
+2. **`log_level=2` の表示を分離**
+   これまで `kernel` 表示に sort 時間が混ざっていたので、
+   `build / sort_time / kernel / copy` に分けました。
+
+3. **`preset_queens` を末尾引数で指定可能に変更**
+   デフォルトは従来通り `5` です。
+   末尾に `6` を付けると、N=20 単体で `preset_queens=6` を試せます。
+
+ビルドと比較はこの順がよいと思います。
+
+```bash
+codon build -release 46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3.py
+```
+
+従来 auto の確認です。
+
+```bash
+./46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3 -g 20 20 32 484 2 -1
+```
+
+従来の N=20 明示指定です。
+
+```bash
+./46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3 -g 20 20 32 484 2 2
+```
+
+今回追加した `sort_mode=3` です。
+
+```bash
+./46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3 -g 20 20 32 484 2 3
+```
+
+`preset_queens=6` も試す場合です。
+
+```bash
+./46Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_sort3 -g 20 20 32 484 2 3 6
+```
+
+`log_level=2` では、出力が次のように変わります。
+
+```text
+[gpu-chunk] ... build=... sort_time=... kernel=... copy=...
+```
+
+この環境には Codon/CUDA 実行環境がないため、こちらではビルド・実機ベンチまでは確認していません。変更は `sort_mode=3` と計測表示、`preset_queens` 引数化に限定した最小差分です。
+
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

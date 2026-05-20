@@ -17,6 +17,165 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrl packed tuned）
 
+はい、これは**かなり良い方向**です。
+今回の結果で、bucket/expand 系ではなく、**19 original の素直な GPU 経路を残したまま kernel 起動形状を調整する方が正解**だとほぼ確定しました。
+
+## 今回の結果の読み
+
+| 条件        | steps |           N=18 時間 | 判定      |
+| --------- | ----: | ----------------: | ------- |
+| `256 32`  |  8192 |     `0:00:12.052` | 19相当の基準 |
+| `128 64`  |  8192 |     `0:00:09.450` | 大幅改善    |
+| `64 128`  |  8192 | **`0:00:09.290`** | 現時点最良   |
+| `256 96`  | 24576 |     `0:00:16.945` | 悪化      |
+| `256 128` | 32768 |     `0:00:19.401` | 悪化      |
+| `256 256` | 65536 |     `0:00:25.006` | 大きく悪化   |
+
+`19` / `30 256 32` の約12.05秒から、`64 128` で **9.29秒**まで落ちています。
+これは約 **23%短縮**、速度比で約 **1.30倍**です。
+
+これは大きいです。
+
+## 何が分かったか
+
+今回の一番重要な発見は、**kernel 起動回数を減らすことが主因ではなかった**という点です。
+
+`256 96`、`256 128`、`256 256` は chunk を大きくして kernel 起動回数を減らす方向でしたが、全部悪化しました。
+一方で、`steps=8192` は維持したまま `block` だけを
+
+```text
+256 → 128 → 64
+```
+
+と小さくすると速くなりました。
+
+つまり、今の `kernel_dfs_iter_gpu()` は、launch overhead よりも、**1 thread あたりのDFSスタック・レジスタ・ローカルメモリ圧**が支配的です。元の kernel は `MAXD=32` の固定スタックを thread ごとに複数本持つ構造なので、この推測と合います。
+
+## 現時点の基準線
+
+いまの trunk 候補はこれです。
+
+```bash
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 128 0
+```
+
+つまり、
+
+```text
+block      = 64
+max_blocks = 128
+steps      = 8192
+```
+
+です。
+
+bucket 系は完全に脇へ置いてよいです。
+今後は **19 original構造 + block調整 + kernel内スタック軽量化** が本線です。
+
+## 次に試すべき追加計測
+
+まず `64` 周辺だけ少し詰めるのがよいです。
+
+```bash
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 32 256 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 64 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 96 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 128 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 64 160 0
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 18 18 128 64 0
+```
+
+特に見たいのはこの2つです。
+
+```text
+32x256 が 64x128 を超えるか
+64x96 / 64x160 が 64x128 より安定するか
+```
+
+`256` 系はもう深追いしなくてよいです。
+
+## 次版 31 を作りました
+
+今回の結果から、kernel 内スタック圧を下げる方向が有望なので、`31` を作りました。
+
+[31Py_constellations_GPU_cuda_codon_original_ctrl_tuned.py](sandbox:/mnt/data/31Py_constellations_GPU_cuda_codon_original_ctrl_tuned.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrl_tuned_patch.diff)
+
+変更点は小さく、探索木や分岐ロジックは変えていません。
+
+元の GPU kernel では、各 thread がだいたい以下を持っていました。
+
+```python
+step[MAXD]
+add1[MAXD]
+nextf[MAXD]
+inited[MAXD]
+ub[MAXD]
+fc[MAXD]
+```
+
+31ではこれを `ctrl[MAXD]` にまとめました。
+
+```text
+ctrl < 0  : 未初期化
+bits 0..4 : next functionid
+bits 5..6 : step
+bit  7    : add1
+bit  8    : use_blocks
+bit  9    : future check
+```
+
+これで thread ごとのローカル配列を減らしています。
+さらにデフォルトも今回の最良に合わせて、
+
+```text
+block=64
+max_blocks=128
+```
+
+にしています。
+
+## 31でまず試すコマンド
+
+```bash
+codon build -release 31Py_constellations_GPU_cuda_codon_original_ctrl_tuned.py
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 64 128 0
+```
+
+比較用にこの3本も有効です。
+
+```bash
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 256 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 64 96 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 128 64 0
+```
+
+もし31が正しく `ok` で、かつ `9.29秒` を切るなら、次はこの方向です。
+
+```text
+row/fid を u8 化
+MAXD=28 版の検証
+ctrl packing の追加圧縮
+kernel内分岐の一部をさらに bitmask 化
+```
+
+## N=19以降の確認
+
+N=18で最良が出たら、次はすぐ N=19 を見たいです。
+
+```bash
+./30Py_constellations_GPU_cuda_codon_original_tunable -g 19 19 64 128 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 19 19 64 128 0
+```
+
+N=18だけの最適値がN=19でもそのまま効くとは限りませんが、今回の改善理由が「GPU kernelの資源圧」なら、N=19以降でも効く可能性は高いです。
+
+今回の結果はかなり前向きです。
+**12秒 → 9.29秒** は、ここまでのGPU実験の中で初めて「19 originalを壊さずに明確に速くなった」結果です。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

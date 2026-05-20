@@ -17,6 +17,425 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+添付 81 をベースに、**82 dynamic preset / P8 experimental 完全版**を作成しました。
+
+* [82Py_constellations_GPU_cuda_codon_dynamic_p8.py](sandbox:/mnt/data/82Py_constellations_GPU_cuda_codon_dynamic_p8.py)
+* [82_dynamic_p8_from_81.diff](sandbox:/mnt/data/82_dynamic_p8_from_81.diff)
+
+今回入れた内容は以下です。
+
+def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
+  if N>=5 and N<=17:
+    return 5
+  elif N>=18 and N<=20:
+    return 6
+  elif N>=21 and N<=24:
+    return 7
+  elif N>=25 and N<=27:
+    return 8
+  return preset_queens
+
+そして `main()` 側では、`gen_constellations()` を呼ぶ前に必ず適用しています。
+
+preset_queens:int = preset_queens_arg
+preset_queens=select_dynamic_preset_queens(N,preset_queens)
+
+if gpu_log_level>=1:
+  print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+
+これは重要です。現在の通常経路では `use_constellation_cache=False` のため、`build_constellations_dynamicK()` ではなく直接 `gen_constellations()` が呼ばれます。したがって、`main()` 側で `preset_queens` を決めてから `gen_constellations()` に渡す必要があります。
+
+将来 `use_constellation_cache=True` に戻した場合にも同じ挙動になるよう、`build_constellations_dynamicK()` 側にも同じ `select_dynamic_preset_queens()` を入れています。
+
+また、`preset=8` を使う上で重要な **80 multiplicity fix** は維持されています。添付 81 では `preset_queens>=7` の場合に `subconst_cache` を bypass して、同一状態に複数経路で到達した multiplicity を落とさない構造になっています。これは `preset=8` にも効きます。
+
+ビルドと確認は以下です。
+
+SRC=82Py_constellations_GPU_cuda_codon_dynamic_p8.py
+BIN=82Py_constellations_GPU_cuda_codon_dynamic_p8
+
+codon build -release $SRC -o $BIN
+chmod +x $BIN
+
+まず回帰確認です。
+
+./$BIN -g 18 20 32 484 1 -1 7 9 > bc_sol_dynamic_GPU_N18_N20_82.log
+grep -E "^(18:|19:|20:)" bc_sol_dynamic_GPU_N18_N20_82.log
+
+期待値です。
+
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+
+次に `preset=7` 範囲の確認です。
+
+./$BIN -g 21 24 32 484 1 -1 7 9 > bc_sol_dynamic_GPU_N21_N24_82.log
+grep -E "^(21:|22:|23:|24:)" bc_sol_dynamic_GPU_N21_N24_82.log
+
+最後に `preset=8` experimental の N25 単体です。
+
+./$BIN -g 25 25 32 484 1 -1 7 9 > bc_sol_dynamic_GPU_N25_p8_82.log
+grep -E "^25:" bc_sol_dynamic_GPU_N25_p8_82.log
+
+期待値です。
+
+25:    2207893435808352    ok
+
+実行時引数の preset は `7` のままで大丈夫です。N25 では内部で `preset_queens=8` に上書きされます。ログ確認をしやすくするため、`gpu_log_level=1` のまま実行すると、
+
+[dynamic-preset] N=25 preset_queens=8
+
+が出ます。
+
+はい、ご指摘の通りです。
+**ログ出力は重複しています。**
+
+ただし現在は、
+
+use_constellation_cache:bool = False
+
+なので、実際にはこちらだけが出力されます。
+
+if gpu_log_level>=1:
+  print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+
+`build_constellations_dynamicK()` は呼ばれないため、現状では二重表示にはなりません。
+
+ただし、将来、
+
+use_constellation_cache:bool = True
+
+に戻した場合は、main 側と `build_constellations_dynamicK()` 側の両方で出力されるので、確かに重複します。81 の元ソースでも通常経路は `use_constellation_cache=False` で、`gen_constellations()` 側へ直接進む構造でした。
+
+おすすめは、**preset の選択は両方に残し、ログ出力は main 側だけにする**形です。
+
+## 修正版
+
+main 側はこのままでよいです。
+
+constellasions()でキャッシュを使う
+use_constellation_cache:bool = False
+
+preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+preset_queens=select_dynamic_preset_queens(N,preset_queens)
+
+if gpu_log_level>=1:
+  print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+
+if use_constellation_cache:
+  ijkl_list,subconst_cache,constellations,preset_queens=build_constellations_dynamicK(
+    N,
+    ijkl_list,
+    subconst_cache,
+    constellations,
+    use_gpu,
+    preset_queens
+  )
+else:
+  ijkl_list,subconst_cache,constellations,preset_queens=gen_constellations(
+    N,
+    ijkl_list,
+    subconst_cache,
+    constellations,
+    preset_queens
+  )
+
+build_constellations_dynamicK() 側は、print() を削除します。
+
+プリセットクイーン数を調整 preset_queensとconstellationsを返却
+def build_constellations_dynamicK(
+  N: int,
+  ijkl_list:Set[int],
+  subconst_cache:Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],
+  constellations:List[Dict[str,int]],
+  use_gpu: bool,
+  preset_queens:int
+)->Tuple[Set[int],Set[Tuple[int,int,int,int,int,int,int,int,int,int,int]],List[Dict[str,int]],int]:
+
+  # 念のため、cache 経路でも dynamic preset を保証する。
+  # main 側ですでに適用済みなら同じ値になるので問題なし。
+  preset_queens=select_dynamic_preset_queens(N,preset_queens)
+
+  use_bin=True
+  if use_bin:
+    # bin
+    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_bin(
+      N,
+      ijkl_list,
+      subconst_cache,
+      constellations,
+      preset_queens
+    )
+  else:
+    # txt
+    ijkl_list,subconst_cache,constellations,preset_queens=load_or_build_constellations_txt(
+      N,
+      ijkl_list,
+      subconst_cache,
+      constellations,
+      preset_queens
+    )
+
+  return ijkl_list,subconst_cache,constellations,preset_queens
+
+この形なら、
+
+use_constellation_cache=False:
+  main 側で preset 選択
+  main 側で 1回だけログ出力
+  gen_constellations() 実行
+
+use_constellation_cache=True:
+  main 側で preset 選択
+  main 側で 1回だけログ出力
+  build_constellations_dynamicK() 側でも念のため preset 再適用
+  ただしログは出さない
+
+となります。
+
+つまり結論は、
+
+print("[dynamic-preset] ...")
+
+は `build_constellations_dynamicK()` 側から削除でよいです。
+`select_dynamic_preset_queens()` の再適用は、cache 経路の安全策として残しておくのがよいと思います。
+
+はい、方向性としてはかなり良いです。
+ただし、**現行の `use_constellation_cache=True` だけでは「CPUで `.bin` 作成 → GPUで低メモリ実行」にはまだなりません**。
+
+理由は明確で、現行ソースの cache 処理は `.bin` を使っていても、最終的には `constellations: List[Dict]` に全件を展開する仕組みだからです。`.bin` がある場合も `load_constellations_bin()` は16バイトずつ読みながら `constellations.append({"ld":..., "rd":..., "col":..., "startijkl":..., "solutions":0})` しています。
+
+また、`.bin` が無い場合は `load_or_build_constellations_bin()` が `gen_constellations()` で全件生成してから `save_constellations_bin()` します。つまり初回作成時も、現状では一度全 constellation をメモリに持ちます。
+
+## 結論
+
+**N21 p6 については、`use_constellation_cache=True` でCPU側に `.bin` を作らせる作戦は試す価値があります。**
+
+ただし、**N22以降、とくに p7 では根本解決にはなりません。**
+本命はご認識どおり、
+
+1. 生成ストリーム化
+2. GPU実行も `.bin` から chunk 読み
+
+です。
+
+## N21 p6なら cache 方式を試してよい理由
+
+現在の最新版では、`select_dynamic_preset_queens()` が N18〜N21 で `6`、N22〜N24 で `7` を返すようになっています。
+
+elif N>=18 and N<=21:
+  return 6
+elif N>=22 and N<=24:
+  return 7
+
+これは良い変更です。p7 では multiplicity 保持のため `subconst_cache` を bypass しますが、p6 では `subconst_cache` が効きます。ソースコメントにも、`preset>=7` では同一 terminal task を複数回 append する必要があり、cacheをbypassするとあります。
+
+したがって、N21 p6 なら N21 p7 より constellation 数とメモリ消費がかなり下がる可能性があります。
+
+## ただし「CPUで `.bin` を作る」には cache-only モードが欲しいです
+
+現行のまま `use_constellation_cache=True` にして `-c` で実行すると、`.bin` を作った後、そのまま CPU の `exec_solutions()` に進みます。
+
+CPU側の `exec_solutions()` は全件分の `TaskSoA`、`results`、`results_all`、`w_arr` を作ります。つまり `.bin` 生成だけよりさらにメモリを使います。
+
+なので、まず追加すべきは **「constellation cache だけ作って終了するモード」** です。
+
+例えば `bench_mode=11` を追加するのがよいです。
+
+# bench_mode:
+# 11: build constellation .bin only, then continue
+
+引数チェックを今は `bench_mode>10` で弾いているので、ここを `>11` にします。
+
+if bench_mode<0 or bench_mode>11:
+  print(f"[warning] unknown bench_mode={bench_mode}; using 0")
+  bench_mode=0
+
+そして、`gen_constellations()` / `build_constellations_dynamicK()` の直後にこれを入れます。
+
+if bench_mode==11:
+  print(f"[constellation-cache-only] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+  time_elapsed=datetime.now()-start_time
+  text=str(time_elapsed)[:-3]
+  print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    cache-only")
+  continue
+
+これで、CPU計算に入らず `.bin` 作成だけで終了できます。
+
+## N21 p6 の `.bin` 作成コマンド案
+
+まず `use_constellation_cache=True` にした版を作ります。
+
+cp 82Py_constellations_GPU_cuda_codon_dynamic_p8.py \
+   83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py
+
+# python3 - <<'PY'
+# from pathlib import Path
+# 
+# p = Path("83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py")
+# s = p.read_text()
+# s = s.replace("use_constellation_cache:bool = False",
+#               "use_constellation_cache:bool = True")
+# s = s.replace("bench_mode<0 or bench_mode>10",
+#               "bench_mode<0 or bench_mode>11")
+# 
+# needle = """if bench_mode==8 or bench_mode==10:
+#       print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")"""
+# 
+# insert = """if bench_mode==11:
+#       print(f"[constellation-cache-only] N={N} preset_queens={preset_queens} constellations={len(constellations)}")
+#       time_elapsed=datetime.now()-start_time
+#       text=str(time_elapsed)[:-3]
+#       print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    cache-only")
+#       continue
+# 
+#     if bench_mode==8 or bench_mode==10:
+#       print(f"[constellation-config] N={N} preset_queens={preset_queens} constellations={len(constellations)} signature_prune_disabled={1 if DISABLE_CONSTELLATION_SIGNATURE_PRUNE else 0}")"""
+# 
+# if needle not in s:
+#     raise SystemExit("insert point not found")
+# 
+# s = s.replace(needle, insert)
+# p.write_text(s)
+# PY
+
+codon build -release 83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py
+
+実行は N21単体、メモリ上限付きが安全です。
+
+RUN=N21_p6_cache_only_$(date +%Y%m%d_%H%M%S)
+
+sudo systemd-run \
+  --unit=nq-n21-p6-cache-only \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  bash -lc '
+    cd '"$PWD"'
+    ./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+      -c 21 21 32 128 2 0 5 11 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+完了後：
+
+ls -lh constellations_N21_6.bin
+python3 - <<'PY'
+import os
+f="constellations_N21_6.bin"
+size=os.path.getsize(f)
+print(f, "bytes=", size, "records=", size//16, "valid16=", size%16==0)
+PY
+
+## その `.bin` を使ってGPU実行する案
+
+現行の `83_cache` のままでも、`.bin` が既にあれば `load_constellations_bin()` で読み込みます。とはいえ全件 `List[Dict]` へ展開するため、N21 p6なら試験的には可、N22 p7以降は危険です。
+
+N21 p6 GPU実行：
+
+RUN=N21_p6_cache_gpu_$(date +%Y%m%d_%H%M%S)
+
+sudo systemd-run \
+  --unit=nq-n21-p6-cache-gpu \
+  --property=MemoryAccounting=yes \
+  --property=MemoryMax=12G \
+  --property=OOMPolicy=stop \
+  bash -lc '
+    cd '"$PWD"'
+    ./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+      -g 21 21 32 128 2 0 5 0 \
+      2>&1 | tee -a "logs/run_'"$RUN"'.log"
+  '
+
+ここでは `sort_mode=0` をすすめます。`sort_mode=-1` だと auto で N21 は `sort_mode=9` になり、stripe reorder で `reordered:List[Dict]` を別途作ります。現行ソースでは stripe 時に `reordered=[]` を作って全件を並べ替えます。
+
+N21 p6の安全確認が済むまでは、まず `sort_mode=0` が良いです。
+
+## N22以降は cache 方式ではなく stream 方式へ進むべきです
+
+現行GPU実行は、GPU kernel自体は `STEPS=BLOCK*MAX_BLOCKS` 件ずつ chunk 処理しています。`while off < m_all:` で `build_soa_for_range(N, work_constellations, off, m, soa, w_arr)` してから kernel を投げる構造です。
+
+この構造は良いです。問題は `m_all=len(constellations)` で、**前段で全件 `constellations` が必要**なことです。さらにGPUの結果は chunk ごとに合計して `gpu_total` に加算しているので、ここは stream 化しやすいです。
+
+必要な変更は、`constellations` を全件持たず、`.bin` から `STEPS` 件だけ読むことです。
+
+概念的には：
+
+while True:
+  chunk = read_constellations_bin_chunk(fname, off_records, STEPS)
+  m = len(chunk)
+  if m == 0:
+    break
+
+  build_soa_for_range(N, chunk, 0, m, soa, w_arr)
+  kernel_dfs_iter_gpu(...)
+  chunk_total = sum(results[0:m])
+  gpu_total += chunk_total
+
+  print progress
+  off_records += m
+
+これが本当の「`.bin` から chunk 読み」です。
+
+## 生成ストリーム化も必要です
+
+`use_constellation_cache=True` の初回作成は、現状では `.bin` へ直接appendではありません。`gen_constellations()` が全件を `constellations` に作り、それを `save_constellations_bin()` が保存します。
+
+したがって、N22 p7以降では、`.bin` 作成時点でもメモリ枯渇し得ます。
+
+本命の生成ストリームはこうです。
+
+gen_constellations_stream_to_bin()
+  for sc in ijkl_list:
+    sc_buf = []
+    set_pre_queens(..., sc_buf, ...)
+    base = to_ijkl(i,j,k,l)
+    for c in sc_buf:
+      c["startijkl"] |= base
+    append_constellations_bin(fname, sc_buf)
+    sc_buf.clear()
+
+またはさらに進めて、`set_pre_queens()` の terminal append 箇所で直接 `.bin` に書く形でもよいです。
+
+`.bin` の現行形式は `ld, rd, col, startijkl` の4要素、各32bit、つまり1レコード16バイトなので、streamには向いています。保存側もその4キーだけを書いています。
+
+## 実行順としてはこれが安全です
+
+まず **N21 p6** は cache-only で試します。
+
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -c 21 21 32 128 2 0 5 11
+
+次に `.bin` サイズを見ます。
+
+ls -lh constellations_N21_6.bin
+
+その後、GPUで N21 p6 を `sort_mode=0` で実行します。
+
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -g 21 21 32 128 2 0 5 0
+
+N21 p6 が通ったら、次は **N22 p7を現行cache方式で無理に試さず**、`84_stream` を作るのがよいです。
+
+## 私のおすすめ
+
+`83` は「cache-only検証版」として使い、N21 p6までの安定確認に使う。
+`84` を「stream版」として作り、次の2機能を入れる。
+
+84_stream
+├─ bench_mode=11
+│  └─ gen_constellations_stream_to_bin()
+│     └─ constellations_N{N}_{preset}.bin を低メモリ生成
+│
+└─ bench_mode=12 or GPU normal path
+   └─ exec_solutions_gpu_bin_stream()
+      └─ .bin から STEPS件ずつ読み、GPUへ投入
+
+結論として、**N21 p6なら「TrueにしてCPUで `.bin` 作成 → GPU実行」は試してよい**です。
+ただしそれは暫定策で、**N22/N23/N24を安定して回す本命は、ご提示のとおり「生成ストリーム化」と「GPU実行の `.bin` chunk読み」です。**
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

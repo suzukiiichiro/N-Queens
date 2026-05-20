@@ -17,6 +17,88 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 61 STRIPED CHUNKS 32x484 sort5（chunk偏り均し + direct total）
 
+すばらしいです。**61 は sort_mode=6 を採用**です。
+
+結果の整理です。
+
+```txt
+56 STABLE FINAL N=20 : 0:02:42.602
+61 sort_mode=5       : 0:02:47.339  不採用
+61 sort_mode=6       : 0:02:32.616  採用
+```
+
+`sort_mode=6` は正解値を維持しつつ、N=20 単体で `39029188884` を `0:02:32.616` で通しています。ログでも `sort_mode=6 local_sort=0 stripe=1`、つまり **striped chunks only** が効いています。
+
+一方、`sort_mode=5` は `stripe + sort4` で `0:02:47.339`、通しでも N=20 が `0:02:49.568` なので不採用です。
+
+## 62 STRIPED ONLY AUTO を作りました
+
+`61` をベースに、**auto の N=20 を sort_mode=6 に変更**した版です。
+
+```txt
+auto:
+  N=20      -> sort_mode=6
+  otherwise -> sort_mode=0
+```
+
+つまり、今後は明示的に `6` を指定しなくても、
+
+```bash
+-g 20 20 32 484 0 -1
+```
+
+で striped chunks only が使われます。
+
+ファイルはこちらです。
+
+[62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484.py](sandbox:/mnt/data/62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484.py)
+
+差分はこちらです。
+
+[62_striped_only_auto.patch](sandbox:/mnt/data/62_striped_only_auto.patch)
+
+## 実行コマンド
+
+```bash
+codon build -release 62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484.py
+./62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484 -g 5 20 32 484 0 -1
+```
+
+N=20 単体は、
+
+```bash
+./62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484 -g 20 20 32 484 0 -1
+```
+
+ログ確認は、
+
+```bash
+./62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484 -g 20 20 32 484 2 -1
+```
+
+## 今日の採用メモ
+
+```txt
+採用:
+  62 STRIPED ONLY AUTO
+  32x484
+  N=20 auto -> sort_mode=6
+
+不採用:
+  57 BASETAIL FASTPATH
+  sort_mode=5
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+  max_blocks 448 / 512 / 640
+```
+
+これはかなり良い一手です。kernel ロジックを壊さず、**投入順序だけで約10秒短縮**できています。
+
+
 
 CPU
 $ codon build -release 62Py_constellations_GPU_cuda_codon_striped_only_auto_32x484.py

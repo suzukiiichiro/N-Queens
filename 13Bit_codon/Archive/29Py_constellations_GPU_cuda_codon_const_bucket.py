@@ -17,6 +17,167 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+はい、**その通りです。遅くなっています。**
+ここは私の評価の軸がずれていました。
+
+これまで私は、
+
+```text
+21 split=-1 : 0:01:26.801
+21 split=8  : 0:00:59.785
+25 best     : 0:00:59.567
+```
+
+という **bucket 系の中での改善**を見ていました。
+しかし、元の `19Py_constellations_GPU_cuda_codon -g` は N=18 で、
+
+```text
+18: 666090624  0  0:00:12.092 ok
+```
+
+なので、現状最良の bucket 版 `0:00:59.567` は **約4.9倍遅い**です。
+
+さらに言うと、19のCPU版は N=18 で `0:00:02.308`、N=19 で `0:00:16.233` と記録されています。つまり少なくとも N=18 では、
+
+```text
+19 CPU         : 約  2.3秒
+19 GPU original: 約 12.1秒
+bucket GPU    : 約 59.6秒
+```
+
+という順です。
+
+## なぜこうなったか
+
+理由ははっきりしています。
+
+19 の GPU は、
+
+```text
+1 constellation = 1 GPU thread
+```
+
+のままです。
+`build_soa_for_range()` で元 constellation を SoA に詰めて、そのまま `kernel_dfs_iter_gpu()` に投げています。つまり、N=18 では約7万件の constellation を処理するだけです。
+
+一方、bucket 版は `split_row=8` で、
+
+```text
+base_constellations = 71475
+expanded_tasks      = 282834173
+```
+
+までタスクを膨らませています。
+
+これが致命的です。
+GPU側の負荷分散は少し良くなっても、その前に CPU で **2.8億 task を生成・保持・bucket分類・compact・転送・集約**しています。
+
+つまり、今回の bucket 化は、
+
+```text
+GPUの待ち行列を減らすために、
+CPUとメモリ側に巨大な待ち行列を作ってしまった
+```
+
+という状態です。
+
+しかも `split_row=8` の CPU expand だけで約20秒かかっています。
+この時点で、19 GPU original の全体時間 `12.092秒` をすでに超えています。したがって、**全 constellation を浅展開する方式では N=18 で19には勝てません。**
+
+## ここで方針修正です
+
+28 の direct-offset も、27 系列の延長なので、仮に詰め替えコピーを消しても 19 に勝つのはかなり厳しいです。
+次は bucket 版を深追いせず、**19を基準線に戻す**べきです。
+
+今後の正しい比較軸はこれです。
+
+```text
+基準:
+  19 GPU original N=18 = 12.092秒
+
+捨てる:
+  全量 expand_iter_to_row
+  split_row=8/10 の全task materialize
+  full FID bucket
+  hybrid FID bucket
+  par_expand 系
+
+次に試す:
+  19の構造を維持したまま、
+  元 constellation だけを軽く bucket 化する
+```
+
+つまり、**2.8億 task を作らない bucket 化**です。
+
+## 次の実験版 29
+
+19をベースに戻し、`expand_iter_to_row()` は使わず、元の constellation だけを bucket 分類する版を作りました。
+
+[29Py_constellations_GPU_cuda_codon_const_bucket.py](sandbox:/mnt/data/29Py_constellations_GPU_cuda_codon_const_bucket.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_constellation_bucket_patch.diff)
+
+これは、bucket 版という名前ですが、21〜28とは違います。
+
+```text
+21〜28:
+  71475 constellation
+    → CPUで 282,834,173 task に展開
+    → bucket化
+    → GPU
+
+29:
+  71475 constellation のまま
+    → funcptn または functionid で軽く bucket化
+    → GPU
+```
+
+なので、19の速さを壊さずに、分岐ダイバージェンスだけ少し減らせるかを見る実験です。
+
+まずこの3本を比較してください。
+
+```bash
+codon build -release 29Py_constellations_GPU_cuda_codon_const_bucket.py
+```
+
+19相当、bucketなし。
+
+```bash
+./29Py_constellations_GPU_cuda_codon_const_bucket -g 18 18 0
+```
+
+元 constellation を `funcptn/avail` で bucket。
+
+```bash
+./29Py_constellations_GPU_cuda_codon_const_bucket -g 18 18 1
+```
+
+元 constellation を `functionid` で bucket。
+
+```bash
+./29Py_constellations_GPU_cuda_codon_const_bucket -g 18 18 2
+```
+
+見るべき結果は単純です。
+
+```text
+mode=0 が 12秒前後
+  → 29の19互換経路は正常
+
+mode=1/2 が 12秒を切る
+  → 元constellation bucket化は採用候補
+
+mode=1/2 が 12秒より遅い
+  → bucket化自体を一旦捨てる
+```
+
+今回の反省込みで、次の基準は明確です。
+
+**19の `12.092秒` を超えない変更は採用しない。**
+21〜28は正しさ確認と診断には役立ちましたが、速度面では 19 からの回帰です。次は 19 を trunk に戻して、そこから最小変更で進めるのが正解です。
+
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

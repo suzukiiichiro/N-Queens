@@ -17,6 +17,572 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 57 BASETAIL FASTPATH 32x484 auto-sort（ctrlrow mixed32 tuned）
 
+受け取りました。昨日のメモとして整理すると、**現在の基準構成は「56 STABLE FINAL / 32x484 / auto sort」**ですね。
+
+日付タイトルの `20260478` は日付としては不正なので、昨日のメモなら **20260427**、今日整理用なら **20260428** に直すのがよさそうです。
+
+## GPU速度向上・改善策メモ
+
+### default 設定
+
+```txt
+block      = 32
+max_blocks = 484
+sort_mode  = -1
+```
+
+### auto sort 設定
+
+```txt
+N=20      -> sort_mode=2
+otherwise -> sort_mode=0
+```
+
+### preset_queens
+
+```txt
+preset_queens = 5 固定
+```
+
+## 採用構成
+
+```txt
+56 STABLE FINAL
+32x484
+auto sort
+```
+
+現在の最終採用構成はこれで固定。
+
+```txt
+block      = 32
+max_blocks = 484
+sort_mode  = auto
+preset_queens = 5
+```
+
+## 不採用項目
+
+```txt
+sort_mode=3
+preset_queens=6
+split_mode=1 / 2
+terminal fast-count
+terminal init-count
+large chunk / 1 chunk
+max_blocks 448 / 512 / 640
+```
+
+## 判断メモ
+
+現時点では、速度改善の探索はかなり収束していて、次のベースラインは **32x484 + auto sort + preset_queens=5** でよさそうです。
+
+特に以下は再検証しなくてよい候補として扱えます。
+
+```txt
+max_blocks 448 / 512 / 640
+preset_queens=6
+sort_mode=3
+split_mode=1 / 2
+terminal fast-count
+terminal init-count
+large chunk / 1 chunk
+```
+
+## 次にやるなら
+
+次の改善は、設定探索よりも以下の確認が優先だと思います。
+
+1. **56 STABLE FINAL を正式ベースライン化**
+2. **N=20 と N≠20 の auto sort 分岐を固定**
+3. **32x484 を標準構成として README / 実行ログに明記**
+4. **不採用パターンを再探索対象から外す**
+5. 次の高速化は `sort_mode` や `max_blocks` ではなく、
+   **カーネル内部の分岐削減・メモリアクセス・atomic/集計処理** 側を見る
+
+メモ名は例えばこうすると管理しやすいです。
+
+```txt
+GPU速度向上と改善策_20260427.md
+```
+
+または今日の整理版なら、
+
+```txt
+GPU速度向上と改善策_20260428.md
+```
+本日は **「設定探索」ではなく「GPUに渡す仕事の形を変える」** 方向が本命です。
+
+今の版はすでに **56 STABLE FINAL / 32x484 / auto sort / preset_queens=5 固定**で、`sort_mode=3`、`preset_queens=6`、`split_mode=1/2`、`max_blocks 448/512/640` などは不採用になっています。さらに GPU カーネルは **1 constellation = 1 thread** で非再帰 DFS を回す設計なので、次の壁は「設定値」よりも **スレッドごとの仕事量の偏り・分岐・ローカルスタック負荷**だと思います。
+
+## 今日の本命テーマ
+
+**長い枝をそのまま1スレッドに背負わせない。**
+
+N=20 の現状は A10G で `0:02:42.602`、過去の CUDA 実装ログでは N=20 が `0:02:02.52` なので、まず狙うべき差は約40秒、つまり **1.3倍弱の改善**です。これは `block` や `max_blocks` の微調整ではなく、DFS の仕事配分を変えないと届きにくい領域です。
+
+---
+
+# アイディア1：Base-tail 専用 fast path を作る
+
+一番おすすめです。
+
+現在の GPU カーネルは、各スタック段で毎回 `ctrl` を見て、
+
+```txt
+funcid
+row
+is_base
+is_mark
+is_jmark
+use_future
+use_blocks
+step
+```
+
+を判定しています。これは汎用性は高いですが、`funcid` がすでに base 系に入っているタスクではかなり無駄です。
+
+特に `funcptn == 5` の base 系は、基本的に、
+
+```txt
+row が endmark なら count
+それ以外は普通に +1 行進む
+future check する
+```
+
+だけでよいです。
+
+なので、GPU カーネルの先頭で、
+
+```txt
+funcid in {3, 14, 21, 26}
+```
+
+のような base-tail タスクを検出したら、汎用 DFS ではなく、専用ループへ逃がします。
+
+## 期待できる効果
+
+この fast path では、
+
+```txt
+ctrl 配列を使わない
+meta_next を見ない
+mark / jmark / block 判定をしない
+row は row0 + sp で求める
+step は常に 1
+```
+
+にできます。
+
+つまり、今のローカルスタック、
+
+```txt
+ld[MAXD]
+rd[MAXD]
+col[MAXD]
+avail[MAXD]
+ctrl[MAXD]
+```
+
+から、base-tail では少なくとも `ctrl[MAXD]` を消せます。さらに `row` も `row0 + sp` でよいので、行情報の保持も不要です。
+
+これはかなり GPU 向きです。
+
+## 今日の候補名
+
+```txt
+57 BASETAIL FASTPATH
+```
+
+採用判定は単純です。
+
+```txt
+-g 20 20 32 484 2 -1
+```
+
+で N=20 が短縮し、N=5..20 がすべて `ok` なら採用候補です。
+
+---
+
+# アイディア2：preset_queens=6 ではなく「重い枝だけ選択分割」
+
+`preset_queens=6` は不採用でよいです。全体を深く分割すると、前処理・転送・タスク数が増えすぎます。
+
+ただし、**重い constellation だけを1段または2段だけ分割する**のは別物です。
+
+今の方式は、
+
+```txt
+1 constellation = 1 GPU thread
+```
+
+なので、軽いタスクはすぐ終わり、重いタスクだけが最後まで残ります。これが GPU の「待ち時間」になります。
+
+そこで、`build_soa_for_range()` のあとに、例えば次の条件だけを分割します。
+
+```txt
+depth = endmark - row
+pc    = popcount(free)
+
+if depth >= 12 and pc >= 3:
+    1段だけ展開して子タスクとしてGPUへ渡す
+else:
+    そのまま渡す
+```
+
+これは以前の `split_mode=1/2` とは違い、**全タスク分割ではなく、重い枝だけの micro split** です。
+
+## 期待できる効果
+
+重い1スレッドを、
+
+```txt
+1 heavy thread
+```
+
+から、
+
+```txt
+3〜6 medium threads
+```
+
+にばらせます。
+
+これにより、GPU 全体では最後の長い尻尾が短くなります。
+
+## 注意点
+
+これは正解値を壊しやすいので、最初は **1段だけ** がよいです。
+
+分割時は、現在の kernel と同じロジックで、
+
+```txt
+mark
+jmark
+base
+future
+block
+```
+
+を処理する必要があります。
+
+つまり、単純に `free` の bit を展開するだけでは危険です。`kernel_dfs_iter_gpu()` の初期化部分と 1bit 展開部分を CPU 側の小さな関数に写して、**同じ状態遷移で子 SoA を作る**のが安全です。
+
+今日の候補名は、
+
+```txt
+58 SELECTIVE MICROSPLIT
+```
+
+です。
+
+---
+
+# アイディア3：sort_mode=4 を作る
+
+`sort_mode=3` は不採用でよいです。今の `sort_mode=3` は、
+
+```txt
+funcptn
+free popcount
+depth
+```
+
+をかなり粗く見ています。
+
+次は `sort_mode=4` として、もう少し実際の仕事量に近いスコアで並べます。
+
+例えば、
+
+```txt
+score0 = popcount(free)
+
+score1 = 子ノード数
+score2 = 孫ノード数の概算
+```
+
+を CPU 側で軽く計算し、
+
+```txt
+key = funcptn * 64 + min(score, 63)
+```
+
+のように bucket 化します。
+
+狙いは、同じ warp 内に、
+
+```txt
+すぐ終わる thread
+長く走る thread
+```
+
+が混ざるのを減らすことです。
+
+## ポイント
+
+これは kernel 数を増やさず、chunk 内の並び替えだけで試せます。
+
+つまり、以前遅くなった「複数 kernel bucket 化」とは違います。
+
+候補名は、
+
+```txt
+57 SORT4 WORKSCORE
+```
+
+です。
+
+---
+
+# アイディア4：前処理の無駄を削る
+
+これは GPU kernel そのものではありませんが、総実行時間には効く可能性があります。
+
+気になる点が2つあります。
+
+## 4-1. `use_visited_prune=False` なのに Zobrist hash を計算している
+
+`use_visited_prune = False` ですが、`set_pre_queens()` の冒頭で `zobrist_hash()` が計算されています。ところが、その hash は `use_visited_prune` が true のときしか使われません。
+
+なので、これは次のように中へ入れた方がよいです。
+
+```python
+if use_visited_prune:
+    h: int = int(zobrist_hash(
+        N,
+        ld & board_mask,
+        rd & board_mask,
+        col & board_mask,
+        row,
+        queens,
+        k,
+        l,
+        LD & board_mask,
+        RD & board_mask,
+        zobrist_hash_tables
+    ))
+    if h in visited:
+        return ijkl_list, subconst_cache, constellations, preset_queens
+    visited.add(h)
+```
+
+これは低リスクです。
+
+## 4-2. `get_jasmin()` の cache が毎回空になっている
+
+`get_jasmin()` の中で、
+
+```python
+jasmin_cache:Dict[Tuple[int,int],int]={}
+```
+
+が毎回作られています。つまり、実質キャッシュになっていません。
+
+ここは外側に出して、
+
+```python
+jasmin_cache_global: Dict[Tuple[int,int], int] = {}
+```
+
+のようにした方がよいです。
+
+これは GPU 計算そのものではありませんが、N=20 以上の試行サイクルを速くできます。
+
+---
+
+# アイディア5：benchmark 専用の direct total mode
+
+今は GPU 結果を、
+
+```txt
+results
+→ results_all
+→ constellations[i]["solutions"]
+→ sum()
+```
+
+という流れで戻しています。
+
+でも、ベンチマークだけなら各 constellation に `solutions` を書き戻す必要はありません。
+
+GPU kernel の結果を chunk ごとに CPU 側で合計して、
+
+```txt
+total += sum(results[0:m])
+```
+
+でよいです。
+
+これは大爆速ではないかもしれませんが、N=18〜20 のような測定では、余計な copy/write を減らせます。
+
+候補名は、
+
+```txt
+57 DIRECT TOTAL MODE
+```
+
+です。
+
+---
+
+# 今日の実験順
+
+おすすめ順はこれです。
+
+## 1. まず診断ログを強化
+
+最初に見るべきは、kernel が本当に支配的かどうかです。
+
+```bash
+./56Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_stable_final -g 20 20 32 484 2 -1
+```
+
+追加で出したいログはこれです。
+
+```txt
+[fid-hist]
+fid=3  count=...
+fid=14 count=...
+fid=21 count=...
+fid=26 count=...
+
+[work-hist]
+depth bucket
+free popcount bucket
+base-tail count
+nonbase count
+```
+
+もし base-tail が多いなら、**アイディア1が本命**です。
+
+## 2. Base-tail fast path
+
+まずはこれを入れます。
+
+期待値は、
+
+```txt
+N=20 で 5〜15% 改善
+```
+
+です。
+
+これだけで `2:42` から `2:25〜2:34` に入れば大成功です。
+
+## 3. Selective micro split
+
+次に重い枝だけを分割します。
+
+期待値は、
+
+```txt
+さらに 5〜20% 改善
+```
+
+です。
+
+Base-tail と合わされば、過去 CUDA の `2:02` にかなり近づく可能性があります。
+
+## 4. sort_mode=4
+
+最後に workscore sort を入れます。
+
+これは単体では大きくないかもしれませんが、micro split と相性がよいです。
+
+---
+
+# 今日やらない方がよいもの
+
+昨日のメモどおり、ここは触らない方がよいです。
+
+```txt
+block / max_blocks の再探索
+max_blocks 448 / 512 / 640
+preset_queens=6
+sort_mode=3
+split_mode=1 / 2
+terminal fast-count
+terminal init-count
+large chunk / 1 chunk
+```
+
+ここをまた触ると探索が散らばります。
+
+---
+
+# 今日の結論
+
+今日の爆速ルートはこれです。
+
+```txt
+56 STABLE FINAL
+  ↓
+57 BASETAIL FASTPATH
+  ↓
+58 SELECTIVE MICROSPLIT
+  ↓
+59 SORT4 WORKSCORE
+```
+
+最初の一手は **Base-tail 専用 fast path** が一番きれいです。
+
+理由は、今の実装の強みである、
+
+```txt
+32x484
+auto sort
+preset_queens=5
+mixed32
+非再帰DFS
+```
+
+を壊さずに、GPU kernel のホットパスだけを軽くできるからです。
+
+作成しました。ベースは添付いただいた **56 STABLE FINAL / 32x484 / auto sort** です。
+
+今回の変更は、まず低リスクな **57 BASETAIL FASTPATH** です。
+
+主な変更点は GPU kernel 内に、以下の base 系 functionid 専用ルートを追加したことです。
+
+```txt
+SQB    : funcid=3
+SQd2B  : funcid=14
+SQd1B  : funcid=21
+SQd0B  : funcid=26
+```
+
+これらは `mark / jmark / block` 遷移を持たないので、汎用 `ctrl` デコードを通らず、軽い `+1 row` 専用 DFS で処理します。
+
+ファイルはこちらです。
+
+[57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484.py](sandbox:/mnt/data/57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484.py)
+
+差分確認用の patch も付けます。
+
+[57_basetail_fastpath.patch](sandbox:/mnt/data/57_basetail_fastpath.patch)
+
+ビルドと実行は以下でお願いします。
+
+```bash
+codon build -release 57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484.py
+./57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484 -g 5 20 32 484 0 -1
+```
+
+N=20 単体ベンチは、
+
+```bash
+./57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484 -g 20 20 32 484 0 -1
+```
+
+ログ確認は、
+
+```bash
+./57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484 -g 20 20 32 484 2 -1
+```
+
+こちらの環境では Codon/CUDA 実行環境がないため、コンパイル検証まではできていません。まずは `N=5..20` がすべて `ok` になるかを確認し、N=20 が 56 の `0:02:42.602` からどれだけ動くかを見るのがよいと思います。
+
+
 
 CPU
 $ codon build -release 57Py_constellations_GPU_cuda_codon_basetail_fastpath_32x484.py

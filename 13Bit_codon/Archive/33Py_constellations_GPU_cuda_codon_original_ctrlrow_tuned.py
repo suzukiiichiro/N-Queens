@@ -17,6 +17,179 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow packed tuned）
 
+はい、これは**かなり大きい前進**です。
+
+今回の結果で、方針はほぼ確定しました。
+
+```text
+bucket / expand 系は終了
+19 original 系を維持
+kernel 内ローカル配列を削る方向が本命
+```
+
+## 今回の結果
+
+`30` の最良はこれでした。
+
+```text
+30 / block=32 / max_blocks=256
+18: 666090624  0  0:00:09.141 ok
+```
+
+一方、`31` はこうです。
+
+```text
+31 / block=64  / max_blocks=128
+18: 666090624  0  0:00:07.009 ok
+
+31 / block=32  / max_blocks=256
+18: 666090624  0  0:00:06.968 ok
+
+31 / block=128 / max_blocks=64
+18: 666090624  0  0:00:06.980 ok
+```
+
+つまり、`31` の ctrl packing で、
+
+```text
+19 / 30 基準: 約12.05秒
+30 tuning後:  約 9.14秒
+31 ctrl版:    約 6.97秒
+```
+
+まで来ています。
+
+`19` の GPU kernel は thread ごとに `ld/rd/col/avail/row/step/add1/inited/ub/fid/nextf/fc` など複数の固定長スタック配列を持つ構造でした。
+`31` では `step/add1/nextf/use_blocks/future/inited` を `ctrl[MAXD]` に畳んだので、今回の改善はほぼ間違いなく **GPU thread あたりのローカルメモリ/レジスタ圧削減**が効いています。
+
+## 読み筋
+
+`block=32/max_blocks=256` と `block=128/max_blocks=64` がほぼ同じ、というのが重要です。
+
+どちらも、
+
+```text
+steps = block * max_blocks = 8192
+```
+
+です。
+
+なので、今の最適条件はこう読めます。
+
+```text
+1回に投げる constellation 数は 8192 付近が良い
+block は 32〜128 の範囲で大差ない
+64x96 は steps=6144 なので少し不利
+64x64 は steps=4096 なので kernel 起動回数が増えて不利
+```
+
+`31` の現状最良は、
+
+```bash
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 256 0
+```
+
+でよいです。
+
+## 次に見るべきこと
+
+まずは N=19 です。
+N=18 は CPU の約2.3秒に対して、GPU 31 は約7秒なのでまだ CPU に負けています。ただし、Nが上がると kernel 内改善の効果がどう伸びるかを見る必要があります。19 CPU の記録は `0:00:16.233` です。
+
+次はこの2本が最重要です。
+
+```bash
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 19 19 32 256 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 19 19 128 64 0
+```
+
+N=18ではほぼ同率なので、N=19で差が出るかを見ます。
+
+その後に N=18 で追加 sweep するなら、この程度で十分です。
+
+```bash
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 16 512 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 192 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 224 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 256 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 32 288 0
+./31Py_constellations_GPU_cuda_codon_original_ctrl_tuned -g 18 18 256 32 0
+```
+
+## 次版を2つ置きました
+
+今回の結果を受けて、さらにローカル配列を削る版を作りました。
+
+### 32: fid 配列削減版
+
+[32Py_constellations_GPU_cuda_codon_original_ctrl2_tuned.py](sandbox:/mnt/data/32Py_constellations_GPU_cuda_codon_original_ctrl2_tuned.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrl2_tuned_patch.diff)
+
+`31` ではまだ `fid[MAXD]` が残っていました。
+`32` では、未初期化フレームの `fid` を `ctrl` の負値に畳み込み、`fid[MAXD]` を消しています。
+
+試すコマンドです。
+
+```bash
+codon build -release 32Py_constellations_GPU_cuda_codon_original_ctrl2_tuned.py
+
+./32Py_constellations_GPU_cuda_codon_original_ctrl2_tuned -g 18 18 32 256 0
+./32Py_constellations_GPU_cuda_codon_original_ctrl2_tuned -g 18 18 128 64 0
+```
+
+### 33: fid + row 配列削減版
+
+[33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned.py](sandbox:/mnt/data/33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_tuned_patch.diff)
+
+`33` はさらに攻めた版です。
+`fid[MAXD]` だけでなく、`row[MAXD]` も `ctrl` に畳み込んでいます。
+
+ctrl の中身はこうです。
+
+```text
+未初期化:
+  bit19=0
+  bits 0..4 = current fid
+  bits 5..9 = current row
+
+初期化済み:
+  bit19=1
+  bits 0..4   = child/next fid
+  bits 5..6   = step
+  bit  7      = add1
+  bit  8      = use_blocks
+  bit  9      = future check
+  bits 10..11 = blockL
+  bits 12..13 = blockK type
+  bits 14..18 = current row
+```
+
+こちらは少し実験度が高いですが、通れば `31` よりさらにローカルスタック圧が下がります。
+
+```bash
+codon build -release 33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned.py
+
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 18 18 32 256 0
+./33Py_constellations_GPU_cuda_codon_original_ctrlrow_tuned -g 18 18 128 64 0
+```
+
+## 判定基準
+
+まずはこう見てください。
+
+```text
+31: 6.968秒
+32: 6.968秒より速いか
+33: 6.968秒より速いか
+```
+
+もし `33` が `ok` で 6秒台前半まで落ちるなら、次は `ld/rd/col/avail` の u32 化または masked u32 化が本命になります。
+逆に `32/33` が遅い場合は、`31` を trunk にして、N=19/20 の実測へ進むのがよいです。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

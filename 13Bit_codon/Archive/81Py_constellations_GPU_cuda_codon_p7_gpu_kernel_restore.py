@@ -17,6 +17,616 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+2026年5月13日の添付ログによると、**CPU 側の 80 は成功していますが、GPU 側は計算結果がすべて 0 になっています。** preset=7 の CPU は N18/N19/N20 すべて `ok`、preset=6 回帰もすべて `ok` です。
+一方、GPU は preset=7 も preset=6 も N18/N19/N20 がすべて `0` で `ng` になっています。
+
+原因は、**GPU kernel が実行されていない**ことです。
+添付元ソースでは `kernel_dfs_iter_gpu()` のデコレータが `# @gpu.kernel` とコメントアウトされており、さらに GPU 分岐内の `kernel_dfs_iter_gpu(...)` 呼び出し本体も `# if use_sorted:` から `# else:` までコメントアウトされています。その後 `results[i]` を合計しているため、`results[]` が初期値 0 のまま集計され、GPU total が常に 0 になります。 
+
+修正版の完全版ソースを作成しました。
+
+[81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore.py](sandbox:/mnt/data/81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore.py)
+
+今回の 81 で入れた修正はこの 2 点です。
+
+```python
+@gpu.kernel
+def kernel_dfs_iter_gpu(...):
+```
+
+および GPU 分岐内の kernel 起動復活です。
+
+```python
+if use_sorted:
+  kernel_dfs_iter_gpu(
+    gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+    gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+    gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+    gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+    gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+    gpu.raw(meta_next),
+    gpu.raw(results),
+    m, board_mask,
+    n3, n4,
+    grid=GRID, block=BLOCK
+  )
+else:
+  kernel_dfs_iter_gpu(
+    gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+    gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+    gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+    gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+    gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+    gpu.raw(meta_next),
+    gpu.raw(results),
+    m, board_mask,
+    n3, n4,
+    grid=GRID, block=BLOCK
+  )
+```
+
+80 の CPU 修正、つまり preset=6 cache scope fix と preset=7 multiplicity fix はそのまま残しています。
+
+ビルドと検証は以下でお願いします。
+
+```bash
+SRC=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore.py
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+
+codon build -release $SRC -o $BIN
+chmod +x $BIN
+```
+
+まず GPU preset=7 を確認します。
+
+```bash
+./$BIN -g 18 20 32 484 1 -1 7 9 > bc_sol_p7_GPU_N18_N20_81.log
+grep -E "^(18:|19:|20:)" bc_sol_p7_GPU_N18_N20_81.log
+```
+
+期待値は以下です。
+
+```text
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+続いて GPU preset=6 回帰です。
+
+```bash
+./$BIN -g 18 20 32 484 1 -1 6 9 > bc_sol_p6_GPU_N18_N20_regression_81.log
+grep -E "^(18:|19:|20:)" bc_sol_p6_GPU_N18_N20_regression_81.log
+```
+
+期待値は同じく以下です。
+
+```text
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+念のため CPU 回帰も見るなら以下です。
+
+```bash
+./$BIN -c 18 20 32 484 1 -1 7 9 > bc_sol_p7_CPU_N18_N20_regression_81.log
+grep -E "^(18:|19:|20:)" bc_sol_p7_CPU_N18_N20_regression_81.log
+
+./$BIN -c 18 20 32 484 1 -1 6 9 > bc_sol_p6_CPU_N18_N20_regression_81.log
+grep -E "^(18:|19:|20:)" bc_sol_p6_CPU_N18_N20_regression_81.log
+```
+
+今回の 81 は、探索ロジックの新規修正ではなく、**80 でコメントアウトされていた GPU kernel 起動の復旧版**です。
+
+GPU `-g` の結果、**81 は成功です。**
+
+```text
+preset=7 GPU:
+N18  666090624      ok
+N19  4968057848     ok
+N20  39029188884    ok
+
+preset=6 GPU regression:
+N18  666090624      ok
+N19  4968057848     ok
+N20  39029188884    ok
+```
+
+これで現在の整理は以下でよいです。
+
+```text
+78: preset=5 P5 fix                         OK
+79: preset=6 dynamic cache fix              OK
+80: preset=7 multiplicity fix               OK
+81: GPU kernel restore / GPU verification   OK
+```
+
+先ほどの CPU 実行は GPU インスタンス上の `-c` だったため N18 で `35.206s` でしたが、今回の GPU `-g` では preset=6 / N18 が `3.455s` なので、少なくとも N18 では **約10倍高速**になっています。
+
+```text
+GPU instance CPU -c / preset=6 / N18: 35.206s
+GPU -g          / preset=6 / N18:  3.455s
+```
+
+N20 も GPU で通っています。
+
+```text
+preset=7 / N20: 2:42.952 ok
+preset=6 / N20: 2:23.938 ok
+```
+
+次は、GPU で N21 以降を確認する段階です。まずは preset=7 の N21 単体がよいと思います。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+
+./$BIN -g 21 21 32 484 1 -1 7 9 > bc_sol_p7_GPU_N21_81.log
+grep -E "^(21:)" bc_sol_p7_GPU_N21_81.log
+```
+
+続いて preset=6 回帰です。
+
+```bash
+./$BIN -g 21 21 32 484 1 -1 6 9 > bc_sol_p6_GPU_N21_regression_81.log
+grep -E "^(21:)" bc_sol_p6_GPU_N21_regression_81.log
+```
+
+N21 も OK なら、次は N22/N23 へ進めます。
+
+```bash
+./$BIN -g 22 23 32 484 1 -1 7 9 > bc_sol_p7_GPU_N22_N23_81.log
+grep -E "^(22:|23:)" bc_sol_p7_GPU_N22_N23_81.log
+
+./$BIN -g 22 23 32 484 1 -1 6 9 > bc_sol_p6_GPU_N22_N23_regression_81.log
+grep -E "^(22:|23:)" bc_sol_p6_GPU_N22_N23_regression_81.log
+```
+
+`unique` が 0 なのは、これまで通りこの系統のログでは total 側の検証をしていて unique を算出していないためなので、問題ありません。
+
+CPU で N24 を通常実行するなら、最新の 81 バイナリで以下です。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+
+./$BIN -c 24 24 32 484 1 -1 7 9 > bc_sol_p7_CPU_N24_81.log
+```
+
+長時間実行で SSH 切断対策を入れるなら、こちらが安全です。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+LOG=bc_sol_p7_CPU_N24_81.log
+
+nohup ./$BIN -c 24 24 32 484 1 -1 7 9 > "$LOG" 2>&1 &
+echo $! > "${LOG}.pid"
+```
+
+進捗・終了確認は以下です。
+
+```bash
+tail -f bc_sol_p7_CPU_N24_81.log
+```
+
+終了後の確認は以下です。
+
+```bash
+grep -E "^24:" bc_sol_p7_CPU_N24_81.log
+```
+
+期待される total は以下です。
+
+```text
+24:     227514171973736                0          ...    ok
+```
+
+念のため、実行開始・終了時刻もログに入れたい場合はこの形が便利です。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+LOG=bc_sol_p7_CPU_N24_81.log
+
+nohup bash -lc "date; ./$BIN -c 24 24 32 484 1 -1 7 9; date" > "$LOG" 2>&1 &
+echo $! > "${LOG}.pid"
+```
+
+途中でプロセス確認する場合です。
+
+```bash
+cat bc_sol_p7_CPU_N24_81.log.pid
+ps -fp $(cat bc_sol_p7_CPU_N24_81.log.pid)
+```
+
+今回は CPU 実行なので `-c`、N24 単体なので `24 24`、最新の修正済み preset=7 検証なので最後は `7 9` でよいです。
+
+はい、**N5〜N26 の広い範囲を一括実行するなら、preset を動的に切り替えたほうがよい**と思います。
+
+特に固定 `preset=7` は、N18〜N20 では correctness は確認済みですが、N5〜N17 には過剰です。小さい N では constellation 分割の overhead が勝ちやすく、場合によっては不要に遅くなります。逆に N21 以降は `preset=7` のほうが探索を浅くできるので有利になる可能性があります。
+
+まず注意点です。
+
+```bash
+./$BIN -c 5 27 32 434 1 -1 7 9
+```
+
+これは **N5〜N27** です。
+N5〜N26 までなら、終了 N は `26` にしてください。
+
+また、これまで標準的に使っていた値は `484` なので、`434` が意図的でなければ `484` に戻したほうがよいです。CPU 実行では GPU block 系の値は本質的ではありませんが、ログ・再現性のために従来値に揃えるのが無難です。
+
+## 推奨: shell 側で dynamic preset 実行
+
+現時点では、ソースを変更せずに shell loop で N ごとに preset を切り替えるのが一番安全です。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+LOG=bc_sol_dynamic_CPU_N5_N26_81.log
+
+nohup bash -lc '
+set -u
+
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+
+for N in $(seq 5 26); do
+  if [ "$N" -le 17 ]; then
+    P=5
+  elif [ "$N" -le 20 ]; then
+    P=6
+  else
+    P=7
+  fi
+
+  echo "===== $(date) N=$N preset=$P ====="
+  ./$BIN -c "$N" "$N" 32 484 1 -1 "$P" 9
+  echo "===== $(date) N=$N done ====="
+  echo
+done
+' > "$LOG" 2>&1 &
+
+echo $! > "${LOG}.pid"
+```
+
+確認は以下です。
+
+```bash
+tail -f bc_sol_dynamic_CPU_N5_N26_81.log
+```
+
+終了後の要約確認です。
+
+```bash
+grep -E "^[[:space:]]*[0-9]+:" bc_sol_dynamic_CPU_N5_N26_81.log
+```
+
+## preset の割り当て案
+
+今回なら、この割り当てがよいと思います。
+
+```text
+N5〜N17   preset=5
+N18〜N20  preset=6
+N21〜N26  preset=7
+```
+
+理由は以下です。
+
+```text
+preset=5:
+  小さい N 向け。分割 overhead が少ない。
+
+preset=6:
+  79 で修正済み。
+  N18〜N20 は OK。
+  直近の GPU 結果でも preset=7 より preset=6 のほうが速かった。
+
+preset=7:
+  80 で multiplicity 修正済み。
+  大きい N では探索をより浅くできるため、N21 以降で使う価値が高い。
+```
+
+## まず N21 で preset=6 と preset=7 を比較するのも有効です
+
+N21 以降で本当に `preset=7` が CPU でも速いかは、実測したほうが安全です。
+先に N21 だけ比較すると、N22〜N26 の方針を決めやすいです。
+
+```bash
+BIN=81Py_constellations_GPU_cuda_codon_p7_gpu_kernel_restore
+
+./$BIN -c 21 21 32 484 1 -1 6 9 > bc_sol_p6_CPU_N21_81.log
+grep -E "^21:" bc_sol_p6_CPU_N21_81.log
+
+./$BIN -c 21 21 32 484 1 -1 7 9 > bc_sol_p7_CPU_N21_81.log
+grep -E "^21:" bc_sol_p7_CPU_N21_81.log
+```
+
+もし N21 で `preset=6` のほうが速ければ、dynamic table はこう変えてもよいです。
+
+```text
+N5〜N17   preset=5
+N18〜N21  preset=6
+N22〜N26  preset=7
+```
+
+## 現時点での結論
+
+そのまま固定 `preset=7` で N5〜N26 を走らせるより、以下の dynamic 実行を推奨します。
+
+```text
+N5〜N17   p5
+N18〜N20  p6
+N21〜N26  p7
+```
+
+これなら 78/79/80/81 の修正済み成果を使いつつ、小さい N での無駄な `preset=7` overhead を避けられます。
+
+なお、過去添付ファイルの一部は検索ツール上で期限切れ表示になっています。完全版ソースを再確認して次の `82 dynamic preset` 版を作る場合は、最新の 81 完全版をもう一度添付いただくのが確実です。
+
+`./$BIN -c` だけで実行した場合、初期値は以下になります。
+
+```text
+mode              = CPU
+nmin              = 5
+nmax              = 28
+実行範囲           = N5〜N27
+gpu_block         = 32
+gpu_max_blocks    = 484
+gpu_log_level     = 0
+gpu_sort_mode     = -1
+bench_mode        = 0
+preset_queens_arg = 5
+preset_queens     = 5
+cross_stripe_safe = False
+debug_chunk_start = 0
+debug_chunk_count = 1
+```
+
+理由は、`main()` の初期値で `nmin=5`, `nmax=28`, `use_gpu=False`, `gpu_block=32`, `gpu_max_blocks=484`, `gpu_log_level=0`, `gpu_sort_mode=-1`, `bench_mode=0`, `preset_queens_arg=5` になっているためです。`-c` だけを指定した場合は `argc=2` なので、`nmin/nmax` などの上書き条件には入りません。 
+
+注意点として、`nmax=28` ですが、実行ループは
+
+```python
+for N in range(nmin,nmax):
+```
+
+なので、実際に走るのは **N5〜N27** です。N28 は含まれません。
+
+したがって、
+
+```bash
+./$BIN -c
+```
+
+は実質的に以下と同じです。
+
+```bash
+./$BIN -c 5 27 32 484 0 -1 5 0
+```
+
+ただし、現在の元ソースでは `bench_mode < 8` の通常モードでは、引数で preset を指定しても `preset_queens_arg=5` に戻す処理があります。つまり通常モードでは preset は固定で 5 になります。
+
+さらに重要なのは、現状の `main()` では、
+
+```python
+use_constellation_cache:bool = False
+```
+
+なので、先ほどの `build_constellations_dynamicK()` は呼ばれません。`use_constellation_cache` が False の場合は、直接 `gen_constellations(..., preset_queens)` が呼ばれます。
+
+そのため、**dynamic preset を本当に効かせるなら、`build_constellations_dynamicK()` の中だけでなく、`main()` 側で `preset_queens` を決めるのが安全**です。
+
+例えばこの位置です。
+
+```python
+preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+```
+
+の直後に、
+
+```python
+if N>=5 and N<=17:
+  preset_queens=5
+elif N>=18 and N<=20:
+  preset_queens=6
+elif N>=21 and N<=26:
+  preset_queens=7
+```
+
+を入れるのがよいです。
+
+この修正を入れると、
+
+```bash
+./$BIN -c
+```
+
+は N5〜N27 を実行しつつ、N5〜N26 については以下のように動的 preset になります。
+
+```text
+N5〜N17   preset=5
+N18〜N20  preset=6
+N21〜N26  preset=7
+N27       preset_queens_arg の値。初期値なら 5
+```
+
+N27 も preset=7 にしたい場合は、最後を `N<=27` にしてください。
+
+はい、**N25 以降を `preset_queens=8` にする発想はかなり自然**です。
+ただし、現時点では `preset=8` の correctness と速度はまだ検証していないので、私は **experimental 扱い**で入れるのがよいと思います。
+
+理由はシンプルで、`preset_queens` を深くすると、
+
+```text
+メリット:
+  DFS の残り深さが浅くなる
+  GPU/CPU の各タスクが軽くなる
+  大きい N では有利になる可能性がある
+
+デメリット:
+  constellations 数が増える
+  生成コスト・メモリ・集計コストが増える
+  preset>=7 では multiplicity を保持する必要があり、cache 削減が効きにくい
+```
+
+実際、N18〜N20 では `preset=7` も正しくはなりましたが、CPU 時間だけ見ると `preset=6` のほうが軽いです。ログでは `preset=7` の N18 は約 26.479 秒、`preset=6` の N18 は約 4.647 秒でした。N20 でも `preset=7` は 2:22.158、`preset=6` は 2:10.870 です。
+つまり、**深ければ常に速いわけではありません**。
+
+## 推奨コード
+
+N25 以降を experimental に `preset=8` へ上げるなら、こうしてください。
+
+```python
+def select_dynamic_preset_queens(N:int, preset_queens:int)->int:
+  """
+  Dynamic preset selection.
+
+  N5〜N17   preset=5
+  N18〜N20  preset=6
+  N21〜N24  preset=7
+  N25〜N27  preset=8  # experimental
+  範囲外は呼び出し側指定を維持
+  """
+  if N>=5 and N<=17:
+    return 5
+  elif N>=18 and N<=20:
+    return 6
+  elif N>=21 and N<=24:
+    return 7
+  elif N>=25 and N<=27:
+    return 8
+
+  return preset_queens
+```
+
+そして `main()` の中の、
+
+```python
+preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+```
+
+の直後をこうします。
+
+```python
+preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+
+preset_queens = select_dynamic_preset_queens(N, preset_queens)
+```
+
+ログで確認したい場合は、さらに以下を追加します。
+
+```python
+if gpu_log_level>=1:
+  print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+```
+
+全体としてはこうです。
+
+```python
+use_constellation_cache:bool = False
+preset_queens:int = preset_queens_arg # preset_queens CPUが担当する深さ
+
+preset_queens = select_dynamic_preset_queens(N, preset_queens)
+
+if gpu_log_level>=1:
+  print(f"[dynamic-preset] N={N} preset_queens={preset_queens}")
+```
+
+## 重要確認: preset>=7 の cache bypass
+
+80 の修正では、`preset=7` の不足は multiplicity 落ちが原因で、修正後に N18〜N20 が OK になりました。
+`preset=8` を使うなら、この修正が **`preset_queens>=7`** になっている必要があります。
+
+確認してください。
+
+```bash
+grep -n "preset_queens>=7" $SRC
+```
+
+入っていればよいです。
+
+```python
+if preset_queens>=7:
+```
+
+もし、
+
+```python
+if preset_queens==7:
+```
+
+になっている場合は、必ず以下へ変更してください。
+
+```python
+if preset_queens>=7:
+```
+
+`preset=8` も `preset=7` と同じく、cache hit で multiplicity を落としてはいけない可能性が高いです。
+
+## もう 1 つ注意: bin constellation cache
+
+`build_constellations_dynamicK()` 側で `use_bin=True` にしている場合、N25 以降の `preset=8` では一旦注意してください。
+
+現行の constellation bin 保存は `ld/rd/col/startijkl` を 32bit 書き込みしているように見えます。元ソースでも `save_constellations_bin()` は `int_to_le_bytes()` で 4 byte ずつ保存しています。
+
+N25〜N27 かつ `preset=8` では、`ld` / `rd` の内部値が 32bit を超える可能性があります。
+そのため、`preset=8` 実験ではまず、
+
+```python
+use_constellation_cache:bool = False
+```
+
+のまま走らせるのが安全です。
+
+bin cache を使うなら、constellation cache も `u64` 化したほうが安全です。
+
+## 実行方針
+
+まずは GPU で N25 単体を試すのがよいと思います。
+
+```bash
+BIN=82Py_constellations_GPU_cuda_codon_dynamic_p8
+
+./$BIN -g 25 25 32 484 1 -1 7 9 > bc_sol_dynamic_GPU_N25_p8.log
+grep -E "^25:" bc_sol_dynamic_GPU_N25_p8.log
+```
+
+この場合、コマンド上は `7` を渡していても、内部で N25 は `preset=8` に上書きされます。
+
+期待値は以下です。
+
+```text
+25:    2207893435808352    ok
+```
+
+続いて N24 を回帰確認します。N24 は `preset=7` のままです。
+
+```bash
+./$BIN -g 24 24 32 484 1 -1 7 9 > bc_sol_dynamic_GPU_N24_p7.log
+grep -E "^24:" bc_sol_dynamic_GPU_N24_p7.log
+```
+
+期待値は以下です。
+
+```text
+24:     227514171973736    ok
+```
+
+## 私のおすすめ
+
+今すぐ完全採用するなら、まずはこの表です。
+
+```text
+N5〜N17   preset=5
+N18〜N20  preset=6
+N21〜N24  preset=7
+N25〜N27  preset=8 experimental
+```
+
+ただし、N25 の `preset=8` が `ok` になり、かつ `preset=7` より速いことを確認してから、N26/N27 に広げるのがよいです。
+
+N25 で `preset=8` が遅い、または constellations 数が大きく増えすぎる場合は、N25 も `preset=7` に戻して、N26 以降だけ `preset=8` にするのが無難です。
+
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

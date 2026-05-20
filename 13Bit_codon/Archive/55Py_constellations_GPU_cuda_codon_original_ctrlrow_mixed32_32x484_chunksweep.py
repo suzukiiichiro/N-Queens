@@ -17,6 +17,100 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 55 CHUNKSWEEP 32x484 auto-sort + chunk-size sweep（ctrlrow mixed32 tuned）
 
+ログありがとうございます。54 の結果で、かなり重要なことが分かりました。
+
+**大きい chunk は不採用**です。
+49 相当の `32x484` は `0:02:44.014 ok` ですが、54 の `max_blocks=0`、つまり N=20 全件を 1 chunk にまとめた `32x4351` は `0:06:33.182 ok` まで悪化しています。`32x1024` も `0:04:35.738`、`32x2048` は `0:06:19.338`、`32x4096` は `0:06:23.984` なので、chunk を大きくする方向は明確に負けています。しかも `build / sort_time / copy` はほぼ 0 で、悪化しているのは kernel 時間そのものです。
+
+これで、現状の **32x484 が偶然ではなく、かなり良い投入粒度**だと見てよいです。49 の基準値も `0:02:43.886 ok`、`sort_mode=3` も `0:02:43.894 ok` なので、安定版は引き続き **49 SAFE FIX + auto / sort_mode=2** です。
+
+これまでの実験も含めると、次のような整理になります。
+
+```text
+採用:
+  49 SAFE FIX
+  block=32
+  max_blocks=484
+  sort_mode=-1 auto
+  N=20 では auto → sort_mode=2
+
+不採用:
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+```
+
+51 の split は `split_mode=1` が `0:03:29.606`、`split_mode=2` が `0:06:55.817` まで悪化しており、タスク分割方向は負けです。
+52 の terminal fast-count も `0:03:05` 台で負け、53 の terminal init-count は `0:11:14` 台まで悪化しています。 
+
+## 次の実験版: 55 CHUNKSWEEP
+
+今回は kernel ロジックを一切増やさず、**max_blocks を小さめ方向に自動比較する診断版**を作りました。
+
+[55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep.py](sandbox:/mnt/data/55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep.py)
+
+差分はこちらです。
+
+[55_chunksweep.diff](sandbox:/mnt/data/55_chunksweep.diff)
+
+55 は 49 SAFE FIX ベースです。通常実行では 49 と同じ経路です。
+
+```bash
+codon build -release 55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep.py
+
+./55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep -g 20 20 32 484 2 -1
+```
+
+追加したのは、`gpu_max_blocks=-1` のときだけ動く sweep モードです。
+
+```bash
+./55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep -g 20 20 32 -1 0 -1
+```
+
+このコマンドでは、以下を自動比較します。
+
+```text
+32x128
+32x192
+32x256
+32x320
+32x384
+32x448
+32x484
+32x512
+32x640
+```
+
+出力はこの形式になります。
+
+```text
+[sweep-result] N=20 block=32 max_blocks=384 steps=12288 total=39029188884 time=... ok
+[sweep-result] N=20 block=32 max_blocks=448 steps=14336 total=39029188884 time=... ok
+[sweep-result] N=20 block=32 max_blocks=484 steps=15488 total=39029188884 time=... ok
+...
+```
+
+見るべき点は単純です。
+
+```text
+1. すべて 39029188884 ok になるか
+2. max_blocks=484 より短い候補があるか
+3. 448 / 384 / 320 あたりが勝つか
+```
+
+54 の結果から見ると、これ以上大きくする方向はもう見なくてよいです。次に可能性があるのは、**484 より少し小さくして tail をさらに抑える方向**です。
+
+もし sweep で例えば `max_blocks=448` が勝ったら、確認用にログありで単体実行してください。
+
+```bash
+./55Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_chunksweep -g 20 20 32 448 2 -1
+```
+
+現時点の本命はまだ `32x484` です。55 は「49 を置き換える版」ではなく、**49 の最終パラメータを 484 から微調整できるか確認する版**です。
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

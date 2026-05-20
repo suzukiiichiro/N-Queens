@@ -17,6 +17,112 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+作成しました。82添付版を基準にしています。添付82では N21 が `preset_queens=6` 側に入っており、`.bin` の `load_or_build_constellations_bin()` も既存実装として使える状態です。 
+
+ダウンロードはこちらです。
+
+[83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py](sandbox:/mnt/data/83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py)
+
+[84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py](sandbox:/mnt/data/84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py)
+
+この環境には `codon` が入っていないため、Codonの実ビルドまでは確認できていません。ただし、Pythonの `tokenize` で文字列切れなどの字句レベルの破損がないことは確認しました。
+
+## 83 の位置づけ
+
+83 は **N21検証用の cache 版**です。
+
+変更点は主に以下です。
+
+```text
+use_constellation_cache:bool = True
+bench_mode=11 追加
+constellations_N{N}_{preset}.bin.done も作成
+```
+
+実行予定コマンドはそのままで大丈夫です。
+
+```bash
+codon build -release 83Py_constellations_GPU_cuda_codon_dynamic_p8_cache.py
+
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -c 21 21 32 128 2 0 5 11
+
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -g 21 21 32 128 2 0 5 0
+```
+
+`bench_mode=11` は `.bin` 作成・確認のみで終了します。
+`constellations_N21_6.bin` と `constellations_N21_6.bin.done` が作られます。
+
+## 84 の位置づけ
+
+84 は **stream版**です。
+
+変更点は主に以下です。
+
+```text
+use_constellation_cache:bool = False のまま
+N>=21 の GPU通常実行は .bin から STEPS 件ずつ読む
+全 constellation の List[Dict] 展開を回避
+sc 単位で .bin へ直接 flush
+progress_N{N}_{preset}_stream.tsv を出力
+```
+
+まずは N21 で試すなら：
+
+```bash
+codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
+
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 21 21 32 128 2 0 5 0
+```
+
+84単体で `.bin` だけ作る場合は：
+
+```bash
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -c 21 21 32 128 2 0 5 11
+```
+
+83で作った `.bin` と `.done` がある場合、84はそれを使います。`.done` が無い、またはレコード数が一致しない場合は、不完全ファイルとみなして再生成します。
+
+## おすすめの検証順
+
+まず83で N21 p6 の cache 経路を確認します。
+
+```bash
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -c 21 21 32 128 2 0 5 11
+
+ls -lh constellations_N21_6.bin constellations_N21_6.bin.done
+cat constellations_N21_6.bin.done
+```
+
+次に83で従来GPU経路を確認します。
+
+```bash
+./83Py_constellations_GPU_cuda_codon_dynamic_p8_cache \
+  -g 21 21 32 128 2 0 5 0
+```
+
+最後に84でstream GPUを確認します。
+
+```bash
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 21 21 32 128 2 0 5 0
+```
+
+84で安定したら、次は N22 を以下で試すのが良いです。
+
+```bash
+./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream \
+  -g 22 22 32 128 2 0 5 0
+```
+
+最初は `max_blocks=128` のまま確認し、安定後に `484` へ戻すのが安全です。
+
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

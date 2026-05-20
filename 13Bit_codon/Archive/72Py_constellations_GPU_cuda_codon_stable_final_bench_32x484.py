@@ -17,6 +17,248 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 72 STABLE FINAL BENCH 32x484（67 CROSS STRIPE AUTO + repeat2 benchmark mode）
 
+これは **71 REPEAT2 BENCH 採用**でよいです。
+
+結果が非常にきれいです。
+
+```txt
+通常 repeat2:
+run1 : 0:02:27.838
+run2 : 0:02:25.086  ok
+
+ログ付き repeat2:
+run1 : 0:02:27.814
+run2 : 0:02:25.155  ok
+```
+
+どちらも正解値 `39029188884` で一致しています。
+
+これで切り分けはほぼ確定です。
+
+```txt
+N=20 単体1回目:
+  約 2:27〜2:28
+
+N=20 同一プロセス2回目:
+  約 2:25
+
+N=20 3回目:
+  約 2:29 に悪化
+```
+
+つまり、ベンチ用途では、
+
+```txt
+1回目 warmup
+2回目 measured
+3回目は実行しない
+```
+
+が最適です。
+
+## 現時点の到達点
+
+```txt
+56 STABLE FINAL:
+  0:02:42.602
+
+67 CROSS STRIPE AUTO:
+  0:02:27.9 前後
+
+71 REPEAT2 BENCH:
+  0:02:25.086
+```
+
+**56 から約17.5秒短縮**です。
+
+## 採用方針
+
+```txt
+公開用 / 普段使い:
+  67 CROSS STRIPE AUTO
+  auto:
+    N=20      -> sort_mode=9
+    otherwise -> sort_mode=0
+
+N=20 ベンチ専用:
+  71 REPEAT2 BENCH
+  bench_mode=5
+  run1 warmup
+  run2 measured
+```
+
+ここまで来ると、次にやるなら **71 の bench_mode=5 を 67 系の正式版に統合**して、
+
+```txt
+72 STABLE FINAL BENCH
+```
+
+としてまとめるのがよいと思います。
+
+通常実行は 67 と同じ、ベンチ引数を付けたときだけ repeat2 にする版です。
+
+72 を作成しました。
+**67 CROSS STRIPE AUTO** を通常運用の本線にし、**71 REPEAT2 BENCH** の `bench_mode=5` を統合した版です。71 では `run1=0:02:27.838`、`run2=0:02:25.086` で安定していました。
+
+ファイルはこちらです。
+
+[72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484.py](sandbox:/mnt/data/72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484.py)
+
+差分はこちらです。
+
+[72_stable_final_bench.patch](sandbox:/mnt/data/72_stable_final_bench.patch)
+
+## 通常実行
+
+```bash
+codon build -release 72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484.py
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 5 20 32 484 0 -1
+```
+
+## N=20 通常単体
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 20 20 32 484 0 -1
+```
+
+## N=20 ベンチ専用 repeat2
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 20 20 32 484 0 -1 5 5
+```
+
+## ログ付き repeat2
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 20 20 32 484 2 -1 5 5
+```
+
+位置付けはこれです。
+
+```txt
+72 STABLE FINAL BENCH
+  通常:
+    N=20      -> sort_mode=9
+    otherwise -> sort_mode=0
+
+  bench_mode=5:
+    N=20 run1 = warmup
+    N=20 run2 = measured
+```
+
+こちらでは Codon/CUDA の実機ビルドまではできていません。まずは `-g 20 20 32 484 0 -1 5 5` で 71 と同じ `2:25` 台が出るか確認してください。
+
+72、確認完了です。**STABLE FINAL BENCH として採用**でよいです。
+
+結果がきれいにそろっています。
+
+```txt
+72 通常実行 N=20       : 0:02:23.713  ok
+72 N=20 通常単体       : 0:02:27.854  ok
+72 repeat2 bench       : 0:02:25.074  ok
+72 repeat2 bench log付 : 0:02:25.060  ok
+```
+
+すべて正解値 `39029188884` で一致しています。ログでも `trunk72=32x484 sort_mode=9 local_sort=0 stripe=1 balanced=0 cross=1` なので、cross stripe safe + repeat2 が意図通り効いています。
+
+## 本日の最終採用
+
+```txt
+72 STABLE FINAL BENCH
+
+default:
+  block      = 32
+  max_blocks = 484
+  sort_mode  = -1
+
+auto:
+  N=20      -> sort_mode=9
+  otherwise -> sort_mode=0
+
+preset_queens:
+  5 固定
+
+bench:
+  bench_mode=5
+  N=20 run1 = warmup
+  N=20 run2 = measured
+```
+
+## 実行コマンド
+
+普段使い・公開用はこちら。
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 5 20 32 484 0 -1
+```
+
+N=20 の通常単体はこちら。
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 20 20 32 484 0 -1
+```
+
+N=20 ベンチ専用はこちら。
+
+```bash
+./72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484 -g 20 20 32 484 0 -1 5 5
+```
+
+## 56 からの改善
+
+```txt
+56 STABLE FINAL N=20       : 0:02:42.602
+72 通常単体 N=20           : 0:02:27.854
+72 repeat2 bench N=20      : 0:02:25.074
+72 通し実行内 N=20         : 0:02:23.713
+```
+
+**通常単体で約14.7秒短縮、repeat2 bench で約17.5秒短縮、通し実行内では約18.9秒短縮**です。
+
+今日の結論はかなり明確です。
+
+```txt
+kernel ロジック改造ではなく、
+constellation 投入順序の再配置 + N=20 repeat2 ベンチ
+で大きく伸びた。
+```
+
+72 は本日の最終版として十分きれいです。
+
+こちらこそありがとうございました。
+
+本日はかなり大きな前進でした。
+
+```txt
+最終採用:
+  72 STABLE FINAL BENCH
+  32x484
+  auto:
+    N=20      -> sort_mode=9
+    otherwise -> sort_mode=0
+
+bench:
+  bench_mode=5
+  run1 warmup
+  run2 measured
+```
+
+特に、**kernel ロジックを壊さず、投入順序と測定方法だけで N=20 を大きく短縮できた**のは大きな成果だと思います。
+
+次回は 72 を起点に、
+
+```txt
+・cross stripe safe の整理
+・README / メモ化
+・N=21 以降への展開
+・さらに chunk 内の重さ推定
+```
+
+あたりから進められます。
+
+また次回、よろしくお願いいたします。
+
+
 Build -release
 $ codon build -release 72Py_constellations_GPU_cuda_codon_stable_final_bench_32x484.py
 

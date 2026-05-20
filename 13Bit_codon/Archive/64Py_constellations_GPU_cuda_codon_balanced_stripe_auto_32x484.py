@@ -18,6 +18,83 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 64 BALANCED STRIPE AUTO 32x484（balanced stripe + direct total）
 
 
+素晴らしい結果です。**63 sort_mode=7 は採用**です。
+
+```txt
+62 sort_mode=6 : 0:02:32.609〜0:02:32.765
+63 sort_mode=7 : 0:02:28.845〜0:02:29.260
+```
+
+さらに `sort_mode=7` のログでは、62 で残っていた `chunk=7` の `19.7〜19.8秒` の山が消え、最大でも `17.680秒` 程度に収まっています。狙い通り、balanced stripe が効いています。
+
+一方、`sort_mode=8` は `0:02:37.962` なので不採用です。sort4 併用は今回も悪化でした。
+
+## 64 BALANCED STRIPE AUTO を作成しました
+
+`63` をベースに、auto を以下に変更しました。
+
+```txt
+auto:
+  N=20      -> sort_mode=7   # balanced stripe only
+  otherwise -> sort_mode=0
+```
+
+ファイルはこちらです。
+
+[64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484.py](sandbox:/mnt/data/64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484.py)
+
+差分はこちらです。
+
+[64_balanced_stripe_auto.patch](sandbox:/mnt/data/64_balanced_stripe_auto.patch)
+
+## 実行コマンド
+
+```bash
+codon build -release 64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484.py
+./64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484 -g 5 20 32 484 0 -1
+```
+
+N=20 単体です。
+
+```bash
+./64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484 -g 20 20 32 484 0 -1
+```
+
+ログ確認です。
+
+```bash
+./64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484 -g 20 20 32 484 2 -1
+```
+
+## 本日の採用メモ
+
+```txt
+採用:
+  64 BALANCED STRIPE AUTO
+  32x484
+  auto:
+    N=20      -> sort_mode=7
+    otherwise -> sort_mode=0
+
+準採用・比較用:
+  sort_mode=6   # striped only。62相当
+
+不採用:
+  57 BASETAIL FASTPATH
+  sort_mode=5
+  sort_mode=8
+  sort_mode=3
+  preset_queens=6
+  split_mode=1 / 2
+  terminal fast-count
+  terminal init-count
+  large chunk / 1 chunk
+  max_blocks 448 / 512 / 640
+```
+
+これは今日の明確な到達点です。56 の `0:02:42.602` から、63/64 系で `0:02:28.845` まで来ています。約14秒短縮です。
+
+
 CPU
 $ codon build -release 64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484.py
 $ ./64Py_constellations_GPU_cuda_codon_balanced_stripe_auto_32x484 -c

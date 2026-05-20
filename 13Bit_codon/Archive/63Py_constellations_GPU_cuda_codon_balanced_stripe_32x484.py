@@ -17,6 +17,73 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 61 STRIPED CHUNKS 32x484 sort5（chunk偏り均し + direct total）
 
+62 は **新 STABLE 候補**でよいです。
+
+通し実行では N=20 が `0:02:30.981`、N=20 単体でも `0:02:32.765`、ログ付き再実行で `0:02:32.704` / `0:02:32.631` と安定しています。正解値も `39029188884` で `ok` です。
+
+ただしログを見ると、まだ `chunk=7` だけが `19.820` 秒、再実行でも `19.787` 秒と突出しています。ほかはおおむね `15〜17秒台` なので、ここにまだ改善余地があります。
+
+そこで次は **63 BALANCED STRIPE** を作りました。
+62 の `sort_mode=6` はそのまま残し、新しく以下を追加しています。
+
+```txt
+sort_mode=7 : balanced stripe only
+sort_mode=8 : balanced stripe + sort4 比較用
+```
+
+62 の stripe はかなり効きましたが、出力 chunk ごとに `within` 方向の帯が残ります。63 の `sort_mode=7` は、各出力 chunk が `within=0..STEPS-1` 全域をまたぐように再配置します。狙いは、残った `chunk=7` の山を崩すことです。
+
+ファイルはこちらです。
+
+[63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484.py](sandbox:/mnt/data/63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484.py)
+
+差分はこちらです。
+
+[63_balanced_stripe.patch](sandbox:/mnt/data/63_balanced_stripe.patch)
+
+まずはこの順でお願いします。
+
+```bash
+codon build -release 63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484.py
+
+./63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484 -g 20 20 32 484 0 7
+./63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484 -g 20 20 32 484 2 7
+```
+
+比較用に 62 相当も同じ 63 ソースで確認できます。
+
+```bash
+./63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484 -g 20 20 32 484 0 6
+./63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484 -g 20 20 32 484 2 6
+```
+
+`sort_mode=8` は念のためですが、これまで `sort4` 併用は悪化傾向なので優先度は低いです。
+
+```bash
+./63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484 -g 20 20 32 484 0 8
+```
+
+判定基準は単純です。
+
+```txt
+sort_mode=7 が 2:32.6 より速い → 63 採用
+sort_mode=7 が遅い             → 62 STABLE 採用
+```
+
+現時点の暫定採用メモはこうです。
+
+```txt
+採用候補:
+  62 STRIPED ONLY AUTO
+  32x484
+  auto:
+    N=20 -> sort_mode=6
+    otherwise -> sort_mode=0
+
+次の比較:
+  63 sort_mode=7 balanced stripe only
+```
+
 
 CPU
 $ codon build -release 63Py_constellations_GPU_cuda_codon_balanced_stripe_32x484.py

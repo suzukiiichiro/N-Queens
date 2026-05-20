@@ -17,6 +17,105 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 52 trunk候補 32x484 auto-sort + terminal fast-count（ctrlrow mixed32 tuned）
 
+ログありがとうございます。51 の結果で、**split 方向は不採用**でよいと思います。
+
+51 の通常経路は `0:02:43.836 ok` ですが、`split_mode=1` は `0:03:29.606 ok`、`split_mode=2` は `0:06:55.817 ok` まで悪化しています。特に `split_mode=2` は `run=123897` 付近までタスク数が増え、`overflow` も出ています。つまり、正解は保てていますが、GPU に渡す粒度を細かくしすぎて、探索量削減よりもタスク増加・launch/管理コストの方が大きくなっています。
+
+一方で、49 は `0:02:43.886 ok`、`sort_mode=3` も `0:02:43.894 ok` なので、現状の安定版はやはり **49 + auto / sort_mode=2** です。
+
+次の実験版として、**52 TERMFAST** を作りました。
+これは split ではなく、既存 kernel の中で「終端 base フレーム」を push せず、その場で直接 count する軽量化です。
+
+[52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast.py](sandbox:/mnt/data/52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast.py)
+
+差分はこちらです。
+
+[52_termfast.diff](sandbox:/mnt/data/52_termfast.diff)
+
+今回の変更点はかなり小さいです。
+
+```text
+49 SAFE FIX ベース
+preset_queens=5 固定は維持
+sort_mode=-1 auto は維持
+sort_mode=3 は残すが、デフォルトでは使わない
+split は入れない
+kernel 内に terminal fast-count だけ追加
+```
+
+追加した考え方はこれです。
+
+```text
+従来:
+  子状態を stack に push
+  次ループで base && row==endmark を判定
+  total += 1
+  pop
+
+52:
+  子状態が base && row==endmark なら
+  push せず、その場で total += 1
+```
+
+つまり、終端付近の
+
+```text
+ctrl / ld / rd / col / avail の stack 書き込み
+次ループでの stack 読み出し
+base 判定
+pop
+```
+
+を一部省きます。51 のようにタスク数を増やさないので、今回のログを見る限りでは、split よりこちらの方が筋がよいです。
+
+試すコマンドはこちらです。
+
+```bash
+codon build -release 52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast.py
+
+./52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast -g 20 20 32 484 2 -1
+```
+
+比較用に、明示 `sort_mode=2` でも確認できます。
+
+```bash
+./52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast -g 20 20 32 484 2 2
+```
+
+見るべき点はこの 2 つです。
+
+```text
+1. 39029188884 ok になるか
+2. 49 の 0:02:43.886 より短くなるか
+```
+
+`sort_mode=3` は、これまでの結果では改善していないので、52 でも本命ではありません。
+
+```bash
+./52Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_termfast -g 20 20 32 484 2 3
+```
+
+現時点の運用判断は以下でよいと思います。
+
+```text
+公開用 / 普段使い:
+  49 SAFE FIX
+  -g 20 20 32 484 0 -1 または log_level=2 で確認
+
+実験:
+  52 TERMFAST
+  -g 20 20 32 484 2 -1
+
+不採用:
+  51 split_mode=1
+  51 split_mode=2
+  preset_queens=6
+  sort_mode=3
+```
+
+こちらでは Codon/CUDA 実機ビルドまでは確認できていません。52 は 49 からの最小差分なので、まず N=20 単体で `ok` と時間差だけ確認するのがよいです。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

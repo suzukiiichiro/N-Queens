@@ -17,6 +17,75 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 60 DIRECT TOTAL 32x484 sort4（GPU集計書き戻し削減）
 
+ありがとうございます。59 の結果はこう判断できます。
+
+```txt
+59 通し N=5..20 sort4 : 0:02:42.183
+59 単体 N=20 sort4    : 0:02:43.791
+59 単体 N=20 auto     : 0:02:43.779
+```
+
+**通しでは微改善、N=20単体では揺らぎ込みで 56/58 より遅い**です。
+つまり 59 の前処理改善は悪くありませんが、N=20 の主戦場はやはり GPU kernel 実行本体です。
+
+次は **60 DIRECT TOTAL** を作りました。
+
+今回は探索ロジックは一切変えず、GPU 結果の扱いだけを軽くしています。56/58/59 では、
+
+```txt
+results
+→ results_all に scatter
+→ constellations[i]["solutions"] に全件書き戻し
+→ main() で sum()
+```
+
+としていましたが、ベンチ用途では個別 `solutions` は不要なので、
+
+```txt
+results
+→ chunk ごとに直接合計
+→ constellations[0]["solutions"] に合計だけ格納
+→ main() の sum() はそのまま通る
+```
+
+にしました。
+
+ファイルはこちらです。
+
+[60Py_constellations_GPU_cuda_codon_direct_total_32x484.py](sandbox:/mnt/data/60Py_constellations_GPU_cuda_codon_direct_total_32x484.py)
+
+差分はこちらです。
+
+[60_direct_total.patch](sandbox:/mnt/data/60_direct_total.patch)
+
+まずはこれでお願いします。
+
+```bash
+codon build -release 60Py_constellations_GPU_cuda_codon_direct_total_32x484.py
+./60Py_constellations_GPU_cuda_codon_direct_total_32x484 -g 5 20 32 484 0 4
+```
+
+N=20 単体は、
+
+```bash
+./60Py_constellations_GPU_cuda_codon_direct_total_32x484 -g 20 20 32 484 0 4
+```
+
+auto 比較は、
+
+```bash
+./60Py_constellations_GPU_cuda_codon_direct_total_32x484 -g 20 20 32 484 0 -1
+```
+
+ログ確認は、
+
+```bash
+./60Py_constellations_GPU_cuda_codon_direct_total_32x484 -g 20 20 32 484 2 4
+```
+
+今回の期待値は大きくありません。狙いは **0.2〜1秒程度の削減**です。
+ただし、正解値を壊す危険が低いので、採用できるなら 58/59 の微改善と合わせて積み上げられます。
+
 
 CPU
 $ codon build -release 60Py_constellations_GPU_cuda_codon_direct_total_32x484.py

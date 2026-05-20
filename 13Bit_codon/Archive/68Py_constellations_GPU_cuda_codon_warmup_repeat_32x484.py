@@ -17,6 +17,204 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 68 WARMUP REPEAT 32x484（67 CROSS STRIPE AUTO + warmup/repeat diagnostic）
 
+おっしゃる通りです。これはかなり「何かあります」。
+
+今回の 67 の結果は、同じ `sort_mode=9` なのに、
+
+```txt
+通し実行 N=20 : 0:02:23.755
+N=20 単体     : 0:02:27.933
+ログ付き単体 : 0:02:27.943
+```
+
+となっています。いずれも正解値 `39029188884` で `ok`、設定も `trunk67=32x484 sort_mode=9 local_sort=0 stripe=1 cross=1` です。
+
+つまり、アルゴリズムや並び替えの違いではなく、**実行環境の状態差**が出ています。
+
+一番ありそうなのは **GPU のウォームアップ / クロックブースト差**です。
+
+通し実行では、N=18 が約2.7秒、N=19 が約20.6秒走った直後に N=20 が始まっています。
+そのため N=20 開始時点で GPU がすでに、
+
+```txt
+P0状態
+高クロック
+CUDA context 初期化済み
+メモリアロケーション経路も温まっている
+キャッシュ/TLB/ドライバ側も温まっている
+```
+
+になっている可能性があります。
+
+一方、N=20 単体実行では、プロセス起動直後から N=20 に入るため、
+
+```txt
+CUDA context 初期化
+GPUクロック上昇
+初回 kernel 実行時の遅れ
+ドライバ側の初期化
+```
+
+が N=20 の測定に乗っている可能性があります。
+
+特に今回のログを見ると、単体ログ付きでは chunk kernel の合計だけでほぼ `2:27` 台になります。
+
+```txt
+chunk1  17.923
+chunk2  15.890
+chunk3  16.384
+chunk4  14.923
+chunk5  16.773
+chunk6  15.658
+chunk7  17.488
+chunk8  15.673
+chunk9  17.037
+合計   約147.7秒
+```
+
+これは `0:02:27.943` とほぼ一致します。
+
+つまり単体実行が遅いのは、集計や前処理ではなく、**各 chunk の kernel 自体が通し実行時より少し速くなっている**と見るべきです。
+
+## 次に試すべきこと
+
+一番確実なのは、**N=20 本番前に軽い warmup kernel を走らせる**ことです。
+
+候補は3つあります。
+
+```txt
+案A: GPU mode 開始直後に小さい N=17 または N=18 を一度だけ非表示で実行
+案B: N=20 の前に空に近い warmup kernel を1回起動
+案C: N=20 を2回連続で実行し、2回目だけ測定する repeat mode を作る
+```
+
+この中で一番実装が安全なのは **案C** です。
+
+理由は、今の `exec_solutions()` や kernel を変えずに、
+
+```txt
+N=20を同一プロセス内で2回実行
+1回目 warmup
+2回目 本測定
+```
+
+にできるからです。
+
+ただし、通常の公開用としては少しずるいので、用途を分けるのがよいです。
+
+```txt
+公開用 / 普段使い:
+  67 CROSS STRIPE AUTO
+  32x484
+  sort_mode=-1
+
+ベンチ確認用:
+  warmup repeat mode
+  N=20を同一プロセス内で2回実行し、2回目を表示
+```
+
+## 現時点の判断
+
+`67` は十分に STABLE FINAL 候補です。
+
+```txt
+67 CROSS STRIPE AUTO
+default:
+  block      = 32
+  max_blocks = 484
+  sort_mode  = -1
+
+auto:
+  N=20      -> sort_mode=9
+  otherwise -> sort_mode=0
+```
+
+そして、次の高速化テーマは **kernel ロジック変更ではなく、GPU warmup / repeat 測定 / 初回遅延の切り分け**です。
+
+かなり重要な気づきです。
+N=20 単体の `2:27.9` と通しの `2:23.7` の差は、まだ **4秒以上**あります。ここはアルゴリズムではなく、実行前状態の制御で取れる可能性があります。
+
+はい。**68 WARMUP REPEAT** を作成しました。
+
+今回の目的は、67 の結果で見えた、
+
+```txt
+通し実行 N=20 : 0:02:23.755
+N=20 単体     : 0:02:27.933
+```
+
+という差を、kernel 変更なしで切り分けることです。67 は `sort_mode=9 / cross stripe safe` で正解値を維持していました。
+
+## 68 の変更点
+
+探索 kernel は触っていません。
+
+追加したのは最後の引数です。
+
+```txt
+bench_mode=0 : 通常実行
+bench_mode=1 : N=20 だけ同一プロセス内で1回 warmup → 2回目を測定
+```
+
+ファイルはこちらです。
+
+[68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py](sandbox:/mnt/data/68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py)
+
+差分はこちらです。
+
+[68_warmup_repeat.patch](sandbox:/mnt/data/68_warmup_repeat.patch)
+
+## 実行コマンド
+
+まず通常実行です。
+
+```bash
+codon build -release 68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py
+./68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484 -g 20 20 32 484 0 -1
+```
+
+次が本命の warmup repeat です。
+
+```bash
+./68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484 -g 20 20 32 484 0 -1 5 1
+```
+
+ログ付きはこちらです。
+
+```bash
+./68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484 -g 20 20 32 484 2 -1 5 1
+```
+
+## 見たいポイント
+
+出力にこのような行が出ます。
+
+```txt
+[warmup] N=20 total=39029188884 elapsed=... ok
+20:       39029188884                0          0:02:xx.xxx    ok
+```
+
+このとき、
+
+```txt
+warmup行  ≒ 従来のN=20単体
+本測定行 ≒ 通し実行時のN=20
+```
+
+に近づけば、原因はかなり高い確度で **GPU warmup / 初回遅延 / クロック状態**です。
+
+判定基準はこうです。
+
+```txt
+bench_mode=1 の2回目が 2:23〜2:24 台に近づく
+  -> 通し実行が速い理由は GPU warmup の影響が大きい
+
+bench_mode=1 の2回目も 2:27 台のまま
+  -> 通し実行側だけ別の要因。N=18/19直後の状態、CPU側メモリ配置、プロセス内履歴などをさらに調査
+```
+
+現時点の本線は引き続き **67 CROSS STRIPE AUTO**、68 は **切り分け診断版**です。
+
 
 CPU
 $ codon build -release 68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py

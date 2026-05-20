@@ -17,6 +17,599 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 75 CHUNK ONLY DEBUG
 
+はい、判断として正しいです。
+**N=21 完走をデバッグのたびに回すのは重すぎます。** 73 のログでも N=21 `sort_mode=0` は **25分25秒**かかっており、chunk 単位でも 1 chunk が約1分40秒〜2分超です。これを毎回使うのは、原因切り分けには向きません。
+
+今回の 74 の結果は非常に良いです。
+
+```text
+[reorder-only] N=21 sort_mode=9 original=188147 reordered=188147 chunks=13 steps=15488 ok
+```
+
+つまり、前回のコアダンプ原因だった
+
+```text
+N=21 sort_mode=9 で reordered 件数が欠ける
+```
+
+問題は、**GPU kernel を走らせずに確認できる形で修正できた**ということです。
+
+---
+
+## ここで方針を切り替えた方がよいです
+
+今後の N=21 以降のデバッグは、完走ではなく、次の順番にした方がよいです。
+
+```text
+1. reorder-only
+2. first chunk only
+3. selected chunk only
+4. small chunk repeat
+5. 最後に N=21 完走
+```
+
+つまり、N=21 全体を使うのは **最終確認だけ**にします。
+
+---
+
+## 次に作るべきは 75 です
+
+75 は高速化版ではなく、**chunk 単位デバッグ版**がよいです。
+
+目的はこれです。
+
+```text
+N=21 を全部走らせず、
+指定した chunk だけ GPU 実行する
+```
+
+たとえば、こういう実行を可能にします。
+
+```bash
+./75... -g 21 21 32 484 2 9 5 7 1 0 1
+```
+
+意味は、
+
+```text
+N=21
+sort_mode=9
+bench_mode=7
+cross_stripe_safe=1
+debug_chunk_start=0
+debug_chunk_count=1
+```
+
+つまり **chunk 0 だけ実行**です。
+
+---
+
+## なぜ chunk-only が必要か
+
+今回の N=21 `sort_mode=0` のログを見ると、chunk ごとの kernel 時間はかなりばらついています。
+
+```text
+chunk 1 : 0:02:08.214
+chunk 2 : 0:02:06.311
+chunk 3 : 0:02:05.535
+chunk 4 : 0:01:53.546
+chunk 5 : 0:01:38.627
+chunk 6 : 0:01:57.581
+chunk 7 : 0:02:03.348
+chunk 8 : 0:01:41.578
+chunk 9 : 0:02:05.885
+```
+
+これを見る限り、N=21 の重さはかなり偏っています。
+
+なので、次は全体時間ではなく、
+
+```text
+sort_mode=0 の chunk 時間
+sort_mode=9 の chunk 時間
+cross stripe 後の chunk 時間
+```
+
+を、**1〜2 chunk だけで比較**するのがよいです。
+
+---
+
+## 75 の設計方針
+
+75 では kernel ロジックは触らず、GPU 投入ループにだけ制御を追加します。
+
+追加したいものはこれです。
+
+```text
+bench_mode=6:
+  reorder-only
+  GPU kernel は実行しない
+
+bench_mode=7:
+  chunk-only debug
+  指定 chunk だけ GPU 実行
+```
+
+追加引数は末尾に置きます。
+
+```text
+[cross_stripe_safe] [debug_chunk_start] [debug_chunk_count]
+```
+
+例：
+
+```bash
+# reorder-only
+./75... -g 21 21 32 484 2 9 5 6 1
+
+# chunk 0 だけ
+./75... -g 21 21 32 484 2 9 5 7 1 0 1
+
+# chunk 6 だけ
+./75... -g 21 21 32 484 2 9 5 7 1 6 1
+
+# chunk 0〜2 の3個だけ
+./75... -g 21 21 32 484 2 9 5 7 1 0 3
+```
+
+これなら N=21 でも、25分待たずに比較できます。
+
+---
+
+## 今日の判断
+
+74 の reorder-only は通っています。
+
+```text
+original=188147
+reordered=188147
+chunks=13
+steps=15488
+ok
+```
+
+したがって、次に N=21 完走へ行くより、**75 chunk-only debug** に進むのが正解です。
+
+今の段階で N=21 完走を何度も回す必要はありません。
+
+---
+
+## まとめ
+
+```text
+73:
+  N=20 合格
+  N=21 sort_mode=9 で host 側 IndexError
+
+74:
+  N=21 sort_mode=9 reorder-only 合格
+  件数欠落は解消
+
+次:
+  75 chunk-only debug
+  N=21 完走なしで chunk 単位の重さと sort_mode=9 の挙動を見る
+```
+
+次は **75 で bench_mode=7 を追加**するのがよいです。
+
+75 を作成しました。
+**kernel ロジックは触らず**、74 に `bench_mode=7` の **chunk-only debug** を追加しています。
+
+ソースはこちらです。
+
+[75Py_constellations_GPU_cuda_codon_chunk_only_debug.py](sandbox:/mnt/data/75Py_constellations_GPU_cuda_codon_chunk_only_debug.py)
+
+差分はこちらです。
+
+[75_chunk_only_debug.diff](sandbox:/mnt/data/75_chunk_only_debug.diff)
+
+N=21 の完走は 25分超で、chunk 1個でも 1分40秒〜2分超かかっているため、今後は完走ではなく chunk 単位で見る方針がよいです。
+
+まずはこちらをお願いします。
+
+```bash
+codon build -release 75Py_constellations_GPU_cuda_codon_chunk_only_debug.py
+```
+
+reorder-only の退行確認です。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 6 1
+```
+
+次に、N=21 / sort_mode=9 の chunk 0 だけ実行します。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 7 1 0 1
+```
+
+chunk 6 だけならこちらです。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 7 1 6 1
+```
+
+末尾の意味は以下です。
+
+```text
+7 : bench_mode=7 chunk-only debug
+1 : cross_stripe_safe=True
+0 : debug_chunk_start
+1 : debug_chunk_count
+```
+
+このモードでは全 chunk を実行しないため、最終行は `chunk-only` になります。`ok/ng` 判定用ではなく、chunk ごとの kernel 時間、partial_total、コアダンプ有無を見るためのモードです。
+
+75 は成功です。
+狙い通り、**N=21 を完走させずに sort_mode=9 の chunk 単位実行まで確認できています**。
+
+今回の結果は重要です。`reorder-only` は N=21 で `original=188147 reordered=188147 chunks=13 steps=15488 ok`、さらに `chunk-only` で chunk 0 と chunk 6 がどちらもコアダンプせず GPU kernel まで完走しています。
+
+```text
+N=21 sort_mode=9 chunk-only
+
+chunk 0:
+  kernel        0:01:45.573
+  partial_total 25874512074
+
+chunk 6:
+  kernel        0:01:48.746
+  partial_total 25842062114
+```
+
+73 の N=21 `sort_mode=0` では、chunk 1 が 2:08、chunk 7 が 2:03 程度でした。今回の `sort_mode=9` chunk-only では、対応位置が完全比較ではないものの、1 chunk が **1:45〜1:49** に収まっており、少なくとも **sort_mode=9 が N=21 でも破綻せず、かなり有望**に見えます。
+
+---
+
+## ここまでの結論
+
+```text
+73:
+  N=20 合格
+  N=21 sort_mode=0 完走 ok
+  N=21 sort_mode=9 は旧 cross stripe 欠落でコアダンプ
+
+74:
+  N=21 sort_mode=9 reorder-only 合格
+  件数欠落を修正
+
+75:
+  N=21 sort_mode=9 chunk-only 合格
+  chunk 0 / chunk 6 とも GPU kernel 完走
+```
+
+つまり、今回の修正で **host 側の並び替え欠落は解消**し、N=21 でも `sort_mode=9` を試す土台ができました。
+
+---
+
+## 次にやるべきこと
+
+N=21 完走の前に、もう少し chunk-only で見た方がよいです。
+
+次はこの3つだけで十分です。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 7 1 3 1
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 7 1 9 1
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 7 1 12 1
+```
+
+見る場所はここです。
+
+```text
+kernel=
+partial_total=
+コアダンプしないか
+```
+
+特に chunk 12 は最後の端数 chunk で、
+
+```text
+off=185856
+m=2291
+```
+
+なので、境界処理の確認に向いています。
+
+---
+
+## まだ N=21 完走は後でよいです
+
+75 のまま全 chunk を1個ずつ見ると、13回実行で結局時間がかかります。
+ただ、デバッグ目的なら、
+
+```text
+chunk 0
+chunk 3
+chunk 6
+chunk 9
+chunk 12
+```
+
+の5点確認で十分です。
+
+この5点が通れば、次に初めて N=21 の `sort_mode=9` 完走でよいと思います。
+
+良い結果です。
+75 の **N=21 / sort_mode=9 / chunk-only** は、主要ポイントをすべて通過しました。
+
+今回追加で確認した chunk 3、9、12 も、すべてコアダンプなしで GPU kernel まで完走しています。特に chunk 12 は端数 chunk で `m=2291 / grid=72` ですが、ここも正常に通っています。
+
+```text
+N=21 sort_mode=9 chunk-only
+
+chunk 0:
+  kernel        0:01:45.573
+  partial_total 25874512074
+
+chunk 3:
+  kernel        0:01:47.392
+  partial_total 26066053126
+
+chunk 6:
+  kernel        0:01:48.746
+  partial_total 25842062114
+
+chunk 9:
+  kernel        0:01:45.357
+  partial_total 25861303320
+
+chunk 12:
+  kernel        0:01:10.752
+  partial_total 3509382200
+```
+
+これで、少なくとも以下は確認できました。
+
+```text
+1. N=21 sort_mode=9 の cross stripe 再配置は件数欠落しない
+2. 先頭 chunk が動く
+3. 中央付近 chunk が動く
+4. 後半 chunk が動く
+5. 端数 chunk が動く
+6. host 側 IndexError / コアダンプは再現していない
+```
+
+---
+
+## 重要な見立て
+
+N=21 `sort_mode=9` は、かなり有望です。
+
+73 の `sort_mode=0` では chunk 1、2、3 あたりが 2分05秒〜2分08秒台でしたが、75 の `sort_mode=9` では通常サイズ chunk が **1分45秒〜1分49秒台**にそろっています。
+
+これは cross stripe によって重い constellation がある程度ならされている可能性が高いです。
+
+---
+
+## ただし、まだ「合計正解」は未確認
+
+chunk-only は partial_total なので、まだ
+
+```text
+N=21 total = 314666222712
+```
+
+になるかは確認していません。
+
+ただし、今回の5点確認で、N=21 完走前の不安要素はかなり減りました。
+
+---
+
+## 次の一手
+
+ここまで来たら、次は **75 のまま N=21 sort_mode=9 を一度だけ完走**してよいと思います。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 0 9 5 0
+```
+
+ログを出すならこちらですが、出力が多くなるだけなので、最初は `log_level=0` でよいです。
+
+```bash
+./75Py_constellations_GPU_cuda_codon_chunk_only_debug -g 21 21 32 484 2 9 5 0 1
+```
+
+期待値はこれです。
+
+```text
+21:      314666222712                0          0:??:??.???    ok
+```
+
+予測としては、chunk-only の通常 chunk が 1:45〜1:49台にそろっているため、単純合算では
+
+```text
+12 chunks × 約1:47 + 端数 約1:10
+= 約22分30秒前後
+```
+
+くらいに入る可能性があります。
+
+73 の `sort_mode=0` が 25:25.373 だったので、もし完走して正解なら、N=21 でも明確な改善です。
+
+---
+
+## ここでの判断
+
+```text
+75:
+  N=21 sort_mode=9 chunk-only debug 合格
+
+次:
+  N=21 sort_mode=9 完走確認
+```
+
+完走で `ok` になれば、次は 76 として
+
+```text
+N=21 も auto 候補に入れるか
+N=20 と N=21 で auto sort_mode=9 にするか
+N=22 は reorder-only / chunk-only の順で確認するか
+```
+
+へ進めます。
+
+素晴らしいです。**75 は N=21 でも合格**です。
+
+`sort_mode=9` の完走結果が、
+
+```text
+21:      314666222712                0          0:22:03.099    ok
+```
+
+になっています。safe 検証つきログでも、全 13 chunk を実行し、同じく `314666222712 ok` で完走しています。
+
+これは大きいです。
+
+---
+
+## N=21 の改善幅
+
+73 の `sort_mode=0` は、
+
+```text
+N=21 sort_mode=0
+0:25:25.373
+```
+
+でした。
+
+今回の 75 `sort_mode=9` は、
+
+```text
+N=21 sort_mode=9
+0:22:03.099
+```
+
+です。
+
+差分は、
+
+```text
+25:25.373 - 22:03.099 = 3:22.274 短縮
+```
+
+割合ではおよそ、
+
+```text
+約 13.3% 高速化
+```
+
+です。
+
+N=20 だけでなく、**N=21 でも cross stripe / sort_mode=9 が効く**ことが確認できました。
+
+---
+
+## chunk のならされ方が非常に良いです
+
+safe ログでは、通常サイズの chunk 0〜11 がほぼこの範囲に収まっています。
+
+```text
+最短 chunk 5 : 0:01:39.456
+最長 chunk 11: 0:01:48.310
+```
+
+N=21 `sort_mode=0` では 2分08秒台の chunk がありましたが、`sort_mode=9` では重い chunk がかなり抑えられています。
+
+これは、狙っていた
+
+```text
+constellation 投入順序の再配置で chunk 内の重さをならす
+```
+
+が、N=21 でも成立しているということです。
+
+---
+
+## ここまでの正式メモ
+
+```text
+75 CHUNK ONLY DEBUG
+
+N=21 / 32x484 / preset_queens=5 / sort_mode=9
+
+normal:
+  total   314666222712
+  elapsed 0:22:03.099
+  status  ok
+
+safe log:
+  total   314666222712
+  elapsed 0:22:05.931
+  status  ok
+
+previous:
+  73 N=21 sort_mode=0
+  elapsed 0:25:25.373
+
+improvement:
+  -3:22.274
+  about 13.3% faster
+
+conclusion:
+  sort_mode=9 is valid and effective for N=21.
+```
+
+---
+
+## 次の判断
+
+ここで **auto の対象を N=20 だけから N=20,21 に広げてよい**段階に来ました。
+
+つまり 76 では、こうしてよいと思います。
+
+```python
+def auto_sort_mode(N:int)->int:
+  if N == 20 or N == 21:
+    return 9
+  return 0
+```
+
+ただし、N=22 はまだ auto に入れない方がよいです。
+
+N=22 は実行時間がさらに長くなるので、同じ流れで、
+
+```text
+1. reorder-only
+2. chunk-only 0, 3, 6, 9, 12 など
+3. 端数 chunk
+4. 最後に完走
+```
+
+の順が安全です。
+
+---
+
+## 次は 76
+
+76 の目的はこれでよいです。
+
+```text
+76 STABLE AUTO N20 N21
+
+目的:
+  - 75 の成果を安定版へ反映
+  - auto sort を N=20/N=21 -> sort_mode=9 に拡張
+  - bench_mode=6 reorder-only と bench_mode=7 chunk-only は残す
+  - kernel ロジックは変更しない
+```
+
+75 はデバッグ名なので、76 で名前を安定版に寄せるのが自然です。
+
+```text
+75:
+  chunk-only debug 検証版
+
+76:
+  stable auto N20/N21 版
+```
+
+次は 76 を作って、N=20 / N=21 の auto `-1` を確認するのがよいです。
+
+
+
+
 75 purpose:
   - Keep 74 cross stripe reorder fix.
   - Add chunk-only debug mode so N=21+ can execute selected chunks only.

@@ -16,6 +16,143 @@
        _/m/'
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
+はい、**27のログはかなり決定的**です。結論はこうです。
+
+**27の `par_expand` は、CPU浅展開だけを見ると成功しています。**
+ただし、**全体としては不採用**です。
+
+今回の 27 は、
+
+```text
+27 split=8 mode=0 owner=32 task=32 log=0
+18: 666090624  0  0:01:07.843 ok
+```
+
+でした。一方、現状最良の 25 は、
+
+```text
+25 split=8 mode=0 owner=32 task=32
+18: 666090624  0  0:00:59.567 ok
+```
+
+なので、27 は **約8.3秒遅くなっています**。25 のこの条件が現時点の基準線です。
+
+ただし中身を見ると、27の狙い自体は半分当たっています。
+
+```text
+27 expand合計 ≒ 16.96秒
+25 expand合計 ≒ 19.60秒
+```
+
+なので、CPU浅展開は **約2.6秒短縮**しています。
+にもかかわらず全体が遅くなったので、27では **expand以外の部分が約10.9秒悪化**しています。
+
+```text
+25: 59.567秒 - expand約19.60秒 = 残り約39.97秒
+27: 67.843秒 - expand約16.96秒 = 残り約50.88秒
+```
+
+つまり問題はここです。
+
+```text
+2-pass並列展開そのものは有効
+しかし、その後のGPU投入側が重くなっている
+```
+
+特に27は、bucketごとに連続配置したのに、その直後でまだ
+
+```text
+expanded -> gpu_soa へ詰め替え
+w_arr    -> w_task へ詰め替え
+owner    -> owner_batch へ詰め替え
+```
+
+をしています。つまり **bucket連続配置の利点をまだ kernel 側で直接使えていない**状態です。
+27で悪化した理由は、おそらく「2-pass化でメモリ配置は変えたが、結局 staging copy が残っていて、メモリ圧と詰め替えコストだけ増えた」ためです。
+
+そこで次の実験版を作りました。
+
+[28Py_constellations_GPU_cuda_codon_bucket_direct_off.py](sandbox:/mnt/data/28Py_constellations_GPU_cuda_codon_bucket_direct_off.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_bucket_direct_off_patch.diff)
+
+28 の狙いは明確です。
+
+```text
+27: bucket連続配置 → さらに gpu_soa へコピー → kernel
+28: bucket連続配置 → offset付きkernelで expanded を直接読む → kernel
+```
+
+追加したのは `kernel_dfs_iter_gpu_off()` です。
+`base` を受け取り、kernel 内で、
+
+```python
+src = base + i
+```
+
+として、
+
+```python
+ld_arr[src]
+rd_arr[src]
+col_arr[src]
+...
+w_arr[src]
+```
+
+を直接読みます。これで `gpu_soa / w_task / owner_batch` への staging copy を消しています。
+
+まず試すならこれです。
+
+```bash
+codon build -release 28Py_constellations_GPU_cuda_codon_bucket_direct_off.py
+./28Py_constellations_GPU_cuda_codon_bucket_direct_off -g 18 18 8 0 32 32 1
+```
+
+次に最小ログで。
+
+```bash
+./28Py_constellations_GPU_cuda_codon_bucket_direct_off -g 18 18 8 0 32 32 0
+```
+
+さらに、28で staging copy が消えているので、以前は悪化した `task_blocks=1024` も再確認する価値があります。
+
+```bash
+./28Py_constellations_GPU_cuda_codon_bucket_direct_off -g 18 18 8 0 32 1024 0
+```
+
+見るべき結果は単純です。
+
+```text
+28 が 59.567秒を切る
+  → 27の連続bucket化 + direct offset kernel が当たり
+
+28 が 67秒近辺またはさらに遅い
+  → gpu.raw(expanded巨大配列) の扱いが重い可能性が高い
+  → 27/28方向はいったん止めて、25基準に戻す
+```
+
+現時点の判断はこうです。
+
+```text
+採用基準線:
+  25 split_row=8 bucket_mode=0 owner_blocks=32 task_blocks=32
+
+不採用:
+  split_row=10
+  full FID
+  hybrid FID
+  task_blocks=1024 on 25
+  27 par_expand alone
+
+次の本命実験:
+  28 direct offset kernel
+```
+
+27は失敗というより、**次に消すべきコピー箇所を露出させた診断版**としてかなり有効でした。
+ここで28が伸びなければ、次は kernel 分割ではなく、`results_all[owner]` への集約をGPU側 atomic または owner-run 単位の圧縮集約に移す段階です。
+
+
 28: 27の2-pass bucket連続配置を活かし、GPU投入時のstaging copyを避けるoffset kernel実験版
 
 amazon AWS m4.16xlarge x 1

@@ -17,6 +17,429 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+おはようございます。ログを見る限り、**N22/N23 の preset=5 は集計レベルではかなり健全**です。
+ただし、新しく気になる点が 1 つあります。
+
+## まず目立つ異常: N22 の `SQd1BkBlB` の FID 表示
+
+N=22 の SQd1 部分だけ、これが出ています。
+
+```txt
+[bc-sol-fid] SQd1(j=20) fid=21 SQd1BkBlB count=28712 total=198796991060
+[bc-sol-fid] SQd1(j=20) fid=21 SQd1B      count=1213  total=1879392040
+```
+
+`fid=21` が二重に出ています。
+一方、N=23 では期待どおりです。
+
+```txt
+[bc-sol-fid] SQd1(j=21) fid=19 SQd1BkBlB count=36850 total=1739537375228
+[bc-sol-fid] SQd1(j=21) fid=21 SQd1B     count=1373  total=14291887944
+```
+
+なので、今日の最優先はこう置きたいです。
+
+> **優先0: FID番号とFID名の対応表・表示・集計キーが本当に一致しているか確認する**
+
+特に `SQd1BkBlB` は、メモでは `fid=19` です。
+N22 のログでは `fid=21 SQd1BkBlB` になっているので、もしこれが単なる printf 側の表示ミスなら軽症ですが、**FIDフィルタ、遷移表、GPU/CPU分配、集計配列の index に同じズレが使われているなら重症**です。
+
+---
+
+## 集計自体は N22/N23 とも整合しています
+
+N22:
+
+```txt
+case counts:
+81409 + 54124 + 77752 + 37200 = 250485
+
+summary:
+constellations=250485
+```
+
+N23:
+
+```txt
+case counts:
+112970 + 69614 + 97990 + 47032 = 327606
+
+summary:
+constellations=327606
+```
+
+FID単位の count/total も、それぞれ case total に合っています。
+したがって、あなたの「外れたもの」リストはかなり妥当です。
+
+外してよさそうなもの:
+
+```txt
+- build_soa_for_range() の大分類 j境界ミス
+- FID範囲の単純な割当ミス
+- endmark範囲の単純な割当ミス
+- preset=5 の constellation_signatures による単純な件数欠落
+```
+
+少なくとも N22/N23 のログからは、ここに戻る理由は弱いです。
+
+---
+
+## 優先順位は少しだけ並べ替えたいです
+
+あなたのリストに、先ほどの FID表示/実体ズレ確認を先頭に足すのがよいと思います。
+
+### 優先0: FID名とFID番号の一致確認
+
+特にこれです。
+
+```txt
+SQd1BkBlB should be fid=19?
+N22 log says fid=21 SQd1BkBlB
+N23 log says fid=19 SQd1BkBlB
+```
+
+確認したいのは、次の 3 つです。
+
+```c
+fid number used for dispatch
+fid number used for summary
+fid name printed in log
+```
+
+この 3 つが別々の変数や別々の表から来ている場合、N24 NG の原因候補になります。
+
+---
+
+### 優先1: `fid=12 SQd2BkBlB` の 12→13 遷移
+
+これは引き続き最有力です。
+
+N23 での規模も大きいです。
+
+```txt
+fid=12 SQd2BkBlB
+count=28716
+total=1852054521508
+N23 total比 約7.64%
+```
+
+preset=6 で `fid=13 SQd2BlB` が表面化するなら、かなり自然な疑い方はこれです。
+
+```txt
+preset=5:
+  初期 fid=12
+  DFS内部で 12→13 に遷移する必要がある
+
+preset=6:
+  初期から fid=13 として出る
+```
+
+つまり、preset=6 では正しく見えるが preset=5 で N24 NG になるなら、
+
+```txt
+初期分類は正しい
+しかし DFS 内部の incremental fid update が壊れている
+```
+
+という形になります。
+
+---
+
+### 優先2: `fid=16 SQd2BlBkB` の 16→17 / 16→14 系
+
+これも規模が大きいです。
+
+```txt
+fid=16 SQd2BlBkB
+N23 count=30635
+N23 total=1973495005332
+N23 total比 約8.14%
+```
+
+N23 の suspicious group では最大です。
+`SQd2` 側で N24 NG が出るなら、`12` と `16` はほぼ同格で見てよいと思います。
+
+特に見るべき条件はこのあたりです。
+
+```txt
+step=2/3
+blockK/blockL
+mark1/mark2 到達
+fid=16 → fid=17
+fid=16 → fid=14
+```
+
+---
+
+### 優先3: `SQd1BkBlB`、ただし FID番号に注意
+
+本来はこれです。
+
+```txt
+fid=19 SQd1BkBlB
+```
+
+ただし、N22 ログではこう出ています。
+
+```txt
+fid=21 SQd1BkBlB
+```
+
+なので、今は数値FIDだけで追うと危険です。
+一時的には、
+
+```txt
+name == SQd1BkBlB
+```
+
+と
+
+```txt
+fid == 19
+```
+
+の両方を別々にログに出したほうがよいです。
+
+N23 ではこの規模です。
+
+```txt
+fid=19 SQd1BkBlB
+count=36850
+total=1739537375228
+N23 total比 約7.18%
+```
+
+`19→20` 遷移を見る方針は妥当です。
+
+---
+
+### 優先4: `fid=23 SQd1BlBkB` の 23→25 遷移
+
+こちらも大きいです。
+
+```txt
+fid=23 SQd1BlBkB
+N23 count=36832
+N23 total=1834096848700
+N23 total比 約7.57%
+```
+
+`fid=19` と `fid=23` は SQd1 側の左右対称に近い主要入口なので、
+片方だけ NG なら `Bk/Bl` 側の遷移条件、両方 NG なら `SQd1` 共通処理を疑うのがよさそうです。
+
+---
+
+### 優先5: `fid=20 SQd1BlB` の `add1=1` 特例
+
+規模は上の 4 つより小さいですが、特例持ちなのでまだ残すべきです。
+
+```txt
+fid=20 SQd1BlB
+N23 count=6625
+N23 total=171926384064
+N23 total比 約0.71%
+```
+
+ここは件数よりも、
+
+```txt
+add1=1
+mark1/mark2
+step=2/3
+blockK/blockL
+```
+
+が絡むなら、少数でも破壊力があります。
+
+---
+
+### 優先6: `fid=14 SQd2B` の基底特例
+
+件数・total はかなり小さいです。
+
+```txt
+fid=14 SQd2B
+N23 count=257
+N23 total=4664624568
+N23 total比 約0.019%
+```
+
+ただし、`16→14` の遷移先として踏むなら、単独の初期 `fid=14` より重要になります。
+つまり見るべきなのは、
+
+```txt
+初期 fid=14
+```
+
+よりも、
+
+```txt
+fid=16 などから DFS 内部で fid=14 に落ちた後の基底処理
+```
+
+です。
+
+---
+
+## 次に入れるべきログは「初期FID別」ではなく「遷移別」
+
+今回の `[bc-sol-fid]` は、おそらく初期FIDごとの集計です。
+でも今疑っているのは、
+
+```txt
+preset=5 の初期FIDから DFS 内部で次FIDへ遷移する処理
+```
+
+なので、必要なのはこれです。
+
+```txt
+start_fid
+cur_fid
+next_fid
+j
+depth
+step
+blockK
+blockL
+add1
+add2
+hit_mark1
+hit_mark2
+use_future_result
+pruned_or_not
+```
+
+最小ログとしては、こういう形がよいです。
+
+```txt
+[fid-trans] N=24 p=5 start=12 cur=12 next=13 j=... depth=...
+            step=2 blockK=0 blockL=1 add1=0 add2=1 mark1=1 mark2=0 future=pass
+
+[fid-trans] N=24 p=5 start=16 cur=16 next=14 j=... depth=...
+            step=3 blockK=1 blockL=0 add1=... add2=... mark1=0 mark2=1 future=prune
+```
+
+ただし全件出すと重いので、まずは対象を絞るのがよいです。
+
+```txt
+start_fid in {12,16,19,23,20,14}
+または
+cur_fid  in {12,13,14,16,17,19,20,23,25}
+```
+
+---
+
+## 一番強い検証方法: fast FID と slow recompute FID を比較する
+
+これはかなり効くと思います。
+
+DFS 内部の遷移直後に、incremental に更新した FID と、盤面/mask から再計算した FID を比較します。
+
+概念的にはこうです。
+
+```c
+next_fid_fast = update_fid_incremental(cur_fid, ...);
+
+next_fid_slow = classify_fid_from_masks_slow(
+    N,
+    colMask,
+    leftDiagMask,
+    rightDiagMask,
+    mark1,
+    mark2,
+    j,
+    blockK,
+    blockL
+);
+
+if (next_fid_fast != next_fid_slow) {
+    dump_transition_context(...);
+    abort();
+}
+```
+
+見るべき場所は、通常遷移全部ではなく、まずここだけでよいと思います。
+
+```txt
+cur_fid == 12
+cur_fid == 16
+cur_fid == 19
+cur_fid == 23
+cur_fid == 20
+cur_fid == 14
+
+または
+
+step == 2 || step == 3
+hit_mark1 || hit_mark2
+blockK || blockL
+add1 == 1
+```
+
+これで mismatch が出れば、N24 total を最後まで走らせなくても原因にかなり近づけます。
+
+---
+
+## `use_future` の切り分けは早めにやるべきです
+
+`use_future` が候補に残っているので、N24 で次の比較が有効です。
+
+```txt
+preset=5, use_future=ON
+preset=5, use_future=OFF
+```
+
+判定はこうです。
+
+```txt
+use_future=OFF で N24 OK
+  → use_future の先読み枝刈りが主犯
+
+use_future=OFF でも N24 NG
+  → FID遷移、基底特例、add1/blockK/blockL 側が主犯
+
+preset=6 は OK、preset=5 は NG
+  → preset=5 初期FIDからの内部遷移が主犯濃厚
+
+preset=5 も preset=6 も同じ系統で NG
+  → 遷移後FIDの処理本体、または基底特例が主犯
+```
+
+特に今回のメモだと、
+
+```txt
+preset=6 で fid=13 SQd2BlB が表面化
+```
+
+という情報があるので、`fid=12 → fid=13` の fast/slow 比較は最初に入れる価値が高いです。
+
+---
+
+## 今日の作業順としてはこれがよいです
+
+```txt
+1. N22 の `fid=21 SQd1BkBlB` の正体確認
+   - 表示だけのミスか
+   - 集計キーのミスか
+   - FID表/名前表のミスか
+   - DFS dispatch にも影響しているか
+
+2. fast FID vs slow recompute FID の assert を追加
+   - まず cur_fid={12,16,19,23,20,14} のみ
+
+3. N24 preset=5 で 12→13 を最初に見る
+
+4. 次に 16→17/14 を見る
+
+5. その後 SQd1 側の 19→20、23→25 を見る
+
+6. mismatch が出ない場合だけ use_future の prune 判定ログへ進む
+```
+
+現時点の私の見立てでは、**単純な constellation 件数欠落ではなく、`preset=5` から DFS 内部で FID状態を進める箇所**が本命です。
+ただし、その前に **N22 の `SQd1BkBlB` が `fid=21` と表示されている問題**を潰しておいた方が安全です。これはデバッグログだけの問題でも、今後の追跡をかなり混乱させます。
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.

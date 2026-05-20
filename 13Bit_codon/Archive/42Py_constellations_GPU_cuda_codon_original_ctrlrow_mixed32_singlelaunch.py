@@ -17,6 +17,163 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（39 trunk + auto single-launch）
 
+はい、これはかなり重要なログです。結論から言うと、**41 は不採用、39 が引き続き trunk 候補**です。
+
+## 41 の判定
+
+今回の比較はこうです。
+
+| 版           |            N=18 |            N=19 | 判定    |
+| ----------- | --------------: | --------------: | ----- |
+| 39 childlow | **0:00:04.401** | **0:00:33.756** | 現時点最良 |
+| 41 nextbits |     0:00:04.566 |     0:00:34.859 | 不採用   |
+
+41 は `meta_next` 配列参照を消す目的でしたが、結果としては、
+
+```text
+N=18: 4.401 → 4.566
+N=19: 33.756 → 34.859
+```
+
+なので、明確に遅くなっています。
+つまり **`meta_next[f]` の配列読みはボトルネックではなく、5bit packed decode の分岐・シフトの方が重い**、という判断でよいです。
+
+39 に戻します。
+
+## 一番重要な新発見
+
+39 の `log_level=2` が非常に有効です。
+
+```text
+[gpu-chunk] ... m=8192 kernel=0:00:02.993
+...
+[gpu-chunk] ... m=8192 kernel=0:00:02.522
+[gpu-chunk] ... m=2402 kernel=0:00:02.672
+```
+
+ここが決定的です。
+
+最後の chunk は `m=2402` しかないのに、kernel 時間が `2.672秒` あります。
+一方で、8192 件の chunk もだいたい `2.0〜3.0秒` です。
+
+つまり今は、
+
+```text
+build : ほぼ 0
+copy  : ほぼ 0
+kernel: ほぼ全部
+```
+
+で、さらに、
+
+```text
+chunk ごとの tail / 重い constellation 待ち
+```
+
+が 13 回ぶん積み重なっています。
+
+現在の N=19 は、
+
+```text
+constellations = 100706
+steps          = 8192
+chunks         = 13
+```
+
+なので、13 個の kernel を順番に起動しています。
+各 chunk の最後に「重い thread 待ち」があり、それが合計で大きくなっている可能性が高いです。
+
+## 次は micro 最適化より chunk を大きくする実験
+
+まず 39 のまま、`max_blocks` を増やしてください。
+コード変更なしで試せます。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 512 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 1024 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 2048 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 18 18 32 4096 0
+```
+
+N=18 で一番良いものを見たあと、N=19 でも確認します。
+
+```bash
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 512 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 1024 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 2048 0
+./39Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_childlow -g 19 19 32 4096 0
+```
+
+特に `32 4096` は、N=19 では、
+
+```text
+steps = 32 * 4096 = 131072
+```
+
+なので、`100706` constellation を **1回の kernel** で投げます。
+
+これが速くなれば、次のボトルネックは「kernel 内 DFS」そのものではなく、**chunk 分割による tail の累積**だったことになります。
+
+## 42 も作りました
+
+39 をベースに、`gpu_max_blocks <= 0` のとき自動で **全 constellation を1回の kernel に投げる**版です。
+
+[42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch.py](sandbox:/mnt/data/42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch.py)
+
+[差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_singlelaunch_patch.diff)
+
+使い方です。
+
+```bash
+codon build -release 42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch.py
+```
+
+N=18:
+
+```bash
+./42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch -g 18 18 32 0 0
+```
+
+N=19:
+
+```bash
+./42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch -g 19 19 32 0 0
+```
+
+内訳を見るなら、
+
+```bash
+./42Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_singlelaunch -g 19 19 32 0 2
+```
+
+この場合、正常なら `chunks=1` になるはずです。
+
+## 現時点の trunk 判断
+
+いまの採用候補はこれです。
+
+```text
+39 childlow
+block=32
+max_blocks=256
+```
+
+ただし、今回の chunk ログを見る限り、次の本命は、
+
+```text
+39 のまま max_blocks を増やす
+または
+42 の single-launch
+```
+
+です。
+
+41 は捨ててよいです。
+`meta_next` ではなく、**chunk tail と kernel 内ローカル状態**が支配的です。
+
+CPU 基準では 19系の N=19 が `0:00:16.233`、N=20 が `0:02:08.222` なので、GPU 39 の N=19 `0:00:33.756` はまだ CPU の約2倍です。ただし、19 original GPU から 39 までで N=18 は `約12秒 → 4.401秒` まで落ちており、方向性はかなり正しいです。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

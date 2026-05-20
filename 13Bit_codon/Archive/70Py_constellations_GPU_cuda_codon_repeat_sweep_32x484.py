@@ -17,6 +17,105 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 70 REPEAT SWEEP 32x484（67 CROSS STRIPE AUTO + warmup/repeat diagnostic）
 
+69 の結果で、かなりはっきりしました。
+
+```txt
+bench_mode=2 : N=19 preheat → N=20
+  N=19 : 0:00:20.776
+  N=20 : 0:02:28.029
+
+bench_mode=3 : N=18 + N=19 preheat → N=20
+  N=18 : 0:00:02.743
+  N=19 : 0:00:20.955
+  N=20 : 0:02:27.779
+```
+
+つまり、**N=18 / N=19 の preheat はほとんど効いていません**。N=20 の測定は `2:27.7〜2:28.0` に戻っています。ログ付きでも N=20 は `0:02:27.775` です。
+
+一方、68 では **N=20 自身を1回 warmup した2回目**が `0:02:25.105` / `0:02:25.073` まで縮んでいました。
+
+## 現時点の仮説
+
+これは単なる GPU クロックの warmup だけではなさそうです。
+
+もし GPU クロックだけなら、N=19 を20秒走らせた後でも N=20 が速くなるはずです。ところが速くなっていません。
+
+したがって、効いているのはおそらく、
+
+```txt
+N=20 固有のメモリ配置
+N=20 の kernel 実行パターン
+N=20 の constellations 配列アクセス
+N=20 の GPU/CPU 側アロケーション履歴
+同じ N=20 を再実行したときだけ効くキャッシュ/TLB/ドライバ状態
+```
+
+のような、**N=20 同型 warmup 効果**です。
+
+## 70 REPEAT SWEEP を作成しました
+
+次は、N=20 を同一プロセス・同一 constellations で **3回連続実行**し、各回の時間を出します。
+
+狙いは、
+
+```txt
+1回目 : 通常単体相当
+2回目 : 68 warmup repeat 相当
+3回目 : さらに速くなるか確認
+```
+
+です。
+
+ファイルはこちらです。
+
+[70Py_constellations_GPU_cuda_codon_repeat_sweep_32x484.py](sandbox:/mnt/data/70Py_constellations_GPU_cuda_codon_repeat_sweep_32x484.py)
+
+差分はこちらです。
+
+[70_repeat_sweep.patch](sandbox:/mnt/data/70_repeat_sweep.patch)
+
+## 実行コマンド
+
+```bash
+codon build -release 70Py_constellations_GPU_cuda_codon_repeat_sweep_32x484.py
+./70Py_constellations_GPU_cuda_codon_repeat_sweep_32x484 -g 20 20 32 484 0 -1 5 4
+```
+
+ログ付きはこちらです。3回目だけ chunk ログを出します。
+
+```bash
+./70Py_constellations_GPU_cuda_codon_repeat_sweep_32x484 -g 20 20 32 484 2 -1 5 4
+```
+
+## 判定
+
+```txt
+run1 ≒ 2:27〜2:28
+run2 ≒ 2:25
+run3 ≒ 2:25
+  → N=20 同型 warmup は1回で飽和
+
+run1 ≒ 2:27〜2:28
+run2 ≒ 2:25
+run3 ≒ 2:23〜2:24
+  → repeat による追加効果あり。ベンチ用 repeat mode 採用価値あり
+
+run1/run2/run3 が大きく揺れる
+  → GPUクロック・温度・他プロセス・電力制御の揺らぎが主因
+```
+
+ここまでの本線は変わらず、
+
+```txt
+通常公開用:
+  67 CROSS STRIPE AUTO
+
+診断用:
+  70 REPEAT SWEEP
+```
+
+です。
+
 
 CPU
 $ codon build -release 68Py_constellations_GPU_cuda_codon_warmup_repeat_32x484.py

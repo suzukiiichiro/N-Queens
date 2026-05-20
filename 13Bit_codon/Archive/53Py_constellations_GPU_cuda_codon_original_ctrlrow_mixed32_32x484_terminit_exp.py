@@ -17,6 +17,94 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 53 trunk候補 32x484 auto-sort + terminal init-count EXP（ctrlrow mixed32 tuned）
 
+ログありがとうございます。結果はかなり明確です。
+
+52 TERMFAST は `39029188884 ok` なので正解は保てていますが、実行時間が `0:03:05.352` / `0:03:05.978` / `0:03:05.969` で、49 の `0:02:43.886` より明確に遅くなっています。つまり、**terminal fast-count 自体の狙いは正しいものの、52 の実装位置が悪く、hot path に毎回 branch を追加したコストが勝ってしまった**と見てよいです。
+
+49 は引き続き安定版です。`sort_mode=2` が `0:02:43.886 ok`、`sort_mode=3` が `0:02:43.894 ok` なので、通常運用はやはり **49 + auto / sort_mode=2** が最善です。
+
+次の実験版として、**53 TERMINIT EXP** を作りました。
+
+[53Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_terminit_exp.py](sandbox:/mnt/data/53Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_terminit_exp.py)
+
+差分はこちらです。
+
+[53_terminit_exp.diff](sandbox:/mnt/data/53_terminit_exp.diff)
+
+52 との違いはここです。
+
+```text
+52:
+  hot path の nf 計算後に、毎回 terminal 判定を入れる
+  → 全ノードで branch コストが乗る
+
+53:
+  frame 初期化時だけ terminal parent か判定する
+  terminal parent の場合だけ、その frame の候補を直接 count
+  非 terminal frame は 49 と同じ hot path に戻す
+```
+
+つまり 53 は、52 の狙いだった
+
+```text
+terminal child を push しない
+base frame を stack に書かない
+次ループで base 判定しない
+```
+
+を残しつつ、52 で悪化した
+
+```text
+通常 hot path に毎回 terminal branch が入る
+```
+
+を避けた版です。
+
+試すコマンドはこちらです。
+
+```bash
+codon build -release 53Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_terminit_exp.py
+
+./53Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_terminit_exp -g 20 20 32 484 2 -1
+```
+
+比較用に明示 `sort_mode=2` も確認できます。
+
+```bash
+./53Py_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_32x484_terminit_exp -g 20 20 32 484 2 2
+```
+
+見るべき点はこの 2 つです。
+
+```text
+1. 39029188884 ok になるか
+2. 49 の 0:02:43.886 より短くなるか
+```
+
+もし 53 も 49 より遅い場合は、terminal 系の最適化は不採用でよいです。51 の split も `0:03:29.606` / `0:06:55.817` まで悪化しているので、探索粒度を変える方向も現時点では戻すべきです。
+
+現時点の運用判断は以下です。
+
+```text
+公開用 / 普段使い:
+  49 SAFE FIX
+  -g 20 20 32 484 0 -1
+  またはログ確認時だけ -g 20 20 32 484 2 -1
+
+実験:
+  53 TERMINIT EXP
+
+不採用:
+  51 split_mode=1
+  51 split_mode=2
+  52 TERMFAST
+  preset_queens=6
+  sort_mode=3
+```
+
+53 は 49 ベースの最小差分です。こちらでは Codon/CUDA 実機ビルドまでは確認できていません。
+
+
 =====
 childlow
 -g -c g(GPU)  c(CPU)

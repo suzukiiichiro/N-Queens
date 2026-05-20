@@ -17,6 +17,73 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 58 SORT4 WORKSCORE 32x484 auto-sort（ctrlrow mixed32 tuned）
 
+ありがとうございます。これは **57 BASETAIL FASTPATH は不採用確定**でよいです。
+
+```txt
+56 STABLE FINAL N=20 : 0:02:42.602
+57 BASETAIL   N=20 : 0:11:16.801
+```
+
+正解値は合っていますが、約4倍遅くなっています。
+
+原因はおそらく、base 専用ループで `ctrl` デコードを省いた代わりに、GPU 側ではかえって以下が悪化したためです。
+
+```txt
+・warp 内で fastpath / normal path が分かれて分岐が重くなった
+・base 系だけ別 while になり、Codon/CUDA の最適化が効きにくくなった
+・既存 ctrlrow mixed32 の hotpath がすでにかなり最適だった
+・専用ループ化でレジスタ/ローカル配列使用量が増えた可能性
+```
+
+したがって、**57 は破棄**し、56 に戻すのが正解です。
+
+次は kernel ロジックをいじらず、危険の少ない **58 SORT4 WORKSCORE** を作りました。これは探索結果を変えず、chunk 内の並び順だけを変える版です。56 の `sort_mode=3` より少し細かく、
+
+```txt
+funcptn × work bucket 8段
+```
+
+で並べます。複数 kernel 化はせず、1 kernel のままです。
+
+ファイルはこちらです。
+
+[58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484.py](sandbox:/mnt/data/58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484.py)
+
+差分はこちらです。
+
+[58_sort4_workscore.patch](sandbox:/mnt/data/58_sort4_workscore.patch)
+
+実行はまずこちらでお願いします。
+
+```bash
+codon build -release 58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484.py
+./58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484 -g 5 20 32 484 0 4
+```
+
+N=20 単体は、
+
+```bash
+./58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484 -g 20 20 32 484 0 4
+```
+
+比較用に、同じ 58 ソースで sort なし・従来 auto も確認できます。
+
+```bash
+./58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484 -g 20 20 32 484 0 0
+./58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484 -g 20 20 32 484 0 -1
+```
+
+今回の判断メモです。
+
+```txt
+57 BASETAIL FASTPATH : 不採用
+58 SORT4 WORKSCORE   : 次の候補
+56 STABLE FINAL      : 現時点の本線
+```
+
+57 の結果から見ると、次の本命は **kernel 分岐削減ではなく、重い constellation の偏りをどうならすか**です。SORT4 が効かなければ、次は「重い枝だけ selective micro split」に進むのがよいと思います。
+
+
 
 CPU
 $ codon build -release 58Py_constellations_GPU_cuda_codon_sort4_workscore_32x484.py

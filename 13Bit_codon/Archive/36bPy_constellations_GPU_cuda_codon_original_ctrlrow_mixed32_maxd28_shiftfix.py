@@ -17,6 +17,99 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ（ctrlrow mixed32 MAXD28 tuned）
 
+原因はこれです。
+
+```text
+unsupported operand type(s) for >>: 'UInt[32]' and '5'
+```
+
+35では `ctrl` を `u32` にしたため、GPU kernel 内で
+
+```python
+cv0 >> 5
+cv >> 5
+cv >> 7
+cv >> 8
+...
+```
+
+のような **`u32` 右シフト**が Codon/CUDA 側で通っていません。
+
+探索ロジックの問題ではなく、**Codon の GPU 側型制約**です。
+そこで、`ctrl` 自体は `u32` のまま保持し、デコード直前だけ `int` に戻す修正版を作りました。
+
+[35b 修正版をダウンロード](sandbox:/mnt/data/35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix.py)
+
+[35b 差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_shiftfix_patch.diff)
+
+36にも同じ問題が入っているので、36bも作りました。
+
+[36b 修正版をダウンロード](sandbox:/mnt/data/36bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_shiftfix.py)
+
+[36b 差分パッチ](sandbox:/mnt/data/nq_gpu_original_ctrlrow_mixed32_maxd28_shiftfix_patch.diff)
+
+修正内容は主にこれです。
+
+```python
+cv0i:int = int(cv0)
+f:int = cv0i & 31
+rowv:int = (cv0i >> 5) & 31
+```
+
+および、
+
+```python
+cvi:int = int(cv)
+stepv:int = (cvi >> 5) & 3
+addv:int = (cvi >> 7) & 1
+```
+
+のように、`u32` のままシフトせず、**一度 `int` 化してからシフト**しています。
+
+また、SQd2B 特例の
+
+```python
+a >> 1
+```
+
+も `a` が `u32` なので、同じエラーを避けるために、
+
+```python
+(a & ~u32(1)) != u32(0)
+```
+
+へ置き換えています。意味は同じで、「LSB以外にも候補bitが残っているか」です。
+
+まずはこちらを試してください。
+
+```bash
+codon build -release 35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix.py
+
+./35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix -g 18 18 32 256 0
+./35bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_shiftfix -g 18 18 128 64 0
+```
+
+35bが `ok` なら、次に36bです。
+
+```bash
+codon build -release 36bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_shiftfix.py
+
+./36bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_shiftfix -g 18 18 32 256 0
+./36bPy_constellations_GPU_cuda_codon_original_ctrlrow_mixed32_maxd28_shiftfix -g 18 18 128 64 0
+```
+
+判定基準は今まで通りです。
+
+```text
+33 N=18: 4.862秒
+35b が 4.862秒を切るか
+36b がさらに速いか
+```
+
+なお、34は `mixed32` ではなく `MAXD=28` だけなので、この `u32 >>` エラーは出ないはずです。
+今回のエラーは35/36の `ctrl:u32` 化に由来するものです。
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux

@@ -17,6 +17,971 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ 76 STABLE AUTO N20 N21
 
+78版を生成するファイル一式を作成しました。
+元の `77Py_constellations_GPU_cuda_codon_boundary_debug.py` に適用して、`78Py_constellations_GPU_cuda_codon_p5_fix.py` を生成できます。
+
+こちらです。
+
+[78_p5_fix_bundle.zip](sandbox:/mnt/data/78_p5_fix_bundle.zip)
+
+個別ファイルはこちらです。
+
+[make_78_p5_fix.py](sandbox:/mnt/data/make_78_p5_fix.py)
+[78_replacement_functions_p5_fix.py](sandbox:/mnt/data/78_replacement_functions_p5_fix.py)
+[README_78_P5_FIX.txt](sandbox:/mnt/data/README_78_P5_FIX.txt)
+
+使い方は以下です。
+
+```bash
+python3 make_78_p5_fix.py \
+  77Py_constellations_GPU_cuda_codon_boundary_debug.py \
+  78Py_constellations_GPU_cuda_codon_p5_fix.py
+```
+
+その後、通常どおりビルドします。
+
+```bash
+codon build -release 78Py_constellations_GPU_cuda_codon_p5_fix.py
+```
+
+確認コマンドは以下です。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 22 23 32 484 1 -1 5 9 > bc_sol_p5_N22_N23_after.log
+```
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 9 > bc_sol_p5_N24_after.log
+```
+
+この版の修正点は、`funcptn==4 / P5 / fid=8..11` の same-row 遷移追加です。
+特に N24 では `fid=11 SQBjlBlkBjrB` の `total` が 0 から非ゼロになるかを確認してください。
+
+はい。**現在の実行が N24 の full CPU 実行なら、完了まで 9〜11日級になる見込みです。**
+
+前回ログでは N24 CPU がこうでした。
+
+```txt
+24:   227509258861456  ...  9 days, 9:55:34.906    ng(...)
+```
+
+今回の 78 は P5 修正だけなので、探索量そのものは大きく変わりません。したがって、同じ環境・同じ `-c 24 24 ... 5 9` なら、**おおむね前回と同程度、9日台〜11日程度**と見てよいです。
+
+特にこのコマンドなら full 実行です。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 9
+```
+
+`bench_mode=9` は boundary solution summary ですが、内部では N24 の全 constellation に対して `exec_solutions()` を実行するため、**普通の N24 CPU 全探索と同じ重さ**です。
+
+---
+
+## ただし、P5修正確認だけなら 11日待つ必要はありません
+
+今回確認したい本命は、
+
+```txt
+fid=8..11
+特に fid=11 SQBjlBlkBjrB
+```
+
+です。
+
+なので、まずは full N24 を止めて、軽い分類確認だけを実行してよいです。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 8 > bc_class_N24_p5_78.log
+```
+
+これは `bench_mode=8` なので、DFS を走らせず、分類だけ出します。
+見るべき行はこれです。
+
+```txt
+[bc-fid] B(j<21) fid=8 ...
+[bc-fid] B(j<21) fid=9 ...
+[bc-fid] B(j<21) fid=10 ...
+[bc-fid] B(j<21) fid=11 SQBjlBlkBjrB count=...
+```
+
+ここで `fid=11` が出ていれば、N24 で P5 が表面化していることを確認できます。
+
+---
+
+## 今の full 実行を続ける意味
+
+目的が **最終確認** なら、今の N24 full 実行を続ける意味はあります。
+期待値はこれです。
+
+```txt
+24:   227514171973736                0    ...    ok
+```
+
+ただし、目的が **78 の P5 修正が効いたかの早期確認** なら、11日待つのはもったいないです。
+この場合は、いったん `Ctrl+C` で止めて、P5 subset だけを解く診断モードを追加する方が安全です。
+
+---
+
+## 私のおすすめ
+
+今の実行が開始直後なら、止めてよいと思います。
+
+順番はこれがよいです。
+
+```txt
+1. N24 bench_mode=8 で fid=8..11 の出現を確認
+2. fid=8..11 だけ解く P5-only 診断を実行
+3. そこで fid=11 total が非ゼロになったことを確認
+4. 最後の最終認定として full N24 を流す
+```
+
+現状のまま `bench_mode=9` を走らせると、**結果が分かるのはおそらく9〜11日後**です。
+78修正の当たり外れを確認する段階では、まだ full N24 は後回しでよいです。
+
+はい、**この順番でよいです。**
+N24 の軽い分類確認を先に走らせてから、N22/N23、最後に N24 full という流れです。
+
+整理すると、実行ブロックはこれで大丈夫です。
+
+```bash
+codon build -release 78Py_constellations_GPU_cuda_codon_p5_fix.py
+
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 8 > bc_class_N24_p5_78.log
+
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 22 23 32 484 1 -1 5 9 > bc_sol_p5_N22_N23_after.log
+
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 9 > bc_sol_p5_N24_after.log
+```
+
+最初の N24 分類ログが終わったら、これを確認してください。
+
+```bash
+grep -E "\[bc-fid\].*fid=(8|9|10|11)|\[bc-summary\]|^24:" bc_class_N24_p5_78.log
+```
+
+特に見る行はこれです。
+
+```txt
+[bc-fid] B(j<21) fid=11 SQBjlBlkBjrB count=...
+```
+
+次に N22/N23 の確認です。
+
+```bash
+grep -E "^(22:|23:)|ng|ok" bc_sol_p5_N22_N23_after.log
+```
+
+期待値はこれです。
+
+```txt
+22:     2691008701644                0    ...    ok
+23:    24233937684440                0    ...    ok
+```
+
+最後の N24 full は長時間になります。完了後はこれで確認してください。
+
+```bash
+grep -E "\[bc-sol-fid\].*fid=(8|9|10|11)|^24:" bc_sol_p5_N24_after.log
+```
+
+期待する最終行はこれです。
+
+```txt
+24:   227514171973736                0    ...    ok
+```
+
+最後の N24 full だけは **9〜11日級**です。`fid=11` が N24 分類ログに出ていることと、N22/N23 が `ok` のまま変わらないことを確認してから流すのが安全です。
+
+はい、これは **期待どおりの重要ログ** です。
+
+今回の本命だった P5 が N24 で出ています。
+
+```txt
+[bc-fid] B(j<21) fid=11 SQBjlBlkBjrB count=18
+```
+
+つまり、N24 には確かに
+
+```txt
+funcptn==4 / P5 / fid=11
+```
+
+の constellation が **18件** あります。
+N22/N23 には出ていなかったため、N24 で初めて NG が表面化した、という見立てと合っています。
+
+分類自体もきれいです。
+
+```txt
+bad_fid=0
+bad_end=0
+free0=0
+```
+
+なので、少なくとも `build_soa_for_range()` の N24 境界分類は大きく崩れていません。
+
+ただし 1 点だけ気になる表示があります。
+
+```txt
+[bc-fid] SQd2(j=21) fid=17 SQd2BkB count=2627
+...
+[bc-fid-total] fid=17 SQd2BkB count=2626
+```
+
+ここは本来一致するはずです。
+さらに SQd2 の fid count 合計も、`2627` だと case count より 1 多くなります。
+
+```txt
+36814 + 290 + 4607 + 39101 + 2627 + 4880 = 88319
+SQd2 case count = 88318
+```
+
+一方、`2626` なら一致します。
+
+```txt
+36814 + 290 + 4607 + 39101 + 2626 + 4880 = 88318
+```
+
+なので、たぶんこの行は貼り付け時か表示上の一時的なズレで、正しくは
+
+```txt
+[bc-fid] SQd2(j=21) fid=17 SQd2BkB count=2626
+```
+
+のはずです。念のため、ファイルから直接これを確認してください。
+
+```bash
+grep -E "\[bc-case\] SQd2|\[bc-fid\] SQd2|\[bc-fid-total\] fid=17" bc_class_N24_p5_78.log
+```
+
+次は予定どおり、N22/N23 を確認してよいです。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 22 23 32 484 1 -1 5 9 > bc_sol_p5_N22_N23_after.log
+```
+
+確認コマンドはこれです。
+
+```bash
+grep -E "^(22:|23:)|ng|ok|\[bc-sol-fid\]" bc_sol_p5_N22_N23_after.log
+```
+
+期待は、
+
+```txt
+22:     2691008701644                0    ...    ok
+23:    24233937684440                0    ...    ok
+```
+
+です。
+
+その後の N24 full では、特にこれを確認します。
+
+```bash
+grep -E "\[bc-sol-fid\].*fid=11|^24:" bc_sol_p5_N24_after.log
+```
+
+見るべき本命は、
+
+```txt
+[bc-sol-fid] B(j<21) fid=11 SQBjlBlkBjrB count=18 total=...
+```
+
+です。
+修正が効いていれば、この `total` が **0 ではなくなる** はずです。最終的にはこれを期待します。
+
+```txt
+24:   227514171973736                0    ...    ok
+```
+
+はい、これで **SQd2 の count 不一致疑いは解消** です。
+
+確認結果はきれいに一致しています。
+
+```txt
+[bc-case] SQd2(j=21) count=88318
+```
+
+FID内訳:
+
+```txt
+36814 + 290 + 4607 + 39101 + 2626 + 4880 = 88318
+```
+
+つまり、N24 の分類診断は正常です。
+
+今回確認できた重要点は以下です。
+
+```txt
+N24 constellations = 423338
+bad_fid = 0
+bad_end = 0
+free0 = 0
+fid=11 SQBjlBlkBjrB count=18
+```
+
+特にこれが本命です。
+
+```txt
+[bc-fid] B(j<21) fid=11 SQBjlBlkBjrB count=18
+```
+
+したがって、次は予定どおり N22/N23 の回帰確認でよいです。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 22 23 32 484 1 -1 5 9 > bc_sol_p5_N22_N23_after.log
+```
+
+完了後は、
+
+```bash
+grep -E "^(22:|23:)|ng|ok" bc_sol_p5_N22_N23_after.log
+```
+
+期待値は、
+
+```txt
+22:     2691008701644                0    ...    ok
+23:    24233937684440                0    ...    ok
+```
+
+です。
+
+その後、最後に N24 full です。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 9 > bc_sol_p5_N24_after.log
+```
+
+N24 full 完了後の確認は、
+
+```bash
+grep -E "\[bc-sol-fid\].*fid=11|^24:" bc_sol_p5_N24_after.log
+```
+
+ここで、
+
+```txt
+[bc-sol-fid] B(j<21) fid=11 SQBjlBlkBjrB count=18 total=...
+```
+
+の `total` が非ゼロになっていれば、78 の P5 修正が実際に効いています。最終期待は、
+
+```txt
+24:   227514171973736                0    ...    ok
+```
+
+
+結論から言うと、**まだ「preset_queens を動的にしても解が合うようになった」とは断定しない方が安全**です。
+
+今回の 78 修正で直したのは、主にこれです。
+
+```txt
+funcptn==4 / P5 / fid=8..11 の same-row 遷移
+```
+
+特に N24 preset=5 で出ていた、
+
+```txt
+fid=11 SQBjlBlkBjrB count=18
+```
+
+が本命です。
+なので、78 は **N24 preset=5 の NG 原因候補をかなり強く潰した版** と考えるのが正確です。
+
+一方で、`preset_queens` を 5 以外に動的化すると、次のものが変わります。
+
+```txt
+constellation の start row
+初期 fid の分布
+mark1 / mark2 到達位置
+endmark 到達位置
+内部 fid 遷移の出方
+signature prune の効き方
+```
+
+そのため、78 修正だけで、
+
+```txt
+preset=6 でも OK
+preset=7 でも OK
+N22/N23/N24 でも全部 OK
+```
+
+になったとは、まだ言えません。
+
+---
+
+現在のソースでは、通常モードでは preset はまだ 5 固定です。ここです。
+
+```python
+if bench_mode>=8:
+  preset_queens_arg=requested_preset_arg
+else:
+  if requested_preset_arg!=5:
+    print(f"[warning] preset_queens={requested_preset_arg} is disabled in 77 normal modes; using 5")
+  preset_queens_arg=5
+```
+
+つまり、通常実行で例えば、
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 20 20 32 484 1 -1 6 0
+```
+
+としても、実際には preset=5 に戻されます。
+
+`preset=6` などを試すには、現状では `bench_mode=8` または `bench_mode=9` を使う必要があります。
+
+分類だけなら、
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 6 8 > bc_class_N24_p6_78.log
+```
+
+解数まで見るなら、
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 20 20 32 484 1 -1 6 9 > bc_sol_N20_p6_78.log
+```
+
+のようになります。
+
+---
+
+おすすめの検証順はこれです。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 18 20 32 484 1 -1 5 9 > bc_sol_N18_N20_p5_78.log
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 18 20 32 484 1 -1 6 9 > bc_sol_N18_N20_p6_78.log
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 18 20 32 484 1 -1 7 9 > bc_sol_N18_N20_p7_78.log
+```
+
+期待は、すべて `ok` です。
+
+確認は、
+
+```bash
+grep -E "^(18:|19:|20:)|ng|ok" bc_sol_N18_N20_p*_78.log
+```
+
+です。
+
+ここが全部 OK なら、次に N21、N22 と広げます。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 21 21 32 484 1 -1 6 9 > bc_sol_N21_p6_78.log
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 22 22 32 484 1 -1 6 9 > bc_sol_N22_p6_78.log
+```
+
+---
+
+私の現時点の見立てはこうです。
+
+```txt
+preset=5 の N24 NG:
+  78 の P5 修正で直る可能性が高い
+
+preset=6 以上の動的 preset:
+  直っている可能性はあるが、未検証
+  特に 12→13, 16→17/14, 19→20, 23→25 の内部遷移は別途確認が必要
+
+通常モードで preset を動的化:
+  まだ main() 側で 5 固定に戻している
+  検証が終わってから固定解除するのが安全
+```
+
+したがって、今はまだ、
+
+> 78 で preset 動的化も完全に解決した
+
+ではなく、
+
+> 78 で preset=5 N24 の P5 欠落は直った可能性が高い。preset 動的化は次の検証対象。
+
+と見るのが安全です。
+
+
+ログ確認しました。結論は明確です。
+
+**まだ preset_queens を動的化してよい状態ではありません。**
+78 では `preset=5` は OK、しかし `preset=6` と `preset=7` はまだ NG です。
+
+## 結果まとめ
+
+| preset |      N18 |        N19 |         N20 | 判定 |
+| -----: | -------: | ---------: | ----------: | -- |
+|      5 |       OK |         OK |          OK | 安全 |
+|      6 |  -37,240 |   -219,512 |  -1,434,424 | NG |
+|      7 | -387,236 | -2,453,668 | -16,316,800 | NG |
+
+ログ上ではこうです。
+
+```txt
+preset=5
+18:         666090624    ok
+19:        4968057848    ok
+20:       39029188884    ok
+```
+
+```txt
+preset=6
+18:         666053384    ng
+19:        4967838336    ng
+20:       39027754460    ng
+```
+
+```txt
+preset=7
+18:         665703388    ng
+19:        4965604180    ng
+20:       39012872084    ng
+```
+
+---
+
+## 重要な切り分け: preset=6 は SQd0 だけが壊れています
+
+preset=6 のログを見ると、N18〜N20 すべてで、
+
+```txt
+B
+SQd2
+SQd1
+```
+
+の case total は preset=5 と一致しています。
+
+例えば N20 preset=6:
+
+```txt
+B     total=18708655340  ← preset=5 と一致
+SQd2  total=8325567828   ← preset=5 と一致
+SQd1  total=8344182020   ← preset=5 と一致
+SQd0  total=3649349272   ← ここだけ不足
+```
+
+preset=5 の N20 SQd0 は、
+
+```txt
+SQd0 total=3650783696
+```
+
+なので差分は、
+
+```txt
+3649349272 - 3650783696 = -1434424
+```
+
+つまり preset=6 の NG は、ほぼ完全にここです。
+
+```txt
+SQd0(j>N-2)
+fid=26 SQd0B
+fid=27 SQd0BkB
+```
+
+この部分は `build_soa_for_range()` の最後の分岐です。
+
+```python
+else:
+    endmark=N2
+    if start>k:
+        target=26
+        # 26: SQd0B
+    else:
+        mark1=k-1
+        target=27
+        # 27: SQd0BkB
+```
+
+さらに、これも関係している可能性が高いです。
+
+```python
+if start>k:
+    rd|=(1<<(N1-(start-k+1)))
+```
+
+preset=6 では、`B/SQd2/SQd1` の内部遷移はかなり健全に見えます。
+特に、
+
+```txt
+12 -> 13
+16 -> 17/14
+19 -> 20
+23 -> 25
+```
+
+系の表面化は、少なくとも N18〜N20 preset=6 では case total を壊していません。
+
+したがって、**preset=6 の次の本命は SQd0 の `start>k` / `fid=27 -> fid=26` 相当処理**です。
+
+---
+
+## preset=7 はさらに広く壊れています
+
+preset=7 では SQd0 だけではなく、全 case が不足しています。
+
+N20 preset=7:
+
+```txt
+B     total=18702290044  差分 -6365296
+SQd2  total=8322789980   差分 -2777828
+SQd1  total=8341201268   差分 -2981752
+SQd0  total=3646590792   差分 -4196904
+```
+
+なので preset=7 では、
+
+```txt
+SQd0 だけの問題ではない
+```
+
+です。
+
+preset=7 になると、初期FIDとしてこれらも表面化しています。
+
+```txt
+fid=1 SQBlBjrB
+fid=2 SQBjrB
+fid=6 SQBkBjrB
+fid=13 SQd2BlB
+fid=17 SQd2BkB
+fid=20 SQd1BlB
+fid=21 SQd1B
+fid=25 SQd1BkB
+```
+
+つまり、より深い preset では、`build_soa_for_range()` が `start` 位置から FID と mask 状態を復元する方式がまだ完全ではありません。
+
+---
+
+## 現時点の判断
+
+現時点ではこう見るのが正確です。
+
+```txt
+preset=5:
+  78で N18〜N20 OK
+  N22/N23も確認対象
+  N24 full も走らせる価値あり
+
+preset=6:
+  まだ NG
+  ただし B/SQd2/SQd1 は OK
+  SQd0 の start>k / fid26/fid27 が主犯候補
+
+preset=7:
+  まだ NG
+  SQd0 だけでなく全体に不足
+  動的 preset 用の状態復元がまだ不完全
+```
+
+したがって、**通常モードの preset=5 固定解除はまだしない方がよいです。**
+
+---
+
+## 次に見るべき場所
+
+最優先は `SQd0` です。
+
+```python
+else:
+    endmark=N2
+    if start>k:
+        target=26
+    else:
+        mark1=k-1
+        target=27
+```
+
+特に、`start>k` のときに、preset=5 の DFS 内部で `fid=27 SQd0BkB -> fid=26 SQd0B` へ遷移した状態と、preset=6 で最初から `fid=26 SQd0B` として開始する状態が完全に一致しているかを確認する必要があります。
+
+見るべき式はこれです。
+
+```python
+if start>k:
+    rd|=(1<<(N1-(start-k+1)))
+```
+
+ここが 1bit ずれている、または `rd` だけでなく `ld/col/free` 側にも fid27 の block 遷移相当が必要、という可能性があります。
+
+---
+
+## 今後の実行方針
+
+N24 full は **preset=5 のまま** でよいです。
+
+```bash
+./78Py_constellations_GPU_cuda_codon_p5_fix -c 24 24 32 484 1 -1 5 9 > bc_sol_p5_N24_after.log
+```
+
+preset=6 / preset=7 で N24 を走らせるのは、今はおすすめしません。
+N18〜N20 の時点で NG なので、N24 でも合わない可能性が高いです。
+
+次の開発ターゲットは、
+
+```txt
+79: preset=6 dynamic fix
+    SQd0 start>k / fid27->fid26 equivalence check
+```
+
+がよいと思います。
+
+おはようございます。本日もよろしくお願いいたします。
+
+確認した限り、**CPU 側は `funcptn==4 / P5 / fid=8..11` が入っていますが、GPU `-g` 側に入っていることは、今回添付いただいたファイルだけでは確認できません。**
+
+根拠は以下です。
+
+`78_replacement_functions_p5_fix.py` は「既存の `dfs_iter()` と `dfs()` を置き換える」差し替え関数ファイルで、`dfs_iter()` は明示的に「CPU 上で DFS を非再帰で実行する」と説明されています。さらにコメントで `funcptn==4 / P5 / fid=8..11` の追加が書かれています。
+
+実装上も CPU 非再帰版 `dfs_iter()` には、
+
+```python
+elif funcptn==4 and row==mark1:
+  stack.append((next_funcid,ld,rd,col,row,avail))
+  continue
+```
+
+が入っており、`row` / `ld` / `rd` / `col` / `free` を変えずに `next_funcid` へ遷移する形になっています。
+
+再帰版 `dfs()` 側にも同じ意味の処理があり、`funcptn==4 and row==mark1` の場合に、同じ盤面状態のまま `next_funcid` で `dfs()` を呼び直しています。
+
+一方で、昨日メモにある実行中コマンドは `-c` 指定です。 添付された差し替えファイル内にも GPU/CUDA kernel 側の実装断片は見当たらないため、**`-g` で別カーネル・別 DFS を通っているなら、そこには未反映の可能性が高い**です。
+
+GPU 側に必要な処理は、CPU と同じくこの意味になります。
+
+```python
+# funcptn==4 / P5 / SQBjl*jrB
+# row, ld, rd, col, free は変更しない
+# functionid だけ next_funcid へ進める
+if funcptn == 4 and row == mark1:
+    functionid = next_funcid
+    continue
+```
+
+または GPU 側がスタック式なら、
+
+```python
+push(next_funcid, ld, rd, col, row, avail)
+continue
+```
+
+です。
+
+重要なのは、**ここで `row+1` しないこと、bit を置かないこと、`ld/rd/col/free` を変更しないこと**です。
+つまり `SQBjl*jrB` 系の `funcptn==4` は「同じ row・同じ状態で関数パターンだけ切り替えるジャンプ」として GPU 側にも入れる必要があります。
+
+はい、**その箇所が GPU `-g` 側の P5 / `funcptn==4` 相当で合っています。**
+
+CPU 側の P5 追加は、
+
+```python
+elif funcptn==4 and row==mark1:
+  stack.append((next_funcid,ld,rd,col,row,avail))
+  continue
+```
+
+で、`row / ld / rd / col / avail` を一切変更せず、`functionid` だけを `next_funcid` に進めています。
+再帰版でも同じく、`funcptn==4 and row==mark1` のときに `next_funcid` へ移るだけで、`ld, rd, col, row, avail` はそのまま渡されています。
+
+ご提示の GPU 側コードは、
+
+```python
+if ((IS_P5_MASK>>f)&1)==1:
+  if rowv==mark1:
+    f=int(nfid)
+    nfid=meta_next[f]
+```
+
+なので、意味としては、
+
+```python
+current fid = f
+next fid    = nfid
+
+if f is P5 and rowv == mark1:
+    f = nfid
+```
+
+です。つまり **盤面状態・row・free を変えずに fid だけを next fid に切り替える** 処理になっています。これは CPU 側の
+
+```python
+stack.append((next_funcid, ld, rd, col, row, avail))
+continue
+```
+
+と同じ P5 same-row transition です。
+
+ただし、確認ポイントが 1 つあります。
+
+この GPU 実装では CPU 版のように `continue` で次ループに回すのではなく、**同じループ内で `f` を差し替えた後、そのまま next fid 側の処理を発火させる設計**になっています。したがって正しく動く条件は、P5 ブロックの後段で参照される判定が、すべて更新後の `f` を使っていることです。
+
+具体的には後段が、
+
+```python
+if ((IS_STEP2_MASK >> f) & 1) ...
+if ((IS_STEP3_MASK >> f) & 1) ...
+blockK[f]
+blockL[f]
+...
+```
+
+のように **更新後の `f` 基準**なら問題ありません。
+
+逆に、P5 ブロックより前に、
+
+```python
+funcptn = meta_funcptn[f]
+avail_flag = meta_avail[f]
+blockKv = blockK[f]
+blockLv = blockL[f]
+```
+
+のような値をキャッシュしていて、P5 後もそれを使っている場合は危険です。その場合、`f` だけ更新されても、後続処理がまだ旧 fid=8..11 側のメタ情報を見てしまいます。
+
+したがって結論は以下です。
+
+```text
+この断片は P5 対応そのものです。
+ただし P5 後の step=2/3 + block 判定が、更新後の f で評価されている必要があります。
+```
+
+特に今回のコメントにある、
+
+```text
+その後、同じ row で next fid 側の step=2/3 + block が発火する。
+```
+
+という設計なら、`continue` しない実装でも正しいです。
+
+P5 の対応関係としては、これで期待どおりです。
+
+```text
+fid=8   -> 0
+fid=9   -> 4
+fid=10  -> 5
+fid=11  -> 7
+```
+
+この `IS_P5_MASK` が fid `8,9,10,11` だけを立てていて、`meta_next[8]=0`, `meta_next[9]=4`, `meta_next[10]=5`, `meta_next[11]=7` になっていれば、GPU `-g` 側にも P5 は入っています。
+
+2026年5月12日のメモ上では、はい、**次ターゲットはその理解で合っています。**
+
+整理すると、現在の優先順位はこうです。
+
+1. **78 の確認完了**
+
+   * `preset=5` は N18〜N20 OK。
+   * ただし N22/N23 の確認が実行中なので、まずその結果を見る。
+   * 実行中コマンドも `preset=5` 系の N22/N23 確認です。
+
+2. **78 が通ったら次は 79**
+
+   * 対象は **`preset=6 dynamic fix`**。
+   * メモでは `preset=6` が N18/N19/N20 でまだ不足しており、差分は N18 `-37,240`、N19 `-219,512`、N20 `-1,434,424` です。
+   * ただし `B/SQd2/SQd1` は OK とされているので、主犯候補は **`SQd0 の start>k / fid26/fid27`** に絞られています。
+
+したがって、昨日の「79」は次の意味で見ていました。
+
+```text
+79: preset=6 dynamic fix
+    SQd0 start>k / fid27->fid26 equivalence check
+```
+
+これは、78 の P5 修正とは別件です。
+78 の修正は `funcptn==4 / P5 / fid=8..11` の same-row transition で、CPU 側では `funcptn==4 and row==mark1` のときに `next_funcid` へ同じ状態のまま遷移する処理です。 
+
+一方、79 で見るべきなのは、おそらく以下です。
+
+```text
+SQd0 系で start>k になったとき、
+fid27 経由の状態が fid26 経由と等価に復元・遷移できているか
+```
+
+確認すべきポイントは、単に `fid27 -> fid26` の番号遷移だけではなく、
+
+```text
+row
+ld
+rd
+col
+free / avail
+start
+k
+mark1 / mark2 / jmark
+blockK / blockL
+dynamic preset 用に退避・復元している状態
+```
+
+が **fid26 相当の入口状態と完全に一致しているか** です。
+
+特に `preset=6` は `B/SQd2/SQd1` が OK で、`SQd0 start>k / fid26/fid27` が主犯候補として残っているので、79 では次の比較が有効だと思います。
+
+```text
+同じ N, 同じ preset=6, 同じ SQd0 条件で、
+
+A: fid26 直接経路
+B: fid27 から fid26 へ落とす経路
+
+の dfs 入口状態と subtotal を比較する
+```
+
+期待される結果は、
+
+```text
+fid27 経由後の fid26 状態 == fid26 直接状態
+subtotal(fid27->fid26) == subtotal(fid26)
+```
+
+です。
+
+逆に、ここで `row/free/ld/rd/col` のどれか、または dynamic preset 用の `start/k` 由来状態がズレていれば、`preset=6` の不足分に直結する可能性が高いです。
+
+2026年5月13日のログを見る限り、**78 の preset=5 / P5 fix は CPU `-c` で N22・N23 とも OK です。**
+
+結果は以下です。
+
+```text
+N22 total =  2,691,008,701,644    ok
+N23 total = 24,233,937,684,440    ok
+```
+
+ログ上でも `CPU mode selected` のあと、N22 は `preset_queens=5`、`total=2691008701644` と出ており、最終行も `22: ... ok` です。 
+N23 も `preset_queens=5`、`total=24233937684440` と出ており、最終行が `23: ... ok` です。 
+
+これで、昨日までの **N18〜N20 OK** に加えて、今回 **N22/N23 も OK** になりました。昨日メモでは `preset=5` は「78で N18〜N20 OK」「N22/N23も確認対象」「N24 full も走らせる価値あり」と整理されていました。
+
+したがって判断としては、
+
+```text
+78: preset=5 P5 fix
+    CPU -c: N18, N19, N20, N22, N23 OK
+    → 78 は CPU 側では完了扱いでよい
+```
+
+でよいと思います。
+
+次に進むなら、昨日整理どおり **79: preset=6 dynamic fix** です。
+メモ上では preset=6 はまだ NG で、ただし `B/SQd2/SQd1` は OK、残る主犯候補が **SQd0 の start>k / fid26/fid27** とされています。
+
+次ターゲットはこの形でよいです。
+
+```text
+79: preset=6 dynamic fix
+    SQd0 start>k / fid27->fid26 equivalence check
+```
+
+特に確認すべきことは、
+
+```text
+fid27 経由で fid26 相当に落とした状態が、
+fid26 直接入口の状態と完全に一致しているか
+```
+
+です。比較対象は `row / ld / rd / col / free / start / k / mark` まわりになります。
+
+
 76 purpose:
   - Keep 75 chunk-only debug and 74 cross stripe reorder fix.
   - Promote sort_mode=9 auto policy to N=20 and N=21.
