@@ -17,86 +17,320 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
--g
-  → N=5から既定範囲で通常GPU実行。
-    N22限定でもなく、mode15指定でもない可能性が高い。
+はい。N5から通して実行するなら、以下は安全です。
 
--g 22 22 32 484 1 0 7 15
-  → N22限定、mode15、w8_j7自動採用。
-
--g 22 22 32 484 1 0 7 15 8 7
-  → N22限定、mode15、w8_j7明示指定。
-    96版では上のコマンドと等価。
-
+```bash
 ./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15
-
-
-
-
-96Py を作成しました。添付いただいた95版では、v2 reorder の既定値が `window_mult=16, phase_jump=7` で、mode14/15 の追加引数として `reorder_window_mult` と `reorder_phase_jump` を読む構造でした。 そのため、96版では **既定値を w8_j7 に変更**し、`-g ... 15` で末尾に `8 7` を付けなくても `w8_j7` になるようにしました。
-
-作成ファイルはこちらです。
-
-[96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py](sandbox:/mnt/data/96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py)
-
-差分パッチはこちらです。
-
-[95_to_96_auto_w8_j7.patch](sandbox:/mnt/data/95_to_96_auto_w8_j7.patch)
-
-主な変更点は以下です。
-
-```text
-VERSION_TAG:
-  95 safe ...
-  → 96 auto w8_j7 ...
-
-FUNCID_REORDER_V2_WINDOW_MULT:
-  16 → 8
-
-FUNCID_REORDER_V2_PHASE_JUMP:
-  7 のまま
-
-不正値時のfallback:
-  window_mult invalid時 16 → 8
-
-mode14/15/16時のログ:
-  funcid_reorder_v2_params: window_mult=8 phase_jump=7 param=w8_j7 reason=N22 measured best baseline w8_j7
+  -g 5 22 32 484 1 0 7 15
 ```
 
-実行確認はまずこれでよいです。
+ただし正確には、`bench_mode=15` の funcid reorder v2 GPU 経路は **N>=21 のときに使われる**構造です。N5 は `_bit_total()`、N6〜N20 は通常経路、N21/N22 は funcid reorder v2 mode15 になります。95版の引数処理でも mode14/15 は `reorder_window_mult` / `reorder_phase_jump` を追加で受け取る構造になっており、mode15 側では stream bin を用意し、reordered bin を作ってから GPU stream 実行へ入る流れでした。
+
+97Py を作成しました。Step 2 用に、**N22短時間ベンチ `bench_mode=17`** を追加しています。
+
+[97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench.py](sandbox:/mnt/data/97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench.py)
+
+差分はこちらです。
+
+[96_to_97_microbench.patch](sandbox:/mnt/data/96_to_97_microbench.patch)
+
+## 97Py の主な追加点
+
+`w8_j7` はそのまま正式 baseline です。
+
+```text
+window_mult = 8
+phase_jump  = 7
+param       = w8_j7
+```
+
+新しく追加したのは `bench_mode=17` です。
+
+```text
+bench_mode=17:
+  funcid-reorder-v2-microbench
+  full N22 ではなく、指定 chunk だけ GPU 実行する
+```
+
+デフォルトでは、以前提案した20 chunkを実行します。
+
+```text
+0,8,94,150,339,557,710,976,1073,1222,
+1225,1370,1469,1471,1587,1625,1644,1706,1772,1854
+```
+
+progress TSV は full 実行用を上書きしないように、別名にしました。
+
+```text
+progress_N22_7_stream_funcid_reorder_v2_w8_j7_microbench.tsv
+```
+
+## ビルド
 
 ```bash
 cd /home/suzuki/Github/N-Queens/13Bit_codon
 
-cp /path/to/96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py .
-
-codon build -release 96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py
+codon build -release \
+  97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench.py
 ```
 
-N22 の本番確認は、末尾の `8 7` なしで実行します。
+## まず実行するコマンド
+
+Step 2 の最初はこれです。
 
 ```bash
-./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15
+./97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench \
+  -g 22 22 32 484 1 0 7 17
 ```
 
-ログにこれが出れば、96の自動設定が効いています。
+これは以下の意味です。
 
 ```text
-funcid_reorder_v2_params: window_mult=8 phase_jump=7 param=w8_j7 reason=N22 measured best baseline w8_j7
+N           = 22 only
+block       = 32
+max_blocks  = 484
+log_level   = 1
+sort_mode   = 0
+preset      = 7
+bench_mode  = 17
+param       = w8_j7 auto
+chunk list  = default 20 chunks
 ```
 
-従来通り手動上書きも可能です。
+既に `constellations_N22_7_funcid_reorder_v2_w8_j7.bin` があり、`.done` も一致していれば再利用します。ログには次が出ます。
+
+```text
+[funcid-reorder-v2-microbench-reuse]
+```
+
+なければ作成します。
+
+```text
+[funcid-reorder-v2-microbench-build]
+```
+
+## 連続 chunk を実行する場合
+
+たとえば chunk 1222 から5個だけ実行するなら、
 
 ```bash
-./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15 16 11
+./97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench \
+  -g 22 22 32 484 1 0 7 17 8 7 0 1222 5
 ```
 
-この場合は `w16_j11` として動きます。
+意味は以下です。
 
-なお、こちらでは Codon 実機ビルドまではできていません。テキスト上の差分確認では、95の kernel / DFS / reorder 本体ロジックは触らず、既定パラメータとログ表示だけを変更しています。96の実行確認が取れたら、次は予定通り **Step 2: N22短時間ベンチ** に進むのがよいです。
+```text
+window_mult       = 8
+phase_jump        = 7
+cross_stripe_safe = 0
+chunk_start       = 1222
+chunk_count       = 5
+```
+
+実行対象は、
+
+```text
+1222,1223,1224,1225,1226
+```
+
+です。
+
+## 明示 chunk list を使う場合
+
+```bash
+./97Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_microbench \
+  -g 22 22 32 484 1 0 7 17 8 7 0 0 1 "0,8,94,150,339"
+```
+
+この場合、最後の `"0,8,94,150,339"` が優先されます。
+
+## 確認コマンド
+
+```bash
+PROG=progress_N22_7_stream_funcid_reorder_v2_w8_j7_microbench.tsv
+
+awk -F'\t' '
+NR==1 {
+  for (i=1; i<=NF; i++) c[$i]=i
+  next
+}
+{
+  rows++
+  last_chunk=$(c["chunk"])
+  last_m=$(c["m"])
+  last_gpu_total=$(c["gpu_total"])
+  sum_ms += $(c["elapsed_ms"])
+}
+END {
+  print "executed_rows=" rows
+  print "last_chunk=" last_chunk
+  print "last_m=" last_m
+  print "partial_gpu_total=" last_gpu_total
+  printf "sum_chunk_elapsed=%.3f sec\n", sum_ms/1000.0
+}
+' "$PROG"
+```
+
+microbench は full N22 ではないので、以下の full 完走判定は出ません。
+
+```text
+gpu_total=2691008701644
+remaining_records=0
+```
+
+代わりに見るものは、
+
+```text
+executed_rows
+sum_chunk_elapsed
+各chunkの elapsed_ms
+funcid_*_count
+risky_a/risky_b/risky_c/good/other
+```
+
+です。
+
+## 97Py の位置づけ
+
+今回の 97Py は Step 2 専用です。
+
+```text
+OK   Step 1: w8_j7 を正式 baseline にする
+NOW  Step 2: N22短時間ベンチを先に作る
+NEXT Step 3: stage別 timer を入れる
+NEXT Step 4: chunk size を試す
+NEXT Step 5: funcid別の重い経路を見る
+```
+
+funcid別の重い経路については、私も期待しています。97Py の microbench で短時間比較ができるようになるので、次の 98Py では `elapsed_ms` を `funcid_*_count`、`risky_c_ratio`、`other_ratio`、`score_avg` と結びつけて、重い経路を特定する方向に進めます。
+
+Step 2、成功です。
+97Py の **N22短時間ベンチは期待通り動いています**。
+
+添付ログでは、`bench_mode=17`、`w8_j7`、既存の reordered bin 再利用、指定20 chunk 実行、microbench用 progress TSV 出力まで通っています。ログ上でも `executed_chunks=20`、`partial_total=27298463716`、最終表示 `0:02:44.499` になっています。
+
+TSV集計でも、
+
+```text
+executed_rows=20
+last_chunk=1854
+last_m=4283
+partial_gpu_total=27298463716
+sum_chunk_elapsed=153.150 sec
+```
+
+となっているので、ログの `partial_total` と progress 側の `partial_gpu_total` も一致しています。
+
+## 判断
+
+```text
+Step 1: w8_j7 baseline 固定
+  → OK
+
+Step 2: N22短時間ベンチ
+  → OK
+```
+
+今回の microbench は、
+
+```text
+wall time             = 0:02:44.499 = 164.499 sec
+TSV chunk elapsed合計 = 153.150 sec
+差分                  = 約 11.349 sec
+```
+
+です。
+
+この差分は、bin open、初期化、progress作成、chunk skip/list判定、summary出力などの周辺時間と見てよいです。
+ここが見えたので、次の **Step 3: stage別 timer** に進む価値がはっきりしました。
+
+## 1点だけ表示上の注意
+
+ログに、
+
+```text
+chunk_start=0 chunk_count=1 chunk_list=0,8,94,...
+```
+
+と出ていますが、実際には `chunk_list` が優先されて20 chunk実行されています。最終 summary も `executed_chunks=20` なので、挙動は正しいです。
+
+ただし、表示としては少し紛らわしいので、98Py では以下のように直すのがよいです。
+
+```text
+chunk_mode=list
+chunk_list_count=20
+chunk_start=0
+chunk_count=1 ignored_by_chunk_list=1
+```
+
+## 今回の20 chunkで見えたこと
+
+重かった chunk は以下です。
+
+```text
+chunk 1772 : 10578 ms
+chunk 1644 : 10463 ms
+chunk   94 : 10279 ms
+chunk 1625 : 10100 ms
+chunk 1587 : 10044 ms
+```
+
+軽かった chunk は以下です。
+
+```text
+chunk 1222 : 4468 ms
+chunk 1225 : 4738 ms
+chunk  976 : 5353 ms
+chunk 1471 : 5478 ms
+chunk 1370 : 5664 ms
+```
+
+この20 chunkだけで見ると、`elapsed_ms` と `chunk_total` の相関はかなり強めです。
+ただし `chunk 1854` は `m=4283` の末尾chunkなのに `7222 ms` かかっており、単純な `chunk_total` だけでは説明しきれない固定費・末尾処理・分岐構成の影響がありそうです。これも stage timer で切り分けたいです。
+
+## 次は Step 3
+
+次の 98Py では、97Py の `mode17` を残したまま、chunkごとの TSV に stage 列を追加するのが本命です。
+
+追加したい列はまずこれです。
+
+```text
+stage_read_ms
+stage_unpack_ms
+stage_soa_ms
+stage_sort_ms
+stage_kernel_ms
+stage_reduce_ms
+stage_progress_ms
+stage_total_ms
+```
+
+そして、funcid別ボトルネックに進むために、同じ TSV に以下も出したいです。
+
+```text
+funcid_0_count ... funcid_27_count
+risky_a_count
+risky_b_count
+risky_c_count
+good_count
+other_count
+score_sum
+score_avg
+```
+
+これで、次のような分析ができます。
+
+```text
+elapsed_ms が kernel_ms 由来なのか
+soa/sort/reduce/progress 由来なのか
+funcid_5 / funcid_7 / funcid_20 / funcid_23 などが重いのか
+risky_c / other が本当に遅い chunk と相関しているのか
+末尾 chunk 1854 がなぜ m=4283 なのに遅いのか
+```
+
+今回の結果で、**短時間ベンチ環境は成立**しました。
+次は 98Py として **stage別 timer + funcid別集計** を入れる段階です。
 
 
 
@@ -188,7 +422,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="96 auto w8_j7 stream funcid risk balanced reorder v2 GPU runner from 95 safe"
+VERSION_TAG:str="97 microbench auto w8_j7 stream funcid risk balanced reorder v2 GPU runner from 96"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # 96 FUNCID REORDER V2 AUTO DEFAULT:
@@ -3385,6 +3619,54 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 
+# 97 MICROBENCH:
+#   Step 2: N22 を full run せず、選択した reordered chunk だけ GPU 実行する。
+#   デフォルトは w8_j7 の代表20 chunk。重い/軽い/末尾を混ぜ、約2〜3分級の比較に使う。
+MICROBENCH_DEFAULT_CHUNK_LIST:str="0,8,94,150,339,557,710,976,1073,1222,1225,1370,1469,1471,1587,1625,1644,1706,1772,1854"
+
+"""97 microbench: comma-separated chunk list を int List にする。空文字/"-" は list 無効。"""
+def parse_chunk_list_spec(spec:str)->List[int]:
+  out:List[int]=[]
+  s:str=spec.strip()
+  if s=="" or s=="-":
+    return out
+  parts:List[str]=s.split(",")
+  for p in parts:
+    t:str=p.strip()
+    if t=="":
+      continue
+    v:int=int(t)
+    if v>=0:
+      out.append(v)
+  return out
+
+"""97 microbench: chunk list に chunk_index が含まれるか。"""
+def chunk_list_contains(chunks:List[int],chunk_index:int)->bool:
+  for v in chunks:
+    if v==chunk_index:
+      return True
+  return False
+
+"""97 microbench: chunk list の最大値。空なら -1。"""
+def chunk_list_max(chunks:List[int])->int:
+  mx:int=-1
+  for v in chunks:
+    if v>mx:
+      mx=v
+  return mx
+
+"""97 microbench: chunk list をログ用文字列へ戻す。"""
+def chunk_list_to_string(chunks:List[int])->str:
+  s:str=""
+  first:bool=True
+  for v in chunks:
+    if first:
+      s=str(v)
+      first=False
+    else:
+      s+=","+str(v)
+  return s
+
 """95 funcid reorder v2: mode16 temporary output flag。
 
 False: mode14/15 用。param別の .bin を保存する。
@@ -3673,7 +3955,9 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
   cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
   chunk_only:bool=False,
   debug_chunk_start:int=0,
-  debug_chunk_count:int=1
+  debug_chunk_count:int=1,
+  chunk_list_spec:str="",
+  progress_suffix:str=""
 )->int:
 
   BLOCK:int=gpu_block
@@ -3688,17 +3972,27 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
 
   total_records:int=count_constellations_bin_records(fname)
   progress_fname:str=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}.tsv"
+  if progress_suffix!="":
+    progress_fname=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}_{progress_suffix}.tsv"
   with open(progress_fname,"w") as pf:
     pf.write(stream_funcid_reorder_progress_header())
 
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  use_chunk_list:bool=(len(selected_chunks)>0)
   if chunk_only:
     if debug_chunk_start<0:
       debug_chunk_start=0
     if debug_chunk_count<=0:
       debug_chunk_count=1
 
+  stop_after_chunk:int=-1
+  if use_chunk_list:
+    stop_after_chunk=chunk_list_max(selected_chunks)
+  elif chunk_only:
+    stop_after_chunk=debug_chunk_start+debug_chunk_count-1
+
   if gpu_log_level>=1:
-    print(f"[funcid-reorder-v2-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if chunk_only else 0} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} inner_log_level=0")
+    print(f"[funcid-reorder-v2-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if (chunk_only or use_chunk_list) else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={chunk_list_to_string(selected_chunks)} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} inner_log_level=0")
 
   gpu_total:int=0
   off:int=0
@@ -3708,6 +4002,8 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
 
   with open(fname,"rb") as f:
     while True:
+      if stop_after_chunk>=0 and chunk_index>stop_after_chunk:
+        break
       chunk_constellations:List[Dict[str,int]]=[]
       i:int=0
       while i<STEPS:
@@ -3725,8 +4021,12 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
       if m==0:
         break
 
-      if chunk_only:
-        run_this_chunk:bool=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+      if chunk_only or use_chunk_list:
+        run_this_chunk:bool=True
+        if use_chunk_list:
+          run_this_chunk=chunk_list_contains(selected_chunks,chunk_index)
+        else:
+          run_this_chunk=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
         if not run_this_chunk:
           if gpu_log_level>=2:
             print(f"[funcid-reorder-v2-gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
@@ -3996,7 +4296,8 @@ def main()->None:
   cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT
   debug_chunk_start:int=0
   debug_chunk_count:int=1
-  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep
+  microbench_chunk_list_spec:str=MICROBENCH_DEFAULT_CHUNK_LIST
+  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep, 17:funcid-reorder-v2-microbench
   reorder_window_mult:int=FUNCID_REORDER_V2_WINDOW_MULT
   reorder_phase_jump:int=FUNCID_REORDER_V2_PHASE_JUMP
   # 通常運用では preset_queens は 5 固定。診断用 bench_mode>=8 のときだけ引数の preset を許可する。
@@ -4037,7 +4338,7 @@ def main()->None:
       requested_preset_arg=int(sys.argv[8])
     if argc >= 10:
       bench_mode=int(sys.argv[9])
-      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16):
+      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16 and bench_mode!=17):
         print(f"[warning] unknown bench_mode={bench_mode}; using 0")
         bench_mode=0
     if bench_mode>=8:
@@ -4046,23 +4347,39 @@ def main()->None:
       if requested_preset_arg!=5:
         print(f"[warning] preset_queens={requested_preset_arg} is disabled in 77 normal modes; using 5")
       preset_queens_arg=5
-    if bench_mode==14 or bench_mode==15:
-      # 96 reorder modes use a short form; if omitted, measured-best w8_j7 is used:
-      #   ... [preset_queens] [bench_mode] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]
-      # Example:
-      #   -g 22 22 32 484 1 0 5 14 8 5
-      #   -g 22 22 32 484 1 0 5 15        # auto w8_j7
-      #   -g 22 22 32 484 1 0 5 15 16 7   # manual override
+    if bench_mode==14 or bench_mode==15 or bench_mode==17:
+      # 96/97 reorder modes use a short form; if omitted, measured-best w8_j7 is used:
+      #   mode14/15: ... [preset_queens] [bench_mode] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]
+      #   mode17   : ... [preset_queens] 17 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]
+      # Examples:
+      #   -g 22 22 32 484 1 0 7 15        # auto w8_j7 full N22
+      #   -g 22 22 32 484 1 0 7 15 16 7   # manual override full N22
+      #   -g 22 22 32 484 1 0 7 17        # default 20-chunk microbench
+      #   -g 22 22 32 484 1 0 7 17 8 7 0 1222 5  # contiguous chunk range
+      #   -g 22 22 32 484 1 0 7 17 8 7 0 0 1 "0,8,94"  # explicit chunk list
       if argc >= 11:
         reorder_window_mult=int(sys.argv[10])
       if argc >= 12:
         reorder_phase_jump=int(sys.argv[11])
       if argc >= 13:
         cross_stripe_safe=(int(sys.argv[12])!=0)
-      if argc > 13:
-        print("Too many arguments")
-        print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
-        return
+      if bench_mode==17:
+        if argc >= 14:
+          debug_chunk_start=int(sys.argv[13])
+          microbench_chunk_list_spec=""
+        if argc >= 15:
+          debug_chunk_count=int(sys.argv[14])
+        if argc >= 16:
+          microbench_chunk_list_spec=sys.argv[15]
+        if argc > 16:
+          print("Too many arguments")
+          print("Usage microbench: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 17 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]")
+          return
+      else:
+        if argc > 13:
+          print("Too many arguments")
+          print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
+          return
     elif bench_mode==16:
       # mode 16 runs the fixed simulation sweep: window_mult=8,16,32 x phase_jump=5,7,11.
       if argc > 10:
@@ -4115,7 +4432,9 @@ def main()->None:
       print(f"funcid_reorder_v2_gpu: mode={bench_mode} preset={preset_queens_arg}")
     if bench_mode==16:
       print(f"funcid_reorder_v2_sweep_sim: mode={bench_mode} preset={preset_queens_arg}")
-  if bench_mode==14 or bench_mode==15 or bench_mode==16:
+    if bench_mode==17:
+      print(f"funcid_reorder_v2_microbench: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+  if bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17:
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
@@ -4201,6 +4520,31 @@ def main()->None:
       print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    funcid-reorder-v2-sweep-sim")
       continue
 
+    if use_gpu and N>=21 and bench_mode==17:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=funcid_reorder_output_fname(N,preset_queens)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-microbench-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-microbench-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,"microbench")
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[funcid-reorder-v2-microbench-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    funcid-reorder-v2-microbench")
+      continue
+
     if use_gpu and N>=21 and bench_mode==15:
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
@@ -4212,7 +4556,7 @@ def main()->None:
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
       continue
 
-    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16):
+    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17):
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       stream_chunk_only:bool=(bench_mode==7)
       total:int=exec_solutions_gpu_bin_stream(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,stream_chunk_only,debug_chunk_start,debug_chunk_count)

@@ -17,86 +17,392 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
--g
-  → N=5から既定範囲で通常GPU実行。
-    N22限定でもなく、mode15指定でもない可能性が高い。
 
--g 22 22 32 484 1 0 7 15
-  → N22限定、mode15、w8_j7自動採用。
+作成しました。100Py は **Step 5: funcid別の重い経路を見る** 用です。
+99Py fix1 を土台に、kernel / DFS 本体は触らず、診断専用の **`bench_mode=20`** を追加しました。99Py では chunk size 拡大が悪化することが確認できているため、100Py では次の切り分けに進みます。
 
--g 22 22 32 484 1 0 7 15 8 7
-  → N22限定、mode15、w8_j7明示指定。
-    96版では上のコマンドと等価。
+ソースはこちらです。
 
-./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15
+[100Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_funcidtarget.py](sandbox:/mnt/data/100Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_funcidtarget.py)
 
+差分はこちらです。
 
+[99_to_100_funcidtarget.patch](sandbox:/mnt/data/99_to_100_funcidtarget.patch)
 
-
-96Py を作成しました。添付いただいた95版では、v2 reorder の既定値が `window_mult=16, phase_jump=7` で、mode14/15 の追加引数として `reorder_window_mult` と `reorder_phase_jump` を読む構造でした。 そのため、96版では **既定値を w8_j7 に変更**し、`-g ... 15` で末尾に `8 7` を付けなくても `w8_j7` になるようにしました。
-
-作成ファイルはこちらです。
-
-[96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py](sandbox:/mnt/data/96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py)
-
-差分パッチはこちらです。
-
-[95_to_96_auto_w8_j7.patch](sandbox:/mnt/data/95_to_96_auto_w8_j7.patch)
-
-主な変更点は以下です。
+## 追加したもの
 
 ```text
-VERSION_TAG:
-  95 safe ...
-  → 96 auto w8_j7 ...
-
-FUNCID_REORDER_V2_WINDOW_MULT:
-  16 → 8
-
-FUNCID_REORDER_V2_PHASE_JUMP:
-  7 のまま
-
-不正値時のfallback:
-  window_mult invalid時 16 → 8
-
-mode14/15/16時のログ:
-  funcid_reorder_v2_params: window_mult=8 phase_jump=7 param=w8_j7 reason=N22 measured best baseline w8_j7
+bench_mode=20
+  funcid-target profile
 ```
 
-実行確認はまずこれでよいです。
+選択した chunk を、funcid group ごとに抽出して GPU 実行します。
+
+デフォルトの対象 chunk は、Step 4 で重かった代表6 chunkです。
+
+```text
+94,1587,1625,1644,1772,1854
+```
+
+デフォルトの group は以下です。
+
+```text
+all;5;7;23;5+23;7+23;other
+```
+
+`all` はその chunk 全体の baseline、`5` は funcid_5 のみ、`23` は funcid_23 のみ、`other` は **5/7/23 以外**です。
+group 区切りは **セミコロン `;`** にしています。これは `5,23` のような「1 group 内の複数指定」と衝突しないようにするためです。
+
+## ビルド
 
 ```bash
 cd /home/suzuki/Github/N-Queens/13Bit_codon
 
-cp /path/to/96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py .
-
-codon build -release 96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7.py
+codon build -release \
+  100Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_funcidtarget.py
 ```
 
-N22 の本番確認は、末尾の `8 7` なしで実行します。
+## まず実行する smoke test
+
+最初は chunk 94 だけで確認するのが安全です。
 
 ```bash
-./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15
+./100Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_funcidtarget \
+  -g 22 22 32 484 1 0 7 20 8 7 0 94 1 "-" "all;5;7;23;5+23;7+23;other"
 ```
 
-ログにこれが出れば、96の自動設定が効いています。
+意味は以下です。
 
 ```text
-funcid_reorder_v2_params: window_mult=8 phase_jump=7 param=w8_j7 reason=N22 measured best baseline w8_j7
+N             = 22 only
+block         = 32
+max_blocks    = 484
+preset        = 7
+bench_mode    = 20
+window_mult   = 8
+phase_jump    = 7
+cross_safe    = 0
+chunk_start   = 94
+chunk_count   = 1
+chunk_list    = "-"
+group_list    = all;5;7;23;5+23;7+23;other
 ```
 
-従来通り手動上書きも可能です。
+## 重い6 chunkで本実行
 
 ```bash
-./96Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_auto_w8_j7 \
-  -g 22 22 32 484 1 0 7 15 16 11
+./100Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_funcidtarget \
+  -g 22 22 32 484 1 0 7 20 8 7 0 0 1 "94,1587,1625,1644,1772,1854" "all;5;7;23;5+23;7+23;other"
 ```
 
-この場合は `w16_j11` として動きます。
+`chunk_start=0 chunk_count=1` は、明示 `chunk_list` があるので実質無視されます。
 
-なお、こちらでは Codon 実機ビルドまではできていません。テキスト上の差分確認では、95の kernel / DFS / reorder 本体ロジックは触らず、既定パラメータとログ表示だけを変更しています。96の実行確認が取れたら、次は予定通り **Step 2: N22短時間ベンチ** に進むのがよいです。
+## 出力 TSV
+
+```text
+progress_N22_7_stream_funcid_reorder_v2_w8_j7_funcidtarget.tsv
+```
+
+追加列は以下です。
+
+```text
+base_steps
+base_chunk
+target_group
+source_m
+target_m
+stage_filter_ms
+```
+
+`source_m` は元 chunk の record 数、`target_m` は group 抽出後の record 数です。
+
+## 集計コマンド
+
+まず group 別に合計を見ます。
+
+```bash
+PROG=progress_N22_7_stream_funcid_reorder_v2_w8_j7_funcidtarget.tsv
+
+awk -F'\t' '
+NR==1 {
+  for (i=1; i<=NF; i++) c[$i]=i
+  next
+}
+{
+  g=$(c["target_group"])
+  rows[g]++
+  records[g]+=$(c["target_m"])
+  total[g]+=$(c["chunk_total"])
+  elapsed[g]+=$(c["elapsed_ms"])
+  kernel[g]+=$(c["stage_kernel_ms"])
+}
+END {
+  for (g in rows) {
+    printf "group=%s rows=%d records=%d chunk_total=%d elapsed=%.3f sec kernel=%.3f sec kernel_ms_per_record=%.6f\n", \
+      g, rows[g], records[g], total[g], elapsed[g]/1000.0, kernel[g]/1000.0, kernel[g]/records[g]
+  }
+}
+' "$PROG" | sort
+```
+
+重い順に見るなら、
+
+```bash
+PROG=progress_N22_7_stream_funcid_reorder_v2_w8_j7_funcidtarget.tsv
+
+awk -F'\t' '
+NR==1 {
+  for (i=1; i<=NF; i++) c[$i]=i
+  next
+}
+{
+  print $(c["stage_kernel_ms"]), \
+        "chunk=" $(c["base_chunk"]), \
+        "group=" $(c["target_group"]), \
+        "target_m=" $(c["target_m"]), \
+        "chunk_total=" $(c["chunk_total"]), \
+        "f5=" $(c["funcid_5_count"]), \
+        "f7=" $(c["funcid_7_count"]), \
+        "f23=" $(c["funcid_23_count"]), \
+        "score_avg=" $(c["score_avg"])
+}
+' "$PROG" | sort -nr | head -40
+```
+
+## 判定の見方
+
+特に見るのは以下です。
+
+```text
+kernel_ms_per_record
+kernel_ms / chunk_total
+target_group=5
+target_group=7
+target_group=23
+target_group=5+23
+target_group=7+23
+target_group=other
+```
+
+期待する切り分けはこうです。
+
+```text
+funcid_5 only が極端に重い
+  → funcid_5 専用 path / 専用 kernel 候補
+
+funcid_23 only が極端に重い
+  → funcid_23 を最優先で分離検討
+
+5+23 や 7+23 が単体合計より悪化
+  → 混在による divergence / tail latency の疑い
+
+other が意外に重い
+  → 5/7/23 以外、特に risky_a/risky_c も再確認
+```
+
+今回の100Pyでは、`all` と `5`、`23` などは重複して実行されます。したがって、mode20 の `partial_total` は full N22 の解数ではなく、**診断ケースの累積値**です。正しさ確認ではなく、groupごとの `kernel_ms` と `kernel_ms_per_record` を見るモードです。
+
+これで、
+
+```text
+OK  Step 1: w8_j7 を正式 baseline にする
+OK  Step 2: N22短時間ベンチを先に作る
+OK  Step 3: stage別 timer を入れる
+OK  Step 4: chunk size を試す
+NOW Step 5: funcid別の重い経路を見る
+```
+
+に進めます。
+
+100Py のログ確認しました。**Step 5 は成功**です。
+そして、今回の結果でかなり大きなことが分かりました。
+
+結論から言うと、**funcid_5 だけでもなく、funcid_23 だけでもありません。次の本命は `funcid_7` と `other` の再分解です。**
+
+## Step 5 判定
+
+```text
+OK  Step 1: w8_j7 を正式 baseline にする
+OK  Step 2: N22短時間ベンチを先に作る
+OK  Step 3: stage別 timer を入れる
+OK  Step 4: chunk size を試す
+OK  Step 5: funcid別の重い経路を見る
+```
+
+100Py は、重い代表6 chunk、
+
+```text
+94,1587,1625,1644,1772,1854
+```
+
+に対して、
+
+```text
+all;5;7;23;5+23;7+23;other
+```
+
+の7 groupを実行し、合計42ケースで完走しています。summary は `cases=42`、`partial_total=24598756302`、実行時間 `0:04:45.851` です。
+
+## group別の結果
+
+集計値は以下です。
+
+```text
+group=all    records=81723  kernel=57.946 sec  kernel_ms_per_record=0.709054
+group=other  records=41557  kernel=40.445 sec  kernel_ms_per_record=0.973242
+group=23     records=11800  kernel=20.680 sec  kernel_ms_per_record=1.752542
+group=5      records=24529  kernel=47.302 sec  kernel_ms_per_record=1.928411
+group=5+23   records=36329  kernel=46.849 sec  kernel_ms_per_record=1.289576
+group=7+23   records=15637  kernel=35.440 sec  kernel_ms_per_record=2.266419
+group=7      records=3837   kernel=36.860 sec  kernel_ms_per_record=9.606463
+```
+
+この表から、`group=7` が record あたりでは突出しています。ただし `group=7` は records が少ないので、純粋な「1 record あたり作業量」だけでなく、少数の非常に長い DFS tail が kernel 全体を待たせている可能性が高いです。
+
+## 重要な解釈
+
+まず、`funcid_5` は確かに重いです。
+たとえば chunk 1587 では `group=5` が `target_m=5013` で `kernel_ms=9241`、chunk 1625 では `target_m=7059` で `kernel_ms=9048` です。
+
+ただし、`funcid_5 + funcid_23` が `funcid_5` 単独より悪化していません。
+
+```text
+group=5     kernel=47.302 sec
+group=5+23  kernel=46.849 sec
+```
+
+これは非常に重要です。`funcid_23` を `funcid_5` に混ぜても、全体の kernel tail はほぼ増えていません。つまり、今回の6 chunkでは **funcid_23 は単独では中程度に重いが、5と混ぜた時の支配的ボトルネックではない** と見てよさそうです。
+
+一方で、`funcid_7` はかなり怪しいです。
+
+```text
+group=7    records=3837  kernel=36.860 sec
+group=7+23 records=15637 kernel=35.440 sec
+```
+
+`7+23` が `7` 単独より速いくらいなので、これも `funcid_23` ではなく、**funcid_7 側の少数 tail が支配している**可能性が高いです。
+
+## `other` も無視できません
+
+今回の一番意外な点は `other` です。
+
+```text
+group=other records=41557 kernel=40.445 sec
+```
+
+これは `funcid_5/7/23` を除外した残りにも、まだかなり重い経路があるという意味です。特に chunk 1644 の `other` は `target_m=10138` で `kernel_ms=8915`、chunk 1772 の `other` は `target_m=7518` で `kernel_ms=8650` です。
+
+したがって、次は `other` を一括扱いにせず、funcid単位でさらに分解する必要があります。
+
+## 現時点の優先順位
+
+私の判断では、次の最適化優先度はこうです。
+
+```text
+1. funcid_7
+   少数 record なのに kernel tail が非常に大きい。
+   専用 path / 専用 kernel / 別スケジューリング候補。
+
+2. funcid_5
+   record数も多く、総 kernel 時間への寄与が大きい。
+   本命の重量級経路。
+
+3. other の再分解
+   5/7/23以外にも重い経路が残っている。
+   特に chunk 1644, 1772 の other が重い。
+
+4. funcid_23
+   単独では中程度に重いが、5+23 / 7+23 では支配的ではなさそう。
+```
+
+以前は `funcid_23` をかなり疑っていましたが、100Py の結果を見ると、**funcid_23 は主犯ではなく、funcid_7 と other の中身の方が危険**です。
+
+## 次にやるべきこと
+
+次は **101Py** として、`other` をもっと細かく分解するのがよいです。
+100Py は group 指定が粗く、
+
+```text
+5
+7
+23
+other
+```
+
+でした。101Py では、以下のように **funcid 個別 profile** を入れるのがよいです。
+
+```text
+bench_mode=21
+  funcid-single profile
+
+対象:
+  selected chunks を funcid=0..27 単位で抽出して実行
+
+出力:
+  chunk
+  funcid
+  target_m
+  chunk_total
+  kernel_ms
+  kernel_ms_per_record
+  score_avg
+```
+
+まず対象 chunk は、今回の6 chunkで十分です。
+
+```text
+94,1587,1625,1644,1772,1854
+```
+
+特に見るべき funcid は、
+
+```text
+5,7,23
+```
+
+に加えて、`other` に含まれる以下です。
+
+```text
+0,4,12,16,17,18,19,20,21,22,24,26,27
+```
+
+これで `other` の中で本当に重いもの、たとえば `funcid_19/20/21/22/24/26/27` などが見えてくるはずです。
+
+## 実装方針
+
+次の101Pyでは、kernelの中身はまだ変えない方がよいです。
+まず診断を強化します。
+
+```text
+101Py:
+  bench_mode=21
+  group指定ではなく funcid_list 指定
+  デフォルトは 0..27
+  selected chunks × funcid 単位で実行
+```
+
+この結果で、
+
+```text
+funcid_7 が本当に異常に重い
+funcid_5 が総量として重い
+other の中に第3の重い funcid がある
+```
+
+のどれかが確定します。
+
+その次の102Pyで、初めて
+
+```text
+funcid_7 専用 kernel
+funcid_5 専用 kernel
+heavy funcid を別キューに分離
+軽い funcid と重い funcid を混ぜない
+```
+
+を試すのがよいと思います。
+
+
 
 
 
@@ -188,7 +494,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="96 auto w8_j7 stream funcid risk balanced reorder v2 GPU runner from 95 safe"
+VERSION_TAG:str="100 funcid-target auto w8_j7 stream funcid risk balanced reorder v2 GPU runner from 99"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # 96 FUNCID REORDER V2 AUTO DEFAULT:
@@ -3234,6 +3540,171 @@ def stream_funcid_reorder_risk_suffix(stats:List[int],m:int)->str:
   s+=f"\t{other}\t{format_ratio_3(other,m)}"
   return s
 
+
+"""98 profile: datetime 差分を millisecond int に変換する。"""
+def profile_elapsed_ms_between(t0,t1)->int:
+  return stream_elapsed_text_to_ms(str(t1-t0)[:-3])
+
+"""98 profile: 既に構築済みの SoA / w_arr から chunk 入力統計を作る。"""
+def analyze_stream_chunk_input_stats_from_soa(soa:TaskSoA,w_arr:List[u64],m:int)->List[int]:
+  stats:List[int]=[0]*46
+  if m<=0:
+    return stats
+
+  stats[1]=999999999
+  stats[4]=999999999
+  stats[7]=999999999
+  stats[10]=999999999
+  stats[13]=999999999
+
+  i:int=0
+  while i<m:
+    pc:int=popcount_int(soa.free_arr[i])
+    rowv:int=soa.row_arr[i]
+    endv:int=soa.end_arr[i]
+    depth:int=endv-rowv
+    if depth<0:
+      depth=0
+    score:int=pc*depth
+
+    stats[0]+=pc
+    if pc<stats[1]:
+      stats[1]=pc
+    if pc>stats[2]:
+      stats[2]=pc
+
+    stats[3]+=rowv
+    if rowv<stats[4]:
+      stats[4]=rowv
+    if rowv>stats[5]:
+      stats[5]=rowv
+
+    stats[6]+=endv
+    if endv<stats[7]:
+      stats[7]=endv
+    if endv>stats[8]:
+      stats[8]=endv
+
+    stats[9]+=depth
+    if depth<stats[10]:
+      stats[10]=depth
+    if depth>stats[11]:
+      stats[11]=depth
+
+    stats[12]+=score
+    if score<stats[13]:
+      stats[13]=score
+    if score>stats[14]:
+      stats[14]=score
+
+    w:int=int(w_arr[i])
+    if w==2:
+      stats[15]+=1
+    elif w==4:
+      stats[16]+=1
+    elif w==8:
+      stats[17]+=1
+
+    fid:int=soa.funcid_arr[i]
+    if fid>=0 and fid<28:
+      stats[18+fid]+=1
+
+    i+=1
+
+  return stats
+
+"""98 profile progress のヘッダを作る。既存 funcid/risk 列の後ろに stage 列を追加。"""
+def stream_funcid_reorder_profile_progress_header()->str:
+  h:str=stream_funcid_reorder_progress_header().strip()
+  h+="\tstage_read_ms"
+  h+="\tstage_soa_ms"
+  h+="\tstage_stats_ms"
+  h+="\tstage_sort_ms"
+  h+="\tstage_kernel_ms"
+  h+="\tstage_reduce_ms"
+  h+="\tstage_compute_ms"
+  h+="\tstage_no_read_ms"
+  h+="\tstage_total_ms"
+  h+="\n"
+  return h
+
+"""98 profile: stage list を TSV 末尾へ足す。"""
+def stream_funcid_reorder_profile_stage_suffix(stages:List[int])->str:
+  s:str=""
+  i:int=0
+  while i<9:
+    v:int=0
+    if i<len(stages):
+      v=stages[i]
+    s+=f"\t{v}"
+    i+=1
+  return s
+
+"""98 profile progress を TSV に追記する。"""
+def append_stream_funcid_reorder_profile_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,m:int,BLOCK:int,MAX_BLOCKS:int,STEPS:int,gpu_sort_mode:int,elapsed_text:str,elapsed_ms:int,chunk_total:int,gpu_total:int,total_records:int,stats:List[int],stages:List[int])->None:
+  done_records:int=off+m
+  remaining_records:int=total_records-done_records
+  if remaining_records<0:
+    remaining_records=0
+  with open(progress_fname,"a") as f:
+    f.write(f"{N}\t{preset_queens}\t{chunk_index}\t{off}\t{m}\t{BLOCK}\t{MAX_BLOCKS}\t{STEPS}\t{gpu_sort_mode}\t{elapsed_text}\t{elapsed_ms}\t{chunk_total}\t{gpu_total}\t{done_records}\t{total_records}\t{remaining_records}")
+    f.write(stream_measure2_stats_suffix(stats,m))
+    f.write(stream_funcid_reorder_risk_suffix(stats,m))
+    f.write(stream_funcid_reorder_profile_stage_suffix(stages))
+    f.write("\n")
+
+"""99 chunksize progress のヘッダ。profile stage列の後ろに batch情報を追加。"""
+def stream_funcid_reorder_chunksize_progress_header()->str:
+  h:str=stream_funcid_reorder_profile_progress_header().strip()
+  h+="\tbase_steps"
+  h+="\tbase_chunk"
+  h+="\tchunk_factor"
+  h+="\trange_start_chunk"
+  h+="\trange_end_chunk"
+  h+="\trange_chunks"
+  h+="\n"
+  return h
+
+"""99 chunksize progress を TSV に追記する。"""
+def append_stream_funcid_reorder_chunksize_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,m:int,BLOCK:int,MAX_BLOCKS:int,STEPS:int,gpu_sort_mode:int,elapsed_text:str,elapsed_ms:int,chunk_total:int,gpu_total:int,total_records:int,stats:List[int],stages:List[int],base_steps:int,base_chunk:int,chunk_factor:int,range_start_chunk:int,range_end_chunk:int,range_chunks:int)->None:
+  done_records:int=off+m
+  remaining_records:int=total_records-done_records
+  if remaining_records<0:
+    remaining_records=0
+  with open(progress_fname,"a") as f:
+    f.write(f"{N}\t{preset_queens}\t{chunk_index}\t{off}\t{m}\t{BLOCK}\t{MAX_BLOCKS}\t{STEPS}\t{gpu_sort_mode}\t{elapsed_text}\t{elapsed_ms}\t{chunk_total}\t{gpu_total}\t{done_records}\t{total_records}\t{remaining_records}")
+    f.write(stream_measure2_stats_suffix(stats,m))
+    f.write(stream_funcid_reorder_risk_suffix(stats,m))
+    f.write(stream_funcid_reorder_profile_stage_suffix(stages))
+    f.write(f"\t{base_steps}\t{base_chunk}\t{chunk_factor}\t{range_start_chunk}\t{range_end_chunk}\t{range_chunks}")
+    f.write("\n")
+
+"""100 funcid-target progress のヘッダ。profile stage列の後ろに group 情報を追加。"""
+def stream_funcid_reorder_funcid_target_progress_header()->str:
+  h:str=stream_funcid_reorder_profile_progress_header().strip()
+  h+="\tbase_steps"
+  h+="\tbase_chunk"
+  h+="\ttarget_group"
+  h+="\tsource_m"
+  h+="\ttarget_m"
+  h+="\tstage_filter_ms"
+  h+="\n"
+  return h
+
+"""100 funcid-target progress を TSV に追記する。m は target group の件数。"""
+def append_stream_funcid_reorder_funcid_target_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,target_m:int,BLOCK:int,MAX_BLOCKS:int,STEPS:int,gpu_sort_mode:int,elapsed_text:str,elapsed_ms:int,chunk_total:int,gpu_total:int,total_records:int,stats:List[int],stages:List[int],base_steps:int,base_chunk:int,target_group:str,source_m:int,stage_filter_ms:int)->None:
+  done_records:int=off+source_m
+  remaining_records:int=total_records-done_records
+  if remaining_records<0:
+    remaining_records=0
+  with open(progress_fname,"a") as f:
+    f.write(f"{N}\t{preset_queens}\t{chunk_index}\t{off}\t{target_m}\t{BLOCK}\t{MAX_BLOCKS}\t{STEPS}\t{gpu_sort_mode}\t{elapsed_text}\t{elapsed_ms}\t{chunk_total}\t{gpu_total}\t{done_records}\t{total_records}\t{remaining_records}")
+    f.write(stream_measure2_stats_suffix(stats,target_m))
+    f.write(stream_funcid_reorder_risk_suffix(stats,target_m))
+    f.write(stream_funcid_reorder_profile_stage_suffix(stages))
+    f.write(f"\t{base_steps}\t{base_chunk}\t{target_group}\t{source_m}\t{target_m}\t{stage_filter_ms}")
+    f.write("\n")
+
 """93 funcid reorder progress を TSV に追記する。"""
 def append_stream_funcid_reorder_progress(progress_fname:str,N:int,preset_queens:int,chunk_index:int,off:int,m:int,BLOCK:int,MAX_BLOCKS:int,STEPS:int,gpu_sort_mode:int,elapsed_text:str,elapsed_ms:int,chunk_total:int,gpu_total:int,total_records:int,stats:List[int])->None:
   done_records:int=off+m
@@ -3384,6 +3855,157 @@ def funcid_reorder_make_quotas(rem_counts:List[int],total_remaining:int,m_target
 FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
+
+# 97 MICROBENCH:
+#   Step 2: N22 を full run せず、選択した reordered chunk だけ GPU 実行する。
+#   デフォルトは w8_j7 の代表20 chunk。重い/軽い/末尾を混ぜ、約2〜3分級の比較に使う。
+MICROBENCH_DEFAULT_CHUNK_LIST:str="0,8,94,150,339,557,710,976,1073,1222,1225,1370,1469,1471,1587,1625,1644,1706,1772,1854"
+
+# 98 PROFILE:
+#   Step 3: mode18 adds per-selected-chunk stage timing columns.
+#   The kernel / DFS logic is intentionally unchanged; profiling only wraps the existing
+#   build_soa -> optional sort -> GPU kernel -> reduce path for short N22 benchmarks.
+
+# 99 CHUNK SIZE PROFILE:
+#   Step 4: mode19 measures the same representative base chunks with larger GPU batches.
+#   Default base chunk size is block*max_blocks = 32*484 = 15488 records.
+#   Default factors are 1,2,4, corresponding to m=15488,30976,61952.
+#   This mode does not change kernel / DFS logic; it changes only the number of
+#   constellations sent to one kernel invocation.
+CHUNKSIZE_DEFAULT_FACTOR_LIST:str="1,2,4"
+
+# 100 FUNCID TARGET PROFILE:
+#   Step 5 diagnostic mode.  It runs selected reordered chunks by funcid group
+#   without changing kernel / DFS logic.  Groups are separated by semicolon;
+#   use + or comma inside one group, e.g. "5+23" or "5,23".
+FUNCID_TARGET_DEFAULT_CHUNK_LIST:str="94,1587,1625,1644,1772,1854"
+FUNCID_TARGET_DEFAULT_GROUP_LIST:str="all;5;7;23;5+23;7+23;other"
+
+"""97 microbench: comma-separated chunk list を int List にする。空文字/"-" は list 無効。"""
+def parse_chunk_list_spec(spec:str)->List[int]:
+  out:List[int]=[]
+  s:str=spec.strip()
+  if s=="" or s=="-":
+    return out
+  parts:List[str]=s.split(",")
+  for p in parts:
+    t:str=p.strip()
+    if t=="":
+      continue
+    v:int=int(t)
+    if v>=0:
+      out.append(v)
+  return out
+
+"""99 chunksize: comma-separated positive int list を返す。空なら既定値側で補う。"""
+def parse_positive_int_list_spec(spec:str)->List[int]:
+  out:List[int]=[]
+  s:str=spec.strip()
+  if s=="" or s=="-":
+    return out
+  parts:List[str]=s.split(",")
+  for p in parts:
+    t:str=p.strip()
+    if t=="":
+      continue
+    v:int=int(t)
+    if v>0:
+      out.append(v)
+  return out
+
+"""100 funcid-target: semicolon-separated group list を返す。"""
+def parse_funcid_target_group_list_spec(spec:str)->List[str]:
+  out:List[str]=[]
+  s:str=spec.strip()
+  if s=="" or s=="-":
+    return out
+  parts:List[str]=s.split(";")
+  for p in parts:
+    t:str=p.strip()
+    if t!="":
+      out.append(t)
+  return out
+
+"""100 funcid-target: group 指定が fid に一致するか。"""
+def funcid_target_group_match(group:str,fid:int)->bool:
+  g:str=group.strip()
+  if g=="all":
+    return True
+  # Step 5 の other は「注目 fid 5/7/23 以外」。risk bucket の other ではない。
+  if g=="other" or g=="rest":
+    return not (fid==5 or fid==7 or fid==23)
+  if g=="risky_a":
+    return fid==19 or fid==22 or fid==23 or fid==24
+  if g=="risky_b":
+    return fid==26 or fid==27
+  if g=="risky_c":
+    return fid==20 or fid==21
+  if g=="good":
+    return fid==0 or fid==4 or fid==5 or fid==12 or fid==16 or fid==17 or fid==18
+  if g=="risk_other":
+    return funcid_reorder_bucket(fid)==4
+
+  parts:List[str]=g.split("+")
+  if len(parts)<=1:
+    parts=g.split(",")
+  for p in parts:
+    t:str=p.strip()
+    if t=="":
+      continue
+    if len(t)>=2 and (t[0:1]=="f" or t[0:1]=="F"):
+      t=t[1:]
+    v:int=int(t)
+    if fid==v:
+      return True
+  return False
+
+"""100 funcid-target: constellations を group の funcid だけに絞る。"""
+def filter_constellations_by_funcid_target_group(N:int,source:List[Dict[str,int]],group:str)->List[Dict[str,int]]:
+  out:List[Dict[str,int]]=[]
+  m:int=len(source)
+  if m<=0:
+    return out
+  g:str=group.strip()
+  if g=="all":
+    return source
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  build_soa_for_range(N,source,0,m,soa,w_arr)
+  i:int=0
+  while i<m:
+    fid:int=soa.funcid_arr[i]
+    if funcid_target_group_match(g,fid):
+      out.append(source[i])
+    i+=1
+  return out
+
+"""97 microbench: chunk list に chunk_index が含まれるか。"""
+def chunk_list_contains(chunks:List[int],chunk_index:int)->bool:
+  for v in chunks:
+    if v==chunk_index:
+      return True
+  return False
+
+"""97 microbench: chunk list の最大値。空なら -1。"""
+def chunk_list_max(chunks:List[int])->int:
+  mx:int=-1
+  for v in chunks:
+    if v>mx:
+      mx=v
+  return mx
+
+"""97 microbench: chunk list をログ用文字列へ戻す。"""
+def chunk_list_to_string(chunks:List[int])->str:
+  s:str=""
+  first:bool=True
+  for v in chunks:
+    if first:
+      s=str(v)
+      first=False
+    else:
+      s+=","+str(v)
+  return s
 
 """95 funcid reorder v2: mode16 temporary output flag。
 
@@ -3673,7 +4295,9 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
   cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
   chunk_only:bool=False,
   debug_chunk_start:int=0,
-  debug_chunk_count:int=1
+  debug_chunk_count:int=1,
+  chunk_list_spec:str="",
+  progress_suffix:str=""
 )->int:
 
   BLOCK:int=gpu_block
@@ -3688,17 +4312,27 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
 
   total_records:int=count_constellations_bin_records(fname)
   progress_fname:str=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}.tsv"
+  if progress_suffix!="":
+    progress_fname=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}_{progress_suffix}.tsv"
   with open(progress_fname,"w") as pf:
     pf.write(stream_funcid_reorder_progress_header())
 
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  use_chunk_list:bool=(len(selected_chunks)>0)
   if chunk_only:
     if debug_chunk_start<0:
       debug_chunk_start=0
     if debug_chunk_count<=0:
       debug_chunk_count=1
 
+  stop_after_chunk:int=-1
+  if use_chunk_list:
+    stop_after_chunk=chunk_list_max(selected_chunks)
+  elif chunk_only:
+    stop_after_chunk=debug_chunk_start+debug_chunk_count-1
+
   if gpu_log_level>=1:
-    print(f"[funcid-reorder-v2-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if chunk_only else 0} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} inner_log_level=0")
+    print(f"[funcid-reorder-v2-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if (chunk_only or use_chunk_list) else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={chunk_list_to_string(selected_chunks)} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} inner_log_level=0")
 
   gpu_total:int=0
   off:int=0
@@ -3708,6 +4342,8 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
 
   with open(fname,"rb") as f:
     while True:
+      if stop_after_chunk>=0 and chunk_index>stop_after_chunk:
+        break
       chunk_constellations:List[Dict[str,int]]=[]
       i:int=0
       while i<STEPS:
@@ -3725,8 +4361,12 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
       if m==0:
         break
 
-      if chunk_only:
-        run_this_chunk:bool=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+      if chunk_only or use_chunk_list:
+        run_this_chunk:bool=True
+        if use_chunk_list:
+          run_this_chunk=chunk_list_contains(selected_chunks,chunk_index)
+        else:
+          run_this_chunk=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
         if not run_this_chunk:
           if gpu_log_level>=2:
             print(f"[funcid-reorder-v2-gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
@@ -3760,6 +4400,615 @@ def exec_solutions_gpu_bin_stream_funcid_reorder(
 
   if gpu_log_level>=1:
     print(f"[funcid-reorder-v2-gpu-summary] N={N} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} total={gpu_total} progress={progress_fname}")
+
+  return gpu_total
+
+
+"""98 profile: 1 chunk を build_soa -> optional sort -> GPU kernel -> reduce で実行し、stage 時間を返す。"""
+def exec_solutions_gpu_chunk_profile(
+  N:int,
+  chunk_constellations:List[Dict[str,int]],
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT
+):
+  board_mask:int=(1<<N)-1
+  if gpu_sort_mode<0:
+    gpu_sort_mode=auto_sort_mode(N)
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  m:int=len(chunk_constellations)
+  soa:TaskSoA=TaskSoA(STEPS)
+  sort_soa:TaskSoA=TaskSoA(STEPS)
+  w_arr:List[u64]=[u64(0)]*STEPS
+  sort_w_arr:List[u64]=[u64(0)]*STEPS
+  results:List[u64]=[u64(0)]*STEPS
+  order:List[int]=[0]*STEPS
+
+  # Same funcptn mapping as func_meta in exec_solutions().
+  funcptn_by_fid:List[int]=[0,1,3,5,2,0,1,2,4,4,4,4,0,1,5,2,0,1,2,0,1,5,2,0,2,1,5,0]
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+
+  local_sort_mode:int=gpu_sort_mode
+  if gpu_sort_mode==5 or gpu_sort_mode==8 or gpu_sort_mode==10:
+    local_sort_mode=4
+  if gpu_sort_mode==6 or gpu_sort_mode==7 or gpu_sort_mode==9:
+    local_sort_mode=0
+
+  # build SoA / weights
+  t_soa0=datetime.now()
+  build_soa_for_range(N,chunk_constellations,0,m,soa,w_arr)
+  t_soa1=datetime.now()
+
+  # stats from the same SoA, avoiding a second build_soa_for_range() pass.
+  t_stats0=datetime.now()
+  stats:List[int]=analyze_stream_chunk_input_stats_from_soa(soa,w_arr,m)
+  t_stats1=datetime.now()
+
+  # optional stable bucket sort inside this chunk only.
+  t_sort0=datetime.now()
+  use_sorted:bool=(local_sort_mode==1 or local_sort_mode==2 or local_sort_mode==3 or local_sort_mode==4)
+  if use_sorted:
+    nb:int=28
+    if local_sort_mode==2:
+      nb=6
+    if local_sort_mode==3:
+      nb=24
+    if local_sort_mode==4:
+      nb=48
+    counts:List[int]=[0]*64
+    pos:List[int]=[0]*64
+    cur:List[int]=[0]*64
+    i:int=0
+    while i<m:
+      fid0:int=soa.funcid_arr[i]
+      key:int=fid0
+      if local_sort_mode==2:
+        key=funcptn_by_fid[fid0]
+      if local_sort_mode==3:
+        ptn:int=funcptn_by_fid[fid0]
+        depth:int=soa.end_arr[i]-soa.row_arr[i]
+        if depth<0:
+          depth=0
+        pc:int=popcount_int(soa.free_arr[i])
+        wb:int=0
+        if pc>=3:
+          wb+=1
+        if depth>=12:
+          wb+=2
+        key=ptn*4+wb
+      if local_sort_mode==4:
+        ptn:int=funcptn_by_fid[fid0]
+        depth:int=soa.end_arr[i]-soa.row_arr[i]
+        if depth<0:
+          depth=0
+        pc:int=popcount_int(soa.free_arr[i])
+        wb:int=0
+        if pc>=2:
+          wb+=1
+        if pc>=4:
+          wb+=2
+        if depth>=10:
+          wb+=4
+        key=ptn*8+wb
+      counts[key]+=1
+      i+=1
+    run:int=0
+    b:int=0
+    while b<nb:
+      pos[b]=run
+      cur[b]=run
+      run+=counts[b]
+      b+=1
+    i=0
+    while i<m:
+      fid0:int=soa.funcid_arr[i]
+      key:int=fid0
+      if local_sort_mode==2:
+        key=funcptn_by_fid[fid0]
+      if local_sort_mode==3:
+        ptn:int=funcptn_by_fid[fid0]
+        depth:int=soa.end_arr[i]-soa.row_arr[i]
+        if depth<0:
+          depth=0
+        pc:int=popcount_int(soa.free_arr[i])
+        wb:int=0
+        if pc>=3:
+          wb+=1
+        if depth>=12:
+          wb+=2
+        key=ptn*4+wb
+      if local_sort_mode==4:
+        ptn:int=funcptn_by_fid[fid0]
+        depth:int=soa.end_arr[i]-soa.row_arr[i]
+        if depth<0:
+          depth=0
+        pc:int=popcount_int(soa.free_arr[i])
+        wb:int=0
+        if pc>=2:
+          wb+=1
+        if pc>=4:
+          wb+=2
+        if depth>=10:
+          wb+=4
+        key=ptn*8+wb
+      p:int=cur[key]
+      order[p]=i
+      cur[key]+=1
+      i+=1
+    p:int=0
+    while p<m:
+      q:int=order[p]
+      sort_soa.ld_arr[p]=soa.ld_arr[q]
+      sort_soa.rd_arr[p]=soa.rd_arr[q]
+      sort_soa.col_arr[p]=soa.col_arr[q]
+      sort_soa.row_arr[p]=soa.row_arr[q]
+      sort_soa.free_arr[p]=soa.free_arr[q]
+      sort_soa.jmark_arr[p]=soa.jmark_arr[q]
+      sort_soa.end_arr[p]=soa.end_arr[q]
+      sort_soa.mark1_arr[p]=soa.mark1_arr[q]
+      sort_soa.mark2_arr[p]=soa.mark2_arr[q]
+      sort_soa.funcid_arr[p]=soa.funcid_arr[q]
+      sort_soa.ijkl_arr[p]=soa.ijkl_arr[q]
+      sort_w_arr[p]=w_arr[q]
+      p+=1
+  t_sort1=datetime.now()
+
+  GRID:int=(m+BLOCK-1)//BLOCK
+  n3:int=1<<(N-3)
+  n4:int=1<<(N-4)
+
+  # GPU kernel. Depending on Codon/CUDA synchronization semantics, part of the
+  # actual device completion may be observed in reduce_ms when results[] is read.
+  t_kernel0=datetime.now()
+  if use_sorted:
+    kernel_dfs_iter_gpu(
+      gpu.raw(sort_soa.ld_arr),gpu.raw(sort_soa.rd_arr),gpu.raw(sort_soa.col_arr),
+      gpu.raw(sort_soa.row_arr),gpu.raw(sort_soa.free_arr),
+      gpu.raw(sort_soa.jmark_arr),gpu.raw(sort_soa.end_arr),
+      gpu.raw(sort_soa.mark1_arr),gpu.raw(sort_soa.mark2_arr),
+      gpu.raw(sort_soa.funcid_arr),gpu.raw(sort_w_arr),
+      gpu.raw(meta_next),
+      gpu.raw(results),
+      m,board_mask,
+      n3,n4,
+      grid=GRID,block=BLOCK
+    )
+  else:
+    kernel_dfs_iter_gpu(
+      gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
+      gpu.raw(soa.row_arr),gpu.raw(soa.free_arr),
+      gpu.raw(soa.jmark_arr),gpu.raw(soa.end_arr),
+      gpu.raw(soa.mark1_arr),gpu.raw(soa.mark2_arr),
+      gpu.raw(soa.funcid_arr),gpu.raw(w_arr),
+      gpu.raw(meta_next),
+      gpu.raw(results),
+      m,board_mask,
+      n3,n4,
+      grid=GRID,block=BLOCK
+    )
+  t_kernel1=datetime.now()
+
+  t_reduce0=datetime.now()
+  chunk_total:int=0
+  i:int=0
+  while i<m:
+    chunk_total+=int(results[i])
+    i+=1
+  t_reduce1=datetime.now()
+
+  stage_soa_ms:int=profile_elapsed_ms_between(t_soa0,t_soa1)
+  stage_stats_ms:int=profile_elapsed_ms_between(t_stats0,t_stats1)
+  stage_sort_ms:int=profile_elapsed_ms_between(t_sort0,t_sort1)
+  stage_kernel_ms:int=profile_elapsed_ms_between(t_kernel0,t_kernel1)
+  stage_reduce_ms:int=profile_elapsed_ms_between(t_reduce0,t_reduce1)
+  stage_compute_ms:int=stage_soa_ms+stage_sort_ms+stage_kernel_ms+stage_reduce_ms
+  stage_no_read_ms:int=stage_compute_ms+stage_stats_ms
+  elapsed_text:str=str(t_reduce1-t_soa0)[:-3]
+  elapsed_ms:int=stage_no_read_ms
+  stages_inner:List[int]=[stage_soa_ms,stage_stats_ms,stage_sort_ms,stage_kernel_ms,stage_reduce_ms,stage_compute_ms,stage_no_read_ms]
+
+  return chunk_total,stats,stages_inner,elapsed_text,elapsed_ms
+
+"""98 profile: reordered bin の選択 chunk を stage 計測つきで実行する。"""
+def exec_solutions_gpu_bin_stream_funcid_reorder_profile(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  chunk_only:bool=True,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1,
+  chunk_list_spec:str="",
+  progress_suffix:str="profile"
+)->int:
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  total_records:int=count_constellations_bin_records(fname)
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}_{progress_suffix}.tsv"
+  with open(progress_fname,"w") as pf:
+    pf.write(stream_funcid_reorder_profile_progress_header())
+
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  use_chunk_list:bool=(len(selected_chunks)>0)
+  if chunk_only:
+    if debug_chunk_start<0:
+      debug_chunk_start=0
+    if debug_chunk_count<=0:
+      debug_chunk_count=1
+
+  stop_after_chunk:int=-1
+  if use_chunk_list:
+    stop_after_chunk=chunk_list_max(selected_chunks)
+  elif chunk_only:
+    stop_after_chunk=debug_chunk_start+debug_chunk_count-1
+
+  if gpu_log_level>=1:
+    chunk_mode:str="range"
+    if use_chunk_list:
+      chunk_mode="list"
+    print(f"[funcid-reorder-v2-profile-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_mode={chunk_mode} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list_count={len(selected_chunks)} chunk_list={chunk_list_to_string(selected_chunks)} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP}")
+
+  gpu_total:int=0
+  off:int=0
+  chunk_index:int=0
+  executed_chunks:int=0
+  _read_uint32_le=read_uint32_le
+
+  with open(fname,"rb") as f:
+    while True:
+      if stop_after_chunk>=0 and chunk_index>stop_after_chunk:
+        break
+      t_read0=datetime.now()
+      chunk_constellations:List[Dict[str,int]]=[]
+      i:int=0
+      while i<STEPS:
+        raw=f.read(16)
+        if len(raw)<16:
+          break
+        ld:int=_read_uint32_le(raw[0:4])
+        rd:int=_read_uint32_le(raw[4:8])
+        col:int=_read_uint32_le(raw[8:12])
+        startijkl:int=_read_uint32_le(raw[12:16])
+        chunk_constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+        i+=1
+      t_read1=datetime.now()
+      stage_read_ms:int=profile_elapsed_ms_between(t_read0,t_read1)
+
+      m:int=len(chunk_constellations)
+      if m==0:
+        break
+
+      if chunk_only or use_chunk_list:
+        run_this_chunk:bool=True
+        if use_chunk_list:
+          run_this_chunk=chunk_list_contains(selected_chunks,chunk_index)
+        else:
+          run_this_chunk=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+        if not run_this_chunk:
+          if gpu_log_level>=2:
+            print(f"[funcid-reorder-v2-profile-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
+          off+=m
+          chunk_index+=1
+          continue
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-profile-chunk-start] N={N} chunk={chunk_index} off={off} m={m} read_ms={stage_read_ms}")
+
+      chunk_total,stats,stages_inner,elapsed_text,elapsed_ms=exec_solutions_gpu_chunk_profile(N,chunk_constellations,gpu_block,gpu_max_blocks,gpu_sort_mode,cross_stripe_safe)
+
+      gpu_total+=chunk_total
+      executed_chunks+=1
+
+      stage_soa_ms:int=stages_inner[0]
+      stage_stats_ms:int=stages_inner[1]
+      stage_sort_ms:int=stages_inner[2]
+      stage_kernel_ms:int=stages_inner[3]
+      stage_reduce_ms:int=stages_inner[4]
+      stage_compute_ms:int=stages_inner[5]
+      stage_no_read_ms:int=stages_inner[6]
+      stage_total_ms:int=stage_read_ms+stage_no_read_ms
+      stages:List[int]=[stage_read_ms,stage_soa_ms,stage_stats_ms,stage_sort_ms,stage_kernel_ms,stage_reduce_ms,stage_compute_ms,stage_no_read_ms,stage_total_ms]
+
+      append_stream_funcid_reorder_profile_progress(progress_fname,N,preset_queens,chunk_index,off,m,BLOCK,MAX_BLOCKS,STEPS,gpu_sort_mode,elapsed_text,elapsed_ms,chunk_total,gpu_total,total_records,stats,stages)
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-profile-chunk-end] N={N} chunk={chunk_index} off={off} m={m} elapsed={elapsed_text} elapsed_ms={elapsed_ms} chunk_total={chunk_total} gpu_total={gpu_total} read_ms={stage_read_ms} soa_ms={stage_soa_ms} stats_ms={stage_stats_ms} sort_ms={stage_sort_ms} kernel_ms={stage_kernel_ms} reduce_ms={stage_reduce_ms} compute_ms={stage_compute_ms} total_ms={stage_total_ms}")
+
+      off+=m
+      chunk_index+=1
+
+  if gpu_log_level>=1:
+    print(f"[funcid-reorder-v2-profile-summary] N={N} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} total={gpu_total} progress={progress_fname}")
+
+  return gpu_total
+
+"""99 chunksize: reordered bin の任意 record range を読み込む。"""
+def read_constellations_bin_range(fname:str,off_record:int,max_records:int)->List[Dict[str,int]]:
+  out:List[Dict[str,int]]=[]
+  if off_record<0:
+    off_record=0
+  if max_records<=0:
+    return out
+  _read_uint32_le=read_uint32_le
+  with open(fname,"rb") as f:
+    # Codon File.seek() requires an explicit whence argument.
+    # whence=0 means absolute seek from the beginning of the file.
+    f.seek(off_record*16,0)
+    i:int=0
+    while i<max_records:
+      raw=f.read(16)
+      if len(raw)<16:
+        break
+      ld:int=_read_uint32_le(raw[0:4])
+      rd:int=_read_uint32_le(raw[4:8])
+      col:int=_read_uint32_le(raw[8:12])
+      startijkl:int=_read_uint32_le(raw[12:16])
+      out.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+      i+=1
+  return out
+
+"""99 chunksize: base chunk list を start/count から作る。"""
+def build_chunk_range_list(start:int,count:int)->List[int]:
+  out:List[int]=[]
+  if start<0:
+    start=0
+  if count<=0:
+    count=1
+  i:int=0
+  while i<count:
+    out.append(start+i)
+    i+=1
+  return out
+
+"""99 chunksize: 代表 base chunk を起点に 1x/2x/4x などの batch size を比較する。"""
+def exec_solutions_gpu_bin_stream_funcid_reorder_chunksize_profile(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1,
+  chunk_list_spec:str="",
+  factor_list_spec:str=CHUNKSIZE_DEFAULT_FACTOR_LIST,
+  progress_suffix:str="chunksize"
+)->int:
+
+  BLOCK:int=gpu_block
+  BASE_MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if BASE_MAX_BLOCKS<=0:
+    BASE_MAX_BLOCKS=484
+  BASE_STEPS:int=BLOCK*BASE_MAX_BLOCKS
+  if BASE_STEPS<=0:
+    BASE_STEPS=15488
+
+  total_records:int=count_constellations_bin_records(fname)
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  if len(selected_chunks)==0:
+    selected_chunks=build_chunk_range_list(debug_chunk_start,debug_chunk_count)
+  factors:List[int]=parse_positive_int_list_spec(factor_list_spec)
+  if len(factors)==0:
+    factors=parse_positive_int_list_spec(CHUNKSIZE_DEFAULT_FACTOR_LIST)
+
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}_{progress_suffix}.tsv"
+  with open(progress_fname,"w") as pf:
+    pf.write(stream_funcid_reorder_chunksize_progress_header())
+
+  if gpu_log_level>=1:
+    print(f"[funcid-reorder-v2-chunksize-config] N={N} records={total_records} bin={fname} block={BLOCK} base_max_blocks={BASE_MAX_BLOCKS} base_steps={BASE_STEPS} sort_mode={gpu_sort_mode} chunk_list_count={len(selected_chunks)} chunk_list={chunk_list_to_string(selected_chunks)} factor_list={factor_list_spec} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP}")
+
+  gpu_total:int=0
+  executed_cases:int=0
+  fi:int=0
+  while fi<len(factors):
+    factor:int=factors[fi]
+    if factor<=0:
+      fi+=1
+      continue
+    FACTOR_MAX_BLOCKS:int=BASE_MAX_BLOCKS*factor
+    FACTOR_STEPS:int=BLOCK*FACTOR_MAX_BLOCKS
+    ci:int=0
+    while ci<len(selected_chunks):
+      base_chunk:int=selected_chunks[ci]
+      if base_chunk<0:
+        ci+=1
+        continue
+      off:int=base_chunk*BASE_STEPS
+      if off>=total_records:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-chunksize-skip] N={N} factor={factor} base_chunk={base_chunk} off={off} reason=off_ge_records")
+        ci+=1
+        continue
+      target_m:int=FACTOR_STEPS
+      remaining:int=total_records-off
+      if target_m>remaining:
+        target_m=remaining
+      t_read0=datetime.now()
+      chunk_constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,off,target_m)
+      t_read1=datetime.now()
+      stage_read_ms:int=profile_elapsed_ms_between(t_read0,t_read1)
+      m:int=len(chunk_constellations)
+      if m==0:
+        ci+=1
+        continue
+
+      range_chunks:int=(m + BASE_STEPS - 1)//BASE_STEPS
+      range_start_chunk:int=base_chunk
+      range_end_chunk:int=base_chunk+range_chunks-1
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-chunksize-case-start] N={N} factor={factor} base_chunk={base_chunk} off={off} m={m} block={BLOCK} max_blocks={FACTOR_MAX_BLOCKS} steps={FACTOR_STEPS} read_ms={stage_read_ms} range_chunks={range_chunks}")
+
+      chunk_total,stats,stages_inner,elapsed_text,elapsed_ms=exec_solutions_gpu_chunk_profile(N,chunk_constellations,BLOCK,FACTOR_MAX_BLOCKS,gpu_sort_mode,cross_stripe_safe)
+      gpu_total+=chunk_total
+      executed_cases+=1
+
+      stage_soa_ms:int=stages_inner[0]
+      stage_stats_ms:int=stages_inner[1]
+      stage_sort_ms:int=stages_inner[2]
+      stage_kernel_ms:int=stages_inner[3]
+      stage_reduce_ms:int=stages_inner[4]
+      stage_compute_ms:int=stages_inner[5]
+      stage_no_read_ms:int=stages_inner[6]
+      stage_total_ms:int=stage_read_ms+stage_no_read_ms
+      stages:List[int]=[stage_read_ms,stage_soa_ms,stage_stats_ms,stage_sort_ms,stage_kernel_ms,stage_reduce_ms,stage_compute_ms,stage_no_read_ms,stage_total_ms]
+
+      append_stream_funcid_reorder_chunksize_progress(progress_fname,N,preset_queens,base_chunk,off,m,BLOCK,FACTOR_MAX_BLOCKS,FACTOR_STEPS,gpu_sort_mode,elapsed_text,elapsed_ms,chunk_total,gpu_total,total_records,stats,stages,BASE_STEPS,base_chunk,factor,range_start_chunk,range_end_chunk,range_chunks)
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-chunksize-case-end] N={N} factor={factor} base_chunk={base_chunk} range={range_start_chunk}-{range_end_chunk} off={off} m={m} elapsed={elapsed_text} elapsed_ms={elapsed_ms} chunk_total={chunk_total} gpu_total={gpu_total} read_ms={stage_read_ms} soa_ms={stage_soa_ms} stats_ms={stage_stats_ms} sort_ms={stage_sort_ms} kernel_ms={stage_kernel_ms} reduce_ms={stage_reduce_ms} compute_ms={stage_compute_ms} total_ms={stage_total_ms}")
+
+      ci+=1
+    fi+=1
+
+  if gpu_log_level>=1:
+    print(f"[funcid-reorder-v2-chunksize-summary] N={N} records={total_records} base_steps={BASE_STEPS} cases={executed_cases} total={gpu_total} progress={progress_fname}")
+
+  return gpu_total
+
+"""100 funcid-target: selected chunk を funcid group 別に抽出して GPU 実行する。"""
+def exec_solutions_gpu_bin_stream_funcid_reorder_funcid_target_profile(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1,
+  chunk_list_spec:str=FUNCID_TARGET_DEFAULT_CHUNK_LIST,
+  group_list_spec:str=FUNCID_TARGET_DEFAULT_GROUP_LIST,
+  progress_suffix:str="funcidtarget"
+)->int:
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  total_records:int=count_constellations_bin_records(fname)
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  if len(selected_chunks)==0:
+    selected_chunks=build_chunk_range_list(debug_chunk_start,debug_chunk_count)
+  groups:List[str]=parse_funcid_target_group_list_spec(group_list_spec)
+  if len(groups)==0:
+    groups=parse_funcid_target_group_list_spec(FUNCID_TARGET_DEFAULT_GROUP_LIST)
+
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_funcid_reorder_v2_{funcid_reorder_param_tag()}_{progress_suffix}.tsv"
+  with open(progress_fname,"w") as pf:
+    pf.write(stream_funcid_reorder_funcid_target_progress_header())
+
+  if gpu_log_level>=1:
+    print(f"[funcid-reorder-v2-funcidtarget-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_list_count={len(selected_chunks)} chunk_list={chunk_list_to_string(selected_chunks)} group_list={group_list_spec} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP}")
+
+  gpu_total:int=0
+  executed_cases:int=0
+  ci:int=0
+  while ci<len(selected_chunks):
+    base_chunk:int=selected_chunks[ci]
+    if base_chunk<0:
+      ci+=1
+      continue
+    off:int=base_chunk*STEPS
+    if off>=total_records:
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-funcidtarget-skip] N={N} base_chunk={base_chunk} off={off} reason=off_ge_records")
+      ci+=1
+      continue
+    target_m_read:int=STEPS
+    remaining:int=total_records-off
+    if target_m_read>remaining:
+      target_m_read=remaining
+
+    t_read0=datetime.now()
+    source_constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,off,target_m_read)
+    t_read1=datetime.now()
+    stage_read_ms:int=profile_elapsed_ms_between(t_read0,t_read1)
+    source_m:int=len(source_constellations)
+    if source_m==0:
+      ci+=1
+      continue
+
+    gi:int=0
+    while gi<len(groups):
+      group:str=groups[gi]
+      t_filter0=datetime.now()
+      target_constellations:List[Dict[str,int]]=filter_constellations_by_funcid_target_group(N,source_constellations,group)
+      t_filter1=datetime.now()
+      stage_filter_ms:int=profile_elapsed_ms_between(t_filter0,t_filter1)
+      target_m:int=len(target_constellations)
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-funcidtarget-case-start] N={N} base_chunk={base_chunk} group={group} off={off} source_m={source_m} target_m={target_m} read_ms={stage_read_ms} filter_ms={stage_filter_ms}")
+
+      chunk_total:int=0
+      stats:List[int]=[0]*46
+      stages_inner:List[int]=[0,0,0,0,0,0,0]
+      elapsed_text:str="0:00:00.000"
+      elapsed_ms:int=0
+
+      if target_m>0:
+        chunk_total,stats,stages_inner,elapsed_text,elapsed_ms=exec_solutions_gpu_chunk_profile(N,target_constellations,BLOCK,MAX_BLOCKS,gpu_sort_mode,cross_stripe_safe)
+
+      gpu_total+=chunk_total
+      executed_cases+=1
+
+      stage_soa_ms:int=stages_inner[0]
+      stage_stats_ms:int=stages_inner[1]
+      stage_sort_ms:int=stages_inner[2]
+      stage_kernel_ms:int=stages_inner[3]
+      stage_reduce_ms:int=stages_inner[4]
+      stage_compute_ms:int=stages_inner[5]
+      stage_no_read_ms:int=stages_inner[6]
+      stage_total_ms:int=stage_read_ms+stage_filter_ms+stage_no_read_ms
+      stages:List[int]=[stage_read_ms,stage_soa_ms,stage_stats_ms,stage_sort_ms,stage_kernel_ms,stage_reduce_ms,stage_compute_ms,stage_no_read_ms,stage_total_ms]
+
+      append_stream_funcid_reorder_funcid_target_progress(progress_fname,N,preset_queens,base_chunk,off,target_m,BLOCK,MAX_BLOCKS,STEPS,gpu_sort_mode,elapsed_text,elapsed_ms,chunk_total,gpu_total,total_records,stats,stages,STEPS,base_chunk,group,source_m,stage_filter_ms)
+
+      if gpu_log_level>=1:
+        print(f"[funcid-reorder-v2-funcidtarget-case-end] N={N} base_chunk={base_chunk} group={group} off={off} source_m={source_m} target_m={target_m} elapsed={elapsed_text} elapsed_ms={elapsed_ms} chunk_total={chunk_total} gpu_total={gpu_total} read_ms={stage_read_ms} filter_ms={stage_filter_ms} soa_ms={stage_soa_ms} stats_ms={stage_stats_ms} sort_ms={stage_sort_ms} kernel_ms={stage_kernel_ms} reduce_ms={stage_reduce_ms} compute_ms={stage_compute_ms} total_ms={stage_total_ms}")
+
+      gi+=1
+    ci+=1
+
+  if gpu_log_level>=1:
+    print(f"[funcid-reorder-v2-funcidtarget-summary] N={N} records={total_records} steps={STEPS} cases={executed_cases} total={gpu_total} progress={progress_fname}")
 
   return gpu_total
 
@@ -3996,7 +5245,10 @@ def main()->None:
   cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT
   debug_chunk_start:int=0
   debug_chunk_count:int=1
-  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep
+  microbench_chunk_list_spec:str=MICROBENCH_DEFAULT_CHUNK_LIST
+  chunksize_factor_list_spec:str=CHUNKSIZE_DEFAULT_FACTOR_LIST
+  funcid_target_group_list_spec:str=FUNCID_TARGET_DEFAULT_GROUP_LIST
+  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep, 17:funcid-reorder-v2-microbench, 18:funcid-reorder-v2-profile, 19:funcid-reorder-v2-chunksize-profile, 20:funcid-reorder-v2-funcid-target-profile
   reorder_window_mult:int=FUNCID_REORDER_V2_WINDOW_MULT
   reorder_phase_jump:int=FUNCID_REORDER_V2_PHASE_JUMP
   # 通常運用では preset_queens は 5 固定。診断用 bench_mode>=8 のときだけ引数の preset を許可する。
@@ -4037,7 +5289,7 @@ def main()->None:
       requested_preset_arg=int(sys.argv[8])
     if argc >= 10:
       bench_mode=int(sys.argv[9])
-      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16):
+      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16 and bench_mode!=17 and bench_mode!=18 and bench_mode!=19 and bench_mode!=20):
         print(f"[warning] unknown bench_mode={bench_mode}; using 0")
         bench_mode=0
     if bench_mode>=8:
@@ -4046,23 +5298,55 @@ def main()->None:
       if requested_preset_arg!=5:
         print(f"[warning] preset_queens={requested_preset_arg} is disabled in 77 normal modes; using 5")
       preset_queens_arg=5
-    if bench_mode==14 or bench_mode==15:
-      # 96 reorder modes use a short form; if omitted, measured-best w8_j7 is used:
-      #   ... [preset_queens] [bench_mode] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]
-      # Example:
-      #   -g 22 22 32 484 1 0 5 14 8 5
-      #   -g 22 22 32 484 1 0 5 15        # auto w8_j7
-      #   -g 22 22 32 484 1 0 5 15 16 7   # manual override
+    if bench_mode==14 or bench_mode==15 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20:
+      # 96/97 reorder modes use a short form; if omitted, measured-best w8_j7 is used:
+      #   mode14/15: ... [preset_queens] [bench_mode] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]
+      #   mode17/18: ... [preset_queens] mode [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]
+      #   mode19:    ... [preset_queens] 19   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [factor_list]
+      #   mode20:    ... [preset_queens] 20   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [group_list]
+      # Examples:
+      #   -g 22 22 32 484 1 0 7 15        # auto w8_j7 full N22
+      #   -g 22 22 32 484 1 0 7 15 16 7   # manual override full N22
+      #   -g 22 22 32 484 1 0 7 17        # default 20-chunk microbench
+      #   -g 22 22 32 484 1 0 7 17 8 7 0 1222 5  # contiguous chunk range
+      #   -g 22 22 32 484 1 0 7 17 8 7 0 0 1 "0,8,94"  # explicit chunk list
+      #   -g 22 22 32 484 1 0 7 19        # chunk-size profile, factors=1,2,4
+      #   -g 22 22 32 484 1 0 7 20        # funcid-target profile, default heavy chunks and groups
       if argc >= 11:
         reorder_window_mult=int(sys.argv[10])
       if argc >= 12:
         reorder_phase_jump=int(sys.argv[11])
       if argc >= 13:
         cross_stripe_safe=(int(sys.argv[12])!=0)
-      if argc > 13:
-        print("Too many arguments")
-        print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
-        return
+      if bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20:
+        if argc >= 14:
+          debug_chunk_start=int(sys.argv[13])
+          microbench_chunk_list_spec=""
+        if argc >= 15:
+          debug_chunk_count=int(sys.argv[14])
+        if argc >= 16:
+          microbench_chunk_list_spec=sys.argv[15]
+        if bench_mode==19 and argc >= 17:
+          chunksize_factor_list_spec=sys.argv[16]
+        if bench_mode==20 and argc >= 17:
+          funcid_target_group_list_spec=sys.argv[16]
+        if (bench_mode==17 or bench_mode==18) and argc > 16:
+          print("Too many arguments")
+          print("Usage microbench/profile: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens mode[17|18] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]")
+          return
+        if bench_mode==19 and argc > 17:
+          print("Too many arguments")
+          print("Usage chunksize: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 19 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [factor_list]")
+          return
+        if bench_mode==20 and argc > 17:
+          print("Too many arguments")
+          print("Usage funcid-target: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 20 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [group_list]")
+          return
+      else:
+        if argc > 13:
+          print("Too many arguments")
+          print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
+          return
     elif bench_mode==16:
       # mode 16 runs the fixed simulation sweep: window_mult=8,16,32 x phase_jump=5,7,11.
       if argc > 10:
@@ -4083,6 +5367,9 @@ def main()->None:
   else:
     print("Usage: nqueens [-c | -g] [nmin nmax] [gpu_block gpu_max_blocks log_level sort_mode] [preset_queens] [bench_mode] [cross_stripe_safe] [debug_chunk_start] [debug_chunk_count] [reorder_window_mult] [reorder_phase_jump]")
     return
+
+  if bench_mode==20 and microbench_chunk_list_spec==MICROBENCH_DEFAULT_CHUNK_LIST:
+    microbench_chunk_list_spec=FUNCID_TARGET_DEFAULT_CHUNK_LIST
 
   if reorder_window_mult<=0:
     print(f"[warning] reorder_window_mult={reorder_window_mult} is invalid; using 8")
@@ -4115,7 +5402,15 @@ def main()->None:
       print(f"funcid_reorder_v2_gpu: mode={bench_mode} preset={preset_queens_arg}")
     if bench_mode==16:
       print(f"funcid_reorder_v2_sweep_sim: mode={bench_mode} preset={preset_queens_arg}")
-  if bench_mode==14 or bench_mode==15 or bench_mode==16:
+    if bench_mode==17:
+      print(f"funcid_reorder_v2_microbench: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+    if bench_mode==18:
+      print(f"funcid_reorder_v2_profile: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+    if bench_mode==19:
+      print(f"funcid_reorder_v2_chunksize: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} factor_list={chunksize_factor_list_spec}")
+    if bench_mode==20:
+      print(f"funcid_reorder_v2_funcidtarget: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} group_list={funcid_target_group_list_spec}")
+  if bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20:
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
@@ -4201,6 +5496,106 @@ def main()->None:
       print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    funcid-reorder-v2-sweep-sim")
       continue
 
+    if use_gpu and N>=21 and bench_mode==17:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=funcid_reorder_output_fname(N,preset_queens)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-microbench-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-microbench-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,"microbench")
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[funcid-reorder-v2-microbench-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    funcid-reorder-v2-microbench")
+      continue
+
+    if use_gpu and N>=21 and bench_mode==18:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=funcid_reorder_output_fname(N,preset_queens)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-profile-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-profile-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder_profile(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,"profile")
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[funcid-reorder-v2-profile-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    funcid-reorder-v2-profile")
+      continue
+
+    if use_gpu and N>=21 and bench_mode==19:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=funcid_reorder_output_fname(N,preset_queens)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-chunksize-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-chunksize-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder_chunksize_profile(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,chunksize_factor_list_spec,"chunksize")
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[funcid-reorder-v2-chunksize-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} factor_list={chunksize_factor_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    funcid-reorder-v2-chunksize")
+      continue
+
+    if use_gpu and N>=21 and bench_mode==20:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=funcid_reorder_output_fname(N,preset_queens)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-funcidtarget-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[funcid-reorder-v2-funcidtarget-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder_funcid_target_profile(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,funcid_target_group_list_spec,"funcidtarget")
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[funcid-reorder-v2-funcidtarget-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} group_list={funcid_target_group_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    funcid-reorder-v2-funcidtarget")
+      continue
+
     if use_gpu and N>=21 and bench_mode==15:
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       reorder_fname,reorder_records,reorder_chunks=build_funcid_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
@@ -4212,7 +5607,7 @@ def main()->None:
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
       continue
 
-    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16):
+    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20):
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       stream_chunk_only:bool=(bench_mode==7)
       total:int=exec_solutions_gpu_bin_stream(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,stream_chunk_only,debug_chunk_start,debug_chunk_count)
