@@ -20,49 +20,49 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 # ビルド
 cd /home/suzuki/Github/N-Queens/13Bit_codon
 codon build -release \
-113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten.py
+114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation.py
 
 
-# 113Py 変更点
+# 114Py 変更点
 # - 112Py の計測安全化を継承し、bin/progress 名には chunk tag を含める
 # - GPU kernel / DFS / 解数計算ロジックは変更なし
-# - mode28/mode29 の broadmarktail reorder だけを v3 に更新
-# - funcid17 / cell_G_H tail subcell の取り出し窓を広げる
-# - chunk/cell ごとに F17/GH/rest の interleave 位相を回し、tail の偏りを平準化する
+# - mode28/mode29 の broadmarktail reorder を v4 variant ablation に更新
+# - variant により funcid17 / cell_G_H tail subcell の取り出し窓・phase・interleave を切り替える
+# - variant 別に 112 baseline / phase_only / rotate_only / wide_only / phase_rotate / 113-like を比較する
 
 # GPUシングル実行
-./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 29 \
-  2>&1 | tee 113Py_N22_single_32x484.log
+  2>&1 | tee 114Py_N22_single_32x484.log
 
 
 # 4GPUマルチ実行
 # 4GPUで回す前に、reorder bin は1回だけ作っておくのが安全です。4プロセスが同時に bin を作りに行く競合を避けます。
-./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 28 \
-  2>&1 | tee 113Py_N22_broadmarktail_sim_build.log
+  2>&1 | tee 114Py_N22_broadmarktail_sim_build.log
 
 
-CUDA_VISIBLE_DEVICES=0 ./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+CUDA_VISIBLE_DEVICES=0 ./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 29 8 7 0 0 4 \
-  2>&1 | tee 113Py_N22_worker0of4.log &
+  2>&1 | tee 114Py_N22_worker0of4.log &
 
-CUDA_VISIBLE_DEVICES=1 ./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+CUDA_VISIBLE_DEVICES=1 ./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 29 8 7 0 1 4 \
-  2>&1 | tee 113Py_N22_worker1of4.log &
+  2>&1 | tee 114Py_N22_worker1of4.log &
 
-CUDA_VISIBLE_DEVICES=2 ./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+CUDA_VISIBLE_DEVICES=2 ./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 29 8 7 0 2 4 \
-  2>&1 | tee 113Py_N22_worker2of4.log &
+  2>&1 | tee 114Py_N22_worker2of4.log &
 
-CUDA_VISIBLE_DEVICES=3 ./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
+CUDA_VISIBLE_DEVICES=3 ./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
   -g 22 22 32 484 1 0 7 29 8 7 0 3 4 \
-  2>&1 | tee 113Py_N22_worker3of4.log &
+  2>&1 | tee 114Py_N22_worker3of4.log &
 
 wait
 
 # 4本の合算確認は添付したスクリプトでできます。
-python3 sum_111py_worker_totals.py 113Py_N22_worker*of4.log
+python3 sum_111py_worker_totals.py 114Py_N22_worker*of4.log
 
 
 workspace#suzuki$ date
@@ -147,189 +147,183 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
-作成しました。
+作成しました。週末にまとめて回す前提で、**1本の 114Py ソースで 6 variant を切り替え**できるようにしています。
 
-[113Py ソースコードをダウンロード](sandbox:/mnt/data/113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten.py)
+* [114Py ソースコード](sandbox:/mnt/data/114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation.py)
+* [週末一括実行スクリプト](sandbox:/mnt/data/114py_weekend_run_commands.sh)
+* [月曜用 集計スクリプト](sandbox:/mnt/data/114py_collect_weekend_results.py)
 
-今回の 113Py は、**112Py をベースに tail 平準化だけを追加**しています。GPU kernel / DFS / 解数計算ロジックは変更していません。
+手元では Codon 実機ビルドは実行していません。変更範囲は **reorder/bin/progress 名と broadmarktail variant 切替のみ**で、GPU kernel / DFS / 解数計算ロジックは触っていません。
+
+## 114Py variant
 
 ```text
-113Py の変更点
+variant 0: v2base
+  112/111 相当の基準
+  boost=1, simple phase, fixed interleave
 
-1. broadmarktail reorder version を v3 に変更
-   v2 → v3
+variant 1: phase_only
+  boost=1
+  cell/risk-aware phase mixing だけ追加
 
-2. reordered bin / progress TSV は 112Py と同じく chunk tag 付き
-   例:
-   constellations_N22_7_broadmarktail_reorder_v3_w8_j7_b32_m484_s15488.bin
+variant 2: rotate_only
+  boost=1
+  F17/GH/R の rotating interleave だけ追加
 
-3. funcid17 / G_H tail subcell の取り出し窓を拡大
-   BROAD_MARKDIST_TAIL_WINDOW_BOOST = 1 → 2
+variant 3: wide_only
+  boost=2
+  phase/interleave は 112 相当
 
-4. tail subcell の stripe 位相を分散
-   broad / risk / tail を group_id に混ぜる
+variant 4: phase_rotate
+  boost=1
+  phase mixing + rotating interleave
 
-5. F17 / G_H / rest の interleave 順を chunk/cell ごとに回転
-   固定順ではなく、4パターンで配置
+variant 5: wide_phase_rotate
+  113Py 相当
+  boost=2 + phase mixing + rotating interleave
 ```
 
-ビルドは以下です。
+今回の本命は **variant 1 と variant 4** です。variant 0 は比較基準、variant 5 は 113Py 相当の再現確認です。
+
+## ビルド
 
 ```bash
 cd /home/suzuki/Github/N-Queens/13Bit_codon/Archive
 
 codon build -release \
-  113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten.py
+  114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation.py
 ```
 
-本線の実行コマンドはこれです。
+## まとめて実行する場合
+
+添付の `114py_weekend_run_commands.sh` を同じディレクトリに置いてください。
 
 ```bash
-./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
-  -g 22 22 32 484 1 0 7 29 \
-  2>&1 | tee 113Py_N22_single_32x484.log
+cd /home/suzuki/Github/N-Queens/13Bit_codon/Archive
+
+chmod +x 114py_weekend_run_commands.sh
+chmod +x 114py_collect_weekend_results.py
+
+nohup bash 114py_weekend_run_commands.sh \
+  > 114Py_weekend_master.nohup.log 2>&1 &
 ```
 
-reorder bin を先に作るだけなら以下です。
+進行確認はこれです。
 
 ```bash
-./113Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_flatten \
-  -g 22 22 32 484 1 0 7 28 \
-  2>&1 | tee 113Py_N22_broadmarktail_v3_sim_build.log
+tail -f 114Py_weekend_master.nohup.log
 ```
 
-期待する完了行は従来通りです。
+デフォルトでは 6本すべて回します。
+
+```text
+0:v2base
+1:phase_only
+2:rotate_only
+3:wide_only
+4:phase_rotate
+5:wide_phase_rotate
+```
+
+本数を減らすなら、例えばこの 4本がよいです。
+
+```bash
+VARIANTS="0:v2base 1:phase_only 4:phase_rotate 5:wide_phase_rotate" \
+nohup bash 114py_weekend_run_commands.sh \
+  > 114Py_weekend_master.nohup.log 2>&1 &
+```
+
+## 個別実行コマンド
+
+variant 0、基準です。
+
+```bash
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 28 8 7 0 0 \
+  2>&1 | tee 114Py_N22_v4_0_v2base_32x484_sim_build.log
+
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 29 8 7 0 0 1 0 \
+  2>&1 | tee 114Py_N22_v4_0_v2base_32x484_single_gpu.log
+```
+
+variant 1、本命候補です。
+
+```bash
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 28 8 7 0 1 \
+  2>&1 | tee 114Py_N22_v4_1_phase_only_32x484_sim_build.log
+
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 29 8 7 0 0 1 1 \
+  2>&1 | tee 114Py_N22_v4_1_phase_only_32x484_single_gpu.log
+```
+
+variant 4、もう一つの本命候補です。
+
+```bash
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 28 8 7 0 4 \
+  2>&1 | tee 114Py_N22_v4_4_phase_rotate_32x484_sim_build.log
+
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 29 8 7 0 0 1 4 \
+  2>&1 | tee 114Py_N22_v4_4_phase_rotate_32x484_single_gpu.log
+```
+
+variant 5、113Py 相当の再確認です。
+
+```bash
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 28 8 7 0 5 \
+  2>&1 | tee 114Py_N22_v4_5_wide_phase_rotate_32x484_sim_build.log
+
+./114Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_tail_ablation \
+  -g 22 22 32 484 1 0 7 29 8 7 0 0 1 5 \
+  2>&1 | tee 114Py_N22_v4_5_wide_phase_rotate_32x484_single_gpu.log
+```
+
+## 月曜日の集計
+
+全実行後にこれを実行してください。
+
+```bash
+python3 114py_collect_weekend_results.py
+```
+
+生成されるファイルはこの2つです。
+
+```text
+114py_weekend_summary.tsv
+114py_weekend_top_chunks.tsv
+```
+
+`summary` では variant ごとに、総 GPU chunk 時間、mean / median / p90 / p95 / p99 / max、9秒超 chunk 数、10秒超 chunk 数を比較します。
+`top_chunks` では variant ごとの遅い chunk 上位を出し、`funcid_4_count`, `funcid_5_count`, `funcid_7_count`, `funcid_17_count`, `score_avg`, `free_popcount_avg` を見られるようにしています。
+
+## 月曜に添付していただきたいファイル
+
+`.bin` は大きいので不要です。以下だけで十分です。
+
+```text
+114Py_build.log
+114Py_weekend_master.nohup.log
+114py_collect_weekend_results.log
+114py_weekend_summary.tsv
+114py_weekend_top_chunks.tsv
+
+114Py_N22_v4_*_32x484_sim_build.log
+114Py_N22_v4_*_32x484_single_gpu.log
+
+progress_N22_7_stream_broadmarktail_reorder_v4_*_w8_j7_b32_m484_s15488_sim.tsv
+progress_N22_7_stream_funcid_reorder_v2_w8_j7_b32_m484_s15488_broadmarktail_v4_*_gpu.tsv
+```
+
+期待する最終行は各 variant とも従来通りです。
 
 ```text
 22:     2691008701644                0      ...    ok
 ```
-
-手元では Codon ビルド実行環境がないため、実機での `codon build -release` 確認はお願いします。今回の変更範囲は reorder 側だけで、解数計算経路は触っていません。
-
-確認しました。**113Py は正解値は OK ですが、本線採用はまだしない方がよい**です。
-
-## 結果
-
-113Py の v3 reorder build は正常です。
-
-```text
-records           = 28,719,035
-chunks            = 1,855
-reordered_records = 28,719,035
-valid             = 1
-build time        = 0:02:42.178
-```
-
-v3 の狙いどおり、`funcid17=800521` と `cell_G_H=254624` を対象にした tail flatten reorder が作成されています。
-
-GPU 実行も正解値に一致しています。
-
-```text
-113Py:
-  total = 2691008701644
-  time  = 3:35:30.017
-  ok
-```
-
-最終 chunk まで `gpu_total=2691008701644` で、`broadmarktail_reorder_v3_w8_j7_b32_m484_s15488.bin` を使って完走しています。
-
-## 111Py 32x484 との比較
-
-表面上の wall time だけ見ると、113Py は 111Py より速く見えます。
-
-| 実行           |          表示時間 | 判定 |
-| ------------ | ------------: | -- |
-| 111Py 32x484 | `3:38:06.312` | ok |
-| 113Py 32x484 | `3:35:30.017` | ok |
-
-111Py のログでは、初回実行時に `constellations_N22_7.bin` と v2 reorder bin を作ってから GPU 実行しています。 そのため、**表示時間だけで比較すると 113Py が有利に見えます**。
-
-公平に GPU chunk の合計だけを見ると、こうなります。
-
-```text
-111Py 32x484 GPU chunk合計:
-  3:34:43.641
-
-113Py 32x484 GPU chunk合計:
-  3:35:13.008
-
-差分:
-  113Py が 29.367 秒遅い
-```
-
-つまり、**113Py v3 は最大 tail は削れたが、総GPU時間は少し悪化**しています。
-
-## tail 平準化の効果
-
-113Py の良かった点は、極端な 10秒超 chunk を消せたことです。
-
-```text
-111Py:
-  max chunk = 10.306 秒
-  10秒超 chunk = 4個
-  9秒以上 chunk = 46個
-
-113Py:
-  max chunk = 9.980 秒
-  10秒超 chunk = 0個
-  9秒以上 chunk = 40個
-```
-
-これは 113Py の tail flatten が **極端な山を削る方向には効いた**という意味です。
-
-ただし、平均と中位 tail は少し悪化しました。
-
-```text
-111Py:
-  mean   = 6.945 秒
-  median = 6.859 秒
-  p99    = 約 9.367 秒
-
-113Py:
-  mean   = 6.961 秒
-  median = 6.881 秒
-  p99    = 約 9.424 秒
-```
-
-特に `8秒以上` の chunk は 289 → 293 に増えており、極端な山を削った代わりに、中くらい重い chunk を少し増やしています。
-
-## 判定
-
-```text
-113Py 判定:
-  正確性: OK
-  最大tail削減: OK
-  総GPU時間: NG寄り
-  本線採用: まだしない
-```
-
-現時点の本線は、**111Py/112Py の v2 broadmarktail, 32x484** に戻すのが安全です。
-
-113Py は「診断として有用」ですが、「採用版」ではありません。
-
-## 次の方針
-
-114Py を作るなら、113Py の強めの変更は戻すべきです。
-
-```text
-114Py 方針:
-  ベースは 112Py または 111Py v2
-  32x484 固定
-  v3 の BROAD_MARKDIST_TAIL_WINDOW_BOOST=2 は戻す
-  progress 名に v2/v3/variant 名を必ず入れる
-  次の対象は funcid17/G_H ではなく、残っている funcid_7 / funcid_4 / score_avg 高め chunk
-```
-
-113Py の上位 slow chunk を見ると、残っている重い chunk は `funcid_7_count` や `funcid_4_count`、`score_avg/free_popcount_avg` の影響が強めです。したがって次は **F17/G_H をさらに触るのではなく、funcid_7 を弱く平準化する方向**がよいです。
-
-加えて、113Py の GPU progress ファイル名は、
-
-```text
-progress_N22_7_stream_funcid_reorder_v2_w8_j7_b32_m484_s15488_broadmarktail_gpu.tsv
-```
-
-となっていて、**v3 が名前に入っていません**。v3 bin 名には入っていますが、GPU progress は 112Py と衝突しやすいので、114Py ではここも修正します。
-
 
 
 """
@@ -341,7 +335,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="113 broadmarktail v3 tail flattening + measurement-safe chunk-tagged single GPU runner from 112"
+VERSION_TAG:str="114 broadmarktail v4 variant ablation + measurement-safe chunk-tagged single GPU runner from 113"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # 96 FUNCID REORDER V2 AUTO DEFAULT:
@@ -3956,19 +3950,79 @@ FUNCID_MARKDIST_RISK_REORDER_DEFAULT_REASON:str="105Py exact mark-distance tail 
 BROAD_MARKDIST_REORDER_VERSION:str="v1"
 BROAD_MARKDIST_REORDER_DEFAULT_REASON:str="107 broad funcid primary + exact mark-distance secondary 5x5 quota"
 
-# 113 BROAD+MARKDIST+TAIL FLATTENING REORDER:
+# 114 BROAD+MARKDIST+TAIL ABLATION REORDER:
 #   Keep 107's broad funcid primary quota and mark-distance secondary quota.
-#   Add a weak third in-cell split for the two observed tail signals after 108Py:
-#   funcid_17 and cell_G_H.  This changes only stream ordering / .bin layout;
-#   GPU kernel and DFS logic remain unchanged.
-BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v3"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="113 broadmarktail v3: wider F17/G_H stripe window + rotating tail interleave"
-BROAD_MARKDIST_TAIL_WINDOW_BOOST:int=2
+#   Keep the 109/112 weak tertiary split for funcid_17 and cell_G_H.
+#   114 adds a runtime variant switch for weekend full-run ablation.
+#   This changes only stream ordering / .bin layout; GPU kernel and DFS logic remain unchanged.
+BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="114 broadmarktail v4 weekend ablation: v2base / phase / rotate / wide variants"
+BROAD_MARKDIST_TAIL_VARIANT:int=0
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
-# 113Py: tail subcell の stripe 開始位置を cell/risk/tail ごとにずらし、
-#        F17/G_H が同じ chunk 位相へ戻るのを避ける。
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17
 BROAD_MARKDIST_TAIL_RISK_SALT:int=11
+
+"""114 broadmarktail variant tag。
+0=v2base, 1=phase_only, 2=rotate_only, 3=wide_only, 4=phase_rotate, 5=wide_phase_rotate。
+"""
+def broad_markdist_tail_variant_tag()->str:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  if v==0:
+    return "v2base"
+  if v==1:
+    return "phase_only"
+  if v==2:
+    return "rotate_only"
+  if v==3:
+    return "wide_only"
+  if v==4:
+    return "phase_rotate"
+  if v==5:
+    return "wide_phase_rotate"
+  return "unknown"
+
+"""114 broadmarktail variant description。"""
+def broad_markdist_tail_variant_desc()->str:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  if v==0:
+    return "112/111-like v2 baseline: boost=1, simple tail phase, fixed interleave"
+  if v==1:
+    return "phase only: boost=1, cell/risk-aware tail phase, fixed interleave"
+  if v==2:
+    return "rotate only: boost=1, simple tail phase, rotating F17/GH/R interleave"
+  if v==3:
+    return "wide only: boost=2, simple tail phase, fixed interleave"
+  if v==4:
+    return "phase+rotate: boost=1, cell/risk-aware tail phase, rotating interleave"
+  if v==5:
+    return "113-like full: boost=2, cell/risk-aware tail phase, rotating interleave"
+  return "unknown broadmarktail variant"
+
+"""114 broadmarktail: tail window boost for current variant。"""
+def broad_markdist_tail_window_boost_value()->int:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  if v==3 or v==5:
+    return 2
+  return 1
+
+"""114 broadmarktail: tail phase salt for current variant。
+112/111-like variants keep the old salt=31; phase-mix variants use the 113 salt=53.
+"""
+def broad_markdist_tail_phase_salt_value()->int:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  if v==1 or v==4 or v==5:
+    return 53
+  return 31
+
+"""114 broadmarktail: use cell/risk-aware phase mixing for current variant。"""
+def broad_markdist_tail_use_phase_mix()->bool:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  return v==1 or v==4 or v==5
+
+"""114 broadmarktail: use rotating F17/GH/R interleave for current variant。"""
+def broad_markdist_tail_use_rotating_interleave()->bool:
+  v:int=BROAD_MARKDIST_TAIL_VARIANT
+  return v==2 or v==4 or v==5
 
 """97 microbench: comma-separated chunk list を int List にする。空文字/"-" は list 無効。"""
 def parse_chunk_list_spec(spec:str)->List[int]:
@@ -5907,7 +5961,7 @@ def build_broad_markdist_reordered_bin(
 #
 ####################################################
 
-"""113 broadmark tail: tertiary tail bucket label。0=funcid17, 1=cell_G_H, 2=rest。"""
+"""114 broadmark tail: tertiary tail bucket label。0=funcid17, 1=cell_G_H, 2=rest。"""
 def broad_markdist_tail_label(tail:int)->str:
   if tail==0:
     return "F17"
@@ -5915,19 +5969,19 @@ def broad_markdist_tail_label(tail:int)->str:
     return "GH"
   return "R"
 
-"""113 broadmark tail: 25x3 subcell bin 名。"""
+"""114 broadmark tail: 25x3 subcell bin 名。"""
 def broad_markdist_tail_reorder_subcell_fname(N:int,preset_queens:int,broad:int,risk:int,tail:int)->str:
   return f"constellations_N{N}_{preset_queens}_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{funcid_reorder_bucket_label(broad)}_{funcid_markdist_risk_reorder_bucket_label(risk)}_{broad_markdist_tail_label(tail)}.bin"
 
-"""113 broadmark tail: reorder 済み bin 名。"""
+"""114 broadmark tail: reorder 済み bin 名。"""
 def broad_markdist_tail_reorder_output_fname(N:int,preset_queens:int,block:int=32,max_blocks:int=484)->str:
-  return f"constellations_N{N}_{preset_queens}_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
+  return f"constellations_N{N}_{preset_queens}_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
 
-"""113 broadmark tail: subcell index を 0..74 に pack。"""
+"""114 broadmark tail: subcell index を 0..74 に pack。"""
 def broad_markdist_tail_subcell_index(broad:int,risk:int,tail:int)->int:
   return (broad*5+risk)*3+tail
 
-"""113 broadmark tail: 75 個の constellation buffer を作る。"""
+"""114 broadmark tail: 75 個の constellation buffer を作る。"""
 def make_broad_markdist_tail_subcell_buffers()->List[List[Dict[str,int]]]:
   out:List[List[Dict[str,int]]]=[]
   i:int=0
@@ -5937,7 +5991,7 @@ def make_broad_markdist_tail_subcell_buffers()->List[List[Dict[str,int]]]:
     i+=1
   return out
 
-"""113 broadmark tail: fid / broad / risk から weak tertiary tail bucket を返す。"""
+"""114 broadmark tail: fid / broad / risk から weak tertiary tail bucket を返す。"""
 def broad_markdist_tail_bucket(fid:int,broad:int,risk:int)->int:
   # funcid17 は 108Py の slow p95 側で新しく強く出た signal。107Py の broadmark を壊さないよう弱く分離する。
   if fid==17:
@@ -5947,7 +6001,7 @@ def broad_markdist_tail_bucket(fid:int,broad:int,risk:int)->int:
     return 1
   return 2
 
-"""113 broadmark tail: tail subcell の stripe 位相を分散する group id。
+"""114 broadmark tail: tail subcell の stripe 位相を分散する group id。
 
 111/112 では tail==F17/GH のとき salt を足すだけだった。113 では
 broad/risk/tail も group id に混ぜ、同じ F17/GH でも cell が違えば別位相から
@@ -5955,15 +6009,20 @@ stripe 抽出されるようにする。quota は変えず、bin 内の取り出
 """
 def broad_markdist_tail_phase_group_id(subcell:int,broad:int,risk:int,tail:int)->int:
   gid:int=subcell
-  gid+=broad*BROAD_MARKDIST_TAIL_CELL_SALT
-  gid+=risk*BROAD_MARKDIST_TAIL_RISK_SALT
-  if tail==0:
-    gid+=BROAD_MARKDIST_TAIL_PHASE_SALT
-  elif tail==1:
-    gid+=BROAD_MARKDIST_TAIL_PHASE_SALT*2
+  if broad_markdist_tail_use_phase_mix():
+    gid+=broad*BROAD_MARKDIST_TAIL_CELL_SALT
+    gid+=risk*BROAD_MARKDIST_TAIL_RISK_SALT
+    if tail==0:
+      gid+=broad_markdist_tail_phase_salt_value()
+    elif tail==1:
+      gid+=broad_markdist_tail_phase_salt_value()*2
+  else:
+    # 112/111-like simple phase: only separate F17/GH from rest, no cell/risk phase mixing.
+    if tail==0 or tail==1:
+      gid+=broad_markdist_tail_phase_salt_value()
   return gid
 
-"""113 broadmark tail: 75 subcell stats。subcell=(broad*5+risk)*3+tail。"""
+"""114 broadmark tail: 75 subcell stats。subcell=(broad*5+risk)*3+tail。"""
 def analyze_broad_markdist_tail_subcell_stats_from_soa(soa:TaskSoA,m:int)->List[int]:
   out:List[int]=[0]*75
   i:int=0
@@ -5981,7 +6040,7 @@ def analyze_broad_markdist_tail_subcell_stats_from_soa(soa:TaskSoA,m:int)->List[
     i+=1
   return out
 
-"""113 broadmark tail: summary stats。0=funcid17,1=cell_G_H,2=markrisk_H,3=proxy_sum。"""
+"""114 broadmark tail: summary stats。0=funcid17,1=cell_G_H,2=markrisk_H,3=proxy_sum。"""
 def analyze_broad_markdist_tail_summary_from_soa(soa:TaskSoA,m:int)->List[int]:
   out:List[int]=[0]*4
   i:int=0
@@ -6008,7 +6067,7 @@ def analyze_broad_markdist_tail_summary_from_soa(soa:TaskSoA,m:int)->List[int]:
     i+=1
   return out
 
-"""113 broadmark tail: chunk constellations から tail summary を作る。"""
+"""114 broadmark tail: chunk constellations から tail summary を作る。"""
 def analyze_broad_markdist_tail_summary(N:int,chunk_constellations:List[Dict[str,int]])->List[int]:
   m:int=len(chunk_constellations)
   out:List[int]=[0]*4
@@ -6031,7 +6090,7 @@ def stream_broad_markdist_tail_reorder_progress_header()->str:
   h+="\n"
   return h
 
-"""113 broadmark tail: tail summary suffix。"""
+"""114 broadmark tail: tail summary suffix。"""
 def stream_broad_markdist_tail_summary_suffix(tail_stats:List[int],m:int)->str:
   f17:int=0
   gh:int=0
@@ -6062,7 +6121,7 @@ def append_stream_broad_markdist_tail_reorder_progress(progress_fname:str,N:int,
     f.write(stream_broad_markdist_tail_summary_suffix(tail_stats,m))
     f.write("\n")
 
-"""113 broadmark tail: 元 bin を broad x markdist x tail 75 subcell bin へ分配する。"""
+"""114 broadmark tail: 元 bin を broad x markdist x tail 75 subcell bin へ分配する。"""
 def build_broad_markdist_tail_reorder_subcell_bins(N:int,fname:str,preset_queens:int,BLOCK:int,MAX_BLOCKS:int,gpu_log_level:int=0)->List[int]:
   STEPS:int=BLOCK*MAX_BLOCKS
   if STEPS<=0:
@@ -6149,7 +6208,7 @@ def build_broad_markdist_tail_reorder_subcell_bins(N:int,fname:str,preset_queens
 
   return counts
 
-"""113 broadmark tail: 75 subcell rem_counts から broad primary / markrisk secondary / weak tail tertiary quota を作る。"""
+"""114 broadmark tail: 75 subcell rem_counts から broad primary / markrisk secondary / weak tail tertiary quota を作る。"""
 def broad_markdist_tail_make_subcell_quotas(rem_counts:List[int],total_remaining:int,m_target:int)->List[int]:
   quotas:List[int]=[0]*75
   if total_remaining<=0 or m_target<=0:
@@ -6201,17 +6260,19 @@ def broad_markdist_tail_make_subcell_quotas(rem_counts:List[int],total_remaining
 
   return quotas
 
-"""113 broadmark tail: one 107 cell の F17/GH/R parts を弱く interleave する。"""
+"""114 broadmark tail: one 107 cell の F17/GH/R parts を弱く interleave する。"""
 def interleave_broad_markdist_tail_subparts(part_f17:List[Dict[str,int]],part_gh:List[Dict[str,int]],part_r:List[Dict[str,int]],m_target:int,cell:int,chunk_index:int)->List[Dict[str,int]]:
   out:List[Dict[str,int]]=[]
   i17:int=0
   ig:int=0
   ir:int=0
-  # 113Py:
-  #   111/112 の固定順 R,F17,R,GH,R では、chunk/cell が同じ位相のとき
-  #   F17/GH の挿入位置も固定される。ここでは cell と chunk_index で
-  #   4通りに回し、重い tail が chunk 内の同じ位置へ偏るのを避ける。
-  phase:int=(chunk_index+cell)%4
+  # 114Py:
+  #   variant により 112/111-like fixed interleave と 113-like rotating interleave を切り替える。
+  #   fixed: R,F17,R,GH,R
+  #   rotate: cell と chunk_index で 4 通りに回し、重い tail の位置固定を避ける。
+  phase:int=0
+  if broad_markdist_tail_use_rotating_interleave():
+    phase=(chunk_index+cell)%4
   while len(out)<m_target:
     progressed:bool=False
 
@@ -6304,7 +6365,7 @@ def interleave_broad_markdist_tail_subparts(part_f17:List[Dict[str,int]],part_gh
       break
   return out
 
-"""113 broadmark tail: 107 broadmark base + funcid17/G_H weak tertiary smoothing で reordered bin を作る。"""
+"""114 broadmark tail: 107 broadmark base + funcid17/G_H weak tertiary smoothing で reordered bin を作る。"""
 def build_broad_markdist_tail_reordered_bin(
   N:int,
   fname:str,
@@ -6339,7 +6400,7 @@ def build_broad_markdist_tail_reordered_bin(
   reorder_fname:str=broad_markdist_tail_reorder_output_fname(N,preset_queens,BLOCK,MAX_BLOCKS)
   truncate_plain_bin(reorder_fname)
 
-  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{funcid_reorder_run_param_tag(BLOCK,MAX_BLOCKS)}_sim.tsv"
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(BLOCK,MAX_BLOCKS)}_sim.tsv"
   with open(progress_fname,"w") as pf:
     pf.write(stream_broad_markdist_tail_reorder_progress_header())
 
@@ -6357,7 +6418,7 @@ def build_broad_markdist_tail_reordered_bin(
   total_remaining:int=total_records
 
   if gpu_log_level>=1:
-    print(f"[broadmarktail-reorder-build-config] N={N} records={total_records} steps={STEPS} output={reorder_fname} progress={progress_fname} param={funcid_reorder_run_param_tag(BLOCK,MAX_BLOCKS)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} weak_tail_window_boost={BROAD_MARKDIST_TAIL_WINDOW_BOOST} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
+    print(f"[broadmarktail-reorder-build-config] N={N} records={total_records} steps={STEPS} output={reorder_fname} progress={progress_fname} param={funcid_reorder_run_param_tag(BLOCK,MAX_BLOCKS)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} weak_tail_window_boost={broad_markdist_tail_window_boost_value()} tail_variant={broad_markdist_tail_variant_tag()} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
 
   while total_remaining>0:
     m_target:int=STEPS
@@ -6388,7 +6449,7 @@ def build_broad_markdist_tail_reordered_bin(
         tail:int=subcell%3
         target:int=q*FUNCID_REORDER_V2_WINDOW_MULT
         if tail==0 or tail==1:
-          target=target*BROAD_MARKDIST_TAIL_WINDOW_BOOST
+          target=target*broad_markdist_tail_window_boost_value()
         if target<q:
           target=q
         if target>rem_counts[subcell]:
@@ -8144,6 +8205,7 @@ def _bit_total(N:int)->int:
 def main()->None:
   global DISABLE_CONSTELLATION_SIGNATURE_PRUNE
   global FUNCID_REORDER_V2_WINDOW_MULT,FUNCID_REORDER_V2_PHASE_JUMP,FUNCID_REORDER_V2_SWEEP_TEMP_OUTPUT
+  global BROAD_MARKDIST_TAIL_VARIANT
 
   expected:List[int]=[0,0,0,0,0,10,4,40,92,352,724,2680,14200,73712,365596,2279184,14772512,95815104,666090624,4968057848,39029188884,314666222712,2691008701644,24233937684440,227514171973736,2207893435808352,22317699616364044,234907967154122528]
   nmin:int=5
@@ -8169,6 +8231,7 @@ def main()->None:
   reorder_phase_jump:int=FUNCID_REORDER_V2_PHASE_JUMP
   worker_id:int=0
   worker_count:int=1
+  broadmark_tail_variant:int=BROAD_MARKDIST_TAIL_VARIANT
   # 通常運用では preset_queens は 5 固定。診断用 bench_mode>=8 のときだけ引数の preset を許可する。
   preset_queens_arg:int=5
   requested_preset_arg:int=5
@@ -8229,8 +8292,8 @@ def main()->None:
       #   mode25:    ... [preset_queens] 25   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [funcid_list] [axis_list]
       #   mode26:    ... [preset_queens] 26   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]  # markdist-risk sim/build only
       #   mode27:    ... [preset_queens] 27   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]  # markdist-risk GPU full run
-      #   mode28:    ... [preset_queens] 28   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]  # broadmarktail sim/build only
-      #   mode29:    ... [preset_queens] 29   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count]  # broadmarktail GPU full run / optional multi-GPU worker
+      #   mode28:    ... [preset_queens] 28   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [broadmark_tail_variant]  # broadmarktail sim/build only
+      #   mode29:    ... [preset_queens] 29   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]  # broadmarktail GPU full run / optional multi-GPU worker
       # Examples:
       #   -g 22 22 32 484 1 0 7 15        # auto w8_j7 full N22
       #   -g 22 22 32 484 1 0 7 15 16 7   # manual override full N22
@@ -8248,6 +8311,7 @@ def main()->None:
       #   -g 22 22 32 484 1 0 7 28        # broad funcid primary + mark-distance secondary + funcid17/G_H weak tertiary reorder simulation/build only
       #   -g 22 22 32 484 1 0 7 29        # broadmark + funcid17/G_H weak-tail-smoothed reordered GPU full run
       #   -g 22 22 32 484 1 0 7 29 8 7 0 2 4  # worker 2 of 4 for multi-GPU split
+      #   -g 22 22 32 484 1 0 7 29 8 7 0 0 1 4  # 114 variant 4 phase_rotate single GPU
       if argc >= 11:
         reorder_window_mult=int(sys.argv[10])
       if argc >= 12:
@@ -8259,6 +8323,11 @@ def main()->None:
           worker_id=int(sys.argv[13])
         if argc >= 15:
           worker_count=int(sys.argv[14])
+        if argc >= 16:
+          broadmark_tail_variant=int(sys.argv[15])
+      if bench_mode==28:
+        if argc >= 14:
+          broadmark_tail_variant=int(sys.argv[13])
       if bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25:
         if argc >= 14:
           debug_chunk_start=int(sys.argv[13])
@@ -8321,14 +8390,19 @@ def main()->None:
           return
       else:
         if bench_mode==29:
-          if argc > 15:
+          if argc > 16:
             print("Too many arguments")
-            print("Usage broadmarktail worker: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 29 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count]")
+            print("Usage broadmarktail worker: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 29 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]")
+            return
+        elif bench_mode==28:
+          if argc > 14:
+            print("Too many arguments")
+            print("Usage broadmarktail sim/build: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 28 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [broadmark_tail_variant]")
             return
         else:
           if argc > 13:
             print("Too many arguments")
-            print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15|26|27|28] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
+            print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15|26|27] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
             return
     elif bench_mode==16:
       # mode 16 runs the fixed simulation sweep: window_mult=8,16,32 x phase_jump=5,7,11.
@@ -8377,6 +8451,11 @@ def main()->None:
   FUNCID_REORDER_V2_WINDOW_MULT=reorder_window_mult
   FUNCID_REORDER_V2_PHASE_JUMP=reorder_phase_jump
 
+  if broadmark_tail_variant<0 or broadmark_tail_variant>5:
+    print(f"[warning] broadmark_tail_variant={broadmark_tail_variant} is invalid; using 0")
+    broadmark_tail_variant=0
+  BROAD_MARKDIST_TAIL_VARIANT=broadmark_tail_variant
+
   if worker_count<=0:
     print(f"[warning] worker_count={worker_count} is invalid; using 1")
     worker_count=1
@@ -8398,6 +8477,8 @@ def main()->None:
     print(f"cross_stripe_safe: {1 if cross_stripe_safe else 0}")
     if bench_mode==29:
       print(f"worker_split : worker={worker_id}/{worker_count}")
+    if bench_mode==28 or bench_mode==29:
+      print(f"broadmarktail_variant: id={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} desc={broad_markdist_tail_variant_desc()}")
     if bench_mode==7:
       print(f"chunk_only    : start={debug_chunk_start} count={debug_chunk_count}")
     if bench_mode==8 or bench_mode==9 or bench_mode==10:
@@ -8440,6 +8521,8 @@ def main()->None:
       print(f"broadmarktail_reorder_gpu: mode={bench_mode} preset={preset_queens_arg}")
   if bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29:
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
+  if bench_mode==28 or bench_mode==29:
+    print(f"broadmarktail_params: version={BROAD_MARKDIST_TAIL_REORDER_VERSION} variant={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} window_boost={broad_markdist_tail_window_boost_value()} phase_mix={1 if broad_markdist_tail_use_phase_mix() else 0} rotate_interleave={1 if broad_markdist_tail_use_rotating_interleave() else 0} phase_salt={broad_markdist_tail_phase_salt_value()} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
     override_elapsed_text:str=""
@@ -8558,13 +8641,14 @@ def main()->None:
         if gpu_log_level>=1:
           print(f"[broadmarktail-reorder-gpu-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
-      total:int=exec_solutions_gpu_bin_stream_funcid_reorder(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,debug_chunk_start,debug_chunk_count,"","broadmarktail_gpu",worker_id,worker_count)
+      progress_suffix:str=f"broadmarktail_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_gpu"
+      total:int=exec_solutions_gpu_bin_stream_funcid_reorder(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,debug_chunk_start,debug_chunk_count,"",progress_suffix,worker_id,worker_count)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
       status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
       if worker_count>1:
         status=f"partial-worker-{worker_id}-of-{worker_count}"
-      print(f"[broadmarktail-reorder-gpu-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} worker={worker_id}/{worker_count} total={total}")
+      print(f"[broadmarktail-reorder-gpu-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
       if worker_count>1:
         print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
