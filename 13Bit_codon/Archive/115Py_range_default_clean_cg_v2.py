@@ -16,6 +16,17 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+# ビルド
+codon build -release 115Py_range_default_clean_cg_v2.py
+
+# CPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+# GPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+
 workspace#suzuki$ date
 2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ uname -a
@@ -97,7 +108,6 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 23:    24233937684440   3029242658210    001:06:03:49.29
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
-
 
 
 
@@ -227,7 +237,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-# @gpu.kernel
+@gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr:Ptr[int],rd_arr:Ptr[int],col_arr:Ptr[int],row_arr:Ptr[int],free_arr:Ptr[int],
     jmark_arr:Ptr[int],end_arr:Ptr[int],mark1_arr:Ptr[int],mark2_arr:Ptr[int],
@@ -1921,32 +1931,32 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
       #   ここで sort 有無に応じて実際に GPU kernel を起動する。
 
-      # if use_sorted:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
-      # else:
-      #   kernel_dfs_iter_gpu(
-      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-      #     gpu.raw(meta_next),
-      #     gpu.raw(results),
-      #     m, board_mask,
-      #     n3, n4,
-      #     grid=GRID, block=BLOCK
-      #   )
+      if use_sorted:
+        kernel_dfs_iter_gpu(
+          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
+      else:
+        kernel_dfs_iter_gpu(
+          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+          gpu.raw(meta_next),
+          gpu.raw(results),
+          m, board_mask,
+          n3, n4,
+          grid=GRID, block=BLOCK
+        )
 
 
       if gpu_log_level>=2:
@@ -6676,33 +6686,33 @@ def exec_solutions_gpu_chunk_profile(
   # actual device completion may be observed in reduce_ms when results[] is read.
   t_kernel0=datetime.now()
 
-  # if use_sorted:
-  #   kernel_dfs_iter_gpu(
-  #     gpu.raw(sort_soa.ld_arr),gpu.raw(sort_soa.rd_arr),gpu.raw(sort_soa.col_arr),
-  #     gpu.raw(sort_soa.row_arr),gpu.raw(sort_soa.free_arr),
-  #     gpu.raw(sort_soa.jmark_arr),gpu.raw(sort_soa.end_arr),
-  #     gpu.raw(sort_soa.mark1_arr),gpu.raw(sort_soa.mark2_arr),
-  #     gpu.raw(sort_soa.funcid_arr),gpu.raw(sort_w_arr),
-  #     gpu.raw(meta_next),
-  #     gpu.raw(results),
-  #     m,board_mask,
-  #     n3,n4,
-  #     grid=GRID,block=BLOCK
-  #   )
-  # else:
-  #   kernel_dfs_iter_gpu(
-  #     gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
-  #     gpu.raw(soa.row_arr),gpu.raw(soa.free_arr),
-  #     gpu.raw(soa.jmark_arr),gpu.raw(soa.end_arr),
-  #     gpu.raw(soa.mark1_arr),gpu.raw(soa.mark2_arr),
-  #     gpu.raw(soa.funcid_arr),gpu.raw(w_arr),
-  #     gpu.raw(meta_next),
-  #     gpu.raw(results),
-  #     m,board_mask,
-  #     n3,n4,
-  #     grid=GRID,block=BLOCK
-  #   )
-  
+  if use_sorted:
+    kernel_dfs_iter_gpu(
+      gpu.raw(sort_soa.ld_arr),gpu.raw(sort_soa.rd_arr),gpu.raw(sort_soa.col_arr),
+      gpu.raw(sort_soa.row_arr),gpu.raw(sort_soa.free_arr),
+      gpu.raw(sort_soa.jmark_arr),gpu.raw(sort_soa.end_arr),
+      gpu.raw(sort_soa.mark1_arr),gpu.raw(sort_soa.mark2_arr),
+      gpu.raw(sort_soa.funcid_arr),gpu.raw(sort_w_arr),
+      gpu.raw(meta_next),
+      gpu.raw(results),
+      m,board_mask,
+      n3,n4,
+      grid=GRID,block=BLOCK
+    )
+  else:
+    kernel_dfs_iter_gpu(
+      gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
+      gpu.raw(soa.row_arr),gpu.raw(soa.free_arr),
+      gpu.raw(soa.jmark_arr),gpu.raw(soa.end_arr),
+      gpu.raw(soa.mark1_arr),gpu.raw(soa.mark2_arr),
+      gpu.raw(soa.funcid_arr),gpu.raw(w_arr),
+      gpu.raw(meta_next),
+      gpu.raw(results),
+      m,board_mask,
+      n3,n4,
+      grid=GRID,block=BLOCK
+    )
+
 
   t_kernel1=datetime.now()
 
