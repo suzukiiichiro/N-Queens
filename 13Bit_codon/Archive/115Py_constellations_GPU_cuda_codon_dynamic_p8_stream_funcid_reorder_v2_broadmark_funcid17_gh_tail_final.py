@@ -281,7 +281,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-@gpu.kernel
+# @gpu.kernel
 def kernel_dfs_iter_gpu(
     ld_arr:Ptr[int],rd_arr:Ptr[int],col_arr:Ptr[int],row_arr:Ptr[int],free_arr:Ptr[int],
     jmark_arr:Ptr[int],end_arr:Ptr[int],mark1_arr:Ptr[int],mark2_arr:Ptr[int],
@@ -1974,32 +1974,40 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
       #   80 では kernel_dfs_iter_gpu() 呼び出しがコメントアウトされたままになっていたため、
       #   results[] が初期値 0 のまま合計され、GPU total が常に 0 になっていた。
       #   ここで sort 有無に応じて実際に GPU kernel を起動する。
-      if use_sorted:
-        kernel_dfs_iter_gpu(
-          gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
-          gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
-          gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
-          gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
-          gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
-          gpu.raw(meta_next),
-          gpu.raw(results),
-          m, board_mask,
-          n3, n4,
-          grid=GRID, block=BLOCK
-        )
-      else:
-        kernel_dfs_iter_gpu(
-          gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
-          gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
-          gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
-          gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
-          gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
-          gpu.raw(meta_next),
-          gpu.raw(results),
-          m, board_mask,
-          n3, n4,
-          grid=GRID, block=BLOCK
-        )
+
+      # GPUがボードにない場合は以下をコメントアウト
+      #   
+      # if use_sorted:
+      #   kernel_dfs_iter_gpu(
+      #     gpu.raw(sort_soa.ld_arr), gpu.raw(sort_soa.rd_arr), gpu.raw(sort_soa.col_arr),
+      #     gpu.raw(sort_soa.row_arr), gpu.raw(sort_soa.free_arr),
+      #     gpu.raw(sort_soa.jmark_arr), gpu.raw(sort_soa.end_arr),
+      #     gpu.raw(sort_soa.mark1_arr), gpu.raw(sort_soa.mark2_arr),
+      #     gpu.raw(sort_soa.funcid_arr), gpu.raw(sort_w_arr),
+      #     gpu.raw(meta_next),
+      #     gpu.raw(results),
+      #     m, board_mask,
+      #     n3, n4,
+      #     grid=GRID, block=BLOCK
+      #   )
+      # else:
+      #   kernel_dfs_iter_gpu(
+      #     gpu.raw(soa.ld_arr), gpu.raw(soa.rd_arr), gpu.raw(soa.col_arr),
+      #     gpu.raw(soa.row_arr), gpu.raw(soa.free_arr),
+      #     gpu.raw(soa.jmark_arr), gpu.raw(soa.end_arr),
+      #     gpu.raw(soa.mark1_arr), gpu.raw(soa.mark2_arr),
+      #     gpu.raw(soa.funcid_arr), gpu.raw(w_arr),
+      #     gpu.raw(meta_next),
+      #     gpu.raw(results),
+      #     m, board_mask,
+      #     n3, n4,
+      #     grid=GRID, block=BLOCK
+      #   )
+      #
+      # GPUがボードにない場合は上をコメントアウト
+      #   
+
+
       if gpu_log_level>=2:
         t2=datetime.now()
       # 60 DIRECT TOTAL:
@@ -6726,32 +6734,38 @@ def exec_solutions_gpu_chunk_profile(
   # GPU kernel. Depending on Codon/CUDA synchronization semantics, part of the
   # actual device completion may be observed in reduce_ms when results[] is read.
   t_kernel0=datetime.now()
-  if use_sorted:
-    kernel_dfs_iter_gpu(
-      gpu.raw(sort_soa.ld_arr),gpu.raw(sort_soa.rd_arr),gpu.raw(sort_soa.col_arr),
-      gpu.raw(sort_soa.row_arr),gpu.raw(sort_soa.free_arr),
-      gpu.raw(sort_soa.jmark_arr),gpu.raw(sort_soa.end_arr),
-      gpu.raw(sort_soa.mark1_arr),gpu.raw(sort_soa.mark2_arr),
-      gpu.raw(sort_soa.funcid_arr),gpu.raw(sort_w_arr),
-      gpu.raw(meta_next),
-      gpu.raw(results),
-      m,board_mask,
-      n3,n4,
-      grid=GRID,block=BLOCK
-    )
-  else:
-    kernel_dfs_iter_gpu(
-      gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
-      gpu.raw(soa.row_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.jmark_arr),gpu.raw(soa.end_arr),
-      gpu.raw(soa.mark1_arr),gpu.raw(soa.mark2_arr),
-      gpu.raw(soa.funcid_arr),gpu.raw(w_arr),
-      gpu.raw(meta_next),
-      gpu.raw(results),
-      m,board_mask,
-      n3,n4,
-      grid=GRID,block=BLOCK
-    )
+  #
+  # GPUがボードにない場合は以下をコメントアウト
+  #   
+  # if use_sorted:
+  #   kernel_dfs_iter_gpu(
+  #     gpu.raw(sort_soa.ld_arr),gpu.raw(sort_soa.rd_arr),gpu.raw(sort_soa.col_arr),
+  #     gpu.raw(sort_soa.row_arr),gpu.raw(sort_soa.free_arr),
+  #     gpu.raw(sort_soa.jmark_arr),gpu.raw(sort_soa.end_arr),
+  #     gpu.raw(sort_soa.mark1_arr),gpu.raw(sort_soa.mark2_arr),
+  #     gpu.raw(sort_soa.funcid_arr),gpu.raw(sort_w_arr),
+  #     gpu.raw(meta_next),
+  #     gpu.raw(results),
+  #     m,board_mask,
+  #     n3,n4,
+  #     grid=GRID,block=BLOCK
+  #   )
+  # else:
+  #   kernel_dfs_iter_gpu(
+  #     gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
+  #     gpu.raw(soa.row_arr),gpu.raw(soa.free_arr),
+  #     gpu.raw(soa.jmark_arr),gpu.raw(soa.end_arr),
+  #     gpu.raw(soa.mark1_arr),gpu.raw(soa.mark2_arr),
+  #     gpu.raw(soa.funcid_arr),gpu.raw(w_arr),
+  #     gpu.raw(meta_next),
+  #     gpu.raw(results),
+  #     m,board_mask,
+  #     n3,n4,
+  #     grid=GRID,block=BLOCK
+  #   )
+  # 
+  # GPUがボードにない場合は上をコメントアウト
+  #   
   t_kernel1=datetime.now()
 
   t_reduce0=datetime.now()
