@@ -15,6 +15,17 @@
        _/m/'
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
+
+# ビルド
+codon build -release 115Py_range_default_clean_cg_v2.py
+
+# CPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+# GPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+# CPU実行結果
 workspace#suzuki$ date
 2026年  6月  9日 火曜日 14:23:02 JST
 workspace#suzuki$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range.log
@@ -39,17 +50,32 @@ CPU mode selected
 21:      314666222712                0          0:18:07.042    ok
 22:     2691008701644                0          2:38:58.023    ok
 
+# GPU実行結果
+suzuki@cudacodon$ date
+2026年  6月  9日 火曜日 05:55:00 UTC
+suzuki@cudacodon$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -g 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+GPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.004    ok
+ 7:                40                0          0:00:00.004    ok
+ 8:                92                0          0:00:00.002    ok
+ 9:               352                0          0:00:00.002    ok
+10:               724                0          0:00:00.003    ok
+11:              2680                0          0:00:00.005    ok
+12:             14200                0          0:00:00.007    ok
+13:             73712                0          0:00:00.011    ok
+14:            365596                0          0:00:00.018    ok
+15:           2279184                0          0:00:00.036    ok
+16:          14772512                0          0:00:00.104    ok
+17:          95815104                0          0:00:00.465    ok
+18:         666090624                0          0:00:03.475    ok
+19:        4968057848                0          0:00:22.443    ok
+20:       39029188884                0          0:03:04.146    ok
+21:      314666222712                0          0:23:34.869    ok
 
-# ビルド
-codon build -release 115Py_range_default_clean_cg_v2.py
 
-# CPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
-
-# GPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
-
-
+# CPU実行結果
 workspace#suzuki$ date
 2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ uname -a
@@ -79,6 +105,7 @@ CPU mode selected
 23:    24233937684440                0   1 day, 0:43:10.509    ok
 
 
+# GPU実行結果
 suzuki@cudacodon$ date
 2026年  5月 15日 金曜日 09:34:47 UTC
 suzuki@cudacodon$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
