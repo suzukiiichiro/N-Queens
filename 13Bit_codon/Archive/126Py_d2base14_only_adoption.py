@@ -160,52 +160,134 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
+おはようございます。実行結果、確認しました。
 
+**結論として、125 は「正しいが速度採用は見送り」です。**
+3 chunk は `partial_total = 7287470230` で一致していますが、時間は `0:03:13.522`。7 chunk も `partial_total = 16337097758` で一致していますが、時間は `0:07:34.078` でした。
 
-# 115Py 変更点
-# - 114Py broadmarktail v4 を「GPUへの流し方」最終版として固定
-# - GPU kernel / DFS / 解数計算ロジックは変更しない
-# - デフォルト broadmarktail variant は 2: rotate_only
-#   114Py 週末ログで A10G 1枚の single GPU 総時間が最良だったため
-# - 引数なしは、A10G 1枚環境で実測上速い CPU N22 単体実行にする
-# - -c 単独は main() の既定範囲 N=5..23 を CPU 実行
-# - -g 単独は main() の既定範囲 N=5..23 を GPU 実行
-#   余分な診断ヘッダは出さず、表形式の出力に揃える
-#   N>=21 では A10G 1枚向けの GPU 最終設定
-#   block=32 max_blocks=484 preset=7 bench_mode=29 w8_j7 variant=2 を使う
-# - N22 単体を実行したい場合は従来どおり明示指定する
-#   ./115Py... -g 22 22 32 484 1 0 7 29 8 7 0 0 1 2
-# - 明示的に引数を渡した場合は従来どおり上書き可能
+比較対象では、124 が 3 chunk `0:01:29.805`、7 chunk `0:03:24.788`、123 の 7 chunk が `0:03:19.346` なので、125 は 123/124 よりかなり遅くなっています。
 
-# ビルド
-cd /home/suzuki/Github/N-Queens/13Bit_codon
-codon build -release \
-  115Py_range_default_clean_cg_v2.py
+原因はほぼ **d0 を special kernel 側に入れたこと**だと思います。添付ソース上も 125 は `fid14, fid26, fid27` を同じ special bucket に入れる設計で、ログでは各 chunk の special の大半が d0 です。たとえば chunk 40 は `special=2261` のうち `d2base14=15`、chunk 120 は `special=2351` のうち `d2base14=104` で、ほとんどが d0 です。
 
-# 既定実行: CPU N22
-./115Py_range_default_clean_cg_v2
+そのため、次は **d0 を 115 汎用 kernel に戻し、119 相当の fid14 / SQd2B だけを専用化する 126** に戻すのがよいです。作成しました。
 
-# CPU range N=5..23
-./115Py_range_default_clean_cg_v2 -c
+[126Py_d2base14_only_adoption.py](sandbox:/mnt/data/126Py_d2base14_only_adoption.py)
+[126_next_probe_memo.txt](sandbox:/mnt/data/126_next_probe_memo.txt)
 
-# A10G 1枚 GPU range N=5..23
-./115Py_range_default_clean_cg_v2 -g
+実行はまずこちらでお願いします。
 
-# A10G 1枚 GPU N22 単体最終設定の明示形
-./115Py_range_default_clean_cg_v2 \
-  -g 22 22 32 484 1 0 7 29 8 7 0 0 1 2 \
-  2>&1 | tee 115Py_N22_a10g_rotate_only_32x484_single_gpu.log
+```bash
+codon build -release 126Py_d2base14_only_adoption.py
+```
 
-# 4GPU worker 実行を残す場合の明示形
-# 事前に reorder bin を1回作る:
-./115Py_range_default_clean_cg_v2 \
-  -g 22 22 32 484 1 0 7 28 8 7 0 2 \
-  2>&1 | tee 115Py_N22_broadmarktail_rotate_only_sim_build.log
+3 chunk probe:
 
-# worker 例。CUDA_VISIBLE_DEVICES を変えて worker_id 0..3 を起動:
-CUDA_VISIBLE_DEVICES=0 ./115Py_range_default_clean_cg_v2 \
-  -g 22 22 32 484 1 0 7 29 8 7 0 0 4 2 \
-  2>&1 | tee 115Py_N22_worker0of4_rotate_only.log &
+```bash
+./126Py_d2base14_only_adoption \
+  -g 21 21 32 484 1 0 7 30 8 7 0 0 1 "0,40,120"
+```
+
+期待値:
+
+```text
+partial_total = 7287470230
+```
+
+見るべき行:
+
+```text
+[split126-buckets] N=21 m=15488 special_d2base14=... d0_rest=... rest=...
+```
+
+3 chunk が通ったら 7 chunk です。
+
+```bash
+./126Py_d2base14_only_adoption \
+  -g 21 21 32 484 1 0 7 30 8 7 0 0 1 "0,20,40,60,80,100,120"
+```
+
+期待値:
+
+```text
+partial_total = 16337097758
+```
+
+判定はシンプルです。
+
+```text
+PTX 通過 + total 一致 + 123/124 より速い
+  → 126 を d2base14-only 採用ベースにする
+
+total 一致だが遅い
+  → 126 も採用見送り。115/119 の既存ベースへ戻す
+
+total 不一致
+  → fid14 の終端条件 free & ~1 を再確認
+```
+
+こちらでは Codon/CUDA 実機ビルドまでは実行していません。変更内容は 125 からの最小差分で、**special 対象を fid14 のみに戻し、fid26/fid27 は rest 側へ戻す**ものです。
+
+確認しました。**N21 軽量版は全項目 PASS です。**
+`CAND=./126Py_d2base14_only_adoption` の mode30 / mode31 と、`BASE=./115Py_range_default_clean_cg_v2` の mode28 は、すべて期待値一致・exit code 0 で終わっています。
+
+| case                   | 判定 |                                                                                     実測 |
+| ---------------------- | -: | -------------------------------------------------------------------------------------: |
+| #1 standard 7-chunk    | OK |                                             `partial_total=16337097758`, `0:01:23.737` |
+| #2 heavy-band          | OK |                                             `partial_total=22253483640`, `0:01:36.945` |
+| #3 d2base14-density    | OK |                                             `partial_total=16871798494`, `0:01:24.924` |
+| #4 late/tail           | OK |                                             `partial_total=16202368694`, `0:01:20.794` |
+| #5 CAND worker 0/4     | OK |                                             `partial_total=79322573818`, `0:06:36.423` |
+| #6 BASE reorder mode28 | OK | `records=2025282`, `reordered_records=2025282`, `chunks=131`, `valid=1`, `0:00:11.391` |
+
+#1 は 7 chunk で `total=16337097758`、`partial_total=16337097758`、`0:01:23.737`、exit code 0 です。
+#2 は heavy-band 8 chunk で `partial_total=22253483640`、`0:01:36.945`、exit code 0 です。
+#3 は d2base14-density 7 chunk で `partial_total=16871798494`、`0:01:24.924`、exit code 0 です。
+#4 は late/tail 7 chunk で `partial_total=16202368694`、`0:01:20.794`、exit code 0 です。chunk 130 も `m=11842` の short chunk として処理されています。
+#5 は candidate の mode31 worker 0/4 が `partial_total=79322573818`、期待値 `79322573818` と一致し、`expected_total=314666222712` も表示されています。
+#6 は reorder build/reuse が `records=2025282`、`reordered_records=2025282`、`chunks=131`、`valid=1` で通っています。
+
+今回の実測時間の合計は、
+
+```text
+#1  0:01:23.737
+#2  0:01:36.945
+#3  0:01:24.924
+#4  0:01:20.794
+#5  0:06:36.423
+#6  0:00:11.391
+----------------
+sum 0:12:34.214
+```
+
+ログの開始・終了時刻ベースでも、`06:56:10` 開始から `07:08:46` 終了なので、壁時計で約 **12分36秒** です。軽量版の所要時間見積もりとして使ってよいです。
+
+重要な点として、#3 の d2base14-density では意図どおり `special_d2base14` が濃い chunk を踏めています。chunk 55 が 217、chunk 56 が 294、chunk 57 が 330、chunk 58 が 374、chunk 60 が 310 です。
+つまり、この検証メニューは **fid14 / SQd2B の変更を短時間で踏む**目的にちゃんと使えます。
+
+判断はこうです。
+
+```text
+N21 light validation menu:
+  PASS
+  → 今後の candidate 一次検査として採用してよい
+
+126:
+  correctness probe としては継続 OK
+  ただし N21 full で 115 より遅かったため、
+  default 採用見送り判断は変更なし
+
+次の candidate:
+  まず今回の軽量版 #1〜#4
+  ↓
+  全部 OK なら #5 worker 0/4
+  ↓
+  selected chunk で明確に速い場合だけ N21 full
+```
+
+記録用メモも作成しました。
+
+[131_N21_light_validation_result_memo.txt](sandbox:/mnt/data/131_N21_light_validation_result_memo.txt)
+
 """
 
 import gpu
@@ -215,7 +297,7 @@ from datetime import datetime
 
 MAXD:Static[int]=32
 
-VERSION_TAG:str="115 v2 clean bare -c/-g range-default + A10G broadmarktail v4 rotate_only runner from 114"
+VERSION_TAG:str="126 d2base14-only adoption - fid14 SQd2B specialized, d0 stays on proven 115 generic kernel"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # 115 FINAL AUTO DEFAULTS:
@@ -538,6 +620,252 @@ def kernel_dfs_iter_gpu(
         results[i]=total*w_arr[i]
         return
       ctrl[sp]=cv&u32(1023)  # child fid + child row
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
+
+####################################################################################################
+# 117 d0+d2base14 kernel probe
+#
+# The first experimental split build added several new @gpu.kernel definitions.  On Codon/CUDA this can fail at
+# runtime with CUDA_ERROR_INVALID_PTX on some driver/compiler combinations.  This safe build keeps
+# the proven 115 kernel_dfs_iter_gpu device code, plus one small d0+d2base14 kernel.
+#
+# Purpose:
+#   - keep mode 30 / mode 31 usable for N21 design verification
+#   - validate broadmarktail reordered-bin reading, bucket counts, totals, progress files
+#   - avoid new PTX until the scheduler side is confirmed
+#
+# Next step after this file is OK:
+#   - add exactly one new specialized kernel at a time in a 117 probe
+#   - first candidate: d0 or d2, not all five kernels at once
+####################################################################################################
+# 117 d0+d2base14 kernel probe
+#
+# 116 PTX-safe confirmed the host scheduler/reordered-bin path but was intentionally slow because
+# every bucket still used the generic 115 kernel.  This 117 build adds exactly one new PTX target:
+# kernel_dfs_d0_gpu for funcid 26/27.  All non-d0 tasks are grouped into one rest bucket and continue
+# to use the proven 115 kernel_dfs_iter_gpu.
+#
+# Purpose:
+#   - isolate PTX/JIT risk to one small specialized kernel
+#   - validate d0 specialization with N21 probe chunks before any full run
+#   - avoid the 5-bucket launch overhead from the PTX-safe scheduler
+####################################################################################################
+
+@gpu.kernel
+def kernel_dfs_d0_d2base14_gpu(
+    ld_arr:Ptr[int],rd_arr:Ptr[int],col_arr:Ptr[int],row_arr:Ptr[int],free_arr:Ptr[int],
+    jmark_arr:Ptr[int],end_arr:Ptr[int],mark1_arr:Ptr[int],mark2_arr:Ptr[int],
+    funcid_arr:Ptr[int],w_arr:Ptr[u64],
+    results:Ptr[u64],
+    m:int,board_mask:int,
+    n3:int,n4:int,
+)->None:
+    """
+    125: one compact adoption kernel for the two current winners.
+
+    Handles:
+      - fid14 SQd2B   : base/future path, terminal counts only if free has a non-LSB candidate
+      - fid26 SQd0B   : base/future path, terminal counts one solution
+      - fid27 SQd0BkB : mark1 step=2 + blockK=n3, then fid26
+
+    Keeping fid14 and d0 together avoids an extra launch compared with separate d0 and d2base14
+    buckets, while still removing the generic kernel's P5/jmark/mark-table decode from these tasks.
+    """
+    INIT_MASK:Static[int]=524288
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    ctrl=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+
+    i:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    endm:int=end_arr[i]
+    mark1:int=mark1_arr[i]
+    sp:int=0
+    ctrl[0]=u32(funcid_arr[i] | (row_arr[i]<<5))
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+
+    while sp>=0:
+      a:u32=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+
+      cv0:u32=ctrl[sp]
+      if (cv0&u32(INIT_MASK))==u32(0):
+        cv0i:int=int(cv0)
+        f:int=cv0i&31
+        rowv:int=(cv0i>>5)&31
+
+        # fid14/SQd2B terminal: one solution iff a non-column-0 candidate remains.
+        if f==14 and rowv==endm:
+          total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+          sp-=1
+          continue
+
+        # fid26/SQd0B terminal: same as generic base, count one solution.
+        if f==26 and rowv==endm:
+          total+=u64(1)
+          sp-=1
+          continue
+
+        stepv:int=1
+        addv:int=0
+        use_blocks:int=0
+        use_future:int=1 if (f==14 or f==26) else 0
+        nextfv:int=f
+        bLv:int=0
+        ktype:int=0
+
+        # fid27/SQd0BkB: row==mark1 uses step=2 + blockK=n3 and then continues as fid26.
+        if f==27 and rowv==mark1 and a!=u32(0):
+          use_blocks=1
+          use_future=0
+          stepv=2
+          nextfv=26
+          ktype=1
+
+        fcv:int=0
+        if use_future==1 and (rowv+stepv)<endm:
+          fcv=1
+        child_row:int=rowv+stepv
+        ctrl[sp]=u32(INIT_MASK | nextfv | (child_row<<5) | (stepv<<10) | (addv<<12) | (use_blocks<<13) | (fcv<<14) | (bLv<<15) | (ktype<<17))
+
+      a=avail[sp]
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      cv:u32=ctrl[sp]
+      bit_i:int=int(bit)
+      nld:int=0
+      nrd:int=0
+
+      if (cv&u32(8192))!=u32(0):
+        cvi:int=int(cv)
+        stepv:int=(cvi>>10)&3
+        addv:int=(cvi>>12)&1
+        bLi:int=(cvi>>15)&3
+        kt:int=(cvi>>17)&3
+        bK:int=0
+        if kt==1:
+          bK=n3
+        elif kt==2:
+          bK=n4
+        nld=((ld[sp]|bit_i)<<stepv)|addv|bLi
+        nrd=((rd[sp]|bit_i)>>stepv)|bK
+      else:
+        nld=(ld[sp]|bit_i)<<1
+        nrd=(rd[sp]|bit_i)>>1
+
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+
+      if (cv&u32(16384))!=u32(0):
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      ctrl[sp]=cv&u32(1023)
+      ld[sp]=nld
+      rd[sp]=nrd
+      col[sp]=ncol
+      avail[sp]=nf
+
+    results[i]=total*w_arr[i]
+
+@gpu.kernel
+def kernel_dfs_d2base14_gpu(
+    ld_arr:Ptr[int],rd_arr:Ptr[int],col_arr:Ptr[int],row_arr:Ptr[int],free_arr:Ptr[int],
+    jmark_arr:Ptr[int],end_arr:Ptr[int],mark1_arr:Ptr[int],mark2_arr:Ptr[int],
+    funcid_arr:Ptr[int],w_arr:Ptr[u64],
+    results:Ptr[u64],
+    m:int,board_mask:int,
+    n3:int,n4:int,
+)->None:
+    """119: SQd2B base fid14 だけを処理する最小 PTX kernel。"""
+    ld=__array__[int](MAXD)
+    rd=__array__[int](MAXD)
+    col=__array__[u32](MAXD)
+    avail=__array__[u32](MAXD)
+    rowstk=__array__[u32](MAXD)
+    bm:u32=u32(board_mask)
+
+    i:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if i>=m:return
+
+    endm:int=end_arr[i]
+    sp:int=0
+    ld[0]=ld_arr[i]
+    rd[0]=rd_arr[i]
+    col[0]=u32(col_arr[i])
+    rowstk[0]=u32(row_arr[i])
+
+    free0:u32=u32(free_arr[i])&bm
+    if free0==u32(0):
+      results[i]=u64(0)
+      return
+    avail[0]=free0
+    total:u64=u64(0)
+
+    while sp>=0:
+      a:u32=avail[sp]
+      if a==u32(0):
+        sp-=1
+        continue
+
+      rowv:int=int(rowstk[sp])
+
+      # SQd2B: row==endmark では free 内に列0以外が1つでもあれば 1 解。
+      # ここでは bit 数を数えない。13Py SQd2B / 115 generic kernel と同じ意味。
+      if rowv==endm:
+        total+=u64(1) if ((a&~u32(1))!=u32(0)) else u64(0)
+        sp-=1
+        continue
+
+      bit:u32=a&(u32(0)-a)
+      avail[sp]=a^bit
+      bit_i:int=int(bit)
+
+      nld:int=(ld[sp]|bit_i)<<1
+      nrd:int=(rd[sp]|bit_i)>>1
+      ncol:u32=col[sp]|bit
+      nf:u32=bm&~(u32(nld)|u32(nrd)|ncol)
+      if nf==u32(0):
+        continue
+
+      child_row:int=rowv+1
+      # fid14 は future あり。終端直前以外は 1 手先に候補がなければ枝刈り。
+      if child_row<endm:
+        if (bm&~(u32(nld<<1)|u32(nrd>>1)|ncol))==u32(0):
+          continue
+
+      sp+=1
+      if sp>=MAXD:
+        results[i]=total*w_arr[i]
+        return
+      rowstk[sp]=u32(child_row)
       ld[sp]=nld
       rd[sp]=nrd
       col[sp]=ncol
@@ -6788,6 +7116,269 @@ def exec_solutions_gpu_chunk_profile(
 
   return chunk_total,stats,stages_inner,elapsed_text,elapsed_ms
 
+
+####################################################################################################
+# 117 d0+d2base14 split-kernel chunk runner
+####################################################################################################
+
+"""117: SoA 1件を別 SoA へコピーする小ヘルパ。"""
+def copy_soa_record_116(src:TaskSoA,src_w:List[u64],src_i:int,dst:TaskSoA,dst_w:List[u64],dst_i:int)->None:
+  dst.ld_arr[dst_i]=src.ld_arr[src_i]
+  dst.rd_arr[dst_i]=src.rd_arr[src_i]
+  dst.col_arr[dst_i]=src.col_arr[src_i]
+  dst.row_arr[dst_i]=src.row_arr[src_i]
+  dst.free_arr[dst_i]=src.free_arr[src_i]
+  dst.jmark_arr[dst_i]=src.jmark_arr[src_i]
+  dst.end_arr[dst_i]=src.end_arr[src_i]
+  dst.mark1_arr[dst_i]=src.mark1_arr[src_i]
+  dst.mark2_arr[dst_i]=src.mark2_arr[src_i]
+  dst.funcid_arr[dst_i]=src.funcid_arr[src_i]
+  dst.ijkl_arr[dst_i]=src.ijkl_arr[src_i]
+  dst_w[dst_i]=src_w[src_i]
+
+"""126: fid14 / SQd2B だけを専用 kernel に流し、d0(fid26/27) は 115 汎用 kernel に戻す。"""
+def exec_solutions_gpu_chunk_split126(
+  N:int,
+  chunk_constellations:List[Dict[str,int]],
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  split_mode:int=2,
+  gpu_log_level:int=0
+)->Tuple[int,List[int],List[int],str,int]:
+  """
+  126 d2base14-only adoption split:
+    - bucket only funcid 14 / SQd2B
+    - run that bucket through the small 119-style specialized kernel
+    - run all other tasks, including d0 fid26/27, through the proven 115 generic kernel
+
+  125 proved that the compact fid14+fid26+fid27 kernel is correct, but the N21 probe became much
+  slower because d0 dominates the special bucket.  This build intentionally returns d0 to the generic
+  path and keeps only the previously best d2base14 minimum kernel.
+  """
+  board_mask:int=(1<<N)-1
+
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+
+  m:int=len(chunk_constellations)
+  soa:TaskSoA=TaskSoA(STEPS)
+  w_arr:List[u64]=[u64(0)]*STEPS
+  results:List[u64]=[u64(0)]*STEPS
+
+  special_soa:TaskSoA=TaskSoA(STEPS)
+  rest_soa:TaskSoA=TaskSoA(STEPS)
+  special_w:List[u64]=[u64(0)]*STEPS
+  rest_w:List[u64]=[u64(0)]*STEPS
+
+  t0=datetime.now()
+  build_soa_for_range(N,chunk_constellations,0,m,soa,w_arr)
+  t1=datetime.now()
+  stats:List[int]=analyze_stream_chunk_input_stats_from_soa(soa,w_arr,m)
+  t2=datetime.now()
+
+  special_m:int=0
+  d0_m:int=0
+  d2_m:int=0
+  rest_m:int=0
+  use_specialized:bool=(split_mode!=0)
+
+  i:int=0
+  while i<m:
+    fid:int=soa.funcid_arr[i]
+    if use_specialized and fid==14:
+      copy_soa_record_116(soa,w_arr,i,special_soa,special_w,special_m)
+      special_m+=1
+      d2_m+=1
+    else:
+      if fid==26 or fid==27:
+        d0_m+=1
+      copy_soa_record_116(soa,w_arr,i,rest_soa,rest_w,rest_m)
+      rest_m+=1
+    i+=1
+
+  t3=datetime.now()
+
+  n3:int=1<<(N-3)
+  n4:int=1<<(N-4)
+  chunk_total:int=0
+  GRID:int=0
+
+  if gpu_log_level>=1:
+    print(f"[split126-buckets] N={N} m={m} special_d2base14={special_m} d0_rest={d0_m} rest={rest_m} split_mode={split_mode} specialized={1 if use_specialized else 0}")
+
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+
+  # Compact specialized bucket first: PTX/JIT failures should appear before the long generic rest work.
+  if special_m>0:
+    GRID=(special_m+BLOCK-1)//BLOCK
+    kernel_dfs_d2base14_gpu(gpu.raw(special_soa.ld_arr),gpu.raw(special_soa.rd_arr),gpu.raw(special_soa.col_arr),gpu.raw(special_soa.row_arr),gpu.raw(special_soa.free_arr),gpu.raw(special_soa.jmark_arr),gpu.raw(special_soa.end_arr),gpu.raw(special_soa.mark1_arr),gpu.raw(special_soa.mark2_arr),gpu.raw(special_soa.funcid_arr),gpu.raw(special_w),gpu.raw(results),special_m,board_mask,n3,n4,grid=GRID,block=BLOCK)
+    i=0
+    while i<special_m:
+      chunk_total+=int(results[i])
+      i+=1
+
+  # Rest bucket: one generic launch.  Keep all not-yet-profitable d2 mark branches here.
+  if rest_m>0:
+    GRID=(rest_m+BLOCK-1)//BLOCK
+    kernel_dfs_iter_gpu(gpu.raw(rest_soa.ld_arr),gpu.raw(rest_soa.rd_arr),gpu.raw(rest_soa.col_arr),gpu.raw(rest_soa.row_arr),gpu.raw(rest_soa.free_arr),gpu.raw(rest_soa.jmark_arr),gpu.raw(rest_soa.end_arr),gpu.raw(rest_soa.mark1_arr),gpu.raw(rest_soa.mark2_arr),gpu.raw(rest_soa.funcid_arr),gpu.raw(rest_w),gpu.raw(meta_next),gpu.raw(results),rest_m,board_mask,n3,n4,grid=GRID,block=BLOCK)
+    i=0
+    while i<rest_m:
+      chunk_total+=int(results[i])
+      i+=1
+
+  t4=datetime.now()
+  stage_soa_ms:int=profile_elapsed_ms_between(t0,t1)
+  stage_stats_ms:int=profile_elapsed_ms_between(t1,t2)
+  stage_split_ms:int=profile_elapsed_ms_between(t2,t3)
+  stage_kernel_reduce_ms:int=profile_elapsed_ms_between(t3,t4)
+  stage_compute_ms:int=stage_soa_ms+stage_split_ms+stage_kernel_reduce_ms
+  stage_no_read_ms:int=stage_compute_ms+stage_stats_ms
+  elapsed_text:str=str(t4-t0)[:-3]
+  elapsed_ms:int=stage_no_read_ms
+  stages:List[int]=[stage_soa_ms,stage_stats_ms,stage_split_ms,stage_kernel_reduce_ms,stage_compute_ms,stage_no_read_ms,special_m,d0_m,d2_m,rest_m]
+  return chunk_total,stats,stages,elapsed_text,elapsed_ms
+
+def exec_solutions_gpu_bin_stream_split126(
+  N:int,
+  fname:str,
+  preset_queens:int,
+  gpu_block:int=32,
+  gpu_max_blocks:int=484,
+  gpu_log_level:int=0,
+  gpu_sort_mode:int=-1,
+  cross_stripe_safe:bool=CROSS_STRIPE_SAFE_DEFAULT,
+  chunk_only:bool=False,
+  debug_chunk_start:int=0,
+  debug_chunk_count:int=1,
+  chunk_list_spec:str="",
+  progress_suffix:str="split126",
+  worker_id:int=0,
+  worker_count:int=1,
+  split_mode:int=2
+)->int:
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+  if STEPS<=0:
+    STEPS=15488
+  if worker_count<=0:
+    print(f"[worker-warning] invalid worker_count={worker_count}; using 1")
+    worker_count=1
+  if worker_id<0:
+    print(f"[worker-warning] invalid worker_id={worker_id}; using 0")
+    worker_id=0
+  if worker_id>=worker_count:
+    print(f"[worker-error] worker_id must be smaller than worker_count: worker_id={worker_id} worker_count={worker_count}")
+    return 0
+
+  total_records:int=count_constellations_bin_records(fname)
+  run_param_tag:str=funcid_reorder_run_param_tag(BLOCK,MAX_BLOCKS)
+  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_split126_{run_param_tag}.tsv"
+  if progress_suffix!="":
+    progress_fname=f"progress_N{N}_{preset_queens}_stream_split126_{run_param_tag}_{progress_suffix}.tsv"
+  if worker_count>1:
+    if progress_suffix!="":
+      progress_fname=f"progress_N{N}_{preset_queens}_stream_split126_{run_param_tag}_{progress_suffix}_worker{worker_id}of{worker_count}.tsv"
+    else:
+      progress_fname=f"progress_N{N}_{preset_queens}_stream_split126_{run_param_tag}_worker{worker_id}of{worker_count}.tsv"
+  with open(progress_fname,"w") as pf:
+    pf.write(stream_funcid_reorder_progress_header())
+
+  selected_chunks:List[int]=parse_chunk_list_spec(chunk_list_spec)
+  use_chunk_list:bool=(len(selected_chunks)>0)
+  if chunk_only:
+    if debug_chunk_start<0:
+      debug_chunk_start=0
+    if debug_chunk_count<=0:
+      debug_chunk_count=1
+  stop_after_chunk:int=-1
+  if use_chunk_list:
+    stop_after_chunk=chunk_list_max(selected_chunks)
+  elif chunk_only:
+    stop_after_chunk=debug_chunk_start+debug_chunk_count-1
+
+  if gpu_log_level>=1:
+    print(f"[split126-gpu-config] N={N} records={total_records} bin={fname} block={BLOCK} max_blocks={MAX_BLOCKS} steps={STEPS} sort_mode={gpu_sort_mode} chunk_only={1 if (chunk_only or use_chunk_list) else 0} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={chunk_list_to_string(selected_chunks)} worker={worker_id}/{worker_count} split_mode={split_mode} progress={progress_fname}")
+
+  gpu_total:int=0
+  off:int=0
+  chunk_index:int=0
+  executed_chunks:int=0
+  _read_uint32_le=read_uint32_le
+  with open(fname,"rb") as f:
+    while True:
+      if stop_after_chunk>=0 and chunk_index>stop_after_chunk:
+        break
+      chunk_constellations:List[Dict[str,int]]=[]
+      i:int=0
+      while i<STEPS:
+        raw:str=f.read(16)
+        if len(raw)<16:
+          break
+        ld:int=_read_uint32_le(raw[0:4])
+        rd:int=_read_uint32_le(raw[4:8])
+        col:int=_read_uint32_le(raw[8:12])
+        startijkl:int=_read_uint32_le(raw[12:16])
+        chunk_constellations.append({"ld":ld,"rd":rd,"col":col,"startijkl":startijkl,"solutions":0})
+        i+=1
+      m:int=len(chunk_constellations)
+      if m==0:
+        break
+      if chunk_only or use_chunk_list:
+        run_this_chunk:bool=True
+        if use_chunk_list:
+          run_this_chunk=chunk_list_contains(selected_chunks,chunk_index)
+        else:
+          run_this_chunk=(chunk_index>=debug_chunk_start and chunk_index<debug_chunk_start+debug_chunk_count)
+        if not run_this_chunk:
+          if gpu_log_level>=2:
+            print(f"[split126-gpu-chunk-skip] N={N} chunk={chunk_index} off={off} m={m}")
+          off+=m; chunk_index+=1; continue
+      if worker_count>1:
+        run_worker_chunk:bool=((chunk_index % worker_count)==worker_id)
+        if not run_worker_chunk:
+          if gpu_log_level>=2:
+            print(f"[split126-gpu-worker-skip] N={N} worker={worker_id}/{worker_count} chunk={chunk_index} off={off} m={m}")
+          off+=m; chunk_index+=1; continue
+
+      t0=datetime.now()
+      if gpu_log_level>=1:
+        print(f"[split126-gpu-chunk-start] N={N} worker={worker_id}/{worker_count} chunk={chunk_index} off={off} m={m}")
+      chunk_total:int=0
+      stats:List[int]=[0]*46
+      stages_inner:List[int]=[0,0,0,0,0,0,0]
+      elapsed_text:str="0:00:00.000"
+      elapsed_ms:int=0
+      chunk_total,stats,stages_inner,elapsed_text,elapsed_ms=exec_solutions_gpu_chunk_split126(N,chunk_constellations,BLOCK,MAX_BLOCKS,gpu_sort_mode,cross_stripe_safe,split_mode,gpu_log_level)
+      gpu_total+=chunk_total
+      executed_chunks+=1
+      t1=datetime.now()
+      elapsed_outer_text:str=str(t1-t0)[:-3]
+      elapsed_outer_ms:int=stream_elapsed_text_to_ms(elapsed_outer_text)
+      append_stream_funcid_reorder_progress(progress_fname,N,preset_queens,chunk_index,off,m,BLOCK,MAX_BLOCKS,STEPS,gpu_sort_mode,elapsed_outer_text,elapsed_outer_ms,chunk_total,gpu_total,total_records,stats)
+      if gpu_log_level>=1:
+        print(f"[split126-gpu-chunk-end] N={N} worker={worker_id}/{worker_count} chunk={chunk_index} off={off} m={m} elapsed={elapsed_outer_text} inner={elapsed_text} elapsed_ms={elapsed_outer_ms} chunk_total={chunk_total} gpu_total={gpu_total} soa_ms={stages_inner[0]} stats_ms={stages_inner[1]} split_ms={stages_inner[2]} kernel_reduce_ms={stages_inner[3]}")
+      off+=m
+      chunk_index+=1
+  if gpu_log_level>=1:
+    print(f"[split126-gpu-summary] N={N} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} total={gpu_total} split_mode={split_mode} progress={progress_fname}")
+    if worker_count>1:
+      print(f"[worker-summary] N={N} worker={worker_id}/{worker_count} records={total_records} chunks={chunk_index} executed_chunks={executed_chunks} partial_total={gpu_total} progress={progress_fname}")
+  return gpu_total
+
 """98 profile: reordered bin の選択 chunk を stage 計測つきで実行する。"""
 def exec_solutions_gpu_bin_stream_funcid_reorder_profile(
   N:int,
@@ -8143,7 +8734,7 @@ def main()->None:
   funcid_depth_bucket_list_spec:str=FUNCID_DEPTH_DEFAULT_BUCKET_LIST
   funcid_mark_bucket_list_spec:str=FUNCID_MARK_DEFAULT_BUCKET_LIST
   funcid_markdist_axis_list_spec:str=FUNCID_MARKDIST_DEFAULT_AXIS_LIST
-  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep, 17:funcid-reorder-v2-microbench, 18:funcid-reorder-v2-profile, 19:funcid-reorder-v2-chunksize-profile, 20:funcid-reorder-v2-funcid-target-profile, 21:funcid-reorder-v2-funcid-single-profile, 22:funcid-reorder-v2-funcid-split-profile, 23:funcid-reorder-v2-funcid-depth-profile, 24:funcid-reorder-v2-funcid-mark-profile, 25:funcid-reorder-v2-exact-mark-distance-profile, 26:markdist-risk-reorder-sim-only, 27:markdist-risk-reorder-gpu, 28:broadmarktail-reorder-sim-only, 29:broadmarktail-reorder-gpu
+  bench_mode:int=0  # 0:normal, 1:N20 warmup repeat, 2:N19 preheat, 3:N18+N19 preheat, 4:N20 repeat3 sweep, 5:N20 repeat2 benchmark, 6:reorder-only debug, 7:chunk-only debug, 8:boundary-classification-only, 9:boundary-solution-summary, 10:boundary-classification-only + signature prune disabled, 11:stream-bin-build-only, 13:stream-input-stats-only, 14:funcid-reorder-v2-sim-only, 15:funcid-reorder-v2-gpu, 16:funcid-reorder-v2-sim-sweep, 17:funcid-reorder-v2-microbench, 18:funcid-reorder-v2-profile, 19:funcid-reorder-v2-chunksize-profile, 20:funcid-reorder-v2-funcid-target-profile, 21:funcid-reorder-v2-funcid-single-profile, 22:funcid-reorder-v2-funcid-split-profile, 23:funcid-reorder-v2-funcid-depth-profile, 24:funcid-reorder-v2-funcid-mark-profile, 25:funcid-reorder-v2-exact-mark-distance-profile, 26:markdist-risk-reorder-sim-only, 27:markdist-risk-reorder-gpu, 28:broadmarktail-reorder-sim-only, 29:broadmarktail-reorder-gpu, 30:split126-probe, 31:split126-full-gpu
   reorder_window_mult:int=FUNCID_REORDER_V2_WINDOW_MULT
   reorder_phase_jump:int=FUNCID_REORDER_V2_PHASE_JUMP
   worker_id:int=0
@@ -8217,7 +8808,7 @@ def main()->None:
       requested_preset_arg=int(sys.argv[8])
     if argc >= 10:
       bench_mode=int(sys.argv[9])
-      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16 and bench_mode!=17 and bench_mode!=18 and bench_mode!=19 and bench_mode!=20 and bench_mode!=21 and bench_mode!=22 and bench_mode!=23 and bench_mode!=24 and bench_mode!=25 and bench_mode!=26 and bench_mode!=27 and bench_mode!=28 and bench_mode!=29):
+      if bench_mode<0 or (bench_mode>11 and bench_mode!=13 and bench_mode!=14 and bench_mode!=15 and bench_mode!=16 and bench_mode!=17 and bench_mode!=18 and bench_mode!=19 and bench_mode!=20 and bench_mode!=21 and bench_mode!=22 and bench_mode!=23 and bench_mode!=24 and bench_mode!=25 and bench_mode!=26 and bench_mode!=27 and bench_mode!=28 and bench_mode!=29 and bench_mode!=30 and bench_mode!=31):
         print(f"[warning] unknown bench_mode={bench_mode}; using 0")
         bench_mode=0
     if bench_mode>=8:
@@ -8226,7 +8817,7 @@ def main()->None:
       if requested_preset_arg!=5:
         print(f"[warning] preset_queens={requested_preset_arg} is disabled in 77 normal modes; using 5")
       preset_queens_arg=5
-    if bench_mode==14 or bench_mode==15 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29:
+    if bench_mode==14 or bench_mode==15 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31:
       # 96/97 reorder modes use a short form; if omitted, measured-best w8_j7 is used:
       #   mode14/15: ... [preset_queens] [bench_mode] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]
       #   mode17/18: ... [preset_queens] mode [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]
@@ -8241,6 +8832,8 @@ def main()->None:
       #   mode27:    ... [preset_queens] 27   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]  # markdist-risk GPU full run
       #   mode28:    ... [preset_queens] 28   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [broadmark_tail_variant]  # broadmarktail sim/build only
       #   mode29:    ... [preset_queens] 29   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]  # broadmarktail GPU full run / optional multi-GPU worker
+      #   mode30:    ... [preset_queens] 30   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [broadmark_tail_variant]  # split126 selected chunks
+      #   mode31:    ... [preset_queens] 31   [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]  # split126 full run / optional multi-GPU worker
       # Examples:
       #   -g 22 22 32 484 1 0 7 15        # auto w8_j7 full N22
       #   -g 22 22 32 484 1 0 7 15 16 7   # manual override full N22
@@ -8259,13 +8852,15 @@ def main()->None:
       #   -g 22 22 32 484 1 0 7 29        # broadmark + funcid17/G_H weak-tail-smoothed reordered GPU full run
       #   -g 22 22 32 484 1 0 7 29 8 7 0 2 4  # worker 2 of 4 for multi-GPU split
       #   -g 22 22 32 484 1 0 7 29 8 7 0 0 1 4  # 114 variant 4 phase_rotate single GPU
+      #   -g 22 22 32 484 1 0 7 30 8 7 0 1222 5 "" 2  # 126 d2base14-only probe chunks 1222..1226
+      #   -g 22 22 32 484 1 0 7 31 8 7 0 0 1 2  # 126 d2base14-only full GPU single worker
       if argc >= 11:
         reorder_window_mult=int(sys.argv[10])
       if argc >= 12:
         reorder_phase_jump=int(sys.argv[11])
       if argc >= 13:
         cross_stripe_safe=(int(sys.argv[12])!=0)
-      if bench_mode==29:
+      if bench_mode==29 or bench_mode==31:
         if argc >= 14:
           worker_id=int(sys.argv[13])
         if argc >= 15:
@@ -8275,7 +8870,7 @@ def main()->None:
       if bench_mode==28:
         if argc >= 14:
           broadmark_tail_variant=int(sys.argv[13])
-      if bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25:
+      if bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==30:
         if argc >= 14:
           debug_chunk_start=int(sys.argv[13])
           microbench_chunk_list_spec=""
@@ -8303,6 +8898,8 @@ def main()->None:
           funcid_single_list_spec=sys.argv[16]
         if bench_mode==25 and argc >= 18:
           funcid_markdist_axis_list_spec=sys.argv[17]
+        if bench_mode==30 and argc >= 17:
+          broadmark_tail_variant=int(sys.argv[16])
         if (bench_mode==17 or bench_mode==18) and argc > 16:
           print("Too many arguments")
           print("Usage microbench/profile: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens mode[17|18] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list]")
@@ -8335,11 +8932,15 @@ def main()->None:
           print("Too many arguments")
           print("Usage funcid-markdist: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 25 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [funcid_list] [axis_list]")
           return
+        if bench_mode==30 and argc > 17:
+          print("Too many arguments")
+          print("Usage split126-probe: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 30 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [chunk_start] [chunk_count] [chunk_list] [broadmark_tail_variant]")
+          return
       else:
-        if bench_mode==29:
+        if bench_mode==29 or bench_mode==31:
           if argc > 16:
             print("Too many arguments")
-            print("Usage broadmarktail worker: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens 29 [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]")
+            print("Usage broadmarktail/split126 worker: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens mode[29|31] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe] [worker_id] [worker_count] [broadmark_tail_variant]")
             return
         elif bench_mode==28:
           if argc > 14:
@@ -8349,7 +8950,7 @@ def main()->None:
         else:
           if argc > 13:
             print("Too many arguments")
-            print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15|26|27] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
+            print("Usage reorder modes: nqueens -g nmin nmax block max_blocks log_level sort_mode preset_queens bench_mode[14|15|26|27|30|31] [reorder_window_mult] [reorder_phase_jump] [cross_stripe_safe]")
             return
     elif bench_mode==16:
       # mode 16 runs the fixed simulation sweep: window_mult=8,16,32 x phase_jump=5,7,11.
@@ -8388,6 +8989,8 @@ def main()->None:
     microbench_chunk_list_spec=FUNCID_MARKDIST_DEFAULT_CHUNK_LIST
   if bench_mode==25 and funcid_single_list_spec==FUNCID_SINGLE_DEFAULT_FUNCID_LIST:
     funcid_single_list_spec=FUNCID_MARKDIST_DEFAULT_FUNCID_LIST
+  if bench_mode==30 and microbench_chunk_list_spec==MICROBENCH_DEFAULT_CHUNK_LIST:
+    microbench_chunk_list_spec=""
 
   if reorder_window_mult<=0:
     print(f"[warning] reorder_window_mult={reorder_window_mult} is invalid; using 8")
@@ -8422,9 +9025,9 @@ def main()->None:
   if use_gpu and gpu_log_level>=1:
     print(f"version        : {VERSION_TAG}")
     print(f"cross_stripe_safe: {1 if cross_stripe_safe else 0}")
-    if bench_mode==29:
+    if bench_mode==29 or bench_mode==31:
       print(f"worker_split : worker={worker_id}/{worker_count}")
-    if bench_mode==28 or bench_mode==29:
+    if bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31:
       print(f"broadmarktail_variant: id={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} desc={broad_markdist_tail_variant_desc()}")
     if bench_mode==7:
       print(f"chunk_only    : start={debug_chunk_start} count={debug_chunk_count}")
@@ -8466,9 +9069,13 @@ def main()->None:
       print(f"broadmarktail_reorder_sim: mode={bench_mode} preset={preset_queens_arg}")
     if bench_mode==29:
       print(f"broadmarktail_reorder_gpu: mode={bench_mode} preset={preset_queens_arg}")
-  if gpu_log_level>=1 and (bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29):
+    if bench_mode==30:
+      print(f"split126_d2base14_only_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+    if bench_mode==31:
+      print(f"split126_d2base14_only_full_gpu: mode={bench_mode} preset={preset_queens_arg}")
+  if gpu_log_level>=1 and (bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
-  if gpu_log_level>=1 and (bench_mode==28 or bench_mode==29):
+  if gpu_log_level>=1 and (bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
     print(f"broadmarktail_params: version={BROAD_MARKDIST_TAIL_REORDER_VERSION} variant={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} window_boost={broad_markdist_tail_window_boost_value()} phase_mix={1 if broad_markdist_tail_use_phase_mix() else 0} rotate_interleave={1 if broad_markdist_tail_use_rotating_interleave() else 0} phase_salt={broad_markdist_tail_phase_salt_value()} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
   print(" N:             Total           Unique         hh:mm:ss.ms")
   for N in range(nmin,nmax):
@@ -8597,6 +9204,65 @@ def main()->None:
         status=f"partial-worker-{worker_id}-of-{worker_count}"
       if gpu_log_level>=1:
         print(f"[broadmarktail-reorder-gpu-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
+        if worker_count>1:
+          print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
+      continue
+
+
+    if use_gpu and N>=21 and bench_mode==30:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=broad_markdist_tail_reorder_output_fname(N,preset_queens,gpu_block,gpu_max_blocks)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[split126-probe-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[split126-probe-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      progress_suffix:str=f"split126_probe_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      total:int=exec_solutions_gpu_bin_stream_split126(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,progress_suffix,0,1,2)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[split126-probe-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    split126-probe")
+      continue
+
+    if use_gpu and N>=21 and bench_mode==31:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=broad_markdist_tail_reorder_output_fname(N,preset_queens,gpu_block,gpu_max_blocks)
+      reorder_records:int=count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=read_stream_done_count(reorder_fname+".done")
+      if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
+        if gpu_log_level>=1:
+          print(f"[split126-full-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+      else:
+        if gpu_log_level>=1:
+          print(f"[split126-full-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      progress_suffix:str=f"split126_full_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      total:int=exec_solutions_gpu_bin_stream_split126(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,debug_chunk_start,debug_chunk_count,"",progress_suffix,worker_id,worker_count,2)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="ok" if expected[N]==total else f"ng({total}!={expected[N]})"
+      if worker_count>1:
+        status=f"partial-worker-{worker_id}-of-{worker_count}"
+      if gpu_log_level>=1:
+        print(f"[split126-full-done] N={N} source_records={stream_records} reordered_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
         if worker_count>1:
           print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
@@ -8866,7 +9532,7 @@ def main()->None:
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
       continue
 
-    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27):
+    if use_gpu and N>=21 and not (bench_mode==8 or bench_mode==9 or bench_mode==10 or bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==30 or bench_mode==31):
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       stream_chunk_only:bool=(bench_mode==7)
       total:int=exec_solutions_gpu_bin_stream(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,stream_chunk_only,debug_chunk_start,debug_chunk_count)
