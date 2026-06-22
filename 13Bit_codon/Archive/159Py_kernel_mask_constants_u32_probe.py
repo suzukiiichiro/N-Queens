@@ -314,7 +314,6 @@ def kernel_dfs_iter_gpu(
       GPU 上で「1 constellation = 1 thread」の DFS を非再帰で実行し、
       この constellation が担当する部分探索の解数を数えて results[i] に格納します。
       最終的に results[i] には（解数 * 対称性重み）を保存します。
-
     引数（抜粋）:
       ld_arr/rd_arr/col_arr/free_arr:
         constellation ごとの開始ビットボード状態。
@@ -331,13 +330,11 @@ def kernel_dfs_iter_gpu(
         (1<<N)-1。ビットボードを常にこの範囲へ正規化します。
       m:
         タスク数（i >= m は処理しない）。
-
     前提/不変条件:
       - ld/col/free は board_mask 内に収まる。
       - rd は future attack 用に board_mask 外の高位ビットを持つ場合があるが、bit30 以下の非負値。
       - 現行 dynamic preset の N<=27 では最大 sp=20。MAXD=21 は index 0..20 を確保する。
       - sp>=MAXD は安全弁だが、対応範囲内では到達しない。
-
     ホットパス（ソース引用）:
       bit = a & -a
       avail[sp] = a ^ bit
@@ -355,7 +352,6 @@ def kernel_dfs_iter_gpu(
     MASK_K_N4:u32=u32(4227088)
     MASK_L_1:u32=u32(12689458)
     MASK_L_2:u32=u32(17039488)
-
     # 145 kernel stackdepth21 v3。
     # 142/143 で ld/rd を u32 化し、ld/rd/col/avail/ctrl の5スタックはすべて u32。
     # 145 は要素型・DFS遷移・解数演算を変えず、静的スタック長だけを 24 -> 21 に縮小する。
@@ -393,7 +389,7 @@ def kernel_dfs_iter_gpu(
     #   bit  14     : future check enabled
     #   bits 15..16 : blockL encoded value
     #   bits 17..18 : blockK type: 0=0, 1=n3, 2=n4
-
+    #
     # child ctrl は低10bitそのものなので、通常pushでは
     #   ctrl[child] = ctrl[parent] & 1023
     # とでき、hotpathの int(ctrl)>>14 デコードを避ける。
@@ -404,15 +400,12 @@ def kernel_dfs_iter_gpu(
     avail=__array__[u32](MAXD)
     ctrl=__array__[u32](MAXD)
     bm:u32=board_mask
-
     i:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
     if i>=m:return
-
     # 154: board_mask/n3/n4 already arrive as u32; no per-thread scalar casts.
     # 155/156: initial function-id/row already arrive as one packed u32 word.
     # 157: four mark/end values arrive in one packed u32 load.
     # 158/159: function-id, flags, and mask operands stay in u32.
-
     markctrl:u32=markctrl_arr[i]
     jmark:u32=markctrl&u32(31)
     endm:u32=(markctrl>>u32(5))&u32(31)
@@ -423,7 +416,6 @@ def kernel_dfs_iter_gpu(
     ld[0]=ld_arr[i]
     rd[0]=rd_arr[i]
     col[0]=col_arr[i]
-
     free0:u32=free_arr[i]&bm
     if free0==u32(0):
       results[i]=u64(0)
@@ -443,7 +435,6 @@ def kernel_dfs_iter_gpu(
         fu:u32=cv&u32(31)
         rowv:u32=(cv>>u32(5))&u32(31)
         # 152: meta_next is loaded lazily only at an actual transition site.
-
         #######################################
         # P5 same-row transition
         #
@@ -456,7 +447,6 @@ def kernel_dfs_iter_gpu(
         if ((IS_P5_MASK>>fu)&u32(1))!=u32(0):
           if rowv==mark1:
             fu=u32(meta_next[int(fu)])
-
         #######################################
         # 基底 is_base
         isbu:u32=(IS_BASE_MASK>>fu)&u32(1)
@@ -515,7 +505,6 @@ def kernel_dfs_iter_gpu(
               continue
             ld[sp]|=u32(1)
             nextfidu=u32(meta_next[int(fu)])
-
         child_rowu:u32=rowv+stepv
         frame_fcvu:u32=u32(0)
         if use_futureu!=u32(0) and child_rowu<endm:
@@ -591,7 +580,6 @@ def kernel_dfs_iter_gpu(
       rd[sp]=nrd
       col[sp]=ncol
       avail[sp]=nf
-
     results[i]=total*w_arr[i]
 
 
