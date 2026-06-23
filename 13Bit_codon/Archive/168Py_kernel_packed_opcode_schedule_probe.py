@@ -215,6 +215,42 @@ N24→25 : 10.81倍
 
 168Py以降は、小さな命令削減だけでなく、探索ノード数、local-memoryアクセス、warp divergence、タスク分割深度を変える構造的最適化が必要です。安定版ができた段階でN=22も一度測定し、単なる定数倍高速化か、スケーリング自体も改善したかを確認する方針がよいと思います。
 
+168Pyは問題ありません。**新しい最速基準版として採用**します。
+
+* 全131チャンク完走、欠落・重複なし
+* 部分和01～05、最終合計`314666222712`一致
+* warning／error／mismatchなし
+* 実行時間`0:09:20.261`
+* 167Py比`72.778秒（11.497%）`高速
+* 全131チャンクで167Pyを上回りました
+
+最重要の観測は、全チャンクで`required_maxd=14`だった一方、現在は`MAXD=16`を選択している点です。
+
+| 版           | 単独実験                               | 狙い                                |
+| ----------- | ---------------------------------- | --------------------------------- |
+| **169Py**   | `MAXD14`静的カーネルを追加                  | 272→240 bytes/thread              |
+| **170Py**   | 7種類の演算を3bit化し、scheduleを1個の`u64`へ格納 | schedule配列を廃止、224 bytes/thread    |
+| **171Py**   | current frameをレジスタ保持               | 候補bitごとのlocal load/storeを大幅削減     |
+| **172Py**   | ancestor stackを1段縮小                | N=21では208 bytes/thread            |
+| **173Py**   | frame entry時にmetadataを一度だけdecode   | 同一frame内の反復decodeを除去              |
+| **174Py**   | thread／warp単位の探索量診断                | local memoryとwarp tailのどちらが支配的か判定 |
+| **175Py以降** | 診断結果に応じてtask再配置または重量task追加split    | N増加時の倍率改善                         |
+
+169PyはN=21専用にはせず、dispatchを`14／16／18／20／21`へ拡張します。N=22以上でも実際の必要深度に応じて安全な最小カーネルを選択します。
+
+現在の`560.261秒`から2分へは、さらに約**4.669倍**の高速化が必要です。169～173でlocal-memory負荷を段階的に減らし、その後は探索量またはwarp負荷不均衡へ進む方針です。
+
+詳細な再開メモを作成しました。
+
+* [2026年6月24日 再開用メモ](sandbox:/mnt/data/20260624ChatGPT.txt)
+* [168Py実行ログ](sandbox:/mnt/data/168Py_kernel_packed_opcode_schedule_logs_N21_full_once_20260623_075446.tar)
+* [168Pyソース](sandbox:/mnt/data/168Py_kernel_packed_opcode_schedule_probe.py)
+* [168Py検証シェル](sandbox:/mnt/data/168Py_kernel_packed_opcode_schedule_validate_full_once.sh)
+
+なお、ログ記載の実行ソースSHA-256と、こちらに保存された168PyソースのSHA-256は一致していません。計算・静的検査・モデル検査はすべて正常ですが、次回は実際に実行したソースも添付いただくとバイト完全同一性を確認できます。
+
+本日もありがとうございました。
+
 
 """
 
