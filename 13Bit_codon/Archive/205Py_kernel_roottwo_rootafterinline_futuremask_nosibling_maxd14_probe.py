@@ -4,7 +4,7 @@
 
 # =============================================================================
 # NQ_UPDATE_MEMO
-# 183: 更新メモ: 182のN=21 full検証OK・0:07:51.064を受け、GPU kernelは182/181/180/175相当の4-bit nibble MAXD14のまま維持。182で実運用確認済みのruntime-only検証方針を正式継承し、progress/log tagを183へ分離。
+# 205: 更新メモ: 204は正当性OKかつ197比で0.407秒高速のため新最速基準として採用。204 root_rest clear-lowbit/futuremask/no-siblingを親に、MAXD14 kernelのみroot<=2判定のroot_after_second一時scalarを削り、if内へXOR式を直接inlineする微差実験を導入。
 # Full update history: see README.md
 # =============================================================================
 
@@ -20,6 +20,21 @@
          _/ _/
        _/m/'
 
+Python/Codon CUDA N-Queens constellation solver.
+
+205Py note:
+  204Py was correct and numerically faster than 197, so this branch adopts
+  204 as the new numerical baseline.  It keeps the same validated MAXD14
+  root fast-start scope: only post-root-action root_avail with one or two
+  bits is prerolled, and 3-bit or wider roots stay on the generic loop.
+  The only new micro-experiment is the predicate scalar shape: keep the
+  204 clear-lowbit root_rest expression but inline root_rest^root_second
+  directly in the root<=2 if condition.
+
+Full update history is maintained in README.md.
+"""
+
+"""
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 # ビルド
@@ -166,403 +181,129 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
+"""
 
-はい。ご指摘の通りです。**N=22へ進む提案は、順番として早すぎました。**
-N=22が50分級になるなら、そこでkernelデバッグを始めるのは効率が悪いです。まずN=21を短い検証サイクルとして使い、kernel側の残りボトルネックを潰すべきです。
-
-現状183PyはN=21で `0:07:51.091` です。N=21を2分へ持っていくには、
-
-```text
-471.091秒 / 120秒 = 約3.93倍
-```
-
-がまだ必要です。これは、tail配置やchunk平坦化だけで届く差ではありません。183Pyのtailはかなり平坦で、top10 chunkでも全体の約8.2%しか占めていないため、tail splitだけで4倍近い改善は期待できません。
-
-したがって、明日以降の段取りは **N=21固定、183Py親、MAXD14 kernel本体を単独実験で詰める** に戻すのがよいです。
-
-段取りメモも作成しました。
-
-[2026-06-30 再開用 N=21 kernel最適化段取りメモ](sandbox:/mnt/data/NQ_20260630_kernel_optimization_plan_after_183Py.md)
-
----
-
-## 方針修正
-
-前回は「183Pyを固定してN=22へ橋を架ける」と言いましたが、これは撤回します。
-
-今の正しい順序はこうです。
+"""
+204Pyログを確認しました。**正当性・実行結果ともに問題ありません。**
 
 ```text
-183PyをN=21最終基準として固定
-↓
-N=21でkernel hot loopをさらに削る
-↓
-N=21が少なくとも数分台前半、理想は2分台へ近づく
-↓
-その後にN=22へ進む
+final total                314666222712 一致
+progress rows              131
+duplicate/missing chunks   0 / 0
+dispatch task sum          2025282
+required_maxd              全chunk 14
+selected_MAXD              全chunk 14
+schedule_words             0
+stack_bytes_per_thread     208
+warning/error              0 / 0
 ```
 
-168Py以降のメモでも、N=21の2分は第一関門であり、小さな命令削減だけでなく、local-memoryアクセス、warp divergence、task split深度まで含む構造的最適化が必要と整理していました。
-また、host側のscorestripe/chunkshape148は既に「入力recordを一度ずつ並べ替えるだけ」の安定層として扱われており、kernelやDFS遷移は別軸として切り離されています。
-
-つまり、ここからは **host投入順ではなく、MAXD14 kernel内部の探索実行コスト** を正面から削る段階です。
-
----
-
-## 現在の183Py kernelで残っている主なコスト
-
-183PyのMAXD14はかなり整理されています。
+速度は以下でした。
 
 ```text
-4-bit nibble schedule
-current frame register
-ancestor13 stack
-schedule_words = 0
-stack_bytes_per_thread = 208
+204Py  0:07:07.795
+197Py  0:07:08.202  → 204が 0.407秒 / 0.095% 高速
+203Py  0:07:08.344  → 204が 0.549秒 / 0.128% 高速
+202Py  0:07:08.482  → 204が 0.687秒 / 0.160% 高速
+201Py  0:07:08.383  → 204が 0.588秒 / 0.137% 高速
+199Py  0:07:08.293  → 204が 0.498秒 / 0.116% 高速
+198Py  0:07:08.239  → 204が 0.444秒 / 0.104% 高速
+194Py  0:07:08.288  → 204が 0.493秒 / 0.115% 高速
+188Py  0:07:10.137  → 204が 2.342秒 / 0.544% 高速
 ```
 
-しかし、hot loopにはまだ次の処理が毎候補bitごとに残っています。
+したがって、**204Pyを新最速基準として採用**しました。
+
+205Pyは204Pyを親にしています。差分はMAXD14 kernel内だけです。
 
 ```text
-1. sp/depthに応じたnibble抽出
-2. block_code分岐
-3. block metadata mask decode
-4. nld/nrd/ncol/nf計算
-5. future check
-6. terminal判定
-7. child_jmark判定
-8. descend時のancestor spill
-9. backtrack時のancestor restore
+204Py:
+  root_after_second:u32 = root_rest ^ root_second
+
+  if root_after_second == u32(0):
+      root 1bit/2bit とみなしてpreroll
+
+205Py:
+  root_after_second 一時scalarを作らず、
+
+  if (root_rest ^ root_second) == u32(0):
+      root 1bit/2bit とみなしてpreroll
 ```
 
-169〜183でかなり削ったのは、主に **local stack容量** と **current frameのload/store** です。
-次に狙うべきは、**「戻る必要のない親frameを保存しない」** ことです。
+意味は同じです。root fast-startの対象は204/197/196/194と同じく **root_avail 1bit/2bitのみ**です。195の3bit root preroll、198〜203の不採用差分は入れていません。
 
----
-
-## 最優先: 184Py no-sibling spill elision / tail-call descent
-
-次の184Pyで最も有望だと思うのはこれです。
-
-現在の183Pyは、子へdescendするときに、親frameを必ずancestor stackへ保存します。
+手元確認結果です。
 
 ```text
-ld[sp]    = cur_ld
-rd[sp]    = cur_rd
-col[sp]   = cur_col
-avail[sp] = cur_avail
-sp += 1
-cur_* = child
+bash -n 205Py...sh        OK
+STATIC_ONLY=1 205Py...sh  OK
+
+source_future_check_mask_guard   OK
+source_nosibling_parent          OK
+source_rootafterinline           OK
+source_195_rootthree_removed     OK
+source_190_blockmask_guard_removed OK
+source_191_place_xor_removed     OK
+source_189_forced_chain_removed  OK
+source_187_jmark_guard_removed   OK
+source_terminal13_literal_removed OK
+source_split_tag                 OK
 ```
 
-しかし、候補bitを1つ取り出したあとに `cur_avail == 0` になっているなら、その親にはもう戻るべき兄弟候補がありません。
-その場合、親frameを保存しても、子subtreeが終わったあとに親へ戻り、即backtrackするだけです。
-
-そこで184Pyでは、
+抽象述語も確認しました。
 
 ```text
-親に残候補がある場合:
-  ancestor stackへ保存する
-
-親に残候補がない場合:
-  保存せず、childをそのままactive frameにする
+204 root_after_second scalar predicate
+205 inline predicate
+equivalence OK: 65535 exhaustive masks
 ```
 
-という形にします。
+こちらではCodon/CUDA実機build/full実行はしていません。cudacodon側では以下で確認してください。
 
-これは、いわば **tail-call descent** です。
-
-実装上は、現在の `sp` が「論理深度」と「保存stack index」を兼ねているので、ここを分離します。
-
-```text
-cur_depth : schedule上の論理深度
-save_sp   : 保存済みancestor stackの段数
+```bash
+STATIC_ONLY=1 bash 205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_validate_full_once.sh
+bash 205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_validate_full_once.sh
 ```
 
-restore時に論理深度も戻す必要があるため、`avail` 配列の上位bitに `cur_depth` を詰めます。N<=27ならbitboardは下位27bitまでなので、上位5bitに深度0〜13を入れられます。
-
-```text
-保存時:
-  avail[save_sp] = cur_avail | (cur_depth << 27)
-
-復元時:
-  packed = avail[save_sp]
-  cur_avail = packed & board_mask
-  cur_depth = packed >> 27
-```
-
-期待効果はかなり大きい可能性があります。
-
-```text
-候補が1個だけのframe:
-  183Py : parentをspill → child探索 → parent restore → 即backtrack
-  184Py : parentをspillせず、childへ直接進む
-```
-
-N-Queensの深い段では候補が1個だけのframeが多くなるため、これはlocal memory trafficとbacktrack回数の両方に効く可能性があります。
-
----
-
-## 次点: 185Py terminal_depth=13固定化
-
-N=21/MAXD14では、terminal parent depthは13で固定です。
-172Pyの時点でも `terminal_parent=13` を確認していますし、183Pyでも全chunk `required_maxd=14` です。
-
-現在のkernelでは、
-
-```text
-terminal_depth = terminal_parent_depth
-
-if sp == terminal_depth:
-    ...
-```
-
-という形で、terminal depthを変数として持っています。
-
-185PyではN=21/MAXD14専用に、
-
-```text
-if cur_depth == 13:
-    ...
-```
-
-へ固定します。
-
-効果は184Pyほど大きくないかもしれませんが、
-
-```text
-terminal_depth scalar削減
-terminal_parent_depth生成削減
-hot loop比較の定数化
-```
-
-ができます。
-
-これは安全性が高いので、184Pyの結果に関係なく試す価値があります。
-
----
-
-## その次: terminal_base14分離
-
-現在のterminal処理は、
-
-```text
-if terminal_base14 == 0:
-    total += 1
-else:
-    total += 1 if (nf & ~1) != 0 else 0
-```
-
-です。
-
-terminal hitは探索末端で非常に頻繁に発生するため、この分岐も意外に重い可能性があります。
-
-186Py候補として、DFS loopを外側で2本に分けます。
-
-```text
-if terminal_base14 == 0:
-    通常base専用loop
-else:
-    base14専用loop
-```
-
-ただし、これはloop複製でcode sizeとregister pressureが増えるので、173Py/176Pyのように遅くなる可能性もあります。
-そのため、184Py/185Pyより後に単独実験がよいです。
-
----
-
-## 条件付き候補: jmarkなし / futureなし fast loop
-
-現在はdescend前に毎回、
-
-```text
-child_jmark = (child_jmark_mask >> depth) & 1
-```
-
-を見ています。
-
-また、future pruneも毎候補で、
-
-```text
-if nibble_op & 8:
-    if next-free == 0:
-        continue
-```
-
-を見ています。
-
-もし、N=21の多くのtaskで、
-
-```text
-child_jmark_mask == 0
-schedule_future_mask == 0
-```
-
-のような偏りがあるなら、loopを分ける価値があります。
-
-ただし、これは診断してからです。
-割合が低いと、loop複製と外側分岐のほうが重くなります。
-
----
-
-## しばらく避けるべき変更
-
-ここはかなり明確です。
-
-```text
-u64高位bit packing
-  → CUDA_ERROR_INVALID_PTX
-
-追加SoA / 追加kernel引数によるhost-precomputed schedule
-  → CUDA_ERROR_INVALID_PTX
-
-block-switch直書き分岐
-  → CUDA_ERROR_INVALID_PTX
-
-frame-entry full metadata decode
-  → register圧で大幅低下
-
-current nibble register
-  → register追加で低下
-
-terminal-first
-  → 分岐順変更で低下
-```
-
-特に178/179系のblock-switchは、発想自体は自然でしたが、Codon/CUDA PTX生成との相性が悪かったので、しばらく封印がよいです。
-
----
-
-## 明日以降の版番号案
-
-私はこの順番を推します。
-
-```text
-184Py:
-  no-sibling spill elision / tail-call descent
-  親に残候補がないdescendではancestor保存を省く
-
-185Py:
-  terminal_depth=13固定化
-  N=21/MAXD14専用のterminal定数化
-
-186Py:
-  terminal_base14分離
-  terminal_base14==0/1でloopを外側分岐
-
-187Py:
-  child_jmark_mask==0 fast loop
-  事前診断でjmarkなしtaskが多い場合のみ
-
-188Py:
-  future_mask==0 fast loop
-  事前診断でfutureなしtaskが多い場合のみ
-
-189Py:
-  forced chain compression
-  184Pyが効いた場合、その延長として単一候補chainをまとめて進める
-```
-
-一番大きく効く可能性があるのは **184Py** です。
-183Pyで既にcurrent frameをレジスタ保持しているので、「保存しなくてよい親を保存しない」は自然な次段です。
-
----
-
-## 評価方法
-
-N=21 fullは7分台なので、毎回fullだけで判断すると遅いです。
-まずselected chunk microbenchを使うべきです。
-
-183ログから見る限り、候補chunkは以下が良いです。
-
-```text
-slow:
-  13,48,37,38,1,29,3,46
-
-middle:
-  40,68,73,80
-
-light:
-  99,101,102,103
-```
-
-採用基準はこうします。
-
-```text
-selected chunkで2%以上高速:
-  full N=21へ進む
-
-selected chunkで±1%以内:
-  full前に保留、または不採用寄り
-
-selected chunkで遅い:
-  不採用
-
-full N=21で1%以上高速:
-  採用
-
-full N=21で誤差範囲:
-  コード複雑化が大きければ不採用
-
-CUDA_ERROR_INVALID_PTX:
-  即撤回
-```
-
-この進め方なら、N=22の50分を待たずにkernel仮説を回せます。
-
----
-
-## 重要な見通し
-
-正直に言うと、184〜188のようなkernel micro/medium最適化だけで、いきなり4倍は難しいかもしれません。
-ただし、184Pyのtail-call descentは「小手先」ではなく、DFS実行構造に踏み込む変更なので、かなり期待できます。
-
-それでもN=21が2分へ届かない場合、次に必要なのはおそらく次のどちらかです。
-
-```text
-1. より深いtask split
-   preset_queens=7/8相当、またはkernel前にもう1段展開して、
-   1 threadあたりの逐次DFS量を減らす
-
-2. warp協調探索
-   1 task = 1 thread の逐次DFSモデルを崩し、
-   heavy subtreeをwarpまたは複数threadへ分担する
-```
-
-ただし、これは184〜189を試した後でよいです。
-まずは183PyのMAXD14 kernelを基準に、**no-sibling spill elision** から入るのが最も筋が良いと思います。
-
+作成物はこちらです。
+
+* [205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_probe.py](sandbox:/mnt/data/205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_probe.py)
+* [205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_validate_full_once.sh](sandbox:/mnt/data/205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_validate_full_once.sh)
+* [README.md](sandbox:/mnt/data/README.md)
+* [3点まとめtar](sandbox:/mnt/data/205Py_kernel_roottwo_rootafterinline_futuremask_nosibling_maxd14_bundle_20260701.tar)
 
 """
 
-# 183 runtime-clean revision memo over validated 182/181/180/175 nibble-schedule MAXD14:
-#   Branch from the validated 180 taildiag build, which itself preserves the 175 fast kernel.  Host-side depth
-#   computation and dispatch remain 14/16/18/20/21, and the MAXD14 schedule stays
-#   in PTX-safe scalar u32 fields.  The active DFS frame remains in scalar
-#   registers, so the local arrays are needed only for saved ancestor frames.
+# 205 root_afterinline memo over validated 204 root-clearrest futuremask/no-sibling MAXD14:
+#   204 was correct and 0.407 seconds faster than 197, so this branch adopts
+#   204 as the new numerical baseline.  It keeps the validated root one/two-
+#   candidate preroll, 204 root_rest clear-lowbit expression, 188 future_check_mask
+#   guard, and 184 no-sibling tailcall build.
+#   Host-side depth computation, scorestripe/chunkshape148 task order, cache
+#   naming, dispatch range 14/16/18/20/21, bitboard arithmetic, and solution
+#   arithmetic are unchanged.
 #
-#   For each stored frame, the current-frame operation has only seven variants:
-#     0 normal step1, no future check
-#     1 normal step1, with future check
-#     2..6 block operation codes 1..5
-#   These seven variants fit in 3 bits, so MAXD14 needs 14*3 = 42 bits.
-#   Two u32 fields store the 42 operation bits.  Additional scalar u32 fields store
-#   the child-jmark mask, terminal parent depth, terminal base14 bit, and root action.
+#   MAXD14 still uses PTX-safe scalar u32 schedule fields: schedule_lo/schedule_hi
+#   store 14 x 4-bit nibble operations, plus scalar child-jmark mask, terminal
+#   parent depth, terminal base14 bit, future_check_mask, and root action.
+#   MAXD16/18/20/21 keep the validated byte-opcode local schedule fallback.
 #
-#   In a depth-14 schedule the active frame can reach sp=13, but that terminal
-#   frame is never spilled: only its ancestors sp=0..12 must be restored later.
-#   Therefore MAXD14 local storage shrinks from four u32[14] arrays to four
-#   u32[13] arrays: 224 -> 208 bytes/thread.  MAXD16/18/20/21 keep the
-#   validated byte-opcode local schedule fallback for larger required depths.  Host layout,
-#   task order, cache, DFS order, bitboard arithmetic, and solution arithmetic are
-#   unchanged.  The supported GPU range remains N=5..27.
+#   The active DFS frame remains in scalar registers and local arrays still hold
+#   only restorable ancestor frames.  205 keeps the narrow root fast-start only when
+#   post-root-action root availability has one or two bits, matching the validated
+#   204/197/196/194 behavior.  Three-candidate roots explicitly stay on the generic
+#   loop.  The root<=2 predicate is still the second-lowbit test and 204
+#   clear-lowbit root_rest expression, but 205 removes the root_after_second
+#   temporary scalar and tests (root_rest^root_second)==0 directly.
+#   The no-sibling rule and depth packing in avail[] bits 27..31 are unchanged, so MAXD14 remains four
+#   u32[13] arrays = 208 bytes/thread.  The supported GPU range remains N=5..27.
 
 import gpu
 import sys
 from typing import List,Set,Dict,Tuple
 from datetime import datetime
 
-# 183 keeps the validated 175/180 static stack specializations.  MAXD remains the logical number of stored
+# 205 keeps the validated 204/197/196/194/192/188/184 static stack specializations.  MAXD remains the logical number of stored
 # schedule frames.  MAXD14 uses scalar u32 nibble schedule fields and a
 # register-held current frame; local arrays store only the 13 restorable
 # ancestor frames.  Larger fallbacks keep the byte-opcode local schedule.
@@ -574,13 +315,13 @@ MAXD16:Static[int]=16
 MAXD18:Static[int]=18
 MAXD20:Static[int]=20
 MAXD21:Static[int]=21
-SCHED_WORDS14:Static[int]=0  # 183 MAXD14 uses scalar u32 nibble schedule fields, not local u32 schedule words
+SCHED_WORDS14:Static[int]=0  # 205 MAXD14 keeps scalar u32 nibble schedule fields, not local u32 schedule words
 SCHED_WORDS16:Static[int]=4
 SCHED_WORDS18:Static[int]=5
 SCHED_WORDS20:Static[int]=5
 SCHED_WORDS21:Static[int]=6
 
-VERSION_TAG:str="183 runtime-clean tailflat: validated 182/181/180/175 nibble MAXD14 kernel unchanged - README-managed history"
+VERSION_TAG:str="205 roottwo-rootafterinline: 204 rootclearrest futuremask/no-sibling MAXD14 baseline with root_after_second inline predicate - README-managed history"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 # 115 FINAL AUTO DEFAULTS:
@@ -659,7 +400,7 @@ class TaskSoA:
     self.ijkl_arr:List[int]=[0]*m
 
 """ CUDA GPU 用 DFS カーネル関数  """
-# 183 inherits the exact 172/171/170/169/168/167 host-side control-schedule depth model.  It mirrors only the row/fid
+# 188 inherits the exact 184/183/172/171/170/169/168/167 host-side control-schedule depth model.  It mirrors only the row/fid
 # transition portion of the validated 164 frame initialization.  Queen-bit
 # choices can kill a branch but cannot increase this stored-frame count.
 def schedule_depth_for_task(ctrl0:u32,markctrl:u32,meta_next:List[u8])->int:
@@ -766,7 +507,7 @@ def kernel_dfs_iter_gpu_maxd14(
     m:int,board_mask:u32,
     n3:u32,n4:u32,
 )->None:
-    """183 MAXD14 nibble schedule plus register-held current frame and 13-slot ancestor stack."""
+    """205 MAXD14 nibble schedule plus futuremask/no-sibling and root one/two-candidate inline root-after predicate."""
     IS_BASE_MASK:u32=u32(69222408)
     IS_JMARK_MASK:u32=u32(4)
     IS_MARK_MASK:u32=u32(199209203)
@@ -839,6 +580,7 @@ def kernel_dfs_iter_gpu_maxd14(
     schedule_lo:u32=u32(0)
     schedule_hi:u32=u32(0)
     child_jmark_mask:u32=u32(0)
+    future_check_mask:u32=u32(0)
     terminal_parent_depth:int=0
     terminal_is_base14:u32=u32(0)
     root_action:u32=u32(0)
@@ -901,6 +643,9 @@ def kernel_dfs_iter_gpu_maxd14(
       if frame_action>=u32(2):
         break
 
+      if schedule_fcvu!=u32(0):
+        future_check_mask|=u32(1)<<u32(schedule_depth)
+
       if schedule_depth<8:
         schedule_lo|=frame_nibble<<u32(schedule_depth*4)
       else:
@@ -925,32 +670,127 @@ def kernel_dfs_iter_gpu_maxd14(
     terminal_depth:int=terminal_parent_depth
     terminal_base14:u32=terminal_is_base14
 
-    # 183 keeps the validated 172 current-frame register cache plus ancestor stack shrink.  The active
-    # frame lives in scalar variables, and local arrays hold only restorable
-    # ancestors.  A depth-14 schedule can make sp==13 active, but that terminal
-    # frame is never spilled; the deepest saved parent is index 12.
-    sp:int=0
+    # 197 keeps the validated 196 current-frame register cache, 13-slot
+    # ancestor storage, no-sibling tail-call descent, future-prune guard, and
+    # root one/two-candidate preroll. It keeps 195's three-candidate expansion removed: when the root
+    # active frame has one or two available bits after root-action handling,
+    # process the first depth-0 candidate once before entering the generic DFS
+    # loop. For multi-candidate prerolled roots, the remaining root siblings are
+    # saved exactly as the generic no-sibling loop would save them when the first
+    # child descends; for invalid/terminal first candidates, the remaining root
+    # candidates are left as the active root frame. Roots with three or more
+    # candidates preserve the 194 generic loop.
+    #
+    # 184 separates logical schedule depth from the saved
+    # ancestor stack pointer.  If a parent has no remaining sibling candidates
+    # after selecting bit, saving that parent would only restore an empty frame
+    # and immediately backtrack.  In that no-sibling case, descend directly into
+    # the child active frame.  When a parent does have remaining siblings, save
+    # the parent and pack its logical depth into the high five bits of avail[].
+    # N<=27 keeps all real availability bits below bit 27, so bits 27..31 can
+    # carry depth 0..13 without changing the stack byte count.
+    save_sp:int=0
+    cur_depth:int=0
     cur_ld:u32=root_ld
     cur_rd:u32=root_rd
     cur_col:u32=root_col
     cur_avail:u32=root_a
 
+    # 205 root_afterinline:
+    # If the root frame has one or two candidates, process the first root
+    # candidate before the generic DFS loop, matching the validated 204/197/196/194 scope.
+    # 195's three-candidate case remains intentionally removed because it was
+    # correct but slower.  205 keeps 204's clear-lowbit root_rest construction but
+    # removes the root_after_second temporary scalar and inlines the XOR predicate.
+    # Therefore 3-bit and wider roots stay on the generic loop.
+    root_first:u32=cur_avail&(u32(0)-cur_avail)
+    root_rest:u32=cur_avail&(cur_avail-u32(1))
+    root_second:u32=root_rest&(u32(0)-root_rest)
+
+    if (root_rest^root_second)==u32(0):
+      pr_nibble_op:u32=schedule_lo&u32(15)
+      pr_block_code:u32=pr_nibble_op&u32(7)
+      pr_bit:u32=root_first
+      cur_avail=root_rest
+
+      pr_nld:u32=u32(0)
+      pr_nrd:u32=u32(0)
+      if pr_block_code!=u32(0):
+        pr_stepu:u32=u32(2)+((OP_STEP3_MASK>>pr_block_code)&u32(1))
+        pr_addvu:u32=(OP_ADD1_MASK>>pr_block_code)&u32(1)
+        pr_bLiu:u32=(
+          ((OP_BL1_MASK>>pr_block_code)&u32(1))
+          |(((OP_BL2_MASK>>pr_block_code)&u32(1))<<u32(1))
+        )
+        pr_ktu:u32=(
+          ((OP_KN3_MASK>>pr_block_code)&u32(1))
+          |(((OP_KN4_MASK>>pr_block_code)&u32(1))<<u32(1))
+        )
+        pr_bKu:u32=(n3&(u32(0)-(pr_ktu&u32(1))))|(n4&(u32(0)-(pr_ktu>>u32(1))))
+        pr_nld=((cur_ld|pr_bit)<<pr_stepu)|pr_addvu|pr_bLiu
+        pr_nrd=((cur_rd|pr_bit)>>pr_stepu)|pr_bKu
+      else:
+        pr_nld=(cur_ld|pr_bit)<<u32(1)
+        pr_nrd=(cur_rd|pr_bit)>>u32(1)
+      pr_ncol:u32=cur_col|pr_bit
+      pr_nf:u32=bm&~(pr_nld|pr_nrd|pr_ncol)
+      pr_descend:u32=u32(1)
+      if pr_nf==u32(0):
+        pr_descend=u32(0)
+      if pr_descend!=u32(0):
+        if future_check_mask!=u32(0):
+          if (pr_nibble_op&u32(8))!=u32(0):
+            if (bm&~((pr_nld<<u32(1))|(pr_nrd>>u32(1))|pr_ncol))==u32(0):
+              pr_descend=u32(0)
+
+      if pr_descend!=u32(0):
+        if terminal_depth==0:
+          if terminal_base14==u32(0):
+            total+=u64(1)
+          else:
+            total+=u64(1) if ((pr_nf&~u32(1))!=u32(0)) else u64(0)
+          pr_descend=u32(0)
+
+      if pr_descend!=u32(0):
+        pr_child_jmark:u32=child_jmark_mask&u32(1)
+        if pr_child_jmark!=u32(0):
+          pr_nf&=~u32(1)
+          if pr_nf==u32(0):
+            pr_descend=u32(0)
+          else:
+            pr_nld|=u32(1)
+
+      if pr_descend!=u32(0):
+        if cur_avail!=u32(0):
+          ld[save_sp]=cur_ld
+          rd[save_sp]=cur_rd
+          col[save_sp]=cur_col
+          avail[save_sp]=cur_avail|(u32(cur_depth)<<u32(27))
+          save_sp+=1
+        cur_ld=pr_nld
+        cur_rd=pr_nrd
+        cur_col=pr_ncol
+        cur_avail=pr_nf
+        cur_depth=1
+
     while True:
       if cur_avail==u32(0):
-        if sp==0:
+        if save_sp==0:
           break
-        sp-=1
-        cur_ld=ld[sp]
-        cur_rd=rd[sp]
-        cur_col=col[sp]
-        cur_avail=avail[sp]
+        save_sp-=1
+        cur_ld=ld[save_sp]
+        cur_rd=rd[save_sp]
+        cur_col=col[save_sp]
+        saved_avail:u32=avail[save_sp]
+        cur_avail=saved_avail&bm
+        cur_depth=int(saved_avail>>u32(27))
         continue
 
       nibble_op:u32=u32(0)
-      if sp<8:
-        nibble_op=(schedule_lo>>u32(sp*4))&u32(15)
+      if cur_depth<8:
+        nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
       else:
-        nibble_op=(schedule_hi>>u32((sp-8)*4))&u32(15)
+        nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
       block_code:u32=nibble_op&u32(7)
 
       bit:u32=cur_avail&(u32(0)-cur_avail)
@@ -979,33 +819,40 @@ def kernel_dfs_iter_gpu_maxd14(
       nf:u32=bm&~(nld|nrd|ncol)
       if nf==u32(0):
         continue
-      if (nibble_op&u32(8))!=u32(0):
-        if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
-          continue
+      # 188: if no depth in this schedule carries the future-prune bit, avoid
+      # testing nibble bit3 for every candidate.  Nonzero schedules keep the
+      # original 184 future-prune condition.
+      if future_check_mask!=u32(0):
+        if (nibble_op&u32(8))!=u32(0):
+          if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
+            continue
 
-      if sp==terminal_depth:
+      if cur_depth==terminal_depth:
         if terminal_base14==u32(0):
           total+=u64(1)
         else:
           total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
         continue
 
-      child_jmark:u32=(child_jmark_mask>>u32(sp))&u32(1)
+      child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
       if child_jmark!=u32(0):
         nf&=~u32(1)
         if nf==u32(0):
           continue
         nld|=u32(1)
 
-      ld[sp]=cur_ld
-      rd[sp]=cur_rd
-      col[sp]=cur_col
-      avail[sp]=cur_avail
-      sp+=1
+      next_depth:int=cur_depth+1
+      if cur_avail!=u32(0):
+        ld[save_sp]=cur_ld
+        rd[save_sp]=cur_rd
+        col[save_sp]=cur_col
+        avail[save_sp]=cur_avail|(u32(cur_depth)<<u32(27))
+        save_sp+=1
       cur_ld=nld
       cur_rd=nrd
       cur_col=ncol
       cur_avail=nf
+      cur_depth=next_depth
     results[i]=total*w_arr[i]
 
 @gpu.kernel
@@ -1973,7 +1820,7 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
   return False
 
 ####################################################################################################
-# 183 nibble-schedule MAXD14 + scalar-u32pair dispatch harness
+# 184 no-sibling tail-call MAXD14 + scalar-u32pair dispatch harness
 #
 # This build defines five capacity-specialized packed-schedule @gpu.kernel variants.
 # It keeps the proven 171 current-frame-register dispatch and split/chunk-shape
@@ -7350,7 +7197,7 @@ def broad_markdist_tail_reorder_output_fname(N:int,preset_queens:int,block:int=3
 ####################################################################################################
 
 CHUNKSHAPE148_REORDER_VERSION:str="scorestripe_v9_lanephase32_octetfirstpairlock29"
-CHUNKSHAPE148_DEFAULT_REASON:str="183 runtime-clean tailflat reuses validated 182/181/180/175 nibble MAXD14 kernel and scorestripe_v9 task order/cache"
+CHUNKSHAPE148_DEFAULT_REASON:str="205 rootafterinline reuses validated 204 scorestripe_v9 task order/cache; only MAXD14 root-after predicate scalar shape changes"
 
 
 def chunkshape148_reorder_output_fname(N:int,preset_queens:int,block:int=32,max_blocks:int=484)->str:
@@ -10583,10 +10430,10 @@ def main()->None:
     worker_id=0
     worker_count=1
 
-  # 183 branches from validated 180/175.  The inherited host depth model rejects any launch
+  # 184 branches from validated 183.  The inherited host depth model rejects any launch
   # above MAXD21; the established bit-width/range envelope remains N=5..27.
   if use_gpu and (nmin<5 or nmax>28):
-    print(f"[error] 183 runtime-clean tailflat GPU candidate supports N=5..27 only; requested N={nmin}..{nmax-1}")
+    print(f"[error] 184 no-sibling tailcall GPU candidate supports N=5..27 only; requested N={nmin}..{nmax-1}")
     return
 
   if bench_mode==10:
@@ -10642,9 +10489,9 @@ def main()->None:
     if bench_mode==29:
       print(f"broadmarktail_reorder_gpu: mode={bench_mode} preset={preset_queens_arg}")
     if bench_mode==30:
-      print(f"split183_runtimeclean_tailflat_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+      print(f"split205_roottwo_rootafterinline_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
     if bench_mode==31:
-      print(f"split183_runtimeclean_tailflat_full_gpu: mode={bench_mode} preset={preset_queens_arg}")
+      print(f"split205_roottwo_rootafterinline_full_gpu: mode={bench_mode} preset={preset_queens_arg}")
   if gpu_log_level>=1 and (bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
   if gpu_log_level>=1 and (bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
@@ -10797,10 +10644,10 @@ def main()->None:
       done_count:int=read_stream_done_count(reorder_fname+".done")
       if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
         if gpu_log_level>=1:
-          print(f"[split183-probe-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+          print(f"[split205-probe-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
       else:
         if gpu_log_level>=1:
-          print(f"[split183-probe-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+          print(f"[split205-probe-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
       base_reorder_fname:str=reorder_fname
       base_reorder_records:int=reorder_records
@@ -10821,12 +10668,12 @@ def main()->None:
       reorder_fname=shaped_fname
       reorder_records=shaped_records
       reorder_chunks=shaped_chunks
-      progress_suffix:str=f"split183_probe_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      progress_suffix:str=f"split205_probe_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
       total:int=exec_solutions_gpu_bin_stream_split145(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,progress_suffix,0,1,0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      print(f"[split183-probe-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
-      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    split183-probe")
+      print(f"[split205-probe-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    split205-probe")
       continue
 
     if use_gpu and N>=21 and bench_mode==31:
@@ -10842,10 +10689,10 @@ def main()->None:
       done_count:int=read_stream_done_count(reorder_fname+".done")
       if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
         if gpu_log_level>=1:
-          print(f"[split183-full-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+          print(f"[split205-full-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
       else:
         if gpu_log_level>=1:
-          print(f"[split183-full-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+          print(f"[split205-full-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
       base_reorder_fname:str=reorder_fname
       base_reorder_records:int=reorder_records
@@ -10866,7 +10713,7 @@ def main()->None:
       reorder_fname=shaped_fname
       reorder_records=shaped_records
       reorder_chunks=shaped_chunks
-      progress_suffix:str=f"split183_full_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      progress_suffix:str=f"split205_full_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
       total:int=exec_solutions_gpu_bin_stream_split145(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,debug_chunk_start,debug_chunk_count,"",progress_suffix,worker_id,worker_count,0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
@@ -10874,7 +10721,7 @@ def main()->None:
       if worker_count>1:
         status=f"partial-worker-{worker_id}-of-{worker_count}"
       if gpu_log_level>=1:
-        print(f"[split183-full-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
+        print(f"[split205-full-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
         if worker_count>1:
           print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
