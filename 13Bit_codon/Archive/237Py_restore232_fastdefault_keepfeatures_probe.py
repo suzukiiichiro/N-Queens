@@ -38,8 +38,8 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 # CPU m4.xlarge での実行例
 suzuki@cudacodon$ date
 2026年  7月  6日 月曜日
-suzuki@cudacodon$ codon build -release 236Py_restore232_general_cleanup_keepfeatures_probe.py
-suzuki@cudacodon$ ./236Py_restore232_general_cleanup_keepfeatures_probe -c
+suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
+suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
  5:                10                0          0:00:00.000
@@ -61,8 +61,8 @@ CPU mode selected
 # CPU m4.16xlarge での実行例
 workspace#suzuki$ date
 2026年  7月  6日 月曜日
-workspace#suzuki$ codon build -release 236Py_restore232_general_cleanup_keepfeatures_probe.py
-workspace#suzuki$ ./236Py_restore232_general_cleanup_keepfeatures_probe -c
+suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
+suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
  5:                10                0          0:00:00.000
