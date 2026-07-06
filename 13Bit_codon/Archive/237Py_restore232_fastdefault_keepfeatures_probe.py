@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =============================================================================
+# NQ_UPDATE_MEMO
+# 237: restore232-fastdefault-keepfeatures。232Py cleanup-only/236Py汎用復帰版を親に、
+#      参照されないlegacy helperだけを削り、bare -g defaults to split145 mode31 とする。
+#      -c/-g range、N=5..27、bin自動生成、broadmarktail mode28/29、split145 mode31、
+#      MAXD14/16/18/20/21 fallback、worker_id/worker_count multi-GPU分割は維持する。
+#      233/234/235のN21専用化・cache-hot専用化は採用しない。kernel探索ロジック変更なし。
+# Full update history: see README.md
+# =============================================================================
 """
    ,     #_
    ~\_  ####_        N-Queens
@@ -10,19 +22,7 @@
          _/ _/
        _/m/'
 
-Python/Codon CUDA N-Queens constellation solver.
 
-231Py note:
-  230Py was correct but slower, so this restore branch returns to the validated
-  217Py rootrestlate fastest baseline.  It removes the 230 root-preroll
-  placement-common scalars and backs out the 225 generic ncol-early ordering.
-  The futuremask guard, no-sibling stack behavior, root one/two-candidate
-  preroll, host task order, and MAXD14 208-byte/thread shape are unchanged.
-
-Full update history is maintained in README.md.
-"""
-
-"""
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 # ビルド
@@ -35,6 +35,82 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 
 
+# CPU m4.xlarge での実行例
+suzuki@cudacodon$ date
+2026年  7月  6日 月曜日
+suzuki@cudacodon$ codon build -release 236Py_restore232_general_cleanup_keepfeatures_probe.py
+suzuki@cudacodon$ ./236Py_restore232_general_cleanup_keepfeatures_probe -c
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.000    ok
+ 7:                40                0          0:00:00.000    ok
+ 8:                92                0          0:00:00.000    ok
+ 9:               352                0          0:00:00.000    ok
+10:               724                0          0:00:00.001    ok
+11:              2680                0          0:00:00.004    ok
+12:             14200                0          0:00:00.008    ok
+13:             73712                0          0:00:00.023    ok
+14:            365596                0          0:00:00.044    ok
+15:           2279184                0          0:00:00.146    ok
+16:          14772512                0          0:00:00.730    ok
+17:          95815104                0          0:00:04.557    ok
+18:         666090624                0          0:00:40.116    ok
+19:        4968057848                0          0:05:16.015    ok
+
+# CPU m4.16xlarge での実行例
+workspace#suzuki$ date
+2026年  7月  6日 月曜日
+workspace#suzuki$ codon build -release 236Py_restore232_general_cleanup_keepfeatures_probe.py
+workspace#suzuki$ ./236Py_restore232_general_cleanup_keepfeatures_probe -c
+CPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.095    ok
+ 7:                40                0          0:00:00.002    ok
+ 8:                92                0          0:00:00.001    ok
+ 9:               352                0          0:00:00.002    ok
+10:               724                0          0:00:00.006    ok
+11:              2680                0          0:00:00.010    ok
+12:             14200                0          0:00:00.019    ok
+13:             73712                0          0:00:00.041    ok
+14:            365596                0          0:00:00.090    ok
+15:           2279184                0          0:00:00.170    ok
+16:          14772512                0          0:00:00.270    ok
+17:          95815104                0          0:00:00.409    ok
+18:         666090624                0          0:00:04.462    ok
+19:        4968057848                0          0:00:16.978    ok
+20:       39029188884                0          0:02:10.232    ok
+21:      314666222712                0          0:18:05.956    ok
+
+
+# GPU m4.xlarge での実行例
+suzuki@cudacodon$ date
+2026年  7月  6日 月曜日
+suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
+suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -g
+GPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.018    ok
+ 7:                40                0          0:00:00.003    ok
+ 8:                92                0          0:00:00.004    ok
+ 9:               352                0          0:00:00.008    ok
+10:               724                0          0:00:00.006    ok
+11:              2680                0          0:00:00.006    ok
+12:             14200                0          0:00:00.016    ok
+13:             73712                0          0:00:00.012    ok
+14:            365596                0          0:00:00.028    ok
+15:           2279184                0          0:00:00.035    ok
+16:          14772512                0          0:00:00.070    ok
+17:          95815104                0          0:00:00.235    ok
+18:         666090624                0          0:00:01.986    ok
+19:        4968057848                0          0:00:08.971    ok
+20:       39029188884                0          0:01:07.112    ok
+21:      314666222712                0          0:07:07.834    ok
+
+
+# CPU m4.16xlarge での実行例
 workspace#suzuki$ date
 2026年  6月  9日 火曜日 14:23:02 JST
 workspace#suzuki$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range.log
@@ -59,7 +135,7 @@ CPU mode selected
 21:      314666222712                0          0:18:07.042    ok
 22:     2691008701644                0          2:38:58.023    ok
 
-# GPU実行結果
+# GPU g5.xlarge での実行例
 suzuki@cudacodon$ date
 2026年  6月  9日 火曜日 05:55:00 UTC
 suzuki@cudacodon$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -g 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
@@ -85,11 +161,9 @@ GPU mode selected
 22:     2691008701644                0          3:37:51.255    ok
 23:    24233937684440                0  1 day, 11:20:40.926    ok
 
-# CPU実行結果
+# CPU m4.16xlarge での実行例
 workspace#suzuki$ date
 2026年  5月 15日 金曜日 20:50:42 JST
-workspace#suzuki$ uname -a
-Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
 workspace#suzuki$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
 workspace#suzuki$ ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream -c
 CPU mode selected
@@ -115,7 +189,7 @@ CPU mode selected
 23:    24233937684440                0   1 day, 0:43:10.509    ok
 
 
-# GPU実行結果
+# GPU g5.16xlarge での実行例
 suzuki@cudacodon$ date
 2026年  5月 15日 金曜日 09:34:47 UTC
 suzuki@cudacodon$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
@@ -170,140 +244,143 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
 """
+
 """
-おっしゃる通りです。こちらの234/235の進め方は **N21最速確認に寄せすぎ** でした。N27を目標にするなら、N21専用・cache-hot専用・fallback削除は本線として不適切です。
+236の `-g` 結果は、正当性はOKですが **bare `-g` が旧 `mode29 broadmarktail` のまま**だったのが原因です。
+7分台で使ってきた経路は **`mode31 split145 + chunkshape148`** なので、237では機能を削らず、bare `-g` の既定だけをそちらへ戻しました。
 
-そこで、いったん **232Pyへ戻した236Py** を作りました。今回はあえて機能削除はしていません。まず「汎用本線を壊していない親版」を再固定する版です。
-
-236Pyでは、232Pyの以下を維持しています。
+今回は **232/236の汎用機能を維持**しています。
 
 ```text
-保持:
+維持:
   - -c / -g の標準range実行
-  - bare -c / bare -g で N=5..23 の表形式出力
-  - GPU N=5..27 対応
-  - N25..N27 の dynamic preset=8
-  - A10G既定値 32x484 / preset=7 / mode29 / w8_j7 / variant2 rotate_only
-  - stream bin / reorder bin / shaped bin の生成
-  - MAXD14/16/18/20/21 fallback kernels
+  - bare -g の N=5..23 表形式出力
+  - GPU N=5..27
+  - N25..N27 dynamic preset=8
+  - bin/cache missing時の生成
   - broadmarktail mode28 / mode29
-  - split145 mode31
-  - worker_id / worker_count によるmulti-GPU分割
-  - CUDA_VISIBLE_DEVICES を使った複数A10G worker運用
+  - split145 mode30 / mode31
+  - MAXD14/16/18/20/21 fallback kernels
+  - CPU path
+  - worker_id / worker_count multi-GPU split
+  - CUDA_VISIBLE_DEVICES=0/1/2/3 運用
 ```
 
-bare `-g` がA10G向けの最終実測パラメータを適用しつつ、標準表形式だけを出す設計は過去ソースにも残っています。特に `32 x 484`、`preset=7`、`bench_mode=29`、`w8_j7`、`variant2 rotate_only` がA10G単GPU向けの実績パラメータとして記録されています。 また、bare `-c` / `-g` は既定range `N=5..23` を出す設計で、`-g` はそのrangeにA10G flowを適用する形です。
-
-multi-GPUについても、過去の起動仕様どおり `worker_id` / `worker_count` を残しています。過去ソース内にも `-g ... 29 8 7 0 2 4` のような worker 2 of 4 の指定例が残っており、236でもこの系統を保持しています。 GPU側の対応範囲も、N=5..27を保つ方針に戻しています。
-
-こちらでは静的確認を通しています。
+変更点は主にこれです。
 
 ```text
-source_version_tag             OK
-source_main_entry              OK
-default_range_5_23             OK
-bare_c_range_kept              OK
-bare_g_a10g_kept               OK
-a10g_best_params               OK
-gpu_range_5_27                 OK
-dynamic_preset_n27             OK
-fallback_kernels               OK
-maxd_dispatch_wrapper          OK
-cache_generation               OK
-broadmarktail_modes            OK
-split145_mode31                OK
-worker_args                    OK
-rootrestlate_futuremask_nosibling OK
-not_cachehot_n21_only          OK
-cpu_path_kept                  OK
-source_split_tag               split145 split236 OK
+A10G_FINAL_DEFAULT_BENCH_MODE:
+  236: 29
+  237: 31
 ```
 
-232Pyとの正規化比較では、以下は同一です。
+そのため、237では
+
+```bash
+./237Py_restore232_fastdefault_keepfeatures_probe -g
+```
+
+が、N<21は従来経路、N>=21は `split145 mode31` の本線へ入ります。
+明示指定の `mode29` は削っていないので、従来比較も可能です。
+
+また、今回は安全に確認できる範囲で、参照されないtop-level helperを4個だけ削りました。
 
 ```text
-kernel_dfs_iter_gpu_maxd14                 identical
-kernel_dfs_iter_gpu_maxd16                 identical
-kernel_dfs_iter_gpu_maxd18                 identical
-kernel_dfs_iter_gpu_maxd20                 identical
-kernel_dfs_iter_gpu_maxd21                 identical
-launch_kernel_dfs_iter_gpu_static_maxd     identical
-build_soa_for_range                        identical
-exec_solutions_gpu_bin_stream_funcid_reorder identical
-exec_solutions_gpu_bin_stream_split145     identical
-ensure_constellations_bin_stream           identical
-build_broad_markdist_tail_reordered_bin    identical
-build_chunkshape148_reordered_bin          identical
+削除:
+  - rot180
+  - load_or_build_solutions_txt
+  - build_broad_markdist_reordered_bin
+  - analyze_broad_markdist_tail_subcell_stats_from_soa
+
+236 source : 9433行 / 365681 bytes / 226 defs
+237 source : 9286行 / 359613 bytes / 222 defs
 ```
 
-cudacodon側ではまず静的確認です。
+CUDA kernel本文は変更していません。
+
+```text
+MAXD14 kernel                         identical
+MAXD16 kernel                         identical
+MAXD18 kernel                         identical
+MAXD20 kernel                         identical
+MAXD21 kernel                         identical
+launch_kernel_dfs_iter_gpu_static_maxd identical
+build_soa_for_range                    identical
+exec_solutions_gpu_bin_stream_split145 identical
+ensure_constellations_bin_stream       identical
+build_chunkshape148_reordered_bin      identical
+```
+
+こちらではCodon/CUDA実行環境がないためfull実行はできていませんが、静的検査は通しています。
+
+```text
+source_version_tag                  OK
+source_main_entry                   OK
+default_range_5_23                  OK
+bare_c_range_kept                   OK
+bare_g_a10g_kept                    OK
+bare_g_fastdefault_mode31           OK
+a10g_best_params                    OK
+gpu_range_5_27                      OK
+dynamic_preset_n27                  OK
+fallback_kernels                    OK
+maxd_dispatch_wrapper               OK
+cache_generation                    OK
+broadmarktail_modes                 OK
+split145_mode31                     OK
+worker_args                         OK
+rootrestlate_futuremask_nosibling   OK
+not_cachehot_n21_only               OK
+cpu_path_kept                       OK
+source_split_tag                    split145 split237 OK
+```
+
+cudacodon側では、まずこれで確認してください。
 
 ```bash
-bash 236Py_restore232_general_cleanup_keepfeatures_validate_static.sh
+bash 237Py_restore232_fastdefault_keepfeatures_validate_static.sh
 ```
 
-通常のbuildと標準実行です。
+N21 full確認はこれです。
 
 ```bash
-codon build -release 236Py_restore232_general_cleanup_keepfeatures_probe.py
-
-./236Py_restore232_general_cleanup_keepfeatures_probe -c
-./236Py_restore232_general_cleanup_keepfeatures_probe -g
+bash 237Py_restore232_fastdefault_keepfeatures_validate_N21_full_once.sh
 ```
 
-N27単GPUの明示実行例です。
+通常のbare `-g` 確認です。
 
 ```bash
-./236Py_restore232_general_cleanup_keepfeatures_probe \
-  -g 27 27 32 484 1 0 8 29 8 7 0 0 1 2
+codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
+./237Py_restore232_fastdefault_keepfeatures_probe -g
 ```
 
-4GPU用には、過去の111Py系の流れに合わせて、mode28でreorder binを一度作り、mode29をworker 0..3で起動する補助スクリプトを同梱しました。
+4GPU split145用は、bin競合を避けるため、先にmode28でbroadmarktail bin、次にmode30でchunkshape148 shaped binを1回だけ作ってから、mode31 workerを並列起動します。
 
 ```bash
 N=22 GPU_COUNT=4 GPU_IDS=0,1,2,3 \
-bash 236Py_a10g4_multigpu_broadmarktail_worker.sh
+bash 237Py_a10g4_multigpu_split145_worker.sh
 ```
 
-N27へ向ける場合です。
+N27へ向ける場合はNだけ差し替えです。
 
 ```bash
 N=27 GPU_COUNT=4 GPU_IDS=0,1,2,3 \
-bash 236Py_a10g4_multigpu_broadmarktail_worker.sh
+bash 237Py_a10g4_multigpu_split145_worker.sh
 ```
-
-今回はCodon/CUDA full実行はこの環境に `codon` が無いため未実行です。236は「削った版」ではなく、**232へ戻して、N27へ伸ばせる汎用機能を壊していないことを確認する版**です。次に関数削除へ進む場合は、この236を親にして、静的検査で `-c/-g`、N=5..27、cache生成、fallback、mode28/29/31、worker splitを守りながら一つずつ削るのが安全です。
 
 作成物はこちらです。
 
-* [236Py_restore232_general_cleanup_keepfeatures_probe.py](sandbox:/mnt/data/236Py_restore232_general_cleanup_keepfeatures_probe.py)
-* [236Py_restore232_general_cleanup_keepfeatures_validate_static.sh](sandbox:/mnt/data/236Py_restore232_general_cleanup_keepfeatures_validate_static.sh)
-* [236Py_a10g4_multigpu_broadmarktail_worker.sh](sandbox:/mnt/data/236Py_a10g4_multigpu_broadmarktail_worker.sh)
-* [236Py_sum_worker_totals.py](sandbox:/mnt/data/236Py_sum_worker_totals.py)
+* [237Py_restore232_fastdefault_keepfeatures_probe.py](sandbox:/mnt/data/237Py_restore232_fastdefault_keepfeatures_probe.py)
+* [237Py_restore232_fastdefault_keepfeatures_validate_static.sh](sandbox:/mnt/data/237Py_restore232_fastdefault_keepfeatures_validate_static.sh)
+* [237Py_restore232_fastdefault_keepfeatures_validate_N21_full_once.sh](sandbox:/mnt/data/237Py_restore232_fastdefault_keepfeatures_validate_N21_full_once.sh)
+* [237Py_a10g4_multigpu_split145_worker.sh](sandbox:/mnt/data/237Py_a10g4_multigpu_split145_worker.sh)
+* [237Py_sum_worker_totals.py](sandbox:/mnt/data/237Py_sum_worker_totals.py)
+* [237_fastdefault_keepfeatures_report.txt](sandbox:/mnt/data/237_fastdefault_keepfeatures_report.txt)
 * [README.md](sandbox:/mnt/data/README.md)
-* [236_restore232_general_cleanup_report.txt](sandbox:/mnt/data/236_restore232_general_cleanup_report.txt)
-* [236_sha256.txt](sandbox:/mnt/data/236_sha256.txt)
-* [236Py restore232 bundle](sandbox:/mnt/data/236Py_restore232_general_cleanup_keepfeatures_bundle_20260706.tar)
-
-sha256です。
-
-```text
-9e2316714b676e4b0e512d4ef47030b3dd5fae026f5768c01b78cb729affd1f6  236Py_restore232_general_cleanup_keepfeatures_probe.py
-4c1defef7836289e9ac05cbd99f82a9397fbb750dd03e74764375772c581e6d0  236Py_restore232_general_cleanup_keepfeatures_validate_static.sh
-4d18762cd2b5618448e78af6ffa78a238e505e6037b24c3be4c5dac76c708a93  236Py_a10g4_multigpu_broadmarktail_worker.sh
-8169c6dc615c06ccf8d242b156d41d6a2ba006703143df4ce7bc6415552328bc  236Py_sum_worker_totals.py
-```
+* [237_sha256.txt](sandbox:/mnt/data/237_sha256.txt)
+* [237Py bundle](sandbox:/mnt/data/237Py_restore232_fastdefault_keepfeatures_bundle_20260706.tar)
 
 """
-# =============================================================================
-# NQ_UPDATE_MEMO
-# 236: restore232-general-cleanup-keepfeatures。232Py cleanup-onlyを親に戻し、
-#      N=5..27 GPU/CPU範囲、-c/-g bare default、cache生成、MAXD14/16/18/20/21 fallback、
-#      bench_mode 28/29/31、worker_id/worker_count multi-GPU分割を維持する。
-#      234/235のN21/cache-hot専用化やhelper分離は採用しない。kernel探索ロジック変更なし。
-# Full update history: see README.md
-# =============================================================================
-
 import gpu
 import sys
 from typing import List,Set,Dict,Tuple
@@ -321,7 +398,7 @@ SCHED_WORDS18:Static[int]=5
 SCHED_WORDS20:Static[int]=5
 SCHED_WORDS21:Static[int]=6
 
-VERSION_TAG:str="236 restore232-general-cleanup-keepfeatures: 232 cleanup-only baseline; generic N5..27 CPU/GPU, cache generation, MAXD fallback kernels, A10G worker split preserved"
+VERSION_TAG:str="237 restore232-fastdefault-keepfeatures: 232/236 generic N5..27; bare -g defaults to split145 mode31; mode28/29, cache generation, MAXD fallbacks, worker split preserved; kernel unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -330,7 +407,7 @@ A10G_FINAL_DEFAULT_MAX_BLOCKS:int=484
 A10G_FINAL_DEFAULT_LOG_LEVEL:int=0
 A10G_FINAL_DEFAULT_SORT_MODE:int=0
 A10G_FINAL_DEFAULT_PRESET:int=7
-A10G_FINAL_DEFAULT_BENCH_MODE:int=29
+A10G_FINAL_DEFAULT_BENCH_MODE:int=31
 A10G_FINAL_DEFAULT_REORDER_WINDOW_MULT:int=8
 A10G_FINAL_DEFAULT_REORDER_PHASE_JUMP:int=7
 A10G_FINAL_DEFAULT_CROSS_STRIPE_SAFE:bool=False
@@ -2865,7 +2942,6 @@ def getk(ijkl:int)->int:return (ijkl>>5)&0x1F
 def getl(ijkl:int)->int:return ijkl&0x1F
 
 def rot90(ijkl:int,N:int)->int:return ((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl)
-def rot180(ijkl:int,N:int)->int:return ((N-1-getj(ijkl))<<15)+((N-1-geti(ijkl))<<10)+((N-1-getl(ijkl))<<5)+(N-1-getk(ijkl))
 def symmetry(ijkl:int,N:int)->u64:return u64(2) if symmetry90(ijkl,N) else u64(4) if geti(ijkl)==N-1-getj(ijkl) and getk(ijkl)==N-1-getl(ijkl) else u64(8)
 def symmetry90(ijkl:int,N:int)->bool:return ((geti(ijkl)<<15)+(getj(ijkl)<<10)+(getk(ijkl)<<5)+getl(ijkl))==(((N-1-getk(ijkl))<<15)+((N-1-getl(ijkl))<<10)+(getj(ijkl)<<5)+geti(ijkl))
 
@@ -3197,20 +3273,6 @@ def load_solutions_bin_into_v2(fname:str,constellations:List[Dict[str,int]])->bo
     d["solutions"] = int(mp[key])
 
   return True
-
-def load_or_build_solutions_txt(N:int,constellations:List[Dict[str,int]],preset_queens:int,use_gpu:bool,cache_tag:str = "") -> None:
-
-  tag = "_" + cache_tag if cache_tag != "" else ""
-  fname = "solutions_N" + str(N) + "_" + str(preset_queens) + tag + ".txt"
-
-  if file_exists(fname):
-    if load_solutions_txt_into(fname, constellations):
-      return
-    else:
-      print("[警告] solutions txt キャッシュ不一致: " + fname + " を再生成します")
-
-  exec_solutions(N,constellations,use_gpu)
-  save_solutions_txt(fname, constellations)
 
 def load_or_build_solutions_bin(N:int,constellations:List[Dict[str,int]],preset_queens:int,use_gpu:bool,cache_tag:str = "") -> None:
 
@@ -5884,125 +5946,6 @@ def interleave_broad_markdist_secondary_parts(parts:List[List[Dict[str,int]]],br
   part_o:List[Dict[str,int]]=interleave_funcid_markdist_risk_reorder_parts(parts[20],parts[21],parts[22],parts[23],parts[24],broad_quotas[4])
   return interleave_funcid_reorder_parts(part_b,part_a,part_c,part_g,part_o,m_target)
 
-def build_broad_markdist_reordered_bin(
-  N:int,
-  fname:str,
-  preset_queens:int,
-  gpu_block:int=32,
-  gpu_max_blocks:int=484,
-  gpu_log_level:int=0,
-  gpu_sort_mode:int=-1
-)->Tuple[str,int,int]:
-
-  BLOCK:int=gpu_block
-  MAX_BLOCKS:int=gpu_max_blocks
-  if BLOCK<=0:
-    BLOCK=32
-  if MAX_BLOCKS<=0:
-    MAX_BLOCKS=484
-  STEPS:int=BLOCK*MAX_BLOCKS
-  if STEPS<=0:
-    STEPS=15488
-
-  total_records:int=count_constellations_bin_records(fname)
-  counts:List[int]=build_broad_markdist_reorder_cell_bins(N,fname,preset_queens,BLOCK,MAX_BLOCKS,gpu_log_level)
-  counted_records:int=0
-  cell:int=0
-  while cell<25:
-    counted_records+=counts[cell]
-    cell+=1
-  if counted_records!=total_records:
-    print(f"[broadmark-reorder-warning] cell count mismatch: counted={counted_records} total_records={total_records}")
-    total_records=counted_records
-
-  reorder_fname:str=broad_markdist_reorder_output_fname(N,preset_queens)
-  truncate_plain_bin(reorder_fname)
-
-  progress_fname:str=f"progress_N{N}_{preset_queens}_stream_broadmark_reorder_{BROAD_MARKDIST_REORDER_VERSION}_{funcid_reorder_param_tag()}_sim.tsv"
-  with open(progress_fname,"w") as pf:
-    pf.write(stream_broad_markdist_reorder_progress_header())
-
-  rem_counts:List[int]=[0]*25
-  read_offsets:List[int]=[0]*25
-  cell_buffers:List[List[Dict[str,int]]]=make_broad_markdist_cell_buffers()
-  cell=0
-  while cell<25:
-    rem_counts[cell]=counts[cell]
-    read_offsets[cell]=0
-    cell+=1
-
-  off:int=0
-  chunk_index:int=0
-  total_remaining:int=total_records
-
-  if gpu_log_level>=1:
-    print(f"[broadmark-reorder-build-config] N={N} records={total_records} steps={STEPS} output={reorder_fname} progress={progress_fname} param={funcid_reorder_param_tag()} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} reason={BROAD_MARKDIST_REORDER_DEFAULT_REASON}")
-
-  while total_remaining>0:
-    m_target:int=STEPS
-    if total_remaining<STEPS:
-      m_target=total_remaining
-
-    quotas:List[int]=broad_markdist_make_cell_quotas(rem_counts,total_remaining,m_target)
-    broad_quotas:List[int]=[0]*5
-    cell=0
-    while cell<25:
-      broad:int=cell//5
-      broad_quotas[broad]+=quotas[cell]
-      cell+=1
-
-    t0:datetime=datetime.now()
-
-    parts:List[List[Dict[str,int]]]=make_broad_markdist_cell_buffers()
-    cell=0
-    while cell<25:
-      q:int=quotas[cell]
-      if q>0:
-        broad=cell//5
-        risk:int=cell%5
-        target:int=q*FUNCID_REORDER_V2_WINDOW_MULT
-        if target<q:
-          target=q
-        if target>rem_counts[cell]:
-          target=rem_counts[cell]
-        fname_cell:str=broad_markdist_reorder_cell_fname(N,preset_queens,broad,risk)
-        newbuf:List[Dict[str,int]]=[]
-        cell_buffers[cell],read_offsets[cell]=fill_constellation_buffer_from_bin_range(fname_cell,cell_buffers[cell],read_offsets[cell],target)
-        parts[cell],newbuf=take_striped_records_from_buffer(cell_buffers[cell],q,chunk_index,cell)
-        cell_buffers[cell]=newbuf
-        rem_counts[cell]-=len(parts[cell])
-        if rem_counts[cell]<0:
-          rem_counts[cell]=0
-      cell+=1
-
-    chunk_constellations:List[Dict[str,int]]=interleave_broad_markdist_secondary_parts(parts,broad_quotas,m_target)
-    m:int=len(chunk_constellations)
-    if m==0:
-      break
-
-    append_constellations_bin(reorder_fname,chunk_constellations)
-    stats:List[int]=analyze_stream_chunk_input_stats(N,chunk_constellations)
-    risk_stats:List[int]=analyze_markdist_risk_stats(N,chunk_constellations)
-    cell_stats:List[int]=analyze_broad_markdist_cell_stats(N,chunk_constellations)
-    t1:datetime=datetime.now()
-    elapsed_text:str=str(t1-t0)[:-3]
-    elapsed_ms:int=stream_elapsed_text_to_ms(elapsed_text)
-    append_stream_broad_markdist_reorder_progress(progress_fname,N,preset_queens,chunk_index,off,m,BLOCK,MAX_BLOCKS,STEPS,gpu_sort_mode,elapsed_text,elapsed_ms,total_records,stats,risk_stats,cell_stats)
-
-    if gpu_log_level>=2:
-      print(f"[broadmark-reorder-build-chunk] chunk={chunk_index} off={off} m={m} B={stats[18+26]+stats[18+27]} A={stats[18+19]+stats[18+22]+stats[18+23]+stats[18+24]} C={stats[18+20]+stats[18+21]} G={stats[18+0]+stats[18+4]+stats[18+5]+stats[18+12]+stats[18+16]+stats[18+17]+stats[18+18]} O={m-(stats[18+26]+stats[18+27]+stats[18+19]+stats[18+22]+stats[18+23]+stats[18+24]+stats[18+20]+stats[18+21]+stats[18+0]+stats[18+4]+stats[18+5]+stats[18+12]+stats[18+16]+stats[18+17]+stats[18+18])} X={risk_stats[0]} T={risk_stats[1]} H={risk_stats[2]} M={risk_stats[3]} R={risk_stats[4]} score_avg={format_ratio_3(risk_stats[5],m)}")
-
-    off+=m
-    chunk_index+=1
-    total_remaining=total_records-off
-
-  write_stream_done_count(reorder_fname+".done",off)
-  reordered_records:int=count_constellations_bin_records(reorder_fname)
-  if gpu_log_level>=1:
-    print(f"[broadmark-reorder-build-summary] N={N} records={reordered_records} chunks={chunk_index} output={reorder_fname} progress={progress_fname} valid={1 if validate_bin_file(reorder_fname) else 0}")
-
-  return reorder_fname,reordered_records,chunk_index
-
 def broad_markdist_tail_label(tail:int)->str:
   if tail==0:
     return "F17"
@@ -6017,7 +5960,7 @@ def broad_markdist_tail_reorder_output_fname(N:int,preset_queens:int,block:int=3
   return f"constellations_N{N}_{preset_queens}_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
 
 CHUNKSHAPE148_REORDER_VERSION:str="scorestripe_v9_lanephase32_octetfirstpairlock29"
-CHUNKSHAPE148_DEFAULT_REASON:str="232 cleanup-only reuses validated 231/217 scorestripe_v9 task order/cache; MAXD14 kernel unchanged"
+CHUNKSHAPE148_DEFAULT_REASON:str="237 restore232-fastdefault-split145 keeps validated 231/217 scorestripe_v9 task order/cache; MAXD14 kernel unchanged"
 
 def chunkshape148_reorder_output_fname(N:int,preset_queens:int,block:int=32,max_blocks:int=484)->str:
   return f"constellations_N{N}_{preset_queens}_chunkshape148_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
@@ -6458,23 +6401,6 @@ def broad_markdist_tail_phase_group_id(subcell:int,broad:int,risk:int,tail:int)-
     if tail==0 or tail==1:
       gid+=broad_markdist_tail_phase_salt_value()
   return gid
-
-def analyze_broad_markdist_tail_subcell_stats_from_soa(soa:TaskSoA,m:int)->List[int]:
-  out:List[int]=[0]*75
-  i:int=0
-  while i<m:
-    fid:int=soa.funcid_arr[i]
-    broad:int=funcid_reorder_bucket(fid)
-    vals:List[int]=funcid_mark_effective_values_from_soa(soa,i)
-    risk:int=funcid_markdist_risk_bucket(fid,vals[2],vals[3])
-    if broad<0 or broad>4:
-      broad=4
-    if risk<0 or risk>4:
-      risk=4
-    tail:int=broad_markdist_tail_bucket(fid,broad,risk)
-    out[broad_markdist_tail_subcell_index(broad,risk,tail)]+=1
-    i+=1
-  return out
 
 def analyze_broad_markdist_tail_summary_from_soa(soa:TaskSoA,m:int)->List[int]:
   out:List[int]=[0]*4
@@ -9028,7 +8954,7 @@ def main()->None:
     worker_count=1
 
   if use_gpu and (nmin<5 or nmax>28):
-    print(f"[error] 236 restore232 general GPU candidate supports N=5..27 only; requested N={nmin}..{nmax-1}")
+    print(f"[error] 184 no-sibling tailcall GPU candidate supports N=5..27 only; requested N={nmin}..{nmax-1}")
     return
 
   if bench_mode==10:
@@ -9084,9 +9010,9 @@ def main()->None:
     if bench_mode==29:
       print(f"broadmarktail_reorder_gpu: mode={bench_mode} preset={preset_queens_arg}")
     if bench_mode==30:
-      print(f"split236_restore232_general_cleanup_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
+      print(f"split237_keepfeatures_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec}")
     if bench_mode==31:
-      print(f"split236_restore232_general_cleanup_full_gpu: mode={bench_mode} preset={preset_queens_arg}")
+      print(f"split237_keepfeatures_full_gpu: mode={bench_mode} preset={preset_queens_arg}")
   if gpu_log_level>=1 and (bench_mode==14 or bench_mode==15 or bench_mode==16 or bench_mode==17 or bench_mode==18 or bench_mode==19 or bench_mode==20 or bench_mode==21 or bench_mode==22 or bench_mode==23 or bench_mode==24 or bench_mode==25 or bench_mode==26 or bench_mode==27 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
     print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
   if gpu_log_level>=1 and (bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
@@ -9233,10 +9159,10 @@ def main()->None:
       done_count:int=read_stream_done_count(reorder_fname+".done")
       if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
         if gpu_log_level>=1:
-          print(f"[split236-probe-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+          print(f"[split237-probe-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
       else:
         if gpu_log_level>=1:
-          print(f"[split236-probe-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+          print(f"[split237-probe-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
       base_reorder_fname:str=reorder_fname
       base_reorder_records:int=reorder_records
@@ -9257,12 +9183,12 @@ def main()->None:
       reorder_fname=shaped_fname
       reorder_records=shaped_records
       reorder_chunks=shaped_chunks
-      progress_suffix:str=f"split236_probe_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      progress_suffix:str=f"split237_probe_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
       total:int=exec_solutions_gpu_bin_stream_split145(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,True,debug_chunk_start,debug_chunk_count,microbench_chunk_list_spec,progress_suffix,0,1,0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
-      print(f"[split236-probe-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
-      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    split236-probe")
+      print(f"[split237-probe-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={microbench_chunk_list_spec} partial_total={total}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    split237-probe")
       continue
 
     if use_gpu and N>=21 and bench_mode==31:
@@ -9278,10 +9204,10 @@ def main()->None:
       done_count:int=read_stream_done_count(reorder_fname+".done")
       if reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname):
         if gpu_log_level>=1:
-          print(f"[split236-full-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+          print(f"[split237-full-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
       else:
         if gpu_log_level>=1:
-          print(f"[split236-full-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+          print(f"[split237-full-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
       base_reorder_fname:str=reorder_fname
       base_reorder_records:int=reorder_records
@@ -9302,7 +9228,7 @@ def main()->None:
       reorder_fname=shaped_fname
       reorder_records=shaped_records
       reorder_chunks=shaped_chunks
-      progress_suffix:str=f"split236_full_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      progress_suffix:str=f"split237_full_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
       total:int=exec_solutions_gpu_bin_stream_split145(N,reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,False,debug_chunk_start,debug_chunk_count,"",progress_suffix,worker_id,worker_count,0)
       time_elapsed=datetime.now()-start_time
       text=str(time_elapsed)[:-3]
@@ -9310,7 +9236,7 @@ def main()->None:
       if worker_count>1:
         status=f"partial-worker-{worker_id}-of-{worker_count}"
       if gpu_log_level>=1:
-        print(f"[split236-full-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
+        print(f"[split237-full-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
         if worker_count>1:
           print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
