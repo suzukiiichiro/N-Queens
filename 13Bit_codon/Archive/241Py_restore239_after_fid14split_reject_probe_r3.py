@@ -3,15 +3,13 @@
 
 # =============================================================================
 # NQ_UPDATE_MEMO
-# 238 r2: n27diagtrim-keepfeatures buildfix。237Py restore232-fastdefault-keepfeaturesを親に、
-#      N27へ不要な診断系だけを削る整理版。selected chunk microbench、
-#      funcid target/single/split/depth/mark/markdist profile、boundary分類診断、
-#      旧reorder/profile用の細かいhelperを撤去する。r2ではmode28/29/30/31に必要な
-#      funcid_reorder runtime helper/globalを復元。
-#      -c/-g range、GPU N=5..27、bin/cache自動生成、broadmarktail mode28/29、
-#      split145 mode30/31、MAXD14/16/18/20/21 fallback、worker_id/worker_countは維持。
-#      CUDA kernel探索ロジック変更なし。
-#      r2: mode28/29/30/31本線で必要なruntime globals/helperを復元し、build未定義を防止。
+# 241 r3 shell-visible validation alias.
+# 241: restore239-after-fid14split-reject。240Py fid14/rest別launchは
+#      N=21 fullで正当性OKだが大幅退行したため採用せず、239Pyへ戻す。
+#      CUDA MAXD14/16/18/20/21 kernel本文、rootrestlate、futuremask、no-sibling、
+#      split145/chunkshape148、broadmarktail、cache生成、worker splitは変更しない。
+#      -c/-g range、GPU N=5..27、N25..N27 dynamic preset=8、mode28/29/30/31、
+#      MAXD fallback、CPU dfs_iter pathを維持。CPU再帰dfs削除は239同様に維持。
 #      Full update history: see README.md
 # =============================================================================
 """
@@ -251,244 +249,60 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 
 
 """
-作成しました。今回の238は、237を親にして **N27へ不要な診断だけを削った keepfeatures 版**です。237側では `-g` が mode31 / split145 + chunkshape148 へ入る設定で、N=5..27、cache生成、MAXD fallback、worker splitを残す方針になっていました。 また、N21検証ハーネスも mode31 split145+chunkshape148、required/selected MAXD14、stack 208 bytes/thread を前提にしています。 README側にも237が `-c/-g`、GPU N=5..27、N25..N27 preset8、mode28/29/30/31、worker分割を保持する方針として記録されています。
+241 restore note: 240のfid14/rest別launchは正当性OKだがN21で大幅退行したため採用せず、239 n27coretrim-keepfeaturesへ戻す安全復帰版。CUDA kernel本文とGPU本線機能は変更しない。
 
-238で削ったものは、selected chunk microbench、funcid target/single/split/depth/mark/markdist profile、markdist risk reorder mode26/27、boundary分類診断、旧profile用の細かいCLI/print/usageです。残すべき `stream生成 / broadmarktail / chunkshape148 / split145 / fallback kernels / worker分割 / cache生成 / -c/-g` は残しています。
+
+240ログを確認しました。**正当性は問題ありませんが、速度は問題あり**です。
 
 ```text
-237 source : 9656行 / 376694 bytes / 222 defs
-238 source : 5376行 / 180589 bytes / 132 defs
-
-削減:
-  4280行
-  196105 bytes
-  90 defs
+final total              314666222712 OK
+progress rows            131 OK
+duplicate/missing        0 / 0 OK
+dispatch task sum        2025282 OK
+dispatch rows            262 OK
+fid14 launch rows        131 OK
+rest launch rows         131 OK
+fid14 task sum           8214 OK
+required/selected MAXD   all 14 / MAXD14
+schedule_words           0
+stack_bytes_per_thread   208
+warning/error/mismatch   0
+elapsed                  0:09:28.451
 ```
+
+240は 239 の `0:07:07.703` から **約140.7秒、32.9%退行**しています。fid14 task は `8214 / 2025282` と小さいため、専用kernelを作る前の「別launch化だけ」では launch overhead が勝ってしまいました。
+
+そのため、241は予定を変更し、**240 fid14 split 不採用 → 239へ戻す安全復帰版**にしました。CUDA kernel本文、mode28/29/30/31、cache生成、worker split、MAXD fallback は239相当で維持しています。
 
 こちらで `STATIC_ONLY=1` は通しています。
 
 ```text
-source_version_tag              OK
-source_main_entry               OK
-bare_g_fastdefault_mode31       OK
-gpu_range_n27_dynamic_preset    OK
-source_runtime_globals          OK
-required_runtime_defs           OK
-removed_diag_defs               OK
-removed_diag_modes              OK
-kept_core_modes                 OK
-source_split_tag                OK
-worker_split_args               OK
+source_version_tag             OK
+source_main_entry              OK
+bare_g_fastdefault_mode31      OK
+gpu_range_n27_dynamic_preset   OK
+source_runtime_globals         OK
+required_runtime_defs          OK
+removed_cpu_recursive_dfs      OK
+removed_use_itter_branch       OK
+kept_core_modes                OK
+source_split_tag               OK
+source_fid14_split_rejected    OK
+worker_split_args              OK
 ```
 
-kernelを task/id ごとに分解する案は、次の候補としてREADMEに書きました。発想としては有望です。ただし、今の238に入れると「診断削除」と「kernel分解」の効果が混ざるので、今日は入れていません。239以降で `taskid-split probe` として、fid/boundary class別の少数グループ分割を試すのが安全です。複数kernel起動、load imbalance、レジスタ圧、PTX/JIT、worker分割との相互作用があるため、まずN21/N22で比較してからN27へ持ち込む方針がよいです。
+ファイルはこちらです。
 
-cudacodon側では、まずこちらです。
-
-```bash
-STATIC_ONLY=1 bash 238Py_n27diagtrim_keepfeatures_validate_N21_full_once.sh
-```
-
-その後、N21 full確認です。
-
-```bash
-bash 238Py_n27diagtrim_keepfeatures_validate_N21_full_once.sh
-```
-
-作成物はこちらです。
-
-* [238Py_n27diagtrim_keepfeatures_probe.py](sandbox:/mnt/data/238Py_n27diagtrim_keepfeatures_probe.py)
-* [238Py_n27diagtrim_keepfeatures_validate_N21_full_once.sh](sandbox:/mnt/data/238Py_n27diagtrim_keepfeatures_validate_N21_full_once.sh)
+* [241Py_restore239_after_fid14split_reject_probe.py](sandbox:/mnt/data/241Py_restore239_after_fid14split_reject_probe.py)
+* [241Py_restore239_after_fid14split_reject_validate_N21_full_once.sh](sandbox:/mnt/data/241Py_restore239_after_fid14split_reject_validate_N21_full_once.sh)
 * [README.md](sandbox:/mnt/data/README.md)
-* [238_n27diagtrim_keepfeatures_final_report.txt](sandbox:/mnt/data/238_n27diagtrim_keepfeatures_final_report.txt)
-* [238_n27diagtrim_keepfeatures_sha256.txt](sandbox:/mnt/data/238_n27diagtrim_keepfeatures_sha256.txt)
-* [238Py_n27diagtrim_keepfeatures_bundle_20260706_final.tar](sandbox:/mnt/data/238Py_n27diagtrim_keepfeatures_bundle_20260706_final.tar)
 
-sha256です。
+補助ファイルです。
 
-```text
-92fec9577aca561e28b2845218f493c99f077ee51f0633e7280ad598b9221eb4  238Py_n27diagtrim_keepfeatures_probe.py
-93b9f1a5359ec52061393524f8cfbb928e05fb36ed6e0530ae00781b79f7a831  238Py_n27diagtrim_keepfeatures_validate_N21_full_once.sh
-107dcedcf8056e64c6caa43196b926616867de81f1059dcc376d6ede06d7d473  README.md
-04abb3b8f0eec316e48a011571a9c8d87824af92d96bc9d66f8d06ebb61814f2  238Py_n27diagtrim_keepfeatures_bundle_20260706_final.tar
-```
+* [241Py_restore239_after_fid14split_reject_sha256.txt](sandbox:/mnt/data/241Py_restore239_after_fid14split_reject_sha256.txt)
+* [241Py_restore239_after_fid14split_reject_bundle_20260707.tar](sandbox:/mnt/data/241Py_restore239_after_fid14split_reject_bundle_20260707.tar)
 
-
-おはようございます。確認しました。
-**238Pyは問題なし、本日の基準として採用してよい**と思います。
-
-添付ログの `summary.tsv` では、N=21 full once がすべてOKです。
-
-```text
-final total        314666222712 OK
-progress rows      131 OK
-duplicate/missing  0 / 0 OK
-dispatch task sum  2025282 OK
-required/MAXD      全chunk 14 / MAXD14
-schedule_words     0
-stack/thread       208 bytes
-warning/error      0
-elapsed            0:07:07.710
-```
-
-これは 237 の `0:07:07.834` より速く、232 の `0:07:07.733` と同等以上、217 の `0:07:07.709` とほぼ完全に同等です。238の目的も、N27へ不要な selected chunk microbench、funcid profile、markdist profile、boundary診断などを削りつつ、`-c/-g`、bare `-g` mode31、N=5..27、cache生成、mode28/29/30/31、MAXD fallback、worker split を残す整理でした。
-
-## 判断
-
-238は、**「不要診断を削っても速度・正当性・汎用機能を維持できた版」**として採用でよいです。
-
-特に重要なのは、238で 5376行 / 180589 bytes / 132 defs まで削減しても、N=21 full が `0:07:07.710` で、217最速値との差が実質ゼロだった点です。238はN27へ向けた作業基盤としてかなり良い状態です。
-
-## 本日の段取り案
-
-### 1. まず239は「cleanup-only / 統廃合」の続き
-
-今日は、いきなり kernel 分解へ行かず、まず **238を親にして、さらに不要な呼び出し・未使用経路・重複helperを削る版**を作るのがよいです。
-
-候補名は例えば：
-
-```text
-239Py_n27coretrim_keepfeatures_probe.py
-239Py_n27coretrim_keepfeatures_validate_N21_full_once.sh
-```
-
-239でやることは、**CUDA kernel本文は変更しない**、**mode28/29/30/31は保持**、**cache生成・worker split・fallback kernelは保持**を絶対条件にしたうえで、以下を狙うのが安全です。
-
-```text
-239候補の整理対象
-
-1. CPU側の未使用再帰 dfs() を削除候補にする
-   - 現状CPU pathは dfs_iter() 固定で使っているため、dfs() が本当に未参照なら削れる可能性があります。
-   - ただし -c を残すため、dfs_iter() は絶対に残す。
-
-2. stats / progress helper の重複統合
-   - analyze_stream_chunk_input_stats()
-   - analyze_stream_chunk_input_stats_from_soa()
-   - append_stream_*_progress()
-   このあたりは似た形が複数あります。
-   ただし mode28/29 のprogress生成に必要なものは残す。
-
-3. markdist risk 関連の「本線shapingに必要なもの」と「旧診断だけのもの」を再分類
-   - 238 r2で戻した broadmarktail/chunkshape148 用helperは残す。
-   - 旧mode26/27専用の残骸がないかだけ再確認する。
-
-4. ソース中に残る古い長文コメント・旧配布文をさらに削る
-   - 実行に無関係。
-   - 速度には直接効かないが、今後の差分事故を減らす。
-```
-
-239の採否基準は、238と同じでよいです。
-
-```text
-N=21 full once
-final total              314666222712
-progress rows            131
-duplicate/missing        0 / 0
-dispatch task sum        2025282
-required/selected MAXD   全chunk 14
-schedule_words           0
-stack_bytes_per_thread   208
-warning/error/mismatch   0
-速度                     238同等、目安 0:07:07.7〜0:07:08.0
-```
-
-速度が変わらなければ、239は採用。遅くなれば238へ戻す、でよいです。
-
-## 2. 239で統廃合が済んだら、240以降で gpu.kernel 分解
-
-ここからが本命です。
-ユーザー案の **「gpu.kernelを分解して一つでも条件分岐を減らす」** は、方向として正しいと思います。ただし238にも書かれている通り、task/id split は launch overhead、load imbalance、register pressure、PTX/JIT、worker split との相互作用があるため、238には入れず239+のprobeに分けるのが安全です。
-
-おすすめは、いきなり全funcid別ではなく、**2分割または3分割から**です。
-
-### 240候補: d2base14 / generic の2分割
-
-最初に試すなら、fid=14専用です。
-
-```text
-240Py_taskid_split_fid14_probe
-```
-
-狙い：
-
-```text
-fid=14 / SQd2B / base14 特有の terminal_base14 判定を専用kernelへ逃がす
-generic kernel側から一部の base14 条件を減らす
-```
-
-ただし、過去に d2base14 専用化は大きく効いた決定打にはなっていないので、今回は「kernel分岐削減の足場」として扱うのがよいです。
-
-検証はまず mode30 selected chunks で十分です。
-
-```bash
-./240Py... -g 21 21 32 484 1 0 7 30 8 7 0 0 1 "0,20,40,60,80,100,120" 2
-```
-
-その後、問題なければ full once。
-
-### 241候補: d0 / generic の2分割
-
-次は fid=26/27 の d0 系です。
-
-```text
-241Py_taskid_split_d0_probe
-```
-
-d0系は root/tail 側で重い可能性があり、分岐削減よりも **負荷偏り** が問題になる可能性があります。なので、ここは full 前に selected chunk で kernel時間・chunk_total・progressのばらつきを見るのが安全です。
-
-### 242候補: 3群分割
-
-2分割で悪くなければ、次にこの程度まで広げます。
-
-```text
-group A: fid 14
-group B: fid 26/27
-group C: rest generic
-```
-
-この時点で、kernel launch が1 chunkあたり最大3回になります。N=21では131 chunksなので、launch overheadが無視できない場合は遅くなります。
-逆に、generic kernel側の分岐・register pressureが減って勝てるなら、ここで初めて効果が見えます。
-
-## 3. 今日はやらない方がよいこと
-
-今日は以下は避けた方がよいです。
-
-```text
-- MAXD13再挑戦
-  → 222で max_save_sp=13 が出ており、単純縮小不可。
-
-- generic loop の大きな構造変更
-  → 過去に terminal-first、block-check、forced-chain、generic clear-lowbit などが大きく退行。
-
-- いきなり funcid 28個別kernel
-  → PTX/JIT・launch overhead・worker split・保守性のリスクが大きすぎる。
-
-- 234/235のような cache-hot / N21専用化
-  → N27基盤としては狭すぎるため、今は戻らない方がよい。
-```
-
-## 今日の結論
-
-本日の推奨順はこれです。
-
-```text
-午前:
-  239Py = 238親の cleanup-only / method統廃合
-  kernel本文は変更しない
-  N=21 full onceで238同等を確認
-
-午後:
-  239がOKなら 240Py taskid-split probe の設計へ進む
-  最初は fid=14 専用 + generic の2分割
-  mode30 selected chunks → 問題なければ full once
-
-採用基準:
-  239は速度維持が目的
-  240以降は速度改善が目的
-```
-
-238は十分よいです。
-ここから先は、**「もう一段きれいにしてから kernel 分解」**が一番安全だと思います。
+次は、241で `0:07:07` 台へ戻ることを確認してから、fid14以外の分解候補へ進むのが安全です。
 
 """
 import gpu
@@ -508,7 +322,7 @@ SCHED_WORDS18:Static[int]=5
 SCHED_WORDS20:Static[int]=5
 SCHED_WORDS21:Static[int]=6
 
-VERSION_TAG:str="238 n27diagtrim-keepfeatures r2 buildfix: 237 generic N5..27; bare -g split145 mode31; removed N27-unneeded diagnostics; mode28/29/30/31, cache generation, MAXD fallbacks, worker split preserved; kernel unchanged"
+VERSION_TAG:str="241 restore239-after-fid14split-reject: 240 fid14 launch split rejected for speed; restored 239 generic N5..27; bare -g split145 mode31; unused recursive CPU dfs fallback remains removed; mode28/29/30/31, cache generation, MAXD fallbacks, worker split preserved; CUDA kernels unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -517,7 +331,7 @@ A10G_FINAL_DEFAULT_MAX_BLOCKS:int=484
 A10G_FINAL_DEFAULT_LOG_LEVEL:int=0
 A10G_FINAL_DEFAULT_SORT_MODE:int=0
 A10G_FINAL_DEFAULT_PRESET:int=7
-A10G_FINAL_DEFAULT_BENCH_MODE:int=31  # 238: bare -g stays split145 mode31
+A10G_FINAL_DEFAULT_BENCH_MODE:int=31  # 241: bare -g stays split145 mode31; 240 fid14 launch split rejected
 A10G_FINAL_DEFAULT_REORDER_WINDOW_MULT:int=8
 A10G_FINAL_DEFAULT_REORDER_PHASE_JUMP:int=7
 A10G_FINAL_DEFAULT_CROSS_STRIPE_SAFE:bool=False
@@ -530,7 +344,7 @@ DEFAULT_RANGE_NMAX_EXCLUSIVE:int=24  # range() upper bound; outputs N=5..23
 
 DISABLE_CONSTELLATION_SIGNATURE_PRUNE:bool=False
 
-# 238 r2: keep runtime globals required by broadmarktail/chunkshape148/split145
+# 241: keep runtime globals required by broadmarktail/chunkshape148/split145
 # core modes. These are not old diagnostics; mode28/29/30/31 and bare -g
 # still depend on them for cache names, shaping order, and CLI overrides.
 FUNCID_REORDER_V2_WINDOW_MULT:int=8
@@ -1946,169 +1760,7 @@ def dfs_iter(
 
   return total
 
-def dfs(
-    meta:List[Tuple[int,int,int]],
-    blockK_by_funcid:List[int],blockL_by_funcid:List[int],
-    board_mask:int,
-    functionid:int,
-    ld:int,rd:int,col:int,row:int,free:int,
-    jmark:int,endmark:int,mark1:int,mark2:int)->u64:
-  next_funcid,funcptn,avail_flag=meta[functionid]
-
-  avail:int=free
-  if not avail:
-    return u64(0)
-
-  total:u64=u64(0)
-
-  if funcptn==5 and row==endmark:
-    if functionid==14:
-      return u64(1) if (avail>>1) else u64(0)
-    return u64(1)
-
-  step:int=1
-  add1:int=0
-  row_step:int=row+1
-
-  use_blocks:bool=False
-  use_future:bool=(avail_flag==1)
-
-  local_next_funcid:int=functionid
-
-  bK:int=0
-  bL:int=0
-
-  if funcptn in (0,1,2):
-    at_mark:bool=(row==mark1) if funcptn in (0,2) else (row==mark2)
-
-    if at_mark and avail:
-      step=2 if funcptn in (0,1) else 3
-      add1=1 if (funcptn==1 and functionid==20) else 0
-      row_step=row+step
-
-      bK=blockK_by_funcid[functionid]
-      bL=blockL_by_funcid[functionid]
-
-      use_blocks=True
-      use_future=False
-      local_next_funcid=next_funcid
-
-  elif funcptn==3 and row==jmark:
-    avail&=~1
-    ld|=1
-    local_next_funcid=next_funcid
-
-    if not avail:
-      return u64(0)
-
-  elif funcptn==4 and row==mark1:
-    return dfs(
-      meta,
-      blockK_by_funcid,
-      blockL_by_funcid,
-      board_mask,
-      next_funcid,
-      ld,rd,col,row,avail,
-      jmark,endmark,mark1,mark2
-    )
-
-  if use_blocks:
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-
-      nld:int=((ld|bit)<<step)|add1|bL
-      nrd:int=((rd|bit)>>step)|bK
-      ncol:int=col|bit
-
-      nf:int=board_mask&~(nld|nrd|ncol)
-
-      if nf:
-        total+=dfs(
-          meta,
-          blockK_by_funcid,
-          blockL_by_funcid,
-          board_mask,
-          local_next_funcid,
-          nld,nrd,ncol,row_step,nf,
-          jmark,endmark,mark1,mark2
-        )
-
-    return total
-
-  if not use_future:
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-
-      nld:int=(ld|bit)<<1
-      nrd:int=(rd|bit)>>1
-      ncol:int=col|bit
-
-      nf:int=board_mask&~(nld|nrd|ncol)
-
-      if nf:
-        total+=dfs(
-          meta,
-          blockK_by_funcid,
-          blockL_by_funcid,
-          board_mask,
-          local_next_funcid,
-          nld,nrd,ncol,row_step,nf,
-          jmark,endmark,mark1,mark2
-        )
-
-    return total
-
-  if row_step>=endmark:
-    while avail:
-      bit:int=avail&-avail
-      avail&=avail-1
-
-      nld:int=(ld|bit)<<1
-      nrd:int=(rd|bit)>>1
-      ncol:int=col|bit
-
-      nf:int=board_mask&~(nld|nrd|ncol)
-
-      if nf:
-        total+=dfs(
-          meta,
-          blockK_by_funcid,
-          blockL_by_funcid,
-          board_mask,
-          local_next_funcid,
-          nld,nrd,ncol,row_step,nf,
-          jmark,endmark,mark1,mark2
-        )
-
-    return total
-
-  while avail:
-    bit:int=avail&-avail
-    avail&=avail-1
-
-    nld:int=(ld|bit)<<1
-    nrd:int=(rd|bit)>>1
-    ncol:int=col|bit
-
-    nf:int=board_mask&~(nld|nrd|ncol)
-
-    if not nf:
-      continue
-
-    if board_mask&~(((nld<<1)|(nrd>>1)|ncol)):
-      total+=dfs(
-        meta,
-        blockK_by_funcid,
-        blockL_by_funcid,
-        board_mask,
-        local_next_funcid,
-        nld,nrd,ncol,row_step,nf,
-        jmark,endmark,mark1,mark2
-      )
-
-  return total
+# 241: recursive CPU dfs fallback remains removed. CPU path uses dfs_iter only.
 
 def build_soa_for_range(
     N:int,
@@ -2721,7 +2373,6 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
   else:
     soa:TaskSoA = TaskSoA(m_all)
     results: List[u64] = [u64(0)] * m_all
-    results_all: List[u64] = [u64(0)] * m_all
     w_arr: List[u64] = [u64(0)] * m_all
 
     size=max(FID.values())+1
@@ -2738,27 +2389,15 @@ def exec_solutions(N:int,constellations:List[Dict[str,int]],use_gpu:bool,gpu_blo
     results:List[u64] = [u64(0)] * m_all
     @par
     for i in range(m_all):
-      use_itter = True
-      if use_itter:
-        cnt:u64 = dfs_iter(
-            func_meta,
-            blockK_by_funcid,blockL_by_funcid,
-            board_mask,
-            soa.funcid_arr[i],
-            int(soa.ld_arr[i]), int(soa.rd_arr[i]), int(soa.col_arr[i]),
-            soa.row_arr[i],int(soa.free_arr[i]),
-            soa.jmark_arr[i], soa.end_arr[i],
-            soa.mark1_arr[i], soa.mark2_arr[i])
-      else:
-        cnt:u64 = dfs(
-            func_meta,
-            blockK_by_funcid,blockL_by_funcid,
-            board_mask,
-            soa.funcid_arr[i],
-            int(soa.ld_arr[i]), int(soa.rd_arr[i]), int(soa.col_arr[i]),
-            soa.row_arr[i],int(soa.free_arr[i]),
-            soa.jmark_arr[i], soa.end_arr[i],
-            soa.mark1_arr[i], soa.mark2_arr[i])
+      cnt:u64 = dfs_iter(
+          func_meta,
+          blockK_by_funcid,blockL_by_funcid,
+          board_mask,
+          soa.funcid_arr[i],
+          int(soa.ld_arr[i]), int(soa.rd_arr[i]), int(soa.col_arr[i]),
+          soa.row_arr[i],int(soa.free_arr[i]),
+          soa.jmark_arr[i], soa.end_arr[i],
+          soa.mark1_arr[i], soa.mark2_arr[i])
       results[i]=cnt*w_arr[i]
   out = results
   for i, constellation in enumerate(constellations):
@@ -3297,7 +2936,7 @@ def format_ratio_3(num:int,den:int)->str:
     frac_s="0"+frac_s
   return str(whole)+"."+frac_s
 
-# 238 r2 buildfix: these helpers are used by the kept broadmarktail/split145
+# 241: these helpers are used by the kept broadmarktail/split145
 # cache-generation path. They are not removed diagnostics; removing them breaks
 # mode28/29/30/31 and bare -g cache-miss builds.
 def stream_funcid_reorder_risk_suffix(stats:List[int],m:int)->str:
@@ -4182,7 +3821,7 @@ def broad_markdist_tail_reorder_output_fname(N:int,preset_queens:int,block:int=3
   return f"constellations_N{N}_{preset_queens}_broadmarktail_reorder_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
 
 CHUNKSHAPE148_REORDER_VERSION:str="scorestripe_v9_lanephase32_octetfirstpairlock29"
-CHUNKSHAPE148_DEFAULT_REASON:str="238 n27diagtrim keeps validated 231/217 scorestripe_v9 task order/cache; MAXD14 kernel unchanged"
+CHUNKSHAPE148_DEFAULT_REASON:str="241 restore keeps validated 239/238/231/217 scorestripe_v9 task order/cache; CUDA kernels unchanged; 240 fid14 launch split rejected"
 
 def chunkshape148_reorder_output_fname(N:int,preset_queens:int,block:int=32,max_blocks:int=484)->str:
   return f"constellations_N{N}_{preset_queens}_chunkshape148_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}_{funcid_reorder_run_param_tag(block,max_blocks)}.bin"
@@ -5614,7 +5253,7 @@ def main()->None:
     nmax=CPU_FINAL_DEFAULT_N+1
     bench_mode=0
     print("CPU auto mode selected")
-    print("[238-default] no arguments: CPU N22 default; use -g for A10G range mode")
+    print("[241-default] no arguments: CPU N22 default; use -g for A10G range mode")
   elif argc >= 2:
     arg=sys.argv[1]
     if arg == "-c":
@@ -5658,7 +5297,7 @@ def main()->None:
     if argc >= 10:
       bench_mode=int(sys.argv[9])
       if not (bench_mode==0 or bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31):
-        print(f"[warning] bench_mode={bench_mode} was removed in 238 diagtrim; using 0")
+        print(f"[warning] bench_mode={bench_mode} was removed in 241 restore/coretrim; using 0")
         bench_mode=0
 
     if bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31:
@@ -5705,9 +5344,9 @@ def main()->None:
     if bench_mode==29:
       print(f"broadmarktail_reorder_gpu: mode={bench_mode} preset={preset_queens_arg} worker={worker_id}/{worker_count}")
     if bench_mode==30:
-      print(f"split238_keepfeatures_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={split_probe_chunk_list_spec}")
+      print(f"split241_restore_probe: mode={bench_mode} preset={preset_queens_arg} chunk_start={debug_chunk_start} chunk_count={debug_chunk_count} chunk_list={split_probe_chunk_list_spec}")
     if bench_mode==31:
-      print(f"split238_keepfeatures_full_gpu: mode={bench_mode} preset={preset_queens_arg} worker={worker_id}/{worker_count}")
+      print(f"split241_restore_full_gpu: mode={bench_mode} preset={preset_queens_arg} worker={worker_id}/{worker_count}")
     if bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31:
       print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
       print(f"broadmarktail_params: version={BROAD_MARKDIST_TAIL_REORDER_VERSION} variant={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} window_boost={broad_markdist_tail_window_boost_value()} phase_mix={1 if broad_markdist_tail_use_phase_mix() else 0} rotate_interleave={1 if broad_markdist_tail_use_rotating_interleave() else 0} phase_salt={broad_markdist_tail_phase_salt_value()} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
@@ -5793,10 +5432,10 @@ def main()->None:
       done_count:int=read_stream_done_count(reorder_fname+".done")
       if not (reorder_records==stream_records and done_count==stream_records and validate_bin_file(reorder_fname)):
         if gpu_log_level>=1:
-          print(f"[split238-base-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+          print(f"[split241-base-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
         reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
       elif gpu_log_level>=1:
-        print(f"[split238-base-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+        print(f"[split241-base-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
       base_reorder_fname:str=reorder_fname
       base_reorder_records:int=reorder_records
       shaped_fname:str=chunkshape148_reorder_output_fname(N,preset_queens,gpu_block,gpu_max_blocks)
@@ -5811,7 +5450,7 @@ def main()->None:
         shaped_fname,shaped_records,shaped_chunks=build_chunkshape148_reordered_bin(N,base_reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level)
       elif gpu_log_level>=1:
         print(f"[chunkshape148-reuse] N={N} records={shaped_records} chunks={shaped_chunks} bin={shaped_fname} source_bin={base_reorder_fname}")
-      progress_suffix:str=f"split238_{'probe' if bench_mode==30 else 'full'}_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
+      progress_suffix:str=f"split241_{'probe' if bench_mode==30 else 'full'}_{CHUNKSHAPE148_REORDER_VERSION}_{BROAD_MARKDIST_TAIL_REORDER_VERSION}_{broad_markdist_tail_variant_tag()}"
       chunk_only:bool=(bench_mode==30)
       total:int=exec_solutions_gpu_bin_stream_split145(N,shaped_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode,cross_stripe_safe,chunk_only,debug_chunk_start,debug_chunk_count,split_probe_chunk_list_spec if chunk_only else "",progress_suffix,worker_id if bench_mode==31 else 0,worker_count if bench_mode==31 else 1,0)
       time_elapsed=datetime.now()-start_time
@@ -5822,7 +5461,7 @@ def main()->None:
       if bench_mode==31 and worker_count>1:
         status=f"partial-worker-{worker_id}-of-{worker_count}"
       if gpu_log_level>=1:
-        print(f"[split238-{'probe' if bench_mode==30 else 'full'}-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={shaped_records} chunks={shaped_chunks} bin={shaped_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
+        print(f"[split241-{'probe' if bench_mode==30 else 'full'}-done] N={N} source_records={stream_records} base_reordered_records={base_reorder_records} shaped_records={shaped_records} chunks={shaped_chunks} bin={shaped_fname} base_bin={base_reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)} chunkshape={CHUNKSHAPE148_REORDER_VERSION} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} variant={broad_markdist_tail_variant_tag()} worker={worker_id}/{worker_count} total={total}")
         if bench_mode==31 and worker_count>1:
           print(f"[worker-done] N={N} worker={worker_id}/{worker_count} partial_total={total} expected_total={expected[N]}")
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
