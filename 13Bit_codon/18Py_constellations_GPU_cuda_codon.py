@@ -17,6 +17,8 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+
+
 amazon AWS m4.16xlarge x 1
 workspace#suzuki$ uname -a
 Linux ip-172-31-14-193.us-west-2.compute.internal 6.1.115-126.197.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Nov  5 17:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
@@ -45,6 +47,10 @@ CPU mode selected
 22:     2691008701644                0          2:36:00.552    ok
 23:    24233937684440                0         23:41:40.245    ok
 24:   227509258861456                0 9 days, 11:24:00.132    ng(227509258861456!=227514171973736)
+
+####
+preset queenの設定の甘さがNGにつながった！
+####
 
 
 suzuki@cudacodon$ uname -a
