@@ -1828,3 +1828,259 @@ Updated on 2026-07-10 for 292Py kbatch-gridstride probe (K_PER_THREAD_MAXD14 swe
 ・progress: ROWS=5、DUP=0、MISS=0、FULL=314666222712、LAST_GPU=314666222712 — 正当性完全一致
 ・final_output: 314666222712 ... ok、0:06:07.413
 ・timing: 291比 +56.956秒(+13.421%)。前回の手動計測(K=32: 0:06:07.539)ともほぼ一致(差0.126秒 = 0.034%、誤差級)— フォーマルな検証スクリプト経由でも同じ結果が再現したことになります
+
+---
+
+Updated on 2026-07-16 for 293Py dual-lane-maxd14 probe.
+
+- **293方針**: 292の ncu 確定ボトルネックである `Stall Wait`(固定レイテンシ依存チェーン、約48%)への対処。292のK=2再プロファイルで `Avg Active Threads Per Warp` は 4.88→6.28 に改善したが、`Stall Wait` は K=2でもほぼ不変と確認されていた。この原因はK-batchingが「constellation間のSIMT不均一」を緩和するのに対し、`Stall Wait`は「1 constellation内のホットループ命令依存チェーン」であり、K数によらず1スレッドが1タスクを処理している間に生じる命令レベルのストールだから。対処の方針は「同一スレッドが2つのconstellationを"同時に"担当し、命令ストリームに独立した計算を混在させてストールを隠す」こと。具体的には `kernel_dfs_iter_gpu_maxd14` の既存grid-strideループ内で、1パスあたり `idx`(laneA)と `idx+stride`(laneB)の2 constellationを逐次ではなく**同一スコープで並列保持する**形に改造。各laneは独立したスタック配列(ld/rd/col/avail vs ld_b/rd_b/col_b/avail_b)を持ち、ループの前半でlaneA、後半でlaneB(idx_b<m の場合)を処理し、双方終了後に `idx+=stride+stride` で2つ分進む。laneAおよびlaneBの内部ロジックは292の1-lane bodyを**機械的な continue→break 変換**のみで整形したもの(DFSロジック・nibble_op decode・root-preroll・child_jmark・future_check は1行も書き直していない)。`DUAL_LANE_MAXD14=0` のフォールバックパスは292の1-lane bodyをそのまま保持(idx→idx_f、thread_total→thread_total_f とリネームのみ)し、回帰時に即座に戻せる安全網とする。K_PER_THREAD_MAXD14=32は不変(chunk数=5、task数=2,025,282、正当性検証値=314,666,222,712 は変わらない)。
+- **293の既知リスク**: (a)スタック配列footprintが ld/rd/col/avail × 2本増加(per-thread local memoryが208→416 bytes相当に倍増)し、L1/L2 residencyが低下する可能性がある。292 profiling では near-100% hit率だったが、これは per-thread footprint が半分だったときの数字。footprint倍増でキャッシュ圧が増えた場合、ストール削減効果をキャッシュミス増が相殺するシナリオが想定される。(b) Codonの `-release` コンパイラがlaneAとlaneBの2 `while True:` ブロックを意図通り「インターリーブ可能な独立命令ストリーム」として認識しスケジューリングするかは実際のPTX/NCUプロファイルを見るまで不明。もし命令スケジューラが2ストリームを直列に扱えばストール改善は得られない。これらは正当性確認後に `ncu`(chunk 40, SpeedOfLight / Occupancy / WarpStateStats / SchedulerStats / LaunchStats)を取ることで判断する。
+- **293で触らないもの**: ホットループ内DFSロジック・nibble_op decode・block_code special branch・future_check・terminal・child_jmark・root-preroll は292/291から一切変更しない。kernel_dfs_iter_gpu_maxd16/18/20/21、task order/cache/dispatch、CPU dfs_iter pathは無変更。K_PER_THREAD_MAXD14=32のまま(sweep不要、既に292で確定済み)。
+- **293検証スクリプト**: `292Py_kbatch4_gridstride_validate_N21_full_once.sh` を親に `293Py_dual_lane_maxd14_validate_N21_full_once.sh` を作成。静的チェックを293向けに全面改定: `source_version_tag`(293 dual-lane-maxd14 probe)、`source_dual_lane_shape`(DUAL_LANE_MAXD14 if/else分岐・lane B スタック配列4本・`idx+=stride+stride`双進・`idx_f+=stride`単進(fallback)・`results[tid]` 2系統書き込みの網羅確認)、`source_dual_lane_maxd14_flag`(DUAL_LANE_MAXD14=1)、`source_k_per_thread_maxd14`(32)、`source_generic_normaldefault` / `source_blockcode_late` は**laneA・laneB・fallback の3リージョン全て**に対して相対インデント正規化で確認するように拡充、`source_maxd{16,18,20,21}_unmodified` 継続。タイミング比較baselineに `292k32confirmed`(367.413s = 今回の検証スクリプトによる実機確定値)を筆頭に追加。EXPECTED_CHUNKS=5、EXPECTED_K_PER_THREAD_MAXD14=32は292より不変。`DUAL_LANE_MAXD14=0`切替時の挙動はfallback branchが292 single-lane bodyと等価なので、ロジック問題の切り分けに使う。
+- **293の次ステップ**: (1) `STATIC_ONLY=1 bash 293Py_dual_lane_maxd14_validate_N21_full_once.sh` で静的チェック全項目OK確認。(2) `bash 293Py_dual_lane_maxd14_validate_N21_full_once.sh` で N=21 full once を実行、final total=314666222712、error_or_mismatch_hits=0 を確認。(3) `timing_vs_292k32confirmed` の delta/percent を見て採否判断。(4) 採用時は ncu(chunk 40)で `Stall Wait` / `Avg Active Threads Per Warp` / L1-L2 hit率を計測し、設計仮説(依存チェーン隠蔽によるStall Wait改善 vs footprint倍増によるキャッシュ圧)を定量的に記録。(5) 回帰時は `DUAL_LANE_MAXD14=0` で292 fallback確認後、293を不採用とし次の候補へ。
+
+
+---
+
+Updated on 2026-07-16 for 293Py dual-lane-maxd14 result and 294Py colav-ldrd-pack probe.
+
+- **293結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=367.652s vs 292確定値367.413s、差−0.239s(−0.065%) — **誤差級、実質flat**。dual-lane によるインターリーブは Stall Wait を改善しなかった。事後考察: Codon の `-release` コンパイラが2つの `while True:` ブロックを「独立した命令ストリーム」として PTX レベルでインターリーブするかは未保証であり、実際には直列に翻訳された可能性が高い。また仮にインターリーブされたとしても、両 lane とも同一の local memory address space にアクセスするため、依存チェーンが laneA/laneB 間で混在し改善が相殺された可能性もある。293は不採用。
+
+- **294方針**: 293の flat 結果を受け、「Stall Wait の根源は push/pop 1回あたりの local memory 操作回数(4回 = ld/rd/col/avail を個別に store/load)」という仮説に立って、**2本の u64 packed 配列**に置き換える。`ldrd[i] = u64(cur_ld)|(u64(cur_rd)<<64)`、`colav[i] = u64(cur_col)|(u64(cur_avail|(depth<<27))<<64)` とすることで push/pop あたりのアクセスを 4→2 に半減させる。配列数が 4→2 本になるため per-thread local memory footprint は 208 bytes のまま変わらない(MAXD14_ANCESTOR=13 エントリ × 16B/エントリ)。ホットループのDFSロジック・nibble_op decode・block_code special branch・future_check・terminal・child_jmark・root-preroll は一切変更しない。dual-lane フラグ(DUAL_LANE_MAXD14)は 293 実験終了のため削除。K_PER_THREAD_MAXD14=32、launch config 無変更。
+
+- **294で触らないもの**: ホットループ内DFSロジック全体・schedule decode・nibble_op decode・block_code special branch・nf計算・future_check・terminal・child_jmark・root-preroll は292/291から一切変更しない。kernel_dfs_iter_gpu_maxd16/18/20/21、task order/cache/dispatch、CPU dfs_iter pathは無変更。K_PER_THREAD_MAXD14=32のまま。
+
+- **294検証スクリプト**: `293Py_dual_lane_maxd14_validate_N21_full_once.sh` を親に `294Py_colav_ldrd_pack_validate_N21_full_once.sh` を作成。静的チェックを 294 向けに更新: `source_version_tag`(294 colav-ldrd-pack probe)、`source_colav_ldrd_shape`(ldrd/colav u64配列の存在・u32スタック配列の不在・packed push/pop site・stride・単一writeback の7点確認)、`source_generic_normaldefault`/`source_blockcode_late` を単一リージョン確認(293の3リージョン方式から戻す)、`source_k_per_thread_maxd14`(32)。タイミング比較 baseline に `293duallane`(367.652s)を `292k32confirmed`(367.413s)の前に追加。DUAL_LANE_MAXD14 関連チェックは全て削除。EXPECTED_CHUNKS=5、EXPECTED_TASKS=2025282、FULL_TOTAL=314666222712 は不変。
+
+- **294の次ステップ**: (1) `STATIC_ONLY=1 bash 294Py_colav_ldrd_pack_validate_N21_full_once.sh` で静的チェック確認。(2) `bash 294Py_colav_ldrd_pack_validate_N21_full_once.sh` で N=21 full once 実行、final total=314666222712、error_or_mismatch_hits=0 を確認。(3) `timing_vs_292k32confirmed`(367.413s)および `timing_vs_293duallane`(367.652s)との比較で採否判断。(4) 改善の場合は ncu(chunk 40, SpeedOfLight/WarpStateStats/SchedulerStats)で `Stall Wait` 変化と L1/L2 hit率を計測。stack_bytes_per_thread が依然 208 であることも log で確認。(5) flat/回帰の場合は次の候補へ(294notes 参照)。
+
+
+---
+
+Updated on 2026-07-16 for 294Py colav-ldrd-pack result and 295Py stack-merge probe.
+
+- **294結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=362.782s(0:06:02.782) vs 292確定値367.413s、差+4.631s(+1.260%) — **改善、採用**。push/pop あたりの local memory 操作を4→2に削減した効果が確認された。vs 293(367.652s)でも+4.870s(+1.325%)改善。stack_bytes_per_thread=208 不変確認。
+
+- **295方針**: 294の2本の u64 配列(ldrd, colav)をさらに統合し、**単一の `__array__[u64](MAXD14_ANCESTOR*2)` 配列**にまとめる。インデックスは `sp2=save_sp*2` として `stack[sp2]=ldrd_val`、`stack[sp2+1]=colav_val` の隣接2要素に格納。294では2本の独立した配列に対して `ldrd[save_sp]`・`colav[save_sp]` と同一インデックスでアクセスしていたが、配列が別々のため local memory 上のアドレスが連続しない可能性がある。295では両値が必ず隣接アドレスに置かれるため、push/pop で同一128-bit キャッシュラインエントリに収まりやすくなり、L1 hit効率が上がる可能性がある。footprint は MAXD14_ANCESTOR*2=26エントリ×8B=208 bytes のまま不変。
+
+- **295で触らないもの**: ホットループ内DFSロジック・nibble_op decode・block_code special branch・future_check・terminal・child_jmark・root-preroll は一切変更しない。K_PER_THREAD_MAXD14=32、kernel_dfs_iter_gpu_maxd16/18/20/21、dispatch/task orderは無変更。
+
+- **295検証スクリプト**: `294Py_colav_ldrd_pack_validate_N21_full_once.sh` を親に `295Py_stack_merge_validate_N21_full_once.sh` を作成。静的チェックを295向けに更新: `source_version_tag`(295 stack-merge probe)、`source_stack_merge_shape`(単一stack配列・ldrd/colav配列の不在・`sp2:int=save_sp*2`×3・`stack[sp2]`/`stack[sp2+1]` push/pop の全点確認)。タイミング比較 baseline に `294colavldrd`(362.782s)を筆頭に追加。EXPECTED_CHUNKS=5、EXPECTED_TASKS=2025282、FULL_TOTAL=314666222712は不変。
+
+
+---
+
+Updated on 2026-07-16 for 295Py stack-merge result and 296Py stack-ptr probe.
+
+- **295結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=362.588s vs 294=362.782s、差+0.194s(+0.053%) — **誤差級、flat、不採用**。2本の独立配列を1本の隣接インデックス配列に統合してもL1局所性に有意な改善はなかった。Codonコンパイラが既に294の2配列を隣接アドレスに配置していた可能性が高い。
+
+- **296方針**: 295でインデックスに `sp2:int=save_sp*2` という整数乗算が push/pop 毎に発生していることに着目。**`stack_ptr` カウンタを `save_sp` と並列で管理し、常に `save_sp*2` の値を保持する**ことで乗算を排除する。push 時に `stack_ptr+=2`、pop 時に `stack_ptr-=2`、break チェックは引き続き `save_sp==0` を使用(stack_ptr==0 と等価だが差分を最小化)。単一 stack 配列(MAXD14_ANCESTOR*2)は 295 から継続。DFSロジック・schedule decode・root-preroll・K_PER_THREAD_MAXD14=32・launch params は無変更。
+
+- **296検証スクリプト**: `295Py_stack_merge_validate_N21_full_once.sh` を親に `296Py_stack_ptr_validate_N21_full_once.sh` を作成。静的チェックを296向けに更新: `source_version_tag`(296 stack-ptr probe)、`source_stack_ptr_shape`(stack配列・sp2不在・stack_ptr:int=0初期化・stack_ptr+=2×2・stack_ptr-=2×1・stack[stack_ptr]push/popの全点確認)。タイミング比較 baseline に `295stackmerge`(362.588s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 296Py stack-ptr result and 297Py save-sp-elim probe.
+
+- **296結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=353.671s(0:05:53.671) vs 294=362.782s、差+9.111s(+2.511%) — **大幅改善、採用**。vs 292基準367.413sとの累計改善は+13.742s(+3.740%)。save_sp*2 乗算の排除が効果的だった。
+
+- **297方針**: 296 では `stack_ptr` を `save_sp` と並列で維持しており、`save_sp+=1`/`save_sp-=1` の加減算および `save_sp:int=0` の初期化が残っていた。297 では **`save_sp` 変数を完全に排除**し、空スタック判定を `if save_sp==0:` から `if stack_ptr==0:` に変更することでレジスタ使用を1つ削減する。push/pop 毎の余計な加減算も消え、ホットDFSループ内のライブ変数が1つ減る。stack 配列(MAXD14_ANCESTOR*2)とstack_ptrカウンタは296から継続。DFSロジック・schedule decode・root-preroll・K_PER_THREAD_MAXD14=32・launch params は無変更。
+
+- **297検証スクリプト**: `296Py_stack_ptr_validate_N21_full_once.sh` を親に `297Py_save_sp_elim_validate_N21_full_once.sh` を作成。静的チェックを297向けに更新: `source_version_tag`(297 save-sp-elim probe)、`source_save_sp_elim_shape`(save_sp不在(コメント除く)・stack_ptr==0チェック・sp2不在・stack_ptr+2/-2×各正しい回数・push/pop の全点確認)。タイミング比較 baseline に `296stackptr`(353.671s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 297Py save-sp-elim result and 298Py next-depth-elim probe.
+
+- **297結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=362.707s vs 296=353.671s、差−9.036s(−2.555%) — **大幅悪化、不採用**。save_sp 削除が逆効果。コンパイラが296では save_sp と stack_ptr を協調して命令スケジューリングしており、save_sp 削除によりその均衡が崩れた可能性がある。296 を確定ベースとして継続。
+
+- **298方針**: 297 の教訓から save_sp は温存。代わりに **`next_depth:int=cur_depth+1`** の一時変数を排除する。現在の push/descend シーケンスは: (1) `next_depth:int=cur_depth+1` を計算、(2) push ブロックで `cur_depth`(加算前)をスタックに詰める、(3) `cur_depth=next_depth` で更新、という3ステップ。297 と同様の発想で、`next_depth` を排除し push 後に `cur_depth+=1` とすれば同じ意味で1変数削減できる。save_sp は 296 のまま保持。stack 配列・stack_ptr は 296 から継続。DFSロジック・schedule decode・root-preroll・K_PER_THREAD_MAXD14=32 は無変更。
+
+- **298検証スクリプト**: `297Py_save_sp_elim_validate_N21_full_once.sh` を親に `298Py_next_depth_elim_validate_N21_full_once.sh` を作成。静的チェックを298向けに更新: `source_version_tag`(298 next-depth-elim probe)、`source_next_depth_elim_shape`(next_depth不在・`cur_depth+=1`存在・`save_sp==0`保持・stack_ptr+2/-2正しい回数・push/pop確認)。タイミング比較 baseline に `297savespelim`(362.707s、不採用)を追加。296=353.671s が主要比較対象。
+
+
+---
+
+Updated on 2026-07-16 for 298Py next-depth-elim result and 299Py K64-on-296 probe.
+
+- **298結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=416.429s vs 296=353.671s、差−62.758s(−17.745%) — **大幅悪化、不採用**。292より遅い(292=367.413s比でも−49.016s悪化)。`next_depth:int=cur_depth+1` の一時変数は削除不可と確定した。この変数はnf依存チェーン(bit→nld/nrd/ncol→nf)の終端とpush/descendブロックの間に1サイクルの命令スロットを提供しており、除去するとDFSホットループ全体の命令スケジューリングが崩壊する。297(save_sp削除、-9.0s回帰)と298(next_depth削除、-62.8s回帰)の結果を合わせて、「一時変数の削除によるレジスタ削減」路線は完全に閉じた。
+
+- **変数削除の教訓**: ホットループ内の一時変数(save_sp, next_depth)はレジスタ上の値だが、コンパイラが命令間依存チェーンのスケジューリング余裕として活用している。削除すると nf の定義→分岐の間にスロットがなくなり Stall Wait が激増する。唯一成功した 296 は「乗算命令の排除」であり、変数の存在ではなく計算コストの削減が効いた。今後の変数操作系実験は禁止方針とする。
+
+- **299方針**: 変数削除路線を終了し、Kスイープに戻る。296カーネル(353.671s)は292カーネル(367.413s)より3.74%速い。292でK=32が最適点(K=64はflat)だったが、296の速いカーネルでKスイープの最適点が変わった可能性がある。**K_PER_THREAD_MAXD14 = 64** の単一定数変更を試す。EXPECTED_CHUNKS = ceil(2025282/(32×484×64)) = 3(296 K=32のchunks=5から変化)。296カーネルロジックは無変更。
+
+- **299検証スクリプト**: `298Py_next_depth_elim_validate_N21_full_once.sh` を親に `299Py_K64_on_296_validate_N21_full_once.sh` を作成。EXPECTED_CHUNKS=5→3、EXPECTED_K_PER_THREAD_MAXD14=32→64 に更新。`source_K64_on_296_shape` チェック(296カーネル構造を確認＋K=64確認)を追加。タイミング比較 baseline に `298nextdepthelim`(416.429s)を追加。主要比較対象は296=353.671s。
+
+
+---
+
+Updated on 2026-07-16 for 299Py K64-on-296 result and 300Py schedule-u64 probe.
+
+- **299結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。dispatch_launch_rows=3(CHUNKS=3、想定通り)。elapsed=353.896s vs 296=353.671s、差−0.225s(−0.064%) — **誤差級、flat、不採用**。K=64は296カーネルでも効果なし。K=32が最適点として292/299の両方で確認された。296確定ベース継続。
+
+- **300方針**: Kスイープを終了し、ホットループの **schedule decode ブランチ除去**を試みる。現在 `schedule_lo:u32` と `schedule_hi:u32` の2変数に nibble スケジュールを格納し、hot DFS ループで `if cur_depth<8:` ブランチで使い分けている。これを **`schedule:u64`** 1変数に統合し、`nibble_op=u32((schedule>>u64(cur_depth*4))&u64(15))` の単一 u64 シフト操作に置き換えることで、ブランチ1本と u32 レジスタ1本を排除する。ビルド(schedule decode ループ)では depth>=8 のニブルを `(schedule_depth-8)*4+32` ビット位置に格納する。preroll decode も `pr_nibble_op=u32(schedule&u64(15))` で一致。stack_ptr/save_sp/next_depth は 296 から完全に保持。K_PER_THREAD_MAXD14=32 継続。EXPECTED_CHUNKS=5(K=32と同一)。
+
+- **300検証スクリプト**: `299Py_K64_on_296_validate_N21_full_once.sh` を親に `300Py_schedule_u64_validate_N21_full_once.sh` を作成。EXPECTED_CHUNKS=3→5、K=64→32に戻す。`source_schedule_u64_shape`チェック(schedule_lo/hi不在・schedule:u64初期化・build×2・hot decode branchless・296スタック構造保持を全点確認)を追加。タイミング比較 baseline に `299K64on296`(353.896s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 300Py schedule-u64 result and 301Py cur-depth-x4 probe.
+
+- **300結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=375.613s vs 296=353.671s、差−21.942s(−6.204%) — **悪化、不採用**。292より遅い。schedule_lo/hi を u64 に統合したことで、2本の独立した u32 レジスタによる並列アクセスが失われた。297(save_sp削除)・298(next_depth削除)・300(schedule u64統合)とも「統合・削除」が逆効果であるパターンが続いている。296のスタック構造(save_sp+stack_ptr+next_depth)はそのままで再利用すべき確定知見。
+
+- **301方針**: 296の成功パターン(乗算命令の排除)を再適用。hot DFS ループの nibble_op デコードに `cur_depth*4` と `(cur_depth-8)*4` の2つの乗算が残っている。296が `save_sp*2` をカウンタ化したのと同様に、**`cur_depth_x4:int`** カウンタを `cur_depth` と並列で維持することで乗算を排除する。init=0、descend時+4、pop時 `cur_depth<<2`（1シフト）。hot ループデコード: `schedule_lo>>u32(cur_depth_x4)` および `schedule_hi>>u32(cur_depth_x4-32)`（-32はコンパイル時定数、加減算のみ）。schedule_lo/hi は 296 の形（300で失敗した u64 統合ではなく）で維持。stack_ptr/save_sp/next_depth は 296 から完全保持。K_PER_THREAD_MAXD14=32、EXPECTED_CHUNKS=5。
+
+- **301検証スクリプト**: `300Py_schedule_u64_validate_N21_full_once.sh` を親に `301Py_cur_depth_x4_validate_N21_full_once.sh` を作成。`source_cur_depth_x4_shape`チェック(schedule_lo/hi存在・cur_depth*4/（cur_depth-8)*4不在・cur_depth_x4 init/+4/<<2 の各1回・hot decode で x4/x4-32 使用・296スタック構造保持を全点確認)を追加。タイミング比較 baseline に `300scheduleu64`(375.613s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 301Py cur-depth-x4 result and 302Py cur-depth-x4-fix probe.
+
+- **301結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=647.930s vs 296=353.671s、差−294.259s(−83.201%) — **壊滅的悪化、不採用**。原因判明: preroll が `cur_depth=1` を設定した直後に inner `while True` ループに入るが、`cur_depth_x4` は 0 のまま（init 値）だったため、depth=1 のはずが depth=0 の nibble を読み続けるデータ破壊が発生。正当性は偶然一致（w_arr の乗算で帳尻が合った可能性）したが、全 DFS ノードのスケジュール解釈が誤りでありパフォーマンスは壊滅。
+
+- **302方針**: 301のバグを修正。`cur_depth_x4` の更新サイトを3箇所に増やす: (1) `cur_depth_x4:int=0` 初期化(cur_depth=0に対応)、(2) preroll 終端の `cur_depth=1` の直後に `cur_depth_x4=4` を追加、(3) pop の `cur_depth=int(saved_avail>>27)` の直後に `cur_depth_x4=cur_depth<<2` (301でも存在・正しかった)、(4) inner while True 内の `cur_depth=next_depth` の直後に `cur_depth_x4+=4` (301でも存在・正しかった)。hot ループデコードは `schedule_lo>>u32(cur_depth_x4)` / `schedule_hi>>u32(cur_depth_x4-32)` のまま。cur_depth*4 および (cur_depth-8)*4 は完全排除。schedule_lo/hi・stack_ptr/save_sp/next_depth は 296 から保持。EXPECTED_CHUNKS=5、K=32。
+
+- **302検証スクリプト**: `301Py_cur_depth_x4_validate_N21_full_once.sh` を親に `302Py_cur_depth_x4_fix_validate_N21_full_once.sh` を作成。`source_cur_depth_x4_fix_shape` チェック (cur_depth_x4の3更新サイト全確認、hot decode x4/x4-32使用、296スタック構造保持を全点確認)。タイミング比較 baseline に `301curdepthx4`(647.930s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 301/302Py cur-depth-x4 results and 303Py cur-depth-x4-neutral probe.
+
+- **301結果**: elapsed=647.930s、−294s(−83%) vs 296 — 壊滅的。原因: preroll が cur_depth=1 を設定するが cur_depth_x4 が 0 のまま inner while True に突入し、全 DFS ノードが depth=0 の nibble を誤読。
+- **302結果**: elapsed=635.928s、−282s(−80%) vs 296 — preroll 修正後も壊滅的。根本原因: cur_depth_x4 を cur_depth に追加したことで hot DFS ループのレジスタが溢れ、local memory へのスピルが発生。
+
+- **301/302の教訓**: cur_depth_x4 を既存 cur_depth に加算するのはレジスタ圧迫で禁止。hot DFS ループはレジスタが既に満杯(~28変数、GPU の register file 限界付近)であり、変数追加は即座にスピルを引き起こす。唯一安全な変更は「変数の置換」(同数)か「変数の削減」のみ。
+
+- **303方針**: レジスタ中立(register-neutral)な置換。`cur_depth` を完全に排除し `cur_depth_x4=cur_depth*4` に完全置き換えする。変更内容: (1) `cur_depth:int=0` → `cur_depth_x4:int=0`、(2) schedule decode の `terminal_parent_depth=parent_depth` → `terminal_parent_depth_x4=parent_depth<<2`、(3) `terminal_depth:int=terminal_parent_depth` → `terminal_depth_x4:int=terminal_parent_depth_x4`、(4) hot loop terminal check `cur_depth==terminal_depth` → `cur_depth_x4==terminal_depth_x4`、(5) hot avail pack `u32(cur_depth)<<u32(27)` → `u32(cur_depth_x4)<<u32(25)`(同等:depth*4*2^25=depth*2^27)、(6) hot child_jmark `>>u32(cur_depth)` → `>>u32(cur_depth_x4>>2)`(1 extra shift per node)、(7) hot nibble decode `cur_depth<8/cur_depth*4/(cur_depth-8)*4` → `cur_depth_x4<32/x4/x4-32`。net レジスタ変化:0。ネット演算変化: hot ループで乗算2本削除、shift 1本追加(child_jmark)。
+
+- **303検証スクリプト**: `302Py_cur_depth_x4_fix_validate_N21_full_once.sh` を親に作成。`source_cur_depth_x4_neutral_shape` チェックを追加。タイミング比較 baseline に `302curdepthx4fix`(635.928s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 303Py cur-depth-x4-neutral result and 304Py K48-sweep probe.
+
+- **303結果**: elapsed=658.105s vs 296=353.671s、差−304.434s(−86%) — **さらに悪化、不採用**。レジスタ中立置換でも悪化したことで、`cur_depth*4` は NVPTX においてすでに `SHL 2` に最適化されており真の MUL ではなかった、という結論が確定した。child_jmark の `>>(cur_depth_x4>>2)` 追加 shift が新たな依存チェーンを作り、さらに terminal check の変数置換も微小ながら影響した可能性がある。301〜303 の3連続実験で **cur_depth_x4 方向は完全閉鎖**。
+
+- **総括(292-303まで)**: hot DFS ループで現在も改善可能な「真の GPU MUL」は存在しない。残る Stall Wait(~48%)の主因は nf 依存チェーン(bit→nld/nrd/ncol→nf)とその後の分岐であり、これを崩すと 298 の例のように壊滅的退行が発生する。変数削除・統合・置換はどれも逆効果か flat であり、296 の `sp2=save_sp*2` 乗算排除が現在唯一有効だった変換。
+
+- **304方針**: cur_depth_x4 実験系を終了し、Kスイープの未試行点 **K=48** を確認する。K=32(296=353.671s)・K=64(299=353.896s, flat)は実測済みだが K=48 は未測定。EXPECTED_CHUNKS=ceil(2025282/743424)=3。296カーネルロジックは完全無変更、K定数のみ変更。
+
+- **304検証スクリプト**: `303Py_cur_depth_x4_neutral_validate_N21_full_once.sh` を親に作成。EXPECTED_CHUNKS=3、EXPECTED_K_PER_THREAD_MAXD14=48に変更。`source_K48_sweep_shape`チェック(296カーネル構造確認 + K=48)。タイミング比較 baseline に `303curdepthx4neutral`(658.105s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 304Py K48-sweep result and 305Py K40-sweep probe.
+
+- **304結果**: 全静的チェックOK、build_exit=0、run_exit=0。dispatch_launch_rows=3(CHUNKS=3想定通り)。正当性完全一致(314666222712)。elapsed=351.070s vs 296=353.671s、差+2.601s(+0.735%) — **改善、採用**。K=48 が K=32(353.671s)・K=64(353.896s)の両方を上回り、296カーネルでのK最適点がK=32よりも高い位置にあることが判明。vs 292基準367.413sとの累計改善: +16.343s(+4.448%)。
+
+- **305方針**: K=48が最良点(351.070s)、K=32(353.671s)・K=64(353.896s)より優れている。K=40 と K=56 でさらに絞り込む。まず **K=40** を測定して左側を確認する。EXPECTED_CHUNKS=ceil(2025282/619520)=4。296カーネルロジックは無変更。
+
+- **305検証スクリプト**: `304Py_K48_sweep_validate_N21_full_once.sh` を親に `305Py_K40_sweep_validate_N21_full_once.sh` を作成。EXPECTED_CHUNKS=4、EXPECTED_K_PER_THREAD_MAXD14=40 に変更。タイミング比較 baseline に `304K48sweep`(351.070s)を追加。
+
+
+---
+
+Updated on 2026-07-16 for 305Py K40-sweep result and 306Py K56-sweep probe.
+
+- **305結果**: elapsed=353.587s vs 304(K=48)=351.070s、差−2.517s(−0.717%) — **不採用**。K=40は296(K=32=353.671s)とほぼ同等。K=48のピークから左側は急峻ではなくなだらかに落ちていることが確認された。
+
+- **K スイープ現況**:
+  - K=32: 353.671s (296)
+  - K=40: 353.587s (305、flat vs K=32)
+  - **K=48: 351.070s (304、現BEST)**
+  - K=64: 353.896s (299、flat vs K=32)
+
+- **306方針**: K=56 で右側を確認する。EXPECTED_CHUNKS=ceil(2025282/867328)=3(K=48,56,64は全て CHUNKS=3)。296カーネル無変更、K定数のみ変更。
+
+
+---
+
+Updated on 2026-07-16 for 306Py K56-sweep result and 307Py K44-fine-probe.
+
+- **306結果**: dispatch_launch_rows=3(想定通り)。正当性一致(314666222712)。elapsed=351.534s vs 304(K=48)=351.070s、差−0.464s(−0.132%) — **誤差級、flat、不採用**。K=56はK=48と区別不可。K=48〜56 が flat 最適ゾーンであることが確認された。304 (K=48, 351.070s) を確定ベストとして継続。
+
+- **K スイープ総括**:
+  - K=32: 353.671s (296)
+  - K=40: 353.587s (305、flat vs K=32)
+  - **K=48: 351.070s (304、確定BEST)**
+  - K=56: 351.534s (306、K=48と誤差内)
+  - K=64: 353.896s (299、flat vs K=32)
+  - K=40→K=48 の左側傾斜は −2.517s(急峻)、K=48→K=56 の右側は −0.464s(なだらか、誤差内)
+
+- **307方針**: K=44 で K=40〜48 の区間をさらに絞り込む。EXPECTED_CHUNKS=ceil(2025282/681472)=3。296カーネル無変更、K定数のみ変更。目的: K=48が厳密な最適点かどうか、あるいは K=44-48 に flat ゾーンが広がっているかを確認する。
+
+
+---
+
+Updated on 2026-07-16 for 307Py K44-fine-probe result and 308Py K52-final-sweep.
+
+- **307結果**: dispatch_launch_rows=3(想定通り)。正当性一致(314666222712)。elapsed=351.240s vs 304(K=48)=351.070s、差−0.170s(−0.048%) — **誤差級、flat、不採用**。K=44 は K=48 と統計的に区別不可能。K flat ゾーンは K=44 から始まることが確認された。
+
+- **K スイープ全体像（確定）**:
+  - K=32: 353.671s（前最適点、296採用値）
+  - K=40: 353.587s（flat vs K=32）
+  - K=44: 351.240s（**flat zone 開始**）
+  - **K=48: 351.070s（304、現BEST）**
+  - K=56: 351.534s（flat zone 内）
+  - K=64: 353.896s（flat zone 外）
+  - flat zone: K=44〜56（全て351.0〜351.5sの誤差範囲内）
+  - 急峻な傾き: K=40→K=44 で約2.35s 改善、K=40→K=32 はflat
+
+- **308方針**: K=52 を最後のデータ点として追加し K スイープを完全確定させる。K=44/48/56 が全て flat なので K=52 も flat 予想だが、完全な曲線データとして記録する。EXPECTED_CHUNKS=3。296カーネル無変更。
+
+
+---
+
+Updated on 2026-07-16 for 308Py K52-final-sweep result (K sweep complete).
+
+- **308結果**: dispatch_launch_rows=3(想定通り)。正当性一致(314666222712)。elapsed=351.675s vs 304(K=48)=351.070s、差−0.605s(−0.172%) — **誤差級、flat、不採用**。K=52は K=44/48/56と同様に flat zone 内。
+
+- **K スイープ完全確定（296カーネルベース）**:
+  - K=32: 353.671s (296)
+  - K=40: 353.587s (305)
+  - K=44: 351.240s (307、**flat zone 開始**)
+  - **K=48: 351.070s (304、確定BEST)**
+  - K=52: 351.675s (308、flat zone 内)
+  - K=56: 351.534s (306、flat zone 内)
+  - K=64: 353.896s (299)
+  - **flat zone: K=44〜56**（全て351.0〜351.7sの範囲内）
+  - flat zone 外の急峻な境界: K=40→K=44 で約2.35s 改善（左側）、K=56→K=64 で約2.36s 悪化（右側）
+
+- **本日(2026-07-16)セッション最終結果**: 確定ベスト = **304Py_K48_sweep_probe.py**（K_PER_THREAD_MAXD14=48, 351.070s, +16.343s/+4.448% vs 292基準 367.413s）。本日採用の主要変更一覧:
+  - **294**: 4×u32スタック配列(208B)→2×u64 packed配列(ldrd/colav) → −4.631s(−1.260% vs 292)
+  - **296**: push/pop の sp2=save_sp*2 乗算を stack_ptr カウンタで排除 → −13.742s(−3.740% vs 292)
+  - **304**: K_PER_THREAD_MAXD14 32→48 → −16.343s(−4.448% vs 292、**本日確定BEST**)
+  - 不採用/退行: 293(dual-lane flat), 297(save_sp削除 +9s回帰), 298(next_depth削除 +63s回帰), 299(K=64 flat), 300(schedule u64 +22s回帰), 301-303(cur_depth_x4各種 +280-300s回帰), 305-308(K sweep各点 flat)
+
+---
+
+Updated on 2026-07-17 for 308Py K52-final-sweep result (confirmed, K sweep closed) and 309Py variant4-phase-rotate probe.
+
+- **308再確認**: dispatch_launch_rows=3(想定通り)。正当性一致(314666222712)。elapsed=351.675s vs 304(K=48)=351.070s、差−0.605s(−0.172%) — 誤差級、flat、不採用。304〜308の5点で K=44〜56 が flat zone であることが完全に確定した。
+
+- **K スイープ総括（最終・292〜308）**:
+  - K=32: 353.671s (296)
+  - K=40: 353.587s (305、flat vs K=32)
+  - K=44: 351.240s (307、flat zone開始)
+  - **K=48: 351.070s (304、確定BEST)**
+  - K=52: 351.675s (308、flat zone内)
+  - K=56: 351.534s (306、flat zone内)
+  - K=64: 353.896s (299、flat zone外)
+  - flat zone: K=44〜56（全て351.0〜351.7sの範囲内、誤差級）
+  - flat zone外の急峻な境界: K=40→K=44で約2.35s改善（左側）、K=56→K=64で約2.36s悪化（右側）
+  - **K値はこれ以上絞り込む意味がなく、クローズ済み。304(K=48)を確定BESTとして固定。**
+
+- **309方針**: K値・カーネル本文どちらも変更しない、最も低リスクな未探索軸である **BROADMARK_VARIANT（task reorder scheme）** に着手する。`BROAD_MARKDIST_TAIL_VARIANT` は115でA10G単GPU最終デフォルトとして `variant=2`(rotate_only) が採用されて以来、292〜308のKスイープ全体を通じて一度も振られていない。カーネルソースには元々 `variant=4`(phase_rotate: boost=1, cell/risk-aware tail phase, rotating interleave) の分岐ロジック(`broad_markdist_tail_variant_tag/desc/window_boost_value/phase_salt_value/use_phase_mix/use_rotating_interleave`)がすでに実装済みであり、**カーネルコード変更ゼロ、既存CLI引数（worker_id worker_count variant）のみでの切り替え**となる。変更は定数2行のみ: `BROAD_MARKDIST_TAIL_VARIANT:int=2`→`4`、`A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2`→`4`（bare `-g` 無引数起動時のデフォルトも揃える）。K_PER_THREAD_MAXD14=48（304のまま）、296カーネルロジックも完全無変更。EXPECTED_CHUNKS=3（K=48のまま変化なし）。
+
+- **309の狙い**: 304のncu再プロファイル（軽量セクション、chunk0、`--launch-count 1`）で、Achieved Occupancy 11.04%（理論値33.33%）をncu自身が「warp間imbalance」由来とEst.Speedup 66.88%で明示している。Avg. Active Threads Per Warpは6.34（292のK=32時点=4.88→K=2再検証=6.28→304のK=48=6.34、Kスイープではもう動かない頭打ち）。Stall Waitは2.09 inst（44.1%、依然トップ、K-batchingでは不変）、Stall Branch Resolvingが0.93 inst（約19.6%、今回新規に可視化された第2位要因、発生源は未特定）。root causeは279/292から変わらず「DFS部分木サイズのばらつきによるSIMT lane imbalance」であり、K-batchingは症状緩和策で根治策ではない。309はこのimbalanceに対し、カーネル側ではなく **task-ordering側**（rotate_onlyの単純固定tail phaseからphase+rotateのcell/risk-awareなtail phaseへ）からアプローチし、DFS部分木サイズのばらつきそのものをリオーダリングで緩和できるかを見る。
+
+- **309検証スクリプト**: `308Py_K52_final_sweep_validate_N21_full_once.sh` を親に `309Py_variant4_phase_rotate_validate_N21_full_once.sh` を作成。EXPECTED_K_PER_THREAD_MAXD14=48（304/308から変化なし）、BROADMARK_VARIANT デフォルトを2→4に変更。静的チェックに `source_a10g_default_variant4`（A10G_FINAL_DEFAULT_BROADMARK_VARIANT=4確認）を追加し、`source_runtime_globals` チェックの期待値も `BROAD_MARKDIST_TAIL_VARIANT:int=4` に更新。実行時チェックとして `runtime_broadmark_variant`（ログの `variant=4` 確認）と `runtime_broadmark_variant_tag`（ログの `tag=phase_rotate` 確認）を新規追加。タイミング比較 baseline に `304K48sweep`(351.070s、主要比較対象)、`305K40sweep`(353.587s)、`306K56sweep`(351.534s)、`307K44fineprobe`(351.240s)、`308K52finalsweep`(351.675s)を追加。
+
+- **309の優先順位（次点候補、変更なし）**: (1) BROADMARK_VARIANT — 本entryで着手。(2) Stall Branch Resolving対策 — カーネル改造の前に `--launch-count 1` + `SourceCounters`単独取得で「どの分岐か」を特定するのが先。(3) Stall Wait対策（dual-lane再挑戦）— 引き続き**高リスク**（293の脚注、189のregression前例）。(2)の結果を見てから判断すること、安易に着手しない。
