@@ -16,6 +16,54 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+================================================================================
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 326 (2026-07-22)
+
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
+年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
+
+1. [実装済み・検証待ち] kernel内future_check_mask 1軸専用化
+   ユーザー提案(元CPU版13PyのSQ*家系との対比)を受け、322/323のStall
+   Branch Resolving知見に対する低リスクな一手として設計(324)、Codonの
+   device関数inline挙動を独立プローブで確認(325: inlineされることを
+   SASSで確認、CALL/RET無し)した上で、**326で初めて実際にコードを変更
+   した。** 325の確認結果を踏まえ、別device関数への切り出しではなく
+   (`stack`配列を関数境界越しに渡す前例がこのコードベースに無く、
+   不要なリスクのため)、`kernel_dfs_iter_gpu_maxd14`のホットループ
+   本体を`if future_check_mask==u32(0): <ループA> else: <ループB>`として
+   その場で複製する形にした。ループAは`future_check_mask!=0`判定ブロック
+   (4行)が構造的に不在、ループBは同ブロックの外側wrapperのみ除去し内側
+   の判定は保持。両ループは自動diffでこの1ブロック以外が完全一致する
+   ことを確認済み。MAXD16/18/20/21・root-preroll・その他は一切未変更。
+   **これは311以来初めてのkernelロジック変更であり、rev189の回帰前例
+   (+108%)と240/266-269/273の4連敗を踏まえ、最大限の慎重さで扱う。**
+   実機でのビルド・実行はまだ行われていない。正当性(314666222712)を
+   最優先で確認し、悪化すれば即座に325へロールバックする方針。
+
+2. [調査中] 非コアレッシングメモリアクセス (推定11.79%速度向上の余地)
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive
+   (189,728個)の100%が、outer grid-strideループ内のちょうど4命令
+   (LDG.E x2 @ 0x...e120/e130, STG.E x2 @ 0x...e310/e320)に集中している
+   ことが判明(323、319_ncu_source.txtの再分析)。LDG.Eペアは実行回数・
+   アドレス位置・型(u64単一配列)から`w_arr[idx]`読み込み(旧861行目、
+   `thread_total+=total*w_arr[idx]`)である可能性が高いと推定しているが、
+   per-line対応が取れない環境のため未確証(推論)。課題3よりホットループ
+   外・単純命令に限定されており低リスクな調査対象。次の一手は未着手。
+
+3. [結論・保留] Stall Branch Resolving (カーネル全体の約19〜23%)
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/
+   318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeに
+   おける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line
+   (元の`.py`行番号)対応はCodon+ncuツールチェーンでは到達不能と確認済み
+   (318: 誤構文/319: SASSのみ/321: -debugビルドはCUDA_ERROR_INVALID_PTX
+   でクラッシュ)。326の課題1がこの課題への対応策の初回実装。326の実測
+   結果(正当性・速度・再プロファイル)次第でこの課題のステータスを更新。
+
+このセクション自体は通常カーネルロジックとは独立していますが、
+**326は例外的にカーネルロジックそのものを変更しています**(課題1参照)。
+更新の都度、この一文を含め実際の変更内容と整合させます。
+================================================================================
+
 # ビルド
 codon build -release 115Py_range_default_clean_cg_v2.py
 
@@ -262,33 +310,39 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Let's view the full transformed region to verify correctness carefully.All balanced. Now let's rename the file to reflect the new revision, update VERSION_TAG/Open Objectives, and build the full 326 deliverable with extra-cautious documentation given this is the first real kernel-logic change since ~304.Now let's rewrite the header block with the extra caution this revision deserves, and add a new static check for the future_check_mask split marker.Now let's add a static check for the new future_check_mask split marker (so the validate script can confirm the change is present and MAXD16/18/20/21 remain untouched), and fix the closing messages.Good insertion point. Let's add a check confirming the new `if future_check_mask==u32(0):` split is present within MAXD14's body specifically (not the other kernels).Good, `m14` is defined at line 349 and my new check is added after (~line 415+), same scope. Let's verify the Python static-check block's syntax is valid.Now let's fix the "validation:" echo and final validation-ok message with appropriate gravity for this revision.Just the one, let's replace this final message with accurate content for 326.Now let's check the "validation:" description string and syntax-check the whole script.Good — the diff hunk at line ~392 is the new static check, as expected. Now let's update the Python source's Open Objectives and docstring narrative, being careful given this is the real logic-change revision.Now let's replace the narrative docstring block with the full technical explanation and diff verification.Now update VERSION_TAG and the reason string.Both need full rewrites for accuracy — these describe 325's probe content, mislabeled.Good — 326's local file is correct and contains the transformation at line 755. Now let's fix the local copy of 325 to avoid confusion, and re-verify the diff against the *correct* (outputs) version of 325.Now the diff correctly shows the kernel logic hunk (`@@ -758,84 +752,159 @@`) alongside the docstring/tag changes. Let's inspect that hunk to confirm it matches the intended transformation exactly.This exactly matches the intended, verified transformation. Let's do the final sanity checks and confirm all other kernels/anchors remain untouched.All confirmed intact. Now let's finalize the shell script copy and README, then present.Now let's update the README (Open Objectives + chronological entry) with the same extra caution.Now let's append the chronological entry with the full technical detail and diff.Now let's finalize outputs and present.326を用意しました。**これは311以来初めての、実際のkernelロジック変更です。** 通常より一段階、慎重に扱ってください。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+## 変更内容
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+`kernel_dfs_iter_gpu_maxd14`のホットループを、タスク開始前(ループに入る直前)の1回だけの分岐で2つに複製しました:
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+- **ループA(`future_check_mask==0`)**: future_check判定ブロック(4行)が構造的に不在
+- **ループB(`future_check_mask!=0`)**: 同ブロックのうち、常に真である外側wrapperのみ除去、内側の判定はそのまま保持
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+325でCodonがdevice関数をinlineすると確認できたので、当初324で検討していた「別関数への切り出し」はせず、より安全な「その場での複製」にしました。`stack`配列を関数境界越しに渡すという、このコードベースに前例のないリスクを避けるためです。
 
+## 検証済みの点(私の側で確認できる範囲)
+
+- 両ループを自動diffし、future_checkブロック以外が完全に一致することを確認
+- 括弧の対応(`(`/`)`/`[`/`]`)のバランスを確認
+- MAXD16/18/20/21カーネル本体が`diff`で完全一致(未変更)することを確認
+- 検証スクリプトに新チェック`source_futurecheck_axis1_split`を追加
+
+## まだ確認できていない点(実機でのみ分かること)
+
+**このビルドは一度も実行していません。** Codonのビルドエラーが最初の試行で出る可能性は十分にあります。
+
+**お願いしたい手順(この順番厳守でお願いします)**:
+
+```bash
+STATIC_ONLY=1 bash 326Py_futurecheck_specialize_axis1_validate_N21_full_once.sh
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
-```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
-
+1. まず上記で静的チェック
+2. N=21フル実行で**正当性(314666222712)を最優先**で確認。一致しなければそこで中止し、結果を送ってください
+3. 正当性が確認できてから初めて、319の455.116sとの速度比較。**明確に改善していなければ325への即時ロールバックを推奨**します(240/268/269/273と同じ判断基準)
+4. 速度改善が見られた場合のみ、同じ`sudo ncu --section SourceCounters`で再プロファイルし、stall_branch_resolving/stall_waitが実際に下がったか確認
 """
-
-
-
 
 import gpu
 import sys
@@ -314,10 +368,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="326 futurecheck-specialize-axis1: parent 325 inlineprobe-prep; 325's standalone probe (325_gpu_inline_probe.py + 325_gpu_inline_probe_check.sh) confirmed via SASS (325_inline_probe_ncu_source.txt) that Codon DOES inline plain functions called from inside a @gpu.kernel -- no CALL/RET, both branch bodies appear directly inlined as separate code blocks converging at a single BSYNC; none of 320-325 produced their own confirmed N=21 timing, so 319 (455.116s, 314666222712) remains the most recent confirmed baseline; THIS IS THE FIRST KERNEL-LOGIC CHANGE SINCE 311 -- every revision from 311 through 325 kept kernel logic byte-for-byte identical while investigating Stall Branch Resolving via profiling/manual-review only; given 325 confirmed inlining works, this revision does NOT introduce a separate device function (passing the local `stack` __array__[u64] across a function boundary has no precedent anywhere in this codebase and would add unverified risk for no proven benefit); instead, kernel_dfs_iter_gpu_maxd14's while-True hot loop body is duplicated in place inside `if future_check_mask==u32(0): <loop A> else: <loop B>`, evaluated once per task using future_check_mask which is already a per-task scalar computed by the root-preroll before the loop; loop A structurally omits the future_check block (the 4-line `if future_check_mask!=u32(0): if (nibble_op&8)!=u32(0): if (bm&~(...))==u32(0): continue`), loop B keeps it with only the now-always-true outer wrapper removed (inner nibble_op/lookahead check unchanged, still per-node); both loops were verified via automated diff to be byte-for-byte identical outside this one block, and overall paren/bracket counts verified balanced; MAXD16/18/20/21, root-preroll, schedule decode, chunkshape148, broadmarktail, cache generation, worker split, and dispatch are all UNCHANGED; a new static check (source_futurecheck_axis1_split) verifies the split is present in MAXD14 only; this change has NOT been built or run on real hardware -- Codon build errors are plausible on first attempt given this codebase's own history of buildfix sub-revisions for far smaller changes (240 r4/r7, 257 r2, 259); mandatory validation order: STATIC_ONLY=1 first, then confirm correctness (314666222712) before looking at timing at all, then compare against 319's 455.116s baseline, reverting to 325 immediately if not clearly faster (per the 240/268/269/273 precedent), and only if genuinely faster re-profile with the same sudo ncu --section SourceCounters command from 318-319 to confirm stall_branch_resolving/stall_wait actually decreased"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +400,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="326 futurecheck-specialize-axis1: FIRST kernel-logic change since 311. kernel_dfs_iter_gpu_maxd14's hot loop specialized in-place into two copies keyed on future_check_mask==0 (loop A: future_check block structurally absent; loop B: same block with only the always-true outer wrapper removed), verified byte-for-byte identical elsewhere via automated diff; MAXD16/18/20/21 and everything else unchanged; not yet built/run on real hardware; revert to 325 immediately if N=21 timing is not clearly better than 319's 455.116s baseline once correctness (314666222712) is confirmed"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17
@@ -692,84 +746,159 @@ def kernel_dfs_iter_gpu_maxd14(
           cur_avail=pr_nf
           cur_depth=1
 
-      while True:
-        if cur_avail==u32(0):
-          if save_sp==0:
-            break
-          save_sp-=1
-          stack_ptr-=2
-          packed_ldrd:u64=stack[stack_ptr]
-          packed_colav:u64=stack[stack_ptr+1]
-          cur_ld=u32(packed_ldrd)
-          cur_rd=u32(packed_ldrd>>u64(32))
-          cur_col=u32(packed_colav)
-          saved_avail:u32=u32(packed_colav>>u64(32))
-          cur_avail=saved_avail&bm
-          cur_depth=int(saved_avail>>u32(27))
-          continue
+      if future_check_mask==u32(0):
+        while True:
+          if cur_avail==u32(0):
+            if save_sp==0:
+              break
+            save_sp-=1
+            stack_ptr-=2
+            packed_ldrd:u64=stack[stack_ptr]
+            packed_colav:u64=stack[stack_ptr+1]
+            cur_ld=u32(packed_ldrd)
+            cur_rd=u32(packed_ldrd>>u64(32))
+            cur_col=u32(packed_colav)
+            saved_avail:u32=u32(packed_colav>>u64(32))
+            cur_avail=saved_avail&bm
+            cur_depth=int(saved_avail>>u32(27))
+            continue
 
-        nibble_op:u32=u32(0)
-        if cur_depth<8:
-          nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
-        else:
-          nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
-        bit:u32=cur_avail&(u32(0)-cur_avail)
-        cur_avail=cur_avail^bit
+          nibble_op:u32=u32(0)
+          if cur_depth<8:
+            nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
+          else:
+            nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
+          bit:u32=cur_avail&(u32(0)-cur_avail)
+          cur_avail=cur_avail^bit
 
-        # 291: keep 289 normal-default nld/nrd + ncol-only early, but delay
-        # block_code scalar creation to the special branch only.
-        # nf is still computed once after the branch; 288 nf-default is intentionally not used.
-        nld:u32=(cur_ld|bit)<<u32(1)
-        nrd:u32=(cur_rd|bit)>>u32(1)
-        ncol:u32=cur_col|bit
-        if (nibble_op&u32(7))!=u32(0):
-          block_code:u32=nibble_op&u32(7)
-          stepu:u32=u32(2)+((OP_STEP3_MASK>>block_code)&u32(1))
-          addvu:u32=(OP_ADD1_MASK>>block_code)&u32(1)
-          bLiu:u32=(
-            ((OP_BL1_MASK>>block_code)&u32(1))
-            |(((OP_BL2_MASK>>block_code)&u32(1))<<u32(1))
-          )
-          ktu:u32=(
-            ((OP_KN3_MASK>>block_code)&u32(1))
-            |(((OP_KN4_MASK>>block_code)&u32(1))<<u32(1))
-          )
-          bKu:u32=(n3&(u32(0)-(ktu&u32(1))))|(n4&(u32(0)-(ktu>>u32(1))))
-          nld=((cur_ld|bit)<<stepu)|addvu|bLiu
-          nrd=((cur_rd|bit)>>stepu)|bKu
-        nf:u32=bm&~(nld|nrd|ncol)
-        if nf==u32(0):
-          continue
-        if future_check_mask!=u32(0):
+          # 291: keep 289 normal-default nld/nrd + ncol-only early, but delay
+          # block_code scalar creation to the special branch only.
+          # nf is still computed once after the branch; 288 nf-default is intentionally not used.
+          nld:u32=(cur_ld|bit)<<u32(1)
+          nrd:u32=(cur_rd|bit)>>u32(1)
+          ncol:u32=cur_col|bit
+          if (nibble_op&u32(7))!=u32(0):
+            block_code:u32=nibble_op&u32(7)
+            stepu:u32=u32(2)+((OP_STEP3_MASK>>block_code)&u32(1))
+            addvu:u32=(OP_ADD1_MASK>>block_code)&u32(1)
+            bLiu:u32=(
+              ((OP_BL1_MASK>>block_code)&u32(1))
+              |(((OP_BL2_MASK>>block_code)&u32(1))<<u32(1))
+            )
+            ktu:u32=(
+              ((OP_KN3_MASK>>block_code)&u32(1))
+              |(((OP_KN4_MASK>>block_code)&u32(1))<<u32(1))
+            )
+            bKu:u32=(n3&(u32(0)-(ktu&u32(1))))|(n4&(u32(0)-(ktu>>u32(1))))
+            nld=((cur_ld|bit)<<stepu)|addvu|bLiu
+            nrd=((cur_rd|bit)>>stepu)|bKu
+          nf:u32=bm&~(nld|nrd|ncol)
+          if nf==u32(0):
+            continue
+
+          if cur_depth==terminal_depth:
+            if terminal_base14==u32(0):
+              total+=u64(1)
+            else:
+              total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
+            continue
+
+          child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
+          if child_jmark!=u32(0):
+            nf&=~u32(1)
+            if nf==u32(0):
+              continue
+            nld|=u32(1)
+
+          next_depth:int=cur_depth+1
+          if cur_avail!=u32(0):
+            stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+            stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+            stack_ptr+=2
+            save_sp+=1
+          cur_ld=nld
+          cur_rd=nrd
+          cur_col=ncol
+          cur_avail=nf
+          cur_depth=next_depth
+      else:
+        while True:
+          if cur_avail==u32(0):
+            if save_sp==0:
+              break
+            save_sp-=1
+            stack_ptr-=2
+            packed_ldrd:u64=stack[stack_ptr]
+            packed_colav:u64=stack[stack_ptr+1]
+            cur_ld=u32(packed_ldrd)
+            cur_rd=u32(packed_ldrd>>u64(32))
+            cur_col=u32(packed_colav)
+            saved_avail:u32=u32(packed_colav>>u64(32))
+            cur_avail=saved_avail&bm
+            cur_depth=int(saved_avail>>u32(27))
+            continue
+
+          nibble_op:u32=u32(0)
+          if cur_depth<8:
+            nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
+          else:
+            nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
+          bit:u32=cur_avail&(u32(0)-cur_avail)
+          cur_avail=cur_avail^bit
+
+          # 291: keep 289 normal-default nld/nrd + ncol-only early, but delay
+          # block_code scalar creation to the special branch only.
+          # nf is still computed once after the branch; 288 nf-default is intentionally not used.
+          nld:u32=(cur_ld|bit)<<u32(1)
+          nrd:u32=(cur_rd|bit)>>u32(1)
+          ncol:u32=cur_col|bit
+          if (nibble_op&u32(7))!=u32(0):
+            block_code:u32=nibble_op&u32(7)
+            stepu:u32=u32(2)+((OP_STEP3_MASK>>block_code)&u32(1))
+            addvu:u32=(OP_ADD1_MASK>>block_code)&u32(1)
+            bLiu:u32=(
+              ((OP_BL1_MASK>>block_code)&u32(1))
+              |(((OP_BL2_MASK>>block_code)&u32(1))<<u32(1))
+            )
+            ktu:u32=(
+              ((OP_KN3_MASK>>block_code)&u32(1))
+              |(((OP_KN4_MASK>>block_code)&u32(1))<<u32(1))
+            )
+            bKu:u32=(n3&(u32(0)-(ktu&u32(1))))|(n4&(u32(0)-(ktu>>u32(1))))
+            nld=((cur_ld|bit)<<stepu)|addvu|bLiu
+            nrd=((cur_rd|bit)>>stepu)|bKu
+          nf:u32=bm&~(nld|nrd|ncol)
+          if nf==u32(0):
+            continue
           if (nibble_op&u32(8))!=u32(0):
             if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
               continue
 
-        if cur_depth==terminal_depth:
-          if terminal_base14==u32(0):
-            total+=u64(1)
-          else:
-            total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
-          continue
-
-        child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
-        if child_jmark!=u32(0):
-          nf&=~u32(1)
-          if nf==u32(0):
+          if cur_depth==terminal_depth:
+            if terminal_base14==u32(0):
+              total+=u64(1)
+            else:
+              total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
             continue
-          nld|=u32(1)
 
-        next_depth:int=cur_depth+1
-        if cur_avail!=u32(0):
-          stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
-          stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
-          stack_ptr+=2
-          save_sp+=1
-        cur_ld=nld
-        cur_rd=nrd
-        cur_col=ncol
-        cur_avail=nf
-        cur_depth=next_depth
+          child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
+          if child_jmark!=u32(0):
+            nf&=~u32(1)
+            if nf==u32(0):
+              continue
+            nld|=u32(1)
+
+          next_depth:int=cur_depth+1
+          if cur_avail!=u32(0):
+            stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+            stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+            stack_ptr+=2
+            save_sp+=1
+          cur_ld=nld
+          cur_rd=nrd
+          cur_col=ncol
+          cur_avail=nf
+          cur_depth=next_depth
       thread_total+=total*w_arr[idx]
       idx+=stride
     results[tid]=thread_total

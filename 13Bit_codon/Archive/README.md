@@ -1,3 +1,20 @@
+# N-Queens CUDA/Codon ソルバ 開発ログ
+
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 328 (2026-07-22)
+
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の年代順ログを参照してください。
+
+1. **[実装済み・検証待ち] 非コアレッシングメモリアクセス(w_arrのSoA分割)**
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive(189,728個、推定11.79%速度向上の余地)の原因は、`w_arr[idx]`(u64、8バイト間隔)読み込みが2つの32bit LDG.Eに分割され、かつ各読み込み自体が8バイト間隔ゆえに理想的にコアレッシングできていないことだと327の独立プローブで確認・特定した(3kernel比較)。`w_lo_arr`/`w_hi_arr`という2つの独立した密なu32配列に分割すればExcessiveがゼロになることも実証済み(sum_base==sum_soaで正当性も確認)。**328で、この検証済みの変更を5つ全てのkernel(maxd14/16/18/20/21)とディスパッチャに実装した。** ホットな発散DFSループ自体には一切触れていない(タスクごとに1回のみの読み込み箇所3箇所×5kernelのみ変更)。326(ホットループ複製、5戦5敗の一角)とはリスクの質が異なる低リスクな変更。実機でのビルド・実行はまだ行われていない。正当性(314666222712)を最優先で確認し、悪化すれば327へロールバックする方針。なお推定11.79%はkernel全体に対する見積もりであり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の改善幅はそれよりかなり小さい可能性が高い。
+
+2. **[撤回・保留] kernel内future_check_mask 1軸専用化**
+   322/323のStall Branch Resolving知見への対応として設計(324)、実装(326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。この方向性は保留とする。
+
+3. **[結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)**
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeにおける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
+
+---
+
 
 suzuki@cudacodon$ uname -a
 Linux ip-172-31-3-195.us-west-2.compute.internal 6.1.158-180.294.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 05:36:50 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
@@ -2084,3 +2101,569 @@ Updated on 2026-07-17 for 308Py K52-final-sweep result (confirmed, K sweep close
 - **309検証スクリプト**: `308Py_K52_final_sweep_validate_N21_full_once.sh` を親に `309Py_variant4_phase_rotate_validate_N21_full_once.sh` を作成。EXPECTED_K_PER_THREAD_MAXD14=48（304/308から変化なし）、BROADMARK_VARIANT デフォルトを2→4に変更。静的チェックに `source_a10g_default_variant4`（A10G_FINAL_DEFAULT_BROADMARK_VARIANT=4確認）を追加し、`source_runtime_globals` チェックの期待値も `BROAD_MARKDIST_TAIL_VARIANT:int=4` に更新。実行時チェックとして `runtime_broadmark_variant`（ログの `variant=4` 確認）と `runtime_broadmark_variant_tag`（ログの `tag=phase_rotate` 確認）を新規追加。タイミング比較 baseline に `304K48sweep`(351.070s、主要比較対象)、`305K40sweep`(353.587s)、`306K56sweep`(351.534s)、`307K44fineprobe`(351.240s)、`308K52finalsweep`(351.675s)を追加。
 
 - **309の優先順位（次点候補、変更なし）**: (1) BROADMARK_VARIANT — 本entryで着手。(2) Stall Branch Resolving対策 — カーネル改造の前に `--launch-count 1` + `SourceCounters`単独取得で「どの分岐か」を特定するのが先。(3) Stall Wait対策（dual-lane再挑戦）— 引き続き**高リスク**（293の脚注、189のregression前例）。(2)の結果を見てから判断すること、安易に着手しない。
+
+---
+
+Updated on 2026-07-21 for 309Py variant4-phase-rotate result (REJECTED, severe regression) and 310Py variant1-phase-only probe.
+
+- **309結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。`runtime_broadmark_variant=4`/`runtime_broadmark_variant_tag=phase_rotate` を実行時ログで確認、variant切り替え自体は意図通り機能した。elapsed=481.149s vs 304(K=48)=351.070s、差−130.079s(−37.052%) — **大幅悪化、不採用**。これはKスイープで観測されたどの変動（最大でも±3s程度）よりも遥かに大きい退行であり、292〜303の変数統合/削除系実験（−9〜−304s台）に匹敵する規模。
+
+- **309 chunk別内訳**: chunk0=169.369s、chunk1=172.626s、chunk2=119.915s（304のK=48は3チャンク合計351.070s、単純平均約117s/chunk）。全チャンクが304平均を上回っており、特定チャンクだけの異常ではなく、reorderされたtask列全体でSIMT lane imbalanceが悪化したことを示唆する。ncuの「warp間imbalanceがボトルネック」という診断自体は304時点のプロファイルとして正しいが、「task-reorder側から緩和できる」という309の仮説は、少なくともphase_rotate(variant=4)の実装では裏付けられなかった。
+
+- **variant実験まとめ（309時点）**:
+
+  | variant | tag | boost | phase_mix | rotate_interleave | 結果 |
+  |---|---|---|---|---|---|
+  | 2 | rotate_only | 1 | 0 | 1 | **現行本番デフォルト（115〜308まで採用）** |
+  | 4 | phase_rotate | 1 | 1 | 1 | **309: 481.149s、−130.079s(−37.052%) 大幅悪化・不採用** |
+
+- **310方針**: variant=4(phase_rotate)はvariant=2(rotate_only)に対して`phase_mix`(cell/risk-awareなtail phase)を追加した設定であり、両者の差はphase_mix一点のみ。309の結果だけでは、退行の原因が「phase_mix単体」なのか「phase_mixとrotate_interleaveの組み合わせ」なのかを切り分けられない。中間点として **variant=1(phase_only: boost=1, phase_mix=1, rotate_interleave=0)** を測定する。カーネルソースの`broad_markdist_tail_use_phase_mix()`(v==1,4,5でTrue)と`broad_markdist_tail_use_rotating_interleave()`(v==2,4,5でTrue)の既存分岐をそのまま利用し、309と同様に**カーネルコード変更ゼロ、定数2行のみ変更**(`BROAD_MARKDIST_TAIL_VARIANT:int=4`→`1`、`A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=4`→`1`)。
+  - variant=1がvariant=2(351.070s)並みに戻れば → 退行原因は「phase_mixとrotate_interleaveの組み合わせ」。
+  - variant=1も309同様に悪化すれば → 退行原因は「phase_mix」そのもの。task-reorder側からのアプローチ自体を見直す必要がある。
+
+  K_PER_THREAD_MAXD14=48（304のまま）、296カーネルロジックも完全無変更。EXPECTED_CHUNKS=3（変化なし）。
+
+- **310検証スクリプト**: `309Py_variant4_phase_rotate_validate_N21_full_once.sh` を親に `310Py_variant1_phase_only_validate_N21_full_once.sh` を作成。BROADMARK_VARIANT デフォルトを4→1に変更、`EXPECTED_BROADMARK_VARIANT_TAG` を`phase_rotate`→`phase_only`に更新。静的チェック `source_runtime_globals`/`source_a10g_default_variant1` の期待値をvariant=1に更新。タイミング比較baselineに `309variant4phaserotate`(481.149s、REJECTED)を追加。
+
+---
+
+Updated on 2026-07-21 for 310Py variant1-phase-only result (REJECTED, phase_mix isolated as root cause) and 311Py variant2-restore (BROADMARK_VARIANT direction closed).
+
+- **310結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。`runtime_broadmark_variant=1`/`runtime_broadmark_variant_tag=phase_only` を実行時ログで確認。elapsed=476.932s vs 304(K=48)=351.070s、差−125.862s(−35.851%) — **大幅悪化、不採用**。309(481.149s)との差はわずか+4.217s(+0.876%)で、実質的に同水準の悪化。
+
+- **variant実験の結論（309/310で確定）**:
+
+  | variant | tag | boost | phase_mix | rotate_interleave | 結果 |
+  |---|---|---|---|---|---|
+  | **2** | **rotate_only** | 1 | 0 | 1 | **確定BEST・現行本番デフォルト（304/308=351.070〜351.675s）** |
+  | 4 | phase_rotate | 1 | 1 | 1 | 309: 481.149s、−130.079s(−37.052%) 不採用 |
+  | 1 | phase_only | 1 | 1 | 0 | 310: 476.932s、−125.862s(−35.851%) 不採用 |
+
+  phase_mix=1の2点（variant 1・4）がrotate_interleaveの有無(0/1)に関わらずほぼ同じ規模(35〜37%)の退行を示したことから、**退行原因はphase_mix(cell/risk-awareなtail phase)そのものであり、rotate_interleaveとの組み合わせは無関係**と確定した。K sweepはもちろん292〜303の変数統合/削除系実験群と比べても最大級の退行であり、task-reorder側からのアプローチのうちphase_mixは根本的に不向き。wide_only(variant=3、phase_mix=0)やwide_phase_rotate(variant=5、phase_mix=1を含む)についても、3はboostのみで別軸、5はphase_mixを含むため4と同様の悪化が予想されるため、**BROADMARK_VARIANT方向のこれ以上の探索は打ち切る**。
+
+- **311方針**: BROADMARK_VARIANTを304/308と同じ`variant=2`(rotate_only)に復帰する。カーネル本文・K_PER_THREAD_MAXD14(48)ともに304から完全無変更で、定数2行(`BROAD_MARKDIST_TAIL_VARIANT:int=1`→`2`、`A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=1`→`2`)のみの復帰。EXPECTED_CHUNKS=3（変化なし）。想定timingは304/308の~351s台に戻るはずで、309/310の~477〜481s台には戻らないことを確認する。
+
+- **311で次に着手する方向（handoffメモの優先順位どおり）**: BROADMARK_VARIANT方向が閉じたことで、優先順位は次の項目に進む。**Stall Branch Resolving対策** — 304のncu軽量プロファイル(chunk0、`--launch-count 1`)で新規に可視化された第2位要因(0.93 inst、約19.6%)。カーネル改造の前に、まず `--launch-count 1` + `SourceCounters`単独取得で「どの分岐か」を特定するのが先。311の検証シェルヘッダには、次回実機セッションで手動実行する想定のncuコマンド(`ncu --launch-count 1 --set SourceCounters -o 311_sourcecounters_chunk0 ./311Py_variant2_restore -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2`)をドキュメント化した(検証シェル自体には自動実行させない — handoffメモの「K-batching後は1チャンクがK倍の作業量になっているため、フルセクション同時取得すると多パスreplayで事実上ハングする」という教訓を踏まえ、軽量な単独セクション取得に限定)。Stall Wait対策(dual-lane再挑戦)は引き続き高リスクとして保留(293の脚注、189のregression前例)。SourceCountersの結果を見てから、カーネル改造の要否を判断する。
+
+- **311検証スクリプト**: `310Py_variant1_phase_only_validate_N21_full_once.sh` を親に `311Py_variant2_restore_validate_N21_full_once.sh` を作成。BROADMARK_VARIANT デフォルトを1→2に復帰、`EXPECTED_BROADMARK_VARIANT_TAG` を`phase_only`→`rotate_only`に更新。静的チェック `source_runtime_globals`/`source_a10g_default_variant2` の期待値をvariant=2に更新。タイミング比較baselineに `310variant1phaseonly`(476.932s、REJECTED)を追加。
+
+---
+
+Updated on 2026-07-21 for 311Py variant2-restore result (correctness OK, timing ANOMALOUS) and 312Py thermal-repro-check (zero code change, GPU telemetry added).
+
+- **311結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。`runtime_broadmark_variant=2`/`runtime_broadmark_variant_tag=rotate_only`を実行時ログで確認、dispatch構成(bucket数・MAXD選択・schedule_words・stack bytes)も304と実質同一。ログの`[split291-base-reuse]`/`[chunkshape148-reuse]`からキャッシュヒットも確認済みで、キャッシュ再構築コストは無い。**しかしelapsed=454.422s vs 304(K=48)=351.070s、差−103.352s(−29.439%) — カーネル・定数ともに304と1バイトも違わないにもかかわらず大幅悪化。**
+
+- **異常の分析**: chunk別内訳はchunk0=167.028s、chunk1=164.792s、chunk2=121.612s(304相当では1chunkあたり約117s)で、**全chunkが一様に約40%遅い**。各chunkの`kernel_reduce_ms`はelapsed_msの99.9%以上を占めており(例: chunk0はelapsed_ms=167028に対しkernel_reduce_ms=166901)、退行はhost側I/Oやキャッシュ再構築ではなく**GPUカーネル実行時間そのもの**に生じている。このセッション内では309(481.149s)→310(476.932s)→311(454.422s)と3回の実行(合計約23.5分)で単調に速くなっているが、311ですら304の確定値より29%遅い。dispatch構成が304と一致しているのに一様に遅いという事実は、コード変更由来の退行ではなく、**セッション内でのGPUサーマルスロットリング/クロック低下**が最有力の仮説であることを示している。
+
+- **312方針**: **ソースコード上、311から1バイトも変更しない。** variant=2・K=48ともに304/311と同一のまま再実行し、454.422sが再現するか304の351.070s付近に回復するかを確認する。加えて検証シェルに`nvidia-smi`によるGPUテレメトリ取得(温度・SM/メモリクロック・電力・使用率・スロットリング要因を5秒間隔でサンプリングし`gpu_telemetry.csv`へ記録、run前のスナップショットも別途取得)を追加した。前回runが長時間だった場合に挟める`COOLDOWN_SECONDS`(デフォルト0)も追加。nvidia-smiが利用できない環境ではベストエフォートでスキップし、検証自体は失敗させない。
+
+- **312の判断基準**:
+  - 再実行で304の351s付近に回復すれば → 309〜311の遅さはセッション内サーマルドリフトが原因であり、311自体は「コード的には」問題なしと確認できる。304/308が引き続き正式なタイミングbaseline。
+  - 454s前後のままなら → セッション内ドリフトではなく、persistence mode・他プロセス常駐・電源設定など永続的な環境変化を疑い、`nvidia-smi`出力を精査する。
+  - **いずれの結果でも、handoffメモの優先順位#2(Stall Branch Resolving、ncu SourceCounters取得)は、この再現性確認が済むまで保留する。** スロットリング下で取得したncu分岐統計は304時点(正常クロック)のものと比較不能になり得るため。
+
+- **312検証スクリプト**: `311Py_variant2_restore_validate_N21_full_once.sh` を親に `312Py_thermal_repro_check_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ更新)。シェル側に`CAPTURE_TELEMETRY`(デフォルト1)、`TELEMETRY_INTERVAL_SECONDS`(デフォルト5)、`COOLDOWN_SECONDS`(デフォルト0)を追加し、run前後でnvidia-smiスナップショット・バックグラウンドサンプリングを実施。新規サマリ項目`gpu_telemetry_captured`(INFO、nvidia-smi有無に関わらず検証は失敗させない)を追加。タイミング比較baselineに`311variant2restore`(454.422s、異常値・サーマル疑い)を追加。
+
+---
+
+Updated on 2026-07-21 for 312Py thermal-repro-check result (rules out thermal throttling; clock-cap suspected) and 313Py clock-cap-diagnosis.
+
+- **312結果**: 全静的チェックOK、build_exit=0、run_exit=0。正当性完全一致(314666222712)。elapsed=454.417s、311(454.422s)との差はわずか+0.005s(+0.001%) — ソースコードを1バイトも変更していないにもかかわらず、ほぼ完全に311を再現した。サーマルスロットリングのような動的現象であれば run間のばらつきや回復傾向が見られるはずだが、実際には驚くほど安定して同じ数値が再現された。
+
+- **GPUテレメトリの分析結果**: `gpu_telemetry.csv`(91サンプル、5秒間隔、約7.5分間)によると、温度は32℃(pre-run idle)〜39℃(peak)で終始「冷えた」状態(典型的なスロットリング閾値83〜90℃には遥かに届かない)。**SMクロックはidle時からcompute中(使用率100%)まで完全に1320MHzで固定**、メモリクロックも6251MHzで固定。`clocks_event_reasons.active`はcompute中は終始`0x0`(アクティブなスロットリング要因なし)。**結論: サーマルスロットリングではない。** 冷えていてスロットリング要因も立っていないのにクロックが一切動かないというのは、動的なブースト制御が働いていないことを意味し、**GPUクロックの明示的なロック/キャップ**(`nvidia-smi -lgc`、あるいはpersistence mode下でのapplication clocks固定)が最有力の仮説となった。これはおそらく309開始前から存在しており、304/308(351.070s/351.675s、別セッションで記録)と309以降(~450〜481s)の速度差を一貫して説明できる。
+
+- **313方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** 検証シェルのpre-runスナップショットを拡張し、`clocks.max.sm`/`clocks.max.memory`/`clocks.applications.sm`/`clocks.applications.memory`を追加取得。観測されたcurrent SMクロックがmax supported SMクロックの90%未満であれば、クロックキャップ確定のWARNINGを出力するチェック(`gpu_clock_cap_check`)を新規追加した。リセットコマンド(`nvidia-smi -rgc`、`nvidia-smi -rac`)はsudo権限や共有ハードウェアへの影響を考慮し、**自動実行はせずヘッダにドキュメント化するのみ**とした。
+
+- **313検証スクリプト**: `312Py_thermal_repro_check_validate_N21_full_once.sh` を親に `313Py_clock_cap_diagnosis_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。`nvidia-smi`クエリフィールドを`clocks.current.sm`/`clocks.current.memory`/`clocks.max.sm`/`clocks.max.memory`/`clocks.applications.sm`/`clocks.applications.memory`/`clocks_event_reasons.active`等に拡張し、pre-runスナップショットからcurrent/max SMクロック比を計算して`gpu_clock_cap_check`(current_sm >= max_smの90%ならOK、それ未満ならWARN-CAPPED)をサマリに追加。90%未満の場合は`nvidia-smi -rgc`/`-rac`の実行を促すWARNINGをstderrに出力する。タイミング比較baselineに`312thermalreprocheck`(454.417s)を追加。
+
+- **引き続き保留**: Stall Branch Resolving対策(ncu SourceCounters取得)は、クロックキャップの有無が確定するまで保留を継続する。ロックされたクロック下で取得した分岐統計は304時点のベースラインと比較不能になる可能性があるため。
+
+---
+
+Updated on 2026-07-21 for the manual `nvidia-smi -q -d CLOCK` diagnosis (confirms clock-cap numerically; `-rgc` ineffective) and 314Py power-cap-diagnosis.
+
+- **`nvidia-smi -q -d CLOCK`結果**: Applications Clocks(Graphics=1710MHz)がDefault Applications Clocks(1710MHz)と完全一致しており、`-ac`によるアプリケーションクロック上書きではないことを確認。Max Clocks(SM=1710MHz)に対し、実際のClocks(SM=1320MHz)は明らかに低い。**1710/1320 ≈ 1.295倍で、311〜313で観測された実測の遅延+29.4%とほぼ完全に一致**(誤差0.1ポイント)し、クロックキャップが遅延の主因であることが数値的に裏付けられた。
+
+- **`sudo nvidia-smi -rgc`結果**: "All done."と成功メッセージが出力されたが、直後の`nvidia-smi -q -d CLOCK`ではClocks.SMは1320MHzのまま変化しなかった。`-rgc`はゲスト/ユーザーレベルの`-lgc`クロックロックを解除するコマンドであり、それが効かなかったことから**単純なゲスト側`-lgc`ロックではない**と判断。Applications ClocksがDefaultのままであることと合わせ、次に疑うべき原因は (a) 電力上限(power limit)がdefaultより引き下げられている、(b) 仮想化/共有GPU環境でのホスト/ハイパーバイザー側のクロックポリシー(ゲスト側`nvidia-smi`では変更不可)の2点に絞られた。
+
+- **314方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** 検証シェルのpre-runスナップショットに`power.limit`/`power.default_limit`/`power.min_limit`/`power.max_limit`を追加取得し、`power.limit < power.default_limit`であれば`WARN-POWER-CAPPED`を出す`gpu_power_cap_check`を新規追加した。電力上限が引き下げられていた場合の対処コマンド(`sudo nvidia-smi -pl <power.default_limit値>`)はヘッダにドキュメント化するのみで自動実行しない。
+
+- **314の実務的な判断**: この環境調査を無期限に続けるのは非生産的であるため、電力上限の確認・調整を試みてもなお1320MHzのままであれば、それはこのセッションのGPU実行環境における制御不能な現実的上限(ホスト側ポリシー等)である可能性が高いと判断し、**~454s(1320MHzクロック下での実測値)をこのセッションの暫定実務基準として受け入れ、Stall Branch Resolving調査(ncu SourceCounters取得)を再開する**方針とした。理由: ncuが報告するStall Wait/Stall Branch Resolvingの「比率」はアーキテクチャ的特性(依存チェーンの長さ、分岐の実行頻度)を反映するものであり、絶対クロックが異なっていても同一GPUアーキテクチャ内では比較的安定した情報が得られると期待できる。304時点(1710MHz環境)のプロファイルとの厳密な数値比較はできなくなるが、「どの分岐がStall Branch Resolvingの主因か」を特定するという調査目的自体は現在のクロック環境でも達成可能。
+
+- **314検証スクリプト**: `313Py_clock_cap_diagnosis_validate_N21_full_once.sh` を親に `314Py_power_cap_diagnosis_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。`nvidia-smi`クエリフィールドに`power.limit`/`power.default_limit`/`power.min_limit`/`power.max_limit`を追加し、`gpu_power_cap_check`(power.limit >= power.default_limit − 0.5WならOK、それ未満ならWARN-POWER-CAPPED)をサマリに追加。power.limit不足の場合は`sudo nvidia-smi -pl <default>`の実行を促すWARNINGをstderrに出力する。313自体はN=21フル実行が未実施(手動でのnvidia-smi診断のみ実施)のため、タイミング比較baselineは312(454.417s)までとし、313の架空のタイミング値は追加していない。
+
+- **注記**: なお313Py自体のN=21フルバリデーション実行はまだ行われていない(手動診断コマンドのみ実行済み)。313Pyの実行結果が得られ次第、次回更新でbaselineに追加する。
+
+---
+
+Updated on 2026-07-21 for 313Py/314Py execution results (correctness OK, telemetry silently broken) and 315Py telemetry-fieldname-fix.
+
+- **313・314実行結果**: 両方ともN=21フル実行自体は正常終了。313=454.419s、314=454.424s、いずれも312(454.417s)との差は±0.002%以内で、クロックキャップされた状態が極めて安定して再現され続けていることが改めて確認された。正当性も両方とも一致(314666222712)。
+
+- **バグ発見**: しかし314で追加したGPUテレメトリ/クロック・電力キャップ診断は、`nvidia-smi --query-gpu`のフィールドリストに存在しない`clocks.applications.sm`を含めてしまっていたため、一度も実データを取得できていなかった。nvidia-smiは指定フィールドが1つでも無効だとクエリ全体を拒否するため、`gpu_pre_run_snapshot.csv`/`gpu_telemetry.csv`の中身は313・314とも
+
+  ```
+  Field "clocks.applications.sm" is not a valid field to query.
+  ```
+
+  というエラーメッセージ1行のみだった。さらに`gpu_telemetry_captured`チェックが「ファイルの行数が1以上ならOK」という甘い判定だったため、このエラー行を誤って"present/OK"と報告する第二のバグも存在した。
+
+- **315方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** 検証シェル側の2点を修正:
+  1. `clocks.applications.sm` → `clocks.applications.graphics`(nvidia-smiが実際にサポートするフィールド名。手動`nvidia-smi -q -d CLOCK`出力のApplications Clocksが"Graphics"/"Memory"のみで"SM"項目が無いことと整合。フィールドリスト内の位置は変更していないため、他フィールドのawkインデックスへの影響なし)。
+  2. `gpu_telemetry_captured`および事前スナップショットの各チェックを強化。単純な行数/非空チェックではなく、**CSVの1行目が`timestamp`で始まるか**を確認するようにし、クエリエラーが混入した場合は明示的に`FAIL`として検出し、`failures`をインクリメントするように変更(以前は静かに"present/OK"や"unavailable/INFO"として見過ごされていた)。
+
+- **314との比較**: このバグ修正により、次回実行時には`gpu_clock_cap_check`・`gpu_power_cap_check`が初めて実データで動作する見込み。ユーザーから提案のあった `sudo nvidia-persistenced` / `sudo nvidia-smi --auto-boost-default=0` / `sudo nvidia-smi 1710` については、それぞれ (a) persistence modeの有無自体はクロック上限を変えるものではない、(b) Auto Boostは`-q -d CLOCK`で`N/A`表示だったこの世代のGPUでは非対応の可能性が高い、(c) 構文として無効(裸の数値引数は受け付けられない)、という理由で、そのまま採用はせず見送った。代わりに`nvidia-smi -q -d POWER`の手動実行を依頼し、315の検証シェル修正で得られる`power.limit`/`power.default_limit`の実データと突き合わせてから、正しい対処コマンド(該当すれば`sudo nvidia-smi -pl <default値>`、あるいは`sudo nvidia-smi -lgc 1710,1710`によるクロックの明示的な引き上げ試行)を判断する。
+
+- **315検証スクリプト**: `314Py_power_cap_diagnosis_validate_N21_full_once.sh` を親に `315Py_telemetry_fieldname_fix_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。タイミング比較baselineに`313clockcapdiagnosis`(454.419s、313自体は今回のログで初めて実測確認)と`314powercapdiagnosis`(454.424s)を追加。
+
+---
+
+Updated on 2026-07-21 for the `nvidia-smi -q -d POWER` / `-persistenced` / `--auto-boost-default` results (power cap ruled out; environment investigation closed) and 316Py env-accept-ncu-prep.
+
+- **`nvidia-smi -q -d POWER`結果**: Current/Requested/Default Power Limitがすべて300.00Wで完全一致(Min=100.00W、Max=300.00W)。312のテレメトリで観測されたcompute中の最大消費電力(95.33W)は300W予算の約32%に過ぎず、電力上限には遠く及ばない。**電力キャップ仮説はこれで棄却。**
+
+- **`sudo nvidia-persistenced`結果**: "failed to initialize"。persistenceデーモンの直接起動失敗は、仮想化/コンテナ化されたGPU環境でしばしば見られる症状であり、ゲスト側からホスト側の必要な権限/デバイスアクセスが得られないことを示唆する。
+
+- **`sudo nvidia-smi --auto-boost-default=0`結果**: "not supported for GPU"。以前の`-q -d CLOCK`での`Auto Boost: N/A`表示と整合しており、このGPU世代では想定通り非対応。
+
+- **調査総括(311〜316)**:
+
+  | 仮説 | 検証方法 | 結果 |
+  |---|---|---|
+  | コード変更由来の退行 | 311でvariant=2/K=48に304と1バイト差なく復帰 | 否定 |
+  | サーマルスロットリング | 312でGPUテレメトリ取得 | 否定 |
+  | ゲスト側`-lgc`クロックロック | `sudo nvidia-smi -rgc` | 否定 |
+  | `-ac`アプリケーションクロック上書き | Applications Clocks比較 | 否定 |
+  | 電力上限キャップ | `nvidia-smi -q -d POWER` | **否定** |
+  | Auto Boost設定 | `--auto-boost-default=0` | 非該当(このGPU世代は非対応) |
+  | persistence mode | `sudo nvidia-persistenced` | 初期化失敗(仮想化環境を示唆) |
+
+  ゲスト側で試せる主要な手段をひととおり試し尽くし、いずれも1320MHz固定を変えられなかった。**最も整合的な残る仮説は、仮想化/共有GPU環境におけるホスト/ハイパーバイザー側のクロック上限ポリシーであり、ゲスト側のnvidia-smiでは変更できないもの。**
+
+- **316方針**: **314で立てていた実務的な判断基準どおり、環境調査をここで正式に打ち切る。** ~454s(SMクロック1320MHz下での実測値)をこのセッションの現実的な作業基準として正式に受け入れ、保留していた**Stall Branch Resolving調査(ncu SourceCounters取得、handoff優先順位#2)を再開する**。304時点(1710MHz環境)のプロファイルとの絶対値比較はもうできないが、ncuが報告するStall Wait/Stall Branch Resolvingの「比率」はアーキテクチャ的特性を反映するため、「どの分岐が主因か」を特定する調査目的自体は現在のクロック環境でも達成可能という判断を維持する。引き続きソースコード・カーネルは1バイトも変更しない。GPUテレメトリ取得自体は低コストな受動的モニタリングとして有効のままにしておくが、もはやこのスクリプトの主目的ではない。
+
+- **316検証スクリプト**: `315Py_telemetry_fieldname_fix_validate_N21_full_once.sh` を親に `316Py_env_accept_ncu_prep_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。ヘッダコメントに次回セッションで手動実行する想定のncuコマンド(`--launch-count 1` + `SourceCounters`単独、chunk0)を再ドキュメント化。315自体もN=21フル実行は今回行われていない(手動診断コマンドのみ)ため、タイミング比較baselineは314(454.424s)までとしている。
+
+---
+
+Updated on 2026-07-21 for 315Py/316Py execution results (bugfix confirmed working; correctness OK) and the 316_ncu.txt profile analysis (architectural ratios confirmed stable; PC sampling unavailable), plus 317Py branch-divergence-probe.
+
+- **315・316実行結果**: 両方ともN=21フル実行正常終了(315=454.779s、316=454.460s)、正当性一致(314666222712)。315の`gpu_clock_cap_check`が今回初めて実データで動作し、`current_sm=1320MHz max_sm=1710MHz`(`WARN-CAPPED`)を正しく検出。`gpu_power_cap_check`も`power.limit=300.00W power.default_limit=300.00W`(`OK`)を確認し、電力は制約要因でないことが検証シェル側でも裏付けられた。テレメトリも91行分正常取得(バグ修正の効果を確認)。
+
+- **316_ncu.txtの分析結果**: 2つの重要な発見があった。
+
+  **発見1(良いニュース)**: アーキテクチャレベルの指標が304時点(1710MHz)とほぼ完全に一致している。
+
+  | 指標 | 304時点(1710MHz) | 316(1320MHz、今回) |
+  |---|---|---|
+  | Avg. Active Threads Per Warp | 6.34 | **6.34(完全一致)** |
+  | Achieved Occupancy | 11.04% | 11.03%(誤差級) |
+  | Stall Wait | 44.1% | 44.09%(誤差級) |
+  | Stall Branch Resolving | 約19.6% | 19.62%(誤差級) |
+
+  クロックが約23%低くても、これらの比率はほぼ完全に維持されており、316で立てた「アーキテクチャ的特性は絶対クロックに依存しない」という仮定が裏付けられた。
+
+  **発見2(新たな制約)**: しかし要求していた`--set SourceCounters`のper-line分岐特定データは取得できなかった。ファイルには SpeedOfLight / Scheduler Statistics / Warp State Statistics / Launch Statistics / Occupancy の5つの軽量セクションのみが含まれ、Source Counters節自体が存在しない。加えて`WRN The optional metric smsp__pcsamp_sample_count could not be found.`という警告があり、PCサンプリングに基づくプロファイリングがこの環境では利用できないことを示している。`nvidia-persistenced`の初期化失敗と合わせ、**このGPU仮想化/共有環境では低レベル/特権的なドライバ機能(クロック制御、persistenceデーモン、PCサンプリング)が一貫してブロックされている**という見方が有力になった。
+
+- **317方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** PCサンプリングが使えない以上、per-line("どの行の分岐か")の特定は諦め、PCサンプリングを必要としないハードウェアカウンタベースの分岐ダイバージェンス集計メトリクス(`smsp__sass_branch_targets.sum`等)を次に試す。カーネル全体での分岐ダイバージェンスの規模感(uniform/divergent branch targetの集計)は得られる見込みで、per-line特定はできないもののStall Branch Resolving(約19.6%)の裏付けとして使える。これも取得できなければ、per-line/カウンタいずれのncuプロファイリング手段もこの環境では制約されていると判断し、次善策としてカーネルソースの手動レビュー(継続/終了条件分岐の棚卸し)に切り替える。
+
+- **317検証スクリプト**: `316Py_env_accept_ncu_prep_validate_N21_full_once.sh` を親に `317Py_branch_divergence_probe_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。ヘッダに次回実行するncuコマンド(`smsp__sass_branch_targets*.sum`メトリクス指定、PCサンプリング不要)をドキュメント化。タイミング比較baselineに`315telemetryfieldnamefix`(454.779s)と`316envacceptncuprep`(454.460s)を追加。
+
+---
+
+Updated on 2026-07-21 for 317Py execution results and the 317_ncu.txt branch-divergence counter results (success with sudo), plus 318Py sourcecounters-sudo-retry.
+
+- **317実行結果**: elapsed=454.617s、正当性一致(314666222712)、316(454.460s)との差は+0.036%で誤差級。クロック/電力チェックも変化なし(current_sm=1320MHz、power OK)。想定通り。
+
+- **317_ncu.txt結果(`sudo`付きで実行)**: 分岐ダイバージェンスのハードウェアカウンタ取得に成功。
+
+  ```
+  smsp__sass_branch_targets.sum                   = 2,324,209,823,606
+  smsp__sass_branch_targets_threads_divergent.sum =   498,374,270,228
+  smsp__sass_branch_targets_threads_uniform.sum   = 1,825,835,553,378
+  ```
+
+  divergent + uniform = total(整合性確認済み)。**divergent比率 ≈ 21.44%。** これは316で見た「Avg. Active Threads Per Warp 6.34/32 ≈ 19.8%」「Stall Branch Resolving 約19.6%」という2つの指標とほぼ同じ約19〜21%のレンジにあり、互いに整合的。カーネル全体の分岐のうち約1/5がwarp内で発散する分岐であり、これがStall Branch Resolvingの実体とほぼ対応しているという定量的な裏付けが得られた。
+
+- **重要な追加情報**: 316でPCサンプリング(`--set SourceCounters`)が失敗した際は`sudo`を付けていなかった。今回`sudo`付きでカウンタベースのメトリクス取得が成功したことから、**PCサンプリングの失敗も単なる権限不足だった可能性**が浮上した。仮想化/ハイパーバイザー側の制約という解釈を確定させる前に、`sudo`付きでの再挑戦を優先すべき。
+
+- **318方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** `sudo`付きで`--set SourceCounters`を再実行することを提案する:
+
+  ```bash
+  sudo ncu --launch-count 1 --set SourceCounters -f -o 318_ncu \
+    ./318Py_sourcecounters_sudo_retry -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+  /usr/local/cuda/bin/ncu --print-details all --import 318_ncu.ncu-rep 2>&1 | tee 318_ncu.txt
+  ```
+
+  - 成功しPCサンプリングデータが得られれば → per-line("どの行の分岐か")の特定に初めて到達でき、handoff優先順位#2の本来の目的を達成できる。
+  - `sudo`付きでも失敗すれば → PCサンプリングは真にこの環境でブロックされていると確定し、317で得た分岐ダイバージェンス比率(21.44%)を代替の定量情報として受け入れ、カーネルソースの手動レビューまたはStall Wait/dual-lane再挑戦の是非再検討に進む。
+
+- **318検証スクリプト**: `317Py_branch_divergence_probe_validate_N21_full_once.sh` を親に `318Py_sourcecounters_sudo_retry_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。ヘッダに`sudo`付きSourceCountersコマンドをドキュメント化。タイミング比較baselineに`317branchdivergenceprobe`(454.617s)を追加。
+
+---
+
+Updated on 2026-07-22 for the 318Py execution results and 318_ncu.txt (real Source Counters data captured, with two command-syntax corrections along the way), plus 319Py sourcecounters-pagesource-probe.
+
+- **318実行結果**: N=21フル実行は正常終了(454.585s、正当性一致 314666222712)。316(454.460s)との差は+0.028%で誤差級。クロック/電力チェックも変化なし(current_sm=1320MHz WARN-CAPPED、power.limit==power.default_limit==300W OK)。
+
+- **`--set SourceCounters`から`--section SourceCounters`への訂正が必要だった**: 最初にいただいた実行結果は317と数値まで完全一致しており、調査の結果、実際には`--metrics smsp__sass_branch_targets*.sum`(317で使ったコマンド)がそのまま再実行されていたことが判明した。修正版コマンドをお願いしたところ、今度は`--set SourceCounters`が`==WARNING== No metrics to collect found in sections.`というエラーになった。これはこちらのコマンド指定自体の誤りで、Nsight Computeでは`--set <name>`は定義済みの"セット"(basic/full/detailedなど)を選ぶオプション、`--section <name>`が個別の"セクション"(SpeedOfLight/Occupancy/SourceCountersなど)を選ぶオプションであり、`SourceCounters`はセクション名であってセット名ではない。311以降ずっとこの誤った構文をヘッダにドキュメント化し続けていた点をお詫びする。
+
+- **訂正後、ついに成功**: `sudo ncu --section SourceCounters ...`で再実行いただいた結果が今回の`318_ncu.txt`で、見出しが正しく`Section: Source Counters`になっており、316で失敗していたPCサンプリング系メトリクス(`smsp__pcsamp_warps_issue_stalled_*`)が実データとして得られた。
+
+  ```
+  # Samples (all)          = 3,670,006
+  stall_wait               = 1,592,467  (43.39%)
+  stall_branch_resolving   =   830,653  (22.63%)
+  stall_long_scoreboard    =   214,958  ( 5.86%)
+  stall_selected           =   726,340  (19.79%)
+  ```
+
+  (全stall_*カテゴリの合計が`# Samples`と完全一致することを確認済み。取りこぼしなし。)
+
+  これは316のサイクルベース計測(Stall Wait 44.1%、Stall Branch Resolving 約19.6%)、317のハードウェアカウンタ(分岐ダイバージェンス比21.44%)とほぼ同じ約20%前後のレンジに収束しており、**3つの独立した測定手法がStall Branch Resolvingの規模感について相互に裏付け合う結果となった。**
+
+- **新発見(副産物)**: `318_ncu.txt`の末尾に、ncu内蔵のOPTアドバイザーからの提案が出力されていた。
+
+  ```
+  OPT   Est. Speedup: 11.79%
+        This kernel has uncoalesced global accesses resulting in a total of 189728 excessive
+        sectors (14% of the total 1331305 sectors).
+  ```
+
+  メモリアクセスの非コアレッシングが推定11.79%の速度向上余地として指摘された。これはStall Branch Resolving調査とは別軸の発見であり、優先度としては副次的な記録に留めるが、#2が手詰まりになった場合の次善の高ROI候補として記憶しておく。
+
+- **残課題**: 期待していたper-line("どの行の分岐か")の特定は今回もまだ得られなかった。`318_ncu.txt`の"Hotspot Locations"節はテーブル単位の集計値を再掲しているだけで、ソースファイル名/行番号への言及が一切ない。原因として最も可能性が高いのは、今回使ったコマンド`--print-details all --import`が「メトリクス一覧(details page)」を出力するオプションであり、ソース行対応表示("source" page)を出すものではない、という点。
+
+- **319方針**: **引き続きソースコード・カーネルは1バイトも変更しない。** 既存の`318_ncu.ncu-rep`を`--page source`で再インポートすることを提案する(GPU再実行・ncu再プロファイリングは不要、レポートの再処理のみ):
+
+  ```bash
+  /usr/local/cuda/bin/ncu --page source --print-details all --import 318_ncu.ncu-rep 2>&1 | tee 319_ncu_source.txt
+  ```
+
+  - ソース行と対応した表示が出れば → per-line特定に初めて到達し、handoff優先順位#2の本来の目的を達成できる。
+  - SASS命令アドレスのみの表示になれば → バイナリに行番号/デバッグ情報が埋め込まれていない可能性が高く、Codonのビルドオプションでline infoを有効化できるか(ビルドフラグのみ、ソース変更なし)を次に調べる。
+  - `--page source`自体がエラーになれば → per-line特定はこの環境で真に到達不能と判断し、317の21.44%と318の22.63%を最終的な定量情報として受け入れ、カーネルソースの手動レビューまたは新発見の非コアレッシングメモリアクセス(推定11.79%)調査に進む。
+
+- **319検証スクリプト**: `318Py_sourcecounters_sudo_retry_validate_N21_full_once.sh` を親に `319Py_sourcecounters_pagesource_probe_validate_N21_full_once.sh` を作成。ソース側の変更はゼロ(バージョンタグ/コメントのみ)。ヘッダに`--page source`再インポートコマンドをドキュメント化。タイミング比較baselineに`318sourcecounterssudoretry`(454.585s)を追加。
+
+---
+
+Updated on 2026-07-22 for the 319Py `--page source` results (per-instruction stall_branch_resolving hotspot identified) and 320Py sourceline-debug-build-probe.
+
+- **319実行結果**: N=21フル実行は正常終了(455.116s、正当性一致 314666222712)。318(454.585s)との差は-0.117%で誤差級。静的チェック・クロック/電力チェックもすべてOK、failures=0。
+
+- **`--page source`の再挑戦**: 前回`--page source --print-details all`が`==ERROR== Option '--print-details' is only supported for the details page.`で失敗したため、`--print-details`を外した`--page source`単独のコマンドで再実行いただいた。今回はエラーなく成功。
+
+- **`319_ncu_source.txt`の構造**: 656行の命令アドレス単位テーブルが得られた。`Source`列には`.py`のファイル名・行番号ではなくSASS逆アセンブリのテキストがそのまま入っており、**per-line(元のPythonソース行)対応はまだ得られていない**。バイナリに行番号/デバッグ情報が埋め込まれていないためと推測される。
+
+- **セッション最大の発見**: 656行全てについて`stall_branch_resolving`列(316/318の集計値18カテゴリすべてと列合計が完全一致することを確認し、パースの正しさを検証済み)を命令ごとに集計・降順ソートしたところ、コストが極端に集中していることが判明した。
+
+  ```
+  421,586 (50.8% of 830,653 total)  addr 0x...e100  BRA 0x...d030
+  123,420 (14.9%)                   addr 0x...e010  BRA 0x...e0f0
+   30,418 ( 3.7%)                   addr 0x...e0f0  BSYNC B2
+   28,141 ( 3.4%)                   addr 0x...e000  BSYNC B4
+  ```
+
+  **上位2命令だけでStall Branch Resolving全体の65.6%を占める。** 重要なのは、この2つが無条件(述語なし)`BRA`命令であり、`BSYNC`(warp再収束マーカー)に隣接している点。一方、実際に発散する述語付き分岐(`@P2 BRA`=8,424件、`@!P4 BRA`=14,925件、Divergent Branchesカウンタは非ゼロ)は個別には順位が低い。**コストは分岐の判定そのものではなく、発散したDFSサブツリー探索後、全レーンが揃うのを待ってループ先頭に戻る"再収束"のタイミングで支払われていることを強く示唆する。** これは292〜316で繰り返し確認してきたAvg Active Threads Per Warp ≈ 15%(SIMTレーン不均衡)という所見と整合的。
+
+- **320方針**: **引き続きカーネルロジックは1バイトも変更しない。** ユーザーの選択により、アドレス→ソース行対応をさらに追う方針を継続。`codon build`にデバッグ/行番号情報を埋め込むフラグがあるかを確認することを提案する:
+
+  ```bash
+  codon build --help 2>&1 | grep -iE 'debug|line|-g\b'
+  ```
+
+  フラグが見つかれば、検証・タイミング用途とは別の**診断専用デバッグビルド**を作成し、再度`sudo`付き`--section SourceCounters`でプロファイル取得後、`--page source`で確認する:
+
+  ```bash
+  codon build -release -g -o 320Py_sourceline_debug_build_probe_dbg \
+    320Py_sourceline_debug_build_probe.py
+  sudo ncu --launch-count 1 --section SourceCounters -f \
+    -o 320_ncu_dbg \
+    ./320Py_sourceline_debug_build_probe_dbg \
+    -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+  /usr/local/cuda/bin/ncu --page source --import 320_ncu_dbg.ncu-rep \
+    2>&1 | tee 320_ncu_dbg_source.txt
+  ```
+
+  デバッグビルドはコード生成に影響しうるため、正当性検証・タイミング比較には従来どおり通常の`-release`ビルドを使う(この検証スクリプト自体はデバッグビルド/ncu再プロファイリングを実行しない)。
+
+  - フラグがない、または付与してもSASSのままなら → per-line対応はこのツールチェーンで到達不能と判断し、319で得たアドレスレベルの知見(再収束隣接の無条件BRAが約66%)を最終結論として、手動ソースレビューまたは非コアレッシングメモリアクセス(推定11.79%)調査に進む。
+
+- **320検証スクリプト**: `319Py_sourcecounters_pagesource_probe_validate_N21_full_once.sh` を親に `320Py_sourceline_debug_build_probe_validate_N21_full_once.sh` を作成。カーネルロジックの変更はゼロ(バージョンタグ/コメントのみ)。ヘッダに`codon build --help`確認コマンドとデバッグビルド提案をドキュメント化。タイミング比較baselineに`319sourcecounterspagesourceprobe`(455.116s)を追加。
+
+---
+
+Updated on 2026-07-22 for the `codon build --help` result (no lineinfo-while-optimized flag exists) and 321Py debugbuild-lineinfo-attempt.
+
+- **`codon build --help 2>&1 | grep -iE 'debug|line|-g\b'`結果**: Codonは「最適化あり・デバッグ情報なし」(`-release`)か「最適化なし・デバッグ情報あり」(`-debug`)の二択のみで、nvccの`-lineinfo`のような**最適化を保ったままline infoだけ追加する**中間の選択肢は存在しなかった。
+
+  ```
+  --debug    - Turn off compiler optimizations and show backtraces
+  --release  - Turn on compiler optimizations and disable debug info
+  ```
+
+  その他の`--debug-entry-values`等はLLVMバックエンド汎用オプションのpass-throughで、同様に最適化前提を崩すもの。
+
+- **リスクの整理**: `-debug`ビルドは最適化を無効化するため、319で特定した2つのホットスポット命令(`0x...e100 BRA→0x...d030`=stall_branch_resolvingの50.8%、`0x...e010 BRA→0x...e0f0`=14.9%、いずれもBSYNC直後の無条件分岐)が、`-debug`ビルドのSASSに同じ形で存在する保証はない。ループのインライン化・命令並べ替えが変わりうるため、line infoと引き換えに比較対象そのものが変わってしまう可能性がある。
+
+- **321方針**: このリスクを理解した上で、ユーザーの判断で`-debug`ビルドを試すことを継続。**引き続きカーネルロジックは1バイトも変更しない。** 診断専用の`-debug`ビルドを作成し、chunk0のみをプロファイルする:
+
+  ```bash
+  codon build -debug -o 321Py_debugbuild_lineinfo_attempt_dbg \
+    321Py_debugbuild_lineinfo_attempt.py
+  sudo ncu --launch-count 1 --section SourceCounters -f \
+    -o 321_ncu_dbg \
+    ./321Py_debugbuild_lineinfo_attempt_dbg \
+    -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+  /usr/local/cuda/bin/ncu --page source --import 321_ncu_dbg.ncu-rep \
+    2>&1 | tee 321_ncu_dbg_source.txt
+  ```
+
+  確認ポイントは2つ: (1) `Source`列が実際の`.py`ファイル名・行番号になっているか、(2) 分岐構造が319で見た「BSYNC直後の無条件BRA」パターンをまだ含んでいるか(構造が大きく違えば、得られる行番号情報は`-release`カーネルの実態を正確には反映していない可能性が高いので慎重に扱う)。
+
+  この検証スクリプト自体は通常どおり`-release`ビルドでのN=21フル実行のみを行い、正当性・タイミング検証には影響しない。なお320自体のN=21フル実行はまだ行われていない(ユーザーが`codon build --help`確認に直行したため)ため、タイミング比較baselineは319(455.116s)までとしている。
+
+- **321検証スクリプト**: `320Py_sourceline_debug_build_probe_validate_N21_full_once.sh` を親に `321Py_debugbuild_lineinfo_attempt_validate_N21_full_once.sh` を作成。カーネルロジックの変更はゼロ(バージョンタグ/コメントのみ)。ヘッダに`-debug`ビルド+ncuプロファイルの提案コマンドをドキュメント化。
+
+---
+
+Updated on 2026-07-22 for the 321Py `-debug` build crash (CUDA_ERROR_INVALID_PTX, closing the tooling-based per-line-attribution track) and 322Py manualreview-reconverge-loopback (kernel source manually reviewed, no code changes).
+
+- **321結果**: `-debug`ビルドはGPU起動時に`CUDA_ERROR_INVALID_PTX`でクラッシュした。単なる「構造が変わるリスク」ではなく、そもそも動作しないという結果。Codonの`-debug`コード生成が、NVPTXバックエンド(ドライバJIT)側で受理不能なPTXを出力していると考えられる。
+
+- **ツール経由の調査、総括**: 312以来試した経路をすべて振り返ると:
+
+  | 手法 | 結果 |
+  |---|---|
+  | `--set SourceCounters`(誤構文) | エラー(318で構文自体の誤りと判明) |
+  | `sudo --section SourceCounters` | kernel全体の集計値のみ取得成功(318) |
+  | `--page source`(単独) | per-instruction(SASSアドレス単位)取得成功、ただしPythonソース行なし(319) |
+  | `-debug`ビルド + line info | GPU起動時にクラッシュ(321) |
+
+  **per-line(元の`.py`行番号)対応は、このCodon+ncuツールチェーンでは到達不能と結論。**
+
+- **322方針**: ユーザーの判断で、ツールベースの調査を終了しカーネルソースの手動レビューに切り替え。**引き続きソース変更は一切なし。**
+
+- **手動レビューの結果**: `kernel_dfs_iter_gpu_maxd14`のメインDFSバックトラッキングループ(`while True:`、783行目付近)を確認したところ、319のSASSパターンと一致する構造的特徴が見つかった。このループには5つの独立した`continue`文(バックトラックpop、`nf==0`手詰まり、future_check手詰まり、terminal_depth到達、child_jmark強制手詰まり)と1つの暗黙のフォールスルー(push+descend)があり、**全6経路が単一のループ先頭(`if cur_avail==u32(0):`)に収束する**。各warpレーンは盤面状態に応じて毎イテレーション異なる経路を取るため典型的なSIMT発散が生じ、コンパイラは全レーンの再収束(BSYNC)を待ってから単一の後方分岐(BRA)を発行する。これは319で見た「BSYNC直後の圧倒的多数のBRA1つがstall_branch_resolvingの50.8%を占め、実際の発散条件分岐は個別には順位が低い」という結果と正確に一致する。
+
+  312で開始した調査への、ソースレベルでの(正確な行番号での確証はないが)結論: コストは特定の条件分岐ではなく、ループの共有back-edgeにおける再収束オーバーヘッドであり、292/316で確認したAvg Active Threads Per Warp ≈ 15%と同じ根本原因を、コンパイル後コードのどこで支払われているかまで具体化したもの。
+
+- **このリビジョンでのソース変更提案なし**: rev189の回帰(+108%)という前例と、このループが既に292/295/296/297/298など多くの慎重な反復を経ていることを踏まえ、この再収束ポイントへの変更は高リスクと判断。専用の検証計画を伴う別セッションで慎重に扱うべきとし、このリビジョンではドキュメント化・分析のみとした。
+
+- **322検証スクリプト**: `321Py_debugbuild_lineinfo_attempt_validate_N21_full_once.sh` を親に `322Py_manualreview_reconverge_loopback_validate_N21_full_once.sh` を作成。カーネルロジックの変更はゼロ(バージョンタグ/コメントのみ)。320・321とも独自のN=21フル実行は未実施のため、タイミング比較baselineは引き続き319(455.116s)まで。
+
+---
+
+Updated on 2026-07-22 for the deeper 319_ncu_source.txt re-analysis (stall_wait cross-check, uncoalesced-memory hotspot fully localized) and 323Py warr-uncoalesced-loadsplit-probe, plus a new persistent "Open Objectives" section (top of this file and the source docstring).
+
+- **stall_wait(全カテゴリ中最大、43.39%)の再確認**: トップは`0x...e040 @!P2 BREAK B2`(119,003)を筆頭に、`0x...d440`〜`0x...e040`付近の一連の条件分岐が並ぶ。これらは322の手動レビューで見つけた5つの`continue`判定カスケード(`nf==0`、future_check、terminal_depth、child_jmark、block_code分岐)の位置と一致。stall_branch_resolvingとは別の指標から、同じマッピングが独立に裏付けられた。
+
+- **非コアレッシングメモリアクセスの発生源を完全特定**: L2 Theoretical Sectors Global Excessive(ncu OPTアドバイザーの推定11.79%速度向上リード、189,728個)が、ちょうど4命令で100%説明できることが判明。
+
+  ```
+  92,928  0x...e120  LDG.E R2, [R12.64+0x4]
+  92,928  0x...e130  LDG.E R0, [R12.64]
+   1,936  0x...e310  STG.E [R2.64+0x4], R17
+   1,936  0x...e320  STG.E [R2.64], R16
+  ```
+
+  上位2つのLDG.Eだけで96%を占める。
+
+- **LDG.Eペアのソース対応(推論、未確証)**: `w_arr[idx]`(861行目、`thread_total+=total*w_arr[idx]`)である可能性が高いと判断した。根拠は、(1) `w_arr:Ptr[u64]`がカーネル引数中で唯一、単一idxで読む8バイト配列であること、(2) 実行回数(~729,860〜743,424)がチャンクあたりタスク数`m`(=743,424)とほぼ一致し、DFSループ内部(数十億〜数兆回実行)とは明確に異なる「タスクごとに1回」の頻度であること、(3) SASSの並び(DFSループ脱出直後の合流点の直後にLDG.Eペアが位置する)が861行目の位置と整合すること、(4) offset+0/+4の2命令ペアが64bit値を32bit×2に分割して読む典型パターンであること。ただしper-line対応が取れない環境でのアドレス位置・実行回数・型からの推論であり、確証ではない。
+
+- **323方針**: **引き続きソース変更は一切なし。** 新しいリード(非コアレッシングメモリアクセス)をドキュメント化するのみで、修正は提案しない。Stall Branch Resolving(ホットな発散DFSループ内部)より、こちらは単純なロード/ストア命令に限定され、タスクごとに1回のみ実行されるため、低リスクな調査対象と位置づける。
+
+- **ドキュメント構造の変更**: ユーザーの依頼により、このREADME.mdおよび`323Py_warr_uncoalesced_loadsplit_probe.py`のdocstring冒頭に「現在の未解決課題 (Open Objectives)」セクションを新設。今後のリビジョンで、年代順ログとは別にこのサマリを都度更新していく。
+
+- **323検証スクリプト**: `322Py_manualreview_reconverge_loopback_validate_N21_full_once.sh` を親に `323Py_warr_uncoalesced_loadsplit_probe_validate_N21_full_once.sh` を作成。カーネルロジックの変更はゼロ(バージョンタグ/コメント/Open Objectivesセクションのみ)。320・321・322とも独自のN=21フル実行は未実施のため、タイミング比較baselineは引き続き319(455.116s)まで。
+
+---
+
+Updated on 2026-07-22 for the user's kernel-decomposition proposal (referencing the original CPU 13Py_constellations_codon.py SQ*-family design), the resulting history review (240/266-269/273 all rejected), and 324Py devicefunc-specialize-design (design only, no code changes).
+
+- **ユーザー提案の経緯**: 元のCPU版`13Py_constellations_codon.py`をアップロードいただき、当初はDFSロジックが`SQd0B`/`SQB`/`SQBjrB`/`SQBlBjrB`など多数の専用化関数に分割されていたこと、GPU移植時に見通しの良さを優先して1つの非再帰関数に統合したことを確認した。現行の統合kernelに再び「何らかの基準での分解」を導入すべきではないか、という提案をいただいた。
+
+- **CPU版の設計**: `exec_solutions`の巨大if/elifディスパッチが、星座の`(i,j,k,l)`構造から探索開始前に1回だけ適切な専用関数を選ぶ。各専用関数は無関係な条件分岐を一切持たない(例: jmark処理が不要な`SQB`にはjmark処理コード自体が存在しない)。これは322/323で見つけたStall Branch Resolvingの構造と直接対比できる: 現行GPU kernelは`schedule_lo`/`schedule_hi`にpackしたランタイムスケジュールを、ホットループ内で毎DFSノードごとにnibble_op decode + 分岐カスケードとして評価しており、CPU版が静的に排除していたコストを動的に払い続けている。
+
+- **重要な履歴確認**: GPU側での「kernel分解」は過去に4回試みられ、**正当性は毎回OKだったにもかかわらず、全て撤回**されていることが判明した。
+
+  | リビジョン | 内容 | 結果 |
+  |---|---|---|
+  | 240 taskid-split-fid14 | fid=14を別kernel launchへ分離 | 撤回(241で復帰) |
+  | 266-269 root0/future0/child0 probe | 特定条件専用の軽量kernel | 全て撤回(+0.4〜0.5秒) |
+  | 273 rootaction0-direct-kernel | root_action分岐なしkernel、chunk単位dispatch | 撤回(+1.05秒) |
+
+  273の撤回理由が特に示唆的: 「正当性OKだが、別kernel化によるコード配置/register pressure/コンパイル最適化差が勝った可能性があるため撤回する」。分岐削減自体は毎回成功していたのに、それでも遅くなっていたという重い前例。
+
+- **324で設計した方向性**: 過去4回はすべて別`@gpu.kernel`エントリポイント(別host dispatch、別PTXモジュール)だった。今回検討するのは、**同一kernel内のdevice関数**としての専用化。`future_check_mask`/`child_jmark_mask`は既にホットループ開始前(root-preroll終了時点)でタスクごとに1回計算済みのスカラー値であるため、ループの外で1回だけ分岐して専用化したdevice関数を呼び分けられる可能性がある。
+
+- **実装前の必須事前確認(次セッションの最初の一歩として提案)**:
+  1. Codonがdevice関数を実際にinlineするか、SASSで`CALL`/`RET`命令の有無を確認する
+  2. 268/269と同じ慎重さで、まず1軸(例: `future_check_mask==0`)だけを切り出す。2^3の組み合わせ全部には手を出さない
+  3. wall-clockだけでなく`sudo ncu --section SourceCounters`で再プロファイルし、stall_branch_resolving/stall_waitが実際に下がるかを確認する
+  4. 240/268/269/273と同様、悪化したら即座にロールバックする基準を事前に明記する
+
+- **324方針**: **このリビジョンではコードは一切変更していない。** 設計とドキュメント化のみ。Open Objectivesセクションに課題1として新設し、既存の課題(非コアレッシングメモリ、Stall Branch Resolving)を課題2・3へ繰り下げた。
+
+- **324検証スクリプト**: `323Py_warr_uncoalesced_loadsplit_probe_validate_N21_full_once.sh` を親に `324Py_devicefunc_specialize_design_validate_N21_full_once.sh` を作成。カーネルロジックの変更はゼロ(バージョンタグ/コメント/Open Objectivesセクションのみ)。320・321・322・323とも独自のN=21フル実行は未実施のため、タイミング比較baselineは引き続き319(455.116s)まで。
+
+---
+
+Updated on 2026-07-22 for 325Py inlineprobe-prep: a standalone diagnostic probe (325_gpu_inline_probe.py + 325_gpu_inline_probe_check.sh) to test Codon's device-function inlining behavior in @gpu.kernel, per 324's mandatory pre-check #1. No changes to the main solver.
+
+- **背景**: 324で設計した「kernel内device関数専用化」の実装に進む前に、必須事前確認(1)「Codonがdevice関数を実際にinlineするか」を検証する必要があった。ユーザーがこの方向性に強い関心を示したため、325でこの検証を最優先タスクとして着手した。
+
+- **`325_gpu_inline_probe.py`**: メインソルバ(`kernel_dfs_iter_gpu_maxd14`)には一切依存しない、独立した最小`@gpu.kernel`。スレッドごとのフラグで分岐し、2つの異なるplain関数(`variant_a`/`variant_b`、それぞれ定数畳み込みで消えない小さなループを含む)のどちらかを呼ぶ。
+
+  - inlineされる場合: `probe_kernel`のSASSに両方の分岐コードが直接展開され、`CALL`命令も別関数シンボルも出ない。
+  - inlineされない場合: `CALL`命令と、`variant_a`/`variant_b`という独立した関数シンボル(それぞれ`RET`で終わる)がSASSに現れる。
+
+- **`325_gpu_inline_probe_check.sh`**: ビルドして`cuobjdump --dump-sass`(GPU実行不要、静的逆アセンブルのみ)で確認し、`CALL`/`RET`と`variant_a`/`variant_b`シンボルの有無を自動判定する。`cuobjdump`が無い場合は`sudo ncu --section SourceCounters` + `--page source`にフォールバックする。
+
+- **結果に応じた次の一手**:
+  - inlineされる → 324で設計した`future_check_mask==0`の1軸専用化を、実際に`kernel_dfs_iter_gpu_maxd14`へ試す価値がある。
+  - inlineされない → device関数専用化はそのままでは効果が薄い可能性が高く(240/266-269/273と同種のコスト構造を、別kernelではなく関数呼び出しの形で持ち込むだけになりうる)、Codonのgenerics/inlineヒントの有無を先に調べる必要がある。
+
+- **325方針**: **メインソルバのコードは一切変更していない。** プローブは独立したファイルとして追加し、N=21フル検証の対象外とした。Open Objectivesセクションの課題1を「設計中」から「検証準備完了・実行待ち」に更新した。
+
+- **325検証スクリプト**: `324Py_devicefunc_specialize_design_validate_N21_full_once.sh` を親に `325Py_inlineprobe_prep_validate_N21_full_once.sh` を作成。メインソルバのカーネルロジックの変更はゼロ(バージョンタグ/コメント/Open Objectivesセクションのみ)。320〜324とも独自のN=21フル実行は未実施のため、タイミング比較baselineは引き続き319(455.116s)まで。プローブ実行(`bash 325_gpu_inline_probe_check.sh`)はこのN=21検証スクリプトとは別に、独立して実行する。
+
+---
+
+Updated on 2026-07-22 for the 325_inline_probe_ncu_source.txt result (Codon confirmed to inline device-callable functions) and 326Py futurecheck-specialize-axis1 -- **the first kernel-logic change since 311.**
+
+- **325プローブの結果**: `probe_kernel`の逆アセンブル(67行、アドレス連続)に`CALL`命令は一切出現せず、`variant_a`/`variant_b`という独立した関数シンボルも現れなかった。分岐(`@P0 BRA`)前後にそれぞれの関数の中身が直接展開され、単一の`BSYNC`で再収束していた。**結論: Codonは`@gpu.kernel`内から呼ぶplain関数を実際にinlineする。**
+
+- **方針転換**: この結果を受け、当初324で検討していた「別device関数への切り出し」は行わないことにした。`stack`(スレッドローカルの`__array__[u64]`)を関数境界越しに渡すパターンはこのコードベースに前例がなく、検証されていないリスクを追加で背負うだけだと判断したため。代わりに、ホットループ本体を`if future_check_mask==u32(0): <ループA> else: <ループB>`としてその場で複製する、最もシンプルで検証しやすい形を採用した。ポインタ渡し・generics・関数呼び出し境界のいずれの不確実性も発生しない。
+
+- **326の変更内容**: `kernel_dfs_iter_gpu_maxd14`の`while True:`ループ本体を、タスク開始前(ホットループに入る直前)の1回だけの分岐でラップした。
+
+  - **ループA(`future_check_mask==0`)**: 元の`if future_check_mask!=u32(0): if (nibble_op&8)!=u32(0): if (bm&~(...))==u32(0): continue`という4行ブロックが、構造的に一切存在しない(実行時にスキップされるのではなく、コンパイル対象のソース自体に含まれない)。
+  - **ループB(`future_check_mask!=0`)**: 同じ4行ブロックのうち、常に真である外側の`if future_check_mask!=u32(0):`だけを除去し、内側の`if (nibble_op&8)!=u32(0): if (...)==u32(0): continue`はそのまま(毎ノード評価される判定として)残している。
+
+- **正当性の機械的検証**: 両ループを自動diffし、上記のfuture_check関連ブロック以外は一文字も違わないことを確認した。カッコの対応(`(`/`)`/`[`/`]`)も全体で数を確認し、バランスしている。MAXD16/18/20/21カーネル本体は`diff`でも完全一致を確認した。root-preroll、schedule decode、chunkshape148、broadmarktail、cache生成、worker split、dispatchなど、他のあらゆる部分は一切変更していない。
+
+- **326検証スクリプトの新規チェック**: `source_futurecheck_axis1_split`を追加し、MAXD14本体に`if future_check_mask==u32(0):`と2つの`while True:`が存在すること、`(nibble_op&u32(8))!=u32(0)`の出現がMAXD14本体の該当箇所以降にちょうど1回だけであること(=ループBのみに存在しループAには存在しない)を静的に確認する。
+
+- **326方針(最大限の慎重さ)**: **これは311以来初めてのkernelロジック変更である。** rev189の回帰前例(+108%速度低下)と、240/266-269/273の4連敗という重い前例を踏まえ、検証手順を明記した:
+  1. `STATIC_ONLY=1`でまず静的チェック(新チェック含む)
+  2. N=21フル実行で**正当性(314666222712)を最優先**で確認。一致しなければ即座に中止
+  3. 正当性確認後にのみ、319の455.116sとの速度比較。明確に改善していなければ325への即時ロールバックを推奨(240/268/269/273と同じ判断基準)
+  4. 速度改善が見られた場合のみ、318-319で使った同じ`sudo ncu --section SourceCounters`で再プロファイルし、stall_branch_resolving/stall_waitが実際に下がったかを確認
+
+  このビルドは実機で一度も試していない。Codonのビルドエラーが最初の試行で出る可能性は十分にある(このコードベース自体、240 r4/r7、257 r2、259など、遥かに小さな変更でもbuildfixの反復が何度も発生している)。
+
+- **326検証スクリプト**: `325Py_inlineprobe_prep_validate_N21_full_once.sh` を親に `326Py_futurecheck_specialize_axis1_validate_N21_full_once.sh` を作成。320〜325とも独自のN=21フル実行は未実施のため、タイミング比較baselineは引き続き319(455.116s)まで。
+
+---
+
+Updated on 2026-07-22 for 326 r2 (buildfix): STATIC_ONLY run caught a stale validate-script assumption, not a kernel bug.
+
+- **326 r1のSTATIC_ONLY結果**: `source_K48_sweep_shape`がFAIL(`ptr=False push=False`、他は全てOK)。
+
+- **原因**: 検証スクリプトの`stack_ptr+=2`・pushパターンの出現回数チェックが「root-preroll 1回 + ホットループ1回 = 合計2回」(304〜325まで正しかった前提)を期待していたが、326ではホットループ自体を意図的に2重化(future_check_mask==0/!=0のループA・ループB)したため、正しい出現回数は「root-preroll 1回 + ループA 1回 + ループB 1回 = 合計3回」。実際にソースで数えると両方とも3回で、設計通り正しい状態だった。
+
+- **326 r2方針**: **カーネルソース(`326Py_futurecheck_specialize_axis1.py`)自体は変更不要だった。** 検証スクリプト側の期待値のみ2→3に修正した(240 r4/r7、257 r2と同じbuildfixパターン)。ソースのdocstringにもr2の経緯を追記し、VERSION_TAGの先頭にbuildfix要約を追加した。
+
+- **次のステップ**: 修正版で`STATIC_ONLY=1 bash 326Py_futurecheck_specialize_axis1_validate_N21_full_once.sh`を再実行し、正当性(314666222712)とタイミングの確認に進む。
+
+---
+
+Updated on 2026-07-22 for 326's N=21 full run result (rejected: correctness OK, -13.7% slower) and 327 warrloadsplit-verify -- a new attempt (based directly on 325, not a revert-record of 326) targeting Open Objectives #2, verification-first per the 326 lesson.
+
+- **326の実行結果**: 正当性は一致(314666222712)、全静的チェックOK。しかし実行時間は517.563秒で、319(455.116秒)比 **-62.447秒(-13.7%)の大幅な悪化**。240/266-269/273(いずれも0.1〜0.3%程度)と比べて桁違いに大きい悪化幅であり、GPU側でのkernel/ループ分解によるStall Branch Resolving対策は**5回連続で撤回**(240、266、267、268/269、273、326)となった。
+
+- **327の位置づけ**: ユーザーより、325Pyは別ファイル名でローカルに保存済みのため、ロールバック用の新規リビジョンは不要とのご指摘をいただいた。327は325をベースにした**新しい試み**として、Open Objectivesの課題2(非コアレッシングメモリアクセス、`w_arr[idx]`仮説)の検証に進む。
+
+- **326の教訓を踏まえた方針転換**: 妥当に見える仮説(future_check_mask専用化)でも実装すると大きく予想外の結果になりうることが326で示された。この教訓を踏まえ、327では**まずカーネルには一切手を触れず**、325の成功パターン(独立プローブでCodonのコード生成挙動を先に確認)と同じ方法論で、`w_arr[idx]`読み込みの分割ロード仮説を検証することにした。
+
+- **`327_w_arr_loadsplit_probe.py`**: `thread_total+=total*w_arr[idx]`(旧839行目)と全く同じ形をgrid-strideループ内に再現した最小`@gpu.kernel`。DFSのロジックは一切含まない。
+
+  - 単一の`LDG.E.64`が出れば → このアクセス形状単体ではCodon/NVPTXが正しくコアレッシングできていることになり、実際のカーネルで見られる分割は周囲の複雑なコード(register pressure、`stack`配列とのエイリアシングなど)に起因する別の要因と考えられ、323の仮説は再検討が必要。
+  - 2つの32bit `LDG.E`(offset+0/+4)が出れば → `319_ncu_source.txt`で見た分割パターンが、このアクセス形状に対するCodon/NVPTXの一般的なコード生成挙動であることが確認でき、実際のカーネルに手を入れる前に、プローブ内で書き方のバリエーションを安全に試せる。
+
+- **`327_w_arr_loadsplit_probe_check.sh`**: ビルドして`cuobjdump --dump-sass`(GPU実行不要)で`LDG.E.64`と`LDG.E`(32bit)の出現を自動判定する。`cuobjdump`が無ければ`sudo ncu --section SourceCounters` + `--page source`にフォールバックする。
+
+- **327方針**: **メインソルバのコードは一切変更していない(325と完全に同一)。** プローブは独立したファイルとして追加し、N=21フル検証の対象外とした。
+
+- **327検証スクリプト**: `325Py_inlineprobe_prep_validate_N21_full_once.sh` を base に `327Py_warrloadsplit_verify_validate_N21_full_once.sh` を作成。メインソルバのカーネルロジックの変更はゼロ。326の結果(517.563s、rejected)をタイミング比較baselineとして記録に残しつつ、327のlineageは325から続けている。
+
+---
+
+Updated on 2026-07-22 for 327 r2 (buildfix): STATIC_ONLY caught a false-positive in two rejected-pattern static checks, caused by 327's own VERSION_TAG prose, not a kernel issue.
+
+- **327 r1のSTATIC_ONLY結果**: `source_split_tag`と`source_root0_direct_rejected`がFAIL。
+
+- **原因**: 検証スクリプトの撤回済みパターン検出チェックは、ソースファイル全体(docstring/コメント含む)に対する単純な部分文字列検索です。327のVERSION_TAGで過去の撤回履歴を説明する際、273の名称を`rootaction0-direct-kernel`という表記で言及していたため、この文字列が「実際にそのパターンが実装されている」ことを示すマーカーと誤認識されました。
+
+- **327 r2方針**: カーネルソースには一切問題がなく、該当箇所の表現を`a root_action==0 direct-dispatch kernel variant`に言い換えるだけで解消しました。念のため、検証スクリプトが検索する他の撤回済みマーカー文字列(`split=fid14_launch`、`kernel-blockdiag`など)についても全て手元でシミュレーションし、他に誤検知が無いことを確認しました。
+
+- **次のステップ**: 修正版で`STATIC_ONLY=1 bash 327Py_warrloadsplit_verify_validate_N21_full_once.sh`を再実行してください。
+
+---
+
+Updated on 2026-07-22 for the 327_w_arr_probe_ncu_source.txt result (split-load hypothesis confirmed in isolation) and round 2 of the probe (SoA layout test).
+
+- **ラウンド1の結果**: `327_w_arr_probe_ncu_source.txt`で、`w_arr[idx]`読み込みに対応する箇所に`0x...bca0 LDG.E R8,[R2.64]`(offset+0)と`0x...bcb0 LDG.E R9,[R2.64+0x4]`(offset+4)という、`319_ncu_source.txt`と完全に一致するパターンを確認。単一の`LDG.E.64`は一つも出現しない。**DFSループの複雑さとは無関係に、この形状に対するCodon/NVPTXの一般的なコード生成挙動であることが確認できた。**
+
+- **根本原因の仮説**: 319の実データでは、この2つの`LDG.E`行は両方とも「Excessive(過剰)セクタ」を持っていた(92,928個ずつ)。これは命令が2つに分かれているだけでは説明できず、`w_arr`が8バイト間隔のため、各32bit読み込み単体で見ても隣接スレッドのアドレスが4バイトおきではなく8バイトおきになる「隙間」がL2セクタフェッチを非効率にしていると考えられる。
+
+- **ラウンド2のプローブ拡張**: `327_w_arr_loadsplit_probe.py`に2つのkernelを追加し、同一ビルド・同一プロファイル実行で3つを比較できるようにした。
+  - `w_probe_kernel`(既存、分割確認済みのベースライン)
+  - `w_probe_kernel_tmpvar`: 読み込みを一時変数に分けるだけの軽微な書き換え(コード生成が変わるとは考えにくいが、確認のコストが低いため含めた)
+  - `w_probe_kernel_soa`: `w_arr`を2つの独立した密に詰まったu32配列(`w_lo_arr`/`w_hi_arr`)に分割し、それぞれ通常のインデックス(`idx`のまま、`idx*2`ではない)でアクセスして`u64(lo)|(u64(hi)<<u64(32))`で再結合する
+
+  仮説が正しければ、`w_probe_kernel_soa`の2つの`LDG.E`はExcessiveセクタがほぼゼロになり、ベースライン/tmpvarは引き続き過剰を示すはず。プログラム自体も`sum_base`/`sum_soa`/`match`を出力し、SoA再構成が正しい値を計算していることを自己検証する。
+
+- **327検証スクリプト更新**: `327_w_arr_loadsplit_probe_check.sh`を、3kernel構成に対応させ、`--launch-count 3`でncuプロファイルを取得するよう更新。Excessiveセクタ列の比較が主目的のため、`cuobjdump`は簡易チェックとして残しつつ`ncu`経由を主経路にした。
+
+---
+
+Updated on 2026-07-22 for 328Py warr-soa-split-implement -- applying 327's probe-verified w_arr SoA fix to the real kernels. A real kernel-logic change, but of a fundamentally lower-risk kind than 326 (touches only once-per-task reads, not the hot DFS loop).
+
+- **327_w_arr_probe_ncu_v2_run.log確認**: `sum_base`と`sum_soa`が完全一致(`match: True`)。SoA再構成の正当性が確認できた。
+
+- **328の変更内容**: `w_arr:Ptr[u64]`パラメータを持つ5つ全てのkernel(`kernel_dfs_iter_gpu_maxd14`/`16`/`18`/`20`/`21`)のシグネチャを`w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32]`に置き換えた。各kernel内の`w_arr[idx]`/`w_arr[i]`読み込み箇所(kernelあたり3箇所: root_actionの2つの早期exitパス + メインのポストループ集計、計15箇所)を`(u64(w_lo_arr[X])|(u64(w_hi_arr[X])<<u64(32)))`に置き換え、327のプローブで確認した再構成式と全く同じ形で元のu64値を復元している。
+
+- **共有ディスパッチャの更新**: `launch_kernel_dfs_iter_gpu_static_maxd`が、既存の`w_arr:List[u64]`から`w_lo_arr`/`w_hi_arr`を1回だけ導出し、どのkernelが起動されるかに関わらず両方を渡すようにした。このディスパッチャ自体の外部シグネチャ(呼び出し側から見える形)は変更していない。
+
+- **変更していないもの**: `build_soa_for_range`、ファイル内の他の`w_arr`生成・使用箇所すべて、CPU検証パス、ディスパッチャの呼び出し元すべて。そして最も重要な点として、322のStall Branch Resolving調査の対象だった発散DFSホットループ自体(`while True:`〜`cur_depth=next_depth`)は327と完全に一致することをdiffで確認した(署名変更・15箇所の読み込み変換以外に一切差分なし)。
+
+- **326との違い(リスクの質)**: 326はDFSノードごとに何十億回も実行されるホットループ本体を複製する変更だった。328は、タスクごとに1回だけ実行される読み込み箇所(5kernel×3箇所=15箇所)のみが対象で、ホットループの制御フロー自体は完全に無傷。異なる種類の、より低リスクな変更と位置づけている。
+
+- **正当性の機械的検証**: 5つのシグネチャ変換・15箇所の読み込み変換それぞれの数を確認し、括弧の対応も全体で確認した(327から既存の不均衡は変更前後で同じ差分だけ増えており、新たな不整合は入っていない)。検証スクリプトに新チェック`source_warr_soa_split_signatures`(5/5シグネチャ変換確認)と`source_warr_soa_split_dispatcher`(ディスパッチャの導出・受け渡し確認)を追加した。
+
+- **注意点**: 推定11.79%はkernel全体に対するncu OPTアドバイザーの見積もりであり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の改善幅はそれよりかなり小さい可能性が高い。
+
+- **328方針**: 実機でのビルド・実行はまだ行われていない。正当性(314666222712)を最優先で確認し、悪化すれば327への即時ロールバックを推奨する。
+
+- **328検証スクリプト**: `327Py_warrloadsplit_verify_validate_N21_full_once.sh` を base に `328Py_warr_soa_split_implement_validate_N21_full_once.sh` を作成。
+
+---
+
+Updated on 2026-07-22 for 328 r2 (buildfix): STATIC_ONLY caught a false-positive in the new source_warr_soa_split_signatures check, caused by 328's own VERSION_TAG/docstring prose, not a kernel issue -- the same class of mistake as 327 r2.
+
+- **328 r1のSTATIC_ONLY結果**: `source_warr_soa_split_signatures`がFAIL(「7 kernels converted, 4 old-style remaining」)。
+
+- **原因**: このチェックは、新パターン(`w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32]`、期待値5)と旧パターン(`w_arr:Ptr[u64]`、期待値0)をソースファイル全体に対する単純な部分文字列カウントで検証する。328のVERSION_TAG・docstringで変更内容を説明する際、両方の型注釈をそのままCodon構文で書いていたため、実際の5箇所(シグネチャ)に加えて説明文中の出現もカウントされてしまった。
+
+- **328 r2方針**: カーネルソースには一切問題がなく、該当する説明文を「Codon構文そのまま」ではなく「言葉での説明」に書き換えて解消した。修正の過程で、一度は説明文中に过去の撤回パターン(273の旧名称)を誤って再度書いてしまい`source_root0_direct_rejected`も連鎖的に危険な状態になったが、これも合わせて修正し、全ての撤回済みマーカー文字列について手元でシミュレーションして最終確認した。
+
+- **次のステップ**: 修正版で`STATIC_ONLY=1 bash 328Py_warr_soa_split_implement_validate_N21_full_once.sh`を再実行してください。
+
+Updated on 2026-07-23 for 329Py soa-adopt-sourcecounters-reanalysis -- 328のN=21実機実行結果(正当性314666222712、実行時間456.036秒、327比-0.324%でノイズ内)を受け、328をベースラインとして正式にADOPT。カーネルロジックの変更は一切なし(329は328とバイト単位で同一)。328自身のncu SourceCountersダンプ(328_ncu_source.txt)を再解析し、文書化のみを行うリビジョン。
+
+- **課題1のクローズ**: 327プローブが予測した「w_lo_arr/w_hi_arr分割でL2 Theoretical Sectors Global Excessiveがゼロになる」という結果を、328の実機ncu SourceCountersダンプで確認した。`kernel_dfs_iter_gpu_maxd14`内の3箇所のw_lo_arr/w_hi_arr読み込み(LDG.E)全てでExcessive=0を確認(グローバルロードにおける他の全命令も同様に0)。これで328のADOPT判断が確定した。
+
+- **課題3(Stall Branch Resolving)の再確認**: 328(SoA適用後)のncuデータでも、322で特定した2箇所の分岐(back-edgeのBRAと、BSYNC直前のBRA)がstall_branch_resolving全831,032サンプル中544,629(65.5%)を占めることを確認した。322時点の約65.6%とほぼ一致し、SoA変更が制御フローに影響しないという想定を裏付けた(新事実ではなく再現性の確認)。
+
+- **課題3の新しい解像度**: 該当する2箇所は`Divergent Branches`列がいずれも0(分岐命令自体は発散していない)である一方、`Avg. Threads Executed`が2〜3/32(一方の分岐ペアは13/32)と極端に低いことが分かった。つまりstall_branch_resolvingの正体は、古典的な分岐発散(taken/not-takenがレーンごとに割れる)ではなく、warp内の大半のレーンが既に自分のDFS部分木を終えて非活性化しており、少数の"尾"に残ったレーンの完了をwarp全体が待つ、という占有率崩壊(occupancy collapse / tail effect)である可能性が高い。この構造は240/266-269/273/326のkernel分解(5戦5敗)とは根本的に異なる対策(warpレベルの動的作業再分配、persistent threads/stream compactionなど)を要する可能性があり、具体的で低リスクな対策案がまだ無いため、この課題は引き続き「保留」のままとする(結論は変わらず、原因の理解が深まっただけ)。
+
+- **新規発見(課題4、低優先度)**: kernel epilogueの結果書き込み(STG.E、thread_totalをresultsへ書き出す2命令)にL2 Theoretical Sectors Global Excessive=1936×2=3872個を新たに検出した。w_arr/SoAとは無関係の箇所。ただし実行回数はスレッド当たり1回のみ(kernel全体で484命令実行)であり、ホットループ(このプロファイルで数千億回)と比較して影響は桁違いに小さいと判断し、対応せず記録のみに留める。
+
+- **329の位置づけ**: カーネルロジック変更を含まない、ドキュメント/ncu再解析専用のリビジョン。ソースのOpen Objectivesセクション・VERSION_TAG・reason文字列のみを更新し、DFSホットループ本体・シグネチャ・ディスパッチャは328と完全に同一(diffで確認、変更範囲はヘッダー部のみ)。
+
+- **329検証スクリプト**: `328Py_warr_soa_split_implement_validate_N21_full_once.sh` を base に `329Py_soa_adopt_sourcecounters_reanalysis_validate_N21_full_once.sh` を作成。ファイル名・VERSION_TAGチェック文字列・ベースライン比較(328warrsoasplitimplement:456.036sを新規追加)を更新。SoA関連の静的チェック(`source_warr_soa_split_signatures`/`source_warr_soa_split_dispatcher`)はロジック変更がないため引き続きそのまま通る想定。
+
+- **次のステップ**: `STATIC_ONLY=1 bash 329Py_soa_adopt_sourcecounters_reanalysis_validate_N21_full_once.sh`を実行後、フルN=21実行(正当性314666222712を最優先で確認、その後328の456.036s/327の454.563sとのノイズ内一致を確認)。課題3(occupancy collapse/tail effect)への対策は、具体的で低リスクな設計ができるまで着手しない方針。

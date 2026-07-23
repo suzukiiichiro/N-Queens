@@ -16,6 +16,41 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+================================================================================
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 323 (2026-07-22)
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
+年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
+
+1. [調査中] 非コアレッシングメモリアクセス (推定11.79%速度向上の余地)
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive
+   (189,728個)の100%が、outer grid-strideループ内のちょうど4命令
+   (LDG.E x2 @ 0x...e120/e130, STG.E x2 @ 0x...e310/e320)に集中している
+   ことが判明(323, 319_ncu_source.txtの再分析)。LDG.Eペアは実行回数・
+   アドレス位置・型(u64単一配列)から`w_arr[idx]`読み込み(861行目、
+   `thread_total+=total*w_arr[idx]`)である可能性が高いと推定しているが、
+   per-line対応が取れない環境のため未確証(推論)。Stall Branch Resolving
+   (課題2)よりホットループ外・単純命令に限定されており低リスクな調査
+   対象。次の一手は未着手。
+
+2. [結論・保留] Stall Branch Resolving (カーネル全体の約19〜23%)
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/
+   318-319 PCサンプリング)が収束し、メインDFSループ(kernel_dfs_iter_
+   gpu_maxd14の`while True:`, ~783行目)の共有back-edgeにおける再収束
+   (BSYNC)オーバーヘッドが原因と結論(319/322)。5つのcontinue文+1つの
+   フォールスルーが全て同一のループ先頭に収束することが、SASSで観測した
+   「BSYNC直後の圧倒的多数のBRA1つがstall_branch_resolvingの65.6%
+   (上位2命令合計)を占める」というパターンと一致する。per-line(元の
+   `.py`行番号)対応はCodon+ncuツールチェーンでは到達不能と確認済み
+   (318: 誤構文/319: SASSのみ/321: -debugビルドはCUDA_ERROR_INVALID_PTX
+   でクラッシュ)。**対策(コード変更)は未着手・保留**: rev189の回帰前例
+   (+108%速度低下)とこのループの既存の最適化履歴(292/295/296/297/298)
+   を踏まえ、片手間の変更は高リスクと判断。着手する場合は専用の検証計画
+   を伴う別セッションで行うことを推奨。
+
+このセクション自体はカーネルロジックとは独立しており、更新してもソース
+の実行結果には影響しません。
+================================================================================
+
 # ビルド
 codon build -release 115Py_range_default_clean_cg_v2.py
 
@@ -262,30 +297,73 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+`w_arr[idx]`(861行目、`thread_total+=total*w_arr[idx]`)が該当する可能性が高いです。根拠:
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+- `w_arr:Ptr[u64]`はカーネル引数の中で唯一、単一インデックスで読む8バイト(u64)配列です。
+- 実行回数が完全に一致します: LDG.E 2命令の実行回数(~729,860〜743,424)は、outer grid-strideループの反復回数`m`(=743,424、チャンクあたりのタスク数)とほぼ一致し、DFSループ内部(数十億〜数兆回実行)とは明確に異なります。つまり「タスクごとに1回」実行される命令 = ループを抜けた直後の`w_arr[idx]`読み込みと符合します。
+- SASSの並び(`e100`のBRA/`e110`のBSYNC = DFSループ脱出直後の合流点 → `e120`/`e130`のLDG.E)も、861行目がDFSループ直後にある位置関係と整合します。
+- offset `+0`と`+4`の2命令ペアは、u64値1個を32bit×2回に分割して読む典型パターンです。warp内の隣接スレッドは同じ`idx`を連続で持つ(`idx=tid`起点、`stride`は全スレッド共通)ため理論上は完全にコアレッシングできるはずですが、64bit読み込みが単一の64bit LDG命令ではなく32bit×2に分割されているため、コンパイラ側のコアレッシングが理想通りに働いていない可能性があります。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+ただし、これはper-line対応が取れない環境でのアドレス位置・実行回数からの推論であり、確証ではありません。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+ご依頼のドキュメント追記とあわせて323を用意します。Good, no collision this time (no fabricated 320/321/322 baselines existed to shift incorrectly). Let's fix the NOTE comment and rewrite the header.Now let's rewrite the header block for 323.Now fix the "validation:" echo and final validation-ok message.Now let's verify syntax and diff scope for the shell script.Good. Now the Python source narrative and the new "Open Objectives" section — this is the priority the user explicitly requested. Let's build it carefully.Now let's find and replace the narrative block (which shifted its line positions after this insertion).Now update VERSION_TAG and the reason string.Now let's verify balance and diff scope, checking that the new Open Objectives insertion doesn't break the static checks.All within the docstring region as expected. Let's run the same static-check logic locally (from the shell script's Python static-check block) against the new source to make sure nothing broke.Good, all intact (5 GPU kernels, key constants present). Now let's write the README with the Open Objectives section at the top plus the chronological entry.Now finalize and present all three files.323を用意しました。ご依頼の2点、両方反映しています。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+**1. 非コアレッシングメモリの掘り下げ**: 上でお伝えした`w_arr[idx]`(861行目)仮説を、ソース側にも根拠込みで記載しました。ただし繰り返しになりますが、これはper-line対応が取れない環境でのアドレス位置・実行回数・型からの**推論**であり、確証ではありません。このリビジョンでは修正は提案せず、リードの記録のみです。
+
+**2. Open Objectivesセクションの新設**: `323Py_warr_uncoalesced_loadsplit_probe.py`のdocstring冒頭(ASCIIアート直後)と、`README.md`の最上部の両方に、現在の未解決課題を要約したセクションを追加しました。
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+1. [調査中] 非コアレッシングメモリアクセス(推定11.79%) — w_arr[idx]仮説、未確証
+2. [結論・保留] Stall Branch Resolving(約19〜23%) — 原因特定済み、対策は高リスクのため保留
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+年代順の詳細ログはこれまで通り下に残したまま、このセクションだけリビジョンごとに更新していく形にしています。次回以降、新しい課題が出てきたり既存の課題が解決/クローズしたりしたら、このセクションを都度書き換えます。
 
+いつもどおり、まず
+
+```
+STATIC_ONLY=1 bash 323Py_warr_uncoalesced_loadsplit_probe_validate_N21_full_once.sh
+```
+
+をお願いします。差分は322からdocstring(Open Objectives新設含む)/VERSION_TAGのみです(diffで確認済み)。
+
+良い質問です。数字を見直すと、かなりはっきりした説明がつきます。
+
+## 数字から見える「ちょうど2倍」という手がかり
+
+`w_arr:Ptr[u64]`はチャンクあたり`m`=743,424要素を読みます。warpは32スレッドなので、実行される命令(warp単位)は743,424/32=23,232回。**理想的に1回の64bit読み込み(8バイト/スレッド)としてコアレッシングできれば**、1warpあたり256バイト(32スレッド×8バイト)=8セクタで済むはずで、全体では23,232×8=185,856セクタが理論値になります。
+
+実際に観測された`0x...e120`(LDG.E、offset+4側)の「Excessive」は92,928。もし理想値(Ideal)も同程度の92,928前後だとすると、**Excessive ≈ Ideal**、つまり実際のフェッチ量は理論値のちょうど2倍になっている計算です。
+
+## 原因の仮説: 64bit値を32bit×2命令に分割していること自体が問題
+
+`w_arr[idx]`は本来8バイト連続のu64値です。warp内の隣接スレッドは連続した`idx`を持つので、**インデックスのアクセスパターン自体は理想的**です(発散DFSループとは無関係の、単純で予測可能なアクセス)。
+
+問題は、これが**1回の64bit読み込み命令ではなく、offset+0とoffset+4の2回の32bit読み込み命令**(`LDG.E R2,[R12+0x4]`と`LDG.E R0,[R12]`)に分割されている点です。
+
+GPUのメモリコアレッサーは32バイト単位(セクタ)でフェッチします。32bit読み込み1命令だけを見ると、各スレッドは8バイトごとに4バイトしか使わない、いわば「歯抜け」のアクセスになります。
+
+- **低位32bitの命令**: 32スレッド分のセクタ群をフェッチするが、各セクタの半分(4バイトおき)しか使わない
+- **高位32bitの命令**: 同じセクタ群を、残り半分を使うために**もう一度**フェッチする
+
+結果として、同じメモリ領域を実質2回フェッチすることになり、観測された「ほぼ理論値の2倍」という数字と符合します。もし1回の64bit(または128bit)命令として発行されていれば、各スレッドの8バイトがそのまま隣接スレッド分と連続して1セクタに収まり、無駄なく1回のフェッチで済んだはずです。
+
+## なぜ分割されているのか
+
+インデックスパターンそのものは正しいので、原因はおそらく**ソースコードのロジックではなく、CodonのGPUコード生成(LLVM/NVPTXバックエンド)がu64配列の読み込みを自動的に32bit×2へ下げている**ことにあると考えられます。よくある背景としては:
+
+- 64bit幅のベクトル化load命令(`LD.E.64`相当)への自動融合(vectorization)パスが、この経路では効いていない
+- アライメント保証が明示されていないため、コンパイラが安全側に倒して32bit単位に分割している
+
+この場合、**ソース側で`w_arr[idx]`の書き方を変えるだけでは直らない可能性があり**、Codon側に64bit(またはより広い)ロードを明示的に発行させる手段があるかどうかが次の論点になります。
+
+この仮説を検証する次の一手(324として)を用意しましょうか、それとも先に仮説の妥当性についてもう少し議論しますか？
 """
+
+
+
+
+
 
 
 
@@ -314,10 +392,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="323 warr-uncoalesced-loadsplit-probe: parent 322 manualreview-reconverge-loopback (documentation-only, no source changes, no build/run); none of 320/321/322 produced their own confirmed N=21 timing (320 checked `codon build --help`, 321's -debug build crashed with CUDA_ERROR_INVALID_PTX, 322 was manual source review only), so 319 (455.116s, 314666222712) remains the most recent confirmed baseline; this revision re-examined 319_ncu_source.txt beyond stall_branch_resolving: (1) stall_wait, the LARGEST single stall category at 43.39% of all PC samples, is concentrated in the same 0x...d440-0x...e040 address range as the five continue-condition branches identified in 322's manual review, corroborating that mapping from an independent metric; (2) L2 Theoretical Sectors Global Excessive (the ncu OPT advisor's 11.79%-speedup uncoalesced-access finding) is 100% explained by exactly 4 instructions -- two LDG.E at addr 0x...e120/0x...e130 (92,928 excessive sectors each, 96% of the 189,728 total) and two STG.E at addr 0x...e310/0x...e320 (1,936 each) -- a far more precisely localized finding than the branch-resolving one; hypothesis (not line-level confirmed, inferred from execution-count/address/type reasoning): the LDG.E pair is the `w_arr[idx]` read at line ~861 (`thread_total+=total*w_arr[idx]`), the only Ptr[u64] array read via a single idx index, based on (a) execution count of the two LDG.E rows (~729,860-743,424) matching m (tasks per chunk) almost exactly -- once per outer-loop iteration, not once per DFS node like the hot inner-loop instructions which run into the tens/hundreds of billions, (b) SASS address ordering placing e120/e130 immediately after the DFS-loop-exit reconvergence point (e0f0/e100/e110), matching line 861's position right after the while-True loop, (c) the split into two 32-bit LDG.E at offset 0/+4 of one base register being the classic pattern for a u64 value loaded as two 32-bit halves instead of one 64-bit transaction; this is a lower-risk lead than Stall Branch Resolving since it sits outside the hot divergent DFS loop in a single once-per-task load, but NO fix is proposed yet -- documentation of a new lead only; per the user's request, this revision also adds a persistent 'Open Objectives' section near the top of both this file's docstring and README.md, summarizing current open/closed investigation threads; ZERO changes to kernel logic (same as 311-322: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +424,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="323 warr-uncoalesced-loadsplit-probe: zero kernel-logic changes from 322 (variant2 rotate_only, same as 304/308/311-322); L2 Theoretical Sectors Global Excessive (11.79% OPT-advisor lead) traced to exactly 4 instructions (2 LDG.E + 2 STG.E), hypothesized as the w_arr[idx] read at line ~861 based on execution-count/address/type reasoning, not line-level confirmed; lower risk than the Stall Branch Resolving loop-back since it sits outside the hot divergent DFS loop; no fix proposed yet, documentation of a new lead only"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

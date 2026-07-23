@@ -262,30 +262,61 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+## 1. stall_wait(実は最大のカテゴリ、43.39%)のランキング
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+トップ集団は`0x...e040 @!P2 BREAK B2`(119,003)を筆頭に、`0x...d440`〜`0x...e040`付近の一連の条件分岐(`@P3 BRA`, `@!P2 BRA`, `@!P3 BRA`)が並びます。これらのアドレスは、322で手動レビューした**ループ本体の5つの`continue`判定カスケード**(`nf==0`判定、future_check、terminal_depth、child_jmark、block_code分岐)の位置と一致します。つまり手動レビューでの推定が、この新しい角度からも裏付けられた形です。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+## 2. Divergent Branches(実際に発散する条件分岐そのもの)
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+`0x...df70`(1229億回)、`0x...d440`(1080億回)、`0x...d2b0`(723億回)などが突出しています。これらは`nf==0`/`future_check`/`block_code`判定に対応する枝と考えられ、発散自体はここで起きているものの、**stall_branch_resolvingの主コストはここではなく、再収束後のBRA1本(e100)に集中している**という322の結論を補強します。
+
+## 3. 【新発見】非コアレッシングメモリアクセスの発生源が完全に特定できました
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+92,928  0x...e120  LDG.E R2, [R12.64+0x4]
+92,928  0x...e130  LDG.E R0, [R12.64]
+ 1,936  0x...e310  STG.E [R2.64+0x4], R17
+ 1,936  0x...e320  STG.E [R2.64], R16
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+**この4命令だけでL2 Theoretical Sectors Global Excessiveの189,728全てを説明できます**(合計が完全一致)。しかも上位2つのLDG.Eだけで96%を占めます。この2つは同じベースポインタ(R12)からoffset 0と+4を読んでおり、**64bit値を2回の32bit読み込みに分割している**パターンに見えます。アドレス位置(e100の直後、outer grid-strideループの先頭付近)から、`w_arr`(`Ptr[u64]`)など何らかの配列アクセスが該当する可能性があります。
+
+**これは分岐/ループ再構成より明らかにリスクが低い調査対象です**: 複雑な発散DFSループの内部ではなく、単純なロード/ストア2〜4命令に限定されており、rev189のような深刻な回帰を招く可能性は低いと考えられます。
+
+続けてこの非コアレッシングメモリのリードを掘り下げますか？(該当する配列アクセスをソース上で特定する作業になります)
+"""
+
 
 """
+
+Now let's check and fix the timing loop label and rewrite the header block.Timing loop is fine (unaffected, correctly stays at 319). Now rewrite the header block fully for 322.Now fix the "validation:" echo and final validation-ok message.Now let's verify the version tag static check, syntax, and diff scope.Good, scope matches expectations. Now let's rewrite the Python source narrative for 322.Now update VERSION_TAG and the reason string.Now let's verify balance and diff scope, then finalize.Good — scope confined to docstring + the two constants (plus one harmless blank line, same pattern as before). Let's scan for stray naming artifacts, then write the README entry.Clean. Now the README entry.322を用意しました(ソース変更は一切なし)。手動レビューの結果を先にお伝えします。
+
+**`kernel_dfs_iter_gpu_maxd14`のメインDFSループ(`while True:`、783行目付近)に、319で見たSASSパターンと正確に一致する構造がありました。**
+
+このループには次の6つの経路があり、すべて同じループ先頭(784行目 `if cur_avail==u32(0):`)に収束します:
+
+- `continue` × 5: バックトラックpop(797行目)、`nf==0`手詰まり(830行目)、future_check手詰まり(834行目)、terminal_depth到達(841行目)、child_jmark強制手詰まり(847行目)
+- 暗黙のフォールスルー × 1: push+descend(860行目)
+
+各warpレーンは自分の盤面状態次第で毎イテレーション違う経路を取るため典型的なSIMT発散が起き、コンパイラは全レーンの再収束(BSYNC)を待ってから、たった1つの後方分岐(BRA)でループ先頭に戻します。これが319で見た「BSYNC直後の圧倒的多数のBRA1つがstall_branch_resolvingの50.8%を占め、実際に発散する条件分岐(`nf==0`等)は個別には順位が低い」という結果の正体だと考えられます。
+
+312年で始めた調査への結論としては: **コストは特定の条件分岐ではなく、ループの共有back-edgeでの再収束オーバーヘッドそのもの**です。これは292/316のAvg Active Threads Per Warp ≈ 15%と同じ根本原因の、コンパイル後コードでの具体的な所在を示したものであり、新しい根本原因ではありません。
+
+**このリビジョンでコード変更は提案していません。** rev189の回帰(+108%)という前例と、このループが292/295/296/297/298と既に多くの慎重な反復を経ている実績を踏まえ、この再収束ポイントに手を入れる試みは高リスクと判断しました。実際に対策を試すかどうかは、専用の検証計画を伴う別セッションで改めて判断されることをお勧めします。
+
+いつもどおり、まず
+
+```
+STATIC_ONLY=1 bash 322Py_manualreview_reconverge_loopback_validate_N21_full_once.sh
+```
+
+をお願いします。差分は321からdocstring/VERSION_TAGのみです(diffで確認済み)。
+"""
+
+
+
+
 
 
 
@@ -314,10 +345,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="322 manualreview-reconverge-loopback: parent 321 debugbuild-lineinfo-attempt; 321's diagnostic -debug build crashed at kernel launch with CUDA_ERROR_INVALID_PTX -- Codon's -debug codegen produces PTX the driver JIT rejects outright, a hard failure rather than merely a risk of divergent SASS; this closes every tooling-based avenue tried since 312 for per-line (.py file:line) Stall Branch Resolving attribution: `--set SourceCounters` (wrong syntax, 318), `sudo --section SourceCounters` (kernel-aggregate only, 318), `--page source` (per-SASS-instruction attribution succeeded but disassembly-only, 319), `-debug` build for line info (crashes, 321); neither 320's nor 321's own N=21 -release run was executed, so 319 (455.116s, 314666222712) remains the most recent confirmed timing baseline; the user chose to close the tooling track and move to manual source review; reading kernel_dfs_iter_gpu_maxd14 directly, the main DFS backtracking loop (`while True:`, ~line 783) has exactly the structural signature matching 319's SASS finding: five separate `continue` statements (cur_avail==0 backtrack-pop, nf==0 dead end, future_check dead end, terminal_depth reached, child_jmark forced dead end) plus one implicit push+descend fallthrough, all six reconverging at the single loop head (`if cur_avail==u32(0):`); different warp lanes take different paths every iteration depending on per-lane board state (textbook SIMT divergence), requiring a BSYNC before the single backward branch to the loop head can issue -- matching 319's finding of one dominant unconditional BRA (50.8% of stall_branch_resolving) immediately after a BSYNC, while the actual divergent conditional branches individually rank far lower; this is a source-level (not exact-line-verified) closing answer to the investigation opened around 312, restating the same root cause already known from Avg Active Threads Per Warp ~15% (292/316) but now showing precisely where in the compiled code that cost is paid; NO source change is proposed in this revision given the rev-189 regression precedent (+108% slowdown from an earlier inner-loop restructuring attempt) and this loop's already-extensive optimization history (292/295/296/297/298); ZERO changes to kernel logic (same as 311-321: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +377,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="322 manualreview-reconverge-loopback: zero kernel-logic changes from 321 (variant2 rotate_only, same as 304/308/311-321); 321's -debug build crashed with CUDA_ERROR_INVALID_PTX, closing the tooling-based per-line-attribution track; manual review of kernel_dfs_iter_gpu_maxd14's main while-True DFS loop found five continue statements plus one fallthrough all reconverging at the loop head, matching 319's SASS finding (dominant BRA next to BSYNC = 65.6% of stall_branch_resolving across the top two instructions); no source change proposed, documentation/analysis only pending a dedicated future session for any restructuring attempt"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

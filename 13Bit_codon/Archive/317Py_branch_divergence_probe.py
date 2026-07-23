@@ -262,29 +262,36 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Now let's build 317. First, let's check 315/316's actual timing results and finalize the analysis before writing the files.Now let's build 317Py and its validate script:Let's verify diff/parity:Good — docstring-only diff. Now the validate script:Now add the 315/316 baselines and update the version-tag check plus remaining literal strings:Now let's append the README entry:Now copy to outputs and present:315・316・ncuプロファイル全て確認しました。**バグ修正の動作確認と、重要な新発見が2つあります。**
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**315・316実行結果**: 両方とも正常終了(315=454.779s、316=454.460s)、正当性一致。315の`gpu_clock_cap_check`が初めて実データで動作し、`current_sm=1320MHz max_sm=1710MHz`(`WARN-CAPPED`)を正しく検出しました。`gpu_power_cap_check`も`OK`(300W==300W)。バグ修正が正しく機能していることを確認できました。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**316_ncu.txtの分析:**
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+**発見1(良いニュース)** — アーキテクチャレベルの指標が304時点(1710MHz)とほぼ完全に一致していました:
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+| 指標 | 304(1710MHz) | 316(1320MHz) |
+|---|---|---|
+| Avg. Active Threads Per Warp | 6.34 | **6.34(完全一致)** |
+| Achieved Occupancy | 11.04% | 11.03% |
+| Stall Wait | 44.1% | 44.09% |
+| Stall Branch Resolving | 約19.6% | 19.62% |
+
+クロックが約23%低くても比率はほぼ完全に維持されており、「アーキテクチャ的特性はクロックに依存しない」という316での仮定が裏付けられました。
+
+**発見2(新たな制約)** — しかし要求していた`--set SourceCounters`のper-line分岐特定データは取得できていませんでした。ファイルには軽量5セクション(SpeedOfLight/SchedulerStats/WarpStateStats/LaunchStats/Occupancy)のみが含まれ、Source Counters節自体が存在せず、`smsp__pcsamp_sample_count could not be found`という警告がありました。これはPCサンプリングに基づくプロファイリングがこの環境では利用できないことを意味します。`nvidia-persistenced`の初期化失敗と合わせると、**この仮想化/共有GPU環境では低レベル/特権的なドライバ機能(クロック制御・persistenceデーモン・PCサンプリング)が一貫してブロックされている**という見方が有力になりました。
+
+**317の内容(引き続きコード変更ゼロ):**
+
+per-line特定は諦め、PCサンプリング不要のハードウェアカウンタベースの分岐ダイバージェンス集計メトリクス(`smsp__sass_branch_targets.sum`等)を次に試します。per-line特定はできませんが、カーネル全体での分岐ダイバージェンスの規模感は得られる見込みです。これも取得できなければ、ncuベースのアプローチ自体を諦め、カーネルソースの手動レビューに切り替える方針を明記しました。
+
+`bash -n`での構文チェック、316との差分(ドキュメントのみ)確認も済んでいます。まず
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 317Py_branch_divergence_probe_validate_N21_full_once.sh
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
-
+をお願いします。あわせて、ヘッダに記載した`smsp__sass_branch_targets*.sum`コマンドの手動実行結果もいただければ、318で判断できます。
 """
 
 
@@ -314,10 +321,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="317 branch-divergence-probe: parent 316 env-accept-ncu-prep; 315/316 N=21 full runs both correct (315=454.779s, 316=454.460s, 314666222712 confirmed) and 315's gpu_clock_cap_check now runs against real data (current_sm=1320MHz vs max_sm=1710MHz, WARN-CAPPED) confirming the field-name fix works, gpu_power_cap_check=OK (300W==300W); 316_ncu.txt analysis: architectural ncu ratios matched 304's original 1710MHz-era profile almost exactly despite the ~23% lower clock (Avg Active Threads Per Warp 6.34 vs 6.34 exact match, Achieved Occupancy 11.03% vs 11.04%, Stall Wait 44.09% vs 44.1%, Stall Branch Resolving 19.62% vs ~19.6%), confirming the 316 assumption that architectural stall ratios are clock-independent; however the requested --set SourceCounters per-line branch attribution was NOT obtained -- the captured file contains only the 5 lightweight sections (SpeedOfLight/SchedulerStats/WarpStateStats/LaunchStats/Occupancy) with no Source Counters section, and includes the warning 'smsp__pcsamp_sample_count could not be found', indicating PC-sampling-based profiling is unavailable in this environment, consistent with the earlier nvidia-persistenced initialization failure -- both point to a virtualized/shared GPU environment blocking low-level/privileged driver features; this revision pivots to a non-PC-sampling ncu approach: hardware-counter-based branch divergence aggregates (smsp__sass_branch_targets.sum, smsp__sass_branch_targets_threads_divergent.sum, smsp__sass_branch_targets_threads_uniform.sum) which give kernel-wide divergence magnitude without per-line attribution; if this also fails, the fallback is a manual source-level review of continuation/termination branches in the hot loop rather than any further ncu-based per-line approach; ZERO source changes in this revision (same as 311-316: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +353,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="317 branch-divergence-probe: zero source changes from 316 (variant2 rotate_only, same as 304/308/311-316); 316's ncu SourceCounters attempt failed (no PC-sampling data, smsp__pcsamp_sample_count unavailable), but architectural ratios (Avg Active Threads 6.34, Achieved Occupancy 11.03%, Stall Wait 44.09%, Stall Branch Resolving 19.62%) matched 304's 1710MHz-era profile almost exactly despite the lower clock; pivoting to non-PC-sampling hardware-counter branch divergence metrics (smsp__sass_branch_targets*.sum) since per-line attribution is unavailable in this environment"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

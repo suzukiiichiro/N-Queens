@@ -262,29 +262,26 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Now verify the diff between 309 and 310 is minimal and clean, and syntax-parity check:Clean, expected-scope diff. Now the validate shell script for 310, built as a child of 309's:Now update the version-tag static check, runtime globals check (variant=1), and log/echo strings:Now update remaining literal "309" echo/log strings and final message:Good, all fixed (the header comment's "Parent: 309 variant4-phase-rotate" line is intentional historical reference). Now update the final validation-ok message:Now syntax-check and diff review:Good — that carries through correctly without extra edits. Now let's append the README entry.Now copy to outputs and present the files:ログ確認しました。**309は不採用（大幅悪化）**です。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**309結果サマリー:**
+- 静的チェック全OK、正当性一致(314666222712)、`variant=4`/`tag=phase_rotate`も実行時ログで意図通り確認
+- elapsed=481.149s vs 304(K=48)=351.070s、**差−130.079s(−37.052%)** — Kスイープのどの変動よりも遥かに大きい退行
+- chunk別: chunk0=169.369s、chunk1=172.626s、chunk2=119.915s（304平均約117s/chunkに対し全チャンクが悪化）。特定チャンクの異常ではなく、reorderされたtask列全体でSIMT lane imbalanceが悪化した形です。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**310の狙い（要因の切り分け）:**
+variant=4(phase_rotate)はvariant=2(rotate_only、現行本番デフォルト)に対して `phase_mix`（cell/risk-awareなtail phase）を追加した設定で、両者の差はこの一点のみです。309だけでは「phase_mix単体が悪いのか」「phase_mixとrotate_interleaveの組み合わせが悪いのか」を切り分けられないため、中間点の **variant=1(phase_only: phase_mix=1, rotate_interleave=0)** を測定します。カーネルソースに既存の分岐をそのまま使う、定数2行のみの変更（カーネルコード変更ゼロ）です。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+- variant=1が304並みに戻れば → 退行原因は「組み合わせ」
+- variant=1も悪化すれば → 退行原因は「phase_mixそのもの」、task-reorder方向自体の見直しが必要
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+検証スクリプトは309版を親に、baselineへ`309variant4phaserotate`(481.149s, REJECTED)を追加し、`bash -n`で構文チェック済みです。まず
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 310Py_variant1_phase_only_validate_N21_full_once.sh
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
-
+をお願いします。
 """
 
 
@@ -314,10 +311,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="310 variant1-phase-only probe: parent 309 variant4-phase-rotate (REJECTED: 481.149s vs 304 K=48=351.070s, -130.079s/-37.052%, severe regression, all 3 chunks slower than 304 per-chunk average); variant=4 combines phase_mix=1(cell/risk-aware tail phase) with rotate_interleave=1(rotating interleave); variant=2(rotate_only, current production default since 115) has phase_mix=0/rotate_interleave=1 and is the only variant validated safe; this probe isolates the two factors by testing variant=1(phase_only: phase_mix=1, rotate_interleave=0) to determine whether the 309 regression came from phase_mix alone or from the phase_mix+rotate_interleave combination; single change: BROAD_MARKDIST_TAIL_VARIANT 4->1, A10G_FINAL_DEFAULT_BROADMARK_VARIANT 4->1; K_PER_THREAD_MAXD14 stays 48 (unchanged from 304/309); EXPECTED_CHUNKS=ceil(2025282/(32*484*48))=ceil(2025282/743424)=3 (unchanged); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged; zero kernel code changes, CLI-selectable variant only"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -332,7 +329,7 @@ A10G_FINAL_DEFAULT_REORDER_PHASE_JUMP:int=7
 A10G_FINAL_DEFAULT_CROSS_STRIPE_SAFE:bool=False
 A10G_FINAL_DEFAULT_WORKER_ID:int=0
 A10G_FINAL_DEFAULT_WORKER_COUNT:int=1
-A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2
+A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=1
 CPU_FINAL_DEFAULT_N:int=22
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=24  # range() upper bound; outputs N=5..23
@@ -346,8 +343,8 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
-BROAD_MARKDIST_TAIL_VARIANT:int=2
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="310 probe: 309 variant4(phase_rotate)=phase_mix+rotate_interleave regressed -37.052% vs 304 K48; isolating factor by testing variant1(phase_only)=phase_mix without rotate_interleave; variant2(rotate_only, no phase_mix) remains the only validated-safe non-baseline setting; zero kernel code changes, CLI-selectable variant only"
+BROAD_MARKDIST_TAIL_VARIANT:int=1
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17
 BROAD_MARKDIST_TAIL_RISK_SALT:int=11

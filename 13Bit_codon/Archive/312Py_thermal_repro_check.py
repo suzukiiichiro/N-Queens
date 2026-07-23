@@ -262,28 +262,30 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Good — constants are already correctly unchanged (K=48, variant=2). Let's just update the reason string for log clarity, keeping the value identical:Good — only the documentation/changelog text differs. Now the validate script, adding GPU telemetry capture and cooldown support:Now add the 311 baseline entry and update version-tag/runtime-globals checks:Now let's add the telemetry capture logic. First let's see where the run command executes so we can wrap it:Now update the final validation-ok message and syntax-check the whole script:Let's double check the record_check function is called correctly for gpu_telemetry (I used printf directly rather than record_check, since it's informational, not pass/fail) — verify consistency with SUMMARY header format:Good, matches the tab-separated `check\texpected\tactual\tstatus` format used throughout. Now let's do a final full-diff sanity pass against 311's script:Now let's append the README entry:Now copy to outputs and present:311のログを確認しましたが、**311は正当性OKにもかかわらず、タイミングに重大な異常があります。** ここでStall Branch Resolving調査に進むのは危険と判断し、312では方向転換しています。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**311の異常内容:**
+- 静的チェック全OK、正当性一致、`variant=2`/`rotate_only`確認、dispatch構成も304と実質同一、キャッシュヒットも確認済み
+- しかし elapsed=454.422s vs 304=351.070s、**差−103.352s(−29.439%)** — カーネル・定数ともに304と1バイトも違わないのに大幅悪化
+- chunk別: chunk0=167.028s、chunk1=164.792s、chunk2=121.612s(304相当は約117s/chunk)と**全chunkが一様に約40%遅い**
+- 各chunkの`kernel_reduce_ms`がelapsedの99.9%以上を占めており、退行はホスト側I/Oではなく**GPUカーネル実行時間そのもの**
+- このセッション内で309(481s)→310(477s)→311(454s)と単調に速くなっているが、311でも304に29%届かない
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+dispatch構成が304と一致しているのに一様に遅い、という事実から、**コード変更由来の退行ではなく、309〜311の連続実行(合計約23.5分のGPU連続稼働)によるサーマルスロットリング/クロック低下が最有力の仮説**と判断しました。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+**312の内容(ソースコード変更ゼロ):**
+- variant=2・K=48ともに311から1バイトも変更せず再実行し、454.422sが再現するか304の351s付近に回復するかを確認します。
+- 検証シェルに`nvidia-smi`によるGPUテレメトリ取得(温度・クロック・電力・使用率・スロットリング要因を5秒間隔で記録)と、任意の`COOLDOWN_SECONDS`(前回runが長時間だった場合の待機)を追加しました。nvidia-smiが無い環境でも検証自体は失敗しないようベストエフォートにしています。
+- **304付近に回復すればセッション内サーマルドリフト、454s前後のままなら永続的な環境変化を疑う**という判断基準を設定し、いずれの結果が出るまでStall Branch Resolving(ncu SourceCounters)調査は保留としています。ncu自体もクロック状態に敏感なため、異常な状態で取得しても304時点との比較ができなくなるためです。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+`bash -n`での構文チェック、311との差分(ドキュメント/コメントのみ)確認も済んでいます。まず
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 312Py_thermal_repro_check_validate_N21_full_once.sh
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+をお願いします。可能であれば、前回runからある程度時間を空けてから(`COOLDOWN_SECONDS`を使うか、手動で少し待ってから)実行いただけると、サーマル仮説の検証としてより綺麗なデータになります。
+
 
 """
 
@@ -314,10 +316,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="312 thermal-repro-check: parent 311 variant2-restore (correctness OK, dispatch composition matches 304 exactly, but elapsed=454.422s vs 304 K=48=351.070s, -103.352s/-29.439%, all 3 chunks uniformly ~40% slower with kernel_reduce_ms >99.9% of each chunk's elapsed, i.e. the slowdown is inside GPU kernel execution time itself, not host-side I/O); session-level pattern 309(481.149s)->310(476.932s)->311(454.422s) monotonically improving across ~23.5 cumulative minutes of back-to-back GPU-saturating runs is consistent with thermal throttling/clock drift rather than a code regression, since 311's source is byte-identical to 304/308's confirmed-safe config; ZERO source changes in this revision (BROAD_MARKDIST_TAIL_VARIANT stays 2, A10G_FINAL_DEFAULT_BROADMARK_VARIANT stays 2, K_PER_THREAD_MAXD14 stays 48) -- this is a pure re-run to test reproducibility before trusting any further ncu profiling; validate script adds nvidia-smi GPU telemetry capture (temperature/clocks/power/utilization, sampled every 5s) plus an optional pre-run cooldown, to determine whether the anomaly is transient session-level thermal drift or a persistent hardware/environment state change; Stall Branch Resolving ncu SourceCounters work (handoff priority #2) is deferred until this is resolved, since ncu results captured under throttled clocks would not be comparable to 304's baseline profile; kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +348,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="312 thermal-repro-check: zero source changes from 311 (variant2 rotate_only, same as 304/308); 311 measured 454.422s vs 304's confirmed 351.070s despite identical config, all chunks uniformly ~40% slower with kernel_reduce_ms >99.9% of elapsed; re-running unchanged to test whether this is transient session-level GPU thermal/clock drift (309/310/311 back-to-back totaled ~23.5min of sustained GPU load) before trusting any Stall Branch Resolving ncu profiling"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

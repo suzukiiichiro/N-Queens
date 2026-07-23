@@ -262,29 +262,26 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+Let's confirm diff scope and syntax parity:Good, docstring-only diff. Now the validate script:Now add the 313 baseline, update version-tag check, and extend the telemetry section with power-limit fields:Good, clean. Now update the version-tag static check and remaining literal strings:Now let's extend the telemetry section to add power-limit fields and a power-cap check:Let's add the power_cap_check fallback line in the outer else branch too:Now let's fix the field-index comment (301 says "313:") and syntax-check the whole script:Now let's test the awk logic against sample data to make sure indices are correct:Field indices are correct. Now let's test the full check logic end-to-end (both WARN and OK cases):Good — confirmed correct under bash (the earlier tool invocation used `sh`, not `bash`). The script itself declares `#!/usr/bin/env bash`, so this logic is correct. Let's do a final full syntax check and diff review:Now update the final validation-ok message:Now let's append the README entry documenting this turn's exchange (nvidia-smi diagnostics + -rgc ineffective + 314 plan):Now copy to outputs and present:`-rgc`が効かなかったのは重要な追加情報です。313の仮説をさらに絞り込みました。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**確認できたこと:**
+- `nvidia-smi -q -d CLOCK`の数値は313の仮説を裏付けました(1710/1320≈1.295、実測遅延+29.4%とほぼ完全一致)
+- しかし`sudo nvidia-smi -rgc`は"All done."と成功したのに**Clocks.SMは1320MHzのまま変化なし** — 単純なゲスト側`-lgc`ロックではないと判明
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+**314の内容(引き続きコード変更ゼロ):**
+1. **電力上限の確認** — pre-runスナップショットに`power.limit`/`power.default_limit`等を追加取得し、`power.limit < power.default_limit`なら`WARN-POWER-CAPPED`を出す`gpu_power_cap_check`を新規追加。引き下げられていれば`sudo nvidia-smi -pl <default値>`をヘッダにドキュメント化(自動実行はしません)。
+2. **実務的な軌道修正** — この環境調査を無期限に続けるのは非生産的と判断し、電力上限を確認・調整してもなお1320MHzのままなら、それはこのセッションの制御不能な現実的上限(ホスト/ハイパーバイザー側ポリシー等)として受け入れ、**~454sを暫定基準とし、保留していたStall Branch Resolving調査(ncu SourceCounters)を再開する**方針にしました。ncuが報告するStall Wait/Stall Branch Resolvingの「比率」はクロック周波数そのものではなくアーキテクチャ的特性を反映するため、絶対的な比較は304時点(1710MHz)とはできなくなりますが、「どの分岐が主因か」を特定する目的自体は今のクロック環境でも達成できます。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+なお313自体のN=21フル実行はまだ行われていない(手動診断のみ)ため、README/検証スクリプトのタイミングbaselineは312(454.417s)までとし、架空の313タイミング値は追加していません。
+
+`bash -n`での構文チェック、awkフィールド抽出ロジックのテスト(WARN/OK両ケース)も確認済みです。まず
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 314Py_power_cap_diagnosis_validate_N21_full_once.sh
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
-
+をお願いします。`gpu_power_cap_check`の結果と、もし可能であれば`sudo nvidia-smi -pl <default値>`を試した後の再実行結果もいただければ、315でncu調査(または引き続きの環境調査)へ進みます。
 """
 
 
@@ -314,10 +311,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="314 power-cap-diagnosis: parent 313 clock-cap-diagnosis; nvidia-smi -q -d CLOCK confirmed the clock-cap hypothesis numerically (Applications Clocks=1710MHz matches Default Applications Clocks=1710MHz, ruling out an -ac override; Max Clocks SM=1710MHz vs actual Clocks SM=1320MHz; ratio 1710/1320=1.295 matches the observed +29.4% slowdown in 311-313 to within 0.1 point); however sudo nvidia-smi -rgc printed 'All done.' but Clocks.SM remained 1320MHz afterward, i.e. the reset had no effect, ruling out a simple guest-resettable -lgc lock; next-most-likely causes are (a) a power limit below default capping achievable clocks (312 telemetry showed only ~90-95W draw under 100% utilization, well below A10G-class ~150W TDP, consistent with a power cap) or (b) a host/hypervisor-level clock policy in a virtualized/shared GPU environment that guest-level nvidia-smi cannot override; ZERO source changes in this revision (same as 311/312/313: variant=2, K=48); validate script extends the pre-run snapshot with power.limit/power.default_limit/power.min_limit/power.max_limit and adds gpu_power_cap_check (WARN if power.limit < power.default_limit), documents (not auto-executes) sudo nvidia-smi -pl <default> as a next manual step; pragmatically decides not to block indefinitely on unresolved infrastructure: if the power-limit check does not resolve it either, ~454s under the current 1320MHz clock state is adopted as the session's interim practical baseline and Stall Branch Resolving ncu SourceCounters work resumes using this environment, since ncu's Stall Wait / Stall Branch Resolving percentages reflect architectural properties (dependency-chain length, branch execution frequency) that should be comparably informative even under a different absolute clock, even though they are not strictly comparable in absolute terms to 304's 1710MHz-era profile; kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +343,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="314 power-cap-diagnosis: zero source changes from 313 (variant2 rotate_only, same as 304/308/311/312); nvidia-smi -q -d CLOCK confirmed clock-cap numerically (1710/1320=1.295 matches +29.4% slowdown), but sudo nvidia-smi -rgc had no effect on Clocks.SM; checking power.limit vs power.default_limit as next hypothesis, with a pragmatic fallback to accept ~454s as the interim baseline and resume Stall Branch Resolving work if power-limit adjustment does not resolve it either"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

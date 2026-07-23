@@ -262,28 +262,35 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+Let's verify diff/parity:Good — docstring-only diff. Now the validate script:Now add the 315 baseline and update the version-tag check plus remaining literal strings:Good catch on my end. Now update the version-tag static check and remaining literal strings:Now let's append the README entry closing out this investigation arc:Now copy to outputs and present:3つの結果が出揃い、**電力上限も原因ではないことが確定しました。ここで環境調査を打ち切ります。**
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**判明したこと:**
+- `nvidia-smi -q -d POWER`: Current/Requested/Default Power Limitが全て300.00Wで一致(Min=100W, Max=300W)。312のテレメトリでのcompute中の最大消費電力(95.33W)は予算の約32%に過ぎず、電力上限には遠く及びません → **電力キャップ仮説は棄却**
+- `nvidia-persistenced`が"failed to initialize" → 仮想化/コンテナ化されたGPU環境でよく見られる症状
+- `--auto-boost-default=0`が"not supported" → 以前の`Auto Boost: N/A`と整合、想定通り
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+**調査総括(311〜316):**
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+| 仮説 | 結果 |
+|---|---|
+| コード変更由来の退行 | 否定(311) |
+| サーマルスロットリング | 否定(312) |
+| ゲスト側`-lgc`クロックロック | 否定(`-rgc`無効) |
+| `-ac`アプリケーションクロック上書き | 否定 |
+| 電力上限キャップ | **否定(今回)** |
+| Auto Boost設定 | 非該当 |
+| persistence mode | 初期化失敗(仮想化環境を示唆) |
 
-```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
-```
+ゲスト側で試せる主要な手段を一通り試し尽くし、いずれも1320MHz固定を変えられませんでした。最も整合的な残る仮説は、**仮想化/共有GPU環境におけるホスト/ハイパーバイザー側のクロック上限ポリシー**(ゲスト側からは変更不可能)です。
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+**316の内容:**
+- 314で立てた実務的な判断基準どおり、環境調査をここで正式に打ち切りました
+- **~454sをこのセッションの現実的な作業基準として受け入れ、保留していたStall Branch Resolving調査(ncu SourceCounters取得)を再開する**方針にしています
+- 引き続きソースコード・カーネルは1バイトも変更していません。ヘッダに次回実行するncuコマンドを再ドキュメント化しました
+- なお315自体のN=21実行結果はまだいただいていないため、タイミングbaselineは314(454.424s)までとしています
+
+`bash -n`での構文チェック、315との差分(ドキュメントのみ)確認も済んでいます。次回は、315のフル実行結果、または`ncu --launch-count 1 --set SourceCounters`の取得結果をいただければ、317でカーネル側の調査(Stall Branch Resolving)に本格的に進められます。
 
 """
 
@@ -314,10 +321,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="316 env-accept-ncu-prep: parent 315 telemetry-fieldname-fix; nvidia-smi -q -d POWER showed Current/Requested/Default Power Limit all equal at 300.00W (Min=100.00W, Max=300.00W), and 312's telemetry showed peak compute power draw of only ~95.33W (~32% of budget), ruling out a power cap as the cause; sudo nvidia-persistenced failed to initialize (consistent with a virtualized/restricted GPU environment where the persistence daemon cannot obtain the access it needs); sudo nvidia-smi --auto-boost-default=0 reported 'not supported for GPU', consistent with the earlier 'Auto Boost: N/A' finding for this GPU generation; having now ruled out code regression (311), thermal throttling (312), guest-level -lgc lock (-rgc had no effect, confirmed manually), -ac override (Applications Clocks == Default Applications Clocks), and power cap (this revision), the most consistent remaining explanation is a host/hypervisor-level clock ceiling on this virtualized/shared GPU instance that is not visible to or controllable by any guest-side nvidia-smi command; formally closing the environment investigation and adopting ~454s (SM clock pinned at 1320MHz) as this session's practical working baseline; resuming the handoff plan's priority #2 (Stall Branch Resolving isolation via ncu --launch-count 1 --set SourceCounters) using this environment, since ncu's Stall Wait / Stall Branch Resolving percentages reflect architectural properties that remain informative even though absolute comparison to 304's 1710MHz-era profile is no longer valid; ZERO source changes in this revision (same as 311-315: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +353,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="316 env-accept-ncu-prep: zero source changes from 315 (variant2 rotate_only, same as 304/308/311-315); power cap ruled out (power.limit==power.default_limit==300W, compute draw only ~32% of budget), -rgc/-ac/persistence-mode/auto-boost all ruled out or non-applicable; clock ceiling at 1320MHz accepted as this session's practical baseline (~454s), likely a host/hypervisor-level policy on a virtualized/shared GPU instance; resuming Stall Branch Resolving ncu SourceCounters work under this environment"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

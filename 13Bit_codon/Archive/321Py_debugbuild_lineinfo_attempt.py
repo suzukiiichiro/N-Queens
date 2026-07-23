@@ -262,30 +262,38 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Now let's check what follows in the baseline block (318, 317 etc.) to make sure those weren't corrupted too.Good, 318/317/316 are correctly unaffected. Now fix the timing-loop label list similarly.Now let's completely rewrite the header block (which is broken from the tag-rename collision) with fresh, accurate 321 content.Now fix the "validation:" echo and final "[validation-ok]" message.Now let's check the version-tag static check and filename references, then syntax-check and diff.Good. Now let's diff against 320's shell script to confirm the change scope is reasonable.That's the expected scope. Now let's rewrite the Python source narrative for 321.Replacing this narrative block with accurate content for 321.Now update VERSION_TAG and the reason string.Now let's verify balance and diff against 320.That's just a harmless extra blank line from the docstring replacement — no code impact. Let's do a final residual scan and finalize outputs.Clean. Now let's add the README entry.321を用意しました(カーネルロジックは1バイトも変更なし)。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**リスクを踏まえた提案コマンド**:
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
-
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
-
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
-
-```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+```bash
+codon build -debug -o 321Py_debugbuild_lineinfo_attempt_dbg \
+  321Py_debugbuild_lineinfo_attempt.py
+sudo ncu --launch-count 1 --section SourceCounters -f \
+  -o 321_ncu_dbg \
+  ./321Py_debugbuild_lineinfo_attempt_dbg \
+  -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+/usr/local/cuda/bin/ncu --page source --import 321_ncu_dbg.ncu-rep \
+  2>&1 | tee 321_ncu_dbg_source.txt
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+**結果を見る際に確認いただきたい2点**:
+1. `Source`列が実際の`.py`ファイル名・行番号になっているか(SASSのみのままなら`-debug`でも解決しない)
+2. 分岐構造が319で見た「BSYNC直後の無条件BRA」パターン(`0x...e100 BRA→0x...d030`など)をまだ含んでいるか — 構造が大きく違えば、得られる行番号は`-release`カーネルの実態を正確には反映していない可能性が高いので、その場合は参考情報にとどめる判断になります。
 
+なお320自体のN=21フル実行がまだ行われていないため、タイミング比較baselineは319(455.116s)までにしてあります。この検証スクリプト自体は通常どおり`-release`ビルドでのN=21フル実行のみを行うので、正当性・タイミング検証には影響しません。
+
+いつもどおり、まず
+
+```
+STATIC_ONLY=1 bash 321Py_debugbuild_lineinfo_attempt_validate_N21_full_once.sh
+```
+
+をお願いします。差分は320からdocstring/VERSION_TAGのみです(diffで確認済み)。
 """
+
+
+
 
 
 
@@ -314,10 +322,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="321 debugbuild-lineinfo-attempt: parent 320 sourceline-debug-build-probe; 320's own N=21 full run has not yet been executed (the user went straight to checking `codon build --help` per 320's header proposal), so 319 (455.116s, 314666222712, within 0.117% of 318's 454.585s) remains the most recent confirmed timing baseline; `codon build --help | grep -iE 'debug|line|-g'` showed Codon exposes only a binary choice -- `--debug` (disables optimizations, enables backtraces) or `--release` (optimizations on, debug info off) -- with no nvcc-`-lineinfo`-style middle ground that adds line info while preserving optimization; this matters because the two hotspot instructions identified in 319's `--page source` breakdown (addr 0x...e100 `BRA 0x...d030` = 421,586 samples / 50.8% of the 830,653 stall_branch_resolving total, addr 0x...e010 `BRA 0x...e0f0` = 123,420 / 14.9%, both unconditional BRAs immediately adjacent to BSYNC warp-reconvergence markers, NOT the predicated/divergent branches which individually rank far lower) were found in the optimized -release SASS, and a -debug build's disabled optimizations could restructure the loop enough that these addresses/instructions no longer correspond 1:1; the user chose, with this risk understood, to proceed and build a SEPARATE diagnostic-only -debug binary (never substituted for the -release binary used in correctness/timing validation), profile chunk 0 with `sudo ncu --section SourceCounters`, and re-check `--page source` for two things: (a) whether the Source column now shows real .py file:line references, and (b) whether the debug build's control flow still contains a recognizable analog of the 319 hotspot pattern before trusting any line numbers found; ZERO changes to kernel logic in this revision (same as 311-320: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +354,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="321 debugbuild-lineinfo-attempt: zero kernel-logic changes from 320 (variant2 rotate_only, same as 304/308/311-320); 320's `codon build --help` check found only a binary --debug(no-opt)/--release(no-debuginfo) choice, no lineinfo-while-optimized middle ground; attempting a diagnostic-only -debug build + ncu --page source anyway (user-accepted risk that its SASS may not match the -release kernel's 319-identified hotspot: unconditional BRA next to BSYNC, 65.6% of stall_branch_resolving) to see whether real source-line correlation becomes available"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

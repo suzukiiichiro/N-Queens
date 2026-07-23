@@ -262,29 +262,39 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+まず結果を確認します。**308 = 351.675s — 304(K=48)=351.070sとの差−0.605s(−0.172%)、誤差級・flat。** これでKスイープはK=44〜56のflat zoneとして完全確定しました。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+304〜308の5点でKカーブは完成しています。K=32(353.671s)→K=40(353.587s、flat)→K=44(351.240s、flat zone開始)→**K=48(351.070s、確定BEST)**→K=52(351.675s、flat)→K=56(351.534s、flat)→K=64(353.896s、flat zone外)。flat zone外の急峻な境界はK=40→K=44の左側(約2.35s改善)とK=56→K=64の右側(約2.36s悪化)のみで、K=44〜56の内部はどこを取っても誤差範囲(351.0〜351.7s)に収まります。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+**結論: Kスイープはこれ以上絞り込む意味がない。304(K=48)を確定BESTとして固定し、別方向へ移る。**
 
-```
+---
+
+## これまでの重要な知見まとめ（292〜308）
+
+| 変換の種類 | 結果 |
+|---|---|
+| **sp2 乗算の排除 (296)** | **+9.1s 改善 ✓** |
+| 変数削除 (save_sp, next_depth) | −9〜63s 退行 |
+| 変数統合 (schedule u64) | −22s 退行 |
+| 変数置換 (cur_depth_x4) | −282〜304s 退行 |
+| **K スイープ (32→48)** | **+2.6s 改善 ✓（304確定BEST）** |
+| K スイープ追加点 (40/44/52/56/64) | flat（K=44〜56がflatゾーン） |
+
+296の成功は`save_sp*2`が真のIMULだったこと、304の成功は296カーネルのまま定数を1つ動かしただけであることによる。どちらもカーネルのhotループ命令列そのものは変えていない。304のncu再プロファイル（軽量セクション、chunk0、`--launch-count 1`）では、Avg. Active Threads Per Warpが6.34（292のK=32時点=4.88、K=2再検証=6.28からさらに微増）、Achieved Occupancyが11.04%（理論値33.33%）で、ncu自身が「warp間imbalance」由来とEst.Speedup 66.88%で明示している。Stall Waitは2.09 inst（44.1%、依然トップ、K-batchingでは不変）、Stall Branch Resolvingが0.93 inst（約19.6%、今回新規に可視化された第2位要因）。root causeは279/292から変わらず「DFS部分木サイズのばらつきによるSIMT lane imbalance」であり、K-batchingは症状緩和策であって根治策ではない。
+
+## 309 の着眼点: BROADMARK_VARIANT（task reorder scheme）
+
+K値・カーネル本文どちらも触らない、最も低リスクな未探索軸に移ります。`BROAD_MARKDIST_TAIL_VARIANT`は115でA10G単GPU最終デフォルトとして`variant=2`(rotate_only: boost=1, simple tail phase, rotating F17/GH/R interleave)が採用されて以来、K sweep(292〜308)全体を通じて一度も振られていません。カーネルコードには元々`variant=4`(phase_rotate: boost=1, cell/risk-aware tail phase, rotating interleave)がすでに実装済みで、`broad_markdist_tail_variant_tag/desc/window_boost_value/phase_salt_value/use_phase_mix/use_rotating_interleave`の各分岐は304時点のソースにそのまま存在しています。つまり309は**カーネルコード変更ゼロ、既存CLI引数(worker_id worker_count variant)のみでの切り替え**です。
+
+変更内容は定数2行のみ: `BROAD_MARKDIST_TAIL_VARIANT:int=2`→`4`、`A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2`→`4`（bare `-g` 無引数起動時のデフォルトも揃える）。K_PER_THREAD_MAXD14=48（304のまま）、296カーネルロジックも完全無変更。ncuが指摘したwarp間imbalance(Achieved Occupancy 11.04%)に対し、task-ordering側(rotate_onlyの単純固定phaseからphase+rotateのcell/risk-awareなtail phaseへ)からアプローチする狙いで、DFS部分木サイズのばらつきそのものをリオーダリングで緩和できるかを見ます。EXPECTED_CHUNKS=3（K=48のまま変化なし）。
+
+```bash
 STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
 ```
-
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
-
 """
 
 
@@ -314,10 +324,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="309 variant4-phase-rotate: parent 308 K52-final-sweep (351.675s, flat; K sweep closed, K=44-56 confirmed flat zone, 304 K=48=351.070s remains BEST); K_PER_THREAD_MAXD14 stays 48 (unchanged from 304); single change: BROAD_MARKDIST_TAIL_VARIANT 2(rotate_only)->4(phase_rotate), plus A10G_FINAL_DEFAULT_BROADMARK_VARIANT 2->4 for bare -g default parity; variant=4 branch logic (window_boost/phase_salt/use_phase_mix/use_rotating_interleave) already existed in source since before 304 and is CLI-selectable with zero kernel code changes; targets ncu-identified warp-imbalance (Achieved Occupancy 11.04%, Avg Active Threads/Warp 6.34 at 304) from the task-reorder side instead of the kernel side; EXPECTED_CHUNKS=ceil(2025282/(32*484*48))=ceil(2025282/743424)=3 (unchanged from 304); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -332,7 +342,7 @@ A10G_FINAL_DEFAULT_REORDER_PHASE_JUMP:int=7
 A10G_FINAL_DEFAULT_CROSS_STRIPE_SAFE:bool=False
 A10G_FINAL_DEFAULT_WORKER_ID:int=0
 A10G_FINAL_DEFAULT_WORKER_COUNT:int=1
-A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2
+A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=4
 CPU_FINAL_DEFAULT_N:int=22
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=24  # range() upper bound; outputs N=5..23
@@ -346,8 +356,8 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
-BROAD_MARKDIST_TAIL_VARIANT:int=2
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="309 probe: switching 115-era default (114 weekend ablation, variant2 rotate_only) to variant4 phase_rotate; K sweep closed at 304 K48=351.070s, targeting ncu-identified warp imbalance from the task-reorder side; zero kernel code changes, CLI-selectable variant only"
+BROAD_MARKDIST_TAIL_VARIANT:int=4
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17
 BROAD_MARKDIST_TAIL_RISK_SALT:int=11

@@ -262,30 +262,29 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Now let me replace the entire embedded narrative block with fresh content reflecting the actual 318 results, and update VERSION_TAG.Now I'll replace lines 264-376 with the new narrative for this session.Now let's update the VERSION_TAG and BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON strings.Now let's check for other stray "sudo-retry" content or inconsistencies in the source file, and view the full narrative block for a final read-through.That's intentional (correctly references the parent revision's name). Now let's verify the diff between 318 and 319 sources is docstring/version-tag only (no logic changes), which is required by the project's discipline.Confirmed — diffs are confined to the header docstring narrative and the two string constants, nothing in kernel logic. Now let's build the final 319 source with a proper version-tag header comment update near the top revision log too, then move to the shell script.Good, that's a fixed historical example unrelated to current filename. Now let's finalize by copying the source to outputs with the proper filename.Good — 4 (even), balanced correctly. Now let's move to the shell script.Now let's replace the header comment block (lines 4-51) with fresh content matching the real narrative, and update filenames/values throughout.Now let's add the 318 timing baseline and update the timing comparison loop list.Good — only that one line got wrongly shifted (317→318 named var, but "branch_divergence_probe" name belongs to 317). Fix it, and add the real 318 baseline.Now let's check the version-tag static check, EXPECTED_CHUNKS section, and the bottom timing_vs_ loop list for the same kind of shift error.Need to fix the label list too — "318branchdivergenceprobe" should be "317branchdivergenceprobe" with the correct variable, plus add the new 318 entry.Now let's check the LOCK_FILE conflict message ("another 304 validation holds") — that's a static fixed string unrelated to shifting, fine. Let's check the "EXPECTED_CHUNKS=3, K=48" comment block and search whole file for any other misfired shift patterns.Now let's check the `[error] another 304 validation holds` line and any other stray references, plus verify script syntax with `bash -n`.Let's diff against the original 318 shell script to confirm only intended sections changed (no accidental corruption of the extensive static-check logic).Good, that's correct. Now let's do a final full review of the shell script header and README entry preparation.This looks solid. Now let's write the README addition.Now let's finalize outputs, do one last consistency pass, and present the three files.318の結果を確認しました。おはようございます。良い進捗ですね。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**318の要点**
+- N=21フル実行: 454.585s、正当性一致(314666222712)。誤差級で問題なし。
+- `318_ncu.txt`は**ついに本物のSource Countersデータ**が取れています。途中経緯として、最初は古い`--metrics`コマンドの使い回しで317と数値が完全一致していた問題、次に`--set SourceCounters`という構文自体の誤り(正しくは`--section`)がありましたが、最終的に`sudo ncu --section SourceCounters`で成功していました。
+- PCサンプリング内訳: `stall_wait 43.39%`、`stall_branch_resolving 22.63%`(3,670,006サンプル、全カテゴリ合計が一致することを確認済み)。316のサイクルベース値(44.1%/19.6%)、317のハードウェアカウンタ(21.44%)と同じ約20%レンジに収束しており、3つの独立した手法が相互に裏付ける結果になりました。
+- 副産物: ncuのOPTアドバイザーが非コアレッシングメモリアクセスで推定11.79%の速度向上余地を指摘(別軸の発見として記録、優先度は#2の後)。
+- ただし**per-line特定はまだ未達成**です。`Hotspot Locations`節が集計値の再掲のみで、ソース行への言及がありません。原因は`--print-details all`が「details page」を出すオプションで、ソース対応の「source page」ではないためと考えられます。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**319の内容(ソース変更ゼロ)**
+既存の`318_ncu.ncu-rep`を`--page source`で再インポートする提案をヘッダに記載しました。GPU再実行・ncu再プロファイリングは不要で、レポートの再処理のみです:
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
-
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
-
-```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+```bash
+/usr/local/cuda/bin/ncu --page source --print-details all --import 318_ncu.ncu-rep 2>&1 | tee 319_ncu_source.txt
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+- ソース行と対応した表示が出れば → per-line特定に初めて到達。
+- SASSアドレスのみなら → バイナリのline info埋め込み(ビルドフラグのみ)が次の論点。
+- エラーになれば → per-lineは真に到達不能と判断し、317/318の定量値を最終的な代替情報として受け入れる。
 
+まず`STATIC_ONLY=1 bash 319Py_sourcecounters_pagesource_probe_validate_N21_full_once.sh`をお願いします。差分は318からdocstring/VERSION_TAGのみ(diffで確認済み)です。
 """
+
 
 
 
@@ -314,10 +313,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="319 sourcecounters-pagesource-probe: parent 318 sourcecounters-sudo-retry; 318's N=21 run confirmed correct (454.585s, 314666222712, within 0.007% of 316's 454.460s, clock/power checks unchanged); 318_ncu.txt (run with the corrected `sudo ncu --section SourceCounters` syntax, not `--set`) successfully captured real Source Counters / PC-sampling data for the first time: # Samples=3,670,006, stall_wait=1,592,467 (43.39%), stall_branch_resolving=830,653 (22.63%) -- consistent with 316's cycle-based Stall Wait 44.1%/Stall Branch Resolving ~19.6% and 317's hardware-counter divergence ratio 21.44%, three independent measurement methods now converging on the same ~20% range; new secondary finding: ncu's built-in OPT advisor flagged an estimated 11.79% speedup from uncoalesced global memory accesses (189728/1331305 excessive sectors, 14%), noted as a lower-priority parallel lead; per-line attribution is still NOT achieved -- the Hotspot Locations section only repeats kernel-wide aggregates with no source file/line references, most likely because `--print-details all` renders the metric-list page rather than the source-correlated page; this revision proposes re-importing the SAME already-captured 318_ncu.ncu-rep with `--page source` (report post-processing only, no GPU rerun) to attempt true per-line correlation; if that yields SASS-address-only output, binary line-info embedding becomes the next question (build-flag only, no source change); if `--page source` fails outright, treat 317's 21.44% divergence ratio and 318's 22.63% stall_branch_resolving as the final quantitative substitutes for per-line attribution and pivot to manual source review or the newly-found uncoalesced-access lead; ZERO source changes in this revision (same as 311-318: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +345,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="319 sourcecounters-pagesource-probe: zero source changes from 318 (variant2 rotate_only, same as 304/308/311-318); 318's corrected `sudo ncu --section SourceCounters` run succeeded (stall_wait 43.39%, stall_branch_resolving 22.63% over 3,670,006 PC samples), corroborating 316's cycle-based ratios and 317's hardware-counter divergence ratio (21.44%); re-importing the existing 318_ncu.ncu-rep with --page source (no rerun) to attempt true per-line attribution before concluding it is unavailable in this environment"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

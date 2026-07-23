@@ -262,29 +262,48 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
-
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
-
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
-
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+良い着眼点ですが、それらのコマンドを試す前に重大なバグが見つかりました — 313/314のテレメトリ取得は**私が書いたクエリのフィールド名が無効だったため、実は一度も成功していませんでした**。まず中身を確認させてください。見つけました。私が313/314に追加したnvidia-smiクエリに `clocks.applications.sm` という**存在しないフィールド名**を指定してしまっており、nvidia-smi全体がエラーで落ちて、`gpu_pre_run_snapshot.csv`と`gpu_telemetry.csv`の中身は両方とも実際には診断データではなく、こうなっていました。
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+Field "clocks.applications.sm" is not a valid field to query.
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+さらに、`gpu_telemetry_captured`チェックが「行数が1以上ならOK」という甘い判定だったため、このエラーメッセージ自体を「present」として誤ってOK扱いしてしまいました(二重のバグです)。お詫びします。幸い、**N=21のcorrectness/timing自体は正しく取得できています**(313: 454.419s、314: 454.424s — 312の454.417sとの差は±0.002%以内で、クロックキャップされた状態が極めて安定して再現され続けていることは変わらず確認できます)。ただし`gpu_power_cap_check`は結局まだ一度も実データで走っていません。
 
+**ご提示のコマンドについて**、修正前に率直にお伝えします:
+
+- `sudo nvidia-persistenced` — persistence daemonの直接起動です。動作はしますが、通常は`sudo nvidia-smi -pm 1`の方が標準的です。ただし今回の1320MHz固定の直接原因である可能性は低いです(persistence modeのon/offはクロックの上限そのものを変えるものではなく、GPU状態の保持有無に関わる設定です)。
+- `sudo nvidia-smi --auto-boost-default=0` — このフラグはKepler/Maxwell世代向けのレガシーオプションです。以前の`-q -d CLOCK`出力で`Auto Boost: N/A`と表示されていた通り、このGPUはAuto Boost機能自体をサポートしていない可能性が高く、おそらく効果がないか、エラーになります。
+- `sudo nvidia-smi 1710` — これは有効なnvidia-smi構文ではありません(引数なしの裸の数値は受け付けられません)。
+
+代わりに、まずは正しいフィールド名でpower.limitの実データを取得することが先決です。315でバグを修正し、加えて`nvidia-smi -q -d POWER`(手動、私のCSVクエリより情報量が多い)の実行もお願いしたいです。Now let's build 315: fix the field-name bug, harden the "captured" check, and keep everything else (kernel/source) unchanged.Let's verify diff/parity, then build the validate script with the actual bugfix:Good — docstring-only. Now the validate script with the actual bugfix:Now the actual fix: the field name and the presence-check hardening. Let's locate both spots:Now let's view and fix the `gpu_telemetry_captured` check to validate the CSV header:Let's also harden the pre-run snapshot parsing the same way, so a bad query is distinguished from "field simply not supported":Now let's add the 314 baseline, and update the version-tag check plus remaining literal strings:Let's do a quick simulation test of the fixed logic against the actual broken-content case and a valid-content case to make sure the FAIL path triggers correctly:The bugfix logic correctly distinguishes broken vs. valid nvidia-smi output. Now let's append the README entry:Now copy to outputs and present:**315の内容(バグ修正、コード変更ゼロ):**
+
+1. `clocks.applications.sm` → `clocks.applications.graphics`(実在するフィールド名に修正。位置は変えていないので他のawkインデックスへの影響なし)
+2. `gpu_telemetry_captured`と事前スナップショットの各チェックを強化 — CSVの1行目が`timestamp`で始まるかを確認し、クエリエラー混入時は明示的に`FAIL`として検出するようにしました(以前は静かに見過ごされていました)
+
+修正ロジックは壊れたCSV/正常なCSV両方でテスト済みです。
+
+**ご提案いただいたコマンドについて:**
+- `sudo nvidia-persistenced` — persistence modeの有無自体はクロック上限を変えるものではなく、今回の原因である可能性は低いです
+- `sudo nvidia-smi --auto-boost-default=0` — `-q -d CLOCK`で`Auto Boost: N/A`と出ていた通り、この世代のGPUでは非対応の可能性が高いです
+- `sudo nvidia-smi 1710` — 構文として無効です(裸の数値引数は受け付けられません)
+
+これらはそのまま採用せず見送りました。代わりに、315のバグ修正で`power.limit`/`power.default_limit`が正しく取得できるようになるので、まずそれを確認してから対処コマンドを判断したいです。あわせて、より詳細な情報が得られる
+
+```
+nvidia-smi -q -d POWER
+```
+
+の手動実行結果もいただけますか。electricity limitが下がっていれば`sudo nvidia-smi -pl <default値>`、そうでなければクロックを明示的に引き上げる`sudo nvidia-smi -lgc 1710,1710`を試す、という判断ができます。
+
+`bash -n`での構文チェック、314との差分(検証シェルのバグ修正のみ、カーネル・定数は完全一致)も確認済みです。まず
+
+```
+STATIC_ONLY=1 bash 315Py_telemetry_fieldname_fix_validate_N21_full_once.sh
+```
+
+をお願いします。
 """
 
 
@@ -314,10 +333,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="315 telemetry-fieldname-fix: parent 314 power-cap-diagnosis; both 313 and 314's N=21 full runs completed correctly (313=454.419s, 314=454.424s, both within 0.002% of 312's 454.417s, correctness=314666222712 confirmed both times), but the GPU telemetry/clock-cap/power-cap diagnostics added in 313/314 never actually captured real data due to an invalid nvidia-smi query field name (clocks.applications.sm does not exist -- nvidia-smi rejects the entire query if any field is invalid; the actual file content in both runs was the single line 'Field \"clocks.applications.sm\" is not a valid field to query.'); compounding this, the gpu_telemetry_captured check only counted line count (>=1 => OK) rather than validating actual CSV content, so it falsely reported OK on the error message; fix: field name corrected to clocks.applications.graphics (matches the Applications Clocks: Graphics/Memory fields shown in the earlier manual nvidia-smi -q -d CLOCK output; position in the field list is unchanged so no other awk field indices need updating), and gpu_telemetry_captured now validates that the first line of the CSV actually starts with 'timestamp' rather than just counting lines; ZERO source changes in this revision (same as 311-314: variant=2, K=48); a manual nvidia-smi -q -d POWER run is also requested alongside the next validation run for richer power-limit context than the CSV query alone provides; kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +365,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="315 telemetry-fieldname-fix: zero source changes from 314 (variant2 rotate_only, same as 304/308/311-314); 313/314 N=21 runs both succeeded (454.419s/454.424s) but their GPU telemetry capture silently failed due to an invalid nvidia-smi query field (clocks.applications.sm -> corrected to clocks.applications.graphics); gpu_telemetry_captured check hardened to validate CSV header instead of just line count"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

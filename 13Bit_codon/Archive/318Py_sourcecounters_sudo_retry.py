@@ -262,28 +262,116 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+Let's verify diff/parity, then build the validate script:Good — docstring-only. Now the validate script:Now add the 317 baseline and update the version-tag check plus remaining literal strings:Now let's append the README entry:Now copy to outputs and present:`sudo`が効きました。**良い結果です。**
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+**317実行結果:** elapsed=454.617s、正当性一致、316との差は誤差級。想定通りです。
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
-
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
-
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+**317_ncu.txt結果:** 分岐ダイバージェンスのハードウェアカウンタ取得に成功しました。
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+smsp__sass_branch_targets.sum                   = 2,324,209,823,606
+smsp__sass_branch_targets_threads_divergent.sum =   498,374,270,228
+smsp__sass_branch_targets_threads_uniform.sum   = 1,825,835,553,378
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+**divergent比率 ≈ 21.44%**(divergent+uniform=totalの整合性も確認済み)。これは316で見た「Avg. Active Threads Per Warp 6.34/32 ≈ 19.8%」「Stall Branch Resolving 約19.6%」と同じ約19〜21%のレンジにあり、互いに整合的です。カーネル全体の分岐のうち約1/5が発散分岐であり、これがStall Branch Resolvingの実体とほぼ対応しているという定量的な裏付けが得られました。
+
+**重要な点**: 316のPCサンプリング(`--set SourceCounters`)失敗時は`sudo`を付けていませんでした。今回`sudo`でカウンタ取得が成功したことから、**PCサンプリングの失敗も単なる権限不足だった可能性**が出てきました。仮想化制約と結論づける前に、`sudo`付きで再挑戦すべきです。
+
+**318の内容(引き続きコード変更ゼロ):**
+
+`sudo`付きで`--set SourceCounters`を再実行する提案をヘッダにドキュメント化しました:
+
+```bash
+sudo ncu --launch-count 1 --set SourceCounters -f -o 318_ncu \
+  ./318Py_sourcecounters_sudo_retry -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+/usr/local/cuda/bin/ncu --print-details all --import 318_ncu.ncu-rep 2>&1 | tee 318_ncu.txt
+```
+
+成功すればper-line("どの行の分岐か")の特定に初めて到達でき、失敗すれば真にブロックされていると確定し、21.44%を代替の定量情報として次段階(手動レビューまたはStall Wait再検討)に進みます。
+
+`bash -n`での構文チェック、317との差分(ドキュメントのみ)確認も済んでいます。まず
+
+```
+STATIC_ONLY=1 bash 318Py_sourcecounters_sudo_retry_validate_N21_full_once.sh
+```
+
+をお願いします。あわせて`sudo`付きSourceCountersの結果もいただければ、319で判断できます。
+
+
+318のN=21実行自体は問題ありません(454.585s、正当性一致、クロック/電力チェックも変化なし)。
+
+ただし、**`318_ncu.txt`の中身が317と数値まで完全に同一です**(`smsp__sass_branch_targets.sum`等の3つの値が1桁も違わず一致しています)。セクション見出しも`Section: Command line profiler metrics`のままで、`Source Counters`セクションが出ていません。これは、`--set SourceCounters`ではなく、**317で使った`--metrics smsp__sass_branch_targets*.sum`のコマンドがそのまま再実行された**可能性が高いです(スクリプトの使い回しや、コピペの際に古いコマンドが残っていた、などが考えられます)。
+
+お手数ですが、実行されたコマンドの内容を確認いただけますか。具体的には、次のように**`--metrics ...`ではなく`--set SourceCounters`を指定したコマンド**になっているかをご確認ください:
+
+```bash
+sudo ncu --launch-count 1 --set SourceCounters -f -o 318_ncu \
+  ./318Py_sourcecounters_sudo_retry -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+
+/usr/local/cuda/bin/ncu --print-details all --import 318_ncu.ncu-rep 2>&1 | tee 318_ncu.txt
+```
+
+よくある原因としては:
+- ターミナルの履歴から古い(317用の)コマンドをそのまま再実行してしまった
+- `318_ncu.ncu-rep`が前回の317実行時のファイルのまま上書きされておらず、`--import`で古いレポートを読み込んでしまった(`-f`オプションを付けていても、ファイル名`${NO}_ncu`の`NO`変数が`"317"`のままになっていた可能性もあります)
+
+`NO`変数と`execFile`変数が両方とも`"318"`/`318Py_sourcecounters_sudo_retry`に正しく更新されているか、実行前に一度`echo "NO=$NO execFile=$execFile"`などで確認いただくと確実です。修正後に`--set SourceCounters`で再実行いただき、結果を送っていただけますか。もし`sudo`付きでも本当に`--set SourceCounters`がエラーになる場合は、そのエラーメッセージ自体も重要な情報になりますので、あわせて共有いただけると助かります。
+
+実行いただいたコマンドを拝見しました。**やはり`--metrics smsp__sass_branch_targets...`のままで、`--set SourceCounters`にはなっていません**でした(317の`NO="317"`から`NO="318"`に変数だけ変えて、メトリクス指定はそのまま使われた形ですね)。317とほぼ同じ数値になったのも、この2点で説明がつきます: (1) 実行したコマンドが同じ`--metrics`指定だったこと、(2) 317→318はソース差分がdocstring/コメントのみでカーネルロジックは1バイトも変わっていないため、同じchunk0プロファイルなら同じ命令実行数になるのは当然、ということです。ここまでは想定内で、問題ありません。
+
+ログの中に一点、参考になる情報がありました。chunk0のプロファイリングに**45分38秒**かかっており(`elapsed=0:45:38.642`)、通常のkernel_reduce_ms(~167秒)より大幅に長くなっています。これはncuの計測オーバーヘッド(instrumentationやreplay)によるもので、想定内の挙動です。`--set SourceCounters`はさらに多くのメトリクスを集めるため、これより長くなる可能性がある点だけ心の準備をお願いします(`==WARNING== Launching the workload is taking more time than expected...`という警告も同じ理由で出ると思われます)。
+
+改めて、次のコマンドをそのままコピー&ペーストしていただけますか(`--metrics ...`ではなく`--set SourceCounters`です):
+
+```bash
+NO="318"
+execFile="318Py_sourcecounters_sudo_retry"
+
+sudo ncu --launch-count 1 --set SourceCounters -f \
+  -o ${NO}_ncu \
+  ./${execFile} \
+  -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+```
+
+```bash
+/usr/local/cuda/bin/ncu \
+  --print-details all \
+  --import ${NO}_ncu.ncu-rep \
+  2>&1 | tee ${NO}_ncu.txt
+```
+
+`--set SourceCounters`と`--metrics`は同じコマンドの中で併用できないため(片方だけ指定します)、上のコマンドには`--metrics`の行は含めていません。これで結果が出ましたら、317Py/318Pyのソース変更はまだ不要ですので、そのまま319の判断材料として送ってください。
+
+いえ、これは私のミスです。**`--set SourceCounters`という指定自体が誤りでした。** Nsight Computeでは:
+
+- `--set <name>` は「複数セクションの定義済みセット」(`basic`、`full`、`detailed` など)を選ぶオプション
+- `--section <name>` は個別の「セクション」(`SpeedOfLight`、`Occupancy`、`SourceCounters`、`MemoryWorkloadAnalysis` など)を選ぶオプション
+
+**`SourceCounters`はセクション名であり、セットの名前ではありません。** 実際、`handoff_memo_2026-07-17.md`の中でも一貫して「SourceCounters/MemoryWorkloadAnalysisが必要な場合はそれぞれ単独・別runで取得する」と"セクション"として記述されており、304や316の軽量プロファイルも実際にはSpeedOfLight/Scheduler Statistics/Warp State Statistics/Launch Statistics/Occupancyという"セクション"の集合として出力されています。にもかかわらず私は311以降ずっと`--set SourceCounters`という誤った構文をヘッダにドキュメント化し続けていました。`==WARNING== No metrics to collect found in sections.`というエラーは、`SourceCounters`という名前の"セット"が存在しないために起きたもので、環境側の制約(仮想化やPCサンプリングのブロック)とは無関係だった可能性が高いです。お詫びします。
+
+正しくは次のように**`--section`**を使ってください:
+
+```bash
+NO="318"
+execFile="318Py_sourcecounters_sudo_retry"
+
+sudo ncu --launch-count 1 --section SourceCounters -f \
+  -o ${NO}_ncu \
+  ./${execFile} \
+  -g 21 21 32 484 1 0 7 31 8 7 0 0 1 2
+```
+
+```bash
+/usr/local/cuda/bin/ncu \
+  --print-details all \
+  --import ${NO}_ncu.ncu-rep \
+  2>&1 | tee ${NO}_ncu.txt
+```
+
+なお、確認のために `ncu --list-sections` を実行して `SourceCounters` が実際にリストに含まれているかを見ていただけると、より確実です(念のため)。
+
+これで結果が出ましたら、319として反映します。ソース側はまだ変更不要です。
 
 """
 
@@ -314,10 +402,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="318 sourcecounters-sudo-retry: parent 317 branch-divergence-probe; 317's N=21 run confirmed correct (454.617s, 314666222712, within 0.036% of 316's 454.460s, clock/power checks unchanged); 317_ncu.txt (run WITH sudo this time) successfully captured the hardware-counter branch divergence metrics that failed in 316's PC-sampling attempt: smsp__sass_branch_targets.sum=2,324,209,823,606, threads_divergent.sum=498,374,270,228, threads_uniform.sum=1,825,835,553,378 (divergent+uniform==total, verified); divergent ratio = 21.44%, which is consistent with (and quantitatively corroborates) 316's Avg Active Threads Per Warp (6.34/32=19.8%) and Stall Branch Resolving (~19.6%) -- roughly 1/5 of all branch targets kernel-wide are divergent, matching the stall picture; critically, 316's failed --set SourceCounters attempt was run WITHOUT sudo, while this successful counter query WAS run with sudo, so the earlier PC-sampling failure may have been a simple permission issue rather than a hard hypervisor block; this revision proposes retrying --set SourceCounters WITH sudo before concluding per-line profiling is unavailable in this environment; if sudo also fails for SourceCounters, treat the 21.44% divergence ratio as the best available substitute for per-line attribution and move to a manual source-level review or reconsider Stall Wait/dual-lane; ZERO source changes in this revision (same as 311-317: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +434,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="318 sourcecounters-sudo-retry: zero source changes from 317 (variant2 rotate_only, same as 304/308/311-317); 317's sudo-run branch divergence counters succeeded (21.44% divergent branch targets, consistent with Stall Branch Resolving ~19.6%), unlike 316's non-sudo SourceCounters attempt which failed; retrying --set SourceCounters with sudo before concluding per-line profiling is unavailable in this environment"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

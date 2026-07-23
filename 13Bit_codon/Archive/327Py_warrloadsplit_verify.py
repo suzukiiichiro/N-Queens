@@ -16,6 +16,47 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+================================================================================
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 327 (2026-07-22)
+
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
+年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
+
+1. [撤回・保留] kernel内future_check_mask 1軸専用化
+   322/323のStall Branch Resolving知見への対応として設計(324)、実装
+   (326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行
+   で正当性(314666222712)は一致したが実行時間が517.563秒(319比+13.7%)
+   と大幅に悪化し**撤回**した。240/266-269/273と合わせてGPU側kernel/
+   ループ分解は5戦5敗。この方向性は保留とする。
+
+2. [検証準備完了] 非コアレッシングメモリアクセス(w_arr[idx]仮説の検証)
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive
+   (189,728個、推定11.79%速度向上の余地)の100%が、outer grid-stride
+   ループ内のちょうど4命令(LDG.E x2 @ 0x...e120/e130, STG.E x2 @
+   0x...e310/e320)に集中していることが判明(323)。LDG.Eペアは実行回数・
+   アドレス位置・型から`w_arr[idx]`読み込み(`thread_total+=total*
+   w_arr[idx]`)である可能性が高いと推定しているが、per-line対応が取れ
+   ない環境のため未確証(推論)。326の教訓(妥当な仮説でも実装すると
+   予想外の結果になりうる)を踏まえ、**327ではまず実装せず、独立した
+   最小プローブ(`327_w_arr_loadsplit_probe.py` /
+   `327_w_arr_loadsplit_probe_check.sh`)でCodonのコード生成挙動を検証
+   する**方針にした。メインソルバには一切触れない。実際の`w_arr[idx]`
+   読み込みと同じ形(grid-strideループ内の`thread_total+=total*
+   w_arr[idx]`)を再現し、単一の64bit LDG.E.64になるか、2つの32bit
+   LDG.Eに分割されるかをSASSで確認する。実行待ち。
+
+3. [結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/
+   318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeに
+   おける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line
+   対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として
+   試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での
+   構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
+
+このセクション自体はカーネルロジックとは独立しており、更新してもソース
+の実行結果には影響しません。
+================================================================================
+
 # ビルド
 codon build -release 115Py_range_default_clean_cg_v2.py
 
@@ -262,30 +303,176 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+正当性は一致しています(314666222712 ✓)。しかし、**速度が大きく悪化しました。**
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+## 結果
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+- 正当性: OK(314666222712)
+- 実行時間: **517.563秒**(319の455.116秒より **-62.447秒、-13.7%悪化**)
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+これは240/266-269/273の過去の撤回(いずれも0.4〜1.05秒、0.1〜0.3%程度の悪化)と比べて**桁違いに大きい悪化**です。309で確認していた「別kernel launch回避」という仮説だけでは説明がつかない規模で、むしろ**ホットループを2重化したこと自体による静的コードサイズの増大**(325の回答で懸念点として挙げていた点)が、レジスタ割り当てや命令キャッシュに大きな悪影響を与えた可能性が高いと考えられます。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+ヘッダに明記した通り、この規模の悪化は即座にロールバックすべき基準に該当します。327として325への復帰版を用意します。Now let's build 327 as a clean revert to 325's kernel logic, restore the original `326_gpu_inline_probe` naming issue check, and update Open Objectives/VERSION_TAG accordingly.Now let's add the rejected-326 entry to the timing comparison loop list, and add a static check ensuring the future_check split is ABSENT (confirming clean revert).Now let's add a static check confirming the future_check split is absent (clean revert), mirroring the existing rejected-pattern checks.Good, since we based this on 325's script, the futurecheck check doesn't exist yet. Let's add a rejection-confirmation check.Now let's rewrite the header block for 327, following the established revert-style pattern.Now let's fix the "validation:" echo and final validation-ok message.Now let's syntax-check and verify diff scope against 325.Now let's finalize the source (VERSION_TAG, Open Objectives, docstring narrative).Confirmed — only docstring/tag differences so far, kernel logic already matches 325 exactly. Let's now update Open Objectives and VERSION_TAG.Now let's replace the narrative docstring block and update VERSION_TAG/reason string.These need full rewrites for accuracy.Now let's verify balance, diff scope (should show ONLY docstring/tag differences, kernel body identical to 325), and finalize.All confined to docstring/Open Objectives/VERSION_TAG — kernel logic is confirmed byte-for-byte identical to 325. Let's also confirm against 326 that MAXD14's body actually differs (proving the revert took effect) and other kernels stay untouched.Both confirmed. Let's finalize everything and present.327を用意しました。325の統合ループへ復帰しています(diffで325と完全一致を確認済み)。
+
+## まとめ
+
+326の結果は正当性OK・速度-13.7%悪化(517.563s vs 319の455.116s)でした。240/266-269/273(いずれも0.1〜0.3%程度の悪化)と比べて桁違いに大きい悪化幅です。**別kernel launchを回避する設計だったにもかかわらずこれほど悪化した**ことから、GPU側でのkernel/ループ分解の問題は「別launchのオーバーヘッド」だけでなく、**ホットループ複製による静的コードサイズ増大**そのものに根ざしている可能性が高いと考えられます。
+
+これでGPU側でのkernel/ループ分解によるStall Branch Resolving対策は**5戦5敗**(240、266、267、268/269、273、326)となりました。この方向性はいったん保留とし、Open Objectivesを更新しました:
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+1. [撤回・325へ復帰] kernel内future_check_mask専用化 — 5連敗、保留
+2. [調査中] 非コアレッシングメモリアクセス — 相対的に優先度上昇
+3. [結論・確定] Stall Branch Resolving — 原因特定済み、対策は保留
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+いつもどおり、まず
 
+```
+STATIC_ONLY=1 bash 327Py_restore325_after_futurecheck_reject_validate_N21_full_once.sh
+```
+
+をお願いします。正当性・タイミングが319/325(454〜455秒台)に戻ることを確認できれば、この一連の実験は完了です。
+
+
+了解しました。327は復帰版としてではなく、325をベースにした新しい試みとして用意します。
+
+Open Objectivesで相対的に優先度が上がっていた課題2(非コアレッシングメモリアクセス、`w_arr[idx]`仮説)が自然な次の一手だと考えていますが、他に進めたい方向があればそちらを優先します。
+
+
+`検証`から入るのは適切な判断だと思います。326の教訓(仮説は筋が通っていても実機で予想外の結果になりうる)を踏まえ、325の成功パターン(独立プローブでCodonのコード生成挙動を先に確認)と同じ方法論で進めます。Now let's build the main 327Py revision, correctly based on 325 (skipping the rollback framing entirely).Now let's add 326rejected to the timing comparison loop and rewrite the header block.Now let's rewrite the header block.Now let's fix the "validation:" echo and final validation-ok message.Let's check for any other stray `327_gpu_inline_probe` references and verify syntax.Clean, no stray references. Now let's update the Python source's Open Objectives and docstring.Now let's replace the narrative docstring block.Now let's update VERSION_TAG and the reason string.Both need full rewrites.Now let's verify balance and diff scope against 325.All confined to docstring/Open Objectives/VERSION_TAG. Let's do a final anchor check and finalize outputs.Now let's update the README and finalize.Good, this correctly ends at 326 r2 without the abandoned revert entry. Now let's append the correct 327 chronological entry.Now let's finalize outputs, cleaning up the abandoned revert-flavor files.327を、325ベースの新しい試みとして用意しました。**メインソルバのコードは一切変更していません**(325と完全に同一、diffで確認済み)。
+
+## プローブの狙い
+
+`327_w_arr_loadsplit_probe.py`は、`w_arr[idx]`読み込みと全く同じ形(grid-strideループ内の`thread_total+=total*w_arr[idx]`)を、DFSロジック抜きで再現した最小`@gpu.kernel`です。
+
+**一番シンプルな確認方法**(GPU実行不要):
+
+```bash
+bash 327_w_arr_loadsplit_probe_check.sh
+```
+
+- **単一の`LDG.E.64`が出れば**: このアクセス形状単体では正しくコアレッシングされている → 実際のカーネルで見た分割は周囲の複雑なコード起因の別要因で、323の仮説は再検討が必要
+- **2つの32bit `LDG.E`が出れば**: `319_ncu_source.txt`で見たパターンがCodon/NVPTXの一般的な挙動だと確認でき、実際のカーネルに手を入れる前に、プローブ内で安全に書き方のバリエーションを試せます
+
+326の教訓(妥当な仮説でも実装すると大きく予想外の結果になりうる)を踏まえ、今回は325の成功パターン(プローブ先行)を踏襲しています。
+
+いつもどおり、メインソルバ側は
+
+```bash
+STATIC_ONLY=1 bash 327Py_warrloadsplit_verify_validate_N21_full_once.sh
+```
+
+もお願いします(325と同一のはずの回帰確認です)。結果を送っていただければ328で判断します。
+
+
+静的チェックが失敗していますが、どのチェックが失敗したかがこの出力には含まれていません(通常は`[static-summary]`のテーブルが先に表示されるはずです)。
+
+お手数ですが、生成されたログディレクトリ内の`summary.tsv`を見せていただけますか？
+
+```bash
+cat ./327Py_warrloadsplit_verify_logs_N21_full_once_20260722_060130/summary.tsv
+```
+
+または、ターミナルの出力全体(`[static-summary]`セクションを含む、途中で切れている場合は上の方)を貼り付けていただいても大丈夫です。
+
+
+はっきりしました。両方の失敗は**カーネルのバグではなく、私自身が書いたドキュメント文章が誤検知を引き起こしていた**ことが原因です。Now let's check the Open Objectives section and elsewhere in the file for the same pattern, and also check README for consistency (not required for the build check, but good practice).Good — 0 matches, so that check is safe. My earlier fix for `rootaction0-direct` was the only real issue. Let's re-run a full local simulation of every static check against the corrected source to be thorough before redelivering.All clear now. Let's verify docstring balance is still fine and finalize the corrected file.Now let's also fix the same reintroduction in the docstring narrative and README, then do an exhaustive final scan.Clean. Let's redeliver the final corrected files.327 r2を用意しました。原因が特定できました。
+
+## 原因
+
+`source_split_tag`と`source_root0_direct_rejected`は、ソースファイル**全体**(docstring・コメント含む)に対する単純な部分文字列検索です。327のVERSION_TAGで過去の撤回履歴(273)を説明する際、その時のkernel名をそのままハイフン区切りで書いていたため、この文字列が「実際にそのパターンが実装されている」ことを示すマーカーと誤認識されました。**カーネルロジックには一切問題ありません**——私の書いたドキュメント文章がチェックを誤発火させていました。
+
+## 対応
+
+該当箇所の表現を言い換えて解消しました。念のため、検証スクリプトが検索する他の撤回済みマーカー文字列(`split=fid14_launch`、`kernel-blockdiag`など)についても全て手元でシミュレーションし、他に誤検知が無いことを確認済みです(全てOK)。
+
+再度お願いします:
+
+```bash
+STATIC_ONLY=1 bash 327Py_warrloadsplit_verify_validate_N21_full_once.sh
+```
+
+these が通れば、通常のN=21フル実行(メインソルバは325と同一のはずなので、正当性・タイミングとも319/325水準に戻ることを確認)と、`bash 327_w_arr_loadsplit_probe_check.sh`(プローブ)の両方をお願いできますか。
+
+
+2回目の実行では静的チェックを通過し、通常の実行フェーズ(GPUクロック確認)まで進んでいますね。表示されているクロック警告は想定通りのものです——current_sm=1320MHz(max 1710MHzの約77%)は314以降ずっと確認されている「WARN-CAPPED」状態と一致していて、正当性・タイミングには影響しません(319や325と同じ条件です)。
+
+1回目の失敗は、おそらく修正前の古いファイルのままで実行された結果だと思います。2回目で正しく通過しているようなので、そのまま実行を継続していただき、完了したら結果(ログディレクトリの`summary.tsv`、またはターミナル出力全体)を送っていただけますか？
+
+
+327のN=21フル実行、確認しました。**全て想定通りです。**
+
+- **正当性**: OK(314666222712)
+- **実行時間**: 454.563秒
+  - 319比: **+0.553秒(+0.12%、誤差範囲)** — メインソルバが325/319と完全に同一であることの裏付けになっています
+  - 326(rejected)比: **-63.000秒(-12.17%)** — 326の悪化がやはり本物だったことも改めて確認できました
+- **FAIL**: 0件
+
+これで「325ベースの327」が正しく元の性能水準に戻っていることが確認できました。メインソルバ側の作業はここで一区切りです。
+
+続けて、`327_w_arr_loadsplit_probe.py`(非コアレッシングメモリ仮説の検証プローブ)の実行結果もお待ちしております:
+
+```bash
+bash 327_w_arr_loadsplit_probe_check.sh
+```
+
+
+`327_w_arr_probe_ncu_source.txt`を確認しました。**仮説が明確に確認できました。**
+
+## 確認結果
+
+```
+0x...bca0  LDG.E R8, [R2.64]         (offset +0)
+0x...bcb0  LDG.E R9, [R2.64+0x4]     (offset +4)
+```
+
+`w_arr[idx]`の読み込みに対応する箇所で、**単一の`LDG.E.64`ではなく、offset +0とoffset +4の2つの独立した32bit `LDG.E`命令**が生成されていました。カーネル全体を見ても`LDG.E.64`は一つも出現しません。
+
+これは`319_ncu_source.txt`で見たパターンと完全に一致します。**DFSループの複雑さやレジスタ圧とは無関係に、この形状(`Ptr[u64]`配列をgrid-strideループ内で1回読む)に対するCodon/NVPTXの一般的なコード生成挙動である**ことが、複雑さを排したこの独立プローブで確認できたことになります。323の仮説は正しかったと言えます。
+
+## 次に考えられる一手
+
+この分割ロード自体を解消できる書き方があるかを、引き続きこのプローブ内(メインソルバには触れず)で試すことができます。ただ、この種の分割は多くの場合コンパイラの**アライメント保証**に関する保守的判断が原因であることが多く、単純なソースの書き換えで解決できるとは限りません。またこの経路の見積もりは推定11.79%(かつ326のように実装しても悪化する可能性は排除できません)である点も踏まえる必要があります。
+
+どちらに進めますか？
+
+
+了解しました。単なる書き方の言い換えというより、**根本的なメカニズム**に基づいた変更を試すのが筋が良さそうです。
+
+## 見えてきた本当の原因
+
+`w_arr[idx]`の読み込みで生成された2つの32bit `LDG.E`は、どちらも「Excessive(過剰)セクタ」を持っていました(319の実データでは両方とも92,928個ずつ)。これは単に「命令が2つに分かれている」だけでなく、**各32bit読み込み自体が理想的にコアレッシングできていない**ことを意味します。
+
+理由はおそらくこうです: `w_arr`はu64配列(8バイト間隔)なので、offset+0の読み込みでは、warp内の隣接スレッドのアドレスが**4バイトおきではなく8バイトおき**になります。この「隙間だらけ」のアクセスパターンが、32バイト単位のL2セクタフェッチを非効率にしていると考えられます。
+
+## 試す価値のある変更
+
+もし`w_arr`をホスト側で**2つの独立したu32配列**(`w_lo_arr`/`w_hi_arr`、それぞれ密に詰まった配列)に分割すれば、隣接スレッドのアドレスは4バイトおきの理想的な連続アクセスになり、それぞれが完全にコアレッシングされるはずです。これをプローブに追加します。Now let's update the check script to handle multiple kernels and note the ncu-based path is now the primary one (since we need the Excessive-sectors column).Let's redeliver the updated probe files.プローブを拡張しました。同一ビルド・同一プロファイル実行で3つのkernelを比較できます:
+
+1. `w_probe_kernel` — 分割確認済みのベースライン
+2. `w_probe_kernel_tmpvar` — 一時変数に分けるだけ(コード生成が変わるとは考えにくいが、確認コストが低いため)
+3. `w_probe_kernel_soa` — **本命**: `w_arr`を2つの独立した密なu32配列(`w_lo_arr`/`w_hi_arr`)に分割し、通常のインデックスでアクセスして再結合
+
+仮説(8バイト間隔による「隙間」がL2セクタフェッチを非効率にしている)が正しければ、`w_probe_kernel_soa`の2つの`LDG.E`はExcessiveセクタがほぼゼロになるはずです。プログラム自体が`sum_base`/`sum_soa`/`match`を出力し、SoA再構成が正しい値を計算していることも自己検証します。
+
+今回はExcessiveセクタ列の比較が必要なため、`ncu`経由が主経路です:
+
+```bash
+bash 327_w_arr_loadsplit_probe_check.sh
+```
+
+結果(`327_w_arr_probe_ncu_v2_source.txt`、3つの`Kernel Name`セクションを含みます)を送っていただけますか。
 """
+
+
+
+
+
+
+
+
+
 
 
 
@@ -314,10 +501,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="327 r2 (buildfix): STATIC_ONLY run found source_split_tag and source_root0_direct_rejected FAIL, both false positives caused by this file's own VERSION_TAG prose naming the historical rejected revision 273's kernel by its old hyphenated identifier -- the validate script's rejected-pattern checks do a plain substring search over the WHOLE source file (including docstrings/comments), so a historical narrative reference to that identifier was indistinguishable from the pattern actually being implemented; fixed by rephrasing every such reference to avoid the exact trigger substring (no code was ever affected, this was pure prose); verified via a full local simulation of every rejected-pattern check against the corrected text (all OK). 327 warrloadsplit-verify: base 325 (kernel logic byte-for-byte identical to 319-325's unified hot loop; this revision is NOT a revert-record of 326 -- the user already has 325 saved locally under its own filename, so no separate rollback revision was created); 326 (future_check_mask==0/!=0 in-kernel hot-loop duplication) was tried and REJECTED: correctness OK (314666222712) but elapsed=517.563s, -13.7% (-62.447s) slower than 319's 455.116s baseline, the worst of five failed GPU-side specialization attempts (240 taskid-split-fid14, 266 root0probe, 267 root0future0, 268-269 root0child0/others, 273 a root_action==0 direct-dispatch kernel variant, 326); that direction is set aside; this revision moves to Open Objectives #2 (uncoalesced memory access) with the 326 lesson explicitly in mind -- a plausible hypothesis can still regress badly once implemented, so verification comes before any kernel change; adds a STANDALONE diagnostic probe, ZERO changes to the main solver: 327_w_arr_loadsplit_probe.py (a minimal @gpu.kernel reproducing the exact access shape of the real w_arr[idx] read -- formerly line ~839's `thread_total+=total*w_arr[idx]` inside a grid-stride while loop -- with none of the surrounding DFS machinery) and 327_w_arr_loadsplit_probe_check.sh (builds it and runs `cuobjdump --dump-sass`, no GPU execution needed, checking for a single LDG.E.64 vs two paired 32-bit LDG.E instructions, falling back to `sudo ncu --section SourceCounters` + `--page source` if cuobjdump is unavailable); if two 32-bit LDG.E instructions appear, this confirms the split-load pattern seen in 319_ncu_source.txt is a general Codon/NVPTX code-generation behavior for this access shape (not specific to the surrounding DFS complexity), and isolated source-level variations can be tried safely in this same probe before touching the real kernel; if a single LDG.E.64 appears instead, something else in the real kernel (register pressure, aliasing with the stack array, a different code path) is responsible and the 323 hypothesis needs revisiting before any fix is attempted; these probe files are entirely separate from and untracked by the N=21 full validation harness, which continues to validate only the unchanged main solver; ZERO changes to kernel logic (same as 311-325: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +533,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="327 warrloadsplit-verify: zero kernel-logic changes from 325 (variant2 rotate_only, same as 304/308/311-325); 326's future_check_mask specialization rejected (517.563s, -13.7% vs 319); added a standalone 327_w_arr_loadsplit_probe.py + 327_w_arr_loadsplit_probe_check.sh (unrelated to the main solver) to verify whether Codon splits a Ptr[u64] indexed read into two 32-bit LDG.E, per the 323 uncoalesced-memory hypothesis, before attempting any real kernel change; no change to the main solver"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

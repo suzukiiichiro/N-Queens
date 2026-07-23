@@ -262,28 +262,63 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+Now update the reason string (value stays same, K/variant unchanged):Let's verify diff/parity vs 312 and then build the validate script:Good — constants confirmed unchanged, docstring-only diff. Now the validate script:Now add the 312 baseline and update version-tag check:Now update the log/echo literal strings and final message:Now let's extend the pre-run nvidia-smi snapshot to add the max/application clocks comparison, which is the key new diagnostic. Let's find the telemetry section:Now update the final validation-ok message:Now the README entry:Now copy to outputs and present:312のログとGPUテレメトリを確認しました。**サーマルスロットリング仮説は否定されました。テレメトリが明確な答えを出しています。**
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+**312結果:**
+- elapsed=454.417s、311(454.422s)との差はわずか**+0.001%**。ソースコードは1バイトも変更していないのに、これほど高精度に再現されるのは、動的な現象(サーマルドリフト)というより**安定した永続的な状態**を示唆します。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+**テレメトリの決定的な内容:**
+- 温度: 32℃(idle)〜39℃(peak) — スロットリング閾値(通常83〜90℃)には遥かに届かない
+- **SMクロック: idle時からcompute中(使用率100%)まで、完全に1320MHzで固定**（一切動かない）
+- メモリクロック: 6251MHzで同様に固定
+- `clocks_event_reasons.active`: compute中は終始`0x0`(アクティブなスロットリング要因なし)
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+冷えていて、スロットリング要因も立っていないのにクロックが微動だにしない — これは動的ブースト制御が働いていないことを意味し、**GPUクロックが明示的にロック/キャップされている**(`nvidia-smi -lgc`、またはpersistence mode下でのapplication clocks固定)という仮説が最も整合的です。おそらく309開始前から存在しており、304/308(~351s)と309以降(~450〜481s)の一貫した速度差を説明できます。
+
+**313の内容(引き続きコード変更ゼロ):**
+- 検証シェルのpre-runスナップショットを拡張し、`clocks.max.sm`/`clocks.applications.sm`等を追加取得
+- 観測クロックがmax supportedクロックの90%未満なら`WARN-CAPPED`を出す`gpu_clock_cap_check`をサマリに新規追加
+- クロックリセットコマンド(`nvidia-smi -rgc`/`-rac`)はsudo権限や共有環境への影響を考慮し、**自動実行せずヘッダに記載のみ**
+- Stall Branch Resolving調査は、クロックキャップの有無が確定するまで引き続き保留
+
+`bash -n`での構文チェック、312との差分(ドキュメント/シェルの診断ロジックのみ、カーネル・定数は完全一致)も確認済みです。まず
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 313Py_clock_cap_diagnosis_validate_N21_full_once.sh
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+をお願いします。もし`gpu_clock_cap_check`がWARN-CAPPEDになった場合、`nvidia-smi -q -d CLOCK`の出力も併せて共有いただけると、ロックの原因(明示的な`-lgc`固定か、application clocksの設定か)の切り分けに役立ちます。
+
+この出力で診断が確定しました。しかも数値がほぼ完璧に一致しています。
+
+**確定した原因: `nvidia-smi -lgc` によるGPUクロックの明示的ロック**
+
+- **Applications Clocks**: Graphics=1710MHz（Default Applications Clocksと完全一致）→ アプリケーションクロック設定(`-ac`)は既定値のままで、ここが原因ではありません。
+- **Max Clocks**: SM=1710MHz
+- **現在のClocks**: SM=1320MHz ← Applications Clocks/Max Clocksどちらとも一致しない、中途半端な値
+
+Applications Clocksが既定値(1710MHz)のままなのに実クロックだけ1320MHzに固定されている、というのは`-ac`ではなく**`nvidia-smi -lgc <min>,<max>`による直接的なクロックロック**が別途かかっている場合の典型的な状態です。`-lgc`ロックは意図的な設定であるため、312のテレメトリで見た`clocks_event_reasons.active=0x0`(スロットリング要因なし)とも矛盾しません — このイベントリーズンのビットマスクは「意図しない」スロットリング(サーマル、電力上限など)を報告するためのもので、ユーザーが明示的にロックした場合は反応しない設計です。
+
+**定量的にも綺麗に一致します:**
+
+```
+クロック比: 1710 / 1320 ≈ 1.295 → 理論上 +29.5% 遅くなるはず
+実測の遅延: (454.417 - 351.070) / 351.070 ≈ +29.4%
+```
+
+誤差0.1ポイントで一致しており、**このクロックロックだけで309〜313の遅延をほぼ完全に説明できます。**
+
+**推奨される次のアクション（手動実行、sudo権限が必要な可能性あり）:**
+
+```bash
+sudo nvidia-smi -rgc   # GPU clock lock解除
+sudo nvidia-smi -q -d CLOCK   # 解除後、Clocks.SM が 1710MHz付近に戻るか確認
+```
+
+解除後は、既にお渡し済みの313の検証スクリプトをそのまま使って再実行いただければ、`gpu_clock_cap_check`が`OK`になり、timingも304/308の~351s付近に回復するはずです（回復すれば、304〜313の一連の"退行"は全てこのクロックロックが原因だったと確定でき、309/310のBROADMARK_VARIANT実験も本来はもっと軽微な差だった可能性がありますが、variant=2に対する相対的な悪化幅自体はクロックに依存しないので、variant実験の結論(phase_mixが悪い)自体は変わりません)。
+
+クロック解除後の再実行結果をログでいただければ、そのタイミングを新しい確定baselineとして314に反映します。
 
 """
 
@@ -314,10 +349,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="313 clock-cap-diagnosis: parent 312 thermal-repro-check (454.417s, delta vs 311's 454.422s only +0.001%, i.e. the slow timing is highly reproducible rather than drifting/recovering, which argues against transient thermal throttling); GPU telemetry from 312 (gpu_telemetry.csv, 91 samples over the ~7.5min run) showed temperature staying cool at 32-39C (far below typical 83-90C throttle thresholds), SM clock pinned flat at exactly 1320MHz and memory clock flat at 6251MHz for the ENTIRE run including the pre-run idle snapshot, and clocks_event_reasons.active=0x0 (no active throttle reason bits) throughout compute; this rules out thermal throttling and instead points to a persistent GPU clock lock/cap (e.g. nvidia-smi -lgc applied, or persistence-mode application clocks pinned below boost) that likely predates 309 and does not vary with session load, explaining why 309-312 all cluster around ~450-480s regardless of variant or re-run while 304/308 (recorded 351.070s/351.675s in an earlier session) were faster; ZERO source changes in this revision (same as 312: BROAD_MARKDIST_TAIL_VARIANT stays 2, A10G_FINAL_DEFAULT_BROADMARK_VARIANT stays 2, K_PER_THREAD_MAXD14 stays 48); validate script extends the pre-run nvidia-smi snapshot to also query clocks.max.sm/clocks.max.memory/clocks.applications.sm/clocks.applications.memory and compare against the observed running clock, flagging a clear warning if the running clock is capped well below the max supported clock; clock-reset commands (nvidia-smi -rgc / -rac) are documented but NOT auto-executed since they may require sudo and could affect other jobs on shared hardware; Stall Branch Resolving ncu work remains deferred until the clock-cap question is resolved, since ncu profiling under a locked/capped clock would not be comparable to 304's baseline profile either; kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +381,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="313 clock-cap-diagnosis: zero source changes from 312 (variant2 rotate_only, same as 304/308/311); 312 reproduced 311's 454.417s to within 0.001%, and telemetry showed cool temps (32-39C) with SM/memory clocks pinned flat throughout and no throttle reason bits active, ruling out thermal throttling; extending pre-run nvidia-smi snapshot to compare observed clock vs max supported/application clocks to check for a persistent clock lock/cap"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

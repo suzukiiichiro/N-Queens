@@ -16,6 +16,60 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+================================================================================
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 325 (2026-07-22)
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
+年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
+
+1. [検証準備完了] kernel内device関数専用化 (322/323知見への対応・未実装)
+   ユーザー提案: 元のCPU版13Py(SQd0B/SQB/SQBjrB...系)は星座の形状ごとに
+   専用化した関数群を持ち、分岐を静的に排除していた。現行GPU kernelは
+   1つの統合ループで全星座を扱うため、nibble_op decode/block_code分岐/
+   future_check/terminal_depth/child_jmarkをDFSノードごとに毎回評価して
+   おり、これが322のStall Branch Resolving(課題3)の一因と考えられる。
+   **ただし、GPU側でのkernel分解は過去4回(240/266-269/273)試みられ、
+   正当性は毎回OKだったにもかかわらず、全て撤回されている**(0.4〜1.05秒
+   遅化、原因は別kernel化によるコード配置/register pressure差と推測)。
+   324で設計した方向性は、過去の失敗と異なり「別`@gpu.kernel`ではなく
+   同一kernel内のdevice関数」として専用化すること。`future_check_mask`/
+   `child_jmark_mask`は既にタスクごとに1回計算済みのスカラー値であり、
+   ホットループの外(タスク開始前)で1回だけ分岐して専用化した
+   device関数を呼び分けられる可能性がある。**325で、実装前の必須事前
+   確認(a)「Codonがdevice関数を実際にinlineするか」を検証するための
+   独立した最小プローブ(`325_gpu_inline_probe.py` /
+   `325_gpu_inline_probe_check.sh`)を用意した。**メインソルバには一切
+   触れない、切り離されたテストkernel。実行待ち。結果次第で(b)1軸のみ
+   (`future_check_mask==0`)の実装へ進むか、別アプローチを検討する。
+
+2. [調査中] 非コアレッシングメモリアクセス (推定11.79%速度向上の余地)
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive
+   (189,728個)の100%が、outer grid-strideループ内のちょうど4命令
+   (LDG.E x2 @ 0x...e120/e130, STG.E x2 @ 0x...e310/e320)に集中している
+   ことが判明(323、319_ncu_source.txtの再分析)。LDG.Eペアは実行回数・
+   アドレス位置・型(u64単一配列)から`w_arr[idx]`読み込み(861行目、
+   `thread_total+=total*w_arr[idx]`)である可能性が高いと推定しているが、
+   per-line対応が取れない環境のため未確証(推論)。課題3よりホットループ
+   外・単純命令に限定されており低リスクな調査対象。次の一手は未着手。
+
+3. [結論・保留] Stall Branch Resolving (カーネル全体の約19〜23%)
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/
+   318-319 PCサンプリング)が収束し、メインDFSループ(kernel_dfs_iter_
+   gpu_maxd14の`while True:`, ~783行目)の共有back-edgeにおける再収束
+   (BSYNC)オーバーヘッドが原因と結論(319/322)。5つのcontinue文+1つの
+   フォールスルーが全て同一のループ先頭に収束することが、SASSで観測した
+   「BSYNC直後の圧倒的多数のBRA1つがstall_branch_resolvingの65.6%
+   (上位2命令合計)を占める」というパターンと一致する。per-line(元の
+   `.py`行番号)対応はCodon+ncuツールチェーンでは到達不能と確認済み
+   (318: 誤構文/319: SASSのみ/321: -debugビルドはCUDA_ERROR_INVALID_PTX
+   でクラッシュ)。**対策(コード変更)は未着手・保留**: rev189の回帰前例
+   (+108%速度低下)とこのループの既存の最適化履歴(292/295/296/297/298)
+   を踏まえ、片手間の変更は高リスクと判断。課題1(device関数専用化)が
+   この課題への対応策候補として検証準備中。
+
+このセクション自体はカーネルロジックとは独立しており、更新してもソース
+の実行結果には影響しません。
+================================================================================
+
 # ビルド
 codon build -release 115Py_range_default_clean_cg_v2.py
 
@@ -262,30 +316,144 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+良い質問です。数字を見直すと、かなりはっきりした説明がつきます。
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+## 数字から見える「ちょうど2倍」という手がかり
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+`w_arr:Ptr[u64]`はチャンクあたり`m`=743,424要素を読みます。warpは32スレッドなので、実行される命令(warp単位)は743,424/32=23,232回。**理想的に1回の64bit読み込み(8バイト/スレッド)としてコアレッシングできれば**、1warpあたり256バイト(32スレッド×8バイト)=8セクタで済むはずで、全体では23,232×8=185,856セクタが理論値になります。
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+実際に観測された`0x...e120`(LDG.E、offset+4側)の「Excessive」は92,928。もし理想値(Ideal)も同程度の92,928前後だとすると、**Excessive ≈ Ideal**、つまり実際のフェッチ量は理論値のちょうど2倍になっている計算です。
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+## 原因の仮説: 64bit値を32bit×2命令に分割していること自体が問題
+
+`w_arr[idx]`は本来8バイト連続のu64値です。warp内の隣接スレッドは連続した`idx`を持つので、**インデックスのアクセスパターン自体は理想的**です(発散DFSループとは無関係の、単純で予測可能なアクセス)。
+
+問題は、これが**1回の64bit読み込み命令ではなく、offset+0とoffset+4の2回の32bit読み込み命令**(`LDG.E R2,[R12+0x4]`と`LDG.E R0,[R12]`)に分割されている点です。
+
+GPUのメモリコアレッサーは32バイト単位(セクタ)でフェッチします。32bit読み込み1命令だけを見ると、各スレッドは8バイトごとに4バイトしか使わない、いわば「歯抜け」のアクセスになります。
+
+- **低位32bitの命令**: 32スレッド分のセクタ群をフェッチするが、各セクタの半分(4バイトおき)しか使わない
+- **高位32bitの命令**: 同じセクタ群を、残り半分を使うために**もう一度**フェッチする
+
+結果として、同じメモリ領域を実質2回フェッチすることになり、観測された「ほぼ理論値の2倍」という数字と符合します。もし1回の64bit(または128bit)命令として発行されていれば、各スレッドの8バイトがそのまま隣接スレッド分と連続して1セクタに収まり、無駄なく1回のフェッチで済んだはずです。
+
+## なぜ分割されているのか
+
+インデックスパターンそのものは正しいので、原因はおそらく**ソースコードのロジックではなく、CodonのGPUコード生成(LLVM/NVPTXバックエンド)がu64配列の読み込みを自動的に32bit×2へ下げている**ことにあると考えられます。よくある背景としては:
+
+- 64bit幅のベクトル化load命令(`LD.E.64`相当)への自動融合(vectorization)パスが、この経路では効いていない
+- アライメント保証が明示されていないため、コンパイラが安全側に倒して32bit単位に分割している
+
+この場合、**ソース側で`w_arr[idx]`の書き方を変えるだけでは直らない可能性があり**、Codon側に64bit(またはより広い)ロードを明示的に発行させる手段があるかどうかが次の論点になります。
+
+この仮説を検証する次の一手(324として)を用意しましょうか、それとも先に仮説の妥当性についてもう少し議論しますか？
+
+4回連続で撤回されている領域なので、ここは腰を据えて設計します。まず技術的な鍵となる事実を確認させてください。
+
+## 設計の核心: スケジュール情報は既に「タスクごとに1回」計算済み
+
+`schedule_lo`/`schedule_hi`/`child_jmark_mask`/`future_check_mask`/`terminal_depth`/`terminal_base14`は、ホットループ(783行目)が始まる**前**に、root-preroll(617-684行目)で**タスクごとに1回だけ**計算されています。これは実はCPU版13Pyの`SQ*`ディスパッチが使っていた情報と同じ性質のものです——「このタスク(星座)の探索がどんな形をしているか」が、探索開始前に確定しているという点で。
+
+つまり、322で見つけた5つの`continue`条件のうち、少なくとも2つは**タスク開始前から真偽が分かっている**:
+
+- `future_check_mask!=0` — 既にタスクごとのスカラー値
+- `child_jmark_mask!=0` — 既にタスクごとのスカラー値
+
+## 240/266-269/273との決定的な違い
+
+過去の撤回された試みは全て**別`@gpu.kernel`エントリポイント**でした(host側で別launch、別PTXモジュール)。今回検討するのは、**同一kernel内のdevice関数**として専用化する方向です。launch/dispatchオーバーヘッドやPTXモジュール分割は発生しません。
+
+ただし、これも未知数です。Codonがdevice関数呼び出しを実際にinline展開するのか、それとも本物の関数呼び出し境界(レジスタウィンドウ分離)を作るのかが分かりません。**ここを検証せずに性能を語るのは時期尚早**です。
+
+## 慎重な段階的プラン(324で設計、コード変更はまだ行いません)
+
+**Step 0(次の一手・低リスク)**: `future_check_mask==0`の場合とそれ以外で、ホットループ本体を2つのdevice関数に分け、タスク開始前(ループの外)で1回だけ分岐して呼び分ける、**最小の1軸だけの実験**。268/269と同じ「1条件だけ切り出す」慎重さを踏襲しつつ、今回は別kernelではなくdevice関数にする点だけを変える。
+
+**検証すべき前提条件(コード変更前に確認)**:
+1. Codonがdevice関数を実際にinlineするか(SASSを比較して`CALL`命令の有無を確認)
+2. 同じ結果(314666222712)が出ること
+3. ncu再プロファイルで、stall_branch_resolving/stall_waitが実際に下がるか(下がらなければ、体感branch数が減っても効果なしと判断)
+
+**ロールバック基準**: 268/269/273と同様、234/241/274のパターンを踏襲し、悪化すれば即座に前revisionへ復帰する。
+
+この設計をドキュメント化した324を用意します。Now let's rewrite the header block for 324.Now fix the "validation:" echo and final validation-ok message.Now let's verify syntax and diff scope.Good. Now let's rewrite the Python source narrative and the Open Objectives section.First, let's update the Open Objectives block, then the narrative block.Now let's replace the narrative docstring block.Now update VERSION_TAG and the reason string.Both need full rewrites reflecting 324's actual content (device-function specialization design), not 323's shifted memory-access text.Now let's verify balance and diff scope, then finalize the source.All confined to the docstring/Open Objectives/version-tag region, as expected. Let's sanity-check key anchors are intact and do a final residual scan.Clean. Now let's update the README — both the Open Objectives section and the chronological entry.Now let's append the chronological entry.Now finalize and present.324を用意しました。**このリビジョンではコードは一切変更していません**——設計とドキュメント化のみです。
+
+Open Objectivesセクションを更新し、今回の設計を課題1として新設、既存の2課題を繰り下げました:
 
 ```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
+1. [設計中] kernel内device関数専用化 (新規・未実装)
+2. [調査中] 非コアレッシングメモリアクセス (推定11.79%)
+3. [結論・保留] Stall Branch Resolving (約19〜23%)
 ```
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+次にコード実装へ進む場合、まず着手すべきは事前確認(1)の「Codonがdevice関数を実際にinlineするか」の検証です。これは既存の`kernel_dfs_iter_gpu_maxd14`に極小のテスト用device関数(例えば1行だけの単純な計算)を追加してビルドし、SASSダンプで`CALL`/`RET`命令が出るかを見るだけの、低コストで正当性に影響しない実験にできます。ここで「inlineされる」と分かれば今回の設計はそのままでは効果が薄い可能性が高く、「inlineされない」と分かれば本題の`future_check_mask`分岐設計に進む価値があります。
+
+いつもどおり、まず
+
+```
+STATIC_ONLY=1 bash 324Py_devicefunc_specialize_design_validate_N21_full_once.sh
+```
+
+をお願いします。差分は323からdocstring(Open Objectives更新含む)/VERSION_TAGのみです(diffで確認済み)。
+
+良いですね。次の一手として、まさに事前確認(1)「Codonがdevice関数を実際にinlineするか」を検証する、最小限で本線に一切影響しない実験を用意します。Now let's continue the main solver lineage (325Py, zero logic change) and update the Open Objectives / README.Now let's rewrite the header block for 325.Now fix the "validation:" echo and final validation-ok message.Now let's verify syntax and diff scope.Good. Now let's rewrite the Python source narrative and update Open Objectives.Now let's replace the narrative docstring block.Now update VERSION_TAG and the reason string.Now let's verify balance, diff scope, and key anchors.All confined to expected regions, all anchors intact. Now let's update the README (Open Objectives + chronological entry).Now let's append the chronological entry.Now let's finalize and present all files.事前確認(1)を検証する独立プローブを用意しました。**メインソルバ(`kernel_dfs_iter_gpu_maxd14`)は一切変更していません。**
+
+**一番シンプルな確認方法**(GPU実行不要、静的逆アセンブルのみ):
+
+```bash
+bash 325_gpu_inline_probe_check.sh
+```
+
+これが自動的に:
+1. `325_gpu_inline_probe.py`をビルド
+2. `cuobjdump --dump-sass`で逆アセンブル
+3. `CALL`命令と`variant_a`/`variant_b`シンボルの有無を判定
+4. 結論を表示(inlineされる/されない)
+
+`cuobjdump`が使えない環境なら、これまで使ってきた`sudo ncu --section SourceCounters` + `--page source`に自動フォールバックします。
+
+**プローブの仕組み**: 極小の`@gpu.kernel`がスレッドごとのフラグで分岐し、2つの異なる普通の関数(`variant_a`/`variant_b`)のどちらかを呼びます。それぞれ定数畳み込みで消えない小さなループを含むので、inlineされてもされなくても、SASSを見れば一目瞭然になるよう設計しています。
+
+結果を送っていただければ、326で次の一手(実際に`future_check_mask==0`の専用化を試すか、別アプローチを検討するか)を判断します。
+
+いつもどおり、メインソルバ側は
+
+```
+STATIC_ONLY=1 bash 325Py_inlineprobe_prep_validate_N21_full_once.sh
+```
+
+もお願いします(こちらはプローブとは独立に、いつもの回帰確認です)。差分は324からdocstring(Open Objectives更新含む)/VERSION_TAGのみです。
+
+`325_inline_probe_ncu_source.txt`を確認しました。**結論が出ました — Codonはdevice関数をinlineします。**
+
+## 確認結果
+
+`probe_kernel`の逆アセンブル全体(67行、アドレス`bb00`〜`be70`、途切れなく連続)を見ると:
+
+- `0x...bc00 @P0 BRA 0x...bcb0` — これが`if flag==u32(0):`の分岐
+- **分岐前(`bc10`〜`bca0`付近)**: `IMAD.SHL`/`LOP3.LUT`/`IMAD.IADD`の組み合わせが並ぶ → `variant_a`の`r=(r^(r<<3))+y`ループが展開された形
+- **分岐先(`bcb0`〜`bd30`)**: `IMAD R5,R5,0x3`(×3倍)+`LOP3.LUT`(XOR)の組み合わせが4回繰り返される → `variant_b`の`r=(r*3)^y`ループが展開された形
+- `0x...bd40 BSYNC B0` — 両分岐の再収束点
+- 以降は共通のepilogue(store + EXIT)
+
+**`CALL`命令は一つも出現せず、`variant_a`/`variant_b`という独立した関数シンボルも一切現れません。** 両方の関数の中身が、それぞれ別のコードブロックとしてそのまま`probe_kernel`に展開されています。
+
+## これが意味すること
+
+事前確認(1)は**明確にクリア**です。Codonは`@gpu.kernel`内から呼ぶplain関数を実際にinlineするので、324で懸念していた「別関数呼び出し境界によるレジスタ圧」の問題は原理的に発生しません。
+
+ただし一点、新たに考慮すべき点が見えました: 今回のプローブは4命令程度の小さなループでしたが、実際の`kernel_dfs_iter_gpu_maxd14`のホットループは100命令規模です。inlineされる以上、`future_check_mask==0`版と非0版の**両方の完全なコピー**がkernel本体に静的に含まれることになり、実行される命令数は変わらなくても**静的コードサイズ(命令キャッシュ圧)は増加**します。これは240/266-269/273が抱えていた「別launch」由来のコストとは別の、新しい懸念点です。
+
+326で、実際に`future_check_mask==0`の1軸専用化を試すコードを用意しましょうか？その場合、コードサイズ増加の影響も含めて慎重に検証する構成にします。
 
 """
+
+
+
+
+
+
+
 
 
 
@@ -314,10 +482,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="325 inlineprobe-prep: parent 324 devicefunc-specialize-design (documentation-only, no source changes, no build/run); none of 320/321/322/323/324 produced their own confirmed N=21 timing, so 319 (455.116s, 314666222712) remains the most recent confirmed baseline; 324 designed (did not implement) an in-kernel device-function specialization approach for kernel_dfs_iter_gpu_maxd14, distinct from four rejected separate-@gpu.kernel attempts (240 taskid-split-fid14, 266-269 root0/future0/child0 probes, 273 rootaction0-direct-kernel, all correctness-OK but rejected as 0.4-1.05s slower, blamed on code-layout/register-pressure differences from separate kernel-ization); mandatory pre-check #1 before writing any real code was whether Codon actually inlines a plain function called from inside a @gpu.kernel, or emits a real CALL/RET boundary; this revision adds a STANDALONE diagnostic probe to answer that question in isolation, with ZERO changes to the main solver: 325_gpu_inline_probe.py (a minimal @gpu.kernel that branches per-thread and calls one of two distinct plain functions variant_a/variant_b, each containing a small loop that resists constant-folding so inlining vs a real call boundary is unambiguous either way in the disassembly) and 325_gpu_inline_probe_check.sh (builds it and runs `cuobjdump --dump-sass`, no GPU execution needed, checking for CALL/RET and separate variant_a/variant_b symbols, falling back to `sudo ncu --section SourceCounters` + `--page source` if cuobjdump is unavailable); if CALL/RET and separate symbols are present, Codon does not inline and the specialization design needs a different approach (Codon generics, an inline hint if one exists, or accepting/measuring real call overhead) before touching kernel_dfs_iter_gpu_maxd14; if no CALL/RET appears and both variant bodies show up directly inlined into probe_kernel, Codon does inline and the real future_check_mask==0 single-axis split (per 324's plan) is safe to prototype next; these probe files are entirely separate from and untracked by the N=21 full validation harness, which continues to validate only the unchanged main solver; ZERO changes to kernel logic (same as 311-324: variant=2, K=48); kernel_dfs_iter_gpu_maxd14/16/18/20/21 all unchanged"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +514,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="325 inlineprobe-prep: zero kernel-logic changes from 324 (variant2 rotate_only, same as 304/308/311-324); added a standalone 325_gpu_inline_probe.py + 325_gpu_inline_probe_check.sh (unrelated to the main solver) to test whether Codon inlines device-callable functions in @gpu.kernel, per 324's mandatory pre-check #1; result determines whether the future_check_mask==0 specialization design is worth prototyping against kernel_dfs_iter_gpu_maxd14; no change to the main solver"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17

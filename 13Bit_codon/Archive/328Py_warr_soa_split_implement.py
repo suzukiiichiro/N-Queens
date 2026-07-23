@@ -16,6 +16,50 @@
 
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
+================================================================================
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 328 (2026-07-22)
+
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
+年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
+
+1. [実装済み・検証待ち] 非コアレッシングメモリアクセス(w_arrのSoA分割)
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive
+   (189,728個、推定11.79%速度向上の余地)の原因は、`w_arr[idx]`(u64、
+   8バイト間隔)読み込みが2つの32bit LDG.Eに分割され、かつ各読み込み
+   自体が8バイト間隔ゆえに理想的にコアレッシングできていないことだと
+   327の独立プローブで確認・特定した(327_w_arr_loadsplit_probe.py、
+   3kernel比較)。`w_lo_arr`/`w_hi_arr`という2つの独立した密なu32配列に
+   分割すればExcessiveがゼロになることも実証済み(sum_base==sum_soa
+   で正当性も確認)。**328で、この検証済みの変更を5つ全てのkernel
+   (maxd14/16/18/20/21)とディスパッチャに実装した。** ホットな発散DFS
+   ループ自体には一切触れていない(タスクごとに1回のみの読み込み箇所
+   3箇所×5kernelのみ変更)。326(ホットループ複製、5戦5敗の一角)とは
+   リスクの質が異なる低リスクな変更。実機でのビルド・実行はまだ行われ
+   ていない。正当性(314666222712)を最優先で確認し、悪化すれば327へ
+   ロールバックする方針。なお推定11.79%はkernel全体に対する見積もりで
+   あり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の
+   改善幅はそれよりかなり小さい可能性が高い。
+
+2. [撤回・保留] kernel内future_check_mask 1軸専用化
+   322/323のStall Branch Resolving知見への対応として設計(324)、実装
+   (326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行
+   で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し
+   撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。
+   この方向性は保留とする。
+
+3. [結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/
+   318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeに
+   おける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line
+   対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として
+   試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での
+   構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
+
+このセクション自体は通常カーネルロジックとは独立していますが、
+**328は例外的にカーネルロジックそのものを変更しています**(課題1参照:
+5つのkernel全てと共有ディスパッチャの`w_arr`関連部分のみ)。
+================================================================================
+
 # ビルド
 codon build -release 115Py_range_default_clean_cg_v2.py
 
@@ -262,30 +306,42 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Good, the docstring text (line 292) matches literally, causing the collision. Let me edit the actual constant lines directly using sed for precision.Now update the reason string to reflect the 309 change:Diff is clean and exactly as intended — kernel body, K constant, and all logic untouched; only the changelog docstring, VERSION_TAG, and the two variant-default constants changed. Now the validate shell script, built as a child of the 304 script with the necessary bookkeeping updates.This header text is stale (leftover from an earlier revision's script, never updated in the 304 copy). Let me write an accurate one for 309.Now update the timing-comparison loop to include the new baselines, and the static-check strings (version tag, variant constant grep):Now let's update the remaining `304`-specific echo/log strings and comments for consistency, then sanity-check the script with bash -n.That remaining one is fine (it's just the baseline label `304K48sweep`, correctly referencing the 304 baseline for comparison). Now syntax-check the script.This all looks correct and consistent. Now let's produce the README.md entry appended to the existing 2060-line file.Now let's copy everything to outputs and present the files.おはようございます。309Py（variant4-phase-rotate）、検証スクリプト、README.md 更新分を用意しました。
+良い方針が立ちました。ただし`w_arr`の使われ方を確認したところ、想定より影響範囲が広いことが分かりました。慎重に設計します。All 5 signatures and all 15 read-sites replaced. Now let's update the dispatcher function.Good, this is untouched (as expected, since it's outside the kernel bodies). Let's update it to derive and pass the SoA split.All clean. Let's do a full bracket/paren balance and docstring check.良い確認ができました(既存の括弧不均衡は327から変わらず、私の変更で新たな不整合は入っていません)。続けて328の仕上げに入ります。Now let's fix the timing comparison loop list similarly.Now let's rewrite the header block for 328 to accurately describe the real kernel change.Now let's add a static check confirming the SoA transformation is correctly present across all 5 kernels.Let's verify this Python static-check block's syntax is valid, and test it locally against our actual 328 source.Now let's simulate this new check locally against our actual 328 source to confirm it would pass.Both pass. Now let's fix the "validation:" echo and final validation-ok message, then verify syntax.Clean. Let's finalize and syntax-check the shell script.Good, matches expectations (header, baseline block, new static check, filenames, messages). Now let's finalize the Python source (Open Objectives, docstring, VERSION_TAG).Now let's replace the narrative docstring block.Now let's update VERSION_TAG and the reason string.Both need full rewrites for accuracy.Now let's do final verification: docstring balance, diff scope vs 327, and all the mechanical checks.This is exactly the intended, minimal, precisely-scoped change — the DFS hot loop body itself (`while True:` through `cur_depth=next_depth`) is completely untouched; only the signature and the 3 `w_arr[idx]` read sites changed. My earlier hash-check regex simply matched the wrong span. Let's do a final anchor check and finalize.All intact. Let's finalize the README and deliver everything.Now let's append the chronological entry.Now let's finalize and present all files.328を用意しました。**これは326とは性質の異なる、リスクの低いカーネルロジック変更です。**
 
-**309の内容（メモ通り、カーネルコード変更ゼロ）:**
-304Py（K=48、確定BEST）をベースに、diff は以下の2定数のみです。
-- `BROAD_MARKDIST_TAIL_VARIANT:int=2` → `4`（rotate_only → phase_rotate）
-- `A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2` → `4`（bare `-g` デフォルトも揃える）
+## 変更内容
 
-`variant=4` の分岐ロジック（`window_boost_value`/`phase_salt_value`/`use_phase_mix`/`use_rotating_interleave`）はカーネルソースに既存で、メモ通りCLI引数のみの切り替えです。カーネル本文・K_PER_THREAD_MAXD14（48のまま）・EXPECTED_CHUNKS（3のまま）は304/308と完全に同一であることを diff で確認済みです。
+327のプローブで検証済みの修正を、実際の5つ全てのkernel(`maxd14`/`16`/`18`/`20`/`21`)に適用しました:
 
-**検証スクリプト**は308版を親に作成し、以下を追加/更新しています。
-- `BROADMARK_VARIANT` デフォルト 2→4
-- 静的チェック `source_a10g_default_variant4`、`source_runtime_globals`（variant=4期待に更新）
-- 実行時チェック `runtime_broadmark_variant`（ログの`variant=4`確認）、`runtime_broadmark_variant_tag`（`tag=phase_rotate`確認）
-- タイミング比較baselineに304〜308の5点を追加（主要比較対象は304=351.070s）
+- 各kernelのシグネチャ: `w_arr:Ptr[u64]` → `w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32]`
+- 読み込み箇所(kernelあたり3箇所×5kernel=15箇所): `w_arr[idx]` → `(u64(w_lo_arr[idx])|(u64(w_hi_arr[idx])<<u64(32)))`
+- 共有ディスパッチャ: 既存の`w_arr:List[u64]`から1回だけ`w_lo_arr`/`w_hi_arr`を導出し、どのkernelにも渡す
 
-`bash -n` での構文チェック、および304→309間の全diffをレビュー済みです。想定フロー通り、まず
+## 326との違い
 
-```
-STATIC_ONLY=1 bash 309Py_variant4_phase_rotate_validate_N21_full_once.sh
-```
+326はDFSノードごとに何十億回も実行されるホットループ本体を複製しました。328は**タスクごとに1回だけ**実行される読み込み箇所のみが対象です。**発散DFSホットループ自体(`while True:`〜`cur_depth=next_depth`)は327と完全に一致することをdiffで確認済み**で、シグネチャ変更と15箇所の読み込み変換以外に一切差分がありません。
 
-で静的チェックのみ流してから、フル実行に進んでいただくのが安全です。
+## 検証済みの点
+
+- 5/5シグネチャ変換、15/15読み込み変換を機械的に確認
+- 括弧の対応を全体で確認(既存の不均衡は変更前後で同じ差分のまま、新たな不整合なし)
+- 検証スクリプトに新チェック(`source_warr_soa_split_signatures`、`source_warr_soa_split_dispatcher`)を追加
+
+## ご留意いただきたい点
+
+推定11.79%はkernel全体に対する見積もりで、この変更はタスクごとに1回の読み込みのみが対象です。**実際の改善幅はそれよりかなり小さい可能性が高い**です。
+
+いつもどおり、この順番厳守でお願いします:
 
 """
+
+
+
+
+
+
+
+
+
 
 
 
@@ -314,10 +370,10 @@ SCHED_WORDS21:Static[int]=6
 # K=2/4/8/... ; selected_maxd>14 chunks always fall back to the original
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
-K_PER_THREAD_MAXD14:Static[int]=52
+K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="308 K52-final-sweep: parent 307 K44-fine-probe (351.240s, flat vs 304 K48=351.070s); K flat zone confirmed K=44-56; probing K=52 to complete the K curve survey; EXPECTED_CHUNKS=ceil(2025282/(32*484*52))=ceil(2025282/805376)=3; all kernel logic unchanged from 296/304; kernel_dfs_iter_gpu_maxd16/18/20/21 unchanged"
+VERSION_TAG:str="328 warr-soa-split-implement: base 327 warrloadsplit-verify (kernel logic byte-for-byte identical to 319-325's unified hot loop; 327's own N=21 run confirmed 454.563s, within 0.12% of 319's 455.116s); 326 (future_check_mask==0/!=0 in-kernel hot-loop duplication) was tried and REJECTED (correctness OK but 517.563s, -13.7% slower than 319, the worst of five failed GPU-side specialization attempts: 240/266/267/268-269/273/326) -- unrelated to this revision's change; 327's w_arr_loadsplit probe (3-kernel comparison: baseline, tmpvar-only rephrasing, and an SoA split into two u32 halves) confirmed both the split-load mechanism (the old combined w_arr, an 8-byte-stride u64 array, compiles to two 32-bit LDG.E, a general Codon/NVPTX behavior for this access shape) and its fix: baseline/tmpvar both carried L2 Theoretical Sectors Global Excessive=25000 with actual fetch exactly double the ideal (matching 319's real-kernel 92,928-per-instruction finding), while the SoA variant achieved Excessive=0 with fetch exactly equal to ideal, and sum_base==sum_soa confirmed the SoA reconstruction (u64(lo)|(u64(hi)<<u64(32))) is bit-exact; tmpvar-only rephrasing made zero difference, ruling out pure syntax fixes -- an actual data-layout change is required; this revision applies that verified transformation to the real kernels: the old combined u64 array parameter is replaced with a pair of separate u32-typed array parameters (named w_lo_arr and w_hi_arr) in all 5 kernel signatures (14/16/18/20/21, kept in sync even though 16/18/20/21 are essentially never exercised for N=21 since selected_maxd==14 always) and every w_arr[idx]/w_arr[i] read site (3 per kernel: two root_action early-exit paths plus the main post-loop accumulation, 15 total) replaced with the same verified reconstruction formula; launch_kernel_dfs_iter_gpu_static_maxd (the single shared dispatcher, whose own external signature is UNCHANGED -- it still accepts w_arr:List[u64] exactly as before) now derives w_lo_arr/w_hi_arr once internally and passes both to whichever kernel launches; build_soa_for_range, w_arr's generation/storage everywhere else, the CPU verification path, and every caller of the dispatcher are all untouched; critically, the divergent DFS hot loop itself (322's Stall Branch Resolving subject) is completely untouched -- this is a fundamentally lower-risk change in KIND than 326 (a once-per-task read across 5 kernels, not a per-DFS-node loop-body duplication); verified mechanically via exact-count checks (5/5 signatures converted, 0 old-style remaining, 15/15 read sites converted, dispatcher derives-and-passes correctly) and paren/bracket balance (the file's pre-existing off-by-one imbalance, present since before this revision, changed by exactly the same amount on both sides, confirming no new imbalance introduced); NOTE: an earlier draft of this VERSION_TAG accidentally caused a source_warr_soa_split_signatures FAIL by writing the old and new parameter type annotations verbatim in this prose, which the validate script's exact-substring-count check could not distinguish from real code -- fixed by describing the types in words instead of Codon syntax throughout this tag, same lesson as the false positive fixed in 327's r2; NOTE the ncu OPT advisor's 11.79% estimate was for the WHOLE kernel, while this change touches only a once-per-task read, so the realistic improvement is likely much smaller than 11.79% of total runtime; this has NOT been built or run on real hardware; mandatory validation order: STATIC_ONLY=1 first, confirm correctness (314666222712) before any timing comparison, then compare against 327's 454.563s / 319's 455.116s, reverting to 327 immediately if not clearly better"
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -346,7 +402,7 @@ FUNCID_REORDER_V2_WINDOW_MULT:int=8
 FUNCID_REORDER_V2_PHASE_JUMP:int=7
 FUNCID_REORDER_V2_DEFAULT_REASON:str="N22 measured best baseline w8_j7"
 BROAD_MARKDIST_TAIL_REORDER_VERSION:str="v4"
-BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="115 final default: 114 weekend ablation selected rotate_only for A10G single-GPU throughput"
+BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON:str="328 warr-soa-split-implement: kernel-logic change from 327 (base identical to 319-325), applied to a once-per-task read only -- the old combined u64 array parameter split into a pair of separate u32-typed arrays (w_lo_arr/w_hi_arr) across all 5 kernels (14/16/18/20/21) and the shared dispatcher, per 327's probe-verified fix (zero L2 Excessive sectors, sum_base==sum_soa); the divergent DFS hot loop itself (322's Stall Branch Resolving subject) is completely untouched; lower risk in kind than 326's rejected hot-loop duplication; not yet built/run on real hardware; revert to 327 immediately if N=21 timing is not clearly better once correctness (314666222712) is confirmed"
 BROAD_MARKDIST_TAIL_VARIANT:int=2
 BROAD_MARKDIST_TAIL_PHASE_SALT:int=53
 BROAD_MARKDIST_TAIL_CELL_SALT:int=17
@@ -458,7 +514,7 @@ def packed_stack_bytes_per_thread(selected_maxd:int)->int:
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd14(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
-    markctrl_arr:Ptr[u32],w_arr:Ptr[u64],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32],
     meta_next:Ptr[u8],
     results:Ptr[u64],
     m:int,board_mask:u32,
@@ -596,12 +652,12 @@ def kernel_dfs_iter_gpu_maxd14(
         schedule_depth+=1
 
       if root_action==u32(2):
-        thread_total+=w_arr[idx]
+        thread_total+=(u64(w_lo_arr[idx])|(u64(w_hi_arr[idx])<<u64(32)))
         idx+=stride
         continue
       if root_action==u32(3):
         total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-        thread_total+=total*w_arr[idx]
+        thread_total+=total*(u64(w_lo_arr[idx])|(u64(w_hi_arr[idx])<<u64(32)))
         idx+=stride
         continue
       if root_action==u32(1):
@@ -770,14 +826,14 @@ def kernel_dfs_iter_gpu_maxd14(
         cur_col=ncol
         cur_avail=nf
         cur_depth=next_depth
-      thread_total+=total*w_arr[idx]
+      thread_total+=total*(u64(w_lo_arr[idx])|(u64(w_hi_arr[idx])<<u64(32)))
       idx+=stride
     results[tid]=thread_total
 
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd16(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
-    markctrl_arr:Ptr[u32],w_arr:Ptr[u64],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32],
     meta_next:Ptr[u8],
     results:Ptr[u64],
     m:int,board_mask:u32,
@@ -897,11 +953,11 @@ def kernel_dfs_iter_gpu_maxd16(
       schedule_depth+=1
 
     if root_action==u32(2):
-      results[i]=w_arr[i]
+      results[i]=(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(3):
       total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-      results[i]=total*w_arr[i]
+      results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(1):
       root_a&=~u32(1)
@@ -975,12 +1031,12 @@ def kernel_dfs_iter_gpu_maxd16(
       rd[sp]=nrd
       col[sp]=ncol
       avail[sp]=nf
-    results[i]=total*w_arr[i]
+    results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
 
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd18(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
-    markctrl_arr:Ptr[u32],w_arr:Ptr[u64],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32],
     meta_next:Ptr[u8],
     results:Ptr[u64],
     m:int,board_mask:u32,
@@ -1100,11 +1156,11 @@ def kernel_dfs_iter_gpu_maxd18(
       schedule_depth+=1
 
     if root_action==u32(2):
-      results[i]=w_arr[i]
+      results[i]=(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(3):
       total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-      results[i]=total*w_arr[i]
+      results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(1):
       root_a&=~u32(1)
@@ -1178,12 +1234,12 @@ def kernel_dfs_iter_gpu_maxd18(
       rd[sp]=nrd
       col[sp]=ncol
       avail[sp]=nf
-    results[i]=total*w_arr[i]
+    results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
 
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd20(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
-    markctrl_arr:Ptr[u32],w_arr:Ptr[u64],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32],
     meta_next:Ptr[u8],
     results:Ptr[u64],
     m:int,board_mask:u32,
@@ -1303,11 +1359,11 @@ def kernel_dfs_iter_gpu_maxd20(
       schedule_depth+=1
 
     if root_action==u32(2):
-      results[i]=w_arr[i]
+      results[i]=(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(3):
       total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-      results[i]=total*w_arr[i]
+      results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(1):
       root_a&=~u32(1)
@@ -1381,12 +1437,12 @@ def kernel_dfs_iter_gpu_maxd20(
       rd[sp]=nrd
       col[sp]=ncol
       avail[sp]=nf
-    results[i]=total*w_arr[i]
+    results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
 
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd21(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
-    markctrl_arr:Ptr[u32],w_arr:Ptr[u64],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],w_hi_arr:Ptr[u32],
     meta_next:Ptr[u8],
     results:Ptr[u64],
     m:int,board_mask:u32,
@@ -1506,11 +1562,11 @@ def kernel_dfs_iter_gpu_maxd21(
       schedule_depth+=1
 
     if root_action==u32(2):
-      results[i]=w_arr[i]
+      results[i]=(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(3):
       total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-      results[i]=total*w_arr[i]
+      results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
       return
     if root_action==u32(1):
       root_a&=~u32(1)
@@ -1584,7 +1640,7 @@ def kernel_dfs_iter_gpu_maxd21(
       rd[sp]=nrd
       col[sp]=ncol
       avail[sp]=nf
-    results[i]=total*w_arr[i]
+    results[i]=total*(u64(w_lo_arr[i])|(u64(w_hi_arr[i])<<u64(32)))
 
 def launch_kernel_dfs_iter_gpu_static_maxd(
   selected_maxd:int,
@@ -1600,12 +1656,22 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
   block_size:int,
   stride:int=0
 )->bool:
+  # 328: w_arr (host-side List[u64], built by build_soa_for_range -- UNCHANGED)
+  # is split into two densely-packed u32 arrays right here, at the GPU
+  # dispatch boundary only. This is the SAME reconstruction verified in
+  # the 328_w_arr_loadsplit_probe.py w_probe_kernel_soa variant (SoA
+  # read achieved zero L2 Theoretical Sectors Global Excessive, vs the
+  # combined-pointer baseline's 25000; sum_base==sum_soa confirmed exact
+  # equality). Nothing about w_arr's generation, build_soa_for_range, or
+  # the CPU verification path changes -- only this GPU-facing view.
+  w_lo_arr:List[u32]=[u32(v&u64(0xffffffff)) for v in w_arr]
+  w_hi_arr:List[u32]=[u32(v>>u64(32)) for v in w_arr]
   if selected_maxd==14:
     kbatch_stride:int=stride if stride>0 else (grid_size*block_size)
     kernel_dfs_iter_gpu_maxd14(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.markctrl_arr),gpu.raw(w_arr),gpu.raw(meta_next),gpu.raw(results),
+      gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(w_hi_arr),gpu.raw(meta_next),gpu.raw(results),
       m,board_mask_gpu,n3_gpu,n4_gpu,kbatch_stride,grid=grid_size,block=block_size
     )
     return True
@@ -1613,7 +1679,7 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
     kernel_dfs_iter_gpu_maxd16(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.markctrl_arr),gpu.raw(w_arr),gpu.raw(meta_next),gpu.raw(results),
+      gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(w_hi_arr),gpu.raw(meta_next),gpu.raw(results),
       m,board_mask_gpu,n3_gpu,n4_gpu,grid=grid_size,block=block_size
     )
     return True
@@ -1621,7 +1687,7 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
     kernel_dfs_iter_gpu_maxd18(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.markctrl_arr),gpu.raw(w_arr),gpu.raw(meta_next),gpu.raw(results),
+      gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(w_hi_arr),gpu.raw(meta_next),gpu.raw(results),
       m,board_mask_gpu,n3_gpu,n4_gpu,grid=grid_size,block=block_size
     )
     return True
@@ -1629,7 +1695,7 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
     kernel_dfs_iter_gpu_maxd20(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.markctrl_arr),gpu.raw(w_arr),gpu.raw(meta_next),gpu.raw(results),
+      gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(w_hi_arr),gpu.raw(meta_next),gpu.raw(results),
       m,board_mask_gpu,n3_gpu,n4_gpu,grid=grid_size,block=block_size
     )
     return True
@@ -1637,7 +1703,7 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
     kernel_dfs_iter_gpu_maxd21(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
-      gpu.raw(soa.markctrl_arr),gpu.raw(w_arr),gpu.raw(meta_next),gpu.raw(results),
+      gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(w_hi_arr),gpu.raw(meta_next),gpu.raw(results),
       m,board_mask_gpu,n3_gpu,n4_gpu,grid=grid_size,block=block_size
     )
     return True
