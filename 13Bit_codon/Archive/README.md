@@ -1,25 +1,88 @@
-# N-Queens CUDA/Codon ソルバ 開発ログ
 
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 328 (2026-07-22)
-
-このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の年代順ログを参照してください。
-
-1. **[実装済み・検証待ち] 非コアレッシングメモリアクセス(w_arrのSoA分割)**
-   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive(189,728個、推定11.79%速度向上の余地)の原因は、`w_arr[idx]`(u64、8バイト間隔)読み込みが2つの32bit LDG.Eに分割され、かつ各読み込み自体が8バイト間隔ゆえに理想的にコアレッシングできていないことだと327の独立プローブで確認・特定した(3kernel比較)。`w_lo_arr`/`w_hi_arr`という2つの独立した密なu32配列に分割すればExcessiveがゼロになることも実証済み(sum_base==sum_soaで正当性も確認)。**328で、この検証済みの変更を5つ全てのkernel(maxd14/16/18/20/21)とディスパッチャに実装した。** ホットな発散DFSループ自体には一切触れていない(タスクごとに1回のみの読み込み箇所3箇所×5kernelのみ変更)。326(ホットループ複製、5戦5敗の一角)とはリスクの質が異なる低リスクな変更。実機でのビルド・実行はまだ行われていない。正当性(314666222712)を最優先で確認し、悪化すれば327へロールバックする方針。なお推定11.79%はkernel全体に対する見積もりであり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の改善幅はそれよりかなり小さい可能性が高い。
-
-2. **[撤回・保留] kernel内future_check_mask 1軸専用化**
-   322/323のStall Branch Resolving知見への対応として設計(324)、実装(326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。この方向性は保留とする。
-
-3. **[結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)**
-   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeにおける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
-
----
+"""
+   ,     #_
+   ~\_  ####_        N-Queens
+  ~~  \_#####\       https://suzukiiichiro.github.io/
+  ~~     \###|       N-Queens for github
+  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
 
 
+Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ README
+
+# ビルド
+codon build -release 115Py_range_default_clean_cg_v2.py
+
+# CPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+# GPU実行
+stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+
+
+
+# 2026年  7月 23日 木曜日 02:45:14 UTC
+suzuki@cudacodon$ nvidia-smi --query-gpu=clocks.sm,clocks.max.sm --format=csv -l 5
+clocks.current.sm [MHz], clocks.max.sm [MHz]
+1320 MHz, 1710 MHz
+suzuki@cudacodon./328Py_warr_soa_split_implement -g
+GPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.003    ok
+ 7:                40                0          0:00:00.003    ok
+ 8:                92                0          0:00:00.002    ok
+ 9:               352                0          0:00:00.002    ok
+10:               724                0          0:00:00.003    ok
+11:              2680                0          0:00:00.007    ok
+12:             14200                0          0:00:00.010    ok
+13:             73712                0          0:00:00.012    ok
+14:            365596                0          0:00:00.018    ok
+15:           2279184                0          0:00:00.032    ok
+16:          14772512                0          0:00:00.074    ok
+17:          95815104                0          0:00:00.260    ok
+18:         666090624                0          0:00:02.005    ok
+19:        4968057848                0          0:00:10.887    ok
+20:       39029188884                0          0:01:25.200    ok
+21:      314666222712                0          0:07:36.107    ok
+
+
+# 2026年  7月 23日 木曜日 02:45:14 UTC
+suzuki@cudacodon$ nvidia-smi --query-gpu=clocks.sm,clocks.max.sm --format=csv -l 5
+clocks.current.sm [MHz], clocks.max.sm [MHz]
+1320 MHz, 1710 MHz
+suzuki@cudacodon$ ./304Py_K48_sweep_probe -g
+
+304Py_K48_sweep_probe.py - elapsed = **351.070s** (0:05:51.070)
+
+GPU mode selected
+ N:             Total           Unique         hh:mm:ss.ms
+ 5:                10                0          0:00:00.000
+ 6:                 4                0          0:00:00.010    ok
+ 7:                40                0          0:00:00.003    ok
+ 8:                92                0          0:00:00.002    ok
+ 9:               352                0          0:00:00.002    ok
+10:               724                0          0:00:00.003    ok
+11:              2680                0          0:00:00.004    ok
+12:             14200                0          0:00:00.007    ok
+13:             73712                0          0:00:00.011    ok
+14:            365596                0          0:00:00.017    ok
+15:           2279184                0          0:00:00.032    ok
+16:          14772512                0          0:00:00.073    ok
+17:          95815104                0          0:00:00.261    ok
+18:         666090624                0          0:00:01.989    ok
+19:        4968057848                0          0:00:10.949    ok
+20:       39029188884                0          0:01:25.395    ok
+21:      314666222712                0          0:07:34.480    ok
+
+
+# 2026年  7月 10日 金曜日 05:11:41 UTC
 suzuki@cudacodon$ uname -a
 Linux ip-172-31-3-195.us-west-2.compute.internal 6.1.158-180.294.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 05:36:50 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
-suzuki@cudacodon$ date
-2026年  7月 10日 金曜日 05:11:41 UTC
 suzuki@cudacodon$ codon build -release 292Py_kbatch4_gridstride_probe.py && ./292Py_kbatch4_gridstride_probe -g
 GPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -42,9 +105,9 @@ GPU mode selected
 21:      314666222712                0          0:06:07.340    ok
 
 
+# 2026年  7月  6日 月曜日
 # GPU m4.xlarge での実行例
 suzuki@cudacodon$ date
-2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -g
 GPU mode selected
@@ -68,9 +131,8 @@ GPU mode selected
 21:      314666222712                0          0:07:07.834    ok
 
 
+# 2026年  6月  9日 火曜日 05:55:00 UTC
 # GPU g5.xlarge での実行例
-suzuki@cudacodon$ date
-2026年  6月  9日 火曜日 05:55:00 UTC
 suzuki@cudacodon$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -g 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 GPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -95,9 +157,8 @@ GPU mode selected
 23:    24233937684440                0  1 day, 11:20:40.926    ok
 
 
+# 2026年  7月  6日 月曜日
 # CPU m4.xlarge での実行例
-suzuki@cudacodon$ date
-2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
@@ -118,9 +179,9 @@ CPU mode selected
 18:         666090624                0          0:00:40.116    ok
 19:        4968057848                0          0:05:16.015    ok
 
+
+# 2026年  7月  6日 月曜日
 # CPU m4.16xlarge での実行例
-workspace#suzuki$ date
-2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
@@ -143,9 +204,9 @@ CPU mode selected
 20:       39029188884                0          0:02:10.232    ok
 21:      314666222712                0          0:18:05.956    ok
 
+
+# 2026年  6月  9日 火曜日 14:23:02 JST
 # CPU m4.16xlarge での実行例
-workspace#suzuki$ date
-2026年  6月  9日 火曜日 14:23:02 JST
 workspace#suzuki$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range.log
 CPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -168,9 +229,9 @@ CPU mode selected
 21:      314666222712                0          0:18:07.042    ok
 22:     2691008701644                0          2:38:58.023    ok
 
+
+# 2026年  5月 15日 金曜日 20:50:42 JST
 # CPU m4.16xlarge での実行例
-workspace#suzuki$ date
-2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
 workspace#suzuki$ ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream -c
 CPU mode selected
@@ -196,9 +257,8 @@ CPU mode selected
 23:    24233937684440                0   1 day, 0:43:10.509    ok
 
 
+# 2026年  5月 15日 金曜日 09:34:47 UTC
 # GPU g5.16xlarge での実行例
-suzuki@cudacodon$ date
-2026年  5月 15日 金曜日 09:34:47 UTC
 suzuki@cudacodon$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
 suzuki@cudacodon$ ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream -g
   or
@@ -235,7 +295,8 @@ g5.xlarge  → A10G 1枚
 g5.16xlarge → A10G 1枚
 ------------------------
 
-2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
+
+# 2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 対称解除法 GPUビットボード
@@ -248,6 +309,25 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
+"""
+
+
+# N-Queens CUDA/Codon ソルバ 開発ログ
+
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 328 (2026-07-22)
+
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の年代順ログを参照してください。
+
+1. **[実装済み・検証待ち] 非コアレッシングメモリアクセス(w_arrのSoA分割)**
+   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive(189,728個、推定11.79%速度向上の余地)の原因は、`w_arr[idx]`(u64、8バイト間隔)読み込みが2つの32bit LDG.Eに分割され、かつ各読み込み自体が8バイト間隔ゆえに理想的にコアレッシングできていないことだと327の独立プローブで確認・特定した(3kernel比較)。`w_lo_arr`/`w_hi_arr`という2つの独立した密なu32配列に分割すればExcessiveがゼロになることも実証済み(sum_base==sum_soaで正当性も確認)。**328で、この検証済みの変更を5つ全てのkernel(maxd14/16/18/20/21)とディスパッチャに実装した。** ホットな発散DFSループ自体には一切触れていない(タスクごとに1回のみの読み込み箇所3箇所×5kernelのみ変更)。326(ホットループ複製、5戦5敗の一角)とはリスクの質が異なる低リスクな変更。実機でのビルド・実行はまだ行われていない。正当性(314666222712)を最優先で確認し、悪化すれば327へロールバックする方針。なお推定11.79%はkernel全体に対する見積もりであり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の改善幅はそれよりかなり小さい可能性が高い。
+
+2. **[撤回・保留] kernel内future_check_mask 1軸専用化**
+   322/323のStall Branch Resolving知見への対応として設計(324)、実装(326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。この方向性は保留とする。
+
+3. **[結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)**
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeにおける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
+
+---
 
 
 # N-Queens Python/Codon CUDA 更新履歴
