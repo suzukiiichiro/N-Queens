@@ -1,88 +1,34 @@
+# N-Queens CUDA/Codon ソルバ 開発ログ
 
-"""
-   ,     #_
-   ~\_  ####_        N-Queens
-  ~~  \_#####\       https://suzukiiichiro.github.io/
-  ~~     \###|       N-Queens for github
-  ~~       \#/ ___   https://github.com/suzukiiichiro/N-Queens
-   ~~       V~' '->
-    ~~~         /
-      ~~._.   _/
-         _/ _/
-       _/m/'
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 337 (2026-07-24)
 
+このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の年代順ログを参照してください。
 
-Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ README
+1. **[結論・確定・採用] 非コアレッシングメモリアクセス(w_arrのSoA分割)**
+   328で実装、N=21フル実行で正当性(314666222712)と456.036秒(327比ノイズ内)を確認、329の実機ncu SourceCounters再解析でw_lo_arr/w_hi_arr読み込み3箇所全てのL2 Excessive=0を確認し、正式にADOPT済み。329自身のフル実行(456.187秒、328比-0.033%)でも再現を確認。
 
-# ビルド
-codon build -release 115Py_range_default_clean_cg_v2.py
+2. **[撤回・保留] kernel内future_check_mask 1軸専用化**
+   322/323のStall Branch Resolving知見への対応として設計(324)、実装(326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。この方向性は保留とする。
 
-# CPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+3. **[結論・確定・対策経路確定] Stall Branch Resolving (カーネル全体の約19〜23%)**
+   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeにおける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。329の再解析で、原因は古典的な分岐発散ではなく、warp内の大半のレーンが探索を終え少数の"尾"に残ったレーンをwarp全体が待つ**占有率崩壊/tail effect**(Divergent Branches=0、Avg Threads Executed 2〜3/32)と特定した。330でrev292案C-1(persistent kernel+atomicワークキュー)を実機調査(`gpu.codon`にatomicは存在しない)により**実装不可能と確定・クローズ**。残る唯一の対策経路はrev84提案・未着手のCUDA Cランナー(案C-2: コンステレーション生成/並べ替え/binキャッシュはCodonのまま、カーネル+ランチャーのみ.cuで書き同じbinを読む構成。warp intrinsics/atomic/per-line帰属を解禁)であり、**334でそのスパイク設計に着手した**(コード変更なし、事前確認事項の明文化とnvcc/cuobjdump環境プローブのみ)。
 
-# GPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
+4. **[新規発見・低優先度・未対応] kernel epilogueのSTG書き込み超過**
+   329のncu再解析で検出(Excessive=1936×2)。スレッド当たり1回のみの実行で影響は無視できる規模。記録のみ。
 
+5. **[クローズ・333で正式採用] funcid_reorder w/jのN21再調整 → w3_j7採用**
+   過去アーカイブ発掘調査(330の`330_buried_ideas_survey.md`)で発見した案C-3。330→331→332の3段スイープ(W∈{4,6,8,10,12,16}→W∈{2,3,4,5,8}→J∈{3,5,7,11}@W=3)でW=3・J=7が確定最適点(kernel_reduce_ms 448,789、対w8_j7 -1.294%)。333でホスト側パラメータのみを正式採用(カーネル・ディスパッチャは328-332と同一)し、N=21フル実行で正当性314666222712・elapsed 450.667s(旧w8_j7ベースライン比+1.18%改善)を確認して完全クローズ。
 
+6. **[設計中・337でbin形式を仕様確定] CUDA Cランナー(案C-2)スパイク設計**
+   課題3への唯一の残存対策経路。方針: `kernel_dfs_iter_gpu_maxd14`一個のみを.cuに移植し、コンステレーション生成・並べ替え・binキャッシュはCodonのまま維持、同じbin形式を読む最小構成とする。正当性確認スコープはN=18限定(rev84の原提案どおり)。334-335でnvcc(`/usr/local/cuda/bin/nvcc`、CUDA 13.0)・A10G compute_cap(**8.6**、`-arch=sm_86`)・cuobjdump不在(ncuフォールバックに一本化)を確定。**336で`336_cudac_smoke_test.cu`のビルド・GPU実行に成功**(`gpu_sum=cpu_sum=22898104320`、match=True)し、cudacodon実機でのCUDA Cツールチェーンround-tripを初めて実証した(rev84提案から数か月越し)。**337で、ソース精読によりbin形式を仕様確定**: 全`.bin`ファイル(base生成・broadmarktail subcellバケット・並べ替え後出力)は例外なく単一の書き込み関数`append_constellations_bin`経由で、レコード形式は一貫して「ヘッダーなし・16バイト固定長(`ld`/`rd`/`col`/`startijkl`、各u32リトルエンディアン)のフラット配列」であることを確認した。この仕様に基づき、メインソルバとは独立したホスト側binリーダー(`337_bin_format_reader.cu`、GPU不使用)を追加し、実ファイルの読み込み・サイズ検証・チェックサム算出を行う。実行結果待ち。次のマイルストーンはN=18限定でのCodon側との突き合わせ、その後にmaxd14本体の移植設計。
 
-# 2026年  7月 23日 木曜日 02:45:14 UTC
-suzuki@cudacodon$ nvidia-smi --query-gpu=clocks.sm,clocks.max.sm --format=csv -l 5
-clocks.current.sm [MHz], clocks.max.sm [MHz]
-1320 MHz, 1710 MHz
-suzuki@cudacodon./328Py_warr_soa_split_implement -g
-GPU mode selected
- N:             Total           Unique         hh:mm:ss.ms
- 5:                10                0          0:00:00.000
- 6:                 4                0          0:00:00.003    ok
- 7:                40                0          0:00:00.003    ok
- 8:                92                0          0:00:00.002    ok
- 9:               352                0          0:00:00.002    ok
-10:               724                0          0:00:00.003    ok
-11:              2680                0          0:00:00.007    ok
-12:             14200                0          0:00:00.010    ok
-13:             73712                0          0:00:00.012    ok
-14:            365596                0          0:00:00.018    ok
-15:           2279184                0          0:00:00.032    ok
-16:          14772512                0          0:00:00.074    ok
-17:          95815104                0          0:00:00.260    ok
-18:         666090624                0          0:00:02.005    ok
-19:        4968057848                0          0:00:10.887    ok
-20:       39029188884                0          0:01:25.200    ok
-21:      314666222712                0          0:07:36.107    ok
+---
 
 
-# 2026年  7月 23日 木曜日 02:45:14 UTC
-suzuki@cudacodon$ nvidia-smi --query-gpu=clocks.sm,clocks.max.sm --format=csv -l 5
-clocks.current.sm [MHz], clocks.max.sm [MHz]
-1320 MHz, 1710 MHz
-suzuki@cudacodon$ ./304Py_K48_sweep_probe -g
-
-304Py_K48_sweep_probe.py - elapsed = **351.070s** (0:05:51.070)
-
-GPU mode selected
- N:             Total           Unique         hh:mm:ss.ms
- 5:                10                0          0:00:00.000
- 6:                 4                0          0:00:00.010    ok
- 7:                40                0          0:00:00.003    ok
- 8:                92                0          0:00:00.002    ok
- 9:               352                0          0:00:00.002    ok
-10:               724                0          0:00:00.003    ok
-11:              2680                0          0:00:00.004    ok
-12:             14200                0          0:00:00.007    ok
-13:             73712                0          0:00:00.011    ok
-14:            365596                0          0:00:00.017    ok
-15:           2279184                0          0:00:00.032    ok
-16:          14772512                0          0:00:00.073    ok
-17:          95815104                0          0:00:00.261    ok
-18:         666090624                0          0:00:01.989    ok
-19:        4968057848                0          0:00:10.949    ok
-20:       39029188884                0          0:01:25.395    ok
-21:      314666222712                0          0:07:34.480    ok
-
-
-# 2026年  7月 10日 金曜日 05:11:41 UTC
 suzuki@cudacodon$ uname -a
 Linux ip-172-31-3-195.us-west-2.compute.internal 6.1.158-180.294.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Mon Dec  1 05:36:50 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+suzuki@cudacodon$ date
+2026年  7月 10日 金曜日 05:11:41 UTC
 suzuki@cudacodon$ codon build -release 292Py_kbatch4_gridstride_probe.py && ./292Py_kbatch4_gridstride_probe -g
 GPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -105,9 +51,9 @@ GPU mode selected
 21:      314666222712                0          0:06:07.340    ok
 
 
-# 2026年  7月  6日 月曜日
 # GPU m4.xlarge での実行例
 suzuki@cudacodon$ date
+2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -g
 GPU mode selected
@@ -131,8 +77,9 @@ GPU mode selected
 21:      314666222712                0          0:07:07.834    ok
 
 
-# 2026年  6月  9日 火曜日 05:55:00 UTC
 # GPU g5.xlarge での実行例
+suzuki@cudacodon$ date
+2026年  6月  9日 火曜日 05:55:00 UTC
 suzuki@cudacodon$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -g 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 GPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -157,8 +104,9 @@ GPU mode selected
 23:    24233937684440                0  1 day, 11:20:40.926    ok
 
 
-# 2026年  7月  6日 月曜日
 # CPU m4.xlarge での実行例
+suzuki@cudacodon$ date
+2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
@@ -179,9 +127,9 @@ CPU mode selected
 18:         666090624                0          0:00:40.116    ok
 19:        4968057848                0          0:05:16.015    ok
 
-
-# 2026年  7月  6日 月曜日
 # CPU m4.16xlarge での実行例
+workspace#suzuki$ date
+2026年  7月  6日 月曜日
 suzuki@cudacodon$ codon build -release 237Py_restore232_fastdefault_keepfeatures_probe.py
 suzuki@cudacodon$ ./237Py_restore232_fastdefault_keepfeatures_probe -c
 CPU mode selected
@@ -204,9 +152,9 @@ CPU mode selected
 20:       39029188884                0          0:02:10.232    ok
 21:      314666222712                0          0:18:05.956    ok
 
-
-# 2026年  6月  9日 火曜日 14:23:02 JST
 # CPU m4.16xlarge での実行例
+workspace#suzuki$ date
+2026年  6月  9日 火曜日 14:23:02 JST
 workspace#suzuki$ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range.log
 CPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
@@ -229,9 +177,9 @@ CPU mode selected
 21:      314666222712                0          0:18:07.042    ok
 22:     2691008701644                0          2:38:58.023    ok
 
-
-# 2026年  5月 15日 金曜日 20:50:42 JST
 # CPU m4.16xlarge での実行例
+workspace#suzuki$ date
+2026年  5月 15日 金曜日 20:50:42 JST
 workspace#suzuki$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
 workspace#suzuki$ ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream -c
 CPU mode selected
@@ -257,8 +205,9 @@ CPU mode selected
 23:    24233937684440                0   1 day, 0:43:10.509    ok
 
 
-# 2026年  5月 15日 金曜日 09:34:47 UTC
 # GPU g5.16xlarge での実行例
+suzuki@cudacodon$ date
+2026年  5月 15日 金曜日 09:34:47 UTC
 suzuki@cudacodon$ codon build -release 84Py_constellations_GPU_cuda_codon_dynamic_p8_stream.py
 suzuki@cudacodon$ ./84Py_constellations_GPU_cuda_codon_dynamic_p8_stream -g
   or
@@ -295,8 +244,7 @@ g5.xlarge  → A10G 1枚
 g5.16xlarge → A10G 1枚
 ------------------------
 
-
-# 2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
+2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
 C/CUDA NVIDIA(GPU)
 $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && POCL_DEBUG=all ./a.out -n ;
 対称解除法 GPUビットボード
@@ -309,25 +257,6 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 24:   227514171973736  28439272956934    012:23:38:21.02
 25:  2207893435808352 275986683743434    140:07:39:29.96
 
-"""
-
-
-# N-Queens CUDA/Codon ソルバ 開発ログ
-
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 328 (2026-07-22)
-
-このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の年代順ログを参照してください。
-
-1. **[実装済み・検証待ち] 非コアレッシングメモリアクセス(w_arrのSoA分割)**
-   ncu OPTアドバイザーが指摘したL2 Theoretical Sectors Global Excessive(189,728個、推定11.79%速度向上の余地)の原因は、`w_arr[idx]`(u64、8バイト間隔)読み込みが2つの32bit LDG.Eに分割され、かつ各読み込み自体が8バイト間隔ゆえに理想的にコアレッシングできていないことだと327の独立プローブで確認・特定した(3kernel比較)。`w_lo_arr`/`w_hi_arr`という2つの独立した密なu32配列に分割すればExcessiveがゼロになることも実証済み(sum_base==sum_soaで正当性も確認)。**328で、この検証済みの変更を5つ全てのkernel(maxd14/16/18/20/21)とディスパッチャに実装した。** ホットな発散DFSループ自体には一切触れていない(タスクごとに1回のみの読み込み箇所3箇所×5kernelのみ変更)。326(ホットループ複製、5戦5敗の一角)とはリスクの質が異なる低リスクな変更。実機でのビルド・実行はまだ行われていない。正当性(314666222712)を最優先で確認し、悪化すれば327へロールバックする方針。なお推定11.79%はkernel全体に対する見積もりであり、この変更はタスクごとに1回の読み込みのみが対象のため、実際の改善幅はそれよりかなり小さい可能性が高い。
-
-2. **[撤回・保留] kernel内future_check_mask 1軸専用化**
-   322/323のStall Branch Resolving知見への対応として設計(324)、実装(326)した`future_check_mask==0/!=0`ホットループ複製は、N=21フル実行で正当性は一致したが実行時間が517.563秒(319比+13.7%)と大幅に悪化し撤回した。240/266-269/273と合わせてGPU側kernel/ループ分解は5戦5敗。この方向性は保留とする。
-
-3. **[結論・確定] Stall Branch Resolving (カーネル全体の約19〜23%)**
-   3つの独立した測定手法(316サイクルベース/317ハードウェアカウンタ/318-319 PCサンプリング)が収束し、メインDFSループの共有back-edgeにおける再収束(BSYNC)オーバーヘッドが原因と結論(319/322)。per-line対応はCodon+ncuツールチェーンでは到達不能(318-321)。対策として試みたkernel内専用化(326)も大幅な性能悪化で撤回された。GPU側での構造的対策は現時点で5戦5敗であり、この課題への対応はいったん保留。
-
----
 
 
 # N-Queens Python/Codon CUDA 更新履歴
@@ -2842,3 +2771,95 @@ Updated on 2026-07-23 for 332Py J-sweep result (J=7 confirmed, (3,7) optimum) an
 - **タイミング**: elapsed **450.667s**。332の直接測定450.113s比-0.123%(ノイズ内)で期待着地点に一致。kernel_reduce_ms合計448,920ms(331/332の448,789/448,791比±0.03%以内)。旧w8_j7ベースライン(328/329の456.036/456.187s)比 **+1.18%改善**。
 - **w3_j7の正式採用が完了**。発掘案C-3(funcid_reorder w/j再調整)は完全クローズ。94-99時代(2026年6月)にN22で決められ、chunkshape148/nibble schedule/root-preroll/K-batching/variant2/SoAという下流全面改変を越えて凍結されていたパラメータの置き換えにより、カーネル無変更・クロックキャップ環境下で約-1.2%を回収した。330(発掘調査+Wスイープ)→331(境界)→332(J側)→333(採用)の4リビジョン、1日で完結。
 - **今後の残存テーマ**: 課題3(tail effect、stall_branch_resolvingの65.5%集中)への中期対策としてのCUDA Cランナー(発掘案C-2、rev84提案)の検討。課題4(epilogue STG excess)は低優先度のまま記録継続。
+
+---
+
+Updated on 2026-07-23 for 334Py cudac-runner-spike-design -- NO source change to the main solver (kernel/dispatcher/host reorder params identical to 333/328-332, w3_j7 remains the default). This revision begins design work on buried-idea C-2 (the rev84 CUDA C runner proposal, from `330_buried_ideas_survey.md`), now the sole remaining route to Open Objective #3 (tail effect / occupancy collapse) since 330 formally closed plan C-1 (no device atomics in Codon).
+
+- **334の位置づけ**: 333のw3_j7採用結果(正当性314666222712、elapsed 450.667s、旧w8_j7比+1.18%改善)を確認し、発掘案C-3を完全クローズしたことをOpen Objectives項目5に反映した。新たに項目6として、課題3(tail effect)への残存対策であるCUDA Cランナー(案C-2)のスパイク設計に着手した。ソース変更はこのドキュメント/VERSION_TAG/Open Objectivesのみで、カーネル・ディスパッチャ・ホスト側パラメータ(w3_j7、K=48、SoA w_lo_arr/w_hi_arr)は328-333と一切変更ない。
+
+- **C-2スパイクの設計スコープ(実装は未着手)**:
+  1. **移植範囲を最小化**: `kernel_dfs_iter_gpu_maxd14`一個のみを`.cu`に移植する。コンステレーション生成・並べ替え(broadmarktail/chunkshape148/funcid_reorder w3_j7)・binキャッシュはすべてCodonのまま維持し、CUDA Cランナー(カーネル+ランチャーのみ)が同じbin形式を読む構成とする。
+  2. **正当性確認スコープをN=18に限定**: rev84の原提案どおり、まずN=18での正当性確認のみを行う最小構成とし、N=21フルはCUDA C版が安定してから着手する。
+  3. **解禁される対策手段**: warp intrinsics(`__shfl_sync`/`__ballot_sync`/`__activemask`、tail effect(Avg Threads Executed 2〜3/32)への唯一の直接対策)と、atomic演算(330でクローズしたC-1 persistent kernelの再検討)。いずれもCodonの`@gpu.kernel`では到達不能(atomicは330で確定、warp intrinsicsはCodon側に相当APIなし)。
+  4. **実装前の必須事前確認**(324の手法を踏襲): (a) cudacodon実機でのnvcc/CUDA toolchainの存在・バージョン確認、(b) 既存bin形式(schedule/w_lo_arr/w_hi_arr/broadmarktailメタデータのバイトレイアウト)をC側readerが読める形で仕様化できるかの調査、(c) N=18限定の最小正当性スコープの確定。
+
+- **334で実施した唯一の実質的な変更**: 検証ハーネスに**非ゲーティングな環境プローブ**を追加した。`nvcc --version`と`cuobjdump --version`の有無・バージョンをsummary.tsvにINFO行として記録するのみで、存在しなくても静的チェック・N=21フル実行のいずれも失敗させない。GPUには一切触れず、STATIC_ONLY=1でも実行される。次セッションでこのプローブの実行結果(ログtar)を確認し、335でC-2スパイクの実装可否を判断する。
+
+- **334検証スクリプト**: `333Py_w3j7_adopt_validate_N21_full_once.sh` を base に `334Py_cudac_runner_spike_design_validate_N21_full_once.sh` を作成。新規ゲーティング静的チェックはなし(source_version_tagのみ334の値に更新)。タイミング比較に`333w3j7adopt: 450.667s`を先頭追加。ファイル名・LOGDIR・VERSION_TAG参照文字列を全て334に更新。
+
+- **期待値**: 正当性314666222712、elapsed約450.7s(333の実測値を再現、ノイズ内)。summary.tsvに`cudac_toolchain_probe_nvcc`/`cudac_toolchain_probe_cuobjdump`のINFO行が新規追加される。
+
+- **次のステップ**: `STATIC_ONLY=1 bash 334Py_cudac_runner_spike_design_validate_N21_full_once.sh` → フルN=21実行。結果のログtar(nvcc/cuobjdumpプローブ結果を含む)を送付いただければ、335でCUDA Cランナースパイクの実装可否・具体的な最初の一歩(bin形式リーダーのC実装など)を判断する。
+
+---
+
+Updated on 2026-07-24 for the 334 execution result (fully reproduced: 314666222712, 450.181s, nvcc CUDA 13.0 confirmed, cuobjdump not found via plain PATH lookup) and 335Py cudac-toolchain-locate -- still NO source change to the main solver, two more non-gating environment probes added.
+
+- **334実行結果(確認)**: 静的チェック全OK(34項目+nvcc/cuobjdumpプローブ2項目、FAILゼロ)。正当性**314666222712**一致。elapsed **450.181s**(333の450.667s比+0.108%、332の直接測定450.113s比-0.015%、いずれもノイズ内)で完全に再現した。
+
+- **nvcc/cuobjdumpプローブの結果**:
+  - `nvcc --version`: **CUDA 13.0(V13.0.88、2025年8月20日ビルド)**を実機で確認。`.cu`のビルド自体は可能と判明した。
+  - `cuobjdump --version`: PATH直接検索では「not found on PATH」。ただし325/327では`cuobjdump --dump-sass`によるSASS逆アセンブルに成功した実績があるため、ツール自体が存在しないのではなく、この検証ハーネスのシェル環境のPATHにnvccのインストールディレクトリ全体が含まれていない可能性が高いと判断した。
+
+- **335の内容(ツールチェーン特定の前進)**: カーネル・ディスパッチャは328-334と一切変更なし。ソース変更はOpen Objectives項目6の更新とVERSION_TAGのみ。検証ハーネスに2つの新規非ゲーティングプローブを追加した:
+  1. `command -v nvcc`のフルパスから`dirname`でCUDAインストールディレクトリを特定し、その直下で`cuobjdump`を直接パス指定で再探索(`cudac_toolchain_probe_cuobjdump_near_nvcc`)。PATH設定に依存しない、より確実な検出方法。
+  2. `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`でA10G実機のCompute Capabilityを実測(`cudac_toolchain_probe_compute_cap`)。本コードベースの過去のsm_XX言及(`sm_61`、249行目参照)は別世代の旧GPU向けであり、A10Gでの値は一度も実測されていなかった。この値が確定すれば、将来の`.cu`ビルド時の`-arch=sm_XX`フラグを推測でなく指定できる。
+
+  いずれもGPUカーネルには一切触れず、STATIC_ONLY=1でも実行され、結果が得られなくても静的チェック・N=21フル実行のいずれも失敗させない(INFO記録のみ)。
+
+- **335検証スクリプト**: `334Py_cudac_runner_spike_design_validate_N21_full_once.sh` を base に `335Py_cudac_toolchain_locate_validate_N21_full_once.sh` を作成。新規ゲーティング静的チェックはなし(source_version_tagのみ335の値に更新)。タイミング比較に`334cudacrunnerspikedesign: 450.181s`を先頭追加。ファイル名・LOGDIR・VERSION_TAG参照文字列を全て335に更新。
+
+- **期待値**: 正当性314666222712、elapsed約450.2s(334の実測値を再現、ノイズ内)。summary.tsvに`cudac_toolchain_probe_nvcc_path`/`cudac_toolchain_probe_cuobjdump_near_nvcc`/`cudac_toolchain_probe_compute_cap`のINFO行が新規追加される。
+
+- **次のステップ**: `STATIC_ONLY=1 bash 335Py_cudac_toolchain_locate_validate_N21_full_once.sh` → フルN=21実行。結果のログtar(cuobjdumpの所在とA10Gのcompute_capを含む)を送付いただければ、336でC-2スパイクの最初の具体的な一歩(nvccパス・アーキテクチャフラグを使った最小`.cu`ビルド+実行のスモークテスト、まだmaxd14の移植そのものではない)に着手する。
+
+---
+
+Updated on 2026-07-24 for the 335 execution result (fully reproduced: 314666222712, 450.218s; nvcc located at /usr/local/cuda/bin/nvcc; cuobjdump confirmed genuinely absent from this CUDA 13.0 install even next to nvcc; A10G compute_cap measured at 8.6) and 336Py cudac-smoke-test -- the first concrete buried-idea C-2 code artifact: a standalone, self-verifying .cu smoke test independent of the main solver.
+
+- **335実行結果(確認)**: 静的チェック全OK(FAILゼロ)。正当性**314666222712**一致。elapsed **450.218s**(334の450.181s比-0.008%、ノイズ内)で完全に再現した。
+
+- **ツールチェーン特定の結果(確定)**:
+  - `nvcc`のフルパス: **`/usr/local/cuda/bin/nvcc`**(CUDA 13.0、V13.0.88)。
+  - `cuobjdump`: PATH検索でも、nvccと同一ディレクトリ(`/usr/local/cuda/bin`)内の直接検索でも**見つからなかった**。これにより「PATH設定の違い」という334時点の推測は否定され、**このCUDA 13.0ツールキットインストールにはcuobjdumpが同梱されていない**ことが確定した。325/327での過去の成功は別環境だったか、実際にはncuフォールバック経由だった可能性が高い。今後SASS静的逆アセンブルが必要な場面では、318以降確立済みの`sudo ncu --section SourceCounters --page source`経路に一本化する。
+  - A10GのCompute Capability: **`nvidia-smi --query-gpu=compute_cap`で8.6**と実測確定。将来の`.cu`ビルドでは`-arch=sm_86`を使う。
+
+- **336の内容(最初の具体的なコード成果物)**: カーネル・ディスパッチャは328-335と一切変更なし。メインソルバ(`336Py_cudac_smoke_test.py`)のソース変更はOpen Objectives項目6の更新とVERSION_TAGのみ。新たに、メインソルバとは完全に独立した2ファイルを追加した:
+  - `336_cudac_smoke_test.cu`: DFSロジック・bin形式への依存を一切持たない最小のCUDA Cカーネル。スレッドごとに`idx*idx`(u64)を計算してデバイス側バッファに書き込み、ホスト側でGPU結果の総和とCPU側の期待値の総和を比較する自己検証パターン(327の`sum_base`/`sum_soa`比較と同じ方法論)。
+  - `336_cudac_smoke_test_check.sh`: `nvcc -O3 -arch=sm_86`でビルドし、実際にGPU上で実行し、`match=True/False`の出力をパースしてPASS/FAILを判定する。既存のN=21フルvalidateハーネスとは完全に独立しており、こちらは初めて**実際にGPUを使用する**チェックである(334/335のプローブはメタデータ取得のみでGPU未使用)。
+
+- **方法論の一貫性**: 325(Codon inline probe)・327(w_arr load-split probe)と同じ「メインソルバに触れる前に独立ファイルでツールチェーン/コード生成の挙動を確認する」という規律を、今回はCodonではなくCUDA Cツールチェーン側に適用した。
+
+- **336検証スクリプト**: `335Py_cudac_toolchain_locate_validate_N21_full_once.sh` を base に `336Py_cudac_smoke_test_validate_N21_full_once.sh` を作成。新規ゲーティング静的チェックはなし(source_version_tagのみ336の値に更新)。タイミング比較に`335cudactoolchainlocate: 450.218s`を先頭追加。ファイル名・LOGDIR・VERSION_TAG参照文字列を全て336に更新。
+
+- **期待値**: N=21フル: 正当性314666222712、elapsed約450.2s(335の実測値を再現、ノイズ内、336Pyソース自体は無変更のため)。スモークテスト: ビルド成功、実行成功、`match=True`。
+
+- **次のステップ**: 通常どおり `STATIC_ONLY=1 bash 336Py_cudac_smoke_test_validate_N21_full_once.sh` → フルN=21実行。これとは別に `bash 336_cudac_smoke_test_check.sh` を実行し、ビルドログ・実行ログ・summary.tsv(3ファイルとも`336_cudac_smoke_test_check_<timestamp>/`配下)を確認する。両方成功すれば、337でbin形式(schedule/w_lo_arr/w_hi_arr/broadmarktailメタデータのバイトレイアウト)をC側readerが読める形で仕様化する設計に進み、その後N=18限定のmaxd14移植そのものに着手する。
+
+---
+
+Updated on 2026-07-24 for the 336 execution results (N=21 harness: fully reproduced 314666222712, 450.432s; standalone smoke test 336_cudac_smoke_test_check.sh: build_exit=0, run_exit=0, gpu_sum=cpu_sum=22898104320, match=True) and 337Py bin-format-reader-design -- the second concrete buried-idea C-2 artifact: a source-confirmed .bin format spec plus a standalone host-side C++ reader.
+
+- **336実行結果(両方確認、両方成功)**:
+  - N=21フルvalidateハーネス: 静的チェック全OK。正当性**314666222712**一致。elapsed **450.432s**(335の450.218s比-0.048%、ノイズ内)で完全に再現した。
+  - **スモークテスト本体(`336_cudac_smoke_test_check.sh`)**: `nvcc -O3 -arch=sm_86`によるビルドが成功(build_exit=0)、GPU上での実行も成功(run_exit=0)、GPU側計算結果`gpu_sum=22898104320`とCPU側期待値`cpu_sum=22898104320`が完全一致(**match=True**)。**これにより、cudacodon実機でCUDA Cツールチェーン単体でのビルド・GPU実行round-tripが初めて実証された。** rev84の提案から数か月越しのマイルストーン。
+
+- **337の内容(bin形式の仕様確定+C側リーダー)**: カーネル・ディスパッチャは328-336と一切変更なし。メインソルバ(`337Py_bin_format_reader_design.py`)のソース変更はOpen Objectives項目6の更新とVERSION_TAGのみ。
+
+  **bin形式の仕様確定(ソース精読による、推測ではない)**: このプロジェクトの全`.bin`ファイル書き込みは以下の3系統いずれも例外なく単一関数`append_constellations_bin`を経由することを確認した:
+  1. base生成: `gen_constellations_stream_to_bin`
+  2. broadmarktail並べ替えの75個のsubcellバケット
+  3. broadmarktail/chunkshape148並べ替え後の最終出力
+
+  レコード形式はこの3系統すべてで完全に同一: **ヘッダーなし・マジックナンバーなしの、16バイト固定長レコードのフラット配列**。各レコードは`ld`(u32リトルエンディアン)・`rd`(同)・`col`(同)・`startijkl`(同)の順で計16バイト。並べ替え処理(broadmarktail/chunkshape148/funcid_reorder)はレコードの並び順を変えるのみで、エンコーディング自体には一切手を加えない。この事実は`validate_bin_file`/`count_constellations_bin_records`の`size%16==0`チェックと、`read_constellations_bin_range`の4連続`read_uint32_le`呼び出しから直接裏付けられる。
+
+  この仕様に基づき、メインソルバとは完全に独立した新規ファイルを追加した:
+  - `337_bin_format_reader.cu`: ホスト側のみで完結する(GPUカーネル・DFSロジックを一切含まない)C++リーダー。CLI引数で渡された`.bin`ファイルを開き、サイズが16の倍数であることを検証し、全レコードの4フィールドをu64チェックサムに畳み込んで出力する。
+  - `337_bin_format_reader_check.sh`: `nvcc -O3 -arch=sm_86`でビルドし(ツールチェーンの一貫性のためnvccを使うが、このプログラム自体はGPUを使用しない)、引数で渡されたか自動検出した`constellations_N21_*.bin`に対して実行し、`size_mod16_ok`/`records_ok`をパースしてPASS/FAIL判定する。`.bin`ファイルが見つからない場合はSKIP扱い(FAILにしない)とし、既存のN=21ハーネスやスモークテストとは完全に独立している。
+
+- **337検証スクリプト(N=21ハーネス側)**: `336Py_cudac_smoke_test_validate_N21_full_once.sh` を base に `337Py_bin_format_reader_design_validate_N21_full_once.sh` を作成。新規ゲーティング静的チェックはなし(source_version_tagのみ337の値に更新)。タイミング比較に`336cudacsmoketest: 450.432s`を先頭追加。ファイル名・LOGDIR・VERSION_TAG参照文字列を全て337に更新。
+
+- **期待値**: N=21フル: 正当性314666222712、elapsed約450.4s(336の実測値を再現、ノイズ内、337Pyソース自体は無変更のため)。binリーダー: ビルド成功、既存の`constellations_N21_6*.bin`いずれかに対して`size_mod16_ok=True`/`records_ok=True`、チェックサムが出力される。
+
+- **次のステップ**: 通常どおり `STATIC_ONLY=1 bash 337Py_bin_format_reader_design_validate_N21_full_once.sh` → フルN=21実行。これとは別に `bash 337_bin_format_reader_check.sh`(既存の`constellations_N21_6*.bin`を自動検出、または明示的にパスを渡す)を実行し、ビルドログ・実行ログ・summary.tsv(`337_bin_format_reader_check_<timestamp>/`配下)を確認する。両方成功すれば、338でN=18限定の`kernel_dfs_iter_gpu_maxd14`移植そのものの設計に着手する。
