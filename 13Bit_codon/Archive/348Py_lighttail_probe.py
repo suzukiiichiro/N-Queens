@@ -151,61 +151,113 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    chunk2 -3.824%)。343の飽和値431.677sとは+0.062%、RUN=1対照も340の
    450.183sと-0.026%で、いずれもノイズ帯。**採用を確定**。
 
-9. [345で測定中] ソートのスコープ -- CHUNKSHAPE148_ITER_SORT
+9. [解決・346で採用] ソートのスコープ -- CHUNKSHAPE148_ITER_SORT=1
 
-   344の確認中に、**シェーピング側のSTEPSとGPU実行側のSTEPSが別物**
-   であることが分かった。ここは344までの記述が曖昧だったので明示する:
-     build_chunkshape148_reordered_bin の STEPS = BLOCK*MAX_BLOCKS
-                                              = 15488 (出力チャンク)
-     exec_solutions_gpu_bin_stream_split145 の STEPS
-                                = BLOCK*MAX_BLOCKS*K_PER_THREAD_MAXD14
-                                              = 743424 (GPU launch)
-   したがって **出力チャンク(15488件)= grid-strideの1イテレーション**
-   であり、**1 GPU launch = 48イテレーション**である。131チャンクは
-   48+48+35に分かれ、3回のlaunch(743424/743424/538434)と完全に一致
-   する。484ブロック x 32スレッドは全て常駐するので、ブロック配布の
-   ウェーブという概念は存在しない。makespanを決めるのは
-     warp w の総コスト = Sum_{j=0..47} max_{lane in w} cost(record)
-   である。
+   345で0/1/2/3/4をスイープし、346で採用した。カーネルには一度も
+   触れていない。
 
-   ここから、フルソートの**スコープ**が本質的だと分かる:
-     - 15488件の中だけでソートすると、warp 0 は毎イテレーション最軽量
-       32件、warp 483 は毎イテレーション最重量32件を受け取る。48回
-       積み上がるので **warp間不均衡が最大化する**。
-     - 743424件(=1 launch = 48イテレーション)をまたいでソートすると、
-       順位rのレコードは位置rに置かれ、warp w は順位
-       {15488*j + 32*w + lane} を受け取る。すなわち **48個の等幅ランク層
-       から1つずつ**サンプリングされ、warp間は構造的に均衡する。
-       344までの `order_pos=(oi+out_ch)%8` による巡回が担っていた役割が、
-       ソートスコープの側に自動的に吸収される。
+   **効いているのは粒度ではなくスコープである。** mode 1 と mode 3 は
+   ソートが完全に同一(どちらも key>>5 の昇順・安定ソート)であり、
+   違うのはスコープだけである。それだけで24.991%の差がついた。
 
-   345は `CHUNKSHAPE148_ITER_SORT` (0..4) でこれを測る。**メンバシップ
-   は保存する**: emit loopの選択規則(quotas / lane scan / phase_seed /
-   written_by_bucket)には一切触れず、選ばれたindexをバッファして
-   **並べ替えてから書き出すだけ**である。グループ境界はGPU launch境界
-   (48出力チャンク)に一致させるので、launchごとのレコード数も
-   チャンク境界も344と同一になる。
-     mode 0  off(344とバイト一致、cache suffixも空)
-     mode 1  launch群(743424)全体を key>>5 で昇順・安定ソート  <- 本命
-     mode 2  同じく降順
-     mode 3  イテレーション内(15488)だけ昇順・安定ソート      <- 対照
-     mode 4  launch群全体を key 全体(lane下位5bit込み)で昇順
-   **事前予測**: mode 1 は改善、mode 3 は退行、mode 2 は mode 1 と同等
-   (層化により方向は対称)、mode 4 も mode 1 と同等(下位5bitは同一
-   スコア級の中の並べ替えにしか効かない)。mode 1 が改善し mode 3 が
-   退行すれば、効いているのは粒度そのものではなく **warp間層化** だと
-   機構が確定する。mode 1/2/3 は key>>5 を鍵にした安定ソートなので、
-   同一スコア級の中では344のlane拡散順がそのまま保存される。それを
-   壊すのは mode 4 だけである。
+     mode 0  off                          431.983s   (アンカー)
+     mode 1  launch群 743424 昇順         402.460s   -6.834%
+     mode 4  launch群 743424 全key昇順    402.758s   -6.765%
+     mode 2  launch群 743424 降順         403.331s   -6.633%
+     mode 3  イテレーション 15488 昇順    503.038s  +16.449%
+
+   **なぜスコープが効くのか**: grid-strideのlaunchはwarp wに順位
+   `15488*j + 32*w + lane` を渡す。したがって launch群全体をソート
+   すると、warp w は **48個の等幅ランク層から1つずつ**サンプリング
+   され、warp間が構造的に均衡する。一方イテレーション内だけソート
+   すると、warp 0 は毎回最軽量32件、warp 483 は毎回最重量32件を
+   受け取り、48回積み上がって不均衡が最大化する。
+
+   **事前登録した4つの予測はすべて的中した**。mode 1 は改善、mode 3 は
+   退行、mode 2 は方向対称性により mode 1 と同等、mode 4 は下位5bitが
+   同一スコア級内の並べ替えにしか効かないため mode 1 と同等。
+   mode 1/2/4 は0.216%幅に収まる。ノイズ床(全体0.009%、per-chunk
+   ±0.04%)を上回るので mode 1 が最良であること自体は実在の差だが僅差。
+
+   **最終成績(N=21)**: 345で402.460s、346の採用ランで402.258s(同一
+   セッションのmode 0対照431.812s比 -6.844%、chunk0 -7.853% /
+   chunk1 -6.412% / chunk2 -6.007%)。344 RUN=1対照450.067s比
+   -10.623%、328(SoA採用時)456.036s比で **-11.792%**。
+
+   **再現性が3セッションにまたがって確定した**。同一構成(mode 0相当)の
+   独立した3回の測定は 344:431.944s / 345アンカー:431.983s /
+   346対照:431.812s で幅0.040%。mode 1側も402.460s→402.258sで-0.050%。
+   -6.8%の効果はノイズの100倍以上のマージンを持つ。
+
+   **未解明の観測を1件記録する**: mode 2(降順)のチャンク別内訳が
+   分裂する。chunk0 -8.736% / chunk1 -6.843% は mode 1 を上回るのに、
+   chunk2 は -3.372% に落ちる。chunk2 は唯一の部分launch(538434件
+   = 34.76イテレーション、chunk0/1は48丁度)なので末尾の半端な
+   イテレーションとの相互作用を疑ったが、**合成分布のシミュレーションでは
+   方向の非対称性を再現できなかった**。したがって機構は確定していない。
+   仮説として記録するに留める。347のmode 6がこの点を突く。
+
+10. [347で測定・348で継続] 蛇行と半端ストラタム -- ITER_SORT=5/6/7/8
+
+   **347の結果: 蛇行はフルlaunchを助け、部分launchを害する。**
+
+     mode 1 (アンカー)        402.424s      --
+     mode 5 (昇順+蛇行)       400.670s   -0.436%
+     mode 6 (降順+蛇行)       402.133s   -0.072%
+
+     chunk別(vs mode 1):
+       mode 5:  chunk0 -1.362%  chunk1 -1.132%  chunk2 +1.867%
+       mode 6:  chunk0 -1.302%  chunk1 -0.985%  chunk2 +2.908%
+
+   フルlaunch(chunk0+chunk1)は **-1.247%** で合成試算の -1.32% とほぼ
+   一致した。しかし部分launch(chunk2)は **+1.867% の退行**であり、
+   試算の -0.60% とは**符号が逆**だった。試算は当てにならない。
+
+   **機構(345の謎も同時に解けた)**: grid-strideは半端ストラタムの
+   **位置**を固定する(必ず最後の部分ストライドステップ)が、**中身**は
+   固定しない。昇順ソートではそこに**最重量レコード**が入り、低インデックス
+   スレッドへ渡る。ところが低インデックス側は他の全ストラタムで**底**を
+   引いている。つまり mode 1 は偶然にも**自己補償**していた。蛇行は他の
+   ストラタムを均等化するので、**この補償を壊す**。これが chunk2 の退行。
+
+   同じ議論で345の謎も解ける。降順では低インデックス側が**最重量**warp
+   になり、そこへ末尾タスクも載る——**二重負荷**。345 mode 2 の chunk2
+   +2.830% はこれである。347 mode 6 が定量的に裏づけた: 蛇行を足すと
+   二重負荷が単独負荷になり、ペナルティは **+2.830% -> +1.022%**、
+   約64%縮小した。
+
+   **348が測るもの: 偶然を設計に変える。** ソート済み群を剰余ぶん左回転
+   すれば、半端ストラタムに**最軽量レコード**が入る。
+
+     mode 7 = mode 5 + light tail(蛇行あり)
+     mode 8 = mode 1 + light tail(蛇行なし)
+
+   modes 1/5/7/8 で **{蛇行あり,なし} x {重い尻尾,軽い尻尾} の2x2要因
+   計画**が完成する。回転は群長がiter_lenの倍数のとき恒等なので、
+   **フルlaunchでは mode 8 は mode 1 と、mode 7 は mode 5 と要素単位で
+   完全一致する**(仮定ではなく構造的に検証済み)。したがって chunk2 だけが
+   動き、light tail因子が厳密に分離される。
+
+   **事前予測**: (1) mode 8 の chunk0/chunk1 は mode 1 を、mode 7 の
+   chunk0/chunk1 は mode 5 をノイズ内で再現する — これは仮説ではなく
+   **測定ドリフトに対する内部対照**である。(2) chunk2 では両方の行で
+   light tail が heavy tail に勝つ。(3) 総合の最良は mode 7。
+
+   **部分launchについて数値予測は出さない。** 347で使った合成モデルは
+   そこで -0.60% と予測し実測は +1.867% だった。**符号を外している**ので
+   この形状には信用が置けない。予測の根拠は上の機構であって試算ではない。
+
+   **light tailが効かなければ**、chunk2 の律速は半端ストラタムではない
+   ということなので、ソート配置の軸は閉じ、項目7(`w_hi_arr`が恒等的に
+   ゼロ)へ移る。
 
 このセクション自体は通常カーネルロジックとは独立しています。
-345は**単一変数の測定リビジョン**です。カーネル・ディスパッチャ
-(5つの@gpu.kernel、launch_kernel_dfs_iter_gpu_static_maxd、K=48、
-SoA w_lo_arr/w_hi_arr、w3_j7)は344/343/328とバイト一致で、
-`CHUNKSHAPE148_BUCKET_RUN=2048` の採用値もそのままです。
-変更はホスト側 build_chunkshape148_reordered_bin の**書き出し段だけ**
-であり、`CHUNKSHAPE148_ITER_SORT=0`(既定)では344の出力とバイト一致し、
-キャッシュファイル名も344と同一になります。
+348は**単一変数の測定リビジョン**です。カーネル・ディスパッチャ・K=48・
+SoA・w3_j7・`CHUNKSHAPE148_BUCKET_RUN=2048`・346で採用した
+`CHUNKSHAPE148_ITER_SORT=1` は、347/346とバイト一致です。
+変更は `chunkshape148_reorder_group` の内部だけで、モード7と8の追加と
+`CHUNKSHAPE148_ITER_SORT_MAX` の 6 -> 8 です。**既定値は1のまま**なので、
+何も指定しなければ346とバイト一致の出力になり、キャッシュも再利用されます。
 ================================================================================
 
 # ビルド
@@ -264,131 +316,55 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 
 """
 
-344の結果を確認しました。**問題なし・採用値の効果も再現しています。**
+347の結果は、単純な勝ち負けではなく**機構の発見**でした。
 
-| 項目 | 結果 |
-|---|---|
-| 正当性 | `314666222712` 一致(両ラン) |
-| 静的チェック | 45項目 **FAILゼロ**(STATIC_ONLY) |
-| `runtime_chunkshape148_bucket_run` | 2048 / cache **reuse** |
-| **RUN=2048** | **431.944s** |
-| RUN=1 同一セッション対照 | 450.067s |
-| **改善** | **-4.027%**(chunk0 -3.810% / chunk1 -4.523% / chunk2 -3.824%) |
+| mode | elapsed | vs アンカー | chunk0 | chunk1 | **chunk2** |
+|---:|---:|---:|---:|---:|---:|
+| 1(アンカー) | 402.424s | — | — | — | — |
+| **5**(昇順+蛇行) | **400.670s** | **−0.436%** | −1.362% | −1.132% | **+1.867%** |
+| 6(降順+蛇行) | 402.133s | −0.072% | −1.302% | −0.985% | **+2.908%** |
 
-343の飽和値431.677sとは+0.062%(ノイズ帯)、RUN=1対照も340の450.183sと-0.026%で、**再現性は極めて良好**です。328(456.036s)からの累積は **-5.283%**。`gpu_clock_cap_check` のWARN-CAPPED(1320MHz)は316で受容済みの既知事項です。
+**蛇行はフルlaunchを助け、部分launchを害します。** chunk0+chunk1 は −1.247% で試算の −1.32% とほぼ一致しましたが、chunk2 は試算 −0.60% に対し実測 **+1.867%** で**符号が逆**でした。私の合成モデルはこの形状に対して信用できないと判明したので、348では**部分launchの数値予測を出しません**。
 
----
+## 機構と、345の宿題の決着
 
-## 先に訂正: 昨日の私の設計案に事実誤認がありました
+grid-strideは半端ストラタムの**位置**を固定しますが、**中身**は固定しません。昇順ソートではそこに最重量レコードが入り、低インデックススレッドへ渡ります。ところが低インデックス側は他の全ストラタムで底を引いている——**mode 1 は偶然にも自己補償していた**のです。蛇行はそれを壊します。
 
-`progress_full.tsv` を見て `steps=743424` に気づきました。**シェーピング側の `STEPS`(15488)とGPU実行側の `STEPS`(15488×K=743424)は別物**です。私は前便で両者を混同し、「1チャンク=1グリッド、ブロック配布ウェーブでtailが決まる」と書きましたが、これは誤りです。正しい構造は:
+同じ議論で345の謎も解けました。降順では低インデックス側が最重量warpになり、そこへ末尾タスクも載る**二重負荷**です。mode 6 がこれを定量的に裏づけました。
 
-- シェーピングの出力チャンク = 15488件 = **grid-strideの1イテレーション**(全131個)
-- GPU launch = 743424件 = **48イテレーション**(全3回)
-- 484ブロック×32スレッドは全て常駐。よってウェーブ問題は存在せず、makespanは
-  **warp w の総コスト = Σ_{j=0..47} max_{lane}(コスト)** で決まります
+| | chunk2ペナルティ |
+|---|---:|
+| 降順・蛇行なし(345 mode 2) | +2.830% |
+| 降順・蛇行あり(347 mode 6) | **+1.022%**(約64%縮小) |
 
-前便のLPT/ウェーブ議論は撤回します。代わりにこの構造から、引継ぎメモの論点3が**私が言ったより深刻**だと分かりました。
+完全な消失ではないので説明としては未完ですが、345で「機構は確定していない」と仮説に留めた判断は正しかったことになります。
 
-**15488件の中だけでソートすると、warp 0 は毎イテレーション最軽量32件、warp 483 は毎イテレーション最重量32件を受け取ります。**48回積み上がるので warp 間不均衡が最大化されます。メモの警告(「ここを外すと大きく悪化する可能性が高い」)は正確でした。
+## 348: 2×2要因計画
 
-一方、**48イテレーション(=1 GPU launch、743424件)をまたいでソートすると自動的に解決します。** ソート順位 r のレコードは位置 r に置かれ、warp w は順位 `{15488j + 32w + lane}` を受け取る。つまり **48個の等幅ランク層から1つずつ**サンプリングされ、warp間は構造的に均衡します。巡回シフトのような小細工は不要です。
+| mode | 蛇行 | 尻尾 | |
+|---|:-:|:-:|---|
+| 1 | なし | 重い | 346既定 |
+| 5 | あり | 重い | 347最良 |
+| **7** | **あり** | **軽い** | **本命** |
+| 8 | なし | 軽い | light tail単独 |
 
-## 345の最終設計
+回転は群長が `iter_len` の倍数のとき恒等なので、**フルlaunchでは mode 8 ≡ mode 1、mode 7 ≡ mode 5 が要素単位で完全一致**します。これは仮定ではなく、実launch形状で純Python再現して**構造的に検証済み**です。よって chunk2 だけが動き、light tail因子が厳密に分離されます。
 
-`CHUNKSHAPE148_ITER_SORT` を導入。**メンバシップは保存**(picked indexをバッファして並べ替えるだけ)、かつ**グループ境界=GPU launch境界**(48出力チャンク、131=48+48+35で3launchと完全一致)。
+副産物として、mode 8 の chunk0/chunk1 は mode 1 の**測定ドリフト内部対照**になります。ここがずれたらその日の測定を疑う、という使い方ができます。
 
-| mode | 内容 | 事前予測 |
-|---|---|---|
-| 0 | off(344と同一、cache suffix空) | アンカー = 431.9s |
-| 1 | **launch群(743424)全体を `key>>5` 昇順・安定ソート** | **本命。改善** |
-| 2 | 同・降順 | mode1と同等(層化により方向は対称) |
-| 3 | **イテレーション内(15488)だけ昇順** | **退行**(warp間不均衡) |
-| 4 | launch群全体を `key` 全体(lane下位5bit込み)昇順 | mode1と同等 |
+新規静的チェック3件のうち1件は**順序検査**です。回転が蛇行より前に走ることを行番号で機械確認します。逆順だと mode 7 は heavy tail 配置を蛇行してから回転することになり、まったく別物になってしまうので。
 
-mode 3 を入れるのが今回の肝です。粒度の効果と**スコープ(15488 vs 743424)の効果**を分離でき、mode1が改善しmode3が退行すれば「効いているのは粒度ではなくwarp間層化」と機構が確定します。mode1/2/4は `key>>5` 安定ソートなので同一スコア級内のlane拡散順は344のまま保存され、mode4だけがそれを壊します(論点1・2)。
+```
+STATIC_ONLY=1 bash 348Py_lighttail_probe_validate_N21_full_once.sh
+CHUNKSHAPE148_ITER_SORT=1 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # アンカー(reuse、1回)
+CHUNKSHAPE148_ITER_SORT=5 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # 対照(reuse、1回)
+CHUNKSHAPE148_ITER_SORT=7 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # 構築回
+CHUNKSHAPE148_ITER_SORT=7 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # 計測回
+CHUNKSHAPE148_ITER_SORT=8 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # 構築回
+CHUNKSHAPE148_ITER_SORT=8 bash 348Py_lighttail_probe_validate_N21_full_once.sh   # 計測回
+```
 
-では3ファイルを作成します。Now the emit loop — the core change.Now I'll patch the shell script.## 344の確認結果 — 問題なし、採用を確定できます
-
-| 項目 | 結果 |
-|---|---|
-| 正当性 | `314666222712` 一致(両ラン) |
-| 静的チェック | 45項目 **FAILゼロ** |
-| `runtime_chunkshape148_bucket_run` | 2048 / cache **reuse** |
-| **RUN=2048** | **431.944s** |
-| RUN=1 同一セッション対照 | 450.067s |
-| **改善** | **−4.027%**(chunk0 −3.810% / chunk1 −4.523% / chunk2 −3.824%) |
-| 328(456.036s)からの累積 | **−5.283%** |
-
-343の飽和値431.677sとは+0.062%、対照も340の450.183sと−0.026%。いずれもノイズ帯で、再現性は良好です。
-
-## 345の作業状況
-
-3ファイルのうち、**`.py` と `.sh` は完成し検証まで通しました**が、README更新の途中でツール実行の上限に達しました。次のメッセージで残りを仕上げてお渡しします。
-
-**完成済み・検証済みの内容:**
-
-- `345Py_iter_sort_probe.py` — `ast.parse` 通過(344と同条件)、`NAME:str="..."` 行の二重引用符バランス異常ゼロ(339 r1対策)
-- `345Py_iter_sort_probe_validate_N21_full_once.sh` — `bash -n` 通過、静的チェック計71項目
-- 並べ替えロジックを純Pythonで単体検証: 全5モードで**順列であること**、順序性、mode1のスコア級内安定性(lane拡散順の保存)を確認
-- **グループ境界の一致を数値で確認**: 131チャンク → `[743424, 743424, 538434]` で3つのGPU launchと完全一致
-
-**設計の要点(前便から変更した点):**
-
-昨日私が書いた「ブロック配布ウェーブ/LPT」の議論は誤りでしたので撤回済みです。`steps=743424` から、シェーピングの15488 = grid-strideの1イテレーション、1 launch = 48イテレーション、484ブロック全常駐、と構造が確定しました。よって焦点は**粒度ではなくソートのスコープ**です。
-
-- **15488内だけ**のソート → warp 483 が毎回最重量32件を引き、48回積み上がって不均衡最大化(mode 3、退行を事前予測)
-- **743424(=1 launch)全体**のソート → warp w が48個の等幅ランク層から1つずつ引き、warp間が構造的に均衡(mode 1、本命)
-
-実装は「pickしたindexをバッファして並べ替えてから書くだけ」で、quotas / lane scan / phase_seed / `(oi+out_ch)%8` には一切触れていません。**メンバシップは構造的に保存**されます。これを守るため、`.sh` に membership guard を2種類入れました(`out.write` が1箇所だけであること、344の選択規則5行が全て残存していること)。`CHUNKSHAPE148_SORT_GROUP == K_PER_THREAD_MAXD14 == 48` の一致チェックも入れています(ここがずれるとスコープの議論自体が崩れるため)。
-
-なお **mode 0 以外は初回にshaped binを構築します**(`_isortN.bin`)。`chunkshape148_cache_state=build` の回は比較に使えないので、各モード2回ずつ回して2回目を採用してください。この点は `.sh` のヘッダーにも明記し、cache stateをsummaryに記録するようにしてあります。
-
-続きをどうぞよろしくお願いいたします。
-
-345の3ファイルをお渡しします。
-
-## 実行時コードの差分(`import gpu` 以降)
-
-削除は **5行だけ**です。カーネル・ディスパッチャは344とバイト一致です。
-
-| 削除された行 | 理由 |
-|---|---|
-| `VERSION_TAG` 1行 | 345へ差し替え |
-| cache filename の1行 | `{chunkshape148_iter_sort_tag()}` を追加 |
-| build-config ログ1行 | `iter_sort=` / `sort_group=` を追加 |
-| `pick_p:int=pick_idx*16` | ループ内書き出しの廃止 |
-| `out.write(data[pick_p:pick_p+16])` | グループflushへ移動 |
-
-追加は149行(定数群、`chunkshape148_reorder_group`、flushブロック、argv配線)です。
-
-## 検証済みの項目
-
-- `ast.parse` 通過(344と同条件で `@par` を除去して比較)
-- `NAME:str="..."` 行の二重引用符バランス異常ゼロ(**339 r1対策**。`VERSION_TAG` は開閉の2個のみ)
-- `bash -n` 通過
-- 静的チェック **計71項目** すべて事前に手元で照合済み(新規12項目 + 継承分)
-- 並べ替えロジックを純Pythonで単体検証 — 全5モードで順列であること、順序性、mode1のスコア級内安定性(lane拡散順が保存されること)
-- グループ境界: 131チャンク → **`[743424, 743424, 538434]`**、3つのGPU launchと完全一致
-
-## Membership guard(今回の要)
-
-「順序だけ変えて、メンバシップは変えない」という設計原則を、機械的に守らせています。
-
-1. `out.write(...)` がソース中ちょうど1箇所であること、かつ旧いループ内書き出しが消えていること
-2. 344の選択規則5行(`chunkshape148_make_quotas` / `written_by_bucket[b]*5` 位相 / `order_pos=(oi+out_ch)%8` / `while rep<bucket_run:` / `interleave_order=[7,0,6,1,5,2,4,3]`)が全て残存していること
-3. `CHUNKSHAPE148_SORT_GROUP == K_PER_THREAD_MAXD14 == 48` — ここがずれるとソート群がlaunchと一致せず、warp層化の議論そのものが崩れるため
-4. 実行時: `[chunkshape148-group-flush]` のサイズ列が `743424,743424,538434` であること(bin構築を伴う回のみ判定、reuse回はINFO)
-
-## 実行順のお願い
-
-まず `STATIC_ONLY=1`、次に **mode 0(アンカー)**です。mode 0 は344と同じファイル名を返すので既存のshaped binがそのまま再利用され、構築なしで即座に431.9s近傍に着地するはずです。**ここが合わなければ以降は何も比較できません**ので、必ず先に確認してください。
-
-その後は判別ペアの **mode 1 と mode 3** を優先し、mode 2・4は後回しで構いません。mode 0 以外は初回に必ずbin構築が走るため、各モード2回ずつ回して2回目を採用してください(`chunkshape148_cache_state` をsummaryに記録しています)。
-
-結果次第の分岐もREADMEに書いてあります。mode1だけ勝てば346で採用、mode1とmode3が両方勝てば粒度が効いているので引継ぎメモの案(a)へ、どちらも効かなければソート軸を閉じてOpen Objectives項目7(`w_hi_arr` 恒等ゼロ)へ移る、という3分岐です。
-
-昨日の私のLPT/ウェーブ議論の誤りは、READMEでも訂正として明記してあります。ログをお待ちしています。
+**light tailが効かなければ**、chunk2 の律速は半端ストラタムではないということなので、ソート配置の軸は閉じ、項目7(`w_hi_arr` が恒等的にゼロ)へ移ります。READMEにもその分岐を明記しました。
 
 """
 
@@ -419,7 +395,7 @@ SCHED_WORDS21:Static[int]=6
 K_PER_THREAD_MAXD14:Static[int]=48
 
 
-VERSION_TAG:str="345 iter-sort: SINGLE-VARIABLE MEASUREMENT REVISION on top of the adopted 344. Kernels, dispatcher, K=48, the SoA w_lo_arr/w_hi_arr split, w3_j7 and the adopted CHUNKSHAPE148_BUCKET_RUN=2048 are all byte-for-byte identical to 344. The only change is the write-out stage of build_chunkshape148_reordered_bin, gated by the new CHUNKSHAPE148_ITER_SORT knob whose default is 0, and 0 reproduces the 344 output byte-for-byte including its cached shaped-bin filename. 344 IS CONFIRMED: 431.944s against an in-session RUN=1 control of 450.067s, -4.027%, all three chunks improving together at -3.810%, -4.523% and -3.824%, correctness 314666222712, 45 static checks with zero FAIL, cache state reuse. That is +0.062% from the 343 saturated figure of 431.677s and the control itself is within -0.026% of the 340 control of 450.183s, so both sit inside the noise band, and the cumulative gain from the 456.036s baseline at the time SoA was adopted in 328 is -5.283%. A STRUCTURAL FACT CLARIFIED WHILE CHECKING 344: the STEPS used by build_chunkshape148_reordered_bin is BLOCK*MAX_BLOCKS = 15488 while the STEPS used by exec_solutions_gpu_bin_stream_split145 is BLOCK*MAX_BLOCKS*K_PER_THREAD_MAXD14 = 743424, so one shaping output chunk is exactly one grid-stride iteration and one GPU launch is exactly 48 of them. The 131 output chunks split as 48 plus 48 plus 35 and line up exactly with the three launches of 743424, 743424 and 538434 records. All 484 blocks of 32 threads are resident, so there is no block dispatch wave, and the makespan is the worst warp total of the sum over the 48 iterations of the maximum lane cost inside that warp. THE POINT OF 345 IS THEREFORE SORT SCOPE, NOT SORT GRANULARITY. Sorting inside a single 15488 iteration hands warp 0 the lightest 32 records and warp 483 the heaviest 32 records in every one of the 48 iterations, which maximises warp imbalance. Sorting across a whole 743424 launch group puts rank r at position r, so warp w receives ranks 15488*j + 32*w + lane and therefore draws exactly one sample from each of 48 equal width rank strata, which balances the warps structurally and absorbs the role that the order_pos = (oi+out_ch)%8 rotation played up to 344. MEMBERSHIP IS PRESERVED BY CONSTRUCTION: the selection rules of the emit loop, meaning quotas, the lane scan, phase_seed and written_by_bucket, are untouched, and the change is only that picked indices are buffered and reordered before being written. Group boundaries are pinned to the GPU launch boundary of CHUNKSHAPE148_SORT_GROUP = 48 output chunks, so per-launch record counts and chunk boundaries stay identical to 344. MODES: 0 is off, 1 sorts a whole launch group ascending by key>>5 with a stable order, 2 is the same descending, 3 sorts only inside each 15488 iteration ascending by key>>5, and 4 sorts a whole launch group ascending by the full key including the low 5 lane bits. PRE-REGISTERED PREDICTIONS: mode 1 improves, mode 3 regresses, mode 2 matches mode 1 because the stratification makes direction symmetric, and mode 4 matches mode 1 because the low 5 bits only reorder records inside one score class. If mode 1 improves and mode 3 regresses then the mechanism is warp stratification rather than granularity as such. Modes 1, 2 and 3 key on key>>5 with a stable sort, so the 344 lane-diffused order survives inside each score class, and only mode 4 breaks it."
+VERSION_TAG:str="348 lighttail: SINGLE-VARIABLE MEASUREMENT REVISION on top of the adopted 346, continuing the 347 line. Kernels, dispatcher, K=48, the SoA w_lo_arr/w_hi_arr split, w3_j7, CHUNKSHAPE148_BUCKET_RUN=2048 and the adopted CHUNKSHAPE148_ITER_SORT=1 are all byte-for-byte identical to 347 and 346. The only change is inside chunkshape148_reorder_group: two new modes, 7 and 8, and the mode ceiling rises from 6 to 8. The default stays 1. WHAT 347 FOUND: serpentine helps FULL launches and hurts the PARTIAL one. chunk0 and chunk1 improved by 1.362 and 1.132 percent, close to the synthetic estimate of 1.32 percent, while chunk2 REGRESSED by 1.867 percent, so mode 5 finished at 400.670s, only -0.436 percent against the in-session mode 1 anchor of 402.424s. THE MECHANISM, WHICH ALSO SOLVES THE 345 MYSTERY: grid-stride fixes where the ragged stratum sits, always the final partial stride step, and under a plain ascending sort that stratum receives the HEAVIEST records and hands them to the low index threads. Those same threads draw the floor of every other stratum, so mode 1 was accidentally SELF COMPENSATING: the heavy tail landed on the warps that were lightest everywhere else. Serpentine equalises the other strata and therefore destroys the compensation, which is exactly the chunk2 regression. The same argument explains what 345 could not: under descending order the low index threads are the HEAVIEST warps and they also take the tail task, a double load, which is why 345 mode 2 cost chunk2 2.830 percent. 347 mode 6 confirmed it quantitatively, since adding serpentine to the descending layout turned the double load into a single one and shrank that penalty from 2.830 to 1.022 percent, a reduction of about 64 percent. WHAT 348 TESTS: turn the accident into a design. Rotating the sorted group left by the remainder puts the LIGHTEST records in the ragged stratum. Mode 7 is mode 5 plus that rotation and mode 8 is mode 1 plus that rotation with no serpentine. Together with modes 1 and 5 this completes a 2x2 FACTORIAL over serpentine versus none and heavy tail versus light tail. The rotation is a no-op when the group length is an exact multiple of iter_len, which was verified structurally rather than assumed: on the two full launches mode 8 is IDENTICAL to mode 1 and mode 7 is IDENTICAL to mode 5, element for element, so only chunk2 can move and the light tail factor is isolated exactly. PRE-REGISTERED PREDICTIONS: mode 8 chunk0 and chunk1 must reproduce mode 1 within noise and mode 7 chunk0 and chunk1 must reproduce mode 5 within noise, which is an internal control on measurement drift rather than a hypothesis; the light tail beats the heavy tail on chunk2 in both rows; and mode 7 is the best overall. NO NUMERIC ESTIMATE IS OFFERED for the partial launch. The synthetic model used in 347 predicted -0.60 percent there and the measurement came back at +1.867 percent, so it had the SIGN wrong on exactly this shape and is not trustworthy for it. The mechanism above is the basis for these predictions, not the simulation. If the light tail does not help, the ragged stratum is not what limits chunk2 and the sort layout axis should be closed in favour of Open Objectives item 7, the identically zero w_hi_arr."
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
 
 A10G_FINAL_DEFAULT_N:int=22
@@ -436,7 +412,7 @@ A10G_FINAL_DEFAULT_WORKER_ID:int=0
 A10G_FINAL_DEFAULT_WORKER_COUNT:int=1
 A10G_FINAL_DEFAULT_BROADMARK_VARIANT:int=2
 A10G_FINAL_DEFAULT_CHUNKSHAPE148_BUCKET_RUN:int=2048  # 344: ADOPTED (was 1). See CHUNKSHAPE148_BUCKET_RUN.
-A10G_FINAL_DEFAULT_CHUNKSHAPE148_ITER_SORT:int=0  # 345: measurement knob, default off. See CHUNKSHAPE148_ITER_SORT.
+A10G_FINAL_DEFAULT_CHUNKSHAPE148_ITER_SORT:int=1  # 346: ADOPTED (was 0). See CHUNKSHAPE148_ITER_SORT.
 CPU_FINAL_DEFAULT_N:int=22
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=24  # range() upper bound; outputs N=5..23
@@ -4041,11 +4017,33 @@ def chunkshape148_bucket_run_tag()->str:
 #   4  sort one whole launch group ascending by the full key, low 5 lane bits
 #      included. This is the only mode that breaks the 276-era lane diffusion
 #      inside a score class.
+#   5  347: mode 1 followed by a SERPENTINE pass -- the order inside every
+#      odd numbered 15488-record stratum is reversed. Mode 1 hands warp w the
+#      ranks 32*w .. 32*w+31 in every stratum, so warp 0 always draws the
+#      floor and warp 483 always draws the ceiling and the heaviest warp is
+#      fixed. Serpentine makes each warp draw the ceiling half the time.
+#   6  347: mode 2 followed by the same serpentine pass. Once the systematic
+#      offset is removed, direction should become genuinely symmetric, so
+#      this also probes the unexplained chunk2 direction dependence seen in
+#      345 under mode 2.
+#   7  348: mode 5 plus the LIGHT TAIL rotation -- serpentine AND the lightest
+#      records placed in the ragged final stratum.
+#   8  348: mode 1 plus the LIGHT TAIL rotation, with NO serpentine. Together
+#      with modes 1, 5 and 7 this completes a 2x2 factorial over
+#      {serpentine, none} x {heavy tail, light tail}. Both rotations are
+#      no-ops when the group length is an exact multiple of iter_len, so on
+#      the two full launches mode 8 is IDENTICAL to mode 1 and mode 7 is
+#      IDENTICAL to mode 5, and only chunk2 can move.
 # In every non-zero mode ONLY the write order changes: the picked indices are
 # buffered and reordered, while quotas, the lane scan, phase_seed and
 # written_by_bucket are untouched, so membership is preserved exactly.
-CHUNKSHAPE148_ITER_SORT:int=0
-CHUNKSHAPE148_ITER_SORT_MAX:int=4
+# 346: ADOPTED at 1. 345 swept 0/1/2/3/4 on N=21 and mode 1 won at 402.460s,
+# -6.834% against the mode 0 anchor of 431.983s which itself reproduced the
+# adopted 344 to within -0.009%. Setting this back to 0 reproduces the 344
+# order exactly, including the cached shaped-bin filename, so the previous
+# baseline stays reachable at any time.
+CHUNKSHAPE148_ITER_SORT:int=1
+CHUNKSHAPE148_ITER_SORT_MAX:int=8
 # 345: group size in OUTPUT CHUNKS. Pinned to K_PER_THREAD_MAXD14 so that one
 # group is exactly one GPU launch: shaping STEPS is BLOCK*MAX_BLOCKS = 15488
 # while the launch STEPS is BLOCK*MAX_BLOCKS*K = 743424, so 48 output chunks
@@ -4059,7 +4057,7 @@ CHUNKSHAPE148_SORT_GROUP:int=48
 # construction without relying on the sort implementation being stable.
 CHUNKSHAPE148_SORT_SEQ_BITS:int=20
 CHUNKSHAPE148_SORT_SEQ_MASK:int=1048575
-CHUNKSHAPE148_ITER_SORT_REASON:str="345 measures SORT SCOPE, not sort granularity. One shaping output chunk of 15488 records is one grid-stride iteration and one GPU launch is 48 of them, so sorting inside a single iteration gives warp 0 the lightest 32 records and warp 483 the heaviest 32 records in all 48 iterations, whereas sorting across a whole launch group makes warp w draw one sample from each of 48 equal width rank strata. Mode 1 is the candidate, mode 3 is the narrow-scope control predicted to regress, mode 2 tests direction symmetry and mode 4 tests whether the low 5 lane bits matter. Default 0 is byte-identical to the adopted 344."
+CHUNKSHAPE148_ITER_SORT_REASON:str="346 ADOPTED the sort scope knob at 1. 347 added the serpentine modes 5 and 6 and 348 adds the light tail modes 7 and 8, keeping the default at 1 throughout. 347 measured mode 5 at 400.670s against an in-session mode 1 anchor of 402.424s, -0.436 percent, but the split matters more than the total: the two full launches improved 1.362 and 1.132 percent while the partial launch regressed 1.867 percent. The cause is that a plain ascending sort puts the heaviest records in the ragged final stratum and hands them to the low index threads, which draw the floor of every other stratum, so mode 1 was accidentally self compensating and serpentine destroys that compensation. Modes 7 and 8 rotate the sorted group left by the remainder so the ragged stratum holds the lightest records instead. The rotation is a no-op on a full launch, so modes 7 and 8 are element for element identical to modes 5 and 1 on chunk0 and chunk1 and only chunk2 can move. Passing 0 explicitly still reproduces the 344 order and its cache filename."
 
 def chunkshape148_iter_sort_value()->int:
   m:int=CHUNKSHAPE148_ITER_SORT
@@ -4111,7 +4109,7 @@ def chunkshape148_reorder_group(picked:List[int],score_key_by_idx:List[int],mode
       part:int=0
       if mode==4:
         part=key
-      elif mode==2:
+      elif mode==2 or mode==6:
         part=(CHUNKSHAPE148_SCORE_KEY_MAX>>5)-(key>>5)
         if part<0:
           part=0
@@ -4125,6 +4123,62 @@ def chunkshape148_reorder_group(picked:List[int],score_key_by_idx:List[int],mode
       out.append(picked[base+(packed[j]&CHUNKSHAPE148_SORT_SEQ_MASK)])
       j+=1
     base+=seg
+
+  # 348: LIGHT TAIL rotation for modes 7 and 8.
+  # grid-stride fixes WHERE the ragged stratum sits -- it is always the final
+  # partial stride step -- but not WHICH records land in it. With a plain
+  # ascending sort the ragged stratum receives the HEAVIEST records, and they
+  # go to the low-index threads. In mode 1 that happened to be self
+  # compensating, because those same threads drew the floor of every other
+  # stratum, and 347 showed that serpentine destroys the compensation and
+  # costs chunk2 +1.867%. Rotating the sorted group left by the remainder puts
+  # the LIGHTEST records in the ragged stratum instead, which turns an accident
+  # into a design. When the group length is an exact multiple of iter_len the
+  # remainder is zero and this is a no-op, so full launches are untouched.
+  if (mode==7 or mode==8) and iter_len>=1:
+    rem:int=len(out)%iter_len
+    if rem>0:
+      rot:List[int]=[]
+      ri:int=rem
+      while ri<len(out):
+        rot.append(out[ri])
+        ri+=1
+      ri=0
+      while ri<rem:
+        rot.append(out[ri])
+        ri+=1
+      out=rot
+
+  # 347: serpentine (boustrophedon) post-pass for modes 5, 6 and 7.
+  # A plain sorted launch group hands warp w the ranks 32*w .. 32*w+31 inside
+  # EVERY stratum, so warp 0 always draws the floor of each stratum and warp
+  # 483 always draws the ceiling. That fixes which warp is heaviest and
+  # therefore fixes the makespan. Reversing the order inside every odd
+  # numbered stratum makes each warp draw the ceiling in half the strata and
+  # the floor in the other half, which equalises the warp totals. The reversal
+  # is applied to whole iter_len slices, so the 32 alignment established in 340
+  # is preserved exactly.
+  if (mode==5 or mode==6 or mode==7) and iter_len>=1:
+    serp:List[int]=[]
+    sbase:int=0
+    sidx:int=0
+    while sbase<len(out):
+      sseg:int=iter_len
+      if sbase+sseg>len(out):
+        sseg=len(out)-sbase
+      if (sidx&1)==1:
+        k:int=sseg-1
+        while k>=0:
+          serp.append(out[sbase+k])
+          k-=1
+      else:
+        k2:int=0
+        while k2<sseg:
+          serp.append(out[sbase+k2])
+          k2+=1
+      sbase+=sseg
+      sidx+=1
+    out=serp
   return out
 
 def chunkshape148_score_key_from_soa(soa:TaskSoA,idx:int,global_idx:int)->int:
