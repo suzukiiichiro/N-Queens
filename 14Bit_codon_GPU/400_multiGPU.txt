@@ -1,0 +1,38 @@
+# ビルド
+cd /home/suzuki/Github/N-Queens/13Bit_codon
+codon build -release \
+111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker.py
+
+# GPUシングル実行
+./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 29 \
+  2>&1 | tee 111Py_N22_single_gpu_full.log
+
+
+# 4GPUマルチ実行
+# 4GPUで回す前に、reorder bin は1回だけ作っておくのが安全です。4プロセスが同時に bin を作りに行く競合を避けます。
+./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 28 \
+  2>&1 | tee 111Py_N22_broadmarktail_sim_build.log
+
+
+CUDA_VISIBLE_DEVICES=0 ./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 29 8 7 0 0 4 \
+  2>&1 | tee 111Py_N22_worker0of4.log &
+
+CUDA_VISIBLE_DEVICES=1 ./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 29 8 7 0 1 4 \
+  2>&1 | tee 111Py_N22_worker1of4.log &
+
+CUDA_VISIBLE_DEVICES=2 ./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 29 8 7 0 2 4 \
+  2>&1 | tee 111Py_N22_worker2of4.log &
+
+CUDA_VISIBLE_DEVICES=3 ./111Py_constellations_GPU_cuda_codon_dynamic_p8_stream_funcid_reorder_v2_broadmark_funcid17_gh_multigpu_worker \
+  -g 22 22 32 484 1 0 7 29 8 7 0 3 4 \
+  2>&1 | tee 111Py_N22_worker3of4.log &
+
+wait
+
+# 4本の合算確認は添付したスクリプトでできます。
+python3 sum_111py_worker_totals.py 111Py_N22_worker*of4.log

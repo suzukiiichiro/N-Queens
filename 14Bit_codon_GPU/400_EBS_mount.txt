@@ -1,0 +1,80 @@
+# 1. まず nvme1n1 の正体を確認
+sudo lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL,SERIAL
+
+# EBSかどうかの確認
+sudo /sbin/ebsnvme-id /dev/nvme1n1
+
+# 2. パーティションがあるか確認
+sudo fdisk -l /dev/nvme1n1
+sudo lsblk -f /dev/nvme1n1
+
+# 3. ファイルシステムが残っているか確認
+sudo blkid /dev/nvme1n1
+sudo file -s /dev/nvme1n1
+sudo wipefs -n /dev/nvme1n1
+
+# =========
+# ここで例えば以下のように出れば、まだファイルシステムが見えています。
+#
+# /dev/nvme1n1: UUID="..." TYPE="xfs"
+#
+# または
+#
+# /dev/nvme1n1: UUID="..." TYPE="ext4"
+#
+# 逆に、
+#
+# /dev/nvme1n1: data
+#
+# や、blkid が何も返さない場合は、ファイルシステムが残っていない可能性が高いです。
+# =========
+
+
+# 初期化
+# ここから先は nvme1n1 を初期化する。
+# blkid / file / wipefs で既存ファイルシステムが見えないことを確認してから実行する。
+# /data/nq の既存データは消える。
+sudo mkfs.xfs -f /dev/nvme1n1
+
+# 作業ディレクトリの作成
+sudo mkdir -p /data/nq
+
+# mount
+sudo mount /dev/nvme1n1 /data/nq
+sudo chown -R suzuki:suzuki /data/nq
+df -h /data/nq
+
+# 確認
+lsblk -f /dev/nvme1n1
+
+# 起動時に自動mount
+sudo blkid /dev/nvme1n1
+
+# UUIDが表示される
+# /dev/nvme1n1: UUID="xxxx-xxxx" TYPE="xfs"
+
+# fstabのバックアップを取ってからfstabにUUIDを追記
+sudo cp -a /etc/fstab /etc/fstab.bak.$(date +%Y%m%d_%H%M%S)
+sudo nano /etc/fstab
+
+# (例）
+# UUID=xxxx-xxxx  /data/nq  xfs  defaults,nofail  0  2
+
+# 確認
+sudo umount /data/nq
+sudo mount -a
+df -h /data/nq
+
+# EBS側の安全な原本を更新
+cd /home/suzuki/Github/tmp/N-Queens
+git pull
+
+# 作業ディレクトリを作成
+mkdir -p /data/nq/Github
+rsync -a /home/suzuki/Github/tmp/N-Queens /data/nq/Github/
+
+# シンボリックリンクの確認
+ls -ld /home/suzuki/Github/N-Queens
+
+
+
