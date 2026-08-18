@@ -3787,6 +3787,7 @@ Updated on 2026-07-30 for the confirmed 350 result and for 351, the first revisi
 
 328はw配列(u64)を密なu32配列2本に分割し、w読み込みの L2 Theoretical Sectors Global Excessive を約25,000から0にした(329のncu SourceCounters再解析で実機確認)。しかし `symmetry()` の戻り値は `u64(2)`/`u64(4)`/`u64(8)` の3値のみであり、**上位配列 `w_hi_arr` は全要素が恒等的に0**だった。5カーネルのエピローグが読む各3箇所のロードは常に0を返していた。351はこれを削除する。
 
+
 | 箇所 | 件数 | 変更 |
 |---|---:|---|
 | 5カーネルのシグネチャ | 5 | ポインタ引数1本を削除 |
