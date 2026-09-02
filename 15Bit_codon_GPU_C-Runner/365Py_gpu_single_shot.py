@@ -255,6 +255,12 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 # GPU実行
 stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 
+# 前準備
+# 363のフィルタツールで絞り込みファイルを再生成する必要があります:
+python3 363_filter_maxd14_only.py constellations_N21_6.bin.soa_ref_361.bin constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin
+
+suzuki@cudacodon$ bash 365Py_gpu_single_shot_validate_N21_full_once.sh
+21:      314666222712                0          0:03:53.566
 
 2026年  7月 31日 金曜日 12:54:53 UTC
 21:      314666222712                0          0:06:33.404    ok
