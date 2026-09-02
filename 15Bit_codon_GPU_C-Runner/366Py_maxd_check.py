@@ -264,10 +264,8 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 # 363のフィルタツールで絞り込みファイルを再生成する必要があります:
 python3 363_filter_maxd14_only.py constellations_N21_6.bin.soa_ref_361.bin constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin
 
-suzuki@cudacodon$ bash 366Py_maxd_check_validate_N22_once.sh
-suzuki@cudacodon$ ./366Py_maxd_check -g 5 22 32 484 0 0 7 0 3 7 0 0 1 2 2048 9
-366Py
-21:      314666222712                0          0:04:59.144
+suzuki@cudacodon$ bash 365Py_gpu_single_shot_validate_N21_full_once.sh
+21:      314666222712                0          0:03:53.566
 
 2026年  7月 31日 金曜日 12:54:53 UTC
 21:      314666222712                0          0:06:33.404    ok
