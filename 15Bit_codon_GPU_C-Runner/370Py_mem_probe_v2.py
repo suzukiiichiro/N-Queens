@@ -257,6 +257,11 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 # GPU実行
 stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 
+
+NQ_CRunner$ codon build -release 370Py_mem_probe_v2.py
+NQ_CRunner$ ./367_safe_run_wrapper.sh -- ./370Py_mem_probe_v2 -g 22 22 32 484 1 0 7 33 3 7 0 0 1 2 2048 9
+22:     2691008701644                0          0:32:43.182
+
 # 前準備
 # 363のフィルタツールで絞り込みファイルを再生成する必要があります:
 python3 363_filter_maxd14_only.py constellations_N21_6.bin.soa_ref_361.bin constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin
