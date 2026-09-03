@@ -372,6 +372,7 @@ soa-ref-dumpは一切出力されなかった(GPU時間を無駄にしてしま�
 STATIC_ONLY=1 bash 361Py_soa_derive_c_port_validate_N21_full_once.sh
 bash 361Py_soa_derive_c_port_validate_N21_full_once.sh
 ```
+361	Codon側SoA参照ダンプの修正版を生成(bench_mode=32)	チェックのみ	2,025,282レコードのダンプ。C側とバイト完全一致を確認。合計(N-Queens解の数)は計算・出力しない
 
 期待値: 静的チェック全項目OK、Codon側ダンプとC側ダンプのdiff/sha256が
 完全一致。一致すれば`build_soa_for_range`+`symmetry`のCポートが確定

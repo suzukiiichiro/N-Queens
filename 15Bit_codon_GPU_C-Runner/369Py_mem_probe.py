@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 362 (2026-08-26)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 366 (2026-08-30)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -86,40 +86,36 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    ベースライン(456.036/456.187s)比 **+1.18%改善**を確認し、発掘案
    C-3は完全クローズ。330→331→332→333の4リビジョン・1日で完結。
 
-6. [進行中・362で設計、363以降で実装] CUDA Cランナー(案C-2)スパイク設計
-   課題3(tail effect)への**唯一の残存対策経路**(355-359でpushガード
-   軸がクローズし、確定した)。方針は334以来不変: コンステレーション
-   生成・並べ替え(broadmarktail/chunkshape148/funcid_reorder w3_j7/
-   CHUNKSHAPE148_BUCKET_RUN=2048/CHUNKSHAPE148_ITER_SORT=9)・binキャッ
-   シュはCodonのまま維持し、`kernel_dfs_iter_gpu_maxd14`一個のみを
-   .cuに移植する最小構成とする。
-   **334-337で土台が全て揃い(nvcc round-trip実証、bin形式確定)、
-   338→360で移植仕様(SoA7本・save_sp=uint32_t・stack_ptr=int)が
-   確定、361でbuild_soa_for_range+symmetryのCポートが実機で
-   バイト単位一致確認済み(2,025,282件全件)。**
+6. [進行中・366でN22-26の必要maxd事前確認を追加、実機結果待ち]
+   CUDA Cランナー(案C-2)スパイク設計
+   361-365でmaxd=14専用カーネルの移植・実機正当性・速度比較(CUDA C
+   版がCodon版比約14%速い、2回再現確認済み)が完了した。
 
-   **362は`kernel_dfs_iter_gpu_maxd14`本体のC移植設計**
-   (`362_kernel_port_spec.md`、361と同じくコード変更ゼロの設計専用
-   リビジョン)。カーネルは2段構成: (1)コンステレーションごとの
-   スケジュール事前計算フェーズ(funcid決定木を`schedule_lo`/
-   `schedule_hi`という2つのu32へニブル単位でパック、`child_jmark_mask`/
-   `future_check_mask`/`terminal_depth`/`terminal_base14`を副産物として
-   算出——CPU側`schedule_depth_for_task`と同型だが実行時ニブル列も
-   生成する点が異なる)、(2)スタックベースの反復DFS本体(root専用の
-   1〜2候補高速パス+汎用ループ、`__array__[u64](13*2)`=208バイト/
-   スレッドのpush/pop)。全13個のビットマスク定数(IS_BASE_MASK等)と
-   28要素の`meta_next`テーブルは値の変更なくCへ1対1移植可能と確認、
-   意味論的な曖昧さは無い。スコープは`selected_maxd==14`launchパス
-   (`kernel_dfs_iter_gpu_maxd14`)のみに限定し、maxd16/18/20/21用の
-   他4カーネルは対象外(334以来の一貫方針)。
-   358・359の教訓(pushガード`if cur_avail!=u32(0):`の制御フロー形状は
-   Codonバックエンドで極めて敏感)を362 specにリスクノートとして記録:
-   363での初回移植はこの分岐を含め完全に1:1の直訳とし、形状変更は
-   ±3%等価性確認後、nvccでの再検証を経てから初めて検討する。
-   判定基準は360で確定した356アンカー(393.404秒、chunk0/1/2=
-   144,590/144,473/103,271ms)比±3%(338固定、移植目的は速度でなく
-   warp intrinsics・デバイスatomic・`-lineinfo`のper-line SASS帰属の
-   解禁)。実装(`.cu`本体)は363以降。
+   **Suzukiさんより、2023/11/22時点の別実装(対称解除法GPUビットボード、
+   Total+Unique計算)のベンチマークとの比較検討があった。** N=21で
+   Total値`314666222712`が本プロジェクトの正解値と完全一致することを
+   確認したが、当該実装はUnique(基本解)も計算しており、本プロジェクト
+   のカーネルはTotalのみ(`symmetry()`の対称重みで代用、Unique非計算)
+   のため、単純な時間比較は公平でないと整理した。Uniqueの追加はスコープ
+   外とする合意を得た。
+
+   **N=22以降の拡張について**: 本プロジェクトのCUDA Cポートは
+   `kernel_dfs_iter_gpu_maxd14`(必要maxd<=14)専用であり、N=22以降は
+   必要maxdが14を超える可能性が高いとの指摘があった。カーネル追加移植
+   (maxd16/18/20/21)に着手する前に、**366でまず実際の必要maxdを
+   カーネル起動なしで安価に確認する**設計とした
+   (`check_required_maxd_for_N`、新規bench_mode=34)。
+   `ensure_constellations_bin_stream`(N=22-27対応の`select_dynamic_
+   preset_queens`は既存実装で確認済み、N上限の決め打ちは見当たらない)・
+   `build_soa_for_range`・`max_schedule_depth_of_tasks`・
+   `select_static_maxd`はすべて既存の無変更関数を再利用するのみで、新規
+   アルゴリズムコードはない。GPUへのSoAアップロードもカーネル起動も
+   行わない読み取り専用の事前診断。
+
+   366自体はこのセッション内でGPU/実機環境が無いため未実機検証。まず
+   N=22単体で確認し(単一変数規律)、結果を見てN=23-26への展開を判断
+   する。required_maxdが21を超える場合、それは本Cポートプロジェクトの
+   スコープ外の問題(オリジナルCodon実装自体がN未対応)となる。
 
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
@@ -311,42 +307,38 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 
 """
 
-362を用意しました(CUDA Cランナー・カーネル本体移植の設計リビジョン、
-コード変更ゼロ)。
+366を用意しました(N22-26の必要maxd事前確認、カーネル起動なし)。
 
-**361までの状態**: `build_soa_for_range`+`symmetry`のCポート
-(`361_soa_derive.c`)が実機で確定(N=21実ファイル全件2,025,282件で
-バイト単位完全一致)。CLIゲートの不具合(r1→r2)も修正済み。
+**経緯**: N=21での成果(364・365、CUDA C版がCodon版比約14%速い)を
+踏まえ、鈴木さんから2023/11/22時点の別実装(Total+Unique計算)との
+比較検討をいただきました。Total値は本プロジェクトの正解値と完全一致
+を確認しましたが、Unique計算の有無が異なるため単純比較は不公平と
+整理し、Uniqueはスコープ外とすることで合意しました。
 
-**362の内容**: `kernel_dfs_iter_gpu_maxd14`(選択的maxd=14の実行
-パスのみ、他4カーネルは対象外)の移植設計を`362_kernel_port_spec.md`
-としてまとめました。338/360と同じ規律で、362自身はコードを一切
-変更していません(361とバイト単位で完全一致することを`.sh`で照合)。
+続けて、N=22以降への拡張について「maxdがN22以降で14に収まらないの
+では」というご指摘をいただきました。ごもっともな懸念で、まずは
+**カーネルを一切起動せず、必要maxdだけを安く確認する**366を用意しま
+した。新規関数`check_required_maxd_for_N`+新規`bench_mode=34`。
+既存の無変更関数(`ensure_constellations_bin_stream`/
+`build_soa_for_range`/`max_schedule_depth_of_tasks`/
+`select_static_maxd`)を再利用するだけの読み取り専用診断です。
 
-spec本体には、シグネチャの型対応表、スタックのpush/pop変換、13個の
-ビットマスク定数と28要素`meta_next`テーブルの移植、スケジュール
-事前計算フェーズとroot高速パス・メインDFSループの行単位の翻訳方針、
-起動パラメータ(board_mask/n3/n4/grid/block)の受け渡し、そして
-358・359で確定した「pushガードの制御フロー形状変更はCodonで危険」
-という知見をリスクノートとして記載しています。
-
-内容にご異論なければ、363で`.cu`本体の実装に進みます。
+単一変数規律により、まずN=22単体で確認することをお勧めします。結果
+次第で、N=23-26への展開や、必要であればmaxd16/18/20/21カーネルの
+Cポート(かなり大きな追加作業になります)を検討します。
 
 ---
 
 ## 実行手順
 
 ```
-STATIC_ONLY=1 bash 362Py_kernel_port_spec_validate_N21_full_once.sh
-bash 362Py_kernel_port_spec_validate_N21_full_once.sh
+STATIC_ONLY=1 bash 366Py_maxd_check_validate_N22_once.sh
+bash 366Py_maxd_check_validate_N22_once.sh
 ```
 
-362	CUDA Cポートの設計仕様書作成	設計のみ(実行なし)	コード変更ゼロ、ハッシュ一致確認のみ。実行結果自体が存在しない
-
-362は設計専用のため、実行版もN=21のbench_mode=32(361と同じsoa-ref-
-dump)を再実行してコード無変更を実証するのみです。カーネルの実機検証は
-363以降になります。
-
+N=22の`constellations_N22_7.bin`が無ければ生成から始まるため、N=21の
+時より時間がかかる可能性があります。生成が長時間に及ぶ場合は途中経過
+を教えてください。
 """
 
 """
@@ -571,7 +563,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="362 kernel_port_spec: DESIGN-ONLY REVISION, NO KERNEL/DISPATCHER/CODE CHANGE. Executable code region (import gpu onward) is byte-identical to 361 (r2): this file is 361Py_soa_derive_c_port.py with only the docstring content and this VERSION_TAG line changed, verified by a static check that hashes the docstring-stripped/VERSION_TAG-excluded code region and compares it against 361s own reference hash for the identical region. 362s deliverable is 362_kernel_port_spec.md, a C-language port specification for kernel_dfs_iter_gpu_maxd14 (the sole GPU kernel used on the selected_maxd==14 execution path; kernel_dfs_iter_gpu_maxd16/18/20/21 remain explicitly out of scope, per the same scoping used since 334, since every real N=21 chunk has been confirmed to fit selected_maxd=14 through 337). The spec covers: (1) a full signature type-mapping table (Ptr[u32]->const uint32_t* __restrict__, Codons 64-bit int->int64_t, etc); (2) the 208-byte-per-thread stack layout (__array__[u64](MAXD14_ANCESTOR*2)) and its push/pop translation, carrying forward 356s stack_ptr=int32_t/save_sp=uint32_t decision; (3) all 13 bitmask constants and the 28-element meta_next lookup table, both ported value-for-value with no semantic ambiguity; (4) the per-constellation schedule-precomputation phase (schedule_lo/schedule_hi nibble packing, child_jmark_mask, future_check_mask, terminal_depth/terminal_base14, root_action); (5) the root 1-or-2-candidate fast path; (6) the main explicit-stack DFS loop; (7) the three scalar launch parameters (board_mask_gpu, n3_gpu, n4_gpu) and unchanged 32x484 grid/block config. A risk note carried forward from 358/359 is recorded explicitly: the push guard `if cur_avail!=u32(0):` immediately before every stack push is control-flow shape that 355-359 found extremely sensitive to Codons instruction scheduler (358: complete branch removal regressed 3.47-5.51 percent; 359: partial unconditionalization regressed catastrophically at 65.0-66.8 percent), so 363s first implementation must port this branch as a completely literal 1:1 translation with zero shape changes, and any future C-side experimentation with this branch must wait until plus-or-minus 3 percent equivalence is confirmed against the 356 anchor (393.404s) and must be treated as unverified on nvcc regardless of the Codon-side finding (n=2 observations on one backend, not yet extrapolated). Success criterion (unchanged from 338/360): plus-or-minus 3 percent versus the 356 anchor, correctness 314666222712 unchanged. Implementation (the actual .cu kernel and a minimal host-side runner) is deferred to 363 and beyond."
+VERSION_TAG:str="369 mem_probe: DIAGNOSTIC-ONLY, ADDITIVE REVISION. Executable code region is byte-identical to 368 outside six clearly delimited deltas (one 1-line pure insertion for a new CLI-arg default, two 2-word CLI-gate modifications matching the 361/365/366/368 pattern, one pure insertion of a new argv-parsing block, one pure insertion of two new functions, one pure insertion for the dispatch branch), verified by a static check that strips/reverses those spans before hashing against 368s reference hash for the identical region. The deltas are: (1) ===369-VARINIT-BEGIN/END=== -- new record_limit_arg:int=1000000 default; (2)-(3) ===369-CLIGATE-COMMENT-BEGIN/END=== and ===369-PRESETGATE-COMMENT-BEGIN/END=== -- comments plus a 2-word addition (or bench_mode==36) to the same two CLI gate lines 361/365/366/368 modified, applied preemptively from the start; (4) ===369-ARGPARSE-INSERT-BEGIN/END=== -- new bench_mode==36 branch reading record_limit_arg from the same argv[13] slot bench_mode==30 uses for debug_chunk_start (mutually exclusive per invocation, unambiguous); (5) ===369-INSERT-BEGIN/END=== -- new functions read_vmhwm_kb() (parses /proc/self/status VmHWM, peak RSS in KB) and probe_partial_load_memory() (checkpoints VmHWM before count_constellations_bin_records, after it, after read_constellations_bin_range(0,m), after build_soa_for_range -- all three unmodified since before 361); (6) ===369-DISPATCH-INSERT-BEGIN/END=== -- new bench_mode==36 dispatch branch, appended after the existing bench_mode==35 block. Context: 366/bench_mode=34 and 368/bench_mode=35 both crashed for N=22 (records=28,719,035) at the IDENTICAL instruction address (dmesg ip=0x412a9c, error 6) inside this shared unmodified bin-load path, before ever reaching schedule_depth_for_task(_diag) -- so 368s meta_next out-of-bounds hypothesis was never actually tested. Raising 367s MAX_MEM_PERCENT from 70 to 95 (10GB to 14GB ulimit ceiling on this sessions swapless 15GB-RAM host) made no difference: same crash, same address. 369 instruments the shared load path directly and makes the loaded record count a swept CLI parameter, so the validation harness can locate the actual memory threshold on real data (from a known-safe 1,000,000-record scale up toward the full 28,719,035) instead of guessing further. Suzukis next action is running the bench_mode=36 sweep for N=22 (single-variable discipline: record_limit is the only thing that changes across the sweeps runs)."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -5886,6 +5878,290 @@ def exec_solutions_gpu_bin_stream(
 
   return gpu_total
 
+# ===365-INSERT-BEGIN===
+# 365: single-shot (non-chunked) N=21 GPU launch, mirroring 364's
+# CUDA C host runner exactly: build SoA for the FULL record set (not
+# capped at STEPS=15488 the way exec_solutions()'s internal while-loop
+# chunks it), then call launch_kernel_dfs_iter_gpu_static_maxd() ONCE
+# with m=total_records and stride=STEPS, letting the kernel's own
+# grid-stride loop (unchanged since 292) cover every record in a
+# single kernel launch -- the same architecture 364's runner uses to
+# get kernel_ms=260685.062ms on real N=21 data. This exists so a fresh
+# Codon-side baseline can be measured under the IDENTICAL single-shot
+# protocol 364 already used for the C port, instead of the old 3-chunk
+# measure2 protocol (356's 393.404s), per Suzuki's decision to adopt
+# 364's simpler single-shot configuration as the new standard.
+def exec_solutions_gpu_single_shot(N:int,fname:str,preset_queens:int,gpu_block:int=32,gpu_max_blocks:int=484,gpu_log_level:int=0)->Tuple[int,int]:
+  total_records:int=count_constellations_bin_records(fname)
+  constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,0,total_records)
+  m:int=len(constellations)
+  BLOCK:int=gpu_block
+  MAX_BLOCKS:int=gpu_max_blocks
+  if BLOCK<=0:
+    BLOCK=32
+  if MAX_BLOCKS<=0:
+    MAX_BLOCKS=484
+  STEPS:int=BLOCK*MAX_BLOCKS
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+  board_mask:int=(1<<N)-1
+  board_mask_gpu:u32=u32(board_mask)
+  n3_gpu:u32=u32(1)<<u32(N-3)
+  n4_gpu:u32=u32(1)<<u32(N-4)
+
+  results:List[u64]=[u64(0)]*STEPS
+
+  required_maxd:int=max_schedule_depth_of_tasks(soa,m,meta_next)
+  selected_maxd:int=select_static_maxd(required_maxd)
+  if gpu_log_level>=1:
+    print(f"[single-shot-maxd-dispatch] N={N} m={m} required_maxd={required_maxd} selected_maxd={selected_maxd} grid={MAX_BLOCKS} block={BLOCK} stride={STEPS}")
+
+  t0=datetime.now()
+  ok:bool=launch_kernel_dfs_iter_gpu_static_maxd(selected_maxd,soa,w_arr,meta_next,results,m,board_mask_gpu,n3_gpu,n4_gpu,MAX_BLOCKS,BLOCK,STEPS)
+  t1=datetime.now()
+  if not ok:
+    print(f"[single-shot-error] launch_kernel_dfs_iter_gpu_static_maxd failed for selected_maxd={selected_maxd} (unsupported maxd, or 351's w_hi invariant guard tripped)")
+    return 0,0
+
+  total:int=0
+  for v in results:
+    total+=int(v)
+
+  elapsed_ms:int=int((t1-t0).total_seconds()*1000)
+  return total,elapsed_ms
+# ===365-INSERT-END===
+
+# ===366-INSERT-BEGIN===
+# 366: cheap, kernel-launch-free check of the required schedule depth
+# (maxd) for a given N, BEFORE committing to porting any more kernels
+# to C. kernel_dfs_iter_gpu_maxd14 (361-365) only covers required_maxd
+# <=14; N=22-26 are expected to need more, per Suzuki's observation.
+# This reuses existing, unmodified functions only (ensure_
+# constellations_bin_stream, build_soa_for_range, max_schedule_depth_
+# of_tasks, select_static_maxd) -- no new algorithmic code, just a
+# read-only diagnostic composition of what already exists. No SoA
+# array is uploaded to a GPU and no kernel is launched.
+def check_required_maxd_for_N(N:int,fname:str,gpu_log_level:int=0)->Tuple[int,int,int]:
+  total_records:int=count_constellations_bin_records(fname)
+  constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,0,total_records)
+  m:int=len(constellations)
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+
+  required_maxd:int=max_schedule_depth_of_tasks(soa,m,meta_next)
+  selected_maxd:int=select_static_maxd(required_maxd)
+
+  if gpu_log_level>=1:
+    print(f"[maxd-check] N={N} records={m} required_maxd={required_maxd} selected_maxd={selected_maxd} "
+          f"schedule_words={packed_schedule_words_for_maxd(selected_maxd)} stack_bytes_per_thread={packed_stack_bytes_per_thread(selected_maxd)} "
+          f"supported={'yes' if selected_maxd>0 else 'NO (required_maxd>21, no existing kernel covers this)'} "
+          f"has_c_port={'yes(maxd14)' if selected_maxd==14 else 'no(codon-only)'}")
+
+  return m,required_maxd,selected_maxd
+# ===366-INSERT-END===
+
+# ===368-INSERT-BEGIN===
+# 368: DIAGNOSTIC-ONLY revision. Does NOT modify check_required_maxd_
+# for_N() or schedule_depth_for_task() from 366 -- both are left byte-
+# identical and still reachable via bench_mode==34. This adds a
+# parallel, bounds-safe COPY of the schedule-walk used only to survey
+# the actual range of `fu` values (=raw&31, 0..31 by construction)
+# that arise for a given N's task set, because meta_next (the 28-
+# element table built into check_required_maxd_for_N, indices 0..27)
+# is indexed by fu at three call sites in schedule_depth_for_task, and
+# nothing in that function bounds-checks fu<len(meta_next) before
+# doing so. N=21 apparently never produces fu>=28 (366/bench_mode=34
+# never crashed there); a real-hardware run of 366/bench_mode=34 on
+# N=22 segfaulted (dmesg: two `366Py_maxd_chec[...]: segfault at 0`
+# events, error 4 then error 6) with no OOM-killer entry in dmesg and
+# no allocation-failure message, consistent with an out-of-bounds
+# array read/write rather than memory exhaustion. This revision exists
+# to confirm or refute that hypothesis on real N=22 data WITHOUT
+# crashing, by substituting a safe bounds check + sentinel return + a
+# stats record at each of the three meta_next[fu] sites, so the full
+# 28.7M-task scan can complete and report fu_min/fu_max/oob_count and
+# a first-occurrence repro (task index, fu, ctrl0, markctrl) if any
+# out-of-bounds access would have occurred.
+
+class MaxdDiagStats:
+  def __init__(self)->None:
+    self.fu_min:int=999
+    self.fu_max:int=-1
+    self.oob_count:int=0
+    self.oob_task_index:int=-1
+    self.oob_fu:int=-1
+    self.oob_ctrl0:u32=u32(0)
+    self.oob_markctrl:u32=u32(0)
+    self.tasks_scanned:int=0
+
+def schedule_depth_for_task_diag(ctrl0:u32,markctrl:u32,meta_next:List[u8],stats:MaxdDiagStats,task_index:int)->int:
+  IS_BASE_MASK_I:int=69222408
+  IS_JMARK_MASK_I:int=4
+  IS_MARK_MASK_I:int=199209203
+  IS_P5_MASK_I:int=3840
+  SEL2_MASK_I:int=34742338
+  STP3_MASK_I:int=21266576
+  META_NEXT_LEN:int=len(meta_next)
+
+  raw:int=int(ctrl0)
+  marks:int=int(markctrl)
+  jmark:int=marks&31
+  endm:int=(marks>>5)&31
+  mark1:int=(marks>>10)&31
+  mark2:int=(marks>>15)&31
+  depth:int=0
+
+  while True:
+    fu:int=raw&31
+    rowv:int=(raw>>5)&31
+
+    if fu<stats.fu_min:
+      stats.fu_min=fu
+    if fu>stats.fu_max:
+      stats.fu_max=fu
+
+    if ((IS_P5_MASK_I>>fu)&1)!=0 and rowv==mark1:
+      if fu>=META_NEXT_LEN:
+        if stats.oob_count==0:
+          stats.oob_task_index=task_index
+          stats.oob_fu=fu
+          stats.oob_ctrl0=ctrl0
+          stats.oob_markctrl=markctrl
+        stats.oob_count+=1
+        return 23  # diagnostic sentinel: bailed at P5-branch meta_next[fu] site
+      fu=int(meta_next[fu])
+
+    if ((IS_BASE_MASK_I>>fu)&1)!=0 and rowv==endm:
+      return depth
+
+    stepv:int=1
+    nextfid:int=fu
+    if ((IS_MARK_MASK_I>>fu)&1)!=0:
+      markv:int=mark2 if ((SEL2_MASK_I>>fu)&1)!=0 else mark1
+      if rowv==markv:
+        stepv=3 if ((STP3_MASK_I>>fu)&1)!=0 else 2
+        if fu>=META_NEXT_LEN:
+          if stats.oob_count==0:
+            stats.oob_task_index=task_index
+            stats.oob_fu=fu
+            stats.oob_ctrl0=ctrl0
+            stats.oob_markctrl=markctrl
+          stats.oob_count+=1
+          return 24  # diagnostic sentinel: bailed at MARK-branch meta_next[fu] site
+        nextfid=int(meta_next[fu])
+
+    if ((IS_JMARK_MASK_I>>fu)&1)!=0 and rowv==jmark:
+      if fu>=META_NEXT_LEN:
+        if stats.oob_count==0:
+          stats.oob_task_index=task_index
+          stats.oob_fu=fu
+          stats.oob_ctrl0=ctrl0
+          stats.oob_markctrl=markctrl
+        stats.oob_count+=1
+        return 25  # diagnostic sentinel: bailed at JMARK-branch meta_next[fu] site
+      nextfid=int(meta_next[fu])
+
+    child_row:int=rowv+stepv
+    depth+=1
+    if depth>21 or child_row>31:
+      return 22
+    raw=nextfid|(child_row<<5)
+
+def scan_maxd_diag_for_tasks(soa:TaskSoA,m:int,meta_next:List[u8])->MaxdDiagStats:
+  stats:MaxdDiagStats=MaxdDiagStats()
+  i:int=0
+  while i<m:
+    d:int=schedule_depth_for_task_diag(soa.ctrl0_arr[i],soa.markctrl_arr[i],meta_next,stats,i)
+    stats.tasks_scanned+=1
+    i+=1
+  return stats
+
+def check_required_maxd_for_N_diag(N:int,fname:str,gpu_log_level:int=0)->MaxdDiagStats:
+  total_records:int=count_constellations_bin_records(fname)
+  constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,0,total_records)
+  m:int=len(constellations)
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+
+  stats:MaxdDiagStats=scan_maxd_diag_for_tasks(soa,m,meta_next)
+
+  if gpu_log_level>=1:
+    print(f"[maxd-diag] N={N} records={m} fu_min={stats.fu_min} fu_max={stats.fu_max} meta_next_len={len(meta_next)} "
+          f"oob_count={stats.oob_count} first_oob_task_index={stats.oob_task_index} first_oob_fu={stats.oob_fu} "
+          f"first_oob_ctrl0={int(stats.oob_ctrl0)} first_oob_markctrl={int(stats.oob_markctrl)}")
+
+  return stats
+# ===368-INSERT-END===
+
+# ===369-INSERT-BEGIN===
+# 369: DIAGNOSTIC-ONLY. Does not modify anything from 366/368 -- pure
+# addition. 368's bench_mode=35 never reached its own bounds-guarded
+# code: both 366 and 368 crashed at the identical instruction address
+# (dmesg ip=0x412a9c, error 6) inside the shared, unmodified
+# count_constellations_bin_records/read_constellations_bin_range/
+# build_soa_for_range path, BEFORE schedule_depth_for_task(_diag) is
+# ever reached. Raising 367's MAX_MEM_PERCENT from 70 to 95 (10GB to
+# 14GB ulimit ceiling on this session's swapless 15GB-RAM host) made
+# no difference -- same crash, same address. This revision instruments
+# that shared loading path with /proc/self/status VmHWM (peak RSS)
+# checkpoints at three points (after count, after the Dict-list read,
+# after SoA build) and exposes the record count actually loaded as a
+# CLI parameter (bench_mode==36), so the validation harness can sweep
+# record_limit from a known-safe scale up toward N=22's full
+# 28,719,035 and locate exactly where (if anywhere in this read-only
+# path, as opposed to elsewhere) memory growth becomes unsustainable
+# on this host, rather than guessing.
+
+def read_vmhwm_kb()->int:
+  try:
+    with open("/proc/self/status","r") as f:
+      text:str=f.read()
+    lines:List[str]=text.split("\n")
+    for line in lines:
+      if line.startswith("VmHWM:"):
+        parts:List[str]=line.split()
+        if len(parts)>=2:
+          return int(parts[1])
+    return -1
+  except:
+    return -1
+
+def probe_partial_load_memory(N:int,fname:str,record_limit:int,gpu_log_level:int=0)->Tuple[int,int,int,int,int]:
+  vm_start:int=read_vmhwm_kb()
+  total_records:int=count_constellations_bin_records(fname)
+  vm_after_count:int=read_vmhwm_kb()
+
+  m:int=record_limit
+  if m<=0 or m>total_records:
+    m=total_records
+
+  constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,0,m)
+  vm_after_read:int=read_vmhwm_kb()
+
+  soa:TaskSoA=TaskSoA(m)
+  w_arr:List[u64]=[u64(0)]*m
+  soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+  vm_after_soa:int=read_vmhwm_kb()
+
+  if gpu_log_level>=1:
+    print(f"[mem-probe] N={N} total_records={total_records} record_limit={record_limit} loaded={m} "
+          f"vmhwm_start_kb={vm_start} vmhwm_after_count_kb={vm_after_count} vmhwm_after_read_kb={vm_after_read} vmhwm_after_soa_kb={vm_after_soa}")
+
+  return m,vm_start,vm_after_count,vm_after_read,vm_after_soa
+# ===369-INSERT-END===
+
 def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
   if N>=5 and N<=17:
     return 5
@@ -5939,6 +6215,12 @@ def main()->None:
   chunkshape148_iter_sort:int=CHUNKSHAPE148_ITER_SORT
   preset_queens_arg:int=5
   requested_preset_arg:int=5
+  # ===369-VARINIT-BEGIN===
+  # 369: default for the new bench_mode==36 (mem-probe) mode's record
+  # count. 1,000,000 is a conservative default known-safe scale (well
+  # below N=21's full 2,025,282, which has run cleanly since 361).
+  record_limit_arg:int=1000000
+  # ===369-VARINIT-END===
   argc:int=len(sys.argv)
 
   if argc == 1:
@@ -5999,7 +6281,29 @@ def main()->None:
       # below) is ever reached. The next 3 lines are unchanged from
       # 356/357/360 except the added "or bench_mode==32" on line 1.
       # ===361-CLIGATE-COMMENT-END===
-      if not (bench_mode==0 or bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31 or bench_mode==32):
+      # ===365-CLIGATE-COMMENT-BEGIN===
+      # 365: bench_mode==33 (the new single-shot mode) added here too,
+      # learning directly from 361's r1 bug (bench_mode==32 was
+      # silently reset to 0 by this exact gate on the first real run).
+      # The next 3 lines are unchanged from 356/357/360/361/362/363/364
+      # except the added "or bench_mode==33" on line 1.
+      # ===365-CLIGATE-COMMENT-END===
+      # ===366-CLIGATE-COMMENT-BEGIN===
+      # 366: bench_mode==34 (the new maxd-check mode) added here too,
+      # applying the 361/365 lesson from the start. The next 3 lines
+      # are unchanged except the added "or bench_mode==34" on line 1.
+      # ===366-CLIGATE-COMMENT-END===
+      # ===368-CLIGATE-COMMENT-BEGIN===
+      # 368: bench_mode==35 (the new maxd-diag mode) added here too,
+      # same lesson applied preemptively. The next 3 lines are
+      # unchanged except the added "or bench_mode==35" on line 1.
+      # ===368-CLIGATE-COMMENT-END===
+      # ===369-CLIGATE-COMMENT-BEGIN===
+      # 369: bench_mode==36 (the new mem-probe mode) added here too,
+      # same lesson applied preemptively. The next 3 lines are
+      # unchanged except the added "or bench_mode==36" on line 1.
+      # ===369-CLIGATE-COMMENT-END===
+      if not (bench_mode==0 or bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36):
         print(f"[warning] bench_mode={bench_mode} was removed in 276 restore274/coretrim; using 0")
         bench_mode=0
 
@@ -6013,7 +6317,25 @@ def main()->None:
     # lines are unchanged from 356/357/360 except the added
     # "or bench_mode==32" on line 1.
     # ===361-PRESETGATE-COMMENT-END===
-    if bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31 or bench_mode==32:
+    # ===365-PRESETGATE-COMMENT-BEGIN===
+    # 365: bench_mode==33 added here too, same reasoning as 361's
+    # preset_queens gate fix. The next 6 lines are unchanged from
+    # 356/357/360/361/362/363/364 except the added "or bench_mode==33"
+    # on line 1.
+    # ===365-PRESETGATE-COMMENT-END===
+    # ===366-PRESETGATE-COMMENT-BEGIN===
+    # 366: bench_mode==34 added here too. The next 6 lines are
+    # unchanged except the added "or bench_mode==34" on line 1.
+    # ===366-PRESETGATE-COMMENT-END===
+    # ===368-PRESETGATE-COMMENT-BEGIN===
+    # 368: bench_mode==35 added here too. The next 6 lines are
+    # unchanged except the added "or bench_mode==35" on line 1.
+    # ===368-PRESETGATE-COMMENT-END===
+    # ===369-PRESETGATE-COMMENT-BEGIN===
+    # 369: bench_mode==36 added here too. The next 6 lines are
+    # unchanged except the added "or bench_mode==36" on line 1.
+    # ===369-PRESETGATE-COMMENT-END===
+    if bench_mode==11 or bench_mode==28 or bench_mode==29 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36:
       preset_queens_arg=requested_preset_arg
     else:
       if requested_preset_arg!=5:
@@ -6050,6 +6372,16 @@ def main()->None:
           split_probe_chunk_list_spec=sys.argv[15]
         if argc >= 17:
           broadmark_tail_variant=int(sys.argv[16])
+
+    # ===369-ARGPARSE-INSERT-BEGIN===
+    # 369: bench_mode==36 (mem-probe) reuses the same argv[13] slot
+    # 30 uses for debug_chunk_start -- unambiguous since this slot is
+    # only read when bench_mode is one of 28/29/30/31 above, or 36
+    # here; the two are mutually exclusive per invocation.
+    if bench_mode==36:
+      if argc >= 14:
+        record_limit_arg=int(sys.argv[13])
+    # ===369-ARGPARSE-INSERT-END===
 
   FUNCID_REORDER_V2_WINDOW_MULT=reorder_window_mult
   FUNCID_REORDER_V2_PHASE_JUMP=reorder_phase_jump
@@ -6205,6 +6537,85 @@ def main()->None:
       print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    soa-ref-dump-only")
       continue
     # ===361-DISPATCH-INSERT-END===
+
+    # ===365-DISPATCH-INSERT-BEGIN===
+    # 365: single-shot (non-chunked) N=21 GPU run, mirroring 364's C
+    # host runner protocol exactly (see exec_solutions_gpu_single_shot
+    # above). Resolves the same stream bin path 361/362/363/364 all
+    # use (no reorder pipeline touched -- broadmarktail/chunkshape148/
+    # funcid_reorder are unchanged and unused by this mode, matching
+    # 364's C runner which also reads the raw, pre-reorder stream bin).
+    if use_gpu and N>=21 and bench_mode==33:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      total,kernel_elapsed_ms=exec_solutions_gpu_single_shot(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[single-shot-done] N={N} src_bin={stream_fname} total={total} kernel_elapsed_ms={kernel_elapsed_ms}")
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    single-shot")
+      continue
+    # ===365-DISPATCH-INSERT-END===
+
+    # ===366-DISPATCH-INSERT-BEGIN===
+    # 366: maxd-check-only mode, no kernel launch. Resolves/generates
+    # the constellation bin for this N (via the unchanged
+    # ensure_constellations_bin_stream(), which already supports
+    # arbitrary N -- select_dynamic_preset_queens() already handles
+    # N up to 27), then reports required_maxd/selected_maxd so it can
+    # be determined BEFORE committing to porting kernel_dfs_iter_gpu_
+    # maxd16/18/20/21 to C whether N=22-26 actually need them, or fall
+    # outside maxd<=21 entirely (in which case even the ORIGINAL Codon
+    # kernels do not support that N, a separate and bigger question
+    # from the C-port project in item 6).
+    if use_gpu and N>=21 and bench_mode==34:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      records,required_maxd,selected_maxd=check_required_maxd_for_N(N,stream_fname,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[maxd-check-done] N={N} src_bin={stream_fname} records={records} required_maxd={required_maxd} selected_maxd={selected_maxd}")
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    maxd-check-only")
+      continue
+    # ===366-DISPATCH-INSERT-END===
+
+    # ===368-DISPATCH-INSERT-BEGIN===
+    # 368: DIAGNOSTIC-ONLY mode. Does not call check_required_maxd_
+    # for_N() (bench_mode==34, still intact above) -- calls the
+    # bounds-safe parallel copy check_required_maxd_for_N_diag()
+    # instead, to survey the fu range meta_next is indexed with and
+    # confirm/refute the out-of-bounds hypothesis for N=22's real-
+    # hardware segfault, without crashing.
+    if use_gpu and N>=21 and bench_mode==35:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      stats:MaxdDiagStats=check_required_maxd_for_N_diag(N,stream_fname,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[maxd-diag-done] N={N} src_bin={stream_fname} records={stats.tasks_scanned} fu_min={stats.fu_min} fu_max={stats.fu_max} "
+            f"oob_count={stats.oob_count} first_oob_task_index={stats.oob_task_index} first_oob_fu={stats.oob_fu} "
+            f"first_oob_ctrl0={int(stats.oob_ctrl0)} first_oob_markctrl={int(stats.oob_markctrl)}")
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    maxd-diag-only")
+      continue
+    # ===368-DISPATCH-INSERT-END===
+
+    # ===369-DISPATCH-INSERT-BEGIN===
+    # 369: DIAGNOSTIC-ONLY mode. Instruments the shared, unmodified
+    # bin-load path (count_constellations_bin_records ->
+    # read_constellations_bin_range -> build_soa_for_range) -- the
+    # exact code both 366/bench_mode=34 and 368/bench_mode=35 crashed
+    # inside, at the identical instruction address, before ever
+    # reaching schedule_depth_for_task(_diag) -- with VmHWM (peak RSS)
+    # checkpoints, and exposes record_limit_arg as a CLI-controlled
+    # variable so a validation-harness sweep can locate the memory
+    # threshold on real N=22 data without guessing.
+    if use_gpu and N>=21 and bench_mode==36:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      loaded,vm_start,vm_after_count,vm_after_read,vm_after_soa=probe_partial_load_memory(N,stream_fname,record_limit_arg,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      print(f"[mem-probe-done] N={N} src_bin={stream_fname} record_limit={record_limit_arg} loaded={loaded} "
+            f"vmhwm_start_kb={vm_start} vmhwm_after_count_kb={vm_after_count} vmhwm_after_read_kb={vm_after_read} vmhwm_after_soa_kb={vm_after_soa} "
+            f"delta_read_kb={vm_after_read-vm_after_count} delta_soa_kb={vm_after_soa-vm_after_read} delta_total_kb={vm_after_soa-vm_start}")
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    mem-probe-only")
+      continue
+    # ===369-DISPATCH-INSERT-END===
 
     if use_gpu and N>=21:
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
