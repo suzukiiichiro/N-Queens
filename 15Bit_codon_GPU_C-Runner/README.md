@@ -7318,6 +7318,7 @@ r3の直後、鈴木さんから「.cuファイルは内容が同じだとして
 `crunner_dispatch_table()`は`./388_kernel_maxd14`を正式に参照する。
 
 
+
 ## 389: CRunner入力ファイルの自動構築 + `.cu`のリネーム継続
 
 **位置づけ**: N=23のmaxd確認に進む前に、鈴木さんから2点いただいた
@@ -7363,10 +7364,280 @@ build]`のログ(soa_ref構築→フィルタ実行)が出た後、
 soa_ref_361.bin.maxd14only_363.bin`が生成され、以後のbare `-g`実行
 ではこの段階がスキップされ、N=22も高速に完走するはず。
 
-**結果**: (鈴木さんの実機実行後、ここに追記)
+**結果**: 2026-09-07、cudacodon実機で`bash 389_validate.sh`実行、
+`OK=15 FAIL=0`で`389 PASSED`。
 
-**この後**: 389がPASSしたら、当初の予定通りN=23の`bench_mode=34`
-maxd確認へ進む。N=23で万一`required_maxd`が14を超えていた場合、
-`crunner_dispatch_table()`へ新しいmaxdエントリを1行追加するだけで
-対応範囲が伸びる設計になっている(385で作った土台の実際の使いどころ)。
+- **N=21再構築の証明**: 既存ファイルを退避→`[crunner-input-build]`
+  でsoa_ref構築→フィルタ実行→`total=314666222712`(オラクル一致)、
+  `0:03:47.644`。**再構築後のファイルは退避しておいた元ファイルと
+  チェックサムが完全一致**(`n21_rebuilt_file_byte_identical_to_
+  original`)——`ensure_crunner_input_bin()`がN=22専用ではなく本当に
+  汎用であることが実機でも確認できた。
+- **N=22の初回自動構築**(本命): `[filter-done] records_in=28719035
+  records_kept(depth<=14)=28719035 records_dropped=0`——2,871万9,035
+  レコード全件がmaxd=14に収まることも同時に確認。
+  `total=2691008701644`(オラクル完全一致)、`0:34:27.132`
+  (見積もり通り約30分)。
+- 完了後、`constellations_N22_7.bin.soa_ref_361.bin.maxd14only_
+  363.bin`が生成され永続化。以後のbare `-g`実行ではこの段階が
+  スキップされ、N=22も高速に完走するはず。
+
+**確定**: N21/N22とも、CRunner入力ファイルの自動構築が実機で
+end-to-endに機能することを確認した。
+
+---
+
+## 参考: N=23のmaxd確認結果(次のステップへの引き継ぎ)
+
+389完了後、`./389Py_kernel_maxd14_final -g 23 23 32 484 1 0 7 34`
+(`bench_mode=34`、読み取り専用診断)を実行、以下の結果を得た:
+
+```
+[stream-build-summary] N=23 preset_queens=7 sc=18410 records=44271796 bin=constellations_N23_7.bin
+[maxd-check] N=23 records=44271796 required_maxd=15 selected_maxd=16 schedule_words=4 stack_bytes_per_thread=272 supported=yes has_c_port=no(codon-only)
+```
+
+**N=23は`required_maxd=15`(`selected_maxd=16`)——maxd14では収まらない
+ことが確定した。** `has_c_port=no(codon-only)`の通り、Codon側の
+`kernel_dfs_iter_gpu_maxd16`は既に存在するが、Cポート(364/388/389の
+`maxd14`版に相当するもの)はまだ無い。N=23対応には、maxd16のCUDA C
+ポートが必要になる——これがまさに今週の本題そのものである。
+
+
+# 390_maxd16_kernel_port_spec.md
+
+**位置づけ**: 設計のみ、コード変更なし。362_kernel_port_spec.mdが363/364の
+maxd14 Cポートに先行したのと同じ役割。
+
+**きっかけ**: 389の`bench_mode=34`をN=23の実データに対して実行した結果、
+`required_maxd=15`、`selected_maxd=16`、`has_c_port=no(codon-only)`と判明。
+N=23対応にはmaxd16の実行経路が必要だが、現状「本物」のカーネルは存在しない。
+
+**方針(鈴木さんのご指示)**: `389Py_kernel_maxd14_final.py`内に現存する
+`kernel_dfs_iter_gpu_maxd16`は、移植のベースにしない。これは元々のmaxd14
+カーネル作成時に、同一内容を別名でコピーしただけのものであり、その後maxd14が
+受けた292〜352の最適化(grid-stride K-batching、u64パックスタック、
+上位ハーフ除去等)を一切反映していない。以後一度も更新されていない。
+maxd16の正しいベースは**現行の**maxd14カーネル(993〜1309行目)であり、
+depth=16で本当に必要な箇所だけを変更する。
+
+---
+
+## 1. maxd14→maxd16で実際に変更が必要な箇所
+
+`kernel_dfs_iter_gpu_maxd14`の構造上の要素を、16段のスケジュール連鎖に
+対して1つずつ検証した。3つの変更候補のうち2つは**変更不要**、1つだけが
+実際に変更を要する。
+
+### 1a. スケジュールニブルレジスタ(`schedule_lo`/`schedule_hi`)—変更不要
+
+precomputeループは、スケジュールの深さ1段あたり4bitの`frame_nibble`
+(3bitの`block_code` + 1bitの`fcv`)を、2つの`u32`レジスタに詰め込む:
+
+```python
+if schedule_depth<8:
+  schedule_lo|=frame_nibble<<u32(schedule_depth*4)
+else:
+  schedule_hi|=frame_nibble<<u32((schedule_depth-8)*4)
+```
+
+u32×2 = 64bit = ちょうど**16**個の4bitニブル分(深さ0〜15)。maxd14では
+スロット0〜13しか使わない(16個中14個使用、`schedule_hi`の上位2bitが
+未使用のまま余る)。maxd16ではスロット0〜15を使う——**16個中16個、
+余りもオーバーフローもちょうどゼロ**。`<8`/`>=8`の分岐は、深さ16を正しく
+カバーするのに一切の変更を要しない。
+
+これは`SCHED_WORDS14:Static[int]=0`とそのコメント(「MAXD14はスカラーの
+u32ニブルスケジュールフィールドのままで、ローカルu32スケジュール配列は
+使わない」)がそのままmaxd16にも当てはまる理由でもある。maxd18になって
+初めて3本目のレジスタが必要になる(18>16スロット)はずで、これは
+`SCHED_WORDS18=5`が実際にゼロでない値を持っていることとも整合する
+(そちらのカーネルは今回の対象外)。
+
+**これは、既存の`packed_schedule_words_for_maxd(16) -> 4`という値が、
+今回の設計には当てはまらないことを直接意味する。** この値(および結果と
+しての`packed_stack_bytes_per_thread(16) -> 272`)は、古い方の現存
+`kernel_dfs_iter_gpu_maxd16`の実際のレイアウトに合わせて計算されたものと
+見られる(1深さあたり8bitオペコード、1 wordに4オペコードをpack、16深さ
+÷4=4 word——このkernelの`packed_schedule`配列と正確に一致する)。
+正しい数値については3節を参照。
+
+### 1b. `child_jmark_mask` / `terminal_parent_depth` / `terminal_is_base14`—変更不要
+
+これらはスカラー(`child_jmark_mask`のみビットマスクだが、深さ1つに
+つき1bit)であり、深さごとのペアではない。これは深さに依存せず正しい:
+
+- `child_jmark_mask`は深さごとに1bitだけあれば足りる(その深さの親で
+  jmarkに当たったか否か)——`u32`は既に32bit持っているので、深さ16
+  (実際には深さ32まで)を変更なしでカバーできる。
+- `terminal_parent_depth`/`terminal_is_base14`は、それぞれ常に**1つ**の
+  値しか保持しない。スケジュールprecomputeループは単一の線形な歩みであり、
+  `frame_action>=2`で`while True:`ループを即座に抜けるため、連鎖がどれだけ
+  深くても、タスクごとに構造的に終端点はちょうど1つしか存在しない。
+
+### 1c. 明示DFSスタック(`stack=__array__[u64](MAXD14_ANCESTOR*2)`)—ここだけ本当に変更が要る
+
+`MAXD14_ANCESTOR:Static[int]=13`(`MAXD14:Static[int]=14`に対して)——
+つまり祖先数 = maxd − 1。これは、明示スタックが同時に保持すべき
+バックトラック地点の数を表す:現在展開中の最深レベル自体はpushされず、
+まだ未探索の`avail`ビットが残っている、それより浅い最大`(maxd-1)`個の
+レベルだけがpushされる。
+
+maxd16の場合: **`MAXD16_ANCESTOR = 15`**、スタックサイズ
+`__array__[u64](30)`(30×8バイト=240バイト/スレッド、maxd14の208バイト
+に対して)。
+
+push/pop周りの他のロジック(`ld|rd`・`col|avail`のu64ペア詰め込み、
+`save_sp`/`stack_ptr`の管理、packされた`avail`ワードの上位ビットに
+埋め込まれた深さ情報)は、いずれも祖先数を`13`と決め打ちしておらず、
+既に`stack_ptr`/`save_sp`という汎用のカウンタとして書かれている。
+
+---
+
+## 2. それ以外はすべてそのまま流用可能
+
+5つのマスク定数(`IS_BASE_MASK`、`IS_JMARK_MASK`、`IS_MARK_MASK`、
+`IS_P5_MASK`、`SEL2_MASK`)と6つのオペコード導出定数
+(`BLOCK_CODE_B*_MASK`、`OP_*_MASK`)は、いずれもスケジュールグラフの
+符号化そのものの構造的性質(どの`funcid`カテゴリが存在し、どう遷移するか)
+であり、深さ上限の性質ではない。現存の(古い)`kernel_dfs_iter_gpu_
+maxd16`も、この11個すべてについて**同一の**値を使っており、これは
+これらが深さに依存しないことの独立した裏付けになっている
+(この文書自身の推論だけに頼っているわけではない)。
+
+grid-stride K-batchingループ(`while idx<m: ... idx+=stride`)、
+ルートフレームのprecompute〜dispatch部分全体(`root_action` 0/1/2/3の
+処理)、メインの反復DFSループの制御フローは、スタックサイズ定数(1c)と
+関数/カーネル名以外は無変更のままコピーする。
+
+---
+
+## 3. サイズ計算の訂正案(maxd16の分のみ、既存の式を置き換える)
+
+| | 現状の式(389以前) | この文書の提案 |
+|---|---:|---:|
+| `packed_schedule_words_for_maxd(16)` | 4 | **0** |
+| `packed_stack_bytes_per_thread(16)` | 272 | **240**(`15*2*8`) |
+
+`packed_stack_bytes_per_thread()`の一般式(`selected_maxd*16+words*4`)は、
+恐らく*古い方*の`kernel_dfs_iter_gpu_maxd16`のレイアウトに合わせて書かれた
+もの(`ld[16]`/`rd[16]`/`col[16]`/`avail[16]`という別々のu32配列
+=`16*4*4=256`バイト、272とは完全一致しないが近い——「272」の正確な出所は
+本文書では完全には再現できていない)。今回設計するカーネルはそのレイアウトを
+使わないため、この式の`maxd==16`分岐は実装確認後に240へ更新する必要がある。
+**`maxd==14`分岐(208、正確)と`maxd>=18`分岐はこの文書の対象外であり、
+別途の根拠なしに変更すべきではない**。
+
+**解決済み**: `389Py_kernel_maxd14_final.py`内でこの2関数が呼ばれている
+箇所を全てgrepしたところ、4箇所すべてが`print(f"[maxd-dispatch]...")`
+または`[maxd-check]`の診断ログ出力の中だけだった(2931・2939・5800・
+6176行目)。どちらの関数の戻り値も、実際のGPUメモリ確保・カーネル起動
+パラメータ・配列サイズには一切使われていない。**どちらも表示専用**であり、
+この節の表の通りに`maxd==16`分岐を修正しても、稼働中のカーネルへの
+リスクはゼロ。
+
+---
+
+## 4. カーネルシグネチャ案
+
+`kernel_dfs_iter_gpu_maxd14`のシグネチャと機械的に同一、引数変更なし:
+
+```python
+@gpu.kernel
+def kernel_dfs_iter_gpu_maxd16(
+    ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
+    markctrl_arr:Ptr[u32],w_lo_arr:Ptr[u32],
+    meta_next:Ptr[u8],
+    results:Ptr[u64],
+    m:int,board_mask:u32,
+    n3:u32,n4:u32,
+    stride:int,
+)->None:
+```
+
+これは同名の既存(古い)関数を**置き換える**(死んだコードとして残さず削除)。
+`launch_kernel_dfs_iter_gpu_static_maxd()`の既存`if selected_maxd==16:`
+ディスパッチ分岐(既に存在し、CLI/ディスパッチ機構に既に配線済み)は、
+呼び出し先のカーネル本体がこの新実装に一致する限り、変更不要。
+
+---
+
+## 5. 事前予測(実装前に記録、プロジェクトの慣例通り)
+
+- 新しいmaxd16カーネルをN=23の実データ(44,271,796レコード、389自身の
+  実機`bench_mode=34`実行で確認済み)に対して実行すると、
+  `total=24233937684440`——N=23の公表オラクル値(このファイル自身の
+  `expected[]`配列のindex23に既に存在)になる、と予測する。
+- `stack_bytes_per_thread=240`(272ではなく)になる、3節の通り修正した
+  場合(表示専用であることは確認済みなので安全)。
+- 11個の深さ非依存マスク/オペコード定数はいずれも変更不要、と予測する。
+  もし実機実行でこれらのいずれかを変更しないと正しい合計値が出ない
+  場合、それはこの文書の核心的主張(2節)を反証するものであり、
+  単純な誤記と決めつける前に原因を調査すべきである。
+
+## 6. 直近の実装第一歩(対象内、低リスク)
+
+3節の未解決事項が解決した今、`packed_schedule_words_for_maxd(16)`
+(4→0)と`packed_stack_bytes_per_thread(16)`(272→240)の修正は、
+安全で独立した、単一変数の最初の一歩になる——純粋なログ出力の訂正で
+あり、カーネルや起動コードとは一切干渉しない。カーネルコードに触れる前に、
+これだけを先に実施・検証(静的チェック:N=23の`[maxd-check]`出力に
+新しい数値が出ることをgrepで確認)できる。「独立して検証可能な最小の
+一歩を先に」というプロジェクトの慣例に沿っている。
+
+## 7. この文書の対象外
+
+- CUDA Cポート本体(`391_kernel_maxd16.cu`相当、364自身のホストランナー
+  パターンを踏襲)——この設計がまずCodon側でN=23の実データに対して確認
+  された後の次のステップ(maxd14の363(Codon側の数値確認、既に事実上
+  証明済み)→364(Cポート+ホストランナー)という流れと同じ)。
+- 新しいmaxd16カーネル向けのCPU側クロス検証ハーネス(364自身の
+  `#ifndef __CUDACC__`のCPUテスト経路に相当するもの)。
+- `crunner_dispatch_table()`へのmaxd16エントリ登録——実際のCバイナリが
+  できてから。
+- N=23の4,427万レコード全件が、maxd14と同じgrid-stride単一起動モデルで
+  済むか(1節の分析からK-batchingがmaxd14固有のものではないことが
+  示されているので、済むはずと考えているが)、それともチャンク分割が
+  必要か——この規模での実機確認はまだ。
+
+## 390: maxd16カーネルの新規実装
+
+**位置づけ**: `390_maxd16_kernel_port_spec.md`(設計文書、日本語版)に
+基づく実装。設計文書のレビューをいただいた後、着手。
+
+**やったこと**:
+
+- ファイル内に現存していた`kernel_dfs_iter_gpu_maxd16`(maxd14作成時に
+  同一内容を別名でコピーしただけの、以後一度も更新されていない古い
+  世代の実装)を削除し、**現行の最適化済みmaxd14カーネルから機械的に
+  導出した新しい実装**に置き換えた。
+- **スクリプトで確認済み**: 新しいmaxd16カーネルの本体は、関数名と
+  定数1つ(`MAXD14_ANCESTOR`13→`MAXD16_ANCESTOR`15)以外、maxd14の
+  現行コードと**byte-identical**。設計文書の予測通り、
+  `schedule_lo`/`schedule_hi`のニブル詰め・`child_jmark_mask`・
+  `terminal_parent_depth`/`terminal_is_base14`・11個のマスク/オペコード
+  定数は無改造で済んだ。
+- `MAXD16_ANCESTOR:Static[int]=15`を新設。
+- `packed_schedule_words_for_maxd(16)`(4→0)・`packed_stack_bytes_per_
+  thread(16)`(272→240)を設計文書通り訂正(表示専用と確認済みなので
+  無リスク)。
+- **実装中に見つけた見落とし**: `launch_kernel_dfs_iter_gpu_static_
+  maxd()`の`selected_maxd==16`呼び出し箇所が`kbatch_stride`引数を
+  渡していなかった(旧カーネルにはgrid-strideループが無くこの引数を
+  取らなかったため)。新カーネルの新しいシグネチャに合わせて修正。
+  これはビルド失敗で気づいたのではなく、実装後にディスパッチャを
+  読み返して発見したもの——このリビジョンはまだ一度も実機Codonビルドを
+  通していないため、コンパイルエラーとして検出される保証はなかった。
+
+**まだ実機未確認**: このリビジョンのコードは、静的な分析とdiffによる
+証明のみで、**一度もビルド・実行していない**。
+
+**事前予測**: `bench_mode=33`(`exec_solutions_gpu_single_shot()`、既に
+maxd汎用設計、新規配線不要)をN=23の実データに対して実行すると、
+`[single-shot-maxd-dispatch]`で`selected_maxd=16`と表示され、
+`total=24233937684440`(N=23の公表オラクル、`expected[]`配列index23)
+になる、と予測する。もし合計値が違えば、設計文書2節の「depth非依存」
+という核心的主張の再検証が必要になる(単純な打ち間違いと決めつけない)。
+
+**結果**: (鈴木さんの実機実行後、ここに追記)
 

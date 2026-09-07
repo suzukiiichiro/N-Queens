@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 389 (2026-09-07)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 391 (2026-09-07)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -326,6 +326,55 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    済み、`crunner_dispatch_table()`も`./389_kernel_maxd14`へ更新)。
    **こちらはまだ実機未確認。**
 
+   **390(このリビジョン): maxd16カーネルの新規実装(390_maxd16_kernel_
+   port_spec.mdに基づく)**。ファイル内に現存していた`kernel_dfs_iter_
+   gpu_maxd16`(maxd14作成時に同一内容を別名でコピーしただけの、以後
+   一度も更新されていない古い世代の実装)を削除し、**現行の最適化済み
+   maxd14カーネルから導出した新しい実装**に置き換えた。スクリプトで
+   機械的に確認済み: 関数名と定数1つ(`MAXD14_ANCESTOR`13→
+   `MAXD16_ANCESTOR`15、明示スタックが208→240バイト/スレッド)以外は
+   maxd14の現行コードとbyte-identical。設計文書の分析通り、
+   `schedule_lo`/`schedule_hi`のニブル詰め、`child_jmark_mask`、
+   `terminal_parent_depth`/`terminal_is_base14`、11個のマスク/オペコード
+   定数はいずれもdepth=16まで無改造で対応できた。
+   `MAXD16_ANCESTOR:Static[int]=15`を新設。`packed_schedule_words_for_
+   maxd(16)`(4→0)・`packed_stack_bytes_per_thread(16)`(272→240)も
+   設計文書の通り訂正(表示専用であることを確認済みなので無リスク)。
+   `launch_kernel_dfs_iter_gpu_static_maxd()`の`selected_maxd==16`
+   呼び出し箇所に`kbatch_stride`引数が必要になった(旧カーネルには
+   grid-strideループが無くこの引数を取らなかった)ことに気づき、
+   併せて修正——これはビルド失敗ではなく、新カーネル実装後に
+   ディスパッチャを読み返して見つけたもの(このリビジョンはまだ実機
+   Codonビルドを一度も通していないため)。
+   **まだ実機未確認**。次のステップは`bench_mode=33`
+   (`exec_solutions_gpu_single_shot()`、既にmaxd汎用設計)をN=23の
+   実データに対して実行し、`total=24233937684440`
+   (このファイル自身の`expected[]`オラクル)と一致するか確認すること。
+
+   **391(このリビジョン): maxd16カーネルの段階的GPU-CPU突き合わせ**。
+   「N=23全件(4,427万レコード)は一度も検証していないカーネルに
+   数時間かけて賭ける形になるのでは」というご指摘を受け、いきなり
+   本番実行に進まず、**段階的に規模を上げながら都度報告する仕組み**を
+   追加した。
+   `process_one_task_maxd16_cpu()`を新設: `kernel_dfs_iter_gpu_maxd16`
+   (390)のループ本体から、**手作業ではなくPythonスクリプトで機械的に**
+   導出したスカラー・CPU専用・単一タスク版参照実装。grid-strideの
+   外枠(`tid`/`idx`/`stride`/`results[tid]`)を取り除き、4箇所の
+   早期終了(`idx+=stride; continue`)を直接`return`に置き換えただけで、
+   それ以外(内側2つの`while True:`ループ自身のbreak/continue含む)は
+   無変更。364自身の`process_one_task()`とその`__global__`カーネルの
+   関係と同じ(Cではなく Codon側、maxd14ではなくmaxd16という違いのみ)。
+   `maxd16_staged_gpu_cpu_xcheck()`を新設: 既定でレコード数
+   [10000, 50000, 100000, 200000]を昇順に実行し、**各段階ごとに
+   `[maxd16-xcheck]`の結果行(GPU合計・CPU合計・一致可否・所要時間)を
+   出力**してから次の段階へ進む。不一致があれば即座に停止し、それより
+   大きい段階には進まない。段階ごとに自然なCtrl+Cのタイミングができ、
+   途中で中断しても進捗が残る。
+   新設`bench_mode=38`として配線(CLIGATE/PRESETGATE/DISPATCH-INSERT、
+   これまでの新モード追加と同じパターン)。
+   **まだ実機未確認**——390のカーネル自体も391のこの仕組みも、
+   このファイルの実機コンパイル・実行はまだ一度も通っていない。
+
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
    328で分割した上位u32配列は全要素が恒等的に0であった。351でこれを
@@ -465,15 +514,6 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 
 # GPU実行
 stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
-
-
-NQ_CRunner$ codon build -release 370Py_mem_probe_v2.py
-NQ_CRunner$ ./367_safe_run_wrapper.sh -- ./370Py_mem_probe_v2 -g 22 22 32 484 1 0 7 33 3 7 0 0 1 2 2048 9
-22:     2691008701644                0          0:32:43.182
-
-# 前準備
-# 363のフィルタツールで絞り込みファイルを再生成する必要があります:
-python3 363_filter_maxd14_only.py constellations_N21_6.bin.soa_ref_361.bin constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin
 
 
 2026年  9月  7日 月曜日 15:31:18 JST
@@ -806,6 +846,10 @@ from datetime import datetime
 
 MAXD14:Static[int]=14
 MAXD14_ANCESTOR:Static[int]=13
+# 390: ancestors = maxd - 1 (see 390_maxd16_kernel_port_spec.md section
+# 1c) -- the explicit DFS stack in kernel_dfs_iter_gpu_maxd16 needs to
+# hold at most (maxd-1) simultaneous backtrack points.
+MAXD16_ANCESTOR:Static[int]=15
 MAXD16:Static[int]=16
 MAXD18:Static[int]=18
 MAXD20:Static[int]=20
@@ -824,7 +868,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="389 AUTOBUILD-CRUNNER-INPUT: closes the gap Suzuki hit directly -- N=22's maxd14-filtered CRunner input was never built (N=22 was historically validated via bench_mode=33's Codon-internal single-shot, which reads the raw stream bin, not this filtered format), so bare -g stopped at N=22 with [crunner-input-missing] every run. Added ensure_crunner_input_bin(), which runs the full 2-stage pipeline 385 deliberately left manual: dump_soa_reference_c_port() [361, Codon-native] then the EXTERNAL 363_filter_maxd14_only.py script [os.system, the 384-proven mechanism], each stage skipped if its output already exists and is valid. bench_mode==37's dispatch block now calls this before giving up, and only reports crunner-input-missing if the auto-build itself fails (e.g. the external script is absent). Also, per Suzuki's now-standing per-revision-self-contained policy (388 r4), renamed 388_kernel_maxd14.cu to 389_kernel_maxd14.cu (pure rename, code region byte-identical by diff, sha256 unchanged) and updated crunner_dispatch_table() accordingly -- NOT YET real-hardware built under this filename."
+VERSION_TAG:str="391 MAXD16-STAGED-XCHECK: before committing GPU time to N=23's untested full 44.27M-record run (Suzuki flagged the real risk of a multi-hour run on a never-before-exercised kernel), added a staged, ascending-record-count GPU-vs-CPU cross-check. New process_one_task_maxd16_cpu(): a scalar, CPU-only, single-task reference derived MECHANICALLY (via a Python script, not hand-transcribed) from kernel_dfs_iter_gpu_maxd16's (390) loop body, by stripping the grid-stride wrapper and converting its four early-exit continue sites to direct returns -- everything else, including both inner while-True loops' own break/continue semantics, is untouched. New maxd16_staged_gpu_cpu_xcheck(): runs record_limits=[10000,50000,100000,200000] in ascending order by default, printing one [maxd16-xcheck] result line per stage (gpu_total vs cpu_total, independently computed) before proceeding to the next, larger stage -- giving a natural Ctrl-C point and visible progress between every stage, and stopping immediately on the first mismatch rather than wasting GPU time on a kernel already shown wrong. Wired as new bench_mode=38 (CLIGATE/PRESETGATE/DISPATCH-INSERT, same pattern as every prior new mode). NOT YET real-hardware verified -- this and 390's kernel itself are both still awaiting the first real compile+run of this file."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -961,8 +1005,16 @@ def select_static_maxd(required_maxd:int)->int:
 def packed_schedule_words_for_maxd(selected_maxd:int)->int:
   if selected_maxd==14:
     return 0
+  # 390: was 4 -- computed against the OLD, now-replaced maxd16 kernel's
+  # separate 8-bit-opcode packed_schedule array layout. The new maxd16
+  # kernel (390_maxd16_kernel_port_spec.md section 1a) reuses maxd14's
+  # own schedule_lo/schedule_hi register pair unchanged -- 2x u32 = 64
+  # bits = exactly 16 four-bit nibble slots, sufficient for depths 0..15
+  # with zero spare and zero overflow, so no separate device-memory
+  # schedule array is needed at all. Confirmed documentation-only (see
+  # spec section 3) before changing this value.
   if selected_maxd==16:
-    return 4
+    return 0
   if selected_maxd==18:
     return 5
   if selected_maxd==20:
@@ -974,6 +1026,16 @@ def packed_schedule_words_for_maxd(selected_maxd:int)->int:
 def packed_stack_bytes_per_thread(selected_maxd:int)->int:
   if selected_maxd==14:
     return 208
+  if selected_maxd==16:
+    # 390: was computed via the general formula below (selected_maxd*16,
+    # modeling the OLD maxd16 kernel's four separate MAXD16-sized u32
+    # arrays -- 16*4*4=256, close to but not exactly the old 272). The
+    # new maxd16 kernel (390_maxd16_kernel_port_spec.md section 1c) uses
+    # maxd14's own ancestor-counted packed-u64 stack instead:
+    # MAXD16_ANCESTOR(15)*2*8 bytes = 240. Special-cased here the same
+    # way maxd14's own 208 is, rather than trying to make the general
+    # formula below fit a design it was never written for.
+    return 240
   words:int=packed_schedule_words_for_maxd(selected_maxd)
   if words==0:
     return 0
@@ -1298,6 +1360,27 @@ def kernel_dfs_iter_gpu_maxd14(
       idx+=stride
     results[tid]=thread_total
 
+# ===390-MAXD16-BEGIN===
+# 390: kernel_dfs_iter_gpu_maxd16, REPLACING the stale copy that existed
+# here since before the 292-352 maxd14 optimization sequence (it was an
+# unmaintained duplicate of maxd14's ORIGINAL pre-optimization form, never
+# updated afterward -- see 390_maxd16_kernel_port_spec.md for the full
+# analysis). This new version is derived directly from the CURRENT
+# kernel_dfs_iter_gpu_maxd14 (992-1310, unchanged) with exactly one
+# structural change, per the spec's finding that everything else about
+# maxd14's design is depth-invariant up to depth 16:
+#   - the explicit DFS stack grows from MAXD14_ANCESTOR (13) to
+#     MAXD16_ANCESTOR (15) ancestors, i.e. from 208 to 240 bytes/thread.
+# Specifically NOT changed (per the spec's analysis, sections 1a/1b/2):
+#   - schedule_lo/schedule_hi packing (2x u32 = 64 bits = exactly 16
+#     four-bit nibble slots, already sufficient for depths 0..15)
+#   - child_jmark_mask / terminal_parent_depth / terminal_is_base14
+#     (scalar by construction, depth-independent)
+#   - all 11 mask/opcode constants (IS_BASE_MASK etc.) -- structural
+#     properties of the schedule-graph encoding, not of the depth limit
+#   - the grid-stride K-batching loop and overall control flow
+# Triggered by 389's real-hardware bench_mode=34 finding for N=23:
+# required_maxd=15, selected_maxd=16, has_c_port=no(codon-only).
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd16(
     ld_arr:Ptr[u32],rd_arr:Ptr[u32],col_arr:Ptr[u32],ctrl0_arr:Ptr[u32],free_arr:Ptr[u32],
@@ -1306,6 +1389,7 @@ def kernel_dfs_iter_gpu_maxd16(
     results:Ptr[u64],
     m:int,board_mask:u32,
     n3:u32,n4:u32,
+    stride:int,
 )->None:
     IS_BASE_MASK:u32=u32(69222408)
     IS_JMARK_MASK:u32=u32(4)
@@ -1324,34 +1408,364 @@ def kernel_dfs_iter_gpu_maxd16(
     OP_KN3_MASK:u32=u32(18)    # codes 1,4
     OP_KN4_MASK:u32=u32(8)     # code 3
 
-    ld=__array__[u32](MAXD16)
-    rd=__array__[u32](MAXD16)
-    col=__array__[u32](MAXD16)
-    avail=__array__[u32](MAXD16)
-    packed_schedule=__array__[u32](SCHED_WORDS16)
+    # 292: stack arrays are allocated once per GPU thread and reused across
+    # every constellation the thread processes in the grid-stride loop below.
+    # 294: pack 4x u32 into 2x u64 (ldrd/colav). 295: merge into single
+    # u64 array of size MAXD16_ANCESTOR*2 so push/pop accesses two adjacent
+    # words at indices save_sp*2 and save_sp*2+1, improving cache-line
+    # locality (both words land in same 128-bit cache line entry).
+    # stack[ptr]   = ldrd  (lo32:ld  | hi32:rd)  where ptr=stack_ptr
+    # stack[ptr+1] = colav (lo32:col | hi32:avail|(depth<<27))
+    # 296: stack_ptr maintained directly (=save_sp*2) to avoid multiply.
+    stack=__array__[u64](MAXD16_ANCESTOR*2)
     bm:u32=board_mask
-    i:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
-    if i>=m:return
+    tid:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
+    if tid>=stride:return
 
-    markctrl:u32=markctrl_arr[i]
+    # 292: grid-stride loop over K=ceil(m/stride) constellations per thread.
+    # stride == grid*block, i.e. the already-tuned 32x484 launch config is
+    # unchanged; only the number of constellations processed per thread grows.
+    thread_total:u64=u64(0)
+    idx:int=tid
+    while idx<m:
+      markctrl:u32=markctrl_arr[idx]
+      jmark:u32=markctrl&u32(31)
+      endm:u32=(markctrl>>u32(5))&u32(31)
+      mark1:u32=(markctrl>>u32(10))&u32(31)
+      mark2:u32=(markctrl>>u32(15))&u32(31)
+      total:u64=u64(0)
+
+      root_ld:u32=ld_arr[idx]
+      root_rd:u32=rd_arr[idx]
+      root_col:u32=col_arr[idx]
+      root_a:u32=free_arr[idx]&bm
+      if root_a==u32(0):
+        idx+=stride
+        continue
+
+      schedule_raw:u32=ctrl0_arr[idx]
+      schedule_depth:int=0
+      schedule_lo:u32=u32(0)
+      schedule_hi:u32=u32(0)
+      child_jmark_mask:u32=u32(0)
+      future_check_mask:u32=u32(0)
+      terminal_parent_depth:int=0
+      terminal_is_base14:u32=u32(0)
+      root_action:u32=u32(0)
+      while True:
+        schedule_fu:u32=schedule_raw&u32(31)
+        schedule_rowv:u32=(schedule_raw>>u32(5))&u32(31)
+
+        if ((IS_P5_MASK>>schedule_fu)&u32(1))!=u32(0):
+          if schedule_rowv==mark1:
+            schedule_fu=u32(meta_next[int(schedule_fu)])
+
+        frame_action:u32=u32(0)
+        frame_nibble:u32=u32(0)
+        frame_raw:u32=u32(0)
+        schedule_isbu:u32=(IS_BASE_MASK>>schedule_fu)&u32(1)
+        if schedule_isbu!=u32(0) and schedule_rowv==endm:
+          frame_action=u32(3) if schedule_fu==u32(14) else u32(2)
+        else:
+          schedule_ismu:u32=(IS_MARK_MASK>>schedule_fu)&u32(1)
+          schedule_block_code:u32=u32(0)
+          schedule_stepv:u32=u32(1)
+          schedule_use_futureu:u32=u32(1)-schedule_ismu
+          schedule_nextfidu:u32=schedule_fu
+
+          if schedule_ismu!=u32(0):
+            schedule_markv:u32=mark2 if ((SEL2_MASK>>schedule_fu)&u32(1))!=u32(0) else mark1
+            if schedule_rowv==schedule_markv:
+              schedule_block_code=(
+                ((BLOCK_CODE_B0_MASK>>schedule_fu)&u32(1))
+                |(((BLOCK_CODE_B1_MASK>>schedule_fu)&u32(1))<<u32(1))
+                |(((BLOCK_CODE_B2_MASK>>schedule_fu)&u32(1))<<u32(2))
+              )
+              schedule_stepv=u32(2)+((OP_STEP3_MASK>>schedule_block_code)&u32(1))
+              schedule_use_futureu=u32(0)
+              schedule_nextfidu=u32(meta_next[int(schedule_fu)])
+
+          schedule_isju:u32=(IS_JMARK_MASK>>schedule_fu)&u32(1)
+          if schedule_isju!=u32(0):
+            if schedule_rowv==jmark:
+              frame_action=u32(1)
+              schedule_nextfidu=u32(meta_next[int(schedule_fu)])
+
+          schedule_child_rowu:u32=schedule_rowv+schedule_stepv
+          schedule_fcvu:u32=u32(0)
+          if schedule_use_futureu!=u32(0) and schedule_child_rowu<endm:
+            schedule_fcvu=u32(1)
+          frame_nibble=schedule_block_code|(schedule_fcvu<<u32(3))
+          frame_raw=schedule_nextfidu|(schedule_child_rowu<<u32(5))
+
+        if schedule_depth==0:
+          root_action=frame_action
+        else:
+          parent_depth:int=schedule_depth-1
+          if frame_action==u32(1):
+            child_jmark_mask|=u32(1)<<u32(parent_depth)
+          elif frame_action>=u32(2):
+            terminal_parent_depth=parent_depth
+            terminal_is_base14=u32(1) if frame_action==u32(3) else u32(0)
+
+        if frame_action>=u32(2):
+          break
+
+        if schedule_fcvu!=u32(0):
+          future_check_mask|=u32(1)<<u32(schedule_depth)
+
+        if schedule_depth<8:
+          schedule_lo|=frame_nibble<<u32(schedule_depth*4)
+        else:
+          schedule_hi|=frame_nibble<<u32((schedule_depth-8)*4)
+        schedule_raw=frame_raw
+        schedule_depth+=1
+
+      if root_action==u32(2):
+        thread_total+=u64(w_lo_arr[idx])
+        idx+=stride
+        continue
+      if root_action==u32(3):
+        total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
+        thread_total+=total*u64(w_lo_arr[idx])
+        idx+=stride
+        continue
+      if root_action==u32(1):
+        root_a&=~u32(1)
+        if root_a==u32(0):
+          idx+=stride
+          continue
+        root_ld|=u32(1)
+
+      terminal_depth:int=terminal_parent_depth
+      terminal_base14:u32=terminal_is_base14
+
+      save_sp:u32=u32(0)
+      stack_ptr:int=0
+      cur_depth:int=0
+      cur_ld:u32=root_ld
+      cur_rd:u32=root_rd
+      cur_col:u32=root_col
+      cur_avail:u32=root_a
+
+      root_rest:u32=cur_avail&(cur_avail-u32(1))
+      root_second:u32=root_rest&(u32(0)-root_rest)
+      root_after_second:u32=root_rest^root_second
+
+      if root_after_second==u32(0):
+        root_first:u32=cur_avail&(u32(0)-cur_avail)
+        pr_nibble_op:u32=schedule_lo&u32(15)
+        pr_block_code:u32=pr_nibble_op&u32(7)
+        pr_bit:u32=root_first
+
+        pr_nld:u32=u32(0)
+        pr_nrd:u32=u32(0)
+        if pr_block_code!=u32(0):
+          pr_stepu:u32=u32(2)+((OP_STEP3_MASK>>pr_block_code)&u32(1))
+          pr_addvu:u32=(OP_ADD1_MASK>>pr_block_code)&u32(1)
+          pr_bLiu:u32=(
+            ((OP_BL1_MASK>>pr_block_code)&u32(1))
+            |(((OP_BL2_MASK>>pr_block_code)&u32(1))<<u32(1))
+          )
+          pr_ktu:u32=(
+            ((OP_KN3_MASK>>pr_block_code)&u32(1))
+            |(((OP_KN4_MASK>>pr_block_code)&u32(1))<<u32(1))
+          )
+          pr_bKu:u32=(n3&(u32(0)-(pr_ktu&u32(1))))|(n4&(u32(0)-(pr_ktu>>u32(1))))
+          pr_nld=((cur_ld|pr_bit)<<pr_stepu)|pr_addvu|pr_bLiu
+          pr_nrd=((cur_rd|pr_bit)>>pr_stepu)|pr_bKu
+        else:
+          pr_nld=(cur_ld|pr_bit)<<u32(1)
+          pr_nrd=(cur_rd|pr_bit)>>u32(1)
+        pr_ncol:u32=cur_col|pr_bit
+        pr_nf:u32=bm&~(pr_nld|pr_nrd|pr_ncol)
+        pr_descend:u32=u32(1)
+        if pr_nf==u32(0):
+          pr_descend=u32(0)
+        if pr_descend!=u32(0):
+          if future_check_mask!=u32(0):
+            if (pr_nibble_op&u32(8))!=u32(0):
+              if (bm&~((pr_nld<<u32(1))|(pr_nrd>>u32(1))|pr_ncol))==u32(0):
+                pr_descend=u32(0)
+
+        if pr_descend!=u32(0):
+          if terminal_depth==0:
+            if terminal_base14==u32(0):
+              total+=u64(1)
+            else:
+              total+=u64(1) if ((pr_nf&~u32(1))!=u32(0)) else u64(0)
+            pr_descend=u32(0)
+
+        if pr_descend!=u32(0):
+          pr_child_jmark:u32=child_jmark_mask&u32(1)
+          if pr_child_jmark!=u32(0):
+            pr_nf&=~u32(1)
+            if pr_nf==u32(0):
+              pr_descend=u32(0)
+            else:
+              pr_nld|=u32(1)
+
+        cur_avail=root_rest
+        if pr_descend!=u32(0):
+          if cur_avail!=u32(0):
+            stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+            stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+            stack_ptr+=2
+            save_sp+=u32(1)
+          cur_ld=pr_nld
+          cur_rd=pr_nrd
+          cur_col=pr_ncol
+          cur_avail=pr_nf
+          cur_depth=1
+
+      while True:
+        if cur_avail==u32(0):
+          if save_sp==u32(0):
+            break
+          save_sp-=u32(1)
+          stack_ptr-=2
+          packed_ldrd:u64=stack[stack_ptr]
+          packed_colav:u64=stack[stack_ptr+1]
+          cur_ld=u32(packed_ldrd)
+          cur_rd=u32(packed_ldrd>>u64(32))
+          cur_col=u32(packed_colav)
+          saved_avail:u32=u32(packed_colav>>u64(32))
+          cur_avail=saved_avail&bm
+          cur_depth=int(saved_avail>>u32(27))
+          continue
+
+        nibble_op:u32=u32(0)
+        if cur_depth<8:
+          nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
+        else:
+          nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
+        bit:u32=cur_avail&(u32(0)-cur_avail)
+        cur_avail=cur_avail^bit
+
+        # 291: keep 289 normal-default nld/nrd + ncol-only early, but delay
+        # block_code scalar creation to the special branch only.
+        # nf is still computed once after the branch; 288 nf-default is intentionally not used.
+        nld:u32=(cur_ld|bit)<<u32(1)
+        nrd:u32=(cur_rd|bit)>>u32(1)
+        ncol:u32=cur_col|bit
+        if (nibble_op&u32(7))!=u32(0):
+          block_code:u32=nibble_op&u32(7)
+          stepu:u32=u32(2)+((OP_STEP3_MASK>>block_code)&u32(1))
+          addvu:u32=(OP_ADD1_MASK>>block_code)&u32(1)
+          bLiu:u32=(
+            ((OP_BL1_MASK>>block_code)&u32(1))
+            |(((OP_BL2_MASK>>block_code)&u32(1))<<u32(1))
+          )
+          ktu:u32=(
+            ((OP_KN3_MASK>>block_code)&u32(1))
+            |(((OP_KN4_MASK>>block_code)&u32(1))<<u32(1))
+          )
+          bKu:u32=(n3&(u32(0)-(ktu&u32(1))))|(n4&(u32(0)-(ktu>>u32(1))))
+          nld=((cur_ld|bit)<<stepu)|addvu|bLiu
+          nrd=((cur_rd|bit)>>stepu)|bKu
+        nf:u32=bm&~(nld|nrd|ncol)
+        if nf==u32(0):
+          continue
+        if future_check_mask!=u32(0):
+          if (nibble_op&u32(8))!=u32(0):
+            if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
+              continue
+
+        if cur_depth==terminal_depth:
+          if terminal_base14==u32(0):
+            total+=u64(1)
+          else:
+            total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
+          continue
+
+        child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
+        if child_jmark!=u32(0):
+          nf&=~u32(1)
+          if nf==u32(0):
+            continue
+          nld|=u32(1)
+
+        next_depth:int=cur_depth+1
+        if cur_avail!=u32(0):
+          stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+          stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+          stack_ptr+=2
+          save_sp+=u32(1)
+        cur_ld=nld
+        cur_rd=nrd
+        cur_col=ncol
+        cur_avail=nf
+        cur_depth=next_depth
+      thread_total+=total*u64(w_lo_arr[idx])
+      idx+=stride
+    results[tid]=thread_total
+
+# ===391-CPU-XCHECK-BEGIN===
+# 391: process_one_task_maxd16_cpu -- a scalar, CPU-only, single-task
+# reference implementation of the EXACT same bit-packed algorithm as
+# kernel_dfs_iter_gpu_maxd16 (390), for cross-validation before
+# committing GPU time to N=23's full 44.27M-record run. Mechanically
+# derived from kernel_dfs_iter_gpu_maxd16's loop body via a Python
+# script (not hand-transcribed): the grid-stride wrapper (tid/idx/
+# stride/results[tid]) was stripped and its four early-exit
+# "idx+=stride; continue" sites became direct "return <value>"
+# statements; every other line -- including the two inner `while True:`
+# loops' own break/continue semantics -- is untouched. This is the same
+# relationship 364's own process_one_task() has to its __global__
+# kernel (see 364_kernel_maxd14.cu's header), just on the Codon side
+# instead of C, and for maxd16 instead of maxd14.
+#
+# Deliberately independent of kernel_dfs_iter_gpu_maxd16: takes plain
+# scalar u32 arguments (not Ptr[u32] arrays) and meta_next as a plain
+# List[u8] (not Ptr[u8]), so nothing about calling this function
+# exercises any GPU-specific code path at all.
+def process_one_task_maxd16_cpu(
+    ld0:u32,rd0:u32,col0:u32,ctrl0_0:u32,free0:u32,markctrl0:u32,w_lo0:u32,
+    meta_next:List[u8],
+    board_mask:u32,n3:u32,n4:u32,
+)->u64:
+    IS_BASE_MASK:u32=u32(69222408)
+    IS_JMARK_MASK:u32=u32(4)
+    IS_MARK_MASK:u32=u32(199209203)
+    IS_P5_MASK:u32=u32(3840)
+    SEL2_MASK:u32=u32(34742338)
+
+    BLOCK_CODE_B0_MASK:u32=u32(173707345)
+    BLOCK_CODE_B1_MASK:u32=u32(12689458)
+    BLOCK_CODE_B2_MASK:u32=u32(18088064)
+
+    OP_STEP3_MASK:u32=u32(24)  # codes 3,4
+    OP_ADD1_MASK:u32=u32(32)   # code 5
+    OP_BL1_MASK:u32=u32(12)    # codes 2,3
+    OP_BL2_MASK:u32=u32(16)    # code 4
+    OP_KN3_MASK:u32=u32(18)    # codes 1,4
+    OP_KN4_MASK:u32=u32(8)     # code 3
+
+    stack=__array__[u64](MAXD16_ANCESTOR*2)
+    bm:u32=board_mask
+
+    markctrl:u32=markctrl0
     jmark:u32=markctrl&u32(31)
     endm:u32=(markctrl>>u32(5))&u32(31)
     mark1:u32=(markctrl>>u32(10))&u32(31)
     mark2:u32=(markctrl>>u32(15))&u32(31)
     total:u64=u64(0)
 
-    root_ld:u32=ld_arr[i]
-    root_rd:u32=rd_arr[i]
-    root_col:u32=col_arr[i]
-    root_a:u32=free_arr[i]&bm
+    root_ld:u32=ld0
+    root_rd:u32=rd0
+    root_col:u32=col0
+    root_a:u32=free0&bm
     if root_a==u32(0):
-      results[i]=u64(0)
-      return
+      return u64(0)
 
-    schedule_raw:u32=ctrl0_arr[i]
+    schedule_raw:u32=ctrl0_0
     schedule_depth:int=0
-    pack_word:u32=u32(0)
-    pack_word_index:int=0
+    schedule_lo:u32=u32(0)
+    schedule_hi:u32=u32(0)
+    child_jmark_mask:u32=u32(0)
+    future_check_mask:u32=u32(0)
+    terminal_parent_depth:int=0
+    terminal_is_base14:u32=u32(0)
     root_action:u32=u32(0)
     while True:
       schedule_fu:u32=schedule_raw&u32(31)
@@ -1362,7 +1776,7 @@ def kernel_dfs_iter_gpu_maxd16(
           schedule_fu=u32(meta_next[int(schedule_fu)])
 
       frame_action:u32=u32(0)
-      frame_opcode:u32=u32(0)
+      frame_nibble:u32=u32(0)
       frame_raw:u32=u32(0)
       schedule_isbu:u32=(IS_BASE_MASK>>schedule_fu)&u32(1)
       if schedule_isbu!=u32(0) and schedule_rowv==endm:
@@ -1396,67 +1810,156 @@ def kernel_dfs_iter_gpu_maxd16(
         schedule_fcvu:u32=u32(0)
         if schedule_use_futureu!=u32(0) and schedule_child_rowu<endm:
           schedule_fcvu=u32(1)
-        frame_opcode=schedule_block_code|(schedule_fcvu<<u32(3))
+        frame_nibble=schedule_block_code|(schedule_fcvu<<u32(3))
         frame_raw=schedule_nextfidu|(schedule_child_rowu<<u32(5))
 
       if schedule_depth==0:
         root_action=frame_action
       else:
-        parent_lane:int=(schedule_depth-1)&3
-        parent_action_shift:u32=u32(parent_lane*8+4)
-        pack_word|=frame_action<<parent_action_shift
-        if (schedule_depth&3)==0:
-          packed_schedule[pack_word_index]=pack_word
-          pack_word_index+=1
-          pack_word=u32(0)
+        parent_depth:int=schedule_depth-1
+        if frame_action==u32(1):
+          child_jmark_mask|=u32(1)<<u32(parent_depth)
+        elif frame_action>=u32(2):
+          terminal_parent_depth=parent_depth
+          terminal_is_base14=u32(1) if frame_action==u32(3) else u32(0)
 
       if frame_action>=u32(2):
-        if schedule_depth>0 and (schedule_depth&3)!=0:
-          packed_schedule[pack_word_index]=pack_word
         break
 
-      opcode_shift:u32=u32((schedule_depth&3)*8)
-      pack_word|=frame_opcode<<opcode_shift
+      if schedule_fcvu!=u32(0):
+        future_check_mask|=u32(1)<<u32(schedule_depth)
+
+      if schedule_depth<8:
+        schedule_lo|=frame_nibble<<u32(schedule_depth*4)
+      else:
+        schedule_hi|=frame_nibble<<u32((schedule_depth-8)*4)
       schedule_raw=frame_raw
       schedule_depth+=1
 
     if root_action==u32(2):
-      results[i]=u64(w_lo_arr[i])
-      return
+      return u64(w_lo0)
     if root_action==u32(3):
       total+=u64(1) if ((root_a&~u32(1))!=u32(0)) else u64(0)
-      results[i]=total*u64(w_lo_arr[i])
-      return
+      return total*u64(w_lo0)
     if root_action==u32(1):
       root_a&=~u32(1)
       if root_a==u32(0):
-        results[i]=u64(0)
-        return
+        return u64(0)
       root_ld|=u32(1)
 
-    sp:int=0
-    ld[0]=root_ld
-    rd[0]=root_rd
-    col[0]=root_col
-    avail[0]=root_a
+    terminal_depth:int=terminal_parent_depth
+    terminal_base14:u32=terminal_is_base14
+
+    save_sp:u32=u32(0)
+    stack_ptr:int=0
+    cur_depth:int=0
+    cur_ld:u32=root_ld
+    cur_rd:u32=root_rd
+    cur_col:u32=root_col
+    cur_avail:u32=root_a
+
+    root_rest:u32=cur_avail&(cur_avail-u32(1))
+    root_second:u32=root_rest&(u32(0)-root_rest)
+    root_after_second:u32=root_rest^root_second
+
+    if root_after_second==u32(0):
+      root_first:u32=cur_avail&(u32(0)-cur_avail)
+      pr_nibble_op:u32=schedule_lo&u32(15)
+      pr_block_code:u32=pr_nibble_op&u32(7)
+      pr_bit:u32=root_first
+
+      pr_nld:u32=u32(0)
+      pr_nrd:u32=u32(0)
+      if pr_block_code!=u32(0):
+        pr_stepu:u32=u32(2)+((OP_STEP3_MASK>>pr_block_code)&u32(1))
+        pr_addvu:u32=(OP_ADD1_MASK>>pr_block_code)&u32(1)
+        pr_bLiu:u32=(
+          ((OP_BL1_MASK>>pr_block_code)&u32(1))
+          |(((OP_BL2_MASK>>pr_block_code)&u32(1))<<u32(1))
+        )
+        pr_ktu:u32=(
+          ((OP_KN3_MASK>>pr_block_code)&u32(1))
+          |(((OP_KN4_MASK>>pr_block_code)&u32(1))<<u32(1))
+        )
+        pr_bKu:u32=(n3&(u32(0)-(pr_ktu&u32(1))))|(n4&(u32(0)-(pr_ktu>>u32(1))))
+        pr_nld=((cur_ld|pr_bit)<<pr_stepu)|pr_addvu|pr_bLiu
+        pr_nrd=((cur_rd|pr_bit)>>pr_stepu)|pr_bKu
+      else:
+        pr_nld=(cur_ld|pr_bit)<<u32(1)
+        pr_nrd=(cur_rd|pr_bit)>>u32(1)
+      pr_ncol:u32=cur_col|pr_bit
+      pr_nf:u32=bm&~(pr_nld|pr_nrd|pr_ncol)
+      pr_descend:u32=u32(1)
+      if pr_nf==u32(0):
+        pr_descend=u32(0)
+      if pr_descend!=u32(0):
+        if future_check_mask!=u32(0):
+          if (pr_nibble_op&u32(8))!=u32(0):
+            if (bm&~((pr_nld<<u32(1))|(pr_nrd>>u32(1))|pr_ncol))==u32(0):
+              pr_descend=u32(0)
+
+      if pr_descend!=u32(0):
+        if terminal_depth==0:
+          if terminal_base14==u32(0):
+            total+=u64(1)
+          else:
+            total+=u64(1) if ((pr_nf&~u32(1))!=u32(0)) else u64(0)
+          pr_descend=u32(0)
+
+      if pr_descend!=u32(0):
+        pr_child_jmark:u32=child_jmark_mask&u32(1)
+        if pr_child_jmark!=u32(0):
+          pr_nf&=~u32(1)
+          if pr_nf==u32(0):
+            pr_descend=u32(0)
+          else:
+            pr_nld|=u32(1)
+
+      cur_avail=root_rest
+      if pr_descend!=u32(0):
+        if cur_avail!=u32(0):
+          stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+          stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+          stack_ptr+=2
+          save_sp+=u32(1)
+        cur_ld=pr_nld
+        cur_rd=pr_nrd
+        cur_col=pr_ncol
+        cur_avail=pr_nf
+        cur_depth=1
 
     while True:
-      a:u32=avail[sp]
-      if a==u32(0):
-        if sp==0:
+      if cur_avail==u32(0):
+        if save_sp==u32(0):
           break
-        sp-=1
+        save_sp-=u32(1)
+        stack_ptr-=2
+        packed_ldrd:u64=stack[stack_ptr]
+        packed_colav:u64=stack[stack_ptr+1]
+        cur_ld=u32(packed_ldrd)
+        cur_rd=u32(packed_ldrd>>u64(32))
+        cur_col=u32(packed_colav)
+        saved_avail:u32=u32(packed_colav>>u64(32))
+        cur_avail=saved_avail&bm
+        cur_depth=int(saved_avail>>u32(27))
         continue
 
-      opcode_word:u32=packed_schedule[sp>>2]
-      opcode:u32=(opcode_word>>u32((sp&3)*8))&u32(255)
-      block_code:u32=opcode&u32(7)
-      bit:u32=a&(u32(0)-a)
-      avail[sp]=a^bit
+      nibble_op:u32=u32(0)
+      if cur_depth<8:
+        nibble_op=(schedule_lo>>u32(cur_depth*4))&u32(15)
+      else:
+        nibble_op=(schedule_hi>>u32((cur_depth-8)*4))&u32(15)
+      bit:u32=cur_avail&(u32(0)-cur_avail)
+      cur_avail=cur_avail^bit
 
-      nld:u32=u32(0)
-      nrd:u32=u32(0)
-      if block_code!=u32(0):
+      # 291: keep 289 normal-default nld/nrd + ncol-only early, but delay
+      # block_code scalar creation to the special branch only.
+      # nf is still computed once after the branch; 288 nf-default is intentionally not used.
+      nld:u32=(cur_ld|bit)<<u32(1)
+      nrd:u32=(cur_rd|bit)>>u32(1)
+      ncol:u32=cur_col|bit
+      if (nibble_op&u32(7))!=u32(0):
+        block_code:u32=nibble_op&u32(7)
         stepu:u32=u32(2)+((OP_STEP3_MASK>>block_code)&u32(1))
         addvu:u32=(OP_ADD1_MASK>>block_code)&u32(1)
         bLiu:u32=(
@@ -1468,38 +1971,43 @@ def kernel_dfs_iter_gpu_maxd16(
           |(((OP_KN4_MASK>>block_code)&u32(1))<<u32(1))
         )
         bKu:u32=(n3&(u32(0)-(ktu&u32(1))))|(n4&(u32(0)-(ktu>>u32(1))))
-        nld=((ld[sp]|bit)<<stepu)|addvu|bLiu
-        nrd=((rd[sp]|bit)>>stepu)|bKu
-      else:
-        nld=(ld[sp]|bit)<<u32(1)
-        nrd=(rd[sp]|bit)>>u32(1)
-      ncol:u32=col[sp]|bit
+        nld=((cur_ld|bit)<<stepu)|addvu|bLiu
+        nrd=((cur_rd|bit)>>stepu)|bKu
       nf:u32=bm&~(nld|nrd|ncol)
       if nf==u32(0):
         continue
-      if (opcode&u32(8))!=u32(0):
-        if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
-          continue
+      if future_check_mask!=u32(0):
+        if (nibble_op&u32(8))!=u32(0):
+          if (bm&~((nld<<u32(1))|(nrd>>u32(1))|ncol))==u32(0):
+            continue
 
-      child_action:u32=(opcode>>u32(4))&u32(3)
-      if child_action>=u32(2):
-        if child_action==u32(2):
+      if cur_depth==terminal_depth:
+        if terminal_base14==u32(0):
           total+=u64(1)
         else:
           total+=u64(1) if ((nf&~u32(1))!=u32(0)) else u64(0)
         continue
-      if child_action==u32(1):
+
+      child_jmark:u32=(child_jmark_mask>>u32(cur_depth))&u32(1)
+      if child_jmark!=u32(0):
         nf&=~u32(1)
         if nf==u32(0):
           continue
         nld|=u32(1)
 
-      sp+=1
-      ld[sp]=nld
-      rd[sp]=nrd
-      col[sp]=ncol
-      avail[sp]=nf
-    results[i]=total*u64(w_lo_arr[i])
+      next_depth:int=cur_depth+1
+      if cur_avail!=u32(0):
+        stack[stack_ptr]=u64(cur_ld)|(u64(cur_rd)<<u64(32))
+        stack[stack_ptr+1]=u64(cur_col)|(u64(cur_avail|(u32(cur_depth)<<u32(27)))<<u64(32))
+        stack_ptr+=2
+        save_sp+=u32(1)
+      cur_ld=nld
+      cur_rd=nrd
+      cur_col=ncol
+      cur_avail=nf
+      cur_depth=next_depth
+    return total*u64(w_lo0)
+# ===391-CPU-XCHECK-END===
 
 @gpu.kernel
 def kernel_dfs_iter_gpu_maxd18(
@@ -2165,11 +2673,17 @@ def launch_kernel_dfs_iter_gpu_static_maxd(
     )
     return True
   if selected_maxd==16:
+    # 390: the new maxd16 kernel (replacing the old, stride-less one)
+    # now has the same grid-stride K-batching loop as maxd14 (see
+    # 390_maxd16_kernel_port_spec.md) and therefore needs the same
+    # kbatch_stride argument maxd14 already passes below. Without this,
+    # the call would not match the new kernel's signature at all.
+    kbatch_stride16:int=stride if stride>0 else (grid_size*block_size)
     kernel_dfs_iter_gpu_maxd16(
       gpu.raw(soa.ld_arr),gpu.raw(soa.rd_arr),gpu.raw(soa.col_arr),
       gpu.raw(soa.ctrl0_arr),gpu.raw(soa.free_arr),
       gpu.raw(soa.markctrl_arr),gpu.raw(w_lo_arr),gpu.raw(meta_next),gpu.raw(results),
-      m,board_mask_gpu,n3_gpu,n4_gpu,grid=grid_size,block=block_size
+      m,board_mask_gpu,n3_gpu,n4_gpu,kbatch_stride16,grid=grid_size,block=block_size
     )
     return True
   if selected_maxd==18:
@@ -6080,6 +6594,67 @@ def exec_solutions_gpu_bin_stream(
 
   return gpu_total
 
+# ===391-STAGED-XCHECK-BEGIN===
+# 391: staged GPU-vs-CPU cross-check for the new maxd16 kernel, before
+# committing GPU time to N=23's full 44.27M-record run. Per Suzuki's
+# request: run ASCENDING record-count stages (default 10,000 / 50,000 /
+# 100,000 / 200,000), printing a result line after EACH stage (not just
+# at the end), so a natural Ctrl-C point exists between every stage and
+# progress is visible even if interrupted. Each stage compares the GPU
+# kernel's total against process_one_task_maxd16_cpu()'s (391) totally
+# independent scalar CPU computation over the SAME records -- stops
+# immediately on the first mismatch rather than continuing to larger,
+# more expensive stages on a kernel already shown to be wrong.
+def maxd16_staged_gpu_cpu_xcheck(N:int,fname:str,record_limits:List[int],gpu_block:int=32,gpu_max_blocks:int=484,gpu_log_level:int=0)->bool:
+  total_records:int=rev386_validation_helpers.count_constellations_bin_records(fname)
+  meta_next:List[u8]=[u8(1),u8(2),u8(3),u8(3),u8(2),u8(6),u8(2),u8(2),u8(0),u8(4),u8(5),u8(7),u8(13),u8(14),u8(14),u8(14),u8(17),u8(14),u8(14),u8(20),u8(21),u8(21),u8(21),u8(25),u8(21),u8(21),u8(26),u8(26)]
+  board_mask:int=(1<<N)-1
+  board_mask_gpu:u32=u32(board_mask)
+  n3_gpu:u32=u32(1)<<u32(N-3)
+  n4_gpu:u32=u32(1)<<u32(N-4)
+  BLOCK:int=gpu_block if gpu_block>0 else 32
+  MAX_BLOCKS:int=gpu_max_blocks if gpu_max_blocks>0 else 484
+  STEPS:int=BLOCK*MAX_BLOCKS
+
+  print(f"[maxd16-xcheck-start] N={N} total_records={total_records} stages={record_limits}")
+
+  for limit in record_limits:
+    m:int=limit if limit<total_records else total_records
+    t0=datetime.now()
+
+    constellations:List[Dict[str,int]]=read_constellations_bin_range(fname,0,m)
+    soa:TaskSoA=TaskSoA(m)
+    w_arr:List[u64]=[u64(0)]*m
+    soa,w_arr=build_soa_for_range(N,constellations,0,m,soa,w_arr)
+
+    results:List[u64]=[u64(0)]*STEPS
+    ok:bool=launch_kernel_dfs_iter_gpu_static_maxd(16,soa,w_arr,meta_next,results,m,board_mask_gpu,n3_gpu,n4_gpu,MAX_BLOCKS,BLOCK,STEPS)
+    if not ok:
+      print(f"[maxd16-xcheck] N={N} limit={limit} m={m} GPU LAUNCH FAILED (launch_kernel_dfs_iter_gpu_static_maxd returned False)")
+      return False
+    gpu_total:u64=u64(0)
+    for v in results:
+      gpu_total+=v
+
+    w_lo_arr:List[u32]=[u32(v&u64(0xffffffff)) for v in w_arr]
+    cpu_total:u64=u64(0)
+    i:int=0
+    while i<m:
+      cpu_total+=process_one_task_maxd16_cpu(soa.ld_arr[i],soa.rd_arr[i],soa.col_arr[i],soa.ctrl0_arr[i],soa.free_arr[i],soa.markctrl_arr[i],w_lo_arr[i],meta_next,board_mask_gpu,n3_gpu,n4_gpu)
+      i+=1
+
+    elapsed=datetime.now()-t0
+    text:str=str(elapsed)[:-3]
+    match:bool=(gpu_total==cpu_total)
+    print(f"[maxd16-xcheck] N={N} limit={limit} m={m} gpu_total={int(gpu_total)} cpu_total={int(cpu_total)} match={'YES' if match else 'NO'} elapsed={text}")
+    if not match:
+      print(f"[maxd16-xcheck] MISMATCH at limit={limit} -- stopping staged probe here, NOT proceeding to larger stages")
+      return False
+
+  print(f"[maxd16-xcheck-done] N={N} all {len(record_limits)} stages matched")
+  return True
+# ===391-STAGED-XCHECK-END===
+
 # ===365-INSERT-BEGIN===
 # 365: single-shot (non-chunked) N=21 GPU launch, mirroring 364's
 # CUDA C host runner exactly: build SoA for the FULL record set (not
@@ -6732,7 +7307,11 @@ def main()->None:
       # by Suzuki, function itself stays since bench_mode==31 still
       # calls it internally) REMOVED from this whitelist.
       # ===386a-CLIGATE-COMMENT-END===
-      if not (bench_mode==0 or bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37):
+      # ===391-CLIGATE-COMMENT-BEGIN===
+      # 391: bench_mode==38 (the new staged maxd16 GPU-vs-CPU cross-
+      # check) added here too, same lesson applied preemptively.
+      # ===391-CLIGATE-COMMENT-END===
+      if not (bench_mode==0 or bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38):
         print(f"[warning] bench_mode={bench_mode} was removed in 276 restore274/coretrim; using 0")
         bench_mode=0
 
@@ -6771,7 +7350,10 @@ def main()->None:
     # ===386a-PRESETGATE-COMMENT-BEGIN===
     # 386a: bench_mode==28/29 removed here too (see CLIGATE note above).
     # ===386a-PRESETGATE-COMMENT-END===
-    if bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37:
+    # ===391-PRESETGATE-COMMENT-BEGIN===
+    # 391: bench_mode==38 added here too.
+    # ===391-PRESETGATE-COMMENT-END===
+    if bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38:
       preset_queens_arg=requested_preset_arg
     else:
       if requested_preset_arg!=5:
@@ -7057,6 +7639,25 @@ def main()->None:
     # same message. This is what turns "print one unsupported row" into
     # "run as far as it can, then stop", matching the continuous-output
     # behavior requested for bare -g.
+    # ===391-DISPATCH-INSERT-BEGIN===
+    # 391: staged GPU-vs-CPU cross-check for the new maxd16 kernel
+    # (390), requested by Suzuki before committing hours of GPU time to
+    # N=23's full 44.27M-record run untested. Default stages: 10,000 /
+    # 50,000 / 100,000 / 200,000 records, ascending, one result line
+    # printed per stage (via maxd16_staged_gpu_cpu_xcheck(), which
+    # itself stops at the first mismatch) -- giving natural Ctrl-C
+    # points between stages and visible progress even if interrupted.
+    if use_gpu and N>=21 and bench_mode==38:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      record_limits:List[int]=[10000,50000,100000,200000]
+      all_matched:bool=maxd16_staged_gpu_cpu_xcheck(N,stream_fname,record_limits,gpu_block,gpu_max_blocks,gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="ok" if all_matched else "mismatch"
+      print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    maxd16-staged-xcheck-{status}")
+      continue
+    # ===391-DISPATCH-INSERT-END===
+
     if use_gpu and N>=21 and bench_mode==37:
       ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
       records,required_maxd,selected_maxd=check_required_maxd_for_N(N,stream_fname,gpu_log_level)

@@ -43,9 +43,41 @@ build]`のログ(soa_ref構築→フィルタ実行)が出た後、
 soa_ref_361.bin.maxd14only_363.bin`が生成され、以後のbare `-g`実行
 ではこの段階がスキップされ、N=22も高速に完走するはず。
 
-**結果**: (鈴木さんの実機実行後、ここに追記)
+**結果**: 2026-09-07、cudacodon実機で`bash 389_validate.sh`実行、
+`OK=15 FAIL=0`で`389 PASSED`。
 
-**この後**: 389がPASSしたら、当初の予定通りN=23の`bench_mode=34`
-maxd確認へ進む。N=23で万一`required_maxd`が14を超えていた場合、
-`crunner_dispatch_table()`へ新しいmaxdエントリを1行追加するだけで
-対応範囲が伸びる設計になっている(385で作った土台の実際の使いどころ)。
+- **N=21再構築の証明**: 既存ファイルを退避→`[crunner-input-build]`
+  でsoa_ref構築→フィルタ実行→`total=314666222712`(オラクル一致)、
+  `0:03:47.644`。**再構築後のファイルは退避しておいた元ファイルと
+  チェックサムが完全一致**(`n21_rebuilt_file_byte_identical_to_
+  original`)——`ensure_crunner_input_bin()`がN=22専用ではなく本当に
+  汎用であることが実機でも確認できた。
+- **N=22の初回自動構築**(本命): `[filter-done] records_in=28719035
+  records_kept(depth<=14)=28719035 records_dropped=0`——2,871万9,035
+  レコード全件がmaxd=14に収まることも同時に確認。
+  `total=2691008701644`(オラクル完全一致)、`0:34:27.132`
+  (見積もり通り約30分)。
+- 完了後、`constellations_N22_7.bin.soa_ref_361.bin.maxd14only_
+  363.bin`が生成され永続化。以後のbare `-g`実行ではこの段階が
+  スキップされ、N=22も高速に完走するはず。
+
+**確定**: N21/N22とも、CRunner入力ファイルの自動構築が実機で
+end-to-endに機能することを確認した。
+
+---
+
+## 参考: N=23のmaxd確認結果(次のステップへの引き継ぎ)
+
+389完了後、`./389Py_kernel_maxd14_final -g 23 23 32 484 1 0 7 34`
+(`bench_mode=34`、読み取り専用診断)を実行、以下の結果を得た:
+
+```
+[stream-build-summary] N=23 preset_queens=7 sc=18410 records=44271796 bin=constellations_N23_7.bin
+[maxd-check] N=23 records=44271796 required_maxd=15 selected_maxd=16 schedule_words=4 stack_bytes_per_thread=272 supported=yes has_c_port=no(codon-only)
+```
+
+**N=23は`required_maxd=15`(`selected_maxd=16`)——maxd14では収まらない
+ことが確定した。** `has_c_port=no(codon-only)`の通り、Codon側の
+`kernel_dfs_iter_gpu_maxd16`は既に存在するが、Cポート(364/388/389の
+`maxd14`版に相当するもの)はまだ無い。N=23対応には、maxd16のCUDA C
+ポートが必要になる——これがまさに今週の本題そのものである。
