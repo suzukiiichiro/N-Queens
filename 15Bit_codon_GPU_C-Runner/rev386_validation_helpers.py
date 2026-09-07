@@ -27,6 +27,7 @@
 # this header and blank-line spacing at the top/bottom of each block.
 
 from typing import List,Tuple
+import os
 
 def validate_chunk_range(label:str,start:int,end:int,total:int)->bool:
   ok:bool=True
@@ -188,4 +189,27 @@ def crunner_input_valid(fname:str)->bool:
   except:
     return False
 # ===385-INPUT-FIX-END===
+
+# ===388-DISPATCH-LOG-BEGIN===
+# 388: separates "record output" (the N/Total/Unique/time table rows,
+# which always print to the console -- that decision stays in main(),
+# untouched here) from the bench_mode==37 dispatch machinery's OWN
+# status lines ([crunner-dispatch], [crunner-dispatch-done],
+# [crunner-dispatch-summary], [crunner-unsupported], [crunner-input-
+# missing]), which previously always printed straight to stdout
+# regardless of -d, cluttering plain measurement (-g only) runs.
+#
+# This ALWAYS appends the line to {log_dir}/dispatch.log (so nothing
+# is lost even on a plain -g run with no -d), and ONLY ALSO prints to
+# the console when gpu_log_level>=1 -- which -d already bumps to at
+# least 1 (see 388's ===388-DEBUG-LOGLEVEL-BEGIN=== block in the main
+# file), so the existing "-d turns on visibility" behavior is
+# preserved, just redirected to also always land in a file.
+def crunner_dispatch_log(log_dir:str,line:str,gpu_log_level:int)->None:
+  os.system(f"mkdir -p {log_dir}")
+  with open(f"{log_dir}/dispatch.log","a") as f:
+    f.write(line+"\n")
+  if gpu_log_level>=1:
+    print(line)
+# ===388-DISPATCH-LOG-END===
 
