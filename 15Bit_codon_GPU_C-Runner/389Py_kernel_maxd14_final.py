@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 388 (2026-09-07)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 389 (2026-09-07)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -305,9 +305,26 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    `#include`以降のコード領域(カーネル本体・ホストランナー)は
    diffで完全一致(sha256:
    `b51735b2cf3ec2ed084849dc3ed7eafc1cb6e5c808169c519cf03f2f64d6622d`、
-   リネーム前後で同一)を確認済み。**ただしこの新しいファイル名では
-   まだ実機nvccビルドしていない**——次に`bench_mode=37`を実行する前に、
-   `388_kernel_maxd14.cu`を実機でビルドする必要がある。
+   リネーム前後で同一)を確認済み。**2026-09-07、実機で`388_kernel_
+   maxd14.cu`のnvccビルドとN=21実行(`total=314666222712`
+   `kernel_ms=201237`)を確認**、364由来のビルドと実質的に同一の結果
+   だった。
+
+   **389(このリビジョン): CRunner入力ファイルの自動構築**。鈴木さんが
+   実際にN=22で踏んだ空白地帯(bare `-g`が毎回`[crunner-input-missing]`
+   でN=22に止まる)を埋めた。`ensure_crunner_input_bin()`を新設し、
+   385がr2で意図的に手動のままにしていた2段パイプライン
+   (`dump_soa_reference_c_port()`[361・Codonネイティブ]→外部
+   `363_filter_maxd14_only.py`[os.system、384で実証済みの仕組み])を
+   実際に実行するようにした。各段は既に有効な出力があればスキップする
+   ので、再実行しても無駄なビルドは走らない。`bench_mode==37`の
+   ディスパッチは、まずこの自動構築を試み、それでも失敗した場合のみ
+   `[crunner-input-missing]`を報告する。
+   また、鈴木さんの「Rev毎に完結した管理」という方針が今後も続く
+   運用であることを踏まえ、`388_kernel_maxd14.cu`を`389_kernel_
+   maxd14.cu`へ改めてリネーム(コード領域はdiffでbyte-identical確認
+   済み、`crunner_dispatch_table()`も`./389_kernel_maxd14`へ更新)。
+   **こちらはまだ実機未確認。**
 
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
@@ -450,6 +467,15 @@ stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$
 stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
 
 
+NQ_CRunner$ codon build -release 370Py_mem_probe_v2.py
+NQ_CRunner$ ./367_safe_run_wrapper.sh -- ./370Py_mem_probe_v2 -g 22 22 32 484 1 0 7 33 3 7 0 0 1 2 2048 9
+22:     2691008701644                0          0:32:43.182
+
+# 前準備
+# 363のフィルタツールで絞り込みファイルを再生成する必要があります:
+python3 363_filter_maxd14_only.py constellations_N21_6.bin.soa_ref_361.bin constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin
+
+
 2026年  9月  7日 月曜日 15:31:18 JST
 NQ_CRunner$ ./388Py_kernel_maxd14_final -g
 GPU mode selected
@@ -472,6 +498,8 @@ GPU mode selected
 20:       39029188884                0          0:01:05.189    ok
 21:      314666222712                0          0:03:23.297    ok
 22:     2691008701644                0          0:32:43.182    ok
+
+
 
 2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
 C/CUDA NVIDIA(GPU)
@@ -797,7 +825,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="388 r4 CU-REVTAG: extends r3's naming-fidelity fix to the CRunner binary itself. crunner_dispatch_table()'s maxd<=14 entry was still pointing at ./364_kernel_maxd14 (a past revision's binary name) even after r3 fixed the log directory -- same underlying issue Suzuki flagged, just a different file. Created 388_kernel_maxd14.cu as a pure rename of 364_kernel_maxd14.cu (5 build/run-example occurrences in the header comment updated, one new header paragraph documenting the rename; the code region from the first #include onward confirmed BYTE-IDENTICAL by diff, sha256 b51735b2cf3ec2ed084849dc3ed7eafc1cb6e5c808169c519cf03f2f64d6622d both before and after). crunner_dispatch_table()'s binary_path updated to ./388_kernel_maxd14 accordingly. NOT YET real-hardware verified under this new filename -- 388_kernel_maxd14.cu must be nvcc-built on cudacodon before bench_mode=37 is run again; the old ./364_kernel_maxd14 binary is not carried forward automatically just because the source is identical."
+VERSION_TAG:str="389 AUTOBUILD-CRUNNER-INPUT: closes the gap Suzuki hit directly -- N=22's maxd14-filtered CRunner input was never built (N=22 was historically validated via bench_mode=33's Codon-internal single-shot, which reads the raw stream bin, not this filtered format), so bare -g stopped at N=22 with [crunner-input-missing] every run. Added ensure_crunner_input_bin(), which runs the full 2-stage pipeline 385 deliberately left manual: dump_soa_reference_c_port() [361, Codon-native] then the EXTERNAL 363_filter_maxd14_only.py script [os.system, the 384-proven mechanism], each stage skipped if its output already exists and is valid. bench_mode==37's dispatch block now calls this before giving up, and only reports crunner-input-missing if the auto-build itself fails (e.g. the external script is absent). Also, per Suzuki's now-standing per-revision-self-contained policy (388 r4), renamed 388_kernel_maxd14.cu to 389_kernel_maxd14.cu (pure rename, code region byte-identical by diff, sha256 unchanged) and updated crunner_dispatch_table() accordingly -- NOT YET real-hardware built under this filename."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -6386,7 +6414,13 @@ def crunner_dispatch_table()->List[CRunnerEntry]:
     # maxd14.cu by diff, sha256 b51735b2...). Must be rebuilt under
     # this filename on real hardware before this entry is exercised
     # again -- the binary itself is not carried forward automatically.
-    CRunnerEntry(14,"./388_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
+    # 389: renamed ./388_kernel_maxd14 -> ./389_kernel_maxd14, same
+    # standing per-revision-self-contained policy as 388's own rename
+    # (388's own comment above this one documents the original 364->
+    # 388 reasoning; this is now routine, not a one-off). Code region
+    # confirmed byte-identical by diff (sha256 unchanged from 388/364).
+    # NOT YET real-hardware built under this filename.
+    CRunnerEntry(14,"./389_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
   ]
 
 def crunner_select_entry_index(required_maxd:int)->int:
@@ -6454,6 +6488,64 @@ def crunner_run(entry:CRunnerEntry,N:int,in_bin:str,out_bin:str,expected_total:i
 # [rev386] crunner_input_fname() moved to rev386_validation_helpers.py -- see rev386_validation_helpers.crunner_input_fname
 
 # [rev386] crunner_input_valid() moved to rev386_validation_helpers.py -- see rev386_validation_helpers.crunner_input_valid
+
+# ===389-AUTOBUILD-BEGIN===
+# 389: 385's conservative choice (fail fast, never auto-build the
+# maxd14-filtered CRunner input) left a real gap Suzuki hit directly:
+# N=22's filtered file was never built (N=22 was historically validated
+# via bench_mode=33's Codon-internal single-shot, which reads the raw
+# stream bin directly, not this filtered format), so bare -g stopped at
+# N=22 with [crunner-input-missing] every time. With 384's os.system
+# mechanism now proven across 385-388 without incident, and N=23's
+# generation about to be attempted anyway, it is time to close this gap
+# rather than keep failing fast on every N whose filtered file was
+# never built by hand.
+#
+# ensure_crunner_input_bin() runs the full 2-stage pipeline
+# crunner_input_valid()'s docstring always described but 385 never
+# executed:
+#   (1) dump_soa_reference_c_port() [361, Codon-native] -- builds the
+#       10-field/40-byte SoA reference dump from stream_fname, if it
+#       does not already exist.
+#   (2) the EXTERNAL 363_filter_maxd14_only.py script [os.system,
+#       384-proven mechanism] -- filters that down to the 7-field/
+#       28-byte maxd14-only format.
+# Each stage is skipped if its output already exists and passes the
+# same validity check crunner_input_valid() already uses, so re-running
+# this on an N that already has a filtered file is a cheap no-op, not
+# a rebuild.
+def ensure_crunner_input_bin(N:int,stream_fname:str,gpu_log_level:int=0)->Tuple[str,bool]:
+  filtered_fname:str=rev386_validation_helpers.crunner_input_fname(stream_fname)
+  if rev386_validation_helpers.crunner_input_valid(filtered_fname):
+    if gpu_log_level>=1:
+      print(f"[crunner-input-reuse] N={N} filtered_bin={filtered_fname}")
+    return filtered_fname,True
+
+  soa_ref_fname:str=f"{stream_fname}.soa_ref_361.bin"
+  if not rev386_validation_helpers.file_exists(soa_ref_fname):
+    if gpu_log_level>=1:
+      print(f"[crunner-input-build] N={N} stage=soa_ref building -> {soa_ref_fname}")
+    records,checksum=dump_soa_reference_c_port(N,stream_fname,soa_ref_fname,gpu_log_level)
+    if gpu_log_level>=1:
+      print(f"[crunner-input-build] N={N} stage=soa_ref done records={records} checksum_u64={checksum}")
+  elif gpu_log_level>=1:
+    print(f"[crunner-input-build] N={N} stage=soa_ref reuse -> {soa_ref_fname}")
+
+  filter_script:str="363_filter_maxd14_only.py"
+  if not rev386_validation_helpers.file_exists(filter_script):
+    if gpu_log_level>=1:
+      print(f"[crunner-input-build] N={N} stage=filter FAILED: {filter_script} not found in current directory")
+    return filtered_fname,False
+
+  if gpu_log_level>=1:
+    print(f"[crunner-input-build] N={N} stage=filter running: python3 {filter_script} {soa_ref_fname} {filtered_fname}")
+  os.system(f"python3 {filter_script} {soa_ref_fname} {filtered_fname}")
+
+  ok:bool=rev386_validation_helpers.crunner_input_valid(filtered_fname)
+  if gpu_log_level>=1:
+    print(f"[crunner-input-build] N={N} stage=filter {'done' if ok else 'FAILED'} -> {filtered_fname}")
+  return filtered_fname,ok
+# ===389-AUTOBUILD-END===
 
 def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
   if N>=5 and N<=17:
@@ -6984,9 +7076,18 @@ def main()->None:
         break
       table:List[CRunnerEntry]=crunner_dispatch_table()
       entry:CRunnerEntry=table[entry_idx]
-      filtered_fname:str=rev386_validation_helpers.crunner_input_fname(stream_fname)
-      if not rev386_validation_helpers.crunner_input_valid(filtered_fname):
-        rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-input-missing] N={N} expected={filtered_fname} -- this is the maxd14-filtered SoA reference dump (361 dump_soa_reference_c_port + external 363_filter_maxd14_only.py), NOT the raw stream bin. 385 does not build it automatically; run that pipeline manually first (see README item 6 / 374's own preparation steps).",gpu_log_level)
+      # 389: was a fail-fast check against rev386_validation_helpers.
+      # crunner_input_valid() alone. Now attempts the full 2-stage
+      # auto-build (361 dump + external 363 filter script) via
+      # ensure_crunner_input_bin() first, and only reports
+      # crunner-input-missing if THAT also fails (e.g. the external
+      # filter script itself is absent, or it ran but produced
+      # something invalid) -- this is what closes the N=22 gap Suzuki
+      # hit directly (bare -g stopping there every time because that
+      # file had never been built by hand).
+      filtered_fname,input_ok=ensure_crunner_input_bin(N,stream_fname,gpu_log_level)
+      if not input_ok:
+        rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-input-missing] N={N} expected={filtered_fname} -- auto-build via ensure_crunner_input_bin() (361 dump_soa_reference_c_port + external 363_filter_maxd14_only.py) was attempted and failed. Check {REV_TAG}_crunner_logs/dispatch.log or rerun with -d for [crunner-input-build] stage detail.",gpu_log_level)
         print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    crunner-input-missing")
         break
       out_bin:str=f"/tmp/crunner_N{N}_results.bin"
