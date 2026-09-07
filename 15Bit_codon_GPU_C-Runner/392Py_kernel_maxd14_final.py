@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 391 (2026-09-07)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 392 (2026-09-07)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -392,6 +392,17 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    安全側に倒した)。各段階の出力も`gpu_elapsed`/`cpu_elapsed`を
    別々に表示するようにし(以前は合算のみ)、今後の段階サイズ判断が
    憶測ではなく実測に基づけるようにした。
+
+   **392(このリビジョン): `.py`のRev番号を`.cu`に揃える**。
+   `392_kernel_maxd16.cu`(Cポート)を391Pyと同じセッションで作成した
+   際、`.py`側は391のままだった。鈴木さんから「.pyも392でいただければ」
+   とのご指摘を受け、`391Py_kernel_maxd14_final.py`を`392Py_kernel_
+   maxd14_final.py`へ純粋にリネームした。**副産物として、`REV_TAG`が
+   388から一度も更新されていなかったことに気づいた**——389・391の
+   どちらも間に挟まっていたにも関わらず見落としており、気づかなければ
+   `crunner_dispatch_log()`はずっと`388_crunner_logs`へ書き込み続ける
+   ところだった。`REV_TAG`を`392`へ更新。それ以外(全関数・全カーネル・
+   `bench_mode=38`の段階的突き合わせ)は391Pyから無変更。
 
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
@@ -886,7 +897,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="391 r2 MAXD16-STAGED-XCHECK-FIX: r1 added the staged GPU-vs-CPU cross-check (process_one_task_maxd16_cpu, maxd16_staged_gpu_cpu_xcheck, bench_mode=38) but its CPU-side loop was a bare single-threaded while-loop -- Suzuki's real-hardware run hung with zero output for 20+ minutes at the FIRST stage (10,000 records), nvidia-smi confirmed the GPU itself was idle at 0 percent the whole time, meaning the single CPU thread was the bottleneck, exactly the ~4-5-orders-of-magnitude slowdown 364's own header already warned about for serial CPU execution of this workload. r2 fixes this: the CPU loop now writes into a results array via @par (the same parallel-for pattern build_soa_for_range already uses for w_arr), and the default record_limits shrank from [10000,50000,100000,200000] to [10,50,200,1000] as an immediate safety measure since real per-stage CPU timing on this machine is still unmeasured. Each stage now also prints gpu_elapsed and cpu_elapsed separately (was one combined elapsed) so future stage-size decisions can be based on real numbers instead of another guess. Interrupted safely by Suzuki via Ctrl-C before this fix was applied -- no damage, but the run was abandoned and must be redone under r2."
+VERSION_TAG:str="392 PY-REVTAG: pure rename of 391Py_kernel_maxd14_final.py to 392Py_kernel_maxd14_final.py, per Suzuki's explicit request that the .py carry the same current-revision number as the .cu (392_kernel_maxd16.cu, shipped alongside 391Py -- keeping them at mismatched numbers was itself an inconsistency with the standing per-revision-self-contained policy 388 r3/r4 established). Two changes: (1) the header Open Objectives date bumped to 392, (2) REV_TAG was still 388 -- CAUGHT STALE HERE: it had never been updated since 388 itself despite 389 and 391 both shipping in between, meaning crunner_dispatch_log() would have kept writing to 388_crunner_logs indefinitely had this gone unnoticed. Now REV_TAG=392. Everything else -- every function, every kernel, bench_mode=38 staged cross-check -- is unchanged from 391Py."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -918,7 +929,7 @@ CPU_FINAL_DEFAULT_N:int=22
 # reasoning and restores the rev-numbered prefix via this single
 # constant, updated each revision (the same maintenance habit as
 # VERSION_TAG itself).
-REV_TAG:str="388"
+REV_TAG:str="392"
 # ===388-REVTAG-END===
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=28  # 387: range() upper bound; outputs N=5..27, the actual ceiling of this file's own oracle table (expected[], 28 entries, indices 0-27) and select_dynamic_preset_queens' defined N ranges -- NOT an artificial cap. In practice bench_mode==37's break-on-unsupported-maxd (see the ===385-DISPATCH-INSERT-BEGIN=== block) stops the loop well before N=27 today, and will reach further as this week's CRunner maxd work registers more entries in crunner_dispatch_table(). Raising this constant further without also growing expected[] would crash on an out-of-range index, so this is not "24 -> 28" as an arbitrary bump; it is the real limit of what this file can even validate.

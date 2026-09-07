@@ -55,10 +55,16 @@ else
   fail "staged_xcheck_function_present" "maxd16_staged_gpu_cpu_xcheck not found in $PY_SRC"
 fi
 
-if grep -q "record_limits:List\[int\]=\[10000,50000,100000,200000\]" "$PY_SRC"; then
-  pass "default_stages_match_requested_sequence"
+if grep -q "record_limits:List\[int\]=\[10,50,200,1000\]" "$PY_SRC"; then
+  pass "default_stages_match_requested_sequence (r2: shrunk to [10,50,200,1000] after r1 hung on real hardware)"
 else
-  fail "default_stages_match_requested_sequence" "expected the default record_limits to be [10000,50000,100000,200000]"
+  fail "default_stages_match_requested_sequence" "expected the default record_limits to be [10,50,200,1000]"
+fi
+
+if grep -q "^    @par$" "$PY_SRC" && grep -q "cpu_results:List\[u64\]" "$PY_SRC"; then
+  pass "cpu_loop_is_parallelized (r2 fix: @par instead of r1's single-threaded while-loop)"
+else
+  fail "cpu_loop_is_parallelized" "expected the CPU cross-check loop to use @par writing into a cpu_results array"
 fi
 
 if [[ "$FAIL" -gt 0 ]]; then exit 1; fi
@@ -81,7 +87,7 @@ pass "codon_toolchain_present"
 echo "Building $PY_SRC with $CODON build -release (FIRST compile of 390's maxd16 kernel + 391's CPU cross-check)..."
 rm -f "$BIN"
 BUILD_LOG="391_build_$(date +%Y%m%d_%H%M%S).log"
-"$CODON" build -release -o "$BIN" "$PY_SRC" 2>&1 | tee "$BUILD_LOG"
+stdbuf -oL -eL "$CODON" build -release -o "$BIN" "$PY_SRC" 2>&1 | tee "$BUILD_LOG"
 
 if [[ ! -x "$BIN" ]]; then
   fail "codon_build_succeeded" "binary $BIN was not produced -- see $BUILD_LOG for the exact error(s); this is genuinely possible, not just a formality"
@@ -92,9 +98,9 @@ pass "codon_build_succeeded"
 # ---------------------------------------------------------------------
 # 3. THE staged cross-check itself, N=23, bench_mode=38.
 # ---------------------------------------------------------------------
-echo "Running: ./$BIN -g $N $N 32 484 1 0 7 38   (staged maxd16 cross-check, N=23)"
+echo "Running: stdbuf -oL -eL ./$BIN -g $N $N 32 484 1 0 7 38   (staged maxd16 cross-check, N=23, r2 parallel-CPU + shrunk stages)"
 RUN_LOG="391_run_$(date +%Y%m%d_%H%M%S).log"
-./"$BIN" -g "$N" "$N" 32 484 1 0 7 38 2>&1 | tee "$RUN_LOG"
+stdbuf -oL -eL ./"$BIN" -g "$N" "$N" 32 484 1 0 7 38 2>&1 | tee "$RUN_LOG"
 
 STAGE_COUNT="$(grep -c '\[maxd16-xcheck\] N=' "$RUN_LOG" || true)"
 if [[ "$STAGE_COUNT" -ge 1 ]]; then
