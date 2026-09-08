@@ -565,236 +565,92 @@ bin自動生成チェーンの全経路が実機で動作することが確定�
 """
 
 """
+Good, confirmed conventions match my plan. Let's implement the auto-build for the CRunner input file.Now let's insert the auto-build function right before `select_dynamic_preset_queens`.Now let's wire this into the bench_mode==37 dispatch block.Now let's verify the code region is still byte-identical after this fix.Confirmed byte-identical. Now let's rename the Python file, update its dispatch table, VERSION_TAG, and header.Now update the header/VERSION_TAG for 389.Now let's add the header narrative paragraph.Now let's copy to outputs and write the validate.sh + README.git add/commit/pushの判断、良いと思います。389として2点対応しました(4ファイル)。
 
-366を用意しました(N22-26の必要maxd事前確認、カーネル起動なし)。
+**1. `ensure_crunner_input_bin()`の新設**: 385がr2で意図的に手動のままにしていた2段パイプライン(361の`dump_soa_reference_c_port()`→外部`363_filter_maxd14_only.py`)を実際に実行するようにしました。`bench_mode==37`はまずこれを試み、失敗した場合のみ`[crunner-input-missing]`を報告します。これでbare `-g`は自動的にN=22まで到達するはずです。
 
-**経緯**: N=21での成果(364・365、CUDA C版がCodon版比約14%速い)を
-踏まえ、鈴木さんから2023/11/22時点の別実装(Total+Unique計算)との
-比較検討をいただきました。Total値は本プロジェクトの正解値と完全一致
-を確認しましたが、Unique計算の有無が異なるため単純比較は不公平と
-整理し、Uniqueはスコープ外とすることで合意しました。
+**2. `.cu`のリネーム継続**: `388_kernel_maxd14.cu`→`389_kernel_maxd14.cu`(内容無変更、コード領域はdiffでbyte-identical確認済み)。これは今後も毎リビジョン続く標準方針として扱います。
 
-続けて、N=22以降への拡張について「maxdがN22以降で14に収まらないの
-では」というご指摘をいただきました。ごもっともな懸念で、まずは
-**カーネルを一切起動せず、必要maxdだけを安く確認する**366を用意しま
-した。新規関数`check_required_maxd_for_N`+新規`bench_mode=34`。
-既存の無変更関数(`ensure_constellations_bin_stream`/
-`build_soa_for_range`/`max_schedule_depth_of_tasks`/
-`select_static_maxd`)を再利用するだけの読み取り専用診断です。
+**まだ実機未確認**: 新ファイル名でのnvccビルド、そして`ensure_crunner_input_bin()`のN=22での実地動作(初回の大規模ファイル生成)です。
 
-単一変数規律により、まずN=22単体で確認することをお勧めします。結果
-次第で、N=23-26への展開や、必要であればmaxd16/18/20/21カーネルの
-Cポート(かなり大きな追加作業になります)を検討します。
-
----
-
-## 実行手順
-
-```
-STATIC_ONLY=1 bash 366Py_maxd_check_validate_N22_once.sh
-bash 366Py_maxd_check_validate_N22_once.sh
+実行コマンド:
+```bash
+bash 389_validate.sh
 ```
 
-N=22の`constellations_N22_7.bin`が無ければ生成から始まるため、N=21の
-時より時間がかかる可能性があります。生成が長時間に及ぶ場合は途中経過
-を教えてください。
-"""
+N=22で`bench_mode=37`を実行します。**初回はSoA参照ダンプ+外部フィルタスクリプトの実行が入るので、通常のN=21(約3〜4分)より長くかかる想定です**。完了すると`constellations_N22_7.bin.soa_ref_361.bin.maxd14only_363.bin`が生成され、以後は高速になるはずです。
 
-"""
-# 362_kernel_port_spec.md
+git push、完了したら教えてください。その後389を実行し、結果を見てからN=23のmaxd確認に進みましょう。
 
-## 位置づけ
 
-本文書は`kernel_dfs_iter_gpu_maxd14`(選択的maxd=14の実行パスで使われ
-る唯一のGPUカーネル)のC言語移植仕様である。338/360で確定した
-build_soa_for_range/symmetryのSoA導出仕様、361で実機確定したそのCポー
-トを前提とし、それに続く工程として本カーネル本体を対象にする。
-maxd16/18/20/21用の残り4カーネル(`kernel_dfs_iter_gpu_maxd16/18/20/21`)
-は334以来の一貫方針により対象外(N=21の全実チャンクは`selected_maxd=14`
-に収まることが337までに確認済み)。
+ure_crunner_input_bin()`は最初からN=22専用ではなく、`N`と`stream_fname`を受け取る汎用関数なので、**コード自体はN=21でも同じように動作します**(N=21は既に絞り込み済みファイルがあるので、通常は`[crunner-input-reuse]`で即座にスキップされるだけです)。
 
-362自体はコードを一切追加しない設計専用リビジョン(324→325、338、360と
-同じパターン)。実装(`.cu`)は363以降。
+ただ「本当に汎用的に動くか」を実機で確認していなかったのはご指摘の通りです。N=21の既存ファイルを一時退避して、ゼロから自動構築させる検証を`389_validate.sh`に追加します(N=21はN=22よりずっと軽いので、コストの低い確認になります)。`389_validate.sh`を更新しました。コード自体はN=22専用ではなく最初から汎用実装でしたが、それを実機でも証明する形にしました。
 
-## 1. シグネチャの型対応
+**追加した検証**: N=21の既存の絞り込み済みファイルを**削除ではなく退避**(リネーム)した上で、ゼロから自動構築させます。オラクル一致を確認し、退避しておいた元ファイルとチェックサムを比較して「同じ内容が再構築されたか」まで確認します。万一途中で失敗した場合は退避したファイルを復元するので、N=21の既存動作を壊すリスクはありません(成功が確認できた時点で退避ファイルは削除します)。
 
-| Codon | C/CUDA | 備考 |
+その後、引き続きN=22の初回自動構築(こちらが本命)に進みます。
+
+実行コマンド:
+```bash
+bash 389_validate.sh
+```
+
+N=21の再構築(軽い)→N=22の初回自動構築(重い、初回のみ)という順番です。git push完了後、お願いします。
+
+はい、ご認識の通りです。今のバイナリ再構築ではなく、`ensure_crunner_input_bin()`がN=22の28.7Mレコードに対して361のSoA参照ダンプ→外部363フィルタスクリプトを実行している段階です。ちょうど389で設計した通りの動きで、想定通りです。約30分という見積もりは、過去のN=22の経験(366での生成が約53秒だったのはstream binの生成のみで、今回の40バイト/レコードの参照ダンプ生成+フィルタリングはそれとは別の重い処理です)からすると妥当だと思います。
+
+`./389Py_kernel_maxd14_final -g`でN=22まで確認、というのは良い流れだと思います。ただ1点、先に知っておいていただきたいことがあります。
+
+**bare `-g`は、N=22の後もN=23まで自動的に進もうとします。** 387/389の設計上、`DEFAULT_RANGE_NMAX_EXCLUSIVE=28`なので、N=23も範囲に入ります。N=23の`required_maxd`が14を超えていれば`[maxd-unsupported]`で安全に止まりますが、**もし14以下だった場合、そのままN=23のCRunner入力自動構築(389の新機能)とGPU実行まで一気に進んでしまいます**——つまりmaxd確認より先に、N=23の本実行(初回・未知の規模)に突入する可能性があります。
+
+なので、順番を入れ替えて、**先に単独で`bench_mode=34`のmaxd確認をお願いできますか**:
+
+```bash
+./389Py_kernel_maxd14_final -g 23 23 32 484 1 0 7 34
+```
+
+これは読み取り専用の診断(stream binの生成は必要ですが、CRunnerの実行はしません)なので安全です。この結果を見てから、bare `-g`を実行するかどうか判断する方が良いと思います。ご質問いただいたコマンド自体は正しいです。
+
+N=22の完了、お待ちしています。
+389、完全にPASSしました。まさに設計通りの動きです。
+
+**N=21再構築の証明**: 既存ファイルを退避→ゼロから自動構築→オラクル一致→**チェックサムが元ファイルと完全一致**(`n21_rebuilt_file_byte_identical_to_original`)。汎用性が実機でも裏付けられました。
+
+**N=22の初回自動構築**: `[filter-done] records_kept(depth<=14)=28719035 records_dropped=0`——2,871万9,035レコード全件がmaxd=14で収まることも確認、`total=2691008701644`(オラクル一致)、`0:34:27.132`。これでbare `-g`はN=22まで自動的に到達するようになりました。
+
+READMEに結果を追記します。N=23の結果、確認しました。これで今週の本題の輪郭がはっきりしました。
+
+**N=23: `required_maxd=15`(`selected_maxd=16`)、`has_c_port=no(codon-only)`**
+
+maxd14では収まらないことが確定しました。Codon側の`kernel_dfs_iter_gpu_maxd16`は既に存在します(361-365時代に、maxd14と並行して用意されていたようです)が、C言語版(364/388/389の`maxd14`版に相当するもの)はまだありません。N=23対応には、このmaxd16カーネルのCUDA Cポートが必要——これが今週の本題そのものです。
+
+364の時のCポート作業では、いきなりコードを書かず`362_kernel_port_spec.md`という設計文書を先に作ってから着手したようです(364_kernel_maxd14.cuのヘッダーコメントに明記されています)。同じ進め方が良いと思うので、まず:
+
+1. 現在のCodon側`kernel_dfs_iter_gpu_maxd16`のソースを確認
+2. maxd14→maxd16で何が変わるか(スタックサイズ・schedule_words数など、`[maxd-check]`の`schedule_words=4 stack_bytes_per_thread=272`が手がかりになりそうです)を整理
+3. 364の設計文書と実装を参照しながら、maxd16版の設計文書を作る
+4. それを元にCポート実装→CPU側検証→実機GPU検証、という364と同じ手順
+
+という順番で進めるのが良さそうですが、いかがでしょうか。まずはCodon側`kernel_dfs_iter_gpu_maxd16`のソースをこちらで確認するところから始めてよろしければ、着手します。
+
+承知しました。まずCodon側`kernel_dfs_iter_gpu_maxd16`の現在のソースを確認します。Now let's view `kernel_dfs_iter_gpu_maxd16` and diff it against maxd14 to find the exact delta.`kernel_dfs_iter_gpu_maxd16`のソースを確認しました。maxd14との単純な「スタックサイズだけ違う」差分ではなく、**構造自体が異なる**ことが分かりました。設計判断が必要な点があるので、着手前に確認させてください。
+
+**maxd14との構造的な違い**:
+
+| | maxd14(現行C版の元) | maxd16(現状のCodon版) |
 |---|---|---|
-| `ld_arr:Ptr[u32]` 他6本のSoAポインタ | `const uint32_t* __restrict__` | 361でC側リーダーが検証済みの配列と同一レイアウト |
-| `meta_next:Ptr[u8]` | `const uint8_t* __restrict__` | 28要素固定テーブル、値は下記4節 |
-| `results:Ptr[u64]` | `uint64_t* __restrict__` | スレッドごとの部分和、長さ=stride |
-| `m:int` | `int64_t` | Codonの`int`は64bit符号付き |
-| `board_mask:u32,n3:u32,n4:u32` | `uint32_t` | そのまま |
-| `stride:int` | `int64_t` | grid*block、K-batchingの歩幅 |
-| 戻り値 `->None` | `void` | `__global__`関数 |
+| スレッド割当 | grid-strideループ(1スレッドが複数レコードを処理、rev292のK-batching) | **1スレッド=1レコード**(stride無し、`if i>=m:return`のみ) |
+| スタック | `ld/rd`を1つのu64に、`col/avail`を1つのu64にpack(rev294-296、キャッシュライン最適化) | `ld/rd/col/avail`が別々の`u32`配列 |
+| スケジュール格納 | `schedule_lo`/`schedule_hi`の2 u32(4bitニブル×16段) | `packed_schedule`配列(8bit/オペコード、4個/word) |
 
-スレッド添字:
-```
-Codon: tid:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
-C   : int64_t tid = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
-```
-1次元launch。`if tid>=stride:return`はガード節としてそのまま。
+つまりmaxd16は、maxd14が292〜296で受けた最適化を一切受けていない、**より古い世代の実装**です。実務上の影響が1点あります: grid-strideが無いということは、現在の32×484=15,488スレッド構成だと**1回のカーネル起動で15,488レコードしか処理できません**。N=23の44,271,796レコードだと、単純計算で約2,858回の起動(チャンク分割)が必要になります。maxd14がN=21/22を1回の起動で処理できているのとは対照的です。
 
-## 2. スタックレイアウト
 
-`stack=__array__[u64](MAXD14_ANCESTOR*2)`(MAXD14_ANCESTOR=13、
-すなわち26要素のu64=208バイト/スレッド)は、C側では単純なスレッド
-ローカル自動変数配列 `uint64_t stack[26];` に対応する。356の判断を
-踏襲し`stack_ptr`は`int32_t`(符号付き、添字幅は変更しない)、
-`save_sp`は`uint32_t`とする。
 
-Push(2箇所: root高速パス内・メインループ内、ロジックは同一):
-```c
-stack[stack_ptr]   = (uint64_t)cur_ld | ((uint64_t)cur_rd << 32);
-stack[stack_ptr+1] = (uint64_t)cur_col
-                    | (((uint64_t)(cur_avail | ((uint32_t)cur_depth << 27))) << 32);
-stack_ptr += 2;
-save_sp   += 1;
-```
 
-Pop(メインループ先頭、`cur_avail==0`かつ`save_sp!=0`のとき):
-```c
-save_sp -= 1;
-stack_ptr -= 2;
-uint64_t packed_ldrd  = stack[stack_ptr];
-uint64_t packed_colav = stack[stack_ptr+1];
-cur_ld  = (uint32_t)packed_ldrd;
-cur_rd  = (uint32_t)(packed_ldrd  >> 32);
-cur_col = (uint32_t)packed_colav;
-uint32_t saved_avail = (uint32_t)(packed_colav >> 32);
-cur_avail = saved_avail & bm;
-cur_depth = (int32_t)(saved_avail >> 27);
-```
-depthは avail の上位5ビット(bit27-31)にパックされている(N<=21のため
-avail自体は下位21ビットで足り、27ビットの余裕がある)。
 
-**リスクノート(358/359由来)**: pushの直前にある
-`if cur_avail!=u32(0):`という条件分岐(=356で確定したpushガード形状)
-は、355-359の一連の実験でCodonバックエンドの命令スケジューリングに
-対して極めて敏感であることが実機で確認されている(358: 分岐完全除去で
-+3.47〜5.51%、359: 部分無条件化で+65.0〜66.8%という壊滅的退行)。
-363での初回移植はこの分岐を**完全に1:1の直訳のまま**移植し、一切の
-形状変更を行わない。nvccという別バックエンドでも同じ感度が再現するか
-は未検証(n=2、Codon限定の観測を外挿する根拠はまだない)ため、形状
-変更の実験は±3%等価性確認**後**、363とは別のリビジョンとして慎重に
-行う。
-
-## 3. ビットマスク定数(13個、値は変更なし)
-
-全てカーネル本体冒頭で`u32`リテラルとして宣言されており、C側では
-`static const uint32_t`として同じ値でそのまま宣言すればよい。純粋な
-ビット演算の入力であり意味論的曖昧さはない。
-
-```c
-static const uint32_t IS_BASE_MASK        = 69222408u;
-static const uint32_t IS_JMARK_MASK       = 4u;
-static const uint32_t IS_MARK_MASK        = 199209203u;
-static const uint32_t IS_P5_MASK          = 3840u;
-static const uint32_t SEL2_MASK           = 34742338u;
-static const uint32_t BLOCK_CODE_B0_MASK  = 173707345u;
-static const uint32_t BLOCK_CODE_B1_MASK  = 12689458u;
-static const uint32_t BLOCK_CODE_B2_MASK  = 18088064u;
-static const uint32_t OP_STEP3_MASK       = 24u;   // codes 3,4
-static const uint32_t OP_ADD1_MASK        = 32u;   // code 5
-static const uint32_t OP_BL1_MASK         = 12u;   // codes 2,3
-static const uint32_t OP_BL2_MASK         = 16u;   // code 4
-static const uint32_t OP_KN3_MASK         = 18u;   // codes 1,4
-static const uint32_t OP_KN4_MASK         = 8u;    // code 3
-```
-
-## 4. `meta_next`テーブル(28要素、値は変更なし)
-
-ホスト側(Codon、main()内)で構築され不変のまま:
-```
-meta_next = [1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26]
-```
-C側では固定サイズ配列として同じ値で宣言する:
-```c
-static const uint8_t meta_next[28] = {
-  1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26
-};
-```
-生成ロジック(このテーブル自体をどう構築するか)はホスト側(Codon)に
-残り、363の移植対象には含めない——カーネルへは完成済みの配列として
-渡されるだけであるため。
-
-## 5. スケジュール事前計算フェーズ
-
-各コンステレーション(`idx`)ごとに、CPU側`schedule_depth_for_task`
-(626-667行)と同型のfuncid決定木を`while True:`ループで歩き、結果を
-2つのu32(`schedule_lo`/`schedule_hi`、depth0-7と8-15相当を4ビット
-ニブルずつパック)へ焼き込む。副産物として:
-- `child_jmark_mask`: jmarkが一致した深さのビットマスク(該当深さで
-  avail bit0を強制クリアする最適化に使用)
-- `future_check_mask`: 1手先の実行可能性を先読みチェックすべき深さの
-  ビットマスク
-- `terminal_depth`/`terminal_base14`: このコンステレーションの
-  スケジュールが尽きる深さと、そこでの数え上げ方法(単純カウント、
-  またはavail bit0除外込みの"base14"カウント)
-- `root_action`: depth=0時点でのfarme_actionがそのままroot分の挙動
-  (即終端/base14終端/jmark処理)を決める
-
-このフェーズは純粋な整数・ビット演算のループであり、行単位でCへ
-直訳可能。分岐条件・代入の意味論に曖昧さはない(720-851行を1対1で
-翻訳する)。
-
-## 6. rootの1〜2候補高速パス
-
-`root_after_second==0`(rootのavailが1個または2個しかビットを持たない
-場合)のとき、汎用ループに入る前に最初の候補を専用コードでインライン
-処理する最適化(880-948行)。push/popサイクルを1回節約するための特殊
-形。ビット演算・条件分岐ともCへの逐語訳で曖昧さなし。この経路も
-push直前に同じ`if cur_avail!=u32(0):`ガードを持ち、2節のリスクノート
-がそのまま適用される。
-
-## 7. メインDFSループ
-
-明示スタックによる反復DFS(950-1027行):
-1. `cur_avail==0`ならpop(空ならbreak)
-2. 現在深さのニブル(`schedule_lo`/`schedule_hi`から)を取り出し、
-   最下位ビットを1つ消費して次候補(nld/nrd/ncol)を計算(ニブルが
-   0でなければblock_code特殊ステップ、そうでなければ標準+1シフト)
-3. `nf`(次の空きマス)を計算、0ならスキップ(pop候補としてループ継続)
-4. `future_check_mask`該当時は1手先の実行可能性を先読みし、詰みなら
-   スキップ
-5. `cur_depth==terminal_depth`ならterminal_base14に応じて加算し
-   スキップ(descendしない)
-6. `child_jmark_mask`該当ビットがあればavail bit0を強制クリア
-7. descend: 2節のpushガード形状のままpush、cur_*を更新して継続
-
-これも行単位の逐語訳で曖昧さはない。
-
-## 8. 起動パラメータの受け渡し
-
-ホスト側(Codon、変更なし)で計算される3スカラー:
-```
-board_mask_gpu:u32 = u32(board_mask)
-n3_gpu:u32 = u32(1)<<u32(N-3)
-n4_gpu:u32 = u32(1)<<u32(N-4)
-```
-これらはカーネル引数としてそのまま渡す(マーシャリング不要、スカラー
-のkernel引数)。grid/blockは既存の32×484(BLOCK=32、MAX_BLOCKS=484)を
-変更しない。`kbatch_stride`(=grid*block=15488)も同様にスカラー引数
-として渡す。
-
-## 9. 判定基準
-
-360で確定した356アンカー(elapsed 393.404秒、chunk0/1/2=144,590/
-144,473/103,271ms)に対し**±3%以内**で成功(338固定基準、変更なし)。
-移植の目的は速度向上ではなく、Codonでは使えないwarp intrinsics・
-デバイスatomic・`-lineinfo`のper-line SASS帰属の解禁である。正当性
-314666222712は移植後も不変(振る舞い等価の移植であり、タスク集合や
-カウントロジックを変えるものではない)。
-
-## 10. 363以降のスコープ
-
-363では本specに基づき`.cu`本体(カーネル関数+ホスト側ランナーの
-最小構成)を実装する。336(nvccビルド+GPU実行round-trip)、337(bin
-リーダー)、361(SoA導出)の成果をそのまま踏襲し、カーネル呼び出しの
-前後(SoA配列のH2D転送、results配列のD2H転送、meta_next/定数の
-デバイスへの配置)を含めた最小ランナーを組む。N=18限定の突き合わせ
-(338 spec (3)節)を経てからN=21フル±3%判定に進む、という段階を踏む
-予定である。
+"""
 """
 
 import gpu

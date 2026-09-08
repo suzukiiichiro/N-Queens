@@ -310,7 +310,6 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-
 362を用意しました(CUDA Cランナー・カーネル本体移植の設計リビジョン、
 コード変更ゼロ)。
 

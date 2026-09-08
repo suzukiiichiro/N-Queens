@@ -312,236 +312,108 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
+Right, the indentation is 4 spaces, not 6. Let me fix that.This looks correct. Let me copy the deliverables to outputs and write the README append.368として3ファイル揃えました。
 
-366を用意しました(N22-26の必要maxd事前確認、カーネル起動なし)。
+## やったこと
 
-**経緯**: N=21での成果(364・365、CUDA C版がCodon版比約14%速い)を
-踏まえ、鈴木さんから2023/11/22時点の別実装(Total+Unique計算)との
-比較検討をいただきました。Total値は本プロジェクトの正解値と完全一致
-を確認しましたが、Unique計算の有無が異なるため単純比較は不公平と
-整理し、Uniqueはスコープ外とすることで合意しました。
+- **`368Py_maxd_diag.py`**: 366に対する純追加(4スパン: `===368-INSERT===`/`===368-CLIGATE-COMMENT===`/`===368-PRESETGATE-COMMENT===`/`===368-DISPATCH-INSERT===`)。366の`check_required_maxd_for_N`/`schedule_depth_for_task`は**一切変更せず**、`bench_mode==34`で従来通り到達可能なまま残しています。新規に`MaxdDiagStats`クラス+3関数(`schedule_depth_for_task_diag`/`scan_maxd_diag_for_tasks`/`check_required_maxd_for_N_diag`)を追加し、`meta_next[fu]`の3箇所すべてに`fu>=META_NEXT_LEN`の境界チェックを入れ、範囲外ならクラッシュせずスタッツに記録して診断用センチネル(23/24/25)を返して継続します。新規`bench_mode=35`で起動、完了時は必ず`[maxd-diag-done] ... fu_min=... fu_max=... oob_count=... first_oob_task_index=... first_oob_fu=... first_oob_ctrl0=... first_oob_markctrl=...`を出力します。
 
-続けて、N=22以降への拡張について「maxdがN22以降で14に収まらないの
-では」というご指摘をいただきました。ごもっともな懸念で、まずは
-**カーネルを一切起動せず、必要maxdだけを安く確認する**366を用意しま
-した。新規関数`check_required_maxd_for_N`+新規`bench_mode=34`。
-既存の無変更関数(`ensure_constellations_bin_stream`/
-`build_soa_for_range`/`max_schedule_depth_of_tasks`/
-`select_static_maxd`)を再利用するだけの読み取り専用診断です。
+- **`368Py_maxd_diag_validate_N22_once.sh`**: 366のharnessをそのまま踏襲。coreハッシュの照合先は**366自身のフルソースハッシュ**(このセッションで新規算出: `03fed068544019ffe1650ab3ba8bfdc4e95880eda20f9eed0bc163524935474f`, 5832行)に変更。366固有チェックとして「366の元関数が無変更のまま残っているか」「境界ガードが3箇所ちょうどか」「ガードが無意味化していないか(meta_next_len=28≦31)」を追加。
 
-単一変数規律により、まずN=22単体で確認することをお勧めします。結果
-次第で、N=23-26への展開や、必要であればmaxd16/18/20/21カーネルの
-Cポート(かなり大きな追加作業になります)を検討します。
+- **`STATIC_ONLY=1`でこのセッション内実行済み: `OK=24 FAIL=0 INFO=0 WARN=1`(WARNはsudo非対話の想定内)。** ただしcodonツールチェーン/GPUがこの環境に無いため、実ビルド・実行はまだ確認していません。
 
----
-
-## 実行手順
+## 次のアクション(鈴木さんの環境で)
 
 ```
-STATIC_ONLY=1 bash 366Py_maxd_check_validate_N22_once.sh
-bash 366Py_maxd_check_validate_N22_once.sh
+STATIC_ONLY=1 bash 368Py_maxd_diag_validate_N22_once.sh
+./367_safe_run_wrapper.sh -- bash 368Py_maxd_diag_validate_N22_once.sh
 ```
 
-N=22の`constellations_N22_7.bin`が無ければ生成から始まるため、N=21の
-時より時間がかかる可能性があります。生成が長時間に及ぶ場合は途中経過
-を教えてください。
+binがEBSリセットで消えていればN=22分の再生成から始まるので367ラップを引き続き推奨します。`oob_count`が0か非0かで仮説の真偽が決まります。README(`368_README_append.md`)に判定基準を書いてあります。
+
+重要な訂正をしなければなりません。**前回私は「dmesgにOOM Killerのログが無い=メモリ枯渇ではない」と申し上げましたが、これは誤りでした。**
+
+`ulimit -v`によるメモリ拒否(mmapやbrkがENOMEMで失敗する)は、**カーネルのOOM Killerとは別の仕組み**です。OOM Killerは物理RAM+swapが本当に尽きたときにカーネルが強制終了させる処理で、`dmesg`にその旨のログを残します。一方`ulimit -v`は、プロセス自身のリソース制限としてカーネルがシステムコールの時点で静かに失敗を返すだけで、**dmesgには何も記録されません**。つまり「dmesgにOOMの記録が無い」ことは、`ulimit -v`によるメモリ拒否を除外する根拠には全くならなかった、ということです。前回そう申し上げたのは私の誤った推論でした。訂正します。
+
+## 今回のdmesgで見えたこと
+
+```
+368Py_maxd_diag[59243]: segfault at 0 ... error 6 in libc.so.6[...]
+```
+
+366の2回のクラッシュは**バイナリ自身(`366Py_maxd_check[...]`)の中**の同一アドレスで発生していましたが、今回368は**`libc.so.6`(動的リンクされたCライブラリ)の中**で発生しています。クラッシュ箇所が変わったのは、368で関数を追加したことでコード配置やメモリ確保のタイミングがずれた結果と考えられ、`malloc`/`memcpy`系の内部処理中に落ちているように見えます。これは「巨大な`List[Dict[str,int]]`(2,870万件)を構築する途中でメモリ確保が失敗し、それをランタイムが正しくハンドリングできずに落ちている」という、**メモリ圧迫系の症状と非常に整合的**です。
+
+つまり、368の境界ガード追加によって「アルゴリズム的なバグ(meta_next範囲外アクセス)」の仮説を検証しようとしましたが、**368の実行がそのガードに到達する前の、より手前の段階(bin読み込み/SoA構築)で、当初除外したはずのメモリ枯渇によって落ちている**可能性が高くなりました。仮説を仕切り直す必要があります。
+
+## 提案: 単一変数でのクリーンな検証
+
+367の`MAX_MEM_PERCENT`だけを変えて再実行し、天井を上げれば通るかどうかを見るのが一番早いです。
+
+```bash
+MAX_MEM_PERCENT=95 ./367_safe_run_wrapper.sh -- bash 368Py_maxd_diag_validate_N22_once.sh
+```
+
+- **これで通れば**: 10GB上限(15GB総RAMの70%)が原因だったと確定します。368の境界ガード診断自体は的外れではなかったとしても、その前段階のメモリ使用量がボトルネックだったことになり、次のRevは`read_constellations_bin_range`のバッチ化・ストリーミング化が本題になります。
+- **それでも落ちれば**: 15GB総RAM自体が28.7M件規模には根本的に不足している可能性が高く、より大きいインスタンスへの変更、またはメモリ使用量を減らすアルゴリズム側の対策が必要という結論になります。
+
+95%は本来推奨しない設定です(367の趣旨はホスト全体を守ることなので)が、**原因切り分けのための一時的な単一実験**として割り切るのが良いと思います。実行してよろしいでしょうか。
+
+`MAX_MEM_PERCENT`を70%→95%(10GB→14GB)に上げても**まったく同じ場所で同じように失敗**しました。これは重要な単一変数実験結果です。
+
+## この結果が意味すること
+
+前回の`free -h`で`Swap: 0B`だったことを思い出してください。**このインスタンスにはswapが一切ありません。** つまり:
+
+- `ulimit -v`はプロセスに対する「上限」でしかなく、それを引き上げても**物理RAM自体(15GB)を超えることはできません**
+- 10GB→14GBに上げても落ちたということは、**実際に必要なメモリが14GBをも超えている**か、あるいは**ulimit自体は最初から効いておらず、物理RAM 15GB(swapなし)という、より根本的な天井にぶつかっている**かのどちらかです
+- どちらであっても結論は同じ方向を指します: **N=22の28,719,035件を`List[Dict[str,int]]`として一括展開する現在の実装は、この15GB RAMのインスタンスには乗らない**可能性が高いです
+
+## 確認したいこと
+
+1. `sudo dmesg | tail -15`(今回もクラッシュ位置が`libc.so.6`内か、それとも変わったか)
+2. `cat 368Py_maxd_diag_N22_maxd_diag_20260903_034020.log`(生ログに何か手がかりがないか)
+
+## 次の一手(提案)
+
+上記で「メモリ規模の問題」がほぼ確定した場合、これ以上ulimitやインスタンスサイズの調整だけで粘るより、**実際にどれだけメモリが必要なのかを定量化する**のが次の単一変数として妥当だと思います。具体的には:
+
+- N=22の全28.7M件ではなく、**先頭から一部だけ(例: 100万件)**を読み込んでSoA構築まで行い、そのときのピークメモリ使用量を`/usr/bin/time -v`等で実測する
+- レコード数に対する使用量の傾きが分かれば、28.7M件フルスキャンに必要な実メモリ量を外挿でき、「もっと大きいインスタンスが要る」のか「読み込み自体をバッチ化・ストリーミング化する実装変更(369候補)が要る」のか判断できます
+
+まず(1)(2)を教えていただけますか。それを見てから、部分読み込みでのメモリ計測を369として用意するかどうか決めたいです。
+
+この2つのdmesgエントリを見比べると、決定的な手がかりがあります。
+
+```
+366 (2回目): ip 0000000000412a9c error 6 in 366Py_maxd_check[402000+44000] ...
+368 (95%再実行): ip 0000000000412a9c error 6 in 368Py_maxd_diag[402000+44000] ...
+```
+
+**命令アドレス(`ip`)が完全に一致しています。バイナリ内オフセット範囲(`[402000+44000]`)も同一。Codeバイト列もほぼ同一(1バイトだけ違うのは即値オペランドの差で、コード配置が368で少しずれた結果と考えられます)。**
+
+これは非常に強い手がかりです。**366と368は共通の無変更コード**(`count_constellations_bin_records`→`read_constellations_bin_range`、28.7M件をDictのListとして展開する処理)を経由しており、368独自の新規コード(境界ガードや`MaxdDiagStats`)にはまだ到達すらしていません(生ログが`[stream-cache-hit]`で止まっているのがその証拠です)。**しかも今回は10GB→14GBにulimitを上げても、全く同じ命令で全く同じように落ちました。**
+
+## 訂正した結論
+
+前回「ulimitを上げれば切り分けられる」と申し上げましたが、結果は「上げても変わらない」でした。これが示すのは:
+
+- **`ulimit -v`の設定値(10GBでも14GBでも)は今回のクラッシュの直接原因ではなかった**
+- swap無しの物理RAM 15GBという、より根本的な天井に、`read_constellations_bin_range`によるDict大量構築が最初から届いていない(=もっと早い段階で失敗している)可能性が高い
+- あるいは、単一の巨大なアロケーション要求がヒープの断片化等で失敗している可能性もあり、これは「合計メモリ量」だけの問題ではないかもしれません
+
+いずれにせよ、`meta_next`範囲外アクセスの仮説は**まだ検証すらできていません**(そこに到達する前に落ちているため)。368自体は設計として間違っていませんが、前提となる「binを読み込める」段階でブロックされている、というのが今の状況です。
+
+## 提案: 369として、部分読み込みでの実測
+
+推測で議論を続けるより、実際にどれだけメモリが必要かを測るのが早いと思います。
+
+- N=22の28.7M件のうち、先頭から例えば100万件・500万件・1000万件…と段階的に`count_constellations_bin_records`+`read_constellations_bin_range`だけを実行し、`/usr/bin/time -v`(または`/proc/self/status`のVmPeak)でピークメモリを実測
+- レコード数に対するメモリ使用量の傾きから、28.7M件フルロードに必要な実メモリ量を外挿
+
+これを369の単一変数(「読み込み件数」)として用意してよろしいでしょうか。もしよろしければ、366/368と同じ三点セット(.py/.sh/README追記)で用意します。
 """
 
 """
-# 362_kernel_port_spec.md
-
-## 位置づけ
-
-本文書は`kernel_dfs_iter_gpu_maxd14`(選択的maxd=14の実行パスで使われ
-る唯一のGPUカーネル)のC言語移植仕様である。338/360で確定した
-build_soa_for_range/symmetryのSoA導出仕様、361で実機確定したそのCポー
-トを前提とし、それに続く工程として本カーネル本体を対象にする。
-maxd16/18/20/21用の残り4カーネル(`kernel_dfs_iter_gpu_maxd16/18/20/21`)
-は334以来の一貫方針により対象外(N=21の全実チャンクは`selected_maxd=14`
-に収まることが337までに確認済み)。
-
-362自体はコードを一切追加しない設計専用リビジョン(324→325、338、360と
-同じパターン)。実装(`.cu`)は363以降。
-
-## 1. シグネチャの型対応
-
-| Codon | C/CUDA | 備考 |
-|---|---|---|
-| `ld_arr:Ptr[u32]` 他6本のSoAポインタ | `const uint32_t* __restrict__` | 361でC側リーダーが検証済みの配列と同一レイアウト |
-| `meta_next:Ptr[u8]` | `const uint8_t* __restrict__` | 28要素固定テーブル、値は下記4節 |
-| `results:Ptr[u64]` | `uint64_t* __restrict__` | スレッドごとの部分和、長さ=stride |
-| `m:int` | `int64_t` | Codonの`int`は64bit符号付き |
-| `board_mask:u32,n3:u32,n4:u32` | `uint32_t` | そのまま |
-| `stride:int` | `int64_t` | grid*block、K-batchingの歩幅 |
-| 戻り値 `->None` | `void` | `__global__`関数 |
-
-スレッド添字:
-```
-Codon: tid:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
-C   : int64_t tid = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
-```
-1次元launch。`if tid>=stride:return`はガード節としてそのまま。
-
-## 2. スタックレイアウト
-
-`stack=__array__[u64](MAXD14_ANCESTOR*2)`(MAXD14_ANCESTOR=13、
-すなわち26要素のu64=208バイト/スレッド)は、C側では単純なスレッド
-ローカル自動変数配列 `uint64_t stack[26];` に対応する。356の判断を
-踏襲し`stack_ptr`は`int32_t`(符号付き、添字幅は変更しない)、
-`save_sp`は`uint32_t`とする。
-
-Push(2箇所: root高速パス内・メインループ内、ロジックは同一):
-```c
-stack[stack_ptr]   = (uint64_t)cur_ld | ((uint64_t)cur_rd << 32);
-stack[stack_ptr+1] = (uint64_t)cur_col
-                    | (((uint64_t)(cur_avail | ((uint32_t)cur_depth << 27))) << 32);
-stack_ptr += 2;
-save_sp   += 1;
-```
-
-Pop(メインループ先頭、`cur_avail==0`かつ`save_sp!=0`のとき):
-```c
-save_sp -= 1;
-stack_ptr -= 2;
-uint64_t packed_ldrd  = stack[stack_ptr];
-uint64_t packed_colav = stack[stack_ptr+1];
-cur_ld  = (uint32_t)packed_ldrd;
-cur_rd  = (uint32_t)(packed_ldrd  >> 32);
-cur_col = (uint32_t)packed_colav;
-uint32_t saved_avail = (uint32_t)(packed_colav >> 32);
-cur_avail = saved_avail & bm;
-cur_depth = (int32_t)(saved_avail >> 27);
-```
-depthは avail の上位5ビット(bit27-31)にパックされている(N<=21のため
-avail自体は下位21ビットで足り、27ビットの余裕がある)。
-
-**リスクノート(358/359由来)**: pushの直前にある
-`if cur_avail!=u32(0):`という条件分岐(=356で確定したpushガード形状)
-は、355-359の一連の実験でCodonバックエンドの命令スケジューリングに
-対して極めて敏感であることが実機で確認されている(358: 分岐完全除去で
-+3.47〜5.51%、359: 部分無条件化で+65.0〜66.8%という壊滅的退行)。
-363での初回移植はこの分岐を**完全に1:1の直訳のまま**移植し、一切の
-形状変更を行わない。nvccという別バックエンドでも同じ感度が再現するか
-は未検証(n=2、Codon限定の観測を外挿する根拠はまだない)ため、形状
-変更の実験は±3%等価性確認**後**、363とは別のリビジョンとして慎重に
-行う。
-
-## 3. ビットマスク定数(13個、値は変更なし)
-
-全てカーネル本体冒頭で`u32`リテラルとして宣言されており、C側では
-`static const uint32_t`として同じ値でそのまま宣言すればよい。純粋な
-ビット演算の入力であり意味論的曖昧さはない。
-
-```c
-static const uint32_t IS_BASE_MASK        = 69222408u;
-static const uint32_t IS_JMARK_MASK       = 4u;
-static const uint32_t IS_MARK_MASK        = 199209203u;
-static const uint32_t IS_P5_MASK          = 3840u;
-static const uint32_t SEL2_MASK           = 34742338u;
-static const uint32_t BLOCK_CODE_B0_MASK  = 173707345u;
-static const uint32_t BLOCK_CODE_B1_MASK  = 12689458u;
-static const uint32_t BLOCK_CODE_B2_MASK  = 18088064u;
-static const uint32_t OP_STEP3_MASK       = 24u;   // codes 3,4
-static const uint32_t OP_ADD1_MASK        = 32u;   // code 5
-static const uint32_t OP_BL1_MASK         = 12u;   // codes 2,3
-static const uint32_t OP_BL2_MASK         = 16u;   // code 4
-static const uint32_t OP_KN3_MASK         = 18u;   // codes 1,4
-static const uint32_t OP_KN4_MASK         = 8u;    // code 3
-```
-
-## 4. `meta_next`テーブル(28要素、値は変更なし)
-
-ホスト側(Codon、main()内)で構築され不変のまま:
-```
-meta_next = [1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26]
-```
-C側では固定サイズ配列として同じ値で宣言する:
-```c
-static const uint8_t meta_next[28] = {
-  1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26
-};
-```
-生成ロジック(このテーブル自体をどう構築するか)はホスト側(Codon)に
-残り、363の移植対象には含めない——カーネルへは完成済みの配列として
-渡されるだけであるため。
-
-## 5. スケジュール事前計算フェーズ
-
-各コンステレーション(`idx`)ごとに、CPU側`schedule_depth_for_task`
-(626-667行)と同型のfuncid決定木を`while True:`ループで歩き、結果を
-2つのu32(`schedule_lo`/`schedule_hi`、depth0-7と8-15相当を4ビット
-ニブルずつパック)へ焼き込む。副産物として:
-- `child_jmark_mask`: jmarkが一致した深さのビットマスク(該当深さで
-  avail bit0を強制クリアする最適化に使用)
-- `future_check_mask`: 1手先の実行可能性を先読みチェックすべき深さの
-  ビットマスク
-- `terminal_depth`/`terminal_base14`: このコンステレーションの
-  スケジュールが尽きる深さと、そこでの数え上げ方法(単純カウント、
-  またはavail bit0除外込みの"base14"カウント)
-- `root_action`: depth=0時点でのfarme_actionがそのままroot分の挙動
-  (即終端/base14終端/jmark処理)を決める
-
-このフェーズは純粋な整数・ビット演算のループであり、行単位でCへ
-直訳可能。分岐条件・代入の意味論に曖昧さはない(720-851行を1対1で
-翻訳する)。
-
-## 6. rootの1〜2候補高速パス
-
-`root_after_second==0`(rootのavailが1個または2個しかビットを持たない
-場合)のとき、汎用ループに入る前に最初の候補を専用コードでインライン
-処理する最適化(880-948行)。push/popサイクルを1回節約するための特殊
-形。ビット演算・条件分岐ともCへの逐語訳で曖昧さなし。この経路も
-push直前に同じ`if cur_avail!=u32(0):`ガードを持ち、2節のリスクノート
-がそのまま適用される。
-
-## 7. メインDFSループ
-
-明示スタックによる反復DFS(950-1027行):
-1. `cur_avail==0`ならpop(空ならbreak)
-2. 現在深さのニブル(`schedule_lo`/`schedule_hi`から)を取り出し、
-   最下位ビットを1つ消費して次候補(nld/nrd/ncol)を計算(ニブルが
-   0でなければblock_code特殊ステップ、そうでなければ標準+1シフト)
-3. `nf`(次の空きマス)を計算、0ならスキップ(pop候補としてループ継続)
-4. `future_check_mask`該当時は1手先の実行可能性を先読みし、詰みなら
-   スキップ
-5. `cur_depth==terminal_depth`ならterminal_base14に応じて加算し
-   スキップ(descendしない)
-6. `child_jmark_mask`該当ビットがあればavail bit0を強制クリア
-7. descend: 2節のpushガード形状のままpush、cur_*を更新して継続
-
-これも行単位の逐語訳で曖昧さはない。
-
-## 8. 起動パラメータの受け渡し
-
-ホスト側(Codon、変更なし)で計算される3スカラー:
-```
-board_mask_gpu:u32 = u32(board_mask)
-n3_gpu:u32 = u32(1)<<u32(N-3)
-n4_gpu:u32 = u32(1)<<u32(N-4)
-```
-これらはカーネル引数としてそのまま渡す(マーシャリング不要、スカラー
-のkernel引数)。grid/blockは既存の32×484(BLOCK=32、MAX_BLOCKS=484)を
-変更しない。`kbatch_stride`(=grid*block=15488)も同様にスカラー引数
-として渡す。
-
-## 9. 判定基準
-
-360で確定した356アンカー(elapsed 393.404秒、chunk0/1/2=144,590/
-144,473/103,271ms)に対し**±3%以内**で成功(338固定基準、変更なし)。
-移植の目的は速度向上ではなく、Codonでは使えないwarp intrinsics・
-デバイスatomic・`-lineinfo`のper-line SASS帰属の解禁である。正当性
-314666222712は移植後も不変(振る舞い等価の移植であり、タスク集合や
-カウントロジックを変えるものではない)。
-
-## 10. 363以降のスコープ
-
-363では本specに基づき`.cu`本体(カーネル関数+ホスト側ランナーの
-最小構成)を実装する。336(nvccビルド+GPU実行round-trip)、337(bin
-リーダー)、361(SoA導出)の成果をそのまま踏襲し、カーネル呼び出しの
-前後(SoA配列のH2D転送、results配列のD2H転送、meta_next/定数の
-デバイスへの配置)を含めた最小ランナーを組む。N=18限定の突き合わせ
-(338 spec (3)節)を経てからN=21フル±3%判定に進む、という段階を踏む
-予定である。
 """
 
 import gpu

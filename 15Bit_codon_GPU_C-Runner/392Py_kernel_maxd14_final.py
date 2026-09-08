@@ -584,6 +584,44 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
+`389_kernel_maxd14.cu`を土台に、機械的な置換とヘッダーの書き直しで`392_kernel_maxd16.cu`を作ります。Now let's verify the code region is a faithful mechanical derivative, and sanity-check the C syntax as much as possible without a compiler.gcc is available. Let's actually compile the CPU-only test path — this is a real, meaningful check I can run right now.良い副産物がありました。`-x c`のオプション位置に既存プロジェクトの文書化バグがあったので確認します(391以前のファイルにも影響する既知の問題として)。Let's recompile with the corrected command to make sure the header itself is accurate, then finalize.Compiles cleanly with zero warnings under `-Wall -Wextra`. Let's copy to outputs and write the validate script + README.392できました。`392_kernel_maxd16.cu`です。
+
+**やったこと**: `389_kernel_maxd14.cu`を土台に、機械的な置換で作成しました。差分は`MAXD14_ANCESTOR`(13)→`MAXD16_ANCESTOR`(15)と関数名のみ——**スクリプトで逆置換して完全一致を確認済み**です(diffで検出された唯一の意味的な差分は`#define`の値`13`→`15`のみ)。
+
+**ここまでで実際に確認できたこと**(このサンドボックスにgccがあったので、その場で試せました):
+- CPU専用テストパス(`gcc -x c ... -lm`)が**実際にコンパイル成功、`-Wall -Wextra`で警告ゼロ**
+- 副産物として、364/388/389が文書化していたビルドコマンドの`-x c`の位置に既存のバグがあることを発見しました(`-x c`をソースファイルより後ろに置くと、このサンドボックスのgcc 13.3.0では失敗します)。389自身の実ファイルでも同じ現象を再現確認したので、391以前から引き継がれていた文書上の問題です。392のヘッダーでは正しい順序に直し、この発見も記録しました(389側は今回は触っていません、必要であれば別途直せます)。
+
+**まだやっていないこと(意図的)**:
+- **実機nvccビルドは未実施**——CUDAツールチェーンはこのサンドボックスに無いため
+- **`crunner_dispatch_table()`への登録は保留**——登録するとbare `-g`が自動的にN=23本実行まで進んでしまうため、「N21のncu高速化が一段落するまでN23実行は保留」という合意した段取りに反すると考え、あえて配線していません
+- N=23実データでのC版CPU検証(391のCodon版CPU参照実装との突き合わせ)も未実施——これには「maxd16形式(7フィールド28バイト)の小規模テストデータをPython側でダンプする」という小さな新規コードが要ります
+
+この先、以下のどちらで進めましょうか。
+
+1. 実機で`nvcc`ビルド+CPU版ビルドの両方だけ確認して、392はここで一旦区切り、段取り3(N=21のncuプロファイリング)に進む
+2. その前に、391のCodon版(GPU/CPU双方で検証済み)とこのC版CPU実装を、小規模データで直接突き合わせる仕組みをもう一段作ってから進む
+
+私としては1で十分だと思います(391で既にCodon版の正しさは実機確認済みで、392はコードとしてbyte-diffで機械的に正しさが保証されているので、二重の検証コストをかけるより、はやく段取り3のncu作業に入る方が良いと思います)。いかがでしょうか。
+
+392のビルド確認用ハーネスを用意しました。
+
+実行コマンド:
+```bash
+bash 392_validate.sh
+```
+
+`nvcc`(device)と`gcc`(CPU専用テストハーネス)、両方のビルドが成功するかだけを確認します。**実行はしません**(GPU時間もCPU時間も消費しない、数十秒で終わるはずです)。`crunner_dispatch_table()`への登録も、今回はあえて行っていません(登録するとbare `-g`が自動的にN=23本実行まで進んでしまうため)。
+
+結果が出たら教えてください。確認でき次第、段取り3(N=21に立ち戻ってncuプロファイリング)に進みましょう。
+
+392、確定です。OK=12 FAIL=0、実機で`nvcc`・`gcc`両方のビルドが成功しました(1.3秒、狙い通りビルドのみで即終了)。
+
+これで段取り1〜2(391: Codon版maxd16の実機検証、392: Cポートのビルド確認)が完了しました。maxd16という新しい深さへの対応は、コードとしては用意できています(ただし`crunner_dispatch_table()`への登録は意図的に保留中で、N23本実行はまだできません)。
+
+いよいよ段取り3、**N=21に立ち戻ってのncuプロファイリング→高速化**です。過去の375での知見(スタックのpush/pop再収束点、`BSYNC`/`BRA`にホットスポットが集中)を出発点にするか、まっさらにncuを回すところから始めるか、どちらが良いでしょうか。あるいは、`001CUDA_bit.cu`(10年前の古典実装、N20で2:02.52・N21で18:46.52)の実装アプローチ自体を先に読み解いて、現行のconstellation方式との構造的な違いを整理するところから始めるのも一案かもしれません。
+
+
 """
 
 """

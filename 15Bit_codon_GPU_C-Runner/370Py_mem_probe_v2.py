@@ -317,236 +317,71 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
+`vmhwm_*_kb=-1`が全ロールで出ています。`read_vmhwm_kb()`が常に失敗しているため、`delta_*_kb`はすべて0になり、メモリ計測としては使えていません。ただし**重要な良いニュース**があります: **`record_limit=10,000,000`は成功し、`record_limit=15,000,000`で初めて失敗しました。** これはVmHWM計測とは独立した事実で、レコード数に比例してクラッシュする閾値が実在することを直接裏付けています(370のスコープ外の偶然ではなく、メモリスケーリング仮説を強く支持する結果です)。
 
-366を用意しました(N22-26の必要maxd事前確認、カーネル起動なし)。
+## `read_vmhwm_kb()`のバグ原因(推測)
 
-**経緯**: N=21での成果(364・365、CUDA C版がCodon版比約14%速い)を
-踏まえ、鈴木さんから2023/11/22時点の別実装(Total+Unique計算)との
-比較検討をいただきました。Total値は本プロジェクトの正解値と完全一致
-を確認しましたが、Unique計算の有無が異なるため単純比較は不公平と
-整理し、Uniqueはスコープ外とすることで合意しました。
+`count_constellations_bin_records`や`read_stream_done_count`など、既存の`open(...).read()`パターンは**実ファイル**に対しては動いています。一方`/proc/self/status`は**仮想ファイル**で、`stat()`が報告するファイルサイズは常に0です。もしCodonの`read()`(引数なし)がファイルサイズを事前取得してバッファを確保する実装だとすると、サイズ0と判定されて**即座に空文字列を返す**可能性があります。`count_constellations_bin_records`のように`seek`でサイズを取ってから読むのではなく、明示的なチャンクサイズを指定した`read(N)`をループする実装に変えれば、この問題を回避できるはずです。
 
-続けて、N=22以降への拡張について「maxdがN22以降で14に収まらないの
-では」というご指摘をいただきました。ごもっともな懸念で、まずは
-**カーネルを一切起動せず、必要maxdだけを安く確認する**366を用意しま
-した。新規関数`check_required_maxd_for_N`+新規`bench_mode=34`。
-既存の無変更関数(`ensure_constellations_bin_stream`/
-`build_soa_for_range`/`max_schedule_depth_of_tasks`/
-`select_static_maxd`)を再利用するだけの読み取り専用診断です。
+370として、この一点(`read_vmhwm_kb`の読み込み方式)だけを修正した単一変数のRevを用意します。原因を特定しました。`.sh`内のcoreハッシュ計算スクリプトの`lines = core2.count('\\n')`が誤りで(`\\n`という2文字リテラルの出現数を数えてしまっていた)、正しくは改行文字そのものを数える`core2.count('\n')`であるべきでした。ハッシュ自体は正しく一致していたので、実際には370のソースは正しく369と整合しています。バグは私が用意したチェックスクリプト側だけにありました。修正します。All 12 checks pass now. Let me also check the negative-tamper path isn't included (I skipped negtest for 370, intentionally, since this is a single whole-function-swap check, not a strip+mod chain) — that's consistent, no negtest needed here. Let me do a final visual proofread of the fix and then deliver.Good, this is correct. Let me copy the deliverables and write the README append.370として3ファイル揃えました。369の実行結果、報告ありがとうございます。
 
-単一変数規律により、まずN=22単体で確認することをお勧めします。結果
-次第で、N=23-26への展開や、必要であればmaxd16/18/20/21カーネルの
-Cポート(かなり大きな追加作業になります)を検討します。
+## 369の結果の評価
 
----
+`vmhwm_*_kb=-1`は計測系のバグでしたが、**`record_limit=10,000,000`は成功、`15,000,000`で失敗**という事実自体は計測バグと無関係に得られた本物のデータです。レコード数に比例してクラッシュすることが実機で確認できたのは大きな前進です。
 
-## 実行手順
+## 370でやったこと
+
+- `read_vmhwm_kb()`の中身だけを、サイズ依存の`f.read()`から**明示チャンクサイズでの読み込みループ**(`f.read(4096)`を空になるまでループ)に置き換え。`/proc/self/status`はprocfsの仮想ファイルで`stat()`上のサイズが常に0のため、サイズベースの読み込みだと即座に空文字列が返っていた可能性が高いです。366/368/369の他の関数は一切無変更。
+
+- **このセッション中に自分のチェックスクリプト自体のバグも発見・修正しました**: 行数カウントに`core2.count('\n')`と書いたつもりが、実際のファイルには`core2.count('\\n')`(バックスラッシュ+nという2文字の出現数を数える式)が入ってしまっており、ハッシュは一致するのに行数だけ「14」という明らかにおかしい値になって誤FAILしていました。原因を特定し`chr(10)`を使う形に修正、再実行して**OK=12 FAIL=0**を確認しています。
+
+- 新チェック`source_old_size_based_read_removed`(旧バグパターンの再混入を防止)と、実行時の新チェック`vmhwm_instrumentation_functional`(実機で-1が出たら即座にFAILとして知らせる、今回のような「気づかず信用できない数字を見続ける」事態を防ぐ)を追加。
+
+- スイープの初期値を369の結果を踏まえて絞り込み: `1,000,000 / 10,000,000 / 11,000,000 / 12,000,000 / 13,000,000 / 14,000,000 / 15,000,000 / 20,000,000 / 28,719,035`(10M-15Mの間をビゼクションで詰める)。
+
+`STATIC_ONLY=1`でOK=12 FAIL=0 WARN=1(sudo警告のみ)を確認済みです。
+
+## 次のアクション
 
 ```
-STATIC_ONLY=1 bash 366Py_maxd_check_validate_N22_once.sh
-bash 366Py_maxd_check_validate_N22_once.sh
+STATIC_ONLY=1 bash 370Py_mem_probe_v2_validate_N22_sweep.sh
+./367_safe_run_wrapper.sh -- bash 370Py_mem_probe_v2_validate_N22_sweep.sh
 ```
 
-N=22の`constellations_N22_7.bin`が無ければ生成から始まるため、N=21の
-時より時間がかかる可能性があります。生成が長時間に及ぶ場合は途中経過
-を教えてください。
+もし`vmhwm_instrumentation_functional`が今回も落ちたら、procfs仮説自体を見直す必要があります。通れば、10M〜15Mの間の実メモリ増加量が見えるはずです。結果をお待ちしています。
+
+dmesgで**369も370も同じ場所でsegfaultしていた**ことが分かりました。
+
+```
+369Py_mem_probe[61526]: segfault at 0 ip 0x40fdc0 error 6 [402000+45000]
+370Py_mem_probe[62603]: segfault at 0 ip 0x40fbb0 error 6 [402000+45000]
+```
+
+これは重要です。369も368の時点まで遡って一度もこの場所(バイナリ内、libcではない)でクラッシュを記録していなかったのに、今回**369・370は両方ともこのバイナリ自身の中の、ほぼ同一のコードバイト列**で落ちています。しかもコード列を見ると:
+
+```
+89 34 a0   (369)
+89 34 e0   (370)
+```
+
+の1バイトだけ違う以外はほぼ同一で、これは**`[reg + reg*4]`形式のインデックス付きストア命令**(配列の要素をインデックス×4で書き込む、つまり`int`/`u32`配列への代入)に見えます。
+
+## これが示唆すること
+
+先ほどの「delta_total_kbは10M→12Mまでほぼ線形なのに、13Mで突然落ちる」という数値と、12Mで出た`invalid format specifier`という一見無関係な例外、そして今回の「配列ストア命令でのsegfault」を合わせると、次の仮説がかなり有力になります:
+
+**着地点のメモリ使用量(VmHWMのピーク)自体は10GB上限にまだ余裕があるが、リストの動的拡張(内部バッファが足りなくなった際のrealloc、通常は倍々で拡張される)が起きた瞬間に、定常状態よりずっと大きい一時的なメモリ要求が発生し、そこで失敗している。** 失敗の形が「綺麗なメモリ不足エラー」ではなく「配列への書き込み中のsegfault」なのは、reallocが失敗した後もランタイムが古いポインタや不正なサイズ情報を使って書き込みを続けようとした、という筋書きと整合します。
+
+これが正しければ、根本的な対策は「もっと大きいインスタンスにする」ことではなく、**`read_constellations_bin_range`や`build_soa_for_range`が配列を1件ずつappendして動的拡張する代わりに、件数が既知なので最初から確保する**という実装変更になります。ただしこれは369/370の枠を超える本格的な修正なので、今すぐ手を付けるべきではないと思います。
+
+## 提案
+
+371として、12M〜13Mの間を細かく刻んだスイープ(例: 12,200,000 / 12,500,000 / 12,800,000)を用意し、閾値をさらに絞り込みたいです。あわせて、**同じrecord_limit値を2回連続で実行して結果が毎回同じ場所で失敗するか(決定的か、それとも実行ごとにブレるか)**も確認したいです。ブレるようであれば「reallocのタイミングが運次第」という仮説をさらに補強できます。
+
+用意してよろしいでしょうか。
 """
 
 """
-# 362_kernel_port_spec.md
-
-## 位置づけ
-
-本文書は`kernel_dfs_iter_gpu_maxd14`(選択的maxd=14の実行パスで使われ
-る唯一のGPUカーネル)のC言語移植仕様である。338/360で確定した
-build_soa_for_range/symmetryのSoA導出仕様、361で実機確定したそのCポー
-トを前提とし、それに続く工程として本カーネル本体を対象にする。
-maxd16/18/20/21用の残り4カーネル(`kernel_dfs_iter_gpu_maxd16/18/20/21`)
-は334以来の一貫方針により対象外(N=21の全実チャンクは`selected_maxd=14`
-に収まることが337までに確認済み)。
-
-362自体はコードを一切追加しない設計専用リビジョン(324→325、338、360と
-同じパターン)。実装(`.cu`)は363以降。
-
-## 1. シグネチャの型対応
-
-| Codon | C/CUDA | 備考 |
-|---|---|---|
-| `ld_arr:Ptr[u32]` 他6本のSoAポインタ | `const uint32_t* __restrict__` | 361でC側リーダーが検証済みの配列と同一レイアウト |
-| `meta_next:Ptr[u8]` | `const uint8_t* __restrict__` | 28要素固定テーブル、値は下記4節 |
-| `results:Ptr[u64]` | `uint64_t* __restrict__` | スレッドごとの部分和、長さ=stride |
-| `m:int` | `int64_t` | Codonの`int`は64bit符号付き |
-| `board_mask:u32,n3:u32,n4:u32` | `uint32_t` | そのまま |
-| `stride:int` | `int64_t` | grid*block、K-batchingの歩幅 |
-| 戻り値 `->None` | `void` | `__global__`関数 |
-
-スレッド添字:
-```
-Codon: tid:int=(gpu.block.x*gpu.block.dim.x)+gpu.thread.x
-C   : int64_t tid = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
-```
-1次元launch。`if tid>=stride:return`はガード節としてそのまま。
-
-## 2. スタックレイアウト
-
-`stack=__array__[u64](MAXD14_ANCESTOR*2)`(MAXD14_ANCESTOR=13、
-すなわち26要素のu64=208バイト/スレッド)は、C側では単純なスレッド
-ローカル自動変数配列 `uint64_t stack[26];` に対応する。356の判断を
-踏襲し`stack_ptr`は`int32_t`(符号付き、添字幅は変更しない)、
-`save_sp`は`uint32_t`とする。
-
-Push(2箇所: root高速パス内・メインループ内、ロジックは同一):
-```c
-stack[stack_ptr]   = (uint64_t)cur_ld | ((uint64_t)cur_rd << 32);
-stack[stack_ptr+1] = (uint64_t)cur_col
-                    | (((uint64_t)(cur_avail | ((uint32_t)cur_depth << 27))) << 32);
-stack_ptr += 2;
-save_sp   += 1;
-```
-
-Pop(メインループ先頭、`cur_avail==0`かつ`save_sp!=0`のとき):
-```c
-save_sp -= 1;
-stack_ptr -= 2;
-uint64_t packed_ldrd  = stack[stack_ptr];
-uint64_t packed_colav = stack[stack_ptr+1];
-cur_ld  = (uint32_t)packed_ldrd;
-cur_rd  = (uint32_t)(packed_ldrd  >> 32);
-cur_col = (uint32_t)packed_colav;
-uint32_t saved_avail = (uint32_t)(packed_colav >> 32);
-cur_avail = saved_avail & bm;
-cur_depth = (int32_t)(saved_avail >> 27);
-```
-depthは avail の上位5ビット(bit27-31)にパックされている(N<=21のため
-avail自体は下位21ビットで足り、27ビットの余裕がある)。
-
-**リスクノート(358/359由来)**: pushの直前にある
-`if cur_avail!=u32(0):`という条件分岐(=356で確定したpushガード形状)
-は、355-359の一連の実験でCodonバックエンドの命令スケジューリングに
-対して極めて敏感であることが実機で確認されている(358: 分岐完全除去で
-+3.47〜5.51%、359: 部分無条件化で+65.0〜66.8%という壊滅的退行)。
-363での初回移植はこの分岐を**完全に1:1の直訳のまま**移植し、一切の
-形状変更を行わない。nvccという別バックエンドでも同じ感度が再現するか
-は未検証(n=2、Codon限定の観測を外挿する根拠はまだない)ため、形状
-変更の実験は±3%等価性確認**後**、363とは別のリビジョンとして慎重に
-行う。
-
-## 3. ビットマスク定数(13個、値は変更なし)
-
-全てカーネル本体冒頭で`u32`リテラルとして宣言されており、C側では
-`static const uint32_t`として同じ値でそのまま宣言すればよい。純粋な
-ビット演算の入力であり意味論的曖昧さはない。
-
-```c
-static const uint32_t IS_BASE_MASK        = 69222408u;
-static const uint32_t IS_JMARK_MASK       = 4u;
-static const uint32_t IS_MARK_MASK        = 199209203u;
-static const uint32_t IS_P5_MASK          = 3840u;
-static const uint32_t SEL2_MASK           = 34742338u;
-static const uint32_t BLOCK_CODE_B0_MASK  = 173707345u;
-static const uint32_t BLOCK_CODE_B1_MASK  = 12689458u;
-static const uint32_t BLOCK_CODE_B2_MASK  = 18088064u;
-static const uint32_t OP_STEP3_MASK       = 24u;   // codes 3,4
-static const uint32_t OP_ADD1_MASK        = 32u;   // code 5
-static const uint32_t OP_BL1_MASK         = 12u;   // codes 2,3
-static const uint32_t OP_BL2_MASK         = 16u;   // code 4
-static const uint32_t OP_KN3_MASK         = 18u;   // codes 1,4
-static const uint32_t OP_KN4_MASK         = 8u;    // code 3
-```
-
-## 4. `meta_next`テーブル(28要素、値は変更なし)
-
-ホスト側(Codon、main()内)で構築され不変のまま:
-```
-meta_next = [1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26]
-```
-C側では固定サイズ配列として同じ値で宣言する:
-```c
-static const uint8_t meta_next[28] = {
-  1,2,3,3,2,6,2,2,0,4,5,7,13,14,14,14,17,14,14,20,21,21,21,25,21,21,26,26
-};
-```
-生成ロジック(このテーブル自体をどう構築するか)はホスト側(Codon)に
-残り、363の移植対象には含めない——カーネルへは完成済みの配列として
-渡されるだけであるため。
-
-## 5. スケジュール事前計算フェーズ
-
-各コンステレーション(`idx`)ごとに、CPU側`schedule_depth_for_task`
-(626-667行)と同型のfuncid決定木を`while True:`ループで歩き、結果を
-2つのu32(`schedule_lo`/`schedule_hi`、depth0-7と8-15相当を4ビット
-ニブルずつパック)へ焼き込む。副産物として:
-- `child_jmark_mask`: jmarkが一致した深さのビットマスク(該当深さで
-  avail bit0を強制クリアする最適化に使用)
-- `future_check_mask`: 1手先の実行可能性を先読みチェックすべき深さの
-  ビットマスク
-- `terminal_depth`/`terminal_base14`: このコンステレーションの
-  スケジュールが尽きる深さと、そこでの数え上げ方法(単純カウント、
-  またはavail bit0除外込みの"base14"カウント)
-- `root_action`: depth=0時点でのfarme_actionがそのままroot分の挙動
-  (即終端/base14終端/jmark処理)を決める
-
-このフェーズは純粋な整数・ビット演算のループであり、行単位でCへ
-直訳可能。分岐条件・代入の意味論に曖昧さはない(720-851行を1対1で
-翻訳する)。
-
-## 6. rootの1〜2候補高速パス
-
-`root_after_second==0`(rootのavailが1個または2個しかビットを持たない
-場合)のとき、汎用ループに入る前に最初の候補を専用コードでインライン
-処理する最適化(880-948行)。push/popサイクルを1回節約するための特殊
-形。ビット演算・条件分岐ともCへの逐語訳で曖昧さなし。この経路も
-push直前に同じ`if cur_avail!=u32(0):`ガードを持ち、2節のリスクノート
-がそのまま適用される。
-
-## 7. メインDFSループ
-
-明示スタックによる反復DFS(950-1027行):
-1. `cur_avail==0`ならpop(空ならbreak)
-2. 現在深さのニブル(`schedule_lo`/`schedule_hi`から)を取り出し、
-   最下位ビットを1つ消費して次候補(nld/nrd/ncol)を計算(ニブルが
-   0でなければblock_code特殊ステップ、そうでなければ標準+1シフト)
-3. `nf`(次の空きマス)を計算、0ならスキップ(pop候補としてループ継続)
-4. `future_check_mask`該当時は1手先の実行可能性を先読みし、詰みなら
-   スキップ
-5. `cur_depth==terminal_depth`ならterminal_base14に応じて加算し
-   スキップ(descendしない)
-6. `child_jmark_mask`該当ビットがあればavail bit0を強制クリア
-7. descend: 2節のpushガード形状のままpush、cur_*を更新して継続
-
-これも行単位の逐語訳で曖昧さはない。
-
-## 8. 起動パラメータの受け渡し
-
-ホスト側(Codon、変更なし)で計算される3スカラー:
-```
-board_mask_gpu:u32 = u32(board_mask)
-n3_gpu:u32 = u32(1)<<u32(N-3)
-n4_gpu:u32 = u32(1)<<u32(N-4)
-```
-これらはカーネル引数としてそのまま渡す(マーシャリング不要、スカラー
-のkernel引数)。grid/blockは既存の32×484(BLOCK=32、MAX_BLOCKS=484)を
-変更しない。`kbatch_stride`(=grid*block=15488)も同様にスカラー引数
-として渡す。
-
-## 9. 判定基準
-
-360で確定した356アンカー(elapsed 393.404秒、chunk0/1/2=144,590/
-144,473/103,271ms)に対し**±3%以内**で成功(338固定基準、変更なし)。
-移植の目的は速度向上ではなく、Codonでは使えないwarp intrinsics・
-デバイスatomic・`-lineinfo`のper-line SASS帰属の解禁である。正当性
-314666222712は移植後も不変(振る舞い等価の移植であり、タスク集合や
-カウントロジックを変えるものではない)。
-
-## 10. 363以降のスコープ
-
-363では本specに基づき`.cu`本体(カーネル関数+ホスト側ランナーの
-最小構成)を実装する。336(nvccビルド+GPU実行round-trip)、337(bin
-リーダー)、361(SoA導出)の成果をそのまま踏襲し、カーネル呼び出しの
-前後(SoA配列のH2D転送、results配列のD2H転送、meta_next/定数の
-デバイスへの配置)を含めた最小ランナーを組む。N=18限定の突き合わせ
-(338 spec (3)節)を経てからN=21フル±3%判定に進む、という段階を踏む
-予定である。
 """
 
 import gpu
