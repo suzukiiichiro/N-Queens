@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 392 (2026-09-07)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 395a (2026-09-08)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -404,6 +404,116 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    ところだった。`REV_TAG`を`392`へ更新。それ以外(全関数・全カーネル・
    `bench_mode=38`の段階的突き合わせ)は391Pyから無変更。
 
+   **393: ncuプロファイリング(コード変更ゼロ)**。N=18 SourceCounters・
+   N=21 chunk0(`bench_mode=30`)・N=21本番C経路(`bench_mode=37` +
+   `--target-processes all`)の3測定を実施。355/357の数値が36リビジョン
+   ぶりに完全再現(N=18の`wait` 45.14%/`branch_resolving` 20.38%、
+   犯人2命令で60.27%)し、以後の比較アンカーとして確定した。新規の
+   実測3件: (a) `long_scoreboard`の99.77%が単一命令(popしたフレーム上位
+   ワードのマスク)に集中、(b) push/pop/再収束の27命令で全サンプルの
+   47.15%、(c) 時間の41%が「32レーン中1〜4本」の状態で消費されている。
+   **最大の発見はグリッド規模**: `Active Warps Per Scheduler`=1.51は
+   `484 blocks / (80 SM x 4 scheduler)` = 1.5125そのもので、ハード上限
+   12の12.6%しか席を要求していない。同時にwarp間の負荷不均衡は
+   実質ゼロ(1.51/1.5125 = 99.8%)であることも確定した。詳細は
+   `393_README_append.md`。
+
+   **394a(このリビジョン): C側ncu SourceCountersのための純粋リネーム**。
+   機能変更ゼロ。393でCodon版とC版のSASSが構造的に別物であること
+   (664命令対472命令、`STL.64`x2/`LDL.64`x2 対 `STL.128`/`LDL.128`
+   各1本)が判明したため、393 stage1で得たCodon版の命令単位内訳は
+   本番C版の最適化根拠にそのままは使えない。394aは375の手法
+   (`-lineinfo`ビルド+先頭15,488レコードのdd切り出し)でC版の同じ
+   内訳を取り、393 stage1と直接比較する測定専用リビジョンである。
+   この`.py`自体は394aの測定では一切実行されない(理由はVERSION_TAG
+   参照)。
+
+   **394b(このリビジョン): `MAX_BLOCKS`スイープ用リネーム**。機能差分は
+   `crunner_dispatch_table()`のバイナリ参照1トークン(`./389_kernel_maxd14`
+   →`./394b_kernel_maxd14`)のみ。`394b_kernel_maxd14.cu`はホスト側の
+   起動構成に`NQ_MAX_BLOCKS`環境変数による実行時上書きを加えただけで
+   (既定484=389と同一挙動)、カーネル領域は389とsha256一致。スイープ
+   ハーネス(`394b_sweep_maxblocks.sh`)はこの`.py`を実行せずC版バイナリを
+   直接叩く。勝者が決まった場合の本番切り替えは、同テーブル行の
+   `env_prefix`に`"NQ_MAX_BLOCKS=1280 "`のような1トークンを置くだけで
+   済む設計にしてある(`crunner_run()`は既に`f"{env_prefix}{binary_path}"`
+   でコマンドを組み立てている)。
+
+   **394c(このリビジョン): CRunnerに並べ替え済みbinを投入する`bench_mode=39`**。
+   393-10で本番C経路が330-350の並べ替えを一度も通っていないことが判明
+   した。mode 39はmode 37と1点だけ違い、`ensure_crunner_input_bin()`に
+   渡すファイルが生のstream binではなくchunkshape148済みbin(mode 30/31が
+   Codonカーネルで走らせているもの)になる。base/shaped binの解決と
+   未生成時の構築はmode 30/31と同じ文を逐語コピー(30/31側は無変更)。
+   並べ替えは順列(333)なのでレコード数一致をガードし、オラクルは不変。
+   並べ替え単位`BLOCK*MAX_BLOCKS`とC側のstrideを一致させるため、
+   `env_prefix`経由で`NQ_MAX_BLOCKS={gpu_max_blocks}`を渡す(argv[5]が
+   両方の唯一の出所)。CLIホワイトリスト/presetゲートへ39を追加。
+   mode 37その他の経路は394bPyと同一。
+
+   **394d(このリビジョン): mode 39の並べ替えラダー用ノブ**。394cの要因計画で
+   B(並べ替え済み入力、stride 15,488)が**+29.7%**という予測(−3〜−6%)と
+   逆符号・5倍の結果を出した。同時に968側のD(−1.0%)はchunkshape148の
+   `cap=1048576`警告で`iter_sort`が無効化されていたため、stride と
+   iter_sort が交絡している。394dはmode 39に`argv[10..15]`(window_mult、
+   phase_jump、cross_stripe_safe、bucket_run、iter_sort、input_stage)を
+   与え、stride 15,488で並べ替えパイプラインを段ごとに分解する:
+   base(broadmarktail)のみ / bucket_run=1 iter_sort=0 / 2048,0 / 2048,1 /
+   2048,9(=B)。ノブはmode 30/31が書くのと同じローカルへ書き、無条件で
+   グローバルへコピーされるので、キャッシュ名・ビルダーは30/31と同じ
+   挙動になる。argc=10の呼び出しは394cと無変更。
+
+   **394e(このリビジョン): 純粋リネーム(測定専用)**。394dのラダーで、
+   +29.7%の原因は`iter_sort`ではなく**broadmarktail base(funcid w3_j7
+   並べ替え+rotate)そのもの**で、base単独で+47.5%、以後の段はそれを
+   部分的に修復しているだけ(scorestripe −0.5pt、bucket_run −3.8pt、
+   iter_sort=1 −14.6pt、isort9 +1.1pt)と判明した(H_isort反証)。394eは
+   機構(warp内のレーン発散か、スレッド間の累積不均衡=launchの尻尾か)を
+   切り分けるため、同じ入力ファイルをstride 483/484/485で直接C版バイナリに
+   与える。32の倍数のstrideならwarp内の32件グルーピングは不変で、
+   per-thread列だけが変わる。この`.py`は394eの測定では実行されない。
+
+   **394f(このリビジョン): 純粋リネーム(測定専用)**。394eで、baseの罰は
+   stride 483/485に移しても+40〜45%残り(warp内32件グループは不変)、
+   M1(warp内)と確定した。ソースを読むと、broadmarktail baseは
+   `interleave_broad_markdist_tail_subparts()`でF17/GH/Rの3パートを
+   **レコード単位でラウンドロビン**に混ぜており、すべてのwarpに重い
+   レコードを均等に散らす設計(rev 111-113期のwarp間均衡)になっている。
+   C版は外側grid-strideループの末尾(`BSYNC B4`)で毎周回レーンを再収束
+   させるため、warp内のコスト不均一が周回ごとに最遅レーン待ちとして
+   現れる。394fは「生の順序が良いのは隣接コンステレーションが似ている
+   から」という仮説を、ランダムシャッフル(対照)と3種の構造ソートで
+   直接検証する。この`.py`は394fの測定では実行されない。
+
+   **394g(このリビジョン): 純粋リネーム(測定専用)**。394fで、ランダム
+   シャッフルが+44.2%(baseの+47.5%と同等)、ルート状態ソートが+20.8%、
+   コスト代理ソートが+21.2%、**スケジュール安定ソート(L3)が−1.7%**
+   (生の隣接ペアを99.4%保持)と判明。生順序の価値は「生成器の兄弟
+   コンステレーション=ほぼ同型の部分木が同じwarpに入る」ことにあり、
+   その上にスケジュール同質性を重ねたL3が生を初めて上回った。394gは
+   484〜968の`MAX_BLOCKS`を細分(704/800/864/928)して最適点を両側
+   ブラケットし、各点で生とL3を対にして走らせ、L3の−1.7%が占有率と
+   独立に合成されるかを確認する。この`.py`は394gの測定では実行されない。
+
+   **395a(このリビジョン): 394b〜394gのパラメータを`-g`既定に採用+初の
+   カーネル変更**。394gの実測(484 201,240 / 704 153,619 / **800 146,585** /
+   864 158,390 / 928 151,444 / 968 163,133、L3@800 = **139,404**、389比
+   −30.7%)を受け、(1)`A10G_FINAL_DEFAULT_MAX_BLOCKS`を484→800、
+   (2)mode 37が`gpu_max_blocks`を`NQ_MAX_BLOCKS`としてC側へ渡す
+   (mode 39と同じ機構、`-g 21 21 32 484 …`は従来どおり484)、
+   (3)`CRUNNER_INPUT_ORDER="sched"`: `ensure_crunner_input_bin()`に
+   4段目(`394f_permute_soa7.py sched`)を追加し、mode 37はL3順の入力を
+   CRunnerへ渡す(mode 39はrawのまま。389の3段はそのまま
+   `_ensure_crunner_filtered_bin()`へ切り出し)。カーネル側は
+   `395a_kernel_maxd14.cu`で`nibble_op`の二重抽出を除去(394aで全サンプル
+   の4.09%)。364以来初のカーネル変更であり、CPUハーネスで実データ
+   2,048件のper-record結果が394gとバイト一致することを事前確認済み。
+   r1: hoistのみは無効果(+0.07%)。r2: 64bit `schedule64`の1回シフトへ。
+   r3: 外部ツール(363フィルタ・394f順列)の標準出力を
+   `{REV_TAG}_crunner_logs/`へリダイレクト——bare `-g`初回のsched生成で
+   `[permute-done]`行がコンソールに漏れていた(388の「`-g`は表の行だけ」
+   契約に違反)。`-d`時は要約行を再表示する。
+
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
    328で分割した上位u32配列は全要素が恒等的に0であった。351でこれを
@@ -534,39 +644,27 @@ VERSION_TAGのみ、項目6の記述のみが実質的に更新されている�
 (`source_code_identical_to_356`)。参照ハッシュは実物の356Pyから
 このセッションで直接算出したものであり、推測や再構成ではありません。
 
-
-# ビルド
-codon build -release 115Py_range_default_clean_cg_v2.py
-
-# CPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
-
-# GPU実行
-stdbuf -oL -eL ./115Py_range_default_clean_cg_v2 -c 2>&1 | tee 115Py_cpu_range_$(date +%Y%m%d_%H%M%S).log
-
-
-2026年  9月  7日 月曜日 15:31:18 JST
-NQ_CRunner$ ./388Py_kernel_maxd14_final -g
+2026年  9月  8日 火曜日 23:19:04 JST
+NQ_CRunner$ ./395aPy_kernel_maxd14_final -g
 GPU mode selected
  N:             Total           Unique         hh:mm:ss.ms
  5:                10                0          0:00:00.000
- 6:                 4                0          0:00:00.004    ok
- 7:                40                0          0:00:00.003    ok
- 8:                92                0          0:00:00.002    ok
- 9:               352                0          0:00:00.002    ok
-10:               724                0          0:00:00.004    ok
-11:              2680                0          0:00:00.005    ok
-12:             14200                0          0:00:00.007    ok
-13:             73712                0          0:00:00.011    ok
-14:            365596                0          0:00:00.017    ok
-15:           2279184                0          0:00:00.031    ok
-16:          14772512                0          0:00:00.066    ok
-17:          95815104                0          0:00:00.210    ok
-18:         666090624                0          0:00:01.619    ok
-19:        4968057848                0          0:00:08.479    ok
-20:       39029188884                0          0:01:05.189    ok
-21:      314666222712                0          0:03:23.297    ok
-22:     2691008701644                0          0:28:44.275    ok
+ 6:                 4                0          0:00:00.006    ok
+ 7:                40                0          0:00:00.004    ok
+ 8:                92                0          0:00:00.003    ok
+ 9:               352                0          0:00:00.004    ok
+10:               724                0          0:00:00.005    ok
+11:              2680                0          0:00:00.006    ok
+12:             14200                0          0:00:00.008    ok
+13:             73712                0          0:00:00.012    ok
+14:            365596                0          0:00:00.019    ok
+15:           2279184                0          0:00:00.028    ok
+16:          14772512                0          0:00:00.057    ok
+17:          95815104                0          0:00:00.142    ok
+18:         666090624                0          0:00:01.238    ok
+19:        4968057848                0          0:00:05.884    ok
+20:       39029188884                0          0:00:42.845    ok
+21:      314666222712                0          0:02:15.651    ok
 
 
 2023/11/22 これまでの最高速実装（CUDA GPU 使用/C）
@@ -584,216 +682,116 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-おはようございます。本日もよろしくお願いいたします。
+Now the first kernel change since 364 — the `nibble_op` hoist — with the diff verified against 394g.Now the 395a harness: it isolates the kernel change at the 394g best config, then confirms bare `-g` end to end.解析しました。**最良はL3@800 = 139,404 ms、389比−30.7%、N=21 ≈ 2:19.4です。** 予測は2つ外れました。
 
-`393_ncu_profile.sh` をお渡しします。実行手順は従来どおりです。
+## 394g 結果
 
-```bash
-STATIC_ONLY=1 bash 393_ncu_profile.sh     # 静的チェックのみ、GPU時間ゼロ
-              bash 393_ncu_profile.sh     # stage 1,2(合計25分程度)
-```
+| `MAX_BLOCKS` | warp/SM | 生 | vs 484 | L3 | L3 vs 生 |
+|---:|---:|---:|---:|---:|---:|
+| 484 | 6.05 | 201,240 | — | — | — |
+| 704 | 8.8 | 153,619 | −23.7% | 153,331 | −0.19% |
+| **800** | **10.0** | **146,585** | **−27.2%** | **139,404** | **−4.90%** |
+| 864 | 10.8 | 158,390 | −21.3% | 150,535 | −4.96% |
+| 928 | 11.6 | 151,444 | −24.7% | 151,549 | +0.07% |
+| 968 | 12.1 | 163,133 | −18.9% | 161,299 | −1.12% |
 
-## 中身
+11実行すべてオラクル一致。「MB\*は[864,968]」は反証(800)、「L3は全点で−1.7±1%」も反証(0〜−5%で交互作用あり)。
 
-3ステージ構成で、すべて `./392Py_kernel_maxd14_final ... -d` 経由です。既定は 1,2 のみ、各ステージ前に8秒の待機を入れてCtrl-Cで抜けられるようにしました(391で確立したパターン)。
+704〜968は**幅広い高原**(−19〜−27%)に**±4%のギザギザ**が乗った地形で、滑らかなL1圧曲線ではありません。800 = 80 SM × ちょうど10ブロック(完全均一)が効いている可能性がありますが、未検証です。**800は「真の最適点」ではなく「実測した中の最良」として採用**し、隣接点(784/816)と80の倍数(720/880/960)の追試は残課題とします。
 
-| Stage | 内容 | 見積 |
-|---|---|---:|
-| 1 | N=18、`--section SourceCounters --page source`(構造調査) | 約1分 |
-| 2 | N=21 chunk0、`bench_mode=30`、SchedulerStats+WarpStateStats | 357実測19分40秒 |
-| 3 | **既定オフ**。N=21を`bench_mode=37`でCRunner経由、`--target-processes all` | 約10分 |
+## 395a — お渡しするもの
 
-反映した既知の教訓:
+ご要望どおり、394gまでのパラメータを`-g`の既定にしました。
 
-- `sudo -n true` を**最初**に置き、通らなければビルドもGPUも一切走らせずに停止(352の14分)
-- stage 2 は `bench_mode=31` ではなく **30**(`debug_chunk_start=0 debug_chunk_count=1`)。`--launch-count 1` は計装対象を絞るだけでプログラムを止めない(355の24分)
-- `ncu` は絶対パスに解決してから `sudo` に渡す(6102)
-- ncu出力は一切パースせず、見出しの有無だけINFO扱いで確認、生ログと `.ncu-rep` を丸ごと保存
-- CLIホワイトリストゲートに `bench_mode==30` が残っているかを実行前に静的確認(361/365/366/368/369で5回踏んだ罠)
-- `-d` が実際に効いたかを `[debug-mode] enabled via -d` バナーでゲート、stage 2 は `split291_final_probe` の出力で probe モードだったことを証明
-- SMクロックを実行前後に記録(1320MHz/1710MHz問題の再発検知用)
-- sudo実行で root 所有になったファイルを毎ステージ後に戻す
+| 項目 | 従来 | **395a** |
+|---|---|---|
+| `A10G_FINAL_DEFAULT_MAX_BLOCKS` | 484 | **800** |
+| C側stride | バイナリ既定484(mode 37は無視) | **mode 37が`NQ_MAX_BLOCKS={gpu_max_blocks}`を渡す**(`-g 21 21 32 484 …`は従来どおり484) |
+| CRunner入力の順序 | 生 | **sched**(394f L3)。`ensure_crunner_input_bin()`の4段目として`394f_permute_soa7.py sched`を適用 |
 
-引数ベクタは全桁コメント付きで書いてあります(stage 2 は `-g 21 21 32 484 0 0 7 30 3 7 0 0 1 -d`。window_mult=3 / phase_jump=7 は333で採用した現行既定)。`gpu_log_level` はあえて位置引数で 0 のままにし、`-d` に昇格させています——そこが今回試したい経路そのものなので。
+389の3段パイプラインは`_ensure_crunner_filtered_bin()`へそのまま切り出し(本体バイト一致を確認)。mode 39はrawのまま。`[crunner-config]`行を毎回記録します。
 
-## 1点だけ、走らせる前にご確認いただきたいこと
+**カーネル変更(364以来初)**: `395a_kernel_maxd14.cu`で`nibble_op`の二重抽出を除去——抽出直後に`block_code = nibble_op & 7u`と`fc_flag = nibble_op & 8u`を取り、2つの消費側がそれぞれを読みます(コード領域の差分は removed=3 / added=12 のみ、pushガード不変)。
 
-`-d` はCodon側のフラグなので、stage 1・2 が測るのは **Codonの `kernel_dfs_iter_gpu_maxd14`** です。一方で現在N=21の本番経路は `A10G_FINAL_DEFAULT_BENCH_MODE=37` → CRunner → `./389_kernel_maxd14`(C版、`kernel_ms≈201,237`)であり、373でCodon版はC版より約13.6%遅いことが確定しています。
+**GPU前の等価性確認をサンドボックスで済ませました**: CPUテストハーネス(`gcc -x c`は`process_one_task()`そのものをコンパイルします)で、**実データ先頭2,048件のper-record結果が394gとバイト一致**。ハーネスもこれをゲートとして再実行します。
 
-つまり、ベンチマーク目標(N=21をN=20ペースの2:02へ)に直接効くのはC版カーネルの側で、375のSASS実測もそちらで取ったものです。stage 1・2 の結果は355/357と直接比較できるという大きな利点がありますが、最適化対象そのものではありません。
+検証設計は変数を分けます:
 
-もしC版を主対象にされるなら `STAGES=1,3` あるいは `STAGES=1,2,3` で実行してください(stage 3 は `./389_kernel_maxd14` がビルド済みであることが前提です。ハンドオフメモに「NOT YET real-hardware built under this filename」とあるので、未ビルドであれば先に `nvcc -O3 -arch=sm_86 -o 389_kernel_maxd14 389_kernel_maxd14.cu` が必要です)。
+| セル | 内容 | 分離する変数 |
+|---|---|---|
+| K0 | 394gバイナリ、直接、L3、800 | 139,404の再現(800は1回しか測っていない) |
+| **K1** | **395aバイナリ**、同条件 | **K1 vs K0 = カーネル変更のみ** |
+| **G** | **bare `./395aPy -g 21 21`** | 本番経路。C側ログで`stride=25600`・`.sched394f.bin`をゲート |
+| A | `-g 21 21 32 484 0 0 7 37 -d` | 明示484の経路(≈394fのL3 197,792) |
 
-ログ一式(`393_ncu_<timestamp>.tar.gz`)をお送りいただければ解析します。
-
-解析しました。両ステージとも成功、しかも予想外の収穫があります。
-
-## 0. 実行の健全性
-
-| 項目 | 結果 |
-|---|---|
-| SMクロック | **1710MHz(実行前後とも)** — 314-316時代の1320MHz制限は解消済み |
-| ドライバ / CUDA | 595.91.07 / 13.2、ncu 2025.3.1、nvcc V13.0.88 |
-| `-d` バナー | 両ステージで確認 |
-| probe mode | `split291_final_probe: mode=30 chunk_start=0 chunk_count=1` 確認、chunk0 のみで停止 |
-| stage1 所要 | 6.671秒(5パスreplay込み)、`18: 666090624 ok` — **N=18のオラクル一致** |
-| stage2 所要 | chunk0 = 19分34.655秒(8パスreplay、通常144秒の約8.2倍)。357の19分40秒と一致 |
-| ソース sha256 | `9603ae67…` — お手元の392Pyと一致確認済み |
-
-意図せずですが、stage1 は N=18 を完走したので `666090624` という正当性の裏付けが付きました。「オラクルなし」と書きましたが、N=18 に限れば付いています。
-
----
-
-## 1. 再現性 — 355/357と完全一致
-
-N=18総サンプル 1,322,552(357: 1,322,978、-0.03%)。
-
-| ストール理由 | 355(356前) | 357(356後) | **393** |
-|---|---:|---:|---:|
-| `wait` | 45.44% | 45.59% | **45.14%** |
-| `selected` | 22.47% | 21.85% | **22.11%** |
-| `branch_resolving` | 20.10% | 20.30% | **20.38%** |
-| `long_sb` | 5.01% | 5.58% | **5.58%** |
-| `no_inst` | 4.81% | 4.63% | **4.75%** |
-
-犯人①(`BRA 0x…289900`)120,855 / 犯人②(`BRA 0x…28a9a0`)41,596 = **60.27%**(355: 60.2%、357: 60.45%)。`@!P2 BREAK B2` は 39,062/597,004 = **6.54%**(355: 6.4%、357: 6.42%)。
-
-390-392でmaxd16カーネルを追加しても、maxd14の生成コードは無傷です。**これは356→393の36リビジョンにわたる不変性の証明**であり、以後の比較アンカーとして使えます。
-
----
-
-## 2. 新発見1 — `long_scoreboard` の99.77%が単一命令に集中
-
-| addr | samples | 内訳 | 命令 |
-|---|---:|---|---|
-| `28a980` | 82,010(**全体の6.20%、単独2位**) | long_sb 73,616 / wait 3,239 | `LOP3.LUT R16, R5, c[0x0][0x1b0], RZ, 0xc0` |
-
-カーネル全体の `long_sb` は 73,784。**そのうち 73,616(99.77%)がこの1命令**です。355/357はこの5%台を「その他」として扱っていましたが、実体は完全に局在していました。
-
-前後を見ると正体は明白です:
-
-```
-28a920  IMAD.U32 R2, R8, 0x8, R1
-28a930  LDL.64 R4, [R2+-0x8]      ← pop(R4,R5)
-28a940  LDL.64 R10, [R2+-0x10]    ← pop(R10,R11)
-28a950  IADD3 R8, R8, -0x2, RZ    ┐
-28a960  IMAD.MOV.U32 R9, RZ, RZ, RZ │ 独立命令わずか3個
-28a970  IADD3 R0, R0, -0x1, RZ    ┘
-28a980  LOP3.LUT R16, R5, mask    ← LDL.64の結果を待つ
-28a990  SHF.R.U32.HI R5, RZ, 0x1b, R5
-```
-
-popした64bitフレームの上位ワード `R5` を、ロードからわずか3命令でマスクしています。フレームは `avail`(下位、`c[0x0][0x1b0]`=maskでAND)と5bitのカウンタ(`>>0x1b`)にパックされている構造です。
-
----
-
-## 3. 新発見2 — 領域別の内訳
-
-| 領域 | アドレス範囲 | 命令数 | samples | 比率 | `wait` | `br_res` | `long_sb` |
-|---|---|---:|---:|---:|---:|---:|---:|
-| A ループ先頭+デコード前処理 | 289900–289b80 | 41 | 154,379 | 11.67% | 72,769 | 5,336 | 38 |
-| B 内側DFS本体 | 289b90–289d40 | 28 | 240,838 | 18.21% | 132,303 | 11,667 | 0 |
-| C 内側末尾/再ループ | 289d50–289e10 | 13 | 111,388 | 8.42% | 69,806 | 18,675 | 0 |
-| **D pushパス** | 28a810–28a8e0 | 14 | 209,598 | **15.85%** | 84,500 | 66,119 | 0 |
-| **E popパス** | 28a8f0–28a990 | 11 | 225,311 | **17.04%** | 95,871 | 9,787 | **73,616** |
-| **F 再収束+バックエッジ** | 28a9a0–28a9b0 | 2 | 188,653 | **14.26%** | 31,028 | **132,087** | 0 |
-| その他 | | 555 | 192,385 | 14.55% | | | |
-
-**push+pop+再収束(D+E+F)の27命令だけで全サンプルの47.15%**。664命令中の4%が時間の半分を食っています。375のCUDA C版SASS実測(「ホットスポットの23.5%がpush/pop分岐の再収束点」)と同じ構造が、Codon版でもより高い比率で出ています。
-
-特に `28a9b0`(バックエッジ)は単独で12.32%。実行回数あたりのコストで見ると突出しています:
-
-| addr | samples/百万実行 | 命令 |
-|---|---:|---|
-| `28a9b0` | **13,316** | `BRA → 289900`(外側ループのバックエッジ) |
-| `28a980` | 3,181 | `LOP3.LUT R16, R5, mask`(pop消費) |
-| `28a8e0` | 2,527 | `BRA → 28a9a0`(BSYNC B2へ) |
-
-2位の4.2倍です。`28a9b0` は直前が `BSYNC B2` で、**warp内の最も深い1レーンの内側DFSが終わるまで、外側ループが1周も進めない**という再収束待ちがそのまま値になっています。
-
----
-
-## 4. 新発見3 — レーン占有率の「地図」
-
-`Avg. Threads Executed` を領域ごとに見ると、崩壊の場所が特定できます:
-
-| 領域 | 平均アクティブレーン | 実行回数 |
-|---|---:|---:|
-| A ループ先頭+デコード | **19** / 32 | 12,240,109 |
-| B 内側DFS本体 | 9 / 32 | 23,447,239 |
-| D pushパス | 6 → 4 / 32 | 27,400,242 → 17,871,907 |
-| **E popパス** | **2** / 32 | 25,783,591 |
-| F バックエッジ | 19 / 32 | 12,239,625 |
-
-サンプル加重で並べ直すと:
-
-| 平均アクティブレーン | samples | 比率 |
-|---|---:|---:|
-| **1–4 / 32** | 542,841 | **41.04%** |
-| 5–8 / 32 | 245,826 | 18.59% |
-| 9–16 / 32 | 216,164 | 16.34% |
-| 17–24 / 32 | 317,361 | 24.00% |
-| 25–32 / 32 | 360 | 0.03% |
-
-カーネル全体平均 9.41/32(レーン利用率29.4%)。**時間の41%が、32レーン中1〜4本しか動いていない状態で消費されています。**
-
----
-
-## 5. 329の記録との整合(矛盾ではありませんでした)
-
-カーネル全体の `Divergent Branches` は **57,527,372**、`Branch Efficiency` **77.99%** と、329の「Divergent Branches=0」とは一見矛盾します。個別に確認したところ:
-
-- `28a9b0` / `28a8e0`(犯人①②): **Divergent Branches = 0** ← 329の記録どおり。無条件BRAなので当然
-- 57.5Mは**条件分岐**側に出ている: `289d20`(14.67M)、`28a850`(14.16M)、`289e00`(10.18M)、`289b80`(7.43M)
-
-329の記述は「あの2命令について」正しく、カーネル全体の話ではなかった、という**適用範囲の明確化**です。記録の訂正は不要ですが、範囲の注記は入れておく価値があります。
-
----
-
-## 6. N=21(chunk0、K=48本番形状)
-
-| 指標 | 355 | **393** |
-|---|---:|---:|
-| No Eligible | 67.80% | **68.32%** |
-| Active Warps / Scheduler(上限12) | 1.53 | **1.53** |
-| Eligible Warps / Scheduler | 0.37 | **0.36** |
-| Avg. Active Threads Per Warp | 7.02 | **7.17** |
-| `wait` 寄与 | 4.7サイクルの43.3% | 4.82サイクルの**43.18%** |
-| 発散由来の改善見込み | 79.68% | **79.28%** |
-
-`Stall Wait` 2.08 inst / `Selected` 1.00 / `Branch Resolving` 0.98 — 304時点(2.09 / 0.93)から実質不変です。**1710MHzのフルクロックでも比率構造は動かない**ことが確定しました。これで355/357(1320MHz)との比較可能性の疑義も消えます。
-
-N=18(45.14%)とN=21(43.18%)の `wait` 一致も再現。N=18トリックの正当性は3回目の裏付けです。
-
----
-
-## 7. 394への評価(事前登録)
-
-**費用対効果の見積もりを、測る前に固定しておきます。**
-
-| 案 | 上限効果 | リスク | 評価 |
-|---|---:|---|---|
-| ① スタックをlocal→shared | 5.58% | 208B/thread×32=6,656B/block、16block/SM=**106.5KB > 100KB**でギリギリ入らない | **不可**(占有率を落とせば意味がない) |
-| ② `28a980` のスケジューリング分離(LDL.64→消費までの距離を伸ばす) | 5.57% | Codonでは制御不能。**CUDA C側のみ**で可能 | 小さいが確実、C側限定 |
-| ③ デコード前処理(領域A)の命令数削減 | 11.67% | 19レーン稼働なので削減がそのまま効く。ループ不変量の巻き上げ | **単一変数として最も安全** |
-| ④ warp intrinsics によるwarp内ワークシェアリング | 41%(1-4レーン帯) | Codon不可(330で確定)。375-382のフレームキューは31%退行して閉じた | 本丸だが高リスク |
-
-①は数字を出す前に落ちました。②③は上限が1桁%で、N=21を3:23→2:02(-40%)にする目標には届きません。**目標に届きうるのは④だけ**、という構図が今回の実測で数値的に確定しました。
-
-## 8. 次の一手の提案
-
-ただし、**この393の数字はすべてCodon版カーネルのものです。** 本番のN=21は `bench_mode=37` → `./389_kernel_maxd14`(C版、`kernel_ms≈201,237`)で走っており、373で両者は13.6%違うことが確定しています。SASSが違う以上、393の領域別内訳をそのままC版の最適化根拠にはできません。
-
-394として、まず **`STAGES=3` だけを回すこと**を提案します(所要10分程度、`./389_kernel_maxd14` はビルド済みを確認済み)。同じスクリプトのstage 3が、`--target-processes all` でCRunner経由のC版カーネルに対し SchedulerStats+WarpStateStats を取ります。N=21を完走するので `314666222712` のオラクルも同時に付きます。
+事前登録: **K1 vs K0 = −2〜−5%**(K1 ≥ K0−0.5%なら反証=コンパイラが重複を再生成、395a-r2で64bitスケジュール1回シフトへ)、GはK1±1%、**本番N=21 ≈ 139,000 ms ≈ 2:19、目標への残り約−12%**。
 
 ```bash
-STAGES=3 bash 393_ncu_profile.sh
+STATIC_ONLY=1 bash 395a_validate.sh      # OK=21
+              bash 395a_validate.sh      # CPU等価ゲート → ビルド → K0 K1 G A、約12分
+NCU=1         bash 395a_validate.sh      # + SASS確認(sudo)
 ```
 
-これで「Codon版とC版で、レーン占有率崩壊とストール構造が同一なのか」が実測で決まります。同一なら④をC版で設計する根拠になり、違っていれば13.6%差の原因究明(382で保留したまま)がそのまま高速化の入口になります。どちらに転んでも、推測ではなく実測から始められます。
+`394f_permute_soa7.py`はschedキーを単一intに変更(N=22の28.7M件向け、出力は旧版とバイト一致を確認)。**N=22のbare `-g`は初回のみsched順列生成に数分かかります**。
 
-READMEへの393追記文(日本語)もご用意できますが、まずこの解析でよろしいか確認させてください。
+2つのことが分かりました。ひとつは実測結果、ひとつは私のハーネスの誤りです。
 
+## 結果: カーネル変更は「安全だが未効」
+
+| セル | run 1 | run 2 |
+|---|---:|---:|
+| K0(394gバイナリ、L3、800) | 139,443 | 139,396 |
+| K1(395a r1バイナリ、同条件) | 139,527 | 139,542 |
+| **K1 vs K0** | **+0.06%** | **+0.10%** |
+
+K0は394gの139,404を±0.03%で再現(800点は再現性良好)。**K1は無効果** — 予測2(−2〜−5%)は反証です。オラクル一致・CPUハーネスの2,048件一致は両runで確認済みなので、変更は安全。ただしhoistだけではnvccの再実体化の判断は変わりませんでした。事前登録どおり**r2**へ。
+
+## Gの`FAIL`は私のハーネスの誤りです
+
+`-g 21 21`はargc=4で、**`A10G_FINAL_*`既定はargc==2(bare `-g`)のときだけ適用**されます。argc=4ではローカル初期値のまま`bench_mode=0`となり、`exec_solutions_gpu_bin_stream()`——**Codonカーネルを生のstream binで単発実行する経路**——が走りました。ログの「壁時計8:46・オラクル一致・CRunnerログなし」がそれを裏付けています。本番パラメータ自体は正しく組み込まれており、Gが本番経路を通っていなかっただけです。
+
+## 395a r2(同じファイル名、内容をr2に)
+
+`schedule64 = (hi<<32)|lo`をループ不変量として1回作り、主ループのnibble抽出を**1回のfunnel shift+AND**にします。`cur_depth<8`判定・2本のシフト・選択が消えるので、コンパイラが再実体化しようがしまいが、その組は存在しなくなります。rootの高速経路とpushガードは無変更。394gからの差分は removed=9 / added=22。
+
+サンドボックスで**実データ2,048件+別スライス1,024件のper-record結果が394gとバイト一致**を確認済みです。
+
+ハーネスの修正:
+- Gを明示形`-g 21 21 32 800 0 0 7 37 -d`(bare `-g`がN=21で適用する値そのもの)に
+- CRunnerログ不在時に「CRunner経路を通っていない」と診断
+- **`FULL_G=1`**で本物のbare `-g`(N=5..27、**N=22の初回sched生成込み、約40分**)。N=21/22両方のオラクル・stride・入力順をゲートし、**N=22の800×schedの`kernel_ms`を初測定**します
+- 静的25項目(r2指紋9/22、`schedule64`の存在、主ループから`cur_depth<8`が消えたこと、root高速経路の不変)。r1のファイルを入れると4項目FAILすることを確認済み
+
+事前登録(r2): **K1 vs K0 = −1.5〜−4%**(≥−0.5%なら反証。その場合はSASSでfunnel shiftになっているかを見る)、SASS命令数460〜468、`ISETP.GE.AND P0, PT, R7, 0x8`は**0回**。
+
+```bash
+STATIC_ONLY=1 bash 395a_validate.sh      # OK=25
+              bash 395a_validate.sh      # K0 K1 G A、約12分
+NCU=1         bash 395a_validate.sh      # + SASS確認(sudo)
+FULL_G=1      bash 395a_validate.sh      # + bare -g、約40分
+```
+
+前回の3行貼り付けで3回連続実行されたのと同様、**行は1つずつ**お願いします。`.py`と`394f_permute_soa7.py`は変更なしです。
+
+まず、この実行は**本番経路の端から端の初確認**です — `21: 314666222712 ... 0:02:24.719 ok`(800×sched、壁時計にはsched順列の初回生成を含む)。
+
+漏れた`[permute-done]`行は、外部ツール(`394f_permute_soa7.py`)の標準出力が`os.system`経由でそのまま流れたものです。388の契約(`-g`は表の行だけ、診断は`-d`)に反していました。**r3**で直します。
+
+## 395a r3(同じファイル名、`.py`とハーネスのみ更新、`.cu`は変更なし)
+
+- 363フィルタと394f順列の**両方**の呼び出しを`{REV_TAG}_crunner_logs/`へリダイレクト(`filter_363_N{N}.log` / `permute_sched_N{N}.log`)。363側も同じ漏れ方をする構造だったので併せて塞ぎました
+- `-d`のときは`grep`(os.system経由)で要約行だけ再表示。新しいCodonのファイル読み出しイディオムは持ち込んでいません
+
+ハーネス側は、この契約が**実際に試される**構成にしました:
+- 静的チェックに「外部`python3`呼び出し2件がどちらもリダイレクト済み」を追加(r2の`.py`を入れるとFAIL)
+- **Gセルは`-d`なしで、キャッシュ済みのsched入力を削除してから実行** — sched段が本当に走る状態で、コンソールに`[permute-done]`/`[filter-`/`[crunner-`/`[debug-mode]`が一切出ないことをゲート(`[crunner-config]`はdispatch.log側で確認)。偽バイナリで漏らした場合にFAILすることを確認済み
+
+```bash
+STATIC_ONLY=1 bash 395a_validate.sh      # OK=26
+              bash 395a_validate.sh      # CPU等価 → K0 K1 G(静音・sched再生成) A、約12分
+```
+
+なお、bare `-g`はそのままN=22へ進みます(28.7M件のsched順列を初回だけ数分かけて生成し、以後キャッシュ)。N=22の800×schedの`kernel_ms`は初測定になるので、もし完走していれば`395a_crunner_logs/crunner_395a_kernel_maxd14_N22.log`の値をお知らせください。
 """
 
 """
@@ -830,15 +828,31 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="392 PY-REVTAG: pure rename of 391Py_kernel_maxd14_final.py to 392Py_kernel_maxd14_final.py, per Suzuki's explicit request that the .py carry the same current-revision number as the .cu (392_kernel_maxd16.cu, shipped alongside 391Py -- keeping them at mismatched numbers was itself an inconsistency with the standing per-revision-self-contained policy 388 r3/r4 established). Two changes: (1) the header Open Objectives date bumped to 392, (2) REV_TAG was still 388 -- CAUGHT STALE HERE: it had never been updated since 388 itself despite 389 and 391 both shipping in between, meaning crunner_dispatch_log() would have kept writing to 388_crunner_logs indefinitely had this gone unnoticed. Now REV_TAG=392. Everything else -- every function, every kernel, bench_mode=38 staged cross-check -- is unchanged from 391Py."
+VERSION_TAG:str="395a PY-PRODUCTION-PARAMS: derived from 394gPy. Adopts the 394b..394g measurements as the bare -g defaults: (1) A10G_FINAL_DEFAULT_MAX_BLOCKS 484 -> 800; (2) bench_mode==37 now passes NQ_MAX_BLOCKS={gpu_max_blocks} to the C binary via env_prefix (so -g means 800x32 and -g 21 21 32 484 ... still means 484x32); (3) new CRUNNER_INPUT_ORDER=sched: ensure_crunner_input_bin() gains an order parameter (default raw) and a 4th stage that permutes the filtered SoA7 bin with 394f_permute_soa7.py sched (stable (markctrl, ctrl0) sort, 99.4% raw adjacency kept); mode 37 passes CRUNNER_INPUT_ORDER, mode 39 keeps raw. The 389 3-stage build is factored into _ensure_crunner_filtered_bin(); r3 changes only its filter invocation to redirect the external script into {REV_TAG}_crunner_logs/ (bare -g must print table rows only -- the first sched build had leaked a [permute-done] line to the console; both external tools are now redirected and their summary lines are re-surfaced only with -d). crunner_dispatch_table() references ./395a_kernel_maxd14, the first kernel change since 364 (nibble_op hoist). A [crunner-config] line records block/max_blocks/stride/order per run."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
 CROSS_STRIPE_SAFE_DEFAULT:bool=False
+# ===395a-CRUNNER-ORDER-BEGIN===
+# 395a: the ORDER in which the CRunner receives its SoA7 records. 394d/394e/
+# 394f established that the C kernel's time moves by up to 44% with data
+# order alone (kernel untouched): the generator's natural order keeps
+# sibling constellations (near-isomorphic subtrees) in the same warp, and
+# the outer grid-stride loop reconverges all 32 lanes every iteration, so
+# lane lockstep is everything. The 330-350 broadmarktail/chunkshape148
+# pipeline breaks that adjacency (+29.7% .. +47.5%) and is NOT used on
+# this path. "sched" = 394f L3: a STABLE sort by (markctrl, ctrl0) that
+# keeps 99.4% of the raw adjacent pairs and adds schedule homogeneity;
+# measured -1.7% at 484, -4.9% at 800/864 (394g). "raw" = the 389..394g
+# production behaviour. Applied as a 4th stage of ensure_crunner_input_bin()
+# via the external tool below (same pattern as 363_filter_maxd14_only.py).
+CRUNNER_INPUT_ORDER:str="sched"
+CRUNNER_PERMUTE_SCRIPT:str="394f_permute_soa7.py"
+# ===395a-CRUNNER-ORDER-END===
 
 A10G_FINAL_DEFAULT_N:int=22
 A10G_FINAL_DEFAULT_BLOCK:int=32
-A10G_FINAL_DEFAULT_MAX_BLOCKS:int=484
+A10G_FINAL_DEFAULT_MAX_BLOCKS:int=800  # 395a: was 484 since the rev-237 era. 394b/394g measured the C kernel at 484/704/800/864/928/968/1024..1936 blocks x 32: 800 (= exactly 10 blocks on each of 80 SMs) is the best sampled point, raw 146,585ms vs 201,240 at 484 (-27.2%). Flows to the C runner as NQ_MAX_BLOCKS through bench_mode==37 (see ===395a-MODE37-STRIDE===). The 704..968 region is a plateau with +-4% stride-specific jaggedness (394g); 800 is adopted as the best MEASURED point, not as a proven optimum.
 A10G_FINAL_DEFAULT_LOG_LEVEL:int=0
 A10G_FINAL_DEFAULT_SORT_MODE:int=0
 A10G_FINAL_DEFAULT_PRESET:int=7
@@ -862,7 +876,7 @@ CPU_FINAL_DEFAULT_N:int=22
 # reasoning and restores the rev-numbered prefix via this single
 # constant, updated each revision (the same maintenance habit as
 # VERSION_TAG itself).
-REV_TAG:str="392"
+REV_TAG:str="395a"
 # ===388-REVTAG-END===
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=28  # 387: range() upper bound; outputs N=5..27, the actual ceiling of this file's own oracle table (expected[], 28 entries, indices 0-27) and select_dynamic_preset_queens' defined N ranges -- NOT an artificial cap. In practice bench_mode==37's break-on-unsupported-maxd (see the ===385-DISPATCH-INSERT-BEGIN=== block) stops the loop well before N=27 today, and will reach further as this week's CRunner maxd work registers more entries in crunner_dispatch_table(). Raising this constant further without also growing expected[] would crash on an out-of-range index, so this is not "24 -> 28" as an arbitrary bump; it is the real limit of what this file can even validate.
@@ -6969,7 +6983,48 @@ def crunner_dispatch_table()->List[CRunnerEntry]:
     # 388 reasoning; this is now routine, not a one-off). Code region
     # confirmed byte-identical by diff (sha256 unchanged from 388/364).
     # NOT YET real-hardware built under this filename.
-    CRunnerEntry(14,"./389_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
+    # 394b: renamed ./389_kernel_maxd14 -> ./394b_kernel_maxd14 (per-
+    # revision-self-contained policy, 388 r3/r4). 394b_kernel_maxd14.cu
+    # is 389's kernel byte-for-byte (its process_one_task/__global__
+    # region is sha256-checked against 389 by 394b_sweep_maxblocks.sh);
+    # only the host-side launch config gained a run-time override,
+    # NQ_MAX_BLOCKS, which defaults to 484 = exactly 389's behaviour.
+    # env_prefix is deliberately left EMPTY here: bare -g keeps running
+    # the production 484x32 config. The sweep itself does not go through
+    # this table at all -- it drives the binary directly. If 394b finds
+    # a winner, the intended production switch is ONE token in this
+    # line, e.g. env_prefix="NQ_MAX_BLOCKS=1280 " (crunner_run() already
+    # composes cmd as f"{env_prefix}{binary_path} ..."), not a rebuild.
+    # NOT YET real-hardware built under this filename.
+    # 394c: renamed ./394b_kernel_maxd14 -> ./394c_kernel_maxd14 (header-
+    # only rename of the .cu, code region byte-identical to 394b, kernel
+    # region byte-identical to 389). env_prefix still EMPTY: bare -g and
+    # bench_mode=37 keep the production 484x32 config. The 394b sweep
+    # winner is NOT adopted here -- 394b r2 showed the optimum is at or
+    # below 968 and is not yet bracketed (r3 pending). bench_mode=39
+    # below sets NQ_MAX_BLOCKS explicitly per run instead.
+    # 394d: renamed ./394c_kernel_maxd14 -> ./394d_kernel_maxd14 (header-
+    # only rename, code region byte-identical to 394c/394b, kernel region
+    # to 389). env_prefix still EMPTY (bare -g / mode 37 = 484x32).
+    # 394e: renamed ./394d_kernel_maxd14 -> ./394e_kernel_maxd14 (header-
+    # only rename; code region byte-identical to 394d/394c/394b, kernel
+    # region to 389). env_prefix still EMPTY.
+    # 394f: renamed ./394e_kernel_maxd14 -> ./394f_kernel_maxd14 (header-
+    # only rename; code region byte-identical to 394e..394b, kernel region
+    # to 389). env_prefix still EMPTY.
+    # 394g: renamed ./394f_kernel_maxd14 -> ./394g_kernel_maxd14 (header-
+    # only rename; code region byte-identical to 394f..394b, kernel region
+    # to 389). env_prefix still EMPTY -- production adoption of the 394g
+    # sweep winner (and of the L3 schedule-sorted input) is a later,
+    # separate one-token step once both are bracketed.
+    # 395a: ./395a_kernel_maxd14 -- the first binary since 364 whose kernel
+    # region is NOT byte-identical to 389's: process_one_task() hoists
+    # block_code/fc_flag out of nibble_op (394a: the duplicated nibble
+    # extraction carried 4.09% of samples). CPU-harness per-record results
+    # on 2,048 real N=21 records are byte-identical to 394g's. env_prefix
+    # stays EMPTY here: the stride now comes from gpu_max_blocks at the
+    # dispatch site (===395a-MODE37-STRIDE===), not from this table.
+    CRunnerEntry(14,"./395a_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
   ]
 
 def crunner_select_entry_index(required_maxd:int)->int:
@@ -7063,7 +7118,7 @@ def crunner_run(entry:CRunnerEntry,N:int,in_bin:str,out_bin:str,expected_total:i
 # same validity check crunner_input_valid() already uses, so re-running
 # this on an N that already has a filtered file is a cheap no-op, not
 # a rebuild.
-def ensure_crunner_input_bin(N:int,stream_fname:str,gpu_log_level:int=0)->Tuple[str,bool]:
+def _ensure_crunner_filtered_bin(N:int,stream_fname:str,gpu_log_level:int=0)->Tuple[str,bool]:
   filtered_fname:str=rev386_validation_helpers.crunner_input_fname(stream_fname)
   if rev386_validation_helpers.crunner_input_valid(filtered_fname):
     if gpu_log_level>=1:
@@ -7086,14 +7141,57 @@ def ensure_crunner_input_bin(N:int,stream_fname:str,gpu_log_level:int=0)->Tuple[
       print(f"[crunner-input-build] N={N} stage=filter FAILED: {filter_script} not found in current directory")
     return filtered_fname,False
 
+  # 395a r3: redirected like the sched stage (the 363 filter prints
+  # [filter-done]/[filter-depth-histogram] to stdout); -d re-surfaces them.
+  filt_log:str=f"{REV_TAG}_crunner_logs/filter_363_N{N}.log"
+  os.system(f"mkdir -p {REV_TAG}_crunner_logs")
   if gpu_log_level>=1:
-    print(f"[crunner-input-build] N={N} stage=filter running: python3 {filter_script} {soa_ref_fname} {filtered_fname}")
-  os.system(f"python3 {filter_script} {soa_ref_fname} {filtered_fname}")
+    print(f"[crunner-input-build] N={N} stage=filter running: python3 {filter_script} {soa_ref_fname} {filtered_fname} > {filt_log} 2>&1")
+  os.system(f"python3 {filter_script} {soa_ref_fname} {filtered_fname} > {filt_log} 2>&1")
+  if gpu_log_level>=1:
+    os.system(f"grep '^\\[filter-' {filt_log}")
 
   ok:bool=rev386_validation_helpers.crunner_input_valid(filtered_fname)
   if gpu_log_level>=1:
     print(f"[crunner-input-build] N={N} stage=filter {'done' if ok else 'FAILED'} -> {filtered_fname}")
   return filtered_fname,ok
+def ensure_crunner_input_bin(N:int,stream_fname:str,gpu_log_level:int=0,order:str="raw")->Tuple[str,bool]:
+  # 395a: the 3-stage build (361 dump -> 363 filter) is unchanged and is
+  # factored into _ensure_crunner_filtered_bin() below, byte-for-byte the
+  # 389 logic. The new 4th stage applies only when order=="sched": the
+  # filtered bin is permuted by CRUNNER_PERMUTE_SCRIPT into a sibling-
+  # preserving schedule-sorted order (394f L3). Callers that pass nothing
+  # (bench_mode==39's reordered path) get the 389 behaviour exactly.
+  filtered_fname,ok=_ensure_crunner_filtered_bin(N,stream_fname,gpu_log_level)
+  if not ok or order!="sched":
+    return filtered_fname,ok
+  sched_fname:str=f"{filtered_fname}.sched394f.bin"
+  if rev386_validation_helpers.crunner_input_valid(sched_fname):
+    if gpu_log_level>=1:
+      print(f"[crunner-input-reuse] N={N} stage=order(sched) sched_bin={sched_fname}")
+    return sched_fname,True
+  if not rev386_validation_helpers.file_exists(CRUNNER_PERMUTE_SCRIPT):
+    if gpu_log_level>=1:
+      print(f"[crunner-input-build] N={N} stage=order(sched) FAILED: {CRUNNER_PERMUTE_SCRIPT} not found in current directory")
+    return sched_fname,False
+  # 395a r3: the external tool's own output ([permute-done] ...) goes to the
+  # rev-numbered log dir, never to the console. Bare -g prints table rows
+  # only (388's contract); -d re-surfaces the tool's summary line.
+  perm_log:str=f"{REV_TAG}_crunner_logs/permute_sched_N{N}.log"
+  os.system(f"mkdir -p {REV_TAG}_crunner_logs")
+  if gpu_log_level>=1:
+    print(f"[crunner-input-build] N={N} stage=order(sched) running: python3 {CRUNNER_PERMUTE_SCRIPT} sched {filtered_fname} {sched_fname} > {perm_log} 2>&1")
+  os.system(f"python3 {CRUNNER_PERMUTE_SCRIPT} sched {filtered_fname} {sched_fname} > {perm_log} 2>&1")
+  if gpu_log_level>=1:
+    # re-surface the tool's summary line on the console (-d only). Done
+    # with grep via os.system -- the same mechanism that ran the tool --
+    # rather than a new Codon file-read idiom in this file.
+    os.system(f"grep '^\\[permute-done\\]' {perm_log}")
+  ok2:bool=rev386_validation_helpers.crunner_input_valid(sched_fname)
+  if gpu_log_level>=1:
+    print(f"[crunner-input-build] N={N} stage=order(sched) {'done' if ok2 else 'FAILED'} -> {sched_fname}")
+  return sched_fname,ok2
+
 # ===389-AUTOBUILD-END===
 
 def select_dynamic_preset_queens(N:int,preset_queens:int)->int:
@@ -7187,6 +7285,14 @@ def main()->None:
   # below N=21's full 2,025,282, which has run cleanly since 361).
   record_limit_arg:int=1000000
   # ===369-VARINIT-END===
+  # ===394d-VARINIT-BEGIN===
+  # 394d: which stage of the host-side reorder pipeline bench_mode==39
+  # hands to the CRunner. 2 = chunkshape148-shaped bin (394c behaviour,
+  # default), 1 = broadmarktail base bin only (funcid w/j reorder + rotate,
+  # no scorestripe/bucket_run/iter_sort). Used to decompose 394c's B cell
+  # (+29.7% at stride 15,488) rung by rung.
+  crunner_input_stage:int=2
+  # ===394d-VARINIT-END===
   argc:int=len(argv)
 
   if argc == 1:
@@ -7286,7 +7392,12 @@ def main()->None:
       # 391: bench_mode==38 (the new staged maxd16 GPU-vs-CPU cross-
       # check) added here too, same lesson applied preemptively.
       # ===391-CLIGATE-COMMENT-END===
-      if not (bench_mode==0 or bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38):
+      # ===394c-CLIGATE-COMMENT-BEGIN===
+      # 394c: bench_mode==39 (CRunner dispatch fed with the chunkshape148-
+      # REORDERED input instead of the raw stream order) added here too,
+      # same lesson applied preemptively (361/365/366/368/369/385/391).
+      # ===394c-CLIGATE-COMMENT-END===
+      if not (bench_mode==0 or bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38 or bench_mode==39):
         print(f"[warning] bench_mode={bench_mode} was removed in 276 restore274/coretrim; using 0")
         bench_mode=0
 
@@ -7328,7 +7439,10 @@ def main()->None:
     # ===391-PRESETGATE-COMMENT-BEGIN===
     # 391: bench_mode==38 added here too.
     # ===391-PRESETGATE-COMMENT-END===
-    if bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38:
+    # ===394c-PRESETGATE-COMMENT-BEGIN===
+    # 394c: bench_mode==39 added here too.
+    # ===394c-PRESETGATE-COMMENT-END===
+    if bench_mode==11 or bench_mode==30 or bench_mode==31 or bench_mode==32 or bench_mode==33 or bench_mode==34 or bench_mode==35 or bench_mode==36 or bench_mode==37 or bench_mode==38 or bench_mode==39:
       preset_queens_arg=requested_preset_arg
     else:
       if requested_preset_arg!=5:
@@ -7373,6 +7487,40 @@ def main()->None:
         # above. No further argv slots existed after this one for
         # bench_mode==30, so nothing needed renumbering.
 
+    # ===394d-ARGPARSE-INSERT-BEGIN===
+    # 394d: bench_mode==39 gains the same reorder knobs bench_mode==30/31
+    # have, in a compact positional layout of its own (mode 39 never had
+    # any argv past [9], so nothing is renumbered):
+    #   argv[10] window_mult      (default FUNCID_REORDER_V2_WINDOW_MULT=3)
+    #   argv[11] phase_jump       (default FUNCID_REORDER_V2_PHASE_JUMP=7)
+    #   argv[12] cross_stripe_safe(default 0)
+    #   argv[13] bucket_run       (default CHUNKSHAPE148_BUCKET_RUN=2048; 1 = 276-338 order)
+    #   argv[14] iter_sort        (default CHUNKSHAPE148_ITER_SORT=9; 0 = 344 order, 1 = 346 order)
+    #   argv[15] input_stage      (default 2 = shaped; 1 = broadmarktail base only)
+    # The locals below are the SAME ones the 30/31 parser writes, and are
+    # copied to the module globals unconditionally right after this block
+    # (FUNCID_REORDER_V2_WINDOW_MULT=..., CHUNKSHAPE148_BUCKET_RUN=..., etc.),
+    # so the cache filenames and the builders see them exactly as they
+    # would for mode 30/31. Bare "-g 21 21 32 484 0 0 7 39" (argc=10) is
+    # unchanged from 394c.
+    if bench_mode==39:
+      if argc >= 11:
+        reorder_window_mult=int(argv[10])
+      if argc >= 12:
+        reorder_phase_jump=int(argv[11])
+      if argc >= 13:
+        cross_stripe_safe=(int(argv[12])!=0)
+      if argc >= 14:
+        chunkshape148_bucket_run=int(argv[13])
+      if argc >= 15:
+        chunkshape148_iter_sort=int(argv[14])
+      if argc >= 16:
+        crunner_input_stage=int(argv[15])
+        if crunner_input_stage<1 or crunner_input_stage>2:
+          print(f"[warning] input_stage={crunner_input_stage} is not 1 or 2; using 2 (shaped)")
+          crunner_input_stage=2
+    # ===394d-ARGPARSE-INSERT-END===
+
     # ===369-ARGPARSE-INSERT-BEGIN===
     # 369: bench_mode==36 (mem-probe) reuses the same argv[13] slot
     # 30 uses for debug_chunk_start -- unambiguous since this slot is
@@ -7411,6 +7559,8 @@ def main()->None:
     if bench_mode==30 or bench_mode==31:
       print(f"funcid_reorder_v2_params: window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} param={funcid_reorder_param_tag()} reason={FUNCID_REORDER_V2_DEFAULT_REASON}")
       print(f"broadmarktail_params: version={BROAD_MARKDIST_TAIL_REORDER_VERSION} variant={BROAD_MARKDIST_TAIL_VARIANT} tag={broad_markdist_tail_variant_tag()} window_boost={broad_markdist_tail_window_boost_value()} phase_mix={1 if broad_markdist_tail_use_phase_mix() else 0} rotate_interleave={1 if broad_markdist_tail_use_rotating_interleave() else 0} phase_salt={broad_markdist_tail_phase_salt_value()} reason={BROAD_MARKDIST_TAIL_REORDER_DEFAULT_REASON}")
+    if bench_mode==39:
+      print(f"crunner_reordered_params: input_stage={crunner_input_stage} window_mult={FUNCID_REORDER_V2_WINDOW_MULT} phase_jump={FUNCID_REORDER_V2_PHASE_JUMP} bucket_run={chunkshape148_bucket_run_value()} run_tag={chunkshape148_bucket_run_tag()} iter_sort={chunkshape148_iter_sort_value()} iter_sort_tag={chunkshape148_iter_sort_tag()} variant={broad_markdist_tail_variant_tag()} block={gpu_block} max_blocks={gpu_max_blocks} stride={gpu_block*gpu_max_blocks}")
     if bench_mode==30 or bench_mode==31:
       print(f"chunkshape148_params: version={CHUNKSHAPE148_REORDER_VERSION} bucket_run={chunkshape148_bucket_run_value()} run_tag={chunkshape148_bucket_run_tag()} reason={CHUNKSHAPE148_DEFAULT_REASON} run_reason={CHUNKSHAPE148_BUCKET_RUN_REASON}")
       print(f"chunkshape148_sort_params: iter_sort={chunkshape148_iter_sort_value()} iter_sort_tag={chunkshape148_iter_sort_tag()} sort_group={chunkshape148_sort_group_chunks()} k_per_thread={K_PER_THREAD_MAXD14} iter_sort_reason={CHUNKSHAPE148_ITER_SORT_REASON}")
@@ -7660,7 +7810,16 @@ def main()->None:
         print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    maxd-unsupported")
         break
       table:List[CRunnerEntry]=crunner_dispatch_table()
-      entry:CRunnerEntry=table[entry_idx]
+      entry_base37:CRunnerEntry=table[entry_idx]
+      # ===395a-MODE37-STRIDE===
+      # 395a: the production path now passes its launch config to the C
+      # binary. gpu_max_blocks (bare -g: A10G_FINAL_DEFAULT_MAX_BLOCKS=800;
+      # explicit "-g 21 21 32 <n> ..." overrides) becomes NQ_MAX_BLOCKS
+      # through the entry's env_prefix, exactly as bench_mode==39 already
+      # does. Before 395a mode 37 ignored gpu_max_blocks for the launch
+      # and the binary ran its own default (484), so "-g 21 21 32 484 ..."
+      # is unchanged and "-g" now means 800x32.
+      entry:CRunnerEntry=CRunnerEntry(entry_base37.maxd_max,entry_base37.binary_path,f"NQ_MAX_BLOCKS={gpu_max_blocks} {entry_base37.env_prefix}",entry_base37.done_prefix,entry_base37.correctness_prefix)
       # 389: was a fail-fast check against rev386_validation_helpers.
       # crunner_input_valid() alone. Now attempts the full 2-stage
       # auto-build (361 dump + external 363 filter script) via
@@ -7670,7 +7829,9 @@ def main()->None:
       # something invalid) -- this is what closes the N=22 gap Suzuki
       # hit directly (bare -g stopping there every time because that
       # file had never been built by hand).
-      filtered_fname,input_ok=ensure_crunner_input_bin(N,stream_fname,gpu_log_level)
+      # 395a: order=CRUNNER_INPUT_ORDER adds the 4th (sched) stage.
+      filtered_fname,input_ok=ensure_crunner_input_bin(N,stream_fname,gpu_log_level,CRUNNER_INPUT_ORDER)
+      rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-config] N={N} block={gpu_block} max_blocks={gpu_max_blocks} stride={gpu_block*gpu_max_blocks} input_order={CRUNNER_INPUT_ORDER} env_prefix={entry.env_prefix.strip()}",gpu_log_level)
       if not input_ok:
         rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-input-missing] N={N} expected={filtered_fname} -- auto-build via ensure_crunner_input_bin() (361 dump_soa_reference_c_port + external 363_filter_maxd14_only.py) was attempted and failed. Check {REV_TAG}_crunner_logs/dispatch.log or rerun with -d for [crunner-input-build] stage detail.",gpu_log_level)
         print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    crunner-input-missing")
@@ -7683,6 +7844,114 @@ def main()->None:
       rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-dispatch-summary] N={N} binary={entry.binary_path} input={filtered_fname} total={total} kernel_ms={kernel_ms} expected={expected[N]}",gpu_log_level)
       print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
       continue
+    # ===394c-DISPATCH-INSERT-BEGIN===
+    # 394c: bench_mode==39 -- the CRunner dispatch of bench_mode==37, with
+    # exactly ONE difference: the file handed to ensure_crunner_input_bin()
+    # is the chunkshape148-REORDERED bin (the same one bench_mode==30/31
+    # run Codon's own kernel on), not the raw stream bin. 393-10 found
+    # that the production C path had never seen the 330-350 reordering
+    # (w3_j7 -1.29%, bucket_run=2048 -4.11%, isort9 -0.82%, all measured
+    # on the Codon path); the reordering is a permutation of the task
+    # set (333), so the oracle is unchanged.
+    #
+    # The reorder unit is BLOCK*MAX_BLOCKS (= gpu_block*gpu_max_blocks
+    # from argv[4]/argv[5]), and the C runner's stride must match it for
+    # the lane grouping to be preserved. So this mode passes
+    # NQ_MAX_BLOCKS={gpu_max_blocks} to the C binary through the entry's
+    # env_prefix (394b_kernel_maxd14.cu onward reads it; crunner_run()
+    # composes cmd as f"{env_prefix}{binary_path} ..."), making argv[5]
+    # the single source of truth for BOTH the shaping stride and the
+    # launch stride. With the default argv[5]=484 this is a pure
+    # input-order change against bench_mode==37; with argv[5]=968 it is
+    # the reorder AT the 394b r1 optimum (two variables, both explicit).
+    #
+    # The base/shaped bins are resolved and, if absent, built with the
+    # SAME statements bench_mode==30/31 use (copied verbatim below, not
+    # refactored -- single-variable discipline: the 30/31 path itself is
+    # untouched). The reorder parameters come from the same globals the
+    # 30/31 path uses (w3_j7, bucket_run=2048, isort9, variant=2), i.e.
+    # the adopted production values, so for argv[5]=484 the already-
+    # cached ..._b32_m484_s15488_run2048_isort9.bin is reused as-is.
+    if use_gpu and N>=21 and bench_mode==39:
+      ijkl_list,subconst_cache,stream_records,preset_queens,stream_fname=ensure_constellations_bin_stream(N,ijkl_list,subconst_cache,preset_queens,gpu_log_level)
+      reorder_fname:str=broad_markdist_tail_reorder_output_fname(N,preset_queens,gpu_block,gpu_max_blocks)
+      reorder_records:int=rev386_validation_helpers.count_constellations_bin_records(reorder_fname)
+      steps_for_count:int=gpu_block*gpu_max_blocks
+      if steps_for_count<=0:
+        steps_for_count=15488
+      reorder_chunks:int=0
+      if reorder_records>0:
+        reorder_chunks=(reorder_records + steps_for_count - 1)//steps_for_count
+      done_count:int=rev386_validation_helpers.read_stream_done_count(reorder_fname+".done")
+      if not (reorder_records==stream_records and done_count==stream_records and rev386_validation_helpers.validate_bin_file(reorder_fname)):
+        if gpu_log_level>=1:
+          print(f"[crunner-reordered-base-build] N={N} stream_records={stream_records} existing_records={reorder_records} done_count={done_count} bin={reorder_fname}")
+        reorder_fname,reorder_records,reorder_chunks=build_broad_markdist_tail_reordered_bin(N,stream_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level,gpu_sort_mode)
+      elif gpu_log_level>=1:
+        print(f"[crunner-reordered-base-reuse] N={N} records={reorder_records} chunks={reorder_chunks} bin={reorder_fname} param={funcid_reorder_run_param_tag(gpu_block,gpu_max_blocks)}")
+      base_reorder_fname:str=reorder_fname
+      base_reorder_records:int=reorder_records
+      # 394d: input_stage==1 stops here and hands the broadmarktail base
+      # bin to the CRunner; the chunkshape148 stage below is skipped
+      # entirely (not built, not touched). input_stage==2 is 394c.
+      shaped_fname:str=base_reorder_fname
+      shaped_records:int=base_reorder_records
+      shaped_chunks:int=reorder_chunks
+      if crunner_input_stage>=2:
+        shaped_fname=chunkshape148_reorder_output_fname(N,preset_queens,gpu_block,gpu_max_blocks)
+        shaped_records=rev386_validation_helpers.count_constellations_bin_records(shaped_fname)
+        shaped_chunks=0
+        if shaped_records>0:
+          shaped_chunks=(shaped_records+steps_for_count-1)//steps_for_count
+        shaped_done:int=rev386_validation_helpers.read_stream_done_count(shaped_fname+".done")
+        if not (shaped_records==base_reorder_records and shaped_done==base_reorder_records and rev386_validation_helpers.validate_bin_file(shaped_fname)):
+          if gpu_log_level>=1:
+            print(f"[crunner-reordered-shape-build] N={N} source_records={base_reorder_records} existing_records={shaped_records} done_count={shaped_done} bin={shaped_fname}")
+          shaped_fname,shaped_records,shaped_chunks=build_chunkshape148_reordered_bin(N,base_reorder_fname,preset_queens,gpu_block,gpu_max_blocks,gpu_log_level)
+        elif gpu_log_level>=1:
+          print(f"[crunner-reordered-shape-reuse] N={N} records={shaped_records} chunks={shaped_chunks} bin={shaped_fname} source_bin={base_reorder_fname}")
+      elif gpu_log_level>=1:
+        print(f"[crunner-reordered-base-only] N={N} input_stage=1 records={shaped_records} bin={shaped_fname} (chunkshape148 stage skipped)")
+      # Permutation guard (333: reordering does not alter the task set).
+      # If the chosen bin does not carry exactly the stream's record
+      # count, the oracle would not be comparable -- stop before the GPU.
+      if shaped_records!=stream_records:
+        rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-reordered-count-mismatch] N={N} stream_records={stream_records} shaped_records={shaped_records} bin={shaped_fname}",gpu_log_level)
+        print(f"{N:2d}:{0:18d}{0:17d}{'':>21s}    crunner-reordered-count-mismatch")
+        break
+      records,required_maxd,selected_maxd=check_required_maxd_for_N(N,stream_fname,gpu_log_level)
+      entry_idx:int=crunner_select_entry_index(required_maxd)
+      time_elapsed=datetime.now()-start_time
+      text:str=str(time_elapsed)[:-3]
+      if entry_idx<0:
+        rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-unsupported] N={N} required_maxd={required_maxd} -- no registered CRunner binary covers this maxd yet",gpu_log_level)
+        print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    maxd-unsupported")
+        break
+      table:List[CRunnerEntry]=crunner_dispatch_table()
+      entry_base:CRunnerEntry=table[entry_idx]
+      # Stride coupling: the C runner's BLOCK*MAX_BLOCKS must equal the
+      # shaping stride, so the lane grouping the reorder designed
+      # survives the launch. NQ_MAX_BLOCKS is read by 394b_kernel_
+      # maxd14.cu and later; older binaries silently ignore it (and
+      # would then run 484x32 regardless -- the [gpu-run-done] line's
+      # trailing stride= field, present since 394b, is what the harness
+      # checks to catch that).
+      entry:CRunnerEntry=CRunnerEntry(entry_base.maxd_max,entry_base.binary_path,f"NQ_MAX_BLOCKS={gpu_max_blocks} {entry_base.env_prefix}",entry_base.done_prefix,entry_base.correctness_prefix)
+      filtered_fname,input_ok=ensure_crunner_input_bin(N,shaped_fname,gpu_log_level)
+      if not input_ok:
+        rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-input-missing] N={N} expected={filtered_fname} -- auto-build via ensure_crunner_input_bin() on the REORDERED bin was attempted and failed. Check {REV_TAG}_crunner_logs/dispatch.log or rerun with -d for [crunner-input-build] stage detail.",gpu_log_level)
+        print(f"{N:2d}:{0:18d}{0:17d}{text:>21s}    crunner-input-missing")
+        break
+      rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-reordered-dispatch] N={N} input_stage={crunner_input_stage} shaped_bin={shaped_fname} shaping_stride={steps_for_count} block={gpu_block} max_blocks={gpu_max_blocks} bucket_run={chunkshape148_bucket_run_value()} iter_sort={chunkshape148_iter_sort_value()} env_prefix={entry.env_prefix.strip()}",gpu_log_level)
+      out_bin:str=f"/tmp/crunner_N{N}_results_reordered.bin"
+      ok,total,kernel_ms=crunner_run(entry,N,filtered_fname,out_bin,expected[N],f"{REV_TAG}_crunner_logs",gpu_log_level)
+      time_elapsed=datetime.now()-start_time
+      text=str(time_elapsed)[:-3]
+      status:str="ok" if ok else f"ng(crunner total={total} kernel_ms={kernel_ms})"
+      rev386_validation_helpers.crunner_dispatch_log(f"{REV_TAG}_crunner_logs",f"[crunner-reordered-dispatch-summary] N={N} binary={entry.binary_path} input={filtered_fname} input_stage={crunner_input_stage} shaping_stride={steps_for_count} bucket_run={chunkshape148_bucket_run_value()} iter_sort={chunkshape148_iter_sort_value()} total={total} kernel_ms={kernel_ms} expected={expected[N]}",gpu_log_level)
+      print(f"{N:2d}:{total:18d}{0:17d}{text:>21s}    {status}")
+      continue
+    # ===394c-DISPATCH-INSERT-END===
     # ===385-DISPATCH-INSERT-END===
 
     if use_gpu and N>=21:

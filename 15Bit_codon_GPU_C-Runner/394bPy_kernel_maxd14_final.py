@@ -17,7 +17,7 @@
 Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
 
 ================================================================================
-## 現在の未解決課題 (Open Objectives) -- 最終更新: 392 (2026-09-07)
+## 現在の未解決課題 (Open Objectives) -- 最終更新: 394b (2026-09-08)
 
 このセクションはリビジョンごとに更新されるサマリです。詳細な経緯は下の
 年代順ログ、および対応するREADME.mdの同名セクションを参照してください。
@@ -404,6 +404,41 @@ Python/codon Ｎクイーン コンステレーション版 CUDA 高速ソルバ
    ところだった。`REV_TAG`を`392`へ更新。それ以外(全関数・全カーネル・
    `bench_mode=38`の段階的突き合わせ)は391Pyから無変更。
 
+   **393: ncuプロファイリング(コード変更ゼロ)**。N=18 SourceCounters・
+   N=21 chunk0(`bench_mode=30`)・N=21本番C経路(`bench_mode=37` +
+   `--target-processes all`)の3測定を実施。355/357の数値が36リビジョン
+   ぶりに完全再現(N=18の`wait` 45.14%/`branch_resolving` 20.38%、
+   犯人2命令で60.27%)し、以後の比較アンカーとして確定した。新規の
+   実測3件: (a) `long_scoreboard`の99.77%が単一命令(popしたフレーム上位
+   ワードのマスク)に集中、(b) push/pop/再収束の27命令で全サンプルの
+   47.15%、(c) 時間の41%が「32レーン中1〜4本」の状態で消費されている。
+   **最大の発見はグリッド規模**: `Active Warps Per Scheduler`=1.51は
+   `484 blocks / (80 SM x 4 scheduler)` = 1.5125そのもので、ハード上限
+   12の12.6%しか席を要求していない。同時にwarp間の負荷不均衡は
+   実質ゼロ(1.51/1.5125 = 99.8%)であることも確定した。詳細は
+   `393_README_append.md`。
+
+   **394a(このリビジョン): C側ncu SourceCountersのための純粋リネーム**。
+   機能変更ゼロ。393でCodon版とC版のSASSが構造的に別物であること
+   (664命令対472命令、`STL.64`x2/`LDL.64`x2 対 `STL.128`/`LDL.128`
+   各1本)が判明したため、393 stage1で得たCodon版の命令単位内訳は
+   本番C版の最適化根拠にそのままは使えない。394aは375の手法
+   (`-lineinfo`ビルド+先頭15,488レコードのdd切り出し)でC版の同じ
+   内訳を取り、393 stage1と直接比較する測定専用リビジョンである。
+   この`.py`自体は394aの測定では一切実行されない(理由はVERSION_TAG
+   参照)。
+
+   **394b(このリビジョン): `MAX_BLOCKS`スイープ用リネーム**。機能差分は
+   `crunner_dispatch_table()`のバイナリ参照1トークン(`./389_kernel_maxd14`
+   →`./394b_kernel_maxd14`)のみ。`394b_kernel_maxd14.cu`はホスト側の
+   起動構成に`NQ_MAX_BLOCKS`環境変数による実行時上書きを加えただけで
+   (既定484=389と同一挙動)、カーネル領域は389とsha256一致。スイープ
+   ハーネス(`394b_sweep_maxblocks.sh`)はこの`.py`を実行せずC版バイナリを
+   直接叩く。勝者が決まった場合の本番切り替えは、同テーブル行の
+   `env_prefix`に`"NQ_MAX_BLOCKS=1280 "`のような1トークンを置くだけで
+   済む設計にしてある(`crunner_run()`は既に`f"{env_prefix}{binary_path}"`
+   でコマンドを組み立てている)。
+
 7. [解決・351で採用・352で軸をクローズ] 上位半分は恒等的にゼロ
    `symmetry()`の戻り値は`u64(2)`/`u64(4)`/`u64(8)`の3値のみであり、
    328で分割した上位u32配列は全要素が恒等的に0であった。351でこれを
@@ -584,216 +619,129 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-おはようございます。本日もよろしくお願いいたします。
+Now I'll build the real `394b_kernel_maxd14.cu` from the verified 389 source (sha256 `644d0374…` matches the value recorded on your machine).`cuda,sass`ビューで、私の手作業の対応付けを**ncu自身の行帰属で確定**できました。結論は変わらず、2点が強化され、1点は読み方の注意が必要です。
 
-`393_ncu_profile.sh` をお渡しします。実行手順は従来どおりです。
+## ncu行帰属で確定したこと
 
-```bash
-STATIC_ONLY=1 bash 393_ncu_profile.sh     # 静的チェックのみ、GPU時間ゼロ
-              bash 393_ncu_profile.sh     # stage 1,2(合計25分程度)
+**`nibble_op`の二重計算は実在します。** L478/L479/L481のSASSが、それぞれ`2896xx`(初回)と`2899xx`(future_check直前)の**2箇所に**帰属されています:
+
+```
+L478 if (cur_depth < 8)   → 289610 ISETP.GE.AND (初回)  +  289950 ISETP.GE.AND (再計算)
+L481 nibble_op = schedule_hi >> ...  → 2896b0 (初回)  +  289980/289990 (再計算)
 ```
 
-## 中身
+重複5命令に150,063 samples = **4.09%**(前回の5.8%は`&8`判定まで含めた値で、純粋な重複分はこちらが正確です)。
 
-3ステージ構成で、すべて `./392Py_kernel_maxd14_final ... -d` 経由です。既定は 1,2 のみ、各ステージ前に8秒の待機を入れてCtrl-Cで抜けられるようにしました(391で確立したパターン)。
+**再収束機構の総コストを数えました: 33.31%。** `BSYNC`17命令(13.35%)と、その直後の1命令(19.96%、branch_resolvingを継承)。うちループ末尾の`BSYNC B5`→`BRA→B3`→`BSYNC B3`→`BRA→先頭`の**4命令だけで17.86%**。`BSYNC B5`は周回数の3.56倍(7,457M回)実行されていて、5つの`continue`が別々に合流しています。
 
-| Stage | 内容 | 見積 |
+**述語→分岐の`wait`を切り出せました: 16.28%。** 述語付き`BRA`/`BREAK`33命令上の`stall_wait`が597,514 = **全`wait`の37.7%**。`ISETP`→分岐の固定レイテンシで、1.51 warp/schedulerでは埋める相手がいません。**これが394bが直接効く機構です**——393-9の「席が足りない」という状態論と、394aの「何を待っているか」という機構論がここで繋がりました。
+
+## ⚠️ 行帰属の読み方(README 394a に記録済み)
+
+行帰属の上位3行はこうなります:
+
+| 行 | 内容 | samples |
 |---|---|---:|
-| 1 | N=18、`--section SourceCounters --page source`(構造調査) | 約1分 |
-| 2 | N=21 chunk0、`bench_mode=30`、SchedulerStats+WarpStateStats | 357実測19分40秒 |
-| 3 | **既定オフ**。N=21を`bench_mode=37`でCRunner経由、`--target-processes all` | 約10分 |
+| L517 | `if (terminal_base14 == 0u)` | 12.46% |
+| L535 | `if (cur_avail != 0u)` | 8.02% |
+| L510 | `if ((bm & ~((nld<<1)\|(nrd>>1)\|ncol)) == 0u)` | 7.56% |
 
-反映した既知の教訓:
+**L517は罠です。** 12.46%のうち11.9%は`289d50 BSYNC B5`+`289d60 BRA`——ループ末尾の合流点で、terminal判定とは無関係です(terminal本体は10命令で0.29%)。ncuは合流点の直前に物理的に並ぶ命令の行情報を継承しているだけです。同様にL473(6.06%)の大半は`BSYNC B3`+バックエッジです。この表を見て`terminal_base14`を最適化しに行くと外れます。
 
-- `sudo -n true` を**最初**に置き、通らなければビルドもGPUも一切走らせずに停止(352の14分)
-- stage 2 は `bench_mode=31` ではなく **30**(`debug_chunk_start=0 debug_chunk_count=1`)。`--launch-count 1` は計装対象を絞るだけでプログラムを止めない(355の24分)
-- `ncu` は絶対パスに解決してから `sudo` に渡す(6102)
-- ncu出力は一切パースせず、見出しの有無だけINFO扱いで確認、生ログと `.ncu-rep` を丸ごと保存
-- CLIホワイトリストゲートに `bench_mode==30` が残っているかを実行前に静的確認(361/365/366/368/369で5回踏んだ罠)
-- `-d` が実際に効いたかを `[debug-mode] enabled via -d` バナーでゲート、stage 2 は `split291_final_probe` の出力で probe モードだったことを証明
-- SMクロックを実行前後に記録(1320MHz/1710MHz問題の再発検知用)
-- sudo実行で root 所有になったファイルを毎ステージ後に戻す
+## お渡しするもの(394b)
 
-引数ベクタは全桁コメント付きで書いてあります(stage 2 は `-g 21 21 32 484 0 0 7 30 3 7 0 0 1 -d`。window_mult=3 / phase_jump=7 は333で採用した現行既定)。`gpu_log_level` はあえて位置引数で 0 のままにし、`-d` に昇格させています——そこが今回試したい経路そのものなので。
-
-## 1点だけ、走らせる前にご確認いただきたいこと
-
-`-d` はCodon側のフラグなので、stage 1・2 が測るのは **Codonの `kernel_dfs_iter_gpu_maxd14`** です。一方で現在N=21の本番経路は `A10G_FINAL_DEFAULT_BENCH_MODE=37` → CRunner → `./389_kernel_maxd14`(C版、`kernel_ms≈201,237`)であり、373でCodon版はC版より約13.6%遅いことが確定しています。
-
-つまり、ベンチマーク目標(N=21をN=20ペースの2:02へ)に直接効くのはC版カーネルの側で、375のSASS実測もそちらで取ったものです。stage 1・2 の結果は355/357と直接比較できるという大きな利点がありますが、最適化対象そのものではありません。
-
-もしC版を主対象にされるなら `STAGES=1,3` あるいは `STAGES=1,2,3` で実行してください(stage 3 は `./389_kernel_maxd14` がビルド済みであることが前提です。ハンドオフメモに「NOT YET real-hardware built under this filename」とあるので、未ビルドであれば先に `nvcc -O3 -arch=sm_86 -o 389_kernel_maxd14 389_kernel_maxd14.cu` が必要です)。
-
-ログ一式(`393_ncu_<timestamp>.tar.gz`)をお送りいただければ解析します。
-
-解析しました。両ステージとも成功、しかも予想外の収穫があります。
-
-## 0. 実行の健全性
-
-| 項目 | 結果 |
+| ファイル | 内容 |
 |---|---|
-| SMクロック | **1710MHz(実行前後とも)** — 314-316時代の1320MHz制限は解消済み |
-| ドライバ / CUDA | 595.91.07 / 13.2、ncu 2025.3.1、nvcc V13.0.88 |
-| `-d` バナー | 両ステージで確認 |
-| probe mode | `split291_final_probe: mode=30 chunk_start=0 chunk_count=1` 確認、chunk0 のみで停止 |
-| stage1 所要 | 6.671秒(5パスreplay込み)、`18: 666090624 ok` — **N=18のオラクル一致** |
-| stage2 所要 | chunk0 = 19分34.655秒(8パスreplay、通常144秒の約8.2倍)。357の19分40秒と一致 |
-| ソース sha256 | `9603ae67…` — お手元の392Pyと一致確認済み |
+| `394b_kernel_maxd14.cu` | **本物のファイルです**——394aのtarball内の`.cu`から389の原本を復元(sha256 `644d0374…`がお手元の記録と一致)し、`main()`内3箇所だけ変更。`NQ_MAX_BLOCKS`環境変数で実行時上書き(既定484=389と同一挙動)、`[gpu-config]`行、`[gpu-run-done]`末尾への設定追記 |
+| `394b_sweep_maxblocks.sh` | 484→968→**1280**→1936→484。各点N=21フル+オラクルゲート。実行前に**カーネル領域(`process_one_task`〜`__global__`)のsha256が389と一致**することをゲーティング確認 |
+| `394bPy_kernel_maxd14_final.py` | ディスパッチテーブルの参照を`./394b_kernel_maxd14`へ(392Pyからのコア差分 `added=14 removed=1`、機能トークン1つ)。`env_prefix`は空——bare `-g`は従来どおり |
+| `394b_README_append.md` | 計画+事前登録予測5件 |
+| `394a_README_append.md` | 結果セクション追記済み(上記の行帰属・33.31%・16.28%を含む) |
 
-意図せずですが、stage1 は N=18 を完走したので `666090624` という正当性の裏付けが付きました。「オラクルなし」と書きましたが、N=18 に限れば付いています。
+設計上のポイントを1つ: 環境変数にしたのは、`crunner_run()`が既に`f"{env_prefix}{binary_path} ..."`でコマンドを組み立てているからです。勝者が決まれば、本番切り替えはテーブル行の`env_prefix`に`"NQ_MAX_BLOCKS=1280 "`を置く**1トークン**で完了し、リビルドも`.py`のディスパッチ経路変更も要りません。
 
----
-
-## 1. 再現性 — 355/357と完全一致
-
-N=18総サンプル 1,322,552(357: 1,322,978、-0.03%)。
-
-| ストール理由 | 355(356前) | 357(356後) | **393** |
-|---|---:|---:|---:|
-| `wait` | 45.44% | 45.59% | **45.14%** |
-| `selected` | 22.47% | 21.85% | **22.11%** |
-| `branch_resolving` | 20.10% | 20.30% | **20.38%** |
-| `long_sb` | 5.01% | 5.58% | **5.58%** |
-| `no_inst` | 4.81% | 4.63% | **4.75%** |
-
-犯人①(`BRA 0x…289900`)120,855 / 犯人②(`BRA 0x…28a9a0`)41,596 = **60.27%**(355: 60.2%、357: 60.45%)。`@!P2 BREAK B2` は 39,062/597,004 = **6.54%**(355: 6.4%、357: 6.42%)。
-
-390-392でmaxd16カーネルを追加しても、maxd14の生成コードは無傷です。**これは356→393の36リビジョンにわたる不変性の証明**であり、以後の比較アンカーとして使えます。
-
----
-
-## 2. 新発見1 — `long_scoreboard` の99.77%が単一命令に集中
-
-| addr | samples | 内訳 | 命令 |
-|---|---:|---|---|
-| `28a980` | 82,010(**全体の6.20%、単独2位**) | long_sb 73,616 / wait 3,239 | `LOP3.LUT R16, R5, c[0x0][0x1b0], RZ, 0xc0` |
-
-カーネル全体の `long_sb` は 73,784。**そのうち 73,616(99.77%)がこの1命令**です。355/357はこの5%台を「その他」として扱っていましたが、実体は完全に局在していました。
-
-前後を見ると正体は明白です:
-
-```
-28a920  IMAD.U32 R2, R8, 0x8, R1
-28a930  LDL.64 R4, [R2+-0x8]      ← pop(R4,R5)
-28a940  LDL.64 R10, [R2+-0x10]    ← pop(R10,R11)
-28a950  IADD3 R8, R8, -0x2, RZ    ┐
-28a960  IMAD.MOV.U32 R9, RZ, RZ, RZ │ 独立命令わずか3個
-28a970  IADD3 R0, R0, -0x1, RZ    ┘
-28a980  LOP3.LUT R16, R5, mask    ← LDL.64の結果を待つ
-28a990  SHF.R.U32.HI R5, RZ, 0x1b, R5
-```
-
-popした64bitフレームの上位ワード `R5` を、ロードからわずか3命令でマスクしています。フレームは `avail`(下位、`c[0x0][0x1b0]`=maskでAND)と5bitのカウンタ(`>>0x1b`)にパックされている構造です。
-
----
-
-## 3. 新発見2 — 領域別の内訳
-
-| 領域 | アドレス範囲 | 命令数 | samples | 比率 | `wait` | `br_res` | `long_sb` |
-|---|---|---:|---:|---:|---:|---:|---:|
-| A ループ先頭+デコード前処理 | 289900–289b80 | 41 | 154,379 | 11.67% | 72,769 | 5,336 | 38 |
-| B 内側DFS本体 | 289b90–289d40 | 28 | 240,838 | 18.21% | 132,303 | 11,667 | 0 |
-| C 内側末尾/再ループ | 289d50–289e10 | 13 | 111,388 | 8.42% | 69,806 | 18,675 | 0 |
-| **D pushパス** | 28a810–28a8e0 | 14 | 209,598 | **15.85%** | 84,500 | 66,119 | 0 |
-| **E popパス** | 28a8f0–28a990 | 11 | 225,311 | **17.04%** | 95,871 | 9,787 | **73,616** |
-| **F 再収束+バックエッジ** | 28a9a0–28a9b0 | 2 | 188,653 | **14.26%** | 31,028 | **132,087** | 0 |
-| その他 | | 555 | 192,385 | 14.55% | | | |
-
-**push+pop+再収束(D+E+F)の27命令だけで全サンプルの47.15%**。664命令中の4%が時間の半分を食っています。375のCUDA C版SASS実測(「ホットスポットの23.5%がpush/pop分岐の再収束点」)と同じ構造が、Codon版でもより高い比率で出ています。
-
-特に `28a9b0`(バックエッジ)は単独で12.32%。実行回数あたりのコストで見ると突出しています:
-
-| addr | samples/百万実行 | 命令 |
-|---|---:|---|
-| `28a9b0` | **13,316** | `BRA → 289900`(外側ループのバックエッジ) |
-| `28a980` | 3,181 | `LOP3.LUT R16, R5, mask`(pop消費) |
-| `28a8e0` | 2,527 | `BRA → 28a9a0`(BSYNC B2へ) |
-
-2位の4.2倍です。`28a9b0` は直前が `BSYNC B2` で、**warp内の最も深い1レーンの内側DFSが終わるまで、外側ループが1周も進めない**という再収束待ちがそのまま値になっています。
-
----
-
-## 4. 新発見3 — レーン占有率の「地図」
-
-`Avg. Threads Executed` を領域ごとに見ると、崩壊の場所が特定できます:
-
-| 領域 | 平均アクティブレーン | 実行回数 |
-|---|---:|---:|
-| A ループ先頭+デコード | **19** / 32 | 12,240,109 |
-| B 内側DFS本体 | 9 / 32 | 23,447,239 |
-| D pushパス | 6 → 4 / 32 | 27,400,242 → 17,871,907 |
-| **E popパス** | **2** / 32 | 25,783,591 |
-| F バックエッジ | 19 / 32 | 12,239,625 |
-
-サンプル加重で並べ直すと:
-
-| 平均アクティブレーン | samples | 比率 |
-|---|---:|---:|
-| **1–4 / 32** | 542,841 | **41.04%** |
-| 5–8 / 32 | 245,826 | 18.59% |
-| 9–16 / 32 | 216,164 | 16.34% |
-| 17–24 / 32 | 317,361 | 24.00% |
-| 25–32 / 32 | 360 | 0.03% |
-
-カーネル全体平均 9.41/32(レーン利用率29.4%)。**時間の41%が、32レーン中1〜4本しか動いていない状態で消費されています。**
-
----
-
-## 5. 329の記録との整合(矛盾ではありませんでした)
-
-カーネル全体の `Divergent Branches` は **57,527,372**、`Branch Efficiency` **77.99%** と、329の「Divergent Branches=0」とは一見矛盾します。個別に確認したところ:
-
-- `28a9b0` / `28a8e0`(犯人①②): **Divergent Branches = 0** ← 329の記録どおり。無条件BRAなので当然
-- 57.5Mは**条件分岐**側に出ている: `289d20`(14.67M)、`28a850`(14.16M)、`289e00`(10.18M)、`289b80`(7.43M)
-
-329の記述は「あの2命令について」正しく、カーネル全体の話ではなかった、という**適用範囲の明確化**です。記録の訂正は不要ですが、範囲の注記は入れておく価値があります。
-
----
-
-## 6. N=21(chunk0、K=48本番形状)
-
-| 指標 | 355 | **393** |
-|---|---:|---:|
-| No Eligible | 67.80% | **68.32%** |
-| Active Warps / Scheduler(上限12) | 1.53 | **1.53** |
-| Eligible Warps / Scheduler | 0.37 | **0.36** |
-| Avg. Active Threads Per Warp | 7.02 | **7.17** |
-| `wait` 寄与 | 4.7サイクルの43.3% | 4.82サイクルの**43.18%** |
-| 発散由来の改善見込み | 79.68% | **79.28%** |
-
-`Stall Wait` 2.08 inst / `Selected` 1.00 / `Branch Resolving` 0.98 — 304時点(2.09 / 0.93)から実質不変です。**1710MHzのフルクロックでも比率構造は動かない**ことが確定しました。これで355/357(1320MHz)との比較可能性の疑義も消えます。
-
-N=18(45.14%)とN=21(43.18%)の `wait` 一致も再現。N=18トリックの正当性は3回目の裏付けです。
-
----
-
-## 7. 394への評価(事前登録)
-
-**費用対効果の見積もりを、測る前に固定しておきます。**
-
-| 案 | 上限効果 | リスク | 評価 |
-|---|---:|---|---|
-| ① スタックをlocal→shared | 5.58% | 208B/thread×32=6,656B/block、16block/SM=**106.5KB > 100KB**でギリギリ入らない | **不可**(占有率を落とせば意味がない) |
-| ② `28a980` のスケジューリング分離(LDL.64→消費までの距離を伸ばす) | 5.57% | Codonでは制御不能。**CUDA C側のみ**で可能 | 小さいが確実、C側限定 |
-| ③ デコード前処理(領域A)の命令数削減 | 11.67% | 19レーン稼働なので削減がそのまま効く。ループ不変量の巻き上げ | **単一変数として最も安全** |
-| ④ warp intrinsics によるwarp内ワークシェアリング | 41%(1-4レーン帯) | Codon不可(330で確定)。375-382のフレームキューは31%退行して閉じた | 本丸だが高リスク |
-
-①は数字を出す前に落ちました。②③は上限が1桁%で、N=21を3:23→2:02(-40%)にする目標には届きません。**目標に届きうるのは④だけ**、という構図が今回の実測で数値的に確定しました。
-
-## 8. 次の一手の提案
-
-ただし、**この393の数字はすべてCodon版カーネルのものです。** 本番のN=21は `bench_mode=37` → `./389_kernel_maxd14`(C版、`kernel_ms≈201,237`)で走っており、373で両者は13.6%違うことが確定しています。SASSが違う以上、393の領域別内訳をそのままC版の最適化根拠にはできません。
-
-394として、まず **`STAGES=3` だけを回すこと**を提案します(所要10分程度、`./389_kernel_maxd14` はビルド済みを確認済み)。同じスクリプトのstage 3が、`--target-processes all` でCRunner経由のC版カーネルに対し SchedulerStats+WarpStateStats を取ります。N=21を完走するので `314666222712` のオラクルも同時に付きます。
+`gcc -Wall -Wextra`のホスト側ビルドは警告ゼロですが、変更箇所は`#ifdef __CUDACC__`内なので**nvccでの構文確認は実機が初回**です。`STATIC_ONLY=1`でsha256ゲートまで通してから本番をお願いします。
 
 ```bash
-STAGES=3 bash 393_ncu_profile.sh
+STATIC_ONLY=1 bash 394b_sweep_maxblocks.sh
+              bash 394b_sweep_maxblocks.sh     # 約20分、sudo不要
 ```
 
-これで「Codon版とC版で、レーン占有率崩壊とストール構造が同一なのか」が実測で決まります。同一なら④をC版で設計する根拠になり、違っていれば13.6%差の原因究明(382で保留したまま)がそのまま高速化の入口になります。どちらに転んでも、推測ではなく実測から始められます。
+事前登録は393-11の**−15〜−35%**のまま動かしていません。394aの機構分析は上側を支持しますが、測る前に数字を動かすのは避けました。1936点は「L1が破綻して**悪化する**」という予測付きの上側ブラケットで、これが外れたら393-8の却下理由(スタックはL1常駐)そのものを再検討します。
 
-READMEへの393追記文(日本語)もご用意できますが、まずこの解析でよろしいか確認させてください。
+解析と394bの4ファイルは、直前の返信ですでにお出ししています。改めて一覧にします。ひとつだけ、引用していただいた計画からの変更点を再掲します。「4本ビルド」ではなく**1本のバイナリを環境変数`NQ_MAX_BLOCKS`で切り替える**構成にしました。理由は、`crunner_run()`が既に`f"{env_prefix}{binary_path} ..."`でコマンドを組み立てているので、勝者が決まったときの本番切り替えがディスパッチテーブルの`env_prefix`1トークンで済み、リビルド不要になるためです。`NQ_MAX_BLOCKS`未設定なら389と同一挙動で、スイープの単一変数性は変わりません。
 
+```bash
+STATIC_ONLY=1 bash 394b_sweep_maxblocks.sh   # sha256ゲート(カーネル領域=389)まで
+              bash 394b_sweep_maxblocks.sh   # 484→968→1280→1936→484、約20分、sudo不要
+```
+
+`STATIC_ONLY=1`が `OK=6 FAIL=0` で通ればカーネル無変更が保証されています。ログ一式(`394b_sweep_<timestamp>.tar.gz`、TSV含む)をお送りください。
+
+解析しました。**軸は本物で、-18.9%が出ました。ただし予測した場所ではなく、その先に崖があります。**
+
+## 結果
+
+| `MAX_BLOCKS` | スレッド数 | warp/SM | `kernel_ms` | Δ vs 484 |
+|---:|---:|---:|---:|---:|
+| 484 | 15,488 | 6.05 | 201,231 | — |
+| **968** | **30,976** | **12.1** | **163,185** | **−18.91%** |
+| 1280 | 40,960 | 16.0 | 252,207 | **+25.33%** |
+| 1936 | 61,952 | 24.2 | 261,153 | +29.78% |
+| 484(再) | 15,488 | 6.05 | 201,237 | +0.003% |
+
+5点すべてオラクル一致。アンカーは最初と最後で **+0.003%**、389の201,237に対して−0.003%——このプロジェクトの計測品質として最良級です。968→1280は**+54.6%**、なだらかな悪化ではなく崖です。
+
+## 事前登録予測の判定
+
+| # | 予測 | 実測 | 判定 |
+|---|---|---|---|
+| 1 | 484は389±3% | −0.003% | ✅ |
+| 2 | **1280は−15〜−35%** | **+25.33%** | ❌ **反証** |
+| 3 | 1936は1280より悪い | +3.5% | ✅(理由は要検証) |
+| 4 | 968は484と1280の間に単調 | **968が最良** | ❌ **反証** |
+| 5 | ドリフト±1% | +0.003% | ✅ |
+
+反証条件は「|Δ|≤3%なら軸を閉じる」でしたが、起きたのは第3の結果です。**393-9の「席を要求していない」という診断は正しく、「L1に104 KBまで載る」という天井の見積もりが誤っていました。**
+
+## 968の意味
+
+201,237 → 163,185 ms。N=21が約**2:43**。目標2:02.52への残りは**−24.9%**で、395a(`nibble_op` 4.1%)+395b(トップフレーム常駐 ~10%)+394c(並べ替え 3〜6%)を足すと、**初めて目標が計算上の射程に入ります。**
+
+ただし968の本番採用はまだです。4点の1点であって、両側ブラケット済みの最適点ではない(330-333と同じ規律)。
+
+## 崖の仮説は2つ。推測せず測ります
+
+**H_L1**: sm_86は常駐ブロック1個につき**1 KBのshared memoryを予約**します。16ブロック→16 KB carveout→**L1は128ではなく112 KB**。12 warp×6.65 KB=80 KBは載る、16 warp×106 KBは載らない。393-8の128 KBはこの予約分を見落としていました。
+
+**H_wave**: A10GのSM数が80ではなく72なら、1280/72=17.8>16で**第2waveが発生**します。393-9で「SM≈80」とした根拠(`Active`=1.51≈484/320)は、72 SM+10%の尻尾でも同じ値になるため、実はSM数を確定していませんでした。
+
+どちらも次の候補点として1152付近を指しますが、理由が違えば以後の設計(フレーム圧縮の要否)が変わります。
+
+## 394b r2 — `394b_r2_cliff_probe.sh`(ソース変更なし、同一バイナリ)
+
+| Stage | 内容 | 所要 | sudo |
+|---|---|---:|---|
+| 1 | `-Xptxas -v`再ビルド → **スタックフレームbytes・spill・レジスタ数** | 10秒 | 不要 |
+| 2a | ncu LaunchStats+Occupancy @484/968/1280 → **`# SMs`・`Waves Per SM`・`Shared Memory Configuration Size`** | 2分×3 | 要 |
+| 2b | ncu `--metrics` ローカルメモリのL1ヒット率 @968 vs 1280(非ゲート) | 2分×2 | 要 |
+| 3 | 細分スイープ 968→1024→1088→1152→1216→968、N=21フル | 6×2.8分 | 不要 |
+
+Stage 2aの3つの数字でH_waveが即座に決まり、2bでH_L1が決まります。ncu用スライスは204,800レコード(=5×40,960、どの点でもgrid-strideが5周以上回る定常状態)。
+
+事前登録(README記載済み):
+- ptxas: frame=**208 B**、spill=0
+- `Waves Per SM`@1280: **1.00**(80 SM)or 1.11(72 SM)。carveout **16 KB**前後
+- L1ローカルヒット率: 968で≥95%、1280で<80%(H_L1)
+- 細分: 最適は968〜1088、1216<1152。**1152が最良かつ1216で崩落ならH_wave**
+
+```bash
+STATIC_ONLY=1 bash 394b_r2_cliff_probe.sh
+              bash 394b_r2_cliff_probe.sh          # 全stage、約30分
+STAGES=1,3    bash 394b_r2_cliff_probe.sh          # sudoなし版
+```
+
+案①(local→shared)は再開しません。崖がL1由来でも、shared 100 KB÷6.65 KB=15 warp/SMでL1の112 KBと同じ天井です。
 """
 
 """
@@ -830,7 +778,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="392 PY-REVTAG: pure rename of 391Py_kernel_maxd14_final.py to 392Py_kernel_maxd14_final.py, per Suzuki's explicit request that the .py carry the same current-revision number as the .cu (392_kernel_maxd16.cu, shipped alongside 391Py -- keeping them at mismatched numbers was itself an inconsistency with the standing per-revision-self-contained policy 388 r3/r4 established). Two changes: (1) the header Open Objectives date bumped to 392, (2) REV_TAG was still 388 -- CAUGHT STALE HERE: it had never been updated since 388 itself despite 389 and 391 both shipping in between, meaning crunner_dispatch_log() would have kept writing to 388_crunner_logs indefinitely had this gone unnoticed. Now REV_TAG=392. Everything else -- every function, every kernel, bench_mode=38 staged cross-check -- is unchanged from 391Py."
+VERSION_TAG:str="394b PY-REVTAG: rename of 394aPy_kernel_maxd14_final.py to 394bPy_kernel_maxd14_final.py plus ONE functional token: crunner_dispatch_table() now references ./394b_kernel_maxd14 instead of ./389_kernel_maxd14 (per-revision-self-contained policy, 388 r3/r4). env_prefix stays empty, so bare -g still runs the production 484x32 launch config exactly as 389 did -- 394b_kernel_maxd14.cu with NQ_MAX_BLOCKS unset is 389 behaviour. Everything else (every function, every kernel, every bench_mode) is byte-identical to 394aPy/392Py once the header docstring, this line and REV_TAG are excluded. The 394b MAX_BLOCKS sweep (394b_sweep_maxblocks.sh) does NOT execute this .py; it drives the C binary directly. This .py exists so the dispatch table stays coherent with the .cu of the same revision, and so that the eventual production switch -- if 394b finds a winner -- is a one-token env_prefix edit in the table rather than a rebuild."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -862,7 +810,7 @@ CPU_FINAL_DEFAULT_N:int=22
 # reasoning and restores the rev-numbered prefix via this single
 # constant, updated each revision (the same maintenance habit as
 # VERSION_TAG itself).
-REV_TAG:str="392"
+REV_TAG:str="394b"
 # ===388-REVTAG-END===
 DEFAULT_RANGE_NMIN:int=5
 DEFAULT_RANGE_NMAX_EXCLUSIVE:int=28  # 387: range() upper bound; outputs N=5..27, the actual ceiling of this file's own oracle table (expected[], 28 entries, indices 0-27) and select_dynamic_preset_queens' defined N ranges -- NOT an artificial cap. In practice bench_mode==37's break-on-unsupported-maxd (see the ===385-DISPATCH-INSERT-BEGIN=== block) stops the loop well before N=27 today, and will reach further as this week's CRunner maxd work registers more entries in crunner_dispatch_table(). Raising this constant further without also growing expected[] would crash on an out-of-range index, so this is not "24 -> 28" as an arbitrary bump; it is the real limit of what this file can even validate.
@@ -6969,7 +6917,20 @@ def crunner_dispatch_table()->List[CRunnerEntry]:
     # 388 reasoning; this is now routine, not a one-off). Code region
     # confirmed byte-identical by diff (sha256 unchanged from 388/364).
     # NOT YET real-hardware built under this filename.
-    CRunnerEntry(14,"./389_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
+    # 394b: renamed ./389_kernel_maxd14 -> ./394b_kernel_maxd14 (per-
+    # revision-self-contained policy, 388 r3/r4). 394b_kernel_maxd14.cu
+    # is 389's kernel byte-for-byte (its process_one_task/__global__
+    # region is sha256-checked against 389 by 394b_sweep_maxblocks.sh);
+    # only the host-side launch config gained a run-time override,
+    # NQ_MAX_BLOCKS, which defaults to 484 = exactly 389's behaviour.
+    # env_prefix is deliberately left EMPTY here: bare -g keeps running
+    # the production 484x32 config. The sweep itself does not go through
+    # this table at all -- it drives the binary directly. If 394b finds
+    # a winner, the intended production switch is ONE token in this
+    # line, e.g. env_prefix="NQ_MAX_BLOCKS=1280 " (crunner_run() already
+    # composes cmd as f"{env_prefix}{binary_path} ..."), not a rebuild.
+    # NOT YET real-hardware built under this filename.
+    CRunnerEntry(14,"./394b_kernel_maxd14","","[gpu-run-done]","[gpu-run-correctness]"),
   ]
 
 def crunner_select_entry_index(required_maxd:int)->int:
