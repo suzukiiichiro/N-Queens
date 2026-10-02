@@ -669,6 +669,14 @@ VERSION_TAGのみ、項目6の記述のみが実質的に更新されている�
 (`source_code_identical_to_356`)。参照ハッシュは実物の356Pyから
 このセッションで直接算出したものであり、推測や再構成ではありません。
 
+
+
+2026年 10月  2日 金曜日 21:18:41 JST
+バイナリ／.py	404_r3_kernel_maxd14＋404_r3Py_kernel_maxd14_final
+N=21	107,327 ms（1:47.3）
+N=22	939,491 ms（15:39.5）
+
+
 2026年  9月 28日 月曜日 20:13:45 JST
 NQ_CRunner$ ./402_r5Py_kernel_maxd14_final -g
 GPU mode selected
