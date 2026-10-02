@@ -752,17 +752,99 @@ $ nvcc -O3 -arch=sm_61 -m64 -ptx -prec-div=false 04CUDA_Symmetry_BitBoard.cu && 
 """
 
 """
-Now the two harnesses: 403-r5b (re-registration + one replicate) and 403-r6 (compile-only spelling search).Now the README append for r5 results + r5b/r6 registration, then deliver.承知しました。2本お渡しします。どちらもコード変更なし（403_r5の `.cu`／`.py` をそのまま使います）。
+404の四点セットです。
 
-**403-r5b（採用の再登録、約17分）** — 規則を実測前に固定：
-- R0（ハード）：バイナリがr5で測ったものと同一であること。`.cu` kernel sha `7799b9e4`、既存 `403_r5_kernel_maxd14` のSASS命令列sha `<402>` `76aabe60`（＝402_r5）・`<403>` `fd6f41b2`（496）。無ければ再ビルドして同じshaを再現。
-- R1（ハード）：G22r `-g 22 22` オラクル・layout=403・helpers=1・env_prefix不変・1710 MHz。
-- R2（採用条件）：|G22r − 983,142.25| ≤ 0.05%。反証 > 0.15%、間はもう1走行。
-- 成立で `403_r5` が本番、**N=22本番値＝mean(G22, G22r) ≈ 983,1xx ms**、N=21不変。
+```
+STATIC_ONLY=1 bash 404_validate.sh      # OK=16
+              bash 404_validate.sh      # 約50分
+SKIP_G=1      bash 404_validate.sh      # 約32分（ディスパッチャ経由のG21・G22を省略）
+```
 
-**403-r6（綴り探索、GPUゼロ、約5分）** — 403_r5の `.cu` からpopの `cur_ld` 1行だけを差し替えた7変種（r5のまま／XOR選択 `a ^ ((a^b)&1)`／定数マスク明示／戻しシフト／64ビット選択／インラインPTX `lop3.b32 ... 0xD8`／マスク変数）をビルドし、各変種の `<402>` SASS一致・`<403>` 命令数・pop領域の命令列を `403_r6_variants.tsv` と `pop_v*.txt` に出します。7変種とも意味は同一（2×10⁷回のランダム比較で全一致）、gccビルドは手元で確認済みです。目標はldを **SHF＋LOP3の2段**（`avail` と同じ深さ）にして命令数 ≤496。出た変種で403-r6の四点セット（Z／X／G22の再測）を作ります。どれも3段のままなら「ptxasは折らない」と記録して、`<403>` と `<402>` の命令並び差の読みに進みます。
+## 中身
 
-順序はr5b→r6でも、r6→r5bでも構いません（r6はGPUを使わないので、r5bの16分の裏で回せます）。
+- **`.cu`**：探索のd3（A＋B）です。403_r7比 removed=11 added=4。コメントを除いたコード領域が、探索と同じ生成器を403_r7に適用した結果とバイト一致することを、静的ゲートで確かめます。
+- **`.py`**：403_r7Pyの純粋リネーム（実行行3行）＋ノート。
+- **ハーネス**：梯子用の診断バイナリd1（A）・d5（A＋B＋C）は、ハーネスが手元の `403_r7_kernel_maxd14.cu` から生成してビルドし、shaを探索結果と照合します。別ファイルの納品はありません。
+- **`README_append`**：r7の結果と採用、`<402>` ループの内訳、探索結果、404の設計を入れました。
+
+## セルと所要
+
+| セル | 内容 |
+|---|---|
+| L0／L1／L3／L5 | N=21 梯子：403_r7／A／**A＋B（404）**／A＋B＋C。L1・L3・L5はL0とバイト一致がハード |
+| Z7／Z4 | N=21 layout 403：403_r7／404 |
+| X4 | N=22 直接。昨日のr7のX7とバイト一致がハード |
+| G21／G22 | 本番経路 |
+
+N=22の同一セッションのアンカーは既定では走らせません（昨日のX7 968,932を参照）。r5の再実行で日をまたいだ再現性が0.01%以内と分かっているためです。走らせたい場合は `RUN_X7=1`（＋16.5分）です。
+
+## 事前登録
+
+- **PA**：L1/L0 ≤ 0.994（Aで−0.6%以上）
+- **PB**：L3/L1 ≤ 0.980（Bで−2%以上）。**1.000以上ならBの負け**で、404-r2でAだけを採用します
+- **PX**：X4 対 r7のX7 ≤ 0.985
+- **PC**：L5/L3は情報のみ（242の再検定）
+- **採用**：ハードゲート・バイト一致・L3/L0 ≤ 0.998・X4/X7 ≤ 0.998・G21／G22のオラクルで、404が本番
+
+採用になれば、N=21の本番値が402-r5以来はじめて変わります。
+
+## 前提と未確認
+
+- 必要なもの：`403_r7_kernel_maxd14.cu`／`403_r7Py…py`／`403_r7_kernel_maxd14`、`rev386_validation_helpers.py`、N=21／N=22入力、昨日の `403_r7_validate_*/bins/X7_results.bin`（X4の照合用）。
+- 手元では静的ゲート OK=16、gccビルド、S2／S3／SDの期待値を探索のSASSで検算、まで確認しました。nvcc以降は未実行です。
+- 訂正：前の提案で所要を「約45分」と書きましたが、CPU等価とクールダウンを入れて約50分です。
+
+いちばん読めないのはPBです。命令は10本減りますが、pop直後の深さの鎖が1段から4段に伸びます。どちらが勝つかは測るまで分かりません。
+
+
+ハードゲートは全部通りました。採用則も満たしています。ただし**PBは文字どおり反証**で、しかも予想していなかった形の結果が出ています。判断をお願いしたい点が1つあります。
+
+## 結果
+
+| セル | 内容 | kernel_ms | 比 |
+|---|---|---:|---:|
+| L0 | 403_r7 N=21 layout 402 | 109,458.1 | |
+| L1 | A | 108,911.0 | L1/L0 = 0.9950（−0.50%） |
+| L3 | **404（A＋B）** | 108,960.4 | L3/L1 = 1.0005（**+0.05%**）、L3/L0 = 0.9955 |
+| L5 | A＋B＋C（診断） | 107,959.3 | L5/L3 = 0.9908（**−0.92%**） |
+| Z7 | 403_r7 N=21 layout 403 | 110,298.5 | |
+| Z4 | 404 N=21 layout 403 | **108,123.2** | Z4/Z7 = 0.9803（**−1.97%**） |
+| X4 | 404 N=22 直接 | 946,599.4 | 対 r7 X7 = 0.9770（**−2.31%**） |
+| G21 | `404Py -g 21 21` | 108,961.8 | 対 109,437 −0.43% |
+| G22 | `404Py -g 22 22` | **945,753.1** | 対 968,206 −2.32% |
+
+ログから確かめたこと：L1・L3・L5がL0とバイト一致、Z4＝Z7、X4＝昨日のr7のX7、SASS shaは3本とも探索どおり、9走行オラクル一致・1710 MHz・居残りゼロ、160 B／38レジスタ。
+
+## 予測との照合
+
+- **PA**：0.9950。表明の0.994にわずかに届かず「本物だが小さい」帯です。
+- **PB**：L3/L1 = 1.0005で、登録した「1.000以上はBの負け」に該当します。layout 402では、Bは10命令減らしても**利得ゼロ**でした。
+- **PX**：0.9770で成立。layout 403では、同じA＋Bが−2.0〜−2.3%です。
+- **採用則**（L3/L0 ≤ 0.998、X4/X7 ≤ 0.998、バイト一致、オラクル）は成立しています。
+
+## 読み
+
+**Bはレイアウトで効き方がまるで違いました。** 402では `col` がpopで2段目に出るので、深さは4段目（`col` 2段→POPC→減算）。403では `col` が1段目なので3段目です。この1段の差で、402は命令減の利得が全部消え、403は丸ごと残った、という形です。探索の時点で「いちばん読めない」と書いた鎖の罰則が、402側で予想よりずっと大きく出ました（仮説ですが、Z4とL3の差がこれを支持します）。
+
+その結果、**N=21でもlayout 403のほうが速くなりました**（Z4 108,123 対 L3 108,960、−0.77%）。403-r7までは403が+0.8%遅かったので、逆転です。
+
+**Cは−0.92%でした。** 探索では1命令の上積みにしか見えず、242の前例もあって外しましたが、測ると大きい。私の見立ては外れです。
+
+## 判断をお願いしたい点
+
+事前登録が、この結果に対して2つの違うことを言っています。PBの帰結は「404-r2でAだけを採用」、採用則は「404を採用」です。Bがレイアウトで逆の結果になる場合を、私が想定していませんでした。
+
+私の推奨は**404（A＋B）をこのまま採用**です。
+
+- Aだけにすると、N=21は108,911で404より49 ms（0.05%）速いだけですが、N=22の−2.3%（約22秒）の大半を捨てます。
+- 404なら N=21 108,962 ms（−0.43%）、N=22 945,753 ms（15:46、−2.32%）で、どちらも現本番より速いです。
+
+そのうえで、次は今回見えた2つを1つずつ試します。
+
+1. **N=21もlayout 403で走らせる**（ホスト側の選択を変えるだけで、カーネルのSASSは不変）。Z4の値がそのまま出るなら N=21 ≈ 108,12x ms（109,437から−1.2%）。
+2. **Cを入れる**（d5）。layout 402で−0.92%。layout 403での値は未測定です。
+
+404を採用として進めてよいですか。r7と同じく、結果と採用は次のリビジョンの `README_append` に書きます。
 """
 
 """
@@ -839,6 +921,111 @@ Now the two harnesses: 403-r5b (re-registration + one replicate) and 403-r6 (com
 #   N=21は不変(同一SASS)。P1反証なら採用せず、403の罰則は命令数ではなく別の機構(ptxasの
 #   スケジュール)にあると記録する。
 #   所要: CPU等価 約5分 + X0/X1/G22 各約16.5分 + Z3/Z5 各約2分 ≈ 60分。SKIP_G22=1 で約43分。
+# =====================================================================
+
+# =====================================================================
+# 403-r6 リビジョンノート  (2026-09-30)
+# ---------------------------------------------------------------------
+# 【403-r5の結果 — 403-r5bで採用】 ハード全通過(<402>=402_r5、<403> 504→496、CPU等価3組、X1のresults.binが
+#   X0と一致)。Z5/Z3=0.9959、X1/X0=0.9956、G22 983,142 / G22r 983,164(+0.0023%)。
+#   本番: 403_r5_kernel_maxd14 + 403_r5Py、N=22 983,153 ms(16:23)、N=21不変。
+#   命令数で説明できる403の罰則は約15%(同数496でもN=21は+2.3%)。残りは並び/依存鎖。
+# 【403-r6 綴り探索(コンパイルのみ)の結果】 popのld: r5は SHF→LOP3(0x1ffffe)→LOP3 の3段でavail(2段)を
+#   追い越していた。C綴り6変種(& ~1u / XOR選択 / 定数マスク / 戻しシフト / 64ビット選択 / マスク変数)は
+#   すべて同一SASS(496、sha fd6f41b2): フロントエンドが正規化し、ptxasは2つのLOP3を融合しない。
+#   インラインPTX lop3.b32 0xD8 の変種だけが LOP3.LUT 0xb8 の1命令になり(496、末尾NOP+1、sha a8c1fffa)、
+#   他は分岐アドレス以外すべて同一。pop = 5命令(col1/avail2/ld2/rd0)= 402と同じ形。
+# 【403-r6 — その1変種を本番候補に】 .cu は403_r5からpopの1行を9行ブロックに(a43一時変数、
+#   #ifdef __CUDACC__ で asm、#else はgcc用のC綴り)。402分岐不変。コード領域差分 403_r5比 removed=1 added=7。
+#   .py は403_r5Pyの純粋リネーム(実行行3行)。
+# 【ゲートとセル】 S0静的 / S1 ptxas / S2 ハード <402>=402_r5 / S3 ハード <403> sha=a8c1fffa(探索のv5と同一) /
+#   Y2 ハード CPU等価(403_r5対、N=22 auto・N=21 l403・N=21 auto) / Y3 rc=3 /
+#   Z5・Z6(N=21 layout403 直接、同一セッション) / X5・X6(N=22 直接、X6のresults.bin=X5 ハード) /
+#   G22(./403_r6Py -g 22 22)。
+# 【事前登録】 P1 表明 X6/X5 <= 0.998(最長鎖から1命令)。反証 >= 0.9997(フロアの10倍以内)。間はグレー。
+#   P2 表明 Z6/Z5 <= 0.998、反証 >= 0.9997。 P3 ハード G22 オラクル・layout=403。 P4 1710±2%。
+#   採用則: S0〜S3・Y2・Y3・X6一致・P1成立・P3 → 403_r6 が本番(N=22=G22、N=21不変)。
+#   グレーはsuzuki判断(結果同一・コードは厳密に短いので、小さくても本物なら採る価値あり)。
+#   所要: 約55分(SKIP_X5=1 で約38分、SKIP_G22=1 でさらに−16.5分)。
+# =====================================================================
+
+# =====================================================================
+# 403-r7 リビジョンノート  (2026-10-01)
+# ---------------------------------------------------------------------
+# 【403-r6の結果 — 採用】 ハード全通過(S2 <402> sha 76aabe60、S3 <403> sha a8c1fffa、CPU等価3組、
+#   X6のresults.binがX5と一致、5走行オラクル一致・1710 MHz)。Z6/Z5=0.9929(111,208.1対112,001.0)、
+#   X6/X5=0.9932(977,058.5対983,771.6)、G22 976,391.2。本番: 403_r6_kernel_maxd14 + 403_r6Py、
+#   N=21 109,4xx ms不変、N=22 976,391 ms(16:16)。
+# 【訂正(2026-10-01、403-r6ログの静的読み、GPUゼロ)】「<402>も<403>も496命令」は128 B整列の末尾NOP込み。
+#   実命令/ホットループ: <402> 482/140、元の403 489/145、403_r5 488/144、403_r6 487/143。
+#   r5がループ内で減らしたのは1命令(8命令ではない)で−0.40%、r6も1命令で−0.71%、残り3命令で+1.6%
+#   = push/pop経路のループ1命令 ≈ 0.4〜0.7%。レジスタ名を正規化した突き合わせでは、ループ本体は区間ごとに
+#   同数(53/53、40/40、解カウント10/10、pop 17/17、並べ替えのみ)で、差+3はすべてpush(16対19):
+#   B=(rd&~1)|(ld&1) がLOP3 2本、(ld>>1)<<44 がSHF+SHL。「残りは並び」は数え間違いの見かけ。
+#   「依存鎖の深さが効く」は保留(r6は鎖を縮めると同時に命令を1本減らした)。pushは次の反復の状態に
+#   流れ込まないので、r7は命令数だけを変える実験になる。
+# 【403_r5の再実行(2026-10-01 15:14、誤って実行、本番変更なし)】 Z5 112,002.0 / X1 983,763.8 /
+#   G22 983,108.4。前日比 +0.001% / +0.009% / −0.004%前後。日をまたいだ再現性は0.01%以内。
+# 【403-r7 綴り探索(2026-10-01 16:33、コンパイルのみ、6変種)】 実命令/ループ/push区間:
+#   w0 現状 487/143/19(sha a8c1fffa、対照OK) / w1 BをインラインPTX 485/142/18 /
+#   w2 A上位語をC綴り 485/142/18 / w3 = w1+w2 483/141/17(sha db7e0ec2) /
+#   w4 = w1+AをインラインPTX 0xF8 483/142/18(ptxasがWIDEを分解) / w5 = w1+64ビットC綴り 483/141/17(w3と同一SASS)。
+#   全変種で <402> は402_r5と一致、160 B、40レジスタ。w3とw0の差はpushだけ(とマーク処理内の並べ替え)。
+# 【403-r7 — w3を本番候補に】 .cu は403_r6から403分岐のpush 2サイト(メイン・ルート)の3行を差し替え:
+#   A: ((uint64_t)(cur_ld >> 1) << 44) → ((uint64_t)((cur_ld << 11) & 0xFFFFF000u) << 32)(同値)、
+#   B: #ifdef __CUDACC__ で asm lop3.b32 0xD8、#else はgcc用のC綴り。pop・402分岐不変。
+#   コード領域差分 403_r6比 removed=6 added=18。<403> は <402>+1命令(Bの選択1本=レイアウトの下限)。
+#   .py は403_r6Pyの純粋リネーム(実行行3行)。
+# 【ゲートとセル】 S0静的 / S1 ptxas / S2 ハード <402>=402_r5 / S3 ハード <403> sha=db7e0ec2・実483・ループ141 /
+#   Y2 ハード CPU等価(403_r6対、N=22 auto・N=21 l403・N=21 auto。CPU側はAの新しいC綴りを通る。Bのasmは
+#   GPU側のX7バイト一致とオラクルで見る) / Y3 rc=3 /
+#   Z6・Z7(N=21 layout403 直接、同一セッション) / X6・X7(N=22 直接、X7のresults.bin=X6 ハード) /
+#   G22(./403_r7Py -g 22 22)。
+# 【事前登録】 P1 表明 X7/X6 <= 0.992(ループ2命令 × 0.4〜0.7%)。<= 0.998 は「本物だが1命令あたりの換算より
+#   小さい」(=r6の利得の一部は鎖の深さ)。反証 >= 0.9997。間はグレー。
+#   P2 表明 Z7/Z6 <= 0.992、同じ帯。 P3 ハード G22 オラクル・layout=403。 P4 1710±2%。
+#   採用則: S0〜S3・Y2・Y3・X7一致・X7/X6 <= 0.998・P3 → 403_r7 が本番(N=22=G22、N=21不変)。
+#   グレーはsuzuki判断。所要: 約55分(SKIP_X6=1 で約38分、SKIP_G22=1 でさらに−16.5分)。
+# =====================================================================
+
+# =====================================================================
+# 404 リビジョンノート  (2026-10-02)
+# ---------------------------------------------------------------------
+# 【403-r7の結果 — 採用】 ハード全通過(S2 <402>=402_r5、S3 <403> sha db7e0ec2・実483・ループ141、X7のresults.binが
+#   r6のX6と一致、4走行オラクル一致・1710 MHz)。Z7/Z6=0.9922(110,339.0対111,203.2)、X7対r6 X6=0.9917
+#   (968,931.6対977,058.5)、G22 968,205.9。本番: 403_r7_kernel_maxd14 + 403_r7Py、N=21 109,4xx ms不変、
+#   N=22 968,206 ms(16:08、r2dの987,079から−1.91%、出発点1,140,988から−15.1%)。
+#   P1(N=22)成立、P2(N=21)は0.9922で表明0.992に0.0002届かず「換算より小さい」帯(採用)。
+#   読み: push 2命令で−0.78〜−0.83% = 1命令あたり約0.4%(r5と同じ)。r6の0.71%は命令数約0.4%+ld鎖1段約0.3%。
+#   N=21 layout 403は<402>に対しまだ+0.8%(命令は+1なので約0.4%は未説明)。
+# 【<402>ループの静的読み(2026-10-02、GPUゼロ)】 ループ140のうち push 16 = 詰め込み4・深さLIFO 3・save_sp 1・
+#   stack_ptr 1・アドレス2・ストア2・MOV 2・分岐1、pop 17 = 取り出し5・深さLIFO 3・save_sp 1・stack_ptr 1・
+#   アドレス2・ロード2・分岐3。盤面の出し入れは半分以下。候補: A save_spを消す(常にstack_ptrと同値、402以降の
+#   重複、READMEに該当なし) / B 深さをpopc(col)−popc(root_col)で復元し深さLIFOを消す(1ステップはcolに
+#   ちょうど1ビット足す、READMEに該当なし) / C future_checkを深さビットで直接見る(242で+1.3%の前例)。
+# 【404 綴り探索(2026-10-02 10:03、コンパイル+CPU等価)】 <402>の 実命令/ループ/push/pop/残り:
+#   d0 現状 482/140/16/17/107(<402>=402_r5、対照OK) / d1 A 479/138/15/16/107(IADD3 2本だけが消えた) /
+#   d2 B 473/132/13/16/103 / d3 A+B 463/130/12/15/103(sha dd619aaf) / d4 C 479/137/16/17/104 /
+#   d5 A+B+C 462/129/12/15/102。<403>: d0 483/141、d3 465/131(sha 6a17e634)。全変種160 B、d3はレジスタ40→38。
+#   CPU等価は全変種ok(N=21 auto・N=21 layout403・N=22 auto、実レコード各1,024件)。
+#   Bはpush/popの外でも−4: ステップ先頭の深さ退避MOV 2本と、future_check直前のニブル再抽出(SHL+SHF、395aの
+#   残り)が消えた。そのためCの上積みは1命令だけ → Cは入れない(診断セルL5で測るのみ)。
+#   1回目の探索(10:00)はBが__popcでnvccエラー(ホスト/デバイス両用関数からデバイス専用関数は呼べない)、
+#   __builtin_popcountに直して2回目で通過。
+# 【404 — d3(A+B)を本番候補に】 .cu は403_r7から save_sp の宣言・増減4か所と空判定、stack_depth の宣言・push 2か所・
+#   pop を差し替え(コード領域 removed=11 added=4)。詰め込み・pushガード・スケジュール解読・future_checkは不変。
+#   <402>のSASSは402_r5から離れる: 以後N=21の担保は403_r7とのスレッド別バイト一致とオラクル。
+#   注意: pop直後の深さの鎖が1段→4段(col 2段→POPC→減算)。.py は403_r7Pyの純粋リネーム(実行行3行)。
+# 【ゲートとセル】 S0静的(コード領域=生成器(A+B)の出力) / S1 ptxas / S2 ハード <402> sha dd619aaf・実463・ループ130 /
+#   S3 ハード <403> sha 6a17e634・実465・ループ131 / Y2 ハード CPU等価(403_r7対3組) / Y3 rc=3 /
+#   N=21梯子(直接・layout 402・同一セッション): L0 403_r7 / L1 d1(A) / L3 404(A+B) / L5 d5(+C、診断)。
+#   L1・L3・L5のresults.bin=L0(ハード)。d1・d5はハーネスが403_r7から生成しSASS shaを探索と照合 /
+#   Z7・Z4(N=21 layout403、Z4=Z7バイト一致) / X4(N=22 直接、r7のX7とバイト一致) / G21・G22(./404Py -g)。
+# 【事前登録】 PA 表明 L1/L0 <= 0.994。 PB 表明 L3/L1 <= 0.980(<= 0.998は「本物だが鎖の罰則が見える」、
+#   >= 1.000はBの負け → 404-r2でd1のみ)。 PX 表明 X4対r7 X7 <= 0.985。 PC L5/L3は情報のみ。
+#   P3 ハード G21 オラクル・layout=402、G22 オラクル・layout=403。 P4 1710±2%。
+#   採用則: S0〜S3・Y2・Y3・バイト一致・L3/L0 <= 0.998・X4/X7 <= 0.998・P3 → 404 が本番(N=21=G21、N=22=G22)。
+#   所要: 約50分(SKIP_G=1 で約32分、RUN_X7=1 で同一セッションのN=22アンカーを足して+16.5分)。
 # =====================================================================
 
 # =====================================================================
@@ -2234,7 +2421,7 @@ SCHED_WORDS21:Static[int]=6
 # 1-task-per-thread launch regardless of this value (see
 # exec_solutions_gpu_chunk_split145).
 K_PER_THREAD_MAXD14:Static[int]=48
-VERSION_TAG:str="403-r5 PY-REVTAG: pure rename of 403_r3Py (which is 403_r2dPy, the production .py; 403_r4Py was NOT adopted). The table names ./403_r5_kernel_maxd14: the 403 layout re-spelled to split ld at the bottom (A = col | avail<<22 | ld[1..20]<<44, B = (rd&~1) | ld[0]; rd read back unmasked), 402 branches and <402> SASS unchanged. A10G_FINAL_DEFAULT_MAX_BLOCKS=960 and env_prefix NQ_EXTRA_CTX=1 NQ_HELPER_CTX=1 NQ_HELPER_MB=128 unchanged for every N."
+VERSION_TAG:str="404 PY-REVTAG: pure rename of 403_r7Py (production since 403-r7). The table names ./404_kernel_maxd14: the DFS loop drops save_sp (always equal to stack_ptr) and the 4-bit depth LIFO (depth = popc(col) - popc(root col)); packing, push guard and schedule decode unchanged. Default 960 and env_prefix unchanged."
 
 
 WHI_ELIM_REASON:str="351 removed the identically zero high half of the SoA w split introduced in 328, and 352 corrects the record without touching a line of executable code. symmetry() yields only 2, 4 or 8, so the high 32 bits of every w value were always zero and the three loads of them in each kernel epilogue were pure waste. Five kernel signatures lose one pointer parameter, the dispatcher builds one array instead of two, and each epilogue reads a single u32 and widens it. CORRECTION FROM 352: 351 said the u64 multiply was left alone because the compiler could not know the high operand was zero. That was wrong. The widened load is a provable zero extension, so the multiply fell from three IMADs to two and the accumulation folded into the widening MAD. A host-side guard ORs every element of w_arr and aborts if the high half is ever nonzero, so the invariant is checked rather than assumed. Host-side reordering is byte identical to 350, so the shaped bin is the same file and is reused. The measured effect on the full launches was 0.19 to 0.21 percent across three independent controls, but the SASS comparison rules out the generated code as the cause, so the epilogue axis is closed and the result is recorded as a measurement without a mechanism."
@@ -2282,7 +2469,7 @@ CPU_FINAL_DEFAULT_N:int=22
 # reasoning and restores the rev-numbered prefix via this single
 # constant, updated each revision (the same maintenance habit as
 # VERSION_TAG itself).
-REV_TAG:str="403_r5"
+REV_TAG:str="404"
 # ===388-REVTAG-END===
 DEFAULT_RANGE_NMIN:int=5
 CRUNNER_MIN_N:int=19  # 398-r2: lower bound of the mode-37 CRunner dispatch path, was the literal 21. N=20 and N=19 are needed as profiling targets because ncu cannot finish the 133 s N=21 kernel (396 tried twice) but does finish a 1.5 s one, and because record subsets are unusable -- 394f balances cumulative per-thread work over the whole set, so any subset runs 13-26% cheap (truncated) or 12-37% dear (stratified). N=20 and N=19 carry their own 394f schedule and are balanced by construction. required_maxd for both is <= 14, so crunner_select_entry_index() resolves to the same table row; correctness is checked against the same oracle the Codon path already matched.
@@ -8444,7 +8631,7 @@ def crunner_dispatch_table()->List[CRunnerEntry]:
     # are set. env_prefix stays EMPTY so that NQ_EXTRA_CTX can be supplied
     # from the caller's environment (os.system inherits it) and this table
     # entry serves both the with- and without-treatment cells unchanged.
-    CRunnerEntry(14,"./403_r5_kernel_maxd14","NQ_EXTRA_CTX=1 NQ_HELPER_CTX=1 NQ_HELPER_MB=128 ","[gpu-run-done]","[gpu-run-correctness]"),
+    CRunnerEntry(14,"./404_kernel_maxd14","NQ_EXTRA_CTX=1 NQ_HELPER_CTX=1 NQ_HELPER_MB=128 ","[gpu-run-done]","[gpu-run-correctness]"),
   ]
 
 def crunner_select_entry_index(required_maxd:int)->int:
