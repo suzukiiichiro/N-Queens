@@ -820,6 +820,37 @@ tar の中身から確かめたこと：
 
 確保先が決まるまでは、どの構成でも必要になる 421 から着手できます。
 
+
+転送の前に、まず NQ_CRunner2 側を確認してください。NQ_CRunner2 は 10/26 に NQ_CRunner の AMI から作ったはずなので、その時点であった bin（N=25 の入力は 10/14 に完成）はすでに入っている可能性が高いです。作業ディレクトリが EBS 上ならそのまま残っています。
+
+```
+# 両方のマシンで実行して突き合わせる
+ls -la constellations_N2*.sched394f.bin
+sha256sum constellations_N2*.sched394f.bin
+```
+
+足りないものがあった場合、必要なのは次のとおりです。
+
+| 区分 | ファイル | サイズ | 用途 |
+|---|---|---:|---|
+| 必須 | `constellations_N21_6.bin.soa_ref_361.bin.maxd14only_363.bin.sched394f.bin` | 57 MB | 各 GPU 単独の基準確認（一覧に無いのは `_6` だからだと思います） |
+| 必須 | `constellations_N23_7.bin.soa_ref_361.bin.maxd16only_413.bin.sched394f.bin` | 1.24 GB | 分割の検証（要素和＝一括のバイト一致） |
+| 必須 | `constellations_N25_7.bin.soa_ref_361.bin.d17only_417.bin.sched394f.bin` | 2.75 GB | N=25 の 4 GPU 分割確認、N=26 前の尾の測定 |
+| あると良い | `constellations_N24_7.bin.soa_ref_361.bin.d16only_415.bin.sched394f.bin` | 1.87 GB | スライスでの分割費用・尾の測定 |
+| あると良い | `constellations_N22_7.bin.soa_ref_361.bin.maxd14only_363.bin.sched394f.bin` | 0.80 GB | 予備 |
+
+それ以外（生の `constellations_N2x_7.bin`、`soa_ref_361.bin`、フィルタ後の中間ファイル、`all_414` 系）は不要です。分割走行はカーネルに sched を直接渡すので、中間ファイルは読みません。NQ_CRunner2 で `-g` の通し走行もするなら、その N の 4 段すべてが要ります（`-g` は生の bin を再走査するため）。
+
+bin 以外に、GitHub に入っていないはずの基準ファイルも 3 つ要ります（各 245,760 B）。
+
+- `411_validate_20261006_150938/bins/B1_results.bin`（N=21、sha `1bfab090`）
+- `413_r3_full23_20261008_192202/bins/G23_results.bin`（N=23、`d905b177`）
+- `419_r3_full25_20261104_232738/bins/G25_results.bin`（N=25、`bd2de957`）
+
+前の 2 つは AMI に入っているはずですが、N=25 の基準は 11/13 にできたものなので確実に転送が必要です。ディレクトリ構成ごと同じパスに置いてください。
+
+N=26 の入力は NQ_CRunner2 で作るのが良いと思います。g5.12xlarge は RAM が 192 GB あるので（NQ_CRunner は 30 GB）、sched 構築のメモリ制約がずっと楽になります。
+
 """
 
 """
