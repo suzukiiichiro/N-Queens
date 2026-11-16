@@ -679,7 +679,7 @@ $ screen -r nq25
 
 実行
 $ screen -S nq25
-$ NMIN=5 bash 417_r3_full25.sh 2>&1 | tee 417_r3_full25_stdout.log
+$ NMIN=5 bash 419_r3_full25.sh 2>&1 | tee 419_r3_full25_stdout.log
 
 2026年 11月 15日 日曜日 18:50:12 JST
 GPU mode selected
